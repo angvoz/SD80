@@ -51,6 +51,7 @@ public class CppUnitLocationGroup
 	private Text fCppUnitLibText;
 	private Button fCppUnitLibButton;
 	static private String initLibString;
+	private int underWindows=0;
 
 	private WizardPage fParent;
 
@@ -69,6 +70,7 @@ public class CppUnitLocationGroup
 		String defaultLib="";
 		if(BootLoader.getOS().equals(BootLoader.OS_WIN32))
 		{
+			underWindows=1;
 			defaultInc="c:/cygwin/usr/local/include/cppunit/TestCase.h";
 			defaultLib="c:/cygwin/usr/local/lib/libcppunit.a";
 		}
@@ -311,7 +313,14 @@ public class CppUnitLocationGroup
 	}
 	public String getCppUnitLibLocation()
 	{
-		return(fCppUnitLibText.getText().trim());
+		if(underWindows==0)
+		{
+			return(fCppUnitLibText.getText().trim());
+		}
+		else
+		{
+			return(fCppUnitLibText.getText().trim()+" -lwsock32");
+		}
 	}
 	public Text getIncludeTextWidget()
 	{

@@ -18,11 +18,19 @@
 
 #include <strings.h>
 #include <errno.h>
+#include <unistd.h>
+#include <sys/time.h>
+
+#ifdef _WIN32 // Bugzilla 40710
+#include <windows.h>
+#include <winbase.h>
+#include <winsock.h>
+#else
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/time.h>
-#include <unistd.h>
+#include <arpa/inet.h>
 #include <netdb.h>
+#endif
 
 static const std::string TRACE_START	= "%TRACES ";
 static const std::string TRACE_END	= "%TRACEE ";
@@ -101,13 +109,27 @@ public:
 	}
 	int connect()
 	{
+#ifdef _WIN32 // Bugzilla 40710
+		WSADATA   WSAData;
+		if(WSAStartup (MAKEWORD (1, 1), &WSAData) != 0)
+		{
+			std::cerr << "WSAStartup failed ! " <<std::endl;
+			return(-1);
+		}
+#endif
 		struct sockaddr_in name;
 		if (fDebugMode)
 		{
 			std::cerr << "RemoteTestRunner: trying to connect to "<<fHost<<":"<<fPort<<std::endl;
 		}
 		fClientSocket=socket(AF_INET, SOCK_STREAM,0);
-		bzero((char *)&name,sizeof(struct sockaddr_in));
+		if(fClientSocket==-1)
+		{
+			std::cerr << "socket failed "  << std::endl;
+			return(-1);
+		}
+//Bugzilla 40710		bzero((char *)&name,sizeof(struct sockaddr_in));
+		memset((void *)&name,0,sizeof(struct sockaddr_in));
 		name.sin_family=AF_INET;
 		name.sin_port=htons(fPort);
 		struct hostent *h=gethostbyname(fHost);
@@ -117,8 +139,9 @@ public:
 			fClientSocket=-1;
 			return(-1);
 		}
-		bcopy(h->h_addr,&name.sin_addr,h->h_length);
-				int ret=0;
+//Bugzilla 40710		bcopy(h->h_addr,&name.sin_addr,h->h_length);
+		memcpy(&name.sin_addr,h->h_addr,h->h_length);
+		int ret=0;
 		for(int j=0;j<3;j++)
 		{
 			ret=::connect(fClientSocket, (struct sockaddr *) &name, sizeof(struct sockaddr_in));
@@ -126,7 +149,7 @@ public:
     		    {
 			if(fDebugMode)
     		    	std::cerr<<"Waiting for the VM to listen"<<std::endl;
-    		    	sleep(1);
+    		    	private_sleep(1000); // Martin Sleep for 1000 ms
     		    }
     		    else
     		    {
@@ -172,7 +195,12 @@ public:
 	{
 		if(fClientSocket!=-1)
 		{
+#ifdef _WIN32 // Bugzilla 40710
+			closesocket(fClientSocket);
+			WSACleanup ();
+#else
 			close(fClientSocket);
+#endif
 			fClientSocket=-1;
 		}
 	}
@@ -189,8 +217,9 @@ public:
 		{
 			class TmpClass:public CppUnit::TestDecorator {
 				public:
-					TmpClass(Test *t):CppUnit::TestDecorator(t){};
+					TmpClass(Test *t):CppUnit::TestDecorator(t){}
 					CppUnit::Test *getTest() {return(m_test);}
+					~TmpClass() {} // Bugzilla 39894
 			};
 			TmpClass *t=(TmpClass *)test;
 			sendTree(t->getTest());
@@ -219,8 +248,13 @@ public:
 	void sendMessage(std::string msg)
 	{
 		if(fClientSocket==-1) return;
+#ifdef _WIN32 // Bugzilla 40710
+		send (fClientSocket, msg.c_str(), msg.length(), 0);
+		send (fClientSocket, "\n", 1, 0);
+#else
 		write(fClientSocket,msg.c_str(),msg.length());
 		write(fClientSocket,"\n",1);
+#endif
 	}
 
 	void notifyTestRunStarted(int testCount)
@@ -315,9 +349,22 @@ public:
 	}
 	long currentTimeMillis()
 	{
+#ifdef _WIN32 // Bugzilla 40710
+		unsigned long long p;
+		  __asm__ __volatile__ ("rdtsc" : "=A" (p));
+		return (unsigned long)p;
+#else
 		struct timeval tv;
 		gettimeofday(&tv,NULL);
 		return((long)(tv.tv_sec*1000)+(tv.tv_usec/1000));
+#endif
+	}
+	void private_sleep(int millisecs)
+	{
+		struct timeval delta;
+		delta.tv_sec = (millisecs * 1000L) / 1000000L;
+		delta.tv_usec = (millisecs * 1000L) % 1000000L;
+		select (0, NULL, NULL, NULL, &delta);
 	}
 };
 

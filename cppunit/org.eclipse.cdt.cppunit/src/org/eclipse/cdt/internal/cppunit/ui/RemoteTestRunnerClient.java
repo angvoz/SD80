@@ -100,9 +100,14 @@ public class RemoteTestRunnerClient {
 				fSocket= fServerSocket.accept();				
 				fBufferedReader= new BufferedReader(new InputStreamReader(fSocket.getInputStream()));
 				fWriter= new PrintWriter(fSocket.getOutputStream(), true);
-				String message;
+				String message="";
 				while(fBufferedReader != null && (message= readMessage(fBufferedReader)) != null)
-					receiveMessage(message);
+				{
+					if(message != null)
+					{
+						receiveMessage(message);
+					}	
+				}
 			} catch (SocketException e) {
 				fListener.testRunTerminated();
 			} catch (IOException e) {

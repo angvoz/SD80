@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<welcomePage 
+	title="Eclipse C/C++ Development Tools CppUnit Integration">
+	<intro>This page will help familiarize you with the CppUnit integration in the Eclipse C/C++ Development Tools.
+To use this plugin, you will need to have the CppUnit framework installed. Read the section below,
+and click on related links.</intro>
+<item><b>The CppUnit Wizards </b>
+To create a new test case, select the menu File > New > Other... open the C++ category,
+and choose to create a new test case. When finished, a template of a test
+driver and a .mk makefile file are generated. To build the test, adapt and
+include the .mk in your existing Makefile, and build the test from the Make Target View.</item>
+ <item><b>Running a test</b>
+To run any CppUnit test program, click on Run > Run.... Select  CppUnit as the launch configuration
+and click New. Identify the test program in the Project and the CppUnit Test fields and then click Run.
+The CppUnit result view will be displayed with the results.</item>
+<item><b>Install CppUnit </b>
+To use this plugin, you need to have the CppUnit framework installed
+locally on your computer. To do this, <topic href="http://prdownloads.sourceforge.net/cppunit/">download CppUnit</topic> and have it installed.
+For Windows machine, you will need configure and gcc tools.</item>
+<item><b>Learn more on CppUnit </b>
+To learn more you can browse the <topic href="http://cppunit.sourceforge.net/">CppUnit documentation</topic>
+</item>
+
+</welcomePage>

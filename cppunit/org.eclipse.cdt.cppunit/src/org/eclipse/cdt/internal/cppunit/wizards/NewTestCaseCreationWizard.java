@@ -198,7 +198,7 @@ public class NewTestCaseCreationWizard extends CppUnitWizard {
 		}
 		IResource res=testedProject.getProject().findMember(testFile.removeFileExtension().addFileExtension("mk"));
 		if(res!=null) selectAndReveal(res);
-		new CppUnitMakeTarget(testedProject.getProject(),res,testClassRoot);
+//		new CppUnitMakeTarget(testedProject.getProject(),res,testClassRoot);
 
 		res=testedProject.getProject().findMember(testFile);
 		if(res!=null)

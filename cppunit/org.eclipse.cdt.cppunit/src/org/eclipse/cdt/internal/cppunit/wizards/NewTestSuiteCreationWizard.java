@@ -106,7 +106,7 @@ public class NewTestSuiteCreationWizard extends CppUnitWizard {
 
 		IResource res=testedProject.getProject().findMember(new Path(suiteName+".mk"));
 		if(res!=null) selectAndReveal(res);
-		new CppUnitMakeTarget(testedProject.getProject(),res,suiteName);
+//		new CppUnitMakeTarget(testedProject.getProject(),res,suiteName);
 
 		
 //		IPackageFragment pack= fPage.getPackageFragment();

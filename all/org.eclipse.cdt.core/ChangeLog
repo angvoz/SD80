@@ -1,7 +1,14 @@
-2003-04-24 Alain Magloire
+2003-04-29 Alain Magloire
 
-	* utils/org/eclipse/cdt/utils/spawner/Spawner.java (raise):
-	Change the scope to be public.
+	PR 36920
+	PR 36919
+
+	* model/org/eclipse/cdt/internal/core/model/Binary.java (isReadOnly):
+	Always return true for binaries.
+	* model/org/eclipse/cdt/internal/core/model/parser/ElfParser.java (getBinary):
+	Catch path being null.
+	* model/org/eclipse/cdt/internal/core/model/parser/PEParser.java (getBinary):
+	Catch path being null.
 
 2003-04-12 Alain Magloire
 

@@ -8,7 +8,7 @@
  * Contributors: 
  * IBM - Initial API and implementation
  **********************************************************************/
-package org.eclipse.cdt.utils.xcoff.parser;
+package org.eclipse.cdt.utils.som.parser;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,16 +24,16 @@ import org.eclipse.cdt.utils.CPPFilt;
 import org.eclipse.cdt.utils.CygPath;
 import org.eclipse.cdt.utils.Objdump;
 import org.eclipse.cdt.utils.Symbol;
-import org.eclipse.cdt.utils.xcoff.XCoff32;
+import org.eclipse.cdt.utils.som.SOM;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
 /**
- * Binary file in AIX XCOFF32 format
+ * Binary file in HP-UX SOM format
  * 
  * @author vhirsl
  */
-public class XCOFFBinaryObject extends BinaryObjectAdapter {
+public class SOMBinaryObject extends BinaryObjectAdapter {
 	BinaryObjectInfo info;
 	ISymbol[] symbols;
 
@@ -41,7 +41,7 @@ public class XCOFFBinaryObject extends BinaryObjectAdapter {
 	 * @param parser
 	 * @param path
 	 */
-	public XCOFFBinaryObject(IBinaryParser parser, IPath path) {
+	public SOMBinaryObject(IBinaryParser parser, IPath path) {
 		super(parser, path);
 	}
 
@@ -80,51 +80,51 @@ public class XCOFFBinaryObject extends BinaryObjectAdapter {
 		return IBinaryFile.OBJECT;
 	}
 
-	protected XCoff32 getXCoff32() throws IOException {
-		return new XCoff32(getPath().toOSString());
+	protected SOM getSOM() throws IOException {
+		return new SOM(getPath().toOSString());
 	}
 
 	protected void loadAll() throws IOException {
-		XCoff32 xcoff = null;
+		SOM som = null;
 		try {
-			xcoff = getXCoff32();
-			loadInfo(xcoff);
-			loadSymbols(xcoff);
+			som = getSOM();
+			loadInfo(som);
+			loadSymbols(som);
 		} finally {
-			if (xcoff != null) {
-				xcoff.dispose();
+			if (som != null) {
+				som.dispose();
 			}
 		}
 	}
 
 	protected void loadInfo() throws IOException {
-		XCoff32 xcoff = null;
+		SOM som = null;
 		try {
-			xcoff = getXCoff32();
-			loadInfo(xcoff);
+			som = getSOM();
+			loadInfo(som);
 		} finally {
-			if (xcoff != null) {
-				xcoff.dispose();
+			if (som != null) {
+				som.dispose();
 			}
 		}
 	}
 
-	protected void loadInfo(XCoff32 xcoff) throws IOException {
+	protected void loadInfo(SOM som) throws IOException {
 		info = new BinaryObjectInfo();
-		XCoff32.Attribute attribute = xcoff.getAttributes();
+		SOM.Attribute attribute = som.getAttributes();
 		info.isLittleEndian = attribute.isLittleEndian();
 		info.hasDebug = attribute.hasDebug();
 		info.cpu = attribute.getCPU();
 	}
 
-	protected void loadSymbols(XCoff32 xcoff) throws IOException {
+	protected void loadSymbols(SOM som) throws IOException {
 		ArrayList list = new ArrayList();
 		Addr2line addr2line = getAddr2line();
 		CPPFilt cppfilt = getCPPFilt();
 		CygPath cygpath = getCygPath();
 
-		XCoff32.Symbol[] peSyms = xcoff.getSymbols();
-		byte[] table = xcoff.getStringTable();
+		SOM.Symbol[] peSyms = som.getSymbols();
+		byte[] table = som.getStringTable();
 		addSymbols(peSyms, table, addr2line, cppfilt, cygpath, list);
 
 		if (addr2line != null) {
@@ -142,17 +142,17 @@ public class XCOFFBinaryObject extends BinaryObjectAdapter {
 		list.clear();
 	}
 
-	protected void addSymbols(XCoff32.Symbol[] peSyms, byte[] table, Addr2line addr2line, CPPFilt cppfilt, CygPath cygpath, List list) {
+	protected void addSymbols(SOM.Symbol[] peSyms, byte[] table, Addr2line addr2line, CPPFilt cppfilt, CygPath cygpath, List list) {
 		for (int i = 0; i < peSyms.length; i++) {
 			if (peSyms[i].isFunction() || peSyms[i].isVariable()) {
 				String name = peSyms[i].getName(table);
-				if (name == null || name.trim().length() == 0 /*|| 
-				    !Character.isJavaIdentifierStart(name.charAt(0))*/) {
+				if (name == null || name.trim().length() == 0 || 
+				    !Character.isJavaIdentifierStart(name.charAt(0))) {
 					continue;
 				}
 				Symbol sym = new Symbol(this);
 				sym.type = peSyms[i].isFunction() ? ISymbol.FUNCTION : ISymbol.VARIABLE;
-				sym.addr = peSyms[i].n_value;
+				sym.addr = peSyms[i].symbol_value;
 
 				sym.name = name;
 				if (cppfilt != null) {
@@ -195,7 +195,7 @@ public class XCOFFBinaryObject extends BinaryObjectAdapter {
 	 * @see org.eclipse.cdt.utils.BinaryObjectAdapter#getAddr2line()
 	 */
 	public Addr2line getAddr2line() {
-		XCOFF32Parser parser = (XCOFF32Parser)getBinaryParser();
+		SOMParser parser = (SOMParser)getBinaryParser();
 		return parser.getAddr2line(getPath());
 	}
 
@@ -203,7 +203,7 @@ public class XCOFFBinaryObject extends BinaryObjectAdapter {
 	 * @see org.eclipse.cdt.utils.BinaryObjectAdapter#getCPPFilt()
 	 */
 	public CPPFilt getCPPFilt() {
-		XCOFF32Parser parser = (XCOFF32Parser)getBinaryParser();
+		SOMParser parser = (SOMParser)getBinaryParser();
 		return parser.getCPPFilt();
 	}
 
@@ -211,7 +211,7 @@ public class XCOFFBinaryObject extends BinaryObjectAdapter {
 	 * @see org.eclipse.cdt.utils.BinaryObjectAdapter#getObjdump()
 	 */
 	public Objdump getObjdump() {
-		XCOFF32Parser parser = (XCOFF32Parser)getBinaryParser();
+		SOMParser parser = (SOMParser)getBinaryParser();
 		return parser.getObjdump(getPath());
 	}
 

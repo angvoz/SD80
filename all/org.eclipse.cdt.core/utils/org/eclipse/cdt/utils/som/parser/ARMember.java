@@ -8,7 +8,7 @@
  * Contributors: 
  * IBM - Initial API and implementation
  **********************************************************************/
-package org.eclipse.cdt.utils.xcoff.parser;
+package org.eclipse.cdt.utils.som.parser;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -18,33 +18,73 @@ import java.util.List;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IBinaryParser;
 import org.eclipse.cdt.core.IBinaryParser.ISymbol;
+import org.eclipse.core.runtime.IPath;
+
 import org.eclipse.cdt.utils.Addr2line;
 import org.eclipse.cdt.utils.CPPFilt;
 import org.eclipse.cdt.utils.CygPath;
 import org.eclipse.cdt.utils.Symbol;
-import org.eclipse.cdt.utils.xcoff.AR;
-import org.eclipse.cdt.utils.xcoff.XCoff32;
-import org.eclipse.core.runtime.IPath;
+import org.eclipse.cdt.utils.som.AR;
+import org.eclipse.cdt.utils.som.SOM;
 
 /**
- * A member of an XCOFF32 archive
+ * A member of a SOM archive
  * 
  * @author vhirsl
  */
-public class ARMember extends XCOFFBinaryObject {
-	private AR.MemberHeader header;
-
+public class ARMember extends SOMBinaryObject {
+	private AR.ARHeader header;
+	
 	/**
 	 * @param parser
 	 * @param path
 	 */
-	public ARMember(IBinaryParser parser, IPath path, AR.MemberHeader header) {
+	public ARMember(IBinaryParser parser, IPath path, AR.ARHeader header) {
 		super(parser, path);
 		this.header = header;
 	}
 
-	/**
-	 * @see org.eclipse.cdt.core.model.IBinaryParser.IBinaryFile#getContents()
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.utils.som.parser.SOMBinaryObject#addSymbols(org.eclipse.cdt.utils.som.SOM.Symbol[], byte[], org.eclipse.cdt.utils.Addr2line, org.eclipse.cdt.utils.CPPFilt, org.eclipse.cdt.utils.CygPath, java.util.List)
+	 */
+	protected void addSymbols(SOM.Symbol[] peSyms, byte[] table, Addr2line addr2line, CPPFilt cppfilt, CygPath cygpath, List list) {
+		for (int i = 0; i < peSyms.length; i++) {
+			if (peSyms[i].isFunction() || peSyms[i].isVariable()) {
+				String name = peSyms[i].getName(table);
+				if (name == null || name.trim().length() == 0 || 
+				    !Character.isJavaIdentifierStart(name.charAt(0))) {
+					continue;
+				}
+				Symbol sym = new Symbol(this);
+				sym.type = peSyms[i].isFunction() ? ISymbol.FUNCTION : ISymbol.VARIABLE;
+				sym.addr = peSyms[i].symbol_value;
+
+				sym.name = name;
+				if (cppfilt != null) {
+					try {
+						sym.name = cppfilt.getFunction(sym.name);
+					} catch (IOException e1) {
+						cppfilt = null;
+					}
+				}
+
+				list.add(sym);
+			}
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.utils.som.parser.SOMBinaryObject#getSOM()
+	 */
+	protected SOM getSOM() throws IOException {
+		if (header != null) {
+			return header.getSOM();
+		}
+		throw new IOException(CCorePlugin.getResourceString("Util.exception.noFileAssociation")); //$NON-NLS-1$
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.core.IBinaryParser.IBinaryFile#getContents()
 	 */
 	public InputStream getContents() {
 		InputStream stream = null;
@@ -60,52 +100,13 @@ public class ARMember extends XCOFFBinaryObject {
 		return stream;
 	}
 
-	/**
-	 * @see org.eclipse.cdt.core.model.IBinaryParser.IBinaryObject#getShortName()
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.core.IBinaryParser.IBinaryObject#getName()
 	 */
 	public String getName() {
 		if (header != null) {
 			return header.getObjectName();
 		}
 		return ""; //$NON-NLS-1$
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.utils.xcoff.parser.XCOFFBinaryObject#addSymbols(org.eclipse.cdt.utils.xcoff.XCoff32.Symbol[], byte[], org.eclipse.cdt.utils.Addr2line, org.eclipse.cdt.utils.CPPFilt, org.eclipse.cdt.utils.CygPath, java.util.List)
-	 */
-	protected void addSymbols(XCoff32.Symbol[] peSyms, byte[] table, Addr2line addr2line, CPPFilt cppfilt, CygPath cygpath, List list) {
-		for (int i = 0; i < peSyms.length; i++) {
-			if (peSyms[i].isFunction() || peSyms[i].isVariable()) {
-				String name = peSyms[i].getName(table);
-				if (name == null || name.trim().length() == 0 /*||
-					!Character.isJavaIdentifierStart(name.charAt(0))*/) {
-					continue;
-				}
-				Symbol sym = new Symbol(this);
-				sym.type = peSyms[i].isFunction() ? ISymbol.FUNCTION : ISymbol.VARIABLE;
-				sym.addr = peSyms[i].n_value;
-
-				sym.name = name;
-				if (cppfilt != null) {
-					try {
-						sym.name = cppfilt.getFunction(sym.name);
-					} catch (IOException e1) {
-						cppfilt = null;
-					}
-				}
-
-				list.add(sym);
-			}
-		}
-	}
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.utils.xcoff.parser.XCOFFBinaryObject#getXCoff32()
-	 */
-	protected XCoff32 getXCoff32() throws IOException {
-		if (header != null) {
-			return header.getXCoff();
-		}
-		throw new IOException(CCorePlugin.getResourceString("Util.exception.noFileAssociation")); //$NON-NLS-1$
 	}
 }

@@ -8,12 +8,16 @@
  * Contributors: 
  * QNX Software Systems - Initial API and implementation
 ***********************************************************************/
+package org.eclipse.cdt.utils;
 
-package org.eclipse.cdt.internal.core.model.parser;
+import org.eclipse.core.runtime.IPath;
 
 /**
- * Implementation moved to org.eclipse.cdt.utils.elf.parser.ElfParser
- * But this class is still provided for backward compatibility.
  */
-public class ElfParser extends org.eclipse.cdt.utils.elf.parser.ElfParser {
+public interface IToolsProvider {
+
+	Addr2line getAddr2Line(IPath path);
+
+	CPPFilt getCPPFilt();
+
 }

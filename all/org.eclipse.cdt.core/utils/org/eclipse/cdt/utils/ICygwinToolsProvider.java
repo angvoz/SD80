@@ -8,12 +8,12 @@
  * Contributors: 
  * QNX Software Systems - Initial API and implementation
 ***********************************************************************/
-
-package org.eclipse.cdt.internal.core.model.parser;
+package org.eclipse.cdt.utils;
 
 /**
- * Implementation moved to org.eclipse.cdt.utils.elf.parser.ElfParser
- * But this class is still provided for backward compatibility.
  */
-public class ElfParser extends org.eclipse.cdt.utils.elf.parser.ElfParser {
+public interface ICygwinToolsProvider extends IToolsProvider {
+	
+	CygPath getCygPath();
+
 }

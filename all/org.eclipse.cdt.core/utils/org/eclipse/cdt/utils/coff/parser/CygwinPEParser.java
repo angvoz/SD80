@@ -8,21 +8,22 @@
  * Contributors: 
  * QNX Software Systems - Initial API and implementation
 ***********************************************************************/
-package org.eclipse.cdt.utils.elf.parser;
+package org.eclipse.cdt.utils.coff.parser;
 
 import java.io.IOException;
 
 import org.eclipse.cdt.core.IBinaryParser;
 import org.eclipse.cdt.core.ICExtensionReference;
-import org.eclipse.cdt.utils.*;
 import org.eclipse.cdt.utils.Addr2line;
 import org.eclipse.cdt.utils.CPPFilt;
+import org.eclipse.cdt.utils.CygPath;
+import org.eclipse.cdt.utils.ICygwinToolsProvider;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
 /**
  */
-public class GNUElfParser extends ElfParser implements IBinaryParser, IToolsProvider {
+public class CygwinPEParser extends PEParser implements IBinaryParser, ICygwinToolsProvider {
 
 	/**
 	 * @see org.eclipse.cdt.core.model.IBinaryParser#getBinary(IPath)
@@ -39,7 +40,7 @@ public class GNUElfParser extends ElfParser implements IBinaryParser, IToolsProv
 	 * @see org.eclipse.cdt.core.model.IBinaryParser#getFormat()
 	 */
 	public String getFormat() {
-		return "GNU ELF";
+		return "Cygwin PE";
 	}
 
 	public IPath getAddr2LinePath() {
@@ -60,12 +61,21 @@ public class GNUElfParser extends ElfParser implements IBinaryParser, IToolsProv
 		return new Path(value);
 	}
 
-	public Addr2line getAddr2Line(IPath path) {
+	public IPath getCygPathPath() {
+		ICExtensionReference ref = getExtensionReference();
+		String value =  ref.getExtensionData("cygpath"); //$NON-NLS-1
+		if (value == null || value.length() == 0) {
+			value = "cygpath"; //$NON-NLS-1
+		}
+		return new Path(value);
+	}
+
+	public Addr2line getAddr2Line(IPath execFile) {
 		IPath addr2LinePath = getAddr2LinePath();
 		Addr2line addr2line = null;
 		if (addr2LinePath != null && !addr2LinePath.isEmpty()) {
 			try {
-				addr2line = new Addr2line(addr2LinePath.toOSString(), path.toOSString());
+				addr2line = new Addr2line(addr2LinePath.toOSString(), execFile.toOSString());
 			} catch (IOException e1) {
 			}
 		}
@@ -84,4 +94,15 @@ public class GNUElfParser extends ElfParser implements IBinaryParser, IToolsProv
 		return cppfilt;
 	}
 
+	public CygPath getCygPath() {
+		IPath cygPathPath = getCygPathPath();
+		CygPath cygpath = null;
+		if (cygPathPath != null && !cygPathPath.isEmpty()) {
+			try {
+				cygpath = new CygPath(cygPathPath.toOSString());
+			} catch (IOException e1) {
+			}
+		}
+		return cygpath;
+	}
 }

@@ -1,14 +1,16 @@
+/**********************************************************************
+ * Copyright (c) 2002,2003 QNX Software Systems and others.
+ * All rights reserved.   This program and the accompanying materials
+ * are made available under the terms of the Common Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/cpl-v10.html
+ *
+ * Contributors:
+ * QNX Software Systems - Initial API and implementation
+***********************************************************************/
 package org.eclipse.cdt.utils.elf.parser;
 
-/*
- * (c) Copyright IBM Corp. 2000, 2001.
- * All Rights Reserved.
- */
-
-import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 
 import org.eclipse.cdt.core.IBinaryParser.IBinaryArchive;
@@ -37,21 +39,19 @@ public class BinaryArchive extends BinaryFile implements IBinaryArchive {
 	public IBinaryObject[] getObjects() {
 		if (hasChanged()) {
 			children.clear();
-			if (path != null) {
-				AR ar = null;
-				try {
-					ar = new AR(getPath().toOSString());
-					AR.ARHeader[] headers = ar.getHeaders();
-					for (int i = 0; i < headers.length; i++) {
-						IBinaryObject bin = new ARMember(getPath(), headers[i]);
-						children.add(bin);
-					}
-				} catch (IOException e) {
-					//e.printStackTrace();
+			AR ar = null;
+			try {
+				ar = new AR(getPath().toOSString());
+				AR.ARHeader[] headers = ar.getHeaders();
+				for (int i = 0; i < headers.length; i++) {
+					IBinaryObject bin = new ARMember(getPath(), headers[i], toolsProvider);
+					children.add(bin);
 				}
-				if (ar != null) {
-					ar.dispose();
-				}
+			} catch (IOException e) {
+				//e.printStackTrace();
+			}
+			if (ar != null) {
+				ar.dispose();
 			}
 			children.trimToSize();
 		}
@@ -65,23 +65,6 @@ public class BinaryArchive extends BinaryFile implements IBinaryArchive {
 		return IBinaryFile.ARCHIVE;
 	}
 
-	/**
-	 * @see org.eclipse.cdt.core.model.IBinaryParser.IBinaryFile#getContents()
-	 */
-	public InputStream getContents() {
-		try {
-			return new FileInputStream(getPath().toFile());
-		} catch (IOException e) {
-		}
-		return new ByteArrayInputStream(new byte[0]);
-	}
-
-	boolean hasChanged() {
-		long modif = getPath().toFile().lastModified();
-		boolean changed = modif != timestamp;
-		timestamp = modif;
-		return changed;
-	}
 	/**
 	 * @see org.eclipse.cdt.core.model.IBinaryParser.IBinaryArchive#add(IBinaryObject[])
 	 */

@@ -8,7 +8,7 @@
  * Contributors:
  * QNX Software Systems - Initial API and implementation
 ***********************************************************************/
-package org.eclipse.cdt.utils.elf.parser;
+package org.eclipse.cdt.utils.coff.parser;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
@@ -16,10 +16,11 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.eclipse.cdt.core.IBinaryParser.IBinaryFile;
-import org.eclipse.cdt.utils.*;
 import org.eclipse.cdt.utils.Addr2line;
 import org.eclipse.cdt.utils.CPPFilt;
-import org.eclipse.cdt.utils.elf.Elf.Attribute;
+import org.eclipse.cdt.utils.CygPath;
+import org.eclipse.cdt.utils.ICygwinToolsProvider;
+import org.eclipse.cdt.utils.coff.PE.Attribute;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.PlatformObject;
 
@@ -29,14 +30,14 @@ import org.eclipse.core.runtime.PlatformObject;
 public abstract class BinaryFile extends PlatformObject implements IBinaryFile {
 
 	protected IPath path;
-	protected IToolsProvider toolsProvider;
+	protected ICygwinToolsProvider toolsProvider;
 	protected long timestamp;
 
 	public BinaryFile(IPath p) {
 		path = p;
 	}
 
-	public void setToolsProvider(IToolsProvider p) {
+	public void setToolsProvider(ICygwinToolsProvider p) {
 		toolsProvider = p;
 	}
 
@@ -52,6 +53,11 @@ public abstract class BinaryFile extends PlatformObject implements IBinaryFile {
 		return null;
 	}
 
+	public CygPath getCygPath() {
+		if (toolsProvider != null)
+			return toolsProvider.getCygPath();
+		return null;
+	}
 
 	/**
 	 * @see org.eclipse.cdt.core.model.IBinaryParser.IBinaryFile#getFile()
@@ -93,5 +99,5 @@ public abstract class BinaryFile extends PlatformObject implements IBinaryFile {
 		timestamp = modification;
 		return changed;
 	}
- 
+
 }

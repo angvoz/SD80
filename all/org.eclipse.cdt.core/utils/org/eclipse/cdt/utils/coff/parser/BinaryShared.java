@@ -8,7 +8,7 @@
  * Contributors:
  * QNX Software Systems - Initial API and implementation
 ***********************************************************************/
-package org.eclipse.cdt.utils.elf.parser;
+package org.eclipse.cdt.utils.coff.parser;
 
 import java.io.IOException;
 
@@ -19,6 +19,7 @@ import org.eclipse.core.runtime.IPath;
 /**
  */
 public class BinaryShared extends BinaryExecutable implements IBinaryShared {
+	String soname;
 
 	public BinaryShared(IPath path) throws IOException {
 		super(path);

@@ -8,43 +8,34 @@
  * Contributors:
  * QNX Software Systems - Initial API and implementation
 ***********************************************************************/
-package org.eclipse.cdt.utils.elf.parser;
+package org.eclipse.cdt.utils.coff.parser;
 
 import java.io.IOException;
 
+import org.eclipse.cdt.core.IBinaryParser.IBinaryExecutable;
 import org.eclipse.cdt.core.IBinaryParser.IBinaryFile;
-import org.eclipse.cdt.core.IBinaryParser.IBinaryShared;
 import org.eclipse.core.runtime.IPath;
 
 /**
  */
-public class BinaryShared extends BinaryExecutable implements IBinaryShared {
+public class BinaryExecutable extends BinaryObject implements IBinaryExecutable {
 
-	public BinaryShared(IPath path) throws IOException {
+	public BinaryExecutable(IPath path) throws IOException {
 		super(path);
 	}
 
 	/**
-	 * @see org.eclipse.cdt.core.model.IBinaryParser.IBinaryShared#getSoName()
+	 * @see org.eclipse.cdt.core.model.IBinaryParser.IBinaryExecutable#getNeededSharedLibs()
 	 */
-	public String getSoName() {
-		if (hasChanged()) {
-			try {
-				loadInformation();
-			} catch (IOException e) {
-			}
-		}
-		if (soname != null) {
-			return soname;
-		}
-		return "";
+	public String[] getNeededSharedLibs() {
+		return new String[0];
 	}
 
 	/**
 	 * @see org.eclipse.cdt.core.model.IBinaryParser.IBinaryFile#getType()
 	 */
 	public int getType() {
-		return IBinaryFile.SHARED;
+		return IBinaryFile.EXECUTABLE;
 	}
 
 }

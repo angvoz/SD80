@@ -8,28 +8,30 @@
  * Contributors: 
  * QNX Software Systems - Initial API and implementation
 ***********************************************************************/
-package org.eclipse.cdt.utils.elf.parser;
+package org.eclipse.cdt.utils.coff.parser;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import org.eclipse.cdt.core.IBinaryParser.ISymbol;
 import org.eclipse.cdt.utils.Addr2line;
 import org.eclipse.cdt.utils.CPPFilt;
-import org.eclipse.cdt.utils.IToolsProvider;
-import org.eclipse.cdt.utils.elf.AR;
-import org.eclipse.cdt.utils.elf.Elf;
-import org.eclipse.cdt.utils.elf.ElfHelper;
+import org.eclipse.cdt.utils.CygPath;
+import org.eclipse.cdt.utils.ICygwinToolsProvider;
+import org.eclipse.cdt.utils.coff.Coff;
+import org.eclipse.cdt.utils.coff.PE;
+import org.eclipse.cdt.utils.coff.PEArchive;
 import org.eclipse.core.runtime.IPath;
 
 /**
  */
 public class ARMember extends BinaryObject {
-	AR.ARHeader header;
+	PEArchive.ARHeader header;
 
-	public ARMember(IPath p, AR.ARHeader h, IToolsProvider provider) throws IOException {
-		super(p, new ElfHelper(h.getElf()), provider);
+	public ARMember(IPath p, PEArchive.ARHeader h, ICygwinToolsProvider provider) throws IOException {
+		super(p, h.getPE(), provider);
 		header = h;
 	}
 
@@ -60,20 +62,28 @@ public class ARMember extends BinaryObject {
 		return "";
 	}
 
-	protected ElfHelper getElfHelper() throws IOException {
+	protected PE getPE() throws IOException {
 		if (header != null) {
-			return new ElfHelper(header.getElf());
+			return header.getPE();
 		}
 		throw new IOException("No file assiocated with Binary");
 	}
 
-	protected void addSymbols(Elf.Symbol[] array, int type, Addr2line addr2line, CPPFilt cppfilt, List list) {
-		for (int i = 0; i < array.length; i++) {
-			Symbol sym = new Symbol(this);
-			sym.type = type;
-			sym.name = array[i].toString();
-			sym.addr = array[i].st_value;
-			list.add(sym);
+	protected void addSymbols(Coff.Symbol[] peSyms, byte[] table, Addr2line addr2line, CPPFilt cppfilt, CygPath cypath, List list) {
+		for (int i = 0; i < peSyms.length; i++) {
+			if (peSyms[i].isFunction() || peSyms[i].isPointer() ||peSyms[i].isArray()) {
+				String name = peSyms[i].getName(table);
+				if (name == null || name.trim().length() == 0 ||
+					!Character.isJavaIdentifierStart(name.charAt(0))) {
+					continue;
+				}
+				Symbol sym = new Symbol(this);
+				sym.type = peSyms[i].isFunction() ? ISymbol.FUNCTION : ISymbol.VARIABLE;
+
+				sym.name = name;
+				sym.addr = peSyms[i].n_value;
+				list.add(sym);
+			}
 		}
 	}
 

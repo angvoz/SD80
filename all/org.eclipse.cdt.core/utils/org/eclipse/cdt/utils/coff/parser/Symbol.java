@@ -8,7 +8,7 @@
  * Contributors: 
  * QNX Software Systems - Initial API and implementation
 ***********************************************************************/
-package org.eclipse.cdt.utils.elf.parser;
+package org.eclipse.cdt.utils.coff.parser;
 
 import java.io.IOException;
 
@@ -16,7 +16,7 @@ import org.eclipse.cdt.core.IBinaryParser.ISymbol;
 import org.eclipse.cdt.utils.Addr2line;
 import org.eclipse.core.runtime.IPath;
 
-public class Symbol implements ISymbol, Comparable {
+public class Symbol implements ISymbol {
 
 	BinaryObject binary;
 
@@ -28,7 +28,7 @@ public class Symbol implements ISymbol, Comparable {
 	public int type;
 
 	public Symbol(BinaryObject bin) {
-		binary = bin;
+		binary = bin;		
 	}
 	/**
 	 * @see org.eclipse.cdt.core.model.IBinaryParser.ISymbol#getFilename()
@@ -36,6 +36,7 @@ public class Symbol implements ISymbol, Comparable {
 	public IPath getFilename() {
 		return filename;
 	}
+
 
 	/**
 	 * @see org.eclipse.cdt.core.model.IBinaryParser.ISymbol#getName()
@@ -83,11 +84,14 @@ public class Symbol implements ISymbol, Comparable {
 				line = addr2line.getLineNumber(addr + offset);
 				addr2line.dispose();
 			}
-		} catch (IOException e) {
+		} catch (IOException e) {		
 		}
 		return line;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Comparable#compareTo(java.lang.Object)
+	 */
 	public int compareTo(Object obj) {
 		long thisVal = 0;
 		long anotherVal = 0;
@@ -102,4 +106,5 @@ public class Symbol implements ISymbol, Comparable {
 		}
 		return (thisVal < anotherVal ? -1 : (thisVal == anotherVal ? 0 : 1));
 	}
+
 }

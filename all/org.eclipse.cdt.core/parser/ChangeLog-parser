@@ -1,5 +1,10 @@
+2004-02-08 John Camelon
+	Added support for inline method x-references.  
+	Fixed Bug 44340 - Inline functions fail to resolve references 
+	Fixed Bug 51243 - Content Assist in an empty document causes a NPE 
+
 2004-02-04 John Camelon
-	Added preliminary (crude) SelectionParser IParser implementation for SELECTION_PARSE clients.  
+	Added preliminary (crude) bSelectionParser IParser implementation for SELECTION_PARSE clients.  
 
 2004-02-01 John Camelon
 	Added CompletionKind.UNREACHABLE_CODE to IASTCompletionNode.  

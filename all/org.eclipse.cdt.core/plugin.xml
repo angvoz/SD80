@@ -2,7 +2,7 @@
 <plugin
    id="org.eclipse.cdt.core"
    name="%pluginName"
-   version="1.2.0"
+   version="1.2.1"
    provider-name="%providerName"
    class="org.eclipse.cdt.core.CCorePlugin">
 
@@ -62,7 +62,7 @@
          </run>
       </cextension>
    </extension>
-   <extension
+<!-- extension
          id="GNU_ELF"
          name="GNU Elf Parser"
          point="org.eclipse.cdt.core.BinaryParser">
@@ -71,7 +71,7 @@
                class="org.eclipse.cdt.utils.elf.parser.GNUElfParser">
          </run>
       </cextension>
-   </extension>
+   </extension -->
    <extension
          id="PE"
          name="PE Windows Parser"

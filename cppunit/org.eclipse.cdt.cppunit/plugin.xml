@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin
+   id="org.eclipse.cdt.cppunit"
+   name="%pluginName"
+   version="2.0.0"
+   provider-name="%providerName"
+   class="org.eclipse.cdt.internal.cppunit.ui.CppUnitPlugin">
+
+   <runtime>
+      <library name="cppunit.jar">
+         <export name="*"/>
+      </library>
+   </runtime>
+   <requires>
+      <import plugin="org.eclipse.ui.ide"/>
+      <import plugin="org.eclipse.ui"/>
+      <import plugin="org.eclipse.ui.workbench"/>
+      <import plugin="org.eclipse.core.resources"/>
+      <import plugin="org.eclipse.debug.core"/>
+      <import plugin="org.eclipse.debug.ui"/>
+      <import plugin="org.eclipse.cdt.ui"/>
+      <import plugin="org.eclipse.cdt.launch"/>
+      <import plugin="org.eclipse.cdt.debug.core"/>
+      <import plugin="org.eclipse.cdt.make.core"/>
+      <import plugin="org.eclipse.core.runtime"/>
+      <import plugin="org.eclipse.cdt.core"/>
+      <import plugin="org.eclipse.ui.workbench.texteditor"/>
+      <import plugin="org.eclipse.jface.text"/>
+      <import plugin="org.eclipse.cdt.managedbuilder.core"/>
+      <import plugin="org.eclipse.cdt.make.ui"/>
+   </requires>
+
+
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            name="%View.label"
+            icon="icons/cppunit.gif"
+            category="org.eclipse.cdt.ui.views"
+            fastViewWidthRatio="0.40"
+            class="org.eclipse.cdt.internal.cppunit.ui.TestRunnerViewPart"
+            id="org.eclipse.cdt.cppunit.ResultView">
+      </view>
+   </extension>
+   <extension
+         point="org.eclipse.ui.newWizards">
+      <category
+            name="%WizardCategory.name"
+            parentCategory="org.eclipse.cdt.ui.newCCWizards"
+            id="org.eclipse.cdt.cppunit">
+      </category>
+      <wizard
+            name="%TestCaseWizard.name"
+            icon="icons/full/ctool16/new_testcase.gif"
+            category="org.eclipse.cdt.ui.newCCWizards/org.eclipse.cdt.cppunit"
+            class="org.eclipse.cdt.internal.cppunit.wizards.NewTestCaseCreationWizard"
+            id="org.eclipse.cdt.cppunit.wizards.NewTestCaseCreationWizard">
+         <description>
+            %TestCaseWizard.description
+         </description>
+      </wizard>
+      <wizard
+            name="%TestSuiteWizard.name"
+            icon="icons/full/ctool16/new_testsuite.gif"
+            category="org.eclipse.cdt.ui.newCCWizards/org.eclipse.cdt.cppunit"
+            class="org.eclipse.cdt.internal.cppunit.wizards.NewTestSuiteCreationWizard"
+            id="org.eclipse.cdt.cppunit.wizards.NewTestSuiteCreationWizard">
+         <description>
+            %TestSuiteWizard.description
+         </description>
+      </wizard>
+   </extension>
+   <extension
+         point="org.eclipse.debug.core.launchConfigurationTypes">
+      <launchConfigurationType
+            name="%Launch.label"
+            delegate="org.eclipse.cdt.internal.cppunit.runner.CppUnitLaunchConfiguration"
+            modes="run,debug"
+            id="org.eclipse.cdt.cppunit.launchConfig">
+         <fileExtension
+               extension="exe">
+         </fileExtension>
+      </launchConfigurationType>
+   </extension>
+   <extension
+         point="org.eclipse.debug.ui.launchConfigurationTypeImages">
+      <launchConfigurationTypeImage
+            icon="icons/cppunit.gif"
+            configTypeID="org.eclipse.cdt.cppunit.launchConfig"
+            id="org.eclipse.cdt.cppunit.launchConfigurationTypeImage">
+      </launchConfigurationTypeImage>
+   </extension>
+   <extension
+         point="org.eclipse.debug.ui.launchConfigurationTabGroups">
+      <launchConfigurationTabGroup
+            type="org.eclipse.cdt.cppunit.launchConfig"
+            class="org.eclipse.cdt.internal.cppunit.runner.CppUnitLaunchConfigurationTabGroup"
+            id="org.eclipse.cdt.cppunit.launchConfigTabGroup">
+      </launchConfigurationTabGroup>
+   </extension>
+   <extension
+         point="org.eclipse.debug.ui.launchShortcuts">
+      <shortcut
+            label="CppUnit Test"
+            icon="icons/cppunit.gif"
+            class="org.eclipse.cdt.internal.cppunit.runner.CppUnitTestLaunchShortcut"
+            modes="run,debug"
+            id="org.eclipse.cdt.debug.ui.localCShortcutML">
+         <perspective
+               id="org.eclipse.cdt.ui.CPerspective">
+         </perspective>
+         <perspective
+               id="org.eclipse.cdt.cppunit.perspective1">
+         </perspective>
+      </shortcut>
+   </extension>
+   <extension
+         id="cppunit_task"
+         name="%Task.name"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.core.resources.taskmarker">
+      </super>
+      <persistent
+            value="true">
+      </persistent>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            name="%PreferencePage.label"
+            category="org.eclipse.cdt.ui.preferences.CPluginPreferencePage"
+            class="org.eclipse.cdt.internal.cppunit.ui.CppUnitPreferencePage"
+            id="org.eclipse.cdt.cppunit.preferences">
+      </page>
+   </extension>
+
+</plugin>

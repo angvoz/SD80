@@ -1,0 +1,7 @@
+
+CppUnit Result view:
+- Dble click on an element of the tree, never opens the source
+- Open in the StackTrace window also fails
+
+- In wizards: Names of TestCases: Need to force them to be finished by "Test" or, need to
+  enhance all code, and avoid test .endsWith("Test") or .contains("Test")

@@ -15,12 +15,11 @@ package org.eclipse.cdt.internal.cppunit.runner;
 import org.eclipse.cdt.launch.internal.ui.MigratingCEnvironmentTab;
 import org.eclipse.cdt.launch.ui.CArgumentsTab;
 import org.eclipse.cdt.launch.ui.CDebuggerTab;
-import org.eclipse.cdt.launch.ui.CEnvironmentTab;
-import org.eclipse.cdt.launch.ui.CSourceLookupTab;
 import org.eclipse.debug.ui.AbstractLaunchConfigurationTabGroup;
 import org.eclipse.debug.ui.CommonTab;
 import org.eclipse.debug.ui.ILaunchConfigurationDialog;
 import org.eclipse.debug.ui.ILaunchConfigurationTab;
+import org.eclipse.debug.ui.sourcelookup.SourceLookupTab;
 
 public class CppUnitLaunchConfigurationTabGroup extends AbstractLaunchConfigurationTabGroup {
 	public void createTabs(ILaunchConfigurationDialog dialog, String mode)  {
@@ -29,7 +28,7 @@ public class CppUnitLaunchConfigurationTabGroup extends AbstractLaunchConfigurat
 			new CArgumentsTab(),
 			new MigratingCEnvironmentTab(),
 			new CDebuggerTab(false),
-			new CSourceLookupTab(),
+			new SourceLookupTab(),
 			new CommonTab() 
 		};
 		setTabs(tabs);

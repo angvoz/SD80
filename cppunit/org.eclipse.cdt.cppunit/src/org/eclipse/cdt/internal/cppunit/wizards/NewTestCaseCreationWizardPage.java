@@ -15,6 +15,7 @@ package org.eclipse.cdt.internal.cppunit.wizards;
 import java.util.HashMap;
 import java.util.Vector;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICContainer;
@@ -26,7 +27,6 @@ import org.eclipse.cdt.core.model.IStructure;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.internal.cppunit.util.CppUnitLog;
 import org.eclipse.cdt.internal.cppunit.util.CppUnitStatus;
-import org.eclipse.cdt.internal.cppunit.util.ModelInterface;
 import org.eclipse.cdt.internal.cppunit.util.SWTUtil;
 import org.eclipse.cdt.internal.cppunit.util.Separator;
 import org.eclipse.cdt.internal.cppunit.util.StatusUtil;
@@ -40,11 +40,13 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.jface.dialogs.DialogPage;
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.IWizardPage;
 import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.SWT;
@@ -75,11 +77,11 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 	private NewTestCaseCreationWizardPage2 fPage2;
 
 	private ITranslationUnit fClassToTest;
-	private ICProject fProjectToTest;
+	ICProject fProjectToTest;
 
 	// C Project Containing
 	private Label fProjectLabel;
-	private Text fProjectText;
+	Text fProjectText;
 	private Button fProjectButton;
 
 	// Class To Test
@@ -122,7 +124,7 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 		try {
 			currentProjects=CoreModel.getDefault().getCModel().getCProjects();
 		} catch(CModelException e) {
-			CppUnitLog.error("",e);
+			CppUnitLog.error("",e); //$NON-NLS-1$
 			currentProjects=new ICProject[0];
 		}
 	}
@@ -176,7 +178,7 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 		if(o instanceof ITranslationUnit)
 		{
 			ITranslationUnit f=(ITranslationUnit)o;
-			fClassToTest=(ITranslationUnit)f;
+			fClassToTest=f;
 			fProjectToTest=f.getCProject();
 		}
 	}
@@ -234,7 +236,7 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 		// the mode severe status will be displayed and the ok button enabled/disabled.
 		IStatus s=StatusUtil.getMostSevere(status);
 		updateStatus(s);
-		if(s.getSeverity()!=CppUnitStatus.OK)
+		if(s.getSeverity()!=IStatus.OK)
 		{
 			if(s.equals(fProjectStatus)) setFocus(fProjectText);
 			if(s.equals(fClassToTestStatus)) setFocus(fClassToTestText);
@@ -248,22 +250,8 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 	{
 		Path path=new Path(fClassToTestText.getText().trim());
 		String ext=path.getFileExtension();
-		if(ext==null) ext=new String("");
-		IProject p=null;
-		if(fProjectToTest!=null) {
-			p=fProjectToTest.getProject();
-		}
-		String [] srcExt=ModelInterface.getCppSourceExtensions(p);
-		boolean found=false;
-		for(int i=0;i<srcExt.length;i++)
-		{
-			if(srcExt[i].equals(ext))
-			{
-				found=true;
-			}
-		}
-		if(found==false) ext="cpp";
-		String fName=path.removeFileExtension().toString()+TEST_FILE_SUFFIX+"."+ext;
+		if(ext==null) ext="cpp"; //$NON-NLS-1$
+		String fName=path.removeFileExtension().toString()+TEST_FILE_SUFFIX+"."+ext; //$NON-NLS-1$
 		fTestClassText.setText(fName);
 	}
 	
@@ -298,7 +286,7 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 		(new Separator(SWT.SEPARATOR | SWT.HORIZONTAL)).doFillIntoGrid(composite, nColumns, convertHeightInCharsToPixels(1));		
 	}
 
-	private void classToTestButtonPressed() {
+	void classToTestButtonPressed() {
 		ITranslationUnit t=chooseClassToTest();
 		if(t!=null)
 		{
@@ -320,16 +308,16 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 			ILabelProvider labelProvider = new CElementLabelProvider();
 			TusAndDirsProvider tusAndDirsProvider=new TusAndDirsProvider(names.toArray());
 			ElementTreeSelectionDialog dialog = new ElementTreeSelectionDialog(getShell(), labelProvider, tusAndDirsProvider);
-			dialog.setTitle("Source File Selection");
-			dialog.setMessage("Choose a &file");
+			dialog.setTitle("Source File Selection"); //$NON-NLS-1$
+			dialog.setMessage("Choose a &file"); //$NON-NLS-1$
 			dialog.setInput(names.toArray());
-			if (dialog.open() == ElementTreeSelectionDialog.OK) {
+			if (dialog.open() == Window.OK) {
 				Object o=dialog.getFirstResult();
 				// As it could be a Folder...
 				if(o instanceof ITranslationUnit) return (ITranslationUnit)o;
 			}
 		} catch(CModelException e) {
-			CppUnitLog.error("",e);
+			CppUnitLog.error("",e); //$NON-NLS-1$
 		}
 		return null;
 	}
@@ -356,7 +344,7 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 				}
 				return(v.toArray());
 			} catch(CModelException e) {
-				CppUnitLog.error("",e);
+				CppUnitLog.error("",e); //$NON-NLS-1$
 			}
 			return new Object[0];
 		}
@@ -448,56 +436,14 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 	 */
 	protected IStatus testClassChanged() {
 		CppUnitStatus status= new CppUnitStatus();
-		String t=fTestClassText.getText().trim();
-		// must not be empty
-		if (t.length() == 0) {
-			status.setError(WizardMessages.getString("NewTestClassWizPage.error.testcase.name_empty")); //$NON-NLS-1$
-			return status;
-		}
-		if(fProjectToTest==null)
-		{
-			status.setError(WizardMessages.getString("NewTestClassWizPage.error.project.name_empty")); //$NON-NLS-1$
-			return status;
-		}
-		// Must not already exist
-		ICElement fileFound=null;
-		try {
-			fileFound=fProjectToTest.findElement(new Path(t));
-		}
-		catch (CModelException e) { }
-		if((fileFound!=null)&&(fileFound.exists()))
-		{
-			status.setError(WizardMessages.getFormattedString("NewTestClassWizPage.error.testcase.already_exists", fileFound.getElementName()));//$NON-NLS-1$
-			return status;
-		}
-		int indexOfTest=t.lastIndexOf("Test");
-		if(indexOfTest==-1)
-		{
-			status.setError(WizardMessages.getString("NewTestClassWizPage.error.testcase.dnot_contain_test")); //$NON-NLS-1$
-			return status;
-		}
-
-		int index=t.lastIndexOf(".");
-		if (index == -1)
-		{
-			status.setError(WizardMessages.getString("NewTestClassWizPage.error.testcase.name_extension_empty")); //$NON-NLS-1$
-			return status;
-		}
-		String s=t.substring(index+1);
-		IProject p=null;
-		if(fProjectToTest!=null) {
-			p=fProjectToTest.getProject();
-		}
-		String [] srcExt=ModelInterface.getCppSourceExtensions(p);
-		boolean found=false;
-		for(int i=0;i<srcExt.length;i++)
-		{
-			if(srcExt[i].equals(s))
-			{
-				found=true;
-			}
-		}
-		if(found==false)
+        if( fClassToTestText.getText().equals( "")) //$NON-NLS-1$
+        {
+            status.setError(WizardMessages.getString("NewTestClassWizPage.error.testcase.name_extension_incoherent")); //$NON-NLS-1$
+            return status;
+        }
+            
+        IContentType c = CCorePlugin.getContentType(fProjectToTest.getProject(), fClassToTestText.getText().trim());
+        if( !CCorePlugin.CONTENT_TYPE_CXXSOURCE.equals(c.getId()))
 		{
 			status.setError(WizardMessages.getString("NewTestClassWizPage.error.testcase.name_extension_incoherent")); //$NON-NLS-1$
 			return status;
@@ -725,8 +671,8 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 	}
 
 	protected boolean isNextPageValid() {
-		return !fTestClassText.getText().equals("") &&
-				!fTestClassText.getText().equals("") &&
+		return !fTestClassText.getText().equals("") && //$NON-NLS-1$
+				!fTestClassText.getText().equals("") && //$NON-NLS-1$
 				!fProjectText.getText().equals(""); //$NON-NLS-1$
 	}
 
@@ -761,21 +707,21 @@ public class NewTestCaseCreationWizardPage extends WizardPage {
 		try {
 			 projects=CoreModel.getDefault().getCModel().getCProjects();
 		} catch(CModelException e) {
-			CppUnitLog.error("",e);
+			CppUnitLog.error("",e); //$NON-NLS-1$
 			projects=new ICProject[0];
 		}
 
 		ILabelProvider labelProvider = new CElementLabelProvider();
 		ElementListSelectionDialog dialog = new ElementListSelectionDialog(getShell(), labelProvider);
-		dialog.setTitle("Project Selection");
-		dialog.setMessage("Choose a &project");
+		dialog.setTitle("Project Selection"); //$NON-NLS-1$
+		dialog.setMessage("Choose a &project"); //$NON-NLS-1$
 		dialog.setElements(projects);
 
 		ICProject cProject = getCProject();
 		if (cProject != null) {
 			dialog.setInitialSelections(new Object[] { cProject });
 		}
-		if (dialog.open() == ElementTreeSelectionDialog.OK) {
+		if (dialog.open() == Window.OK) {
 			return (ICProject) dialog.getFirstResult();
 		}
 		return null;

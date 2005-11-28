@@ -12,13 +12,6 @@
 
 package org.eclipse.cdt.internal.cppunit.util;
 
-import java.util.Vector;
-
-import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.filetype.ICFileType;
-import org.eclipse.cdt.core.filetype.ICFileTypeAssociation;
-import org.eclipse.cdt.core.filetype.ICFileTypeResolver;
-import org.eclipse.cdt.core.filetype.ICLanguage;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
@@ -26,7 +19,6 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IFunctionDeclaration;
 import org.eclipse.cdt.core.model.IStructure;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.core.resources.IProject;
 
 public class ModelInterface
 {
@@ -69,7 +61,7 @@ public class ModelInterface
 			}
 		}
 		catch(CModelException e){
-			CppUnitLog.error("",e);
+			CppUnitLog.error("",e); //$NON-NLS-1$
 		}
 		return null;
 	}
@@ -92,26 +84,9 @@ public class ModelInterface
 //			if(method!=null && method.exists())
 //				return method;
 		} catch(CModelException e) {
-			CppUnitLog.error("",e);
+			CppUnitLog.error("",e); //$NON-NLS-1$
 			return null;
 		}
 		return null;
-	}
-	public static String [] getCppSourceExtensions(IProject p) {
-		Vector v=new Vector();
-		ICFileTypeResolver resolver=CCorePlugin.getDefault().getFileTypeResolver(p);
-		ICFileTypeAssociation [] associations=resolver.getFileTypeAssociations();
-		for(int i=0;i<associations.length;i++) {
-			String pattern=associations[i].getPattern();
-			ICFileType cFileType=associations[i].getType();
-			ICLanguage language=cFileType.getLanguage();
-			if(language.getId().equals("org.eclipse.cdt.core.language.cxx")) { //$NON-NLS-1$
-				if(cFileType.isSource()) {
-					String ext=pattern.substring(pattern.lastIndexOf(".")+1);
-					v.add(ext);
-				}
-			}
-		}
-		return (String [])v.toArray(new String[0]);
 	}
 }

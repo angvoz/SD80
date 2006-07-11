@@ -7,14 +7,46 @@
  *
  * Contributors:
  *     QNX Software Systems - Initial API and implementation
- *     Anton Leherbauer (Wind River Systems) - Fix bug 148114
- *     Markus Schorn (Wind River Systems)
+ *     Anton Leherbauer (Wind River Systems) - Fix bug 150045
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.cview;
 
 
 import java.util.ArrayList;
 
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.IArchive;
+import org.eclipse.cdt.core.model.IArchiveContainer;
+import org.eclipse.cdt.core.model.IBinary;
+import org.eclipse.cdt.core.model.IBinaryContainer;
+import org.eclipse.cdt.core.model.IBinaryModule;
+import org.eclipse.cdt.core.model.ICElement;
+import org.eclipse.cdt.core.model.ICModel;
+import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.core.model.IParent;
+import org.eclipse.cdt.core.model.ISourceReference;
+import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.internal.ui.actions.SelectionConverter;
+import org.eclipse.cdt.internal.ui.dnd.CDTViewerDragAdapter;
+import org.eclipse.cdt.internal.ui.dnd.DelegatingDropAdapter;
+import org.eclipse.cdt.internal.ui.dnd.FileTransferDragAdapter;
+import org.eclipse.cdt.internal.ui.dnd.FileTransferDropAdapter;
+import org.eclipse.cdt.internal.ui.dnd.ResourceTransferDragAdapter;
+import org.eclipse.cdt.internal.ui.dnd.ResourceTransferDropAdapter;
+import org.eclipse.cdt.internal.ui.dnd.TransferDragSourceListener;
+import org.eclipse.cdt.internal.ui.dnd.TransferDropTargetListener;
+import org.eclipse.cdt.internal.ui.editor.ITranslationUnitEditorInput;
+import org.eclipse.cdt.internal.ui.preferences.CPluginPreferencePage;
+import org.eclipse.cdt.internal.ui.util.EditorUtility;
+import org.eclipse.cdt.internal.ui.util.ProblemTreeViewer;
+import org.eclipse.cdt.internal.ui.viewsupport.AppearanceAwareLabelProvider;
+import org.eclipse.cdt.internal.ui.viewsupport.CElementImageProvider;
+import org.eclipse.cdt.internal.ui.viewsupport.CUILabelProvider;
+import org.eclipse.cdt.internal.ui.viewsupport.DecoratingCLabelProvider;
+import org.eclipse.cdt.ui.CElementContentProvider;
+import org.eclipse.cdt.ui.CElementSorter;
+import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.PreferenceConstants;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
@@ -58,7 +90,6 @@ import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IMemento;
-import org.eclipse.ui.IPageLayout;
 import org.eclipse.ui.IPartListener;
 import org.eclipse.ui.IViewSite;
 import org.eclipse.ui.IWorkbenchPage;
@@ -72,53 +103,18 @@ import org.eclipse.ui.model.IWorkbenchAdapter;
 import org.eclipse.ui.part.ISetSelectionTarget;
 import org.eclipse.ui.part.IShowInSource;
 import org.eclipse.ui.part.IShowInTarget;
-import org.eclipse.ui.part.IShowInTargetList;
 import org.eclipse.ui.part.ResourceTransfer;
 import org.eclipse.ui.part.ShowInContext;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.views.framelist.FrameList;
 import org.eclipse.ui.views.navigator.LocalSelectionTransfer;
 
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.IArchive;
-import org.eclipse.cdt.core.model.IArchiveContainer;
-import org.eclipse.cdt.core.model.IBinary;
-import org.eclipse.cdt.core.model.IBinaryContainer;
-import org.eclipse.cdt.core.model.IBinaryModule;
-import org.eclipse.cdt.core.model.ICElement;
-import org.eclipse.cdt.core.model.ICModel;
-import org.eclipse.cdt.core.model.ICProject;
-import org.eclipse.cdt.core.model.IParent;
-import org.eclipse.cdt.core.model.ISourceReference;
-import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.ui.CElementContentProvider;
-import org.eclipse.cdt.ui.CElementSorter;
-import org.eclipse.cdt.ui.CUIPlugin;
-import org.eclipse.cdt.ui.PreferenceConstants;
-
-import org.eclipse.cdt.internal.ui.actions.SelectionConverter;
-import org.eclipse.cdt.internal.ui.dnd.CDTViewerDragAdapter;
-import org.eclipse.cdt.internal.ui.dnd.DelegatingDropAdapter;
-import org.eclipse.cdt.internal.ui.dnd.FileTransferDragAdapter;
-import org.eclipse.cdt.internal.ui.dnd.FileTransferDropAdapter;
-import org.eclipse.cdt.internal.ui.dnd.ResourceTransferDragAdapter;
-import org.eclipse.cdt.internal.ui.dnd.ResourceTransferDropAdapter;
-import org.eclipse.cdt.internal.ui.dnd.TransferDragSourceListener;
-import org.eclipse.cdt.internal.ui.dnd.TransferDropTargetListener;
-import org.eclipse.cdt.internal.ui.preferences.CPluginPreferencePage;
-import org.eclipse.cdt.internal.ui.util.EditorUtility;
-import org.eclipse.cdt.internal.ui.util.ProblemTreeViewer;
-import org.eclipse.cdt.internal.ui.viewsupport.AppearanceAwareLabelProvider;
-import org.eclipse.cdt.internal.ui.viewsupport.CElementImageProvider;
-import org.eclipse.cdt.internal.ui.viewsupport.CUILabelProvider;
-import org.eclipse.cdt.internal.ui.viewsupport.DecoratingCLabelProvider;
-
 /**
  * 
  * CView
  *  
  */
-public class CView extends ViewPart implements ISetSelectionTarget, IPropertyChangeListener, IShowInTarget, IShowInTargetList {
+public class CView extends ViewPart implements ISetSelectionTarget, IPropertyChangeListener, IShowInTarget {
 
 	ProblemTreeViewer viewer;
 	IMemento memento;
@@ -625,16 +621,25 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 		}
 
 		IEditorInput input = editor.getEditorInput();
+		Object linkElement = null;
 		if (input instanceof IFileEditorInput) {
 			CoreModel factory = CoreModel.getDefault();
 			IFileEditorInput fileInput = (IFileEditorInput) input;
 			IFile file = fileInput.getFile();
 			ICElement celement = factory.create(file);
 			if (celement != null) {
-				ISelection newSelection = new StructuredSelection(celement);
-				if (!viewer.getSelection().equals(newSelection)) {
-					viewer.setSelection(newSelection);
-				}
+				linkElement = celement;
+			} else {
+				linkElement = file;
+			}
+		} else if (input instanceof ITranslationUnitEditorInput) {
+			ITranslationUnitEditorInput tuInput = (ITranslationUnitEditorInput) input;
+			linkElement = tuInput.getTranslationUnit();
+		}
+		if (linkElement != null) {
+			ISelection newSelection = new StructuredSelection(linkElement);
+			if (!viewer.getSelection().equals(newSelection)) {
+				viewer.setSelection(newSelection);
 			}
 		}
 	}
@@ -1072,7 +1077,4 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 		};
 	}
 
-    public String[] getShowInTargetIds() {
-        return new String[]{IPageLayout.ID_RES_NAV};
-    }
 }

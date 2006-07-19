@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Antlr Plug-in
+Bundle-SymbolicName: org.antlr
+Bundle-Version: 3.0.0
+Bundle-Localization: plugin
+Bundle-ClassPath: antlr-3.0b2.jar
+Export-Package: org.antlr.runtime
+Bundle-Vendor: antlr.org

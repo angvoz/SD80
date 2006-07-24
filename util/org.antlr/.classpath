@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry exported="true" sourcepath="antlr-3.0b2-src.zip" kind="lib" path="antlr-3.0b2.jar"/>
+	<classpathentry exported="true" sourcepath="antlr-3.0b3-src.zip" kind="lib" path="antlr-3.0b3.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="output" path="bin"/>

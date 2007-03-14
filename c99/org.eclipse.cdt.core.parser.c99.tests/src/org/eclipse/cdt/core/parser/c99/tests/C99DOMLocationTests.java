@@ -10,18 +10,15 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.c99.tests;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import org.eclipse.cdt.core.parser.tests.ast2.DOMLocationTests;
 
-public class C99TestSuite extends TestCase {
-	
+public class C99DOMLocationTests extends DOMLocationTests {
 
-	public static Test suite() {
-		TestSuite suite = new TestSuite();
-		
-		suite.addTest(C99Tests.suite());
-		
-		return suite;
+	public C99DOMLocationTests() {
 	}
+
+	public C99DOMLocationTests(String name) {
+		super(name);
+	}
+
 }

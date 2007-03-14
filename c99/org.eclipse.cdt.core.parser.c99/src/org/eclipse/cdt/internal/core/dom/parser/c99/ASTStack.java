@@ -46,7 +46,9 @@ public class ASTStack {
 	private Stack topScope;
 	
 	// A stack of stacks, used to implement scoping of the astStack
-	private Stack astScopeStack;
+	private final Stack astScopeStack;
+	
+	
 	
 	public ASTStack() {
 		topScope = new Stack();
@@ -83,14 +85,9 @@ public class ASTStack {
 		return topScope.peek();
 	}
 	
-	
-	/**
-	 * Returns all the elements in the topmost scope as an array.
-	 */
-	public Object[] topScopeArray() {
-		return topScope.toArray();
+	public Object[] topScopeArray(Object[] type) {
+		return topScope.toArray(type);
 	}
-	
 	
 	/**
 	 * Returns an iterator that will iterate over the topmost scope

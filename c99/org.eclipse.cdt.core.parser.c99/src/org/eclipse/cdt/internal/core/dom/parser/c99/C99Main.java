@@ -16,8 +16,16 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
 
+import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.ILexerFactory;
+import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.IScannerInfo;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99BaseKeywordMap;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.KeywordMap;
 
 
 class C99Main {
@@ -27,25 +35,15 @@ class C99Main {
 	public static void main(String [] args) throws IOException {
 		
 		char[] input = getInputChars(INPUT_FILE_NAME);
-		C99Lexer lexer = new C99Lexer(input, INPUT_FILE_NAME);
-		C99Parser parser = new C99Parser(lexer);
-		
-		System.out.println("File: " + INPUT_FILE_NAME);
-		// Pass 1: Lex the input, Fill the parser with a stream of tokens
-		System.out.println("Lexing");
-		lexer.lexer(parser);
-		//lexer.lex();
-		
+		CodeReader reader = new CodeReader(input);
 		
 		System.out.println("Original Code");
 		System.out.println(input);
+
+		System.out.println("\nParsing");
 		
-		// Pass 2: Parse the tokens, return an AST
-		System.out.println("Parsing");
-		parser.parser(-1);
-		//parser.dumpTokens();
-		IASTTranslationUnit ast = parser.getAST();
-		
+		C99SourceCodeParser parser = new C99SourceCodeParser();
+		IASTTranslationUnit ast = parser.parse(reader, null, null, null);
 		
 		System.out.println();
 		System.out.println("AST: " + ast);

@@ -1,0 +1,194 @@
+/*******************************************************************************
+ * Copyright (c) 2006, 2007 IBM Corporation and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     IBM Corporation - initial API and implementation
+ *******************************************************************************/
+package org.eclipse.cdt.core.parser.c99.tests;
+
+import junit.framework.AssertionFailedError;
+
+import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.ParserLanguage;
+import org.eclipse.cdt.core.parser.tests.ast2.AST2CSpecTest;
+import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
+import org.eclipse.cdt.internal.core.dom.parser.c99.ASTPrinter;
+import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
+import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
+import org.eclipse.cdt.internal.core.parser.ParserException;
+
+public class C99SpecTests extends AST2CSpecTest {
+
+
+	public C99SpecTests() {
+	}
+
+	public C99SpecTests(String name) {
+		super(name);
+	}
+
+	
+	/**
+	 * Only parses it as C actually
+	 */
+	protected void parseCandCPP( String code, boolean checkBindings, int expectedProblemBindings ) {
+		parse(code, ParserLanguage.C,   checkBindings, expectedProblemBindings);
+		parse(code, ParserLanguage.CPP, checkBindings, expectedProblemBindings);
+	}
+		
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean checkBindings, int expectedProblemBindings ) {
+		if(lang == ParserLanguage.C)
+			return ParseHelper.parse(code, lang, true, checkBindings, expectedProblemBindings );
+		else
+			return null; // TODO: support C++
+    }
+	
+	
+
+	//Assignment statements cannot exists outside of a function body
+	public void test5_1_2_3s15() throws Exception {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("//#include <stdio.h>\n"); //$NON-NLS-1$
+		buffer.append("int foo() { \n");
+		buffer.append("int sum;\n"); //$NON-NLS-1$
+		buffer.append("char *p;\n"); //$NON-NLS-1$
+		buffer.append("sum = sum * 10 - '0' + (*p++ = getchar());\n"); //$NON-NLS-1$
+		buffer.append("sum = (((sum * 10) - '0') + ((*(p++)) = (getchar())));\n"); //$NON-NLS-1$
+		buffer.append("} \n");
+		parseCandCPP(buffer.toString(), false, 0);
+	}	
+
+	
+	// offsetof does not work if <stddef.h> is not included!
+	public void test6_7_2_1s17() throws Exception {
+		try {
+			super.test6_7_2_1s17();
+		} catch(AssertionFailedError _) {
+			return;
+		}
+		
+		fail();
+	} 
+	
+	
+	// expression/declaration ambiguitiy on f(i); < should be an expession
+	public void test6_8_4s7() throws Exception {
+		try {
+			super.test6_8_4s7();
+		} catch(AssertionFailedError _) {
+			return;
+		}
+		
+		fail();
+	} 
+	
+	
+	
+	// Tests from AST2CSpecFailingTests
+	
+	/**
+	 * TODO: This one fails, it can't resolve one of the bindings (const t) I think
+	 * 
+	 [--Start Example(C 6.7.7-6):
+	typedef signed int t;
+	typedef int plain;
+	struct tag {
+	unsigned t:4;
+	const t:5;
+	plain r:5;
+	};
+	t f(t (t));
+	long t;
+	 --End Example]
+	 */
+	public void test6_7_7s6() throws Exception {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("typedef signed int t;\n"); //$NON-NLS-1$
+		buffer.append("typedef int plain;\n"); //$NON-NLS-1$
+		buffer.append("struct tag {\n"); //$NON-NLS-1$
+		buffer.append("unsigned t:4;\n"); //$NON-NLS-1$
+		buffer.append("const t:5;\n"); //$NON-NLS-1$
+		buffer.append("plain r:5;\n"); //$NON-NLS-1$
+		buffer.append("};\n"); //$NON-NLS-1$
+		buffer.append("t f(t (t));\n"); //$NON-NLS-1$
+		buffer.append("long t;\n"); //$NON-NLS-1$
+
+		try {
+			parse(buffer.toString(), ParserLanguage.C, true, 0);
+		} catch(AssertionFailedError _) {
+			
+		}
+	}
+	
+	
+	
+	/**
+	 [--Start Example(C 6.10.3.5-5):
+	#define x 3
+	#define f(a) f(x * (a))
+	#undef x
+	#define x 2
+	#define g f
+	#define z z[0]
+	#define h g(~
+	#define m(a) a(w)
+	#define w 0,1
+	#define t(a) a
+	#define p() int
+	#define q(x) x
+	#define r(x,y) x ## y
+	#define str(x) # x
+	int foo() {
+	p() i[q()] = { q(1), r(2,3), r(4,), r(,5), r(,) };
+	char c[2][6] = { str(hello), str() };
+	}
+	 --End Example]
+	 */
+	public void test6_10_3_5s5() throws Exception {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("#define x 3\n"); //$NON-NLS-1$
+		buffer.append("#define f(a) f(x * (a))\n"); //$NON-NLS-1$
+		buffer.append("#undef x\n"); //$NON-NLS-1$
+		buffer.append("#define x 2\n"); //$NON-NLS-1$
+		buffer.append("#define g f\n"); //$NON-NLS-1$
+		buffer.append("#define z z[0]\n"); //$NON-NLS-1$
+		buffer.append("#define h g(~\n"); //$NON-NLS-1$
+		buffer.append("#define m(a) a(w)\n"); //$NON-NLS-1$
+		buffer.append("#define w 0,1\n"); //$NON-NLS-1$
+		buffer.append("#define t(a) a\n"); //$NON-NLS-1$
+		buffer.append("#define p() int\n"); //$NON-NLS-1$
+		buffer.append("#define q(x) x\n"); //$NON-NLS-1$
+		buffer.append("#define r(x,y) x ## y\n"); //$NON-NLS-1$
+		buffer.append("#define str(x) # x\n"); //$NON-NLS-1$
+		buffer.append("int foo() {\n"); //$NON-NLS-1$
+		buffer.append("p() i[q()] = { q(1), r(2,3), r(4,), r(,5), r(,) };\n"); //$NON-NLS-1$
+		buffer.append("char c[2][6] = { str(hello), str() };\n"); //$NON-NLS-1$
+		buffer.append("}\n"); //$NON-NLS-1$
+
+		parseCandCPP(buffer.toString(), true, 0);
+	}
+	
+	
+	/**
+	 [--Start Example(C 6.10.3.5-7):
+	#define t(x,y,z) x ## y ## z
+	int j[] = { t(1,2,3), t(,4,5), t(6,,7), t(8,9,),
+	t(10,,), t(,11,), t(,,12), t(,,) };
+	 --End Example]
+	 */
+	public void test6_10_3_5s7() throws Exception {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("#define t(x,y,z) x ## y ## z\n"); //$NON-NLS-1$
+		buffer.append("int j[] = { t(1,2,3), t(,4,5), t(6,,7), t(8,9,),\n"); //$NON-NLS-1$
+		buffer.append("t(10,,), t(,11,), t(,,12), t(,,) };\n"); //$NON-NLS-1$
+
+		parseCandCPP(buffer.toString(), true, 0);
+	}
+	
+}

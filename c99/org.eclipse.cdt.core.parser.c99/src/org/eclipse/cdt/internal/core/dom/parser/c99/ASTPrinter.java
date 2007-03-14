@@ -23,6 +23,7 @@ import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTPointer;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
+import org.eclipse.cdt.core.dom.ast.IASTPreprocessorStatement;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
@@ -31,29 +32,76 @@ import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayModifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTDesignator;
+import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTNode;
 
+/**
+ * A utility that prints an AST to the console, useful for debugging purposes.
+ * 
+ * @author Mike Kucera
+ */
 public class ASTPrinter {
 	
-	public static void printAST(IASTNode root, PrintStream stream) {
+	/**
+	 * Prints the AST to the given PrintStream.
+	 */
+	public static void printAST(IASTTranslationUnit root, PrintStream stream) {
 		PrintStream out = stream == null ? System.out : stream;
 		if(root == null) {
 			out.println("null");
+			return;
 		}
-		else {
-			PrintVisitor visitor = new PrintVisitor(out);
-			root.accept(visitor);
+
+		PrintVisitor visitor = new PrintVisitor(out);
+		
+		IASTPreprocessorStatement[] preStats = root.getAllPreprocessorStatements();
+		for(int i = 0; i < preStats.length; i++) {
+			print(out, 0, preStats[i]);
 		}
+		
+		root.accept(visitor);
 	}
 	
-	public static void printAST(IASTNode root) {
+	
+	/**
+	 * Prints the AST to stdout.
+	 */
+	public static void printAST(IASTTranslationUnit root) {
 		printAST(root, null);
 	}
 	
 	
+	private static void print(PrintStream out, int indentLevel, IASTNode n) {
+		ASTNode node = (ASTNode) n;
+		for(int i = 0; i < indentLevel; i++)
+			out.print("  ");
+		
+		String classname = node.getClass().getName();
+		
+		out.print(classname);
+		out.print(" (" + node.getOffset() + "," + node.getLength() + ") ");
+		if(node instanceof IASTName) {
+			out.print(" " + ((IASTName)node).toString());
+		}
+		if(node instanceof IASTPointer) {
+			IASTPointer pointer = (IASTPointer) node;
+			if(pointer.isConst())
+				out.print(" const");
+			if(pointer.isVolatile())
+				out.print(" volatile");
+		}
+		if(node instanceof ICASTArrayModifier) {
+			if(((ICASTArrayModifier)node).isRestrict()) {
+				out.print(" restrict");
+			}
+		}
+		out.println();
+	}
+
+	
+	
 	private static class PrintVisitor extends CASTVisitor {
 
-		
 		
 		private PrintStream out;
 		private int indentLevel = 0;
@@ -75,37 +123,8 @@ public class ASTPrinter {
 			shouldVisitProblems = true;
 		}
 		
-		private void print(IASTNode n) {
-			CASTNode node = (CASTNode) n;
-			for(int i = 0; i < indentLevel; i++)
-				out.print("  ");
-			
-			String classname = node.getClass().getSimpleName();
-			
-			out.print(classname);
-			out.print(" (" + node.getOffset() + "," + node.getLength() + ") ");
-			if(node instanceof IASTName) {
-				out.print(" " + ((IASTName)node).toString());
-			}
-			if(node instanceof IASTPointer) {
-				IASTPointer pointer = (IASTPointer) node;
-				if(pointer.isConst())
-					out.print(" const");
-				if(pointer.isVolatile())
-					out.print(" volatile");
-			}
-			if(node instanceof ICASTArrayModifier) {
-				if(((ICASTArrayModifier)node).isRestrict()) {
-					out.print(" restrict");
-				}
-			}
-			out.println();
-		}
-		
-		private void print(String s) {
-			for(int i = 0; i < indentLevel; i++)
-				out.print("  ");
-			out.println(s);
+		private void print(IASTNode node) {
+			ASTPrinter.print(out, indentLevel,  node);
 		}
 		
 		public int visit(ICASTDesignator designator) {

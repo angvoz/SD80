@@ -44,16 +44,6 @@ $Notice
 ./
 $End
 
-$Globals
-/.	
-import java.util.*;
-
-import org.eclipse.cdt.core.dom.ast.*;
-import org.eclipse.cdt.internal.core.dom.parser.c.*;
-import org.eclipse.cdt.core.dom.ast.c.*;
-./
-$End
-
 $Terminals
 
 -- These are just aliases for lexer tokens
@@ -106,14 +96,29 @@ OrAssign         ::= '|='
 Comma            ::= ','
 Hash             ::= '#'
 HashHash         ::= '##'
+NewLine          ::= 'nl'
 
 $End
 
+
+$Globals
+/.	
+	import java.util.*;
+	
+	import org.eclipse.cdt.core.dom.ast.*;
+	import org.eclipse.cdt.internal.core.dom.parser.c.*;
+	import org.eclipse.cdt.core.dom.ast.c.*;
+	import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenOuput;
+	import org.eclipse.cdt.internal.core.parser.scanner2.ILocationResolver;
+	import org.eclipse.cdt.core.index.IIndex;
+./
+$End
 
 $Define
 	$ast_class /.Object./
 	$ba /.$BeginAction action.beforeConsume(); action. ./
 	$ea /.$EndAction./
+	$additional_interfaces /. , IPreprocessorTokenOuput ./
 $End
 
 
@@ -121,10 +126,22 @@ $Headers
 /.
 	private C99ParserAction action = new C99ParserAction(this);
 	
-	public IASTTranslationUnit getAST() { return action.getAST(); }
+	public C99Parser() {}
 	
-	public C99Parser(C99Lexer lexer) {
-		this((LpgLexStream)lexer);
+	public IASTTranslationUnit parse(ILocationResolver resolver, IIndex index) {
+		action.setResolver(resolver);
+		action.setIndex(index);
+		parser(null, -1);
+		return action.getAST();
+	}
+
+	public void prepareToParse() {
+		// this has to be done, or... kaboom!
+		setStreamLength(getSize());
+	}
+	
+	public boolean encounteredError() {
+		return action.encounteredError();
 	}
 ./
 $End
@@ -576,7 +593,7 @@ enum_declaration_specifiers
 
 
 typdef_name_declaration_specifiers
-    ::= no_type_declaration_specifiers_opt  typedef_name  no_type_declaration_specifiers_opt
+    ::= no_type_declaration_specifiers  typedef_name  no_type_declaration_specifiers
       | typedef_name  no_type_declaration_specifiers
       | no_type_declaration_specifiers  typedef_name
       | typedef_name
@@ -756,13 +773,26 @@ direct_declarator
       
       | direct_declarator '(' ')'
          /.$ba  consumeDirectDeclaratorFunctionDeclarator(false);  $ea./
-      
-      | direct_declarator '(' <openscope> identifier_list ')'
-         /.$ba  consumeDirectDeclaratorFunctionDeclaratorKnR();  $ea./
          
       | direct_declarator array_modifier
          /.$ba  consumeDirectDeclaratorArrayDeclarator();  $ea./
 
+
+-- This is a hack because the parser cannot tell the difference between 
+-- plain identifiers and types. Because of this an identifier_list would
+-- always be parsed as a parameter_type_list instead. In a KnR funciton
+-- definition we can use the extra list of declarators to disambiguate.
+-- This rule should be merged back into direct_declarator if type info is
+-- added to the parser. 
+knr_direct_declarator 
+    ::= direct_declarator '(' <openscope> identifier_list ')'
+         /.$ba  consumeDirectDeclaratorFunctionDeclaratorKnR();  $ea./
+
+knr_function_declarator
+    ::= knr_direct_declarator
+      | <openscope> pointer knr_direct_declarator
+         /.$ba  consumeDeclaratorWithPointer(true);  $ea./
+                  
 
 array_modifier 
     ::= '[' ']'
@@ -810,6 +840,7 @@ type_qualifier_list
 parameter_type_list
     ::= parameter_list
       | parameter_list ',' '...'
+      | '...'  -- not spec
 
 parameter_list
     ::= parameter_declaration
@@ -917,6 +948,8 @@ designator
 translation_unit
     ::= external_declaration_list
          /.$ba  consumeTranslationUnit();  $ea./
+      | $empty
+         /.$ba  consumeTranslationUnit();  $ea./
 
 external_declaration_list
     ::= external_declaration
@@ -925,6 +958,8 @@ external_declaration_list
 external_declaration
     ::= function_definition
       | declaration
+      | ';'
+          /.$ba  consumeDeclarationEmpty(); $ea./
       | ERROR_TOKEN
 	      /.$ba  consumeDeclarationProblem();  $ea./
 
@@ -933,8 +968,9 @@ external_declaration
 function_definition
     ::= declaration_specifiers <openscope> declarator compound_statement
          /.$ba  consumeFunctionDefinition();  $ea./
-      | declaration_specifiers <openscope> declarator <openscope> declaration_list compound_statement
+      | declaration_specifiers <openscope> knr_function_declarator <openscope> declaration_list compound_statement
          /.$ba  consumeFunctionDefinitionKnR();  $ea./
+
 
 declaration_list
     ::= declaration

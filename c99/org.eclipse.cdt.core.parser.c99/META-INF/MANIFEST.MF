@@ -1,11 +1,14 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name.1
-Bundle-SymbolicName: org.eclipse.cdt.core.parser.c99
+Bundle-SymbolicName: org.eclipse.cdt.core.parser.c99;singleton:=true
 Bundle-Version: 1.0.0
 Bundle-ClassPath: .
 Require-Bundle: org.eclipse.cdt.core,
- net.sourceforge.lpg.lpgjavaruntime;bundle-version="1.1.0";visibility:=reexport
-Export-Package: org.eclipse.cdt.internal.core.dom.parser.c99
+ net.sourceforge.lpg.lpgjavaruntime;bundle-version="1.1.0";visibility:=reexport,
+ org.eclipse.core.runtime
+Export-Package: org.eclipse.cdt.core.dom.c99,
+ org.eclipse.cdt.internal.core.dom.parser.c99,
+ org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor
 Bundle-Localization: plugin
 Bundle-Vendor: %Bundle-Vendor.0

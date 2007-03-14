@@ -8,20 +8,16 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.parser.c99.tests;
+package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.ast;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import org.eclipse.cdt.core.dom.ast.IASTPreprocessorElifStatement;
+import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 
-public class C99TestSuite extends TestCase {
-	
+public class ASTPreprocessorElifStatement extends ASTPreprocessorConditionalBranch 
+	implements IASTPreprocessorElifStatement {
 
-	public static Test suite() {
-		TestSuite suite = new TestSuite();
-		
-		suite.addTest(C99Tests.suite());
-		
-		return suite;
+	public ASTPreprocessorElifStatement(boolean taken) {
+		super(taken);
 	}
+
 }

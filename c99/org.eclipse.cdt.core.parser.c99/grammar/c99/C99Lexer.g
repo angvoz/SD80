@@ -83,8 +83,6 @@ $Export
 	charconst
 	stringlit
 	
-	--typedefname -- special token TODO explain
-	
 	RightBracket
 	LeftBracket
 	RightParen
@@ -133,29 +131,86 @@ $Export
 	Comma
 	Hash
 	HashHash
+	NewLine
+	
+	-- Invalid tokens are the result of:
+	--  1) a syntax error at the token level (created in the reportError() method)
+	--  2) improper use of the ## operator, caught by the preprocessor
+	Invalid
+	
+	
+	-- Temporarily used during macro preprocessing (to support the ## operator)
+	PlaceMarker
+	-- Used to identify macro parameters within the body of 
+	-- a macro for the purpose of avoiding name capture.
+	Parameter 
+	
+	-- temporarily used during preprocessing
+	-- prevents a recursive macro from repeated expansion 
+	DisabledMacroName  
 $End
 
 $Globals
 /.
 	import java.util.*;
 	import java.lang.*;
+	import org.eclipse.cdt.core.parser.CodeReader;
+    import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
+    import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
+    import org.eclipse.cdt.core.dom.c99.ILexer;
 ./
 $End
 
 $Define
-	$ba /.$BeginAction action. ./
+	$ba /.$BeginAction./
 	$ea /.$EndAction./
+	$additional_interfaces /. , ILexer ./
 $End
 
 
 $Headers
 /.
-	private C99LexerAction action = new C99LexerAction(this);
+	private TokenList tokenList = null;
+       
+    public $action_type(CodeReader reader) {
+    	super(reader.buffer, new String(reader.filename));
+    }
+    
+    // defined in interface ILexer
+    public synchronized TokenList lex() {
+		tokenList = new TokenList();
+            
+        lexParser.parseCharacters(null);  // Lex the input characters
+        
+        TokenList result = tokenList;
+        tokenList = null;
+        return result;
+    }
+    
+    protected void makeToken(int kind) {
+		int startOffset = getLeftSpan();
+		int endOffset   = getRightSpan();
+		
+		//System.out.println("Token: " + C99Parsersym.orderedTerminalSymbols[token]);
+		C99Token token = new C99Token(startOffset, endOffset, kind);
+		token.setRepresentation(getInputChars(), startOffset, endOffset);
+		tokenList.add(token);
+	}
 	
-	public int getKind(int kind) { return action.getKind(kind); }
+	public void reportError(int leftOffset, int rightOffset) {
+		C99Token token = new C99Token(leftOffset, rightOffset, $_Invalid);
+		token.setRepresentation(getInputChars(), leftOffset, rightOffset);
+		tokenList.add(token);
+	}
+	
+	public int getKind(int i) {
+		int streamLength = getStreamLength();
+		char c = (i >= streamLength ? '\uffff' : getCharValue(i));
+		return C99LexerKind.getKind(c);
+	}
+	
 ./
 $End
-
 
 $Terminals
 	a    b    c    d    e    f    g    h    i    j    k    l    m
@@ -247,7 +302,7 @@ $Rules
 	-----------------------------------------------------------------------------------
 	
 	Token ::= identifier 
-	          /.$ba  makeKeywordOrIdentifierToken();  $ea./
+	          /.$ba  makeToken($_identifier); /*makeKeywordOrIdentifierToken();*/  $ea./
 	
 	Token ::= integer-constant  
 	          /.$ba  makeToken($_integer);   $ea./
@@ -260,8 +315,7 @@ $Rules
 	
 	Token ::= string-literal 
 	          /.$ba  makeToken($_stringlit); $ea./
-	
-	
+	          
 	-----------------------------------------------------------------------------------
 	-- Punctuation
 	--
@@ -330,31 +384,7 @@ $Rules
 	Token ::=  '%' ':' '%' ':' 	/.$ba  makeToken($_HashHash);          $ea./
 
 
-    -----------------------------------------------------------------------------------
-    -- Ignore comments and whitespace
-    -----------------------------------------------------------------------------------
     
-    Token ::= WS
-    Token ::= SLC
-    Token ::= MLC
-    
-    WS -> ws-char
-	    | WS ws-char
-	     
-	SLC -> '/' '/'
-         |  SLC not-eol
-         
-    MLC ::= '/' '*' inside-mlc stars '/'
-    
-    stars -> '*'
-           | stars '*' 
-    
-    inside-mlc -> inside-mlc stars not-slash-or-star
-                | inside-mlc '/'
-                | inside-mlc not-slash-or-star
-                | stars not-slash-or-star
-                | '/'
-                | not-slash-or-star
           
 	-----------------------------------------------------------------------------------
   	-- Character Sets
@@ -389,22 +419,58 @@ $Rules
     graphical-character ::= common-graphical-character | -- still does not include whitespace
                             "'" | '"' | '\' | '/' | '*'  -- these are the special chars 
                             
-    string-literal-char ::= digit | letter | common-graphical-character |
+    string-literal-char ::= digit | letter | common-graphical-character | Unused |
                             "'" | '/' | '*' | HT | FF | ' '  
     
     
-    character-literal-char ::= digit | letter | common-graphical-character |
+    character-literal-char ::= digit | letter | common-graphical-character | Unused |
                                '"' | '/' | '*' | HT | FF | ' '  
     
-    not-eol ::= digit | letter | -- not end of line
+    -- newlines are significant to the preprocessor
+    ws-char ::= ' ' | CR | HT | FF 
+    
+    not-eol ::= digit | letter | Unused |                  -- not end of line
                 graphical-character | HT | FF | ' '
     
-    ws-char ::= ' ' | LF | CR | HT | FF
-    
-    not-slash-or-star ::= digit | letter | common-graphical-character | ws-char |
-                          "'" | '"' | '\'  -- not these: '/', '*'
+    not-slash-or-star ::= digit | letter | common-graphical-character | ws-char | Unused |
+                          "'" | '"' | '\' | LF -- not these: '/', '*'
     
  
+    -----------------------------------------------------------------------------------
+    -- Comments and whitespace
+    -----------------------------------------------------------------------------------
+
+    -- newlines are significant to the preprocessor, but are ignored if preceded by a backslash
+	Token ::= NewLine          
+	            /.$ba  makeToken($_NewLine); $ea./
+	            
+	Token ::= '\' WS NewLine 
+    Token ::= '\' NewLine
+    
+    Token ::= WS
+    Token ::= SLC
+    Token ::= MLC
+    
+    
+    WS -> ws-char
+	    | WS ws-char
+	     
+	SLC -> '/' '/'
+         |  SLC not-eol
+         
+    MLC ::= '/' '*' inside-mlc stars '/'
+    
+    stars -> '*'
+           | stars '*' 
+    
+    inside-mlc -> inside-mlc stars not-slash-or-star
+                | inside-mlc '/'
+                | inside-mlc not-slash-or-star
+                | stars not-slash-or-star
+                | '/'
+                | not-slash-or-star
+                
+                
   	-----------------------------------------------------------------------------------
   	-- Identifiers
   	-----------------------------------------------------------------------------------
@@ -538,8 +604,8 @@ $Rules
              | character-literal-char
 
     escape-sequence ::= simple-escape-sequence
-                      --| octal-escape-sequence
-                      --| hexadecimal-escape-sequence
+                      | octal-escape-sequence
+                      | hexadecimal-escape-sequence
                       | universal-character-name
                       
     simple-escape-sequence ::= 
@@ -548,11 +614,11 @@ $Rules
 
 
     octal-escape-sequence ::= '\' octal-digit
-                            | '\' octal-digit octal-digit
-                            | '\' octal-digit octal-digit octal-digit
+                            --| '\' octal-digit octal-digit
+                           -- | '\' octal-digit octal-digit octal-digit
                             
     hexadecimal-escape-sequence ::= '\' 'x' hexadecimal-digit
-                                  | hexadecimal-escape-sequence hexadecimal-digit
+                                  --| hexadecimal-escape-sequence hexadecimal-digit
 
 
     

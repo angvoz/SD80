@@ -8,86 +8,17 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-
 package org.eclipse.cdt.internal.core.dom.parser.c99;
 
-import java.util.HashMap;
-import java.util.Map;
-
-/**
- * Contains lexer actions for recognizing keyworks and
- * creating tokens.
- * 
- * @author Mike Kucera
- */
-public class C99LexerAction {
-	
-	// maps C99 keywords to their token kind
-	private Map keywordMap = new HashMap();
+public class C99LexerKind {
 	
 	
-	private C99Lexer lexer = null;
-	
-	C99LexerAction(C99Lexer lexer) {
-		this.lexer = lexer;
-
-		addKeyword("auto",       C99Lexer.TK_auto);
-		addKeyword("break",      C99Lexer.TK_break);
-		addKeyword("case",       C99Lexer.TK_case);
-		addKeyword("char",       C99Lexer.TK_char);
-		addKeyword("const",      C99Lexer.TK_const);
-		addKeyword("continue",   C99Lexer.TK_continue);
-		addKeyword("default",    C99Lexer.TK_default);
-		addKeyword("do",         C99Lexer.TK_do);
-		addKeyword("double",     C99Lexer.TK_double);
-		addKeyword("else",       C99Lexer.TK_else);
-		addKeyword("enum",       C99Lexer.TK_enum);
-		addKeyword("extern",     C99Lexer.TK_extern);
-		addKeyword("float",      C99Lexer.TK_float);
-		addKeyword("for",        C99Lexer.TK_for);
-		addKeyword("goto",       C99Lexer.TK_goto);
-		addKeyword("if",         C99Lexer.TK_if);
-		addKeyword("inline",     C99Lexer.TK_inline);
-		addKeyword("int",        C99Lexer.TK_int);
-		addKeyword("long",       C99Lexer.TK_long);
-		addKeyword("register",   C99Lexer.TK_register);
-		addKeyword("restrict",   C99Lexer.TK_restrict);
-		addKeyword("return",     C99Lexer.TK_return);
-		addKeyword("short",      C99Lexer.TK_short);
-		addKeyword("signed",     C99Lexer.TK_signed);
-		addKeyword("sizeof",     C99Lexer.TK_sizeof);
-		addKeyword("static",     C99Lexer.TK_static);
-		addKeyword("struct",     C99Lexer.TK_struct);
-		addKeyword("switch",     C99Lexer.TK_switch);
-		addKeyword("typedef",    C99Lexer.TK_typedef);
-		addKeyword("union",      C99Lexer.TK_union);
-		addKeyword("unsigned",   C99Lexer.TK_unsigned);
-		addKeyword("void",       C99Lexer.TK_void);
-		addKeyword("volatile",   C99Lexer.TK_volatile);
-		addKeyword("while",      C99Lexer.TK_while);
-		addKeyword("_Bool",      C99Lexer.TK__Bool);
-		addKeyword("_Complex",   C99Lexer.TK__Complex);
-		addKeyword("_Imaginary", C99Lexer.TK__Imaginary);
-	}
-	 
-	
-	/**
-	 * Allows subclasses to add new keywords to the base set.
-	 */
-	protected void addKeyword(String keyword, int token) {
-		keywordMap.put(keyword, new Integer(token));
-	}
-	
-	 
 	/**
 	 * This method is required by LPG, it maps individual characters
 	 * to their character kind, the character kinds are what is recognized
 	 * by the scanner.
 	 */
-	public int getKind(int i) {
-		int streamLength = lexer.getStreamLength();
-		char c = (i >= streamLength ? '\uffff' : lexer.getCharValue(i));
-
+	public static int getKind(char c) {
 		switch(c) {
 			case 'a': return C99Lexer.Char_a;  case 'A': return C99Lexer.Char_A;
 			case 'b': return C99Lexer.Char_b;  case 'B': return C99Lexer.Char_B;
@@ -163,36 +94,4 @@ public class C99LexerAction {
 			default : return C99Lexer.Char_Unused;
 		}
 	}
-	
-	/**
-	 * Checks if the identifier is in the keywordMap and creates the corresponding
-	 * keyword token if it is, creates an identifier token otherwise.
-	 */
-	protected void makeKeywordOrIdentifierToken() {
-		int startOffset = lexer.getLeftSpan(), endOffset = lexer.getRightSpan();
-		char[] inputChars = lexer.getInputChars();
-		
-		StringBuffer sb = new StringBuffer(endOffset - startOffset + 1);
-		for(int i = startOffset; i <= endOffset; i++) {
-			sb.append(inputChars[i]);	
-		}
-		
-		Integer keywordKind = (Integer) keywordMap.get(sb.toString());
-		int token = keywordKind == null ? C99Lexer.TK_identifier : keywordKind.intValue();
-		//System.out.println("Token: " + C99Parsersym.orderedTerminalSymbols[token]);
-		lexer.makeToken(startOffset, endOffset, token);
-	}
-	
-	/**
-	 * Create a token.
-	 */
-	protected void makeToken(int token) {
-		int startOffset = lexer.getLeftSpan(), endOffset = lexer.getRightSpan();
-		//System.out.println("Token: " + C99Parsersym.orderedTerminalSymbols[token]);
-		lexer.makeToken(startOffset, endOffset, token);
-	}
-	
-	
-	
-	
 }

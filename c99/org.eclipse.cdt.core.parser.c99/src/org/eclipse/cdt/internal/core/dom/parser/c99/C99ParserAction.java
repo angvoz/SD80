@@ -51,7 +51,6 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTPointer;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.ast.IASTProblemHolder;
@@ -70,7 +69,6 @@ import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayDesignator;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayModifier;
-import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTDesignatedInitializer;
 import org.eclipse.cdt.core.dom.ast.c.ICASTDesignator;
@@ -81,12 +79,12 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypeIdInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypedefNameSpecifier;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
+import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTArrayDeclarator;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTArrayDesignator;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTArrayModifier;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTArraySubscriptExpression;
-import org.eclipse.cdt.internal.core.dom.parser.c.CASTBaseDeclSpecifier;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTBinaryExpression;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTBreakStatement;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTCaseStatement;
@@ -140,10 +138,11 @@ import org.eclipse.cdt.internal.core.dom.parser.c.CASTTypeIdInitializerExpressio
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTTypedefNameSpecifier;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTUnaryExpression;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTWhileStatement;
+import org.eclipse.cdt.internal.core.parser.scanner2.ILocationResolver;
 
 
 /**
- * Actions called by the parser to build an AST.
+ * Semantic actions called by the parser to build an AST.
  * 
  * @author Mike Kucera
  */
@@ -151,14 +150,22 @@ public class C99ParserAction {
 
 	private static final char[] EMPTY_CHAR_ARRAY = {};
 	
-	// Stack that holds the intermediate ASt
-	private ASTStack astStack = new ASTStack();
+	// Stack that holds the intermediate nodes as the AST is being built
+	private final ASTStack astStack = new ASTStack();
 	
+	private final C99Parser parser;
+	private boolean encounteredRecoverableProblem = false;
 	
-	private C99Parser parser = null;
-	
-	/** The offset and length of the rule that is in the process of being consumed */
+
+	/**
+	 * The LPG runtime will automatically calculate the offset and length
+	 * of each grammar rule when it is reduced.
+	 */
 	protected int ruleOffset, ruleLength;
+	
+	
+	private ILocationResolver resolver;
+	private IIndex index;
 	
 	
 	public C99ParserAction(C99Parser parser) {
@@ -166,13 +173,42 @@ public class C99ParserAction {
 	}
 	
 	
+	
+	public void setResolver(ILocationResolver resolver) {
+		this.resolver = resolver;
+	}
+
+
+
+	public void setIndex(IIndex index) {
+		this.index = index;
+	}
+
+
+
 	/**
 	 * Returns an AST after a successful parse, null otherwise.
 	 */
 	public IASTTranslationUnit getAST() {
 		if(astStack.isEmpty())
 			return null;
-		return (IASTTranslationUnit) astStack.peek();
+		
+		CASTTranslationUnit ast = (CASTTranslationUnit) astStack.peek();
+		if(index != null)
+			ast.setIndex(index);
+		if(resolver != null)
+			ast.setLocationResolver(resolver);
+		
+		return ast;
+	}
+	
+	
+	/**
+	 * Returns true iff a syntax error was encountered during the parse.
+	 */
+	public boolean encounteredError() {
+		// if the astStack is empty then an unrecoverable syntax error was encountered
+		return encounteredRecoverableProblem || astStack.isEmpty();
 	}
 	
 	
@@ -193,7 +229,7 @@ public class C99ParserAction {
 	 */
 	private static CASTName createName(IToken token) {
 		CASTName name = new CASTName(token.toString().toCharArray());
-		name.setOffsetAndLength(offset(token), length(token));
+		name.setOffsetAndLength(offset(token), length(token)); 
 		return name;
 	}
 	
@@ -221,6 +257,7 @@ public class C99ParserAction {
 	
 	private static int endOffset(IToken token) {
 		return token.getEndOffset() + 1;
+		//return token.getTokenIndex();
 	}
 	
 	/********************************************************************
@@ -231,6 +268,7 @@ public class C99ParserAction {
 	
 	/**
 	 * Special action that is always called before every consume action.
+	 * Allows AST node offsets to be calculated automatically.
 	 */
 	protected void beforeConsume() {
 		ruleOffset = parser.getLeftIToken().getStartOffset();
@@ -241,7 +279,6 @@ public class C99ParserAction {
 	/**
 	 * Consumes a name from an identifer.
 	 * Used by several grammar rules.
-	 * 
 	 */
 	protected void consumeName() {
 		IASTName name = createName( parser.getRightIToken() );
@@ -825,19 +862,24 @@ public class C99ParserAction {
 		
 		// Its a nested declarator so create an new ArrayDeclarator
 		if(node.getPropertyInParent() == IASTDeclarator.NESTED_DECLARATOR) {
-			CASTArrayDeclarator decl = new CASTArrayDeclarator();
+			CASTArrayDeclarator declarator = new CASTArrayDeclarator();
+			
+			IASTName name = new CASTName();
+			declarator.setName(name);
+			name.setParent(declarator);
+			name.setPropertyInParent(IASTFunctionDeclarator.DECLARATOR_NAME);
 			
 			CASTDeclarator nested = (CASTDeclarator) node;
-			decl.setNestedDeclarator(nested);
-			nested.setParent(decl);
+			declarator.setNestedDeclarator(nested);
+			nested.setParent(declarator);
 			//nested.setPropertyInParent(IASTArrayDeclarator.NESTED_DECLARATOR);
 			
 			int offset = nested.getOffset();
 			int length = endOffset(arrayModifier) - offset;
-			decl.setOffsetAndLength(offset, length);
+			declarator.setOffsetAndLength(offset, length);
 			
-			addArrayModifier(decl, arrayModifier);
-			astStack.push(decl);
+			addArrayModifier(declarator, arrayModifier);
+			astStack.push(declarator);
 		}
 		// There is already an array declarator so just add the modifier to it
 		else if(node instanceof IASTArrayDeclarator) {
@@ -865,6 +907,7 @@ public class C99ParserAction {
 		}
 		else {
 			astStack.push(new CASTProblemDeclaration());
+			encounteredRecoverableProblem = true;
 		}
 	}
 	
@@ -1016,6 +1059,8 @@ public class C99ParserAction {
 	 * direct_declarator ::= direct_declarator '(' ')'
 	 */
 	protected void consumeDirectDeclaratorFunctionDeclarator(boolean hasParameters) {
+		System.out.println("consumeDirectDeclaratorFunctionDeclarator " + hasParameters);
+		System.out.println("offset " + ruleOffset + " length " + ruleLength);
 		CASTFunctionDeclarator declarator = new CASTFunctionDeclarator();
 		
 		if(hasParameters) {
@@ -1029,6 +1074,8 @@ public class C99ParserAction {
 		}
 		
 		int endOffset = endOffset(parser.getRightIToken());
+		System.out.println("endOffset? " + endOffset );
+		
 		consumeDirectDeclaratorFunctionDeclarator(declarator, endOffset);
 	}
 	
@@ -1037,9 +1084,10 @@ public class C99ParserAction {
 	 * direct_declarator ::= direct_declarator '(' <openscope> identifier_list ')'
 	 */
 	protected void consumeDirectDeclaratorFunctionDeclaratorKnR() {
+		System.out.println("consumeDirectDeclaratorFunctionDeclaratorKnR");
 		CASTKnRFunctionDeclarator declarator = new CASTKnRFunctionDeclarator();
 		
-		IASTName[] names = (IASTName[])astStack.topScopeArray();
+		IASTName[] names = (IASTName[])astStack.topScopeArray(new IASTName[]{});
 		declarator.setParameterNames(names);
 		for(int i = 0; i < names.length; i++) {
 			names[i].setParent(declarator);
@@ -1096,6 +1144,7 @@ public class C99ParserAction {
 		}
 		else {
 			astStack.push(new CASTProblemDeclaration());
+			encounteredRecoverableProblem = true;
 		}
 	}
 	
@@ -1219,6 +1268,11 @@ public class C99ParserAction {
 			}
 			astStack.closeASTScope();
 		}
+		
+		IASTName name = new CASTName();
+		declarator.setName(name);
+		name.setParent(declarator);
+		name.setPropertyInParent(IASTFunctionDeclarator.DECLARATOR_NAME);
 		
 		if(hasDeclarator) {
 			consumeDirectDeclaratorFunctionDeclarator(declarator, endOffset(parser.getRightIToken()));
@@ -1421,6 +1475,15 @@ public class C99ParserAction {
 	}
 	
 	
+	/**
+	 * external_declaration ::= ';'
+	 */
+	protected void consumeDeclarationEmpty() {
+		CASTSimpleDeclaration declaration = new CASTSimpleDeclaration();
+		declaration.setOffsetAndLength(ruleOffset, ruleLength);
+		astStack.push(declaration);
+	}
+	
 	
 	/**
 	 * struct_declaration ::= specifier_qualifier_list <openscope> struct_declarator_list ';'
@@ -1447,13 +1510,19 @@ public class C99ParserAction {
 		expr.setParent(fieldDecl);
 		expr.setPropertyInParent(IASTFieldDeclarator.FIELD_SIZE);
 		
+		IASTName name;
 		if(hasDeclarator) { // it should have been parsed into a regular declarator
 			IASTDeclarator decl = (IASTDeclarator) astStack.pop();
-			IASTName name = decl.getName();
-			fieldDecl.setName(name);
-			name.setParent(fieldDecl);
-			name.setPropertyInParent(IASTFieldDeclarator.DECLARATOR_NAME);
+			name = decl.getName();
 		}
+		else {
+			name = new CASTName();
+		}
+		
+		fieldDecl.setName(name);
+		name.setParent(fieldDecl);
+		name.setPropertyInParent(IASTFieldDeclarator.DECLARATOR_NAME);
+		
 		
 		fieldDecl.setOffsetAndLength(ruleOffset, ruleLength);
 		
@@ -1991,6 +2060,8 @@ public class C99ParserAction {
 	 */
 	protected void consumeTranslationUnit() {
 		CASTTranslationUnit tu = new CASTTranslationUnit();
+		tu.setParent(null);
+		tu.setPropertyInParent(null);
 		
 		for(Iterator iter = astStack.topScopeIterator(); iter.hasNext();) {
 			IASTDeclaration declaration = (IASTDeclaration) iter.next();
@@ -1999,7 +2070,12 @@ public class C99ParserAction {
 			declaration.setPropertyInParent(IASTTranslationUnit.OWNED_DECLARATION);
 		}
 		
-		tu.setOffsetAndLength(ruleOffset, ruleLength);
+		
+		//tu.setOffsetAndLength(ruleOffset, ruleLength);
+		
+		IToken eof = (IToken) parser.getTokens().get(parser.getTokens().size() - 1);
+		System.out.println("Is this EOF?: " + eof);
+		tu.setOffsetAndLength(0, eof.getEndOffset());
 		astStack.push(tu); 
 	}
 	
@@ -2045,10 +2121,10 @@ public class C99ParserAction {
     	CASTFunctionDefinition def = new CASTFunctionDefinition();
     	
     	// compound_statement
-    	IASTCompoundStatement  body = (IASTCompoundStatement)  astStack.pop();
+    	IASTCompoundStatement  body = (IASTCompoundStatement) astStack.pop();
     	
-    	// declaration_list
-    	IASTDeclaration[] declarations = (IASTDeclaration[]) astStack.topScopeArray();
+    	// declaration_list, parameters
+    	IASTDeclaration[] declarations = (IASTDeclaration[]) astStack.topScopeArray(new IASTDeclaration[]{});
     	astStack.closeASTScope();
     	
     	// declarator
@@ -2056,11 +2132,11 @@ public class C99ParserAction {
     	astStack.closeASTScope();
 
     	ICASTSimpleDeclSpecifier declSpecifier = (CASTSimpleDeclSpecifier) astStack.pop();
-		
-		decl.setParameterDeclarations(declarations);
+    	
+    	decl.setParameterDeclarations(declarations);
 		for(int i = 0; i < declarations.length; i++) {
 			declarations[i].setParent(decl);
-			declarations[i].setPropertyInParent(ICASTKnRFunctionDeclarator.NESTED_DECLARATOR);
+			declarations[i].setPropertyInParent(ICASTKnRFunctionDeclarator.FUNCTION_PARAMETER);
 		}
 		
 		def.setBody(body);
@@ -2106,6 +2182,8 @@ public class C99ParserAction {
 	
 	
 	private void consumeProblem(IASTProblemHolder problemHolder) {
+		encounteredRecoverableProblem = true;
+		
 		CASTProblem problem = new CASTProblem(IASTProblem.SYNTAX_ERROR, EMPTY_CHAR_ARRAY, false, true);
 		
 		problemHolder.setProblem(problem);
@@ -2116,4 +2194,7 @@ public class C99ParserAction {
 		((ASTNode)problemHolder).setOffsetAndLength(ruleOffset, ruleLength);
 		astStack.push(problemHolder);
 	}
+
+
+	
 }

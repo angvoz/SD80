@@ -12,6 +12,7 @@ package org.eclipse.cdt.core.dom.c99;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.ast.ASTCompletionNode;
+import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.gnu.c.GCCLanguage;
@@ -69,7 +70,7 @@ public class C99Language extends AbstractLanguage {
 		return parser.parse(reader, scanInfo, fileCreator, index);
 	}
 
-	public ASTCompletionNode getCompletionNode(CodeReader reader,
+	public IASTCompletionNode getCompletionNode(CodeReader reader,
 			IScannerInfo scanInfo, ICodeReaderFactory fileCreator,
 			IIndex index, IParserLogService log, int offset) {
 		// TODO Auto-generated method stub

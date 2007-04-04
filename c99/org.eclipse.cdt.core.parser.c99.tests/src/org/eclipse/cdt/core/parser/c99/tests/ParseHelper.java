@@ -12,19 +12,17 @@ package org.eclipse.cdt.core.parser.c99.tests;
 
 import junit.framework.AssertionFailedError;
 
+import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
-import org.eclipse.cdt.internal.core.dom.parser.c99.ASTPrinter;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99SourceCodeParser;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
+import org.eclipse.cdt.internal.core.dom.parser.c99.ParseResult;
 
 /**
  * Utility methods for parsing test code using the C99 LPG parser.
@@ -62,7 +60,7 @@ public class ParseHelper {
 	public static IASTTranslationUnit parse(String code, ParserLanguage lang, boolean expectNoProblems) {
 		return parse(code, lang, expectNoProblems, false, 0);
 	}
-	
+
 	
 	public static IASTTranslationUnit parse(CodeReader codeReader, ParserLanguage lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
 		testsRun++;
@@ -71,9 +69,8 @@ public class ParseHelper {
 			System.err.println("Warning, parsing of C++ not supported yet, will parse file as C99");
 		}
 		
-
-		C99SourceCodeParser parser = new C99SourceCodeParser();
-		IASTTranslationUnit tu = parser.parse(codeReader, null, null, null);
+		ParseResult result = C99Language.parse(codeReader, null, null, null);
+		IASTTranslationUnit tu = result.getTranslationUnit();
 
 		// resolve all bindings
 		if (checkBindings) {
@@ -85,7 +82,7 @@ public class ParseHelper {
 			
 		}
 
-        if(parser.encounteredError() && expectNoProblems )
+        if(result.encounteredError() && expectNoProblems )
         	throw new AssertionFailedError("Parse Error"); //$NON-NLS-1$
          
         if(expectNoProblems )
@@ -102,6 +99,26 @@ public class ParseHelper {
 
 		
 		return tu;
+	}
+	
+	
+	public static IASTCompletionNode getCompletionNode(String code, int offset) { 
+		return getCompletionNode(code, ParserLanguage.C, offset);
+	}
+	
+	public static IASTCompletionNode getCompletionNode(String code, ParserLanguage lang) {
+		return getCompletionNode(code, lang, code.length());
+	}
+	
+	public static IASTCompletionNode getCompletionNode(String code, ParserLanguage lang, int offset) {
+		if(lang != ParserLanguage.C) {
+			System.err.println("Warning, parsing of C++ not supported yet, will parse file as C99");
+		}
+		
+		CodeReader reader = new CodeReader(code.toCharArray());
+
+		ParseResult result = C99Language.completionParse(reader, null, null, null, offset);
+		return result.getCompletionNode();
 	}
 
 }

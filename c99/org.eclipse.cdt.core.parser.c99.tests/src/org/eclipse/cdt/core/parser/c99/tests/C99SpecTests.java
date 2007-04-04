@@ -13,15 +13,8 @@ package org.eclipse.cdt.core.parser.c99.tests;
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2CSpecTest;
-import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
-import org.eclipse.cdt.internal.core.dom.parser.c99.ASTPrinter;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
-import org.eclipse.cdt.internal.core.parser.ParserException;
 
 public class C99SpecTests extends AST2CSpecTest {
 
@@ -75,19 +68,6 @@ public class C99SpecTests extends AST2CSpecTest {
 		
 		fail();
 	} 
-	
-	
-	// expression/declaration ambiguitiy on f(i); < should be an expession
-	public void test6_8_4s7() throws Exception {
-		try {
-			super.test6_8_4s7();
-		} catch(AssertionFailedError _) {
-			return;
-		}
-		
-		fail();
-	} 
-	
 	
 	
 	// Tests from AST2CSpecFailingTests
@@ -191,4 +171,14 @@ public class C99SpecTests extends AST2CSpecTest {
 		parseCandCPP(buffer.toString(), true, 0);
 	}
 	
+	/**
+	 * This test seems to be incorrect in AST2SpecTests
+	 */
+	public void test4s6() throws Exception {
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("#ifdef __STDC_IEC_559__ /* FE_UPWARD defined */\n"); //$NON-NLS-1$
+		buffer.append("fesetround(FE_UPWARD);\n"); //$NON-NLS-1$
+		buffer.append("#endif\n"); //$NON-NLS-1$
+		parseCandCPP(buffer.toString(), false, 0);
+	}
 }

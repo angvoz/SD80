@@ -10,18 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.c99.tests;
 
-import junit.framework.Test;
-import junit.framework.TestSuite;
-
-import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTNodeLocation;
-import org.eclipse.cdt.core.dom.ast.IASTPreprocessorIncludeStatement;
-import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.DOMLocationInclusionTests;
-import org.eclipse.cdt.internal.core.dom.parser.c99.ASTPrinter;
-import org.eclipse.core.resources.IFile;
 
 public class C99DOMLocationInclusionTests extends DOMLocationInclusionTests {
 	

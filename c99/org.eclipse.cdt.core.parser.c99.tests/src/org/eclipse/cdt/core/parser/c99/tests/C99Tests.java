@@ -34,15 +34,24 @@ public class C99Tests extends AST2Tests {
 	}
 	
 
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) {
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) throws ParserException {
+		if(lang != ParserLanguage.C)
+			return super.parse(code, lang);
+		
 	    return parse(code, lang, false, true );
 	}
 	    
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) {
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) throws ParserException {
+		if(lang != ParserLanguage.C)
+			return super.parse(code, lang, useGNUExtensions);
+		
 	    return parse( code, lang, useGNUExtensions, true );
 	}
 	 
-    protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) {
+    protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
+    	if(lang != ParserLanguage.C)
+    		return super.parse(code, lang, useGNUExtensions, expectNoProblems);
+    	
     	return ParseHelper.parse(code, lang, expectNoProblems);
     }
     
@@ -178,16 +187,5 @@ public class C99Tests extends AST2Tests {
 		fail();
 	}
 	
-	public void testBug98760() throws Exception {
-		try {
-			super.testBug98760();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	}
 }
 

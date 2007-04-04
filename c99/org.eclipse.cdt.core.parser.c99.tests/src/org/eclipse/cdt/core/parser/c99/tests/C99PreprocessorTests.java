@@ -14,25 +14,18 @@ import java.util.Iterator;
 import java.util.List;
 
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
 import lpg.lpgjavaruntime.IToken;
-
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.c99.ILexerFactory;
-import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenOuput;
 import org.eclipse.cdt.core.parser.CodeReader;
-import org.eclipse.cdt.core.parser.ICodeReaderCache;
-import org.eclipse.cdt.core.parser.IScanner;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99BaseKeywordMap;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99KeywordMap;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.KeywordMap;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.IKeywordMap;
 
 public class C99PreprocessorTests extends TestCase {
 
@@ -54,7 +47,7 @@ public class C99PreprocessorTests extends TestCase {
 		
 			
 		ILexerFactory lexerFactory = new C99LexerFactory();
-		KeywordMap keywordMap = new C99BaseKeywordMap();
+		IKeywordMap keywordMap = new C99KeywordMap();
 		
 		IScannerInfo scanInfo = null;
 		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, reader, scanInfo, fileCreator, keywordMap);

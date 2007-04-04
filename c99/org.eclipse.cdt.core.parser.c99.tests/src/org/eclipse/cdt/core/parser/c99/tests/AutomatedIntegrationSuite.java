@@ -19,22 +19,22 @@ public class AutomatedIntegrationSuite extends TestSuite {
 	public static Test suite() {
 		TestSuite suite = new TestSuite();
 		
-		
-		
 		suite.addTestSuite(C99Tests.class); // has some tests that do fail
 		suite.addTestSuite(C99PreprocessorTests.class); // should all pass
 		
 		suite.addTestSuite(C99SpecTests.class); // a couple of failuers
 		suite.addTestSuite(C99KnRTests.class); // mostly fail due to ambiguities
 		
-		// nowhere near working
-		//suite.addTestSuite(C99SelectionParseTest.class);
+		// The majority of the content assist test are in the ui tests plugin
+		suite.addTestSuite(C99CompletionBasicTest.class);
+		
+		// this one still has a lot of failing tests though
+		suite.addTestSuite(C99SelectionParseTest.class);
 		
 		suite.addTestSuite(C99DOMLocationTests.class);
 		suite.addTestSuite(C99DOMLocationMacroTests.class);
 		suite.addTestSuite(C99DOMLocationInclusionTests.class);
-		
-		
+
 		//suite.addTest(new FakeTestCaseToPrint());
 		
 		return suite;

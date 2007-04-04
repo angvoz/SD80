@@ -27,7 +27,6 @@ import lpg.lpgjavaruntime.IToken;
  * @author Mike Kucera
  */
 class MacroArgument {
-
 	
 	private final TokenList rawTokens;
 	private final IProcessCallback processCallback;
@@ -49,12 +48,17 @@ class MacroArgument {
 	 * Precondition: tokens != null
 	 */
 	public MacroArgument(TokenList tokens, IProcessCallback processor) {
-		assert tokens != null;
+		if(tokens == null)
+			throw new IllegalArgumentException(Messages.getString("MacroArgument.0")); //$NON-NLS-1$
 		this.rawTokens = tokens;
 		this.processCallback = processor;
 	}
 	
 	
+	/**
+	 * Returns the tokens that make up the macro argument without
+	 * recursivley processing them.
+	 */
 	public TokenList getRawTokens() {
 		return rawTokens;
 	}

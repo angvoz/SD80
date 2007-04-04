@@ -11,7 +11,6 @@
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.ast;
 
 import org.eclipse.cdt.core.dom.ast.IASTPreprocessorIfndefStatement;
-import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 
 public class ASTPreprocessorIfndefStatement extends ASTPreprocessorConditionalBranch implements
 		IASTPreprocessorIfndefStatement {

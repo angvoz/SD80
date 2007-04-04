@@ -33,7 +33,6 @@ import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayModifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTDesignator;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
-import org.eclipse.cdt.internal.core.dom.parser.c.CASTNode;
 
 /**
  * A utility that prints an AST to the console, useful for debugging purposes.
@@ -48,7 +47,7 @@ public class ASTPrinter {
 	public static void printAST(IASTTranslationUnit root, PrintStream stream) {
 		PrintStream out = stream == null ? System.out : stream;
 		if(root == null) {
-			out.println("null");
+			out.println("null"); //$NON-NLS-1$
 			return;
 		}
 
@@ -74,25 +73,25 @@ public class ASTPrinter {
 	private static void print(PrintStream out, int indentLevel, IASTNode n) {
 		ASTNode node = (ASTNode) n;
 		for(int i = 0; i < indentLevel; i++)
-			out.print("  ");
+			out.print("  "); //$NON-NLS-1$
 		
 		String classname = node.getClass().getName();
 		
 		out.print(classname);
-		out.print(" (" + node.getOffset() + "," + node.getLength() + ") ");
+		out.print(" (" + node.getOffset() + "," + node.getLength() + ") "); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		if(node instanceof IASTName) {
-			out.print(" " + ((IASTName)node).toString());
+			out.print(" " + ((IASTName)node).toString()); //$NON-NLS-1$
 		}
 		if(node instanceof IASTPointer) {
 			IASTPointer pointer = (IASTPointer) node;
 			if(pointer.isConst())
-				out.print(" const");
+				out.print(" const"); //$NON-NLS-1$
 			if(pointer.isVolatile())
-				out.print(" volatile");
+				out.print(" volatile"); //$NON-NLS-1$
 		}
 		if(node instanceof ICASTArrayModifier) {
 			if(((ICASTArrayModifier)node).isRestrict()) {
-				out.print(" restrict");
+				out.print(" restrict"); //$NON-NLS-1$
 			}
 		}
 		out.println();

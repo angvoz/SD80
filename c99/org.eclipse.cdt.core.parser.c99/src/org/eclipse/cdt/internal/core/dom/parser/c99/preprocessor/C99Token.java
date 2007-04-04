@@ -25,7 +25,7 @@ import lpg.lpgjavaruntime.IToken;
  */
 public class C99Token extends AbstractToken implements IToken {
 
-	public static final C99Token DUMMY_TOKEN = new C99Token(0, 0, 0, "<dummy>");
+	public static final C99Token DUMMY_TOKEN = new C99Token(0, 0, 0, "<dummy>"); //$NON-NLS-1$
 	
 	
 	// Class invariant: representation == null | source == null;
@@ -81,9 +81,10 @@ public class C99Token extends AbstractToken implements IToken {
 		if(source != null) {
 			return new String(source, sourceStartOffset, sourceEndOffset - sourceStartOffset + 1);
 		}
-		else {
+		else if(representation != null){
 			return representation;
 		}
+		return ""; //$NON-NLS-1$
 	}
 	
 	public Object clone() {

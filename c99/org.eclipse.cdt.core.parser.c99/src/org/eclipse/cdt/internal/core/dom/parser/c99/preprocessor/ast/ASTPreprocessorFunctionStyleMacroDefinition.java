@@ -14,9 +14,7 @@ import java.util.List;
 import java.util.Vector;
 
 import org.eclipse.cdt.core.dom.ast.IASTFunctionStyleMacroParameter;
-import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTPreprocessorFunctionStyleMacroDefinition;
-import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 
 public class ASTPreprocessorFunctionStyleMacroDefinition extends ASTPreprocessorObjectStyleMacroDefinition
 		implements IASTPreprocessorFunctionStyleMacroDefinition {

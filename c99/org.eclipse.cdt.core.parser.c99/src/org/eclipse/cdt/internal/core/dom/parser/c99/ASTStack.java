@@ -33,9 +33,8 @@ import java.util.Stack;
  * 
  * This class represents a ASTStack that is implemented as a stack of "AST Scopes".
  * There is a special grammar rule <openscope> that creates a new AST Scope. 
- * So in order to consume all the block_items all that has to be done is 
+ * So, in order to consume all the block_items, all that has to be done is 
  * iterate over the topmost scope and then close it when done.
- * 
  * 
  * 
  * @author Mike Kucera
@@ -99,6 +98,11 @@ public class ASTStack {
 
 	public boolean isEmpty() {
 		return topScope.isEmpty() && astScopeStack.isEmpty();
+	}
+	
+	
+	public int topScopeSize() {
+		return topScope.size();
 	}
 	
 	

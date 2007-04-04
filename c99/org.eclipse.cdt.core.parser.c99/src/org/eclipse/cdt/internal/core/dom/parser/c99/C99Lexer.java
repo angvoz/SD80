@@ -15,8 +15,6 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 
 import lpg.lpgjavaruntime.*;
 
-import java.util.*;
-import java.lang.*;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
@@ -64,7 +62,7 @@ public class C99Lexer extends LpgLexStream implements C99Parsersym, C99Lexersym,
     public void lexer(Monitor monitor, PrsStream prsStream)
     {
         if (getInputChars() == null)
-            throw new NullPointerException("LexStream was not initialized");
+            throw new NullPointerException(Messages.getString("C99Lexer.0")); //$NON-NLS-1$
 
         this.prsStream = prsStream;
 

@@ -15,7 +15,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Vector;
 
 import lpg.lpgjavaruntime.IToken;
@@ -31,7 +30,7 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
  */
 public class Macro implements C99Parsersym {
 
-	public static final String __VA_ARGS__ = "__VA_ARGS__";
+	public static final String __VA_ARGS__ = "__VA_ARGS__"; //$NON-NLS-1$
 	
 	private final IToken name;
 	
@@ -40,7 +39,7 @@ public class Macro implements C99Parsersym {
 	 * 
 	 * A function like macro might not have parameters..
 	 * #define p() blah
-	 * In this case paramNames != null and paramNames.isEmpty() == true
+	 * In this case paramNames will be an empty list
 	 */
 	private final LinkedHashSet paramNames;
 	private final TokenList replacementSequence;
@@ -67,13 +66,13 @@ public class Macro implements C99Parsersym {
 	public Macro(IToken name, TokenList replacementSequence, int startOffset, int endOffset, LinkedHashSet paramNames, String varArgParamName) {
 		// TODO: the code might not be correct, doesn't mean that its an exception
 		if(replacementSequence == null)
-			throw new IllegalArgumentException("replacementSequence cannot be null, it may be empty though");
+			throw new IllegalArgumentException(Messages.getString("Macro.0")); //$NON-NLS-1$
 		if(name == null)
-			throw new IllegalArgumentException("Macro name cannot be null");
+			throw new IllegalArgumentException(Messages.getString("Macro.1")); //$NON-NLS-1$
 		if(name.getKind() != TK_identifier)
-			throw new IllegalArgumentException("Macro name must be an identifier token, got: " + name.getKind() + ", "+ name);
+			throw new IllegalArgumentException(Messages.getString("Macro.2") + name.getKind() + ", "+ name);  //$NON-NLS-1$//$NON-NLS-2$
 		if(varArgParamName != null && paramNames.contains(varArgParamName))
-			throw new IllegalArgumentException("duplicate parameter name: '" + varArgParamName + "'");
+			throw new IllegalArgumentException(Messages.getString("Macro.3") + "'" + varArgParamName + "'");  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 		
 		this.name = name;
 		this.paramNames = paramNames;
@@ -92,12 +91,23 @@ public class Macro implements C99Parsersym {
 	}
 	
 	
-	
-	public boolean isCorrectNumberOfArguments(List arguments) {
-		if(arguments == null)
-			return isObjectLike();
-		else
-			return arguments.size() == getNumParams() + (isVarArgs() ? 1 : 0);
+	/**
+	 * Returns true iff the number of arguments passed to a macro invocation is correct.
+	 * @throws IllegalArgumentException if numArgs < 0
+	 */
+	public boolean isCorrectNumberOfArguments(int numArgs) {
+		if(numArgs < 0)
+			throw new IllegalArgumentException(Messages.getString("Macro.4")); //$NON-NLS-1$
+		
+		// Object like macro doesn't take any arguments, this method shouldn't even
+		// be called in that situation.
+		if(isObjectLike())
+			return false;
+		
+		int numParams = getNumParams();
+
+		return (numArgs == numParams)  || 
+		       (isVarArgs() && numArgs == numParams + 1);
 	}
 	
 	
@@ -108,7 +118,7 @@ public class Macro implements C99Parsersym {
 	 * PlaceMarker tokens are used to replace empty arguments.
 	 */
 	private static MacroArgument createPlaceMarker() {
-		TokenList placeMaker = new TokenList(new C99Token(0, 0, TK_PlaceMarker, ""));
+		TokenList placeMaker = new TokenList(new C99Token(0, 0, TK_PlaceMarker, "")); //$NON-NLS-1$
 		return new MacroArgument(placeMaker, null);
 	}
 	
@@ -130,8 +140,12 @@ public class Macro implements C99Parsersym {
 			i++;
 		}
 		
-		if(isVarArgs()) 
-			replacementMap.put(varArgParamName, arguments.get(i));
+		if(isVarArgs()) {
+			if(arguments.size() < getNumParams() + 1)
+				replacementMap.put(varArgParamName, createPlaceMarker());
+			else
+				replacementMap.put(varArgParamName, arguments.get(i));
+		}
 		
 		return replacementMap;
 	}
@@ -214,14 +228,15 @@ public class Macro implements C99Parsersym {
 	
 	/**
 	 * Invokes the macro with the given arguments.
+	 * @throws IllegalArgumentException if the wrong number of arguments is passed
 	 */
 	public TokenList invoke(List/*<MacroArgument>*/ arguments) {
-		if(!isCorrectNumberOfArguments(arguments)) {
-			throw new IllegalArgumentException("wrong number of arguments to macro invocation");
+		if(arguments != null && !isCorrectNumberOfArguments(arguments.size())) {
+			throw new IllegalArgumentException(Messages.getString("Macro.5")); //$NON-NLS-1$
 		}
 		
 		if(replacementSequence.isEmpty()) {
-			return null;
+			return new TokenList();
 		}
 
 		InvokationResultCollector result = new InvokationResultCollector(replacementSequence.first().getStartOffset());
@@ -337,7 +352,7 @@ public class Macro implements C99Parsersym {
 		int ykind = y.getKind();
 		
 		if(xkind == TK_PlaceMarker && ykind == TK_PlaceMarker) {
-			return new C99Token(0, 0, TK_PlaceMarker, "");
+			return new C99Token(0, 0, TK_PlaceMarker, ""); //$NON-NLS-1$
 		}
 		if((xkind == TK_integer || xkind == TK_PlaceMarker) &&
 		   (ykind == TK_integer || ykind == TK_PlaceMarker))
@@ -375,7 +390,7 @@ public class Macro implements C99Parsersym {
 		Iterator iter = replacement.iterator();
 		while(iter.hasNext()) {
 			IToken token = (IToken) iter.next();
-			sb.append(token.toString().replace("\"", "\\\"")); // replace " with \"
+			sb.append(token.toString().replace("\"", "\\\"")); // replace " with \" //$NON-NLS-1$ //$NON-NLS-2$
 			if(iter.hasNext())
 				sb.append(' ');
 		}
@@ -420,8 +435,8 @@ public class Macro implements C99Parsersym {
 	}
 
 
-	public IToken getName() {
-		return name;
+	public String getName() {
+		return name.toString();
 	}
 
 
@@ -470,6 +485,13 @@ public class Macro implements C99Parsersym {
 	
 	public int getNameLength() {
 		return getNameEndOffset() - getNameStartOffset();
+	}
+	
+	public String toString() {
+		if(isObjectLike())
+			return name.toString() + " " + replacementSequence; //$NON-NLS-1$
+		
+		return name.toString() + "(" + paramNames.toString() + (isVarArgs() ? ",..." : "") + ") " + replacementSequence; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 	}
 	
 	

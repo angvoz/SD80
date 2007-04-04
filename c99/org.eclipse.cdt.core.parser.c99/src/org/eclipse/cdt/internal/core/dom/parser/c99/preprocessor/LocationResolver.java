@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,8 @@ import org.eclipse.cdt.internal.core.parser.scanner2.ObjectStyleMacro;
  * - Reslolving locations of macro expansions.
  * 
  *
+ * Most of the methods in IPreprocessorLog are defined in LocationMap. 
+ *  
  * @author Mike Kucera
  */
 public class LocationResolver extends LocationMap implements IPreprocessorLog {
@@ -48,7 +51,7 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 		int endOffset     = macro.getDirectiveEndOffset();
 		int nameOffset    = macro.getNameStartOffset();
 		int nameEndOffset = macro.getNameEndOffset();
-		char[] macroName  = macro.getName().toString().toCharArray();
+		char[] macroName  = macro.getName().toCharArray();
 		char[] expansion  = macro.getReplacementSequenceAsString().toCharArray();
 		
 		IMacroDefinition macroDef;
@@ -67,6 +70,32 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 	}
 	
 	
+	/**
+	 * Registers macros that come from IScannerInfo and the index.
+	 * These will pop up in the content assist popup.
+	 */
+	public void registerBuiltinMacro(Macro macro) {
+		char[] macroName  = macro.getName().toCharArray();
+		char[] expansion  = macro.getReplacementSequenceAsString().toCharArray();
+		
+		IMacroDefinition macroDef;
+		if(macro.isObjectLike()) {
+			ObjectStyleMacro osm = new ObjectStyleMacro(macroName, expansion);
+			macroDef = super.registerBuiltinObjectStyleMacro(osm);
+		}
+		else {
+			char[][] argList = getParamsAsChars(macro);
+			FunctionStyleMacro fsm = new FunctionStyleMacro(macroName, expansion, argList);
+			macroDef = super.registerBuiltinFunctionStyleMacro(fsm);
+		}
+		
+		macroDefinitions.put(macro.getName().toString(), macroDef);
+	}
+	
+	
+	/**
+	 * Returns the macro's parameters as a char[][]
+	 */
 	private static char[][] getParamsAsChars(Macro macro) {
 		List paramNames = macro.getParamNames();
 		if(paramNames == null || paramNames.isEmpty())
@@ -78,6 +107,9 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 		}
 		return argList;
 	}
+	
+	
+	
 	
 	
 	public void undefineMacro(int directiveStartOffset, int directiveEndOffset, String macroName, int nameOffset) {
@@ -107,10 +139,13 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 
 	
 	private IMacroDefinition getMacroDefinition(Macro macro) {
-		return getMacroDefinition(macro.getName().toString());
+		return getMacroDefinition(macro.getName());
 	}
 	
 	private IMacroDefinition getMacroDefinition(String macroName) {
 		return (IMacroDefinition) macroDefinitions.get(macroName);
 	}
+
+
+	
 }

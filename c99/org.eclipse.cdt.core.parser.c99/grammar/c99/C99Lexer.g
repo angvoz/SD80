@@ -148,12 +148,17 @@ $Export
 	-- temporarily used during preprocessing
 	-- prevents a recursive macro from repeated expansion 
 	DisabledMacroName  
+	
+	-- The completion token represents the location of the cursor in the working copy
+	Completion
+	-- After the Completion token a sequence of EndOfCompletion tokens will allow the 
+	-- parser to terminate successfully without actually parsing the rest of the input
+	EndOfCompletion
+	
 $End
 
 $Globals
 /.
-	import java.util.*;
-	import java.lang.*;
 	import org.eclipse.cdt.core.parser.CodeReader;
     import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
     import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;

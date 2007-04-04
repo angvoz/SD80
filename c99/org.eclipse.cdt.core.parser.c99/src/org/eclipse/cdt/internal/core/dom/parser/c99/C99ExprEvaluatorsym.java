@@ -111,7 +111,9 @@ public interface C99ExprEvaluatorsym {
       TK_PlaceMarker = 94,
       TK_Parameter = 95,
       TK_DisabledMacroName = 96,
-      TK_ERROR_TOKEN = 97;
+      TK_Completion = 97,
+      TK_EndOfCompletion = 98,
+      TK_ERROR_TOKEN = 99;
 
       public final static String orderedTerminalSymbols[] = {
                  "",
@@ -211,6 +213,8 @@ public interface C99ExprEvaluatorsym {
                  "PlaceMarker",
                  "Parameter",
                  "DisabledMacroName",
+                 "Completion",
+                 "EndOfCompletion",
                  "ERROR_TOKEN"
              };
 

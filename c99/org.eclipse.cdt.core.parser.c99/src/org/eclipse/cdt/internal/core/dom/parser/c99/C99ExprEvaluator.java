@@ -70,18 +70,18 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
         catch(UnimplementedTerminalsException e)
         {
             java.util.ArrayList unimplemented_symbols = e.getSymbols();
-            System.out.println("The Lexer will not scan the following token(s):");
+            System.out.println(Messages.getString("C99ExprEvaluator.0")); //$NON-NLS-1$
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);               
+                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);                //$NON-NLS-1$
             }
             System.out.println();                        
         }
         catch(UndefinedEofSymbolException e)
         {
             throw new Error(new UndefinedEofSymbolException
-                                ("The Lexer does not implement the Eof symbol " +
+                                (Messages.getString("C99ExprEvaluator.1") + //$NON-NLS-1$
                                  C99ExprEvaluatorsym.orderedTerminalSymbols[C99ExprEvaluatorprs.EOFT_SYMBOL]));
         } 
     }
@@ -100,12 +100,12 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
             lasttok = super.getLastErrorToken(error_token);
         String location = super.getFileName() + ':' +
                           (firsttok > lasttok
-                                    ? (super.getEndLine(lasttok) + ":" + super.getEndColumn(lasttok))
-                                    : (super.getLine(error_token) + ":" +
-                                       super.getColumn(error_token) + ":" +
-                                       super.getEndLine(error_token) + ":" +
+                                    ? (super.getEndLine(lasttok) + ":" + super.getEndColumn(lasttok)) //$NON-NLS-1$
+                                    : (super.getLine(error_token) + ":" + //$NON-NLS-1$
+                                       super.getColumn(error_token) + ":" + //$NON-NLS-1$
+                                       super.getEndLine(error_token) + ":" + //$NON-NLS-1$
                                        super.getEndColumn(error_token)))
-                          + ": ";
+                          + ": "; //$NON-NLS-1$
         super.reportError((firsttok > lasttok ? ParseErrorCodes.INSERTION_CODE : ParseErrorCodes.SUBSTITUTION_CODE), location, msg);
     }
 
@@ -133,11 +133,11 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
         catch (NotBacktrackParseTableException e)
         {
             throw new Error(new NotBacktrackParseTableException
-                                ("Regenerate C99ExprEvaluatorprs.java with -BACKTRACK option"));
+                                (Messages.getString("C99ExprEvaluator.2"))); //$NON-NLS-1$
         }
         catch (BadParseSymFileException e)
         {
-            throw new Error(new BadParseSymFileException("Bad Parser Symbol File -- C99ExprEvaluatorsym.java"));
+            throw new Error(new BadParseSymFileException(Messages.getString("C99ExprEvaluator.3"))); //$NON-NLS-1$
         }
 
         try
@@ -170,7 +170,7 @@ public C99ExprEvaluator(TokenList tokens) {
 		token.setKind(mapKind(token.getKind()));
 		addToken(token);
 	}
-	addToken(new C99Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>"));
+	addToken(new C99Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>")); //$NON-NLS-1$
 	setStreamLength(getSize());
 }
 

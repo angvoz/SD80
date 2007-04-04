@@ -26,7 +26,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
             0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0
+            0,0,0,0,0,0,0,0,0
         };
     };
     public final static byte isKeyword[] = IsKeyword.isKeyword;
@@ -128,7 +128,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
             0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,
-            0
+            0,0,0
         };
     };
     public final static byte termCheck[] = TermCheck.termCheck;
@@ -208,7 +208,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
             59,60,61,62,63,64,65,66,67,68,
             69,70,71,72,73,74,75,76,77,78,
             79,80,81,82,83,84,85,86,87,88,
-            91,93,94,95,96,97,98
+            91,93,94,95,96,97,98,99,100
         };
     };
     public final static byte terminalIndex[] = TerminalIndex.terminalIndex;
@@ -216,8 +216,8 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public interface NonterminalIndex {
         public final static byte nonterminalIndex[] = {0,
-            0,0,100,101,102,103,104,105,106,107,
-            108,109,110,111,99,0
+            0,0,102,103,104,105,106,107,108,109,
+            110,111,112,113,101,0
         };
     };
     public final static byte nonterminalIndex[] = NonterminalIndex.nonterminalIndex;
@@ -265,7 +265,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public interface ScopeRhs {
         public final static byte scopeRhs[] = {0,
-            112,23,110,0,32,111,0,112,19,0,
+            114,23,112,0,32,113,0,114,19,0,
             3,0
         };
     };
@@ -284,12 +284,12 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public interface InSymb {
         public final static byte inSymb[] = {0,
-            0,112,21,20,4,3,19,101,103,102,
-            105,104,107,106,109,108,110,112,7,6,
+            0,114,21,20,4,3,19,103,105,104,
+            107,106,109,108,111,110,112,114,7,6,
             5,1,2,4,3,14,13,11,10,9,
-            8,15,12,17,16,23,22,102,102,101,
-            101,104,104,103,103,103,103,106,105,108,
-            107,112,109,24
+            8,15,12,17,16,23,22,104,104,103,
+            103,106,106,105,105,105,105,108,107,110,
+            109,114,111,24
         };
     };
     public final static byte inSymb[] = InSymb.inSymb;
@@ -395,6 +395,8 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
             "PlaceMarker",
             "Parameter",
             "DisabledMacroName",
+            "Completion",
+            "EndOfCompletion",
             "ERROR_TOKEN",
             "constant_expression",
             "unary_expression",
@@ -415,7 +417,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
     public final String name(int index) { return name[index]; }
 
     public final static int
-           ERROR_SYMBOL      = 97,
+           ERROR_SYMBOL      = 99,
            SCOPE_UBOUND      = 1,
            SCOPE_SIZE        = 2,
            MAX_NAME_LENGTH   = 25;
@@ -427,12 +429,12 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public final static int
            NUM_STATES        = 54,
-           NT_OFFSET         = 97,
+           NT_OFFSET         = 99,
            LA_STATE_OFFSET   = 325,
            MAX_LA            = 1,
            NUM_RULES         = 41,
            NUM_NONTERMINALS  = 16,
-           NUM_SYMBOLS       = 113,
+           NUM_SYMBOLS       = 115,
            SEGMENT_SIZE      = 8192,
            START_STATE       = 42,
            IDENTIFIER_SYMBOL = 0,

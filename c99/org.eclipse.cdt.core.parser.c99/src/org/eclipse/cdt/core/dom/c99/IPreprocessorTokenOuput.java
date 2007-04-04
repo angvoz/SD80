@@ -12,12 +12,11 @@ package org.eclipse.cdt.core.dom.c99;
 
 import lpg.lpgjavaruntime.IToken;
 
-import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-
 
 /**
  * Collects the output of the preprocessor.
  *
+ * The preprocessor injects tokens into the parser via this interface.
  */
 public interface IPreprocessorTokenOuput {
 	

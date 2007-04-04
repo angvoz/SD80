@@ -21,6 +21,7 @@ import org.eclipse.cdt.core.dom.ast.IASTArraySubscriptExpression;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
+import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTConditionalExpression;
@@ -143,8 +144,6 @@ import org.eclipse.cdt.internal.core.parser.scanner2.ILocationResolver;
 
 /**
  * Semantic actions called by the parser to build an AST.
- * 
- * @author Mike Kucera
  */
 public class C99ParserAction {
 
@@ -158,14 +157,16 @@ public class C99ParserAction {
 	
 
 	/**
-	 * The LPG runtime will automatically calculate the offset and length
-	 * of each grammar rule when it is reduced.
+	 * The offset and length of each grammar rule will be automatically
+	 * calclulated when it is reduced.
 	 */
 	protected int ruleOffset, ruleLength;
 	
 	
 	private ILocationResolver resolver;
 	private IIndex index;
+
+	private ASTCompletionNode completionNode;
 	
 	
 	public C99ParserAction(C99Parser parser) {
@@ -215,23 +216,23 @@ public class C99ParserAction {
 	/**
 	 * Method that is called by the special <openscope> production
 	 * in order to create a new scope in the AST stack.
-	 * 
 	 */
 	protected void openASTScope() {
 		astStack.openASTScope();
 	}
 	
 	
-	
 	/**
-	 * Creates a IASTName node from an identifier token.
-	 * 
+	 * Retuns the completion node if this is a completion parse.
 	 */
-	private static CASTName createName(IToken token) {
-		CASTName name = new CASTName(token.toString().toCharArray());
-		name.setOffsetAndLength(offset(token), length(token)); 
-		return name;
+	public IASTCompletionNode getASTCompletionNode() {
+		if(completionNode != null)
+			completionNode.setTranslationUnit(getAST());
+		return completionNode;
 	}
+	
+	
+	
 	
 	
 	
@@ -260,6 +261,10 @@ public class C99ParserAction {
 		//return token.getTokenIndex();
 	}
 	
+
+	
+	
+	
 	/********************************************************************
 	 * Start of semantic actions.
 	 ********************************************************************/
@@ -283,6 +288,27 @@ public class C99ParserAction {
 	protected void consumeName() {
 		IASTName name = createName( parser.getRightIToken() );
 		astStack.push(name);
+	}
+		
+	
+	/**
+	 * Creates a IASTName node from an identifier token.
+	 * 
+	 */
+	private CASTName createName(IToken token) {
+		assert token.getKind() == C99Parsersym.TK_identifier || token.getKind() == C99Parsersym.TK_Completion;
+		
+		CASTName name = new CASTName(token.toString().toCharArray());
+		name.setOffsetAndLength(offset(token), length(token)); 
+		
+		if(token.getKind() == C99Parsersym.TK_Completion) {
+			String prefix = token.toString();
+			ASTCompletionNode completionNode = new ASTCompletionNode(prefix.length() == 0 ? null : prefix);
+			completionNode.addName(name);
+			this.completionNode = completionNode;
+		}
+		
+		return name;
 	}
 	
 	
@@ -311,11 +337,14 @@ public class C99ParserAction {
 	
 	
 	/**
-	 * primary_expression ::= 'identifier'
+	 * primary_expression ::= ident
 	 */
 	protected void consumeExpressionID() {
 		CASTIdExpression expr = new CASTIdExpression();
+		
+		//CASTName name = (CASTName) astStack.pop();
 		CASTName name = createName(parser.getRightIToken());
+		
 		expr.setName(name);
 		name.setParent(expr);
 		name.setPropertyInParent(IASTIdExpression.ID_NAME);
@@ -494,17 +523,17 @@ public class C99ParserAction {
 	
 	
 	/**
-	 * postfix_expression ::= postfix_expression '.' 'identifier'
-	 * postfix_expression ::= postfix_expression '->' 'identifier'
+	 * postfix_expression ::= postfix_expression '.' ident
+	 * postfix_expression ::= postfix_expression '->' ident
 	 */
 	protected void consumeExpressionFieldReference(boolean isPointerDereference) {
+		//IASTName name = (IASTName) astStack.pop();
 		IASTExpression idExpression = (IASTExpression) astStack.pop();
 		
 		CASTFieldReference expr = new CASTFieldReference();
 		expr.setIsPointerDereference(isPointerDereference);
 		
-		IToken identifier = parser.getRightIToken();
-		IASTName name = createName(identifier);
+		IASTName name = createName(parser.getRightIToken());
 		
 		expr.setFieldName(name);
 		name.setParent(expr);
@@ -568,6 +597,8 @@ public class C99ParserAction {
 		expr.setOffsetAndLength(ruleOffset, ruleLength);
 		
 		astStack.push(expr);
+		
+		consumeExpressionUnaryOperator(IASTUnaryExpression.op_sizeof);
 	}
 	
 	
@@ -783,12 +814,18 @@ public class C99ParserAction {
 	protected void consumeTypeId(boolean hasDeclarator) {
 		CASTTypeId typeId = new CASTTypeId();
 		
+		IASTDeclarator declarator;
 		if(hasDeclarator) {
-			IASTDeclarator declarator = (IASTDeclarator) astStack.pop();
-			typeId.setAbstractDeclarator(declarator);
-			declarator.setParent(typeId);
-			declarator.setPropertyInParent(IASTTypeId.ABSTRACT_DECLARATOR);
+			declarator = (IASTDeclarator) astStack.pop();
+			
+		} else {
+			declarator = new CASTDeclarator();
+			declarator.setName(new CASTName());
 		}
+			
+		typeId.setAbstractDeclarator(declarator);
+		declarator.setParent(typeId);
+		declarator.setPropertyInParent(IASTTypeId.ABSTRACT_DECLARATOR);
 		
 		IASTDeclSpecifier declSpecifier = (IASTDeclSpecifier) astStack.pop();
 		
@@ -858,10 +895,10 @@ public class C99ParserAction {
      *       __ problem
 	 */
 	private void consumeDeclaratorArray(IASTArrayModifier arrayModifier) {
-		ASTNode node = (ASTNode) astStack.pop();
+		IASTDeclarator node = (IASTDeclarator) astStack.pop();
 		
 		// Its a nested declarator so create an new ArrayDeclarator
-		if(node.getPropertyInParent() == IASTDeclarator.NESTED_DECLARATOR) {
+		if(node.getNestedDeclarator() != null) {  //node.getPropertyInParent() == IASTDeclarator.NESTED_DECLARATOR) {
 			CASTArrayDeclarator declarator = new CASTArrayDeclarator();
 			
 			IASTName name = new CASTName();
@@ -1017,8 +1054,15 @@ public class C99ParserAction {
 	 * direct_declarator ::= '(' declarator ')'
 	 */
 	protected void consumeDirectDeclaratorBracketed() {
-		IASTDeclarator decl = (IASTDeclarator) astStack.peek();
-		decl.setPropertyInParent(IASTDeclarator.NESTED_DECLARATOR);
+		IASTDeclarator nested = (IASTDeclarator) astStack.pop();
+		
+		CASTDeclarator declarator = new CASTDeclarator();
+		declarator.setNestedDeclarator(nested);
+		nested.setParent(declarator);
+		nested.setPropertyInParent(IASTDeclarator.NESTED_DECLARATOR);
+		
+		declarator.setOffsetAndLength(ruleOffset, ruleLength);
+		astStack.push(declarator);
 	}
 	
 	
@@ -1059,8 +1103,6 @@ public class C99ParserAction {
 	 * direct_declarator ::= direct_declarator '(' ')'
 	 */
 	protected void consumeDirectDeclaratorFunctionDeclarator(boolean hasParameters) {
-		System.out.println("consumeDirectDeclaratorFunctionDeclarator " + hasParameters);
-		System.out.println("offset " + ruleOffset + " length " + ruleLength);
 		CASTFunctionDeclarator declarator = new CASTFunctionDeclarator();
 		
 		if(hasParameters) {
@@ -1074,7 +1116,6 @@ public class C99ParserAction {
 		}
 		
 		int endOffset = endOffset(parser.getRightIToken());
-		System.out.println("endOffset? " + endOffset );
 		
 		consumeDirectDeclaratorFunctionDeclarator(declarator, endOffset);
 	}
@@ -1084,7 +1125,6 @@ public class C99ParserAction {
 	 * direct_declarator ::= direct_declarator '(' <openscope> identifier_list ')'
 	 */
 	protected void consumeDirectDeclaratorFunctionDeclaratorKnR() {
-		System.out.println("consumeDirectDeclaratorFunctionDeclaratorKnR");
 		CASTKnRFunctionDeclarator declarator = new CASTKnRFunctionDeclarator();
 		
 		IASTName[] names = (IASTName[])astStack.topScopeArray(new IASTName[]{});
@@ -1110,7 +1150,8 @@ public class C99ParserAction {
 	private void consumeDirectDeclaratorFunctionDeclarator(IASTFunctionDeclarator declarator, int endOffset) {
 		IASTDeclarator decl = (IASTDeclarator) astStack.pop();
 		 
-		if(decl.getPropertyInParent() == IASTDeclarator.NESTED_DECLARATOR) {
+		if(decl.getNestedDeclarator() != null) { 
+			decl = decl.getNestedDeclarator(); // need to remove one level of nesting for function pointers
 			declarator.setNestedDeclarator(decl);
 			decl.setParent(declarator);
 			
@@ -1125,6 +1166,9 @@ public class C99ParserAction {
 		}
 		else if(decl instanceof CASTDeclarator) {
 			CASTName name = (CASTName)((CASTDeclarator)decl).getName();
+			if(name == null) {
+				name = new CASTName();
+			}
 			declarator.setName(name);
 			name.setParent(declarator);
 			name.setPropertyInParent(IASTFunctionDeclarator.DECLARATOR_NAME);
@@ -1432,7 +1476,8 @@ public class C99ParserAction {
 		for(Iterator iter = astStack.topScopeIterator(); iter.hasNext();) {
 			IToken token = (IToken) iter.next();
 			// There is one identifier token on the stack
-			if(token.getKind() == C99Parsersym.TK_identifier) {
+			int kind = token.getKind();
+			if(kind == C99Parsersym.TK_identifier || kind == C99Parsersym.TK_Completion) {
 				IASTName name = createName(token);
 				declSpec.setName(name);
 				name.setParent(declSpec);
@@ -1791,6 +1836,7 @@ public class C99ParserAction {
 		astStack.push(stat);
 	}
 	
+
 	
 	/**
 	 * block_item ::= declaration | statement 
@@ -1805,10 +1851,30 @@ public class C99ParserAction {
 	protected void consumeStatementDeclaration() {
 		IASTDeclaration decl = (IASTDeclaration) astStack.pop();
 		
-		// Kludgy way to disambiguate a certain case.
-		// An identifier alone on a line will be parsed as a declaration
-		// but it probably should be an expression.
-		// eg) i;
+		if(disambiguateHackIdentifierExpression(decl))
+			return;
+		if(disambiguateHackFunctionCall(decl))
+			return;
+		
+		CASTDeclarationStatement stat = new CASTDeclarationStatement();
+		
+		stat.setDeclaration(decl);
+		decl.setParent(stat);
+		decl.setPropertyInParent(IASTDeclarationStatement.DECLARATION);
+		
+		stat.setOffsetAndLength(ruleOffset, ruleLength);
+		astStack.push(stat);
+	}
+	
+	
+	
+	/**
+	 * Kludgy way to disambiguate a certain case.
+	 * An identifier alone on a line will be parsed as a declaration
+	 * but it probably should be an expression.
+	 * eg) i;
+	 */
+	private boolean disambiguateHackIdentifierExpression(IASTDeclaration decl) {
 		if(decl instanceof IASTSimpleDeclaration) {
 			IASTSimpleDeclaration declaration = (IASTSimpleDeclaration) decl;
 			if(declaration.getDeclarators() == IASTDeclarator.EMPTY_DECLARATOR_ARRAY) {
@@ -1832,20 +1898,92 @@ public class C99ParserAction {
 						
 						stat.setOffsetAndLength(ruleOffset, ruleLength);
 						astStack.push(stat);
-						return;
+						return true;
 					}
 				}
 			}
 		}
-
-		CASTDeclarationStatement stat = new CASTDeclarationStatement();
+		return false;
+	}
+	
+	
+	/**
+	 * A hack to disambiguate one special case:
+	 * example:
+	 *             x ( y ) ;
+	 *
+	 * Is that a function call or a declaration of a variable y of type x that just happens to be bracketed?
+	 * The function call would be the more common situation, so even though it will always
+	 * be parsed as a declaration it would be better to return an expression instead.
+	 * 
+	 * Really, this is just to get this parser to behave similar to the dom parser.
+	 */
+	private boolean disambiguateHackFunctionCall(IASTDeclaration decl) {
+		if(!(decl instanceof IASTSimpleDeclaration))
+			return false;
 		
-		stat.setDeclaration(decl);
-		decl.setParent(stat);
-		decl.setPropertyInParent(IASTDeclarationStatement.DECLARATION);
+		IASTSimpleDeclaration declaration = (IASTSimpleDeclaration) decl;
+		IASTDeclSpecifier declSpec = declaration.getDeclSpecifier();
 		
+		if(!(declSpec instanceof CASTTypedefNameSpecifier))
+			return false;
+			
+		CASTTypedefNameSpecifier nameSpec = (CASTTypedefNameSpecifier) declSpec;
+		CASTName name = (CASTName) nameSpec.getName();
+		
+		// easiest way to check that there are no other kewords in the declaration specifiers
+		if(!(name.getOffset() == nameSpec.getOffset() && name.getLength() == nameSpec.getLength()))
+			return false;
+			
+		IASTDeclarator[] declarators = declaration.getDeclarators();
+		if(declarators.length != 1)
+			return false;
+		
+		IASTDeclarator declarator = declarators[0];
+		CASTDeclarator nestedDeclarator = (CASTDeclarator) declarator.getNestedDeclarator();
+			
+		if(nestedDeclarator == null)
+			return false;
+		
+		while(nestedDeclarator.getNestedDeclarator() != null) {
+			nestedDeclarator = (CASTDeclarator) nestedDeclarator.getNestedDeclarator();
+		}
+		CASTName name2 = (CASTName) nestedDeclarator.getName();
+		
+		if(!(name2.getOffset() == nestedDeclarator.getOffset() && name2.getLength() == nestedDeclarator.getLength())) 
+			return false;
+			
+		// We have detected the situation that needs to be disambiguated.
+		// Build a funciton call expression and discard the declaration.
+		CASTIdExpression functionName = new CASTIdExpression();
+		functionName.setName(name);
+		name.setParent(functionName);
+		name.setPropertyInParent(IASTIdExpression.ID_NAME);
+		functionName.setOffsetAndLength(name);
+		
+		CASTIdExpression parameter = new CASTIdExpression();
+		parameter.setName(name2);
+		name2.setParent(parameter);
+		name2.setPropertyInParent(IASTIdExpression.ID_NAME);
+		parameter.setOffsetAndLength(name2);
+		
+		CASTFunctionCallExpression expr = new CASTFunctionCallExpression();
+		expr.setFunctionNameExpression(functionName);
+		functionName.setParent(expr);
+		functionName.setPropertyInParent(IASTFunctionCallExpression.FUNCTION_NAME);
+		expr.setParameterExpression(parameter);
+		parameter.setParent(expr);
+		parameter.setPropertyInParent(IASTFunctionCallExpression.PARAMETERS);
+		expr.setOffsetAndLength(ruleOffset, ruleLength);
+		
+		CASTExpressionStatement stat = new CASTExpressionStatement();
+		stat.setExpression(expr);
+		expr.setParent(stat);
+		expr.setPropertyInParent(IASTExpressionStatement.EXPFRESSION);
 		stat.setOffsetAndLength(ruleOffset, ruleLength);
+		
 		astStack.push(stat);
+		return true;
 	}
 	
 	
@@ -2070,11 +2208,7 @@ public class C99ParserAction {
 			declaration.setPropertyInParent(IASTTranslationUnit.OWNED_DECLARATION);
 		}
 		
-		
-		//tu.setOffsetAndLength(ruleOffset, ruleLength);
-		
 		IToken eof = (IToken) parser.getTokens().get(parser.getTokens().size() - 1);
-		System.out.println("Is this EOF?: " + eof);
 		tu.setOffsetAndLength(0, eof.getEndOffset());
 		astStack.push(tu); 
 	}
@@ -2138,6 +2272,11 @@ public class C99ParserAction {
 			declarations[i].setParent(decl);
 			declarations[i].setPropertyInParent(ICASTKnRFunctionDeclarator.FUNCTION_PARAMETER);
 		}
+		
+		// re-compute the length of the declaration to take the parameter declarations into account
+		ASTNode lastDeclaration = (ASTNode) declarations[declarations.length-1];
+		int endOffset = lastDeclaration.getOffset() + lastDeclaration.getLength();
+		decl.setLength(endOffset - decl.getOffset());
 		
 		def.setBody(body);
 		body.setParent(def);

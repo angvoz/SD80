@@ -21,7 +21,7 @@ public class MacroEnvironment {
 	private Map env = new HashMap();
 	
 	public void addMacro(Macro macro) {
-		env.put(macro.getName().toString(), macro);
+		env.put(macro.getName(), macro);
 	}
 	
 	public Macro get(String macroId) {

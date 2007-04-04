@@ -28,7 +28,7 @@ public class C99ExprEvaluatorAction {
 	// A reference to the expression parser, used to get access to the raw tokens
 	private final C99ExprEvaluator parser;
 	
-	
+	// used mainly to protect against division by zero
 	private boolean errorEncountered;
 	
 	
@@ -74,7 +74,7 @@ public class C99ExprEvaluatorAction {
 	 * the expression from being fully evaluated.
 	 */
 	public Integer result() {
-		if(errorEncountered || valueStack.isEmpty())
+		if(errorEncountered || valueStack.size() != 1)
 			return null;
 		
 		return (Integer) valueStack.peek();
@@ -148,7 +148,8 @@ public class C99ExprEvaluatorAction {
 				result = (x != 0) || (y != 0) ? 1 : 0;
 				break;
 			default:
-				throw new RuntimeException("Impossible to reach here");
+				errorEncountered = true;
+				return;
 		}
 		
 		valueStack.push(new Integer(result));
@@ -175,7 +176,8 @@ public class C99ExprEvaluatorAction {
 				result = x;
 				break;
 			default:
-				throw new RuntimeException("Impossible to reach here");
+				errorEncountered = true;
+				return;
 		}
 		
 		valueStack.push(new Integer(result));

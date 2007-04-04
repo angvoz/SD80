@@ -11,8 +11,6 @@
 
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
-import java.util.HashMap;
-import java.util.Map;
 
 
 /**
@@ -24,19 +22,11 @@ import java.util.Map;
  * 
  * @author Mike Kucera
  */
-public class KeywordMap {
-	
-	private Map keywordMap = new HashMap();
-	
-	public void addKeyword(String keyword, int tokenKind) {
-		keywordMap.put(keyword, new Integer(tokenKind));
-	}
+public interface IKeywordMap {
 	
 	/**
 	 * Returns the token kind for the given string, 
 	 * returns null if the string is not a keyword.
 	 */
-	public Integer getKeywordKind(String identifier) { 
-		return (Integer) keywordMap.get(identifier);
-	}
+	public Integer getKeywordKind(String identifier);
 }

@@ -37,11 +37,9 @@ public interface IPreprocessorLog {
 
     public void encounterPoundIf(int startOffset, int endOffset, boolean taken);
 
-    public void encounterPoundIfdef(int startOffset, int endOffset,
-            boolean taken);
+    public void encounterPoundIfdef(int startOffset, int endOffset, boolean taken);
 
-    public void encounterPoundIfndef(int startOffset, int endOffset,
-            boolean taken);
+    public void encounterPoundIfndef(int startOffset, int endOffset, boolean taken);
 
     public void encounterPoundElse(int startOffset, int endOffset, boolean taken);
 
@@ -61,14 +59,5 @@ public interface IPreprocessorLog {
 
 	public void encounterProblem(IASTProblem problem);
 
-//    public IMacroDefinition registerBuiltinObjectStyleMacro(ObjectStyleMacro macro);
-//
-//    public IMacroDefinition registerBuiltinFunctionStyleMacro(FunctionStyleMacro macro);
-//
-//    public IMacroDefinition registerBuiltinDynamicFunctionStyleMacro(DynamicFunctionStyleMacro macro);
-//
-//    public IMacroDefinition registerBuiltinDynamicStyleMacro(DynamicStyleMacro macro);
-
-
-
+	public void registerBuiltinMacro(Macro macro);
 }

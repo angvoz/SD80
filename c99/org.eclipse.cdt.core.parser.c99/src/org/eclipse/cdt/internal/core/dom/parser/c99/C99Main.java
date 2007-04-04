@@ -16,42 +16,36 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.List;
 
-import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.dom.c99.ILexerFactory;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.CodeReader;
-import org.eclipse.cdt.core.parser.IScannerInfo;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99BaseKeywordMap;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.KeywordMap;
+import org.eclipse.core.runtime.CoreException;
 
 
 class C99Main {
 
-	protected static final String INPUT_FILE_NAME = "tempTestFile.c";
+	protected static final String INPUT_FILE_NAME = "tempTestFile.c"; //$NON-NLS-1$
 	
-	public static void main(String [] args) throws IOException {
+	public static void main(String [] args) throws IOException, CoreException {
 		
 		char[] input = getInputChars(INPUT_FILE_NAME);
 		CodeReader reader = new CodeReader(input);
 		
-		System.out.println("Original Code");
+		System.out.println("Original Code"); //$NON-NLS-1$
 		System.out.println(input);
 
-		System.out.println("\nParsing");
+		System.out.println("\nParsing"); //$NON-NLS-1$
 		
-		C99SourceCodeParser parser = new C99SourceCodeParser();
-		IASTTranslationUnit ast = parser.parse(reader, null, null, null);
+		IASTTranslationUnit ast = new C99Language().getASTTranslationUnit(reader, null, null, null, null);
 		
 		System.out.println();
-		System.out.println("AST: " + ast);
+		System.out.println("AST: " + ast); //$NON-NLS-1$
 		System.out.println();
 		ASTPrinter.printAST(ast);
 		System.out.println();
 		
-		System.out.println("Done");
+		System.out.println("Done"); //$NON-NLS-1$
 	}
 	
 	public static char[] getInputChars(String fileName) throws IOException

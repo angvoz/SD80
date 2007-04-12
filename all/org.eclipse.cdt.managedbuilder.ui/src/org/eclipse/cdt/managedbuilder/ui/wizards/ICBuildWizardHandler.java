@@ -10,23 +10,17 @@
  *******************************************************************************/
 package org.eclipse.cdt.managedbuilder.ui.wizards;
 
+import org.eclipse.cdt.managedbuilder.core.IProjectType;
+import org.eclipse.cdt.managedbuilder.core.IToolChain;
+import org.eclipse.cdt.ui.wizards.ICWizardHandler;
+
 /**
- * Interface should be implemented by some visible object
- * (usually - 1st page in CDT New Project wizard) 
- * to be informed about changes in tool chains selection 
- * performed by ICNewWizard implementors.
+ * Build-system specific methods for Wizard Handler
  */
-public interface IToolChainListListener {
-	/**
-	 * Called by ICNewWizard instance when 
-	 * user has changed tool chains selection
-	 *  
-	 * @param count - number of selected toolchains.
-	 */
-	void toolChainListChanged(int count);
-	
-	/**
-	 * @return true if this page is visible 
-	 */
-	boolean isCurrent();
+public interface ICBuildWizardHandler extends ICWizardHandler {
+
+	public IToolChain[] getSelectedToolChains();
+	public int getToolChainsCount();
+	public String getPropertyId();
+	public IProjectType getProjectType();
 }

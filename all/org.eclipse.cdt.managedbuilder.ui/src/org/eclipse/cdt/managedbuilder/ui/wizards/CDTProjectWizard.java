@@ -13,7 +13,7 @@ package org.eclipse.cdt.managedbuilder.ui.wizards;
 import org.eclipse.cdt.managedbuilder.ui.properties.Messages;
 import org.eclipse.core.resources.IProject;
 
-public class CDTProjectWizard extends NewModelProjectWizard {
+public class CDTProjectWizard extends MBSProjectWizard {
 
 	public CDTProjectWizard() {
 		super(Messages.getString("NewModelProjectWizard.0"), Messages.getString("NewModelProjectWizard.1")); //$NON-NLS-1$ //$NON-NLS-2$

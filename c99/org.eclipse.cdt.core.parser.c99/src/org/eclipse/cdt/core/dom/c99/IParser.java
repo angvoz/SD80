@@ -8,15 +8,15 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.ast;
+package org.eclipse.cdt.core.dom.c99;
 
-import org.eclipse.cdt.core.dom.ast.IASTPreprocessorElifStatement;
 
-public class ASTPreprocessorElifStatement extends ASTPreprocessorConditionalBranch 
-	implements IASTPreprocessorElifStatement {
-
-	public ASTPreprocessorElifStatement(boolean taken) {
-		super(taken);
-	}
-
+/**
+ * Represents a parser that can be used by C99Language.
+ * 
+ * @author Mike Kucera
+ */
+public interface IParser extends IPreprocessorTokenCollector {
+	
+	public IParseResult parse();
 }

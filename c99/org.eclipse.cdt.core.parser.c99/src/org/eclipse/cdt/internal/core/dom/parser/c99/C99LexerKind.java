@@ -15,7 +15,7 @@ public class C99LexerKind {
 	
 	/**
 	 * This method is required by LPG, it maps individual characters
-	 * to their character kind, the character kinds are what is recognized
+	 * to their character kind, the character kinds are recognized
 	 * by the scanner.
 	 */
 	public static int getKind(char c) {

@@ -19,19 +19,22 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
+import org.eclipse.cdt.core.dom.parser.c99.C99KeywordMap;
+import org.eclipse.cdt.core.dom.parser.c99.C99ParseResult;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.AbstractLanguage;
+import org.eclipse.cdt.core.model.ICLanguageKeywords;
 import org.eclipse.cdt.core.model.IContributedModelBuilder;
+import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IParserLogService;
 import org.eclipse.cdt.core.parser.IScannerInfo;
+import org.eclipse.cdt.internal.core.dom.parser.c.CASTTranslationUnit;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
-import org.eclipse.cdt.internal.core.dom.parser.c99.ParseResult;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99KeywordMap;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
-import org.eclipse.cdt.internal.core.parser.scanner2.ILocationResolver;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.LocationResolver;
 import org.eclipse.cdt.internal.core.pdom.dom.IPDOMLinkageFactory;
 import org.eclipse.cdt.internal.core.pdom.dom.c.PDOMCLinkageFactory;
 import org.eclipse.core.runtime.CoreException;
@@ -40,20 +43,51 @@ import org.eclipse.core.runtime.CoreException;
 /**
  * Implementation of the ILanguage extension point, adds C99 as a language to CDT.
  *
+ * @author Mike Kucera
  */
-public class C99Language extends AbstractLanguage {
-
+public class C99Language extends AbstractLanguage implements ILanguage, ICLanguageKeywords {
+	
 	// TODO: this should probably go somewhere else
 	public static final String PLUGIN_ID = "org.eclipse.cdt.core.parser.c99"; //$NON-NLS-1$ 
 	public static final String ID = PLUGIN_ID + ".c99"; //$NON-NLS-1$ 
 	
 	private static C99KeywordMap keywordMap = new C99KeywordMap();
 	
+	private static C99Language myDefault = new C99Language();
+	
+	
+	public static C99Language getDefault() {
+		return myDefault;
+	}
+	
+	
 	public Object getAdapter(Class adapter) {
 		if (adapter == IPDOMLinkageFactory.class)
 			return new PDOMCLinkageFactory();
 		else
 			return super.getAdapter(adapter);
+	}
+	
+	/**
+	 * Returns a keyword map that will provide the information necessary
+	 * to implement the methods in ICLanguageKeywords.
+	 * 
+	 * Can be overridden in subclasses to provide additional keywords
+	 * for language extensions.
+	 */
+	protected C99KeywordMap getKeywordMap() {
+		return keywordMap;
+	}
+	
+	
+	/**
+	 * Retreive the token parser (runs after the preprocessor runs).
+	 * 
+	 * Can be overridden in subclasses to provide a different parser
+	 * for a langauge extension.
+	 */
+	protected IParser getParser() {
+		return new C99Parser();
 	}
 	
 	
@@ -70,67 +104,99 @@ public class C99Language extends AbstractLanguage {
 		return null;
 	}
 
+	
+	public IASTTranslationUnit getASTTranslationUnit(CodeReader reader, IScannerInfo scanInfo,
+			ICodeReaderFactory fileCreator, IIndex index, int options, IParserLogService log) throws CoreException {
+		
+		IParseResult parseResult = parse(reader, scanInfo, fileCreator, index, null, options);
+		IASTTranslationUnit tu = parseResult.getTranslationUnit();
+
+		return tu;
+	}
+	
+	
 	public IASTTranslationUnit getASTTranslationUnit(CodeReader reader,
 			IScannerInfo scanInfo, ICodeReaderFactory fileCreator,
 			IIndex index, IParserLogService log) throws CoreException {
-
-		ParseResult parseResult = parse(reader, scanInfo, fileCreator, index);
-		IASTTranslationUnit tu = parseResult.getTranslationUnit();
-		return tu;
+		
+		return getASTTranslationUnit(reader, scanInfo, fileCreator, index, 0, log);
 	}
 
+	
 	public IASTCompletionNode getCompletionNode(CodeReader reader,
 			IScannerInfo scanInfo, ICodeReaderFactory fileCreator,
 			IIndex index, IParserLogService log, int offset) {
-
 		
-		ParseResult parseResult = completionParse(reader, scanInfo, fileCreator, index, offset);
+		IParseResult parseResult = completionParse(reader, scanInfo, fileCreator, index, offset);
 		IASTCompletionNode node = parseResult.getCompletionNode();
 		return node;
 	}
-
+	
+	
 	
 	/**
 	 * Preform the actual parse.
 	 */
-	private static ParseResult parse(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, Integer contentAssistOffset) {
+	public IParseResult parse(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, Integer contentAssistOffset) {
+		return parse(reader, scanInfo, fileCreator, index, contentAssistOffset, 0);
+	}
+	
+	/**
+	 * Preform the actual parse.
+	 */
+	public IParseResult parse(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, Integer contentAssistOffset, int options) {
 
+		boolean scanComments = (options & OPTION_ADD_COMMENTS) != 0;
+		int preprocessorOptions = scanComments ? C99Preprocessor.OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE : 0;
+		
 		ILexerFactory lexerFactory = new C99LexerFactory();
-		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, reader, scanInfo, fileCreator, keywordMap);
-		C99Parser parser = new C99Parser();
+		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, reader, scanInfo, fileCreator, preprocessorOptions);
+		IParser parser = getParser();
 
+		LocationResolver resolver = new LocationResolver();
+		
 		// the preprocessor injects tokens into the parser
-		ILocationResolver resolver;
 		if (contentAssistOffset == null)
-			resolver = preprocessor.preprocess(parser);
+			preprocessor.preprocess(parser, resolver);
 		else
-			resolver = preprocessor.preprocess(parser, contentAssistOffset.intValue());
+			preprocessor.preprocess(parser, resolver, contentAssistOffset.intValue());
 
-		if (resolver == null)
-			return new ParseResult(null, null, true); 
+		if(preprocessor.encounteredError())
+			return new C99ParseResult(null, null, true);
 
-		parser.prepareToParse();
+		// bit of a CDT AST specific hack
+		IParseResult result = parser.parse();
+		if(result.getTranslationUnit() instanceof CASTTranslationUnit) {
+			CASTTranslationUnit tu = (CASTTranslationUnit) result.getTranslationUnit();
+			tu.setIndex(index);
+			tu.setLocationResolver(resolver);
+		}
 
-		IASTTranslationUnit tu = parser.parse(resolver, index);
-		boolean encounteredError = parser.encounteredError();
-		IASTCompletionNode compNode = parser.getASTCompletionNode();
-
-		return new ParseResult(tu, compNode, encounteredError);
+		return result;
 	}
 
 	
-	public static ParseResult parse(CodeReader reader, IScannerInfo scanInfo,
+	
+	/**
+	 * Public so that these methods may be called directly from unit tests.
+	 */
+	public IParseResult parse(CodeReader reader, IScannerInfo scanInfo,
 			ICodeReaderFactory fileCreator, IIndex index) {
 
 		return parse(reader, scanInfo, fileCreator, index, null);
 	}
 
-	public static ParseResult completionParse(CodeReader reader,
+	
+	/**
+	 * Public so that these methods may be called directly from unit tests.
+	 */
+	public IParseResult completionParse(CodeReader reader,
 			IScannerInfo scanInfo, ICodeReaderFactory fileCreator,
 			IIndex index, int offset) {
 
 		return parse(reader, scanInfo, fileCreator, index, new Integer(offset));
 	}
+	
 	
 	
 	
@@ -159,19 +225,19 @@ public class C99Language extends AbstractLanguage {
 	}
 
 
+	
 	public String[] getBuiltinTypes() {
-		return keywordMap.getBuiltinTypes();
+		return getKeywordMap().getBuiltinTypes();
 	}
 
 
 	public String[] getKeywords() {
-		return keywordMap.getKeywords();
+		return getKeywordMap().getKeywords();
 	}
 
 
 	public String[] getPreprocessorKeywords() {
-		return keywordMap.getPreprocessorKeywords();
+		return getKeywordMap().getPreprocessorKeywords();
 	}
-
 
 }

@@ -8,14 +8,18 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.ast;
+package org.eclipse.cdt.core.dom.c99;
 
-import org.eclipse.cdt.core.dom.ast.IASTPreprocessorIfStatement;
+import lpg.lpgjavaruntime.IToken;
 
-public class ASTPreprocessorIfStatement extends ASTPreprocessorConditionalBranch implements
-		IASTPreprocessorIfStatement {
 
-	public ASTPreprocessorIfStatement(boolean taken) {
-		super(taken);
-	}
+/**
+ * Collects the output of the preprocessor.
+ *
+ * The preprocessor injects tokens directly into the parser via this interface.
+ */
+public interface IPreprocessorTokenCollector {
+	
+	void addToken(IToken token);
+	void addCommentToken(IToken token);
 }

@@ -73,8 +73,34 @@ public class TokenList {
 	}
 	
 	public String toString() {
-		return list.toString();
+		if(isEmpty())
+			return ""; //$NON-NLS-1$
+		
+		StringBuffer sb = new StringBuffer();
+		
+		Iterator iter = iterator();
+		IToken prevToken = (IToken) iter.next();
+		sb.append(prevToken.toString());
+		
+		while(iter.hasNext()) {
+			IToken token = (IToken) iter.next();
+			addSpaceBetween(sb, prevToken, token);
+			sb.append(token.toString());
+			prevToken = token;
+		}
+		return sb.toString();
 	}
+	
+	/**
+	 * Adds the number of characters of whitespace between the two tokens.
+	 */
+	private static void addSpaceBetween(StringBuffer sb, IToken t1, IToken t2) {
+		int numSpaces = t2.getStartOffset() - (t1.getEndOffset() + 1);
+		for(int i = 0; i < numSpaces; i++) {
+			sb.append(' ');
+		}
+	}
+	
 	
 	/**
 	 * Used for testing.

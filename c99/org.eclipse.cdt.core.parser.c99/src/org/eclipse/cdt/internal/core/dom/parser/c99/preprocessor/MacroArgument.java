@@ -16,7 +16,7 @@ import java.util.Iterator;
 import lpg.lpgjavaruntime.IToken;
 
 /**
- * Represents a list of tokens that is an argument to a macro invocation.
+ * Represents a list of tokens that compromise an argument to a macro invocation.
  * 
  * When computing a macro invocation the arguments to the
  * macro are usually recursively processed. However, when a

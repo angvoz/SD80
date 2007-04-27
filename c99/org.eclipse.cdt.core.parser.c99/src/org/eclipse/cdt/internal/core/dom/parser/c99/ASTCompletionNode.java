@@ -31,9 +31,6 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
  * of the source may be parsed more than once (for example, as an expression then as a declaration).
  * This results in an ambiguity node in the tree and one name node for each of the ways it was parsed.
  * 
- * Disclaimer: Currently there is no ambiguity resolution in the C99 parser
- * so there will always be exactly one name node, for the time being.
- * 
  * The full AST may be accessed via getTranslationUnit() or by following
  * the parent pointers of the name nodes.
  * 

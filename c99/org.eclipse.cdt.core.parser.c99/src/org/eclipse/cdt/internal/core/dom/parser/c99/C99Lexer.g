@@ -40,43 +40,8 @@ $Notice
 $End
 
 $Export
-	auto
-	break
-	case
-	char
-	const
-	continue
-	default
-	do
-	double
-	else
-	enum
-	extern
-	float
-	for
-	goto
-	if
-	inline
-	int
-	long
-	register
-	restrict
-	return
-	short
-	signed
-	sizeof
-	static
-	struct
-	switch
-	typedef
-	union
-	unsigned
-	void
-	volatile
-	while
-	_Bool
-	_Complex
-	_Imaginary
+	
+	-- identifiers will be converted into keywords by the preprocessor
 	identifier
 	integer
 	floating
@@ -155,11 +120,14 @@ $Export
 	-- parser to terminate successfully without actually parsing the rest of the input
 	EndOfCompletion
 	
+	SingleLineComment
+	MultiLineComment
 $End
 
 $Globals
 /.
 	import org.eclipse.cdt.core.parser.CodeReader;
+	import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerKind;
     import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
     import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
     import org.eclipse.cdt.core.dom.c99.ILexer;
@@ -176,13 +144,17 @@ $End
 $Headers
 /.
 	private TokenList tokenList = null;
+	private boolean returnCommentTokens = false;
        
     public $action_type(CodeReader reader) {
     	super(reader.buffer, new String(reader.filename));
     }
     
     // defined in interface ILexer
-    public synchronized TokenList lex() {
+    public synchronized TokenList lex(int options) {
+    	if((OPTION_GENERATE_COMMENT_TOKENS & options) != 0)
+    		returnCommentTokens = true;
+    		
 		tokenList = new TokenList();
             
         lexParser.parseCharacters(null);  // Lex the input characters
@@ -193,6 +165,9 @@ $Headers
     }
     
     protected void makeToken(int kind) {
+    	if(!returnCommentTokens && (kind == $_MultiLineComment || kind == $_SingleLineComment))
+    		return;
+    		
 		int startOffset = getLeftSpan();
 		int endOffset   = getRightSpan();
 		
@@ -453,9 +428,15 @@ $Rules
     Token ::= '\' NewLine
     
     Token ::= WS
-    Token ::= SLC
-    Token ::= MLC
     
+    
+    -- create comment nodes for the AST, the parser and preprocessor will never see comments
+    Token ::= SLC
+    	/.$ba  makeToken($_SingleLineComment); $ea./
+    	
+    Token ::= MLC
+    	/.$ba  makeToken($_MultiLineComment); $ea./
+    	
     
     WS -> ws-char
 	    | WS ws-char

@@ -16,6 +16,7 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 import lpg.lpgjavaruntime.*;
 
 import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerKind;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
 import org.eclipse.cdt.core.dom.c99.ILexer;
@@ -62,7 +63,7 @@ public class C99Lexer extends LpgLexStream implements C99Parsersym, C99Lexersym,
     public void lexer(Monitor monitor, PrsStream prsStream)
     {
         if (getInputChars() == null)
-            throw new NullPointerException(Messages.getString("C99Lexer.0")); //$NON-NLS-1$
+            throw new NullPointerException("LexStream was not initialized"); //$NON-NLS-1$
 
         this.prsStream = prsStream;
 
@@ -78,13 +79,17 @@ public class C99Lexer extends LpgLexStream implements C99Parsersym, C99Lexersym,
     }
 
 private TokenList tokenList = null;
+private boolean returnCommentTokens = false;
    
 public C99Lexer(CodeReader reader) {
 	super(reader.buffer, new String(reader.filename));
 }
 
 // defined in interface ILexer
-public synchronized TokenList lex() {
+public synchronized TokenList lex(int options) {
+	if((OPTION_GENERATE_COMMENT_TOKENS & options) != 0)
+		returnCommentTokens = true;
+		
 	tokenList = new TokenList();
         
     lexParser.parseCharacters(null);  // Lex the input characters
@@ -95,6 +100,9 @@ public synchronized TokenList lex() {
 }
 
 protected void makeToken(int kind) {
+	if(!returnCommentTokens && (kind == TK_MultiLineComment || kind == TK_SingleLineComment))
+		return;
+		
 	int startOffset = getLeftSpan();
 	int endOffset   = getRightSpan();
 	
@@ -480,6 +488,18 @@ public int getKind(int i) {
             // Rule 215:  Token ::= NewLine
             //
             case 215: {   makeToken(TK_NewLine);           break;
+            }
+ 
+            //
+            // Rule 219:  Token ::= SLC
+            //
+            case 219: {   makeToken(TK_SingleLineComment);           break;
+            }
+ 
+            //
+            // Rule 220:  Token ::= MLC
+            //
+            case 220: {   makeToken(TK_MultiLineComment);           break;
             }
 
     

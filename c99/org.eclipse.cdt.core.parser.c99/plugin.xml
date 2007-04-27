@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.2"?>
 <plugin>
-   <extension
-         point="org.eclipse.cdt.core.language">
+    
+   <extension point="org.eclipse.cdt.core.language">
       <language
             class="org.eclipse.cdt.core.dom.c99.C99Language"
             id="c99"
@@ -10,9 +10,11 @@
          <contentType id="org.eclipse.cdt.core.cSource"/>
          <contentType id="org.eclipse.cdt.core.cHeader"/>
       </language>
+
       <pdomLinkageFactory
             class="org.eclipse.cdt.internal.core.pdom.dom.c.PDOMCLinkageFactory"
             id="c99"/>
+            
    </extension>
    
 </plugin>

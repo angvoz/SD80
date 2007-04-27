@@ -10,16 +10,26 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.c99;
 
+import java.util.List;
+
 import lpg.lpgjavaruntime.IToken;
 
-
 /**
- * Collects the output of the preprocessor.
+ * Proides an interface to the token stream that
+ * can be used by the parser semantic actions (C99ParseAction).
+ * 
+ * Allows the semantic actions to directly inspect the token 
+ * stream. Used to calcuate AST node offsets and for 
+ * other purposes.
+ * 
+ * @author Mike Kucera
  *
- * The preprocessor injects tokens into the parser via this interface.
  */
-public interface IPreprocessorTokenOuput {
-	
-	void addToken(IToken token);
-	
+public interface IParserActionTokenProvider {
+	public IToken getRightIToken();
+	public IToken getLeftIToken();
+	public IToken getEOFToken();
+	public int getRuleTokenCount();
+	public List getRuleTokens();
+	public List getCommentTokens();
 }

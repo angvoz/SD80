@@ -13,8 +13,10 @@ package org.eclipse.cdt.core.parser.c99.tests;
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2KnRTests;
+import org.eclipse.cdt.internal.core.parser.ParserException;
 
 
 /**
@@ -24,18 +26,24 @@ import org.eclipse.cdt.core.parser.tests.ast2.AST2KnRTests;
 public class C99KnRTests extends AST2KnRTests {
 	
 	
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) {
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) throws ParserException {
 	    return parse(code, lang, false, true );
 	}
 	    
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) {
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) throws ParserException {
 	    return parse( code, lang, useGNUExtensions, true );
 	}
 	 
-    protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) {
-    	return ParseHelper.parse(code, lang, expectNoProblems);
+    protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
+    	if(lang == ParserLanguage.C)
+    		return ParseHelper.parse(code, getLanguage(), expectNoProblems);
+    	else
+    		return super.parse(code, lang, useGNUExtensions, expectNoProblems);
     }
     
+    protected C99Language getLanguage() {
+    	return new C99Language();
+    }
     
     // TODO: Failing tests, will get around to fixing these bugs
     

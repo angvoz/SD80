@@ -13,6 +13,7 @@ package org.eclipse.cdt.core.parser.c99.tests;
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2Tests;
 import org.eclipse.cdt.internal.core.parser.ParserException;
@@ -26,9 +27,8 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
 public class C99Tests extends AST2Tests {
 
 	
-	public C99Tests() {
-	}
 	
+
 	public C99Tests(String name) {
 		super(name);
 	}
@@ -52,10 +52,13 @@ public class C99Tests extends AST2Tests {
     	if(lang != ParserLanguage.C)
     		return super.parse(code, lang, useGNUExtensions, expectNoProblems);
     	
-    	return ParseHelper.parse(code, lang, expectNoProblems);
+    	return ParseHelper.parse(code, getC99Language(), expectNoProblems);
     }
     
     
+    protected C99Language getC99Language() {
+    	return new C99Language();
+    }
     
     
 	// Tests that are failing at this point

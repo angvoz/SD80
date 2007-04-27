@@ -8,24 +8,27 @@
 * Contributors:
 *     IBM Corporation - initial API and implementation
 *********************************************************************************/
-package org.eclipse.cdt.internal.core.dom.parser.c99;
+package org.eclipse.cdt.core.dom.parser.c99;
 
 import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.IParseResult;
 
 /**
  * Groups the results of a parse into one handy object.
  *
+ * In the future it would be nice to extend this object
+ * with diagnostic information about parse errors.
  */
-public class ParseResult {
+public class C99ParseResult implements IParseResult {
 	private boolean encounteredError;
 	private IASTTranslationUnit translationUnit;
 	private IASTCompletionNode completionNode;
 	
 	
-	public ParseResult() {}
+	public C99ParseResult() {}
 	
-	public ParseResult(IASTTranslationUnit tu, IASTCompletionNode compNode, boolean encounteredError) {
+	public C99ParseResult(IASTTranslationUnit tu, IASTCompletionNode compNode, boolean encounteredError) {
 		this.translationUnit = tu;
 		this.completionNode = compNode;
 		this.encounteredError = encounteredError;

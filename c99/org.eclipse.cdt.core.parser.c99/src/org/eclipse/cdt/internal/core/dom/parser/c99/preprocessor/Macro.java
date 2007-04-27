@@ -62,6 +62,7 @@ public class Macro implements C99Parsersym {
 	 * @param id The name of the macro
 	 * @param parameters List<String>
 	 * @param replacementSequence List<IToken>
+	 * @param startOffset The offset of the '#' token that started the define for this macro.
 	 */
 	public Macro(IToken name, TokenList replacementSequence, int startOffset, int endOffset, LinkedHashSet paramNames, String varArgParamName) {
 		// TODO: the code might not be correct, doesn't mean that its an exception
@@ -74,14 +75,15 @@ public class Macro implements C99Parsersym {
 		if(varArgParamName != null && paramNames.contains(varArgParamName))
 			throw new IllegalArgumentException(Messages.getString("Macro.3") + "'" + varArgParamName + "'");  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 		
+		this.replacementSequence = replacementSequence;
+		normalizeReplacementSequenceOffsets(this.replacementSequence);
+		
 		this.name = name;
 		this.paramNames = paramNames;
-		this.replacementSequence = replacementSequence;
 		this.startOffset = startOffset;
 		this.endOffset = endOffset;
 		this.varArgParamName = varArgParamName;
 	}
-	
 	
 	/**
 	 * Creates an object like macro with no parameters
@@ -90,6 +92,24 @@ public class Macro implements C99Parsersym {
 		this(name, replacementSequence, startOffset, endOffset, null, null);
 	}
 	
+	
+	/**
+	 * Normalizes the token offsets of the replacement sequence so that 
+	 * they start at zero. This way we don't have to worry about the actual
+	 * location of the #define in the source code when substituting arguments.
+	 */
+	private static void normalizeReplacementSequenceOffsets(TokenList replacementSequence) {
+		if(replacementSequence == null || replacementSequence.isEmpty())
+			return;
+		
+		int offset = replacementSequence.first().getStartOffset();
+		Iterator iter = replacementSequence.iterator();
+		while(iter.hasNext()) {
+			IToken token = (IToken) iter.next();
+			token.setStartOffset(token.getStartOffset() - offset);
+			token.setEndOffset(token.getEndOffset() - offset);
+		}
+	}
 	
 	/**
 	 * Returns true iff the number of arguments passed to a macro invocation is correct.
@@ -105,19 +125,15 @@ public class Macro implements C99Parsersym {
 			return false;
 		
 		int numParams = getNumParams();
-
-		return (numArgs == numParams)  || 
-		       (isVarArgs() && numArgs == numParams + 1);
+		return (numArgs == numParams)  ||  (isVarArgs() && numArgs == numParams + 1);
 	}
-	
-	
-	
 	
 	
 	/**
 	 * PlaceMarker tokens are used to replace empty arguments.
 	 */
 	private static MacroArgument createPlaceMarker() {
+		// TODO: so wrong, can't be 0,0
 		TokenList placeMaker = new TokenList(new C99Token(0, 0, TK_PlaceMarker, "")); //$NON-NLS-1$
 		return new MacroArgument(placeMaker, null);
 	}
@@ -159,23 +175,19 @@ public class Macro implements C99Parsersym {
 	private class InvokationResultCollector {
 		
 		private TokenList result = new TokenList();
+		
+		// Used to compute offsets of tokens as they are added to the result
 		private int offset = 0;
-		private final int fileOffset;
 		
-		public InvokationResultCollector(int fileOffset) {
-			this.fileOffset = fileOffset;
-		}
 		
+		/**
+		 * @param token Must be a normalized token from the replacementSequence.
+		 */
 		public void addToken(IToken token) {
 			IToken t = new C99Token(token);
-			t.setStartOffset(adjust(t.getStartOffset()));
-			t.setEndOffset(adjust(t.getEndOffset()));
+			t.setStartOffset(t.getStartOffset() + offset);
+			t.setEndOffset(t.getEndOffset() + offset);
 			add(t);
-		}
-		
-		
-		private int adjust(int tokenOffset) {
-			return tokenOffset - fileOffset + offset;
 		}
 		
 		
@@ -184,10 +196,10 @@ public class Macro implements C99Parsersym {
 				return; 
 			
 			int argSourceOffset = argument.first().getStartOffset();
-			int argSize = argSourceOffset - argument.last().getEndOffset();
+			int argSize = argument.last().getEndOffset() - argSourceOffset;
 					
-			int parameterOffset = adjust(parameter.getStartOffset());
 			int paramSize = parameter.getEndOffset() - parameter.getStartOffset() + 1;
+			int parameterOffset = parameter.getStartOffset() + offset;
 			
 			for(Iterator iter = argument.iterator(); iter.hasNext();) {
 				IToken t = new C99Token((IToken)iter.next());
@@ -196,7 +208,7 @@ public class Macro implements C99Parsersym {
 				add(t);
 			}
 			
-			offset += argSize - paramSize;
+			offset += (argSize - paramSize) + 1;
 		}
 		
 		
@@ -207,8 +219,10 @@ public class Macro implements C99Parsersym {
 		}
 		
 		private void add(IToken t) {
+			// prevents recursive replacement of the macro
 			if(t.getKind() == TK_identifier && t.toString().equals(name.toString()))
-				t.setKind(TK_DisabledMacroName);
+				t.setKind(TK_DisabledMacroName); 
+			
 			result.add(t);
 		}
 		
@@ -220,6 +234,7 @@ public class Macro implements C99Parsersym {
 	
 	/**
 	 * For object like macros, just returns the replacement sequence.
+	 * @param invokeOffset The offset where the macro is being invoked.
 	 */
 	public TokenList invoke() {
 		return invoke(null);
@@ -229,17 +244,15 @@ public class Macro implements C99Parsersym {
 	/**
 	 * Invokes the macro with the given arguments.
 	 * @throws IllegalArgumentException if the wrong number of arguments is passed
+	 * @return null if there was some kind of syntax or parameter error during macro invokation
 	 */
 	public TokenList invoke(List/*<MacroArgument>*/ arguments) {
-		if(arguments != null && !isCorrectNumberOfArguments(arguments.size())) {
+		if(arguments != null && !isCorrectNumberOfArguments(arguments.size()))
 			throw new IllegalArgumentException(Messages.getString("Macro.5")); //$NON-NLS-1$
-		}
-		
-		if(replacementSequence.isEmpty()) {
+		if(replacementSequence.isEmpty())
 			return new TokenList();
-		}
 
-		InvokationResultCollector result = new InvokationResultCollector(replacementSequence.first().getStartOffset());
+		InvokationResultCollector result = new InvokationResultCollector();
 		Map replacementMap = createReplacementMap(arguments);
 		
 		Iterator iter = replacementSequence.iterator();
@@ -252,22 +265,19 @@ public class Macro implements C99Parsersym {
 			window[i] = slide(iter);
 		
 		while(window[0] != null) {
-			if(window[0].getKind() == TK_HashHash) { // TODO, the replacement sequence starts with a ##, not allowed, maybe detect this when the macro is created
+			if(window[0].getKind() == TK_HashHash) { // the replacement sequence starts with a ##, thats an error
 				return null;
-				// TODO: problem
 			}
 			else if(window[1] != null && window[1].getKind() == TK_HashHash) {
 				if(window[2] == null) {
 					return null;
-					// TODO: problem
 				}
 				else {
 					TokenList op1 = getHashHashOperand(window[0], replacementMap);
 					TokenList op2 = getHashHashOperand(window[2], replacementMap);
 					
-					IToken newToken = concatenateTokens(op1.removeLast(), op2.removeFirst());
-					
-					result.addArgument(window[0], op1);
+					IToken newToken = concatenateTokens(op1.removeLast(), op2.removeFirst(), window[0].getStartOffset(), window[2].getEndOffset());
+					result.addArgument(window[0], op1); // op1 might be empty if it originally had only one token
 					
 					if(op2.isEmpty()) {
 						window[0] = newToken;
@@ -285,19 +295,31 @@ public class Macro implements C99Parsersym {
 			else if(window[0].getKind() == TK_Hash) {
 				if(window[1] == null) {
 					return null;
-					// TODO: problem
 				}
 				else if(window[1].getKind() == TK_Parameter) {
 					MacroArgument arg = (MacroArgument) replacementMap.get(window[1].toString());
-					IToken strToken = createStringToken(arg.getRawTokens());
-	
-					window[0] = strToken;
-					window[1] = window[2];
-					window[2] = slide(iter);
+					if(arg == null)
+						return null;
+					
+					TokenList rawTokens = arg.getRawTokens();
+					if(rawTokens.isEmpty()) {
+						window[0] = window[2];
+						window[1] = slide(iter);
+						window[2] = slide(iter);
+					}
+					else {
+						String newString = handleHashOperator(rawTokens);
+						int startOffset = window[0].getStartOffset(); // the hash
+						int endOffset   = window[1].getStartOffset() + newString.length() - 2; // don't count the double quotes in the string
+						IToken strToken = new C99Token(startOffset, endOffset, TK_stringlit, newString);
+						
+						window[0] = strToken;
+						window[1] = window[2];
+						window[2] = slide(iter);
+					}
 				}
 				else {
-					//return null;
-					// TODO: problem
+					return null;
 				}
 			}
 			else if(window[0].getKind() == TK_Parameter) {
@@ -323,11 +345,10 @@ public class Macro implements C99Parsersym {
 	
 	
 	
-	
 	private static TokenList getHashHashOperand(IToken replacementToken, Map replacementMap) {
 		if(replacementToken.getKind() == TK_Parameter) {
 			MacroArgument op1 = (MacroArgument) replacementMap.get(replacementToken.toString());
-			return op1.getRawTokens();
+			return op1.getRawTokens(); // do not process the tokens
 		}
 		else {
 			return new TokenList(replacementToken);
@@ -347,35 +368,28 @@ public class Macro implements C99Parsersym {
 	/**
 	 * Combines two tokens into one, used by the ## operator.
 	 */
-	private IToken concatenateTokens(IToken x, IToken y) {
+	private IToken concatenateTokens(IToken x, IToken y, int startOffset, int endOffset) {
 		int xkind = x.getKind();
 		int ykind = y.getKind();
 		
+		int kind = TK_Invalid;
+		
 		if(xkind == TK_PlaceMarker && ykind == TK_PlaceMarker) {
-			return new C99Token(0, 0, TK_PlaceMarker, ""); //$NON-NLS-1$
+			kind = TK_PlaceMarker;
 		}
-		if((xkind == TK_integer || xkind == TK_PlaceMarker) &&
-		   (ykind == TK_integer || ykind == TK_PlaceMarker))
-		{
-			return concatenateTokens(x, y, TK_integer);
+		else if((xkind == TK_integer || xkind == TK_PlaceMarker) &&
+		        (ykind == TK_integer || ykind == TK_PlaceMarker)) {
+			kind = TK_integer;
 		}
-		
-		if(xkind == TK_identifier && ykind == TK_integer) {
-			return concatenateTokens(x, y, TK_identifier);
+		else if(xkind == TK_identifier && ykind == TK_integer) {
+			kind = TK_identifier;
 		}
-		
-		if((xkind == TK_identifier || xkind == TK_DisabledMacroName) &&
-		   (ykind == TK_identifier || ykind == TK_DisabledMacroName)) {
-			return concatenateTokens(x, y, TK_identifier);
+		else if((xkind == TK_identifier || xkind == TK_DisabledMacroName) &&
+		        (ykind == TK_identifier || ykind == TK_DisabledMacroName)) {
+			kind = TK_identifier;
 		}
 		
-		return concatenateTokens(x, y, TK_Invalid);
-	}
-	
-	
-	
-	private IToken concatenateTokens(IToken x, IToken y, int kind) {
-		return new C99Token(x.getStartOffset(), y.getEndOffset(), kind, x.toString() + y.toString());
+		return new C99Token(startOffset, endOffset, kind, x.toString() + y.toString());
 	}
 	
 	
@@ -383,37 +397,25 @@ public class Macro implements C99Parsersym {
 	 * Converts a list of tokens into a single string literal token,
 	 * used by the # operator.
 	 */
-	private IToken createStringToken(TokenList replacement) {
+	private String handleHashOperator(TokenList replacement) {
 		// TODO: can use C99Preprocessor.spaceBetween to make this more accurate if necessary
 		StringBuffer sb = new StringBuffer().append('"');
 		
 		Iterator iter = replacement.iterator();
 		while(iter.hasNext()) {
 			IToken token = (IToken) iter.next();
-			sb.append(token.toString().replace("\"", "\\\"")); // replace " with \" //$NON-NLS-1$ //$NON-NLS-2$
+			sb.append(token.toString().replace("\"", "\\\"")); // replace " with \"
 			if(iter.hasNext())
 				sb.append(' ');
 		}
 		sb.append('"');
 		
-		int start = replacement.first().getStartOffset();
-		int end   = replacement.last().getEndOffset();
-		return new C99Token(start, end, TK_stringlit, sb.toString());
+		return sb.toString();
 	}
 	
 
-	public String getReplacementSequenceAsString() {
-		StringBuffer sb = new StringBuffer();
-		
-		Iterator iter = replacementSequence.iterator();
-		while(iter.hasNext()) {
-			IToken token = (IToken) iter.next();
-			sb.append(token.toString());
-			if(iter.hasNext())
-				sb.append(' ');
-		}
-		
-		return sb.toString();
+	public String getExpansion() {
+		return replacementSequence.toString();
 	}
 	
 	

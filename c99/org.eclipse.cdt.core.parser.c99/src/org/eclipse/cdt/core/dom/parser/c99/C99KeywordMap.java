@@ -9,13 +9,14 @@
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
+package org.eclipse.cdt.core.dom.parser.c99;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.cdt.core.dom.c99.IKeywordMap;
 import org.eclipse.cdt.core.model.ICLanguageKeywords;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 
@@ -92,6 +93,11 @@ public class C99KeywordMap implements IKeywordMap, ICLanguageKeywords {
 		addKeywords();
 		addBuiltinTypes();
 		addPreprocessorKeywords();
+	}
+	
+	
+	public Integer getKeywordKind(String identifier) {
+		return (Integer) keywords.get(identifier);
 	}
 	
 	
@@ -191,9 +197,7 @@ public class C99KeywordMap implements IKeywordMap, ICLanguageKeywords {
 		return (String[]) preprocessorKeywords.toArray(new String[0]);
 	}
 
-	public Integer getKeywordKind(String identifier) {
-		return (Integer) keywords.get(identifier);
-	}
+	
 
 	
 	

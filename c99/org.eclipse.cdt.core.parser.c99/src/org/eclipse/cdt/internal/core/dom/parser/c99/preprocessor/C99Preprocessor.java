@@ -11,9 +11,8 @@
 
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
-
-
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,16 +24,18 @@ import lpg.lpgjavaruntime.IToken;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.IMacroCollector;
+import org.eclipse.cdt.core.dom.ast.IASTComment;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.c99.ILexer;
 import org.eclipse.cdt.core.dom.c99.ILexerFactory;
-import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenOuput;
+import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.IExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IMacro;
+import org.eclipse.cdt.core.parser.IProblem;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99ExprEvaluator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
-import org.eclipse.cdt.internal.core.parser.scanner2.ILocationResolver;
 import org.eclipse.cdt.internal.core.parser.scanner2.ScannerASTProblem;
 import org.eclipse.cdt.internal.core.parser.scanner2.ScannerUtility;
 
@@ -45,6 +46,8 @@ import org.eclipse.cdt.internal.core.parser.scanner2.ScannerUtility;
  */
 public class C99Preprocessor implements C99Parsersym {
 
+	public static final int OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE = 1;
+	public static final int OPTION_GENERATE_ALL_COMMENTS = 2;
 	
 	private static final String DEFINED_OPERATOR = "defined"; //$NON-NLS-1$
 	private static final String DIRECTIVE_COMPLETION_TOKEN_PREFIX = "#"; //$NON-NLS-1$
@@ -54,21 +57,25 @@ public class C99Preprocessor implements C99Parsersym {
 	// generating a Completion token.
 	private static final int NUM_EOC_TOKENS = 20;
 	
-	private final IKeywordMap keywordMap; // used to recognize certain identifiers as keywords 
+	//private final IKeywordMap keywordMap; // used to recognize certain identifiers as keywords 
 	private final CodeReader codeReader; // The code reader that stores the source character stream of the file
 	private final IScannerInfo scanInfo; // Used to resolve includes and get access to macro definitions
 	private final ILexerFactory lexerFactory; // Used to create lexers for included files
 	private final ICodeReaderFactory codeReaderFactory; // Used to get source character buffers of included files
 	
+	private final boolean generateAllComments;
+	private final boolean generateActiveComments;
 	
 	private MacroEnvironment env; // Stores macro definitions created by #define
 	private TokenList argumentOutputStream; // Used to collect the output when a macro argument is processed
 	private InputTokenStream inputTokenStream; // stores tokens that have yet to be processed
-	private IPreprocessorTokenOuput parser; // tokens are injected directly into the parser
+	private IPreprocessorTokenCollector parser; // tokens are injected directly into the parser
 	private IPreprocessorLog log; // resolves source offset location information
 	private TokenExpansionMap tokenExpansionMap; // tracks certain tokens that are the result of macro expansion
-	private C99Token lastTokenOutput = null; // used to detect adjacent string literals for concatenation
+	private IToken lastTokenOutput = null; // used to detect adjacent string literals for concatenation
+	private int lastKindOutput; // used to detect adjacent string literals for concatenation
 	
+	private boolean encounteredError = false;
 	
 	private static class PreprocessorInternalParseException extends RuntimeException {}
 	private static class PreprocessorAbortParseException extends RuntimeException {}
@@ -80,24 +87,23 @@ public class C99Preprocessor implements C99Parsersym {
 	 */
 	public C99Preprocessor(ILexerFactory lexerFactory, 
 			CodeReader reader, IScannerInfo scanInfo,
-			ICodeReaderFactory fileCreator, IKeywordMap keywordMap) {
+			ICodeReaderFactory fileCreator, int options) {
 		
-		this.keywordMap = keywordMap;
 		this.codeReader = reader;
 		this.scanInfo = scanInfo;
 		this.lexerFactory = lexerFactory;
 		this.codeReaderFactory = fileCreator;
+		
+		this.generateActiveComments = (options & OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE) != 0;
+		this.generateAllComments    = (options & OPTION_GENERATE_ALL_COMMENTS) != 0;
 	}
-
+	
 	
 	/**
-	 * Creates a preprocessor using the standard C99 keywords.
+	 * Returns true iff an error was encountered during preprocessing.
 	 */
-	public C99Preprocessor(ILexerFactory lexerFactory, 
-			CodeReader reader, IScannerInfo scanInfo,
-			ICodeReaderFactory fileCreator) {
-		
-		this(lexerFactory, reader, scanInfo, fileCreator, new C99KeywordMap());
+	public boolean encounteredError() {
+		return encounteredError;
 	}
 	
 	
@@ -108,11 +114,11 @@ public class C99Preprocessor implements C99Parsersym {
 	 * @return null if preprocessing fails
 	 * @throws IllegalArgumentException if parser is null
 	 */
-	public synchronized ILocationResolver preprocess(IPreprocessorTokenOuput parser) {
+	public synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log) {
 		if(parser == null)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.0")); //$NON-NLS-1$
 		
-		return preprocess(parser, new InputTokenStream());
+		preprocess(parser, log, new InputTokenStream(parser));
 	}
 	
 	
@@ -124,57 +130,55 @@ public class C99Preprocessor implements C99Parsersym {
 	 * @throws IllegalArgumentException if contentAssistOffset < 0
 	 * @throws IllegalArgumentException if parser is null
 	 */
-	public synchronized ILocationResolver preprocess(IPreprocessorTokenOuput parser, int contentAssistOffset) {
+	public synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log, int contentAssistOffset) {
 		if(parser == null)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.0")); //$NON-NLS-1$
 		if(contentAssistOffset < 0)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.2")); //$NON-NLS-1$
 		
-		InputTokenStream inputTokenStream = new InputTokenStream();
+		InputTokenStream inputTokenStream = new InputTokenStream(parser);
 		inputTokenStream.setContentAssistOffset(contentAssistOffset);
-		return preprocess(parser, inputTokenStream);
+		preprocess(parser, log, inputTokenStream);
 		
 	}
 	
 	
-	private synchronized ILocationResolver preprocess(IPreprocessorTokenOuput parser, InputTokenStream inputTokenStream) {
+	private synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log, InputTokenStream inputTokenStream) {
 		assert inputTokenStream != null;
 		
-		LocationResolver locationResolver = new LocationResolver();
-		
+		this.log = log;
 		this.parser = parser;
-		this.log = locationResolver;
 		this.env = new MacroEnvironment();
 		this.tokenExpansionMap = new TokenExpansionMap();
 		this.inputTokenStream = inputTokenStream;
 		
 		try {
+			inputTokenStream.setCollectCommentTokens(generateActiveComments | generateAllComments);
+			
 			// add external macro definitions given by IScannerInfo.getDefinedSymbols()
 			addMacroDefinitions();
-			
 			// LPG requires that the parse stream must start with a dummy token
 			parser.addToken(C99Token.DUMMY_TOKEN); 
 	
-			log.startTranslationUnit(codeReader);
+			if(log != null)
+				log.startTranslationUnit(codeReader);
 			
-			ILexer lexer = lexerFactory.createLexer(codeReader);
-			TokenList tokens = lexer.lex();
-		
-			inputTokenStream.pushIncludeContext(tokens, codeReader, 0, null);
 			
-			preprocessingFile(); // throws AbortParseException
+			TokenList tokenList = lex(codeReader);
+			inputTokenStream.pushIncludeContext(tokenList, codeReader, 0, null);
+			
+			processExtendedScannerInfoMacrosAndIncludes(); // add any files that should be manually included for tests
+			
+			process(); // throws PreprocessorAbortParseException
 			
 			int tuSize = inputTokenStream.getTranslationUnitSize();
 			parser.addToken(new C99Token(tuSize, tuSize, TK_EOF_TOKEN, "<EOF>")); //$NON-NLS-1$
 			
-			log.endTranslationUnit(tuSize);
+			if(log != null)
+				log.endTranslationUnit(tuSize);
 		}
 		catch(PreprocessorAbortParseException e) {
-			return null;
-		}
-		catch(RuntimeException e) {
-			e.printStackTrace();
-			throw e;
+			encounteredError = true;
 		}
 		finally {
 			// clean up
@@ -185,39 +189,136 @@ public class C99Preprocessor implements C99Parsersym {
 			this.lastTokenOutput = null;
 			this.tokenExpansionMap = null;
 		}
-		
-		return locationResolver;
 	}
 	
 	
-
-	
+	/**
+	 * I believe that IExtendedScannerInfo is mainly used by the tests
+	 * to manually include files for testing.
+	 */
+	private void processExtendedScannerInfoMacrosAndIncludes() {
+		if(scanInfo instanceof IExtendedScannerInfo) {
+			IExtendedScannerInfo einfo = (IExtendedScannerInfo) scanInfo;
+			addExtendedScannerInfoIncludes(einfo.getMacroFiles());
+			addExtendedScannerInfoIncludes(einfo.getIncludeFiles());
+		}
+	}
 
 	/**
-	 * Recursively processes an included file.
+	 * Adds the included files to the input stream. Does not fire
+	 * log callbacks and treats each file as if it had a length
+	 * of 0. This should only be used for testing.
 	 */
-	private void processIncludedFile(final CodeReader reader, int directiveStartOffset, int directiveEndOffset, 
-			                         int nameStartOffset, int nameEndOffset, String name, boolean systemInclude) {
-		// Lex the file into tokens
-		ILexer lexer = lexerFactory.createLexer(reader);
-		TokenList tokens = lexer.lex();
+	private void addExtendedScannerInfoIncludes(String[] paths) {
+		if(paths == null)
+			return;
 		
-		final String fileName = new String(reader.filename);
+		for(int i = 0; i < paths.length; i++) {
+			CodeReader cr = codeReaderFactory.createCodeReaderForInclusion(null, paths[i]);
+			if(cr != null) {
+				int offset = inputTokenStream.getCurrentOffset();
+				
+				// The tokens from the code reader will be isolated on the inputTokenStream, 
+				// this means that preprocessingFile() will return when the tokens are consumed.
+				addIncludedFileToInputStream(cr, offset, offset, offset, offset, "", true, true);//$NON-NLS-1$
+				process();
+				inputTokenStream.resume();
+			}
+		}
+	}
+	
+	
+	/**
+	 * Add external macro definitions given by IScannerInfo.getDefinedSymbols()
+	 */
+	private void addMacroDefinitions() {
+		if(scanInfo == null)
+			return;
 		
-		//log.encounterPoundInclude(directiveStartOffset, nameStartOffset, nameEndOffset, 
-		//		                  directiveEndOffset, fileName.toCharArray(), systemInclude, false);
+		Map definedSymbols = scanInfo.getDefinedSymbols();
+		if(definedSymbols == null)
+			return;
 		
-		log.startInclusion(reader, directiveStartOffset, directiveEndOffset, nameStartOffset, 
-				           nameEndOffset, name.toCharArray(), systemInclude);
+		for(Iterator iter = definedSymbols.entrySet().iterator(); iter.hasNext();) {
+			Map.Entry entry = (Map.Entry) iter.next();
+			registerMacro((String)entry.getKey(), (String)entry.getValue());
+		}
+	}
+	
+	
+	/**
+	 * Lexes and saves an external macro definition (given by the toolchain) into
+	 * the macro environment.
+	 */
+	private void registerMacro(String signature, String expansion) {
+		String define = signature + " " + expansion; //$NON-NLS-1$
+		TokenList tokenList = lex(new CodeReader(define.toCharArray()));
 		
-		// This code gets fired when the tokens that make up the included file get used up
-		InputTokenStream.IIncludeContextCallback callback = new InputTokenStream.IIncludeContextCallback() {
-			public void contextClosed() {
-				log.endInclusion(reader, inputTokenStream.adjust(reader.buffer.length));
+		inputTokenStream.pushIsolatedContext(tokenList, null);
+		
+		// parse the macro as if it were created with a #define and add it to the macro environment
+		Macro macro = defineDirective(0, false); // false means don't log the define with the LocationResolver
+		if(macro != null)
+			log.registerBuiltinMacro(macro);
+		
+		inputTokenStream.resume();
+	}
+	
+	
+	
+	/**
+	 * Convert the buffer in the CodeReader into a list of tokens.
+	 */
+	private TokenList lex(CodeReader codeReader) {
+		ILexer lexer = lexerFactory.createLexer(codeReader);
+		boolean generateComments = generateActiveComments | generateAllComments;
+		int lexerOptions = generateComments ? ILexer.OPTION_GENERATE_COMMENT_TOKENS : 0;
+		return lexer.lex(lexerOptions);
+	}
+	
+	
+	/**
+	 * Creates a CodeReader object for an #include directive.
+	 */
+	private CodeReader createCodeReader(String path, String fileName) {
+		String finalPath = ScannerUtility.createReconciledPath(path, fileName);
+		
+		IMacroCollector indexMacroCollector = new IMacroCollector() {
+			public void addDefinition(IMacro macro) {
+				registerMacro(new String(macro.getSignature()), new String(macro.getExpansion()));
 			}
 		};
 		
-		inputTokenStream.pushIncludeContext(tokens, reader, directiveEndOffset, callback);
+		return codeReaderFactory.createCodeReaderForInclusion(indexMacroCollector, finalPath);
+	}
+	
+	
+	/**
+	 * Recursively processes a file included by an #include directive.
+	 */
+	private void addIncludedFileToInputStream(final CodeReader reader, int directiveStartOffset, int directiveEndOffset, 
+			                         int nameStartOffset, int nameEndOffset, String name, boolean systemInclude, boolean isolated) {
+		
+		TokenList tokens = lex(reader);
+		
+		if(log != null)
+			log.startInclusion(reader, directiveStartOffset, directiveEndOffset, nameStartOffset, 
+				           nameEndOffset, name.toCharArray(), systemInclude);
+		
+		// This code gets fired when the tokens that make up the included file get used up
+		InputTokenStream.IIncludeContextCallback callback = null;
+		if(log != null) {
+			callback = new InputTokenStream.IIncludeContextCallback() {
+				public void contextClosed() {
+					log.endInclusion(reader, inputTokenStream.adjust(reader.buffer.length));
+				}
+			};
+		}
+		
+		if(isolated) // only used for testing I think
+			inputTokenStream.pushIsolatedIncludeContext(tokens, reader, directiveEndOffset, callback);
+		else
+			inputTokenStream.pushIncludeContext(tokens, reader, directiveEndOffset, callback);
 	}
 	
 	
@@ -232,10 +333,9 @@ public class C99Preprocessor implements C99Parsersym {
 	 * is being processed the token is collected in the argumentOutputStream instance variable.
 	 */
 	private void addToOutputStream(IToken t) {
-		
 		// If this token was the last token in a macro expansion then fire the end macro event
 		Macro[] macros = tokenExpansionMap.getMacros(t);
-		if(macros != null) {
+		if(macros != null && log != null) {
 			for(int i = 0; i < macros.length; i++) {
 				log.endMacroExpansion(macros[i], t.getEndOffset() + 1);
 			}
@@ -246,64 +346,41 @@ public class C99Preprocessor implements C99Parsersym {
 			return;
 		}
 		
-		
 		// Filter what tokens the parser sees, for example newline tokens are removed
-		int newKind;
 		switch(t.getKind()) {
 			case TK_NewLine:       // the parser does not want to see newline or placemarker tokens
 			case TK_PlaceMarker:
 				return;
-			case TK_identifier:    // convert the identifier to a keyword, if it is a keyword
 			case TK_DisabledMacroName: // disabled macro names should be treated as regular identifiers 
-				newKind = convertToKeyword(t.toString());
+				t.setKind(TK_identifier);
 				break;
 			case TK_Parameter:
-				assert false; //all macro parameters should be replaced
-			default:
-				newKind = t.getKind();
+				assert false; //all macro parameters should have already been replaced
 		}
 		
-		t.setKind(newKind);
-		C99Token toOutput = new C99Token(t);
+		//C99Token toOutput = new C99Token(t); // why create a new object?
+		IToken toOutput = t;
+		
+		// TODO lastTokenOutput probably isn't the best way of handling this
+		// the parser may have already altered lastTokenOutput
 		
 		// concatenate adjacent string literals
-		if(lastTokenOutput != null && 
-		   newKind == TK_stringlit &&
-		   lastTokenOutput.getKind() == TK_stringlit) {
-			
+		if(lastTokenOutput != null &&  t.getKind() == TK_stringlit && lastKindOutput == TK_stringlit) {
 			String s1 = lastTokenOutput.toString();
 			String s2 = toOutput.toString();
 			assert s1.length() >=2 && s2.length() != 2; // smallest string literal is ""
 			
 			String rep = s1.substring(0, s1.length()-1) + s2.substring(1);
-			
-			lastTokenOutput.setRepresentation(rep);
+			((C99Token)lastTokenOutput).setRepresentation(rep);
 			lastTokenOutput.setEndOffset(toOutput.getEndOffset());
 			// don't send the result to the parser
 		}
 		else {
 			lastTokenOutput = toOutput;
+			lastKindOutput = toOutput.getKind();
 			//System.out.println("Token: (" + toOutput.getKind() + ", " + toOutput.getStartOffset() + ", " + toOutput.getEndOffset() + ") " + toOutput);
 			parser.addToken(toOutput);
 		}
-	}
-	
-	
-	/**
-	 * Uses the keyword map to convert the identifier into a keyword if it is one.
-	 */
-	private int convertToKeyword(String identifier) {
-		Integer keywordKind = keywordMap.getKeywordKind(identifier);
-		return keywordKind == null ? TK_identifier : keywordKind.intValue();
-	}
-	
-	
-	
-	public static void printTokens(TokenList tl) {
-		for(Iterator iter = tl.iterator(); iter.hasNext();) {
-			System.out.print("(" + iter.next().toString() + ")->"); //$NON-NLS-1$ //$NON-NLS-2$
-		}
-		System.out.println();
 	}
 	
 	
@@ -328,21 +405,42 @@ public class C99Preprocessor implements C99Parsersym {
 
 	// Identifier tokens regognized as reprocessor directives
 	static final String 
-		IF      = "if", //$NON-NLS-1$
-		IFDEF   = "ifdef", //$NON-NLS-1$
-		IFNDEF  = "ifndef", //$NON-NLS-1$
-		ELIF    = "elif", //$NON-NLS-1$
-		ELSE    = "else", //$NON-NLS-1$
-		ENDIF   = "endif", //$NON-NLS-1$
-		DEFINE  = "define", //$NON-NLS-1$
-		UNDEF   = "undef", //$NON-NLS-1$
+		IF      = "if",      //$NON-NLS-1$
+		IFDEF   = "ifdef",   //$NON-NLS-1$
+		IFNDEF  = "ifndef",  //$NON-NLS-1$
+		ELIF    = "elif",    //$NON-NLS-1$
+		ELSE    = "else",    //$NON-NLS-1$
+		ENDIF   = "endif",   //$NON-NLS-1$
+		DEFINE  = "define",  //$NON-NLS-1$
+		UNDEF   = "undef",   //$NON-NLS-1$
 		INCLUDE = "include", //$NON-NLS-1$
-		PRAGMA  = "pragma", //$NON-NLS-1$
-		ERROR   = "error", //$NON-NLS-1$
+		PRAGMA  = "pragma",  //$NON-NLS-1$
+		ERROR   = "error",   //$NON-NLS-1$
 		WARNING = "warning"; //$NON-NLS-1$
 	
 
-	
+
+	/**
+	 * Converts a regular token type into one of the
+	 * token types that are recognized by the preprocessor.
+	 */
+	private static int toPPToken(IToken token) {
+		if(token == null)
+			return EOF;
+		
+		switch(token.getKind()) {
+			case TK_Hash:       return HASH;
+			case TK_HashHash:   return HASHHASH;
+			case TK_LeftParen:  return LPAREN;
+			case TK_NewLine:    return NEWLINE;
+			case TK_identifier: return IDENT;
+			case TK_Comma:      return COMMA;
+			case TK_RightParen: return RPAREN;
+			case TK_DotDotDot:  return DOTDOTDOT;
+			case TK_EOF_TOKEN:  return EOF;
+			default:            return PPTOKEN;
+		}
+	}
 	
 
 	/**
@@ -406,27 +504,6 @@ public class C99Preprocessor implements C99Parsersym {
 	}
 	
 	
-	/**
-	 * Converts a regular token type into one of the
-	 * token types that are recognized by the preprocessor.
-	 */
-	private static int toPPToken(IToken token) {
-		if(token == null)
-			return EOF;
-		
-		switch(token.getKind()) {
-			case TK_Hash:       return HASH;
-			case TK_HashHash:   return HASHHASH;
-			case TK_LeftParen:  return LPAREN;
-			case TK_NewLine:    return NEWLINE;
-			case TK_identifier: return IDENT;
-			case TK_Comma:      return COMMA;
-			case TK_RightParen: return RPAREN;
-			case TK_DotDotDot:  return DOTDOTDOT;
-			case TK_EOF_TOKEN:  return EOF;
-			default:            return PPTOKEN;
-		}
-	}
 	
 	
 	/***************************************************************************************
@@ -459,8 +536,9 @@ public class C99Preprocessor implements C99Parsersym {
 	//Generates a problem node in the AST.
 	private void encounterProblem(int id, int startOffset, int endOffset, char[] arg) {
 		ScannerASTProblem problem = new ScannerASTProblem(id, arg, true, false);
-		problem.setOffsetAndLength(startOffset, inputTokenStream.getCurrentOffset());
-		log.encounterProblem(problem);
+		problem.setOffsetAndLength(startOffset, (endOffset - startOffset) + 1);
+		if(log != null)
+			log.encounterProblem(problem);
 	}
 	
 	/**
@@ -485,51 +563,91 @@ public class C99Preprocessor implements C99Parsersym {
 	 ***************************************************************************************/
 	
 	// The main entry point to start preprocessing
-	private void preprocessingFile() { // TODO: handles more than just files, rename
+	private void process() {
 		while(!done()) {
 			try {
 				if(check(HASH)) {
 					boolean encounteredPoundElse = controlLine();
-					
-					// Returns when an #else, #elif or #endif is encountered.
-					// This is because ifSection() calls preprocessingFile() to handle a branch of an #if
-					if(encounteredPoundElse)
-						return;
+					if(encounteredPoundElse) {
+						// improperly nested #else
+						throw new PreprocessorInternalParseException();
+					}
 				}
 				else {
 					textLine();
 				}
+				
 			} catch(PreprocessorInternalParseException e) {
 				if(inputTokenStream.isContentAssistMode())
 					throw new PreprocessorAbortParseException();
 				
-				IToken token = null;
-				while(!(check(NEWLINE) || done())) {
-					token = next();
-				}
-				if(check(NEWLINE))
-					token = next();
 				
-				encounterProblem(IASTProblem.SYNTAX_ERROR, token);
+				// log the error, and try to syncronize on the next newline
+				if(done()) {
+					int offset = inputTokenStream.getCurrentOffset();
+					encounterProblem(IASTProblem.SYNTAX_ERROR, offset, offset);
+				}
+				else {
+					if(check(NEWLINE)) { 
+						IToken token = next();
+						encounterProblem(IASTProblem.SYNTAX_ERROR, token);
+						return;
+					}
+					
+					IToken token = next();
+					encounterProblem(IASTProblem.SYNTAX_ERROR, token);
+					
+					while(!(check(NEWLINE) || done())) {
+						token = next();
+					}
+					if(check(NEWLINE))
+						token = next();
+				}
 			}
 		}
+	}
+	
+	/**
+	 * The difference is this one stops when it hits an #else or equivalent.
+	 */
+	private int processBranch() {
+		while(!done()) {
+			if(check(HASH)) {
+				int hashOffset = inputTokenStream.adjust(inputTokenStream.peek().getStartOffset());
+				
+				// Returns when an #else, #elif or #endif is encountered.
+				// This is because ifSection() calls processBranch() to handle a branch of an #if
+				boolean encounteredPoundElse = controlLine();
+				if(encounteredPoundElse)
+					return hashOffset;
+			}
+			else {
+				textLine();
+			}
+		}
+		throw new PreprocessorInternalParseException(); // caused by improperly nested #ifs
 	}
 	
 	
 	/**
 	 * Skips a branch of a conditional compiliation construct
 	 */
-	private void skipGroup() {
+	private int skipBranch() {
+		if(!generateAllComments)
+			inputTokenStream.setCollectCommentTokens(false);
+		
 		while(!done()) {
 			if(check(HASH)) {
 				IToken hash = next();
+				int directiveStartOffset = hash.getStartOffset();
 				if(check(ELIF) || check(ELSE) || check(ENDIF)) {
-					inputTokenStream.addTokenToFront(hash);
-					return;
+					inputTokenStream.setCollectCommentTokens(generateActiveComments || generateAllComments);
+					return directiveStartOffset;
 				}
 			}
 			skipLine();
 		}
+		throw new PreprocessorInternalParseException(); // caused by improperly nested #ifs
 	}
 	
 	
@@ -621,7 +739,7 @@ public class C99Preprocessor implements C99Parsersym {
 			addToOutputStream(new C99Token(offset, offset, TK_EndOfCompletion, "")); //$NON-NLS-1$
 		}		
 		// discard the rest of the input tokens on the input
-		inputTokenStream = new InputTokenStream();
+		inputTokenStream = new InputTokenStream(parser);
 	}
 	
 	
@@ -700,9 +818,13 @@ public class C99Preprocessor implements C99Parsersym {
 		int expansionLocationOffset;
 		TokenList replacement;
 		
+		char[][] argsAsChar = null;
+		
 		if(macro.isObjectLike()) {
 			replacement = macro.invoke();
-			expansionLocationOffset = macroId.getEndOffset();
+			if(replacement == null)
+				encounterProblem(IASTProblem.PREPROCESSOR_MACRO_USAGE_ERROR, macroId);
+			expansionLocationOffset = macroId.getEndOffset() + 1;
 		}
 		else { // function like
 			// any number of newlines are allowed between the macro name and the args
@@ -718,25 +840,38 @@ public class C99Preprocessor implements C99Parsersym {
 				return;
 			}
 			
-			replacement = macroCallFunctionLike(macroId, macro);
-			if(replacement == null) // there was a problem parsing the macro invocation, abort
+			// parse the arguments to the function like macro
+			List/*<MacroArgument>*/ arguments = macroCallFunctionLikeArguments(macroId, macro);
+			if(arguments == null) {
+				encounterProblem(IASTProblem.PREPROCESSOR_MACRO_USAGE_ERROR, macroId);
 				return;
+			}
+				
+			argsAsChar = convertArgsToCharArrays(arguments);
 			
-			IToken rparen = next(); // the right paren will not be consumed by macroCallFunctionLike(), because we need it here
-			expansionLocationOffset = rparen.getEndOffset();
+			replacement = macro.invoke(arguments);
+			if(replacement == null) {
+				encounterProblem(IASTProblem.PREPROCESSOR_MACRO_USAGE_ERROR, macroId);
+				return;
+			}
+			
+			// the right paren will not be consumed by macroCallFunctionLikeArguments(), because we need it here
+			IToken rparen = next(); 
+			expansionLocationOffset = rparen.getEndOffset() + 1;
 		}
 		
-		expansionLocationOffset += 1;
-		
 		if(replacement == null || replacement.isEmpty()) {
-			log.startMacroExpansion(macro, macroId.getStartOffset(), expansionLocationOffset);
-			log.endMacroExpansion(macro, expansionLocationOffset);
+			if(log != null) {
+				log.startMacroExpansion(macro, macroId.getStartOffset(), expansionLocationOffset, argsAsChar);
+				log.endMacroExpansion(macro, expansionLocationOffset);
+			}
 		}
 		else {
 			// Add the result of the macro expansion to the input so it can be rescanned with the rest of the file
 			inputTokenStream.pushMacroExpansionContext(replacement, expansionLocationOffset, null);
 			// Record the offset of the expansion so that locations are resolved properly
-			log.startMacroExpansion(macro, macroId.getStartOffset(), expansionLocationOffset);
+			if(log != null)
+				log.startMacroExpansion(macro, macroId.getStartOffset(), expansionLocationOffset, argsAsChar);
 			// log.endMacroExpansion() will be call when the last token in the replacement is output, see addToOutputStream()
 			tokenExpansionMap.putMacro(replacement.last(), macroId, macro);
 		}
@@ -744,9 +879,24 @@ public class C99Preprocessor implements C99Parsersym {
 
 	
 	/**
+	 * Converts a list of MacroArguments to char[][] representing the actual
+	 * source text of the arguments. 
+	 */
+	private static char[][] convertArgsToCharArrays(List arguments) {
+		char[][] chars = new char[arguments.size()][];
+		
+		for(int i = 0; i < arguments.size(); i++) {
+			MacroArgument arg = (MacroArgument) arguments.get(i);
+			chars[i] = arg.getRawTokens().toString().toCharArray();
+		}
+		return chars;
+	}
+	
+	
+	/**
 	 * Invokes a macro.
 	 */
-	private TokenList macroCallFunctionLike(IToken macroName, Macro macro) {
+	private List macroCallFunctionLikeArguments(IToken macroName, Macro macro) {
 		// arguments to the macro
 		List arguments = new Vector(); // List<TokenList> 
 		int numParams = macro.getNumParams(); // number of parameters not including '...'
@@ -763,16 +913,13 @@ public class C99Preprocessor implements C99Parsersym {
 		else {
 			while(true) {
 				if(done()) {
-					encounterProblem(IASTProblem.PREPROCESSOR_MACRO_USAGE_ERROR, macroName);
 					return null;
 				}
 				else if(check(HASH) || check(HASHHASH)) {
-					encounterProblem(IASTProblem.PREPROCESSOR_MACRO_USAGE_ERROR, macroName);
 					return null;
 				}
 				else if(check(NEWLINE)) {
 					// newlines are allowed within a macro invocation, they are ignored
-					// TODO: is a newline allowed between the macro name and the (
 					next();
 				}
 				else if(check(COMMA)) {
@@ -806,10 +953,7 @@ public class C99Preprocessor implements C99Parsersym {
 			}
 		}
 		
-		// TODO: rename this from Closure to something else, or maybe just get rid of Closure and
-		// resort to a more imperative (read crappy) approach
-		//final Callable process = new Callable() { public void call() { preprocessingFile(); } };
-		List macroArguments = new Vector(arguments.size());
+		List macroArguments = new ArrayList(arguments.size());
 		
 		for(int i = 0; i < arguments.size(); i++) {
 			TokenList its = (TokenList) arguments.get(i);
@@ -824,11 +968,9 @@ public class C99Preprocessor implements C99Parsersym {
 		}
 		
 		if(macro.isCorrectNumberOfArguments(macroArguments.size())) {
-			TokenList expansion = macro.invoke(macroArguments);
-			return expansion;
+			return macroArguments;
 		}
 		else {
-			encounterProblem(IASTProblem.PREPROCESSOR_MACRO_USAGE_ERROR, macroName);
 			return null;
 		}
 	}
@@ -879,15 +1021,17 @@ public class C99Preprocessor implements C99Parsersym {
 		else if(check(NEWLINE)) {
 			next();
 		}
-		else if(check(DEFINE)) {
+		else if(check(DEFINE)) { // TODO: check the rules of macro redefinition?
 			next();
 			defineDirective(hash.getStartOffset(), true);
 		}
 		else if(check(UNDEF)) {
 			next();
 			IToken macroName = expect(IDENT);
-			log.undefineMacro(directiveStartOffset, macroName.getEndOffset(), macroName.toString(), macroName.getStartOffset());
-			env.removeMacro(macroName.toString());
+			String name = macroName.toString();
+			if(log != null)
+				log.undefineMacro(directiveStartOffset, macroName.getEndOffset() + 1, name, macroName.getStartOffset());
+			env.removeMacro(name);
 			expect(NEWLINE);
 		}
 		else if(check(INCLUDE)) {
@@ -898,34 +1042,31 @@ public class C99Preprocessor implements C99Parsersym {
 			ifSection(directiveStartOffset);
 		}
 		else if(check(ELIF) || check(ELSE) || check(ENDIF)) {
-			inputTokenStream.addTokenToFront(hash);
 			return true;
 		}
-		else if(check(PRAGMA)) {
-			IToken pragma = next();
+		else if(check(PRAGMA) || check(ERROR) || check(WARNING)) {
+			boolean isPragma  = check(PRAGMA);
+			boolean isError   = check(ERROR);
+			
+			IToken token = next();
 			TokenList tokens = collectTokensUntilNewlineOrDone();
-			tokens.addFirst(pragma); // just in case tokens is empty
-			log.encounterPoundPragma(directiveStartOffset, tokens.last().getEndOffset() + 1);
+			int endOffset = 1 + (tokens.isEmpty() ? token.getEndOffset() : tokens.last().getEndOffset());
+			char[] body = tokens.toString().toCharArray();
+			
+			if(isPragma) {
+				if(log != null) log.encounterPoundPragma(directiveStartOffset, endOffset, body);
+			}
+			else if(isError) {
+				if(log != null) log.encounterPoundError(directiveStartOffset, endOffset, body);
+				encounterProblem(IASTProblem.PREPROCESSOR_POUND_ERROR, tokens);
+			}
+			else {
+				if(log != null) log.encounterPoundError(directiveStartOffset, endOffset, body);
+				encounterProblem(IASTProblem.PREPROCESSOR_POUND_WARNING, tokens);
+			}
+			
 			if(!done())
 				expect(NEWLINE); 
-		}
-		else if(check(ERROR)) {
-			IToken error = next();
-			TokenList tokens = collectTokensUntilNewlineOrDone();
-			tokens.addFirst(error); // just in case tokens is empty
-			log.encounterPoundError(directiveStartOffset, tokens.last().getEndOffset() + 1);
-			encounterProblem(IASTProblem.PREPROCESSOR_POUND_ERROR, tokens);
-			if(!done())
-				expect(NEWLINE);
-		}
-		else if(check(WARNING)) { // not in the spec, but why not?
-			IToken error = next();
-			TokenList tokens = collectTokensUntilNewlineOrDone();
-			tokens.addFirst(error); // just in case tokens is empty
-			log.encounterPoundError(directiveStartOffset, tokens.last().getEndOffset() + 1);
-			encounterProblem(IASTProblem.PREPROCESSOR_POUND_WARNING, tokens);
-			if(!done())
-				expect(NEWLINE);
 		}
 		else { 
 			IToken invalidDirective = next();
@@ -954,14 +1095,18 @@ public class C99Preprocessor implements C99Parsersym {
 			takeIfBranch = isIfdef == env.hasMacro(ident.toString());
 			
 			int directiveEndOffset = ident.getEndOffset() + 1;
-			if(isIfdef)
-				log.encounterPoundIfdef(directiveStartOffset, directiveEndOffset, takeIfBranch);
-			else
-				log.encounterPoundIfndef(directiveStartOffset, directiveEndOffset, takeIfBranch);
+			if(log != null) {
+				char[] condition = ident.toString().toCharArray();
+				if(isIfdef)
+					log.encounterPoundIfdef(directiveStartOffset, directiveEndOffset, takeIfBranch, condition);
+				else
+					log.encounterPoundIfndef(directiveStartOffset, directiveEndOffset, takeIfBranch, condition);
+			}
 		}
 		else { // its an if
 			IToken ifToken = next();
 			TokenList expressionTokens = collectTokensUntilNewlineOrDone(); // TODO: what if expressionTokens is empty?
+			char[] expressionChars = expressionTokens.toString().toCharArray();
 			int endOffset = 1 + (expressionTokens.isEmpty() ? ifToken.getEndOffset() : expressionTokens.last().getEndOffset());
 			Integer value = evaluateConstantExpression(expressionTokens); // returns null if invalid expression
 			
@@ -973,33 +1118,42 @@ public class C99Preprocessor implements C99Parsersym {
 			
 			takeIfBranch = value != null && value.intValue() != 0;
 			
-			log.encounterPoundIf(directiveStartOffset, endOffset, takeIfBranch);
+			if(log != null)
+				log.encounterPoundIf(directiveStartOffset, endOffset, takeIfBranch, expressionChars);
 		}
 		
 		if(takeIfBranch) {
-			preprocessingFile(); // will return when it hits an elif, else or endif
-			if(check(HASH))
-				elseGroups(true);
-			else if(done())
-				return;
-			else
-				return; // TODO: is this a problem
+			int hashOffset = processBranch(); // will return when it hits an elif, else or endif
+			elseGroups(true, hashOffset);
 		}
-		else { // skip the branch
-			skipGroup();
-			elseGroups(false);
+		else {
+			int hashOffset = skipBranch();
+			elseGroups(false, hashOffset);
 		}
 	}
 	
 	
 	/**
 	 * Evaluates the expression in an #if or #elif.
+	 * @return null if the expression could not be evaluated
 	 */
 	private Integer evaluateConstantExpression(TokenList expressionTokens) {
+		if(expressionTokens == null || expressionTokens.isEmpty())
+			return null;
+		
 		TokenList constantExpression;
 		try {
+			// macro expansions that occur during the processing of the #if's body don't matter
+			if(log != null)
+				log.setIgnoreMacroExpansions(true);
+			
 			// First expand macros and handle the 'defined' operator
 			constantExpression = pushContextAndProcess(expressionTokens, true, true);
+			
+			// macro expansions that occur during the processing of the #include's body don't matter
+			if(log != null)
+				log.setIgnoreMacroExpansions(false);
+			
 		} catch(PreprocessorInternalParseException e) {
 			return null;
 		}
@@ -1010,92 +1164,136 @@ public class C99Preprocessor implements C99Parsersym {
 	}
 	
 	
-	private void elseGroups(boolean skipRest) {
-		// TODO: check for wierd cases
-		while(true) {
-			IToken hash = expect(HASH);
-			int directiveStartOffset = hash.getStartOffset();
-			
+	private void elseGroups(boolean skipRest, int hashOffset) {
+		while(!done()) {
 			if(check(ENDIF)) {
 				IToken endif = next();
-				log.encounterPoundEndIf(directiveStartOffset, endif.getEndOffset()+1);
+				if(log != null)
+					log.encounterPoundEndIf(hashOffset, endif.getEndOffset()+1);
 				expect(NEWLINE);
 				return;
 			}
 			else if(check(ELIF)) {
 				IToken elif = next();
 				TokenList expressionTokens = collectTokensUntilNewlineOrDone();
-				// TODO: maybe just create a problem instead
+				char[] expressionChars = expressionTokens.toString().toCharArray();
 				int endOffset = 1 + (expressionTokens.isEmpty() ? elif.getEndOffset() : expressionTokens.last().getEndOffset());
 				
 				if(skipRest) {
-					log.encounterPoundElif(directiveStartOffset, endOffset, false);
-					skipGroup();
-				}
-				else if (expressionTokens == null || expressionTokens.isEmpty()) {
-					// TODO: error
+					if(log != null)
+						log.encounterPoundElif(hashOffset, endOffset, false, expressionChars);
+					hashOffset = skipBranch();
 				}
 				else {
-					
 					Integer value = evaluateConstantExpression(expressionTokens);
 					if(value == null)
 						encounterProblem(IASTProblem.PREPROCESSOR_CONDITIONAL_EVAL_ERROR, elif.getStartOffset(), endOffset);
 						
 					boolean followElif = value != null && value.intValue() != 0;
 					expect(NEWLINE);
-					log.encounterPoundElif(directiveStartOffset, endOffset, followElif);
+					if(log != null)
+						log.encounterPoundElif(hashOffset, endOffset, followElif, expressionChars);
+					
 					if(followElif) {
 						skipRest = true;
-						preprocessingFile();
+						hashOffset = processBranch();
 					}
 					else {
-						skipGroup();
+						hashOffset = skipBranch();
 					}
 				}
 			}
 			else if(check(ELSE)) {
 				IToken els = next();
-				log.encounterPoundElse(directiveStartOffset, els.getEndOffset() + 1, !skipRest);
+				if(log != null)
+					log.encounterPoundElse(hashOffset, els.getEndOffset() + 1, !skipRest);
+				
 				if(skipRest)
-					skipGroup();
+					hashOffset = skipBranch();
 				else 
-					preprocessingFile();
+					hashOffset = processBranch();
 			}
 			else {
-				// TODO: error!, problem
-				return;
+				throw new PreprocessorInternalParseException();
 			}
 		}
 	}
 
 
-	private void includeDirective(int directiveStartOffset) {	
+	
+	/**
+	 * Retrieve the source code for the file that is referenced by the #include directive and process it.
+	 */
+	private void includeDirective(int directiveStart) {	
 		// The include directive can contain a macro invocations
-		//Callable processIncludeDirectiveBody = new Callable() { public void call() { textLine(false); } };
-		TokenList includeBody = pushContextAndProcess(collectTokensUntilNewlineOrDone(), true, false);
+		TokenList tokens = collectTokensUntilNewlineOrDone();
 		
-		int directiveEndOffset = includeBody.last().getEndOffset() + 1;
-		int nameStartOffset    = includeBody.first().getStartOffset() + 1;
-		int nameEndOffset      = includeBody.last().getEndOffset();
-		
-		String fileName = computeIncludeFileName(includeBody);
-		
-		if(fileName == null) {
-			encounterProblem(IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND, directiveStartOffset, directiveEndOffset);
+		if(tokens.isEmpty()) {
+			int code = IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND;
+			encounterProblemInclude(code, directiveStart, directiveStart, directiveStart, directiveStart, null, false);
 			return;
 		}
+		
+		// calculate the offsets of the include directive in the source
+		int fileNameStart, fileNameEnd, directiveEnd;
+		
+		// if its a regular include like <filename.h> or "filename.h" then ignore the < > and " in the offsets
+		if((tokens.first().getKind() == TK_LT && tokens.last().getKind() == TK_GT) ||
+		   (tokens.size() == 1 && tokens.first().getKind() == TK_stringlit)) {
+			
+			fileNameStart = tokens.first().getStartOffset() + 1;
+			fileNameEnd   = tokens.last().getEndOffset();
+			directiveEnd  = fileNameEnd + 1;
+		}
+		else { // otherwise its probably a macro invocation in the include body
+			fileNameStart = tokens.first().getStartOffset() ;
+			fileNameEnd   = tokens.last().getEndOffset() + 1;
+			directiveEnd  = fileNameEnd;
+		}
+		
+		// macro expansions that occur during the processing of the #include's body don't matter
+		if(log != null)
+			log.setIgnoreMacroExpansions(true);
+		
+		TokenList includeBody = pushContextAndProcess(tokens, true, false);
+		String fileName = computeIncludeFileName(includeBody);
+		
+		if(log != null)
+			log.setIgnoreMacroExpansions(false);
+		
+		if(fileName == null) {
+			int code = IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND;
+			encounterProblemInclude(code, directiveStart, directiveEnd, fileNameStart, fileNameEnd, fileName, false);
+			return;
+		}
+		
 		assert fileName.length() >= 2;
-
 		boolean local = fileName.startsWith("\""); //$NON-NLS-1$
 		fileName = fileName.substring(1, fileName.length() - 1); // remove the double quotes or double angle brackets
 		
+		CodeReader reader = computeCodeReaderForInclusion(fileName, local);
+		
+		if(reader == null || inputTokenStream.isCircularInclusion(reader)) {
+			int problemCode = (reader == null) ? IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND : IASTProblem.PREPROCESSOR_CIRCULAR_INCLUSION;
+			encounterProblemInclude(problemCode, directiveStart, directiveEnd, fileNameStart, fileNameEnd, fileName, !local);
+		}
+		else {
+			addIncludedFileToInputStream(reader, directiveStart, directiveEnd, fileNameStart, fileNameEnd, fileName, !local, false);
+		}
+	}
+
+
+	/**
+	 * Creates a CodeReader object for the given file name.
+	 */
+	private CodeReader computeCodeReaderForInclusion(String fileName, boolean local) {
 		CodeReader reader = null;
 		
 		// attempt to find the file to include
 		if(new File(fileName).isAbsolute() || fileName.startsWith("/")) { //$NON-NLS-1$
 			reader = createCodeReader("", fileName); //$NON-NLS-1$
 		}
-		else if(local) { // local
+		else if(local) {
 			File currentDirectory = inputTokenStream.getCurrentDirectory();
 			if(currentDirectory != null)
 				reader = createCodeReader(currentDirectory.getAbsolutePath(), fileName);
@@ -1111,14 +1309,22 @@ public class C99Preprocessor implements C99Parsersym {
 			}
 		}
 		
-		if(reader == null) {
-			encounterProblem(IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND, directiveStartOffset, directiveEndOffset);
-		}
-		else if(inputTokenStream.isCircularInclusion(reader)) {
-			encounterProblem(IASTProblem.PREPROCESSOR_CIRCULAR_INCLUSION, directiveStartOffset, directiveEndOffset);
-		}
-		else {
-			processIncludedFile(reader, directiveStartOffset, directiveEndOffset, nameStartOffset, nameEndOffset, fileName, false);
+		return reader;
+	}
+	
+	
+	/**
+	 * Called when there is a problem with an #include directive.
+	 */
+	private void encounterProblemInclude(int problemCode, int directiveStart, int directiveEnd, int nameStart, int nameEnd,
+			                             String fileName, boolean systemInclude) {
+		
+		encounterProblem(problemCode, directiveStart, directiveEnd - 1);
+		
+		// Log the fact that an include was encountered
+		if(log != null) {
+			char[] chars = fileName == null ? null : fileName.toCharArray();
+			log.encounterPoundInclude(directiveStart, nameStart, nameEnd, directiveEnd, chars, systemInclude, true);
 		}
 	}
 	
@@ -1134,102 +1340,29 @@ public class C99Preprocessor implements C99Parsersym {
 		if(includeBody == null || includeBody.isEmpty() || includeBody.size() == 2) {
 			return null;
 		}
-		// at this point the size == 1 or size >= 3
 		
-		// local include
-		if(includeBody.size() == 1 && includeBody.first().getKind() == TK_stringlit) {
-			return includeBody.first().toString();
+		if(includeBody.size() == 1) {
+			IToken token = includeBody.first();
+			if(token.getKind() == TK_stringlit) // local include
+				return token.toString();
+			else
+				return null;
 		}
-		
+
 		// at this point the size must be at least 3
-		IToken first = includeBody.removeFirst();
-		IToken last  = includeBody.removeLast();
-		
+		IToken first = includeBody.first();
+		IToken last  = includeBody.last();
 		if(first.getKind() != TK_LT || last.getKind() != TK_GT) {
 			return null;
 		}
-		
-		StringBuffer sb = new StringBuffer();
-		sb.append('<');
-		sb.append(spaceBetween(first, includeBody.first()));
-		
-		IToken prevToken = first;
-		IToken token = null; // the iterator must contain at least one element
-		for(Iterator iter = includeBody.iterator(); iter.hasNext();) {
-			token = (IToken) iter.next();
-			sb.append(spaceBetween(prevToken, token));
-			sb.append(token.toString());
-			prevToken = token;
-		}
-		
-		sb.append(spaceBetween(token, last));
-		sb.append('>');
-		return sb.toString();
-	}
-	
-	
-	/**
-	 * Returns the number of characters of whitespace between the two tokens.
-	 */
-	private static StringBuffer spaceBetween(IToken t1, IToken t2) {
-		int numSpaces = t2.getStartOffset() - (t1.getEndOffset() + 1);
-		StringBuffer sb = new StringBuffer();
-		for(int i = 0; i < numSpaces; i++) {
-			sb.append(' ');
-		}
-		return sb;
-	}
 
-
-	/**
-	 * Add external macro definitions given by IScannerInfo.getDefinedSymbols()
-	 */
-	private void addMacroDefinitions() {
-		if(scanInfo == null)
-			return;
-		
-		Map definedSymbols = scanInfo.getDefinedSymbols();
-		if(definedSymbols == null)
-			return;
-		
-		for(Iterator iter = definedSymbols.entrySet().iterator(); iter.hasNext();) {
-			Map.Entry entry = (Map.Entry) iter.next();
-			registerMacro((String)entry.getKey(), (String)entry.getValue());
-		}
+		return includeBody.toString();
 	}
 	
-	
-	private void registerMacro(String signature, String expansion) {
-		String define = signature + " " + expansion; //$NON-NLS-1$
-		ILexer lexer = lexerFactory.createLexer(new CodeReader(define.toCharArray()));
-		TokenList tokenList = lexer.lex();
-		
-		inputTokenStream.pushIsolatedContext(tokenList, null);
-		
-		// parse the macro as if it were created with a #define and add it to the macro environment
-		Macro macro = defineDirective(0, false); // false means don't log the define with the LocationResolver
-		
-		System.out.println(Messages.getString("C99Preprocessor.3") + macro.getName()); //$NON-NLS-1$
-		log.registerBuiltinMacro(macro);
-		
-		inputTokenStream.resume();
-	}
-	
-	
-	private CodeReader createCodeReader(String path, String fileName) {
-		String finalPath = ScannerUtility.createReconciledPath(path, fileName);
-		
-		IMacroCollector indexMacroCollector = new IMacroCollector() {
-			public void addDefinition(IMacro macro) {
-				registerMacro(new String(macro.getSignature()), new String(macro.getExpansion()));
-			}
-		};
-		
-		return codeReaderFactory.createCodeReaderForInclusion(indexMacroCollector, finalPath);
-	}
 	
 	/**
 	 * Does not collect or discard the end of line token.
+	 * @return Does not return null, will return empty TokenList if no tokens are collected.
 	 */
 	private TokenList collectTokensUntilNewlineOrDone() {
 		TokenList result = new TokenList();
@@ -1264,8 +1397,10 @@ public class C99Preprocessor implements C99Parsersym {
 		if(singleLine)
 			textLine(handleDefined);
 		else
-			preprocessingFile();
+			process();
 		
+		// The following 3 lines of code aren't really necessary, they are just a sanity check
+		inputTokenStream.peek();
 		if(!inputTokenStream.isStuck())
 			throw new PreprocessorInternalParseException(); // the context was not fully consumed
 		
@@ -1284,8 +1419,9 @@ public class C99Preprocessor implements C99Parsersym {
 	 */
 	private Macro defineDirective(int startOffset, boolean logMacro) {
 		if(!check(IDENT)) {
+			IToken badToken = next(); // fix for testcase DOMLocationTests.test162180_2()
+			encounterProblem(IASTProblem.PREPROCESSOR_INVALID_MACRO_DEFN, badToken.getStartOffset(), badToken.getEndOffset());
 			skipLine();
-			encounterProblem(IASTProblem.PREPROCESSOR_INVALID_MACRO_DEFN, startOffset, inputTokenStream.getCurrentOffset());
 			return null;
 		}
 
@@ -1295,7 +1431,7 @@ public class C99Preprocessor implements C99Parsersym {
 		// function like macro
 		// There must not be any space between the macro name and the left paren.
 		// This actually isn't in the spec but its how gcc behaves in C99 mode
-		if(check(LPAREN) && inputTokenStream.peek().getStartOffset() == macroName.getEndOffset() + 1) { 
+		if(check(LPAREN) && inputTokenStream.getCurrentOffset() == macroName.getEndOffset() + 1) { 
 			next();
 
 			String varArgParamName = null;
@@ -1358,36 +1494,70 @@ public class C99Preprocessor implements C99Parsersym {
 				return null;
 			}
 			
-			// TODO replacement list cannot start or end with ##
-			TokenList replacementList = replacementList(paramNames, varArgParamName);
+			// replacementList will contain the newline
+			TokenList replacementList = replacementListTokens(paramNames, varArgParamName);
+			
+			if(startsOrEndsWithHashHash(replacementList)) {
+				encounterProblem(IASTProblem.PREPROCESSOR_MACRO_PASTING_ERROR, startOffset, inputTokenStream.getCurrentOffset());
+				skipLine();
+				return null;
+			}
+			
+			// TEMPORARY: for testing, the newline should be removed by replacementListTokens()
+			if(replacementList.last().getKind() == TK_NewLine)
+				replacementList.removeLast();
+			
 			int endOffset = calculateMacroDefinitionEndOffset(rparen, replacementList);
 			macro = new Macro(macroName, replacementList, startOffset, endOffset, paramNames, varArgParamName);
 		}
 		
 		// object like macro
 		else { 
-			TokenList replacementList = replacementList(null, null);
+			TokenList replacementList = replacementListTokens(null, null);
+			
+			// TEMPORARY: for testing, the newline should be removed by replacementListTokens()
+			if(replacementList.last().getKind() == TK_NewLine)
+				replacementList.removeLast();
+			
 			int endOffset = calculateMacroDefinitionEndOffset(macroName, replacementList);
 			macro = new Macro(macroName, replacementList, startOffset, endOffset);
 		}
 		
 		env.addMacro(macro);
-		if(logMacro)
+		if(log != null && logMacro)
 			log.defineMacro(macro);
 		
 		return macro;
 	}
 	
 	
-	private static int calculateMacroDefinitionEndOffset(IToken tokenBeforeReplacementList, TokenList replacementList) {
+	private static boolean startsOrEndsWithHashHash(TokenList tokens) {
+		if(tokens.isEmpty()) 
+			return false;
+		
+		return tokens.first().getKind() == TK_HashHash || tokens.last().getKind() == TK_HashHash;
+	}
+	
+	/**
+	 * If the replacement list contains a newline then the start offset of the newline will be
+	 * returned. Otherwise the end ofsset of the last token will be returned.
+	 */
+	private int calculateMacroDefinitionEndOffset(IToken tokenBeforeReplacementList, TokenList replacementList) {
 		if(replacementList == null || replacementList.isEmpty())
 			return tokenBeforeReplacementList.getEndOffset() + 1;
-		else
-			return replacementList.last().getEndOffset() + 1;
+		else {
+			IToken last = replacementList.last();
+			if(last.getKind() == TK_NewLine) {
+				return last.getStartOffset();
+			}
+			else {
+				return replacementList.last().getEndOffset() + 1;
+			}
+		}
 	}
 	
 	
-	private TokenList replacementList(Set paramNames, String varArgParamName) {
+	private TokenList replacementListTokens(Set paramNames, String varArgParamName) {
 		TokenList tokens = new TokenList();
 		
 		while(!check(NEWLINE) && !done()) {
@@ -1404,7 +1574,7 @@ public class C99Preprocessor implements C99Parsersym {
 		}
 		
 		if(!done())
-			next(); // consume the newline
+			tokens.add(next()); // consume the newline
 		
 		return tokens;
 	}

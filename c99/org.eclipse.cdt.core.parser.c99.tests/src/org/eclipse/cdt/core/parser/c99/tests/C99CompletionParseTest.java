@@ -10,11 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.c99.tests;
 
-import java.io.StringWriter;
-import java.io.Writer;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Iterator;
 
 import junit.framework.TestCase;
 
@@ -25,15 +22,13 @@ import org.eclipse.cdt.core.dom.ast.IEnumerator;
 import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IVariable;
-import org.eclipse.cdt.core.parser.ParserLanguage;
-import org.eclipse.cdt.core.parser.ast.IASTField;
-import org.eclipse.cdt.core.parser.ast.IASTNode;
-import org.eclipse.cdt.core.parser.ast.IASTTypedefDeclaration;
-import org.eclipse.cdt.core.parser.ast.IASTNode.ILookupResult;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 
 
 /**
  * Reuse the completion parse tests from the old parser for now.
+ * 
+ * This test suite is specific to C99.
  */
 public class C99CompletionParseTest extends TestCase {
 
@@ -42,7 +37,7 @@ public class C99CompletionParseTest extends TestCase {
 	}
 
 	protected IASTCompletionNode parse(String code, int offset) throws Exception {
-		return ParseHelper.getCompletionNode(code, offset);
+		return ParseHelper.getCompletionNode(code, getLanguage(), offset);
 	}
 
 
@@ -65,6 +60,10 @@ public class C99CompletionParseTest extends TestCase {
 		return sortBindings(names[0].getCompletionContext().findBindings(names[0], true));
 	}
 	
+	
+	protected C99Language getLanguage() {
+		return new C99Language();
+	}
 	
 	
 	// First steal tests from CompletionParseTest

@@ -15,6 +15,7 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.Stack;
 
+import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
@@ -47,8 +48,15 @@ class InputTokenStream {
 	
 	// Used to calculate the size of ther resulting translation unit
 	private int translationUnitSize = 0;
+
+	// for collecting comment tokens
+	private IPreprocessorTokenCollector parser;
+	private boolean collectCommentTokens = false;
 	
 
+	public InputTokenStream(IPreprocessorTokenCollector parser) {
+		this.parser = parser;
+	}
 	
 	/**
 	 * Event that is fired when the content of an included file
@@ -145,6 +153,16 @@ class InputTokenStream {
 		topContext = (Context) contextStack.push(new Context(reader, tokenList, false, callback, inclusionLocaionOffset));
 	}
 
+	/**
+	 * Used only when an include should be processed in isolation, in other words processing
+	 * should stop when the end of the include is reached. I think this is only used
+	 * for testing purposes.
+	 */
+	public void pushIsolatedIncludeContext(TokenList tokenList, CodeReader reader, int inclusionLocaionOffset, IIncludeContextCallback callback) {
+		// adjust the offsets of the contexts that are already on the stack
+		adjustGlobalOffsets(reader.buffer.length);
+		topContext = (Context) contextStack.push(new Context(reader, tokenList, true, callback, inclusionLocaionOffset));
+	}
 	
 	/**
 	 * Pushes the tokens that are the result of a macro invocation.
@@ -185,15 +203,9 @@ class InputTokenStream {
 		}
 	}
 	
-	/**
-	 * Adds a single token to the front of the current context.
-	 */
-	public void addTokenToFront(IToken token) {
-		topContext.tokenList.addFirst(token);
-	}
 	
 	/**
-	 * An unadjusted offset represents the origonal offset in the source file.
+	 * An unadjusted offset represents the original offset in the source file.
 	 * An adjusted offset takes into account includes and macro expansions
 	 * creating a meaningful global offset that can be used by the AST. 
 	 */
@@ -206,7 +218,7 @@ class InputTokenStream {
 		if(token == null)
 			return getTranslationUnitSize();
 		else
-			return adjust(token.getEndOffset());
+			return adjust(token.getStartOffset());
 	}
 	
 	
@@ -254,6 +266,7 @@ class InputTokenStream {
 	 * @return null if there are no tokens
 	 */
 	public IToken peek() {
+		consumeCommentTokens();
 		return nextToken(true);
 	}
 	
@@ -265,6 +278,7 @@ class InputTokenStream {
 	 * @return null if there are no more tokens
 	 */
 	public IToken next(boolean adjust) {
+		consumeCommentTokens();
 		IToken token = nextToken(false);
 		if(adjust && topContext != null && token != null) {
 			int offset = topContext.adjustedGlobalOffset;
@@ -282,6 +296,24 @@ class InputTokenStream {
 	 */
 	public IToken next() {
 		return next(true);
+	}
+	
+	
+	/**
+	 * Sends comment tokens to the parser instead of to the preprocessor.
+	 */
+	private void consumeCommentTokens() {
+		IToken token;
+		while((token = nextToken(true)) != null) {
+			int kind = token.getKind();
+			if(kind != C99Parsersym.TK_SingleLineComment && kind != C99Parsersym.TK_MultiLineComment)
+				break;
+			
+			if(collectCommentTokens && parser != null) {
+				parser.addCommentToken(token);
+			}
+			nextToken(false); // throw away the comment token
+		}
 	}
 	
 	
@@ -386,5 +418,15 @@ class InputTokenStream {
 			sb.append(context.tokenList.toString()).append("\n"); //$NON-NLS-1$
 		}
 		return sb.append("\n}\n").toString(); //$NON-NLS-1$
+	}
+
+
+	public boolean isCollectCommentTokens() {
+		return collectCommentTokens;
+	}
+
+
+	public void setCollectCommentTokens(boolean collectCommentTokens) {
+		this.collectCommentTokens = collectCommentTokens;
 	}
 }

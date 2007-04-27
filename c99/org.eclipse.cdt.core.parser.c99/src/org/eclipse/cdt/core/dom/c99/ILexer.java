@@ -12,6 +12,17 @@ package org.eclipse.cdt.core.dom.c99;
 
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
 
+/**
+ * A lexer returns a list of tokens that can be passed to the preprocessor.
+ * 
+ * @author Mike Kucera
+ */
 public interface ILexer {
-	TokenList lex();
+	
+	public static final int OPTION_GENERATE_COMMENT_TOKENS = 1;
+	
+	/**
+	 * Get a list of tokens.
+	 */
+	TokenList lex(int options);
 }

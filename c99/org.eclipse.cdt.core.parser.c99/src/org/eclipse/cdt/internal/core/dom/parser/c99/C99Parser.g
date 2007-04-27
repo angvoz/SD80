@@ -45,7 +45,47 @@ $Notice
 $End
 
 $Terminals
-
+	
+	-- The scanner does not recognize keywords, it will return them as identifier tokens.
+	-- The preprocessor will use an IKeywordMap to convert these identifiers to keyword tokens.
+	auto
+	break
+	case
+	char
+	const
+	continue
+	default
+	do
+	double
+	else
+	enum
+	extern
+	float
+	for
+	goto
+	if
+	inline
+	int
+	long
+	register
+	restrict
+	return
+	short
+	signed
+	sizeof
+	static
+	struct
+	switch
+	typedef
+	union
+	unsigned
+	void
+	volatile
+	while
+	_Bool
+	_Complex
+	_Imaginary
+	
 -- These are just aliases for lexer tokens
 
 -- RightBracket ::= ']'
@@ -106,10 +146,14 @@ $Globals
 	import java.util.*;
 	
 	import org.eclipse.cdt.core.dom.ast.*;
-	import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenOuput;
-	import org.eclipse.cdt.internal.core.parser.scanner2.ILocationResolver;
-	import org.eclipse.cdt.core.index.IIndex;
+	import org.eclipse.cdt.core.dom.c99.IParserActionTokenProvider;
+	import org.eclipse.cdt.core.dom.c99.IParser;
+	import org.eclipse.cdt.core.dom.c99.IParseResult;
+	import org.eclipse.cdt.core.dom.parser.c99.C99ParseResult;
+	import org.eclipse.cdt.core.dom.parser.c99.C99ParserAction;
 	import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
+	import org.eclipse.cdt.core.dom.c99.IKeywordMap;
+	import org.eclipse.cdt.core.dom.parser.c99.C99KeywordMap;
 ./
 $End
 
@@ -117,40 +161,84 @@ $Define
 	$ast_class /.Object./
 	$ba /.$BeginAction action.beforeConsume(); action. ./
 	$ea /.$EndAction./
-	$additional_interfaces /. , IPreprocessorTokenOuput ./
+	$additional_interfaces /. , IParserActionTokenProvider, IParser ./
+	
+	$action_class /. C99ParserAction ./
+	$keyword_map_class /. C99KeywordMap ./
 $End
 
 
 $Headers
 /.
-	private C99ParserAction action = new C99ParserAction(this);
+	private $action_class action = new $action_class(this, $prs_type.orderedTerminalSymbols);
+	private IKeywordMap keywordMap = new $keyword_map_class();
+	private List commentTokens = new ArrayList();
 	
-	public C99Parser() {}
-	
-	public IASTTranslationUnit parse(ILocationResolver resolver, IIndex index) {
-		action.setResolver(resolver);
-		action.setIndex(index);
-		parser(null, -1);
-		return action.getAST();
+	public $action_type() {  // constructor
+		this(new C99Lexer() {
+			// used by mapKind() to map C99 token kinds to the token kinds of a parser that extends this one
+			public String[] orderedExportedSymbols() {
+				return C99Parsersym.orderedTerminalSymbols;
+			}
+		});
 	}
-
-	public void prepareToParse() {
+	
+	public void addToken(IToken token) {
+		int newKind = mapKind(token.getKind());
+		if(newKind == $prs_type.TK_identifier) {
+			Integer keywordKind = keywordMap.getKeywordKind(token.toString());
+			if(keywordKind != null) {
+				newKind = keywordKind.intValue();
+			}
+		}
+		token.setKind(newKind);
+		super.addToken(token);
+	}
+	
+	public void addCommentToken(IToken token) {
+		commentTokens.add(token);
+	}
+	
+	public List getCommentTokens() {
+		return commentTokens;
+	}
+	
+	public IParseResult parse() {
 		// this has to be done, or... kaboom!
 		setStreamLength(getSize());
+		// do the actual parsing, -1 means full error handling
+		parser(null, -1); 
+
+		IASTTranslationUnit tu      = action.getAST();
+		boolean encounteredError    = action.encounteredError();
+		IASTCompletionNode compNode = action.getASTCompletionNode();
+
+		return new C99ParseResult(tu, compNode, encounteredError);
 	}
 	
-	public boolean encounteredError() {
-		return action.encounteredError();
+	
+	// implements IParserActionTokenProvider.getEOFToken()
+	public IToken getEOFToken() {
+		List tokens = getTokens();
+		IToken eof = (IToken) tokens.get(tokens.size() - 1);
+		return eof;
 	}
 	
-	public IASTCompletionNode getASTCompletionNode() {
-		return action.getASTCompletionNode();
+	
+	// implements IParserActionTokenProvider.getRuleTokenCount()
+	public int getRuleTokenCount() {
+		return (getRightSpan() - getLeftSpan()) + 1; 
 	}
+	
+	public List getRuleTokens() {
+		return Collections.unmodifiableList(getTokens().subList(getLeftSpan(), getRightSpan() + 1));
+	}
+	
 ./
 $End
 
 
-$Start
+$Start  -- the start symbol
 	translation_unit
 $End
 
@@ -175,10 +263,7 @@ $Rules
 
 
 ident ::= 'identifier'
-			--/.$ba  consumeName();  $ea./
         | 'Completion'
-            --/.$ba  consumeCompletion();  $ea./
-
 
 ']' ::=? 'RightBracket'
        | 'EndOfCompletion'
@@ -240,9 +325,9 @@ postfix_expression
 
 argument_expression_list
     ::= assignment_expression
-         /.$ba  consumeExpressionArgumentExpressionList(true);  $ea./
+         /.$ba  consumeExpressionList(true);  $ea./
       | argument_expression_list ',' assignment_expression
-         /.$ba  consumeExpressionArgumentExpressionList(false); $ea./
+         /.$ba  consumeExpressionList(false); $ea./
       
 unary_expression
     ::= postfix_expression
@@ -266,6 +351,9 @@ unary_expression
           /.$ba  consumeExpressionUnaryOperator(IASTUnaryExpression.op_sizeof); $ea./
       | 'sizeof' '(' type_name ')'
           /.$ba  consumeExpressionUnarySizeofTypeName();  $ea./  
+          
+      -- ambiguity here because type_name can be an identifier and unary_expression can be an identifier in brackets
+      -- TODO: will need a way of disambiguation, (parse both ways)
 
 cast_expression
     ::= unary_expression
@@ -398,150 +486,98 @@ constant_expression
 -- Statements
 -------------------------------------------------------------------------------------------
       
--- Grammar for if statements has been rewritten to avoid the "dangling else" ambiguity
-
-
 statement
-    ::= matched_statement
-      | unmatched_statement
+    ::= labeled_statement
+      | compound_statement
+      | expression_statement
+      | selection_statement
+      | iteration_statement
+      | jump_statement
       | ERROR_TOKEN
           /.$ba  consumeStatementProblem();  $ea./
-      
+
+
 labeled_statement
-    ::= label_identifier ':' unmatched_statement
+    ::= label_identifier ':' statement
          /.$ba  consumeStatementLabeled();  $ea./
-      | 'case' constant_expression ':' unmatched_statement
+      | 'case' constant_expression ':' statement
          /.$ba  consumeStatementCase();  $ea./
-      | 'default' ':' unmatched_statement
+      | 'default' ':' statement
          /.$ba  consumeStatementDefault();  $ea./
 
-labeled_statement_matched
-    ::= label_identifier ':' matched_statement
-         /.$ba  consumeStatementLabeled();  $ea./
-      | 'case' constant_expression ':' matched_statement
-         /.$ba  consumeStatementCase();  $ea./
-      | 'default' ':' matched_statement
-         /.$ba  consumeStatementDefault();  $ea./
 
 label_identifier
     ::= 'identifier'
          /.$ba  consumeName();  $ea./
-
+         
+         
 compound_statement
     ::= '{' '}' 
          /.$ba  consumeStatementEmptyCompoundStatement();  $ea./
-      | <openscope> '{' block_item_list '}'
+      | '{' <openscope> block_item_list '}'
          /.$ba  consumeStatementCompoundStatement();  $ea./
-        
+         
+         
 block_item_list
     ::= block_item
       | block_item_list block_item
-
-
+      
+      
+block_item
+    ::= statement
+      | declaration
+         /.$ba  consumeStatementDeclaration();  $ea./
+         
+         
 expression_statement
     ::= ';'
          /.$ba  consumeStatementNull();  $ea./  
       | expression_in_statement ';'
          /.$ba  consumeStatementExpression();  $ea./
-
          
-block_item
-    ::= statement
-      | declaration
-         /.$ba  consumeStatementDeclaration();  $ea./
-            
-
-switch_statement
-    ::= 'switch' '(' expression ')' unmatched_statement
-         /.$ba  consumeStatementSwitch();  $ea./
          
-switch_statement_matched
-    ::= 'switch' '(' expression ')' matched_statement
-         /.$ba  consumeStatementSwitch();  $ea./
-
-
-unmatched_statement
+selection_statement
     ::= 'if' '(' expression ')' statement
-         /.$ba  consumeStatementIfThen();  $ea./
-      | 'if' '(' expression ')' matched_statement 'else' unmatched_statement
-         /.$ba  consumeStatementIfThenElse();  $ea./ 
-      | labeled_statement
-      | switch_statement
-      | iteration_statement
-      
+          /.$ba  consumeStatementIfThen();  $ea./
+      | 'if' '(' expression ')' statement 'else' statement
+          /.$ba  consumeStatementIfThenElse();  $ea./ 
+      | 'switch' '(' expression ')' statement
+          /.$ba  consumeStatementSwitch();  $ea./
+  
 
-matched_statement
-    ::= 'if' '(' expression ')' matched_statement 'else' matched_statement
-         /.$ba  consumeStatementIfThenElse();  $ea./ 
-      | labeled_statement_matched
-      | switch_statement_matched
-      | iteration_statement_matched
-      | compound_statement
-      | jump_statement
-      | expression_statement
-      
-      
-      
 iteration_statement
-    ::= 'while' '(' expression ')' unmatched_statement
-          /.$ba  consumeStatementWhileLoop();  $ea./
-      | 'for' '(' expression ';' expression ';' expression ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(true, true, true);  $ea./
-      | 'for' '(' expression ';' expression ';'            ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(true, true, false);  $ea./
-      | 'for' '(' expression ';'            ';' expression ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(true, false, true);  $ea./
-      | 'for' '(' expression ';'            ';'            ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(true, false, false);  $ea./
-      | 'for' '('            ';' expression ';' expression ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(false, true, true);  $ea./
-      | 'for' '('            ';' expression ';'            ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(false, true, false);  $ea./
-      | 'for' '('            ';'            ';' expression ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(false, false, true);  $ea./
-      | 'for' '('            ';'            ';'            ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(false, false, false);  $ea./
-      | 'for' '(' declaration expression ';' expression ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(true, true, true);  $ea./
-      | 'for' '(' declaration expression ';'            ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(true, true, false);  $ea./
-      | 'for' '(' declaration            ';' expression ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(true, false, true);  $ea./
-      | 'for' '(' declaration            ';'            ')' unmatched_statement
-          /.$ba  consumeStatementForLoop(true, false, false);  $ea./
-
-iteration_statement_matched
     ::= 'do' statement 'while' '(' expression ')' ';'
           /.$ba  consumeStatementDoLoop();  $ea./
-      | 'while' '(' expression ')' matched_statement
+      | 'while' '(' expression ')' statement
           /.$ba  consumeStatementWhileLoop();  $ea./
-      | 'for' '(' expression ';' expression ';' expression ')' matched_statement
+      | 'for' '(' expression ';' expression ';' expression ')' statement
           /.$ba  consumeStatementForLoop(true, true, true);  $ea./
-      | 'for' '(' expression ';' expression ';'            ')' matched_statement
+      | 'for' '(' expression ';' expression ';'            ')' statement
           /.$ba  consumeStatementForLoop(true, true, false);  $ea./
-      | 'for' '(' expression ';'            ';' expression ')' matched_statement
+      | 'for' '(' expression ';'            ';' expression ')' statement
           /.$ba  consumeStatementForLoop(true, false, true);  $ea./
-      | 'for' '(' expression ';'            ';'            ')' matched_statement
+      | 'for' '(' expression ';'            ';'            ')' statement
           /.$ba  consumeStatementForLoop(true, false, false);  $ea./
-      | 'for' '('            ';' expression ';' expression ')' matched_statement
+      | 'for' '('            ';' expression ';' expression ')' statement
           /.$ba  consumeStatementForLoop(false, true, true);  $ea./
-      | 'for' '('            ';' expression ';'            ')' matched_statement
+      | 'for' '('            ';' expression ';'            ')' statement
           /.$ba  consumeStatementForLoop(false, true, false);  $ea./
-      | 'for' '('            ';'            ';' expression ')' matched_statement
+      | 'for' '('            ';'            ';' expression ')' statement
           /.$ba  consumeStatementForLoop(false, false, true);  $ea./
-      | 'for' '('            ';'            ';'            ')' matched_statement
+      | 'for' '('            ';'            ';'            ')' statement
           /.$ba  consumeStatementForLoop(false, false, false);  $ea./
-      | 'for' '(' declaration expression ';' expression ')' matched_statement
+      | 'for' '(' declaration expression ';' expression ')' statement
           /.$ba  consumeStatementForLoop(true, true, true);  $ea./
-      | 'for' '(' declaration expression ';'            ')' matched_statement
+      | 'for' '(' declaration expression ';'            ')' statement
           /.$ba  consumeStatementForLoop(true, true, false);  $ea./
-      | 'for' '(' declaration            ';' expression ')' matched_statement
+      | 'for' '(' declaration            ';' expression ')' statement
           /.$ba  consumeStatementForLoop(true, false, true);  $ea./
-      | 'for' '(' declaration            ';'            ')' matched_statement
+      | 'for' '(' declaration            ';'            ')' statement
           /.$ba  consumeStatementForLoop(true, false, false);  $ea./
           
+
 jump_statement
-    ::= 'goto' 'identifier' ';'
+    ::= 'goto' goto_identifier ';'
           /.$ba  consumeStatementGoto();  $ea./
       | 'continue' ';'
           /.$ba  consumeStatementContinue();  $ea./
@@ -553,6 +589,11 @@ jump_statement
           /.$ba  consumeStatementReturn(true);  $ea./
           
           
+goto_identifier
+    ::= 'identifier'
+          /.$ba  consumeName();  $ea./
+    
+    
 -------------------------------------------------------------------------------------------
 -- Declarations
 -------------------------------------------------------------------------------------------

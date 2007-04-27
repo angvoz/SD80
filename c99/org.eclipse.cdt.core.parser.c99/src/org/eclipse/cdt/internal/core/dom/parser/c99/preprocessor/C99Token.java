@@ -27,11 +27,7 @@ public class C99Token extends AbstractToken implements IToken {
 
 	public static final C99Token DUMMY_TOKEN = new C99Token(0, 0, 0, "<dummy>"); //$NON-NLS-1$
 	
-	
-	// Class invariant: representation == null | source == null;
-	
 	private String representation;
-	
 	
 	private char[] source;
 	private int sourceStartOffset;
@@ -93,12 +89,10 @@ public class C99Token extends AbstractToken implements IToken {
 	
 	
 	public IToken[] getFollowingAdjuncts() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	public IToken[] getPrecedingAdjuncts() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 

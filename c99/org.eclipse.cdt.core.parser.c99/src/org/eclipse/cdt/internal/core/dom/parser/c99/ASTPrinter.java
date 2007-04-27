@@ -13,6 +13,7 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 import java.io.PrintStream;
 
 import org.eclipse.cdt.core.dom.ast.IASTArrayDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTComment;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
@@ -54,11 +55,27 @@ public class ASTPrinter {
 		PrintVisitor visitor = new PrintVisitor(out);
 		
 		IASTPreprocessorStatement[] preStats = root.getAllPreprocessorStatements();
-		for(int i = 0; i < preStats.length; i++) {
-			print(out, 0, preStats[i]);
+		if(preStats != null) {
+			for(int i = 0; i < preStats.length; i++) {
+				print(out, 0, preStats[i]);
+			}
+		}
+
+		root.accept(visitor);
+		
+		IASTProblem[] problems = root.getPreprocessorProblems();
+		if(problems != null) {
+			for(int i = 0; i < problems.length; i++) {
+				print(out, 0, problems[i]);
+			}
 		}
 		
-		root.accept(visitor);
+		IASTComment[] comments = root.getComments();
+		if(comments != null) {
+			for(int i = 0; i < comments.length; i++) {
+				print(out, 0, comments[i]);
+			}
+		}
 	}
 	
 	
@@ -126,6 +143,14 @@ public class ASTPrinter {
 			ASTPrinter.print(out, indentLevel,  node);
 		}
 		
+		
+
+		public int visit(IASTComment comment) {
+			print(comment);
+			indentLevel++;
+			return super.visit(comment);
+		}
+
 		public int visit(ICASTDesignator designator) {
 			print(designator);
 			indentLevel++;
@@ -216,6 +241,11 @@ public class ASTPrinter {
 			return super.visit(typeId);
 		}
 
+		public int leave(IASTComment comment) {
+			indentLevel--;
+			return super.leave(comment);
+		}
+		
 		public int leave(ICASTDesignator designator) {
 			indentLevel--;
 			return super.leave(designator);

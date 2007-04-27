@@ -12,6 +12,7 @@ package org.eclipse.cdt.core.parser.c99.tests;
 
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2SelectionParseTest;
 import org.eclipse.cdt.internal.core.parser.ParserException;
@@ -31,42 +32,50 @@ public class C99SelectionParseTest extends AST2SelectionParseTest {
 	}
 
 	protected IASTNode parse(String code, ParserLanguage lang, int offset, int length) throws ParserException {
-		if(lang != ParserLanguage.C)
-			super.parse(code, lang, offset, length);
-		
-		return parse(code, lang, false, false, offset, length);
+		if(lang == ParserLanguage.C)
+			return parse(code, lang, false, false, offset, length);
+		else
+			return super.parse(code, lang, offset, length);
 	}
 	
 	protected IASTNode parse(IFile file, ParserLanguage lang, int offset, int length) throws ParserException {
-		if(lang != ParserLanguage.C)
+		if(lang == ParserLanguage.C) {
+			IASTTranslationUnit tu = parse(file, lang, false, false);
+			return tu.selectNodeForLocation(tu.getFilePath(), offset, length);
+		}
+		else
 			return super.parse(file, lang, offset, length);
-		
-		IASTTranslationUnit tu = parse(file, lang, false, false);
-		return tu.selectNodeForLocation(tu.getFilePath(), offset, length);
 	}
 	
 	protected IASTNode parse(String code, ParserLanguage lang, int offset, int length, boolean expectedToPass) throws ParserException {
-		if(lang != ParserLanguage.C)
+		if(lang == ParserLanguage.C)
+			return parse(code, lang, false, expectedToPass, offset, length);
+		else
 			return super.parse(code, lang, offset, length, expectedToPass);
-		
-		return parse(code, lang, false, expectedToPass, offset, length);
 	}
 	
 	protected IASTNode parse(String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems, int offset, int length) throws ParserException {
-		if(lang != ParserLanguage.C)
+		if(lang == ParserLanguage.C) {
+			IASTTranslationUnit tu = ParseHelper.parse(code, getLanguage(), useGNUExtensions, expectNoProblems, 0);
+			return tu.selectNodeForLocation(tu.getFilePath(), offset, length);
+		}
+		else
 			return super.parse(code, lang, useGNUExtensions, expectNoProblems, offset, length);
-		
-		IASTTranslationUnit tu = ParseHelper.parse(code, lang, useGNUExtensions, expectNoProblems, 0);
-		return tu.selectNodeForLocation(tu.getFilePath(), offset, length);
 	}	
 	
 	protected IASTTranslationUnit parse( IFile file, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
-		if(lang != ParserLanguage.C)
-			return super.parse(file, lang, useGNUExtensions, expectNoProblems);
+		if(lang == ParserLanguage.C)
+			throw new RuntimeException("file parsing not supported yet");//$NON-NLS-1$
 		
-		throw new RuntimeException("file parsing not supported yet");
+		return super.parse(file, lang, useGNUExtensions, expectNoProblems);
 	}
 
+	
+	protected C99Language getLanguage() {
+		return new C99Language();
+	}
+	
+	
 	// The following three tests fail because they require access to include files
 	
 	public void testBug96702() {

@@ -14,9 +14,13 @@ import org.eclipse.cdt.core.parser.CodeReader;
 
 /**
  * Used by the preprocessor to create new ILexer objects
- * for #included source files.
+ * so that it can tokenize #included source files.
  *
  */
 public interface ILexerFactory {
+	
+	/**
+	 * Create a lexer for the given CodeReader.
+	 */
 	ILexer createLexer(CodeReader reader);
 }

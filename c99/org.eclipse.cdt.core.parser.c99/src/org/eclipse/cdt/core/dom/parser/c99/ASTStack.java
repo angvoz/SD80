@@ -9,7 +9,7 @@
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.internal.core.dom.parser.c99;
+package org.eclipse.cdt.core.dom.parser.c99;
 
 import java.util.Iterator;
 import java.util.Stack;
@@ -21,7 +21,7 @@ import java.util.Stack;
  * For example the rule for compound statements (where block_item_list is any 
  * number of statements or declarations):
  * 
- * compound-statement ::= <openscope> '{' block_item_list '}'
+ * compound-statement ::= '{' <openscope> block_item_list '}'
  * 
  * There is a problem when trying to build the AST node for the compound statment...
  * you don't know how many block_items are contained in the compound statment, so 

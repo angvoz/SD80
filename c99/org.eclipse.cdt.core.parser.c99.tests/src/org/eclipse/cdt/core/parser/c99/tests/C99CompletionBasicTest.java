@@ -15,17 +15,33 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IFunction;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.prefix.BasicCompletionTest;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 public class C99CompletionBasicTest extends BasicCompletionTest {
 
+	public C99CompletionBasicTest() {
+	}
+
+
 	protected IASTCompletionNode getCompletionNode(String code,
 			ParserLanguage lang, boolean useGNUExtensions)
 			throws ParserException {
 		
-		return ParseHelper.getCompletionNode(code, lang);
+		if(ParserLanguage.C == lang) {
+			return ParseHelper.getCompletionNode(code, getC99Language());
+		}
+		else {
+			// TODO: parsing of C++
+			return super.getCompletionNode(code, lang, useGNUExtensions);
+		}
+	}
+	
+	
+	protected C99Language getC99Language() {
+		return C99Language.getDefault();
 	}
 	
 	// The C99 parser currently doesn't support ambiguity nodes.
@@ -35,8 +51,8 @@ public class C99CompletionBasicTest extends BasicCompletionTest {
 	
 	public void testFunction() throws Exception {
 		StringBuffer code = new StringBuffer();
-		code.append("void func(int x) { }");
-		code.append("void func2() { fu");
+		code.append("void func(int x) { }");//$NON-NLS-1$
+		code.append("void func2() { fu");//$NON-NLS-1$
 
 		// C
 		IASTCompletionNode node = getGCCCompletionNode(code.toString());
@@ -49,15 +65,15 @@ public class C99CompletionBasicTest extends BasicCompletionTest {
 				names[0], true));
 		// There should be two since they both start with fu
 		assertEquals(2, bindings.length);
-		assertEquals("func", ((IFunction)bindings[0]).getName());
-		assertEquals("func2", ((IFunction)bindings[1]).getName());
+		assertEquals("func", ((IFunction)bindings[0]).getName());//$NON-NLS-1$
+		assertEquals("func2", ((IFunction)bindings[1]).getName());//$NON-NLS-1$
 		
 	}
 
 	public void testTypedef() throws Exception {
 		StringBuffer code = new StringBuffer();
-		code.append("typedef int blah;");
-		code.append("bl");
+		code.append("typedef int blah;");//$NON-NLS-1$
+		code.append("bl");//$NON-NLS-1$
 		
 		// C
 		IASTCompletionNode node = getGCCCompletionNode(code.toString());
@@ -65,7 +81,7 @@ public class C99CompletionBasicTest extends BasicCompletionTest {
 		assertEquals(1, names.length);
 		IBinding[] bindings = names[0].getCompletionContext().findBindings(names[0], true);
 		assertEquals(1, bindings.length);
-		assertEquals("blah", ((ITypedef)bindings[0]).getName());
+		assertEquals("blah", ((ITypedef)bindings[0]).getName());//$NON-NLS-1$
 	}
 	
 }

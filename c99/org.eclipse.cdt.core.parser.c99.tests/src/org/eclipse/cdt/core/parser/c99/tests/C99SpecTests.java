@@ -13,8 +13,10 @@ package org.eclipse.cdt.core.parser.c99.tests;
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2CSpecTest;
+import org.eclipse.cdt.internal.core.parser.ParserException;
 
 public class C99SpecTests extends AST2CSpecTest {
 
@@ -29,20 +31,24 @@ public class C99SpecTests extends AST2CSpecTest {
 	
 	/**
 	 * Only parses it as C actually
+	 * @throws ParserException 
 	 */
-	protected void parseCandCPP( String code, boolean checkBindings, int expectedProblemBindings ) {
+	protected void parseCandCPP( String code, boolean checkBindings, int expectedProblemBindings ) throws ParserException {
 		parse(code, ParserLanguage.C,   checkBindings, expectedProblemBindings);
 		parse(code, ParserLanguage.CPP, checkBindings, expectedProblemBindings);
 	}
 		
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean checkBindings, int expectedProblemBindings ) {
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean checkBindings, int expectedProblemBindings ) throws ParserException {
 		if(lang == ParserLanguage.C)
-			return ParseHelper.parse(code, lang, true, checkBindings, expectedProblemBindings );
+			return ParseHelper.parse(code, getLanguage(), true, checkBindings, expectedProblemBindings );
 		else
-			return null; // TODO: support C++
+			// TODO: support C++
+			return super.parse(code, lang, checkBindings, expectedProblemBindings);
     }
 	
-	
+	protected C99Language getLanguage() {
+		return new C99Language();
+	}
 
 	//Assignment statements cannot exists outside of a function body
 	public void test5_1_2_3s15() throws Exception {
@@ -151,7 +157,9 @@ public class C99SpecTests extends AST2CSpecTest {
 		buffer.append("char c[2][6] = { str(hello), str() };\n"); //$NON-NLS-1$
 		buffer.append("}\n"); //$NON-NLS-1$
 
-		parseCandCPP(buffer.toString(), true, 0);
+		//parseCandCPP(buffer.toString(), true, 0);
+		// TODO: this only works on the C99 parser for now
+		parse(buffer.toString(), ParserLanguage.C, true, 0);
 	}
 	
 	
@@ -168,7 +176,8 @@ public class C99SpecTests extends AST2CSpecTest {
 		buffer.append("int j[] = { t(1,2,3), t(,4,5), t(6,,7), t(8,9,),\n"); //$NON-NLS-1$
 		buffer.append("t(10,,), t(,11,), t(,,12), t(,,) };\n"); //$NON-NLS-1$
 
-		parseCandCPP(buffer.toString(), true, 0);
+		// TODO: this only works on the C99 parser for now
+		parse(buffer.toString(), ParserLanguage.C, true, 0);
 	}
 	
 	/**

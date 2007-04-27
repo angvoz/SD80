@@ -13,23 +13,33 @@ package org.eclipse.cdt.core.parser.c99.tests;
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.DOMLocationMacroTests;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 public class C99DOMLocationMacroTests extends DOMLocationMacroTests {
 
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) {
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) throws ParserException {
 	    return parse(code, lang, false, true );
 	}
 	    
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) {
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) throws ParserException {
 	    return parse( code, lang, useGNUExtensions, true );
 	}
 	 
-    protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) {
-    	return ParseHelper.parse(code, lang, expectNoProblems);
+    protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
+    	if(lang == ParserLanguage.C)
+    		return ParseHelper.parse(code, getLanguage(), expectNoProblems);
+    	else
+    		return super.parse(code, lang, useGNUExtensions, expectNoProblems);
     }
+    
+    
+    protected C99Language getLanguage() {
+    	return new C99Language();
+    }
+    
     
     /**
      * Tests GCC specific stuff, not applicable at this point

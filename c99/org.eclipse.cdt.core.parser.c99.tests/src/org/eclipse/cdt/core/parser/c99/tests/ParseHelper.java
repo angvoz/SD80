@@ -19,10 +19,10 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
 import org.eclipse.cdt.core.dom.c99.C99Language;
+import org.eclipse.cdt.core.dom.c99.IParseResult;
+import org.eclipse.cdt.core.dom.parser.c.AbstractCLanguage;
 import org.eclipse.cdt.core.parser.CodeReader;
-import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
-import org.eclipse.cdt.internal.core.dom.parser.c99.ParseResult;
 
 /**
  * Utility methods for parsing test code using the C99 LPG parser.
@@ -51,25 +51,27 @@ public class ParseHelper {
 	}
 	
 	
-	public static IASTTranslationUnit parse(String code, ParserLanguage lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
-		CodeReader codeReader = new CodeReader(code.toCharArray());
+
+	public static IASTTranslationUnit parse(char[] code, C99Language lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
+		CodeReader codeReader = new CodeReader(code);
 		return parse(codeReader, lang, expectNoProblems, checkBindings, expectedProblemBindings);
 	}
 	
+	public static IASTTranslationUnit parse(String code, C99Language lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
+		return parse(code.toCharArray(), lang, expectNoProblems, checkBindings, expectedProblemBindings);
+	}
 	
-	public static IASTTranslationUnit parse(String code, ParserLanguage lang, boolean expectNoProblems) {
+	
+	public static IASTTranslationUnit parse(String code, C99Language lang, boolean expectNoProblems) {
 		return parse(code, lang, expectNoProblems, false, 0);
 	}
 
-	
-	public static IASTTranslationUnit parse(CodeReader codeReader, ParserLanguage lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
+
+
+	public static IASTTranslationUnit parse(CodeReader codeReader, C99Language language, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
 		testsRun++;
 		
-		if(lang != ParserLanguage.C) {
-			System.err.println("Warning, parsing of C++ not supported yet, will parse file as C99");
-		}
-		
-		ParseResult result = C99Language.parse(codeReader, null, null, null);
+		IParseResult result = language.parse(codeReader, null, null, null);
 		IASTTranslationUnit tu = result.getTranslationUnit();
 
 		// resolve all bindings
@@ -100,24 +102,24 @@ public class ParseHelper {
 		
 		return tu;
 	}
+
 	
-	
-	public static IASTCompletionNode getCompletionNode(String code, int offset) { 
-		return getCompletionNode(code, ParserLanguage.C, offset);
+	public static IASTTranslationUnit commentParse(String code, C99Language language) {
+		CodeReader codeReader = new CodeReader(code.toCharArray());
+		IParseResult result = language.parse(codeReader, null, null, null, null, AbstractCLanguage.OPTION_ADD_COMMENTS);
+		IASTTranslationUnit tu = result.getTranslationUnit();
+		return tu;
 	}
 	
-	public static IASTCompletionNode getCompletionNode(String code, ParserLanguage lang) {
+	public static IASTCompletionNode getCompletionNode(String code, C99Language lang) {
 		return getCompletionNode(code, lang, code.length());
 	}
 	
-	public static IASTCompletionNode getCompletionNode(String code, ParserLanguage lang, int offset) {
-		if(lang != ParserLanguage.C) {
-			System.err.println("Warning, parsing of C++ not supported yet, will parse file as C99");
-		}
-		
+	
+	public static IASTCompletionNode getCompletionNode(String code, C99Language lang, int offset) {
 		CodeReader reader = new CodeReader(code.toCharArray());
 
-		ParseResult result = C99Language.completionParse(reader, null, null, null, offset);
+		IParseResult result = lang.completionParse(reader, null, null, null, offset);
 		return result.getCompletionNode();
 	}
 

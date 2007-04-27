@@ -11,7 +11,6 @@
 package org.eclipse.cdt.core.parser.c99.tests;
 
 import junit.framework.Test;
-import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 public class AutomatedIntegrationSuite extends TestSuite {
@@ -26,27 +25,17 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		suite.addTestSuite(C99KnRTests.class); // mostly fail due to ambiguities
 		
 		// The majority of the content assist test are in the ui tests plugin
-		suite.addTestSuite(C99CompletionBasicTest.class);
-		
+		suite.addTestSuite(C99CompletionBasicTest.class);	
 		// this one still has a lot of failing tests though
 		suite.addTestSuite(C99SelectionParseTest.class);
 		
+		suite.addTestSuite(C99DOMLocationInclusionTests.class);
 		suite.addTestSuite(C99DOMLocationTests.class);
 		suite.addTestSuite(C99DOMLocationMacroTests.class);
-		suite.addTestSuite(C99DOMLocationInclusionTests.class);
-
-		//suite.addTest(new FakeTestCaseToPrint());
+		suite.addTestSuite(C99DOMPreprocessorInformationTest.class);
+		suite.addTestSuite(C99CommentTests.class);
 		
 		return suite;
 	
-	}
-	
-	private static class FakeTestCaseToPrint extends TestCase {
-		public void tearDown() throws Exception {
-			super.tearDown();
-			System.out.println("Number of test run on C99 parser: " + ParseHelper.testsRun);
-		}
-		public void testIt() {}
-	}
-	
+	}	
 }

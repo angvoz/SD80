@@ -8,12 +8,25 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.ast;
 
-import org.eclipse.cdt.core.dom.ast.IASTPreprocessorPragmaStatement;
-import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
+package org.eclipse.cdt.core.dom.c99;
 
-public class ASTPreprocessorPragmaStatement extends ASTNode implements
-		IASTPreprocessorPragmaStatement {
 
+
+/**
+ * A keyword map provides the mechanism to add new keywords. 
+ * Anything that is parsed as an identifier is then checked against
+ * a keyword map in case the identifier is actually a keyword.
+ * 
+ * Maps keywords to token kinds.
+ * 
+ * @author Mike Kucera
+ */
+public interface IKeywordMap {
+	
+	/**
+	 * Returns the token kind for the given string, 
+	 * returns null if the string is not a keyword.
+	 */
+	public Integer getKeywordKind(String identifier);
 }

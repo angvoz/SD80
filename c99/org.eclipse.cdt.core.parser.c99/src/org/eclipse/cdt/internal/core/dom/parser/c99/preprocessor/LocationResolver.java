@@ -40,7 +40,11 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 	// keep track of these wierd IMacroDefinion objects, 
 	// why this isn't encapsulated in LocationMap I have no idea
 	private Map macroDefinitions = new HashMap();
+	private boolean ignoreMacroExpansions;
 	
+	public void setIgnoreMacroExpansions(boolean ignore) {
+		this.ignoreMacroExpansions = ignore;
+	}
 	
 	/**
 	 * Informs the LocationReslolver that a macro has been defined.
@@ -50,9 +54,9 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 		int startOffset   = macro.getDirectiveStartOffset();
 		int endOffset     = macro.getDirectiveEndOffset();
 		int nameOffset    = macro.getNameStartOffset();
-		int nameEndOffset = macro.getNameEndOffset();
+		int nameEndOffset = macro.getNameEndOffset() + 1;
 		char[] macroName  = macro.getName().toCharArray();
-		char[] expansion  = macro.getReplacementSequenceAsString().toCharArray();
+		char[] expansion  = macro.getExpansion().toCharArray();
 		
 		IMacroDefinition macroDef;
 		
@@ -69,14 +73,17 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 		macroDefinitions.put(macro.getName().toString(), macroDef);
 	}
 	
-	
+
 	/**
 	 * Registers macros that come from IScannerInfo and the index.
 	 * These will pop up in the content assist popup.
 	 */
 	public void registerBuiltinMacro(Macro macro) {
+		if(macro == null)
+			return; 
+		
 		char[] macroName  = macro.getName().toCharArray();
-		char[] expansion  = macro.getReplacementSequenceAsString().toCharArray();
+		char[] expansion  = macro.getExpansion().toCharArray();
 		
 		IMacroDefinition macroDef;
 		if(macro.isObjectLike()) {
@@ -107,10 +114,7 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 		}
 		return argList;
 	}
-	
-	
-	
-	
+
 	
 	public void undefineMacro(int directiveStartOffset, int directiveEndOffset, String macroName, int nameOffset) {
 		super.encounterPoundUndef(directiveStartOffset, directiveEndOffset, macroName.toCharArray(), nameOffset, getMacroDefinition(macroName));
@@ -119,21 +123,35 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 	
 	// TODO: what if macroDef is null?
 	// TODO what if the macro isn't object style?
-	public void startMacroExpansion(Macro macro, int nameStartOffset, int endOffset) {
+	public void startMacroExpansion(Macro macro, int nameStartOffset, int endOffset, char[][] actualArgs) {
+		if(ignoreMacroExpansions)
+			return;
+		
 		IMacroDefinition macroDef = getMacroDefinition(macro);
-		if(macro.isObjectLike())
+		if(macro.isObjectLike()) {
+			//System.out.println("C99 startObjectStyleMacroExpansion(" + nameStartOffset + "," + endOffset + ")");
 			super.startObjectStyleMacroExpansion(macroDef, nameStartOffset, endOffset);
-		else
-			super.startFunctionStyleExpansion(macroDef, getParamsAsChars(macro), nameStartOffset, endOffset);
+		}
+		else {
+			//System.out.println("C99 startFunctionStyleExpansion(" + nameStartOffset + "," + endOffset + ")");
+			super.startFunctionStyleExpansion(macroDef, getParamsAsChars(macro), nameStartOffset, endOffset, actualArgs);
+		}
 	}
 	
 	
 	public void endMacroExpansion(Macro macro, int offset) {
+		if(ignoreMacroExpansions)
+			return;
+		
 		IMacroDefinition macroDef = getMacroDefinition(macro);
-		if(macro.isObjectLike())
+		if(macro.isObjectLike()) {
+			//System.out.println("C99 endObjectStyleMacroExpansion(" + offset + ")");
 			super.endObjectStyleMacroExpansion(macroDef, offset);
-		else
+		}
+		else {
+			//System.out.println("C99 endFunctionStyleExpansion(" + offset + ")");
 			super.endFunctionStyleExpansion(macroDef, offset);
+		}
 		
 	}
 

@@ -21,6 +21,8 @@ import org.eclipse.cdt.core.parser.CodeReader;
  */
 public interface IPreprocessorLog {
 
+	public void setIgnoreMacroExpansions(boolean ignore);
+	
     public void startTranslationUnit(CodeReader reader);
 
     public void endTranslationUnit(int offset);
@@ -29,29 +31,29 @@ public interface IPreprocessorLog {
 
     public void endInclusion(CodeReader reader, int offset);
 
-    public void startMacroExpansion(Macro macro, int nameStartOffset, int endOffset);
+    public void startMacroExpansion(Macro macro, int nameStartOffset, int endOffset, char[][] actualArguments);
 	
 	public void endMacroExpansion(Macro macro, int offset);
     
     public void defineMacro(Macro macro);
 
-    public void encounterPoundIf(int startOffset, int endOffset, boolean taken);
+    public void encounterPoundIf(int startOffset, int endOffset, boolean taken, char[] condition);
 
-    public void encounterPoundIfdef(int startOffset, int endOffset, boolean taken);
+    public void encounterPoundIfdef(int startOffset, int endOffset, boolean taken, char[] condition);
 
-    public void encounterPoundIfndef(int startOffset, int endOffset, boolean taken);
+    public void encounterPoundIfndef(int startOffset, int endOffset, boolean taken, char[] condition);
 
     public void encounterPoundElse(int startOffset, int endOffset, boolean taken);
 
-    public void encounterPoundElif(int startOffset, int endOffset, boolean taken);
+    public void encounterPoundElif(int startOffset, int endOffset, boolean taken, char[] condition);
 
     public void encounterPoundEndIf(int startOffset, int endOffset);
 
-    public void encounterPoundPragma(int startOffset, int endOffset);
+    public void encounterPoundPragma(int startOffset, int endOffset, char[] msg);
 
-    public void encounterPoundError(int startOffset, int endOffset);
+    public void encounterPoundError(int startOffset, int endOffset, char[] msg);
 
-    public void encounterPoundWarning(int startOffset, int endOffset);
+    public void encounterPoundWarning(int startOffset, int endOffset, char[] msg);
     
     public void undefineMacro(int directiveStartOffset, int directiveEndOffset, String macroName, int nameOffset);
 

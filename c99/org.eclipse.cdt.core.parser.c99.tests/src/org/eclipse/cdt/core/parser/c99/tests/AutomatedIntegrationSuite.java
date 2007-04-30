@@ -20,7 +20,6 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		
 		suite.addTestSuite(C99Tests.class); // has some tests that do fail
 		suite.addTestSuite(C99PreprocessorTests.class); // should all pass
-		
 		suite.addTestSuite(C99SpecTests.class); // a couple of failuers
 		suite.addTestSuite(C99KnRTests.class); // mostly fail due to ambiguities
 		
@@ -34,6 +33,7 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		suite.addTestSuite(C99DOMLocationMacroTests.class);
 		suite.addTestSuite(C99DOMPreprocessorInformationTest.class);
 		suite.addTestSuite(C99CommentTests.class);
+		suite.addTestSuite(C99DigraphTrigraphTests.class);
 		
 		return suite;
 	

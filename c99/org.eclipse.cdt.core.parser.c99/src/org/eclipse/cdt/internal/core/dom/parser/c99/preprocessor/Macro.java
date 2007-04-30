@@ -404,7 +404,7 @@ public class Macro implements C99Parsersym {
 		Iterator iter = replacement.iterator();
 		while(iter.hasNext()) {
 			IToken token = (IToken) iter.next();
-			sb.append(token.toString().replace("\"", "\\\"")); // replace " with \"
+			sb.append(token.toString().replaceAll("\"", "\\\"")); // replace " with \"
 			if(iter.hasNext())
 				sb.append(' ');
 		}

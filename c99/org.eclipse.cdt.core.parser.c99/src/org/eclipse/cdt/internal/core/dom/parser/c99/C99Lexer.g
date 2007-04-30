@@ -165,16 +165,13 @@ $Headers
     }
     
     protected void makeToken(int kind) {
-    	if(!returnCommentTokens && (kind == $_MultiLineComment || kind == $_SingleLineComment))
-    		return;
-    		
-		int startOffset = getLeftSpan();
-		int endOffset   = getRightSpan();
-		
-		//System.out.println("Token: " + C99Parsersym.orderedTerminalSymbols[token]);
-		C99Token token = new C99Token(startOffset, endOffset, kind);
-		token.setRepresentation(getInputChars(), startOffset, endOffset);
-		tokenList.add(token);
+    	// ignore comments if desired
+		if(!returnCommentTokens && (kind == TK_MultiLineComment || kind == TK_SingleLineComment))
+			return;
+			
+		IToken token = C99LexerKind.makeToken(this, kind);
+		if(token != null)
+			tokenList.add(token);
 	}
 	
 	public void reportError(int leftOffset, int rightOffset) {
@@ -184,9 +181,7 @@ $Headers
 	}
 	
 	public int getKind(int i) {
-		int streamLength = getStreamLength();
-		char c = (i >= streamLength ? '\uffff' : getCharValue(i));
-		return C99LexerKind.getKind(c);
+		return C99LexerKind.getKind(this, i);
 	}
 	
 ./
@@ -326,8 +321,8 @@ $Rules
 	Token ::=  '!'  			/.$ba  makeToken($_Bang);              $ea./
 	Token ::=  '/'  			/.$ba  makeToken($_Slash);             $ea./
 	Token ::=  '%'  			/.$ba  makeToken($_Percent);           $ea./
-	Token ::=  '<' '<'  		/.$ba  makeToken($_LeftShift);        $ea./
-	Token ::=  '>' '>'  		/.$ba  makeToken($_RightShift);         $ea./
+	Token ::=  '<' '<'  		/.$ba  makeToken($_LeftShift);         $ea./
+	Token ::=  '>' '>'  		/.$ba  makeToken($_RightShift);        $ea./
 	Token ::=  '<'  			/.$ba  makeToken($_LT);                $ea./
 	Token ::=  '>'  			/.$ba  makeToken($_GT);                $ea./
 	Token ::=  '<' '=' 			/.$ba  makeToken($_LE);                $ea./
@@ -356,15 +351,14 @@ $Rules
 	Token ::=  ','  			/.$ba  makeToken($_Comma);             $ea./
 	Token ::=  '#'  			/.$ba  makeToken($_Hash);              $ea./
 	Token ::=  '#' '#'  		/.$ba  makeToken($_HashHash);          $ea./
-	Token ::=  '<' ':' 			/.$ba  makeToken($_RightBracket);      $ea./
-	Token ::=  ':' '>' 			/.$ba  makeToken($_LeftBracket);       $ea./
-	Token ::=  '<' '%' 			/.$ba  makeToken($_RightBrace);        $ea./
-	Token ::=  '%' '>' 			/.$ba  makeToken($_LeftBrace);         $ea./
+	
+	-- digraph sequences
+	Token ::=  '<' ':' 			/.$ba  makeToken($_LeftBracket);       $ea./
+	Token ::=  ':' '>' 			/.$ba  makeToken($_RightBracket);      $ea./
+	Token ::=  '<' '%' 			/.$ba  makeToken($_LeftBrace);         $ea./
+	Token ::=  '%' '>' 			/.$ba  makeToken($_RightBrace);        $ea./
 	Token ::=  '%' ':' 			/.$ba  makeToken($_Hash);              $ea./
 	Token ::=  '%' ':' '%' ':' 	/.$ba  makeToken($_HashHash);          $ea./
-
-
-    
           
 	-----------------------------------------------------------------------------------
   	-- Character Sets
@@ -455,8 +449,8 @@ $Rules
                 | stars not-slash-or-star
                 | '/'
                 | not-slash-or-star
-                
-                
+ 	            
+ 	            
   	-----------------------------------------------------------------------------------
   	-- Identifiers
   	-----------------------------------------------------------------------------------

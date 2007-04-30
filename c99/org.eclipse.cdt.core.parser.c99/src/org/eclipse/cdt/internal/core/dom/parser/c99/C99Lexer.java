@@ -100,16 +100,13 @@ public synchronized TokenList lex(int options) {
 }
 
 protected void makeToken(int kind) {
+	// ignore comments if desired
 	if(!returnCommentTokens && (kind == TK_MultiLineComment || kind == TK_SingleLineComment))
 		return;
 		
-	int startOffset = getLeftSpan();
-	int endOffset   = getRightSpan();
-	
-	//System.out.println("Token: " + C99Parsersym.orderedTerminalSymbols[token]);
-	C99Token token = new C99Token(startOffset, endOffset, kind);
-	token.setRepresentation(getInputChars(), startOffset, endOffset);
-	tokenList.add(token);
+	IToken token = C99LexerKind.makeToken(this, kind);
+	if(token != null)
+		tokenList.add(token);
 }
 
 public void reportError(int leftOffset, int rightOffset) {
@@ -119,9 +116,7 @@ public void reportError(int leftOffset, int rightOffset) {
 }
 
 public int getKind(int i) {
-	int streamLength = getStreamLength();
-	char c = (i >= streamLength ? '\uffff' : getCharValue(i));
-	return C99LexerKind.getKind(c);
+	return C99LexerKind.getKind(this, i);
 }
 
 
@@ -271,13 +266,13 @@ public int getKind(int i) {
             //
             // Rule 24:  Token ::= < <
             //
-            case 24: {   makeToken(TK_LeftShift);                  break;
+            case 24: {   makeToken(TK_LeftShift);                   break;
             }
  
             //
             // Rule 25:  Token ::= > >
             //
-            case 25: {   makeToken(TK_RightShift);                   break;
+            case 25: {   makeToken(TK_RightShift);                  break;
             }
  
             //
@@ -451,25 +446,25 @@ public int getKind(int i) {
             //
             // Rule 54:  Token ::= < :
             //
-            case 54: {   makeToken(TK_RightBracket);                break;
+            case 54: {   makeToken(TK_LeftBracket);                 break;
             }
  
             //
             // Rule 55:  Token ::= : >
             //
-            case 55: {   makeToken(TK_LeftBracket);                 break;
+            case 55: {   makeToken(TK_RightBracket);                break;
             }
  
             //
             // Rule 56:  Token ::= < %
             //
-            case 56: {   makeToken(TK_RightBrace);                  break;
+            case 56: {   makeToken(TK_LeftBrace);                   break;
             }
  
             //
             // Rule 57:  Token ::= % >
             //
-            case 57: {   makeToken(TK_LeftBrace);                   break;
+            case 57: {   makeToken(TK_RightBrace);                  break;
             }
  
             //

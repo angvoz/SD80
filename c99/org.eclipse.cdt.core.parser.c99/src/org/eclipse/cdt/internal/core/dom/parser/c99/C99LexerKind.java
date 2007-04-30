@@ -10,7 +10,92 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c99;
 
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
+
+import lpg.lpgjavaruntime.IToken;
+
+/**
+ * Maps characters in the input stream to 'token kinds' that
+ * are recognized by the LPG lex parser, recognizes
+ * trigraph sequences. 
+ * 
+ * @author Mike Kucera
+ */
 public class C99LexerKind {
+	
+	
+	/**
+	 * Returns the character kind at the given stream index.
+	 * 
+	 * Detects trigraph sequences and replaces them with
+	 * their corresponding character kind. Trigraph sequences
+	 * allow C code to be written in environments where the
+	 * full ASCII character set is not available.
+	 * 
+	 * Trigraph     Equivalent
+     * ========     ==========
+     *   ??=            #
+     *   ??/            \
+     *   ??'            ^
+     *   ??(            [
+     *   ??)            ]
+     *   ??!            |
+     *   ??<            {
+     *   ??>            }
+     *   ??-            ~
+     *    
+	 * @param i index into the character stream
+	 */
+	public static int getKind(C99Lexer lexer, final int i) {
+		int streamLength = lexer.getStreamLength();
+		if(i >= streamLength)
+			return C99Lexer.Char_EOF;
+		
+		char c = lexer.getCharValue(i);
+			
+		// detect trigraph sequences
+		if(c == '?' && i+2 < streamLength && lexer.getCharValue(i+1) == '?') {
+				
+			int kind;
+			switch(lexer.getCharValue(i+2)) {
+				case '=' : kind = C99Lexer.Char_Hash;         break;
+				case '(' : kind = C99Lexer.Char_LeftBracket;  break;
+				case ')' : kind = C99Lexer.Char_RightBracket; break;
+				case '/' : kind = C99Lexer.Char_BackSlash;    break;
+				case '\'': kind = C99Lexer.Char_Caret;        break;
+				case '<' : kind = C99Lexer.Char_LeftBrace;    break;
+				case '>' : kind = C99Lexer.Char_RightBrace;   break;
+				case '!' : kind = C99Lexer.Char_Bar;          break;
+				case '-' : kind = C99Lexer.Char_Tilde;        break;
+				default  : return getKind(c);
+			}
+			
+			lexer.setStreamIndex(i+2); // advance the stream past the trigraph sequence
+			return kind;
+		}
+
+		return getKind(c);
+	}
+	
+	
+	
+	/**
+	 * Creates a token, takes trigraph sequences into account.
+	 */
+	public static IToken makeToken(C99Lexer lexer, final int kind) {
+		int startOffset = lexer.getLeftSpan();
+		int endOffset   = lexer.getRightSpan();
+		char[] input = lexer.getInputChars();
+		
+		if(startOffset == endOffset && input[startOffset] == '?' && kind != C99Parsersym.TK_Question) {
+			// The token starts with a '?' but its not a question token, then it must be a trigraph.
+			endOffset += 2; // make sure the toString() method of the token returns the entire trigraph sequence
+		}
+		
+		C99Token token = new C99Token(startOffset, endOffset, kind);
+		token.setRepresentation(input, startOffset, endOffset);
+		return token;
+	}
 	
 	
 	/**
@@ -18,7 +103,7 @@ public class C99LexerKind {
 	 * to their character kind, the character kinds are recognized
 	 * by the scanner.
 	 */
-	public static int getKind(char c) {
+	private static int getKind(char c) {
 		switch(c) {
 			case 'a': return C99Lexer.Char_a;  case 'A': return C99Lexer.Char_A;
 			case 'b': return C99Lexer.Char_b;  case 'B': return C99Lexer.Char_B;

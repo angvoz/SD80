@@ -1108,7 +1108,7 @@ public class C99Preprocessor implements C99Parsersym {
 			TokenList expressionTokens = collectTokensUntilNewlineOrDone(); // TODO: what if expressionTokens is empty?
 			char[] expressionChars = expressionTokens.toString().toCharArray();
 			int endOffset = 1 + (expressionTokens.isEmpty() ? ifToken.getEndOffset() : expressionTokens.last().getEndOffset());
-			Integer value = evaluateConstantExpression(expressionTokens); // returns null if invalid expression
+			Long value = evaluateConstantExpression(expressionTokens); // returns null if invalid expression
 			
 			if(value == null)
 				encounterProblem(IASTProblem.PREPROCESSOR_CONDITIONAL_EVAL_ERROR, directiveStartOffset, endOffset);
@@ -1116,7 +1116,7 @@ public class C99Preprocessor implements C99Parsersym {
 			if(!done())
 				expect(NEWLINE);
 			
-			takeIfBranch = value != null && value.intValue() != 0;
+			takeIfBranch = value != null && value.longValue() != 0;
 			
 			if(log != null)
 				log.encounterPoundIf(directiveStartOffset, endOffset, takeIfBranch, expressionChars);
@@ -1137,7 +1137,7 @@ public class C99Preprocessor implements C99Parsersym {
 	 * Evaluates the expression in an #if or #elif.
 	 * @return null if the expression could not be evaluated
 	 */
-	private Integer evaluateConstantExpression(TokenList expressionTokens) {
+	private Long evaluateConstantExpression(TokenList expressionTokens) {
 		if(expressionTokens == null || expressionTokens.isEmpty())
 			return null;
 		
@@ -1185,11 +1185,11 @@ public class C99Preprocessor implements C99Parsersym {
 					hashOffset = skipBranch();
 				}
 				else {
-					Integer value = evaluateConstantExpression(expressionTokens);
+					Long value = evaluateConstantExpression(expressionTokens);
 					if(value == null)
 						encounterProblem(IASTProblem.PREPROCESSOR_CONDITIONAL_EVAL_ERROR, elif.getStartOffset(), endOffset);
 						
-					boolean followElif = value != null && value.intValue() != 0;
+					boolean followElif = value != null && value.longValue() != 0;
 					expect(NEWLINE);
 					if(log != null)
 						log.encounterPoundElif(hashOffset, endOffset, followElif, expressionChars);

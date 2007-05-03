@@ -65,157 +65,87 @@ public interface C99ExprEvaluatorsym {
       TK_HashHash = 52,
       TK_NewLine = 53,
       TK_EOF_TOKEN = 25,
-      TK_auto = 54,
-      TK_break = 55,
-      TK_case = 56,
-      TK_char = 57,
-      TK_const = 58,
-      TK_continue = 59,
-      TK_default = 60,
-      TK_do = 61,
-      TK_double = 62,
-      TK_else = 63,
-      TK_enum = 64,
-      TK_extern = 65,
-      TK_float = 66,
-      TK_for = 67,
-      TK_goto = 68,
-      TK_if = 69,
-      TK_inline = 70,
-      TK_int = 71,
-      TK_long = 72,
-      TK_register = 73,
-      TK_restrict = 74,
-      TK_return = 75,
-      TK_short = 76,
-      TK_signed = 77,
-      TK_sizeof = 78,
-      TK_static = 79,
-      TK_struct = 80,
-      TK_switch = 81,
-      TK_typedef = 82,
-      TK_union = 83,
-      TK_unsigned = 84,
-      TK_void = 85,
-      TK_volatile = 86,
-      TK_while = 87,
-      TK__Bool = 88,
-      TK__Complex = 89,
-      TK__Imaginary = 90,
       TK_identifier = 26,
       TK_integer = 27,
-      TK_floating = 91,
+      TK_floating = 54,
       TK_charconst = 28,
-      TK_stringlit = 92,
-      TK_Invalid = 93,
-      TK_PlaceMarker = 94,
-      TK_Parameter = 95,
-      TK_DisabledMacroName = 96,
-      TK_Completion = 97,
-      TK_EndOfCompletion = 98,
-      TK_ERROR_TOKEN = 99;
+      TK_stringlit = 55,
+      TK_Invalid = 56,
+      TK_PlaceMarker = 57,
+      TK_Parameter = 58,
+      TK_DisabledMacroName = 59,
+      TK_Completion = 60,
+      TK_EndOfCompletion = 61,
+      TK_SingleLineComment = 62,
+      TK_MultiLineComment = 63,
+      TK_ERROR_TOKEN = 64;
 
       public final static String orderedTerminalSymbols[] = {
-                 "",
-                 "RightShift",
-                 "LeftShift",
-                 "Plus",
-                 "Minus",
-                 "Star",
-                 "Slash",
-                 "Percent",
-                 "LT",
-                 "GT",
-                 "LE",
-                 "GE",
-                 "And",
-                 "EQ",
-                 "NE",
-                 "Caret",
-                 "Or",
-                 "AndAnd",
-                 "RightParen",
-                 "LeftParen",
-                 "Tilde",
-                 "Bang",
-                 "OrOr",
-                 "Question",
-                 "Colon",
-                 "EOF_TOKEN",
-                 "identifier",
-                 "integer",
-                 "charconst",
-                 "RightBracket",
-                 "LeftBracket",
-                 "RightBrace",
-                 "LeftBrace",
-                 "Dot",
-                 "Arrow",
-                 "PlusPlus",
-                 "MinusMinus",
-                 "SemiColon",
-                 "DotDotDot",
-                 "Assign",
-                 "StarAssign",
-                 "SlashAssign",
-                 "PercentAssign",
-                 "PlusAssign",
-                 "MinusAssign",
-                 "RightShiftAssign",
-                 "LeftShiftAssign",
-                 "AndAssign",
-                 "CaretAssign",
-                 "OrAssign",
-                 "Comma",
-                 "Hash",
-                 "HashHash",
-                 "NewLine",
-                 "auto",
-                 "break",
-                 "case",
-                 "char",
-                 "const",
-                 "continue",
-                 "default",
-                 "do",
-                 "double",
-                 "else",
-                 "enum",
-                 "extern",
-                 "float",
-                 "for",
-                 "goto",
-                 "if",
-                 "inline",
-                 "int",
-                 "long",
-                 "register",
-                 "restrict",
-                 "return",
-                 "short",
-                 "signed",
-                 "sizeof",
-                 "static",
-                 "struct",
-                 "switch",
-                 "typedef",
-                 "union",
-                 "unsigned",
-                 "void",
-                 "volatile",
-                 "while",
-                 "_Bool",
-                 "_Complex",
-                 "_Imaginary",
-                 "floating",
-                 "stringlit",
-                 "Invalid",
-                 "PlaceMarker",
-                 "Parameter",
-                 "DisabledMacroName",
-                 "Completion",
-                 "EndOfCompletion",
-                 "ERROR_TOKEN"
+                 "", //$NON-NLS-1$
+                 "RightShift", //$NON-NLS-1$
+                 "LeftShift", //$NON-NLS-1$
+                 "Plus", //$NON-NLS-1$
+                 "Minus", //$NON-NLS-1$
+                 "Star", //$NON-NLS-1$
+                 "Slash", //$NON-NLS-1$
+                 "Percent", //$NON-NLS-1$
+                 "LT", //$NON-NLS-1$
+                 "GT", //$NON-NLS-1$
+                 "LE", //$NON-NLS-1$
+                 "GE", //$NON-NLS-1$
+                 "And", //$NON-NLS-1$
+                 "EQ", //$NON-NLS-1$
+                 "NE", //$NON-NLS-1$
+                 "Caret", //$NON-NLS-1$
+                 "Or", //$NON-NLS-1$
+                 "AndAnd", //$NON-NLS-1$
+                 "RightParen", //$NON-NLS-1$
+                 "LeftParen", //$NON-NLS-1$
+                 "Tilde", //$NON-NLS-1$
+                 "Bang", //$NON-NLS-1$
+                 "OrOr", //$NON-NLS-1$
+                 "Question", //$NON-NLS-1$
+                 "Colon", //$NON-NLS-1$
+                 "EOF_TOKEN", //$NON-NLS-1$
+                 "identifier", //$NON-NLS-1$
+                 "integer", //$NON-NLS-1$
+                 "charconst", //$NON-NLS-1$
+                 "RightBracket", //$NON-NLS-1$
+                 "LeftBracket", //$NON-NLS-1$
+                 "RightBrace", //$NON-NLS-1$
+                 "LeftBrace", //$NON-NLS-1$
+                 "Dot", //$NON-NLS-1$
+                 "Arrow", //$NON-NLS-1$
+                 "PlusPlus", //$NON-NLS-1$
+                 "MinusMinus", //$NON-NLS-1$
+                 "SemiColon", //$NON-NLS-1$
+                 "DotDotDot", //$NON-NLS-1$
+                 "Assign", //$NON-NLS-1$
+                 "StarAssign", //$NON-NLS-1$
+                 "SlashAssign", //$NON-NLS-1$
+                 "PercentAssign", //$NON-NLS-1$
+                 "PlusAssign", //$NON-NLS-1$
+                 "MinusAssign", //$NON-NLS-1$
+                 "RightShiftAssign", //$NON-NLS-1$
+                 "LeftShiftAssign", //$NON-NLS-1$
+                 "AndAssign", //$NON-NLS-1$
+                 "CaretAssign", //$NON-NLS-1$
+                 "OrAssign", //$NON-NLS-1$
+                 "Comma", //$NON-NLS-1$
+                 "Hash", //$NON-NLS-1$
+                 "HashHash", //$NON-NLS-1$
+                 "NewLine", //$NON-NLS-1$
+                 "floating", //$NON-NLS-1$
+                 "stringlit", //$NON-NLS-1$
+                 "Invalid", //$NON-NLS-1$
+                 "PlaceMarker", //$NON-NLS-1$
+                 "Parameter", //$NON-NLS-1$
+                 "DisabledMacroName", //$NON-NLS-1$
+                 "Completion", //$NON-NLS-1$
+                 "EndOfCompletion", //$NON-NLS-1$
+                 "SingleLineComment", //$NON-NLS-1$
+                 "MultiLineComment", //$NON-NLS-1$
+                 "ERROR_TOKEN" //$NON-NLS-1$
              };
 
     public final static boolean isValidForParser = true;

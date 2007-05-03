@@ -17,13 +17,16 @@ import junit.framework.TestCase;
 import lpg.lpgjavaruntime.IToken;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
+import org.eclipse.cdt.core.dom.c99.ILexer;
 import org.eclipse.cdt.core.dom.c99.ILexerFactory;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IScannerInfo;
+import org.eclipse.cdt.internal.core.dom.parser.c99.C99ExprEvaluator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
 
 public class C99PreprocessorTests extends TestCase {
 
@@ -56,6 +59,43 @@ public class C99PreprocessorTests extends TestCase {
 		return parser.getTokens();
 	}
 	
+	
+	private void assertExpressionValue(long val, String expr) {
+		TokenList tokens = scan(expr);
+		if(tokens == null)
+			fail("Lexer failed on input: " + expr);
+		
+		C99ExprEvaluator evaluator = new C99ExprEvaluator(tokens);
+		Long value = evaluator.evaluate();
+		
+		if(value == null)
+			fail("evaluation of expression failed");
+		
+		assertEquals(val, value.longValue());
+	}
+	
+	
+	
+	private void assertInvalidToken(String expr) {
+		TokenList tokens = scan(expr);
+		if(tokens == null)
+			fail("Lexer failed on input: " + expr);
+		
+		for(Iterator iter = tokens.iterator(); iter.hasNext();) {
+			IToken token = (IToken)iter.next();
+			if(token.getKind() == C99Parsersym.TK_Invalid)
+				return;
+		}
+		fail("did not find an invalid token");
+	}
+	
+	
+	private TokenList scan(String input) {
+		CodeReader reader = new CodeReader(input.toCharArray());
+		ILexerFactory lexerFactory = new C99LexerFactory();
+		ILexer lexer = lexerFactory.createLexer(reader);
+		return lexer.lex(0);
+	}
 	
 	private static void assertToken(int kind, Object t) {
 		assertEquals(kind, ((IToken)t).getKind());
@@ -806,4 +846,33 @@ public class C99PreprocessorTests extends TestCase {
 		assertToken(C99Parsersym.TK_RightParen, tokens.get(21));
 		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(22));
 	}
+	
+	
+	public void testConditionalExpressions() {
+		// test hex and octal
+		assertExpressionValue(0x1234, " 0x1234 ");
+		assertExpressionValue(0x99,  "0x99");
+		assertExpressionValue(0xAB + 0xFE, "0xABu + 0xFEUll");
+		assertExpressionValue(020, "020");
+		assertExpressionValue(077 + 0x22, " 077 + 0x22 ");
+		assertExpressionValue(145, "145");
+		
+		// test char constants
+		assertExpressionValue(97, " 'a' ");
+		assertExpressionValue(97, " L'a' ");
+		assertExpressionValue(24930, " 'ab' ");
+		assertExpressionValue(6379864, " '\\x61YX' ");
+		assertExpressionValue(2567, " '\\n\\a' ");
+		assertExpressionValue(4660, " '\\u1234' ");
+		assertExpressionValue(305419896, " '\\u12345678' ");
+		
+		// test that invalid escape sequences are actually caught
+		// by the scanner
+		assertInvalidToken(" '\\x' ");
+		assertInvalidToken(" '\\u' ");
+		assertInvalidToken(" '\\u123' "); // not a hex quad
+		assertInvalidToken(" '\\q' "); // invalid escape sequence
+	}
+	
+	
 }

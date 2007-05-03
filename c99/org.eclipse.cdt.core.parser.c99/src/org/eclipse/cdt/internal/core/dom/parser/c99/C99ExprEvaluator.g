@@ -138,7 +138,7 @@ $Headers
         token.setAdjunctIndex(adjuncts.size());
 	}
 	
-	public Integer evaluate() {
+	public Long evaluate() {
 		parser(null, -1);
 		return action.result();	
 	}

@@ -23,10 +23,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
             0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0
+            0,0,0,0
         };
     };
     public final static byte isKeyword[] = IsKeyword.isKeyword;
@@ -124,11 +121,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
             0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,
             0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,
-            0,0,0,0,0,0,0,0,0,0,
-            0,0,0
+            0,0,0,0,0,0,0,0
         };
     };
     public final static byte termCheck[] = TermCheck.termCheck;
@@ -201,14 +194,11 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
         public final static byte terminalIndex[] = {0,
             19,20,13,14,12,17,18,21,22,23,
             24,11,25,26,27,28,29,3,4,15,
-            16,30,31,32,51,89,90,92,1,2,
+            16,30,31,32,51,52,53,55,1,2,
             5,6,7,8,9,10,33,34,35,36,
             37,38,39,40,41,42,43,44,45,46,
-            47,48,49,52,53,54,55,56,57,58,
-            59,60,61,62,63,64,65,66,67,68,
-            69,70,71,72,73,74,75,76,77,78,
-            79,80,81,82,83,84,85,86,87,88,
-            91,93,94,95,96,97,98,99,100
+            47,48,49,54,56,57,58,59,60,61,
+            62,63,64,65
         };
     };
     public final static byte terminalIndex[] = TerminalIndex.terminalIndex;
@@ -216,8 +206,8 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public interface NonterminalIndex {
         public final static byte nonterminalIndex[] = {0,
-            0,0,102,103,104,105,106,107,108,109,
-            110,111,112,113,101,0
+            0,0,67,68,69,70,71,72,73,74,
+            75,76,77,78,66,0
         };
     };
     public final static byte nonterminalIndex[] = NonterminalIndex.nonterminalIndex;
@@ -265,7 +255,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public interface ScopeRhs {
         public final static byte scopeRhs[] = {0,
-            114,23,112,0,32,113,0,114,19,0,
+            79,23,77,0,32,78,0,79,19,0,
             3,0
         };
     };
@@ -284,12 +274,12 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public interface InSymb {
         public final static byte inSymb[] = {0,
-            0,114,21,20,4,3,19,103,105,104,
-            107,106,109,108,111,110,112,114,7,6,
+            0,79,21,20,4,3,19,68,70,69,
+            72,71,74,73,76,75,77,79,7,6,
             5,1,2,4,3,14,13,11,10,9,
-            8,15,12,17,16,23,22,104,104,103,
-            103,106,106,105,105,105,105,108,107,110,
-            109,114,111,24
+            8,15,12,17,16,23,22,69,69,68,
+            68,71,71,70,70,70,70,73,72,75,
+            74,79,76,24
         };
     };
     public final static byte inSymb[] = InSymb.inSymb;
@@ -297,127 +287,92 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public interface Name {
         public final static String name[] = {
-            "",
-            "]",
-            "[",
-            ")",
-            "(",
-            "}",
-            "{",
-            ".",
-            "->",
-            "++",
-            "--",
-            "&",
-            "*",
-            "+",
-            "-",
-            "~",
-            "!",
-            "/",
-            "%",
-            ">>",
-            "<<",
-            "<",
-            ">",
-            "<=",
-            ">=",
-            "==",
-            "!=",
-            "^",
-            "|",
-            "&&",
-            "||",
-            "?",
-            ":",
-            ";",
-            "...",
-            "=",
-            "*=",
-            "/=",
-            "%=",
-            "+=",
-            "-=",
-            ">>=",
-            "<<=",
-            "&=",
-            "^=",
-            "|=",
-            ",",
-            "#",
-            "##",
-            "nl",
-            "$empty",
-            "EOF_TOKEN",
-            "auto",
-            "break",
-            "case",
-            "char",
-            "const",
-            "continue",
-            "default",
-            "do",
-            "double",
-            "else",
-            "enum",
-            "extern",
-            "float",
-            "for",
-            "goto",
-            "if",
-            "inline",
-            "int",
-            "long",
-            "register",
-            "restrict",
-            "return",
-            "short",
-            "signed",
-            "sizeof",
-            "static",
-            "struct",
-            "switch",
-            "typedef",
-            "union",
-            "unsigned",
-            "void",
-            "volatile",
-            "while",
-            "_Bool",
-            "_Complex",
-            "_Imaginary",
-            "identifier",
-            "integer",
-            "floating",
-            "charconst",
-            "stringlit",
-            "Invalid",
-            "PlaceMarker",
-            "Parameter",
-            "DisabledMacroName",
-            "Completion",
-            "EndOfCompletion",
-            "ERROR_TOKEN",
-            "constant_expression",
-            "unary_expression",
-            "multiplicative_expression",
-            "additive_expression",
-            "shift_expression",
-            "relational_expression",
-            "equality_expression",
-            "AND_expression",
-            "exclusive_OR_expression",
-            "inclusive_OR_expression",
-            "logical_AND_expression",
-            "logical_OR_expression",
-            "conditional_expression"
+            "", //$NON-NLS-1$
+            "]", //$NON-NLS-1$
+            "[", //$NON-NLS-1$
+            ")", //$NON-NLS-1$
+            "(", //$NON-NLS-1$
+            "}", //$NON-NLS-1$
+            "{", //$NON-NLS-1$
+            ".", //$NON-NLS-1$
+            "->", //$NON-NLS-1$
+            "++", //$NON-NLS-1$
+            "--", //$NON-NLS-1$
+            "&", //$NON-NLS-1$
+            "*", //$NON-NLS-1$
+            "+", //$NON-NLS-1$
+            "-", //$NON-NLS-1$
+            "~", //$NON-NLS-1$
+            "!", //$NON-NLS-1$
+            "/", //$NON-NLS-1$
+            "%", //$NON-NLS-1$
+            ">>", //$NON-NLS-1$
+            "<<", //$NON-NLS-1$
+            "<", //$NON-NLS-1$
+            ">", //$NON-NLS-1$
+            "<=", //$NON-NLS-1$
+            ">=", //$NON-NLS-1$
+            "==", //$NON-NLS-1$
+            "!=", //$NON-NLS-1$
+            "^", //$NON-NLS-1$
+            "|", //$NON-NLS-1$
+            "&&", //$NON-NLS-1$
+            "||", //$NON-NLS-1$
+            "?", //$NON-NLS-1$
+            ":", //$NON-NLS-1$
+            ";", //$NON-NLS-1$
+            "...", //$NON-NLS-1$
+            "=", //$NON-NLS-1$
+            "*=", //$NON-NLS-1$
+            "/=", //$NON-NLS-1$
+            "%=", //$NON-NLS-1$
+            "+=", //$NON-NLS-1$
+            "-=", //$NON-NLS-1$
+            ">>=", //$NON-NLS-1$
+            "<<=", //$NON-NLS-1$
+            "&=", //$NON-NLS-1$
+            "^=", //$NON-NLS-1$
+            "|=", //$NON-NLS-1$
+            ",", //$NON-NLS-1$
+            "#", //$NON-NLS-1$
+            "##", //$NON-NLS-1$
+            "nl", //$NON-NLS-1$
+            "$empty", //$NON-NLS-1$
+            "EOF_TOKEN", //$NON-NLS-1$
+            "identifier", //$NON-NLS-1$
+            "integer", //$NON-NLS-1$
+            "floating", //$NON-NLS-1$
+            "charconst", //$NON-NLS-1$
+            "stringlit", //$NON-NLS-1$
+            "Invalid", //$NON-NLS-1$
+            "PlaceMarker", //$NON-NLS-1$
+            "Parameter", //$NON-NLS-1$
+            "DisabledMacroName", //$NON-NLS-1$
+            "Completion", //$NON-NLS-1$
+            "EndOfCompletion", //$NON-NLS-1$
+            "SingleLineComment", //$NON-NLS-1$
+            "MultiLineComment", //$NON-NLS-1$
+            "ERROR_TOKEN", //$NON-NLS-1$
+            "constant_expression", //$NON-NLS-1$
+            "unary_expression", //$NON-NLS-1$
+            "multiplicative_expression", //$NON-NLS-1$
+            "additive_expression", //$NON-NLS-1$
+            "shift_expression", //$NON-NLS-1$
+            "relational_expression", //$NON-NLS-1$
+            "equality_expression", //$NON-NLS-1$
+            "AND_expression", //$NON-NLS-1$
+            "exclusive_OR_expression", //$NON-NLS-1$
+            "inclusive_OR_expression", //$NON-NLS-1$
+            "logical_AND_expression", //$NON-NLS-1$
+            "logical_OR_expression", //$NON-NLS-1$
+            "conditional_expression" //$NON-NLS-1$
         };
     };
     public final static String name[] = Name.name;
     public final String name(int index) { return name[index]; }
 
     public final static int
-           ERROR_SYMBOL      = 99,
+           ERROR_SYMBOL      = 64,
            SCOPE_UBOUND      = 1,
            SCOPE_SIZE        = 2,
            MAX_NAME_LENGTH   = 25;
@@ -429,12 +384,12 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public final static int
            NUM_STATES        = 54,
-           NT_OFFSET         = 99,
+           NT_OFFSET         = 64,
            LA_STATE_OFFSET   = 325,
            MAX_LA            = 1,
            NUM_RULES         = 41,
            NUM_NONTERMINALS  = 16,
-           NUM_SYMBOLS       = 115,
+           NUM_SYMBOLS       = 80,
            SEGMENT_SIZE      = 8192,
            START_STATE       = 42,
            IDENTIFIER_SYMBOL = 0,

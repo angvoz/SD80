@@ -2100,32 +2100,28 @@ public class C99ParserAction {
 	
 	
 	/**
-	 * labeled_statement ::= case constant_expression ':' statement
+	 * labeled_statement ::= case constant_expression ':'
 	 */
 	public void consumeStatementCase() { 
-		IASTStatement body  = (IASTStatement)  astStack.pop();
 		IASTExpression expr = (IASTExpression) astStack.pop();
-		IASTCaseStatement stat = nodeFactory.newCaseStatement();
+		IASTCaseStatement caseStatement = nodeFactory.newCaseStatement();
 		
-		stat.setExpression(expr);
-		expr.setParent(stat);
+		caseStatement.setExpression(expr);
+		expr.setParent(caseStatement);
 		expr.setPropertyInParent(IASTCaseStatement.EXPRESSION);
 		
-		setOffsetAndLength(stat);
-		astStack.push(stat);
-		astStack.push(body);
+		setOffsetAndLength(caseStatement);
+		astStack.push(caseStatement);
 	}
 	
 	
 	/**
-	 * labeled_statement ::= default ':' statement
+	 * labeled_statement ::= default ':'
 	 */
 	public void consumeStatementDefault() {
-		IASTStatement body = (IASTStatement) astStack.pop();
 		IASTDefaultStatement stat = nodeFactory.newDefaultStatement();
 		setOffsetAndLength(stat);
 		astStack.push(stat);
-		astStack.push(body);
 	}
 	
 	

@@ -500,9 +500,9 @@ statement
 labeled_statement
     ::= label_identifier ':' statement
          /.$ba  consumeStatementLabeled();  $ea./
-      | 'case' constant_expression ':' statement
+      | 'case' constant_expression ':'
          /.$ba  consumeStatementCase();  $ea./
-      | 'default' ':' statement
+      | 'default' ':'
          /.$ba  consumeStatementDefault();  $ea./
 
 

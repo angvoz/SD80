@@ -1502,11 +1502,7 @@ public class C99Preprocessor implements C99Parsersym {
 				skipLine();
 				return null;
 			}
-			
-			// TEMPORARY: for testing, the newline should be removed by replacementListTokens()
-			if(replacementList.last().getKind() == TK_NewLine)
-				replacementList.removeLast();
-			
+
 			int endOffset = calculateMacroDefinitionEndOffset(rparen, replacementList);
 			macro = new Macro(macroName, replacementList, startOffset, endOffset, paramNames, varArgParamName);
 		}
@@ -1514,11 +1510,6 @@ public class C99Preprocessor implements C99Parsersym {
 		// object like macro
 		else { 
 			TokenList replacementList = replacementListTokens(null, null);
-			
-			// TEMPORARY: for testing, the newline should be removed by replacementListTokens()
-			if(replacementList.last().getKind() == TK_NewLine)
-				replacementList.removeLast();
-			
 			int endOffset = calculateMacroDefinitionEndOffset(macroName, replacementList);
 			macro = new Macro(macroName, replacementList, startOffset, endOffset);
 		}
@@ -1574,7 +1565,7 @@ public class C99Preprocessor implements C99Parsersym {
 		}
 		
 		if(!done())
-			tokens.add(next()); // consume the newline
+			next(); // consume the newline
 		
 		return tokens;
 	}

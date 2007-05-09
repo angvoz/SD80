@@ -1544,6 +1544,13 @@ public class C99ParserAction {
 	 */
 	public void consumeDeclarationEmpty() {
 		IASTSimpleDeclaration declaration = nodeFactory.newSimpleDeclaration();
+		IASTDeclSpecifier declSpecifier   = nodeFactory.newCSimpleDeclSpecifier();
+		
+		declaration.setDeclSpecifier(declSpecifier);
+		declSpecifier.setParent(declaration);
+		declSpecifier.setPropertyInParent(IASTSimpleDeclaration.DECL_SPECIFIER);
+		setOffsetAndLength(declSpecifier);
+		
 		setOffsetAndLength(declaration);
 		astStack.push(declaration);
 	}

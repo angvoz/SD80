@@ -791,10 +791,10 @@ public class C99Preprocessor implements C99Parsersym {
 	
 	private void handleDefinedOperator() {
 		IToken ident;
-		if(check(RPAREN)) {
+		if(check(LPAREN)) {
 			next();
 			ident = expect(IDENT);
-			expect(LPAREN);
+			expect(RPAREN);
 		}
 		else if(check(IDENT)) {
 			ident = next();

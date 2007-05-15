@@ -874,5 +874,28 @@ public class C99PreprocessorTests extends TestCase {
 		assertInvalidToken(" '\\q' "); // invalid escape sequence
 	}
 	
+	public void testBug186047() {
+		StringBuffer sb = getExample7Defines();
+		sb.append("#define D \n");//$NON-NLS-1$
+		sb.append("#if defined D \n");
+		sb.append("    x; \n");
+		sb.append("#endif \n");
+		sb.append("#if defined(D) \n");
+		sb.append("    y; \n");
+		sb.append("#endif \n");
+			
+		List tokens = scanAndPreprocess(sb.toString());
+		
+		assertNotNull(tokens);
+		assertEquals(6, tokens.size());
+		assertToken(0, tokens.get(0));
+		
+		assertToken(C99Parsersym.TK_identifier,   tokens.get(1));
+		assertEquals("x", tokens.get(1).toString());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_SemiColon,    tokens.get(2));
+		assertToken(C99Parsersym.TK_identifier,   tokens.get(3));
+		assertEquals("y", tokens.get(3).toString());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_SemiColon,    tokens.get(4));
+	}
 	
 }

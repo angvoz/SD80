@@ -7,8 +7,6 @@
             class="org.eclipse.cdt.core.dom.c99.C99Language"
             id="c99"
             name="C99">
-         <contentType id="org.eclipse.cdt.core.cSource"/>
-         <contentType id="org.eclipse.cdt.core.cHeader"/>
       </language>
 
       <pdomLinkageFactory

@@ -1,8 +1,4 @@
-antlr-3.0b2.jar
-stringtemplate-2.3b8.jar
-antlr-3.0b2-src.zip
-antlr-2.7.6.jar
-antlr-3.0b3.jar
-stringtemplate-2.3b9.jar
-antlr-3.0b3-src.zip
-antlr-3.0b4.jar
+antlr-2.7.7.jar
+stringtemplate-3.0.jar
+antlr-3.0.jar
+antlr-runtime-3.0.jar

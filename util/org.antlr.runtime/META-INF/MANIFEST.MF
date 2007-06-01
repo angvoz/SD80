@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: ANTLR Runtime Plug-in
+Bundle-SymbolicName: org.antlr.runtime
+Bundle-Version: 1.0.0
+Bundle-Vendor: Eclipse.org
+Bundle-ClassPath: antlr-runtime-3.0.jar

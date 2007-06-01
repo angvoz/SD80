@@ -26,7 +26,7 @@ public class C99ExprEvaluatorAction {
 
 	private static int HEXADECIMAL_BASE = 16;
 	private static int OCTAL_BASE = 8;
-	
+
 	
 	// Stores intermediate values as the expression is being evaluated
 	private final Stack valueStack = new Stack(); // Stack<Long>
@@ -83,15 +83,15 @@ public class C99ExprEvaluatorAction {
 		if(errorEncountered || valueStack.size() != 1)
 			return null;
 		
-		return (Long) valueStack.peek();
+		return (Long)valueStack.peek();
 	}
 
 	
 	protected void evalExpressionBinaryOperator(int op) {
 		if(errorEncountered) return;
 		
-		long y = ((Long)valueStack.pop()).intValue();
-		long x = ((Long)valueStack.pop()).intValue();
+		long y = ((Long)valueStack.pop()).longValue();
+		long x = ((Long)valueStack.pop()).longValue();
 		long result;
 		
 		switch(op) {
@@ -216,14 +216,13 @@ public class C99ExprEvaluatorAction {
 		if(errorEncountered) return;
 		
 		String val = parser.getRightIToken().toString();
-		long result;
-	
-		val = val.replaceAll("[UuLl]", ""); // remove the suffix
+		val = removeIntegerSuffix(val);
 		
-		if(val.startsWith("0x")) {
+		long result;
+		if(val.startsWith("0x")) { //$NON-NLS-1$
 			result = Long.parseLong(val.substring(2), HEXADECIMAL_BASE);
 		}
-		else if(val.startsWith("0")) {
+		else if(val.startsWith("0")) { //$NON-NLS-1$
 			result = Long.parseLong(val, OCTAL_BASE);
 		}
 		else {
@@ -231,6 +230,19 @@ public class C99ExprEvaluatorAction {
 		}
 			
 		valueStack.push(new Long(result));
+	}
+	
+	
+	// much faster than using replaceAll();
+	private static String removeIntegerSuffix(String val) {
+		int i;
+		for(i = val.length()-1; i > 0; i--) {
+			char c = val.charAt(i);
+			if(c != 'u' && c != 'U' && c != 'l' && c != 'L') {
+				break;
+			}
+		}
+		return val.substring(0, i+1);
 	}
 	
 	
@@ -255,7 +267,7 @@ public class C99ExprEvaluatorAction {
 		
 		String val = parser.getRightIToken().toString();
 		// strip the '' or L''
-		val = val.substring(val.startsWith("L") ? 2 : 1, val.length()-1); 
+		val = val.substring(val.startsWith("L") ? 2 : 1, val.length()-1);  //$NON-NLS-1$
 
 		long result = 0;
 		

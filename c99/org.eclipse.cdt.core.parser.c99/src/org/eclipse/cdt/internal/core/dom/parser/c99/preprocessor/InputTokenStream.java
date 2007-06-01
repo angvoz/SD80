@@ -79,6 +79,7 @@ class InputTokenStream {
 		CodeReader reader;
 		TokenList tokenList;
 		boolean isolated = false; // a flag to indicate that processing should stop when the end of the context is reached
+		boolean macroExpansion = false;
 		IIncludeContextCallback callback;
 		int adjustedGlobalOffset;
 		
@@ -86,10 +87,9 @@ class InputTokenStream {
 		 * @param startingOffset The adjusted offset of the start of the context. Adjusted means that the start offset
 		 * of an included file will be adjusted according to the offset of the location where the file was included.
 		 */
-		Context(CodeReader reader, TokenList tokenList, boolean isolated, IIncludeContextCallback callback, int startingOffset) {
+		Context(CodeReader reader, TokenList tokenList, IIncludeContextCallback callback, int startingOffset) {
 			this.reader = reader;
 			this.tokenList = tokenList;
-			this.isolated = isolated;
 			this.callback = callback;
 			this.adjustedGlobalOffset = startingOffset;
 		}
@@ -142,51 +142,56 @@ class InputTokenStream {
 	/**
 	 * Pushes the tokens that make up an included file onto the stack.
 	 * 
+	 * The isolated parameter is used only when an include should be 
+	 * processed in isolation, in other words processing
+	 * should stop when the end of the include is reached. I think this is only used
+	 * for testing purposes.
+	 * 
 	 * @param tokenList Tokens that comprise the included file
 	 * @param reader The CodeReader that contains the source buffer of the included file
 	 * @param inclusionLocaionOffset The global offset of the location of the #include directive
 	 * @param callback A callback that will be fired when the included file is completely consumed
 	 */
-	public void pushIncludeContext(TokenList tokenList, CodeReader reader, int inclusionLocaionOffset, IIncludeContextCallback callback) {
+	public void pushIncludeContext(TokenList tokenList, CodeReader reader, int inclusionLocaionOffset, boolean isolated, IIncludeContextCallback callback) {
 		// adjust the offsets of the contexts that are already on the stack
 		adjustGlobalOffsets(reader.buffer.length);
-		topContext = (Context) contextStack.push(new Context(reader, tokenList, false, callback, inclusionLocaionOffset));
+		topContext = new Context(reader, tokenList, callback, inclusionLocaionOffset);
+		topContext.isolated = isolated;
+		contextStack.push(topContext);
 	}
 
-	/**
-	 * Used only when an include should be processed in isolation, in other words processing
-	 * should stop when the end of the include is reached. I think this is only used
-	 * for testing purposes.
-	 */
-	public void pushIsolatedIncludeContext(TokenList tokenList, CodeReader reader, int inclusionLocaionOffset, IIncludeContextCallback callback) {
-		// adjust the offsets of the contexts that are already on the stack
-		adjustGlobalOffsets(reader.buffer.length);
-		topContext = (Context) contextStack.push(new Context(reader, tokenList, true, callback, inclusionLocaionOffset));
-	}
 	
 	/**
 	 * Pushes the tokens that are the result of a macro invocation.
 	 * These tokens are made available for further processing.
 	 */
-	public void pushMacroExpansionContext(TokenList expansion, int expansionLocationOffset, IIncludeContextCallback callback) {
+	public void pushMacroExpansionContext(TokenList expansion, int expansionLocationOffset, IIncludeContextCallback callback, boolean recordOffsets) {
 		if(expansion == null || expansion.isEmpty())
 			return;
 		
-		int expansionSize = expansion.last().getEndOffset() - expansion.first().getStartOffset() + 1;
-		adjustGlobalOffsets(expansionSize);
+		if(recordOffsets) {
+			int expansionSize = expansion.last().getEndOffset() - expansion.first().getStartOffset() + 1;
+			adjustGlobalOffsets(expansionSize);
+		}
 
-		Context context = new Context(topContext.reader, expansion, false, callback, expansionLocationOffset);
-		topContext = (Context) contextStack.push(context);
+		topContext = new Context(topContext.reader, expansion, callback, expansionLocationOffset);
+		topContext.macroExpansion = true;
+		contextStack.push(topContext);
 	}
 	
 	
-	private void adjustGlobalOffsets(int contextSize) {
-		for(int i = 0; i < contextStack.size(); i++) {
+	public void adjustGlobalOffsets(int contextSize) {
+		for(int i = contextStack.size()-1; i >=0; i--) {
 			Context context = (Context) contextStack.get(i);
+			// any expansions happening in an isolated context should not affect the global offsets
+			if(context.isolated) { 
+				return;
+			}
 			context.adjustedGlobalOffset += contextSize;
 		}
 		translationUnitSize += contextSize;
 	}
+	
 	
 	/**
 	 * An isolated context is used when processing should stop when the end of the given tokenList is reached,
@@ -198,8 +203,9 @@ class InputTokenStream {
 	public void pushIsolatedContext(TokenList tokenList, IIncludeContextCallback callback) {
 		// in this case the offset of the context does not really matter, so just set it to 0
 		if(tokenList != null) {
-			Context context = new Context(topContext == null ? null : topContext.reader, tokenList, true, callback, 0);
-			topContext = (Context) contextStack.push(context);
+			topContext = new Context(topContext == null ? null : topContext.reader, tokenList, callback, 0);
+			topContext.isolated = true;
+			contextStack.push(topContext);
 		}
 	}
 	
@@ -282,20 +288,13 @@ class InputTokenStream {
 		IToken token = nextToken(false);
 		if(adjust && topContext != null && token != null) {
 			int offset = topContext.adjustedGlobalOffset;
+			// TODO: this method gets called a lot
+			// a potential optimization would be to add an adjust() method to IToken
+			// so that it does't take 4 method calls to change the offset
 			token.setStartOffset(token.getStartOffset() + offset);
 			token.setEndOffset(token.getEndOffset() + offset);
 		}
 		return token;
-	}
-	
-	
-	/**
-	 * Returns the current token and advances to the next token in sequence.
-	 * The token's offsets will be adjusted to reflect includes and macro expansions.
-	 * @return null if there are no more tokens
-	 */
-	public IToken next() {
-		return next(true);
 	}
 	
 	
@@ -428,5 +427,18 @@ class InputTokenStream {
 
 	public void setCollectCommentTokens(boolean collectCommentTokens) {
 		this.collectCommentTokens = collectCommentTokens;
+	}
+
+
+	public boolean inMacroExpansionContext() {
+		return topContext.macroExpansion;
+	}
+	
+	public IIncludeContextCallback getCurrentContextCallback() {
+		return topContext.callback;
+	}
+	
+	public void setCurrentContextCallback(IIncludeContextCallback callback) {
+		topContext.callback = callback;
 	}
 }

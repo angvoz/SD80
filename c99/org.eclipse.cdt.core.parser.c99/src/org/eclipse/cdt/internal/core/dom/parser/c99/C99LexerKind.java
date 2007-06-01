@@ -10,22 +10,29 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c99;
 
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
-
-import lpg.lpgjavaruntime.IToken;
 
 /**
  * Maps characters in the input stream to 'token kinds' that
- * are recognized by the LPG lex parser, recognizes
- * trigraph sequences. 
+ * are recognized by the LPG lex parser.
+ * 
+ * Recognizes trigraph sequences and deletes instances of backslash-newline. 
+ * 
  * 
  * @author Mike Kucera
  */
 public class C99LexerKind {
 	
+	public static final char
+		HT = 0x09, // horizontal tab
+		LF = 0x0A, // newline
+		FF = 0x0C, // form feed
+		CR = 0x0D; // carriage return
+	
 	
 	/**
 	 * Returns the character kind at the given stream index.
+	 * 
+	 * Deletes newline characters that occur after a backslash.
 	 * 
 	 * Detects trigraph sequences and replaces them with
 	 * their corresponding character kind. Trigraph sequences
@@ -46,55 +53,68 @@ public class C99LexerKind {
      *    
 	 * @param i index into the character stream
 	 */
-	public static int getKind(C99Lexer lexer, final int i) {
-		int streamLength = lexer.getStreamLength();
+	public static int getKind(C99Lexer lexer, int i) {
+		int streamLength  = lexer.getStreamLength();
 		if(i >= streamLength)
 			return C99Lexer.Char_EOF;
 		
-		char c = lexer.getCharValue(i);
+		char[] inputChars = lexer.getInputChars();
+		char c = inputChars[i];
 			
 		// detect trigraph sequences
-		if(c == '?' && i+2 < streamLength && lexer.getCharValue(i+1) == '?') {
+		if(c == '?' && i+2 < streamLength && inputChars[i+1] == '?') {
+			char thirdChar = inputChars[i+2];
+			
+			// special case, found '??/' which is a backslash, need to check for backslash newline
+			if(thirdChar == '/') { 
+				i = i+2;
+				lexer.setStreamIndex(i);
+				c = '\\'; 
+				// fall through to the backslash newline code at the bottom
+			}
+			else {
+				int kind;
+				switch(thirdChar) {
+					default  : return C99Lexer.Char_Question;
+					case '=' : kind = C99Lexer.Char_Hash;         break;
+					case '(' : kind = C99Lexer.Char_LeftBracket;  break;
+					case ')' : kind = C99Lexer.Char_RightBracket; break;
+					case '\'': kind = C99Lexer.Char_Caret;        break;
+					case '<' : kind = C99Lexer.Char_LeftBrace;    break;
+					case '>' : kind = C99Lexer.Char_RightBrace;   break;
+					case '!' : kind = C99Lexer.Char_Bar;          break;
+					case '-' : kind = C99Lexer.Char_Tilde;        break;
+				}
 				
-			int kind;
-			switch(lexer.getCharValue(i+2)) {
-				case '=' : kind = C99Lexer.Char_Hash;         break;
-				case '(' : kind = C99Lexer.Char_LeftBracket;  break;
-				case ')' : kind = C99Lexer.Char_RightBracket; break;
-				case '/' : kind = C99Lexer.Char_BackSlash;    break;
-				case '\'': kind = C99Lexer.Char_Caret;        break;
-				case '<' : kind = C99Lexer.Char_LeftBrace;    break;
-				case '>' : kind = C99Lexer.Char_RightBrace;   break;
-				case '!' : kind = C99Lexer.Char_Bar;          break;
-				case '-' : kind = C99Lexer.Char_Tilde;        break;
-				default  : return getKind(c);
+				lexer.setStreamIndex(i+2); // advance the stream past the trigraph sequence
+				return kind;
+			}
+		}
+		
+		// Each instance of a backslash character followed by a new-line character is deleted
+		if(c == '\\') {
+			int j = i+1;
+			// whitespace is allowed between the backslash and the newline
+			while(j < streamLength && isWSChar(inputChars[j])) 
+				j++;
+			
+			if(j < streamLength && inputChars[j] == '\n') {
+				lexer.setStreamIndex(j+1);
+				return getKind(lexer, j+1); // recursion
 			}
 			
-			lexer.setStreamIndex(i+2); // advance the stream past the trigraph sequence
-			return kind;
+			return C99Lexer.Char_BackSlash;
 		}
 
 		return getKind(c);
 	}
 	
 	
-	
 	/**
-	 * Creates a token, takes trigraph sequences into account.
+	 * ws-char ::= ' ' | CR | HT | FF 
 	 */
-	public static IToken makeToken(C99Lexer lexer, final int kind) {
-		int startOffset = lexer.getLeftSpan();
-		int endOffset   = lexer.getRightSpan();
-		char[] input = lexer.getInputChars();
-		
-		if(startOffset == endOffset && input[startOffset] == '?' && kind != C99Parsersym.TK_Question) {
-			// The token starts with a '?' but its not a question token, then it must be a trigraph.
-			endOffset += 2; // make sure the toString() method of the token returns the entire trigraph sequence
-		}
-		
-		C99Token token = new C99Token(startOffset, endOffset, kind);
-		token.setRepresentation(input, startOffset, endOffset);
-		return token;
+	private final static boolean isWSChar(char c) {
+		return c == ' ' || c == CR || c == HT || c == FF;
 	}
 	
 	
@@ -104,7 +124,7 @@ public class C99LexerKind {
 	 * by the scanner.
 	 */
 	private static int getKind(char c) {
-		switch(c) {
+		switch(c) { // should compile into a tableswitch bytecode
 			case 'a': return C99Lexer.Char_a;  case 'A': return C99Lexer.Char_A;
 			case 'b': return C99Lexer.Char_b;  case 'B': return C99Lexer.Char_B;
 			case 'c': return C99Lexer.Char_c;  case 'C': return C99Lexer.Char_C;
@@ -171,12 +191,17 @@ public class C99LexerKind {
 			case '\'': return C99Lexer.Char_SingleQuote;
 			case '"': return C99Lexer.Char_DoubleQuote;
 			case ' ': return C99Lexer.Char_Space;
-			case 0x09: return C99Lexer.Char_HT;
-			case 0x0A: return C99Lexer.Char_LF;
-			case 0x0C: return C99Lexer.Char_FF;
-			case 0x0D: return C99Lexer.Char_CR;
-			case '\uffff': return C99Lexer.Char_EOF;
-			default : return C99Lexer.Char_Unused;
+			case HT : return C99Lexer.Char_HT;
+			case LF : return C99Lexer.Char_LF;
+			case FF : return C99Lexer.Char_FF;
+			case CR : return C99Lexer.Char_CR;
+			default : 
+				if(c == '\uffff') {
+					// not having a switch case for EOF allows the switch statement to be compiled 
+					// into a faster tableswitch bytecode instead of a lookupswitch bytecode
+					return C99Lexer.Char_EOF;
+				}
+				return C99Lexer.Char_Unused;
 		}
 	}
 }

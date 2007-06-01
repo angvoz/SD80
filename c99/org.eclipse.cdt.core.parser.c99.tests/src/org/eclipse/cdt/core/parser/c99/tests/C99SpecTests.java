@@ -47,7 +47,7 @@ public class C99SpecTests extends AST2CSpecTest {
     }
 	
 	protected C99Language getLanguage() {
-		return new C99Language();
+		return C99Language.getDefault();
 	}
 
 	//Assignment statements cannot exists outside of a function body

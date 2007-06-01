@@ -72,7 +72,7 @@ public class C99SelectionParseTest extends AST2SelectionParseTest {
 
 	
 	protected C99Language getLanguage() {
-		return new C99Language();
+		return C99Language.getDefault();
 	}
 	
 	

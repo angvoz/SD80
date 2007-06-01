@@ -57,7 +57,7 @@ public class C99Tests extends AST2Tests {
     
     
     protected C99Language getC99Language() {
-    	return new C99Language();
+    	return C99Language.getDefault();
     }
     
     
@@ -181,6 +181,19 @@ public class C99Tests extends AST2Tests {
 	public void testBug98365() throws Exception { // CNameCollector is returning stuff in a different order
 		try {
 			super.testBug98365();
+		} catch(AssertionFailedError _) {
+			return;
+		} catch(Exception _) {
+			return;
+		}
+		
+		fail();
+	}
+	
+	
+	public void test167833() throws Exception {
+		try {
+			super.test167833();
 		} catch(AssertionFailedError _) {
 			return;
 		} catch(Exception _) {

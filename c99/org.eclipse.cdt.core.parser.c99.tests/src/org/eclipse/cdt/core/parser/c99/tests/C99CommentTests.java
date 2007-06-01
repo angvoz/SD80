@@ -55,6 +55,6 @@ public class C99CommentTests extends CommentTests {
     }
 
 	protected C99Language getC99Language() {
-    	return new C99Language();
+    	return C99Language.getDefault();
     }
 }

@@ -42,7 +42,7 @@ public class C99KnRTests extends AST2KnRTests {
     }
     
     protected C99Language getLanguage() {
-    	return new C99Language();
+    	return C99Language.getDefault();
     }
     
     // TODO: Failing tests, will get around to fixing these bugs

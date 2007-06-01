@@ -145,6 +145,7 @@ $Headers
 /.
 	private TokenList tokenList = null;
 	private boolean returnCommentTokens = false;
+	private char[] input = null; // the input character buffer
        
     public $action_type(CodeReader reader) {
     	super(reader.buffer, new String(reader.filename));
@@ -156,27 +157,35 @@ $Headers
     		returnCommentTokens = true;
     		
 		tokenList = new TokenList();
+		input = super.getInputChars();
             
         lexParser.parseCharacters(null);  // Lex the input characters
         
         TokenList result = tokenList;
         tokenList = null;
+        input = null;
         return result;
     }
     
     protected void makeToken(int kind) {
-    	// ignore comments if desired
+		// ignore comments if desired
 		if(!returnCommentTokens && (kind == TK_MultiLineComment || kind == TK_SingleLineComment))
 			return;
 			
-		IToken token = C99LexerKind.makeToken(this, kind);
-		if(token != null)
-			tokenList.add(token);
+		int startOffset = lexParser.getFirstToken();
+		int endOffset   = lexParser.getLastToken();
+		
+		// an adjustment for trigraphs, commented out for optimization purposes
+	    //if(kind != C99Parsersym.TK_Question && startOffset == endOffset && input[startOffset] == '?') {
+	    //    // The token starts with a '?' but its not a question token, then it must be a trigraph.
+	    //    endOffset += 2; // make sure the toString() method of the token returns the entire trigraph sequence
+	    //}
+		
+		tokenList.add(new C99Token(startOffset, endOffset, kind, input));
 	}
 	
 	public void reportError(int leftOffset, int rightOffset) {
-		C99Token token = new C99Token(leftOffset, rightOffset, $_Invalid);
-		token.setRepresentation(getInputChars(), leftOffset, rightOffset);
+		C99Token token = new C99Token(leftOffset, rightOffset, TK_Invalid, getInputChars());
 		tokenList.add(token);
 	}
 	
@@ -414,12 +423,10 @@ $Rules
     -- Comments and whitespace
     -----------------------------------------------------------------------------------
 
-    -- newlines are significant to the preprocessor, but are ignored if preceded by a backslash
+    -- newlines are significant to the preprocessor
+    -- backslashes followed by newlines are removed in C99LexerKind.getKind()
 	Token ::= NewLine          
 	            /.$ba  makeToken($_NewLine); $ea./
-	            
-	Token ::= '\' WS NewLine 
-    Token ::= '\' NewLine
     
     Token ::= WS
     

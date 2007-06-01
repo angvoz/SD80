@@ -15,59 +15,59 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 
 public interface C99Lexersym {
     public final static int
-      Char_a = 20,
-      Char_b = 21,
+      Char_a = 18,
+      Char_b = 19,
       Char_c = 22,
       Char_d = 23,
       Char_e = 16,
       Char_f = 12,
-      Char_g = 47,
-      Char_h = 48,
-      Char_i = 49,
-      Char_j = 50,
-      Char_k = 51,
+      Char_g = 44,
+      Char_h = 45,
+      Char_i = 46,
+      Char_j = 47,
+      Char_k = 48,
       Char_l = 14,
-      Char_m = 52,
-      Char_n = 37,
-      Char_o = 53,
+      Char_m = 49,
+      Char_n = 34,
+      Char_o = 50,
       Char_p = 30,
-      Char_q = 54,
-      Char_r = 38,
-      Char_s = 55,
-      Char_t = 39,
-      Char_u = 17,
-      Char_v = 40,
-      Char_w = 56,
+      Char_q = 51,
+      Char_r = 35,
+      Char_s = 52,
+      Char_t = 36,
+      Char_u = 20,
+      Char_v = 37,
+      Char_w = 53,
       Char_x = 31,
-      Char_y = 57,
-      Char_z = 58,
+      Char_y = 54,
+      Char_z = 55,
       Char_A = 24,
       Char_B = 25,
       Char_C = 26,
       Char_D = 27,
-      Char_E = 18,
+      Char_E = 17,
       Char_F = 13,
-      Char_G = 59,
-      Char_H = 60,
-      Char_I = 61,
-      Char_J = 62,
-      Char_K = 63,
+      Char_G = 56,
+      Char_H = 57,
+      Char_I = 58,
+      Char_J = 59,
+      Char_K = 60,
       Char_L = 15,
-      Char_M = 64,
-      Char_N = 65,
-      Char_O = 66,
+      Char_M = 61,
+      Char_N = 62,
+      Char_O = 63,
       Char_P = 32,
-      Char_Q = 67,
-      Char_R = 68,
-      Char_S = 69,
-      Char_T = 70,
-      Char_U = 19,
-      Char_V = 71,
-      Char_W = 72,
-      Char_X = 41,
-      Char_Y = 73,
-      Char_Z = 74,
-      Char__ = 75,
+      Char_Q = 64,
+      Char_R = 65,
+      Char_S = 66,
+      Char_T = 67,
+      Char_U = 21,
+      Char_V = 68,
+      Char_W = 69,
+      Char_X = 38,
+      Char_Y = 70,
+      Char_Z = 71,
+      Char__ = 72,
       Char_0 = 1,
       Char_1 = 2,
       Char_2 = 3,
@@ -79,19 +79,19 @@ public interface C99Lexersym {
       Char_8 = 9,
       Char_9 = 10,
       Char_EOF = 98,
-      Char_Space = 33,
+      Char_Space = 73,
       Char_Unused = 95,
       Char_LF = 97,
       Char_CR = 96,
-      Char_HT = 34,
-      Char_FF = 35,
+      Char_HT = 74,
+      Char_FF = 75,
       Char_Dot = 28,
       Char_LessThan = 76,
       Char_GreaterThan = 29,
-      Char_Plus = 42,
-      Char_Minus = 43,
+      Char_Plus = 39,
+      Char_Minus = 40,
       Char_Slash = 83,
-      Char_BackSlash = 44,
+      Char_BackSlash = 41,
       Char_Star = 77,
       Char_LeftParen = 84,
       Char_RightParen = 85,
@@ -103,16 +103,16 @@ public interface C99Lexersym {
       Char_Ampersand = 78,
       Char_Tilde = 90,
       Char_Bang = 91,
-      Char_Percent = 45,
+      Char_Percent = 42,
       Char_Caret = 92,
       Char_Bar = 79,
       Char_Question = 80,
-      Char_Colon = 36,
+      Char_Colon = 33,
       Char_SemiColon = 93,
       Char_Comma = 94,
       Char_Hash = 81,
       Char_SingleQuote = 82,
-      Char_DoubleQuote = 46;
+      Char_DoubleQuote = 43;
 
       public final static String orderedTerminalSymbols[] = {
                  "",//$NON-NLS-1$
@@ -132,11 +132,11 @@ public interface C99Lexersym {
                  "l",//$NON-NLS-1$
                  "L",//$NON-NLS-1$
                  "e",//$NON-NLS-1$
-                 "u",//$NON-NLS-1$
                  "E",//$NON-NLS-1$
-                 "U",//$NON-NLS-1$
                  "a",//$NON-NLS-1$
                  "b",//$NON-NLS-1$
+                 "u",//$NON-NLS-1$
+                 "U",//$NON-NLS-1$
                  "c",//$NON-NLS-1$
                  "d",//$NON-NLS-1$
                  "A",//$NON-NLS-1$
@@ -148,9 +148,6 @@ public interface C99Lexersym {
                  "p",//$NON-NLS-1$
                  "x",//$NON-NLS-1$
                  "P",//$NON-NLS-1$
-                 "Space",//$NON-NLS-1$
-                 "HT",//$NON-NLS-1$
-                 "FF",//$NON-NLS-1$
                  "Colon",//$NON-NLS-1$
                  "n",//$NON-NLS-1$
                  "r",//$NON-NLS-1$
@@ -191,6 +188,9 @@ public interface C99Lexersym {
                  "Y",//$NON-NLS-1$
                  "Z",//$NON-NLS-1$
                  "_",//$NON-NLS-1$
+                 "Space",//$NON-NLS-1$
+                 "HT",//$NON-NLS-1$
+                 "FF",//$NON-NLS-1$
                  "LessThan",//$NON-NLS-1$
                  "Star",//$NON-NLS-1$
                  "Ampersand",//$NON-NLS-1$

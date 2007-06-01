@@ -63,7 +63,7 @@ public class C99Lexer extends LpgLexStream implements C99Parsersym, C99Lexersym,
     public void lexer(Monitor monitor, PrsStream prsStream)
     {
         if (getInputChars() == null)
-            throw new NullPointerException("LexStream was not initialized"); //$NON-NLS-1$
+            throw new NullPointerException("LexStream was not initialized");//$NON-NLS-1$
 
         this.prsStream = prsStream;
 
@@ -80,6 +80,7 @@ public class C99Lexer extends LpgLexStream implements C99Parsersym, C99Lexersym,
 
 private TokenList tokenList = null;
 private boolean returnCommentTokens = false;
+private char[] input = null; // the input character buffer
    
 public C99Lexer(CodeReader reader) {
 	super(reader.buffer, new String(reader.filename));
@@ -91,11 +92,13 @@ public synchronized TokenList lex(int options) {
 		returnCommentTokens = true;
 		
 	tokenList = new TokenList();
+	input = super.getInputChars();
         
     lexParser.parseCharacters(null);  // Lex the input characters
     
     TokenList result = tokenList;
     tokenList = null;
+    input = null;
     return result;
 }
 
@@ -104,14 +107,20 @@ protected void makeToken(int kind) {
 	if(!returnCommentTokens && (kind == TK_MultiLineComment || kind == TK_SingleLineComment))
 		return;
 		
-	IToken token = C99LexerKind.makeToken(this, kind);
-	if(token != null)
-		tokenList.add(token);
+	int startOffset = lexParser.getFirstToken();
+	int endOffset   = lexParser.getLastToken();
+	
+	// an adjustment for trigraphs, commented out for optimization purposes
+    //if(kind != C99Parsersym.TK_Question && startOffset == endOffset && input[startOffset] == '?') {
+    //    // The token starts with a '?' but its not a question token, then it must be a trigraph.
+    //    endOffset += 2; // make sure the toString() method of the token returns the entire trigraph sequence
+    //}
+	
+	tokenList.add(new C99Token(startOffset, endOffset, kind, input));
 }
 
 public void reportError(int leftOffset, int rightOffset) {
-	C99Token token = new C99Token(leftOffset, rightOffset, TK_Invalid);
-	token.setRepresentation(getInputChars(), leftOffset, rightOffset);
+	C99Token token = new C99Token(leftOffset, rightOffset, TK_Invalid, getInputChars());
 	tokenList.add(token);
 }
 
@@ -486,15 +495,15 @@ public int getKind(int i) {
             }
  
             //
-            // Rule 219:  Token ::= SLC
+            // Rule 217:  Token ::= SLC
             //
-            case 219: {   makeToken(TK_SingleLineComment);           break;
+            case 217: {   makeToken(TK_SingleLineComment);           break;
             }
  
             //
-            // Rule 220:  Token ::= MLC
+            // Rule 218:  Token ::= MLC
             //
-            case 220: {   makeToken(TK_MultiLineComment);           break;
+            case 218: {   makeToken(TK_MultiLineComment);           break;
             }
 
     

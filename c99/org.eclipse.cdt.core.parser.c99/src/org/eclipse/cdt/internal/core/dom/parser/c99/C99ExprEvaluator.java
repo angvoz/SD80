@@ -21,36 +21,36 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.*;
 public class C99ExprEvaluator extends PrsStream implements RuleAction
 {
     private static ParseTable prs = new C99ExprEvaluatorprs();
-    private BacktrackingParser btParser;
+    private DeterministicParser dtParser;
 
-    public BacktrackingParser getParser() { return btParser; }
-    private void setResult(Object object) { btParser.setSym1(object); }
-    public Object getRhsSym(int i) { return btParser.getSym(i); }
+    public DeterministicParser getParser() { return dtParser; }
+    private void setResult(Object object) { dtParser.setSym1(object); }
+    public Object getRhsSym(int i) { return dtParser.getSym(i); }
 
-    public int getRhsTokenIndex(int i) { return btParser.getToken(i); }
+    public int getRhsTokenIndex(int i) { return dtParser.getToken(i); }
     public IToken getRhsIToken(int i) { return super.getIToken(getRhsTokenIndex(i)); }
     
-    public int getRhsFirstTokenIndex(int i) { return btParser.getFirstToken(i); }
+    public int getRhsFirstTokenIndex(int i) { return dtParser.getFirstToken(i); }
     public IToken getRhsFirstIToken(int i) { return super.getIToken(getRhsFirstTokenIndex(i)); }
 
-    public int getRhsLastTokenIndex(int i) { return btParser.getLastToken(i); }
+    public int getRhsLastTokenIndex(int i) { return dtParser.getLastToken(i); }
     public IToken getRhsLastIToken(int i) { return super.getIToken(getRhsLastTokenIndex(i)); }
 
-    public int getLeftSpan() { return btParser.getFirstToken(); }
+    public int getLeftSpan() { return dtParser.getFirstToken(); }
     public IToken getLeftIToken()  { return super.getIToken(getLeftSpan()); }
 
-    public int getRightSpan() { return btParser.getLastToken(); }
+    public int getRightSpan() { return dtParser.getLastToken(); }
     public IToken getRightIToken() { return super.getIToken(getRightSpan()); }
 
     public int getRhsErrorTokenIndex(int i)
     {
-        int index = btParser.getToken(i);
+        int index = dtParser.getToken(i);
         IToken err = super.getIToken(index);
         return (err instanceof ErrorToken ? index : 0);
     }
     public ErrorToken getRhsErrorIToken(int i)
     {
-        int index = btParser.getToken(i);
+        int index = dtParser.getToken(i);
         IToken err = super.getIToken(index);
         return (ErrorToken) (err instanceof ErrorToken ? err : null);
     }
@@ -70,83 +70,66 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
         catch(UnimplementedTerminalsException e)
         {
             java.util.ArrayList unimplemented_symbols = e.getSymbols();
-            System.out.println(Messages.getString("C99ExprEvaluator.0")); //$NON-NLS-1$
+            System.out.println("The Lexer will not scan the following token(s):");//$NON-NLS-1$
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);                //$NON-NLS-1$
+                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);   //$NON-NLS-1$            
             }
             System.out.println();                        
         }
         catch(UndefinedEofSymbolException e)
         {
             throw new Error(new UndefinedEofSymbolException
-                                (Messages.getString("C99ExprEvaluator.1") + //$NON-NLS-1$
+                                ("The Lexer does not implement the Eof symbol " + //$NON-NLS-1$
                                  C99ExprEvaluatorsym.orderedTerminalSymbols[C99ExprEvaluatorprs.EOFT_SYMBOL]));
         } 
     }
 
     public String[] orderedTerminalSymbols() { return C99ExprEvaluatorsym.orderedTerminalSymbols; }
-    public String getTokenKindName(int kind) { return C99ExprEvaluatorsym.orderedTerminalSymbols[kind]; }
+    public String getTokenKindName(int kind) { return C99ExprEvaluatorsym.orderedTerminalSymbols[kind]; }            
     public int getEOFTokenKind() { return C99ExprEvaluatorprs.EOFT_SYMBOL; }
     public PrsStream getParseStream() { return (PrsStream) this; }
-    
-    //
-    // Report error message for given error_token.
-    //
-    public final void reportErrorTokenMessage(int error_token, String msg)
-    {
-        int firsttok = super.getFirstErrorToken(error_token),
-            lasttok = super.getLastErrorToken(error_token);
-        String location = super.getFileName() + ':' +
-                          (firsttok > lasttok
-                                    ? (super.getEndLine(lasttok) + ":" + super.getEndColumn(lasttok)) //$NON-NLS-1$
-                                    : (super.getLine(error_token) + ":" + //$NON-NLS-1$
-                                       super.getColumn(error_token) + ":" + //$NON-NLS-1$
-                                       super.getEndLine(error_token) + ":" + //$NON-NLS-1$
-                                       super.getEndColumn(error_token)))
-                          + ": "; //$NON-NLS-1$
-        super.reportError((firsttok > lasttok ? ParseErrorCodes.INSERTION_CODE : ParseErrorCodes.SUBSTITUTION_CODE), location, msg);
-    }
 
     public Object parser()
     {
         return parser(null, 0);
     }
-    
+        
     public Object parser(Monitor monitor)
     {
         return parser(monitor, 0);
     }
-    
+        
     public Object parser(int error_repair_count)
     {
         return parser(null, error_repair_count);
     }
-
+        
     public Object parser(Monitor monitor, int error_repair_count)
     {
         try
         {
-            btParser = new BacktrackingParser(monitor, (TokenStream) this, prs, (RuleAction) this);
+            dtParser = new DeterministicParser(monitor, (TokenStream)this, prs, (RuleAction)this);
         }
-        catch (NotBacktrackParseTableException e)
+        catch (NotDeterministicParseTableException e)
         {
-            throw new Error(new NotBacktrackParseTableException
-                                (Messages.getString("C99ExprEvaluator.2"))); //$NON-NLS-1$
+            throw new Error(new NotDeterministicParseTableException
+                                ("Regenerate C99ExprEvaluatorprs.java with -NOBACKTRACK option"));//$NON-NLS-1$
         }
         catch (BadParseSymFileException e)
         {
-            throw new Error(new BadParseSymFileException(Messages.getString("C99ExprEvaluator.3"))); //$NON-NLS-1$
+            throw new Error(new BadParseSymFileException("Bad Parser Symbol File -- C99ExprEvaluatorsym.java. Regenerate C99ExprEvaluatorprs.java"));//$NON-NLS-1$
         }
 
         try
         {
-            return (Object) btParser.parse(error_repair_count);
+            return (Object) dtParser.parse();
         }
         catch (BadParseException e)
         {
             reset(e.error_token); // point to error token
+
             DiagnoseParser diagnoseParser = new DiagnoseParser(this, prs);
             diagnoseParser.diagnose(e.error_token);
         }
@@ -170,7 +153,7 @@ public C99ExprEvaluator(TokenList tokens) {
 		token.setKind(mapKind(token.getKind()));
 		addToken(token);
 	}
-	addToken(new C99Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>")); //$NON-NLS-1$
+	addToken(new C99Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>"));//$NON-NLS-1$
 	setStreamLength(getSize());
 }
 

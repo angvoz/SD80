@@ -31,7 +31,7 @@ public class C99DOMPreprocessorInformationTest extends DOMPreprocessorInformatio
     
     
     protected C99Language getC99Language() {
-    	return new C99Language();
+    	return C99Language.getDefault();
     }
     
     

@@ -97,7 +97,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
             1,3,6,12,57,19,7,46,39,2,
             74,76,58,77,18,78,51,56,30,38,
             6,23,61,64,67,70,79,73,81,80,
-            83,84,284,0
+            83,84,284,284
         };
     };
     public final static char baseAction[] = BaseAction.baseAction;
@@ -287,85 +287,85 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
 
     public interface Name {
         public final static String name[] = {
-            "", //$NON-NLS-1$
-            "]", //$NON-NLS-1$
-            "[", //$NON-NLS-1$
-            ")", //$NON-NLS-1$
-            "(", //$NON-NLS-1$
-            "}", //$NON-NLS-1$
-            "{", //$NON-NLS-1$
-            ".", //$NON-NLS-1$
-            "->", //$NON-NLS-1$
-            "++", //$NON-NLS-1$
-            "--", //$NON-NLS-1$
-            "&", //$NON-NLS-1$
-            "*", //$NON-NLS-1$
-            "+", //$NON-NLS-1$
-            "-", //$NON-NLS-1$
-            "~", //$NON-NLS-1$
-            "!", //$NON-NLS-1$
-            "/", //$NON-NLS-1$
-            "%", //$NON-NLS-1$
-            ">>", //$NON-NLS-1$
-            "<<", //$NON-NLS-1$
-            "<", //$NON-NLS-1$
-            ">", //$NON-NLS-1$
-            "<=", //$NON-NLS-1$
-            ">=", //$NON-NLS-1$
-            "==", //$NON-NLS-1$
-            "!=", //$NON-NLS-1$
-            "^", //$NON-NLS-1$
-            "|", //$NON-NLS-1$
-            "&&", //$NON-NLS-1$
-            "||", //$NON-NLS-1$
-            "?", //$NON-NLS-1$
-            ":", //$NON-NLS-1$
-            ";", //$NON-NLS-1$
-            "...", //$NON-NLS-1$
-            "=", //$NON-NLS-1$
-            "*=", //$NON-NLS-1$
-            "/=", //$NON-NLS-1$
-            "%=", //$NON-NLS-1$
-            "+=", //$NON-NLS-1$
-            "-=", //$NON-NLS-1$
-            ">>=", //$NON-NLS-1$
-            "<<=", //$NON-NLS-1$
-            "&=", //$NON-NLS-1$
-            "^=", //$NON-NLS-1$
-            "|=", //$NON-NLS-1$
-            ",", //$NON-NLS-1$
-            "#", //$NON-NLS-1$
-            "##", //$NON-NLS-1$
-            "nl", //$NON-NLS-1$
-            "$empty", //$NON-NLS-1$
-            "EOF_TOKEN", //$NON-NLS-1$
-            "identifier", //$NON-NLS-1$
-            "integer", //$NON-NLS-1$
-            "floating", //$NON-NLS-1$
-            "charconst", //$NON-NLS-1$
-            "stringlit", //$NON-NLS-1$
-            "Invalid", //$NON-NLS-1$
-            "PlaceMarker", //$NON-NLS-1$
-            "Parameter", //$NON-NLS-1$
-            "DisabledMacroName", //$NON-NLS-1$
-            "Completion", //$NON-NLS-1$
-            "EndOfCompletion", //$NON-NLS-1$
-            "SingleLineComment", //$NON-NLS-1$
-            "MultiLineComment", //$NON-NLS-1$
-            "ERROR_TOKEN", //$NON-NLS-1$
-            "constant_expression", //$NON-NLS-1$
-            "unary_expression", //$NON-NLS-1$
-            "multiplicative_expression", //$NON-NLS-1$
-            "additive_expression", //$NON-NLS-1$
-            "shift_expression", //$NON-NLS-1$
-            "relational_expression", //$NON-NLS-1$
-            "equality_expression", //$NON-NLS-1$
-            "AND_expression", //$NON-NLS-1$
-            "exclusive_OR_expression", //$NON-NLS-1$
-            "inclusive_OR_expression", //$NON-NLS-1$
-            "logical_AND_expression", //$NON-NLS-1$
-            "logical_OR_expression", //$NON-NLS-1$
-            "conditional_expression" //$NON-NLS-1$
+            "",//$NON-NLS-1$
+            "]",//$NON-NLS-1$
+            "[",//$NON-NLS-1$
+            ")",//$NON-NLS-1$
+            "(",//$NON-NLS-1$
+            "}",//$NON-NLS-1$
+            "{",//$NON-NLS-1$
+            ".",//$NON-NLS-1$
+            "->",//$NON-NLS-1$
+            "++",//$NON-NLS-1$
+            "--",//$NON-NLS-1$
+            "&",//$NON-NLS-1$
+            "*",//$NON-NLS-1$
+            "+",//$NON-NLS-1$
+            "-",//$NON-NLS-1$
+            "~",//$NON-NLS-1$
+            "!",//$NON-NLS-1$
+            "/",//$NON-NLS-1$
+            "%",//$NON-NLS-1$
+            ">>",//$NON-NLS-1$
+            "<<",//$NON-NLS-1$
+            "<",//$NON-NLS-1$
+            ">",//$NON-NLS-1$
+            "<=",//$NON-NLS-1$
+            ">=",//$NON-NLS-1$
+            "==",//$NON-NLS-1$
+            "!=",//$NON-NLS-1$
+            "^",//$NON-NLS-1$
+            "|",//$NON-NLS-1$
+            "&&",//$NON-NLS-1$
+            "||",//$NON-NLS-1$
+            "?",//$NON-NLS-1$
+            ":",//$NON-NLS-1$
+            ";",//$NON-NLS-1$
+            "...",//$NON-NLS-1$
+            "=",//$NON-NLS-1$
+            "*=",//$NON-NLS-1$
+            "/=",//$NON-NLS-1$
+            "%=",//$NON-NLS-1$
+            "+=",//$NON-NLS-1$
+            "-=",//$NON-NLS-1$
+            ">>=",//$NON-NLS-1$
+            "<<=",//$NON-NLS-1$
+            "&=",//$NON-NLS-1$
+            "^=",//$NON-NLS-1$
+            "|=",//$NON-NLS-1$
+            ",",//$NON-NLS-1$
+            "#",//$NON-NLS-1$
+            "##",//$NON-NLS-1$
+            "nl",//$NON-NLS-1$
+            "$empty",//$NON-NLS-1$
+            "EOF_TOKEN",//$NON-NLS-1$
+            "identifier",//$NON-NLS-1$
+            "integer",//$NON-NLS-1$
+            "floating",//$NON-NLS-1$
+            "charconst",//$NON-NLS-1$
+            "stringlit",//$NON-NLS-1$
+            "Invalid",//$NON-NLS-1$
+            "PlaceMarker",//$NON-NLS-1$
+            "Parameter",//$NON-NLS-1$
+            "DisabledMacroName",//$NON-NLS-1$
+            "Completion",//$NON-NLS-1$
+            "EndOfCompletion",//$NON-NLS-1$
+            "SingleLineComment",//$NON-NLS-1$
+            "MultiLineComment",//$NON-NLS-1$
+            "ERROR_TOKEN",//$NON-NLS-1$
+            "constant_expression",//$NON-NLS-1$
+            "unary_expression",//$NON-NLS-1$
+            "multiplicative_expression",//$NON-NLS-1$
+            "additive_expression",//$NON-NLS-1$
+            "shift_expression",//$NON-NLS-1$
+            "relational_expression",//$NON-NLS-1$
+            "equality_expression",//$NON-NLS-1$
+            "AND_expression",//$NON-NLS-1$
+            "exclusive_OR_expression",//$NON-NLS-1$
+            "inclusive_OR_expression",//$NON-NLS-1$
+            "logical_AND_expression",//$NON-NLS-1$
+            "logical_OR_expression",//$NON-NLS-1$
+            "conditional_expression"//$NON-NLS-1$
         };
     };
     public final static String name[] = Name.name;
@@ -398,7 +398,7 @@ public class C99ExprEvaluatorprs implements lpg.lpgjavaruntime.ParseTable, C99Ex
            ACCEPT_ACTION     = 283,
            ERROR_ACTION      = 284;
 
-    public final static boolean BACKTRACK = true;
+    public final static boolean BACKTRACK = false;
 
     public final int getNumStates() { return NUM_STATES; }
     public final int getNtOffset() { return NT_OFFSET; }

@@ -35,16 +35,21 @@ public class C99Token extends AbstractToken implements IToken {
 	
 	
 	public C99Token(int startOffset, int endOffset, int kind, String representation) {
-		this(startOffset, endOffset, kind);
-		setRepresentation(representation);
+		super(null, startOffset, endOffset, kind);
+		this.representation = representation;
+		this.source = null;
 	}
 	
-	public C99Token(int startOffset, int endOffset, int kind) {
+	public C99Token(int startOffset, int endOffset, int kind, char[] source) {
 		super(null, startOffset, endOffset, kind);
+		this.source = source;
+		this.sourceStartOffset = startOffset;
+		this.sourceEndOffset = endOffset;
+		this.representation = null;
 	}
 
 	public C99Token(IToken t) {
-		this(t.getStartOffset(), t.getEndOffset(), t.getKind());
+		super(null, t.getStartOffset(), t.getEndOffset(), t.getKind());
 		if(t instanceof C99Token) {
 			C99Token c99t = (C99Token) t;
 			if(c99t.representation != null)

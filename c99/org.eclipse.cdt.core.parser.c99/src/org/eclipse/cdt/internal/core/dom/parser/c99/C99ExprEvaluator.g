@@ -19,7 +19,7 @@
 
 %options la=1
 %options package=org.eclipse.cdt.internal.core.dom.parser.c99
-%options template=btParserTemplateD.g
+%options template=dtParserTemplateD.g
 %options import_terminals=C99Lexer.g
 
 

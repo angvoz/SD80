@@ -62,7 +62,7 @@ public class C99CompletionParseTest extends TestCase {
 	
 	
 	protected C99Language getLanguage() {
-		return new C99Language();
+		return C99Language.getDefault();
 	}
 	
 	

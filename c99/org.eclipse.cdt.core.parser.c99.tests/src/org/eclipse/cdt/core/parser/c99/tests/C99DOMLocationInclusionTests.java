@@ -50,7 +50,7 @@ public class C99DOMLocationInclusionTests extends DOMLocationInclusionTests {
 	}
 
 	protected C99Language getLanguage() {
-		return new C99Language();
+		return C99Language.getDefault();
 	}
 
 }

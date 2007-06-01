@@ -166,32 +166,30 @@ public class C99ParserAction {
 		if(astStack.isEmpty())
 			return null;
 		
-		IASTTranslationUnit ast = (IASTTranslationUnit) astStack.peek();
-		ast.setComments(generateCommentNodes());
-		return ast;
+		IASTTranslationUnit tu = (IASTTranslationUnit) astStack.peek();
+		generateCommentNodes(tu);
+		return tu;
 	}
 	
 	
 	
-	private IASTComment[] generateCommentNodes() {
+	private void generateCommentNodes(IASTTranslationUnit tu) {
 		List commentTokens = parser.getCommentTokens();
 		if(commentTokens == null || commentTokens.isEmpty())
-			return null;
+			return;
 		
 		IASTComment[] commentNodes = new IASTComment[commentTokens.size()];
 		
 		for(int i = 0; i < commentNodes.length; i++) {
 			IToken token = (IToken) commentTokens.get(i);
 			IASTComment comment = nodeFactory.newComment();
-			
-			// TODO parent pointers for comment node
+			comment.setParent(tu);
 			comment.setComment(token.toString().toCharArray());
 			setOffsetAndLength(comment, token);
-			
 			commentNodes[i] = comment;
 		}
 		
-		return commentNodes;
+		tu.setComments(commentNodes);
 	}
 	
 	

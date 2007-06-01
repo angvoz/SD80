@@ -231,18 +231,11 @@ public class Macro implements C99Parsersym {
 		}
 	}
 	
-	
-	/**
-	 * For object like macros, just returns the replacement sequence.
-	 * @param invokeOffset The offset where the macro is being invoked.
-	 */
-	public TokenList invoke() {
-		return invoke(null);
-	}
-	
-	
+
 	/**
 	 * Invokes the macro with the given arguments.
+	 * Pass null to invoke an object like macro.
+	 * 
 	 * @throws IllegalArgumentException if the wrong number of arguments is passed
 	 * @return null if there was some kind of syntax or parameter error during macro invokation
 	 */

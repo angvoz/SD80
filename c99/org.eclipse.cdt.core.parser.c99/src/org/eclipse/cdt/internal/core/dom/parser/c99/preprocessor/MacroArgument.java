@@ -60,7 +60,8 @@ class MacroArgument {
 	 * recursivley processing them.
 	 */
 	public TokenList getRawTokens() {
-		return rawTokens;
+		// return a copy because the tokens may be needed more than once
+		return rawTokens.shallowCopy();
 	}
 	
 	
@@ -77,7 +78,8 @@ class MacroArgument {
 		if(processedTokens == null)
 			processedTokens = processCallback.process(cloneTokenList(rawTokens));
 		
-		return processedTokens; 
+		// return a copy because the tokens may be needed more than once
+		return processedTokens.shallowCopy(); 
 	}
 	
 	
@@ -85,6 +87,7 @@ class MacroArgument {
 		return rawTokens.isEmpty();
 	}
 	
+	// TODO: now that TokenList.shallowCopy() exists can this method be removed?
 	private static TokenList cloneTokenList(TokenList orig) {
 		TokenList clone = new TokenList();
 		for(Iterator iter = orig.iterator(); iter.hasNext(); ) {

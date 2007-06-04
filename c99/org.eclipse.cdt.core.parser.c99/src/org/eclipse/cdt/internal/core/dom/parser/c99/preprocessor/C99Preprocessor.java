@@ -76,7 +76,11 @@ public class C99Preprocessor implements C99Parsersym {
 	
 	private boolean encounteredError = false;
 	
-	private static class PreprocessorInternalParseException extends RuntimeException {}
+	private static class PreprocessorInternalParseException extends RuntimeException {
+		public PreprocessorInternalParseException() {}
+		public PreprocessorInternalParseException(String message) { super(message); }
+	}
+	
 	private static class PreprocessorAbortParseException extends RuntimeException {}
 	
 	// Used to keep log events from firing when processing macro arguments
@@ -469,7 +473,7 @@ public class C99Preprocessor implements C99Parsersym {
 		if(check(pptoken))
 			return next();
 		else 
-			throw new PreprocessorInternalParseException();
+			throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName());
 	}
 	
 
@@ -477,7 +481,7 @@ public class C99Preprocessor implements C99Parsersym {
 		if(check(directive))
 			return next();
 		else 
-			throw new PreprocessorInternalParseException();
+			throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName());
 	}
 	
 	
@@ -559,7 +563,8 @@ public class C99Preprocessor implements C99Parsersym {
 					boolean encounteredPoundElse = controlLine();
 					if(encounteredPoundElse) {
 						// improperly nested #else
-						throw new PreprocessorInternalParseException();
+						
+						throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName());
 					}
 				}
 				else {
@@ -567,7 +572,7 @@ public class C99Preprocessor implements C99Parsersym {
 				}
 				
 			} catch(PreprocessorInternalParseException e) {
-				e.printStackTrace();
+				//e.printStackTrace();
 				if(inputTokenStream.isContentAssistMode())
 					throw new PreprocessorAbortParseException();
 				
@@ -615,7 +620,7 @@ public class C99Preprocessor implements C99Parsersym {
 				textLine();
 			}
 		}
-		throw new PreprocessorInternalParseException(); // caused by improperly nested #ifs
+		throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName()); // caused by improperly nested #ifs
 	}
 	
 	
@@ -636,10 +641,7 @@ public class C99Preprocessor implements C99Parsersym {
 					next();
 					includeDirective(directiveStartOffset, false);
 				}
-				else if(check(IF) || check(ELIF)) {
-					if(check(ELIF) && depth == 0) {
-						return directiveStartOffset;
-					}
+				else if(check(IF)) {
 					handleIf(directiveStartOffset, false);
 					depth++;
 				}
@@ -647,10 +649,14 @@ public class C99Preprocessor implements C99Parsersym {
 					handleIfDef(directiveStartOffset);
 					depth++;
 				}
-				else if(check(ELSE)) {
-					if(depth == 0) {
+				else if (check(ELIF)) {	
+					if(depth == 0)
 						return directiveStartOffset;
-					}
+					handleIf(directiveStartOffset, false);
+				}
+				else if(check(ELSE)) {
+					if(depth == 0)
+						return directiveStartOffset;
 					handleElse(directiveStartOffset, false);
 				}
 				else if(check(ENDIF)) {
@@ -669,9 +675,16 @@ public class C99Preprocessor implements C99Parsersym {
 			}
 		}
 		
-		throw new PreprocessorInternalParseException(); // caused by improperly nested #ifs
+		throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName()); // caused by improperly nested #ifs
 	}
 	
+	String spaces(int x) {
+		StringBuffer sb = new StringBuffer();
+		for(int i = 0; i < x; i++) {
+			sb.append(' ');
+		}
+		return sb.toString();
+	}
 	
 	/**
 	 * Skips input until a newline is encountered, the newline is also skipped.
@@ -821,7 +834,7 @@ public class C99Preprocessor implements C99Parsersym {
 			ident = next();
 		}
 		else {
-			throw new PreprocessorInternalParseException();
+			throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName());
 		}
 		
 		String val = env.hasMacro(ident.toString()) ? "1" : "0"; //$NON-NLS-1$ //$NON-NLS-2$
@@ -965,7 +978,6 @@ public class C99Preprocessor implements C99Parsersym {
 				int replacementLength = callback.expansionEndOffset - callback.directiveEndOffset;
 				startOffset = callback.directiveStartOffset;
 				expansionLocationOffset -= replacementLength;
-				System.out.println("here1");
 				inputTokenStream.adjustGlobalOffsets(-replacementLength);
 			}
 		}
@@ -1247,7 +1259,7 @@ public class C99Preprocessor implements C99Parsersym {
 					hashOffset = processBranch();
 			}
 			else {
-				throw new PreprocessorInternalParseException();
+				throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName());
 			}
 		}
 	}
@@ -1559,7 +1571,7 @@ public class C99Preprocessor implements C99Parsersym {
 		// The following 3 lines of code aren't really necessary, they are just a sanity check
 		inputTokenStream.peek();
 		if(!inputTokenStream.isStuck())
-			throw new PreprocessorInternalParseException(); // the context was not fully consumed
+			throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName()); // the context was not fully consumed
 		
 		// the token stream will get stuck, so unstick it
 		inputTokenStream.resume();

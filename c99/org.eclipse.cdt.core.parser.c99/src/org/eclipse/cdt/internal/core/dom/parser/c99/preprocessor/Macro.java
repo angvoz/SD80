@@ -33,6 +33,7 @@ public class Macro implements C99Parsersym {
 	public static final String __VA_ARGS__ = "__VA_ARGS__"; //$NON-NLS-1$
 	
 	private final IToken name;
+	private final String nameAsString;
 	
 	/**
 	 * If paramNames == null then isObjectLike() == true
@@ -79,6 +80,7 @@ public class Macro implements C99Parsersym {
 		normalizeReplacementSequenceOffsets(this.replacementSequence);
 		
 		this.name = name;
+		this.nameAsString = name.toString();
 		this.paramNames = paramNames;
 		this.startOffset = startOffset;
 		this.endOffset = endOffset;
@@ -220,7 +222,7 @@ public class Macro implements C99Parsersym {
 		
 		private void add(IToken t) {
 			// prevents recursive replacement of the macro
-			if(t.getKind() == TK_identifier && t.toString().equals(name.toString()))
+			if(t.getKind() == TK_identifier && t.toString().equals(nameAsString))
 				t.setKind(TK_DisabledMacroName); 
 			
 			result.add(t);
@@ -431,7 +433,7 @@ public class Macro implements C99Parsersym {
 
 
 	public String getName() {
-		return name.toString();
+		return nameAsString; // much faster than calling toString() every time
 	}
 
 
@@ -484,9 +486,9 @@ public class Macro implements C99Parsersym {
 	
 	public String toString() {
 		if(isObjectLike())
-			return name.toString() + " " + replacementSequence; //$NON-NLS-1$
+			return nameAsString + " " + replacementSequence; //$NON-NLS-1$
 		
-		return name.toString() + "(" + paramNames.toString() + (isVarArgs() ? ",..." : "") + ") " + replacementSequence; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+		return nameAsString + "(" + paramNames.toString() + (isVarArgs() ? ",..." : "") + ") " + replacementSequence; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 	}
 	
 	

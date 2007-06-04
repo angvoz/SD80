@@ -26,9 +26,6 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
  */
 public class C99Tests extends AST2Tests {
 
-	
-	
-
 	public C99Tests(String name) {
 		super(name);
 	}
@@ -61,23 +58,17 @@ public class C99Tests extends AST2Tests {
     }
     
     
+    public void testMultipleHashHash() throws Exception {
+    	String code = "#define TWICE(a)  int a##tera; int a##ther; \n TWICE(pan)";
+    	parseAndCheckBindings(code, ParserLanguage.C);
+    }
+    
+    
 	// Tests that are failing at this point
     
 	public void testCExpressions() { // ambiguity
 		try {
 			super.testCExpressions();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	} 
-	
-	public void testArrayDesignator() { // I have no idea what the problem is
-		try {
-			super.testArrayDesignator();
 		} catch(AssertionFailedError _) {
 			return;
 		} catch(Exception _) {
@@ -164,44 +155,4 @@ public class C99Tests extends AST2Tests {
 		fail();
 	}
 	
-	
-	public void testBug98502() { // actually looks like the test itself is wrong
-		try {
-			super.testBug98502();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	}
-	
-	
-	public void testBug98365() throws Exception { // CNameCollector is returning stuff in a different order
-		try {
-			super.testBug98365();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	}
-	
-	
-	public void test167833() throws Exception {
-		try {
-			super.test167833();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	}
-	
 }
-

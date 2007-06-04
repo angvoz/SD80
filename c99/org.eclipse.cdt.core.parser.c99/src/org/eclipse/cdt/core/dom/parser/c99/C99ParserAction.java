@@ -845,7 +845,10 @@ public class C99ParserAction {
 			
 		} else {
 			declarator = nodeFactory.newDeclarator();
-			declarator.setName(nodeFactory.newName());
+			IASTName name = nodeFactory.newName();
+			declarator.setName(name);
+			name.setParent(declarator);
+			name.setPropertyInParent(IASTFunctionDeclarator.DECLARATOR_NAME);
 		}
 			
 		typeId.setAbstractDeclarator(declarator);
@@ -1074,8 +1077,13 @@ public class C99ParserAction {
 	 */
 	public void consumeDirectDeclaratorBracketed() {
 		IASTDeclarator nested = (IASTDeclarator) astStack.pop();
-		
 		IASTDeclarator declarator = nodeFactory.newDeclarator();
+		
+		IASTName name = nodeFactory.newName();
+		declarator.setName(name);
+		name.setParent(declarator);
+		name.setPropertyInParent(IASTFunctionDeclarator.DECLARATOR_NAME);
+		
 		declarator.setNestedDeclarator(nested);
 		nested.setParent(declarator);
 		nested.setPropertyInParent(IASTDeclarator.NESTED_DECLARATOR);
@@ -1131,6 +1139,11 @@ public class C99ParserAction {
 			}
 			astStack.closeASTScope();
 		}
+		
+		IASTName name = nodeFactory.newName();
+		declarator.setName(name);
+		name.setParent(declarator);
+		name.setPropertyInParent(IASTFunctionDeclarator.DECLARATOR_NAME);
 		
 		int endOffset = endOffset(parser.getRightIToken());
 		consumeDirectDeclaratorFunctionDeclarator(declarator, endOffset);
@@ -1297,6 +1310,12 @@ public class C99ParserAction {
 		}
 		else {
 			IASTArrayDeclarator decl = nodeFactory.newArrayDeclarator();
+			
+			IASTName name = nodeFactory.newName();
+			decl.setName(name);
+			name.setParent(decl);
+			name.setPropertyInParent(IASTArrayDeclarator.DECLARATOR_NAME);
+			
 			decl.addArrayModifier(arrayModifier);
 			arrayModifier.setParent(decl);
 			arrayModifier.setPropertyInParent(IASTArrayDeclarator.ARRAY_MODIFIER);
@@ -1668,12 +1687,11 @@ public class C99ParserAction {
 		}
 		astStack.closeASTScope();
 		
-		if(hasIdentifier) {
-			IASTName name = (IASTName)astStack.pop();
-			enumSpec.setName(name);
-			name.setParent(enumSpec);
-			name.setPropertyInParent(ICASTEnumerationSpecifier.ENUMERATION_NAME);
-		}
+		IASTName name = hasIdentifier ? (IASTName)astStack.pop() : nodeFactory.newName();
+		
+		enumSpec.setName(name);
+		name.setParent(enumSpec);
+		name.setPropertyInParent(ICASTEnumerationSpecifier.ENUMERATION_NAME);
 		
 		setOffsetAndLength(enumSpec);
 		astStack.push(enumSpec);

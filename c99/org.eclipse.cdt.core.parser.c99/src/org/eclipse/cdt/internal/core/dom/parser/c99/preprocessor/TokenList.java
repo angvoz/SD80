@@ -72,6 +72,20 @@ public class TokenList {
 		return list.iterator();
 	}
 	
+	
+	/**
+	 * Creates a copy of this TokenList, 
+	 * the IToken objects themselves are not copied.
+	 */
+	public TokenList shallowCopy() {
+		TokenList newList = new TokenList();
+		for(Iterator iter = iterator(); iter.hasNext();) {
+			newList.add((IToken)iter.next());
+		}
+		return newList;
+	}
+	
+	
 	public String toString() {
 		if(isEmpty())
 			return ""; //$NON-NLS-1$
@@ -112,4 +126,6 @@ public class TokenList {
 		}
 		return kinds;
 	}
+	
+	
 }

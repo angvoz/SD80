@@ -64,6 +64,16 @@ public class C99Tests extends AST2Tests {
     }
     
     
+    public void testBug191279() throws Exception {
+    	StringBuffer sb = new StringBuffer();
+    	sb.append(" /**/ \n");
+    	sb.append("# define YO 99 /**/ \n");
+    	sb.append("# undef YO /**/ ");
+    	String code = sb.toString();
+    	parseAndCheckBindings(code, ParserLanguage.C);
+    }
+    
+    
 	// Tests that are failing at this point
     
 	public void testCExpressions() { // ambiguity

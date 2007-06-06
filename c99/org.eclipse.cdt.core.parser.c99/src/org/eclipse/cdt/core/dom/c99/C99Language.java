@@ -111,6 +111,9 @@ public class C99Language extends AbstractLanguage implements ILanguage, ICLangua
 		IParseResult parseResult = parse(reader, scanInfo, fileCreator, index, null, options);
 		IASTTranslationUnit tu = parseResult.getTranslationUnit();
 
+		if(parseResult.encounteredError())
+			System.out.println("Problem In File: '" + new String(reader.filename) + "'");
+		
 		return tu;
 	}
 	

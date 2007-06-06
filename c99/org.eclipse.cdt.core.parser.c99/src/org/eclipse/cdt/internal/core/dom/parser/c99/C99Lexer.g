@@ -380,11 +380,11 @@ $Rules
 	                      'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 
 	                      'A' | 'B' | 'C' | 'D' | 'E' | 'F'
 	                      
-    -- does not include "'", '"', '\', '/', '*' or whitespece
+    -- does not include "'", '"', '\', '/', '*' or whitespace
 	common-graphical-character ::= '!' | '#' | '%' | '&' | '(' | ')' |
                                    '+' | ',' | '-' | '.' | ':' | ';' |
                                    '<' | '=' | '>' | '?' | '[' | ']' |  
-                                   '^' | '_' | '{' | '|' | '}' | '~'
+                                   '^' | '_' | '{' | '|' | '}' | '~' | '$'
 	   
                             
     graphical-character ::= common-graphical-character | -- still does not include whitespace

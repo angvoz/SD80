@@ -450,12 +450,18 @@ $Rules
     stars -> '*'
            | stars '*' 
     
-    inside-mlc -> inside-mlc stars not-slash-or-star
-                | inside-mlc '/'
-                | inside-mlc not-slash-or-star
-                | stars not-slash-or-star
-                | '/'
-                | not-slash-or-star
+    --inside-mlc -> inside-mlc stars not-slash-or-star
+    --            | inside-mlc '/'
+    --            | inside-mlc not-slash-or-star
+    --            | stars not-slash-or-star
+    --            | '/'
+    --            | not-slash-or-star
+ 	            
+	inside-mlc ::= inside-mlc stars not-slash-or-star
+	             | inside-mlc '/'
+	             | inside-mlc not-slash-or-star
+	             | $empty
+	             
  	            
  	            
   	-----------------------------------------------------------------------------------

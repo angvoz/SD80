@@ -1171,7 +1171,8 @@ public class C99Preprocessor implements C99Parsersym {
 			if(log != null)
 				log.undefineMacro(directiveStartOffset, macroName.getEndOffset() + 1, name, macroName.getStartOffset());
 			env.removeMacro(name);
-			expect(NEWLINE);
+			if(!done())
+				expect(NEWLINE);
 		}
 		else if(check(INCLUDE)) {
 			next();

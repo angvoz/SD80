@@ -78,10 +78,10 @@ public interface C99Lexersym {
       Char_7 = 8,
       Char_8 = 9,
       Char_9 = 10,
-      Char_EOF = 98,
+      Char_EOF = 97,
       Char_Space = 73,
       Char_Unused = 95,
-      Char_LF = 97,
+      Char_LF = 98,
       Char_CR = 96,
       Char_HT = 74,
       Char_FF = 75,
@@ -90,9 +90,9 @@ public interface C99Lexersym {
       Char_GreaterThan = 29,
       Char_Plus = 39,
       Char_Minus = 40,
-      Char_Slash = 83,
+      Char_Slash = 77,
       Char_BackSlash = 41,
-      Char_Star = 77,
+      Char_Star = 78,
       Char_LeftParen = 84,
       Char_RightParen = 85,
       Char_Equal = 11,
@@ -100,18 +100,18 @@ public interface C99Lexersym {
       Char_RightBracket = 87,
       Char_LeftBrace = 88,
       Char_RightBrace = 89,
-      Char_Ampersand = 78,
+      Char_Ampersand = 79,
       Char_Tilde = 90,
       Char_Bang = 91,
       Char_Percent = 42,
       Char_Caret = 92,
-      Char_Bar = 79,
-      Char_Question = 80,
+      Char_Bar = 80,
+      Char_Question = 81,
       Char_Colon = 33,
       Char_SemiColon = 93,
       Char_Comma = 94,
-      Char_Hash = 81,
-      Char_SingleQuote = 82,
+      Char_Hash = 82,
+      Char_SingleQuote = 83,
       Char_DoubleQuote = 43;
 
       public final static String orderedTerminalSymbols[] = {
@@ -192,13 +192,13 @@ public interface C99Lexersym {
                  "HT",//$NON-NLS-1$
                  "FF",//$NON-NLS-1$
                  "LessThan",//$NON-NLS-1$
+                 "Slash",//$NON-NLS-1$
                  "Star",//$NON-NLS-1$
                  "Ampersand",//$NON-NLS-1$
                  "Bar",//$NON-NLS-1$
                  "Question",//$NON-NLS-1$
                  "Hash",//$NON-NLS-1$
                  "SingleQuote",//$NON-NLS-1$
-                 "Slash",//$NON-NLS-1$
                  "LeftParen",//$NON-NLS-1$
                  "RightParen",//$NON-NLS-1$
                  "LeftBracket",//$NON-NLS-1$
@@ -212,8 +212,8 @@ public interface C99Lexersym {
                  "Comma",//$NON-NLS-1$
                  "Unused",//$NON-NLS-1$
                  "CR",//$NON-NLS-1$
-                 "LF",//$NON-NLS-1$
-                 "EOF"//$NON-NLS-1$
+                 "EOF",//$NON-NLS-1$
+                 "LF"//$NON-NLS-1$
              };
 
     public final static boolean isValidForParser = true;

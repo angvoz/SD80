@@ -15,7 +15,7 @@
 -- Does not use a separate keyword lexer.
 -----------------------------------------------------------------------------------
 
-%Options la=2
+%Options la=1
 %options package=org.eclipse.cdt.internal.core.dom.parser.c99
 %options template=LexerTemplateD.g
 %options export_terminals=("C99LexerBaseexp.java", "TK_")
@@ -244,6 +244,7 @@ $Terminals
     Hash         ::= '#'
     SingleQuote  ::= "'"
     DoubleQuote  ::= '"'
+    DollarSign   ::= '$'
     
 $End
 
@@ -261,21 +262,8 @@ $End
 -- 1) There is no differentiation between octal and decimal integer constants.
 --    Normally an octal constant starts with a 0 and only contains octal digits.
 --    This grammar allows an "integer" constant to start with any number of zeros
---    and contain any decimal digit. Therefore constants like "09" are allowed. 
------------------------------------------------------------------------------------
-
------------------------------------------------------------------------------------
--- TODO List
---
--- 1) Characters that are allowed in string and character literals:
---        any member of the source character set except 
---        the single-quote ', backslash \, or new-line character
---
--- 2) Preprocessor Tokens (this and above involve detection of newlines)
---
--- 3) Trigraph sequences (in getKind() method probably)
--- 
--- 4) Comments!
+--    and contain any decimal digit. Therefore constants like "09" are allowed.
+-- 2) Dollarsigns ($) are allowed in identifiers. 
 -----------------------------------------------------------------------------------
 
 
@@ -286,7 +274,7 @@ $Rules
 	-----------------------------------------------------------------------------------
 	
 	Token ::= identifier 
-	          /.$ba  makeToken($_identifier); /*makeKeywordOrIdentifierToken();*/  $ea./
+	          /.$ba  makeToken($_identifier); $ea./
 	
 	Token ::= integer-constant  
 	          /.$ba  makeToken($_integer);   $ea./
@@ -382,7 +370,7 @@ $Rules
   	           'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P' | 'Q' | 'R' | 
   	           'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z'
     		
-    nondigit ::= letter | '_'
+    nondigit ::= letter | '_' | '$'
     
 	digit       ::= '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'  
 	
@@ -449,21 +437,12 @@ $Rules
     
     stars -> '*'
            | stars '*' 
-    
-    --inside-mlc -> inside-mlc stars not-slash-or-star
-    --            | inside-mlc '/'
-    --            | inside-mlc not-slash-or-star
-    --            | stars not-slash-or-star
-    --            | '/'
-    --            | not-slash-or-star
- 	            
+                
 	inside-mlc ::= inside-mlc stars not-slash-or-star
 	             | inside-mlc '/'
 	             | inside-mlc not-slash-or-star
 	             | $empty
 	             
- 	            
- 	            
   	-----------------------------------------------------------------------------------
   	-- Identifiers
   	-----------------------------------------------------------------------------------

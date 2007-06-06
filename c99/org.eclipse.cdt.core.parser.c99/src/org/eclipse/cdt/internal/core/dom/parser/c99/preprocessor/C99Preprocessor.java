@@ -693,7 +693,8 @@ public class C99Preprocessor implements C99Parsersym {
 		while(!(check(NEWLINE) || done())) {
 			next();
 		}
-		next(); // skip the newline
+		if(!done())
+			next(); // skip the newline
 	}
 	
 	
@@ -1273,8 +1274,7 @@ public class C99Preprocessor implements C99Parsersym {
 		boolean isIfdef = check(IFDEF);
 		next();
 		IToken ident = expect(IDENT);
-		if(!done())
-			expect(NEWLINE);
+		skipLine(); // ignore any other tokens on this line, skip the newline token as well
 		
 		boolean takeIfBranch = isIfdef == env.hasMacro(ident.toString());
 

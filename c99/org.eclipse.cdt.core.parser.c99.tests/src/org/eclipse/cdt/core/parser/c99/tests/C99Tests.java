@@ -74,6 +74,19 @@ public class C99Tests extends AST2Tests {
     }
     
     
+    public void testBug191324() throws Exception {
+    	StringBuffer sb = new StringBuffer();
+    	sb.append("int x$y = 99; \n");
+    	sb.append("int $q = 100; \n"); // can use $ as first character in identifier
+    	sb.append("#ifndef SS$_INVFILFOROP \n");
+    	sb.append("int z; \n");
+    	sb.append("#endif \n");
+    	String code = sb.toString();
+    	parseAndCheckBindings(code, ParserLanguage.C);
+    }
+    
+    
+    
 	// Tests that are failing at this point
     
 	public void testCExpressions() { // ambiguity

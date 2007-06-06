@@ -30,6 +30,11 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 public interface IParseResult {
 
 	
+	/**
+	 * Returns true if any kind of syntax error is encountered,
+	 * even if the parser was able to recover from the error
+	 * and still generate an AST.
+	 */
 	public boolean encounteredError();
 
 	public IASTTranslationUnit getTranslationUnit();

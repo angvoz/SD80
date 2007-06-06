@@ -191,6 +191,7 @@ public class C99LexerKind {
 			case '\'': return C99Lexer.Char_SingleQuote;
 			case '"': return C99Lexer.Char_DoubleQuote;
 			case ' ': return C99Lexer.Char_Space;
+			case '$': return C99Lexer.Char_DollarSign;
 			case HT : return C99Lexer.Char_HT;
 			case LF : return C99Lexer.Char_LF;
 			case FF : return C99Lexer.Char_FF;

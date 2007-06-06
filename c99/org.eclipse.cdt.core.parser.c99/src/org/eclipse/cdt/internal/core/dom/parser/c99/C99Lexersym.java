@@ -112,7 +112,8 @@ public interface C99Lexersym {
       Char_Comma = 94,
       Char_Hash = 82,
       Char_SingleQuote = 83,
-      Char_DoubleQuote = 43;
+      Char_DoubleQuote = 43,
+      Char_DollarSign = 99;
 
       public final static String orderedTerminalSymbols[] = {
                  "",//$NON-NLS-1$
@@ -213,7 +214,8 @@ public interface C99Lexersym {
                  "Unused",//$NON-NLS-1$
                  "CR",//$NON-NLS-1$
                  "EOF",//$NON-NLS-1$
-                 "LF"//$NON-NLS-1$
+                 "LF",//$NON-NLS-1$
+                 "DollarSign"//$NON-NLS-1$
              };
 
     public final static boolean isValidForParser = true;

@@ -87,6 +87,29 @@ public class ASTPrinter {
 	}
 	
 	
+	public static void printProblems(IASTTranslationUnit root, PrintStream stream) {
+		PrintStream out = stream == null ? System.out : stream;
+		if(root == null) {
+			out.println("null");//$NON-NLS-1$
+			return;
+		}
+		
+		ProblemVisitor visitor = new ProblemVisitor(out);
+		root.accept(visitor);
+		
+		IASTProblem[] problems = root.getPreprocessorProblems();
+		if(problems != null) {
+			for(int i = 0; i < problems.length; i++) {
+				print(out, 0, problems[i]);
+			}
+		}
+	}
+	
+	public static void printProblems(IASTTranslationUnit root) {
+		printProblems(root, System.out);
+	}
+	
+	
 	private static void print(PrintStream out, int indentLevel, IASTNode n) {
 		ASTNode node = (ASTNode) n;
 		for(int i = 0; i < indentLevel; i++)
@@ -114,6 +137,21 @@ public class ASTPrinter {
 		out.println();
 	}
 
+	
+	private static class ProblemVisitor extends CASTVisitor {
+		private PrintStream out;
+		
+		ProblemVisitor(PrintStream out) {
+			this.out = out;
+			shouldVisitProblems = true;
+		}
+
+
+		public int visit(IASTProblem problem) {
+			print(out, 0, problem);
+			return PROCESS_CONTINUE;
+		}
+	}
 	
 	
 	private static class PrintVisitor extends CASTVisitor {

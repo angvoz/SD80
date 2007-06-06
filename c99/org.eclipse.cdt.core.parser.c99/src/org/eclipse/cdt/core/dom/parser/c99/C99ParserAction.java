@@ -61,6 +61,7 @@ import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTPointer;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
+import org.eclipse.cdt.core.dom.ast.IASTProblemDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTProblemHolder;
 import org.eclipse.cdt.core.dom.ast.IASTProblemStatement;
 import org.eclipse.cdt.core.dom.ast.IASTReturnStatement;
@@ -968,7 +969,9 @@ public class C99ParserAction {
 			astStack.push(decl);
 		}
 		else {
-			astStack.push(nodeFactory.newProblemDeclaration());
+			IASTProblemDeclaration problem = nodeFactory.newProblemDeclaration();
+			setOffsetAndLength(problem);
+			astStack.push(problem);
 			encounteredRecoverableProblem = true;
 		}
 	}
@@ -1215,7 +1218,9 @@ public class C99ParserAction {
 			astStack.push(declarator);
 		}
 		else {
-			astStack.push(nodeFactory.newProblemDeclaration());
+			IASTProblemDeclaration problem = nodeFactory.newProblemDeclaration();
+			setOffsetAndLength(problem);
+			astStack.push(problem);
 			encounteredRecoverableProblem = true;
 		}
 	}

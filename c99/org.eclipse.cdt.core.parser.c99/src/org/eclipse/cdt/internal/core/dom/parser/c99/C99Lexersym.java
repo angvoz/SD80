@@ -78,11 +78,11 @@ public interface C99Lexersym {
       Char_7 = 8,
       Char_8 = 9,
       Char_9 = 10,
-      Char_EOF = 97,
+      Char_EOF = 98,
       Char_Space = 73,
-      Char_Unused = 95,
-      Char_LF = 98,
-      Char_CR = 96,
+      Char_Unused = 96,
+      Char_LF = 99,
+      Char_CR = 97,
       Char_HT = 74,
       Char_FF = 75,
       Char_Dot = 28,
@@ -93,27 +93,27 @@ public interface C99Lexersym {
       Char_Slash = 77,
       Char_BackSlash = 41,
       Char_Star = 78,
-      Char_LeftParen = 84,
-      Char_RightParen = 85,
+      Char_LeftParen = 85,
+      Char_RightParen = 86,
       Char_Equal = 11,
-      Char_LeftBracket = 86,
-      Char_RightBracket = 87,
-      Char_LeftBrace = 88,
-      Char_RightBrace = 89,
+      Char_LeftBracket = 87,
+      Char_RightBracket = 88,
+      Char_LeftBrace = 89,
+      Char_RightBrace = 90,
       Char_Ampersand = 79,
-      Char_Tilde = 90,
-      Char_Bang = 91,
+      Char_Tilde = 91,
+      Char_Bang = 92,
       Char_Percent = 42,
-      Char_Caret = 92,
+      Char_Caret = 93,
       Char_Bar = 80,
       Char_Question = 81,
       Char_Colon = 33,
-      Char_SemiColon = 93,
-      Char_Comma = 94,
+      Char_SemiColon = 94,
+      Char_Comma = 95,
       Char_Hash = 82,
       Char_SingleQuote = 83,
       Char_DoubleQuote = 43,
-      Char_DollarSign = 99;
+      Char_DollarSign = 84;
 
       public final static String orderedTerminalSymbols[] = {
                  "",//$NON-NLS-1$
@@ -200,6 +200,7 @@ public interface C99Lexersym {
                  "Question",//$NON-NLS-1$
                  "Hash",//$NON-NLS-1$
                  "SingleQuote",//$NON-NLS-1$
+                 "DollarSign",//$NON-NLS-1$
                  "LeftParen",//$NON-NLS-1$
                  "RightParen",//$NON-NLS-1$
                  "LeftBracket",//$NON-NLS-1$
@@ -214,8 +215,7 @@ public interface C99Lexersym {
                  "Unused",//$NON-NLS-1$
                  "CR",//$NON-NLS-1$
                  "EOF",//$NON-NLS-1$
-                 "LF",//$NON-NLS-1$
-                 "DollarSign"//$NON-NLS-1$
+                 "LF"//$NON-NLS-1$
              };
 
     public final static boolean isValidForParser = true;

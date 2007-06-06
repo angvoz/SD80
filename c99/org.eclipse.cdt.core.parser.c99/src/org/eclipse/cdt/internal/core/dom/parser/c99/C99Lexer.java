@@ -63,7 +63,7 @@ public class C99Lexer extends LpgLexStream implements C99Parsersym, C99Lexersym,
     public void lexer(Monitor monitor, PrsStream prsStream)
     {
         if (getInputChars() == null)
-            throw new NullPointerException("LexStream was not initialized");
+            throw new NullPointerException("LexStream was not initialized");//$NON-NLS-1$
 
         this.prsStream = prsStream;
 
@@ -489,21 +489,21 @@ public int getKind(int i) {
             }
  
             //
-            // Rule 216:  Token ::= NewLine
+            // Rule 217:  Token ::= NewLine
             //
-            case 216: {   makeToken(TK_NewLine);           break;
+            case 217: {   makeToken(TK_NewLine);           break;
             }
  
             //
-            // Rule 218:  Token ::= SLC
+            // Rule 219:  Token ::= SLC
             //
-            case 218: {   makeToken(TK_SingleLineComment);           break;
+            case 219: {   makeToken(TK_SingleLineComment);           break;
             }
  
             //
-            // Rule 219:  Token ::= MLC
+            // Rule 220:  Token ::= MLC
             //
-            case 219: {   makeToken(TK_MultiLineComment);           break;
+            case 220: {   makeToken(TK_MultiLineComment);           break;
             }
 
     

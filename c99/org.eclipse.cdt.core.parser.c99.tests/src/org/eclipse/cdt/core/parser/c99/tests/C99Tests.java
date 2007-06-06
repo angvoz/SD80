@@ -69,6 +69,7 @@ public class C99Tests extends AST2Tests {
     	sb.append(" /**/ \n");
     	sb.append("# define YO 99 /**/ \n");
     	sb.append("# undef YO /**/ ");
+    	sb.append(" /* $ */ ");
     	String code = sb.toString();
     	parseAndCheckBindings(code, ParserLanguage.C);
     }

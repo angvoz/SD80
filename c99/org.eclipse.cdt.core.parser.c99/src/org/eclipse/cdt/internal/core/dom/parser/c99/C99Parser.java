@@ -83,7 +83,7 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]); //$NON-NLS-1$              
+                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);    //$NON-NLS-1$           
             }
             System.out.println();                        
         }
@@ -164,9 +164,9 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
     }
 
 
-private  C99ParserAction  action = new  C99ParserAction (this, C99Parserprs.orderedTerminalSymbols);
+private  C99ParserAction  action = null;
+private List commentTokens = null;
 private IKeywordMap keywordMap = new  C99KeywordMap ();
-private List commentTokens = new ArrayList();
 
 public C99Parser() {  // constructor
 	this(new C99Lexer() {
@@ -197,11 +197,36 @@ public List getCommentTokens() {
 	return commentTokens;
 }
 
+public void resetTokenStream() {
+	super.resetTokenStream();
+	action = new  C99ParserAction (this, C99Parserprs.orderedTerminalSymbols);
+	commentTokens = new ArrayList();
+}
+
+
 public IParseResult parse() {
 	// this has to be done, or... kaboom!
 	setStreamLength(getSize());
-	// do the actual parsing, -1 means full error handling
-	parser(null, -1); 
+	
+	final int errorRepairCount = -1;  // -1 means full error handling
+	
+	if(btParser == null) {
+		parser(null, errorRepairCount);
+	}
+	else {
+		try
+        {
+        	// reuse the same btParser object for speed 
+        	// (creating an new instance for every translation unit is dirt slow)
+            btParser.parse(errorRepairCount);
+        }
+        catch (BadParseException e)
+        {
+            reset(e.error_token); // point to error token
+            DiagnoseParser diagnoseParser = new DiagnoseParser(this, prs);
+            diagnoseParser.diagnose(e.error_token);
+        }
+	}
 
 	IASTTranslationUnit tu      = action.getAST();
 	boolean encounteredError    = action.encounteredError();
@@ -625,13 +650,13 @@ public List getRuleTokens() {
             }
  
             //
-            // Rule 99:  labeled_statement ::= case constant_expression : statement
+            // Rule 99:  labeled_statement ::= case constant_expression :
             //
             case 99: { action.beforeConsume(); action.   consumeStatementCase();            break;
             }
  
             //
-            // Rule 100:  labeled_statement ::= default : statement
+            // Rule 100:  labeled_statement ::= default :
             //
             case 100: { action.beforeConsume(); action.   consumeStatementDefault();            break;
             }

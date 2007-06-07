@@ -55,6 +55,11 @@ public class C99Language extends AbstractLanguage implements ILanguage, ICLangua
 	
 	private static C99Language myDefault = new C99Language();
 	
+	// The parser is maintained as a singleton object because there
+	// is a bad performance bottleneck in the constructor method.
+	// This means this object isn't thread safe, so methods have been marked synchronized.
+	private static IParser parser = null;
+	
 	
 	public static C99Language getDefault() {
 		return myDefault;
@@ -105,20 +110,17 @@ public class C99Language extends AbstractLanguage implements ILanguage, ICLangua
 	}
 
 	
-	public IASTTranslationUnit getASTTranslationUnit(CodeReader reader, IScannerInfo scanInfo,
+	public synchronized IASTTranslationUnit getASTTranslationUnit(CodeReader reader, IScannerInfo scanInfo,
 			ICodeReaderFactory fileCreator, IIndex index, int options, IParserLogService log) throws CoreException {
 		
 		IParseResult parseResult = parse(reader, scanInfo, fileCreator, index, null, options);
 		IASTTranslationUnit tu = parseResult.getTranslationUnit();
 
-		if(parseResult.encounteredError())
-			System.out.println("Problem In File: '" + new String(reader.filename) + "'");
-		
 		return tu;
 	}
 	
 	
-	public IASTTranslationUnit getASTTranslationUnit(CodeReader reader,
+	public synchronized IASTTranslationUnit getASTTranslationUnit(CodeReader reader,
 			IScannerInfo scanInfo, ICodeReaderFactory fileCreator,
 			IIndex index, IParserLogService log) throws CoreException {
 		
@@ -126,7 +128,7 @@ public class C99Language extends AbstractLanguage implements ILanguage, ICLangua
 	}
 
 	
-	public IASTCompletionNode getCompletionNode(CodeReader reader,
+	public synchronized IASTCompletionNode getCompletionNode(CodeReader reader,
 			IScannerInfo scanInfo, ICodeReaderFactory fileCreator,
 			IIndex index, IParserLogService log, int offset) {
 		
@@ -140,21 +142,23 @@ public class C99Language extends AbstractLanguage implements ILanguage, ICLangua
 	/**
 	 * Preform the actual parse.
 	 */
-	public IParseResult parse(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, Integer contentAssistOffset) {
+	public synchronized IParseResult parse(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, Integer contentAssistOffset) {
 		return parse(reader, scanInfo, fileCreator, index, contentAssistOffset, 0);
 	}
 	
 	/**
 	 * Preform the actual parse.
 	 */
-	public IParseResult parse(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, Integer contentAssistOffset, int options) {
+	public synchronized IParseResult parse(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, Integer contentAssistOffset, int options) {
 
 		boolean scanComments = (options & OPTION_ADD_COMMENTS) != 0;
 		int preprocessorOptions = scanComments ? C99Preprocessor.OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE : 0;
 		
 		ILexerFactory lexerFactory = new C99LexerFactory();
 		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, reader, scanInfo, fileCreator, preprocessorOptions);
-		IParser parser = getParser();
+		if(parser == null)
+			parser = getParser();
+		parser.resetTokenStream();
 
 		LocationResolver resolver = new LocationResolver();
 		
@@ -183,7 +187,7 @@ public class C99Language extends AbstractLanguage implements ILanguage, ICLangua
 	/**
 	 * Public so that these methods may be called directly from unit tests.
 	 */
-	public IParseResult parse(CodeReader reader, IScannerInfo scanInfo,
+	public synchronized IParseResult parse(CodeReader reader, IScannerInfo scanInfo,
 			ICodeReaderFactory fileCreator, IIndex index) {
 
 		return parse(reader, scanInfo, fileCreator, index, null);
@@ -193,7 +197,7 @@ public class C99Language extends AbstractLanguage implements ILanguage, ICLangua
 	/**
 	 * Public so that these methods may be called directly from unit tests.
 	 */
-	public IParseResult completionParse(CodeReader reader,
+	public synchronized IParseResult completionParse(CodeReader reader,
 			IScannerInfo scanInfo, ICodeReaderFactory fileCreator,
 			IIndex index, int offset) {
 
@@ -203,7 +207,7 @@ public class C99Language extends AbstractLanguage implements ILanguage, ICLangua
 	
 	
 	
-	public IASTName[] getSelectedNames(IASTTranslationUnit ast, int start, int length) {
+	public synchronized IASTName[] getSelectedNames(IASTTranslationUnit ast, int start, int length) {
 		IASTNode selectedNode= ast.selectNodeForLocation(ast.getFilePath(), start, length);
 
 		if (selectedNode == null)

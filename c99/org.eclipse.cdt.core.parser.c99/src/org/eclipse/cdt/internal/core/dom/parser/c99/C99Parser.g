@@ -170,9 +170,9 @@ $End
 
 $Headers
 /.
-	private $action_class action = new $action_class(this, $prs_type.orderedTerminalSymbols);
+	private $action_class action = null;
+	private List commentTokens = null;
 	private IKeywordMap keywordMap = new $keyword_map_class();
-	private List commentTokens = new ArrayList();
 	
 	public $action_type() {  // constructor
 		this(new C99Lexer() {
@@ -203,16 +203,41 @@ $Headers
 		return commentTokens;
 	}
 	
+	public void resetTokenStream() {
+		super.resetTokenStream();
+		action = new $action_class(this, $prs_type.orderedTerminalSymbols);
+		commentTokens = new ArrayList();
+	}
+	
+	
 	public IParseResult parse() {
 		// this has to be done, or... kaboom!
 		setStreamLength(getSize());
-		// do the actual parsing, -1 means full error handling
-		parser(null, -1); 
-
+		
+		final int errorRepairCount = -1;  // -1 means full error handling
+		
+		if(btParser == null) {
+			parser(null, errorRepairCount);
+		}
+		else {
+			try
+	        {
+	        	// reuse the same btParser object for speed 
+	        	// (creating an new instance for every translation unit is dirt slow)
+	            btParser.parse(errorRepairCount);
+	        }
+	        catch (BadParseException e)
+	        {
+	            reset(e.error_token); // point to error token
+	            DiagnoseParser diagnoseParser = new DiagnoseParser(this, prs);
+	            diagnoseParser.diagnose(e.error_token);
+	        }
+		}
+	
 		IASTTranslationUnit tu      = action.getAST();
 		boolean encounteredError    = action.encounteredError();
 		IASTCompletionNode compNode = action.getASTCompletionNode();
-
+	
 		return new C99ParseResult(tu, compNode, encounteredError);
 	}
 	

@@ -54,7 +54,7 @@ public class C99PreprocessorTests extends TestCase {
 		C99Parser parser = new C99Parser();
 		
 		// the preprocessor injects tokens into the parser
-		preprocessor.preprocess(parser, null);
+		preprocessor.preprocess(parser, null, null);
 		
 		return parser.getTokens();
 	}

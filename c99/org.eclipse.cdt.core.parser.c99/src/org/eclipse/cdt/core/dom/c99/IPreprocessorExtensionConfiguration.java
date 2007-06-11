@@ -8,32 +8,18 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-
 package org.eclipse.cdt.core.dom.c99;
 
-
+import java.util.Map;
 
 /**
- * A keyword map provides the mechanism to add new keywords. 
- * Anything that is parsed as an identifier is then checked against
- * a keyword map in case the identifier is actually a keyword.
- * 
- * Maps keywords to token kinds.
+ * Implementations of this interface can be used to extend
+ * the preprocessor by adding predefined macros.
  * 
  * @author Mike Kucera
  */
-public interface IKeywordMap {
+public interface IPreprocessorExtensionConfiguration {
+
+	public Map/*<String, String>*/ getAdditionalMacros();
 	
-	/**
-	 * Returns the token kind for the given string, 
-	 * returns null if the string is not a keyword.
-	 */
-	public Integer getKeywordKind(String identifier);
-	
-	
-	public String[] getKeywords();
-	
-	public String[] getBuiltinTypes();
-	
-	public String[] getPreprocessorKeywords();
 }

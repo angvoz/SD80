@@ -18,21 +18,19 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 
 import lpg.lpgjavaruntime.IToken;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.IMacroCollector;
-import org.eclipse.cdt.core.dom.ast.IASTComment;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.c99.ILexer;
 import org.eclipse.cdt.core.dom.c99.ILexerFactory;
+import org.eclipse.cdt.core.dom.c99.IPreprocessorExtensionConfiguration;
 import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IMacro;
-import org.eclipse.cdt.core.parser.IProblem;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99ExprEvaluator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
@@ -119,11 +117,12 @@ public class C99Preprocessor implements C99Parsersym {
 	 * @return null if preprocessing fails
 	 * @throws IllegalArgumentException if parser is null
 	 */
-	public synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log) {
+	public synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log, 
+			                            IPreprocessorExtensionConfiguration extensionConfiguration) {
 		if(parser == null)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.0")); //$NON-NLS-1$
 		
-		preprocess(parser, log, new InputTokenStream(parser));
+		preprocess(parser, log, extensionConfiguration, new InputTokenStream(parser));
 	}
 	
 	
@@ -135,7 +134,8 @@ public class C99Preprocessor implements C99Parsersym {
 	 * @throws IllegalArgumentException if contentAssistOffset < 0
 	 * @throws IllegalArgumentException if parser is null
 	 */
-	public synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log, int contentAssistOffset) {
+	public synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log, 
+			                            IPreprocessorExtensionConfiguration extensionConfiguration, int contentAssistOffset) {
 		if(parser == null)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.0")); //$NON-NLS-1$
 		if(contentAssistOffset < 0)
@@ -143,12 +143,15 @@ public class C99Preprocessor implements C99Parsersym {
 		
 		InputTokenStream inputTokenStream = new InputTokenStream(parser);
 		inputTokenStream.setContentAssistOffset(contentAssistOffset);
-		preprocess(parser, log, inputTokenStream);
+		preprocess(parser, log, extensionConfiguration, inputTokenStream);
 		
 	}
 	
 	
-	private synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log, InputTokenStream inputTokenStream) {
+	private synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log, 
+			                             IPreprocessorExtensionConfiguration extensionConfiguration, 
+			                             InputTokenStream inputTokenStream) {
+		
 		assert inputTokenStream != null;
 		
 		this.log = log;
@@ -160,7 +163,12 @@ public class C99Preprocessor implements C99Parsersym {
 			inputTokenStream.setCollectCommentTokens(generateActiveComments | generateAllComments);
 			
 			// add external macro definitions given by IScannerInfo.getDefinedSymbols()
-			addMacroDefinitions();
+			if(scanInfo != null)
+				addMacroDefinitions(scanInfo.getDefinedSymbols());
+			// add language extension macro definitions
+			if(extensionConfiguration != null)
+				addMacroDefinitions(extensionConfiguration.getAdditionalMacros());
+			
 			// LPG requires that the parse stream must start with a dummy token
 			parser.addToken(C99Token.DUMMY_TOKEN); 
 	
@@ -235,11 +243,7 @@ public class C99Preprocessor implements C99Parsersym {
 	/**
 	 * Add external macro definitions given by IScannerInfo.getDefinedSymbols()
 	 */
-	private void addMacroDefinitions() {
-		if(scanInfo == null)
-			return;
-		
-		Map definedSymbols = scanInfo.getDefinedSymbols();
+	private void addMacroDefinitions(Map/*<String, String>*/ definedSymbols) {		
 		if(definedSymbols == null)
 			return;
 		

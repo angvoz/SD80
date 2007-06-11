@@ -26,6 +26,9 @@ import org.eclipse.cdt.core.dom.ast.IASTPointer;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTPreprocessorStatement;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
+import org.eclipse.cdt.core.dom.ast.IASTProblemDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTProblemExpression;
+import org.eclipse.cdt.core.dom.ast.IASTProblemStatement;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
@@ -144,11 +147,31 @@ public class ASTPrinter {
 		ProblemVisitor(PrintStream out) {
 			this.out = out;
 			shouldVisitProblems = true;
+			shouldVisitDeclarations = true;
+			shouldVisitStatements = true;
+			shouldVisitExpressions = true;
 		}
 
-
 		public int visit(IASTProblem problem) {
-			print(out, 0, problem);
+			print(out, 1, problem);
+			return PROCESS_CONTINUE;
+		}
+		
+		public int visit(IASTDeclaration declaration) {
+			if(declaration instanceof IASTProblemDeclaration)
+				print(out, 0, declaration);
+			return PROCESS_CONTINUE;
+		}
+		
+		public int visit(IASTExpression expression) {
+			if(expression instanceof IASTProblemExpression)
+				print(out, 0, expression);
+			return PROCESS_CONTINUE;
+		}
+		
+		public int visit(IASTStatement statement) {
+			if(statement instanceof IASTProblemStatement)
+				print(out, 0, statement);
 			return PROCESS_CONTINUE;
 		}
 	}
@@ -180,6 +203,7 @@ public class ASTPrinter {
 		private void print(IASTNode node) {
 			ASTPrinter.print(out, indentLevel,  node);
 		}
+		
 		
 		
 

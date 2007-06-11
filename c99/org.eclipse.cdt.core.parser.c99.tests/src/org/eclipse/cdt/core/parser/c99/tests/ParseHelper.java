@@ -18,7 +18,7 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
-import org.eclipse.cdt.core.dom.c99.C99Language;
+import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.IParseResult;
 import org.eclipse.cdt.core.dom.parser.c.AbstractCLanguage;
 import org.eclipse.cdt.core.parser.CodeReader;
@@ -52,23 +52,23 @@ public class ParseHelper {
 	
 	
 
-	public static IASTTranslationUnit parse(char[] code, C99Language lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
+	public static IASTTranslationUnit parse(char[] code, BaseExtensibleLanguage lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
 		CodeReader codeReader = new CodeReader(code);
 		return parse(codeReader, lang, expectNoProblems, checkBindings, expectedProblemBindings);
 	}
 	
-	public static IASTTranslationUnit parse(String code, C99Language lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
+	public static IASTTranslationUnit parse(String code, BaseExtensibleLanguage lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
 		return parse(code.toCharArray(), lang, expectNoProblems, checkBindings, expectedProblemBindings);
 	}
 	
 	
-	public static IASTTranslationUnit parse(String code, C99Language lang, boolean expectNoProblems) {
+	public static IASTTranslationUnit parse(String code, BaseExtensibleLanguage lang, boolean expectNoProblems) {
 		return parse(code, lang, expectNoProblems, false, 0);
 	}
 
 
 
-	public static IASTTranslationUnit parse(CodeReader codeReader, C99Language language, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
+	public static IASTTranslationUnit parse(CodeReader codeReader, BaseExtensibleLanguage language, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
 		testsRun++;
 		
 		IParseResult result = language.parse(codeReader, null, null, null);
@@ -104,19 +104,19 @@ public class ParseHelper {
 	}
 
 	
-	public static IASTTranslationUnit commentParse(String code, C99Language language) {
+	public static IASTTranslationUnit commentParse(String code, BaseExtensibleLanguage language) {
 		CodeReader codeReader = new CodeReader(code.toCharArray());
 		IParseResult result = language.parse(codeReader, null, null, null, null, AbstractCLanguage.OPTION_ADD_COMMENTS);
 		IASTTranslationUnit tu = result.getTranslationUnit();
 		return tu;
 	}
 	
-	public static IASTCompletionNode getCompletionNode(String code, C99Language lang) {
+	public static IASTCompletionNode getCompletionNode(String code, BaseExtensibleLanguage lang) {
 		return getCompletionNode(code, lang, code.length());
 	}
 	
 	
-	public static IASTCompletionNode getCompletionNode(String code, C99Language lang, int offset) {
+	public static IASTCompletionNode getCompletionNode(String code, BaseExtensibleLanguage lang, int offset) {
 		CodeReader reader = new CodeReader(code.toCharArray());
 
 		IParseResult result = lang.completionParse(reader, null, null, null, offset);

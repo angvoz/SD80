@@ -196,18 +196,4 @@ public class C99KeywordMap implements IKeywordMap, ICLanguageKeywords {
 	public String[] getPreprocessorKeywords() {
 		return (String[]) preprocessorKeywords.toArray(new String[0]);
 	}
-
-	
-
-	
-	
-			
-		
-			
-	
-	
-	
-	
-
-	
 }

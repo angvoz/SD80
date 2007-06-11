@@ -1465,14 +1465,19 @@ public class C99Preprocessor implements C99Parsersym {
 		
 		// attempt to find the file to include
 		if(new File(fileName).isAbsolute() || fileName.startsWith("/")) { //$NON-NLS-1$
-			reader = createCodeReader("", fileName); //$NON-NLS-1$
+			return createCodeReader("", fileName); //$NON-NLS-1$
 		}
-		else if(local) {
+		
+		if(local) {
 			File currentDirectory = inputTokenStream.getCurrentDirectory();
 			if(currentDirectory != null)
 				reader = createCodeReader(currentDirectory.getAbsolutePath(), fileName);
 		}
-		else if(scanInfo != null) {
+		if(reader != null) {
+			return reader;
+		}
+		
+		if(scanInfo != null) {
 			String[] standardIncludePaths = scanInfo.getIncludePaths();
 			if(standardIncludePaths != null) {
 				for(int i = 0; i < standardIncludePaths.length; i++) {

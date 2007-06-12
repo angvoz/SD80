@@ -55,11 +55,11 @@ public class C99Tests extends AST2Tests {
     	if(lang != ParserLanguage.C)
     		return super.parse(code, lang, useGNUExtensions, expectNoProblems);
     	
-    	return ParseHelper.parse(code, getC99Language(), expectNoProblems);
+    	return ParseHelper.parse(code, getLanguage(), expectNoProblems);
     }
     
     
-    protected C99Language getC99Language() {
+    protected BaseExtensibleLanguage getLanguage() {
     	return C99Language.getDefault();
     }
     

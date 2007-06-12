@@ -31,27 +31,22 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
+import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
 
 public class C99DigraphTrigraphTests extends TestCase {
 
 	
-	public C99DigraphTrigraphTests() {
-		super();
-	}
-
-
-	public C99DigraphTrigraphTests(String name) {
-		super(name);
-	}
+	public C99DigraphTrigraphTests() { }
+	public C99DigraphTrigraphTests(String name) { super(name); }
 
 
 	protected IASTTranslationUnit parse(String code) {	
-		return ParseHelper.parse(code, getC99Language(), true);
+		return ParseHelper.parse(code, getLanguage(), true);
 	}
 	
 	
-	protected C99Language getC99Language() {
+	protected BaseExtensibleLanguage getLanguage() {
 		return C99Language.getDefault();
 	}
 	

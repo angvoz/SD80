@@ -11,6 +11,7 @@
 package org.eclipse.cdt.core.parser.c99.tests;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.dom.c99.IParseResult;
 import org.eclipse.cdt.core.parser.CodeReader;
@@ -37,7 +38,7 @@ public class C99DOMLocationInclusionTests extends DOMLocationInclusionTests {
 			throws Exception {
 		
 		CodeReader codeReader = new CodeReader(code.getLocation().toOSString());
-		C99Language lang = getLanguage();
+		BaseExtensibleLanguage lang = getLanguage();
 		IParseResult result = lang.parse(codeReader, s, SavedCodeReaderFactory.getInstance(), null);
 		IASTTranslationUnit tu = result.getTranslationUnit();
 
@@ -49,7 +50,7 @@ public class C99DOMLocationInclusionTests extends DOMLocationInclusionTests {
 		return parse(code, new ExtendedScannerInfo());
 	}
 
-	protected C99Language getLanguage() {
+	protected BaseExtensibleLanguage getLanguage() {
 		return C99Language.getDefault();
 	}
 

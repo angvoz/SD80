@@ -13,6 +13,7 @@ package org.eclipse.cdt.core.parser.c99.tests;
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2CSpecTest;
@@ -46,7 +47,7 @@ public class C99SpecTests extends AST2CSpecTest {
 			return super.parse(code, lang, checkBindings, expectedProblemBindings);
     }
 	
-	protected C99Language getLanguage() {
+	protected BaseExtensibleLanguage getLanguage() {
 		return C99Language.getDefault();
 	}
 

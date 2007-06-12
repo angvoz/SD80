@@ -22,6 +22,7 @@ import org.eclipse.cdt.core.dom.ast.IEnumerator;
 import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IVariable;
+import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
 
 
@@ -32,9 +33,9 @@ import org.eclipse.cdt.core.dom.c99.C99Language;
  */
 public class C99CompletionParseTest extends TestCase {
 
-	public C99CompletionParseTest(String name) {
-		super(name);
-	}
+	public C99CompletionParseTest() { }
+	public C99CompletionParseTest(String name) { super(name); }
+	
 
 	protected IASTCompletionNode parse(String code, int offset) throws Exception {
 		return ParseHelper.getCompletionNode(code, getLanguage(), offset);
@@ -61,7 +62,7 @@ public class C99CompletionParseTest extends TestCase {
 	}
 	
 	
-	protected C99Language getLanguage() {
+	protected BaseExtensibleLanguage getLanguage() {
 		return C99Language.getDefault();
 	}
 	

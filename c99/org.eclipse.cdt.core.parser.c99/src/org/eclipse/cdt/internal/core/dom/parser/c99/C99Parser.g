@@ -637,16 +637,7 @@ declaration
 -- 4) typedef name
 -- TODO refactor specifier_qualifier_list also
 
-declaration_specifiers
-    ::= <openscope> simple_declaration_specifiers
-            /.$ba  consumeDeclarationSpecifiersSimple(); $ea./
-      | <openscope> struct_or_union_declaration_specifiers
-            /.$ba  consumeDeclarationSpecifiersStructUnionEnum(); $ea./
-      | <openscope> enum_declaration_specifiers
-            /.$ba  consumeDeclarationSpecifiersStructUnionEnum(); $ea./
-      | <openscope> typdef_name_declaration_specifiers
-            /.$ba  consumeDeclarationSpecifiersTypedefName(); $ea./
-
+-- old rule, just not good enough
 --simple_declaration_specifiers
 --    ::= storage_class_specifier
 --      | simple_declaration_specifiers storage_class_specifier
@@ -656,6 +647,17 @@ declaration_specifiers
 --      | simple_declaration_specifiers type_qualifier 
 --      | function_specifier
 --      | simple_declaration_specifiers function_specifier 
+
+
+declaration_specifiers
+    ::= <openscope> simple_declaration_specifiers
+            /.$ba  consumeDeclarationSpecifiersSimple(); $ea./
+      | <openscope> struct_or_union_declaration_specifiers
+            /.$ba  consumeDeclarationSpecifiersStructUnionEnum(); $ea./
+      | <openscope> enum_declaration_specifiers
+            /.$ba  consumeDeclarationSpecifiersStructUnionEnum(); $ea./
+      | <openscope> typdef_name_declaration_specifiers
+            /.$ba  consumeDeclarationSpecifiersTypedefName(); $ea./
 
 -- like the simple case but without any type
 no_type_declaration_specifiers
@@ -692,9 +694,6 @@ typdef_name_declaration_specifiers
       | no_type_declaration_specifiers  typedef_name
       | typedef_name
       
---no_type_declaration_specifiers_opt
---    ::= no_type_declaration_specifiers
---      | $empty
 
 init_declarator_list
     ::= init_declarator
@@ -1080,11 +1079,15 @@ external_declaration
 -- to avoid a shift/reduce error with the rule for declaration. 
 function_definition
     ::= declaration_specifiers <openscope> function_declarator compound_statement
-         /.$ba  consumeFunctionDefinition();  $ea./
+         /.$ba  consumeFunctionDefinition(true);  $ea./
       | declaration_specifiers <openscope> knr_function_declarator <openscope> declaration_list compound_statement
          /.$ba  consumeFunctionDefinitionKnR();  $ea./
+         
+   -- this rule is here as a special case just to support implicit int in function definitions
+      | function_declarator compound_statement
+         /.$ba  consumeFunctionDefinition(false);  $ea./
 
-
+    
 declaration_list
     ::= declaration
       | declaration_list declaration

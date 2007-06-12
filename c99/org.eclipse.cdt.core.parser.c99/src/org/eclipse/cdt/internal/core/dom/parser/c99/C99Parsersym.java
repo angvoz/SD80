@@ -15,43 +15,43 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 
 public interface C99Parsersym {
     public final static int
-      TK_auto = 12,
+      TK_auto = 10,
       TK_break = 53,
       TK_case = 54,
-      TK_char = 32,
+      TK_char = 31,
       TK_const = 5,
       TK_continue = 55,
       TK_default = 56,
       TK_do = 57,
-      TK_double = 33,
+      TK_double = 32,
       TK_else = 79,
       TK_enum = 44,
-      TK_extern = 13,
-      TK_float = 34,
+      TK_extern = 11,
+      TK_float = 33,
       TK_for = 58,
       TK_goto = 59,
       TK_if = 60,
-      TK_inline = 14,
-      TK_int = 35,
-      TK_long = 36,
-      TK_register = 15,
+      TK_inline = 12,
+      TK_int = 34,
+      TK_long = 35,
+      TK_register = 13,
       TK_restrict = 6,
       TK_return = 61,
-      TK_short = 37,
-      TK_signed = 38,
+      TK_short = 36,
+      TK_signed = 37,
       TK_sizeof = 20,
       TK_static = 9,
       TK_struct = 45,
       TK_switch = 62,
-      TK_typedef = 16,
+      TK_typedef = 14,
       TK_union = 46,
-      TK_unsigned = 39,
-      TK_void = 40,
+      TK_unsigned = 38,
+      TK_void = 39,
       TK_volatile = 7,
       TK_while = 50,
-      TK__Bool = 41,
-      TK__Complex = 42,
-      TK__Imaginary = 43,
+      TK__Bool = 40,
+      TK__Complex = 41,
+      TK__Imaginary = 42,
       TK_LeftBracket = 28,
       TK_LeftParen = 1,
       TK_LeftBrace = 21,
@@ -60,9 +60,9 @@ public interface C99Parsersym {
       TK_PlusPlus = 18,
       TK_MinusMinus = 19,
       TK_And = 17,
-      TK_Star = 4,
-      TK_Plus = 10,
-      TK_Minus = 11,
+      TK_Star = 3,
+      TK_Plus = 15,
+      TK_Minus = 16,
       TK_Tilde = 22,
       TK_Bang = 23,
       TK_Slash = 67,
@@ -105,14 +105,14 @@ public interface C99Parsersym {
       TK_stringlit = 27,
       TK_RightBracket = 65,
       TK_RightParen = 48,
-      TK_RightBrace = 31,
+      TK_RightBrace = 43,
       TK_SemiColon = 30,
       TK_Invalid = 96,
       TK_PlaceMarker = 97,
       TK_Parameter = 98,
       TK_DisabledMacroName = 99,
       TK_Completion = 8,
-      TK_EndOfCompletion = 3,
+      TK_EndOfCompletion = 4,
       TK_SingleLineComment = 100,
       TK_MultiLineComment = 101,
       TK_ERROR_TOKEN = 49;
@@ -121,20 +121,20 @@ public interface C99Parsersym {
                  "",//$NON-NLS-1$
                  "LeftParen",//$NON-NLS-1$
                  "identifier",//$NON-NLS-1$
-                 "EndOfCompletion",//$NON-NLS-1$
                  "Star",//$NON-NLS-1$
+                 "EndOfCompletion",//$NON-NLS-1$
                  "const",//$NON-NLS-1$
                  "restrict",//$NON-NLS-1$
                  "volatile",//$NON-NLS-1$
                  "Completion",//$NON-NLS-1$
                  "static",//$NON-NLS-1$
-                 "Plus",//$NON-NLS-1$
-                 "Minus",//$NON-NLS-1$
                  "auto",//$NON-NLS-1$
                  "extern",//$NON-NLS-1$
                  "inline",//$NON-NLS-1$
                  "register",//$NON-NLS-1$
                  "typedef",//$NON-NLS-1$
+                 "Plus",//$NON-NLS-1$
+                 "Minus",//$NON-NLS-1$
                  "And",//$NON-NLS-1$
                  "PlusPlus",//$NON-NLS-1$
                  "MinusMinus",//$NON-NLS-1$
@@ -149,7 +149,6 @@ public interface C99Parsersym {
                  "LeftBracket",//$NON-NLS-1$
                  "Comma",//$NON-NLS-1$
                  "SemiColon",//$NON-NLS-1$
-                 "RightBrace",//$NON-NLS-1$
                  "char",//$NON-NLS-1$
                  "double",//$NON-NLS-1$
                  "float",//$NON-NLS-1$
@@ -162,6 +161,7 @@ public interface C99Parsersym {
                  "_Bool",//$NON-NLS-1$
                  "_Complex",//$NON-NLS-1$
                  "_Imaginary",//$NON-NLS-1$
+                 "RightBrace",//$NON-NLS-1$
                  "enum",//$NON-NLS-1$
                  "struct",//$NON-NLS-1$
                  "union",//$NON-NLS-1$

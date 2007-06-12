@@ -83,7 +83,7 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);    //$NON-NLS-1$           
+                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);//$NON-NLS-1$
             }
             System.out.println();                        
         }
@@ -1414,13 +1414,19 @@ public List getRuleTokens() {
             //
             // Rule 291:  function_definition ::= declaration_specifiers <openscope> function_declarator compound_statement
             //
-            case 291: { action.beforeConsume(); action.   consumeFunctionDefinition();            break;
+            case 291: { action.beforeConsume(); action.   consumeFunctionDefinition(true);            break;
             }
  
             //
             // Rule 292:  function_definition ::= declaration_specifiers <openscope> knr_function_declarator <openscope> declaration_list compound_statement
             //
             case 292: { action.beforeConsume(); action.   consumeFunctionDefinitionKnR();            break;
+            }
+ 
+            //
+            // Rule 293:  function_definition ::= function_declarator compound_statement
+            //
+            case 293: { action.beforeConsume(); action.   consumeFunctionDefinition(false);            break;
             }
 
     

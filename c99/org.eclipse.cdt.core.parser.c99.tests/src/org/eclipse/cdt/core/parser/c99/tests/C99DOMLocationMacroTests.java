@@ -20,6 +20,7 @@ import org.eclipse.cdt.core.dom.ast.IASTMacroExpansion;
 import org.eclipse.cdt.core.dom.ast.IASTNodeLocation;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.DOMLocationMacroTests;
@@ -43,7 +44,7 @@ public class C99DOMLocationMacroTests extends DOMLocationMacroTests {
     }
     
     
-    protected C99Language getLanguage() {
+    protected BaseExtensibleLanguage getLanguage() {
     	return C99Language.getDefault();
     }
     

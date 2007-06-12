@@ -15,6 +15,7 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IFunction;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
+import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.prefix.BasicCompletionTest;
@@ -22,8 +23,7 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
 
 public class C99CompletionBasicTest extends BasicCompletionTest {
 
-	public C99CompletionBasicTest() {
-	}
+	public C99CompletionBasicTest() { }
 
 
 	protected IASTCompletionNode getCompletionNode(String code,
@@ -31,7 +31,7 @@ public class C99CompletionBasicTest extends BasicCompletionTest {
 			throws ParserException {
 		
 		if(ParserLanguage.C == lang) {
-			return ParseHelper.getCompletionNode(code, getC99Language());
+			return ParseHelper.getCompletionNode(code, getLanguage());
 		}
 		else {
 			// TODO: parsing of C++
@@ -40,7 +40,7 @@ public class C99CompletionBasicTest extends BasicCompletionTest {
 	}
 	
 	
-	protected C99Language getC99Language() {
+	protected BaseExtensibleLanguage getLanguage() {
 		return C99Language.getDefault();
 	}
 	

@@ -1,6 +1,7 @@
 package org.eclipse.cdt.core.parser.c99.tests;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.DOMPreprocessorInformationTest;
@@ -26,11 +27,11 @@ public class C99DOMPreprocessorInformationTest extends DOMPreprocessorInformatio
     	//if(lang != ParserLanguage.C)
     	//	return super.parse(code, lang, useGNUExtensions, expectNoProblems);
     	
-    	return ParseHelper.parse(code, getC99Language(), expectNoProblems);
+    	return ParseHelper.parse(code, getLanguage(), expectNoProblems);
     }
     
     
-    protected C99Language getC99Language() {
+    protected BaseExtensibleLanguage getLanguage() {
     	return C99Language.getDefault();
     }
     

@@ -2245,16 +2245,25 @@ public class C99ParserAction {
 	/**
 	 * function_definition
      *    ::= declaration_specifiers <openscope> declarator compound_statement
+     *      | function_declarator compound_statement
      */
-	public void consumeFunctionDefinition() {
+	public void consumeFunctionDefinition(boolean hasDeclSpecifiers) {
 		IASTFunctionDefinition def = nodeFactory.newFunctionDefinition();
 		
 		IASTCompoundStatement  body = (IASTCompoundStatement)  astStack.pop();
 		IASTFunctionDeclarator decl = (IASTFunctionDeclarator) astStack.pop();
 		// The seemingly pointless <openscope> is just there to 
 		// prevent a shift/reduce conflict in the grammar.
-		astStack.closeASTScope();
-		IASTDeclSpecifier declSpecifier = (IASTDeclSpecifier) astStack.pop();
+		
+		
+		IASTDeclSpecifier declSpecifier;
+		if(hasDeclSpecifiers) {
+			astStack.closeASTScope();
+			declSpecifier = (IASTDeclSpecifier) astStack.pop();
+		}
+		else {
+			declSpecifier = nodeFactory.newCSimpleDeclSpecifier();
+		}
 		
 		def.setBody(body);
 		body.setParent(def);

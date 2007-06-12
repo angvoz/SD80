@@ -12,7 +12,11 @@ package org.eclipse.cdt.core.parser.c99.tests;
 
 import junit.framework.AssertionFailedError;
 
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.ast.c.ICASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
 import org.eclipse.cdt.core.model.ILanguage;
@@ -88,6 +92,20 @@ public class C99Tests extends AST2Tests {
     	parseAndCheckBindings(code, ParserLanguage.C);
     }
     
+    public void testBug192009_implicitInt() throws Exception {
+    	String code = "main() { int x; }";
+    	IASTTranslationUnit tu = parse(code, ParserLanguage.C, false, true);
+    	
+    	IASTDeclaration[] declarations = tu.getDeclarations();
+    	assertEquals(1, declarations.length);
+    	
+    	IASTFunctionDefinition main = (IASTFunctionDefinition) declarations[0];
+    	ICASTSimpleDeclSpecifier declSpec = (ICASTSimpleDeclSpecifier) main.getDeclSpecifier();
+    	assertEquals(0, declSpec.getType());
+    	
+    	
+    	assertEquals("main", main.getDeclarator().getName().toString());
+    }
     
     
 	// Tests that are failing at this point

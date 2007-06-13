@@ -163,13 +163,13 @@ public class C99DigraphTrigraphTests extends TestCase {
 		assertEquals("xy", declarator1.getName().toString());
 		IASTLiteralExpression expr1 = (IASTLiteralExpression)((IASTInitializerExpression)declarator1.getInitializer()).getExpression();
 		assertEquals(IASTLiteralExpression.lk_string_literal, expr1.getKind());
-		assertEquals("\"its all good\"", expr1.toString());
+		assertEquals("its all good", expr1.toString());
 		
 		IASTSimpleDeclaration decl2 = (IASTSimpleDeclaration)((IASTDeclarationStatement)statements[1]).getDeclaration();
 		IASTDeclarator declarator2 = decl2.getDeclarators()[0];
 		assertEquals("ab", declarator2.getName().toString());
 		IASTLiteralExpression expr2 = (IASTLiteralExpression)((IASTInitializerExpression)declarator2.getInitializer()).getExpression();
 		assertEquals(IASTLiteralExpression.lk_string_literal, expr2.getKind());
-		assertEquals("\"its still good\"", expr2.toString());
+		assertEquals("its still good", expr2.toString());
 	}
 }

@@ -35,6 +35,7 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		suite.addTestSuite(C99CommentTests.class);
 		suite.addTestSuite(C99DigraphTrigraphTests.class);
 		suite.addTestSuite(C99GCCTests.class);
+		suite.addTestSuite(C99UtilOldTests.class);
 		
 		return suite;
 	

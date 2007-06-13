@@ -28,13 +28,6 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
 
 public class C99DOMLocationMacroTests extends DOMLocationMacroTests {
 
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) throws ParserException {
-	    return parse(code, lang, false, true );
-	}
-	    
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) throws ParserException {
-	    return parse( code, lang, useGNUExtensions, true );
-	}
 	 
     protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
     	if(lang == ParserLanguage.C)

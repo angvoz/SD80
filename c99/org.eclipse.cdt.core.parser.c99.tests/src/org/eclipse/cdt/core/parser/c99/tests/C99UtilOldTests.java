@@ -19,19 +19,6 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
 
 public class C99UtilOldTests extends AST2UtilOldTests {
 
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) throws ParserException {
-		if(lang != ParserLanguage.C)
-			return super.parse(code, lang);
-		
-	    return parse(code, lang, false, true );
-	}
-	    
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) throws ParserException {
-		if(lang != ParserLanguage.C)
-			return super.parse(code, lang, useGNUExtensions);
-		
-	    return parse( code, lang, useGNUExtensions, true );
-	}
 	 
     protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
     	if(lang != ParserLanguage.C)

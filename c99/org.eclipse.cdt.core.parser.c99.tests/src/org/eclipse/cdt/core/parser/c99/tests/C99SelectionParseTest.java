@@ -21,16 +21,8 @@ import org.eclipse.core.resources.IFile;
 
 public class C99SelectionParseTest extends AST2SelectionParseTest {
 	
-	public C99SelectionParseTest() {
-	}
-
-	public C99SelectionParseTest(String name, Class className) {
-		super(name, className);
-	}
-
-	public C99SelectionParseTest(String name) {
-		super(name);
-	}
+	public C99SelectionParseTest() {}
+	public C99SelectionParseTest(String name) { super(name); }
 
 	protected IASTNode parse(String code, ParserLanguage lang, int offset, int length) throws ParserException {
 		if(lang == ParserLanguage.C)

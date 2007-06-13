@@ -21,13 +21,8 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
 
 public class C99SpecTests extends AST2CSpecTest {
 
-
-	public C99SpecTests() {
-	}
-
-	public C99SpecTests(String name) {
-		super(name);
-	}
+	public C99SpecTests() { }
+	public C99SpecTests(String name) { super(name); }
 
 	
 	/**
@@ -43,7 +38,6 @@ public class C99SpecTests extends AST2CSpecTest {
 		if(lang == ParserLanguage.C)
 			return ParseHelper.parse(code, getLanguage(), true, checkBindings, expectedProblemBindings );
 		else
-			// TODO: support C++
 			return super.parse(code, lang, checkBindings, expectedProblemBindings);
     }
 	

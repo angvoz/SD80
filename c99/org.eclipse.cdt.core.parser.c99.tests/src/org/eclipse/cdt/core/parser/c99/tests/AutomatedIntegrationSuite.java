@@ -15,6 +15,15 @@ import junit.framework.TestSuite;
 
 public class AutomatedIntegrationSuite extends TestSuite {
 	
+	// TODO: the following test are not being reused
+	//
+	// DOMGCCSelectionParseExtensionsTest
+	// DOMSelectionParseTest
+	// GCCCompleteParseExtensionsTest
+	// QuickParser2Tests
+	//
+	// and perhaps others
+	
 	public static Test suite() {
 		TestSuite suite = new TestSuite();
 		
@@ -36,6 +45,9 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		suite.addTestSuite(C99DigraphTrigraphTests.class);
 		suite.addTestSuite(C99GCCTests.class);
 		suite.addTestSuite(C99UtilOldTests.class);
+		suite.addTestSuite(C99UtilTests.class);
+		suite.addTestSuite(C99CompleteParser2Tests.class);
+		suite.addTestSuite(C99TaskParserTest.class);
 		
 		return suite;
 	

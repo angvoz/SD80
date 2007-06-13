@@ -32,13 +32,10 @@ public class C99PreprocessorTests extends TestCase {
 
 	// TODO: assert that no probems are generated 
 	
-	public C99PreprocessorTests() {
-	}
+	public C99PreprocessorTests() { }
+	public C99PreprocessorTests(String name) { super(name); }
 
-	public C99PreprocessorTests(String name) {
-		super(name);
-	}
-
+	
 	private List scanAndPreprocess(String input) {
 		return scanAndPreprocess(input, null);
 	}

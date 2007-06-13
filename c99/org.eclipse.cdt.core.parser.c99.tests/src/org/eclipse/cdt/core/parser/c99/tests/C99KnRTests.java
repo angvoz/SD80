@@ -19,21 +19,11 @@ import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2KnRTests;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
-
 /**
- * 
  * @author Mike Kucera
  */
 public class C99KnRTests extends AST2KnRTests {
 	
-	
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang ) throws ParserException {
-	    return parse(code, lang, false, true );
-	}
-	    
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions ) throws ParserException {
-	    return parse( code, lang, useGNUExtensions, true );
-	}
 	 
     protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
     	if(lang == ParserLanguage.C)

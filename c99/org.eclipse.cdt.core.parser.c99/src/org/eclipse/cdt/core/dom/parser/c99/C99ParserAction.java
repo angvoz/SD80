@@ -341,8 +341,18 @@ public class C99ParserAction {
 	public void consumeExpressionConstant(int kind) {
 		IASTLiteralExpression expr = nodeFactory.newLiteralExpression();
 		IToken token = parser.getRightIToken();
+		
+		String rep = token.toString();
+		
+		// Strip the quotes from string literals, this is just to be consistent
+		// with the dom parser (i.e. to make a test pass).
+		if(kind == IASTLiteralExpression.lk_string_literal && 
+				rep.startsWith("\"") && rep.endsWith("\"")) {
+			rep = rep.substring(1, rep.length()-1);			
+		}
+		
 		expr.setKind(kind);
-		expr.setValue(token.toString());
+		expr.setValue(rep);
 		setOffsetAndLength(expr, token);
 		astStack.push(expr);
 	}

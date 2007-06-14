@@ -36,6 +36,7 @@ import lpg.lpgjavaruntime.IToken;
  * after the #include will have their offsets adjusted by the size
  * of the included file).
  * 
+ * @author Mike Kucera
  */
 class InputTokenStream {
 	
@@ -96,6 +97,18 @@ class InputTokenStream {
 	}
 	
 	
+	private void popContext() {
+		contextStack.pop();
+		topContext = (Context) (contextStack.isEmpty() ? null : contextStack.peek());
+	}
+	
+	
+	private void pushContext(Context context) {
+		contextStack.push(context);
+		topContext = context;
+	}
+	
+	
 	/**
 	 * Set the location of the content assist point in the
 	 * working copy.
@@ -114,7 +127,7 @@ class InputTokenStream {
 	
 	
 	/**
-	 * Returns true iff the file associated with the given code
+	 * Returns true if the file associated with the given code
 	 * reader is already on the context stack.
 	 */
 	public boolean isCircularInclusion(CodeReader readerToTest) {
@@ -128,7 +141,7 @@ class InputTokenStream {
 	
 	
 	/**
-	 * Returns the locaiton of the cursor in the working copy.
+	 * Returns the location of the cursor in the working copy.
 	 */
 	public int getContentAssistOffset() {
 		return contentAssistOffset;
@@ -155,9 +168,9 @@ class InputTokenStream {
 	public void pushIncludeContext(TokenList tokenList, CodeReader reader, int inclusionLocaionOffset, boolean isolated, IIncludeContextCallback callback) {
 		// adjust the offsets of the contexts that are already on the stack
 		adjustGlobalOffsets(reader.buffer.length);
-		topContext = new Context(reader, tokenList, callback, inclusionLocaionOffset);
-		topContext.isolated = isolated;
-		contextStack.push(topContext);
+		Context context = new Context(reader, tokenList, callback, inclusionLocaionOffset);
+		context.isolated = isolated;
+		pushContext(context);
 	}
 
 	
@@ -174,9 +187,9 @@ class InputTokenStream {
 			adjustGlobalOffsets(expansionSize);
 		}
 
-		topContext = new Context(topContext.reader, expansion, callback, expansionLocationOffset);
-		topContext.macroExpansion = true;
-		contextStack.push(topContext);
+		Context context = new Context(topContext.reader, expansion, callback, expansionLocationOffset);
+		context.macroExpansion = true;
+		pushContext(context);
 	}
 	
 	
@@ -203,9 +216,9 @@ class InputTokenStream {
 	public void pushIsolatedContext(TokenList tokenList, IIncludeContextCallback callback) {
 		// in this case the offset of the context does not really matter, so just set it to 0
 		if(tokenList != null) {
-			topContext = new Context(topContext == null ? null : topContext.reader, tokenList, callback, 0);
-			topContext.isolated = true;
-			contextStack.push(topContext);
+			Context context = new Context(topContext == null ? null : topContext.reader, tokenList, callback, 0);
+			context.isolated = true;
+			pushContext(context);
 		}
 	}
 	
@@ -229,12 +242,18 @@ class InputTokenStream {
 	
 	
 	public String getCurrentFileName() {
+		if(topContext == null)
+			return null;
 		return new String(topContext.reader.filename);
 	}
 	
 	public File getCurrentDirectory() {
-		 File file = new File(getCurrentFileName());
-         return file.getParentFile();
+		String fileName = getCurrentFileName();
+		if(fileName == null)
+			return null;
+		
+		File file = new File(getCurrentFileName());
+        return file.getParentFile();
 	}
 
 	
@@ -287,14 +306,22 @@ class InputTokenStream {
 		consumeCommentTokens();
 		IToken token = nextToken(false);
 		if(adjust && topContext != null && token != null) {
-			int offset = topContext.adjustedGlobalOffset;
-			// TODO: this method gets called a lot
-			// a potential optimization would be to add an adjust() method to IToken
-			// so that it does't take 4 method calls to change the offset
-			token.setStartOffset(token.getStartOffset() + offset);
-			token.setEndOffset(token.getEndOffset() + offset);
+			adjustToken(token);
 		}
 		return token;
+	}
+	
+	
+	/**
+	 * Adjusts a token's offsets based on the current context.
+	 */
+	private void adjustToken(IToken token) {
+		int offset = topContext.adjustedGlobalOffset;
+		// TODO: this method gets called a lot
+		// a potential optimization would be to add an adjust() method to IToken
+		// so that it does't take 4 method calls to change the offset
+		token.setStartOffset(token.getStartOffset() + offset);
+		token.setEndOffset(token.getEndOffset() + offset);
 	}
 	
 	
@@ -309,6 +336,7 @@ class InputTokenStream {
 				break;
 			
 			if(collectCommentTokens && parser != null) {
+				adjustToken(token);
 				parser.addCommentToken(token);
 			}
 			nextToken(false); // throw away the comment token
@@ -395,17 +423,12 @@ class InputTokenStream {
 	}
 	
 	/**
-	 * Returns true iff there are no more tokens.
+	 * Returns true if there are no more tokens.
 	 */
 	public boolean isEmpty() {
 		return peek() == null;
 	}
-	
-	
-	private void popContext() {
-		contextStack.pop();
-		topContext = (Context) (contextStack.isEmpty() ? null : contextStack.peek());
-	}
+
 
 	public String toString() {
 		StringBuffer sb = new StringBuffer();

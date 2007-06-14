@@ -1388,7 +1388,13 @@ public class C99Preprocessor implements C99Parsersym {
 	/**
 	 * Retrieve the source code for the file that is referenced by the #include directive and process it.
 	 */
-	private void includeDirective(int directiveStart, boolean active) {	
+	private void includeDirective(int directiveStart, boolean active) {
+		
+		// Fix for bug #192545
+		// This has to be done here because if there is no newline at the end of the
+		// file then collectTokensUntilNewlineOrDone will pop the current context.
+		File currentDirectory = inputTokenStream.getCurrentDirectory();
+		
 		// The include directive can contain a macro invocations
 		TokenList tokens = collectTokensUntilNewlineOrDone();
 		
@@ -1445,7 +1451,7 @@ public class C99Preprocessor implements C99Parsersym {
 		}
 		
 		
-		CodeReader reader = computeCodeReaderForInclusion(fileName, local);
+		CodeReader reader = computeCodeReaderForInclusion(fileName, currentDirectory, local);
 		
 		if(reader == null || inputTokenStream.isCircularInclusion(reader)) {
 			int problemCode = (reader == null) ? IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND : IASTProblem.PREPROCESSOR_CIRCULAR_INCLUSION;
@@ -1460,7 +1466,7 @@ public class C99Preprocessor implements C99Parsersym {
 	/**
 	 * Creates a CodeReader object for the given file name.
 	 */
-	private CodeReader computeCodeReaderForInclusion(String fileName, boolean local) {
+	private CodeReader computeCodeReaderForInclusion(String fileName, File currentDirectory, boolean local) {
 		CodeReader reader = null;
 		
 		// attempt to find the file to include
@@ -1468,13 +1474,10 @@ public class C99Preprocessor implements C99Parsersym {
 			return createCodeReader("", fileName); //$NON-NLS-1$
 		}
 		
-		if(local) {
-			File currentDirectory = inputTokenStream.getCurrentDirectory();
-			if(currentDirectory != null)
-				reader = createCodeReader(currentDirectory.getAbsolutePath(), fileName);
-		}
-		if(reader != null) {
-			return reader;
+		if(local && currentDirectory != null) {
+			reader = createCodeReader(currentDirectory.getAbsolutePath(), fileName);
+			if(reader != null)
+				return reader;
 		}
 		
 		if(scanInfo != null) {

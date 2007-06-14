@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.c99.tests;
 
+import org.eclipse.cdt.core.dom.ast.IASTComment;
+import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
@@ -43,4 +45,22 @@ public class C99CommentTests extends CommentTests {
 	protected BaseExtensibleLanguage getLanguage() {
     	return C99Language.getDefault();
     }
+	
+	
+	public void testBug191266() throws Exception {
+		StringBuffer sb = new StringBuffer();
+		sb.append("#define MACRO 1000000000000  \n");
+		sb.append("int x = MACRO;  \n");
+		sb.append("//comment\n");
+		String code = sb.toString();
+		
+		IASTTranslationUnit tu = parse(code, ParserLanguage.C, false, false, true);
+		
+		IASTComment[] comments = tu.getComments();
+		assertEquals(1, comments.length);
+
+		IASTFileLocation location = comments[0].getFileLocation();
+		assertEquals(code.indexOf("//"), location.getNodeOffset());
+		assertEquals("//comment".length(), location.getNodeLength());
+	}
 }

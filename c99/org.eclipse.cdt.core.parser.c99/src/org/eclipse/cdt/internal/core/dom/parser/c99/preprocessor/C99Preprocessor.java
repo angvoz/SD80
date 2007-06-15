@@ -307,6 +307,7 @@ public class C99Preprocessor implements C99Parsersym {
 	private void addIncludedFileToInputStream(final CodeReader reader, int directiveStartOffset, int directiveEndOffset, 
 			                         int nameStartOffset, int nameEndOffset, String name, boolean systemInclude, boolean isolated) {
 		
+		// if the include is not supposed to be followed, then the reader will have an empty buffer
 		TokenList tokens = lex(reader);
 		
 		if(log != null)

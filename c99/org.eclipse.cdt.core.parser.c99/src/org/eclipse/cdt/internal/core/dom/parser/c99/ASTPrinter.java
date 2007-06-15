@@ -137,6 +137,10 @@ public class ASTPrinter {
 				out.print(" restrict"); //$NON-NLS-1$
 			}
 		}
+		if(node instanceof IASTComment) {
+			out.print(new String(((IASTComment)node).getComment()));
+		}
+			
 		out.println();
 	}
 

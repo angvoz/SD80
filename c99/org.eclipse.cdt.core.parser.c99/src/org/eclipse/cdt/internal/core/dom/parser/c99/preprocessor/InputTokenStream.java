@@ -54,6 +54,8 @@ class InputTokenStream {
 	private IPreprocessorTokenCollector parser;
 	private boolean collectCommentTokens = false;
 	
+	// hack fix for bug #192698
+	private IToken lastCommentToken = null;
 
 	public InputTokenStream(IPreprocessorTokenCollector parser) {
 		this.parser = parser;
@@ -171,6 +173,13 @@ class InputTokenStream {
 		Context context = new Context(reader, tokenList, callback, inclusionLocaionOffset);
 		context.isolated = isolated;
 		pushContext(context);
+		
+		 // hack fix for bug #192698
+		if(lastCommentToken != null && lastCommentToken.getStartOffset() >= inclusionLocaionOffset) {
+			int adjust = reader.buffer.length; 
+			lastCommentToken.setStartOffset(lastCommentToken.getStartOffset() + adjust);
+			lastCommentToken.setEndOffset(lastCommentToken.getEndOffset() + adjust);
+		}
 	}
 
 	
@@ -338,6 +347,7 @@ class InputTokenStream {
 			if(collectCommentTokens && parser != null) {
 				adjustToken(token);
 				parser.addCommentToken(token);
+				lastCommentToken = token;
 			}
 			nextToken(false); // throw away the comment token
 		}

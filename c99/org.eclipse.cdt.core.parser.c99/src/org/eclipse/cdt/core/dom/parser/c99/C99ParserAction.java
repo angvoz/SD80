@@ -674,6 +674,10 @@ public class C99ParserAction {
 		IASTExpression operand = (IASTExpression) astStack.pop();
 		IASTTypeId typeId = (IASTTypeId) astStack.pop();
 		
+		if (disambiguateHackCastExpression(typeId, operand)) {
+			return;
+		}
+		
 		expr.setTypeId(typeId);
 		typeId.setParent(expr);
 		typeId.setPropertyInParent(IASTCastExpression.TYPE_ID);
@@ -687,6 +691,70 @@ public class C99ParserAction {
 		astStack.push(expr);
 	}
 	
+	/**
+	 * Bug 192693: A hack to disambiguate one special case:
+	 * 
+	 *  i = (i) & 0x00ff; 
+	 * 
+	 * This is usually parsed as a cast expression on a literal expression.
+	 * It's really a binary AND expression between a primary bracketed expression,
+	 * and a literal expression.
+	 */
+	private boolean disambiguateHackCastExpression(IASTTypeId typeId, IASTExpression operand) {
+		if (operand instanceof IASTUnaryExpression) {
+			IASTUnaryExpression unaryExpression = (IASTUnaryExpression) operand;
+			IASTExpression unaryOperand = unaryExpression.getOperand();
+			if (unaryOperand instanceof IASTLiteralExpression && unaryExpression.getOperator() == IASTUnaryExpression.op_amper) {
+				List ruleTokens = parser.getRuleTokens(); // there has to be at least 4 tokens
+				IToken openParen  = (IToken)ruleTokens.get(0);
+				IToken ident      = (IToken)ruleTokens.get(1);
+				IToken closeParen = (IToken)ruleTokens.get(2);
+				
+				if(asC99Kind(openParen) != C99Parsersym.TK_LeftParen || 
+				   asC99Kind(ident) != C99Parsersym.TK_identifier || 
+				   asC99Kind(closeParen) != C99Parsersym.TK_RightParen) {
+					return false;
+				}
+				IASTDeclSpecifier declSpecifier = typeId.getDeclSpecifier();
+				if (!(declSpecifier instanceof IASTNamedTypeSpecifier)) {
+					return false;
+				}
+
+				IASTIdExpression idExpression = nodeFactory.newIdExpression();
+				IASTName name = ((IASTNamedTypeSpecifier) declSpecifier).getName();
+				idExpression.setName(name);
+				name.setParent(idExpression);
+				name.setPropertyInParent(IASTIdExpression.ID_NAME);
+				
+				IASTUnaryExpression operand1 = nodeFactory.newUnaryExpression();
+				operand1.setOperator(IASTUnaryExpression.op_bracketedPrimary);
+				operand1.setOperand(idExpression);
+				idExpression.setParent(operand1);
+				idExpression.setPropertyInParent(IASTUnaryExpression.OPERAND);
+				setOffsetAndLength(idExpression, offset(typeId), length(typeId));
+				
+				IASTBinaryExpression binaryExpression = nodeFactory.newBinaryExpression();
+				binaryExpression.setOperator(IASTBinaryExpression.op_binaryAnd);
+				binaryExpression.setOperand1(operand1);
+				operand1.setParent(binaryExpression);
+				operand1.setPropertyInParent(IASTBinaryExpression.OPERAND_ONE);
+				
+				// Compute the offset/length of operand1
+				int closingParenthesisOffset = closeParen.getEndOffset();
+				int openingParenthesisOffset = openParen.getStartOffset();
+				setOffsetAndLength(operand1, openingParenthesisOffset, closingParenthesisOffset - openingParenthesisOffset + 1);
+				
+				binaryExpression.setOperand2(unaryOperand);
+				unaryOperand.setParent(binaryExpression);
+				unaryOperand.setPropertyInParent(IASTBinaryExpression.OPERAND_TWO);
+				setOffsetAndLength(binaryExpression);
+				
+				astStack.push(binaryExpression);
+				return true;
+			}
+		}
+		return false;
+	}
 	
 	/**
 	 * primary_expression ::= '(' expression ')'

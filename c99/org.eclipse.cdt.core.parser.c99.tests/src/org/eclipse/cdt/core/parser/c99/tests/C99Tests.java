@@ -11,6 +11,7 @@
 package org.eclipse.cdt.core.parser.c99.tests;
 
 import junit.framework.AssertionFailedError;
+import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
@@ -30,6 +31,10 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
  */
 public class C99Tests extends AST2Tests {
 
+    public static TestSuite suite() {
+    	return suite(C99Tests.class);
+    }
+    
 	public C99Tests(String name) {
 		super(name);
 	}
@@ -119,18 +124,6 @@ public class C99Tests extends AST2Tests {
 		fail();
 	}
 	
-	
-	public void testBug95720() { // cast ambiguity
-		try {
-			super.testBug95720();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	}
 	
 	public void testBug100408() { // ambiguity
 		try {

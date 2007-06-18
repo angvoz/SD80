@@ -49,7 +49,7 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 	// The parser is maintained as a singleton object because there
 	// is a bad performance bottleneck in the constructor method.
 	// This means this object isn't thread safe, so methods have been marked synchronized.
-	private static IParser parser = null;
+	private IParser parser = null;
 	
 	
 	/**
@@ -168,15 +168,6 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 	}
 
 	
-	
-	/**
-	 * Public so that these methods may be called directly from unit tests.
-	 */
-	public synchronized IParseResult parse(CodeReader reader, IScannerInfo scanInfo,
-			ICodeReaderFactory fileCreator, IIndex index) {
-
-		return parse(reader, scanInfo, fileCreator, index, null);
-	}
 
 	
 	/**

@@ -71,7 +71,7 @@ public class ParseHelper {
 	public static IASTTranslationUnit parse(CodeReader codeReader, BaseExtensibleLanguage language, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
 		testsRun++;
 		
-		IParseResult result = language.parse(codeReader, null, null, null);
+		IParseResult result = language.parse(codeReader, null, null, null, null);
 		IASTTranslationUnit tu = result.getTranslationUnit();
 
 		// resolve all bindings

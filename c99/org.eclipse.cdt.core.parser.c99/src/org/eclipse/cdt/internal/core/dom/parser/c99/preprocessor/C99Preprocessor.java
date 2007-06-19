@@ -131,7 +131,6 @@ public class C99Preprocessor implements C99Parsersym {
 	 * Run the preprocessor in contentAssistMode, the resulting token stream will be injected directly
 	 * into the given parser.
 	 * 
-	 * @return null if preprocessing fails
 	 * @throws IllegalArgumentException if contentAssistOffset < 0
 	 * @throws IllegalArgumentException if parser is null
 	 */
@@ -1412,6 +1411,7 @@ public class C99Preprocessor implements C99Parsersym {
 		
 		// calculate the offsets of the include directive in the source
 		int fileNameStart, fileNameEnd, directiveEnd;
+		TokenList includeBody;
 		
 		// if its a regular include like <filename.h> or "filename.h" then ignore the < > and " in the offsets
 		if((tokens.first().getKind() == TK_LT && tokens.last().getKind() == TK_GT) ||
@@ -1420,22 +1420,25 @@ public class C99Preprocessor implements C99Parsersym {
 			fileNameStart = tokens.first().getStartOffset() + 1;
 			fileNameEnd   = tokens.last().getEndOffset();
 			directiveEnd  = fileNameEnd + 1;
+			
+			includeBody = tokens;
 		}
 		else { // otherwise its probably a macro invocation in the include body
 			fileNameStart = tokens.first().getStartOffset() ;
 			fileNameEnd   = tokens.last().getEndOffset() + 1;
 			directiveEnd  = fileNameEnd;
+			
+			// macro expansions that occur during the processing of the #include's body don't matter
+			if(log != null)
+				log.setIgnoreMacroExpansions(true);
+			
+			includeBody = pushContextAndProcess(tokens, true, false);
+			
+			if(log != null)
+				log.setIgnoreMacroExpansions(false);
 		}
-		
-		// macro expansions that occur during the processing of the #include's body don't matter
-		if(log != null)
-			log.setIgnoreMacroExpansions(true);
-		
-		TokenList includeBody = pushContextAndProcess(tokens, true, false);
+			
 		String fileName = computeIncludeFileName(includeBody);
-		
-		if(log != null)
-			log.setIgnoreMacroExpansions(false);
 		
 		if(fileName == null) {
 			int code = IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND;
@@ -1684,7 +1687,7 @@ public class C99Preprocessor implements C99Parsersym {
 			}
 			else {
 				// parse the parameters
-				while(true) { // proof of loop termination: each brach has a next() or break 
+				while(true) { // proof of loop termination: each branch has a next() or break 
 					if(check(IDENT)) {
 						String paramName = next().toString();
 						

@@ -12,6 +12,7 @@
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -403,18 +404,19 @@ public class C99Preprocessor implements C99Parsersym {
 
 	// Identifier tokens regognized as reprocessor directives
 	static final String 
-		IF      = "if",      //$NON-NLS-1$
-		IFDEF   = "ifdef",   //$NON-NLS-1$
-		IFNDEF  = "ifndef",  //$NON-NLS-1$
-		ELIF    = "elif",    //$NON-NLS-1$
-		ELSE    = "else",    //$NON-NLS-1$
-		ENDIF   = "endif",   //$NON-NLS-1$
-		DEFINE  = "define",  //$NON-NLS-1$
-		UNDEF   = "undef",   //$NON-NLS-1$
-		INCLUDE = "include", //$NON-NLS-1$
-		PRAGMA  = "pragma",  //$NON-NLS-1$
-		ERROR   = "error",   //$NON-NLS-1$
-		WARNING = "warning"; //$NON-NLS-1$
+		IF           = "if",           //$NON-NLS-1$
+		IFDEF        = "ifdef",        //$NON-NLS-1$
+		IFNDEF       = "ifndef",       //$NON-NLS-1$
+		ELIF         = "elif",         //$NON-NLS-1$
+		ELSE         = "else",         //$NON-NLS-1$
+		ENDIF        = "endif",        //$NON-NLS-1$
+		DEFINE       = "define",       //$NON-NLS-1$
+		UNDEF        = "undef",        //$NON-NLS-1$
+		INCLUDE      = "include",      //$NON-NLS-1$
+		INCLUDE_NEXT = "include_next", //$NON-NLS-1$
+		PRAGMA       = "pragma",       //$NON-NLS-1$
+		ERROR        = "error",        //$NON-NLS-1$
+		WARNING      = "warning";      //$NON-NLS-1$
 	
 
 
@@ -642,9 +644,10 @@ public class C99Preprocessor implements C99Parsersym {
 			if(check(HASH)) {
 				IToken hash = next();
 				int directiveStartOffset = hash.getStartOffset();
-				if(check(INCLUDE)) { // show inactive includes in the outline view
+				if(check(INCLUDE) || check(INCLUDE_NEXT)) { // show inactive includes in the outline view
+					boolean includeNext = check(INCLUDE_NEXT);
 					next();
-					includeDirective(directiveStartOffset, false);
+					includeDirective(directiveStartOffset, false, includeNext);
 				}
 				else if(check(IF)) {
 					handleIf(directiveStartOffset, false);
@@ -1180,9 +1183,10 @@ public class C99Preprocessor implements C99Parsersym {
 			if(!done())
 				expect(NEWLINE);
 		}
-		else if(check(INCLUDE)) {
+		else if(check(INCLUDE) || check(INCLUDE_NEXT)) {
+			boolean includeNext = check(INCLUDE_NEXT);
 			next();
-			includeDirective(directiveStartOffset, true);
+			includeDirective(directiveStartOffset, true, includeNext);
 		}
 		else if(check(IF) || check(IFDEF) || check(IFNDEF)) {
 			ifSection(directiveStartOffset);
@@ -1389,12 +1393,13 @@ public class C99Preprocessor implements C99Parsersym {
 	/**
 	 * Retrieve the source code for the file that is referenced by the #include directive and process it.
 	 */
-	private void includeDirective(int directiveStart, boolean active) {
+	private void includeDirective(int directiveStart, boolean active, boolean includeNext) {
 		
 		// Fix for bug #192545
 		// This has to be done here because if there is no newline at the end of the
 		// file then collectTokensUntilNewlineOrDone will pop the current context.
 		File currentDirectory = inputTokenStream.getCurrentDirectory();
+		String currentFileName = inputTokenStream.getCurrentFileName();
 		
 		// The include directive can contain a macro invocations
 		TokenList tokens = collectTokensUntilNewlineOrDone();
@@ -1452,14 +1457,19 @@ public class C99Preprocessor implements C99Parsersym {
 		}
 		
 		
-		CodeReader reader = computeCodeReaderForInclusion(fileName, currentDirectory, local);
+		CodeReader reader = computeCodeReaderForInclusion(fileName, currentDirectory, includeNext, local);
 		
-		if(reader == null || inputTokenStream.isCircularInclusion(reader)) {
-			int problemCode = (reader == null) ? IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND : IASTProblem.PREPROCESSOR_CIRCULAR_INCLUSION;
-			encounterProblemInclude(problemCode, directiveStart, directiveEnd, fileNameStart, fileNameEnd, fileName, !local);
+		if(reader == null) {
+			encounterProblemInclude(IASTProblem.PREPROCESSOR_INCLUSION_NOT_FOUND, 
+					directiveStart, directiveEnd, fileNameStart, fileNameEnd, fileName, !local);
+		}
+		else if(inputTokenStream.isCircularInclusion(reader) || new String(reader.filename).equals(currentFileName)) {
+			encounterProblemInclude(IASTProblem.PREPROCESSOR_CIRCULAR_INCLUSION, 
+					directiveStart, directiveEnd, fileNameStart, fileNameEnd, fileName, !local);
 		}
 		else {
-			addIncludedFileToInputStream(reader, directiveStart, directiveEnd, fileNameStart, fileNameEnd, fileName, !local, false);
+			addIncludedFileToInputStream(reader, directiveStart, directiveEnd, fileNameStart, 
+					                     fileNameEnd, fileName, !local, false);
 		}
 	}
 
@@ -1467,14 +1477,18 @@ public class C99Preprocessor implements C99Parsersym {
 	/**
 	 * Creates a CodeReader object for the given file name.
 	 */
-	private CodeReader computeCodeReaderForInclusion(String fileName, File currentDirectory, boolean local) {
-		CodeReader reader = null;
-		
-		// attempt to find the file to include
+	private CodeReader computeCodeReaderForInclusion(String fileName, File currentDirectory, boolean includeNext, boolean local) {
+
 		if(new File(fileName).isAbsolute() || fileName.startsWith("/")) { //$NON-NLS-1$
 			return createCodeReader("", fileName); //$NON-NLS-1$
 		}
 		
+		// fix for bug #193185
+		if(includeNext) {
+			return computeCodeReaderForIncludeNext(fileName, currentDirectory);
+		}
+		
+		CodeReader reader = null;
 		if(local && currentDirectory != null) {
 			reader = createCodeReader(currentDirectory.getAbsolutePath(), fileName);
 			if(reader != null)
@@ -1494,6 +1508,49 @@ public class C99Preprocessor implements C99Parsersym {
 		
 		return reader;
 	}
+	
+	
+	/**
+	 * Computes the CodeReader for an #include_next directive.
+	 * Separated from the main inclusion logic for easier maintenance.
+	 */
+	private CodeReader computeCodeReaderForIncludeNext(String fileName, File currentDirectory) {
+		if(!(scanInfo instanceof IExtendedScannerInfo))
+			return null;
+		
+		IExtendedScannerInfo extendedScannerInfo = (IExtendedScannerInfo) scanInfo;
+		
+		String[] localPaths  = extendedScannerInfo.getLocalIncludePath();
+		String[] systemPaths = extendedScannerInfo.getIncludePaths(); 
+		String[] allPaths = new String[localPaths.length + systemPaths.length];
+        System.arraycopy(localPaths, 0, allPaths, 0, localPaths.length);
+        System.arraycopy(systemPaths, 0, allPaths, localPaths.length, systemPaths.length);
+        
+        try {
+            String parent = currentDirectory.getCanonicalPath();
+            int pathIndex = -1;
+            
+            // find the current directory
+            for(int i = 0; i < allPaths.length ; i++) {
+            	String path = new File(allPaths[i]).getCanonicalPath();
+                if (path.equals(parent)) {
+                	pathIndex = i;
+                    break;
+                }
+            }
+            
+            // If it wasn't found then just search from the beginning again.
+            // now skip the current directory and start the search from there
+            for(int i = pathIndex + 1; i < allPaths.length; i++) {
+            	CodeReader reader = createCodeReader(allPaths[i], fileName);
+            	if(reader != null)
+            		return reader;
+            }
+        } catch(IOException e) {}
+        
+        return null;
+	}
+	
 	
 	
 	/**

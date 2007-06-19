@@ -12,6 +12,7 @@ package org.eclipse.cdt.core.parser.c99.tests;
 
 import junit.framework.AssertionFailedError;
 
+import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
@@ -22,6 +23,7 @@ import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.IParseResult;
 import org.eclipse.cdt.core.dom.parser.c.AbstractCLanguage;
 import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
 
 /**
@@ -54,7 +56,7 @@ public class ParseHelper {
 
 	public static IASTTranslationUnit parse(char[] code, BaseExtensibleLanguage lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
 		CodeReader codeReader = new CodeReader(code);
-		return parse(codeReader, lang, expectNoProblems, checkBindings, expectedProblemBindings);
+		return parse(codeReader, lang, null, null, expectNoProblems, checkBindings, expectedProblemBindings);
 	}
 	
 	public static IASTTranslationUnit parse(String code, BaseExtensibleLanguage lang, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
@@ -68,10 +70,11 @@ public class ParseHelper {
 
 
 
-	public static IASTTranslationUnit parse(CodeReader codeReader, BaseExtensibleLanguage language, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
+	public static IASTTranslationUnit parse(CodeReader codeReader, BaseExtensibleLanguage language, IScannerInfo scanInfo, 
+			                                ICodeReaderFactory fileCreator, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) {
 		testsRun++;
 		
-		IParseResult result = language.parse(codeReader, null, null, null, null);
+		IParseResult result = language.parse(codeReader, scanInfo, fileCreator, null, null);
 		IASTTranslationUnit tu = result.getTranslationUnit();
 
 		// resolve all bindings

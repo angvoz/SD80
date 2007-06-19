@@ -85,7 +85,8 @@ public class C99KeywordMap implements IKeywordMap, ICLanguageKeywords {
 		POUND_ERROR = "#error", //$NON-NLS-1$
 		POUND_PRAGMA = "#pragma", //$NON-NLS-1$
 		POUND_ELIF = "#elif", //$NON-NLS-1$
-		POUND_BLANK = "#"; //$NON-NLS-1$
+		POUND_BLANK = "#", //$NON-NLS-1$
+	    POUND_INCLUDE_NEXT = "include_next"; //$NON-NLS-1$
 		
 	
 	
@@ -171,6 +172,7 @@ public class C99KeywordMap implements IKeywordMap, ICLanguageKeywords {
 		addPreprocessorKeyword(POUND_PRAGMA);
 		addPreprocessorKeyword(POUND_ELIF);
 		addPreprocessorKeyword(POUND_BLANK);
+		addPreprocessorKeyword(POUND_INCLUDE_NEXT);
 	}
 	
 	protected void putKeyword(String keyword, int kind) {

@@ -103,7 +103,7 @@ public class C99SelectionParseTest extends AST2SelectionParseTest {
     	importFile( "two/foo.h", i2Next ); //$NON-NLS-1$
     	importFile( "three/foo.h", i3Next ); //$NON-NLS-1$
     	
-    	String [] path = new String[] {
+    	String[] path = new String[] {
     		twof.getRawLocation().toOSString(),
     		threef.getRawLocation().toOSString()
     	};
@@ -116,16 +116,49 @@ public class C99SelectionParseTest extends AST2SelectionParseTest {
     	assertEquals(4, decls.length);
     	
     	IASTSimpleDeclaration declaration = (IASTSimpleDeclaration)decls[0];
-    	assertEquals("zero", declaration.getDeclarators()[0].getName().toString());
+    	assertEquals("zero", declaration.getDeclarators()[0].getName().toString()); //$NON-NLS-1$
     	
     	declaration = (IASTSimpleDeclaration)decls[1];
-    	assertEquals("one", declaration.getDeclarators()[0].getName().toString());
+    	assertEquals("one", declaration.getDeclarators()[0].getName().toString()); //$NON-NLS-1$
     	
     	declaration = (IASTSimpleDeclaration)decls[2];
-    	assertEquals("two", declaration.getDeclarators()[0].getName().toString());
+    	assertEquals("two", declaration.getDeclarators()[0].getName().toString()); //$NON-NLS-1$
     	
     	declaration = (IASTSimpleDeclaration)decls[3];
-    	assertEquals("three", declaration.getDeclarators()[0].getName().toString());
+    	assertEquals("three", declaration.getDeclarators()[0].getName().toString()); //$NON-NLS-1$
+	}
+	
+	
+	public void testBug193366() throws Exception
+	{    	
+    	String baseFile = 
+    		"#define FOOH <foo.h> \n" +       //$NON-NLS-1$
+    		"#define bar blahblahblah \n" +   //$NON-NLS-1$
+    		"#include FOOH \n" +              //$NON-NLS-1$
+    		"#include <bar.h> \n";            //$NON-NLS-1$
+    	
+    	String fooFile = "int x; \n"; //$NON-NLS-1$
+    	String barFile = "int y; \n"; //$NON-NLS-1$
+    	
+    	
+    	IFile base = importFile( "base.c", baseFile ); //$NON-NLS-1$
+    	IFolder include = importFolder("inc"); //$NON-NLS-1$
+    	importFile( "inc/foo.h", fooFile ); //$NON-NLS-1$
+    	importFile( "inc/bar.h", barFile ); //$NON-NLS-1$
+    	
+    	String[] path = new String[] { include.getRawLocation().toOSString() };
+    	IScannerInfo scannerInfo = new ExtendedScannerInfo( Collections.EMPTY_MAP, path, new String[0], path );
+    	
+    	IASTTranslationUnit tu = parse(base, ParserLanguage.C, scannerInfo, false, true);
+    	
+    	IASTDeclaration[] decls = tu.getDeclarations();
+    	assertEquals(2, decls.length);
+    	
+    	IASTSimpleDeclaration declaration = (IASTSimpleDeclaration)decls[0];
+    	assertEquals("x", declaration.getDeclarators()[0].getName().toString()); //$NON-NLS-1$
+    	
+    	declaration = (IASTSimpleDeclaration)decls[1];
+    	assertEquals("y", declaration.getDeclarators()[0].getName().toString()); //$NON-NLS-1$
 	}
 	
 }

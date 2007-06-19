@@ -10,14 +10,24 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.c99.tests;
 
+import java.util.Collections;
+
+import org.eclipse.cdt.core.dom.ICodeReaderFactory;
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.c99.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.c99.C99Language;
+import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
+import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2SelectionParseTest;
+import org.eclipse.cdt.internal.core.dom.SavedCodeReaderFactory;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 
 public class C99SelectionParseTest extends AST2SelectionParseTest {
 	
@@ -56,43 +66,66 @@ public class C99SelectionParseTest extends AST2SelectionParseTest {
 			return super.parse(code, lang, useGNUExtensions, expectNoProblems, offset, length);
 	}	
 	
-	protected IASTTranslationUnit parse( IFile file, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
-		if(lang == ParserLanguage.C)
-			throw new RuntimeException("file parsing not supported yet");//$NON-NLS-1$
+	protected IASTTranslationUnit parse( IFile file, ParserLanguage lang, IScannerInfo scanInfo, boolean useGNUExtensions, boolean expectNoProblems ) 
+	    throws ParserException {
 		
-		return super.parse(file, lang, useGNUExtensions, expectNoProblems);
+		if(lang != ParserLanguage.C)
+			return super.parse(file, lang, useGNUExtensions, expectNoProblems);
+		
+		String fileName = file.getLocation().toOSString();
+		ICodeReaderFactory fileCreator = SavedCodeReaderFactory.getInstance();
+		CodeReader reader = fileCreator.createCodeReaderForTranslationUnit(fileName);
+		return ParseHelper.parse(reader, getLanguage(), scanInfo, fileCreator, expectNoProblems, true, 0);
 	}
 
+	protected IASTTranslationUnit parse( IFile file, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) 
+	    throws ParserException {
+		return parse(file, lang, null, useGNUExtensions, expectNoProblems);
+	}
 	
 	protected BaseExtensibleLanguage getLanguage() {
 		return C99Language.getDefault();
 	}
 	
 	
-	// The following three tests fail because they require access to include files
-	
-	public void testBug96702() {
-		try {
-			super.testBug96702();
-		} catch(Exception _) {  // catch error
-			return;
-		}
-		
-		fail();
+	public void testBug193185_IncludeNext() throws Exception
+	{    	
+    	String baseFile = "int zero; \n#include \"foo.h\""; //$NON-NLS-1$
+    	String i1Next = "int one; \n#include_next <foo.h>"; //$NON-NLS-1$
+    	String i2Next = "int two; \n#include_next \"foo.h\""; //$NON-NLS-1$
+    	String i3Next = "int three; \n"; //$NON-NLS-1$
+    	
+    	
+    	IFile base = importFile( "base.c", baseFile ); //$NON-NLS-1$
+    	importFile( "foo.h", i1Next ); //$NON-NLS-1$
+    	IFolder twof = importFolder("two"); //$NON-NLS-1$
+    	IFolder threef = importFolder("three"); //$NON-NLS-1$
+    	importFile( "two/foo.h", i2Next ); //$NON-NLS-1$
+    	importFile( "three/foo.h", i3Next ); //$NON-NLS-1$
+    	
+    	String [] path = new String[] {
+    		twof.getRawLocation().toOSString(),
+    		threef.getRawLocation().toOSString()
+    	};
+    	
+    	IScannerInfo scannerInfo = new ExtendedScannerInfo( Collections.EMPTY_MAP, path, new String[0], path );
+    	
+    	IASTTranslationUnit tu = parse(base, ParserLanguage.C, scannerInfo, false, true);
+    	
+    	IASTDeclaration[] decls = tu.getDeclarations();
+    	assertEquals(4, decls.length);
+    	
+    	IASTSimpleDeclaration declaration = (IASTSimpleDeclaration)decls[0];
+    	assertEquals("zero", declaration.getDeclarators()[0].getName().toString());
+    	
+    	declaration = (IASTSimpleDeclaration)decls[1];
+    	assertEquals("one", declaration.getDeclarators()[0].getName().toString());
+    	
+    	declaration = (IASTSimpleDeclaration)decls[2];
+    	assertEquals("two", declaration.getDeclarators()[0].getName().toString());
+    	
+    	declaration = (IASTSimpleDeclaration)decls[3];
+    	assertEquals("three", declaration.getDeclarators()[0].getName().toString());
 	}
-	
-	
-	// The following three tests fail because they require access to include files
-	
-	public void testBug86126() {
-		try {
-			super.testBug86126();
-		} catch(Exception _) {  // catch error
-			return;
-		}
-		
-		fail();
-	}
-	
 	
 }

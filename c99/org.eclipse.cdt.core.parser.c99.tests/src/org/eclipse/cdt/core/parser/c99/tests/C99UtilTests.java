@@ -46,33 +46,4 @@ public class C99UtilTests extends AST2UtilTests {
     protected BaseExtensibleLanguage getLanguage() {
     	return C99Language.getDefault();
     }
-    
-    
-    
-    // TODO: fix problems with parsing sizeof(int)
-    
-    public void testSimpleSignature() { // ambiguity
-		try {
-			super.testSimpleSignature();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	} 
-    
-    
-    public void testSimpleTypeId() { // ambiguity
-		try {
-			super.testSimpleTypeId();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	} 
 }

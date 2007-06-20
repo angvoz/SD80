@@ -69,6 +69,10 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTTypeIdInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypedefNameSpecifier;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.dom.c99.IASTNodeFactory;
+import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousExpression;
+import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousStatement;
+import org.eclipse.cdt.internal.core.dom.parser.c.CASTAmbiguousExpression;
+import org.eclipse.cdt.internal.core.dom.parser.c.CASTAmbiguousStatement;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTArrayDeclarator;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTArrayDesignator;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTArrayModifier;
@@ -380,6 +384,14 @@ public class C99ASTNodeFactory implements IASTNodeFactory {
 	
 	public IASTProblem newProblem(int id, char[] arg, boolean warn, boolean error) {
 		return new CASTProblem(id, arg, warn, error);
+	}
+
+	public IASTAmbiguousExpression newAmbiguousExpression() {
+		return new CASTAmbiguousExpression();
+	}
+
+	public IASTAmbiguousStatement newAmbiguousStatement() {
+		return new CASTAmbiguousStatement();
 	}
 	
 } 

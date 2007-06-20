@@ -68,6 +68,8 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypeIdInitializerExpression;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypedefNameSpecifier;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
+import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousExpression;
+import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousStatement;
 import org.eclipse.cdt.internal.core.dom.parser.c99.ASTCompletionNode;
 
 /**
@@ -198,5 +200,9 @@ public interface IASTNodeFactory {
 	public IASTProblem newProblem(int id, char[] arg, boolean warn, boolean error);
 
 	public IASTComment newComment();
+	
+	public IASTAmbiguousStatement newAmbiguousStatement();
+	
+	public IASTAmbiguousExpression newAmbiguousExpression();
 
 }

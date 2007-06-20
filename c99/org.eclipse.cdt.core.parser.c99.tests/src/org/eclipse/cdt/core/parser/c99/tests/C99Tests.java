@@ -96,60 +96,8 @@ public class C99Tests extends AST2Tests {
     	assertEquals("main", main.getDeclarator().getName().toString());
     }
     
-    
-	// Tests that are failing at this point
-    
-	public void testCExpressions() { // ambiguity
-		try {
-			super.testCExpressions();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	} 
 	
-	
-	public void test92791() {
-		try {
-			super.test92791();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	}
-	
-	
-	public void testBug100408() { // ambiguity
-		try {
-			super.testBug100408();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	} 
-	
-	
-	public void testBracketAroundIdentifier_168924() { // ambiguity
-		try {
-			super.testBracketAroundIdentifier_168924();
-		} catch(AssertionFailedError _) {
-			return;
-		} catch(Exception _) {
-			return;
-		}
-		
-		fail();
-	} 
-	
+
 	
 	public void testBug93980() { // some wierd gcc extension I think
 		try {
@@ -167,6 +115,18 @@ public class C99Tests extends AST2Tests {
 	public void testBug95866() { // gcc extension
 		try {
 			super.testBug95866();
+		} catch(AssertionFailedError _) {
+			return;
+		} catch(Exception _) {
+			return;
+		}
+		
+		fail();
+	}
+	
+	public void testBug192165() {
+		try {
+			super.testBug192165();
 		} catch(AssertionFailedError _) {
 			return;
 		} catch(Exception _) {

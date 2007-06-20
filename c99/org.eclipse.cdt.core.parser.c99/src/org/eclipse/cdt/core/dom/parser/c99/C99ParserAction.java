@@ -76,6 +76,7 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
+import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayDesignator;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayModifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
@@ -94,6 +95,7 @@ import org.eclipse.cdt.core.dom.c99.IASTNodeFactory;
 import org.eclipse.cdt.core.dom.c99.IParserActionTokenProvider;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousExpression;
+import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousStatement;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTAmbiguousExpression;
 import org.eclipse.cdt.internal.core.dom.parser.c99.ASTCompletionNode;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
@@ -102,7 +104,7 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 /**
  * Semantic actions called by the parser to build an AST.
  */
-public class C99ParserAction {
+public class C99ParserAction implements C99Parsersym {
 
 	private static final char[] EMPTY_CHAR_ARRAY = {};
 	
@@ -129,7 +131,7 @@ public class C99ParserAction {
 	/** The completion node generated during a completion parse */
 	private ASTCompletionNode completionNode;
 
-	/** The offset and length of each grammar rule will be automatically calclulated. */
+	/** The offset and length of each grammar rule will be automatically calculated. */
 	protected int ruleOffset;
 	protected int ruleLength;
 
@@ -169,11 +171,25 @@ public class C99ParserAction {
 		
 		IASTTranslationUnit tu = (IASTTranslationUnit) astStack.peek();
 		generateCommentNodes(tu);
+		forceAmbiguityResolution(tu);
 		return tu;
 	}
 	
 	
+	/**
+	 * Forces resolution of ambiguity nodes by applying a visitor to the AST.
+	 * The visitor itself doesn't do anything, however ambiguity nodes will resolve 
+	 * themselves when their accept() method is called.
+	 */
+	private void forceAmbiguityResolution(IASTTranslationUnit tu) {
+		CASTVisitor emptyVisitor = new CASTVisitor() { { shouldVisitStatements = true; } };
+		tu.accept(emptyVisitor);
+	}
 	
+	
+	/**
+	 * Generates a comment node for each comment token.
+	 */
 	private void generateCommentNodes(IASTTranslationUnit tu) {
 		List commentTokens = parser.getCommentTokens();
 		if(commentTokens == null || commentTokens.isEmpty())
@@ -195,7 +211,7 @@ public class C99ParserAction {
 	
 	
 	/**
-	 * Returns true iff a syntax error was encountered during the parse.
+	 * Returns true if a syntax error was encountered during the parse.
 	 */
 	public boolean encounteredError() {
 		// if the astStack is empty then an unrecoverable syntax error was encountered
@@ -229,6 +245,60 @@ public class C99ParserAction {
 		return tokenMap.asC99Kind(token);
 	}
 	
+	
+	/**
+	 * Used to conveniently pattern match a list of tokens based on their kind. 
+	 * 
+	 * example) match: x * x
+	 * 
+	 * matchKinds(tokens, new int[] {TK_identifier, TK_Star, TK_identifier});
+	 * 
+	 */
+	private boolean matchKinds(List tokens, int[] kinds) {
+		if(tokens.size() != kinds.length)
+			return false;
+		
+		for(int i = 0; i < kinds.length; i++) {
+			if(asC99Kind((IToken)tokens.get(i)) != kinds[i]) {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	
+	/**
+	 * Used to conveniently pattern match a list of tokens based on their kind. 
+	 * Can be used to specify optional kinds.
+	 * 
+	 * example) match: x * x
+	 * 
+	 * matchKinds(tokens, new int[] {{TK_identifier, TK_completion}, {TK_Star}, {TK_identifier, TK_completion}});
+	 * 
+	 */
+	private boolean matchKinds(List tokens, int[][] kinds) {
+		if(tokens.size() != kinds.length)
+			return false;
+		
+		for(int i = 0; i < kinds.length; i++) {
+			int[] optKinds = kinds[i];
+			
+			boolean matched = false;
+			int kind = asC99Kind((IToken)tokens.get(i));
+			for(int j = 0; j < optKinds.length; j++) {
+				if(kind == optKinds[j]) {
+					matched = true;
+					break;
+				}
+			}
+			
+			if(!matched)
+				return false;
+		}
+		
+		return true;
+	}
 	
 	
 	// convenience methods for setting offsets and lengths on nodes
@@ -580,21 +650,11 @@ public class C99ParserAction {
 		
 		setOffsetAndLength(expr);
 		astStack.push(expr);
-		consumeExpressionUnaryOperator(IASTUnaryExpression.op_sizeof);
 		
 		// the following code disambiguates a special case
 		// sizeof(x);
 		// in this case x can be parsed as a type_name or as an id expression
-		
-		// get the tokens that were parsed as part of this grammar rule
-		List tokens = parser.getRuleTokens();
-		if(tokens.size() == 4) { // this means type_name consists of a single token
-			IToken typeName = (IToken)tokens.get(2);
-			int kind = asC99Kind(typeName);
-			if(kind == C99Parsersym.TK_identifier || kind == C99Parsersym.TK_Completion) { // and its an identifier, we have an ambiguity
-				disambiguateHackSizofTypeName((IToken)tokens.get(2));
-			}
-		}
+		disambiguateHackSizofTypeName();
 	}
 	
 	
@@ -603,10 +663,19 @@ public class C99ParserAction {
 	 * and generates an ambiguity node in the AST. This ambiguity node
 	 * is essential for content assist to work properly.
 	 * 
-	 * Expects the AST subtree for the first way the sizof expression was 
+	 * Expects the AST subtree for the first way the sizeof expression was 
 	 * parsed to be on the top of the astStack.
 	 */
-	private void disambiguateHackSizofTypeName(IToken typeName) {
+	private void disambiguateHackSizofTypeName() {
+		List tokens = parser.getRuleTokens();
+		if(tokens.size() != 4) 
+			return;
+			
+		IToken typeName = (IToken)tokens.get(2);
+		int kind = asC99Kind(typeName);
+		if(kind != C99Parsersym.TK_identifier && kind != C99Parsersym.TK_Completion) // and its an identifier, we have an ambiguity
+			return;
+		
 		IASTName name = createName(typeName);
 		IASTIdExpression idExpr = nodeFactory.newIdExpression();
 		idExpr.setName(name);
@@ -620,8 +689,7 @@ public class C99ParserAction {
 		idExpr.setParent(secondExpr);
 		idExpr.setPropertyInParent(IASTUnaryExpression.OPERAND);
 		
-		// TODO: add ambiguous expressions to node factory?
-		IASTAmbiguousExpression ambExpr = new CASTAmbiguousExpression();
+		IASTAmbiguousExpression ambExpr = nodeFactory.newAmbiguousExpression();
 		
 		// the AST subtree representing the first way to parse the expression
 		// was pushed onto the stack by consumeExpressionUnarySizeofTypeName()
@@ -692,66 +760,90 @@ public class C99ParserAction {
 	}
 	
 	/**
-	 * Bug 192693: A hack to disambiguate one special case:
+	 * A hack to disambiguate binary expressions where the first operand is
+	 * a bracketed identifier.  Without this hack, such expressions would be
+	 * parsed as cast expressions where the operand is a unary expression.
+	 * For example:
 	 * 
-	 *  i = (i) & 0x00ff; 
-	 * 
-	 * This is usually parsed as a cast expression on a literal expression.
-	 * It's really a binary AND expression between a primary bracketed expression,
-	 * and a literal expression.
+	 *   int z = 0;
+	 *   z = (a) + z;
+	 *   z = (a) - z;
+	 *   z = (a) * z;
+	 *   z = (a) & z;
+	 *   
+	 * This hack fixes the problems reported in bugs 100408, 168924 and 192693.
 	 */
 	private boolean disambiguateHackCastExpression(IASTTypeId typeId, IASTExpression operand) {
 		if (operand instanceof IASTUnaryExpression) {
 			IASTUnaryExpression unaryExpression = (IASTUnaryExpression) operand;
 			IASTExpression unaryOperand = unaryExpression.getOperand();
-			if (unaryOperand instanceof IASTLiteralExpression && unaryExpression.getOperator() == IASTUnaryExpression.op_amper) {
-				List ruleTokens = parser.getRuleTokens(); // there has to be at least 4 tokens
-				IToken openParen  = (IToken)ruleTokens.get(0);
-				IToken ident      = (IToken)ruleTokens.get(1);
-				IToken closeParen = (IToken)ruleTokens.get(2);
-				
-				if(asC99Kind(openParen) != C99Parsersym.TK_LeftParen || 
-				   asC99Kind(ident) != C99Parsersym.TK_identifier || 
-				   asC99Kind(closeParen) != C99Parsersym.TK_RightParen) {
-					return false;
-				}
-				IASTDeclSpecifier declSpecifier = typeId.getDeclSpecifier();
-				if (!(declSpecifier instanceof IASTNamedTypeSpecifier)) {
-					return false;
-				}
-
-				IASTIdExpression idExpression = nodeFactory.newIdExpression();
-				IASTName name = ((IASTNamedTypeSpecifier) declSpecifier).getName();
-				idExpression.setName(name);
-				name.setParent(idExpression);
-				name.setPropertyInParent(IASTIdExpression.ID_NAME);
-				
-				IASTUnaryExpression operand1 = nodeFactory.newUnaryExpression();
-				operand1.setOperator(IASTUnaryExpression.op_bracketedPrimary);
-				operand1.setOperand(idExpression);
-				idExpression.setParent(operand1);
-				idExpression.setPropertyInParent(IASTUnaryExpression.OPERAND);
-				setOffsetAndLength(idExpression, offset(typeId), length(typeId));
-				
-				IASTBinaryExpression binaryExpression = nodeFactory.newBinaryExpression();
-				binaryExpression.setOperator(IASTBinaryExpression.op_binaryAnd);
-				binaryExpression.setOperand1(operand1);
-				operand1.setParent(binaryExpression);
-				operand1.setPropertyInParent(IASTBinaryExpression.OPERAND_ONE);
-				
-				// Compute the offset/length of operand1
-				int closingParenthesisOffset = closeParen.getEndOffset();
-				int openingParenthesisOffset = openParen.getStartOffset();
-				setOffsetAndLength(operand1, openingParenthesisOffset, closingParenthesisOffset - openingParenthesisOffset + 1);
-				
-				binaryExpression.setOperand2(unaryOperand);
-				unaryOperand.setParent(binaryExpression);
-				unaryOperand.setPropertyInParent(IASTBinaryExpression.OPERAND_TWO);
-				setOffsetAndLength(binaryExpression);
-				
-				astStack.push(binaryExpression);
-				return true;
+			
+			List ruleTokens = parser.getRuleTokens();
+			IToken openParen  = (IToken)ruleTokens.get(0);
+			IToken ident      = (IToken)ruleTokens.get(1);
+			IToken closeParen = (IToken)ruleTokens.get(2);
+			
+			if(asC99Kind(openParen) != C99Parsersym.TK_LeftParen || 
+			   asC99Kind(ident) != C99Parsersym.TK_identifier || 
+			   asC99Kind(closeParen) != C99Parsersym.TK_RightParen) {
+						return false;
 			}
+			
+			IToken operator = (IToken)ruleTokens.get(3);
+			int binaryOperator;
+			switch (asC99Kind(operator)) {
+			case C99Parsersym.TK_Plus:
+				binaryOperator = IASTBinaryExpression.op_plus;
+				break;
+			case C99Parsersym.TK_Minus:
+				binaryOperator = IASTBinaryExpression.op_minus;
+				break;
+			case C99Parsersym.TK_And:
+				binaryOperator = IASTBinaryExpression.op_binaryAnd;
+				break;
+			case C99Parsersym.TK_Star:
+				binaryOperator = IASTBinaryExpression.op_multiply;
+				break;
+			default:
+				return false;
+			}
+			
+			IASTDeclSpecifier declSpecifier = typeId.getDeclSpecifier();
+			if (!(declSpecifier instanceof IASTNamedTypeSpecifier)) {
+				return false;
+			}
+			
+			IASTIdExpression idExpression = nodeFactory.newIdExpression();
+			IASTName name = ((IASTNamedTypeSpecifier) declSpecifier).getName();
+			idExpression.setName(name);
+			name.setParent(idExpression);
+			name.setPropertyInParent(IASTIdExpression.ID_NAME);
+			
+			IASTUnaryExpression operand1 = nodeFactory.newUnaryExpression();
+			operand1.setOperator(IASTUnaryExpression.op_bracketedPrimary);
+			operand1.setOperand(idExpression);
+			idExpression.setParent(operand1);
+			idExpression.setPropertyInParent(IASTUnaryExpression.OPERAND);
+			setOffsetAndLength(idExpression, offset(typeId), length(typeId));
+			
+			IASTBinaryExpression binaryExpression = nodeFactory.newBinaryExpression();
+			binaryExpression.setOperator(binaryOperator);
+			binaryExpression.setOperand1(operand1);
+			operand1.setParent(binaryExpression);
+			operand1.setPropertyInParent(IASTBinaryExpression.OPERAND_ONE);
+			
+			// Compute the offset/length of operand1
+			int closingParenthesisOffset = closeParen.getEndOffset();
+			int openingParenthesisOffset = openParen.getStartOffset();
+			setOffsetAndLength(operand1, openingParenthesisOffset, closingParenthesisOffset - openingParenthesisOffset + 1);
+			
+			binaryExpression.setOperand2(unaryOperand);
+			unaryOperand.setParent(binaryExpression);
+			unaryOperand.setPropertyInParent(IASTBinaryExpression.OPERAND_TWO);
+			setOffsetAndLength(binaryExpression);
+			
+			astStack.push(binaryExpression);
+			return true;
 		}
 		return false;
 	}
@@ -1981,7 +2073,64 @@ public class C99ParserAction {
 		
 		setOffsetAndLength(stat);
 		astStack.push(stat);
+		
+		disambiguateHackMultiplicationExpression();
 	}
+	
+	
+	/**
+	 * Disambiguates the case where a standalone multiplication expression is parsed
+	 * as a declaration:
+	 * 
+	 * ex)  x * y;
+	 * 
+	 */
+	private void disambiguateHackMultiplicationExpression() {
+		List tokens = parser.getRuleTokens();
+		
+		// if what was parsed looks like: ident * ident ;
+		if(!matchKinds(tokens, new int[][]{{TK_identifier, TK_Completion}, {TK_Star}, {TK_identifier, TK_Completion}, {TK_SemiColon}})) {
+			return;
+		}
+		
+		IASTDeclarationStatement declStat = (IASTDeclarationStatement)astStack.pop();
+		
+		IToken ident1 = (IToken)tokens.get(0);
+		IASTName name1 = createName(ident1);
+		IASTIdExpression id1 = nodeFactory.newIdExpression();
+		id1.setName(name1);
+		name1.setParent(id1);
+		name1.setPropertyInParent(IASTIdExpression.ID_NAME);
+		setOffsetAndLength(id1, ident1);
+		
+		IToken ident2 = (IToken)tokens.get(2);
+		IASTName name2 = createName(ident2);
+		IASTIdExpression id2 = nodeFactory.newIdExpression();
+		id2.setName(name2);
+		name2.setParent(id2);
+		name2.setPropertyInParent(IASTIdExpression.ID_NAME);
+		setOffsetAndLength(id2);
+		
+		astStack.push(id1);
+		astStack.push(id2);
+		
+		consumeExpressionBinaryOperator(IASTBinaryExpression.op_multiply);
+		consumeStatementExpression();
+		
+		IASTExpressionStatement exprStat = (IASTExpressionStatement)astStack.pop();
+		
+		IASTAmbiguousStatement ambiguousStatement = nodeFactory.newAmbiguousStatement();
+		ambiguousStatement.addStatement(declStat);
+		declStat.setParent(ambiguousStatement);
+		declStat.setPropertyInParent(IASTAmbiguousExpression.SUBEXPRESSION);
+		
+		ambiguousStatement.addStatement(exprStat);
+		exprStat.setParent(ambiguousStatement);
+		exprStat.setPropertyInParent(IASTAmbiguousExpression.SUBEXPRESSION);
+		
+		astStack.push(ambiguousStatement);
+	}
+	
 	
 	
 	

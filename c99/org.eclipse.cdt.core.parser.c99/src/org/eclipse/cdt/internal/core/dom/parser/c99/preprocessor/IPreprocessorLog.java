@@ -27,10 +27,22 @@ public interface IPreprocessorLog {
 
     public void endTranslationUnit(int offset);
 
+    
+    /**
+     * Call when an inactive include is encountered.
+     */
     public void startInclusion(CodeReader reader, int offset, int endOffset, int nameOffset, int nameEndoffset, char[] name, boolean systemInclude);
 
     public void endInclusion(CodeReader reader, int offset);
 
+    
+    /**
+     * Call when an include thats in inactive code is encountered, the include is not followed.
+     */
+	public void encounterPoundInclude(int startOffset, int nameOffset, int nameEndOffset, int endOffset, char[] name, boolean systemInclude, boolean active);
+	
+	
+	
     public void startMacroExpansion(Macro macro, int nameStartOffset, int endOffset, char[][] actualArguments);
 	
 	public void endMacroExpansion(Macro macro, int offset);
@@ -56,8 +68,6 @@ public interface IPreprocessorLog {
     public void encounterPoundWarning(int startOffset, int endOffset, char[] msg);
     
     public void undefineMacro(int directiveStartOffset, int directiveEndOffset, String macroName, int nameOffset);
-
-	public void encounterPoundInclude(int startOffset, int nameOffset, int nameEndOffset, int endOffset, char[] name, boolean systemInclude, boolean active);
 
 	public void encounterProblem(IASTProblem problem);
 

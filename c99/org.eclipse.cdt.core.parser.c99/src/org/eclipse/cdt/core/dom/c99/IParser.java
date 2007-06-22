@@ -19,5 +19,4 @@ package org.eclipse.cdt.core.dom.c99;
 public interface IParser extends IPreprocessorTokenCollector {
 	
 	public IParseResult parse();
-	public void resetTokenStream();
 }

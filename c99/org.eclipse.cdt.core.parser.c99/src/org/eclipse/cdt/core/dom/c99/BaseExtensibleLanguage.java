@@ -142,7 +142,6 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, reader, scanInfo, fileCreator, preprocessorOptions);
 		if(parser == null)
 			parser = getParser();
-		parser.resetTokenStream();
 
 		LocationResolver resolver = new LocationResolver();
 		

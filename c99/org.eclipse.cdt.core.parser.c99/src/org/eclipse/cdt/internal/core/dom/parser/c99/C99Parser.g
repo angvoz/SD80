@@ -170,8 +170,8 @@ $End
 
 $Headers
 /.
-	private $action_class action = null;
-	private List commentTokens = null;
+	private $action_class action = new $action_class(this, $prs_type.orderedTerminalSymbols);
+	private List commentTokens = new ArrayList();
 	private IKeywordMap keywordMap = new $keyword_map_class();
 	
 	public $action_type() {  // constructor
@@ -238,6 +238,7 @@ $Headers
 		boolean encounteredError    = action.encounteredError();
 		IASTCompletionNode compNode = action.getASTCompletionNode();
 	
+		resetTokenStream(); // important, allows memory to be reclaimed
 		return new C99ParseResult(tu, compNode, encounteredError);
 	}
 	

@@ -259,46 +259,18 @@ public class C99ParserAction implements C99Parsersym {
 			return false;
 		
 		for(int i = 0; i < kinds.length; i++) {
-			if(asC99Kind((IToken)tokens.get(i)) != kinds[i]) {
-				return false;
-			}
-		}
-		
-		return true;
-	}
-	
-	
-	/**
-	 * Used to conveniently pattern match a list of tokens based on their kind. 
-	 * Can be used to specify optional kinds.
-	 * 
-	 * example) match: x * x
-	 * 
-	 * matchKinds(tokens, new int[] {{TK_identifier, TK_completion}, {TK_Star}, {TK_identifier, TK_completion}});
-	 * 
-	 */
-	private boolean matchKinds(List tokens, int[][] kinds) {
-		if(tokens.size() != kinds.length)
-			return false;
-		
-		for(int i = 0; i < kinds.length; i++) {
-			int[] optKinds = kinds[i];
-			
-			boolean matched = false;
 			int kind = asC99Kind((IToken)tokens.get(i));
-			for(int j = 0; j < optKinds.length; j++) {
-				if(kind == optKinds[j]) {
-					matched = true;
-					break;
-				}
+			if(kinds[i] == TK_identifier && (kind == TK_identifier || kind == TK_Completion)) {
+				continue;
 			}
-			
-			if(!matched)
+			if(kind != kinds[i]) {
 				return false;
+			}
 		}
 		
 		return true;
 	}
+	
 	
 	
 	// convenience methods for setting offsets and lengths on nodes
@@ -2089,7 +2061,7 @@ public class C99ParserAction implements C99Parsersym {
 		List tokens = parser.getRuleTokens();
 		
 		// if what was parsed looks like: ident * ident ;
-		if(!matchKinds(tokens, new int[][]{{TK_identifier, TK_Completion}, {TK_Star}, {TK_identifier, TK_Completion}, {TK_SemiColon}})) {
+		if(!matchKinds(tokens, new int[]{TK_identifier, TK_Star, TK_identifier, TK_SemiColon})) {
 			return;
 		}
 		
@@ -2186,45 +2158,23 @@ public class C99ParserAction implements C99Parsersym {
 		if(!(decl instanceof IASTSimpleDeclaration))
 			return false;
 		
-		IASTSimpleDeclaration declaration = (IASTSimpleDeclaration) decl;
-		IASTDeclSpecifier declSpec = declaration.getDeclSpecifier();
-		
-		if(!(declSpec instanceof ICASTTypedefNameSpecifier))
+		// Match the tokens against   x ( y ) ;
+		List tokens = parser.getRuleTokens();
+		if(!matchKinds(tokens, new int[]{TK_identifier, TK_LeftParen, TK_identifier, TK_RightParen, TK_SemiColon})) {
 			return false;
-			
-		ICASTTypedefNameSpecifier nameSpec = (ICASTTypedefNameSpecifier) declSpec;
-		IASTName name = (IASTName) nameSpec.getName();
-		
-		// easiest way to check that there are no other kewords in the declaration specifiers
-		if(!(offset(name) == offset(nameSpec) && length(name) == length(nameSpec)))
-			return false;
-			
-		IASTDeclarator[] declarators = declaration.getDeclarators();
-		if(declarators.length != 1)
-			return false;
-		
-		IASTDeclarator declarator = declarators[0];
-		IASTDeclarator nestedDeclarator = declarator.getNestedDeclarator();
-			
-		if(nestedDeclarator == null)
-			return false;
-		
-		while(nestedDeclarator.getNestedDeclarator() != null) {
-			nestedDeclarator = nestedDeclarator.getNestedDeclarator();
 		}
-		IASTName name2 = nestedDeclarator.getName();
-		
-		if(!(offset(name2) == offset(nestedDeclarator) && length(name2) == length(nestedDeclarator))) 
-			return false;
 			
 		// We have detected the situation that needs to be disambiguated.
-		// Build a funciton call expression and discard the declaration.
+		// Build a function call expression and discard the declaration.
+		IASTName name = createName((IToken)tokens.get(0));
+		
 		IASTIdExpression functionName = nodeFactory.newIdExpression();
 		functionName.setName(name);
 		name.setParent(functionName);
 		name.setPropertyInParent(IASTIdExpression.ID_NAME);
 		setOffsetAndLength(functionName, offset(name), length(name));
 		
+		IASTName name2 = createName((IToken)tokens.get(2));
 		IASTIdExpression parameter = nodeFactory.newIdExpression();
 		parameter.setName(name2);
 		name2.setParent(parameter);
@@ -2238,7 +2188,9 @@ public class C99ParserAction implements C99Parsersym {
 		expr.setParameterExpression(parameter);
 		parameter.setParent(expr);
 		parameter.setPropertyInParent(IASTFunctionCallExpression.PARAMETERS);
-		setOffsetAndLength(expr);
+		
+		IToken rightParen = (IToken)tokens.get(3);
+		setOffsetAndLength(expr, offset(name), endOffset(rightParen) - offset(name));
 		
 		IASTExpressionStatement stat = nodeFactory.newExpressionStatement();
 		stat.setExpression(expr);

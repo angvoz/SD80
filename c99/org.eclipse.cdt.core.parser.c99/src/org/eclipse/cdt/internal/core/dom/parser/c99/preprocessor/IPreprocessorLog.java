@@ -13,6 +13,7 @@ package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.IMacro;
 
 /**
  * A slightly modified version of IScannerPreprocessorLog
@@ -72,4 +73,6 @@ public interface IPreprocessorLog {
 	public void encounterProblem(IASTProblem problem);
 
 	public void registerBuiltinMacro(Macro macro);
+	
+	public void registerIndexMacro(IMacro macro);
 }

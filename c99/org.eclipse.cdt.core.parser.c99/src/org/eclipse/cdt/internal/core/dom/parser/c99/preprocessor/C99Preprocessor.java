@@ -205,6 +205,17 @@ public class C99Preprocessor implements C99Parsersym {
 	
 	
 	/**
+	 * Convert the buffer in the CodeReader into a list of tokens.
+	 */
+	private TokenList lex(CodeReader codeReader) {
+		ILexer lexer = lexerFactory.createLexer(codeReader);
+		boolean generateComments = generateActiveComments | generateAllComments;
+		int lexerOptions = generateComments ? ILexer.OPTION_GENERATE_COMMENT_TOKENS : 0;
+		return lexer.lex(lexerOptions);
+	}
+	
+	
+	/**
 	 * I believe that IExtendedScannerInfo is mainly used by the tests
 	 * to manually include files for testing.
 	 */
@@ -255,10 +266,9 @@ public class C99Preprocessor implements C99Parsersym {
 	
 	
 	/**
-	 * Lexes and saves an external macro definition (given by the toolchain) into
-	 * the macro environment.
+	 * Parses the given macro definition and adds it to the macro environment.
 	 */
-	private void registerMacro(String signature, String expansion) {
+	private Macro registerMacroInLocalEnvironment(String signature, String expansion) {
 		String define = signature + " " + expansion; //$NON-NLS-1$
 		TokenList tokenList = lex(new CodeReader(define.toCharArray()));
 		
@@ -266,23 +276,38 @@ public class C99Preprocessor implements C99Parsersym {
 		
 		// parse the macro as if it were created with a #define and add it to the macro environment
 		Macro macro = defineDirective(0, false); // false means don't log the define with the LocationResolver
-		if(macro != null)
-			log.registerBuiltinMacro(macro);
-		
 		inputTokenStream.resume();
+		return macro;
 	}
-	
 	
 	
 	/**
-	 * Convert the buffer in the CodeReader into a list of tokens.
+	 * Lexes and saves an external macro definition (given by the toolchain) into
+	 * the macro environment.
 	 */
-	private TokenList lex(CodeReader codeReader) {
-		ILexer lexer = lexerFactory.createLexer(codeReader);
-		boolean generateComments = generateActiveComments | generateAllComments;
-		int lexerOptions = generateComments ? ILexer.OPTION_GENERATE_COMMENT_TOKENS : 0;
-		return lexer.lex(lexerOptions);
+	private void registerMacro(String signature, String expansion) {
+		Macro macro = registerMacroInLocalEnvironment(signature, expansion);
+		if(macro != null && log != null)
+			log.registerBuiltinMacro(macro);
 	}
+	
+	
+	/**
+	 * Saves a macro given by the index into the macro environment.
+	 * Fix for bug 194206.
+	 */
+	private void registerMacro(IMacro m) {
+		if(m == null)
+			return;
+		
+		String signature = new String(m.getSignature());
+		String expansion = new String(m.getExpansion());
+		registerMacroInLocalEnvironment(signature, expansion);
+		
+		if(log != null)
+			log.registerIndexMacro(m);
+	}
+
 	
 	
 	/**
@@ -291,12 +316,14 @@ public class C99Preprocessor implements C99Parsersym {
 	private CodeReader createCodeReader(String path, String fileName) {
 		String finalPath = ScannerUtility.createReconciledPath(path, fileName);
 		
+		System.out.println("createing code reader :" + fileName);
 		IMacroCollector indexMacroCollector = new IMacroCollector() {
 			public void addDefinition(IMacro macro) {
-				registerMacro(new String(macro.getSignature()), new String(macro.getExpansion()));
+				registerMacro(macro);
 			}
 		};
 		
+		System.out.println(codeReaderFactory);
 		return codeReaderFactory.createCodeReaderForInclusion(indexMacroCollector, finalPath);
 	}
 	

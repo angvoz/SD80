@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.cdt.core.parser.IMacro;
 import org.eclipse.cdt.internal.core.parser.scanner2.FunctionStyleMacro;
 import org.eclipse.cdt.internal.core.parser.scanner2.LocationMap;
 import org.eclipse.cdt.internal.core.parser.scanner2.ObjectStyleMacro;
@@ -70,7 +71,7 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 			macroDef = super.defineFunctionStyleMacro(fsm, startOffset, nameOffset, nameEndOffset, endOffset);
 		}
 		
-		macroDefinitions.put(macro.getName().toString(), macroDef);
+		macroDefinitions.put(macro.getName(), macroDef);
 	}
 	
 
@@ -96,7 +97,30 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 			macroDef = super.registerBuiltinFunctionStyleMacro(fsm);
 		}
 		
-		macroDefinitions.put(macro.getName().toString(), macroDef);
+		macroDefinitions.put(macro.getName(), macroDef);
+	}
+	
+	
+	/**
+	 * Registers a macro that comes from the IndexBasedCodeReaderFactory via the IMacroCollector interface.
+	 * @param macro An org.eclipse.cdt.core.parser.IMacro object returned by the Index when headers are skipped.
+	 */
+	public void registerIndexMacro(IMacro macro) {
+		if(macro == null)
+			return;
+		
+		IMacroDefinition macroDef;
+		if(macro instanceof FunctionStyleMacro) {
+			macroDef = super.registerBuiltinFunctionStyleMacro((FunctionStyleMacro)macro);
+			
+        } 
+		else if(macro instanceof ObjectStyleMacro) {
+			macroDef = super.registerBuiltinObjectStyleMacro((ObjectStyleMacro)macro);
+        }
+		else {
+			return;
+		}
+		macroDefinitions.put(new String(macro.getName()), macroDef);
 	}
 	
 	
@@ -129,11 +153,9 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 		
 		IMacroDefinition macroDef = getMacroDefinition(macro);
 		if(macro.isObjectLike()) {
-			//System.out.println("C99 startObjectStyleMacroExpansion(" + nameStartOffset + "," + endOffset + ")");
 			super.startObjectStyleMacroExpansion(macroDef, nameStartOffset, endOffset);
 		}
 		else {
-			//System.out.println("C99 startFunctionStyleExpansion(" + nameStartOffset + "," + endOffset + ")");
 			super.startFunctionStyleExpansion(macroDef, getParamsAsChars(macro), nameStartOffset, endOffset, actualArgs);
 		}
 	}
@@ -145,11 +167,9 @@ public class LocationResolver extends LocationMap implements IPreprocessorLog {
 		
 		IMacroDefinition macroDef = getMacroDefinition(macro);
 		if(macro.isObjectLike()) {
-			//System.out.println("C99 endObjectStyleMacroExpansion(" + offset + ")");
 			super.endObjectStyleMacroExpansion(macroDef, offset);
 		}
 		else {
-			//System.out.println("C99 endFunctionStyleExpansion(" + offset + ")");
 			super.endFunctionStyleExpansion(macroDef, offset);
 		}
 		

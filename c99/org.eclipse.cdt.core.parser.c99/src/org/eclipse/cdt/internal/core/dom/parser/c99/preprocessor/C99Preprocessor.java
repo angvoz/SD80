@@ -316,14 +316,12 @@ public class C99Preprocessor implements C99Parsersym {
 	private CodeReader createCodeReader(String path, String fileName) {
 		String finalPath = ScannerUtility.createReconciledPath(path, fileName);
 		
-		System.out.println("createing code reader :" + fileName);
 		IMacroCollector indexMacroCollector = new IMacroCollector() {
 			public void addDefinition(IMacro macro) {
 				registerMacro(macro);
 			}
 		};
 		
-		System.out.println(codeReaderFactory);
 		return codeReaderFactory.createCodeReaderForInclusion(indexMacroCollector, finalPath);
 	}
 	

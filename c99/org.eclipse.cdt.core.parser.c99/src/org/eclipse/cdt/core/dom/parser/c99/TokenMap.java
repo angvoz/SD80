@@ -24,17 +24,26 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
  * 
  * @author Mike Kucera
  */
-class C99TokenMap {
+public abstract class TokenMap implements ITokenMap {
 
 	// LPG token kinds start at 0
 	public static int INVALID_KIND = -1;
 	
 	private int[] kindMap = null; 
 	private Map symbolMap = new HashMap();
+	private String[] targetSymbols = null;
 	
 	
-	
-	public C99TokenMap(String[] toSymbols) {
+	/**
+	 * @param toSymbols An array of symbols where the index is the token kind and the
+	 * element data is a string representing the token kind. It is expected
+	 * to pass the orderedTerminalSymbols field from an LPG generated symbol
+	 * file, for example C99Parsersym.orderedTerminalSymbols.
+	 */
+	public TokenMap(String[] toSymbols) {
+		targetSymbols = toSymbols;
+		
+		// If this map is not being used with an extension then it becomes an "identity map".
 		if(toSymbols == C99Parsersym.orderedTerminalSymbols)
 			return;
 		
@@ -51,20 +60,24 @@ class C99TokenMap {
 	}
 	
 	
+	public String[] getTargetSymbols() {
+		return targetSymbols;
+	}
+	
+	
 	/**
-	 * Maps the given token kind back to the same token kind defined in C99Parsersym.
+	 * Maps a token kind back to the corresponding kind define in the base C99 parser.
 	 */
 	public int asC99Kind(int kind) {
 		if(kindMap == null)
 			return kind;
 		
-		return kind >= kindMap.length ? INVALID_KIND : kindMap[kind];
+		if(kind < 0 || kind >= kindMap.length)
+			return INVALID_KIND;
+		
+		return kindMap[kind];
 	}
 	
-	
-	/**
-	 * Maps the given token kind back to the same token kind defined in C99Parsersym.
-	 */
 	public int asC99Kind(IToken token) {
 		return asC99Kind(token.getKind());
 	}

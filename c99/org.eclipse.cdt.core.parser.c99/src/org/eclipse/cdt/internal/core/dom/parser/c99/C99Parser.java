@@ -83,7 +83,7 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);//$NON-NLS-1$               
+                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);  //$NON-NLS-1$             
             }
             System.out.println();                        
         }
@@ -164,17 +164,12 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
     }
 
 
-private  C99ParserAction  action = new  C99ParserAction (this, C99Parserprs.orderedTerminalSymbols);
+private  C99ParserAction  action = new  C99ParserAction (this, new  C99TokenMap ());
 private List commentTokens = new ArrayList();
 private IKeywordMap keywordMap = new  C99KeywordMap ();
 
 public C99Parser() {  // constructor
-	this(new C99Lexer() {
-		// used by mapKind() to map C99 token kinds to the token kinds of a parser that extends this one
-		public String[] orderedExportedSymbols() {
-			return C99Parsersym.orderedTerminalSymbols;
-		}
-	});
+	this(new  C99Lexer ());
 }
 
 public void addToken(IToken token) {
@@ -199,7 +194,7 @@ public List getCommentTokens() {
 
 public void resetTokenStream() {
 	super.resetTokenStream();
-	action = new  C99ParserAction (this, C99Parserprs.orderedTerminalSymbols);
+	action = new  C99ParserAction (this, new  C99TokenMap ());
 	commentTokens = new ArrayList();
 }
 

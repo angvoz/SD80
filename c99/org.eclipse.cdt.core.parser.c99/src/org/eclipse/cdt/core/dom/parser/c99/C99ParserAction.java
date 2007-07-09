@@ -104,7 +104,7 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 /**
  * Semantic actions called by the parser to build an AST.
  */
-public class C99ParserAction implements C99Parsersym {
+public class C99ParserAction {
 
 	private static final char[] EMPTY_CHAR_ARRAY = {};
 	
@@ -122,7 +122,7 @@ public class C99ParserAction implements C99Parsersym {
 	 * When a language extension is used then the token kinds might be remapped,
 	 * a tokenMap maps token kinds back to the kinds defined in C99Parsersym.
 	 */
-	private final C99TokenMap tokenMap;
+	private final ITokenMap tokenMap;
 	
 	
 	/** set to true if a problem is encountered */
@@ -137,10 +137,14 @@ public class C99ParserAction implements C99Parsersym {
 
 	
 	
-	
-	public C99ParserAction(IParserActionTokenProvider parser, String[] orderedTerminalSymbols) {
+	/**
+	 * @param parser
+	 * @param orderedTerminalSymbols When an instance of this class is created for a parser
+	 * that parsers token kinds will be mapped back to the base C99 parser's token kinds.
+	 */
+	public C99ParserAction(IParserActionTokenProvider parser, ITokenMap tokenMap) {
 		this.parser = parser;
-		this.tokenMap = new C99TokenMap(orderedTerminalSymbols);
+		this.tokenMap = tokenMap;
 		this.nodeFactory = createNodeFactory();
 	}
 	
@@ -260,7 +264,8 @@ public class C99ParserAction implements C99Parsersym {
 		
 		for(int i = 0; i < kinds.length; i++) {
 			int kind = asC99Kind((IToken)tokens.get(i));
-			if(kinds[i] == TK_identifier && (kind == TK_identifier || kind == TK_Completion)) {
+			if(kinds[i] == C99Parsersym.TK_identifier && 
+			   (kind == C99Parsersym.TK_identifier || kind == C99Parsersym.TK_Completion)) {
 				continue;
 			}
 			if(kind != kinds[i]) {
@@ -2061,7 +2066,9 @@ public class C99ParserAction implements C99Parsersym {
 		List tokens = parser.getRuleTokens();
 		
 		// if what was parsed looks like: ident * ident ;
-		if(!matchKinds(tokens, new int[]{TK_identifier, TK_Star, TK_identifier, TK_SemiColon})) {
+		// oh how I miss static imports
+		if(!matchKinds(tokens, 
+			new int[]{C99Parsersym.TK_identifier, C99Parsersym.TK_Star, C99Parsersym.TK_identifier, C99Parsersym.TK_SemiColon})) {
 			return;
 		}
 		
@@ -2160,7 +2167,8 @@ public class C99ParserAction implements C99Parsersym {
 		
 		// Match the tokens against   x ( y ) ;
 		List tokens = parser.getRuleTokens();
-		if(!matchKinds(tokens, new int[]{TK_identifier, TK_LeftParen, TK_identifier, TK_RightParen, TK_SemiColon})) {
+		if(!matchKinds(tokens, 
+			new int[]{C99Parsersym.TK_identifier, C99Parsersym.TK_LeftParen, C99Parsersym.TK_identifier, C99Parsersym.TK_RightParen, C99Parsersym.TK_SemiColon})) {
 			return false;
 		}
 			

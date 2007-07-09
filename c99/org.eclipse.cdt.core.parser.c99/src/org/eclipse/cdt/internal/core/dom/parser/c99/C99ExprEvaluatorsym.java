@@ -71,14 +71,11 @@ public interface C99ExprEvaluatorsym {
       TK_charconst = 28,
       TK_stringlit = 55,
       TK_Invalid = 56,
-      TK_PlaceMarker = 57,
-      TK_Parameter = 58,
-      TK_DisabledMacroName = 59,
-      TK_Completion = 60,
-      TK_EndOfCompletion = 61,
-      TK_SingleLineComment = 62,
-      TK_MultiLineComment = 63,
-      TK_ERROR_TOKEN = 64;
+      TK_Completion = 57,
+      TK_EndOfCompletion = 58,
+      TK_SingleLineComment = 59,
+      TK_MultiLineComment = 60,
+      TK_ERROR_TOKEN = 61;
 
       public final static String orderedTerminalSymbols[] = {
                  "",//$NON-NLS-1$
@@ -138,9 +135,6 @@ public interface C99ExprEvaluatorsym {
                  "floating",//$NON-NLS-1$
                  "stringlit",//$NON-NLS-1$
                  "Invalid",//$NON-NLS-1$
-                 "PlaceMarker",//$NON-NLS-1$
-                 "Parameter",//$NON-NLS-1$
-                 "DisabledMacroName",//$NON-NLS-1$
                  "Completion",//$NON-NLS-1$
                  "EndOfCompletion",//$NON-NLS-1$
                  "SingleLineComment",//$NON-NLS-1$

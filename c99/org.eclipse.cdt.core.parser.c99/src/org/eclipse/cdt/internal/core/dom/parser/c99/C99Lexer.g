@@ -101,18 +101,7 @@ $Export
 	-- Invalid tokens are the result of:
 	--  1) a syntax error at the token level (created in the reportError() method)
 	--  2) improper use of the ## operator, caught by the preprocessor
-	Invalid
-	
-	
-	-- Temporarily used during macro preprocessing (to support the ## operator)
-	PlaceMarker
-	-- Used to identify macro parameters within the body of 
-	-- a macro for the purpose of avoiding name capture.
-	Parameter 
-	
-	-- temporarily used during preprocessing
-	-- prevents a recursive macro from repeated expansion 
-	DisabledMacroName  
+	Invalid 
 	
 	-- The completion token represents the location of the cursor in the working copy
 	Completion
@@ -129,7 +118,7 @@ $Globals
 	import org.eclipse.cdt.core.parser.CodeReader;
 	import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerKind;
     import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
-    import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
+    import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
     import org.eclipse.cdt.core.dom.c99.ILexer;
 ./
 $End
@@ -181,11 +170,11 @@ $Headers
 	    //    endOffset += 2; // make sure the toString() method of the token returns the entire trigraph sequence
 	    //}
 		
-		tokenList.add(new C99Token(startOffset, endOffset, kind, input));
+		tokenList.add(new Token(startOffset, endOffset, kind, input));
 	}
 	
 	public void reportError(int leftOffset, int rightOffset) {
-		C99Token token = new C99Token(leftOffset, rightOffset, TK_Invalid, getInputChars());
+		Token token = new Token(leftOffset, rightOffset, TK_Invalid, getInputChars());
 		tokenList.add(token);
 	}
 	

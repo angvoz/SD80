@@ -17,6 +17,8 @@ import lpg.lpgjavaruntime.*;
 
 import java.util.*;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.*;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
+import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
 
 public class C99ExprEvaluator extends PrsStream implements RuleAction
 {
@@ -74,14 +76,14 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);   //$NON-NLS-1$            
+                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);     //$NON-NLS-1$          
             }
             System.out.println();                        
         }
         catch(UndefinedEofSymbolException e)
         {
             throw new Error(new UndefinedEofSymbolException
-                                ("The Lexer does not implement the Eof symbol " + //$NON-NLS-1$
+                                ("The Lexer does not implement the Eof symbol " +//$NON-NLS-1$
                                  C99ExprEvaluatorsym.orderedTerminalSymbols[C99ExprEvaluatorprs.EOFT_SYMBOL]));
         } 
     }
@@ -140,20 +142,20 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
 
 private C99ExprEvaluatorAction action = new C99ExprEvaluatorAction(this);
 
-public C99ExprEvaluator(TokenList tokens) {
+public C99ExprEvaluator(TokenList tokens, final ITokenMap tokenMap) {
 	this(new C99Lexer() {
 		public String[] orderedExportedSymbols() {
-			return C99Parsersym.orderedTerminalSymbols;
+			return tokenMap.getTargetSymbols();
 		}
 	});
-	addToken(C99Token.DUMMY_TOKEN);
+	addToken(Token.DUMMY_TOKEN);
 	for(Iterator iter = tokens.iterator(); iter.hasNext();) {
-		C99Token token = new C99Token((IToken)iter.next());
+		Token token = new Token((Token)iter.next());
 		// Map token kinds defined in the C99Parser to those defined in the C99ExprEvaluator
 		token.setKind(mapKind(token.getKind()));
 		addToken(token);
 	}
-	addToken(new C99Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>"));//$NON-NLS-1$
+	addToken(new Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>"));//$NON-NLS-1$
 	setStreamLength(getSize());
 }
 

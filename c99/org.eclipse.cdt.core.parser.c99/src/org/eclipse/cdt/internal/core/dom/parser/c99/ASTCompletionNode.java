@@ -21,7 +21,7 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
  * An AST node that represents the location of content assist
  * in the source file.
  * 
- * This node may contain the prefix text of an identifer up to the point. If
+ * This node may contain the prefix text of an identifier up to the point. If
  * there is no prefix, the completion occurred at the point where a new token
  * would have begun.
  * 

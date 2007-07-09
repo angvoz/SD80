@@ -13,7 +13,8 @@ package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
 import java.util.Iterator;
 
-import lpg.lpgjavaruntime.IToken;
+import org.eclipse.cdt.core.dom.parser.c99.IToken;
+
 
 /**
  * Represents a list of tokens that compromise an argument to a macro invocation.
@@ -92,7 +93,7 @@ class MacroArgument {
 		TokenList clone = new TokenList();
 		for(Iterator iter = orig.iterator(); iter.hasNext(); ) {
 			IToken token = (IToken) iter.next();
-			clone.add(new C99Token(token)); // TODO: remove dependancy on C99Token
+			clone.add(new Token(token)); // TODO: remove dependancy on C99Token
 		}
 		return clone;
 	}

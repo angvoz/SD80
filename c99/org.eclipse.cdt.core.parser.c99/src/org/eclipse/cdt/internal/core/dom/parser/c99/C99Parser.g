@@ -165,22 +165,19 @@ $Define
 	
 	$action_class /. C99ParserAction ./
 	$keyword_map_class /. C99KeywordMap ./
+	$token_map_class /. C99TokenMap ./
+	$lexer_class /. C99Lexer ./
 $End
 
 
 $Headers
 /.
-	private $action_class action = new $action_class(this, $prs_type.orderedTerminalSymbols);
+	private $action_class action = new $action_class(this, new $token_map_class());
 	private List commentTokens = new ArrayList();
 	private IKeywordMap keywordMap = new $keyword_map_class();
 	
 	public $action_type() {  // constructor
-		this(new C99Lexer() {
-			// used by mapKind() to map C99 token kinds to the token kinds of a parser that extends this one
-			public String[] orderedExportedSymbols() {
-				return C99Parsersym.orderedTerminalSymbols;
-			}
-		});
+		this(new $lexer_class());
 	}
 	
 	public void addToken(IToken token) {
@@ -205,7 +202,7 @@ $Headers
 	
 	public void resetTokenStream() {
 		super.resetTokenStream();
-		action = new $action_class(this, $prs_type.orderedTerminalSymbols);
+		action = new $action_class(this, new $token_map_class());
 		commentTokens = new ArrayList();
 	}
 	

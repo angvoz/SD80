@@ -20,6 +20,7 @@ import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
 import org.eclipse.cdt.core.dom.parser.c99.C99ParseResult;
+import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.AbstractLanguage;
 import org.eclipse.cdt.core.model.ICLanguageKeywords;
@@ -72,6 +73,20 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 	
 	
 	/**
+	 * Returns a lexer factory that creates lexers for the language extension.
+	 */
+	protected abstract ILexerFactory getLexerFactory();
+	
+	
+	/**
+	 * Returns a token map for the language extension, this is used to 
+	 * map token kinds that the language extension defines back to 
+	 * token kinds that can be understood by the preprocessor.
+	 */
+	protected abstract ITokenMap getTokenMap();
+	
+	
+	/**
 	 * Return any additional builtin macros and directives that are
 	 * to be supported by the language variant.
 	 */
@@ -96,9 +111,6 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 		
 		IParseResult parseResult = parse(reader, scanInfo, fileCreator, index, null, options);
 		IASTTranslationUnit tu = parseResult.getTranslationUnit();
-
-		//if(parseResult.encounteredError())
-		//	System.out.println("Encountered Error: '" + new String(reader.filename) + "'");
 		return tu;
 	}
 	
@@ -138,8 +150,10 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 		boolean scanComments = (options & OPTION_ADD_COMMENTS) != 0;
 		int preprocessorOptions = scanComments ? C99Preprocessor.OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE : 0;
 		
-		ILexerFactory lexerFactory = new C99LexerFactory();
-		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, reader, scanInfo, fileCreator, preprocessorOptions);
+		ILexerFactory lexerFactory = getLexerFactory();
+		ITokenMap tokenMap = getTokenMap();
+		
+		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, tokenMap, reader, scanInfo, fileCreator, preprocessorOptions);
 		if(parser == null)
 			parser = getParser();
 

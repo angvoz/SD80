@@ -108,13 +108,10 @@ public interface C99Parsersym {
       TK_RightBrace = 43,
       TK_SemiColon = 30,
       TK_Invalid = 96,
-      TK_PlaceMarker = 97,
-      TK_Parameter = 98,
-      TK_DisabledMacroName = 99,
       TK_Completion = 8,
       TK_EndOfCompletion = 4,
-      TK_SingleLineComment = 100,
-      TK_MultiLineComment = 101,
+      TK_SingleLineComment = 97,
+      TK_MultiLineComment = 98,
       TK_ERROR_TOKEN = 49;
 
       public final static String orderedTerminalSymbols[] = {
@@ -215,9 +212,6 @@ public interface C99Parsersym {
                  "HashHash",//$NON-NLS-1$
                  "NewLine",//$NON-NLS-1$
                  "Invalid",//$NON-NLS-1$
-                 "PlaceMarker",//$NON-NLS-1$
-                 "Parameter",//$NON-NLS-1$
-                 "DisabledMacroName",//$NON-NLS-1$
                  "SingleLineComment",//$NON-NLS-1$
                  "MultiLineComment"//$NON-NLS-1$
              };

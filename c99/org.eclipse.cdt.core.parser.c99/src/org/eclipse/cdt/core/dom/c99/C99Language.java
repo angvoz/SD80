@@ -12,7 +12,10 @@ package org.eclipse.cdt.core.dom.c99;
 
 import org.eclipse.cdt.core.dom.parser.c99.C99KeywordMap;
 import org.eclipse.cdt.core.dom.parser.c99.GCCPreprocessorExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
+import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
+import org.eclipse.cdt.internal.core.dom.parser.c99.C99TokenMap;
 
 
 /**
@@ -59,4 +62,12 @@ public class C99Language extends BaseExtensibleLanguage {
 	protected IPreprocessorExtensionConfiguration getPreprocessorExtensionConfiguration() {
 		return GCC_PREPROCESSOR_EXTENSION;
 	}
+	
+	protected ILexerFactory getLexerFactory() {
+		return new C99LexerFactory();
+	}
+	
+	protected ITokenMap getTokenMap() {
+		return new C99TokenMap();
+	} 
 }

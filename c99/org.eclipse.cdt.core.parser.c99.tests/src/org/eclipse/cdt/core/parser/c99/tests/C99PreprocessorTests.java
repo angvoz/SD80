@@ -25,6 +25,7 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.C99ExprEvaluator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
+import org.eclipse.cdt.internal.core.dom.parser.c99.C99TokenMap;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
 
@@ -46,7 +47,7 @@ public class C99PreprocessorTests extends TestCase {
 		ILexerFactory lexerFactory = new C99LexerFactory();
 		
 		IScannerInfo scanInfo = null;
-		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, reader, scanInfo, fileCreator, 0);
+		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, new C99TokenMap(), reader, scanInfo, fileCreator, 0);
 		
 		C99Parser parser = new C99Parser();
 		
@@ -62,7 +63,7 @@ public class C99PreprocessorTests extends TestCase {
 		if(tokens == null)
 			fail("Lexer failed on input: " + expr);
 		
-		C99ExprEvaluator evaluator = new C99ExprEvaluator(tokens);
+		C99ExprEvaluator evaluator = new C99ExprEvaluator(tokens, new C99TokenMap());
 		Long value = evaluator.evaluate();
 		
 		if(value == null)

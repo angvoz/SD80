@@ -19,8 +19,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import lpg.lpgjavaruntime.IToken;
+import java.util.Vector;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.IMacroCollector;
@@ -29,12 +28,15 @@ import org.eclipse.cdt.core.dom.c99.ILexer;
 import org.eclipse.cdt.core.dom.c99.ILexerFactory;
 import org.eclipse.cdt.core.dom.c99.IPreprocessorExtensionConfiguration;
 import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
+import org.eclipse.cdt.core.dom.parser.c99.IToken;
+import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IMacro;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99ExprEvaluator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
+
 import org.eclipse.cdt.internal.core.parser.scanner2.ScannerASTProblem;
 import org.eclipse.cdt.internal.core.parser.scanner2.ScannerUtility;
 
@@ -42,8 +44,8 @@ import org.eclipse.cdt.internal.core.parser.scanner2.ScannerUtility;
 /**
  * The C99 preprocessor.
  * 
- */
-public class C99Preprocessor implements C99Parsersym {
+ */ 
+public class C99Preprocessor {
 
 	public static final int OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE = 1;
 	public static final int OPTION_GENERATE_ALL_COMMENTS = 2;
@@ -61,6 +63,7 @@ public class C99Preprocessor implements C99Parsersym {
 	private final IScannerInfo scanInfo; // Used to resolve includes and get access to macro definitions
 	private final ILexerFactory lexerFactory; // Used to create lexers for included files
 	private final ICodeReaderFactory codeReaderFactory; // Used to get source character buffers of included files
+	private final ITokenMap tokenMap;
 	
 	private final boolean generateAllComments;
 	private final boolean generateActiveComments;
@@ -89,7 +92,7 @@ public class C99Preprocessor implements C99Parsersym {
 	/**
 	 * Creates a preprocessor using the given keywords.
 	 */
-	public C99Preprocessor(ILexerFactory lexerFactory, 
+	public C99Preprocessor(ILexerFactory lexerFactory, ITokenMap tokenMap,
 			CodeReader reader, IScannerInfo scanInfo,
 			ICodeReaderFactory fileCreator, int options) {
 		
@@ -97,6 +100,7 @@ public class C99Preprocessor implements C99Parsersym {
 		this.scanInfo = scanInfo;
 		this.lexerFactory = lexerFactory;
 		this.codeReaderFactory = fileCreator;
+		this.tokenMap = tokenMap;
 		
 		this.generateActiveComments = (options & OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE) != 0;
 		this.generateAllComments    = (options & OPTION_GENERATE_ALL_COMMENTS) != 0;
@@ -123,7 +127,7 @@ public class C99Preprocessor implements C99Parsersym {
 		if(parser == null)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.0")); //$NON-NLS-1$
 		
-		preprocess(parser, log, extensionConfiguration, new InputTokenStream(parser));
+		preprocess(parser, log, extensionConfiguration, new InputTokenStream(parser, tokenMap));
 	}
 	
 	
@@ -141,7 +145,7 @@ public class C99Preprocessor implements C99Parsersym {
 		if(contentAssistOffset < 0)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.2")); //$NON-NLS-1$
 		
-		InputTokenStream inputTokenStream = new InputTokenStream(parser);
+		InputTokenStream inputTokenStream = new InputTokenStream(parser, tokenMap);
 		inputTokenStream.setContentAssistOffset(contentAssistOffset);
 		preprocess(parser, log, extensionConfiguration, inputTokenStream);
 		
@@ -170,7 +174,7 @@ public class C99Preprocessor implements C99Parsersym {
 				addMacroDefinitions(extensionConfiguration.getAdditionalMacros());
 			
 			// LPG requires that the parse stream must start with a dummy token
-			parser.addToken(C99Token.DUMMY_TOKEN); 
+			parser.addToken(Token.DUMMY_TOKEN); 
 	
 			if(log != null)
 				log.startTranslationUnit(codeReader);
@@ -184,7 +188,7 @@ public class C99Preprocessor implements C99Parsersym {
 			process(); // throws PreprocessorAbortParseException
 			
 			int tuSize = inputTokenStream.getTranslationUnitSize();
-			parser.addToken(new C99Token(tuSize, tuSize, TK_EOF_TOKEN, "<EOF>")); //$NON-NLS-1$
+			parser.addToken(new Token(tuSize, tuSize, tokenMap.getEOFTokenKind(), "<EOF>")); //$NON-NLS-1$
 			
 			if(log != null)
 				log.endTranslationUnit(tuSize);
@@ -211,7 +215,13 @@ public class C99Preprocessor implements C99Parsersym {
 		ILexer lexer = lexerFactory.createLexer(codeReader);
 		boolean generateComments = generateActiveComments | generateAllComments;
 		int lexerOptions = generateComments ? ILexer.OPTION_GENERATE_COMMENT_TOKENS : 0;
-		return lexer.lex(lexerOptions);
+		TokenList tokens = lexer.lex(lexerOptions);
+	
+		for(Iterator iter = tokens.iterator(); iter.hasNext();) {
+			IToken token = (IToken)iter.next();
+		}
+		
+		return tokens;
 	}
 	
 	
@@ -369,38 +379,31 @@ public class C99Preprocessor implements C99Parsersym {
 			return;
 		}
 		
-		// Filter what tokens the parser sees, for example newline tokens are removed
-		switch(t.getKind()) {
-			case TK_NewLine:       // the parser does not want to see newline or placemarker tokens
-			case TK_PlaceMarker:
-				return;
-			case TK_DisabledMacroName: // disabled macro names should be treated as regular identifiers 
-				t.setKind(TK_identifier);
-				break;
-			case TK_Parameter:
-				assert false; //all macro parameters should have already been replaced
-		}
+		// Filter out newline tokens
+		if(tokenMap.asC99Kind(t) == C99Parsersym.TK_NewLine)
+			return;
+		if(t.getPreprocessorAttribute() == IToken.ATTR_PLACE_MARKER)
+			return;
 		
-		//C99Token toOutput = new C99Token(t); // why create a new object?
 		IToken toOutput = t;
 		
 		// TODO lastTokenOutput probably isn't the best way of handling this
 		// the parser may have already altered lastTokenOutput
 		
 		// concatenate adjacent string literals
-		if(lastTokenOutput != null &&  t.getKind() == TK_stringlit && lastKindOutput == TK_stringlit) {
+		if(lastTokenOutput != null &&  tokenMap.asC99Kind(t) == C99Parsersym.TK_stringlit && lastKindOutput == C99Parsersym.TK_stringlit) {
 			String s1 = lastTokenOutput.toString();
 			String s2 = toOutput.toString();
 			assert s1.length() >=2 && s2.length() != 2; // smallest string literal is ""
 			
 			String rep = s1.substring(0, s1.length()-1) + s2.substring(1);
-			((C99Token)lastTokenOutput).setRepresentation(rep);
+			((Token)lastTokenOutput).setRepresentation(rep);
 			lastTokenOutput.setEndOffset(toOutput.getEndOffset());
 			// don't send the result to the parser
 		}
 		else {
 			lastTokenOutput = toOutput;
-			lastKindOutput = toOutput.getKind();
+			lastKindOutput = tokenMap.asC99Kind(toOutput.getKind());
 			//System.out.println("Token: (" + toOutput.getKind() + ", " + toOutput.getStartOffset() + ", " + toOutput.getEndOffset() + ") " + toOutput);
 			parser.addToken(toOutput);
 		}
@@ -412,7 +415,7 @@ public class C99Preprocessor implements C99Parsersym {
 	 ***************************************************************************************/
 	
 
-	// Tokens that the preprocessor recongizes
+	// Tokens that the preprocessor recognizes
 	static final int 
 		PPTOKEN   = 0, 
 		HASH      = 1,
@@ -426,7 +429,7 @@ public class C99Preprocessor implements C99Parsersym {
 		EOF       = 99;
 
 
-	// Identifier tokens regognized as reprocessor directives
+	// Identifier tokens recognized as preprocessor directives
 	static final String 
 		IF           = "if",           //$NON-NLS-1$
 		IFDEF        = "ifdef",        //$NON-NLS-1$
@@ -448,21 +451,21 @@ public class C99Preprocessor implements C99Parsersym {
 	 * Converts a regular token type into one of the
 	 * token types that are recognized by the preprocessor.
 	 */
-	private static int toPPToken(IToken token) {
+	private int toPPToken(IToken token) {
 		if(token == null)
 			return EOF;
 		
-		switch(token.getKind()) {
-			case TK_Hash:       return HASH;
-			case TK_HashHash:   return HASHHASH;
-			case TK_LeftParen:  return LPAREN;
-			case TK_NewLine:    return NEWLINE;
-			case TK_identifier: return IDENT;
-			case TK_Comma:      return COMMA;
-			case TK_RightParen: return RPAREN;
-			case TK_DotDotDot:  return DOTDOTDOT;
-			case TK_EOF_TOKEN:  return EOF;
-			default:            return PPTOKEN;
+		switch(tokenMap.asC99Kind(token)) {
+			case C99Parsersym.TK_Hash:       return HASH;
+			case C99Parsersym.TK_HashHash:   return HASHHASH;
+			case C99Parsersym.TK_LeftParen:  return LPAREN;
+			case C99Parsersym.TK_NewLine:    return NEWLINE;
+			case C99Parsersym.TK_identifier: return IDENT;
+			case C99Parsersym.TK_Comma:      return COMMA;
+			case C99Parsersym.TK_RightParen: return RPAREN;
+			case C99Parsersym.TK_DotDotDot:  return DOTDOTDOT;
+			case C99Parsersym.TK_EOF_TOKEN:  return EOF;
+			default:                         return PPTOKEN;
 		}
 	}
 	
@@ -492,7 +495,7 @@ public class C99Preprocessor implements C99Parsersym {
 	 */
 	private boolean done() {
 		IToken token = inputTokenStream.peek();
-		return token == null || token.getKind() == TK_EOF_TOKEN;
+		return token == null || tokenMap.asC99Kind(token) == C99Parsersym.TK_EOF_TOKEN;
 	}
 	
 
@@ -738,9 +741,11 @@ public class C99Preprocessor implements C99Parsersym {
 	private void handleBasicContentAssistOffsetReached() {
 		assert inputTokenStream.isContentAssistOffsetReached();
 
+		final int completionKind = tokenMap.getCompletionTokenKind();
+		
 		if(inputTokenStream.isEmpty()) {
 			int endOffset = inputTokenStream.getTranslationUnitSize();
-			C99Token completionToken = new C99Token(endOffset, endOffset, TK_Completion, ""); //$NON-NLS-1$
+			Token completionToken = new Token(endOffset, endOffset, completionKind, ""); //$NON-NLS-1$
 			addCompletionTokenToOutputAndQuit(completionToken);
 			return;
 		}
@@ -752,13 +757,13 @@ public class C99Preprocessor implements C99Parsersym {
 		int cursorOffset   = inputTokenStream.getContentAssistOffset();
 		int adjustedOffset = inputTokenStream.adjust(cursorOffset) - 1;
 		
-		C99Token completionToken;
+		Token completionToken;
 		
 		if(token.getStartOffset() >= cursorOffset) {
 			// we are in between tokens, create an empty completion token
-			completionToken = new C99Token(adjustedOffset, adjustedOffset, TK_Completion, ""); //$NON-NLS-1$
+			completionToken = new Token(adjustedOffset, adjustedOffset, completionKind, ""); //$NON-NLS-1$
 		}
-		else if(token.getKind() == TK_identifier) {
+		else if(tokenMap.asC99Kind(token) == C99Parsersym.TK_identifier) {
 			// at this point we know the cursor is in the middle or at the end of an identifier token
 			int startOffset = token.getStartOffset();
 
@@ -770,12 +775,12 @@ public class C99Preprocessor implements C99Parsersym {
 			int newStartOffset = inputTokenStream.adjust(startOffset);
 			int newEndOffset   = inputTokenStream.adjust(startOffset + prefixLength);
 			
-			completionToken = new C99Token(newStartOffset, newEndOffset, TK_Completion, prefix);
+			completionToken = new Token(newStartOffset, newEndOffset, completionKind, prefix);
 			//completionToken.setRepresentation(prefix);
 		}
 		else if(token.getEndOffset() == cursorOffset - 1) {
 			// its not an identifier, and we are at the end of the token
-			completionToken = new C99Token(adjustedOffset, adjustedOffset, TK_Completion, ""); //$NON-NLS-1$
+			completionToken = new Token(adjustedOffset, adjustedOffset, completionKind, ""); //$NON-NLS-1$
 			addToOutputStream(next()); // very important
 		}	
 		else { 
@@ -795,23 +800,21 @@ public class C99Preprocessor implements C99Parsersym {
 	 * therefore we choose an arbitrary number NUM_EOC_TOKENS and
 	 * hope its enough.
 	 */
-	private void addCompletionTokenToOutputAndQuit(IToken completionToken) {
-		assert completionToken.getKind() == TK_Completion;
-		
+	private void addCompletionTokenToOutputAndQuit(IToken completionToken) {		
 		addToOutputStream(completionToken);
 		
 		int offset = completionToken.getEndOffset() + 1;
 		// Generate a bunch of eoc tokens
 		for(int i = 0; i < NUM_EOC_TOKENS; i++) {
-			addToOutputStream(new C99Token(offset, offset, TK_EndOfCompletion, "")); //$NON-NLS-1$
+			addToOutputStream(new Token(offset, offset, tokenMap.getEndOfCompletionTokenKind(), "")); //$NON-NLS-1$
 		}		
 		// discard the rest of the input tokens on the input
-		inputTokenStream = new InputTokenStream(parser);
+		inputTokenStream = new InputTokenStream(parser, tokenMap);
 	}
 	
 	
 	private void addCompletionTokenToOutputAndQuit(int offset, String prefix) {
-		addCompletionTokenToOutputAndQuit(new C99Token(offset, offset, TK_Completion, prefix));
+		addCompletionTokenToOutputAndQuit(new Token(offset, offset, tokenMap.getCompletionTokenKind(), prefix));
 	}
 	
 	
@@ -839,7 +842,10 @@ public class C99Preprocessor implements C99Parsersym {
 				next(); // skip the defined keyword
 				handleDefinedOperator();
 			}
-			else if(check(IDENT) && env.hasMacro(currentToken.toString())) {
+			
+			// Do not expand macro names that have been generated by a macro expansion
+			else if(check(IDENT) && env.hasMacro(currentToken.toString()) && 
+					currentToken.getPreprocessorAttribute() != IToken.ATTR_DISABLED_MACRO_NAME) {
 				Macro macro = env.get(currentToken.toString());
 				macroCall(macro);
 			}
@@ -872,7 +878,7 @@ public class C99Preprocessor implements C99Parsersym {
 		
 		String val = env.hasMacro(ident.toString()) ? "1" : "0"; //$NON-NLS-1$ //$NON-NLS-2$
 		// TODO: what about the offsets (they probably don't matter)
-		addToOutputStream(new C99Token(0, 0, TK_integer, val));
+		addToOutputStream(new Token(0, 0, tokenMap.getIntegerTokenKind(), val));
 	}
 
 	
@@ -1163,7 +1169,7 @@ public class C99Preprocessor implements C99Parsersym {
 			
 			int endOffset = token.getEndOffset();
 			
-			if(token.getKind() == TK_identifier && endOffset == contentAssistOffset) {
+			if(tokenMap.asC99Kind(token) == C99Parsersym.TK_identifier && endOffset == contentAssistOffset) {
 				return token;
 			}
 			if(endOffset > contentAssistOffset) {
@@ -1389,7 +1395,7 @@ public class C99Preprocessor implements C99Parsersym {
 			return null;
 		}
 		
-		C99ExprEvaluator evaluator = new C99ExprEvaluator(constantExpression);
+		C99ExprEvaluator evaluator = new C99ExprEvaluator(constantExpression, tokenMap);
 		// if there is a problem during evaluation then evaluate() will return null
 		return evaluator.evaluate();
 	}
@@ -1439,8 +1445,8 @@ public class C99Preprocessor implements C99Parsersym {
 		TokenList includeBody;
 		
 		// if its a regular include like <filename.h> or "filename.h" then ignore the < > and " in the offsets
-		if((tokens.first().getKind() == TK_LT && tokens.last().getKind() == TK_GT) ||
-		   (tokens.size() == 1 && tokens.first().getKind() == TK_stringlit)) {
+		if((tokenMap.asC99Kind(tokens.first()) == C99Parsersym.TK_LT && tokenMap.asC99Kind(tokens.last()) == C99Parsersym.TK_GT) ||
+		   (tokens.size() == 1 && tokenMap.asC99Kind(tokens.first()) == C99Parsersym.TK_stringlit)) {
 			
 			fileNameStart = tokens.first().getStartOffset() + 1;
 			fileNameEnd   = tokens.last().getEndOffset();
@@ -1604,14 +1610,14 @@ public class C99Preprocessor implements C99Parsersym {
 	 * 
 	 * postcondition: result == null ^ result.length() >= 2
 	 */
-	private static String computeIncludeFileName(TokenList includeBody) {
+	private String computeIncludeFileName(TokenList includeBody) {
 		if(includeBody == null || includeBody.isEmpty() || includeBody.size() == 2) {
 			return null;
 		}
 		
 		if(includeBody.size() == 1) {
 			IToken token = includeBody.first();
-			if(token.getKind() == TK_stringlit) // local include
+			if(tokenMap.asC99Kind(token) == C99Parsersym.TK_stringlit) // local include
 				return token.toString();
 			else
 				return null;
@@ -1620,7 +1626,7 @@ public class C99Preprocessor implements C99Parsersym {
 		// at this point the size must be at least 3
 		IToken first = includeBody.first();
 		IToken last  = includeBody.last();
-		if(first.getKind() != TK_LT || last.getKind() != TK_GT) {
+		if(tokenMap.asC99Kind(first) != C99Parsersym.TK_LT || tokenMap.asC99Kind(last) != C99Parsersym.TK_GT) {
 			return null;
 		}
 
@@ -1772,14 +1778,14 @@ public class C99Preprocessor implements C99Parsersym {
 			}
 
 			int endOffset = calculateMacroDefinitionEndOffset(rparen, replacementList);
-			macro = new Macro(macroName, replacementList, startOffset, endOffset, paramNames, varArgParamName);
+			macro = new Macro(macroName, replacementList, startOffset, endOffset, paramNames, varArgParamName, tokenMap);
 		}
 		
 		// object like macro
 		else { 
 			TokenList replacementList = replacementListTokens(null, null);
 			int endOffset = calculateMacroDefinitionEndOffset(macroName, replacementList);
-			macro = new Macro(macroName, replacementList, startOffset, endOffset);
+			macro = new Macro(macroName, replacementList, startOffset, endOffset, tokenMap);
 		}
 		
 		env.addMacro(macro);
@@ -1790,11 +1796,12 @@ public class C99Preprocessor implements C99Parsersym {
 	}
 	
 	
-	private static boolean startsOrEndsWithHashHash(TokenList tokens) {
+	private boolean startsOrEndsWithHashHash(TokenList tokens) {
 		if(tokens.isEmpty()) 
 			return false;
 		
-		return tokens.first().getKind() == TK_HashHash || tokens.last().getKind() == TK_HashHash;
+		return tokenMap.asC99Kind(tokens.first()) == C99Parsersym.TK_HashHash || 
+		       tokenMap.asC99Kind(tokens.last()) == C99Parsersym.TK_HashHash;
 	}
 	
 	/**
@@ -1806,7 +1813,7 @@ public class C99Preprocessor implements C99Parsersym {
 			return tokenBeforeReplacementList.getEndOffset() + 1;
 		else {
 			IToken last = replacementList.last();
-			if(last.getKind() == TK_NewLine) {
+			if(tokenMap.asC99Kind(last) == C99Parsersym.TK_NewLine) {
 				return last.getStartOffset();
 			}
 			else {
@@ -1826,7 +1833,7 @@ public class C99Preprocessor implements C99Parsersym {
 			// The token kind will be changed back to TK_identifier (or a keyword) before 
 			// passed to the parser.
 			if(isParamName(token, paramNames, varArgParamName)) {
-				token.setKind(TK_Parameter);
+				token.setPreprocessorAttribute(IToken.ATTR_PARAMETER);
 			}
 			
 			tokens.add(token);
@@ -1839,8 +1846,8 @@ public class C99Preprocessor implements C99Parsersym {
 	}
 	
 	
-	private static boolean isParamName(IToken token, Set paramNames, String varArgParamName) {
-		if(token.getKind() != TK_identifier)
+	private boolean isParamName(IToken token, Set paramNames, String varArgParamName) {
+		if(tokenMap.asC99Kind(token) != C99Parsersym.TK_identifier)
 			return false;
 		if(paramNames == null)
 			return false;

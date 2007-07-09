@@ -18,7 +18,7 @@ import lpg.lpgjavaruntime.*;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerKind;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
-import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Token;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
 import org.eclipse.cdt.core.dom.c99.ILexer;
 
 public class C99Lexer extends LpgLexStream implements C99Parsersym, C99Lexersym, RuleAction , ILexer 
@@ -116,11 +116,11 @@ protected void makeToken(int kind) {
     //    endOffset += 2; // make sure the toString() method of the token returns the entire trigraph sequence
     //}
 	
-	tokenList.add(new C99Token(startOffset, endOffset, kind, input));
+	tokenList.add(new Token(startOffset, endOffset, kind, input));
 }
 
 public void reportError(int leftOffset, int rightOffset) {
-	C99Token token = new C99Token(leftOffset, rightOffset, TK_Invalid, getInputChars());
+	Token token = new Token(leftOffset, rightOffset, TK_Invalid, getInputChars());
 	tokenList.add(token);
 }
 

@@ -13,7 +13,9 @@ package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import lpg.lpgjavaruntime.IToken;
+import org.eclipse.cdt.core.dom.parser.c99.IToken;
+
+
 
 /**
  * A linked-list of tokens.

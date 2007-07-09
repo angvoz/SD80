@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.cdt.core.dom.c99.IKeywordMap;
-import org.eclipse.cdt.core.model.ICLanguageKeywords;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 
 /**
@@ -25,7 +24,7 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
  * 
  * @author Mike Kucera
  */
-public class C99KeywordMap implements IKeywordMap, ICLanguageKeywords {
+public class C99KeywordMap implements IKeywordMap {
 
 	
 	private Map keywords = new HashMap();

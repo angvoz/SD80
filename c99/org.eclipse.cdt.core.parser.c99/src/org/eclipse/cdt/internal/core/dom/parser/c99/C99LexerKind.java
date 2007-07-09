@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c99;
 
+import lpg.lpgjavaruntime.LexStream;
+
 
 /**
  * Maps characters in the input stream to 'token kinds' that
@@ -53,7 +55,7 @@ public class C99LexerKind {
      *    
 	 * @param i index into the character stream
 	 */
-	public static int getKind(C99Lexer lexer, int i) {
+	public static int getKind(LexStream lexer, int i) {
 		int streamLength  = lexer.getStreamLength();
 		if(i >= streamLength)
 			return C99Lexer.Char_EOF;

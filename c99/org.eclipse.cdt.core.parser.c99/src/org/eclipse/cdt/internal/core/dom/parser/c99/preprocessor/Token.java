@@ -11,11 +11,13 @@
 
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
+import org.eclipse.cdt.core.dom.parser.c99.IToken;
+
 import lpg.lpgjavaruntime.AbstractToken;
-import lpg.lpgjavaruntime.IToken;
+
 
 /**
- * A C99Token is more flexible than the Token class provided by LPG.
+ * This Token class is more flexible than the Token class provided by LPG.
  * The main difference is that it is possible to specify the String 
  * representation of the token. This is very useful when 
  * new tokens are created during preprocessing that don't directly map 
@@ -23,9 +25,9 @@ import lpg.lpgjavaruntime.IToken;
  * 
  * @author Mike Kucera
  */
-public class C99Token extends AbstractToken implements IToken {
+public class Token extends AbstractToken implements IToken {
 
-	public static final C99Token DUMMY_TOKEN = new C99Token(0, 0, 0, "<dummy>"); //$NON-NLS-1$
+	public static final Token DUMMY_TOKEN = new Token(0, 0, 0, "<dummy>"); //$NON-NLS-1$
 	
 	private String representation;
 	
@@ -33,14 +35,20 @@ public class C99Token extends AbstractToken implements IToken {
 	private int sourceStartOffset;
 	private int sourceEndOffset;
 	
+	// Used to set an attribute on the token in order to relay more information
+	// than just the token's kind. Used by the preprocessor.
+	private int preprocessorAttribute = ATTR_NO_ATTRIBUTE;
 	
-	public C99Token(int startOffset, int endOffset, int kind, String representation) {
+	// class invariant: representation == null ^ source == null
+	
+	
+	public Token(int startOffset, int endOffset, int kind, String representation) {
 		super(null, startOffset, endOffset, kind);
 		this.representation = representation;
 		this.source = null;
 	}
 	
-	public C99Token(int startOffset, int endOffset, int kind, char[] source) {
+	public Token(int startOffset, int endOffset, int kind, char[] source) {
 		super(null, startOffset, endOffset, kind);
 		this.source = source;
 		this.sourceStartOffset = startOffset;
@@ -48,14 +56,15 @@ public class C99Token extends AbstractToken implements IToken {
 		this.representation = null;
 	}
 
-	public C99Token(IToken t) {
+	public Token(IToken t) {
 		super(null, t.getStartOffset(), t.getEndOffset(), t.getKind());
-		if(t instanceof C99Token) {
-			C99Token c99t = (C99Token) t;
+		if(t instanceof Token) {
+			Token c99t = (Token) t;
 			if(c99t.representation != null)
 				setRepresentation(c99t.representation);
 			else if(c99t.source != null)
 				setRepresentation(c99t.source, c99t.sourceStartOffset, c99t.sourceEndOffset);
+			preprocessorAttribute = c99t.getPreprocessorAttribute();
 		}
 		else {
 			this.representation = t.toString();
@@ -89,16 +98,25 @@ public class C99Token extends AbstractToken implements IToken {
 	}
 	
 	public Object clone() {
-		return new C99Token(this);
+		return new Token(this);
 	}
 	
 	
-	public IToken[] getFollowingAdjuncts() {
+	// Covariant return types would be nice, too bad we are stuck in 1.4 land
+	public lpg.lpgjavaruntime.IToken[] getFollowingAdjuncts() {
 		return null;
 	}
 
-	public IToken[] getPrecedingAdjuncts() {
+	public lpg.lpgjavaruntime.IToken[] getPrecedingAdjuncts() {
 		return null;
+	}
+
+	public int getPreprocessorAttribute() {
+		return preprocessorAttribute;
+	}
+
+	public void setPreprocessorAttribute(int preprocessorAttribute) {
+		this.preprocessorAttribute = preprocessorAttribute;
 	}
 
 }

@@ -16,11 +16,13 @@ import java.util.Iterator;
 import java.util.Stack;
 
 import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
+import org.eclipse.cdt.core.dom.parser.c99.IToken;
+import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 
-import lpg.lpgjavaruntime.IToken;
+
 
 /**
  * A stack of token contexts, feeds tokens to the preprocessor.
@@ -52,13 +54,15 @@ class InputTokenStream {
 
 	// for collecting comment tokens
 	private IPreprocessorTokenCollector parser;
+	private ITokenMap tokenMap;
 	private boolean collectCommentTokens = false;
 	
 	// hack fix for bug #192698
 	private IToken lastCommentToken = null;
 
-	public InputTokenStream(IPreprocessorTokenCollector parser) {
+	public InputTokenStream(IPreprocessorTokenCollector parser, ITokenMap tokenMap) {
 		this.parser = parser;
+		this.tokenMap = tokenMap;
 	}
 	
 	/**
@@ -340,7 +344,7 @@ class InputTokenStream {
 	private void consumeCommentTokens() {
 		IToken token;
 		while((token = nextToken(true)) != null) {
-			int kind = token.getKind();
+			int kind = tokenMap.asC99Kind(token);
 			if(kind != C99Parsersym.TK_SingleLineComment && kind != C99Parsersym.TK_MultiLineComment)
 				break;
 			
@@ -395,7 +399,7 @@ class InputTokenStream {
 		Iterator iter = topContext.tokenList.iterator();
 		while(iter.hasNext()) {
 			IToken token = (IToken)iter.next();
-			if(token.getKind() == C99Parsersym.TK_NewLine) {
+			if(tokenMap.asC99Kind(token) == C99Parsersym.TK_NewLine) {
 				return (token.getEndOffset() >= contentAssistOffset - 1);
 			}
 		}

@@ -17,9 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
+import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.parser.c99.IToken;
-import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
+import org.eclipse.cdt.core.dom.parser.c99.PPToken;
 
 /**
  * Represents a Macro created with a #define directive. 
@@ -51,7 +51,7 @@ public class Macro {
 	// the source offsets of the start of the #define directive that defined this macro
 	private final int startOffset;
 	private final int endOffset;
-	private final ITokenMap tokenMap;
+	private final IPPTokenComparator comparator;
 	
 	
 	/**
@@ -65,13 +65,14 @@ public class Macro {
 	 * @param replacementSequence List<IToken>
 	 * @param startOffset The offset of the '#' token that started the define for this macro.
 	 */
-	public Macro(IToken name, TokenList replacementSequence, int startOffset, int endOffset, LinkedHashSet paramNames, String varArgParamName, ITokenMap tokenMap) {
-		// TODO: the code might not be correct, doesn't mean that its an exception
+	public Macro(IToken name, TokenList replacementSequence, int startOffset, int endOffset, 
+  			     LinkedHashSet paramNames, String varArgParamName, IPPTokenComparator comparator) {
+		
 		if(replacementSequence == null)
 			throw new IllegalArgumentException(Messages.getString("Macro.0")); //$NON-NLS-1$
 		if(name == null)
 			throw new IllegalArgumentException(Messages.getString("Macro.1")); //$NON-NLS-1$
-		if(tokenMap.asC99Kind(name) != C99Parsersym.TK_identifier)
+		if(!comparator.compare(PPToken.IDENT, name))
 			throw new IllegalArgumentException(Messages.getString("Macro.2") + name.getKind() + ", "+ name);  //$NON-NLS-1$//$NON-NLS-2$
 		if(varArgParamName != null && paramNames.contains(varArgParamName))
 			throw new IllegalArgumentException(Messages.getString("Macro.3") + "'" + varArgParamName + "'");  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
@@ -85,14 +86,19 @@ public class Macro {
 		this.startOffset = startOffset;
 		this.endOffset = endOffset;
 		this.varArgParamName = varArgParamName;
-		this.tokenMap = tokenMap;
+		this.comparator = comparator;
 	}
 	
 	/**
 	 * Creates an object like macro with no parameters
 	 */
-	public Macro(IToken name, TokenList replacementSequence, int startOffset, int endOffset, ITokenMap tokenMap) {
-		this(name, replacementSequence, startOffset, endOffset, null, null, tokenMap);
+	public Macro(IToken name, TokenList replacementSequence, int startOffset, int endOffset, IPPTokenComparator comparator) {
+		this(name, replacementSequence, startOffset, endOffset, null, null, comparator);
+	}
+	
+	
+	private boolean check(PPToken pptoken, IToken token) {
+		return comparator.compare(pptoken, token);
 	}
 	
 	
@@ -136,7 +142,7 @@ public class Macro {
 	 * PlaceMarker tokens are used to replace empty arguments.
 	 */
 	private MacroArgument createPlaceMarker() {
-		// the token kind is actually irrelevant, so just use -1
+		
 		IToken placeMarker = new Token(0, 0, -1, ""); //$NON-NLS-1$
 		
 		// this is how we track that this token is in fact a place marker
@@ -226,7 +232,7 @@ public class Macro {
 		
 		private void add(IToken t) {
 			// prevents recursive replacement of the macro
-			if(tokenMap.asC99Kind(t) == C99Parsersym.TK_identifier && t.toString().equals(nameAsString))
+			if(check(PPToken.IDENT, t) && t.toString().equals(nameAsString))
 				t.setPreprocessorAttribute(IToken.ATTR_DISABLED_MACRO_NAME);
 			
 			result.add(t);
@@ -264,10 +270,10 @@ public class Macro {
 			window[i] = slide(iter);
 		
 		while(window[0] != null) {
-			if(tokenMap.asC99Kind(window[0]) == C99Parsersym.TK_HashHash) { // the replacement sequence starts with a ##, thats an error
+			if(check(PPToken.HASHHASH, window[0])) { // the replacement sequence starts with a ##, thats an error
 				return null;
 			}
-			else if(window[1] != null && tokenMap.asC99Kind(window[1]) == C99Parsersym.TK_HashHash) {
+			else if(window[1] != null && check(PPToken.HASHHASH, window[1])) {
 				if(window[2] == null) {
 					return null;
 				}
@@ -291,7 +297,7 @@ public class Macro {
 					window[2] = slide(iter);
 				}
 			}
-			else if(tokenMap.asC99Kind(window[0]) == C99Parsersym.TK_Hash) {
+			else if(check(PPToken.HASH, window[0])) {
 				if(window[1] == null) {
 					return null;
 				}
@@ -310,7 +316,7 @@ public class Macro {
 						String newString = handleHashOperator(rawTokens);
 						int startOffset = window[0].getStartOffset(); // the hash
 						int endOffset   = window[1].getStartOffset() + newString.length() - 2; // don't count the double quotes in the string
-						IToken strToken = new Token(startOffset, endOffset, tokenMap.getStringLitTokenKind(), newString);
+						IToken strToken = new Token(startOffset, endOffset, comparator.getKind(IPPTokenComparator.KIND_STRINGLIT), newString);
 						
 						window[0] = strToken;
 						window[1] = window[2];
@@ -368,39 +374,42 @@ public class Macro {
 	 * Combines two tokens into one, used by the ## operator.
 	 */
 	private IToken pasteTokens(IToken x, IToken y, int startOffset, int endOffset) {
-		int xattr = x.getPreprocessorAttribute();
-		int yattr = y.getPreprocessorAttribute();
 		String s = x.toString() + y.toString();
+		int invalidKind = comparator.getKind(IPPTokenComparator.KIND_INVALID);
 		
-		if(xattr == IToken.ATTR_PLACE_MARKER && yattr == IToken.ATTR_PLACE_MARKER) {
-			IToken token = new Token(startOffset, endOffset, tokenMap.getInvalidTokenKind(), s);
+		if(isPlaceMarker(x) && isPlaceMarker(y)) {
+			IToken token = new Token(startOffset, endOffset, invalidKind, s);
 			token.setPreprocessorAttribute(IToken.ATTR_PLACE_MARKER);
 			return token;
 		}
 		
 		// pasting with a place marker doesn't need much
-		if(xattr == IToken.ATTR_PLACE_MARKER) {
+		if(isPlaceMarker(x)) {
 			return new Token(startOffset, endOffset, y.getKind(), s);
 		}
-		else if(yattr == IToken.ATTR_PLACE_MARKER) {
+		else if(isPlaceMarker(y)) {
 			return new Token(startOffset, endOffset, x.getKind(), s);
 		}
 		
-		int xkind = tokenMap.asC99Kind(x);
-		int ykind = tokenMap.asC99Kind(y);
-		int kind  = tokenMap.getInvalidTokenKind(); // if paste fails then generate an invalid token
+		int kind  = invalidKind; // if paste fails then generate an invalid token
 		
-		if(xkind == C99Parsersym.TK_integer && ykind == C99Parsersym.TK_integer) {
-			kind = tokenMap.getIntegerTokenKind();
+		if(check(PPToken.INTEGER, x) && check(PPToken.INTEGER, y)) {
+			kind = comparator.getKind(IPPTokenComparator.KIND_INTEGER);
 		}
-		else if(xkind == C99Parsersym.TK_identifier && ykind == C99Parsersym.TK_integer) {
-			kind = tokenMap.getIdentifierTokenKind();
+		else if(check(PPToken.IDENT, x) && check(PPToken.INTEGER, y)) {
+			kind = comparator.getKind(IPPTokenComparator.KIND_IDENTIFIER);
 		}
-		else if(xkind == C99Parsersym.TK_identifier && ykind == C99Parsersym.TK_identifier) {
-			kind = tokenMap.getIdentifierTokenKind();
+		else if(check(PPToken.IDENT, x) && check(PPToken.IDENT, y)) {
+			kind = comparator.getKind(IPPTokenComparator.KIND_IDENTIFIER);
 		}
 		
 		return new Token(startOffset, endOffset, kind, s);
+	}
+	
+	
+	
+	private static boolean isPlaceMarker(IToken token) {
+		return token.getPreprocessorAttribute() == IToken.ATTR_PLACE_MARKER;
 	}
 	
 	

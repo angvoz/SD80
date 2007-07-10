@@ -19,24 +19,22 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.IMacroCollector;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.c99.ILexer;
 import org.eclipse.cdt.core.dom.c99.ILexerFactory;
+import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.c99.IPreprocessorExtensionConfiguration;
 import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 import org.eclipse.cdt.core.dom.parser.c99.IToken;
-import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
+import org.eclipse.cdt.core.dom.parser.c99.PPToken;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IMacro;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99ExprEvaluator;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
-
 import org.eclipse.cdt.internal.core.parser.scanner2.ScannerASTProblem;
 import org.eclipse.cdt.internal.core.parser.scanner2.ScannerUtility;
 
@@ -58,12 +56,11 @@ public class C99Preprocessor {
 	// generating a Completion token.
 	private static final int NUM_EOC_TOKENS = 20;
 	
-	//private final IKeywordMap keywordMap; // used to recognize certain identifiers as keywords 
 	private final CodeReader codeReader; // The code reader that stores the source character stream of the file
 	private final IScannerInfo scanInfo; // Used to resolve includes and get access to macro definitions
 	private final ILexerFactory lexerFactory; // Used to create lexers for included files
 	private final ICodeReaderFactory codeReaderFactory; // Used to get source character buffers of included files
-	private final ITokenMap tokenMap;
+	private final IPPTokenComparator comparator;
 	
 	private final boolean generateAllComments;
 	private final boolean generateActiveComments;
@@ -74,7 +71,6 @@ public class C99Preprocessor {
 	private IPreprocessorTokenCollector parser; // tokens are injected directly into the parser
 	private IPreprocessorLog log; // resolves source offset location information
 	private IToken lastTokenOutput = null; // used to detect adjacent string literals for concatenation
-	private int lastKindOutput; // used to detect adjacent string literals for concatenation
 	
 	private boolean encounteredError = false;
 	
@@ -92,7 +88,7 @@ public class C99Preprocessor {
 	/**
 	 * Creates a preprocessor using the given keywords.
 	 */
-	public C99Preprocessor(ILexerFactory lexerFactory, ITokenMap tokenMap,
+	public C99Preprocessor(ILexerFactory lexerFactory, IPPTokenComparator ppTokenComparator,
 			CodeReader reader, IScannerInfo scanInfo,
 			ICodeReaderFactory fileCreator, int options) {
 		
@@ -100,7 +96,7 @@ public class C99Preprocessor {
 		this.scanInfo = scanInfo;
 		this.lexerFactory = lexerFactory;
 		this.codeReaderFactory = fileCreator;
-		this.tokenMap = tokenMap;
+		this.comparator = ppTokenComparator;
 		
 		this.generateActiveComments = (options & OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE) != 0;
 		this.generateAllComments    = (options & OPTION_GENERATE_ALL_COMMENTS) != 0;
@@ -127,7 +123,7 @@ public class C99Preprocessor {
 		if(parser == null)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.0")); //$NON-NLS-1$
 		
-		preprocess(parser, log, extensionConfiguration, new InputTokenStream(parser, tokenMap));
+		preprocess(parser, log, extensionConfiguration, new InputTokenStream(parser, comparator));
 	}
 	
 	
@@ -145,7 +141,7 @@ public class C99Preprocessor {
 		if(contentAssistOffset < 0)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.2")); //$NON-NLS-1$
 		
-		InputTokenStream inputTokenStream = new InputTokenStream(parser, tokenMap);
+		InputTokenStream inputTokenStream = new InputTokenStream(parser, comparator);
 		inputTokenStream.setContentAssistOffset(contentAssistOffset);
 		preprocess(parser, log, extensionConfiguration, inputTokenStream);
 		
@@ -188,7 +184,7 @@ public class C99Preprocessor {
 			process(); // throws PreprocessorAbortParseException
 			
 			int tuSize = inputTokenStream.getTranslationUnitSize();
-			parser.addToken(new Token(tuSize, tuSize, tokenMap.getEOFTokenKind(), "<EOF>")); //$NON-NLS-1$
+			parser.addToken(new Token(tuSize, tuSize, comparator.getKind(IPPTokenComparator.KIND_EOF), "<EOF>")); //$NON-NLS-1$
 			
 			if(log != null)
 				log.endTranslationUnit(tuSize);
@@ -216,11 +212,6 @@ public class C99Preprocessor {
 		boolean generateComments = generateActiveComments | generateAllComments;
 		int lexerOptions = generateComments ? ILexer.OPTION_GENERATE_COMMENT_TOKENS : 0;
 		TokenList tokens = lexer.lex(lexerOptions);
-	
-		for(Iterator iter = tokens.iterator(); iter.hasNext();) {
-			IToken token = (IToken)iter.next();
-		}
-		
 		return tokens;
 	}
 	
@@ -380,7 +371,7 @@ public class C99Preprocessor {
 		}
 		
 		// Filter out newline tokens
-		if(tokenMap.asC99Kind(t) == C99Parsersym.TK_NewLine)
+		if(check(PPToken.NEWLINE, t))
 			return;
 		if(t.getPreprocessorAttribute() == IToken.ATTR_PLACE_MARKER)
 			return;
@@ -391,7 +382,7 @@ public class C99Preprocessor {
 		// the parser may have already altered lastTokenOutput
 		
 		// concatenate adjacent string literals
-		if(lastTokenOutput != null &&  tokenMap.asC99Kind(t) == C99Parsersym.TK_stringlit && lastKindOutput == C99Parsersym.TK_stringlit) {
+		if(lastTokenOutput != null && check(PPToken.STRINGLIT, t) && check(PPToken.STRINGLIT, lastTokenOutput)) {
 			String s1 = lastTokenOutput.toString();
 			String s2 = toOutput.toString();
 			assert s1.length() >=2 && s2.length() != 2; // smallest string literal is ""
@@ -403,7 +394,6 @@ public class C99Preprocessor {
 		}
 		else {
 			lastTokenOutput = toOutput;
-			lastKindOutput = tokenMap.asC99Kind(toOutput.getKind());
 			//System.out.println("Token: (" + toOutput.getKind() + ", " + toOutput.getStartOffset() + ", " + toOutput.getEndOffset() + ") " + toOutput);
 			parser.addToken(toOutput);
 		}
@@ -412,81 +402,18 @@ public class C99Preprocessor {
 	
 	/***************************************************************************************
 	 * Preprocessor tokens
-	 ***************************************************************************************/
-	
-
-	// Tokens that the preprocessor recognizes
-	static final int 
-		PPTOKEN   = 0, 
-		HASH      = 1,
-		HASHHASH  = 2,
-		LPAREN    = 3,
-		NEWLINE   = 4,
-		IDENT     = 5,
-		COMMA     = 6,
-		RPAREN    = 7,
-		DOTDOTDOT = 8,
-		EOF       = 99;
-
-
-	// Identifier tokens recognized as preprocessor directives
-	static final String 
-		IF           = "if",           //$NON-NLS-1$
-		IFDEF        = "ifdef",        //$NON-NLS-1$
-		IFNDEF       = "ifndef",       //$NON-NLS-1$
-		ELIF         = "elif",         //$NON-NLS-1$
-		ELSE         = "else",         //$NON-NLS-1$
-		ENDIF        = "endif",        //$NON-NLS-1$
-		DEFINE       = "define",       //$NON-NLS-1$
-		UNDEF        = "undef",        //$NON-NLS-1$
-		INCLUDE      = "include",      //$NON-NLS-1$
-		INCLUDE_NEXT = "include_next", //$NON-NLS-1$
-		PRAGMA       = "pragma",       //$NON-NLS-1$
-		ERROR        = "error",        //$NON-NLS-1$
-		WARNING      = "warning";      //$NON-NLS-1$
-	
-
-
-	/**
-	 * Converts a regular token type into one of the
-	 * token types that are recognized by the preprocessor.
-	 */
-	private int toPPToken(IToken token) {
-		if(token == null)
-			return EOF;
-		
-		switch(tokenMap.asC99Kind(token)) {
-			case C99Parsersym.TK_Hash:       return HASH;
-			case C99Parsersym.TK_HashHash:   return HASHHASH;
-			case C99Parsersym.TK_LeftParen:  return LPAREN;
-			case C99Parsersym.TK_NewLine:    return NEWLINE;
-			case C99Parsersym.TK_identifier: return IDENT;
-			case C99Parsersym.TK_Comma:      return COMMA;
-			case C99Parsersym.TK_RightParen: return RPAREN;
-			case C99Parsersym.TK_DotDotDot:  return DOTDOTDOT;
-			case C99Parsersym.TK_EOF_TOKEN:  return EOF;
-			default:                         return PPTOKEN;
-		}
-	}
-	
+	 ***************************************************************************************/	
 
 	/**
 	 * Checks the type of the current token.
 	 */
-	private boolean check(int pptoken) {
-		IToken token = inputTokenStream.peek();
-		if(token == null)
-			return false;
-		
-		return pptoken == toPPToken(token);
+	private boolean check(PPToken ppTokenKind) {
+		return check(ppTokenKind, inputTokenStream.peek());
 	}
 	
-	private boolean check(String directive) {
-		IToken token = inputTokenStream.peek();
-		if(token == null)
-			return false;
-		
-		return directive.equals(token.toString()); 
+	
+	private boolean check(PPToken ppTokenKind, IToken token) {
+		return comparator.compare(ppTokenKind, token);
 	}
 	
 	
@@ -495,7 +422,10 @@ public class C99Preprocessor {
 	 */
 	private boolean done() {
 		IToken token = inputTokenStream.peek();
-		return token == null || tokenMap.asC99Kind(token) == C99Parsersym.TK_EOF_TOKEN;
+		if(token == null)
+			return true;
+		
+		return comparator.compare(PPToken.EOF, token);
 	}
 	
 
@@ -503,21 +433,12 @@ public class C99Preprocessor {
 	 * Checks for the given token type, if not present
 	 * then an exception is thrown.
 	 */
-	private IToken expect(int pptoken) {
+	private IToken expect(PPToken pptoken) {
 		if(check(pptoken))
 			return next();
 		else 
 			throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName());
 	}
-	
-
-	private IToken expect(String directive) {
-		if(check(directive))
-			return next();
-		else 
-			throw new PreprocessorInternalParseException(inputTokenStream.getCurrentFileName());
-	}
-	
 	
 	/**
 	 * Moves to the next token on the input stream.
@@ -593,7 +514,7 @@ public class C99Preprocessor {
 	private void process() {
 		while(!done()) {
 			try {
-				if(check(HASH)) {
+				if(check(PPToken.HASH)) {
 					boolean encounteredPoundElse = controlLine();
 					if(encounteredPoundElse) {
 						// improperly nested #else
@@ -617,7 +538,7 @@ public class C99Preprocessor {
 					encounterProblem(IASTProblem.SYNTAX_ERROR, offset, offset);
 				}
 				else {
-					if(check(NEWLINE)) { 
+					if(check(PPToken.NEWLINE)) { 
 						IToken token = next();
 						encounterProblem(IASTProblem.SYNTAX_ERROR, token);
 						return;
@@ -626,10 +547,10 @@ public class C99Preprocessor {
 					IToken token = next();
 					encounterProblem(IASTProblem.SYNTAX_ERROR, token);
 					
-					while(!(check(NEWLINE) || done())) {
+					while(!(check(PPToken.NEWLINE) || done())) {
 						token = next();
 					}
-					if(check(NEWLINE))
+					if(check(PPToken.NEWLINE))
 						token = next();
 				}
 			}
@@ -641,7 +562,7 @@ public class C99Preprocessor {
 	 */
 	private int processBranch() {
 		while(!done()) {
-			if(check(HASH)) {
+			if(check(PPToken.HASH)) {
 				int hashOffset = inputTokenStream.adjust(inputTokenStream.peek().getStartOffset());
 				
 				// Returns when an #else, #elif or #endif is encountered.
@@ -668,33 +589,33 @@ public class C99Preprocessor {
 		int depth = 0; // for proper nesting
 		
 		while(!done()) {
-			if(check(HASH)) {
+			if(check(PPToken.HASH)) {
 				IToken hash = next();
 				int directiveStartOffset = hash.getStartOffset();
-				if(check(INCLUDE) || check(INCLUDE_NEXT)) { // show inactive includes in the outline view
-					boolean includeNext = check(INCLUDE_NEXT);
+				if(check(PPToken.INCLUDE) || check(PPToken.INCLUDE_NEXT)) { // show inactive includes in the outline view
+					boolean includeNext = check(PPToken.INCLUDE_NEXT);
 					next();
 					includeDirective(directiveStartOffset, false, includeNext);
 				}
-				else if(check(IF)) {
+				else if(check(PPToken.IF)) {
 					handleIf(directiveStartOffset, false);
 					depth++;
 				}
-				else if(check(IFDEF) || check(IFNDEF)) {
+				else if(check(PPToken.IFDEF) || check(PPToken.IFNDEF)) {
 					handleIfDef(directiveStartOffset);
 					depth++;
 				}
-				else if (check(ELIF)) {	
+				else if (check(PPToken.ELIF)) {	
 					if(depth == 0)
 						return directiveStartOffset;
 					handleIf(directiveStartOffset, false);
 				}
-				else if(check(ELSE)) {
+				else if(check(PPToken.ELSE)) {
 					if(depth == 0)
 						return directiveStartOffset;
 					handleElse(directiveStartOffset, false);
 				}
-				else if(check(ENDIF)) {
+				else if(check(PPToken.ENDIF)) {
 					if(depth == 0) {
 						inputTokenStream.setCollectCommentTokens(generateActiveComments || generateAllComments);
 						return directiveStartOffset;
@@ -725,7 +646,7 @@ public class C99Preprocessor {
 	 * Skips input until a newline is encountered, the newline is also skipped.
 	 */
 	private void skipLine() {
-		while(!(check(NEWLINE) || done())) {
+		while(!(check(PPToken.NEWLINE) || done())) {
 			next();
 		}
 		if(!done())
@@ -741,7 +662,7 @@ public class C99Preprocessor {
 	private void handleBasicContentAssistOffsetReached() {
 		assert inputTokenStream.isContentAssistOffsetReached();
 
-		final int completionKind = tokenMap.getCompletionTokenKind();
+		final int completionKind = comparator.getKind(IPPTokenComparator.KIND_COMPLETION);
 		
 		if(inputTokenStream.isEmpty()) {
 			int endOffset = inputTokenStream.getTranslationUnitSize();
@@ -763,7 +684,7 @@ public class C99Preprocessor {
 			// we are in between tokens, create an empty completion token
 			completionToken = new Token(adjustedOffset, adjustedOffset, completionKind, ""); //$NON-NLS-1$
 		}
-		else if(tokenMap.asC99Kind(token) == C99Parsersym.TK_identifier) {
+		else if(check(PPToken.IDENT, token)) {
 			// at this point we know the cursor is in the middle or at the end of an identifier token
 			int startOffset = token.getStartOffset();
 
@@ -806,15 +727,15 @@ public class C99Preprocessor {
 		int offset = completionToken.getEndOffset() + 1;
 		// Generate a bunch of eoc tokens
 		for(int i = 0; i < NUM_EOC_TOKENS; i++) {
-			addToOutputStream(new Token(offset, offset, tokenMap.getEndOfCompletionTokenKind(), "")); //$NON-NLS-1$
+			addToOutputStream(new Token(offset, offset, comparator.getKind(IPPTokenComparator.KIND_END_OF_COMPLETION), "")); //$NON-NLS-1$
 		}		
 		// discard the rest of the input tokens on the input
-		inputTokenStream = new InputTokenStream(parser, tokenMap);
+		inputTokenStream = new InputTokenStream(parser, comparator);
 	}
 	
 	
 	private void addCompletionTokenToOutputAndQuit(int offset, String prefix) {
-		addCompletionTokenToOutputAndQuit(new Token(offset, offset, tokenMap.getCompletionTokenKind(), prefix));
+		addCompletionTokenToOutputAndQuit(new Token(offset, offset, comparator.getKind(IPPTokenComparator.KIND_COMPLETION), prefix));
 	}
 	
 	
@@ -833,18 +754,18 @@ public class C99Preprocessor {
 				return;
 			}
 			
-			if(check(NEWLINE) || done()) {
+			if(check(PPToken.NEWLINE) || done()) {
 				break;
 			}
 			
 			IToken currentToken = inputTokenStream.peek();
-			if(handleDefined && check(IDENT) && DEFINED_OPERATOR.equals(currentToken.toString())) {
+			if(handleDefined && check(PPToken.IDENT) && DEFINED_OPERATOR.equals(currentToken.toString())) {
 				next(); // skip the defined keyword
 				handleDefinedOperator();
 			}
 			
 			// Do not expand macro names that have been generated by a macro expansion
-			else if(check(IDENT) && env.hasMacro(currentToken.toString()) && 
+			else if(check(PPToken.IDENT) && env.hasMacro(currentToken.toString()) && 
 					currentToken.getPreprocessorAttribute() != IToken.ATTR_DISABLED_MACRO_NAME) {
 				Macro macro = env.get(currentToken.toString());
 				macroCall(macro);
@@ -854,7 +775,7 @@ public class C99Preprocessor {
 			}
 		}
 		
-		if(check(NEWLINE))
+		if(check(PPToken.NEWLINE))
 			next(); // skip the newline
 	}
 	
@@ -864,12 +785,12 @@ public class C99Preprocessor {
 	
 	private void handleDefinedOperator() {
 		IToken ident;
-		if(check(LPAREN)) {
+		if(check(PPToken.LPAREN)) {
 			next();
-			ident = expect(IDENT);
-			expect(RPAREN);
+			ident = expect(PPToken.IDENT);
+			expect(PPToken.RPAREN);
 		}
-		else if(check(IDENT)) {
+		else if(check(PPToken.IDENT)) {
 			ident = next();
 		}
 		else {
@@ -878,7 +799,7 @@ public class C99Preprocessor {
 		
 		String val = env.hasMacro(ident.toString()) ? "1" : "0"; //$NON-NLS-1$ //$NON-NLS-2$
 		// TODO: what about the offsets (they probably don't matter)
-		addToOutputStream(new Token(0, 0, tokenMap.getIntegerTokenKind(), val));
+		addToOutputStream(new Token(0, 0, comparator.getKind(IPPTokenComparator.KIND_INTEGER), val));
 	}
 
 	
@@ -969,14 +890,14 @@ public class C99Preprocessor {
 			
 			// Any number of newlines are allowed between the macro name and the args.
 			// If there is a preprocessing directive then the result is undefined.
-			while(check(NEWLINE))
+			while(check(PPToken.NEWLINE))
 				next();
 			
 			// We need to check for the macro's arguments, but it is legal for the name of
 			// a function-like macro to exist in the source without any arguments being passed,
 			// in this case it is not actually a call to the macro. Therefore, in this case,
-			// we must explicity call contextClosed() because the callback was disabled above.
-			if(check(LPAREN)) { 
+			// we must explicitly call contextClosed() because the callback was disabled above.
+			if(check(PPToken.LPAREN)) { 
 				next();
 			}
 			else {
@@ -1081,7 +1002,7 @@ public class C99Preprocessor {
 		TokenList arg = new TokenList();
 		int parenLevel = 0; // used to track nested parenthesis
 		
-		if(check(RPAREN)) {
+		if(check(PPToken.RPAREN)) {
 			//next();
 			// no arguments to a macro that takes a parameter, create an empty argument
 			if(macro.getNumParams() > 0) {
@@ -1093,14 +1014,14 @@ public class C99Preprocessor {
 				if(done()) {
 					return null;
 				}
-				else if(check(HASH) || check(HASHHASH)) {
+				else if(check(PPToken.HASH) || check(PPToken.HASHHASH)) {
 					return null;
 				}
-				else if(check(NEWLINE)) {
+				else if(check(PPToken.NEWLINE)) {
 					// newlines are allowed within a macro invocation, they are ignored
 					next();
 				}
-				else if(check(COMMA)) {
+				else if(check(PPToken.COMMA)) {
 					if(parenLevel == 0 && arguments.size() < numParams) {
 						arguments.add(arg); // arg may be empty, thats ok
 						arg = new TokenList();
@@ -1110,11 +1031,11 @@ public class C99Preprocessor {
 						arg.add(next());
 					}
 				}
-				else if(check(LPAREN)) {
+				else if(check(PPToken.LPAREN)) {
 					parenLevel++;
 					arg.add(next());
 				}
-				else if(check(RPAREN)) {
+				else if(check(PPToken.RPAREN)) {
 					if(parenLevel == 0) {
 						arguments.add(arg);
 						//next();  // when this method returns the RPAREN will not be consumed
@@ -1161,7 +1082,7 @@ public class C99Preprocessor {
 	 */
 	private IToken findPrefixTokenOnCurrentLine() {
 		int contentAssistOffset = inputTokenStream.getContentAssistOffset() - 1;
-		while(!check(NEWLINE) && !done()) {
+		while(!check(PPToken.NEWLINE) && !done()) {
 			
 			// Do not adjust the offsets of the token,
 			// this way we get the original offset in the working copy.
@@ -1169,7 +1090,7 @@ public class C99Preprocessor {
 			
 			int endOffset = token.getEndOffset();
 			
-			if(tokenMap.asC99Kind(token) == C99Parsersym.TK_identifier && endOffset == contentAssistOffset) {
+			if(check(PPToken.IDENT, token) && endOffset == contentAssistOffset) {
 				return token;
 			}
 			if(endOffset > contentAssistOffset) {
@@ -1196,37 +1117,37 @@ public class C99Preprocessor {
 			IToken token = findPrefixTokenOnCurrentLine();
 			addCompletionTokenToOutputAndQuit(directiveStartOffset, token == null ? "" : token.toString()); //$NON-NLS-1$
 		}
-		else if(check(NEWLINE)) {
+		else if(check(PPToken.NEWLINE)) {
 			next();
 		}
-		else if(check(DEFINE)) { // TODO: check the rules of macro redefinition?
+		else if(check(PPToken.DEFINE)) { // TODO: check the rules of macro redefinition?
 			next();
 			defineDirective(directiveStartOffset, true);
 		}
-		else if(check(UNDEF)) {
+		else if(check(PPToken.UNDEF)) {
 			next();
-			IToken macroName = expect(IDENT);
+			IToken macroName = expect(PPToken.IDENT);
 			String name = macroName.toString();
 			if(log != null)
 				log.undefineMacro(directiveStartOffset, macroName.getEndOffset() + 1, name, macroName.getStartOffset());
 			env.removeMacro(name);
 			if(!done())
-				expect(NEWLINE);
+				expect(PPToken.NEWLINE);
 		}
-		else if(check(INCLUDE) || check(INCLUDE_NEXT)) {
-			boolean includeNext = check(INCLUDE_NEXT);
+		else if(check(PPToken.INCLUDE) || check(PPToken.INCLUDE_NEXT)) {
+			boolean includeNext = check(PPToken.INCLUDE_NEXT);
 			next();
 			includeDirective(directiveStartOffset, true, includeNext);
 		}
-		else if(check(IF) || check(IFDEF) || check(IFNDEF)) {
+		else if(check(PPToken.IF) || check(PPToken.IFDEF) || check(PPToken.IFNDEF)) {
 			ifSection(directiveStartOffset);
 		}
-		else if(check(ELIF) || check(ELSE) || check(ENDIF)) {
+		else if(check(PPToken.ELIF) || check(PPToken.ELSE) || check(PPToken.ENDIF)) {
 			return true;
 		}
-		else if(check(PRAGMA) || check(ERROR) || check(WARNING)) {
-			boolean isPragma  = check(PRAGMA);
-			boolean isError   = check(ERROR);
+		else if(check(PPToken.PRAGMA) || check(PPToken.ERROR) || check(PPToken.WARNING)) {
+			boolean isPragma  = check(PPToken.PRAGMA);
+			boolean isError   = check(PPToken.ERROR);
 			
 			IToken token = next();
 			TokenList tokens = collectTokensUntilNewlineOrDone();
@@ -1246,7 +1167,7 @@ public class C99Preprocessor {
 			}
 			
 			if(!done())
-				expect(NEWLINE); 
+				expect(PPToken.NEWLINE); 
 		}
 		else { 
 			IToken invalidDirective = next();
@@ -1264,7 +1185,7 @@ public class C99Preprocessor {
 	private void ifSection(int directiveStartOffset) {
 		// Determine if the branch should be followed
 		boolean takeIfBranch;
-		if(check(IFDEF) || check(IFNDEF))
+		if(check(PPToken.IFDEF) || check(PPToken.IFNDEF))
 			takeIfBranch = handleIfDef(directiveStartOffset);
 		else // must be an if
 			takeIfBranch = handleIf(directiveStartOffset, true);
@@ -1278,11 +1199,11 @@ public class C99Preprocessor {
 	
 	private void elseGroups(boolean skipRest, int hashOffset) {
 		while(!done()) {
-			if(check(ENDIF)) {
+			if(check(PPToken.ENDIF)) {
 				handleEndif(hashOffset);
 				return;
 			}
-			else if(check(ELIF)) {
+			else if(check(PPToken.ELIF)) {
 				boolean followBranch = handleIf(hashOffset, !skipRest);
 				if(followBranch) {
 					skipRest = true;
@@ -1292,7 +1213,7 @@ public class C99Preprocessor {
 					hashOffset = skipBranch();
 				}
 			}
-			else if(check(ELSE)) {
+			else if(check(PPToken.ELSE)) {
 				handleElse(hashOffset, !skipRest);
 				if(skipRest) 
 					hashOffset = skipBranch(); 
@@ -1310,9 +1231,9 @@ public class C99Preprocessor {
 	 * Determines if the first brach of an #ifdef or #ifndef should be followed.
 	 */
 	private boolean handleIfDef(int directiveStartOffset) {
-		boolean isIfdef = check(IFDEF);
+		boolean isIfdef = check(PPToken.IFDEF);
 		next();
-		IToken ident = expect(IDENT);
+		IToken ident = expect(PPToken.IDENT);
 		skipLine(); // ignore any other tokens on this line, skip the newline token as well
 		
 		boolean takeIfBranch = isIfdef == env.hasMacro(ident.toString());
@@ -1336,7 +1257,7 @@ public class C99Preprocessor {
 	 * @param evaluate If true will evaluate the condition in the #if
 	 */
 	private boolean handleIf(int directiveStartOffset, boolean evaluate) {
-		boolean isIf = check(IF); // are we in an #if or an #elif
+		boolean isIf = check(PPToken.IF); // are we in an #if or an #elif
 		
 		boolean followBranch;
 		IToken ifToken = next();
@@ -1354,7 +1275,7 @@ public class C99Preprocessor {
 			encounterProblem(IASTProblem.PREPROCESSOR_CONDITIONAL_EVAL_ERROR, directiveStartOffset, endOffset);
 		
 		if(!done())
-			expect(NEWLINE);
+			expect(PPToken.NEWLINE);
 		
 		// will be false if evaluate is false
 		followBranch = value != null && value.longValue() != 0;
@@ -1395,7 +1316,7 @@ public class C99Preprocessor {
 			return null;
 		}
 		
-		C99ExprEvaluator evaluator = new C99ExprEvaluator(constantExpression, tokenMap);
+		C99ExprEvaluator evaluator = new C99ExprEvaluator(constantExpression, comparator);
 		// if there is a problem during evaluation then evaluate() will return null
 		return evaluator.evaluate();
 	}
@@ -1412,7 +1333,7 @@ public class C99Preprocessor {
 		if(log != null)
 			log.encounterPoundEndIf(directiveStartOffset, endif.getEndOffset()+1);
 		if(!done())
-			expect(NEWLINE);
+			expect(PPToken.NEWLINE);
 	}
 		
 	
@@ -1445,8 +1366,8 @@ public class C99Preprocessor {
 		TokenList includeBody;
 		
 		// if its a regular include like <filename.h> or "filename.h" then ignore the < > and " in the offsets
-		if((tokenMap.asC99Kind(tokens.first()) == C99Parsersym.TK_LT && tokenMap.asC99Kind(tokens.last()) == C99Parsersym.TK_GT) ||
-		   (tokens.size() == 1 && tokenMap.asC99Kind(tokens.first()) == C99Parsersym.TK_stringlit)) {
+		if((check(PPToken.LEFT_ANGLE_BRACKET, tokens.first()) && check(PPToken.RIGHT_ANGLE_BRACKET, tokens.last())) ||
+		   (tokens.size() == 1 && check(PPToken.STRINGLIT, tokens.first()))) {
 			
 			fileNameStart = tokens.first().getStartOffset() + 1;
 			fileNameEnd   = tokens.last().getEndOffset();
@@ -1617,7 +1538,7 @@ public class C99Preprocessor {
 		
 		if(includeBody.size() == 1) {
 			IToken token = includeBody.first();
-			if(tokenMap.asC99Kind(token) == C99Parsersym.TK_stringlit) // local include
+			if(check(PPToken.STRINGLIT, token)) // local include
 				return token.toString();
 			else
 				return null;
@@ -1626,7 +1547,7 @@ public class C99Preprocessor {
 		// at this point the size must be at least 3
 		IToken first = includeBody.first();
 		IToken last  = includeBody.last();
-		if(tokenMap.asC99Kind(first) != C99Parsersym.TK_LT || tokenMap.asC99Kind(last) != C99Parsersym.TK_GT) {
+		if(!check(PPToken.LEFT_ANGLE_BRACKET, first) || !check(PPToken.RIGHT_ANGLE_BRACKET, last)) {
 			return null;
 		}
 
@@ -1640,7 +1561,7 @@ public class C99Preprocessor {
 	 */
 	private TokenList collectTokensUntilNewlineOrDone() {
 		TokenList result = new TokenList();
-		while(!check(NEWLINE) && !done()) {
+		while(!check(PPToken.NEWLINE) && !done()) {
 			result.add(next());
 		}
 		return result;
@@ -1692,7 +1613,7 @@ public class C99Preprocessor {
 	 * Creates a Macro object and stores it in the environment.
 	 */
 	private Macro defineDirective(int startOffset, boolean logMacro) {
-		if(!check(IDENT)) {
+		if(!check(PPToken.IDENT)) {
 			IToken badToken = next(); // fix for testcase DOMLocationTests.test162180_2()
 			encounterProblem(IASTProblem.PREPROCESSOR_INVALID_MACRO_DEFN, badToken.getStartOffset(), badToken.getEndOffset());
 			skipLine();
@@ -1705,7 +1626,7 @@ public class C99Preprocessor {
 		// function like macro
 		// There must not be any space between the macro name and the left paren.
 		// This actually isn't in the spec but its how gcc behaves in C99 mode
-		if(check(LPAREN) && inputTokenStream.getCurrentOffset() == macroName.getEndOffset() + 1) { 
+		if(check(PPToken.LPAREN) && inputTokenStream.getCurrentOffset() == macroName.getEndOffset() + 1) { 
 			next();
 
 			String varArgParamName = null;
@@ -1713,19 +1634,19 @@ public class C99Preprocessor {
 			IToken rparen = null; 
 			boolean problem = false;
 			
-			if(check(RPAREN)) {
+			if(check(PPToken.RPAREN)) {
 				rparen = next();
 			}
 			else {
 				// parse the parameters
 				while(true) { // proof of loop termination: each branch has a next() or break 
-					if(check(IDENT)) {
+					if(check(PPToken.IDENT)) {
 						String paramName = next().toString();
 						
-						if(check(DOTDOTDOT)) {
+						if(check(PPToken.DOTDOTDOT)) {
 							next();
 							varArgParamName = paramName;
-							if(check(RPAREN))
+							if(check(PPToken.RPAREN))
 								rparen = next();
 							else
 								problem = true;
@@ -1734,10 +1655,10 @@ public class C99Preprocessor {
 						
 						paramNames.add(paramName); // TODO: check for duplicate parameter name 
 						
-						if(check(COMMA)) {
+						if(check(PPToken.COMMA)) {
 							next();
 						}
-						else if(check(RPAREN)) {
+						else if(check(PPToken.RPAREN)) {
 							rparen = next();
 							break;
 						}
@@ -1746,10 +1667,10 @@ public class C99Preprocessor {
 							break;
 						}
 					}
-					else if(check(DOTDOTDOT)) {
+					else if(check(PPToken.DOTDOTDOT)) {
 						next();
 						varArgParamName = Macro.__VA_ARGS__;
-						if(check(RPAREN))
+						if(check(PPToken.RPAREN))
 							rparen = next();
 						else
 							problem = true;
@@ -1778,14 +1699,14 @@ public class C99Preprocessor {
 			}
 
 			int endOffset = calculateMacroDefinitionEndOffset(rparen, replacementList);
-			macro = new Macro(macroName, replacementList, startOffset, endOffset, paramNames, varArgParamName, tokenMap);
+			macro = new Macro(macroName, replacementList, startOffset, endOffset, paramNames, varArgParamName, comparator);
 		}
 		
 		// object like macro
 		else { 
 			TokenList replacementList = replacementListTokens(null, null);
 			int endOffset = calculateMacroDefinitionEndOffset(macroName, replacementList);
-			macro = new Macro(macroName, replacementList, startOffset, endOffset, tokenMap);
+			macro = new Macro(macroName, replacementList, startOffset, endOffset, comparator);
 		}
 		
 		env.addMacro(macro);
@@ -1800,20 +1721,19 @@ public class C99Preprocessor {
 		if(tokens.isEmpty()) 
 			return false;
 		
-		return tokenMap.asC99Kind(tokens.first()) == C99Parsersym.TK_HashHash || 
-		       tokenMap.asC99Kind(tokens.last()) == C99Parsersym.TK_HashHash;
+		return check(PPToken.HASHHASH, tokens.first()) || check(PPToken.HASHHASH, tokens.last());
 	}
 	
 	/**
 	 * If the replacement list contains a newline then the start offset of the newline will be
-	 * returned. Otherwise the end ofsset of the last token will be returned.
+	 * returned. Otherwise the end offset of the last token will be returned.
 	 */
 	private int calculateMacroDefinitionEndOffset(IToken tokenBeforeReplacementList, TokenList replacementList) {
 		if(replacementList == null || replacementList.isEmpty())
 			return tokenBeforeReplacementList.getEndOffset() + 1;
 		else {
 			IToken last = replacementList.last();
-			if(tokenMap.asC99Kind(last) == C99Parsersym.TK_NewLine) {
+			if(check(PPToken.NEWLINE, last)) {
 				return last.getStartOffset();
 			}
 			else {
@@ -1826,10 +1746,10 @@ public class C99Preprocessor {
 	private TokenList replacementListTokens(Set paramNames, String varArgParamName) {
 		TokenList tokens = new TokenList();
 		
-		while(!check(NEWLINE) && !done()) {
+		while(!check(PPToken.NEWLINE) && !done()) {
 			IToken token = next();
 			
-			// Avoid accedental name capture by changing the token kind of parameters.
+			// Avoid accidental name capture by changing the token kind of parameters.
 			// The token kind will be changed back to TK_identifier (or a keyword) before 
 			// passed to the parser.
 			if(isParamName(token, paramNames, varArgParamName)) {
@@ -1847,7 +1767,7 @@ public class C99Preprocessor {
 	
 	
 	private boolean isParamName(IToken token, Set paramNames, String varArgParamName) {
-		if(tokenMap.asC99Kind(token) != C99Parsersym.TK_identifier)
+		if(!check(PPToken.IDENT, token))
 			return false;
 		if(paramNames == null)
 			return false;

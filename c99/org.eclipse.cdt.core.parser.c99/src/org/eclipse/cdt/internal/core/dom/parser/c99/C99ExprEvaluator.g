@@ -99,7 +99,6 @@ $Globals
 	import java.util.*;
 	import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.*;
 	import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
-	import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
 ./
 $End	
 
@@ -114,10 +113,10 @@ $Headers
 /.
 	private C99ExprEvaluatorAction action = new C99ExprEvaluatorAction(this);
 	
-	public C99ExprEvaluator(TokenList tokens, final ITokenMap tokenMap) {
+	public C99ExprEvaluator(TokenList tokens, final IPPTokenComparator comparator) {
 		this(new C99Lexer() {
 			public String[] orderedExportedSymbols() {
-				return tokenMap.getTargetSymbols();
+				return comparator.getLPGOrderedTerminalSymbols();
 			}
 		});
 		addToken(Token.DUMMY_TOKEN);

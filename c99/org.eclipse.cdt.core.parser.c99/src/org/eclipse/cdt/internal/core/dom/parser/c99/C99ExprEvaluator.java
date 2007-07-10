@@ -16,9 +16,10 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 import lpg.lpgjavaruntime.*;
 
 import java.util.*;
+
+import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.*;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
-import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
 
 public class C99ExprEvaluator extends PrsStream implements RuleAction
 {
@@ -76,7 +77,7 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);     //$NON-NLS-1$          
+                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);//$NON-NLS-1$               
             }
             System.out.println();                        
         }
@@ -142,10 +143,10 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
 
 private C99ExprEvaluatorAction action = new C99ExprEvaluatorAction(this);
 
-public C99ExprEvaluator(TokenList tokens, final ITokenMap tokenMap) {
+public C99ExprEvaluator(TokenList tokens, final IPPTokenComparator comparator) {
 	this(new C99Lexer() {
 		public String[] orderedExportedSymbols() {
-			return tokenMap.getTargetSymbols();
+			return comparator.getLPGOrderedTerminalSymbols();
 		}
 	});
 	addToken(Token.DUMMY_TOKEN);
@@ -155,7 +156,7 @@ public C99ExprEvaluator(TokenList tokens, final ITokenMap tokenMap) {
 		token.setKind(mapKind(token.getKind()));
 		addToken(token);
 	}
-	addToken(new Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>"));//$NON-NLS-1$
+	addToken(new Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>"));
 	setStreamLength(getSize());
 }
 

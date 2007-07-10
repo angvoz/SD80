@@ -18,14 +18,9 @@ import lpg.lpgjavaruntime.IToken;
  * defined in the C99 parser.
  * 
  * When LPG is used to generate a parser extension it will
- * generate all-new token kinds. In order for the preprocessor to be able
+ * generate all-new token kinds. In order for the semantic actions to be able
  * to interpret these token kinds correctly they will be mapped back
  * to the token kinds defined in C99Parsersym. 
- * 
- * Additionally the preprocessor may need to generate new tokens 
- * (for example when the ## or # operators are used in a macro).
- * For this reason this interface has several getXXXTokenKind() methods
- * for returning the correct token kinds for a parser extension.
  * 
  * @author Mike Kucera
  */
@@ -41,19 +36,4 @@ public interface ITokenMap {
 	 */
 	int asC99Kind(IToken token);
 
-	String[] getTargetSymbols();
-
-	int getEOFTokenKind();
-	
-	int getCompletionTokenKind();
-	
-	int getEndOfCompletionTokenKind();
-	
-	int getIntegerTokenKind();
-	
-	int getStringLitTokenKind();
-	
-	int getInvalidTokenKind();
-
-	int getIdentifierTokenKind();
 }

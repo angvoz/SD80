@@ -15,12 +15,12 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.Stack;
 
+import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 import org.eclipse.cdt.core.dom.parser.c99.IToken;
-import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
+import org.eclipse.cdt.core.dom.parser.c99.PPToken;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 
 
 
@@ -54,15 +54,15 @@ class InputTokenStream {
 
 	// for collecting comment tokens
 	private IPreprocessorTokenCollector parser;
-	private ITokenMap tokenMap;
+	private IPPTokenComparator comparator;
 	private boolean collectCommentTokens = false;
 	
 	// hack fix for bug #192698
 	private IToken lastCommentToken = null;
 
-	public InputTokenStream(IPreprocessorTokenCollector parser, ITokenMap tokenMap) {
+	public InputTokenStream(IPreprocessorTokenCollector parser, IPPTokenComparator comparator) {
 		this.parser = parser;
-		this.tokenMap = tokenMap;
+		this.comparator = comparator;
 	}
 	
 	/**
@@ -344,9 +344,10 @@ class InputTokenStream {
 	private void consumeCommentTokens() {
 		IToken token;
 		while((token = nextToken(true)) != null) {
-			int kind = tokenMap.asC99Kind(token);
-			if(kind != C99Parsersym.TK_SingleLineComment && kind != C99Parsersym.TK_MultiLineComment)
+			if(!comparator.compare(PPToken.SINGLE_LINE_COMMENT, token) && 
+			   !comparator.compare(PPToken.MULTI_LINE_COMMENT, token)) {
 				break;
+			}
 			
 			if(collectCommentTokens && parser != null) {
 				adjustToken(token);
@@ -399,7 +400,7 @@ class InputTokenStream {
 		Iterator iter = topContext.tokenList.iterator();
 		while(iter.hasNext()) {
 			IToken token = (IToken)iter.next();
-			if(tokenMap.asC99Kind(token) == C99Parsersym.TK_NewLine) {
+			if(comparator.compare(PPToken.NEWLINE, token)) {
 				return (token.getEndOffset() >= contentAssistOffset - 1);
 			}
 		}

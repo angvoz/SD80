@@ -83,7 +83,7 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 	 * map token kinds that the language extension defines back to 
 	 * token kinds that can be understood by the preprocessor.
 	 */
-	protected abstract ITokenMap getTokenMap();
+	protected abstract IPPTokenComparator getTokenComparator();
 	
 	
 	/**
@@ -151,9 +151,9 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 		int preprocessorOptions = scanComments ? C99Preprocessor.OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE : 0;
 		
 		ILexerFactory lexerFactory = getLexerFactory();
-		ITokenMap tokenMap = getTokenMap();
+		IPPTokenComparator comparator = getTokenComparator();
 		
-		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, tokenMap, reader, scanInfo, fileCreator, preprocessorOptions);
+		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, comparator, reader, scanInfo, fileCreator, preprocessorOptions);
 		if(parser == null)
 			parser = getParser();
 

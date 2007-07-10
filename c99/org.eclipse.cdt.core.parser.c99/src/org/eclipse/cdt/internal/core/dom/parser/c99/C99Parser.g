@@ -165,14 +165,13 @@ $Define
 	
 	$action_class /. C99ParserAction ./
 	$keyword_map_class /. C99KeywordMap ./
-	$token_map_class /. C99TokenMap ./
 	$lexer_class /. C99Lexer ./
 $End
 
 
 $Headers
 /.
-	private $action_class action = new $action_class(this, new $token_map_class());
+	private $action_class action = new $action_class(this, new C99TokenMap($prs_type.orderedTerminalSymbols));
 	private List commentTokens = new ArrayList();
 	private IKeywordMap keywordMap = new $keyword_map_class();
 	
@@ -202,7 +201,7 @@ $Headers
 	
 	public void resetTokenStream() {
 		super.resetTokenStream();
-		action = new $action_class(this, new $token_map_class());
+		action = new $action_class(this, new C99TokenMap($prs_type.orderedTerminalSymbols));
 		commentTokens = new ArrayList();
 	}
 	

@@ -83,7 +83,7 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);  //$NON-NLS-1$             
+                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);//$NON-NLS-1$               
             }
             System.out.println();                        
         }
@@ -164,7 +164,7 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
     }
 
 
-private  C99ParserAction  action = new  C99ParserAction (this, new  C99TokenMap ());
+private  C99ParserAction  action = new  C99ParserAction (this, new C99TokenMap(C99Parserprs.orderedTerminalSymbols));
 private List commentTokens = new ArrayList();
 private IKeywordMap keywordMap = new  C99KeywordMap ();
 
@@ -194,7 +194,7 @@ public List getCommentTokens() {
 
 public void resetTokenStream() {
 	super.resetTokenStream();
-	action = new  C99ParserAction (this, new  C99TokenMap ());
+	action = new  C99ParserAction (this, new C99TokenMap(C99Parserprs.orderedTerminalSymbols));
 	commentTokens = new ArrayList();
 }
 

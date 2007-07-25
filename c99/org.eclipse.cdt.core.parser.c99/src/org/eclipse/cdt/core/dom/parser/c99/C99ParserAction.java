@@ -23,8 +23,6 @@ import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTBreakStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
-import org.eclipse.cdt.core.dom.ast.IASTComment;
-import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTConditionalExpression;
@@ -76,7 +74,6 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
-import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayDesignator;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayModifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
@@ -96,159 +93,46 @@ import org.eclipse.cdt.core.dom.c99.IParserActionTokenProvider;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousExpression;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguousStatement;
-import org.eclipse.cdt.internal.core.dom.parser.c.CASTAmbiguousExpression;
-import org.eclipse.cdt.internal.core.dom.parser.c99.ASTCompletionNode;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
+import org.eclipse.cdt.internal.core.dom.parser.c99.ParserAction;
+import org.eclipse.cdt.internal.core.dom.parser.c99.TokenMap;
 
 
 /**
  * Semantic actions called by the parser to build an AST.
  */
-public class C99ParserAction {
-
-	private static final char[] EMPTY_CHAR_ARRAY = {};
-	
-	
-	/** Stack that holds the intermediate nodes as the AST is being built */
-	private final ASTStack astStack = new ASTStack();
-	
-	/** Used to create the AST node objects */
-	private final IASTNodeFactory nodeFactory;
-	
-	/** Provides an interface to the token stream */
-	private final IParserActionTokenProvider parser;
-	
-	/**
-	 * When a language extension is used then the token kinds might be remapped,
-	 * a tokenMap maps token kinds back to the kinds defined in C99Parsersym.
-	 */
-	private final ITokenMap tokenMap;
-	
-	
-	/** set to true if a problem is encountered */
-	private boolean encounteredRecoverableProblem = false;
-	
-	/** The completion node generated during a completion parse */
-	private ASTCompletionNode completionNode;
-
-	/** The offset and length of each grammar rule will be automatically calculated. */
-	protected int ruleOffset;
-	protected int ruleLength;
+public class C99ParserAction extends ParserAction {
 
 	
+	private ITokenMap tokenMap = null;
 	
-	/**
-	 * @param parser
-	 * @param orderedTerminalSymbols When an instance of this class is created for a parser
-	 * that parsers token kinds will be mapped back to the base C99 parser's token kinds.
-	 */
-	public C99ParserAction(IParserActionTokenProvider parser, ITokenMap tokenMap) {
-		this.parser = parser;
-		this.tokenMap = tokenMap;
-		this.nodeFactory = createNodeFactory();
+	
+	public C99ParserAction(IParserActionTokenProvider parser) {
+		super(parser);
+	}
+
+	
+	public void setTokenMap(String[] orderedTerminalSymbols) {
+		this.tokenMap = new TokenMap(C99Parsersym.orderedTerminalSymbols, orderedTerminalSymbols);
 	}
 	
 	
+	private int asC99Kind(IToken token) {
+		return asC99Kind(token.getKind());
+	}
+	
+	private int asC99Kind(int tokenKind) {
+		return tokenMap == null ? tokenKind : tokenMap.mapKind(tokenKind);
+	}
+	
+
 	/**
-	 * Overriddable by subclasses to provide a different implementation of the node factory.
+	 * Overrideable by subclasses to provide a different implementation of the node factory.
 	 */
 	protected IASTNodeFactory createNodeFactory() {
 		return new C99ASTNodeFactory();
 	}
 
-
-	protected IASTNodeFactory getNodeFactory() {
-		return nodeFactory;
-	}
-
-	protected ASTStack getASTStack() {
-		return astStack;
-	}
-	
-	
-	/**
-	 * Returns an AST after a successful parse, null otherwise.
-	 */
-	public IASTTranslationUnit getAST() {
-		if(astStack.isEmpty())
-			return null;
-		
-		IASTTranslationUnit tu = (IASTTranslationUnit) astStack.peek();
-		generateCommentNodes(tu);
-		forceAmbiguityResolution(tu);
-		return tu;
-	}
-	
-	
-	/**
-	 * Forces resolution of ambiguity nodes by applying a visitor to the AST.
-	 * The visitor itself doesn't do anything, however ambiguity nodes will resolve 
-	 * themselves when their accept() method is called.
-	 */
-	private void forceAmbiguityResolution(IASTTranslationUnit tu) {
-		CASTVisitor emptyVisitor = new CASTVisitor() { { shouldVisitStatements = true; } };
-		tu.accept(emptyVisitor);
-	}
-	
-	
-	/**
-	 * Generates a comment node for each comment token.
-	 */
-	private void generateCommentNodes(IASTTranslationUnit tu) {
-		List commentTokens = parser.getCommentTokens();
-		if(commentTokens == null || commentTokens.isEmpty())
-			return;
-		
-		IASTComment[] commentNodes = new IASTComment[commentTokens.size()];
-		
-		for(int i = 0; i < commentNodes.length; i++) {
-			IToken token = (IToken) commentTokens.get(i);
-			IASTComment comment = nodeFactory.newComment();
-			comment.setParent(tu);
-			comment.setComment(token.toString().toCharArray());
-			setOffsetAndLength(comment, token);
-			commentNodes[i] = comment;
-		}
-		
-		tu.setComments(commentNodes);
-	}
-	
-	
-	/**
-	 * Returns true if a syntax error was encountered during the parse.
-	 */
-	public boolean encounteredError() {
-		// if the astStack is empty then an unrecoverable syntax error was encountered
-		return encounteredRecoverableProblem || astStack.isEmpty();
-	}
-	
-	
-	/**
-	 * Method that is called by the special <openscope> production
-	 * in order to create a new scope in the AST stack.
-	 */
-	public void openASTScope() {
-		astStack.openASTScope();
-	}
-	
-	
-	/**
-	 * Retuns the completion node if this is a completion parse.
-	 */
-	public IASTCompletionNode getASTCompletionNode() {
-		if(completionNode != null)
-			completionNode.setTranslationUnit(getAST());
-		return completionNode;
-	}
-	
-	
-	/**
-	 * Maps token kinds back to those defined in C99Parsersym.
-	 */
-	protected int asC99Kind(IToken token) {
-		return tokenMap.asC99Kind(token);
-	}
-	
 	
 	/**
 	 * Used to conveniently pattern match a list of tokens based on their kind. 
@@ -258,7 +142,7 @@ public class C99ParserAction {
 	 * matchKinds(tokens, new int[] {TK_identifier, TK_Star, TK_identifier});
 	 * 
 	 */
-	private boolean matchKinds(List tokens, int[] kinds) {
+	protected boolean matchKinds(List tokens, int[] kinds) {
 		if(tokens.size() != kinds.length)
 			return false;
 		
@@ -277,76 +161,15 @@ public class C99ParserAction {
 	}
 	
 	
-	
-	// convenience methods for setting offsets and lengths on nodes
-	
-	protected static int offset(IToken token) {
-		return token.getStartOffset();
-	}
-	
-	protected static int offset(IASTNode node) {
-		return ((ASTNode)node).getOffset();
-	}
-	
-	protected static int length(IToken token) {
-		return endOffset(token) - offset(token);
-	}
-	
-	protected static int length(IASTNode node) {
-		return ((ASTNode)node).getLength();
-	}
-	
-	protected static int endOffset(IASTNode node) {
-		return offset(node) + length(node);
-	}
-	
-	protected static int endOffset(IToken token) {
-		return token.getEndOffset() + 1;
-	}
-	
-	protected void setOffsetAndLength(IASTNode node) {
-		((ASTNode)node).setOffsetAndLength(ruleOffset, ruleLength);
-	}
-	
-	protected void setOffsetAndLength(IASTNode node, IToken token) {
-		((ASTNode)node).setOffsetAndLength(offset(token), length(token));
-	}
-	
-	protected void setOffsetAndLength(IASTNode node, int offset, int length) {
-		((ASTNode)node).setOffsetAndLength(offset, length);
-	}
-	
-	
-	
-	/********************************************************************
-	 * Start of semantic actions.
-	 ********************************************************************/
-	
-	
-	
 	/**
-	 * Special action that is always called before every consume action.
-	 * Calculates AST node offsets automatically.
-	 * 
-	 * TODO: If all the references to ruleOffset and ruleLength are removed then
-	 * this code can be inlined into setOffsetAndLength() and this method
-	 * can be removed
-	 */
-	public void beforeConsume() {
-		ruleOffset = parser.getLeftIToken().getStartOffset();
-		ruleLength = parser.getRightIToken().getEndOffset() + 1 - ruleOffset;
-	}
-	
-	
-	/**
-	 * Consumes a name from an identifer.
+	 * Consumes a name from an identifier.
 	 * Used by several grammar rules.
 	 */
 	public void consumeName() {
 		IASTName name = createName( parser.getRightIToken() );
 		astStack.push(name);
 	}
-		
+	
 	
 	/**
 	 * Creates a IASTName node from an identifier token.
@@ -358,26 +181,16 @@ public class C99ParserAction {
 		setOffsetAndLength(name, token); 
 		
 		if(asC99Kind(token) == C99Parsersym.TK_Completion) {
-			String prefix = token.toString();
-			
-			// TODO this should be IASTCompletionNode interface
-			if(completionNode == null)
-				completionNode = nodeFactory.newCompletionNode(prefix.length() == 0 ? null : prefix);
-			
-			completionNode.addName(name);
+			super.addNameToCompletionNode(name, token.toString());
 		}
 		
 		return name;
 	}
 	
-	
-	/**
-	 * Gets the current token and places it on the stack for later consumption.
-	 */
-	public void consumeToken() {
-		astStack.push(parser.getRightIToken());
-	}
-	
+	/********************************************************************
+	 * Start of semantic actions.
+	 ********************************************************************/
+
 	
 	/**
 	 * constant ::= 'integer' | 'floating' | 'charconst' | 'stringlit'
@@ -1119,7 +932,7 @@ public class C99ParserAction {
 			IASTProblemDeclaration problem = nodeFactory.newProblemDeclaration();
 			setOffsetAndLength(problem);
 			astStack.push(problem);
-			encounteredRecoverableProblem = true;
+			setEncounteredRecoverableProblem(true);
 		}
 	}
 	
@@ -1368,7 +1181,7 @@ public class C99ParserAction {
 			IASTProblemDeclaration problem = nodeFactory.newProblemDeclaration();
 			setOffsetAndLength(problem);
 			astStack.push(problem);
-			encounteredRecoverableProblem = true;
+			setEncounteredRecoverableProblem(true);
 		}
 	}
 	
@@ -1427,6 +1240,8 @@ public class C99ParserAction {
 		}
 		else { // it appears that a declarator is always required in the AST here
 			declarator = nodeFactory.newDeclarator();
+			int ruleOffset = getRuleOffset();
+			int ruleLength = getRuleLength();
 			setOffsetAndLength(declarator, ruleOffset + ruleLength, 0);
 			IASTName name = nodeFactory.newName();
 			setOffsetAndLength(name, ruleOffset + ruleLength, 0);
@@ -2066,7 +1881,7 @@ public class C99ParserAction {
 		List tokens = parser.getRuleTokens();
 		
 		// if what was parsed looks like: ident * ident ;
-		// oh how I miss static imports
+		// oh how I miss static imports 
 		if(!matchKinds(tokens, 
 			new int[]{C99Parsersym.TK_identifier, C99Parsersym.TK_Star, C99Parsersym.TK_identifier, C99Parsersym.TK_SemiColon})) {
 			return;
@@ -2544,7 +2359,7 @@ public class C99ParserAction {
 	
 	
 	private void consumeProblem(IASTProblemHolder problemHolder) {
-		encounteredRecoverableProblem = true;
+		setEncounteredRecoverableProblem(true);
 		
 		IASTProblem problem = nodeFactory.newProblem(IASTProblem.SYNTAX_ERROR, EMPTY_CHAR_ARRAY, false, true);
 		

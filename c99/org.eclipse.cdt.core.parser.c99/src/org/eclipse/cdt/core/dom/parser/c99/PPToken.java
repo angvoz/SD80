@@ -38,43 +38,57 @@ public final class PPToken {
 		MULTI_LINE_COMMENT  = new PPToken(),
 		EOF                 = new PPToken(),
 		
-		IF                  = new PPToken(),
-		IFDEF               = new PPToken(),
-		IFNDEF              = new PPToken(),
-		ELIF                = new PPToken(),
-		ELSE                = new PPToken(),
-		ENDIF               = new PPToken(),
-		DEFINE              = new PPToken(),
-		UNDEF               = new PPToken(),
-		INCLUDE             = new PPToken(),
-		INCLUDE_NEXT        = new PPToken(),
-		PRAGMA              = new PPToken(),
-		ERROR               = new PPToken(),
-		WARNING             = new PPToken();
+		IF                  = new PPToken("if"),
+		IFDEF               = new PPToken("ifdef"),
+		IFNDEF              = new PPToken("ifndef"),
+		ELIF                = new PPToken("elif"),
+		ELSE                = new PPToken("else"),
+		ENDIF               = new PPToken("endif"),
+		DEFINE              = new PPToken("define"),
+		UNDEF               = new PPToken("undef"),
+		INCLUDE             = new PPToken("include"),
+		INCLUDE_NEXT        = new PPToken("include_next"),
+		PRAGMA              = new PPToken("pragma"),
+		ERROR               = new PPToken("error"),
+		WARNING             = new PPToken("warning");
 	
+	
+	
+	private String keyword = null;
 	
 	private PPToken() {}
+	private PPToken(String keyword) { this.keyword = keyword; }
 	
 	
-	private static final Map directives = new HashMap();
+	private static final Map directiveMap = new HashMap();
+	private static final String[] directives;
+	
 	static {
-		directives.put("if",           PPToken.IF);
-		directives.put("ifdef",        PPToken.IFDEF);
-		directives.put("ifndef",       PPToken.IFNDEF);
-		directives.put("elif",         PPToken.ELIF);
-		directives.put("else",         PPToken.ELSE);
-		directives.put("endif",        PPToken.ENDIF);
-		directives.put("define",       PPToken.DEFINE);
-		directives.put("undef",        PPToken.UNDEF);
-		directives.put("include",      PPToken.INCLUDE);
-		directives.put("include_next", PPToken.INCLUDE_NEXT);
-		directives.put("pragma",       PPToken.PRAGMA);
-		directives.put("error",        PPToken.ERROR);
-		directives.put("warning",      PPToken.WARNING);
+		directiveMap.put(IF.keyword,           IF);
+		directiveMap.put(IFDEF.keyword,        IFDEF);
+		directiveMap.put(IFNDEF.keyword,       IFNDEF);
+		directiveMap.put(ELIF.keyword,         ELIF);
+		directiveMap.put(ELSE.keyword,         ELSE);
+		directiveMap.put(ENDIF.keyword,        ENDIF);
+		directiveMap.put(DEFINE.keyword,       DEFINE);
+		directiveMap.put(UNDEF.keyword,        UNDEF);
+		directiveMap.put(INCLUDE.keyword,      INCLUDE);
+		directiveMap.put(INCLUDE_NEXT.keyword, INCLUDE_NEXT);
+		directiveMap.put(PRAGMA.keyword,       PRAGMA);
+		directiveMap.put(ERROR.keyword,        ERROR);
+		directiveMap.put(WARNING.keyword,      WARNING);
+		
+		
+		directives = new String[directiveMap.size()];
+		directiveMap.keySet().toArray(directives);
 	}
 	
 	
 	public static PPToken getDirective(String ident) {
-		return (PPToken)directives.get(ident);
+		return (PPToken)directiveMap.get(ident);
+	}
+	
+	public static String[] getPreprocessorKeywords() {
+		return directives;
 	}
 }

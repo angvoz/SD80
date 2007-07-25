@@ -171,7 +171,7 @@ $End
 
 $Headers
 /.
-	private $action_class action = new $action_class(this, new C99TokenMap($prs_type.orderedTerminalSymbols));
+	private $action_class action = new $action_class(this);
 	private List commentTokens = new ArrayList();
 	private IKeywordMap keywordMap = new $keyword_map_class();
 	
@@ -201,7 +201,7 @@ $Headers
 	
 	public void resetTokenStream() {
 		super.resetTokenStream();
-		action = new $action_class(this, new C99TokenMap($prs_type.orderedTerminalSymbols));
+		action = new $action_class(this);
 		commentTokens = new ArrayList();
 	}
 	

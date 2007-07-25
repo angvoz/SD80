@@ -13,25 +13,22 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 import java.util.HashMap;
 import java.util.Map;
 
-import lpg.lpgjavaruntime.IToken;
-
 import org.eclipse.cdt.core.dom.parser.c99.ITokenMap;
 
 
 /**
- * Maps token kinds from new parsers back to the token kinds defined in C99Parsersym.
- * If this is not done then C99ParserAction will not behave properly.
+ * Maps token kinds from a sub-parser back to the corresponding
+ * token kinds in a base parser.
  * 
  * @author Mike Kucera
  */
-public class C99TokenMap implements ITokenMap {
+public class TokenMap implements ITokenMap {
 
 	// LPG token kinds start at 0
+	// the kind is not part of the base language parser
 	public static int INVALID_KIND = -1;
 	
 	private int[] kindMap = null; 
-	private Map symbolMap = new HashMap();
-	private String[] targetSymbols = null;
 	
 	
 	/**
@@ -40,35 +37,29 @@ public class C99TokenMap implements ITokenMap {
 	 * to pass the orderedTerminalSymbols field from an LPG generated symbol
 	 * file, for example C99Parsersym.orderedTerminalSymbols.
 	 */
-	public C99TokenMap(String[] toSymbols) {
-		targetSymbols = toSymbols;
-		
+	public TokenMap(String[] toSymbols, String[] fromSymbols) {
 		// If this map is not being used with an extension then it becomes an "identity map".
-		if(toSymbols == C99Parsersym.orderedTerminalSymbols)
+		if(toSymbols == fromSymbols)
 			return;
 		
-		kindMap = new int[toSymbols.length];
-		
-		for(int i = 0; i < C99Parsersym.orderedTerminalSymbols.length; i++) {
-			symbolMap.put(C99Parsersym.orderedTerminalSymbols[i], new Integer(i));
-		}
+		kindMap = new int[fromSymbols.length];
+		Map toMap = new HashMap();
 		
 		for(int i = 0; i < toSymbols.length; i++) {
-			Integer kind = (Integer)symbolMap.get(toSymbols[i]);
+			toMap.put(toSymbols[i], new Integer(i));
+		}
+		
+		for(int i = 0; i < fromSymbols.length; i++) {
+			Integer kind = (Integer)toMap.get(fromSymbols[i]);
 			kindMap[i] = kind == null ? INVALID_KIND : kind.intValue();
 		}
-	}
-	
-	
-	public String[] getTargetSymbols() {
-		return targetSymbols;
 	}
 	
 	
 	/**
 	 * Maps a token kind back to the corresponding kind define in the base C99 parser.
 	 */
-	public int asC99Kind(int kind) {
+	public int mapKind(int kind) {
 		if(kindMap == null)
 			return kind;
 		
@@ -76,9 +67,5 @@ public class C99TokenMap implements ITokenMap {
 			return INVALID_KIND;
 		
 		return kindMap[kind];
-	}
-	
-	public int asC99Kind(IToken token) {
-		return asC99Kind(token.getKind());
 	}
 }

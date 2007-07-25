@@ -10,7 +10,6 @@
 *********************************************************************************/
 package org.eclipse.cdt.core.dom.parser.c99;
 
-import lpg.lpgjavaruntime.IToken;
 
 
 /**
@@ -29,11 +28,6 @@ public interface ITokenMap {
 	/**
 	 * Maps the given token kind back to the same token kind defined in C99Parsersym.
 	 */
-	int asC99Kind(int kind);
-
-	/**
-	 * Maps the given token kind back to the same token kind defined in C99Parsersym.
-	 */
-	int asC99Kind(IToken token);
+	int mapKind(int kind);
 
 }

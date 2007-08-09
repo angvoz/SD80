@@ -27,6 +27,7 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.C99PPTokenComparator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.LocationResolver;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
 
 public class C99PreprocessorTests extends TestCase {
@@ -52,7 +53,7 @@ public class C99PreprocessorTests extends TestCase {
 		C99Parser parser = new C99Parser();
 		
 		// the preprocessor injects tokens into the parser
-		preprocessor.preprocess(parser, null, null);
+		preprocessor.preprocess(parser, new LocationResolver(), null);
 		
 		return parser.getTokens();
 	}

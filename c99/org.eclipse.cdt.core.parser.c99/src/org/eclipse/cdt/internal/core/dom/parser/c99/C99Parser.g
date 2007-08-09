@@ -9,19 +9,6 @@
 --     IBM Corporation - initial API and implementation
 -----------------------------------------------------------------------------------
 
-
-
------------------------------------------------------------------------------------
--- Big TODO List
---
--- Preprocessor
--- Re-refactor statment rules to be simpler, 
---     its okay to have a shift/reduce conflict for dangling else.
--- Simplify grammar by using more *_opt rules
--- 
------------------------------------------------------------------------------------
-
-
 %options la=2
 %options package=org.eclipse.cdt.internal.core.dom.parser.c99
 %options template=btParserTemplateD.g
@@ -46,97 +33,74 @@ $End
 
 $Terminals
 	
-	-- The scanner does not recognize keywords, it will return them as identifier tokens.
-	-- The preprocessor will use an IKeywordMap to convert these identifiers to keyword tokens.
-	auto
-	break
-	case
-	char
-	const
-	continue
-	default
-	do
-	double
-	else
-	enum
-	extern
-	float
-	for
-	goto
-	if
-	inline
-	int
-	long
-	register
-	restrict
-	return
-	short
-	signed
-	sizeof
-	static
-	struct
-	switch
-	typedef
-	union
-	unsigned
-	void
-	volatile
-	while
-	_Bool
-	_Complex
-	_Imaginary
+	-- Most terminals are defined in the lexer and imported from there.
+	-- This section lists terminals that are not defined in the lexer such as keywords.
 	
--- These are just aliases for lexer tokens
+	
+	-- The scanner does not recognize keywords, it will return them as identifier tokens.
+	-- An IKeywordMap is used to convert these identifiers to keyword tokens.
+	
+	auto      break     case      char  
+	const     continue  default   do       
+	double    else      enum      extern 
+	float     for       goto      if        
+	inline    int       long      register 
+	restrict  return    short     signed     
+	sizeof    static    struct    switch
+	typedef   union     unsigned  void 
+	volatile  while
+	_Bool     _Complex  _Imaginary
+	
+	
+    -- These are aliases for lexer tokens.
 
--- RightBracket ::= ']'
-LeftBracket  ::= '['
--- RightParen   ::= ')'
-LeftParen    ::= '('
--- RightBrace   ::= '}'
-LeftBrace    ::= '{'
-Dot          ::= '.'
-Arrow        ::= '->'
-PlusPlus     ::= '++'
-MinusMinus   ::= '--'
-And          ::= '&'
-Star         ::= '*'
-Plus         ::= '+'
-Minus        ::= '-'
-Tilde        ::= '~'
-Bang         ::= '!'
-Slash        ::= '/'
-Percent      ::= '%'
-RightShift   ::= '>>'
-LeftShift    ::= '<<'
-LT           ::= '<'
-GT           ::= '>'
-LE           ::= '<='
-GE           ::= '>='
-EQ           ::= '=='
-NE           ::= '!='
-Caret        ::= '^'
-Or           ::= '|'
-AndAnd       ::= '&&'
-OrOr         ::= '||'
-Question     ::= '?'
-Colon        ::= ':'
--- SemiColon    ::= ';'
-DotDotDot    ::= '...'
-Assign           ::= '='
-StarAssign       ::= '*='
-SlashAssign      ::= '/='
-PercentAssign    ::= '%='
-PlusAssign       ::= '+='
-MinusAssign      ::= '-='
-RightShiftAssign ::= '>>='
-LeftShiftAssign  ::= '<<='
-AndAssign        ::= '&='
-CaretAssign      ::= '^='
-OrAssign         ::= '|='
-Comma            ::= ','
-Hash             ::= '#'
-HashHash         ::= '##'
-NewLine          ::= 'nl'
+
+	LeftBracket      ::= '['
+	LeftParen        ::= '('
+	LeftBrace        ::= '{'
+	Dot              ::= '.'
+	Arrow            ::= '->'
+	PlusPlus         ::= '++'
+	MinusMinus       ::= '--'
+	And              ::= '&'
+	Star             ::= '*'
+	Plus             ::= '+'
+	Minus            ::= '-'
+	Tilde            ::= '~'
+	Bang             ::= '!'
+	Slash            ::= '/'
+	Percent          ::= '%'
+	RightShift       ::= '>>'
+	LeftShift        ::= '<<'
+	LT               ::= '<'
+	GT               ::= '>'
+	LE               ::= '<='
+	GE               ::= '>='
+	EQ               ::= '=='
+	NE               ::= '!='
+	Caret            ::= '^'
+	Or               ::= '|'
+	AndAnd           ::= '&&'
+	OrOr             ::= '||'
+	Question         ::= '?'
+	Colon            ::= ':'
+	DotDotDot        ::= '...'
+	Assign           ::= '='
+	StarAssign       ::= '*='
+	SlashAssign      ::= '/='
+	PercentAssign    ::= '%='
+	PlusAssign       ::= '+='
+	MinusAssign      ::= '-='
+	RightShiftAssign ::= '>>='
+	LeftShiftAssign  ::= '<<='
+	AndAssign        ::= '&='
+	CaretAssign      ::= '^='
+	OrAssign         ::= '|='
+	Comma            ::= ','
+	Hash             ::= '#'
+	HashHash         ::= '##'
+	NewLine          ::= 'nl'
+
 
 $End
 
@@ -158,6 +122,9 @@ $Globals
 $End
 
 $Define
+
+    -- These macros allow the header code to be customized by an extending parser.
+    
 	$ast_class /.Object./
 	$ba /.$BeginAction action.beforeConsume(); action. ./
 	$ea /.$EndAction./
@@ -280,12 +247,12 @@ $Rules
 
 -------------------------------------------------------------------------------------------
 -- Content assist
---
 -------------------------------------------------------------------------------------------
 
 
-ident ::= 'identifier'
-        | 'Completion'
+identifier_or_completion 
+    ::= 'identifier'
+      | 'Completion'
 
 ']' ::=? 'RightBracket'
        | 'EndOfCompletion'
@@ -317,7 +284,7 @@ constant
 
 primary_expression 
     ::= constant 
-      | ident                 
+      | identifier_or_completion                 
           /.$ba  consumeExpressionID();  $ea./
       | '(' expression ')'         
           /.$ba  consumeExpressionBracketed();  $ea./
@@ -330,9 +297,9 @@ postfix_expression
           /.$ba  consumeExpressionFunctionCall(false);  $ea./
       | postfix_expression '(' argument_expression_list ')'
           /.$ba  consumeExpressionFunctionCall(true);  $ea./
-      | postfix_expression '.' ident
+      | postfix_expression '.' member_name
           /.$ba  consumeExpressionFieldReference(false);  $ea./
-      | postfix_expression '->' ident
+      | postfix_expression '->' member_name
           /.$ba  consumeExpressionFieldReference(true);  $ea./
       | postfix_expression '++'
           /.$ba  consumeExpressionUnaryOperator(IASTUnaryExpression.op_postFixIncr);  $ea./
@@ -344,6 +311,9 @@ postfix_expression
           /.$ba  consumeExpressionTypeIdInitializer();  $ea./ 
 
 
+member_name
+    ::= identifier_or_completion
+      
 
 argument_expression_list
     ::= assignment_expression
@@ -627,25 +597,6 @@ declaration
 	      /.$ba  consumeDeclaration(true);  $ea./
          
 
--- 4 declaration specifier rules
--- 1) simple, consists of just keywords, eg. unsigned long int
--- 2) enum
--- 3) struct or union
--- 4) typedef name
--- TODO refactor specifier_qualifier_list also
-
--- old rule, just not good enough
---simple_declaration_specifiers
---    ::= storage_class_specifier
---      | simple_declaration_specifiers storage_class_specifier
---      | type_specifier
---      | simple_declaration_specifiers type_specifier
---      | type_qualifier
---      | simple_declaration_specifiers type_qualifier 
---      | function_specifier
---      | simple_declaration_specifiers function_specifier 
-
-
 declaration_specifiers
     ::= <openscope> simple_declaration_specifiers
             /.$ba  consumeDeclarationSpecifiersSimple(); $ea./
@@ -656,40 +607,41 @@ declaration_specifiers
       | <openscope> typdef_name_declaration_specifiers
             /.$ba  consumeDeclarationSpecifiersTypedefName(); $ea./
 
--- like the simple case but without any type
-no_type_declaration_specifiers
-    ::= storage_class_specifier
-      | no_type_declaration_specifiers storage_class_specifier
-      | type_qualifier
-      | no_type_declaration_specifiers type_qualifier 
-      | function_specifier
-      | no_type_declaration_specifiers function_specifier 
 
+no_type_declaration_specifier
+    ::= storage_class_specifier
+      | type_qualifier
+      | function_specifier
+    
+    
+no_type_declaration_specifiers
+    ::= no_type_declaration_specifier
+      | no_type_declaration_specifiers no_type_declaration_specifier
+  
+      
 simple_declaration_specifiers
-    ::= no_type_declaration_specifiers type_specifier simple_declaration_specifiers
-      | type_specifier simple_declaration_specifiers
-      | type_specifier
-      | no_type_declaration_specifiers
+    ::= type_specifier
       | no_type_declaration_specifiers type_specifier
+      | simple_declaration_specifiers type_specifier
+      | simple_declaration_specifiers no_type_declaration_specifier
+      
       
 struct_or_union_declaration_specifiers
-    ::= no_type_declaration_specifiers  struct_or_union_specifier  no_type_declaration_specifiers
-      | struct_or_union_specifier  no_type_declaration_specifiers
-      | no_type_declaration_specifiers  struct_or_union_specifier
-      | struct_or_union_specifier
+    ::= struct_or_union_specifier
+      | no_type_declaration_specifiers struct_or_union_specifier
+      | struct_or_union_declaration_specifiers no_type_declaration_specifier
+      
 
 enum_declaration_specifiers
-    ::= no_type_declaration_specifiers  enum_specifier  no_type_declaration_specifiers
-      | enum_specifier  no_type_declaration_specifiers
+    ::= enum_specifier
       | no_type_declaration_specifiers  enum_specifier
-      | enum_specifier
+      | enum_declaration_specifiers no_type_declaration_specifier
 
 
 typdef_name_declaration_specifiers
-    ::= no_type_declaration_specifiers  typedef_name  no_type_declaration_specifiers
-      | typedef_name  no_type_declaration_specifiers
+    ::= typedef_name
       | no_type_declaration_specifiers  typedef_name
-      | typedef_name
+      | typdef_name_declaration_specifiers no_type_declaration_specifier
       
 
 init_declarator_list
@@ -725,14 +677,10 @@ type_specifier
       | '_Complex'    /.$ba  consumeToken();  $ea./
       | '_Imaginary'  /.$ba  consumeToken();  $ea./
       
-      -- separated out into their own rules
-      --| typedef_name /.$ba  consumeToken();  $ea./
-      --| struct_or_union_specifier
-      --| enum_specifier
 		
 		
 typedef_name
-    ::= ident   /.$ba  consumeToken();  $ea./
+    ::= identifier_or_completion   /.$ba  consumeToken();  $ea./
     
     
 struct_or_union_specifier
@@ -778,15 +726,6 @@ struct_declaration
 -- just reuse declaration_specifiers, makes grammar a bit more lenient but thats ok
 specifier_qualifier_list
     ::= declaration_specifiers
-    
-    --type_specifier
-    --       --/.$ba  consumeDeclarationSpecifiers(true);  $ea./
-    --  | specifier_qualifier_list type_specifier 
-    --       --/.$ba  consumeDeclarationSpecifiers(false); $ea./
-    --  | type_qualifier
-    --       --/.$ba  consumeDeclarationSpecifiers(true);  $ea./
-    --  | specifier_qualifier_list type_qualifier 
-    --       --/.$ba  consumeDeclarationSpecifiers(false); $ea./
            
 
 struct_declarator_list

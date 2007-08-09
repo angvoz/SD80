@@ -136,4 +136,29 @@ public class C99Tests extends AST2Tests {
 		fail();
 	}
 	
+	
+	public void testBug80171() throws Exception {  // implicit int not supported
+		try {
+			super.testBug80171();
+		} catch(AssertionFailedError _) {
+			return;
+		} catch(Exception _) {
+			return;
+		}
+		
+		fail();
+    }
+	
+	
+	public void testBug196468_emptyArrayInitializer() {  // empty array initializer is a gcc extension
+		try {
+			super.testBug196468_emptyArrayInitializer();
+		} catch(AssertionFailedError _) {
+			return;
+		} catch(Exception _) {
+			return;
+		}
+		
+		fail();
+	}
 }

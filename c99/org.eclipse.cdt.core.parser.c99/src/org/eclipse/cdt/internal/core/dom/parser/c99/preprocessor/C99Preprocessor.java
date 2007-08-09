@@ -133,6 +133,7 @@ public class C99Preprocessor {
 	 * 
 	 * @throws IllegalArgumentException if contentAssistOffset < 0
 	 * @throws IllegalArgumentException if parser is null
+	 * @throws IllegalArgumentException if log is null
 	 */
 	public synchronized void preprocess(IPreprocessorTokenCollector parser, IPreprocessorLog log, 
 			                            IPreprocessorExtensionConfiguration extensionConfiguration, int contentAssistOffset) {
@@ -140,11 +141,12 @@ public class C99Preprocessor {
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.0")); //$NON-NLS-1$
 		if(contentAssistOffset < 0)
 			throw new IllegalArgumentException(Messages.getString("C99Preprocessor.2")); //$NON-NLS-1$
+		if(log == null)
+			throw new IllegalArgumentException();
 		
 		InputTokenStream inputTokenStream = new InputTokenStream(parser, comparator);
 		inputTokenStream.setContentAssistOffset(contentAssistOffset);
 		preprocess(parser, log, extensionConfiguration, inputTokenStream);
-		
 	}
 	
 	
@@ -172,22 +174,22 @@ public class C99Preprocessor {
 			// LPG requires that the parse stream must start with a dummy token
 			parser.addToken(Token.DUMMY_TOKEN); 
 	
-			if(log != null)
-				log.startTranslationUnit(codeReader);
+			log.startTranslationUnit(codeReader);
 			
-			
+			System.out.println("Lexing the codeReader");
 			TokenList tokenList = lex(codeReader);
 			inputTokenStream.pushIncludeContext(tokenList, codeReader, 0, false, null);
 			
 			processExtendedScannerInfoMacrosAndIncludes(); // add any files that should be manually included for tests
 			
+			// process the translation unit
 			process(); // throws PreprocessorAbortParseException
 			
+			// create EOF token
 			int tuSize = inputTokenStream.getTranslationUnitSize();
 			parser.addToken(new Token(tuSize, tuSize, comparator.getKind(IPPTokenComparator.KIND_EOF), "<EOF>")); //$NON-NLS-1$
 			
-			if(log != null)
-				log.endTranslationUnit(tuSize);
+			log.endTranslationUnit(tuSize);
 		}
 		catch(PreprocessorAbortParseException e) {
 			encounteredError = true;
@@ -212,6 +214,7 @@ public class C99Preprocessor {
 		boolean generateComments = generateActiveComments | generateAllComments;
 		int lexerOptions = generateComments ? ILexer.OPTION_GENERATE_COMMENT_TOKENS : 0;
 		TokenList tokens = lexer.lex(lexerOptions);
+		
 		return tokens;
 	}
 	
@@ -273,6 +276,9 @@ public class C99Preprocessor {
 		String define = signature + " " + expansion; //$NON-NLS-1$
 		TokenList tokenList = lex(new CodeReader(define.toCharArray()));
 		
+		if(tokenList == null || tokenList.isEmpty())
+			return null;
+		
 		inputTokenStream.pushIsolatedContext(tokenList, null);
 		
 		// parse the macro as if it were created with a #define and add it to the macro environment
@@ -288,7 +294,7 @@ public class C99Preprocessor {
 	 */
 	private void registerMacro(String signature, String expansion) {
 		Macro macro = registerMacroInLocalEnvironment(signature, expansion);
-		if(macro != null && log != null)
+		if(macro != null)
 			log.registerBuiltinMacro(macro);
 	}
 	
@@ -305,8 +311,7 @@ public class C99Preprocessor {
 		String expansion = new String(m.getExpansion());
 		registerMacroInLocalEnvironment(signature, expansion);
 		
-		if(log != null)
-			log.registerIndexMacro(m);
+		log.registerIndexMacro(m);
 	}
 
 	
@@ -336,19 +341,17 @@ public class C99Preprocessor {
 		// if the include is not supposed to be followed, then the reader will have an empty buffer
 		TokenList tokens = lex(reader);
 		
-		if(log != null)
-			log.startInclusion(reader, directiveStartOffset, directiveEndOffset, nameStartOffset, 
+		log.startInclusion(reader, directiveStartOffset, directiveEndOffset, nameStartOffset, 
 				           nameEndOffset, name.toCharArray(), systemInclude);
 		
 		// This code gets fired when the tokens that make up the included file get used up
 		InputTokenStream.IIncludeContextCallback callback = null;
-		if(log != null) {
-			callback = new InputTokenStream.IIncludeContextCallback() {
-				public void contextClosed() {
-					log.endInclusion(reader, inputTokenStream.adjust(reader.buffer.length));
-				}
-			};
-		}
+		callback = new InputTokenStream.IIncludeContextCallback() {
+			public void contextClosed() {
+				log.endInclusion(reader, inputTokenStream.adjust(reader.buffer.length));
+			}
+		};
+
 		
 		inputTokenStream.pushIncludeContext(tokens, reader, directiveEndOffset, isolated, callback);
 	}
@@ -394,7 +397,7 @@ public class C99Preprocessor {
 		}
 		else {
 			lastTokenOutput = toOutput;
-			//System.out.println("Token: (" + toOutput.getKind() + ", " + toOutput.getStartOffset() + ", " + toOutput.getEndOffset() + ") " + toOutput);
+			System.out.println("Token: (" + toOutput.getKind() + ", " + toOutput.getStartOffset() + ", " + toOutput.getEndOffset() + ") " + toOutput);
 			parser.addToken(toOutput);
 		}
 	}
@@ -485,8 +488,7 @@ public class C99Preprocessor {
 	private void encounterProblem(int id, int startOffset, int endOffset, char[] arg) {
 		ScannerASTProblem problem = new ScannerASTProblem(id, arg, true, false);
 		problem.setOffsetAndLength(startOffset, (endOffset - startOffset) + 1);
-		if(log != null)
-			log.encounterProblem(problem);
+		log.encounterProblem(problem);
 	}
 	
 	/**
@@ -833,7 +835,7 @@ public class C99Preprocessor {
 		}
 		
 		public void startExpansion(char[][] args) {
-			if(log != null && macroInvokationDepth == 0)
+			if(macroInvokationDepth == 0)
 				log.startMacroExpansion(macro, directiveStartOffset, directiveEndOffset, args);
 		}
 		
@@ -845,7 +847,7 @@ public class C99Preprocessor {
 			if(disabled)
 				return;
 			
-			if(log != null && macroInvokationDepth == 0)
+			if(macroInvokationDepth == 0)
 				log.endMacroExpansion(macro, expansionEndOffset);
 		}
 		
@@ -853,7 +855,7 @@ public class C99Preprocessor {
 		 * Should only be called when a macro overlap occurs.
 		 */
 		public void macroOverlapClose() {
-			if(log != null && macroInvokationDepth == 0)
+			if(macroInvokationDepth == 0)
 				log.endMacroExpansion(macro, directiveEndOffset);
 		}
 		
@@ -944,10 +946,9 @@ public class C99Preprocessor {
 		
 		
 		if(replacement == null || replacement.isEmpty()) {
-			if(log != null) {
-				log.startMacroExpansion(macro, startOffset, expansionLocationOffset, argsAsChar);
-				log.endMacroExpansion(macro, expansionLocationOffset);
-			}
+			log.startMacroExpansion(macro, startOffset, expansionLocationOffset, argsAsChar);
+			log.endMacroExpansion(macro, expansionLocationOffset);
+
 		}
 		else {
 			int replacementLength = replacement.last().getEndOffset();
@@ -1128,8 +1129,7 @@ public class C99Preprocessor {
 			next();
 			IToken macroName = expect(PPToken.IDENT);
 			String name = macroName.toString();
-			if(log != null)
-				log.undefineMacro(directiveStartOffset, macroName.getEndOffset() + 1, name, macroName.getStartOffset());
+			log.undefineMacro(directiveStartOffset, macroName.getEndOffset() + 1, name, macroName.getStartOffset());
 			env.removeMacro(name);
 			if(!done())
 				expect(PPToken.NEWLINE);
@@ -1155,14 +1155,14 @@ public class C99Preprocessor {
 			char[] body = tokens.toString().toCharArray();
 			
 			if(isPragma) {
-				if(log != null) log.encounterPoundPragma(directiveStartOffset, endOffset, body);
+				log.encounterPoundPragma(directiveStartOffset, endOffset, body);
 			}
 			else if(isError) {
-				if(log != null) log.encounterPoundError(directiveStartOffset, endOffset, body);
+				log.encounterPoundError(directiveStartOffset, endOffset, body);
 				encounterProblem(IASTProblem.PREPROCESSOR_POUND_ERROR, tokens);
 			}
 			else {
-				if(log != null) log.encounterPoundError(directiveStartOffset, endOffset, body);
+				log.encounterPoundError(directiveStartOffset, endOffset, body);
 				encounterProblem(IASTProblem.PREPROCESSOR_POUND_WARNING, tokens);
 			}
 			
@@ -1238,14 +1238,12 @@ public class C99Preprocessor {
 		
 		boolean takeIfBranch = isIfdef == env.hasMacro(ident.toString());
 
-		if(log != null) {
-			int directiveEndOffset = ident.getEndOffset() + 1;
-			char[] condition = ident.toString().toCharArray();
-			if(isIfdef)
-				log.encounterPoundIfdef(directiveStartOffset, directiveEndOffset, takeIfBranch, condition);
-			else
-				log.encounterPoundIfndef(directiveStartOffset, directiveEndOffset, takeIfBranch, condition);
-		}
+		int directiveEndOffset = ident.getEndOffset() + 1;
+		char[] condition = ident.toString().toCharArray();
+		if(isIfdef)
+			log.encounterPoundIfdef(directiveStartOffset, directiveEndOffset, takeIfBranch, condition);
+		else
+			log.encounterPoundIfndef(directiveStartOffset, directiveEndOffset, takeIfBranch, condition);
 		
 		
 		return takeIfBranch;
@@ -1280,12 +1278,10 @@ public class C99Preprocessor {
 		// will be false if evaluate is false
 		followBranch = value != null && value.longValue() != 0;
 		
-		if(log != null) {
-			if(isIf)
-				log.encounterPoundIf(directiveStartOffset, endOffset, followBranch, expressionChars);
-			else
-				log.encounterPoundElif(directiveStartOffset, endOffset, followBranch, expressionChars);
-		}
+		if(isIf)
+			log.encounterPoundIf(directiveStartOffset, endOffset, followBranch, expressionChars);
+		else
+			log.encounterPoundElif(directiveStartOffset, endOffset, followBranch, expressionChars);
 		
 		return followBranch;
 	}
@@ -1302,15 +1298,13 @@ public class C99Preprocessor {
 		TokenList constantExpression;
 		try {
 			// macro expansions that occur during the processing of the #if's body don't matter
-			if(log != null)
-				log.setIgnoreMacroExpansions(true);
+			log.setIgnoreMacroExpansions(true);
 			
 			// First expand macros and handle the 'defined' operator
 			constantExpression = pushContextAndProcess(expressionTokens, true, true);
 			
 			// macro expansions that occur during the processing of the #include's body don't matter
-			if(log != null)
-				log.setIgnoreMacroExpansions(false);
+			log.setIgnoreMacroExpansions(false);
 			
 		} catch(PreprocessorInternalParseException e) {
 			return null;
@@ -1321,25 +1315,20 @@ public class C99Preprocessor {
 		return evaluator.evaluate();
 	}
 	
+	
 	private void handleElse(int directiveStartOffset, boolean taken) {
 		IToken els = next();
-		if(log != null)
-			log.encounterPoundElse(directiveStartOffset, els.getEndOffset()+1, taken);
+		log.encounterPoundElse(directiveStartOffset, els.getEndOffset()+1, taken);
 	}
 	
 	
 	private void handleEndif(int directiveStartOffset) {
 		IToken endif = next();
-		if(log != null)
-			log.encounterPoundEndIf(directiveStartOffset, endif.getEndOffset()+1);
+		log.encounterPoundEndIf(directiveStartOffset, endif.getEndOffset()+1);
 		if(!done())
 			expect(PPToken.NEWLINE);
 	}
 		
-	
-	
-
-
 	
 	/**
 	 * Retrieve the source code for the file that is referenced by the #include directive and process it.
@@ -1381,13 +1370,11 @@ public class C99Preprocessor {
 			directiveEnd  = fileNameEnd;
 			
 			// macro expansions that occur during the processing of the #include's body don't matter
-			if(log != null)
-				log.setIgnoreMacroExpansions(true);
+			log.setIgnoreMacroExpansions(true);
 			
 			includeBody = pushContextAndProcess(tokens, true, false);
 			
-			if(log != null)
-				log.setIgnoreMacroExpansions(false);
+			log.setIgnoreMacroExpansions(false);
 		}
 			
 		String fileName = computeIncludeFileName(includeBody);
@@ -1404,10 +1391,8 @@ public class C99Preprocessor {
 		
 		
 		if(!active) { // the include statement is inactive, just log its presence and return
-			if(log != null) {
-				log.encounterPoundInclude(directiveStart, fileNameStart, fileNameEnd, directiveEnd, 
-					                      fileName.toCharArray(), !local, false);
-			}
+			log.encounterPoundInclude(directiveStart, fileNameStart, fileNameEnd, directiveEnd, 
+					                  fileName.toCharArray(), !local, false);
 			return;
 		}
 		
@@ -1517,10 +1502,8 @@ public class C99Preprocessor {
 		encounterProblem(problemCode, directiveStart, directiveEnd - 1);
 		
 		// Log the fact that an include was encountered
-		if(log != null) {
-			char[] chars = fileName == null ? null : fileName.toCharArray();
-			log.encounterPoundInclude(directiveStart, nameStart, nameEnd, directiveEnd, chars, systemInclude, true);
-		}
+		char[] chars = fileName == null ? null : fileName.toCharArray();
+		log.encounterPoundInclude(directiveStart, nameStart, nameEnd, directiveEnd, chars, systemInclude, true);
 	}
 	
 	
@@ -1710,7 +1693,7 @@ public class C99Preprocessor {
 		}
 		
 		env.addMacro(macro);
-		if(log != null && logMacro)
+		if(logMacro)
 			log.defineMacro(macro);
 		
 		return macro;

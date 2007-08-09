@@ -101,16 +101,21 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.TokenMap;
 /**
  * Semantic actions called by the parser to build an AST.
  */
-public class C99ParserAction extends ParserAction {
+public class C99ParserAction extends ParserAction implements IParserAction {
 
 	
 	private ITokenMap tokenMap = null;
+	private boolean useDisambiguationHacks = true;
 	
 	
 	public C99ParserAction(IParserActionTokenProvider parser) {
 		super(parser);
 	}
 
+	public void setUseDisambiguationHacks(boolean use) {
+		this.useDisambiguationHacks = use;
+	}
+	
 	
 	public void setTokenMap(String[] orderedTerminalSymbols) {
 		this.tokenMap = new TokenMap(C99Parsersym.orderedTerminalSymbols, orderedTerminalSymbols);
@@ -457,6 +462,9 @@ public class C99ParserAction extends ParserAction {
 	 * parsed to be on the top of the astStack.
 	 */
 	private void disambiguateHackSizofTypeName() {
+		if(!useDisambiguationHacks)
+			return;
+		
 		List tokens = parser.getRuleTokens();
 		if(tokens.size() != 4) 
 			return;
@@ -564,6 +572,9 @@ public class C99ParserAction extends ParserAction {
 	 * This hack fixes the problems reported in bugs 100408, 168924 and 192693.
 	 */
 	private boolean disambiguateHackCastExpression(IASTTypeId typeId, IASTExpression operand) {
+		if(!useDisambiguationHacks)
+			return false;
+		
 		if (operand instanceof IASTUnaryExpression) {
 			IASTUnaryExpression unaryExpression = (IASTUnaryExpression) operand;
 			IASTExpression unaryOperand = unaryExpression.getOperand();
@@ -711,8 +722,7 @@ public class C99ParserAction extends ParserAction {
 		if(!(o instanceof IToken))
 			return;
 		
-		IToken token = (IToken)o;
-		int kind = asC99Kind(token);
+		int kind = asC99Kind((IToken)o);
 		switch(kind){
 			// storage_class_specifier
 			case C99Parsersym.TK_typedef: 
@@ -1878,6 +1888,9 @@ public class C99ParserAction extends ParserAction {
 	 * 
 	 */
 	private void disambiguateHackMultiplicationExpression() {
+		if(!useDisambiguationHacks)
+			return;
+		
 		List tokens = parser.getRuleTokens();
 		
 		// if what was parsed looks like: ident * ident ;
@@ -1935,6 +1948,9 @@ public class C99ParserAction extends ParserAction {
 	 * eg) i;
 	 */
 	private boolean disambiguateHackIdentifierExpression(IASTDeclaration decl) {
+		if(!useDisambiguationHacks)
+			return false;
+		
 		if(decl instanceof IASTSimpleDeclaration) {
 			IASTSimpleDeclaration declaration = (IASTSimpleDeclaration) decl;
 			if(declaration.getDeclarators() == IASTDeclarator.EMPTY_DECLARATOR_ARRAY) {
@@ -1977,6 +1993,9 @@ public class C99ParserAction extends ParserAction {
 	 * Really, this is just to get this parser to behave similar to the dom parser.
 	 */
 	private boolean disambiguateHackFunctionCall(IASTDeclaration decl) {
+		if(!useDisambiguationHacks)
+			return false;
+		
 		if(!(decl instanceof IASTSimpleDeclaration))
 			return false;
 		

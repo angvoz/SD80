@@ -33,7 +33,9 @@ public abstract class ParserAction {
 	
 	
 	/** Stack that holds the intermediate nodes as the AST is being built */
-	protected final ASTStack astStack = new ASTStack();
+	// TODO refine the type to ASTNode, the problem is that tokens are also being stored on the stack
+	// they would have to be stored somewhere else or wrapped
+	protected final ASTStack<Object> astStack = new ASTStack<Object>();
 	
 	/** Used to create the AST node objects */
 	protected final IASTNodeFactory nodeFactory;

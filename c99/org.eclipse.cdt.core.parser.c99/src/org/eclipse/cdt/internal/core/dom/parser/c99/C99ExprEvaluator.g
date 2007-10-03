@@ -97,6 +97,7 @@ $End
 $Globals
 /.	
 	import java.util.*;
+	import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 	import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.*;
 	import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
 ./
@@ -121,12 +122,14 @@ $Headers
 		});
 		addToken(Token.DUMMY_TOKEN);
 		for(Iterator iter = tokens.iterator(); iter.hasNext();) {
-			Token token = new Token((Token)iter.next());
+			IToken token = comparator.cloneToken((Token)iter.next());
 			// Map token kinds defined in the C99Parser to those defined in the C99ExprEvaluator
 			token.setKind(mapKind(token.getKind()));
 			addToken(token);
 		}
-		addToken(new Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>"));
+		IToken eof = comparator.createToken(IPPTokenComparator.KIND_EOF, 0, 0, "<EOF>");
+		eof.setKind(mapKind(eof.getKind()));
+		addToken(eof); //$NON-NLS-1$
 		setStreamLength(getSize());
 	}
 

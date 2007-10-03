@@ -141,7 +141,7 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 	}
 	
 	/**
-	 * Preform the actual parse.
+	 * Perform the actual parse.
 	 */
 	public synchronized IParseResult parse(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, Integer contentAssistOffset, int options) {
 
@@ -169,12 +169,13 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 
 		// bit of a CDT AST specific hack
 		IParseResult result = parser.parse();
-		if(result.getTranslationUnit() instanceof CASTTranslationUnit) {
-			CASTTranslationUnit tu = (CASTTranslationUnit) result.getTranslationUnit();
+		IASTTranslationUnit ast = result.getTranslationUnit();
+		if(ast instanceof CASTTranslationUnit) {
+			CASTTranslationUnit tu = (CASTTranslationUnit) ast;
 			tu.setIndex(index);
 			tu.setLocationResolver(resolver);
 		}
-
+		
 		return result;
 	}
 

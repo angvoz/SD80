@@ -13,6 +13,7 @@ package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
 import java.util.Iterator;
 
+import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.parser.c99.IToken;
 
 
@@ -72,12 +73,12 @@ class MacroArgument {
 	 * If this method is called then getRawTokens() will probably start
 	 * returning an empty list.
 	 */
-	public synchronized TokenList getProcessedTokens() {
+	public synchronized TokenList getProcessedTokens(IPPTokenComparator comparator) {
 		if(processCallback == null)
 			return rawTokens;
 		
 		if(processedTokens == null)
-			processedTokens = processCallback.process(cloneTokenList(rawTokens));
+			processedTokens = processCallback.process(cloneTokenList(rawTokens, comparator));
 		
 		// return a copy because the tokens may be needed more than once
 		return processedTokens.shallowCopy(); 
@@ -89,11 +90,11 @@ class MacroArgument {
 	}
 	
 	// TODO: now that TokenList.shallowCopy() exists can this method be removed?
-	private static TokenList cloneTokenList(TokenList orig) {
+	private static TokenList cloneTokenList(TokenList orig, IPPTokenComparator comparator) {
 		TokenList clone = new TokenList();
 		for(Iterator iter = orig.iterator(); iter.hasNext(); ) {
 			IToken token = (IToken) iter.next();
-			clone.add(new Token(token)); // TODO: remove dependancy on C99Token
+			clone.add(comparator.cloneToken(token)); // TODO: remove dependancy on C99Token
 		}
 		return clone;
 	}

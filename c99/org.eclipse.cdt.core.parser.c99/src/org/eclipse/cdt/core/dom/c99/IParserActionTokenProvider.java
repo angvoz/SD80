@@ -15,11 +15,11 @@ import java.util.List;
 import lpg.lpgjavaruntime.IToken;
 
 /**
- * Proides an interface to the token stream that
+ * Provides an interface to the token stream that
  * can be used by the parser semantic actions (C99ParseAction).
  * 
  * Allows the semantic actions to directly inspect the token 
- * stream. Used to calcuate AST node offsets and for 
+ * stream. Used to calculate AST node offsets and for 
  * other purposes.
  * 
  * @author Mike Kucera
@@ -30,6 +30,6 @@ public interface IParserActionTokenProvider {
 	public IToken getLeftIToken();
 	public IToken getEOFToken();
 	public int getRuleTokenCount();
-	public List getRuleTokens();
-	public List getCommentTokens();
+	public List<IToken> getRuleTokens();
+	public List<IToken> getCommentTokens();
 }

@@ -71,79 +71,73 @@ public interface C99LexerBaseexp {
       TK_HashHash = 54,
       TK_NewLine = 55,
       TK_Invalid = 56,
-      TK_PlaceMarker = 57,
-      TK_Parameter = 58,
-      TK_DisabledMacroName = 59,
-      TK_Completion = 60,
-      TK_EndOfCompletion = 61,
-      TK_SingleLineComment = 62,
-      TK_MultiLineComment = 63;
+      TK_Completion = 57,
+      TK_EndOfCompletion = 58,
+      TK_SingleLineComment = 59,
+      TK_MultiLineComment = 60;
 
       public final static String orderedTerminalSymbols[] = {
-                 "",//$NON-NLS-1$
-                 "EOF_TOKEN",//$NON-NLS-1$
-                 "identifier",//$NON-NLS-1$
-                 "integer",//$NON-NLS-1$
-                 "floating",//$NON-NLS-1$
-                 "charconst",//$NON-NLS-1$
-                 "stringlit",//$NON-NLS-1$
-                 "RightBracket",//$NON-NLS-1$
-                 "LeftBracket",//$NON-NLS-1$
-                 "RightParen",//$NON-NLS-1$
-                 "LeftParen",//$NON-NLS-1$
-                 "RightBrace",//$NON-NLS-1$
-                 "LeftBrace",//$NON-NLS-1$
-                 "Dot",//$NON-NLS-1$
-                 "Arrow",//$NON-NLS-1$
-                 "PlusPlus",//$NON-NLS-1$
-                 "MinusMinus",//$NON-NLS-1$
-                 "And",//$NON-NLS-1$
-                 "Star",//$NON-NLS-1$
-                 "Plus",//$NON-NLS-1$
-                 "Minus",//$NON-NLS-1$
-                 "Tilde",//$NON-NLS-1$
-                 "Bang",//$NON-NLS-1$
-                 "Slash",//$NON-NLS-1$
-                 "Percent",//$NON-NLS-1$
-                 "RightShift",//$NON-NLS-1$
-                 "LeftShift",//$NON-NLS-1$
-                 "LT",//$NON-NLS-1$
-                 "GT",//$NON-NLS-1$
-                 "LE",//$NON-NLS-1$
-                 "GE",//$NON-NLS-1$
-                 "EQ",//$NON-NLS-1$
-                 "NE",//$NON-NLS-1$
-                 "Caret",//$NON-NLS-1$
-                 "Or",//$NON-NLS-1$
-                 "AndAnd",//$NON-NLS-1$
-                 "OrOr",//$NON-NLS-1$
-                 "Question",//$NON-NLS-1$
-                 "Colon",//$NON-NLS-1$
-                 "SemiColon",//$NON-NLS-1$
-                 "DotDotDot",//$NON-NLS-1$
-                 "Assign",//$NON-NLS-1$
-                 "StarAssign",//$NON-NLS-1$
-                 "SlashAssign",//$NON-NLS-1$
-                 "PercentAssign",//$NON-NLS-1$
-                 "PlusAssign",//$NON-NLS-1$
-                 "MinusAssign",//$NON-NLS-1$
-                 "RightShiftAssign",//$NON-NLS-1$
-                 "LeftShiftAssign",//$NON-NLS-1$
-                 "AndAssign",//$NON-NLS-1$
-                 "CaretAssign",//$NON-NLS-1$
-                 "OrAssign",//$NON-NLS-1$
-                 "Comma",//$NON-NLS-1$
-                 "Hash",//$NON-NLS-1$
-                 "HashHash",//$NON-NLS-1$
-                 "NewLine",//$NON-NLS-1$
-                 "Invalid",//$NON-NLS-1$
-                 "PlaceMarker",//$NON-NLS-1$
-                 "Parameter",//$NON-NLS-1$
-                 "DisabledMacroName",//$NON-NLS-1$
-                 "Completion",//$NON-NLS-1$
-                 "EndOfCompletion",//$NON-NLS-1$
-                 "SingleLineComment",//$NON-NLS-1$
-                 "MultiLineComment"//$NON-NLS-1$
+                 "",
+                 "EOF_TOKEN",
+                 "identifier",
+                 "integer",
+                 "floating",
+                 "charconst",
+                 "stringlit",
+                 "RightBracket",
+                 "LeftBracket",
+                 "RightParen",
+                 "LeftParen",
+                 "RightBrace",
+                 "LeftBrace",
+                 "Dot",
+                 "Arrow",
+                 "PlusPlus",
+                 "MinusMinus",
+                 "And",
+                 "Star",
+                 "Plus",
+                 "Minus",
+                 "Tilde",
+                 "Bang",
+                 "Slash",
+                 "Percent",
+                 "RightShift",
+                 "LeftShift",
+                 "LT",
+                 "GT",
+                 "LE",
+                 "GE",
+                 "EQ",
+                 "NE",
+                 "Caret",
+                 "Or",
+                 "AndAnd",
+                 "OrOr",
+                 "Question",
+                 "Colon",
+                 "SemiColon",
+                 "DotDotDot",
+                 "Assign",
+                 "StarAssign",
+                 "SlashAssign",
+                 "PercentAssign",
+                 "PlusAssign",
+                 "MinusAssign",
+                 "RightShiftAssign",
+                 "LeftShiftAssign",
+                 "AndAssign",
+                 "CaretAssign",
+                 "OrAssign",
+                 "Comma",
+                 "Hash",
+                 "HashHash",
+                 "NewLine",
+                 "Invalid",
+                 "Completion",
+                 "EndOfCompletion",
+                 "SingleLineComment",
+                 "MultiLineComment"
              };
 
 

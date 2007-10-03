@@ -20,6 +20,7 @@ import org.eclipse.cdt.core.dom.parser.c99.IToken;
 /**
  * A linked-list of tokens.
  *
+ * TODO: this class is redundant in Java 5, get rid of it and replace with List<IToken>
  */
 public class TokenList {
 

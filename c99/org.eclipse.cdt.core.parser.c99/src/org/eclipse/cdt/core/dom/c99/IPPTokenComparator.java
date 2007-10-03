@@ -41,10 +41,12 @@ public interface IPPTokenComparator {
 		
 	
 	/**
-	 * Returns true if the given IToken should be interpreted
-	 * as the given PPToken.
+	 * Returns the PP token kind for the given token.
+	 * 
+	 * Precondition: token cannot be null.
+	 * 
 	 */
-	public boolean compare(PPToken pptoken, IToken token);
+	public PPToken getKind(IToken token);
 	
 	
 	/**
@@ -52,8 +54,15 @@ public interface IPPTokenComparator {
 	 * to the given kind code. The kind codes are listed as static
 	 * fields of this class.
 	 */
-	public int getKind(int tokenToMake);
+	public IToken createToken(int tokenToMake, int startOffset, int endOffset, String image);
 	
+	
+	/**
+	 * Creates a clone of the given token.
+	 * 
+	 * Used when a macro is invoked. 
+	 */
+	public IToken cloneToken(IToken token);
 	
 	
 	/**

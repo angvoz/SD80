@@ -10,54 +10,64 @@
 *********************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c99;
 
+import static org.eclipse.cdt.core.dom.parser.c99.PPToken.*;
+
 import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.parser.c99.IToken;
 import org.eclipse.cdt.core.dom.parser.c99.PPToken;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.SynthesizedToken;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
 
 
 public class C99PPTokenComparator implements IPPTokenComparator {
 		
-	public boolean compare(PPToken pptoken, IToken token) {
+	public PPToken getKind(IToken token) {
 		if(token == null)
-			return false;
+			return null;
 		
 		switch(token.getKind()) {
-			case C99Parsersym.TK_Hash              : return pptoken == PPToken.HASH;
-			case C99Parsersym.TK_HashHash          : return pptoken == PPToken.HASHHASH;
-			case C99Parsersym.TK_LeftParen         : return pptoken == PPToken.LPAREN;
-			case C99Parsersym.TK_NewLine           : return pptoken == PPToken.NEWLINE;
-			case C99Parsersym.TK_Comma             : return pptoken == PPToken.COMMA;
-			case C99Parsersym.TK_RightParen        : return pptoken == PPToken.RPAREN;
-			case C99Parsersym.TK_DotDotDot         : return pptoken == PPToken.DOTDOTDOT;
-			case C99Parsersym.TK_EOF_TOKEN         : return pptoken == PPToken.EOF;
-			case C99Parsersym.TK_stringlit         : return pptoken == PPToken.STRINGLIT;
-			case C99Parsersym.TK_integer           : return pptoken == PPToken.INTEGER;
-			case C99Parsersym.TK_LT                : return pptoken == PPToken.LEFT_ANGLE_BRACKET;
-			case C99Parsersym.TK_GT                : return pptoken == PPToken.RIGHT_ANGLE_BRACKET;
-			case C99Parsersym.TK_SingleLineComment : return pptoken == PPToken.SINGLE_LINE_COMMENT;
-			case C99Parsersym.TK_MultiLineComment  : return pptoken == PPToken.MULTI_LINE_COMMENT;
-			// an identifier might be a preprocessing directive like #if or #include
-			case C99Parsersym.TK_identifier : 
-				PPToken result = PPToken.getDirective(token.toString());
-				return pptoken == ((result == null) ? PPToken.IDENT : result);
+			case C99Parsersym.TK_Hash              : return HASH;
+			case C99Parsersym.TK_HashHash          : return HASHHASH;
+			case C99Parsersym.TK_LeftParen         : return LPAREN;
+			case C99Parsersym.TK_NewLine           : return NEWLINE;
+			case C99Parsersym.TK_Comma             : return COMMA;
+			case C99Parsersym.TK_RightParen        : return RPAREN;
+			case C99Parsersym.TK_DotDotDot         : return DOTDOTDOT;
+			case C99Parsersym.TK_EOF_TOKEN         : return EOF;
+			case C99Parsersym.TK_stringlit         : return STRINGLIT;
+			case C99Parsersym.TK_integer           : return INTEGER;
+			case C99Parsersym.TK_LT                : return LEFT_ANGLE_BRACKET;
+			case C99Parsersym.TK_GT                : return RIGHT_ANGLE_BRACKET;
+			case C99Parsersym.TK_SingleLineComment : return SINGLE_LINE_COMMENT;
+			case C99Parsersym.TK_MultiLineComment  : return MULTI_LINE_COMMENT;
+			case C99Parsersym.TK_identifier        : return IDENT;
 		}
-		return false;
+		return null;
 	}
 	
 
-	public int getKind(int tokenToMake) {
+	public IToken createToken(int tokenToMake, int startOffset, int endOffset, String image) {
+		int kind;
 		switch(tokenToMake) {
-			case KIND_IDENTIFIER        : return C99Parsersym.TK_identifier;
-			case KIND_EOF               : return C99Parsersym.TK_EOF_TOKEN;
-			case KIND_COMPLETION        : return C99Parsersym.TK_Completion;
-			case KIND_END_OF_COMPLETION : return C99Parsersym.TK_EndOfCompletion;
-			case KIND_INTEGER           : return C99Parsersym.TK_integer;
-			case KIND_STRINGLIT         : return C99Parsersym.TK_stringlit;
-			case KIND_INVALID           : return C99Parsersym.TK_Invalid;
-			default                     : return C99Parsersym.TK_Invalid;
+			case KIND_IDENTIFIER        : kind = C99Parsersym.TK_identifier; break;
+			case KIND_EOF               : kind = C99Parsersym.TK_EOF_TOKEN; break;
+			case KIND_COMPLETION        : kind = C99Parsersym.TK_Completion; break;
+			case KIND_END_OF_COMPLETION : kind = C99Parsersym.TK_EndOfCompletion; break;
+			case KIND_INTEGER           : kind = C99Parsersym.TK_integer; break;
+			case KIND_STRINGLIT         : kind = C99Parsersym.TK_stringlit; break;
+			case KIND_INVALID           : kind = C99Parsersym.TK_Invalid; break;
+			default                     : kind = C99Parsersym.TK_Invalid; break;
 		}
+		
+		return new SynthesizedToken(startOffset, endOffset, kind, image);
 	}
 
+	public IToken cloneToken(IToken token) {
+		if(token instanceof Token) {
+			return ((Token)token).clone();
+		}
+		throw new RuntimeException("don't know what kind of token that is"); //$NON-NLS-1$
+	}
 
 	public String[] getLPGOrderedTerminalSymbols() {
 		return C99Parsersym.orderedTerminalSymbols;

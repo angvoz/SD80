@@ -13,16 +13,18 @@ package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Stack;
 
 import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 import org.eclipse.cdt.core.dom.parser.c99.IToken;
 import org.eclipse.cdt.core.dom.parser.c99.PPToken;
+
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 
-
+import static org.eclipse.cdt.core.dom.parser.c99.PPToken.*;
 
 /**
  * A stack of token contexts, feeds tokens to the preprocessor.
@@ -44,7 +46,7 @@ class InputTokenStream {
 	
 	public static final int NO_CONTENT_ASSIST_OFFSET = -1;
 	
-	private final Stack contextStack = new Stack(); // Stack<Context>
+	private final LinkedList<Context> contextStack = new LinkedList<Context>(); // Stack<Context>
 	private Context topContext = null;
 	private boolean stuck = false;
 	private int contentAssistOffset = NO_CONTENT_ASSIST_OFFSET;
@@ -104,13 +106,13 @@ class InputTokenStream {
 	
 	
 	private void popContext() {
-		contextStack.pop();
-		topContext = (Context) (contextStack.isEmpty() ? null : contextStack.peek());
+		contextStack.removeLast();
+		topContext = (Context) (contextStack.isEmpty() ? null : contextStack.getLast());
 	}
 	
 	
 	private void pushContext(Context context) {
-		contextStack.push(context);
+		contextStack.add(context);
 		topContext = context;
 	}
 	
@@ -137,8 +139,7 @@ class InputTokenStream {
 	 * reader is already on the context stack.
 	 */
 	public boolean isCircularInclusion(CodeReader readerToTest) {
-		for(Iterator iter = contextStack.iterator(); iter.hasNext();) {
-			Context context = (Context) iter.next();
+		for(Context context : contextStack) {
 			if(CharArrayUtils.equals(context.reader.filename, readerToTest.filename))
 				return true;
 		}
@@ -344,8 +345,8 @@ class InputTokenStream {
 	private void consumeCommentTokens() {
 		IToken token;
 		while((token = nextToken(true)) != null) {
-			if(!comparator.compare(PPToken.SINGLE_LINE_COMMENT, token) && 
-			   !comparator.compare(PPToken.MULTI_LINE_COMMENT, token)) {
+			PPToken kind = comparator.getKind(token);
+			if(kind != SINGLE_LINE_COMMENT && kind != MULTI_LINE_COMMENT) {
 				break;
 			}
 			
@@ -400,7 +401,7 @@ class InputTokenStream {
 		Iterator iter = topContext.tokenList.iterator();
 		while(iter.hasNext()) {
 			IToken token = (IToken)iter.next();
-			if(comparator.compare(PPToken.NEWLINE, token)) {
+			if(comparator.getKind(token) == NEWLINE) {
 				return (token.getEndOffset() >= contentAssistOffset - 1);
 			}
 		}
@@ -448,8 +449,7 @@ class InputTokenStream {
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
 		sb.append("InputTokenStream { \n"); //$NON-NLS-1$
-		for(Iterator iter = contextStack.iterator(); iter.hasNext();) {
-			Context context = (Context) iter.next();
+		for(Context context : contextStack) { 
 			sb.append("Context: "); //$NON-NLS-1$
 			sb.append("(stop ").append(context.isolated).append(")"); //$NON-NLS-1$ //$NON-NLS-2$
 			sb.append(context.tokenList.toString()).append("\n"); //$NON-NLS-1$

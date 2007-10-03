@@ -12,7 +12,8 @@
 package org.eclipse.cdt.core.dom.parser.c99;
 
 import java.util.Iterator;
-import java.util.Stack;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Stack used to store AST nodes while the AST is built during the parse.
@@ -39,20 +40,15 @@ import java.util.Stack;
  * 
  * @author Mike Kucera
  */
-public class ASTStack {
+public class ASTStack<T> {
+	// TODO rename to ScopedStack, or MarkedStack, but not ASTStack
 	
 	// Stores the AST nodes as the AST is being built
-	private Stack topScope;
+	private LinkedList<T> topScope = new LinkedList<T>();
 	
 	// A stack of stacks, used to implement scoping of the astStack
-	private final Stack astScopeStack;
+	private final LinkedList<LinkedList<T>> astScopeStack = new LinkedList<LinkedList<T>>();
 	
-	
-	
-	public ASTStack() {
-		topScope = new Stack();
-		astScopeStack = new Stack(); // ititially empty
-	}
 	
 	
 	/**
@@ -60,49 +56,73 @@ public class ASTStack {
 	 * Usually called by the parser actions.
 	 */
 	public void openASTScope() {
-		astScopeStack.push(topScope); 
-		topScope = new Stack();
+		astScopeStack.add(topScope); 
+		topScope = new LinkedList<T>();
 	}
 	
 	
 	/**
 	 * Usually called by a reduction rule in this class.
 	 */
-	public void closeASTScope() {
-		topScope = (Stack) astScopeStack.pop();
+	public List<T> closeASTScope() {
+		List<T> temp = topScope;
+		topScope = astScopeStack.removeLast();
+		return temp;
 	}
 	
-	public void push(Object o) {
-		topScope.push(o);
+	public void push(T o) {
+		topScope.add(o);
 	}
 	
-	public Object pop() {
-		return topScope.pop();
+	public T pop() {
+		return topScope.removeLast();
 	}
 	
-	public Object peek() {
-		return topScope.peek();
+	public T peek() {
+		return topScope.getLast();
 	}
 	
 	public Object[] topScopeArray(Object[] type) {
 		return topScope.toArray(type);
 	}
 	
+	public List<T> topScope() {
+		return topScope;
+	}
+	
 	/**
 	 * Returns an iterator that will iterate over the topmost scope
 	 * starting at the bottom.
 	 */
-	public Iterator topScopeIterator() { 
+	public Iterator<T> topScopeIterator() { 
 		return topScope.iterator();
 	}
 
+	
 	public boolean isEmpty() {
 		return topScope.isEmpty() && astScopeStack.isEmpty();
 	}
 	
-	
-	public int topScopeSize() {
-		return topScope.size();
+	public String toString() {
+		StringBuffer sb = new StringBuffer();
+		for(List<T> scope : astScopeStack)
+			appendScopeContents(sb, scope);
+		appendScopeContents(sb, topScope);
+		return sb.toString();
+	}
+
+
+	private void appendScopeContents(StringBuffer sb, List<T> scope) {
+		sb.append('[');
+		boolean first = true;
+		for(T t : scope) {
+			if(first) 
+				first = false;
+			else
+				sb.append(',');
+			sb.append(t);
+		}
+		sb.append(']');
 	}
 	
 	

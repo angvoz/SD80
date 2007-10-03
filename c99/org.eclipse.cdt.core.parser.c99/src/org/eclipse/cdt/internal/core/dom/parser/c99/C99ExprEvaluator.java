@@ -16,7 +16,6 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 import lpg.lpgjavaruntime.*;
 
 import java.util.*;
-
 import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.*;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
@@ -73,18 +72,18 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
         catch(UnimplementedTerminalsException e)
         {
             java.util.ArrayList unimplemented_symbols = e.getSymbols();
-            System.out.println("The Lexer will not scan the following token(s):");//$NON-NLS-1$
+            System.out.println("The Lexer will not scan the following token(s):");
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);//$NON-NLS-1$               
+                System.out.println("    " + C99ExprEvaluatorsym.orderedTerminalSymbols[id.intValue()]);               
             }
             System.out.println();                        
         }
         catch(UndefinedEofSymbolException e)
         {
             throw new Error(new UndefinedEofSymbolException
-                                ("The Lexer does not implement the Eof symbol " +//$NON-NLS-1$
+                                ("The Lexer does not implement the Eof symbol " +
                                  C99ExprEvaluatorsym.orderedTerminalSymbols[C99ExprEvaluatorprs.EOFT_SYMBOL]));
         } 
     }
@@ -151,12 +150,14 @@ public C99ExprEvaluator(TokenList tokens, final IPPTokenComparator comparator) {
 	});
 	addToken(Token.DUMMY_TOKEN);
 	for(Iterator iter = tokens.iterator(); iter.hasNext();) {
-		Token token = new Token((Token)iter.next());
+		IToken token = comparator.cloneToken((Token)iter.next());
 		// Map token kinds defined in the C99Parser to those defined in the C99ExprEvaluator
 		token.setKind(mapKind(token.getKind()));
 		addToken(token);
 	}
-	addToken(new Token(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "<EOF>"));
+	IToken eof = comparator.createToken(IPPTokenComparator.KIND_EOF, 0, 0, "<EOF>");//$NON-NLS-1$
+	eof.setKind(mapKind(eof.getKind()));
+	addToken(eof);
 	setStreamLength(getSize());
 }
 

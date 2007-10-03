@@ -72,7 +72,7 @@ public class Macro {
 			throw new IllegalArgumentException(Messages.getString("Macro.0")); //$NON-NLS-1$
 		if(name == null)
 			throw new IllegalArgumentException(Messages.getString("Macro.1")); //$NON-NLS-1$
-		if(!comparator.compare(PPToken.IDENT, name))
+		if(comparator.getKind(name) != PPToken.IDENT)
 			throw new IllegalArgumentException(Messages.getString("Macro.2") + name.getKind() + ", "+ name);  //$NON-NLS-1$//$NON-NLS-2$
 		if(varArgParamName != null && paramNames.contains(varArgParamName))
 			throw new IllegalArgumentException(Messages.getString("Macro.3") + "'" + varArgParamName + "'");  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
@@ -98,7 +98,7 @@ public class Macro {
 	
 	
 	private boolean check(PPToken pptoken, IToken token) {
-		return comparator.compare(pptoken, token);
+		return comparator.getKind(token) == pptoken;
 	}
 	
 	
@@ -142,8 +142,7 @@ public class Macro {
 	 * PlaceMarker tokens are used to replace empty arguments.
 	 */
 	private MacroArgument createPlaceMarker() {
-		
-		IToken placeMarker = new Token(0, 0, -1, ""); //$NON-NLS-1$
+		IToken placeMarker = comparator.createToken(IPPTokenComparator.KIND_INVALID, 0, 0, ""); //$NON-NLS-1$
 		
 		// this is how we track that this token is in fact a place marker
 		placeMarker.setPreprocessorAttribute(IToken.ATTR_PLACE_MARKER);
@@ -196,7 +195,7 @@ public class Macro {
 		 * @param token Must be a normalized token from the replacementSequence.
 		 */
 		public void addToken(IToken token) {
-			IToken t = new Token(token);
+			IToken t = comparator.cloneToken(token);
 			t.setStartOffset(t.getStartOffset() + offset);
 			t.setEndOffset(t.getEndOffset() + offset);
 			add(t);
@@ -214,7 +213,7 @@ public class Macro {
 			int parameterOffset = parameter.getStartOffset() + offset;
 			
 			for(Iterator iter = argument.iterator(); iter.hasNext();) {
-				IToken t = new Token((IToken)iter.next());
+				IToken t = comparator.cloneToken((IToken)iter.next());
 				t.setStartOffset(t.getStartOffset() - argSourceOffset + parameterOffset);
 				t.setEndOffset(t.getEndOffset() - argSourceOffset + parameterOffset);
 				add(t);
@@ -232,6 +231,7 @@ public class Macro {
 		
 		private void add(IToken t) {
 			// prevents recursive replacement of the macro
+			// TODO, if the macro name is created using ## it should still be disabled
 			if(check(PPToken.IDENT, t) && t.toString().equals(nameAsString))
 				t.setPreprocessorAttribute(IToken.ATTR_DISABLED_MACRO_NAME);
 			
@@ -282,6 +282,7 @@ public class Macro {
 					TokenList op2 = getHashHashOperand(window[2], replacementMap);
 					
 					IToken newToken = pasteTokens(op1.removeLast(), op2.removeFirst(), window[0].getStartOffset(), window[2].getEndOffset());
+					//System.out.println("pasted: " + isPlaceMarker(newToken));
 					result.addArgument(window[0], op1); // op1 might be empty if it originally had only one token
 					
 					if(op2.isEmpty()) {
@@ -316,7 +317,7 @@ public class Macro {
 						String newString = handleHashOperator(rawTokens);
 						int startOffset = window[0].getStartOffset(); // the hash
 						int endOffset   = window[1].getStartOffset() + newString.length() - 2; // don't count the double quotes in the string
-						IToken strToken = new Token(startOffset, endOffset, comparator.getKind(IPPTokenComparator.KIND_STRINGLIT), newString);
+						IToken strToken = comparator.createToken(IPPTokenComparator.KIND_STRINGLIT, startOffset, endOffset, newString);
 						
 						window[0] = strToken;
 						window[1] = window[2];
@@ -331,7 +332,7 @@ public class Macro {
 				MacroArgument arg = (MacroArgument) replacementMap.get(window[0].toString());
 				
 				// calls back into the preprocessor to recursively process the argument
-				result.addArgument(window[0], arg.getProcessedTokens());
+				result.addArgument(window[0], arg.getProcessedTokens(comparator));
 				
 				window[0] = window[1];
 				window[1] = window[2];
@@ -374,36 +375,21 @@ public class Macro {
 	 * Combines two tokens into one, used by the ## operator.
 	 */
 	private IToken pasteTokens(IToken x, IToken y, int startOffset, int endOffset) {
+		if(isPlaceMarker(x))
+			return comparator.cloneToken(y);
+		if(isPlaceMarker(y))
+			return comparator.cloneToken(x);
+
+		int kind  = IPPTokenComparator.KIND_INVALID; // if paste fails then generate an invalid token
+		if(check(PPToken.INTEGER, x) && check(PPToken.INTEGER, y))
+			kind = IPPTokenComparator.KIND_INTEGER;
+		else if(check(PPToken.IDENT, x) && check(PPToken.INTEGER, y))
+			kind = IPPTokenComparator.KIND_IDENTIFIER;
+		else if(check(PPToken.IDENT, x) && check(PPToken.IDENT, y))
+			kind = IPPTokenComparator.KIND_IDENTIFIER;
+		
 		String s = x.toString() + y.toString();
-		int invalidKind = comparator.getKind(IPPTokenComparator.KIND_INVALID);
-		
-		if(isPlaceMarker(x) && isPlaceMarker(y)) {
-			IToken token = new Token(startOffset, endOffset, invalidKind, s);
-			token.setPreprocessorAttribute(IToken.ATTR_PLACE_MARKER);
-			return token;
-		}
-		
-		// pasting with a place marker doesn't need much
-		if(isPlaceMarker(x)) {
-			return new Token(startOffset, endOffset, y.getKind(), s);
-		}
-		else if(isPlaceMarker(y)) {
-			return new Token(startOffset, endOffset, x.getKind(), s);
-		}
-		
-		int kind  = invalidKind; // if paste fails then generate an invalid token
-		
-		if(check(PPToken.INTEGER, x) && check(PPToken.INTEGER, y)) {
-			kind = comparator.getKind(IPPTokenComparator.KIND_INTEGER);
-		}
-		else if(check(PPToken.IDENT, x) && check(PPToken.INTEGER, y)) {
-			kind = comparator.getKind(IPPTokenComparator.KIND_IDENTIFIER);
-		}
-		else if(check(PPToken.IDENT, x) && check(PPToken.IDENT, y)) {
-			kind = comparator.getKind(IPPTokenComparator.KIND_IDENTIFIER);
-		}
-		
-		return new Token(startOffset, endOffset, kind, s);
+		return comparator.createToken(kind, startOffset, endOffset, s);
 	}
 	
 	
@@ -419,16 +405,16 @@ public class Macro {
 	 */
 	private String handleHashOperator(TokenList replacement) {
 		// TODO: can use C99Preprocessor.spaceBetween to make this more accurate if necessary
-		StringBuffer sb = new StringBuffer().append('"');
+		StringBuffer sb = new StringBuffer().append('"');//$NON-NLS-1$
 		
 		Iterator iter = replacement.iterator();
 		while(iter.hasNext()) {
 			IToken token = (IToken) iter.next();
-			sb.append(token.toString().replaceAll("\"", "\\\"")); // replace " with \"
+			sb.append(token.toString().replaceAll("\"", "\\\"")); //$NON-NLS-1$ //$NON-NLS-2$ // replace " with \"
 			if(iter.hasNext())
 				sb.append(' ');
 		}
-		sb.append('"');
+		sb.append('"');//$NON-NLS-1$
 		
 		return sb.toString();
 	}

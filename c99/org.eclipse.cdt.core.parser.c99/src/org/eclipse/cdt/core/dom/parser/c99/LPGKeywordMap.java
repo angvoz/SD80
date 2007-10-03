@@ -49,7 +49,7 @@ public abstract class LPGKeywordMap implements IKeywordMap {
 	}
 	
 	public String[] getPreprocessorKeywords() {
-		return PPToken.getPreprocessorKeywords();
+		return PPDirectiveToken.getPreprocessorKeywords();
 	}
 	
 	

@@ -11,94 +11,117 @@
 
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
-import org.eclipse.cdt.core.dom.parser.c99.IToken;
+import lpg.lpgjavaruntime.PrsStream;
 
-import lpg.lpgjavaruntime.AbstractToken;
+import org.eclipse.cdt.core.dom.parser.c99.IToken;
 
 
 /**
- * This Token class is more flexible than the Token class provided by LPG.
- * The main difference is that it is possible to specify the String 
- * representation of the token. This is very useful when 
- * new tokens are created during preprocessing that don't directly map 
- * to the underlying source code.
+ * Our implementation of LPG's IToken interface.
  * 
  * @author Mike Kucera
  */
-public class Token extends AbstractToken implements IToken {
+public class Token implements IToken {
 
-	public static final Token DUMMY_TOKEN = new Token(0, 0, 0, "<dummy>"); //$NON-NLS-1$
-	
-	private String representation;
-	
-	private char[] source;
-	private int sourceStartOffset;
-	private int sourceEndOffset;
-	
+	public static final Token DUMMY_TOKEN = new SynthesizedToken(0, 0, 0, "<dummy>"); //$NON-NLS-1$
+
 	// Used to set an attribute on the token in order to relay more information
 	// than just the token's kind. Used by the preprocessor.
 	private int preprocessorAttribute = ATTR_NO_ATTRIBUTE;
+
+	private char[] source;
 	
-	// class invariant: representation == null ^ source == null
+	private int kind;
 	
+	// the start offset of the token in terms of the offsets calculated by the preprocessor
+	private int startOffset;
+	private int endOffset;
+	// the actual index into the source array where the characters that make up this token start
 	
-	public Token(int startOffset, int endOffset, int kind, String representation) {
-		super(null, startOffset, endOffset, kind);
-		this.representation = representation;
-		this.source = null;
+	private int sourceStartIndex;
+	private int sourceEndIndex;
+
+	private int tokenIndex;
+	private int adjunctIndex;
+	
+	private String cachedString = null;
+	
+	public Token(int sourceStartIndex, int sourceEndIndex, int kind, char[] source) {
+		this.source = source;
+		this.kind = kind;
+		
+		this.startOffset = sourceStartIndex;
+		this.sourceStartIndex  = sourceStartIndex;
+		
+		this.endOffset = sourceEndIndex;
+		this.sourceEndIndex = sourceEndIndex;
 	}
 	
-	public Token(int startOffset, int endOffset, int kind, char[] source) {
-		super(null, startOffset, endOffset, kind);
-		this.source = source;
-		this.sourceStartOffset = startOffset;
-		this.sourceEndOffset = endOffset;
-		this.representation = null;
+	
+	public void setSourceIndex(int startIndex, int endIndex) {
+		this.sourceStartIndex = startIndex;
+		this.sourceEndIndex = endIndex;
+	}
+	
+	protected char[] getSource() {
+		return source;
 	}
 
-	public Token(IToken t) {
-		super(null, t.getStartOffset(), t.getEndOffset(), t.getKind());
-		if(t instanceof Token) {
-			Token c99t = (Token) t;
-			if(c99t.representation != null)
-				setRepresentation(c99t.representation);
-			else if(c99t.source != null)
-				setRepresentation(c99t.source, c99t.sourceStartOffset, c99t.sourceEndOffset);
-			preprocessorAttribute = c99t.getPreprocessorAttribute();
+	protected int sourceLength() {
+		return sourceEndIndex - sourceStartIndex + 1;
+	}
+	
+	/**
+	 * Two SourceToken objects are considered equals if
+	 * st1.toString().equals(st2.toString()).
+	 * 
+	 * Two tokens with different kind may be equal,
+	 * it is strictly a text compare.
+	 */
+	public boolean equals(Object o) {
+		if(!(o instanceof Token))
+			return false;
+		
+		Token t = (Token)o;
+		
+		int length = sourceLength();
+		// also makes sure we don't get an ArrayIndexOutOfBoundsException
+		if(length != t.sourceLength())
+			return false;
+		
+		for(int i = 0; i < length; i++) {
+			if(source[sourceStartIndex+i] != t.source[t.sourceStartIndex+i]) {
+				return false;
+			}
 		}
-		else {
-			this.representation = t.toString();
-			this.source = null;
+		return true;
+	}
+
+	
+	
+	public int hashCode() {
+		// TODO: for better performance, a better hashing function should be used
+		int hash = 0;
+		for(int i = sourceStartIndex; i <= sourceEndIndex; i++) {
+			char c = source[i];
+			hash = (hash * 31) ^ c;
 		}
+		return hash;
 	}
 	
-	
-	public void setRepresentation(String representation) {
-		this.representation = representation;
-		this.source = null;
-	}
-	
-	
-	public void setRepresentation(char[] source, int startOffset, int endOffset) {
-		this.source = source;
-		this.sourceStartOffset = startOffset;
-		this.sourceEndOffset = endOffset;
-		this.representation = null;
-	}
-	
+
 	
 	public String toString() {
-		if(source != null) {
-			return new String(source, sourceStartOffset, sourceEndOffset - sourceStartOffset + 1);
-		}
-		else if(representation != null){
-			return representation;
-		}
-		return ""; //$NON-NLS-1$
+		if(cachedString == null)
+			cachedString = new String(source, sourceStartIndex, sourceLength());
+		return cachedString;
 	}
 	
-	public Object clone() {
-		return new Token(this);
+	public Token clone() {
+		Token t = new Token(startOffset, endOffset, kind, source);
+		t.setSourceIndex(sourceStartIndex, sourceEndIndex);
+		t.setPreprocessorAttribute(preprocessorAttribute);
+		return t;
 	}
 	
 	
@@ -117,6 +140,86 @@ public class Token extends AbstractToken implements IToken {
 
 	public void setPreprocessorAttribute(int preprocessorAttribute) {
 		this.preprocessorAttribute = preprocessorAttribute;
+	}
+
+
+	public int getAdjunctIndex() {
+		return adjunctIndex;
+	}
+
+
+	public int getColumn() {
+		return 0;
+	}
+
+
+	public int getEndColumn() {
+		return 0;
+	}
+
+
+	public int getEndLine() {
+		return 0;
+	}
+
+
+	public int getEndOffset() {
+		return endOffset;
+	}
+
+
+	public int getKind() {
+		return kind;
+	}
+
+
+	public int getLine() {
+		return 0;
+	}
+
+
+	public PrsStream getPrsStream() {
+		return null;
+	}
+
+
+	public int getStartOffset() {
+		return startOffset;
+	}
+
+
+	public int getTokenIndex() {
+		return tokenIndex;
+	}
+
+
+	public String getValue(char[] arg0) {
+		return toString();
+	}
+
+
+	public void setAdjunctIndex(int adjunctIndex) {
+		this.adjunctIndex = adjunctIndex;
+	}
+
+
+	public void setEndOffset(int endOffset) {
+		this.endOffset = endOffset;
+	}
+
+
+	public void setKind(int kind) {
+		this.kind = kind;
+	}
+
+
+	public void setStartOffset(int startOffset) {
+		this.startOffset = startOffset;
+	}
+
+
+	public void setTokenIndex(int tokenIndex) {
+		this.tokenIndex = tokenIndex;
 	}
 
 }

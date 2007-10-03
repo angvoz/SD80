@@ -12,6 +12,7 @@ package org.eclipse.cdt.internal.core.dom.parser.c99;
 
 import java.io.PrintStream;
 
+import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTArrayDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTComment;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
@@ -32,11 +33,20 @@ import org.eclipse.cdt.core.dom.ast.IASTProblemStatement;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
+import org.eclipse.cdt.core.dom.ast.IArrayType;
+import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.ICompositeType;
+import org.eclipse.cdt.core.dom.ast.IField;
+import org.eclipse.cdt.core.dom.ast.IType;
+import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayModifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTDesignator;
+import org.eclipse.cdt.core.dom.ast.c.ICArrayType;
 import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
+import org.eclipse.cdt.internal.core.dom.parser.ITypeContainer;
+
 
 /**
  * A utility that prints an AST to the console, useful for debugging purposes.
@@ -80,8 +90,9 @@ public class ASTPrinter {
 			}
 		}
 	}
+
 	
-	
+		
 	/**
 	 * Prints the AST to stdout.
 	 */
@@ -113,33 +124,85 @@ public class ASTPrinter {
 	}
 	
 	
-	private static void print(PrintStream out, int indentLevel, IASTNode n) {
-		ASTNode node = (ASTNode) n;
+	private static void print(PrintStream out, int indentLevel, Object n) {
 		for(int i = 0; i < indentLevel; i++)
 			out.print("  "); //$NON-NLS-1$
 		
-		String classname = node.getClass().getName();
-		
-		out.print(classname);
-		out.print(" (" + node.getOffset() + "," + node.getLength() + ") "); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-		if(node instanceof IASTName) {
-			out.print(" " + ((IASTName)node).toString()); //$NON-NLS-1$
+		if(n == null) {
+			out.print("NULL");
+			return;
 		}
-		if(node instanceof IASTPointer) {
-			IASTPointer pointer = (IASTPointer) node;
+		
+		String classname = n.getClass().getName();
+		out.print(classname);
+		
+		if(n instanceof ASTNode) {
+			ASTNode node = (ASTNode) n;
+			out.print(" (" + node.getOffset() + "," + node.getLength() + ") "); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		}
+		
+		if(n instanceof ICArrayType) {
+			ICArrayType at = (ICArrayType)n;
+			try {
+				if(at.isRestrict()) {
+					out.print(" restrict"); //$NON-NLS-1$
+				}
+			} catch (DOMException e) { 
+				e.printStackTrace();
+			}
+		}
+		
+		if(n instanceof IASTName) {
+			out.print(" " + ((IASTName)n).toString()); //$NON-NLS-1$
+		}
+		else if(n instanceof IASTPointer) {
+			IASTPointer pointer = (IASTPointer) n;
 			if(pointer.isConst())
 				out.print(" const"); //$NON-NLS-1$
 			if(pointer.isVolatile())
 				out.print(" volatile"); //$NON-NLS-1$
 		}
-		if(node instanceof ICASTArrayModifier) {
-			if(((ICASTArrayModifier)node).isRestrict()) {
+		else if(n instanceof ICASTArrayModifier) {
+			if(((ICASTArrayModifier)n).isRestrict()) {
 				out.print(" restrict"); //$NON-NLS-1$
 			}
 		}
-		if(node instanceof IASTComment) {
-			out.print(new String(((IASTComment)node).getComment()));
+		else if(n instanceof IASTComment) {
+			out.print(new String(((IASTComment)n).getComment()));
 		}
+		else if(n instanceof ICompositeType) {
+			try {
+				IField[] fields = ((ICompositeType)n).getFields();
+				if(fields == null || fields.length == 0) {
+					out.print(" no fields");
+				}
+				for(IField field : fields) {
+					out.println();
+					print(out, indentLevel + 1, field);
+				}
+			} catch (DOMException e) {
+				e.printStackTrace();
+			}
+		}
+		else if(n instanceof ITypeContainer) {
+			out.println();
+			try {
+				print(out, indentLevel, ((ITypeContainer)n).getType());
+			} catch(Exception e) {}
+		}
+		else if(n instanceof IVariable) {
+			IVariable var = (IVariable) n;
+			IType t;
+			try {
+				t = var.getType();
+				out.println();
+				print(out, indentLevel, t);
+			} catch (DOMException e) {
+				e.printStackTrace();
+			}
+	
+		}
+		
 			
 		out.println();
 	}
@@ -208,7 +271,9 @@ public class ASTPrinter {
 			ASTPrinter.print(out, indentLevel,  node);
 		}
 		
-		
+		private void print(IBinding binding) {
+			ASTPrinter.print(out, indentLevel, binding);
+		}
 		
 
 		public int visit(IASTComment comment) {
@@ -272,7 +337,8 @@ public class ASTPrinter {
 
 		public int visit(IASTName name) {
 			print(name);
-			//print("resolved to:" + name.resolveBinding());
+			IBinding binding = name.resolveBinding();
+			print(binding);
 			indentLevel++;
 			return super.visit(name);
 		}

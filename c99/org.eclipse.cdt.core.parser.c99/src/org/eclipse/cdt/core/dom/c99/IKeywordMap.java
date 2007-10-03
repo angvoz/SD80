@@ -18,6 +18,9 @@ package org.eclipse.cdt.core.dom.c99;
  * Anything that is parsed as an identifier is then checked against
  * a keyword map in case the identifier is actually a keyword.
  * 
+ * Its easier to extend the parser with new keywords this way
+ * rather than extending the lexer directly.
+ * 
  * Maps keywords to token kinds.
  * 
  * @author Mike Kucera

@@ -93,11 +93,8 @@ $Headers
 	private C99ExprEvaluatorAction action = new C99ExprEvaluatorAction(this);
 	
 	public C99ExprEvaluator(TokenList tokens, final IPPTokenComparator comparator) {
-		//this(new C99Lexer() {
-		//	public String[] orderedExportedSymbols() {
-		//		return comparator.getLPGOrderedTerminalSymbols();
-		//	}
-		//});
+		// hack, prevents NPEs from superclass, only needed by DiagnoseParser
+		super(new C99Lexer());
 		
 		addToken((IToken)Token.DUMMY_TOKEN);
 		

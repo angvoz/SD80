@@ -118,6 +118,7 @@ $Globals
 	import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 	import org.eclipse.cdt.core.dom.c99.IKeywordMap;
 	import org.eclipse.cdt.core.dom.parser.c99.C99KeywordMap;
+	import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 ./
 $End
 

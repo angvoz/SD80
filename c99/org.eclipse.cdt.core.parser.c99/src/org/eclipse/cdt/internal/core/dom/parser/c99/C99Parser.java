@@ -18,18 +18,17 @@ import lpg.lpgjavaruntime.*;
 import java.util.*;
 
 import org.eclipse.cdt.core.dom.ast.*;
-import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.c99.IParserActionTokenProvider;
 import org.eclipse.cdt.core.dom.c99.IParser;
 import org.eclipse.cdt.core.dom.c99.IParseResult;
-import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 import org.eclipse.cdt.core.dom.parser.c99.C99ParseResult;
 import org.eclipse.cdt.core.dom.parser.c99.C99ParserAction;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.c99.IKeywordMap;
 import org.eclipse.cdt.core.dom.parser.c99.C99KeywordMap;
+import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 
-public class C99Parser extends PrsStream implements RuleAction , IParserActionTokenProvider, IParser, IPreprocessorTokenCollector<IToken>
+public class C99Parser extends PrsStream implements RuleAction , IParserActionTokenProvider, IParser, IPreprocessorTokenCollector<IToken> 
 {
     private static ParseTable prs = new C99Parserprs();
     private BacktrackingParser btParser;
@@ -81,18 +80,18 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
         catch(UnimplementedTerminalsException e)
         {
             java.util.ArrayList unimplemented_symbols = e.getSymbols();
-            System.out.println("The Lexer will not scan the following token(s):");//$NON-NLS-1$
+            System.out.println("The Lexer will not scan the following token(s):");
             for (int i = 0; i < unimplemented_symbols.size(); i++)
             {
                 Integer id = (Integer) unimplemented_symbols.get(i);
-                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);//$NON-NLS-1$
+                System.out.println("    " + C99Parsersym.orderedTerminalSymbols[id.intValue()]);               
             }
             System.out.println();                        
         }
         catch(UndefinedEofSymbolException e)
         {
             throw new Error(new UndefinedEofSymbolException
-                                ("The Lexer does not implement the Eof symbol " +//$NON-NLS-1$
+                                ("The Lexer does not implement the Eof symbol " +
                                  C99Parsersym.orderedTerminalSymbols[C99Parserprs.EOFT_SYMBOL]));
         } 
     }
@@ -111,12 +110,12 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
             lasttok = super.getLastErrorToken(error_token);
         String location = super.getFileName() + ':' +
                           (firsttok > lasttok
-                                    ? (super.getEndLine(lasttok) + ":" + super.getEndColumn(lasttok))//$NON-NLS-1$
-                                    : (super.getLine(error_token) + ":" +//$NON-NLS-1$
-                                       super.getColumn(error_token) + ":" +//$NON-NLS-1$
-                                       super.getEndLine(error_token) + ":" +//$NON-NLS-1$
+                                    ? (super.getEndLine(lasttok) + ":" + super.getEndColumn(lasttok))
+                                    : (super.getLine(error_token) + ":" +
+                                       super.getColumn(error_token) + ":" +
+                                       super.getEndLine(error_token) + ":" +
                                        super.getEndColumn(error_token)))
-                          + ": ";//$NON-NLS-1$
+                          + ": ";
         super.reportError((firsttok > lasttok ? ParseErrorCodes.INSERTION_CODE : ParseErrorCodes.SUBSTITUTION_CODE), location, msg);
     }
 
@@ -144,11 +143,11 @@ public class C99Parser extends PrsStream implements RuleAction , IParserActionTo
         catch (NotBacktrackParseTableException e)
         {
             throw new Error(new NotBacktrackParseTableException
-                                ("Regenerate C99Parserprs.java with -BACKTRACK option"));//$NON-NLS-1$
+                                ("Regenerate C99Parserprs.java with -BACKTRACK option"));
         }
         catch (BadParseSymFileException e)
         {
-            throw new Error(new BadParseSymFileException("Bad Parser Symbol File -- C99Parsersym.java"));//$NON-NLS-1$
+            throw new Error(new BadParseSymFileException("Bad Parser Symbol File -- C99Parsersym.java"));
         }
 
         try

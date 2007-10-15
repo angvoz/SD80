@@ -1608,7 +1608,7 @@ public class C99Preprocessor<TKN> {
 		encounterProblem(problemCode, directiveStart, directiveEnd - 1);
 		
 		// Log the fact that an include was encountered
-		char[] chars = fileName == null ? null : fileName.toCharArray();
+		char[] chars = fileName == null ? new char[0] : fileName.toCharArray();
 		log.encounterPoundInclude(directiveStart, nameStart, nameEnd, directiveEnd, chars, systemInclude, true);
 	}
 	

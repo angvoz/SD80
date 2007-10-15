@@ -33,8 +33,6 @@ public class SynthesizedToken extends Token {
 	}
 	
 	public SynthesizedToken clone() {
-		SynthesizedToken t = new SynthesizedToken(getStartOffset(), getEndOffset(), getKind(), getSource());
-		t.setPreprocessorAttribute(getPreprocessorAttribute());
-		return t;
+		return new SynthesizedToken(getStartOffset(), getEndOffset(), getKind(), getSource());
 	}
 }

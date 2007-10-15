@@ -17,10 +17,10 @@ import org.eclipse.cdt.core.parser.CodeReader;
  * so that it can tokenize #included source files.
  *
  */
-public interface ILexerFactory {
+public interface ILexerFactory<TKN> {
 	
 	/**
 	 * Create a lexer for the given CodeReader.
 	 */
-	ILexer createLexer(CodeReader reader);
+	ILexer<TKN> createLexer(CodeReader reader);
 }

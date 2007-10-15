@@ -10,15 +10,14 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 
 import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
-import org.eclipse.cdt.core.dom.parser.c99.IToken;
 import org.eclipse.cdt.core.dom.parser.c99.PPToken;
 
 /**
@@ -26,13 +25,12 @@ import org.eclipse.cdt.core.dom.parser.c99.PPToken;
  * Can be object-like or function-like. An object-like macro
  * has no parameters.
  * 
- * 
  */
-public class Macro {
+public class Macro<TKN> {
 
 	public static final String __VA_ARGS__ = "__VA_ARGS__"; //$NON-NLS-1$
 	
-	private final IToken name;
+	private final TKN name;
 	private final String nameAsString;
 	
 	/**
@@ -42,8 +40,8 @@ public class Macro {
 	 * #define p() blah
 	 * In this case paramNames will be an empty list
 	 */
-	private final LinkedHashSet paramNames;
-	private final TokenList replacementSequence;
+	private final LinkedHashSet<String> paramNames;
+	private final TokenList<TKN> replacementSequence;
 	
 	// the name of the variadic parameter, usually __VA_ARGS__
 	private final String varArgParamName;
@@ -51,8 +49,9 @@ public class Macro {
 	// the source offsets of the start of the #define directive that defined this macro
 	private final int startOffset;
 	private final int endOffset;
-	private final IPPTokenComparator comparator;
+	private final IPPTokenComparator<TKN> comparator;
 	
+	private final ObjectTagger<TKN, String> disabledTokens;
 	
 	/**
 	 * If paramNames is null then this will create an object like macro,
@@ -65,21 +64,19 @@ public class Macro {
 	 * @param replacementSequence List<IToken>
 	 * @param startOffset The offset of the '#' token that started the define for this macro.
 	 */
-	public Macro(IToken name, TokenList replacementSequence, int startOffset, int endOffset, 
-  			     LinkedHashSet paramNames, String varArgParamName, IPPTokenComparator comparator) {
+	public Macro(TKN name, TokenList<TKN> replacementSequence, int startOffset, int endOffset, 
+  			     LinkedHashSet<String> paramNames, String varArgParamName, IPPTokenComparator<TKN> comparator, ObjectTagger<TKN, String> disabledTokens) {
 		
 		if(replacementSequence == null)
 			throw new IllegalArgumentException(Messages.getString("Macro.0")); //$NON-NLS-1$
 		if(name == null)
 			throw new IllegalArgumentException(Messages.getString("Macro.1")); //$NON-NLS-1$
 		if(comparator.getKind(name) != PPToken.IDENT)
-			throw new IllegalArgumentException(Messages.getString("Macro.2") + name.getKind() + ", "+ name);  //$NON-NLS-1$//$NON-NLS-2$
+			throw new IllegalArgumentException();
 		if(varArgParamName != null && paramNames.contains(varArgParamName))
 			throw new IllegalArgumentException(Messages.getString("Macro.3") + "'" + varArgParamName + "'");  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 		
 		this.replacementSequence = replacementSequence;
-		normalizeReplacementSequenceOffsets(this.replacementSequence);
-		
 		this.name = name;
 		this.nameAsString = name.toString();
 		this.paramNames = paramNames;
@@ -87,17 +84,20 @@ public class Macro {
 		this.endOffset = endOffset;
 		this.varArgParamName = varArgParamName;
 		this.comparator = comparator;
+		this.disabledTokens = disabledTokens;
+		
+		normalizeReplacementSequenceOffsets(this.replacementSequence);
 	}
 	
 	/**
 	 * Creates an object like macro with no parameters
 	 */
-	public Macro(IToken name, TokenList replacementSequence, int startOffset, int endOffset, IPPTokenComparator comparator) {
-		this(name, replacementSequence, startOffset, endOffset, null, null, comparator);
+	public Macro(TKN name, TokenList<TKN> replacementSequence, int startOffset, int endOffset, IPPTokenComparator<TKN> comparator, ObjectTagger<TKN, String> disabledTokens) {
+		this(name, replacementSequence, startOffset, endOffset, null, null, comparator, disabledTokens);
 	}
 	
 	
-	private boolean check(PPToken pptoken, IToken token) {
+	private boolean check(PPToken pptoken, TKN token) {
 		return comparator.getKind(token) == pptoken;
 	}
 	
@@ -107,16 +107,14 @@ public class Macro {
 	 * they start at zero. This way we don't have to worry about the actual
 	 * location of the #define in the source code when substituting arguments.
 	 */
-	private static void normalizeReplacementSequenceOffsets(TokenList replacementSequence) {
+	private void normalizeReplacementSequenceOffsets(TokenList<TKN> replacementSequence) {
 		if(replacementSequence == null || replacementSequence.isEmpty())
 			return;
 		
-		int offset = replacementSequence.first().getStartOffset();
-		Iterator iter = replacementSequence.iterator();
-		while(iter.hasNext()) {
-			IToken token = (IToken) iter.next();
-			token.setStartOffset(token.getStartOffset() - offset);
-			token.setEndOffset(token.getEndOffset() - offset);
+		int offset = comparator.getStartOffset(replacementSequence.first());
+		for(TKN token : replacementSequence) {
+			comparator.setStartOffset(token, comparator.getStartOffset(token) - offset);
+			comparator.setEndOffset(token, comparator.getEndOffset(token) - offset);
 		}
 	}
 	
@@ -141,35 +139,30 @@ public class Macro {
 	/**
 	 * PlaceMarker tokens are used to replace empty arguments.
 	 */
-	private MacroArgument createPlaceMarker() {
-		IToken placeMarker = comparator.createToken(IPPTokenComparator.KIND_INVALID, 0, 0, ""); //$NON-NLS-1$
-		
-		// this is how we track that this token is in fact a place marker
-		placeMarker.setPreprocessorAttribute(IToken.ATTR_PLACE_MARKER);
-		
-		return new MacroArgument(new TokenList(placeMarker), null);
+	private MacroArgument<TKN> createPlaceMarkerToken() {
+		TKN placeMarker = comparator.createToken(IPPTokenComparator.KIND_PLACEMARKER, 0, 0, "placemarker"); //$NON-NLS-1$		
+		return new MacroArgument<TKN>(new TokenList<TKN>(placeMarker), null, disabledTokens);
 	}
 	
 	
 	
 	// Map<String, MacroArgument>
-	private Map createReplacementMap(List arguments) {
-		Map replacementMap = new HashMap();
+	private Map<String, MacroArgument<TKN>> createReplacementMap(List<MacroArgument<TKN>> arguments) {
+		Map<String, MacroArgument<TKN>> replacementMap = new HashMap<String, MacroArgument<TKN>>();
 		if(arguments == null)
 			return replacementMap; // return an empty map
 		
 		int i = 0;
-		for(Iterator iter = paramNames.iterator(); iter.hasNext();) {
-			String name = (String) iter.next();
-			MacroArgument arg = (MacroArgument) arguments.get(i);
-			arg = arg.isEmpty() ? createPlaceMarker() : arg;
+		for(String name : paramNames) { // this is why paramNames is a LinkedHashSet, so it remains sorted
+			MacroArgument<TKN> arg = arguments.get(i);
+			arg = arg.isEmpty() ? createPlaceMarkerToken() : arg;
 			replacementMap.put(name, arg);
 			i++;
 		}
 		
 		if(isVarArgs()) {
 			if(arguments.size() < getNumParams() + 1)
-				replacementMap.put(varArgParamName, createPlaceMarker());
+				replacementMap.put(varArgParamName, createPlaceMarkerToken());
 			else
 				replacementMap.put(varArgParamName, arguments.get(i));
 		}
@@ -185,7 +178,7 @@ public class Macro {
 	 */
 	private class InvokationResultCollector {
 		
-		private TokenList result = new TokenList();
+		private TokenList<TKN> result = new TokenList<TKN>();
 		
 		// Used to compute offsets of tokens as they are added to the result
 		private int offset = 0;
@@ -194,28 +187,31 @@ public class Macro {
 		/**
 		 * @param token Must be a normalized token from the replacementSequence.
 		 */
-		public void addToken(IToken token) {
-			IToken t = comparator.cloneToken(token);
-			t.setStartOffset(t.getStartOffset() + offset);
-			t.setEndOffset(t.getEndOffset() + offset);
+		public void addToken(TKN token) {
+			TKN t = comparator.cloneToken(token);
+			disabledTokens.shareTags(token, t);
+			comparator.setStartOffset(t, comparator.getStartOffset(t) + offset);
+			comparator.setEndOffset(t, comparator.getEndOffset(t) + offset);
 			add(t);
 		}
 		
 		
-		public void addArgument(IToken parameter, TokenList argument) {
+		public void addArgument(TKN parameter, TokenList<TKN> argument) {
 			if(argument == null || argument.isEmpty())
 				return; 
 			
-			int argSourceOffset = argument.first().getStartOffset();
-			int argSize = argument.last().getEndOffset() - argSourceOffset;
+			int argSourceOffset = comparator.getStartOffset(argument.first());
+			int argSize = comparator.getEndOffset(argument.last()) - argSourceOffset;
 					
-			int paramSize = parameter.getEndOffset() - parameter.getStartOffset() + 1;
-			int parameterOffset = parameter.getStartOffset() + offset;
+			int paramSize = comparator.getEndOffset(parameter) - comparator.getStartOffset(parameter) + 1;
+			int parameterOffset = comparator.getStartOffset(parameter) + offset;
 			
-			for(Iterator iter = argument.iterator(); iter.hasNext();) {
-				IToken t = comparator.cloneToken((IToken)iter.next());
-				t.setStartOffset(t.getStartOffset() - argSourceOffset + parameterOffset);
-				t.setEndOffset(t.getEndOffset() - argSourceOffset + parameterOffset);
+			for(Iterator<TKN> iter = argument.iterator(); iter.hasNext();) {
+				TKN next = iter.next();
+				TKN t = comparator.cloneToken(next);
+				disabledTokens.shareTags(next, t);
+				comparator.setStartOffset(t, comparator.getStartOffset(t) - argSourceOffset + parameterOffset);
+				comparator.setEndOffset(t, comparator.getEndOffset(t) - argSourceOffset + parameterOffset);
 				add(t);
 			}
 			
@@ -223,22 +219,20 @@ public class Macro {
 		}
 		
 		
-		public void addArgumentToken(IToken parameter, IToken token) {
-			TokenList temp = new TokenList();
+		public void addArgumentToken(TKN parameter, TKN token) {
+			TokenList<TKN> temp = new TokenList<TKN>();
 			temp.add(token);
 			addArgument(parameter, temp);
 		}
 		
-		private void add(IToken t) {
-			// prevents recursive replacement of the macro
-			// TODO, if the macro name is created using ## it should still be disabled
+		private void add(TKN t) {
 			if(check(PPToken.IDENT, t) && t.toString().equals(nameAsString))
-				t.setPreprocessorAttribute(IToken.ATTR_DISABLED_MACRO_NAME);
-			
+				disabledTokens.tag(t, C99Preprocessor.DISABLED_TAG);
+
 			result.add(t);
 		}
 		
-		public TokenList getResult() {
+		public TokenList<TKN> getResult() {
 			return result;
 		}
 	}
@@ -251,98 +245,99 @@ public class Macro {
 	 * @throws IllegalArgumentException if the wrong number of arguments is passed
 	 * @return null if there was some kind of syntax or parameter error during macro invokation
 	 */
-	public TokenList invoke(List/*<MacroArgument>*/ arguments) {
+	public TokenList<TKN> invoke(List<MacroArgument<TKN>> arguments) {
 		if(arguments != null && !isCorrectNumberOfArguments(arguments.size()))
 			throw new IllegalArgumentException(Messages.getString("Macro.5")); //$NON-NLS-1$
 		if(replacementSequence.isEmpty())
-			return new TokenList();
+			return new TokenList<TKN>();
 
 		InvokationResultCollector result = new InvokationResultCollector();
-		Map replacementMap = createReplacementMap(arguments);
+		Map<String, MacroArgument<TKN>> replacementMap = createReplacementMap(arguments);
 		
-		Iterator iter = replacementSequence.iterator();
+		Iterator<TKN> iter = replacementSequence.iterator();
 		
 		// the window 'slides' over the replacement sequence and processes as it goes
-		IToken[] window = new IToken[3];
+		// This should probably be an array but Java doesn't support arrays of generic type.
+		TKN window0 = slide(iter);
+		TKN window1 = slide(iter);
+		TKN window2 = slide(iter);
 		
-		// set the window over the first three tokens
-		for(int i = 0; i < 3; i++) 
-			window[i] = slide(iter);
 		
-		while(window[0] != null) {
-			if(check(PPToken.HASHHASH, window[0])) { // the replacement sequence starts with a ##, thats an error
+		while(window0 != null) {
+			if(check(PPToken.HASHHASH, window0)) { // the replacement sequence starts with a ##, thats an error
 				return null;
 			}
-			else if(window[1] != null && check(PPToken.HASHHASH, window[1])) {
-				if(window[2] == null) {
+			else if(window1 != null && check(PPToken.HASHHASH, window1)) {
+				if(window2 == null) {
 					return null;
 				}
 				else {
-					TokenList op1 = getHashHashOperand(window[0], replacementMap);
-					TokenList op2 = getHashHashOperand(window[2], replacementMap);
+					TokenList<TKN> op1 = getHashHashOperand(window0, replacementMap);
+					TokenList<TKN> op2 = getHashHashOperand(window2, replacementMap);
 					
-					IToken newToken = pasteTokens(op1.removeLast(), op2.removeFirst(), window[0].getStartOffset(), window[2].getEndOffset());
-					//System.out.println("pasted: " + isPlaceMarker(newToken));
-					result.addArgument(window[0], op1); // op1 might be empty if it originally had only one token
+					TKN newToken = pasteTokens(op1.removeLast(), op2.removeFirst(), 
+							comparator.getStartOffset(window0), comparator.getEndOffset(window2));
+					
+					result.addArgument(window0, op1); // op1 might be empty if it originally had only one token
 					
 					if(op2.isEmpty()) {
-						window[0] = newToken;
+						window0 = newToken;
 					}
 					else {
-						result.addArgumentToken(window[0], newToken);
-						window[0] = op2.removeLast();
-						result.addArgument(window[2], op1);
+						result.addArgumentToken(window0, newToken);
+						window0 = op2.removeLast();
+						result.addArgument(window2, op1);
 					}
 					
-					window[1] = slide(iter);
-					window[2] = slide(iter);
+					window1 = slide(iter);
+					window2 = slide(iter);
 				}
 			}
-			else if(check(PPToken.HASH, window[0])) {
-				if(window[1] == null) {
+			else if(check(PPToken.HASH, window0)) {
+				if(window1 == null) {
 					return null;
 				}
-				else if(window[1].getPreprocessorAttribute() == IToken.ATTR_PARAMETER) {
-					MacroArgument arg = (MacroArgument) replacementMap.get(window[1].toString());
+				else if(isParam(window1)) {
+					MacroArgument<TKN> arg = replacementMap.get(window1.toString());
 					if(arg == null)
 						return null;
 					
-					TokenList rawTokens = arg.getRawTokens();
+					TokenList<TKN> rawTokens = arg.getRawTokens();
 					if(rawTokens.isEmpty()) {
-						window[0] = window[2];
-						window[1] = slide(iter);
-						window[2] = slide(iter);
+						window0 = window2;
+						window1 = slide(iter);
+						window2 = slide(iter);
 					}
 					else {
 						String newString = handleHashOperator(rawTokens);
-						int startOffset = window[0].getStartOffset(); // the hash
-						int endOffset   = window[1].getStartOffset() + newString.length() - 2; // don't count the double quotes in the string
-						IToken strToken = comparator.createToken(IPPTokenComparator.KIND_STRINGLIT, startOffset, endOffset, newString);
+						int startOffset = comparator.getStartOffset(window0); // the hash
+						int endOffset   = comparator.getStartOffset(window1) + newString.length() - 2; // don't count the double quotes in the string
+						TKN strToken = comparator.createToken(IPPTokenComparator.KIND_STRINGLIT, startOffset, endOffset, newString);
 						
-						window[0] = strToken;
-						window[1] = window[2];
-						window[2] = slide(iter);
+						window0 = strToken;
+						window1 = window2;
+						window2 = slide(iter);
 					}
 				}
 				else {
 					return null;
 				}
 			}
-			else if(window[0].getPreprocessorAttribute() == IToken.ATTR_PARAMETER) {
-				MacroArgument arg = (MacroArgument) replacementMap.get(window[0].toString());
+			else if(isParam(window0)) {
+				MacroArgument<TKN> arg = replacementMap.get(window0.toString());
 				
 				// calls back into the preprocessor to recursively process the argument
-				result.addArgument(window[0], arg.getProcessedTokens(comparator));
+				result.addArgument(window0, arg.getProcessedTokens(comparator));
 				
-				window[0] = window[1];
-				window[1] = window[2];
-				window[2] = slide(iter);
+				window0 = window1;
+				window1 = window2;
+				window2 = slide(iter);
 			}
 			else {
-				result.addToken(window[0]); 
-				window[0] = window[1];
-				window[1] = window[2];
-				window[2] = slide(iter);
+				result.addToken(window0); 
+				window0 = window1;
+				window1 = window2;
+				window2 = slide(iter);
 			}
 		}
 		
@@ -351,20 +346,20 @@ public class Macro {
 	
 	
 	
-	private static TokenList getHashHashOperand(IToken replacementToken, Map replacementMap) {
-		if(replacementToken.getPreprocessorAttribute() == IToken.ATTR_PARAMETER) {
-			MacroArgument op1 = (MacroArgument) replacementMap.get(replacementToken.toString());
+	private TokenList<TKN> getHashHashOperand(TKN replacementToken, Map<String, MacroArgument<TKN>> replacementMap) {
+		if(isParam(replacementToken)) {
+			MacroArgument<TKN> op1 = replacementMap.get(replacementToken.toString());
 			return op1.getRawTokens(); // do not process the tokens
 		}
 		else {
-			return new TokenList(replacementToken);
+			return new TokenList<TKN>(replacementToken);
 		}
 	}
 	
 
 	
-	private static IToken slide(Iterator iter) {
-		return iter.hasNext() ? (IToken)iter.next() : null;
+	private TKN slide(Iterator<TKN> iter) {
+		return iter.hasNext() ? iter.next() : null;
 	}
 	
 
@@ -374,11 +369,17 @@ public class Macro {
 	/**
 	 * Combines two tokens into one, used by the ## operator.
 	 */
-	private IToken pasteTokens(IToken x, IToken y, int startOffset, int endOffset) {
-		if(isPlaceMarker(x))
-			return comparator.cloneToken(y);
-		if(isPlaceMarker(y))
-			return comparator.cloneToken(x);
+	private TKN pasteTokens(TKN x, TKN y, int startOffset, int endOffset) {
+		if(isPlaceMarker(x)) {
+			TKN clone = comparator.cloneToken(y);
+			disabledTokens.shareTags(y, clone);
+			return clone;
+		}
+		if(isPlaceMarker(y)) {
+			TKN clone = comparator.cloneToken(x);
+			disabledTokens.shareTags(x, clone);
+			return clone;
+		}
 
 		int kind  = IPPTokenComparator.KIND_INVALID; // if paste fails then generate an invalid token
 		if(check(PPToken.INTEGER, x) && check(PPToken.INTEGER, y))
@@ -394,8 +395,16 @@ public class Macro {
 	
 	
 	
-	private static boolean isPlaceMarker(IToken token) {
-		return token.getPreprocessorAttribute() == IToken.ATTR_PLACE_MARKER;
+	private boolean isPlaceMarker(TKN token) {
+		return comparator.getKind(token) == PPToken.PLACEMARKER;
+	}
+	
+	
+	private boolean isParam(TKN token) {
+		if(paramNames == null) // object-like macros don't have params
+			return false;
+		String name = token.toString();
+		return paramNames.contains(name) || name.equals(varArgParamName);
 	}
 	
 	
@@ -403,13 +412,14 @@ public class Macro {
 	 * Converts a list of tokens into a single string literal token,
 	 * used by the # operator.
 	 */
-	private String handleHashOperator(TokenList replacement) {
+	private String handleHashOperator(TokenList<TKN> replacement) {
 		// TODO: can use C99Preprocessor.spaceBetween to make this more accurate if necessary
 		StringBuffer sb = new StringBuffer().append('"');//$NON-NLS-1$
 		
-		Iterator iter = replacement.iterator();
+		
+		Iterator<TKN> iter = replacement.iterator();
 		while(iter.hasNext()) {
-			IToken token = (IToken) iter.next();
+			TKN token = iter.next();
 			sb.append(token.toString().replaceAll("\"", "\\\"")); //$NON-NLS-1$ //$NON-NLS-2$ // replace " with \"
 			if(iter.hasNext())
 				sb.append(' ');
@@ -421,7 +431,7 @@ public class Macro {
 	
 
 	public String getExpansion() {
-		return replacementSequence.toString();
+		return C99Preprocessor.tokensToString(comparator, replacementSequence);
 	}
 	
 	
@@ -448,8 +458,8 @@ public class Macro {
 	}
 
 
-	public List getParamNames() {
-		return new Vector(paramNames);
+	public List<String> getParamNames() {
+		return new ArrayList<String>(paramNames);
 	}
 
 
@@ -484,11 +494,11 @@ public class Macro {
 	}
 	
 	public int getNameStartOffset() {
-		return name.getStartOffset();
+		return comparator.getStartOffset(name);
 	}
 	
 	public int getNameEndOffset() {
-		return name.getEndOffset();
+		return comparator.getEndOffset(name);
 	}
 	
 	public int getNameLength() {

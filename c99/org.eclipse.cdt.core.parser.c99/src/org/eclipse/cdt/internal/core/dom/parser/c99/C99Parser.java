@@ -18,16 +18,18 @@ import lpg.lpgjavaruntime.*;
 import java.util.*;
 
 import org.eclipse.cdt.core.dom.ast.*;
+import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.c99.IParserActionTokenProvider;
 import org.eclipse.cdt.core.dom.c99.IParser;
 import org.eclipse.cdt.core.dom.c99.IParseResult;
+import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
 import org.eclipse.cdt.core.dom.parser.c99.C99ParseResult;
 import org.eclipse.cdt.core.dom.parser.c99.C99ParserAction;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.c99.IKeywordMap;
 import org.eclipse.cdt.core.dom.parser.c99.C99KeywordMap;
 
-public class C99Parser extends PrsStream implements RuleAction , IParserActionTokenProvider, IParser 
+public class C99Parser extends PrsStream implements RuleAction , IParserActionTokenProvider, IParser, IPreprocessorTokenCollector<IToken>
 {
     private static ParseTable prs = new C99Parserprs();
     private BacktrackingParser btParser;

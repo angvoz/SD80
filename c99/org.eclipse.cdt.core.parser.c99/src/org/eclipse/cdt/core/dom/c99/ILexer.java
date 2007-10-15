@@ -17,12 +17,12 @@ import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
  * 
  * @author Mike Kucera
  */
-public interface ILexer {
+public interface ILexer<TKN> {
 	
 	public static final int OPTION_GENERATE_COMMENT_TOKENS = 1;
 	
 	/**
 	 * Get a list of tokens.
 	 */
-	TokenList lex(int options);
+	TokenList<TKN> lex(int options);
 }

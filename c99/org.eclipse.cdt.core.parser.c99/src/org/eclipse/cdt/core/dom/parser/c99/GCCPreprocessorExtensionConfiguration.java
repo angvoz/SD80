@@ -28,7 +28,7 @@ import org.eclipse.cdt.internal.core.parser.scanner2.ObjectStyleMacro;
 public class GCCPreprocessorExtensionConfiguration implements
 		IPreprocessorExtensionConfiguration {
 
-	private final Map/*<String, String>*/ additionalMacros = new HashMap();
+	private final Map<String,String> additionalMacros = new HashMap<String,String>();
 	
 	public GCCPreprocessorExtensionConfiguration() {
 		// Steal our configuration from the DOM scanner
@@ -44,7 +44,7 @@ public class GCCPreprocessorExtensionConfiguration implements
 	}
 	
 	
-	public Map getAdditionalMacros() {
+	public Map<String,String> getAdditionalMacros() {
 		return additionalMacros;
 	}
 }

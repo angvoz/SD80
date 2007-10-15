@@ -11,9 +11,10 @@
 
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
+import lpg.lpgjavaruntime.IToken;
 import lpg.lpgjavaruntime.PrsStream;
 
-import org.eclipse.cdt.core.dom.parser.c99.IToken;
+
 
 
 /**
@@ -24,10 +25,6 @@ import org.eclipse.cdt.core.dom.parser.c99.IToken;
 public class Token implements IToken {
 
 	public static final Token DUMMY_TOKEN = new SynthesizedToken(0, 0, 0, "<dummy>"); //$NON-NLS-1$
-
-	// Used to set an attribute on the token in order to relay more information
-	// than just the token's kind. Used by the preprocessor.
-	private int preprocessorAttribute = ATTR_NO_ATTRIBUTE;
 
 	private char[] source;
 	
@@ -45,6 +42,12 @@ public class Token implements IToken {
 	private int adjunctIndex;
 	
 	private String cachedString = null;
+	
+	
+	private Token() {
+		// used by the clone method
+	}
+	
 	
 	public Token(int sourceStartIndex, int sourceEndIndex, int kind, char[] source) {
 		this.source = source;
@@ -110,6 +113,19 @@ public class Token implements IToken {
 	}
 	
 
+	public Token clone() {
+		Token t = new Token();
+		t.adjunctIndex = adjunctIndex;
+		t.cachedString = cachedString;
+		t.endOffset = endOffset;
+		t.kind = kind;
+		t.source = source;
+		t.sourceEndIndex = sourceEndIndex;
+		t.sourceStartIndex = sourceStartIndex;
+		t.startOffset = startOffset;
+		t.tokenIndex = tokenIndex;
+		return t;
+	}
 	
 	public String toString() {
 		if(cachedString == null)
@@ -117,31 +133,14 @@ public class Token implements IToken {
 		return cachedString;
 	}
 	
-	public Token clone() {
-		Token t = new Token(startOffset, endOffset, kind, source);
-		t.setSourceIndex(sourceStartIndex, sourceEndIndex);
-		t.setPreprocessorAttribute(preprocessorAttribute);
-		return t;
-	}
-	
-	
 	// Covariant return types would be nice, too bad we are stuck in 1.4 land
-	public lpg.lpgjavaruntime.IToken[] getFollowingAdjuncts() {
+	public IToken[] getFollowingAdjuncts() {
 		return null;
 	}
 
-	public lpg.lpgjavaruntime.IToken[] getPrecedingAdjuncts() {
+	public IToken[] getPrecedingAdjuncts() {
 		return null;
 	}
-
-	public int getPreprocessorAttribute() {
-		return preprocessorAttribute;
-	}
-
-	public void setPreprocessorAttribute(int preprocessorAttribute) {
-		this.preprocessorAttribute = preprocessorAttribute;
-	}
-
 
 	public int getAdjunctIndex() {
 		return adjunctIndex;

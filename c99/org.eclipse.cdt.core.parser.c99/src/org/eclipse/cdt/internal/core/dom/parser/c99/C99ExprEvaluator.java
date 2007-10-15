@@ -19,6 +19,7 @@ import java.util.*;
 import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.*;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
+import org.eclipse.cdt.core.dom.parser.c99.PPToken;
 
 public class C99ExprEvaluator extends PrsStream implements RuleAction
 {
@@ -117,11 +118,11 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
         catch (NotDeterministicParseTableException e)
         {
             throw new Error(new NotDeterministicParseTableException
-                                ("Regenerate C99ExprEvaluatorprs.java with -NOBACKTRACK option"));//$NON-NLS-1$
+                                ("Regenerate C99ExprEvaluatorprs.java with -NOBACKTRACK option"));
         }
         catch (BadParseSymFileException e)
         {
-            throw new Error(new BadParseSymFileException("Bad Parser Symbol File -- C99ExprEvaluatorsym.java. Regenerate C99ExprEvaluatorprs.java"));//$NON-NLS-1$
+            throw new Error(new BadParseSymFileException("Bad Parser Symbol File -- C99ExprEvaluatorsym.java. Regenerate C99ExprEvaluatorprs.java"));
         }
 
         try
@@ -143,19 +144,57 @@ public class C99ExprEvaluator extends PrsStream implements RuleAction
 private C99ExprEvaluatorAction action = new C99ExprEvaluatorAction(this);
 
 public C99ExprEvaluator(TokenList tokens, final IPPTokenComparator comparator) {
-	this(new C99Lexer() {
-		public String[] orderedExportedSymbols() {
-			return comparator.getLPGOrderedTerminalSymbols();
+	//this(new C99Lexer() {
+	//	public String[] orderedExportedSymbols() {
+	//		return comparator.getLPGOrderedTerminalSymbols();
+	//	}
+	//});
+	
+	addToken((IToken)Token.DUMMY_TOKEN);
+	
+	for(Object t : tokens) {
+	
+		PPToken kind = comparator.getKind(t);
+		if(kind == null) {
+			throw new RuntimeException("The expression evaluator doesn't support this token: " + t); //$NON-NLS-1$
 		}
-	});
-	addToken(Token.DUMMY_TOKEN);
-	for(Iterator iter = tokens.iterator(); iter.hasNext();) {
-		IToken token = comparator.cloneToken((Token)iter.next());
-		// Map token kinds defined in the C99Parser to those defined in the C99ExprEvaluator
-		token.setKind(mapKind(token.getKind()));
+		
+		IToken token = new SynthesizedToken(comparator.getStartOffset(t), comparator.getEndOffset(t), 0, t.toString());
+		
+		switch(kind) {  
+			case INTEGER: token.setKind(C99ExprEvaluatorsym.TK_integer); break;  
+			case CHARCONST: token.setKind(C99ExprEvaluatorsym.TK_charconst); break;            
+			case LPAREN: token.setKind(C99ExprEvaluatorsym.TK_LeftParen); break;                
+			case IDENT: token.setKind(C99ExprEvaluatorsym.TK_identifier); break;                              
+			case RPAREN: token.setKind(C99ExprEvaluatorsym.TK_RightParen); break;                
+			case AND: token.setKind(C99ExprEvaluatorsym.TK_And); break;   
+			case STAR: token.setKind(C99ExprEvaluatorsym.TK_Star); break;   
+			case PLUS: token.setKind(C99ExprEvaluatorsym.TK_Plus); break;   
+			case MINUS: token.setKind(C99ExprEvaluatorsym.TK_Minus); break;   
+			case TILDE: token.setKind(C99ExprEvaluatorsym.TK_Tilde); break;   
+			case BANG: token.setKind(C99ExprEvaluatorsym.TK_Bang); break;   
+			case SLASH: token.setKind(C99ExprEvaluatorsym.TK_Slash); break;   
+			case PERCENT: token.setKind(C99ExprEvaluatorsym.TK_Percent); break;   
+			case RIGHTSHIFT: token.setKind(C99ExprEvaluatorsym.TK_RightShift); break;   
+			case LEFTSHIFT: token.setKind(C99ExprEvaluatorsym.TK_LeftShift); break;   
+			case LT: token.setKind(C99ExprEvaluatorsym.TK_LT); break;   
+			case GT: token.setKind(C99ExprEvaluatorsym.TK_GT); break;   
+			case LE: token.setKind(C99ExprEvaluatorsym.TK_LE); break;   
+			case GE: token.setKind(C99ExprEvaluatorsym.TK_GE); break;   
+			case EQ: token.setKind(C99ExprEvaluatorsym.TK_EQ); break;   
+			case NE: token.setKind(C99ExprEvaluatorsym.TK_NE); break;   
+			case CARET: token.setKind(C99ExprEvaluatorsym.TK_Caret); break;   
+			case OR: token.setKind(C99ExprEvaluatorsym.TK_Or); break;   
+			case ANDAND: token.setKind(C99ExprEvaluatorsym.TK_AndAnd); break;   
+			case OROR: token.setKind(C99ExprEvaluatorsym.TK_OrOr); break;   
+			case QUESTION: token.setKind(C99ExprEvaluatorsym.TK_Question); break;   
+			case COLON: token.setKind(C99ExprEvaluatorsym.TK_Colon); break;   
+		}
+		
 		addToken(token);
 	}
-	IToken eof = comparator.createToken(IPPTokenComparator.KIND_EOF, 0, 0, "<EOF>");//$NON-NLS-1$
+	
+	IToken eof = new SynthesizedToken(0, 0, C99ExprEvaluatorsym.TK_EOF_TOKEN, "");
 	eof.setKind(mapKind(eof.getKind()));
 	addToken(eof);
 	setStreamLength(getSize());

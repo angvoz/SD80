@@ -25,8 +25,6 @@ public enum PPToken {
 	HASH,     
 	STRINGLIT,         
 	INTEGER,           
-	LEFT_ANGLE_BRACKET,
-	RIGHT_ANGLE_BRACKET, 
 	HASHHASH,            
 	LPAREN,             
 	NEWLINE,            
@@ -35,7 +33,35 @@ public enum PPToken {
 	RPAREN,             
 	DOTDOTDOT,          
 	SINGLE_LINE_COMMENT, 
-	MULTI_LINE_COMMENT, 
-	EOF;
+	MULTI_LINE_COMMENT,
+	CHARCONST,
+	
+	// needed by the expression evaluator
+	AND,
+	STAR,
+	PLUS,
+	MINUS,
+	TILDE,
+	BANG,
+	SLASH,
+	PERCENT,
+	RIGHTSHIFT,
+	LEFTSHIFT,
+	LT,
+	GT,
+	LE,
+	GE,
+	EQ,
+	NE,
+	CARET,
+	OR,
+	ANDAND,
+	OROR,
+	QUESTION,
+	COLON,
+	
+	PLACEMARKER, // only used internally by the preprocessor but we still need a token type
+	
+	EOF; // TODO do I even need an EOF token?
 
 }

@@ -70,5 +70,8 @@ public class C99Language extends BaseExtensibleLanguage {
 		return new C99PPTokenComparator();
 	}
 	
+	protected IC99TokenCollector getTokenCollector() {
+		return new C99TokenCollector();
+	}
 	
 }

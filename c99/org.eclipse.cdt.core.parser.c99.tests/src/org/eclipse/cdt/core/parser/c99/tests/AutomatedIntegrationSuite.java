@@ -29,6 +29,7 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		
 		suite.addTestSuite(C99Tests.class); // has some tests that do fail
 		suite.addTestSuite(C99PreprocessorTests.class); // should all pass
+		
 		suite.addTestSuite(C99SpecTests.class); // a couple of failuers
 		suite.addTestSuite(C99KnRTests.class); // mostly fail due to ambiguities
 		
@@ -48,8 +49,7 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		suite.addTestSuite(C99UtilTests.class);
 		suite.addTestSuite(C99CompleteParser2Tests.class);
 		suite.addTestSuite(C99TaskParserTest.class);
-		
+
 		return suite;
-	
 	}	
 }

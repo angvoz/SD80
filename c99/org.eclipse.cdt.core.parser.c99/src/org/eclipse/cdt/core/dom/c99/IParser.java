@@ -16,7 +16,7 @@ package org.eclipse.cdt.core.dom.c99;
  * 
  * @author Mike Kucera
  */
-public interface IParser extends IPreprocessorTokenCollector {
+public interface IParser {
 	
 	public IParseResult parse();
 }

@@ -21,19 +21,19 @@ import org.eclipse.cdt.core.dom.c99.IKeywordMap;
 
 public abstract class LPGKeywordMap implements IKeywordMap {
 
-	private Map keywords = new HashMap();
-	private Set builtinTypes = new HashSet();
+	private Map<String, Integer> keywords = new HashMap<String, Integer>();
+	private Set<String> builtinTypes = new HashSet<String>();
 	
 	
 	protected abstract String[] getOrderedTerminalSymbols();
 
 	
 	public Integer getKeywordKind(String identifier) {
-		return (Integer) keywords.get(identifier);
+		return keywords.get(identifier);
 	}
 	
 	protected void putKeyword(int kind) {
-		keywords.put(getOrderedTerminalSymbols()[kind], new Integer(kind));
+		keywords.put(getOrderedTerminalSymbols()[kind], kind);
 	}
 	
 	protected void addBuiltinType(int kind) {

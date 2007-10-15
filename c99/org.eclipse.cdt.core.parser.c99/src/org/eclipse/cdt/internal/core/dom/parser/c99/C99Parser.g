@@ -128,7 +128,7 @@ $Define
 	$ast_class /.Object./
 	$ba /.$BeginAction action.beforeConsume(); action. ./
 	$ea /.$EndAction./
-	$additional_interfaces /. , IParserActionTokenProvider, IParser ./
+	$additional_interfaces /. , IParserActionTokenProvider, IParser, IPreprocessorTokenCollector<IToken> ./
 	
 	$action_class /. C99ParserAction ./
 	$keyword_map_class /. C99KeywordMap ./

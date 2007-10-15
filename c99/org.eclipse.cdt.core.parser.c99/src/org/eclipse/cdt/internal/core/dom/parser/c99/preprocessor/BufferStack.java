@@ -11,20 +11,19 @@
 
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
+import static org.eclipse.cdt.core.dom.parser.c99.PPToken.MULTI_LINE_COMMENT;
+import static org.eclipse.cdt.core.dom.parser.c99.PPToken.NEWLINE;
+import static org.eclipse.cdt.core.dom.parser.c99.PPToken.SINGLE_LINE_COMMENT;
+
 import java.io.File;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Stack;
 
 import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
 import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
-import org.eclipse.cdt.core.dom.parser.c99.IToken;
 import org.eclipse.cdt.core.dom.parser.c99.PPToken;
-
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
-
-import static org.eclipse.cdt.core.dom.parser.c99.PPToken.*;
 
 /**
  * A stack of token contexts, feeds tokens to the preprocessor.
@@ -42,7 +41,7 @@ import static org.eclipse.cdt.core.dom.parser.c99.PPToken.*;
  * 
  * @author Mike Kucera
  */
-class InputTokenStream {
+class BufferStack<TKN> {
 	
 	public static final int NO_CONTENT_ASSIST_OFFSET = -1;
 	
@@ -51,18 +50,18 @@ class InputTokenStream {
 	private boolean stuck = false;
 	private int contentAssistOffset = NO_CONTENT_ASSIST_OFFSET;
 	
-	// Used to calculate the size of ther resulting translation unit
+	// Used to calculate the size of their resulting translation unit
 	private int translationUnitSize = 0;
 
 	// for collecting comment tokens
-	private IPreprocessorTokenCollector parser;
-	private IPPTokenComparator comparator;
+	private IPreprocessorTokenCollector<TKN> parser;
+	private IPPTokenComparator<TKN> comparator;
 	private boolean collectCommentTokens = false;
 	
 	// hack fix for bug #192698
-	private IToken lastCommentToken = null;
+	private TKN lastCommentToken = null;
 
-	public InputTokenStream(IPreprocessorTokenCollector parser, IPPTokenComparator comparator) {
+	public BufferStack(IPreprocessorTokenCollector<TKN> parser, IPPTokenComparator<TKN> comparator) {
 		this.parser = parser;
 		this.comparator = comparator;
 	}
@@ -86,7 +85,7 @@ class InputTokenStream {
 	 */
 	private class Context {
 		CodeReader reader;
-		TokenList tokenList;
+		TokenList<TKN> tokenList;
 		boolean isolated = false; // a flag to indicate that processing should stop when the end of the context is reached
 		boolean macroExpansion = false;
 		IIncludeContextCallback callback;
@@ -96,7 +95,7 @@ class InputTokenStream {
 		 * @param startingOffset The adjusted offset of the start of the context. Adjusted means that the start offset
 		 * of an included file will be adjusted according to the offset of the location where the file was included.
 		 */
-		Context(CodeReader reader, TokenList tokenList, IIncludeContextCallback callback, int startingOffset) {
+		Context(CodeReader reader, TokenList<TKN> tokenList, IIncludeContextCallback callback, int startingOffset) {
 			this.reader = reader;
 			this.tokenList = tokenList;
 			this.callback = callback;
@@ -148,6 +147,28 @@ class InputTokenStream {
 	
 	
 	/**
+	 * Returns true iff the given macro name should not be expanded.
+	 */
+	// this is not the correct algorithm I think, work in progress
+//	public boolean isDisabledMacroName(String macroName) {
+//		// need to iterate over the stack top down, (starting at the end)
+//		int cursor = contextStack.size(); // iterate starting at top of stack
+//		ListIterator<Context> iter = contextStack.listIterator(cursor);
+//		
+//		while(iter.hasPrevious()) {
+//			Context context = iter.previous();
+//			if(!(context.macroExpansion || context.isolated)) { // then its a regular buffer so we can stop searching
+//				break;
+//			}
+//			if(context.macroExpansion && macroName.equals(context.disabledMacroName)) {
+//				return true;
+//			}
+//		}
+//		return false;
+//	}
+	
+	
+	/**
 	 * Returns the location of the cursor in the working copy.
 	 */
 	public int getContentAssistOffset() {
@@ -172,7 +193,7 @@ class InputTokenStream {
 	 * @param inclusionLocaionOffset The global offset of the location of the #include directive
 	 * @param callback A callback that will be fired when the included file is completely consumed
 	 */
-	public void pushIncludeContext(TokenList tokenList, CodeReader reader, int inclusionLocaionOffset, boolean isolated, IIncludeContextCallback callback) {
+	public void pushIncludeContext(TokenList<TKN> tokenList, CodeReader reader, int inclusionLocaionOffset, boolean isolated, IIncludeContextCallback callback) {
 		// adjust the offsets of the contexts that are already on the stack
 		adjustGlobalOffsets(reader.buffer.length);
 		Context context = new Context(reader, tokenList, callback, inclusionLocaionOffset);
@@ -180,10 +201,10 @@ class InputTokenStream {
 		pushContext(context);
 		
 		 // hack fix for bug #192698
-		if(lastCommentToken != null && lastCommentToken.getStartOffset() >= inclusionLocaionOffset) {
+		if(lastCommentToken != null && comparator.getStartOffset(lastCommentToken) >= inclusionLocaionOffset) {
 			int adjust = reader.buffer.length; 
-			lastCommentToken.setStartOffset(lastCommentToken.getStartOffset() + adjust);
-			lastCommentToken.setEndOffset(lastCommentToken.getEndOffset() + adjust);
+			comparator.setStartOffset(lastCommentToken, comparator.getStartOffset(lastCommentToken) + adjust);
+			comparator.setEndOffset(lastCommentToken, comparator.getEndOffset(lastCommentToken) + adjust);
 		}
 	}
 
@@ -192,12 +213,12 @@ class InputTokenStream {
 	 * Pushes the tokens that are the result of a macro invocation.
 	 * These tokens are made available for further processing.
 	 */
-	public void pushMacroExpansionContext(TokenList expansion, int expansionLocationOffset, IIncludeContextCallback callback, boolean recordOffsets) {
+	public void pushMacroExpansionContext(TokenList<TKN> expansion, String macroName, int expansionLocationOffset, IIncludeContextCallback callback, boolean recordOffsets) {
 		if(expansion == null || expansion.isEmpty())
 			return;
 		
 		if(recordOffsets) {
-			int expansionSize = expansion.last().getEndOffset() - expansion.first().getStartOffset() + 1;
+			int expansionSize = comparator.getEndOffset(expansion.last()) - comparator.getStartOffset(expansion.first()) + 1;
 			adjustGlobalOffsets(expansionSize);
 		}
 
@@ -227,7 +248,7 @@ class InputTokenStream {
 	 * Basically the preprocessor will push the tokens that make up a macro argument.
 	 * The preprocessor will then be able to detect when those tokens are fully consumed.
 	 */
-	public void pushIsolatedContext(TokenList tokenList, IIncludeContextCallback callback) {
+	public void pushIsolatedContext(TokenList<TKN> tokenList, IIncludeContextCallback callback) {
 		// in this case the offset of the context does not really matter, so just set it to 0
 		if(tokenList != null) {
 			Context context = new Context(topContext == null ? null : topContext.reader, tokenList, callback, 0);
@@ -247,11 +268,11 @@ class InputTokenStream {
 	}
 	
 	public int getCurrentOffset() {
-		IToken token = peek();
+		TKN token = peek();
 		if(token == null)
 			return getTranslationUnitSize();
 		else
-			return adjust(token.getStartOffset());
+			return adjust(comparator.getStartOffset(token));
 	}
 	
 	
@@ -304,7 +325,7 @@ class InputTokenStream {
 	 * The offset of the return token are not yet adjusted.
 	 * @return null if there are no tokens
 	 */
-	public IToken peek() {
+	public TKN peek() {
 		consumeCommentTokens();
 		return nextToken(true);
 	}
@@ -316,9 +337,9 @@ class InputTokenStream {
 	 * if the adjust parameter is true.
 	 * @return null if there are no more tokens
 	 */
-	public IToken next(boolean adjust) {
+	public TKN next(boolean adjust) {
 		consumeCommentTokens();
-		IToken token = nextToken(false);
+		TKN token = nextToken(false);
 		if(adjust && topContext != null && token != null) {
 			adjustToken(token);
 		}
@@ -329,13 +350,13 @@ class InputTokenStream {
 	/**
 	 * Adjusts a token's offsets based on the current context.
 	 */
-	private void adjustToken(IToken token) {
+	private void adjustToken(TKN token) {
 		int offset = topContext.adjustedGlobalOffset;
 		// TODO: this method gets called a lot
 		// a potential optimization would be to add an adjust() method to IToken
 		// so that it does't take 4 method calls to change the offset
-		token.setStartOffset(token.getStartOffset() + offset);
-		token.setEndOffset(token.getEndOffset() + offset);
+		comparator.setStartOffset(token, comparator.getStartOffset(token) + offset);
+		comparator.setEndOffset(token, comparator.getEndOffset(token) + offset);
 	}
 	
 	
@@ -343,7 +364,7 @@ class InputTokenStream {
 	 * Sends comment tokens to the parser instead of to the preprocessor.
 	 */
 	private void consumeCommentTokens() {
-		IToken token;
+		TKN token;
 		while((token = nextToken(true)) != null) {
 			PPToken kind = comparator.getKind(token);
 			if(kind != SINGLE_LINE_COMMENT && kind != MULTI_LINE_COMMENT) {
@@ -365,11 +386,11 @@ class InputTokenStream {
 	 * If peek == false then the token is
 	 * removed from the sequence.
 	 */
-	private IToken nextToken(boolean peek) {
+	private TKN nextToken(boolean peek) {
 		if(stuck || topContext == null)
 			return null;
 		
-		TokenList topList = topContext.tokenList;
+		TokenList<TKN> topList = topContext.tokenList;
 		
 		if(topList.isEmpty()) {
 			if(topContext.callback != null) 
@@ -398,11 +419,11 @@ class InputTokenStream {
 			return false;
 		
 		
-		Iterator iter = topContext.tokenList.iterator();
+		Iterator<TKN> iter = topContext.tokenList.iterator();
 		while(iter.hasNext()) {
-			IToken token = (IToken)iter.next();
+			TKN token = iter.next();
 			if(comparator.getKind(token) == NEWLINE) {
-				return (token.getEndOffset() >= contentAssistOffset - 1);
+				return (comparator.getEndOffset(token) >= contentAssistOffset - 1);
 			}
 		}
 		
@@ -435,7 +456,7 @@ class InputTokenStream {
 			return false;
 		
 		return contextStack.size() == 1 
-		    && peek().getEndOffset() >= contentAssistOffset - 1;
+		    && comparator.getEndOffset(peek()) >= contentAssistOffset - 1;
 	}
 	
 	/**
@@ -452,7 +473,7 @@ class InputTokenStream {
 		for(Context context : contextStack) { 
 			sb.append("Context: "); //$NON-NLS-1$
 			sb.append("(stop ").append(context.isolated).append(")"); //$NON-NLS-1$ //$NON-NLS-2$
-			sb.append(context.tokenList.toString()).append("\n"); //$NON-NLS-1$
+			sb.append(C99Preprocessor.tokensToString(comparator, context.tokenList)).append("\n"); //$NON-NLS-1$
 		}
 		return sb.append("\n}\n").toString(); //$NON-NLS-1$
 	}

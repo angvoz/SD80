@@ -13,6 +13,8 @@ package org.eclipse.cdt.core.dom.c99;
 import java.util.ArrayList;
 import java.util.List;
 
+import lpg.lpgjavaruntime.IToken;
+
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTName;
@@ -81,7 +83,7 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 	 * map token kinds that the language extension defines back to 
 	 * token kinds that can be understood by the preprocessor.
 	 */
-	protected abstract IPPTokenComparator getTokenComparator();
+	protected abstract IPPTokenComparator<IToken> getTokenComparator();
 	
 	
 	/**
@@ -91,6 +93,7 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 	protected abstract IPreprocessorExtensionConfiguration getPreprocessorExtensionConfiguration();
 	
 	
+	protected abstract IC99TokenCollector getTokenCollector();
 	
 	
 	public Object getAdapter(Class adapter) {
@@ -149,24 +152,30 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 		int preprocessorOptions = scanComments ? C99Preprocessor.OPTION_GENERATE_COMMENTS_FOR_ACTIVE_CODE : 0;
 		
 		ILexerFactory lexerFactory = getLexerFactory();
-		IPPTokenComparator comparator = getTokenComparator();
+		IPPTokenComparator<IToken> comparator = getTokenComparator();
 		
-		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, comparator, reader, scanInfo, fileCreator, preprocessorOptions);
+		C99Preprocessor<IToken> preprocessor = new C99Preprocessor<IToken>(lexerFactory, comparator, reader, scanInfo, fileCreator, preprocessorOptions);
 		if(parser == null)
 			parser = getParser();
 
 		LocationResolver resolver = new LocationResolver();
 		
 		IPreprocessorExtensionConfiguration extConf = getPreprocessorExtensionConfiguration();
+		IC99TokenCollector tokenCollector = getTokenCollector();
+		tokenCollector.setParser(parser);
+		
 		// the preprocessor injects tokens into the parser
+		int translationUnitSize;
 		if (contentAssistOffset == null)
-			preprocessor.preprocess(parser, resolver, extConf);
+			translationUnitSize = preprocessor.preprocess(tokenCollector, resolver, extConf);
 		else
-			preprocessor.preprocess(parser, resolver, extConf, contentAssistOffset.intValue());
+			translationUnitSize = preprocessor.preprocess(tokenCollector, resolver, extConf, contentAssistOffset.intValue());
 
 		if(preprocessor.encounteredError())
 			return new C99ParseResult(null, null, true);
 
+		tokenCollector.done(translationUnitSize);
+		
 		// bit of a CDT AST specific hack
 		IParseResult result = parser.parse();
 		IASTTranslationUnit ast = result.getTranslationUnit();
@@ -205,7 +214,7 @@ public abstract class BaseExtensibleLanguage extends AbstractLanguage implements
 			return new IASTName[] { (IASTName) selectedNode };
 
 		
-		final List nameList= new ArrayList();
+		final List<IASTName> nameList= new ArrayList<IASTName>();
 		
 		CASTVisitor nameCollector = new CASTVisitor() {
 			{ shouldVisitNames= true; }

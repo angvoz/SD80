@@ -13,50 +13,47 @@ package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import org.eclipse.cdt.core.dom.parser.c99.IToken;
-
-
 
 /**
  * A linked-list of tokens.
  *
  * TODO: this class is redundant in Java 5, get rid of it and replace with List<IToken>
  */
-public class TokenList {
+public class TokenList<TKN> implements Iterable<TKN> {
 
-	private final LinkedList list = new LinkedList();
+	private final LinkedList<TKN> list = new LinkedList<TKN>();
 	
 	
 	public TokenList() {
 	}
 	
-	public TokenList(IToken token) {
+	public TokenList(TKN token) {
 		add(token);
 	}
 	
-	public void addFirst(IToken token) {
+	public void addFirst(TKN token) {
 		list.addFirst(token);
 	}
 	
-	public void add(IToken token) {
+	public void add(TKN token) {
 		list.add(token);
 	}
 	
-	public IToken removeFirst() {
-		return (IToken) list.removeFirst();
+	public TKN removeFirst() {
+		return list.removeFirst();
 	}
 	
-	public IToken removeLast() {
-		return (IToken) list.removeLast();
+	public TKN removeLast() {
+		return list.removeLast();
 	}
 	
 	
-	public IToken first() {
-		return (IToken) list.getFirst();
+	public TKN first() {
+		return list.getFirst();
 	}
 	
-	public IToken last() {
-		return (IToken) list.getLast();
+	public TKN last() {
+		return list.getLast();
 	}
 	
 	
@@ -71,64 +68,23 @@ public class TokenList {
 	}
 	
 	
-	public Iterator iterator() {
+	public Iterator<TKN> iterator() {
 		return list.iterator();
 	}
 	
+	public String toString() {
+		return list.toString();
+	}
 	
 	/**
 	 * Creates a copy of this TokenList, 
 	 * the IToken objects themselves are not copied.
 	 */
-	public TokenList shallowCopy() {
-		TokenList newList = new TokenList();
-		for(Iterator iter = iterator(); iter.hasNext();) {
-			newList.add((IToken)iter.next());
+	public TokenList<TKN> shallowCopy() {
+		TokenList<TKN> newList = new TokenList<TKN>();
+		for(TKN t : this) {
+			newList.add(t);
 		}
 		return newList;
 	}
-	
-	
-	public String toString() {
-		if(isEmpty())
-			return ""; //$NON-NLS-1$
-		
-		StringBuffer sb = new StringBuffer();
-		
-		Iterator iter = iterator();
-		IToken prevToken = (IToken) iter.next();
-		sb.append(prevToken.toString());
-		
-		while(iter.hasNext()) {
-			IToken token = (IToken) iter.next();
-			addSpaceBetween(sb, prevToken, token);
-			sb.append(token.toString());
-			prevToken = token;
-		}
-		return sb.toString();
-	}
-	
-	/**
-	 * Adds the number of characters of whitespace between the two tokens.
-	 */
-	private static void addSpaceBetween(StringBuffer sb, IToken t1, IToken t2) {
-		int numSpaces = t2.getStartOffset() - (t1.getEndOffset() + 1);
-		for(int i = 0; i < numSpaces; i++) {
-			sb.append(' ');
-		}
-	}
-	
-	
-	/**
-	 * Used for testing.
-	 */
-	public int[] kindArray() {
-		int[] kinds = new int[list.size()];
-		for(int i = 0; i < kinds.length; i++ ) {
-			kinds[i] = ((IToken)list.get(i)).getKind();
-		}
-		return kinds;
-	}
-	
-	
 }

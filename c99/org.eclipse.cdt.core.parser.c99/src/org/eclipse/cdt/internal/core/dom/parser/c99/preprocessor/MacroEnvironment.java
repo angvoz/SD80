@@ -16,16 +16,16 @@ import java.util.Map;
 /**
  * Simple object that stores macros.
  */
-public class MacroEnvironment {
+public class MacroEnvironment<TKN> {
 	
-	private Map env = new HashMap();
+	private Map<String, Macro<TKN>> env = new HashMap<String, Macro<TKN>>();
 	
-	public void addMacro(Macro macro) {
+	public void addMacro(Macro<TKN> macro) {
 		env.put(macro.getName(), macro);
 	}
 	
-	public Macro get(String macroId) {
-		return (Macro) env.get(macroId);
+	public Macro<TKN> get(String macroId) {
+		return env.get(macroId);
 	}
 
 	public boolean hasMacro(String macroId) {

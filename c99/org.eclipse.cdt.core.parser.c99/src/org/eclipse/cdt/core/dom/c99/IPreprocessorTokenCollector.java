@@ -18,8 +18,8 @@ import lpg.lpgjavaruntime.IToken;
  *
  * The preprocessor injects tokens directly into the parser via this interface.
  */
-public interface IPreprocessorTokenCollector {
+public interface IPreprocessorTokenCollector<TKN> {
 	
-	void addToken(IToken token);
-	void addCommentToken(IToken token);
+	void addToken(TKN token);
+	void addCommentToken(TKN token);
 }

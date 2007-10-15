@@ -465,11 +465,11 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 		if(!useDisambiguationHacks)
 			return;
 		
-		List tokens = parser.getRuleTokens();
+		List<IToken> tokens = parser.getRuleTokens();
 		if(tokens.size() != 4) 
 			return;
 			
-		IToken typeName = (IToken)tokens.get(2);
+		IToken typeName = tokens.get(2);
 		int kind = asC99Kind(typeName);
 		if(kind != C99Parsersym.TK_identifier && kind != C99Parsersym.TK_Completion) // and its an identifier, we have an ambiguity
 			return;
@@ -579,10 +579,10 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 			IASTUnaryExpression unaryExpression = (IASTUnaryExpression) operand;
 			IASTExpression unaryOperand = unaryExpression.getOperand();
 			
-			List ruleTokens = parser.getRuleTokens();
-			IToken openParen  = (IToken)ruleTokens.get(0);
-			IToken ident      = (IToken)ruleTokens.get(1);
-			IToken closeParen = (IToken)ruleTokens.get(2);
+			List<IToken> ruleTokens = parser.getRuleTokens();
+			IToken openParen  = ruleTokens.get(0);
+			IToken ident      = ruleTokens.get(1);
+			IToken closeParen = ruleTokens.get(2);
 			
 			if(asC99Kind(openParen) != C99Parsersym.TK_LeftParen || 
 			   asC99Kind(ident) != C99Parsersym.TK_identifier || 
@@ -590,7 +590,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 						return false;
 			}
 			
-			IToken operator = (IToken)ruleTokens.get(3);
+			IToken operator = ruleTokens.get(3);
 			int binaryOperator;
 			switch (asC99Kind(operator)) {
 			case C99Parsersym.TK_Plus:
@@ -1891,7 +1891,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 		if(!useDisambiguationHacks)
 			return;
 		
-		List tokens = parser.getRuleTokens();
+		List<IToken> tokens = parser.getRuleTokens();
 		
 		// if what was parsed looks like: ident * ident ;
 		// oh how I miss static imports 
@@ -1902,7 +1902,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 		
 		IASTDeclarationStatement declStat = (IASTDeclarationStatement)astStack.pop();
 		
-		IToken ident1 = (IToken)tokens.get(0);
+		IToken ident1 = tokens.get(0);
 		IASTName name1 = createName(ident1);
 		IASTIdExpression id1 = nodeFactory.newIdExpression();
 		id1.setName(name1);
@@ -1910,7 +1910,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 		name1.setPropertyInParent(IASTIdExpression.ID_NAME);
 		setOffsetAndLength(id1, ident1);
 		
-		IToken ident2 = (IToken)tokens.get(2);
+		IToken ident2 = tokens.get(2);
 		IASTName name2 = createName(ident2);
 		IASTIdExpression id2 = nodeFactory.newIdExpression();
 		id2.setName(name2);
@@ -2000,7 +2000,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 			return false;
 		
 		// Match the tokens against   x ( y ) ;
-		List tokens = parser.getRuleTokens();
+		List<IToken> tokens = parser.getRuleTokens();
 		if(!matchKinds(tokens, 
 			new int[]{C99Parsersym.TK_identifier, C99Parsersym.TK_LeftParen, C99Parsersym.TK_identifier, C99Parsersym.TK_RightParen, C99Parsersym.TK_SemiColon})) {
 			return false;
@@ -2008,7 +2008,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 			
 		// We have detected the situation that needs to be disambiguated.
 		// Build a function call expression and discard the declaration.
-		IASTName name = createName((IToken)tokens.get(0));
+		IASTName name = createName(tokens.get(0));
 		
 		IASTIdExpression functionName = nodeFactory.newIdExpression();
 		functionName.setName(name);
@@ -2016,7 +2016,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 		name.setPropertyInParent(IASTIdExpression.ID_NAME);
 		setOffsetAndLength(functionName, offset(name), length(name));
 		
-		IASTName name2 = createName((IToken)tokens.get(2));
+		IASTName name2 = createName(tokens.get(2));
 		IASTIdExpression parameter = nodeFactory.newIdExpression();
 		parameter.setName(name2);
 		name2.setParent(parameter);
@@ -2031,7 +2031,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 		parameter.setParent(expr);
 		parameter.setPropertyInParent(IASTFunctionCallExpression.PARAMETERS);
 		
-		IToken rightParen = (IToken)tokens.get(3);
+		IToken rightParen = tokens.get(3);
 		setOffsetAndLength(expr, offset(name), endOffset(rightParen) - offset(name));
 		
 		IASTExpressionStatement stat = nodeFactory.newExpressionStatement();

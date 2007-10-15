@@ -11,10 +11,7 @@
 
 package org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor;
 
-import java.util.Iterator;
-
 import org.eclipse.cdt.core.dom.c99.IPPTokenComparator;
-import org.eclipse.cdt.core.dom.parser.c99.IToken;
 
 
 /**
@@ -28,12 +25,14 @@ import org.eclipse.cdt.core.dom.parser.c99.IToken;
  *   
  * @author Mike Kucera
  */
-class MacroArgument {
+class MacroArgument<TKN> {
 	
-	private final TokenList rawTokens;
-	private final IProcessCallback processCallback;
+	private final TokenList<TKN> rawTokens;
+	private final IProcessCallback<TKN> processCallback;
+	private final ObjectTagger<TKN,String> disabledTokens;
 	
-	private TokenList processedTokens = null;
+	private TokenList<TKN> processedTokens = null;
+	
 	
 	/**
 	 * If the argument needs to be recursively processed then
@@ -41,27 +40,28 @@ class MacroArgument {
 	 * do the processing. The preprocessor must supply a callback
 	 * so this can be done.
 	 */
-	public interface IProcessCallback {
-		TokenList process(TokenList tokens);
+	public interface IProcessCallback<TKN> {
+		TokenList<TKN> process(TokenList<TKN> tokens);
 	}
 	
 	
 	/**
 	 * Precondition: tokens != null
 	 */
-	public MacroArgument(TokenList tokens, IProcessCallback processor) {
+	public MacroArgument(TokenList<TKN> tokens, IProcessCallback<TKN> processor, ObjectTagger<TKN,String> disabledTokens) {
 		if(tokens == null)
 			throw new IllegalArgumentException(Messages.getString("MacroArgument.0")); //$NON-NLS-1$
 		this.rawTokens = tokens;
 		this.processCallback = processor;
+		this.disabledTokens = disabledTokens;
 	}
 	
 	
 	/**
 	 * Returns the tokens that make up the macro argument without
-	 * recursivley processing them.
+	 * recursively processing them.
 	 */
-	public TokenList getRawTokens() {
+	public TokenList<TKN> getRawTokens() {
 		// return a copy because the tokens may be needed more than once
 		return rawTokens.shallowCopy();
 	}
@@ -73,7 +73,7 @@ class MacroArgument {
 	 * If this method is called then getRawTokens() will probably start
 	 * returning an empty list.
 	 */
-	public synchronized TokenList getProcessedTokens(IPPTokenComparator comparator) {
+	public synchronized TokenList<TKN> getProcessedTokens(IPPTokenComparator<TKN> comparator) {
 		if(processCallback == null)
 			return rawTokens;
 		
@@ -90,17 +90,18 @@ class MacroArgument {
 	}
 	
 	// TODO: now that TokenList.shallowCopy() exists can this method be removed?
-	private static TokenList cloneTokenList(TokenList orig, IPPTokenComparator comparator) {
-		TokenList clone = new TokenList();
-		for(Iterator iter = orig.iterator(); iter.hasNext(); ) {
-			IToken token = (IToken) iter.next();
-			clone.add(comparator.cloneToken(token)); // TODO: remove dependancy on C99Token
+	private TokenList<TKN> cloneTokenList(TokenList<TKN> orig, IPPTokenComparator<TKN> comparator) {
+		TokenList<TKN> clone = new TokenList<TKN>();
+		for(TKN t : orig) {
+			TKN newToken = comparator.cloneToken(t);
+			disabledTokens.shareTags(t, newToken);
+			clone.add(newToken);
 		}
 		return clone;
 	}
 	
 	
-	public String toString() {
-		return rawTokens.toString();
-	}
+//	public String toString() {
+//		return C99Preprocessor.tokensToString(comparator, rawTokens);
+//	}
 }

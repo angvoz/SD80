@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.c99;
 
-import org.eclipse.cdt.core.dom.parser.c99.IToken;
 import org.eclipse.cdt.core.dom.parser.c99.PPToken;
 
 /**
@@ -20,7 +19,7 @@ import org.eclipse.cdt.core.dom.parser.c99.PPToken;
  * 
  * @author Mike Kucera
  */
-public interface IPPTokenComparator {
+public interface IPPTokenComparator<TKN> {
 	
 	
 	/**
@@ -32,12 +31,12 @@ public interface IPPTokenComparator {
 	 */
 	public static final int 
 		KIND_IDENTIFIER = 0,
-		KIND_EOF = 1,
-		KIND_COMPLETION = 2,
-		KIND_END_OF_COMPLETION = 3,
-		KIND_INTEGER = 4,
-		KIND_STRINGLIT = 5,
-		KIND_INVALID = 6;
+		KIND_COMPLETION = 1,
+		KIND_END_OF_COMPLETION = 2,
+		KIND_INTEGER = 3,
+		KIND_STRINGLIT = 4,
+		KIND_INVALID = 5,
+		KIND_PLACEMARKER = 6;
 		
 	
 	/**
@@ -46,7 +45,7 @@ public interface IPPTokenComparator {
 	 * Precondition: token cannot be null.
 	 * 
 	 */
-	public PPToken getKind(IToken token);
+	public PPToken getKind(TKN token);
 	
 	
 	/**
@@ -54,7 +53,7 @@ public interface IPPTokenComparator {
 	 * to the given kind code. The kind codes are listed as static
 	 * fields of this class.
 	 */
-	public IToken createToken(int tokenToMake, int startOffset, int endOffset, String image);
+	public TKN createToken(int tokenToMake, int startOffset, int endOffset, String image);
 	
 	
 	/**
@@ -62,12 +61,14 @@ public interface IPPTokenComparator {
 	 * 
 	 * Used when a macro is invoked. 
 	 */
-	public IToken cloneToken(IToken token);
+	public TKN cloneToken(TKN token);
 	
 	
-	/**
-	 * Returns the orderedTerminalSymbols field from an LPG based parser.
-	 * Used by C99ExprEvaluator to make sense of tokens from any LPG parser.
-	 */
-	public String[] getLPGOrderedTerminalSymbols();
+	public void setStartOffset(TKN token, int offset);
+	
+	public void setEndOffset(TKN token, int offset);
+	
+	public int getStartOffset(TKN token);
+	
+	public int getEndOffset(TKN token);
 }

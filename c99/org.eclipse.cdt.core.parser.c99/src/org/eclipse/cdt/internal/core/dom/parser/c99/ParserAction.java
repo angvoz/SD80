@@ -117,14 +117,14 @@ public abstract class ParserAction {
 	 * Generates a comment node for each comment token.
 	 */
 	private void generateCommentNodes(IASTTranslationUnit tu) {
-		List commentTokens = parser.getCommentTokens();
+		List<IToken> commentTokens = parser.getCommentTokens();
 		if(commentTokens == null || commentTokens.isEmpty())
 			return;
 		
 		IASTComment[] commentNodes = new IASTComment[commentTokens.size()];
 		
 		for(int i = 0; i < commentNodes.length; i++) {
-			IToken token = (IToken) commentTokens.get(i);
+			IToken token = commentTokens.get(i);
 			IASTComment comment = nodeFactory.newComment();
 			comment.setParent(tu);
 			comment.setComment(token.toString().toCharArray());

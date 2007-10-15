@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.c99.tests;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -17,60 +18,84 @@ import junit.framework.TestCase;
 import lpg.lpgjavaruntime.IToken;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
+import org.eclipse.cdt.core.dom.c99.IKeywordMap;
 import org.eclipse.cdt.core.dom.c99.ILexer;
 import org.eclipse.cdt.core.dom.c99.ILexerFactory;
+import org.eclipse.cdt.core.dom.c99.IPreprocessorTokenCollector;
+import org.eclipse.cdt.core.dom.parser.c99.C99KeywordMap;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99ExprEvaluator;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99PPTokenComparator;
-import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parser;
+import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parserprs;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99Parsersym;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.C99Preprocessor;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.LocationResolver;
+import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.ObjectTagger;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.SynthesizedToken;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.Token;
 import org.eclipse.cdt.internal.core.dom.parser.c99.preprocessor.TokenList;
 
 public class C99PreprocessorTests extends TestCase {
 
-	// TODO: assert that no probems are generated 
-	
+	// TODO: assert that no problems are generated 
+	 
 	public C99PreprocessorTests() { }
 	public C99PreprocessorTests(String name) { super(name); }
 
 	
-	private List scanAndPreprocess(String input) {
+	private List<IToken> scanAndPreprocess(String input) {
 		return scanAndPreprocess(input, null);
 	}
 	
-	private List scanAndPreprocess(String input, ICodeReaderFactory fileCreator) {
+	private static class TokenCollector implements IPreprocessorTokenCollector<IToken> {
+		public List<IToken> tokens = new ArrayList<IToken>();
+		private static IKeywordMap keywordMap = new C99KeywordMap();
+		
+		public void addToken(IToken token) {
+			if(token.getKind() == C99Parserprs.TK_identifier) {
+				Integer keywordKind = keywordMap.getKeywordKind(token.toString());
+				if(keywordKind != null) {
+					token.setKind(keywordKind.intValue());
+				}
+			}
+			
+			tokens.add(token);
+		}
+		
+		public void addCommentToken(IToken token) {
+			// don't care
+		}
+	}
+	
+	
+	private List<IToken> scanAndPreprocess(String input, ICodeReaderFactory fileCreator) {
 		CodeReader reader = new CodeReader(input.toCharArray());
 		
 		ILexerFactory lexerFactory = new C99LexerFactory();
 		
 		IScannerInfo scanInfo = null;
-		C99Preprocessor preprocessor = new C99Preprocessor(lexerFactory, new C99PPTokenComparator(), reader, scanInfo, fileCreator, 0);
+		C99Preprocessor<IToken> preprocessor = new C99Preprocessor<IToken>(lexerFactory, new C99PPTokenComparator(), reader, scanInfo, fileCreator, 0);
 		
-		C99Parser parser = new C99Parser();
-		
+		TokenCollector tokenCollector = new TokenCollector();
 		// the preprocessor injects tokens into the parser
-		preprocessor.preprocess(parser, new LocationResolver(), null);
+		preprocessor.preprocess(tokenCollector, new LocationResolver(), null);
 		
-		return parser.getTokens();
+		return tokenCollector.tokens;
 	}
 	
 	
 	private void assertExpressionValue(long val, String expr) {
 		TokenList tokens = scan(expr);
 		if(tokens == null)
-			fail("Lexer failed on input: " + expr);
+			fail("Lexer failed on input: " + expr);//$NON-NLS-1$
 		
 		C99ExprEvaluator evaluator = new C99ExprEvaluator(tokens, new C99PPTokenComparator());
 		Long value = evaluator.evaluate();
 		
 		if(value == null)
-			fail("evaluation of expression failed");
+			fail("evaluation of expression failed");//$NON-NLS-1$
 		
 		assertEquals(val, value.longValue());
 	}
@@ -80,14 +105,14 @@ public class C99PreprocessorTests extends TestCase {
 	private void assertInvalidToken(String expr) {
 		TokenList tokens = scan(expr);
 		if(tokens == null)
-			fail("Lexer failed on input: " + expr);
+			fail("Lexer failed on input: " + expr);//$NON-NLS-1$
 		
 		for(Iterator iter = tokens.iterator(); iter.hasNext();) {
 			IToken token = (IToken)iter.next();
 			if(token.getKind() == C99Parsersym.TK_Invalid)
 				return;
 		}
-		fail("did not find an invalid token");
+		fail("did not find an invalid token");//$NON-NLS-1$
 	}
 	
 	
@@ -98,8 +123,20 @@ public class C99PreprocessorTests extends TestCase {
 		return lexer.lex(0);
 	}
 	
-	private static void assertToken(int kind, Object t) {
-		assertEquals(kind, ((IToken)t).getKind());
+	
+	private static void assertToken(int kind, IToken t) {
+		assertEquals(kind, t.getKind());
+	}
+	
+	
+	public static void assertIdentifier(String ident, IToken t) {
+		assertToken(C99Parsersym.TK_identifier, t);
+		assertEquals(ident, t.toString());
+	}
+	
+	public static void assertInteger(String ident, IToken t) {
+		assertToken(C99Parsersym.TK_integer, t);
+		assertEquals(ident, t.toString());
 	}
 	
 	
@@ -109,19 +146,20 @@ public class C99PreprocessorTests extends TestCase {
 		sb.append("# define MAMA 10 \n");//$NON-NLS-1$
 		sb.append("int x = YO + MAMA; \n");//$NON-NLS-1$
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(9, tokens.size());
-		assertToken(0, tokens.get(0));
-		assertToken(C99Parsersym.TK_int,        tokens.get(1));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(2));
-		assertToken(C99Parsersym.TK_Assign,     tokens.get(3));
-		assertToken(C99Parsersym.TK_integer,    tokens.get(4));
-		assertToken(C99Parsersym.TK_Plus,       tokens.get(5));
-		assertToken(C99Parsersym.TK_integer,    tokens.get(6));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(7));
-		assertToken(C99Parsersym.TK_EOF_TOKEN,  tokens.get(8));
+		assertEquals(7, tokens.size());
+		
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_int,        iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Assign,     iter.next());
+		assertToken(C99Parsersym.TK_integer,    iter.next());
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertToken(C99Parsersym.TK_integer,    iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
 	
 	public void testSimpleObjectLike2() {
@@ -131,20 +169,21 @@ public class C99PreprocessorTests extends TestCase {
 		sb.append("# define MAMA 10 \n");//$NON-NLS-1$
 		sb.append("int x = MAMA; \n");//$NON-NLS-1$
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(7, tokens.size());
-		assertToken(0, tokens.get(0));
-		assertToken(C99Parsersym.TK_int,        tokens.get(1));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(2));
-		assertToken(C99Parsersym.TK_Assign,     tokens.get(3));
-		assertToken(C99Parsersym.TK_integer,    tokens.get(4));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(5));
-		assertToken(C99Parsersym.TK_EOF_TOKEN,  tokens.get(6));
+		assertEquals(5, tokens.size());
 		
-		String replaced = tokens.get(4).toString();
-		assertEquals("10", replaced);
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_int,        iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Assign,     iter.next());
+		assertToken(C99Parsersym.TK_integer,    iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
+		
+		String replaced = tokens.get(3).toString();
+		assertEquals("10", replaced);//$NON-NLS-1$
 	}
 
 	
@@ -155,37 +194,32 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// int max = (x) > (y) ? (x) : (y);
 		
-		List tokens = scanAndPreprocess(sb.toString());
-		System.err.println(tokens);
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(21, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(19, tokens.size());
 		
-		assertToken(C99Parsersym.TK_int,        tokens.get(1));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(2));
-		assertToken(C99Parsersym.TK_Assign,     tokens.get(3));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(4));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(5));
-		assertEquals("x", tokens.get(5).toString());
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(6));
-		assertToken(C99Parsersym.TK_GT,         tokens.get(7));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(8));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(9));
-		assertEquals("y", tokens.get(9).toString());
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(10));
-		assertToken(C99Parsersym.TK_Question,   tokens.get(11));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(12));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(13));
-		assertEquals("x", tokens.get(13).toString());
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(14));
-		assertToken(C99Parsersym.TK_Colon,      tokens.get(15));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(16));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(17));
-		assertEquals("y", tokens.get(17).toString());
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(18));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(19));
-		assertToken(C99Parsersym.TK_EOF_TOKEN,  tokens.get(20));
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_int,        iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Assign,     iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("x", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_GT,         iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("y", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Question,   iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("x", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Colon,      iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("y", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
 	
 	
@@ -198,27 +232,26 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// int sum = (x) + (y) ;
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(13, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(11, tokens.size());
 		
-		assertToken(C99Parsersym.TK_int,        tokens.get(1));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(2));
-		assertToken(C99Parsersym.TK_Assign,     tokens.get(3));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(4));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(5));
-		assertEquals("x", tokens.get(5).toString());
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(6));
-		assertToken(C99Parsersym.TK_Plus,       tokens.get(7));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(8));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(9));
-		assertEquals("y", tokens.get(9).toString());
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(10));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(11));
-		assertToken(C99Parsersym.TK_EOF_TOKEN,  tokens.get(12));
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_int,        iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Assign,     iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("x", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("y", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
+	
 	
 	public void testSimpleFunctionLike3() {
 		// test longer args
@@ -228,30 +261,28 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// int sum = (x+1) + (y+1) ;
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(17, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(15, tokens.size());
 		
-		assertToken(C99Parsersym.TK_int,        tokens.get(1));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(2));
-		assertToken(C99Parsersym.TK_Assign,     tokens.get(3));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(4));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(5));
-		assertEquals("x", tokens.get(5).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_Plus,       tokens.get(6));
-		assertToken(C99Parsersym.TK_integer,    tokens.get(7));
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(8));
-		assertToken(C99Parsersym.TK_Plus,       tokens.get(9));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(10));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(11));
-		assertEquals("y", tokens.get(11).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_Plus,       tokens.get(12));
-		assertToken(C99Parsersym.TK_integer,    tokens.get(13));
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(14));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(15));
-		assertToken(C99Parsersym.TK_EOF_TOKEN,  tokens.get(16));
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_int,        iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Assign,     iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("x", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertToken(C99Parsersym.TK_integer,    iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("y", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertToken(C99Parsersym.TK_integer,    iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
 	
 	
@@ -263,35 +294,31 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// int sum = (f(x,y)) + (z+1) ;
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(20, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(18, tokens.size());
+
+		Iterator<IToken> iter = tokens.iterator();
 		
-		assertToken(C99Parsersym.TK_int,        tokens.get(1));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(2));
-		assertToken(C99Parsersym.TK_Assign,     tokens.get(3));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(4));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(5));
-		assertEquals("f", tokens.get(5).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(6));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(7));
-		assertEquals("x", tokens.get(7).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_Comma,      tokens.get(8));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(9));
-		assertEquals("y", tokens.get(9).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(10));
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(11));
-		assertToken(C99Parsersym.TK_Plus,       tokens.get(12));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(13));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(14));
-		assertEquals("z", tokens.get(14).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_Plus,       tokens.get(15));
-		assertToken(C99Parsersym.TK_integer,    tokens.get(16));
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(17));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(18));
-		assertToken(C99Parsersym.TK_EOF_TOKEN,  tokens.get(19));
+		assertToken(C99Parsersym.TK_int,        iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Assign,     iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("f", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("x", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_Comma,      iter.next());
+		assertIdentifier("y", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("z", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertToken(C99Parsersym.TK_integer,    iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
 	
 	
@@ -305,21 +332,24 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// char p[] = "x ## y" ;
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(9, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(7, tokens.size());
 		
-		assertToken(C99Parsersym.TK_char, tokens.get(1));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(2));
-		assertToken(C99Parsersym.TK_LeftBracket, tokens.get(3));
-		assertToken(C99Parsersym.TK_RightBracket, tokens.get(4));
-		assertToken(C99Parsersym.TK_Assign, tokens.get(5));
-		assertToken(C99Parsersym.TK_stringlit, tokens.get(6));
-		assertEquals("\"x ## y\"", tokens.get(6).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_SemiColon, tokens.get(7));
+		assertEquals("\"x ## y\"", tokens.get(5).toString());//$NON-NLS-1$
+		
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_char,         iter.next());
+		assertToken(C99Parsersym.TK_identifier,   iter.next());
+		assertToken(C99Parsersym.TK_LeftBracket,  iter.next());
+		assertToken(C99Parsersym.TK_RightBracket, iter.next());
+		assertToken(C99Parsersym.TK_Assign,       iter.next());
+		assertToken(C99Parsersym.TK_stringlit,    iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,    iter.next());
 	}
+	
 	
 	public void testSpecExample2() {
 		StringBuffer sb = new StringBuffer();
@@ -335,8 +365,8 @@ public class C99PreprocessorTests extends TestCase {
 		
 		List tokens = scanAndPreprocess(sb.toString());
 		
-		// just the dummy token and EOF
-		assertEquals(2, tokens.size());
+		// should be empty
+		assertEquals(0, tokens.size());
 	}
 	
 	
@@ -377,44 +407,39 @@ public class C99PreprocessorTests extends TestCase {
 		StringBuffer sb = getExample3Defines();
 		sb.append("f(y+1) + f(f(z)) % t(t(g)(0) + t)(1); \n"); //$NON-NLS-1$ //31
 		
+		//sb.append("z");
+		
 		// f(2 * (y+1)) + f(2 * (f(2 * (z[0])))) % f(2 * (0)) + t(1); //44
 		
-		List tokens = scanAndPreprocess(sb.toString());
-
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
+		
 		assertNotNull(tokens);
-		assertEquals(46, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(44, tokens.size());
 		
-		Iterator iter = tokens.iterator();
-		iter.next();
+		Iterator<IToken> iter = tokens.iterator();
 		
-		assertToken(C99Parsersym.TK_identifier, iter.next()); // f
-		assertEquals("f", tokens.get(1).toString());//$NON-NLS-1$
+		assertIdentifier("f", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_Star, iter.next());
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
-		assertToken(C99Parsersym.TK_identifier, iter.next()); // y
-		assertEquals("y", tokens.get(6).toString());//$NON-NLS-1$
+		assertIdentifier("y", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_Plus, iter.next());
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_RightParen, iter.next());
 		assertToken(C99Parsersym.TK_RightParen, iter.next());
 		assertToken(C99Parsersym.TK_Plus, iter.next());
-		assertToken(C99Parsersym.TK_identifier, iter.next()); //f
-		assertEquals("f", tokens.get(12).toString());//$NON-NLS-1$
+		assertIdentifier("f", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_Star, iter.next());
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
-		assertToken(C99Parsersym.TK_identifier, iter.next()); // f
-		assertEquals("f", tokens.get(17).toString());//$NON-NLS-1$
+		assertIdentifier("f", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_Star, iter.next());
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
-		assertToken(C99Parsersym.TK_identifier, iter.next()); // z
-		assertEquals("z", tokens.get(22).toString());//$NON-NLS-1$
+		assertIdentifier("z", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_LeftBracket, iter.next());
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_RightBracket, iter.next());
@@ -423,8 +448,7 @@ public class C99PreprocessorTests extends TestCase {
 		assertToken(C99Parsersym.TK_RightParen, iter.next());
 		assertToken(C99Parsersym.TK_RightParen, iter.next());
 		assertToken(C99Parsersym.TK_Percent, iter.next());
-		assertToken(C99Parsersym.TK_identifier, iter.next()); // f
-		assertEquals("f", tokens.get(31).toString());//$NON-NLS-1$
+		assertIdentifier("f", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_Star, iter.next());
@@ -433,8 +457,7 @@ public class C99PreprocessorTests extends TestCase {
 		assertToken(C99Parsersym.TK_RightParen, iter.next());
 		assertToken(C99Parsersym.TK_RightParen, iter.next());
 		assertToken(C99Parsersym.TK_Plus, iter.next());
-		assertToken(C99Parsersym.TK_identifier, iter.next()); // t
-		assertEquals("t", tokens.get(40).toString());//$NON-NLS-1$
+		assertIdentifier("t", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_RightParen, iter.next());
@@ -448,14 +471,12 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// f(2 * (2+(3,4)-0,1)) | f(2 * (~ 5)) & f(2 * (0,1))^m(0,1); //47
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(49, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(47, tokens.size());
 		
-		Iterator iter = tokens.iterator();
-		iter.next();
+		Iterator<IToken> iter = tokens.iterator();
 		
 		assertToken(C99Parsersym.TK_identifier, iter.next());
 		assertToken(C99Parsersym.TK_LeftParen, iter.next());
@@ -504,8 +525,8 @@ public class C99PreprocessorTests extends TestCase {
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_RightParen, iter.next());
 		assertToken(C99Parsersym.TK_SemiColon, iter.next());
-		
 	}
+	
 	
 	public void testSpecExample3_3() {
 		
@@ -514,16 +535,12 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// int i[] = { 1, 23, 4, 5, };
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(18, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(16, tokens.size());
 		
-		
-		
-		Iterator iter = tokens.iterator();
-		iter.next();
+		Iterator<IToken> iter = tokens.iterator();
 		
 		assertToken(C99Parsersym.TK_int, iter.next());
 		assertToken(C99Parsersym.TK_identifier, iter.next());
@@ -540,8 +557,7 @@ public class C99PreprocessorTests extends TestCase {
 		assertToken(C99Parsersym.TK_integer, iter.next());
 		assertToken(C99Parsersym.TK_Comma, iter.next());
 		assertToken(C99Parsersym.TK_RightBrace, iter.next());
-		assertToken(C99Parsersym.TK_SemiColon, iter.next());
-	
+		assertToken(C99Parsersym.TK_SemiColon, iter.next());	
 	}
 	
 	
@@ -551,15 +567,13 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// char c[2][6] = { "hello", "" }; //15
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(17, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(15, tokens.size());
 		
-		Iterator iter = tokens.iterator();
-		iter.next();
-		
+		Iterator<IToken> iter = tokens.iterator();
+
 		assertToken(C99Parsersym.TK_char, iter.next());
 		assertToken(C99Parsersym.TK_identifier, iter.next());
 		assertToken(C99Parsersym.TK_LeftBracket, iter.next());
@@ -601,21 +615,18 @@ public class C99PreprocessorTests extends TestCase {
 	}
 	
 	
-	
 	public void testSpecExample4_1() {
 		StringBuffer sb = getExample4Defines();
 		sb.append("debug(1, 2); \n"); //$NON-NLS-1$ //31
 		
 		// printf("x1= %d, x2= %s", x1, x2); // 9
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(11, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(9, tokens.size());
 		
-		Iterator iter = tokens.iterator();
-		iter.next();
+		Iterator<IToken> iter = tokens.iterator();
 		
 		assertToken(C99Parsersym.TK_identifier, iter.next());
 		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
@@ -628,6 +639,7 @@ public class C99PreprocessorTests extends TestCase {
 		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
 	
+	
 	public void testSpecExample4_2() {
 		StringBuffer sb = getExample4Defines();
 		sb.append("fputs(str(strncmp(\"abc\\0d\", \"abc\", '\\4') // this goes away   \n");//$NON-NLS-1$
@@ -635,14 +647,12 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// fputs( "strncmp(\"abc\\0d\", \"abc\", '\\4') == 0: @\n", s); // 7
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(9, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(7, tokens.size());
 		
-		Iterator iter = tokens.iterator();
-		iter.next(); // skip the dummy token
+		Iterator<IToken> iter = tokens.iterator();
 		
 		assertToken(C99Parsersym.TK_identifier, iter.next());
 		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
@@ -660,13 +670,12 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// "hello, world"
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(3, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(1, tokens.size());
 		
-		assertToken(C99Parsersym.TK_stringlit, tokens.get(1));
+		assertToken(C99Parsersym.TK_stringlit, tokens.get(0));
 		// TODO implement string concatenation properly
 		//assertEquals("\"hello, world\"", tokens.get(1).toString());//$NON-NLS-1$
 	}
@@ -677,15 +686,14 @@ public class C99PreprocessorTests extends TestCase {
 		
 		// "hello";
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(4, tokens.size());
-		assertToken(0, tokens.get(0));
-		
-		assertToken(C99Parsersym.TK_stringlit, tokens.get(1));
-		assertEquals("\"hello\"", tokens.get(1).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_SemiColon, tokens.get(2));
+		assertEquals(2, tokens.size());
+
+		assertToken(C99Parsersym.TK_stringlit, tokens.get(0));
+		assertEquals("\"hello\"", tokens.get(0).toString());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_SemiColon, tokens.get(1));
 	}
 	
 	
@@ -698,15 +706,12 @@ public class C99PreprocessorTests extends TestCase {
 		// results in
 		// int j[] = {123, 45, 67, 89, 10, 11, 12, };
 		
-		List tokens = scanAndPreprocess(sb.toString());
-		
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
+
 		assertNotNull(tokens);
-		assertEquals(24, tokens.size());
-		assertToken(0, tokens.get(0));
-		
-		Iterator iter = tokens.iterator();
-		iter.next();
-		
+		assertEquals(22, tokens.size());
+
+		Iterator<IToken> iter = tokens.iterator();
 		
 		assertToken(C99Parsersym.TK_int, iter.next());
 		assertToken(C99Parsersym.TK_identifier, iter.next());
@@ -714,26 +719,19 @@ public class C99PreprocessorTests extends TestCase {
 		assertToken(C99Parsersym.TK_RightBracket, iter.next());
 		assertToken(C99Parsersym.TK_Assign, iter.next());
 		assertToken(C99Parsersym.TK_LeftBrace, iter.next());
-		assertToken(C99Parsersym.TK_integer, iter.next());
-		assertEquals("123", tokens.get(7).toString());//$NON-NLS-1$
+		assertInteger("123", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_Comma, iter.next());
-		assertToken(C99Parsersym.TK_integer, iter.next());
-		assertEquals("45", tokens.get(9).toString());//$NON-NLS-1$
+		assertInteger("45", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_Comma, iter.next());
-		assertToken(C99Parsersym.TK_integer, iter.next());
-		assertEquals("67", tokens.get(11).toString());//$NON-NLS-1$
+		assertInteger("67", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_Comma, iter.next());
-		assertToken(C99Parsersym.TK_integer, iter.next());
-		assertEquals("89", tokens.get(13).toString());//$NON-NLS-1$
+		assertInteger("89", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_Comma, iter.next());
-		assertToken(C99Parsersym.TK_integer, iter.next());
-		assertEquals("10", tokens.get(15).toString());//$NON-NLS-1$
+		assertInteger("10", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_Comma, iter.next());
-		assertToken(C99Parsersym.TK_integer, iter.next());
-		assertEquals("11", tokens.get(17).toString());//$NON-NLS-1$
+		assertInteger("11", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_Comma, iter.next());
-		assertToken(C99Parsersym.TK_integer, iter.next());
-		assertEquals("12", tokens.get(19).toString());//$NON-NLS-1$
+		assertInteger("12", iter.next());//$NON-NLS-1$
 		assertToken(C99Parsersym.TK_Comma, iter.next());
 		assertToken(C99Parsersym.TK_RightBrace, iter.next());
 		assertToken(C99Parsersym.TK_SemiColon, iter.next());
@@ -749,46 +747,50 @@ public class C99PreprocessorTests extends TestCase {
 		return sb;
 	}
 	
+	
 	public void testSpecExample7_1() {
 		StringBuffer sb = getExample7Defines();
 		sb.append("debug(\"Flag\"); \n");//$NON-NLS-1$
 		// fprintf(stderr, "Flag" ); //7
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(9, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(7, tokens.size());
 		
-		assertToken(C99Parsersym.TK_identifier, tokens.get(1));
-		assertToken(C99Parsersym.TK_LeftParen, tokens.get(2));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(3));
-		assertToken(C99Parsersym.TK_Comma,      tokens.get(4));
-		assertToken(C99Parsersym.TK_stringlit,  tokens.get(5));
-		assertToken(C99Parsersym.TK_RightParen,  tokens.get(6));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(7));		
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Comma,      iter.next());
+		assertToken(C99Parsersym.TK_stringlit,  iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());		
 	}
+	
 	
 	public void testSpecExample7_2() {
 		StringBuffer sb = getExample7Defines();
 		sb.append("debug(\"X = %d\\n\", x); \n");//$NON-NLS-1$
 		// fprintf(stderr, "X = %d\n", x ); //9
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(11, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(9, tokens.size());
 		
-		assertToken(C99Parsersym.TK_identifier, tokens.get(1));
-		assertToken(C99Parsersym.TK_LeftParen, tokens.get(2));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(3));
-		assertToken(C99Parsersym.TK_Comma,      tokens.get(4));
-		assertToken(C99Parsersym.TK_stringlit,  tokens.get(5));
-		assertToken(C99Parsersym.TK_Comma,      tokens.get(6));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(7));
-		assertToken(C99Parsersym.TK_RightParen,  tokens.get(8));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(9));		
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Comma,      iter.next());
+		assertToken(C99Parsersym.TK_stringlit,  iter.next());
+		assertToken(C99Parsersym.TK_Comma,      iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());		
 	}
 	
 	
@@ -797,18 +799,19 @@ public class C99PreprocessorTests extends TestCase {
 		sb.append("showlist(The first, second, and third items.); \n");//$NON-NLS-1$
 		// puts( "The first, second, and third items." ); //5
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(7, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(5, tokens.size());
 		
-		assertToken(C99Parsersym.TK_identifier, tokens.get(1));
-		assertToken(C99Parsersym.TK_LeftParen, tokens.get(2));
-		assertToken(C99Parsersym.TK_stringlit,  tokens.get(3));
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertToken(C99Parsersym.TK_stringlit,  iter.next());
 		// TODO: assertEquals("\"The first, second, and third items.\"", tokens.get(3).toString());
-		assertToken(C99Parsersym.TK_RightParen,  tokens.get(4));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(5));
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
 	
 	
@@ -818,91 +821,92 @@ public class C99PreprocessorTests extends TestCase {
 		sb.append("report(x>y, \"x is %d but y is %d\", x, y); \n");//$NON-NLS-1$
 		// ( (x>y) ? puts("x>y") : printf("x is %d but y is %d", x, y) ); //22
 		
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(24, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(22, tokens.size());
 		
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(1));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(2));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(3));
-		assertToken(C99Parsersym.TK_GT,         tokens.get(4));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(5));
-		assertToken(C99Parsersym.TK_RightParen,  tokens.get(6));
-		assertToken(C99Parsersym.TK_Question,   tokens.get(7));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(8));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(9));
-		assertToken(C99Parsersym.TK_stringlit,  tokens.get(10));
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_GT,         iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Question,   iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertToken(C99Parsersym.TK_stringlit,  iter.next());
 		// TODO : assertEquals("\"x>y\"", tokens.get(10).toString());
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(11));
-		assertToken(C99Parsersym.TK_Colon,      tokens.get(12));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(13));
-		assertToken(C99Parsersym.TK_LeftParen,  tokens.get(14));
-		assertToken(C99Parsersym.TK_stringlit,  tokens.get(15));
-		assertToken(C99Parsersym.TK_Comma,      tokens.get(16));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(17));
-		assertToken(C99Parsersym.TK_Comma,      tokens.get(18));
-		assertToken(C99Parsersym.TK_identifier, tokens.get(19));
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(20));
-		assertToken(C99Parsersym.TK_RightParen, tokens.get(21));
-		assertToken(C99Parsersym.TK_SemiColon,  tokens.get(22));
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Colon,      iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertToken(C99Parsersym.TK_stringlit,  iter.next());
+		assertToken(C99Parsersym.TK_Comma,      iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_Comma,      iter.next());
+		assertToken(C99Parsersym.TK_identifier, iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
 	
 	
 	public void testConditionalExpressions() {
 		// test hex and octal
-		assertExpressionValue(0x1234, " 0x1234 ");
-		assertExpressionValue(0x99,  "0x99");
-		assertExpressionValue(0xAB + 0xFE, "0xABu + 0xFEUll");
-		assertExpressionValue(020, "020");
-		assertExpressionValue(077 + 0x22, " 077 + 0x22 ");
-		assertExpressionValue(145, "145");
+		assertExpressionValue(0x1234, " 0x1234 ");//$NON-NLS-1$
+		assertExpressionValue(0x99,  "0x99");//$NON-NLS-1$
+		assertExpressionValue(0xAB + 0xFE, "0xABu + 0xFEUll");//$NON-NLS-1$
+		assertExpressionValue(020, "020");//$NON-NLS-1$
+		assertExpressionValue(077 + 0x22, " 077 + 0x22 ");//$NON-NLS-1$
+		assertExpressionValue(145, "145");//$NON-NLS-1$
 		
 		// test char constants
-		assertExpressionValue(97, " 'a' ");
-		assertExpressionValue(97, " L'a' ");
-		assertExpressionValue(24930, " 'ab' ");
-		assertExpressionValue(6379864, " '\\x61YX' ");
-		assertExpressionValue(2567, " '\\n\\a' ");
-		assertExpressionValue(4660, " '\\u1234' ");
-		assertExpressionValue(305419896, " '\\u12345678' ");
+		assertExpressionValue(97, " 'a' ");//$NON-NLS-1$
+		assertExpressionValue(97, " L'a' ");//$NON-NLS-1$
+		assertExpressionValue(24930, " 'ab' ");//$NON-NLS-1$
+		assertExpressionValue(6379864, " '\\x61YX' ");//$NON-NLS-1$
+		assertExpressionValue(2567, " '\\n\\a' ");//$NON-NLS-1$
+		assertExpressionValue(4660, " '\\u1234' ");//$NON-NLS-1$
+		assertExpressionValue(305419896, " '\\u12345678' ");//$NON-NLS-1$
 		
 		// test that invalid escape sequences are actually caught
 		// by the scanner
-		assertInvalidToken(" '\\x' ");
-		assertInvalidToken(" '\\u' ");
-		assertInvalidToken(" '\\u123' "); // not a hex quad
-		assertInvalidToken(" '\\q' "); // invalid escape sequence
+		assertInvalidToken(" '\\x' ");//$NON-NLS-1$
+		assertInvalidToken(" '\\u' ");//$NON-NLS-1$
+		assertInvalidToken(" '\\u123' ");//$NON-NLS-1$ // not a hex quad
+		assertInvalidToken(" '\\q' ");//$NON-NLS-1$ // invalid escape sequence
 	}
+	
 	
 	public void testBug186047() {
 		StringBuffer sb = getExample7Defines();
 		sb.append("#define D \n");//$NON-NLS-1$
-		sb.append("#if defined D \n");
-		sb.append("    x; \n");
-		sb.append("#endif \n");
-		sb.append("#if defined(D) \n");
-		sb.append("    y; \n");
-		sb.append("#endif \n");
+		sb.append("#if defined D \n");//$NON-NLS-1$
+		sb.append("    x; \n");//$NON-NLS-1$
+		sb.append("#endif \n");//$NON-NLS-1$
+		sb.append("#if defined(D) \n");//$NON-NLS-1$
+		sb.append("    y; \n");//$NON-NLS-1$
+		sb.append("#endif \n");//$NON-NLS-1$
 			
-		List tokens = scanAndPreprocess(sb.toString());
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
 		
 		assertNotNull(tokens);
-		assertEquals(6, tokens.size());
-		assertToken(0, tokens.get(0));
+		assertEquals(4, tokens.size());
 		
-		assertToken(C99Parsersym.TK_identifier,   tokens.get(1));
-		assertEquals("x", tokens.get(1).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_SemiColon,    tokens.get(2));
-		assertToken(C99Parsersym.TK_identifier,   tokens.get(3));
-		assertEquals("y", tokens.get(3).toString());//$NON-NLS-1$
-		assertToken(C99Parsersym.TK_SemiColon,    tokens.get(4));
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertIdentifier("x", iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
+		assertIdentifier("y", iter.next());
+		assertToken(C99Parsersym.TK_SemiColon,  iter.next());
 	}
 	
 	
 	public void testTokenEqualsHashcode() {
-		char[] chars = "one two three".toCharArray();
+		char[] chars = "one two three".toCharArray();//$NON-NLS-1$
 		
 		Token[] source = {
 			new Token(0, 2, 0, chars),
@@ -910,28 +914,149 @@ public class C99PreprocessorTests extends TestCase {
 			new Token(8, 12, 0, chars) 
 		};
 		
-		assertEquals("one", source[0].toString());
-		assertEquals("two", source[1].toString());
-		assertEquals("three", source[2].toString());
+		assertEquals("one", source[0].toString());//$NON-NLS-1$
+		assertEquals("two", source[1].toString());//$NON-NLS-1$
+		assertEquals("three", source[2].toString());//$NON-NLS-1$
 		
 		Token[] synth = {
-			new SynthesizedToken(0, 2, 0, "one"),
-			new SynthesizedToken(4, 6, 0, "two"),
-			new SynthesizedToken(8, 12, 0, "three")
+			new SynthesizedToken(0, 2, 0, "one"),//$NON-NLS-1$
+			new SynthesizedToken(4, 6, 0, "two"),//$NON-NLS-1$
+			new SynthesizedToken(8, 12, 0, "three")//$NON-NLS-1$
 		};
 		
-		assertEquals("one", synth[0].toString());
-		assertEquals("two", synth[1].toString());
-		assertEquals("three", synth[2].toString());
-		
+		assertEquals("one", synth[0].toString());//$NON-NLS-1$
+		assertEquals("two", synth[1].toString());//$NON-NLS-1$
+		assertEquals("three", synth[2].toString());//$NON-NLS-1$
 		
 		for(int i = 0; i < 3; i++) {
-			System.out.println("iter " + i);
-			
 			assertTrue(source[i].equals(synth[i]));
 			assertTrue(synth[i].equals(source[i]));
 			assertEquals(source[2].hashCode(), synth[2].hashCode());
 		}
+	}
+	
+	
+	public void _testRecursiveExpansion() {
+		StringBuffer sb = new StringBuffer();
+		sb.append("#define foo g g g \n");//$NON-NLS-1$
+		sb.append("#define g f##oo \n");//$NON-NLS-1$
+		sb.append("foo \n");//$NON-NLS-1$
+		
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
+		
+		assertNotNull(tokens);
+		assertEquals(3, tokens.size());
+		
+		assertIdentifier("foo", tokens.get(0));//$NON-NLS-1$
+		assertIdentifier("foo", tokens.get(1));//$NON-NLS-1$
+		assertIdentifier("foo", tokens.get(2));//$NON-NLS-1$
+	}
+	
+	
+	public void testRecursiveExpansion2() {
+		StringBuffer sb = new StringBuffer();
+		sb.append("#define m !(m)+n \n");//$NON-NLS-1$
+		sb.append("#define n(n) n(m) \n");//$NON-NLS-1$
+		sb.append("m(m)\n"); //$NON-NLS-1$
+		
+		// !(m)+ !(m)+n(!(m)+n)
+		
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
+		
+		assertNotNull(tokens);
+		assertEquals(19, tokens.size());
+		
+		Iterator<IToken> iter = tokens.iterator();
+		
+		assertToken(C99Parsersym.TK_Bang,       iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("m", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertToken(C99Parsersym.TK_Bang,       iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("m", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertIdentifier("n", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertToken(C99Parsersym.TK_Bang,       iter.next());
+		assertToken(C99Parsersym.TK_LeftParen,  iter.next());
+		assertIdentifier("m", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+		assertToken(C99Parsersym.TK_Plus,       iter.next());
+		assertIdentifier("n", iter.next());//$NON-NLS-1$
+		assertToken(C99Parsersym.TK_RightParen, iter.next());
+	}
+	
+	
+	public void testRecursiveExpansion3() {
+		StringBuffer sb = new StringBuffer();
+		sb.append("#define f g\n");//$NON-NLS-1$
+		sb.append("#define cat(a,b) a ## b\n");//$NON-NLS-1$
+		sb.append("#define g bad\n");//$NON-NLS-1$
+		sb.append("cat(f, f)\n");//$NON-NLS-1$
+		
+		 // ff
+		
+		List<IToken> tokens = scanAndPreprocess(sb.toString());
+		
+		assertNotNull(tokens);
+		assertEquals(1, tokens.size());
+		
+		assertIdentifier("ff", tokens.get(0));//$NON-NLS-1$
+	}
+	
+	
+	public void testObjectTagger() {
+		ObjectTagger<Integer,String> tagger = new ObjectTagger<Integer,String>();
+		
+		Integer obj1 = new Integer(10);
+		Integer obj2 = new Integer(10);
+		
+		// according to equals() and hashCode() in the integer class these objects should be equal
+		assertTrue(obj1.equals(obj2));
+		assertEquals(obj1.hashCode(), obj2.hashCode());
+		// but they are not the same object
+		assertFalse(obj1 == obj2);
+		
+		final String TAG_1A = "tag1a", TAG_1B = "tag1b";
+		final String TAG_2A = "tag2a", TAG_2B = "tag2b";
+		
+		// now tag the objects, it should use object equality and not the overridden equals() method
+		tagger.tag(obj1, TAG_1A);
+		tagger.tag(obj2, TAG_2A);
+		
+		assertTrue(tagger.hasTag(obj1, TAG_1A));
+		assertFalse(tagger.hasTag(obj1, TAG_2A));
+		assertTrue(tagger.hasTag(obj2, TAG_2A));
+		assertFalse(tagger.hasTag(obj2, TAG_1A));
+		
+		// add some more tags
+		tagger.tag(obj1, TAG_1B);
+		tagger.tag(obj2, TAG_2B);
+		
+		assertTrue(tagger.hasTag(obj1, TAG_1A));
+		assertFalse(tagger.hasTag(obj1, TAG_2A));
+		assertTrue(tagger.hasTag(obj2, TAG_2A));
+		assertFalse(tagger.hasTag(obj2, TAG_1A));
+		
+		assertTrue(tagger.hasTag(obj1, TAG_1B));
+		assertFalse(tagger.hasTag(obj1, TAG_2B));
+		assertTrue(tagger.hasTag(obj2, TAG_2B));
+		assertFalse(tagger.hasTag(obj2, TAG_1B));
+		
+		tagger.removeAllTags(obj2); 
+		
+		assertTrue(tagger.hasTag(obj1, TAG_1A));
+		assertFalse(tagger.hasTag(obj1, TAG_2A));
+		assertFalse(tagger.hasTag(obj2, TAG_2A));
+		assertFalse(tagger.hasTag(obj2, TAG_1A));
+		
+		assertTrue(tagger.hasTag(obj1, TAG_1B));
+		assertFalse(tagger.hasTag(obj1, TAG_2B));
+		assertFalse(tagger.hasTag(obj2, TAG_2B));
+		assertFalse(tagger.hasTag(obj2, TAG_1B));
 	}
 }
 

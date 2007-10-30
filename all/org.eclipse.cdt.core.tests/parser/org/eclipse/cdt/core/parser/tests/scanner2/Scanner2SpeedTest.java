@@ -28,7 +28,7 @@ import org.eclipse.cdt.core.parser.IToken;
 import org.eclipse.cdt.core.parser.NullSourceElementRequestor;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.ParserMode;
-import org.eclipse.cdt.internal.core.parser.scanner2.Scanner2;
+import org.eclipse.cdt.internal.core.parser.scanner2.DOMScanner;
 
 /**
  * @author Doug Schaefer
@@ -88,7 +88,7 @@ public class Scanner2SpeedTest extends SpeedTest2 {
 	 */
 	protected long testScan(CodeReader reader, boolean quick, IScannerInfo info, ParserLanguage lang) throws Exception {
 		ParserMode mode = quick ? ParserMode.QUICK_PARSE : ParserMode.COMPLETE_PARSE;
-		Scanner2 scanner = createScanner(reader, info, mode, lang, CALLBACK, null, Collections.EMPTY_LIST ); 
+		DOMScanner scanner = createScanner(reader, info, mode, lang, CALLBACK, null, Collections.EMPTY_LIST ); 
 		long startTime = System.currentTimeMillis();
 		int count = 0;
 		try {

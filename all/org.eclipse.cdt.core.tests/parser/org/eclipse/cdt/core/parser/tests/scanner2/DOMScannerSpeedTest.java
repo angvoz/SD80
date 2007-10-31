@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2007 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,15 +7,11 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
-/*
- * Created on Jun 8, 2004
- *
- * TODO To change the template for this generated file go to
- * Window - Preferences - Java - Code Style - Code Templates
- */
 package org.eclipse.cdt.core.parser.tests.scanner2;
 
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.Collections;
 
@@ -35,7 +31,7 @@ import org.eclipse.cdt.internal.core.parser.scanner2.DOMScanner;
  * TODO To change the template for this generated type comment go to
  * Window - Preferences - Java - Code Style - Code Templates
  */
-public class Scanner2SpeedTest extends SpeedTest2 {
+public class DOMScannerSpeedTest extends SpeedTest2 {
 	
 	private static final ISourceElementRequestor CALLBACK = new NullSourceElementRequestor();
 	private PrintStream stream;
@@ -43,10 +39,10 @@ public class Scanner2SpeedTest extends SpeedTest2 {
 	public static void main(String[] args) {
 		try {
 			PrintStream stream = null;
-//			if (args.length > 0)
-//				stream = new PrintStream(new FileOutputStream("c:/tmp/dom.txt"));
+			if (args.length > 0)
+				stream = new PrintStream(new FileOutputStream(args[0]));
 
-			new Scanner2SpeedTest().runTest(stream, 30);
+			new DOMScannerSpeedTest().runTest(stream, 30);
 		} catch (Exception e) {
 			System.out.println(e);
 		}
@@ -68,7 +64,7 @@ public class Scanner2SpeedTest extends SpeedTest2 {
 			"#include <iostream>\n";
 		
 		CodeReader reader = new CodeReader(code.toCharArray());
-		IScannerInfo info = msvcScannerInfo(false);
+		IScannerInfo info = getScannerInfo(false);
 		long totalTime = 0;
 		for (int i = 0; i < n; ++i) {
 			long time = testScan(reader, false, info, ParserLanguage.CPP);

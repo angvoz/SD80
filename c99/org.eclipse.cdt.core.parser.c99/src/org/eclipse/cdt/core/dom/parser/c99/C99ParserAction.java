@@ -1777,7 +1777,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 				IASTExpression expr = (IASTExpression)node;
 				stat.setExpression(expr);
 				expr.setParent(stat);
-				expr.setPropertyInParent(IASTExpressionStatement.EXPFRESSION);
+				expr.setPropertyInParent(IASTExpressionStatement.EXPRESSION);
 				
 				forStat.setInitializerStatement(stat);
 				stat.setParent(forStat);
@@ -1968,7 +1968,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 						
 						stat.setExpression(idExpr);
 						idExpr.setParent(stat);
-						idExpr.setPropertyInParent(IASTExpressionStatement.EXPFRESSION);
+						idExpr.setPropertyInParent(IASTExpressionStatement.EXPRESSION);
 						
 						setOffsetAndLength(stat);
 						astStack.push(stat);
@@ -2037,7 +2037,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 		IASTExpressionStatement stat = nodeFactory.newExpressionStatement();
 		stat.setExpression(expr);
 		expr.setParent(stat);
-		expr.setPropertyInParent(IASTExpressionStatement.EXPFRESSION);
+		expr.setPropertyInParent(IASTExpressionStatement.EXPRESSION);
 		setOffsetAndLength(stat);
 		
 		astStack.push(stat);
@@ -2119,7 +2119,7 @@ public class C99ParserAction extends ParserAction implements IParserAction {
 		
 		stat.setExpression(expr);
 		expr.setParent(stat);
-		expr.setPropertyInParent(IASTExpressionStatement.EXPFRESSION);
+		expr.setPropertyInParent(IASTExpressionStatement.EXPRESSION);
 		
 		setOffsetAndLength(stat);
 		astStack.push(stat);

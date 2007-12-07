@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.c99;
 
+import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.parser.c99.C99KeywordMap;
 import org.eclipse.cdt.core.dom.parser.c99.GCCPreprocessorExtensionConfiguration;
 import org.eclipse.cdt.internal.core.dom.parser.c99.C99LexerFactory;
@@ -43,6 +44,10 @@ public class C99Language extends BaseExtensibleLanguage {
 	
 	public String getId() {
 		return ID;
+	}
+
+	public int getLinkageID() {
+		return ILinkage.C_LINKAGE_ID;
 	}
 
 	public String getName() {

@@ -9,7 +9,7 @@
  *     Wind River Systems - Initial API and implementation
  **********************************************************************/
 
-package org.eclipse.cdt.internal.core.ffs;
+package org.eclipse.ffs.internal.core;
 
 import java.net.URI;
 
@@ -42,4 +42,7 @@ public class FFSEcprojFile {
 		return new FFSFileStore(this, null, root);
 	}
 	
+	public URI getRootURI() {
+		return uri;
+	}
 }

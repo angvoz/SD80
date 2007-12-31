@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.ide.filesystemSupport">
+      <filesystemContributor
+            class="org.eclipse.ffs.internal.ui.FFSFileSystemContributor"
+            label="ecproj (Flexible File System)"
+            scheme="ecproj">
+      </filesystemContributor>
+   </extension>
+
+</plugin>

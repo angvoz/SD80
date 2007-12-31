@@ -9,12 +9,13 @@
  *     Wind River Systems - Initial API and implementation
  **********************************************************************/
 
-package org.eclipse.cdt.internal.core.ffs;
+package org.eclipse.ffs.internal.core;
 
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 
 import org.eclipse.core.filesystem.IFileInfo;
 import org.eclipse.core.filesystem.IFileStore;
@@ -74,14 +75,14 @@ public class FFSFileStore implements org.eclipse.core.filesystem.IFileStore {
 
 	public IFileStore getChild(IPath path) {
 		IFileStore store = getChild(path.segment(0));
-		if (store == null)
-			return null;
+		if (store == null || path.segmentCount() == 1)
+			return store;
 		return store.getChild(path.removeFirstSegments(1));
 	}
 
 	public IFileStore getChild(String name) {
-		// TODO child handling
-		return target.getChild(name);
+		// TODO handle where the child is excluded/added
+		return new FFSFileStore(ecprojFile, this, target.getChild(name));
 	}
 
 	public IFileSystem getFileSystem() {
@@ -132,10 +133,29 @@ public class FFSFileStore implements org.eclipse.core.filesystem.IFileStore {
 	}
 
 	public URI toURI() {
-		// TODO
+		// TODO next!
 		// need base URI from file system
 		// then add in the child path as the query
-		return null;
+		
+		URI rootURI = ecprojFile.getRootURI();
+		
+		// Build path
+		String path = getName();
+		IFileStore parent = getParent();
+		while (parent != null) {
+			IFileStore next = parent.getParent();
+			if (next != null)
+				path = parent.getName() + '/' + path;
+			parent = next;
+		}
+		
+		try {
+			URI uri = new URI(getFileSystem().getScheme(), rootURI.getAuthority(), rootURI.getPath(), path, rootURI.getScheme());
+			return uri;
+		} catch (URISyntaxException e) {
+			return null;
+		}
+		
 	}
 
 	@SuppressWarnings("unchecked")

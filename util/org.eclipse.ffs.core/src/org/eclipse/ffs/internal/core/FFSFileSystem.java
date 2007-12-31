@@ -9,7 +9,7 @@
  *     QNX Software Systems - Initial API and implementation
  **********************************************************************/
 
-package org.eclipse.cdt.internal.core.ffs;
+package org.eclipse.ffs.internal.core;
 
 import java.io.File;
 import java.net.URI;
@@ -17,7 +17,6 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.filesystem.IFileTree;
@@ -25,7 +24,10 @@ import org.eclipse.core.filesystem.provider.FileSystem;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.ffs.core.Activator;
 
 /**
  * @author Doug Schaefer
@@ -74,25 +76,25 @@ public class FFSFileSystem extends FileSystem {
 				return root;
 			return root.getChild(path);
 		} catch (URISyntaxException e) {
-			CCorePlugin.log(e);
+			Activator.log(new Status(IStatus.ERROR, Activator.PLUGIN_ID, "uri", e));
 		} catch (CoreException e) {
-			CCorePlugin.log(e);
+			Activator.log(e);
 		}
 
 		return EFS.getNullFileSystem().getStore(uri);
 	}
 
 	public int attributes() {
-		// TODO what attributes should we support?
-		return 0;
+		// TODO is this right?
+		return EFS.getLocalFileSystem().attributes();
 	}
 
 	public boolean canDelete() {
-		return true;
+		return EFS.getLocalFileSystem().canDelete();
 	}
 
 	public boolean canWrite() {
-		return true;
+		return EFS.getLocalFileSystem().canWrite();
 	}
 
 	public IFileTree fetchFileTree(IFileStore root, IProgressMonitor monitor) {
@@ -100,7 +102,7 @@ public class FFSFileSystem extends FileSystem {
 			// TODO obviously
 			return EFS.getNullFileSystem().fetchFileTree(root, monitor);
 		} catch (CoreException e) {
-			CCorePlugin.log(e);
+			Activator.log(e);
 			return null;
 		}
 	}

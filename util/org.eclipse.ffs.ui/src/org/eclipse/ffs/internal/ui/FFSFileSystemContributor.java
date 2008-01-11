@@ -11,7 +11,6 @@
 
 package org.eclipse.ffs.internal.ui;
 
-import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 

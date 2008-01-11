@@ -16,106 +16,98 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.regex.Pattern;
 
+import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileInfo;
 import org.eclipse.core.filesystem.IFileStore;
-import org.eclipse.core.filesystem.IFileSystem;
+import org.eclipse.core.filesystem.provider.FileStore;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.Path;
 
 /**
  * @author Doug Schaefer
  *
  */
-public class FFSFileStore implements org.eclipse.core.filesystem.IFileStore {
+public class FFSFileStore extends FileStore {
 
 	private final IFileStore target;
-	private final IFileStore parent;
-	private final FFSEcprojFile ecprojFile;
+	private final FFSFileStore parent;
+	private final FFSProject project;
 
-	public FFSFileStore(FFSEcprojFile ecprojFile, IFileStore parent, IFileStore target) {
-		this.ecprojFile = ecprojFile;
+	public FFSFileStore(FFSProject project, FFSFileStore parent, IFileStore target) {
+		this.project = project;
 		this.parent = parent;
 		this.target = target;
 	}
 	
-	public IFileInfo[] childInfos(int options, IProgressMonitor monitor) throws CoreException {
-		return target.childInfos(options, monitor);
-	}
-
 	public String[] childNames(int options, IProgressMonitor monitor) throws CoreException {
-		// TODO child handling
-		return target.childNames(options, monitor);
-	}
-
-	public IFileStore[] childStores(int options, IProgressMonitor monitor) throws CoreException {
-		IFileStore[] targetChildren = target.childStores(options, monitor);
-		IFileStore[] children = new IFileStore[targetChildren.length];
-		for (int i = 0; i < children.length; ++i)
-			children[i] = new FFSFileStore(ecprojFile, this, targetChildren[i]);
+		// TODO exclusions, dude...
+		String[] children = target.childNames(options, monitor);
+		URI[] additionalChildren = project.getAdditionalChildren(this);
+		if (additionalChildren.length > 0) {
+			String[] moreChildren = new String[children.length + additionalChildren.length];
+			System.arraycopy(children, 0, moreChildren, 0, children.length);
+			for (int i = 0, j = children.length; i < additionalChildren.length; ++i) {
+				moreChildren[j] = EFS.getStore(additionalChildren[i]).getName();
+			}
+			children = moreChildren;
+		}
 		return children;
-	}
-
-	public void copy(IFileStore destination, int options, IProgressMonitor monitor) throws CoreException {
-		target.copy(destination, options, monitor);
-	}
-
-	public void delete(int options, IProgressMonitor monitor) throws CoreException {
-		target.delete(options, monitor);
-	}
-
-	public IFileInfo fetchInfo() {
-		return target.fetchInfo();
 	}
 
 	public IFileInfo fetchInfo(int options, IProgressMonitor monitor) throws CoreException {
 		return target.fetchInfo(options, monitor);
 	}
 
-	public IFileStore getChild(IPath path) {
-		IFileStore store = getChild(path.segment(0));
-		if (store == null || path.segmentCount() == 1)
-			return store;
-		return store.getChild(path.removeFirstSegments(1));
-	}
-
 	public IFileStore getChild(String name) {
-		// TODO handle where the child is excluded/added
-		return new FFSFileStore(ecprojFile, this, target.getChild(name));
-	}
-
-	public IFileSystem getFileSystem() {
-		return ecprojFile.getFileSystem();
+		if (project.isChildExcluded(this, name))
+			// TODO this should probably return something?
+			return null;
+		
+		URI childURI = project.getChild(this, name);
+		if (childURI != null)
+			try {
+				return new FFSFileStore(project, this, EFS.getStore(childURI));
+			} catch (CoreException e) {
+			}
+		
+		return new FFSFileStore(project, this, target.getChild(name));
 	}
 
 	public String getName() {
 		return target.getName();
 	}
 
+	public IPath getPath() {
+		if (parent == null)
+			// The root does not have a path
+			return null;
+		if (parent.getParent() == null)
+			// Parent is root, start at this node
+			return new Path(getName());
+		else
+			// Normal path creation
+			return parent.getPath().append(getName());
+	}
+	
 	public IFileStore getParent() {
 		return parent;
-	}
-
-	public boolean isParentOf(IFileStore other) {
-		if (other == null || !(other instanceof FFSFileStore))
-			return false;
-		
-		if (other.equals(this))
-			return true;
-		
-		return isParentOf(other.getParent());
 	}
 
 	public IFileStore mkdir(int options, IProgressMonitor monitor) throws CoreException {
 		return target.mkdir(options, monitor);
 	}
 
-	public void move(IFileStore destination, int options, IProgressMonitor monitor) throws CoreException {
-		// TODO what happens if destination is a different target file system?
-		target.move(destination, options, monitor);
+	@Override
+	public void delete(int options, IProgressMonitor monitor)
+			throws CoreException {
+		// TODO Auto-generated method stub
+		super.delete(options, monitor);
 	}
-
+	
 	public InputStream openInputStream(int options, IProgressMonitor monitor) throws CoreException {
 		return target.openInputStream(options, monitor);
 	}
@@ -133,24 +125,14 @@ public class FFSFileStore implements org.eclipse.core.filesystem.IFileStore {
 	}
 
 	public URI toURI() {
-		// TODO next!
-		// need base URI from file system
-		// then add in the child path as the query
-		
-		URI rootURI = ecprojFile.getRootURI();
+		URI rootURI = project.getURI();
 		
 		// Build path
-		String path = getName();
-		IFileStore parent = getParent();
-		while (parent != null) {
-			IFileStore next = parent.getParent();
-			if (next != null)
-				path = parent.getName() + '/' + path;
-			parent = next;
-		}
+		IPath path = getPath();
+		String pathstr = path == null ? null : getPath().toString();
 		
 		try {
-			URI uri = new URI(getFileSystem().getScheme(), rootURI.getAuthority(), rootURI.getPath(), path, rootURI.getScheme());
+			URI uri = new URI(FFSFileSystem.SCHEME, rootURI.getAuthority(), rootURI.getPath(), pathstr, rootURI.getScheme());
 			return uri;
 		} catch (URISyntaxException e) {
 			return null;
@@ -166,12 +148,16 @@ public class FFSFileStore implements org.eclipse.core.filesystem.IFileStore {
 		return null;
 	}
 	
-	@Override
-	public boolean equals(Object obj) {
-		if (obj instanceof FFSFileStore)
-			return target.equals(((FFSFileStore)obj).target);
-		else
-			return target.equals(obj);
+	public void addChild(IFileStore child) {
+		project.addChild(this, child);
+	}
+	
+	public void excludeChild(String childName) {
+		project.excludeChildren(this, Pattern.compile(childName));
+	}
+	
+	public void excludeChildren(String pattern) {
+		project.excludeChildren(this, Pattern.compile(pattern));
 	}
 	
 }

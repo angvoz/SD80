@@ -19,11 +19,9 @@ import java.util.Map;
 
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
-import org.eclipse.core.filesystem.IFileTree;
 import org.eclipse.core.filesystem.provider.FileSystem;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
@@ -46,28 +44,30 @@ import org.eclipse.ffs.core.Activator;
  */
 public class FFSFileSystem extends FileSystem {
 
-	private Map<URI, FFSEcprojFile> ecprojFiles = new HashMap<URI, FFSEcprojFile>();
+	private Map<URI, FFSProject> projects = new HashMap<URI, FFSProject>();
+	
+	public static final String SCHEME = "ecproj";
 
-	private synchronized FFSEcprojFile getEcprojFile(FFSFileSystem fileSystem, URI uri) throws CoreException {
+	private synchronized FFSProject getProject(URI uri) throws CoreException {
 		uri.normalize();
-		FFSEcprojFile ecprojFile = ecprojFiles.get(uri);
-		if (ecprojFile == null) {
-			ecprojFile = new FFSEcprojFile(fileSystem, uri);
-			ecprojFiles.put(uri, ecprojFile);
+		FFSProject project = projects.get(uri);
+		if (project == null) {
+			project = new FFSProject(uri);
+			projects.put(uri, project);
 		}
-		return ecprojFile;
+		return project;
 	}
 	
 	public IFileStore getStore(URI uri) {
 		try {
-			String ecprojScheme = uri.getFragment();
-			if (ecprojScheme == null)
-				ecprojScheme = EFS.SCHEME_FILE;
+			String projScheme = uri.getFragment();
+			if (projScheme == null)
+				projScheme = EFS.SCHEME_FILE;
 
-			URI ecprojURI = new URI(ecprojScheme, uri.getAuthority(), uri.getPath(), null, null);
-			FFSEcprojFile ecprojFile = getEcprojFile(this, ecprojURI);
+			URI projURI = new URI(projScheme, uri.getAuthority(), uri.getPath(), null, null);
+			FFSProject project = getProject(projURI);
 			
-			IFileStore root = ecprojFile.getRoot();
+			FFSFileStore root = project.getRoot();
 			String pathStr = uri.getQuery();
 			if (pathStr == null)
 				return root;
@@ -95,16 +95,6 @@ public class FFSFileSystem extends FileSystem {
 
 	public boolean canWrite() {
 		return EFS.getLocalFileSystem().canWrite();
-	}
-
-	public IFileTree fetchFileTree(IFileStore root, IProgressMonitor monitor) {
-		try {
-			// TODO obviously
-			return EFS.getNullFileSystem().fetchFileTree(root, monitor);
-		} catch (CoreException e) {
-			Activator.log(e);
-			return null;
-		}
 	}
 
 	public IFileStore fromLocalFile(File file) {

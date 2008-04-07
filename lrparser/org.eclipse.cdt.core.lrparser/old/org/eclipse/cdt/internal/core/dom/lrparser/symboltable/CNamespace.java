@@ -8,7 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.dom.lrparser.action.c99;
+package org.eclipse.cdt.internal.core.dom.lrparser.symboltable;
 
 /**
  * The C language has 4 namespaces for identifiers.
@@ -20,7 +20,7 @@ package org.eclipse.cdt.core.dom.lrparser.action.c99;
  * 
  * @author Mike Kucera
  */
-@Deprecated public enum CNamespace {
+public enum CNamespace {
 
 	GOTO_LABEL, // goto labels
 	STRUCT_TAG,// structs, unions, enums

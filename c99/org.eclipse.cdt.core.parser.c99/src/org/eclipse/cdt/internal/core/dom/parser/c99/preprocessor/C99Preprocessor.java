@@ -176,7 +176,6 @@ public class C99Preprocessor {
 	
 			log.startTranslationUnit(codeReader);
 			
-			System.out.println("Lexing the codeReader");
 			TokenList tokenList = lex(codeReader);
 			inputTokenStream.pushIncludeContext(tokenList, codeReader, 0, false, null);
 			
@@ -397,7 +396,7 @@ public class C99Preprocessor {
 		}
 		else {
 			lastTokenOutput = toOutput;
-			System.out.println("Token: (" + toOutput.getKind() + ", " + toOutput.getStartOffset() + ", " + toOutput.getEndOffset() + ") " + toOutput);
+			//System.out.println("Token: (" + toOutput.getKind() + ", " + toOutput.getStartOffset() + ", " + toOutput.getEndOffset() + ") " + toOutput);
 			parser.addToken(toOutput);
 		}
 	}

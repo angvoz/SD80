@@ -11,28 +11,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.refactoring;
 
-import org.eclipse.core.resources.IFile;
-import org.eclipse.jface.viewers.ISelection;
-import org.eclipse.jface.window.IShellProvider;
-
-/**
- * Base class for all refactoring runners.
- * 
- * @author Emanuel Graf
- *
- */
-public abstract class RefactoringRunner {
-
-	protected IFile file;
-	protected ISelection selection;
-	protected IShellProvider shellProvider;
-
-	public RefactoringRunner(IFile file, ISelection selection, IShellProvider shellProvider) {
-		this.file = file;
-		this.selection = selection;
-		this.shellProvider= shellProvider;
-	}
-	
-	public abstract void run();
-
+public interface EqualityChecker<T> {
+	boolean isEquals(T object1, T object2);
 }

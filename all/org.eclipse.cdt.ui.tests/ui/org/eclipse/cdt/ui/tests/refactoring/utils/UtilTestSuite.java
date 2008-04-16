@@ -20,10 +20,10 @@ import org.eclipse.cdt.ui.tests.refactoring.RefactoringTester;
  * @author Thomas Corbat
  *
  */
-public class UtilTestSuite {
+public class UtilTestSuite extends TestSuite {
 
 	public static Test suite() throws Exception {
-		TestSuite suite = new TestSuite("UtilTests"); //$NON-NLS-1$
+		UtilTestSuite suite = new UtilTestSuite(); 
 		suite.addTest(IdentifierHelperTest.suite());
 		suite.addTest(RefactoringTester.suite("TranslationUnitHelperTest", "resources/refactoring/TranslationunitHelper.rts")); //$NON-NLS-1$ //$NON-NLS-2$
 		return suite;

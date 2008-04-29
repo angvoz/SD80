@@ -8,7 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,19 +24,18 @@ import org.eclipse.cdt.core.dom.ast.IEnumerator;
 import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IVariable;
-import org.eclipse.cdt.core.dom.lrparser.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
+import org.eclipse.cdt.core.model.ILanguage;
 
 
 /**
  * Reuse the completion parse tests from the old parser for now.
  */
 @SuppressWarnings("nls")
-public class C99CompletionParseTest extends TestCase {
+public class LRCompletionParseTest extends TestCase {
 
-	public C99CompletionParseTest() { }
-	public C99CompletionParseTest(String name) { super(name); }
+	public LRCompletionParseTest() { }
+	public LRCompletionParseTest(String name) { super(name); }
 	
 
 	protected IASTCompletionNode parse(String code, int offset) throws Exception {
@@ -63,7 +62,7 @@ public class C99CompletionParseTest extends TestCase {
 	}
 	
 	
-	protected BaseExtensibleLanguage getC99Language() {
+	protected ILanguage getC99Language() {
 		return C99Language.getDefault();
 	}
 	
@@ -288,11 +287,10 @@ public class C99CompletionParseTest extends TestCase {
 	
 	
 	public void testCompletionStructPointer() throws Exception {
-		StringBuffer sb = new StringBuffer();
-		sb.append(" struct Temp { char * total; };" );
-		sb.append(" int f(struct Temp * t) {" );
-		sb.append(" t->t[5] = t->" );
-		String code = sb.toString();
+		String code =
+			" struct Temp { char * total; };" +
+			" int f(struct Temp * t) {"  +
+			" t->t[5] = t->";
 		
 		int index = code.indexOf("= t->");
 		
@@ -310,19 +308,18 @@ public class C99CompletionParseTest extends TestCase {
 	
 	
 	public void testCompletionEnum() throws Exception {
-		StringBuffer sb = new StringBuffer();
-		sb.append( "typedef int DWORD;\n" ); //$NON-NLS-1$
-		sb.append( "typedef char BYTE;\n"); //$NON-NLS-1$
-		sb.append( "#define MAKEFOURCC(ch0, ch1, ch2, ch3)                  \\\n"); //$NON-NLS-1$
-		sb.append( "((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |       \\\n"); //$NON-NLS-1$
-		sb.append( "((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24 ))\n"); //$NON-NLS-1$
-		sb.append( "enum e {\n"); //$NON-NLS-1$
-		sb.append( "blah1 = 5,\n"); //$NON-NLS-1$
-		sb.append( "blah2 = MAKEFOURCC('a', 'b', 'c', 'd'),\n"); //$NON-NLS-1$
-		sb.append( "blah3\n"); //$NON-NLS-1$
-		sb.append( "};\n"); //$NON-NLS-1$
-		sb.append( "e mye = bl\n"); //$NON-NLS-1$
-		String code = sb.toString();
+		String code =
+			"typedef int DWORD;\n" +
+			"typedef char BYTE;\n" +
+			"#define MAKEFOURCC(ch0, ch1, ch2, ch3)                  \\\n" +
+			"((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |       \\\n" +
+			"((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24 ))\n" +
+			"enum e {\n" +
+			"blah1 = 5,\n" +
+			"blah2 = MAKEFOURCC('a', 'b', 'c', 'd'),\n" +
+			"blah3\n" +
+			"};\n" +
+			"e mye = bl\n";
 		
 		int index = code.indexOf("= bl");
 		
@@ -342,12 +339,11 @@ public class C99CompletionParseTest extends TestCase {
 	
 	
 	public void testCompletionStructArray() throws Exception { 
-		StringBuffer sb = new StringBuffer();
-		sb.append( "struct packet { int a; int b; };\n" ); //$NON-NLS-1$
-		sb.append( "struct packet buffer[5];\n" ); //$NON-NLS-1$
-		sb.append( "int main(int argc, char **argv) {\n" ); //$NON-NLS-1$
-		sb.append( " buffer[2]." ); //$NON-NLS-1$
-		String code = sb.toString();
+		String code =
+			"struct packet { int a; int b; };\n" +
+			"struct packet buffer[5];\n" +
+			"int main(int argc, char **argv) {\n" +
+			" buffer[2].";
 		
 		int index = code.indexOf("[2].");
 		
@@ -376,12 +372,11 @@ public class C99CompletionParseTest extends TestCase {
 	}
 	
 	public void testCompletionPreprocessorMacro() throws Exception {
-		StringBuffer sb = new StringBuffer();
-		sb.append( "#define AMACRO 99 \n");
-		sb.append( "int main() { \n");
-		sb.append( "	int AVAR; \n");
-		sb.append( "	int x = A \n");
-		String code = sb.toString();
+		String code =
+			"#define AMACRO 99 \n" +
+			"int main() { \n" +
+			"	int AVAR; \n" +
+			"	int x = A \n";
 		
 		int index = code.indexOf("= A");
 		
@@ -394,13 +389,11 @@ public class C99CompletionParseTest extends TestCase {
 	}
 	
 	
-	
 	public void testCompletionInsidePreprocessorDirective() throws Exception {
-		StringBuffer sb = new StringBuffer();
-		sb.append( "#define MAC1 99 \n");
-		sb.append( "#define MAC2 99 \n");
-		sb.append( "#ifdef MA");
-		String code = sb.toString();
+		String code =
+			"#define MAC1 99 \n" +
+			"#define MAC2 99 \n" +
+			"#ifdef MA";
 		
 		int index = code.length();
 		

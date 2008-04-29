@@ -8,22 +8,21 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.GCCTests;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 @SuppressWarnings("restriction")
-public class C99GCCTests extends GCCTests {
+public class LRGCCTests extends GCCTests {
 
-	public C99GCCTests() {}
-	public C99GCCTests(String name) { super(name); }
+	public LRGCCTests() {}
+	public LRGCCTests(String name) { super(name); }
 
 	 
     @Override

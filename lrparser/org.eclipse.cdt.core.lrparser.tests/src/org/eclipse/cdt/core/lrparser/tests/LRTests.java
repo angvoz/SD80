@@ -8,7 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import junit.framework.TestSuite;
 
@@ -18,7 +18,6 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.c.ICASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2Tests;
@@ -31,13 +30,13 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
  *
  */
 @SuppressWarnings({ "nls", "restriction" })
-public class C99Tests extends AST2Tests {
+public class LRTests extends AST2Tests {
 
     public static TestSuite suite() {
-    	return suite(C99Tests.class);
+    	return suite(LRTests.class);
     }
     
-	public C99Tests(String name) {
+	public LRTests(String name) {
 		super(name);
 	}
 	

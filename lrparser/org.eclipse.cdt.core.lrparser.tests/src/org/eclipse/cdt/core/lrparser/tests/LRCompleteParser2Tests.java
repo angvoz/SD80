@@ -8,19 +8,18 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.CompleteParser2Tests;
 
-public class C99CompleteParser2Tests extends CompleteParser2Tests {
+public class LRCompleteParser2Tests extends CompleteParser2Tests {
 
 	@Override
 	@SuppressWarnings("unused") 

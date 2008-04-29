@@ -8,7 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import junit.framework.TestCase;
 
@@ -31,38 +31,40 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
-import org.eclipse.cdt.core.dom.lrparser.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
+import org.eclipse.cdt.core.model.ILanguage;
 
+
+/**
+ * TODO these tests can be moved into the core
+ */
 @SuppressWarnings("nls")
-public class C99DigraphTrigraphTests extends TestCase {
+public class LRDigraphTrigraphTests extends TestCase {
 
 	
-	public C99DigraphTrigraphTests() { }
-	public C99DigraphTrigraphTests(String name) { super(name); }
+	public LRDigraphTrigraphTests() { }
+	public LRDigraphTrigraphTests(String name) { super(name); }
 
 
 	protected IASTTranslationUnit parse(String code) {	
-		return ParseHelper.parse(code, getLanguage(), true);
+		return ParseHelper.parse(code, getCLanguage(), true);
 	}
 	
 	
-	protected BaseExtensibleLanguage getLanguage() {
+	protected ILanguage getCLanguage() {
 		return C99Language.getDefault();
 	}
 	
 	
 	public void testTrigraphSequences() {
-		StringBuffer sb = new StringBuffer();
-		sb.append("??=define SIZE  ??/ \n"); // trigraph used as backslash to ignore newline
-		sb.append("99 \n");
-		sb.append("int main(void)??<  \n");
-		sb.append("    int arr??(SIZE??);  \n");
-		sb.append("    arr??(4??) = '0' - (??-0 ??' 1 ??! 2);  \n");
-		sb.append("    printf(\"%c??/n\", arr??(4??)); \n");
-		sb.append("??> \n");
-		String code = sb.toString();
+		String code =
+			"??=define SIZE  ??/ \n" + // trigraph used as backslash to ignore newline
+			"99 \n" +
+			"int main(void)??<  \n" +
+			"    int arr??(SIZE??);  \n" +
+			"    arr??(4??) = '0' - (??-0 ??' 1 ??! 2);  \n" +
+			"    printf(\"%c??/n\", arr??(4??)); \n" +
+			"??> \n";
 		
 		IASTTranslationUnit tu = parse(code);
 		assertNotNull(tu);
@@ -107,23 +109,22 @@ public class C99DigraphTrigraphTests extends TestCase {
 	
 	public void testTrigraphEscapeSequences() {
 		// a ??/ trigraph should act just like a backslash in a string literal
-		StringBuffer sb = new StringBuffer();
-		sb.append("int main(void)??<  \n");
-		sb.append("   char str[] = \"??/\"??/n\"; \n");
-		sb.append("   char c = '??/u0000'; \n");
-		sb.append("??> \n");
-		String code = sb.toString();
+		String code =
+			"int main(void)??<  \n" +
+			"   char str[] = \"??/\"??/n\"; \n" +
+			"   char c = '??/u0000'; \n" +
+			"??> \n";
+
 		parse(code); // will throw an exception if there are parse errors
 	}
 	
 	
 	public void testDigraphSequences() {
-		StringBuffer sb = new StringBuffer();
-		sb.append("%:define join(a, b) a %:%: b \n");
-		sb.append("int main() <% \n");
-		sb.append("	   int arr<:5:>; \n");
-		sb.append("%> \n");
-		String code = sb.toString();
+		String code =
+			"%:define join(a, b) a %:%: b \n" +
+			"int main() <% \n" +
+			"	   int arr<:5:>; \n" +
+			"%> \n";
 		
 		IASTTranslationUnit tu = parse(code); // will throw an exception if there are parse errors
 		
@@ -143,16 +144,15 @@ public class C99DigraphTrigraphTests extends TestCase {
 	
 	
 	public void testTrigraphAndDigraphSequecesInPreprocessorDirectives() {
-		StringBuffer sb = new StringBuffer();
-		sb.append("%:define join1(a, b) a %:%: b \n");
-		sb.append("%:define str1(a) %: a \n");
-		sb.append("??=define join2(a, b) a ??=??= b \n");
-		sb.append("??=define str2(a) ??= a \n");
-		sb.append("int main() <% \n");
-		sb.append("	   int join1(x, y) = str1(its all good); \n");
-		sb.append("	   int join2(a, b) = str2(its still good); \n");
-		sb.append("%> \n");
-		String code = sb.toString();
+		String code =
+			"%:define join1(a, b) a %:%: b \n" +
+			"%:define str1(a) %: a \n" +
+			"??=define join2(a, b) a ??=??= b \n" +
+			"??=define str2(a) ??= a \n" +
+			"int main() <% \n" +
+			"	   int join1(x, y) = str1(its all good); \n" +
+			"	   int join2(a, b) = str2(its still good); \n" +
+			"%> \n";
 		
 		IASTTranslationUnit tu = parse(code); // will throw an exception if there are parse errors
 		

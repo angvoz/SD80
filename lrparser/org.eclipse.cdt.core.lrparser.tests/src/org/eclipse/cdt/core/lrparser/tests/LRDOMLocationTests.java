@@ -8,22 +8,23 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
-import org.eclipse.cdt.core.parser.tests.ast2.AST2UtilOldTests;
+import org.eclipse.cdt.core.parser.tests.ast2.DOMLocationTests;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 @SuppressWarnings("restriction")
-public class C99UtilOldTests extends AST2UtilOldTests {
+public class LRDOMLocationTests extends DOMLocationTests {
 
+	public LRDOMLocationTests() { }
+	public LRDOMLocationTests(String name) { super(name); }
 	 
     @Override
     @SuppressWarnings("unused") 
@@ -32,7 +33,6 @@ public class C99UtilOldTests extends AST2UtilOldTests {
     	return ParseHelper.parse(code, language, expectNoProblems);
     }
     
-    
     protected ILanguage getC99Language() {
     	return C99Language.getDefault();
     }
@@ -40,13 +40,36 @@ public class C99UtilOldTests extends AST2UtilOldTests {
 	protected ILanguage getCPPLanguage() {
 		return ISOCPPLanguage.getDefault();
 	}
+
     
+    
+    // this one fails because the C99 parser does error recovery differently
+    @Override
+	public void test162180_1() throws Exception {
+    	try {
+    		super.test162180_1();
+    		fail();
+    	}
+    	catch(AssertionFailedError e) {}
+    	
+    }
     
     @Override
-	public void testCastExpression() throws Exception { // A not typedefed
+	public void test162180_3() throws Exception {
     	try {
-    		super.testCastExpression();
+    		super.test162180_3();
     		fail();
-    	} catch(AssertionFailedError _) {}
+    	}
+    	catch(AssertionFailedError e) {}
     }
+    
+    @Override
+	public void testBug86698_2() throws Exception { // I don't think C++ supports nested functions
+    	try {
+    		super.testBug86698_2();
+    		fail();
+    	}
+    	catch(AssertionFailedError e) {}
+    }
+
 }

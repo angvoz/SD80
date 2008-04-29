@@ -8,25 +8,23 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.dom.lrparser.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2CSpecTest;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 @SuppressWarnings("restriction")
-public class C99SpecTests extends AST2CSpecTest {
+public class LRCSpecTests extends AST2CSpecTest {
 
-	public C99SpecTests() { } 
-	public C99SpecTests(String name) { super(name); }
+	public LRCSpecTests() { } 
+	public LRCSpecTests(String name) { super(name); }
 
 	
 	@Override
@@ -41,11 +39,11 @@ public class C99SpecTests extends AST2CSpecTest {
 		return ParseHelper.parse(code, language, true, checkBindings, expectedProblemBindings );
     }
 	
-	protected BaseExtensibleLanguage getCLanguage() {
+	protected ILanguage getCLanguage() {
 		return C99Language.getDefault();
 	}
 	
-	protected BaseExtensibleLanguage getCPPLanguage() {
+	protected ILanguage getCPPLanguage() {
 		return ISOCPPLanguage.getDefault();
 	}
 

@@ -8,7 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
@@ -23,16 +23,16 @@ import org.eclipse.cdt.internal.core.dom.SavedCodeReaderFactory;
 import org.eclipse.core.resources.IFile;
 
 @SuppressWarnings("restriction")
-public class C99DOMLocationInclusionTests extends DOMLocationInclusionTests {
+public class LRDOMLocationInclusionTests extends DOMLocationInclusionTests {
 	
-	public C99DOMLocationInclusionTests() {
+	public LRDOMLocationInclusionTests() {
 	}
 
-	public C99DOMLocationInclusionTests(String name, Class<Object> className) {
+	public LRDOMLocationInclusionTests(String name, Class<Object> className) {
 		super(name, className);
 	}
 
-	public C99DOMLocationInclusionTests(String name) {
+	public LRDOMLocationInclusionTests(String name) {
 		super(name);
 	}
 

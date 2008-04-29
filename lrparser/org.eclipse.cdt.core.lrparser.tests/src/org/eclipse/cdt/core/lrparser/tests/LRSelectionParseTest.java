@@ -8,14 +8,13 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IScannerInfo;
@@ -27,10 +26,10 @@ import org.eclipse.cdt.internal.core.parser.ParserException;
 import org.eclipse.core.resources.IFile;
 
 @SuppressWarnings("restriction")
-public class C99SelectionParseTest extends AST2SelectionParseTest {
+public class LRSelectionParseTest extends AST2SelectionParseTest {
 	
-	public C99SelectionParseTest() {}
-	public C99SelectionParseTest(String name) { super(name); }
+	public LRSelectionParseTest() {}
+	public LRSelectionParseTest(String name) { super(name); }
 
 	@Override
 	protected IASTNode parse(String code, ParserLanguage lang, int offset, int length) throws ParserException {

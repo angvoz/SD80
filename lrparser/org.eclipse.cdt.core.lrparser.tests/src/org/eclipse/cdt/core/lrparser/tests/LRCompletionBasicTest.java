@@ -8,7 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTName;
@@ -17,16 +17,15 @@ import org.eclipse.cdt.core.dom.ast.IFunction;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.prefix.BasicCompletionTest;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 @SuppressWarnings("restriction")
-public class C99CompletionBasicTest extends BasicCompletionTest {
+public class LRCompletionBasicTest extends BasicCompletionTest {
 
-	public C99CompletionBasicTest() { }
+	public LRCompletionBasicTest() { }
 
 
 	@Override

@@ -8,40 +8,31 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
+
+import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
-import org.eclipse.cdt.core.parser.tests.ast2.DOMLocationMacroTests;
+import org.eclipse.cdt.core.parser.tests.ast2.AST2UtilOldTests;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 @SuppressWarnings("restriction")
-public class C99DOMLocationMacroTests extends DOMLocationMacroTests {
+public class LRUtilOldTests extends AST2UtilOldTests {
 
 	 
-    public C99DOMLocationMacroTests() {
-		super();
-	}
-
-
-	public C99DOMLocationMacroTests(String name) {
-		super(name);
-	}
-
-
-	@Override
-	@SuppressWarnings("unused") 
+    @Override
+    @SuppressWarnings("unused") 
 	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
-		ILanguage language = lang.isCPP() ? getCPPLanguage() : getC99Language();
-   		return ParseHelper.parse(code, language, expectNoProblems);
+    	ILanguage language = lang.isCPP() ? getCPPLanguage() : getC99Language();
+    	return ParseHelper.parse(code, language, expectNoProblems);
     }
     
     
-	protected ILanguage getC99Language() {
+    protected ILanguage getC99Language() {
     	return C99Language.getDefault();
     }
 	
@@ -50,17 +41,11 @@ public class C99DOMLocationMacroTests extends DOMLocationMacroTests {
 	}
     
     
-    /**
-     * Tests GCC specific stuff, not applicable at this point
-     */
-    
-	@Override
-	public void testStdioBug() throws ParserException {
+    @Override
+	public void testCastExpression() throws Exception { // A not typedefed
     	try {
-    		super.testStdioBug();
+    		super.testCastExpression();
     		fail();
-    	}
-    	catch(Throwable e) { }
+    	} catch(AssertionFailedError _) {}
     }
-    
 }

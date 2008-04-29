@@ -1,4 +1,4 @@
-package org.eclipse.cdt.core.lrparser.tests.cpp;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import junit.framework.AssertionFailedError;
 import junit.framework.TestSuite;
@@ -6,25 +6,24 @@ import junit.framework.TestSuite;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.tests.ast2.AST2CPPTests;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
 @SuppressWarnings("restriction")
-public class ISOCPPTests extends AST2CPPTests {
+public class LRCPPTests extends AST2CPPTests {
 
 	
 	public static TestSuite suite() {
-    	return suite(ISOCPPTests.class);
+    	return suite(LRCPPTests.class);
     }
     
-	public ISOCPPTests() {
+	public LRCPPTests() {
 		
 	}
 	
-	public ISOCPPTests(String name) {
+	public LRCPPTests(String name) {
 		super(name);
 	}
 	

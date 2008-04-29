@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2008 IBM Corporation and others.
+ * Copyright (c) 2008 IBM Corporation and others
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,24 +8,19 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.lrparser.tests.c99;
+package org.eclipse.cdt.core.lrparser.tests;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.c99.C99Language;
 import org.eclipse.cdt.core.dom.lrparser.cpp.ISOCPPLanguage;
-import org.eclipse.cdt.core.lrparser.tests.ParseHelper;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.parser.ParserLanguage;
-import org.eclipse.cdt.core.parser.tests.ast2.AST2KnRTests;
+import org.eclipse.cdt.core.parser.tests.ast2.DOMPreprocessorInformationTest;
 import org.eclipse.cdt.internal.core.parser.ParserException;
 
-/**
- * @author Mike Kucera
- */
 @SuppressWarnings("restriction")
-public class C99KnRTests extends AST2KnRTests {
-	
-	 
+public class LRDOMPreprocessorInformationTest extends DOMPreprocessorInformationTest {
+
     @Override
     @SuppressWarnings("unused") 
 	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
@@ -41,39 +36,5 @@ public class C99KnRTests extends AST2KnRTests {
 	protected ILanguage getCPPLanguage() {
 		return ISOCPPLanguage.getDefault();
 	}
-    
-    // TODO: Failing tests, will get around to fixing these bugs
-    
-    @Override
-	public void testKRCProblem3() throws Exception {
-    	try {
-    		super.testKRCProblem3();
-    		fail();
-    	} catch(Throwable _) { }
-    }
-    
-    @Override
-	public void testKRCProblem4() throws Exception  {
-    	try {
-    		super.testKRCProblem4();
-    		fail();
-    	} catch(Throwable _) { }
-    }
-
-    @Override
-	public void testKRCProblem5() throws Exception  {
-    	try {
-    		super.testKRCProblem5();
-    		fail();
-    	} catch(Throwable _) { }
-    }
-    
-    @Override
-    public void testKRCProblem2() throws Exception  {
-    	try {
-    		super.testKRCProblem2();
-    		fail();
-    	} catch(Throwable _) { }
-    }
     
 }

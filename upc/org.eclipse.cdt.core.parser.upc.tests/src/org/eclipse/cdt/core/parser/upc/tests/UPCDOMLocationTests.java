@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 IBM Corporation and others.
+ * Copyright (c) 2006, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,22 +10,21 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.upc.tests;
 
-import org.eclipse.cdt.core.dom.lrparser.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.upc.UPCLanguage;
-import org.eclipse.cdt.core.lrparser.tests.c99.C99SpecTests;
+import org.eclipse.cdt.core.lrparser.tests.LRDOMLocationTests;
+import org.eclipse.cdt.core.model.ILanguage;
 
-public class UPCC99SpecTests extends C99SpecTests {
+public class UPCDOMLocationTests extends LRDOMLocationTests {
 
-	public UPCC99SpecTests() {
+	public UPCDOMLocationTests() {
 	}
 
-	public UPCC99SpecTests(String name) {
+	public UPCDOMLocationTests(String name) {
 		super(name);
 	}
 
 	@Override
-	protected BaseExtensibleLanguage getCLanguage() {
-		return UPCLanguage.getDefault();
+	protected ILanguage getC99Language() {
+	    return UPCLanguage.getDefault();
 	}
-
 }

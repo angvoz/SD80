@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 IBM Corporation and others.
+ * Copyright (c) 2006, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,18 +10,18 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.upc.tests;
 
-import org.eclipse.cdt.core.dom.lrparser.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.upc.UPCLanguage;
-import org.eclipse.cdt.core.lrparser.tests.c99.C99KnRTests;
+import org.eclipse.cdt.core.lrparser.tests.LRDigraphTrigraphTests;
+import org.eclipse.cdt.core.model.ILanguage;
 
-public class UPCC99KnRTests extends C99KnRTests {
 
-	public UPCC99KnRTests() {
-	}
+public class UPCDigraphTrigraphTests extends LRDigraphTrigraphTests {
+
+	public UPCDigraphTrigraphTests() { }
+	public UPCDigraphTrigraphTests(String name) { super(name); }
 
 	@Override
-	protected BaseExtensibleLanguage getC99Language() {
+	protected ILanguage getCLanguage() {
 		return UPCLanguage.getDefault();
 	}
-
 }

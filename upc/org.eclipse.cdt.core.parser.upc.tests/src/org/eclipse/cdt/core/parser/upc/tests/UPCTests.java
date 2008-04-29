@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 IBM Corporation and others.
+ * Copyright (c) 2006, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,15 +10,28 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.upc.tests;
 
-import org.eclipse.cdt.core.dom.lrparser.BaseExtensibleLanguage;
+import junit.framework.TestSuite;
+
 import org.eclipse.cdt.core.dom.upc.UPCLanguage;
-import org.eclipse.cdt.core.lrparser.tests.c99.C99CompleteParser2Tests;
+import org.eclipse.cdt.core.lrparser.tests.LRTests;
+import org.eclipse.cdt.core.model.ILanguage;
+/**
+ * Run the C99 tests against the UPC parser
+ *
+ */
+public class UPCTests extends LRTests {
 
-public class UPCC99CompleteParser2Tests extends C99CompleteParser2Tests {
-
-	@Override
-	protected BaseExtensibleLanguage getC99Language() {
-		return UPCLanguage.getDefault();
+	public static TestSuite suite() {
+    	return suite(UPCTests.class);
+    }
+	
+	public UPCTests(String name) {
+		super(name);
 	}
 
+	@Override
+	protected ILanguage getC99Language() {
+		return UPCLanguage.getDefault();
+	}
+	
 }

@@ -1,8 +1,13 @@
 package org.eclipse.ffs.core;
 
+import java.lang.reflect.Field;
+
+import org.eclipse.core.internal.resources.Workspace;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
+import org.eclipse.ffs.internal.core.FFSResourceManager;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -29,6 +34,30 @@ public class Activator extends Plugin {
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
 		plugin = this;
+		patchResourceManager();
+	}
+
+	private void patchResourceManager() {
+		Workspace workspace = (Workspace) ResourcesPlugin.getWorkspace();
+		Class<?> wsc = workspace.getClass();
+		try {
+			Field wscf = wsc.getDeclaredField("fileSystemManager");
+			wscf.setAccessible(true);
+			wscf.set(workspace, new FFSResourceManager(workspace, workspace.getFileSystemManager().getHistoryStore()));
+		} catch (SecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchFieldException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 	/*

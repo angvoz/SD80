@@ -19,7 +19,9 @@ import java.util.Map;
 
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
+import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.filesystem.provider.FileSystem;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -44,10 +46,29 @@ import org.eclipse.ffs.core.Activator;
  */
 public class FFSFileSystem extends FileSystem {
 
+	public FFSFileSystem() {
+		super();
+		ffsFileSystem = this;
+	}
+
 	private Map<URI, FFSProject> projects = new HashMap<URI, FFSProject>();
+	private static FFSFileSystem ffsFileSystem;
 	
 	public static final String SCHEME = "ecproj";
 
+	public static FFSFileSystem getFFSFileSystem()
+	{
+		return ffsFileSystem;
+	}
+	
+	public FFSProject getProject(IResource resource) throws CoreException
+	{
+		URI projectURI = URIUtil.toURI(resource.getProject().getLocation());
+		if (projectURI == null)
+			return null;
+		return getProject(projectURI);
+	}
+	
 	private synchronized FFSProject getProject(URI uri) throws CoreException {
 		uri.normalize();
 		FFSProject project = projects.get(uri);
@@ -90,11 +111,11 @@ public class FFSFileSystem extends FileSystem {
 	}
 
 	public boolean canDelete() {
-		return EFS.getLocalFileSystem().canDelete();
+		return true;
 	}
 
 	public boolean canWrite() {
-		return EFS.getLocalFileSystem().canWrite();
+		return true;
 	}
 
 	public IFileStore fromLocalFile(File file) {

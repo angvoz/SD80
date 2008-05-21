@@ -10,4 +10,31 @@
       </filesystemContributor>
    </extension>
 
+ <extension
+         point="org.eclipse.ui.popupMenus">
+
+      <objectContribution
+            objectClass="org.eclipse.core.resources.IResource"
+            adaptable="true"
+            id="org.eclipse.ffs.internal.ui.popupMenu.AddAction1">
+        <action
+              class="org.eclipse.ffs.internal.ui.RemoveAction"
+              enablesFor="+"
+              id="org.eclipse.ffs.internal.ui.RemoveAction"
+              label="Remove"
+              menubarPath="buildGroup"/>
+        <action
+              class="org.eclipse.ffs.internal.ui.add.AddAction"
+              enablesFor="+"
+              id="org.eclipse.ffs.internal.ui.AddAction"
+              label="Add Files..."
+              menubarPath="buildGroup"/>
+        <visibility>
+           <objectState
+              name="projectNature"
+              value="org.eclipse.cdt.managedbuilder.core.managedBuildNature"/>
+        </visibility>      
+      </objectContribution>
+  </extension>
+
 </plugin>

@@ -10,13 +10,14 @@
 -----------------------------------------------------------------------------------
 
 %options la=2
-%options package=org.eclipse.cdt.internal.core.dom.lrparser.cpp
+%options package=org.eclipse.cdt.internal.core.dom.lrparser.c99
 %options template=btParserTemplateD.g
 
 -- All we need to do is import the main parser and redefine the start symbol.
 
+
 $Import
-	CPPGrammar.g
+	C99Grammar.g
 $End
 
 $Start
@@ -26,7 +27,7 @@ $End
 $Rules
 
 	expression_parser_start
-	    ::= expression ';'
+	    ::= expression
 	      | ERROR_TOKEN
 	          /. $Build  consumeExpressionProblem();  $EndBuild ./
           

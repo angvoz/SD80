@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,7 +14,10 @@ import java.io.IOException;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.ui.IEditorInput;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.part.FileEditorInput;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IPDOMManager;
@@ -34,9 +37,6 @@ import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
  */
 public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsIndexer {
 	private static final int MAX_WAIT_TIME = 8000;
-	private IFile 					file;
-	private IFile					hfile;
-	private NullProgressMonitor		monitor;
 
 	private String sourceIndexerID;
 	private IIndex index;
@@ -46,6 +46,7 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
 		sourceIndexerID= indexerID;
 	}
 	
+	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
 		
@@ -60,7 +61,9 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
 		index= CCorePlugin.getIndexManager().getIndex(fCProject);
 	}
 
+	@Override
 	protected void tearDown() throws Exception {
+		closeAllEditors();
 		CProjectHelper.delete(fCProject);
 		super.tearDown();
 	}
@@ -110,12 +113,12 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
     //    (2);
     //    return (0);                          
     // }
-    public void _testBug93281() throws Exception {
+    public void testBug93281() throws Exception {
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("test93281.h", hcode); 
-        file = importFile("test93281.cpp", scode); 
+        IFile hfile = importFile("test93281.h", hcode); 
+        IFile file = importFile("test93281.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         
         int offset = scode.indexOf("p2->operator") + 6; //$NON-NLS-1$
@@ -135,26 +138,86 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         assertEquals(9, ((ASTNode)node).getLength());
     }
     
-    // // the header
+    //	template <class T>
+	//	inline void testTemplate(T& aRef);
+	//
+	//	class Temp {
+	//	};
+
+	//	#include <stdio.h>
+	//	#include <stdlib.h>
+	//	#include "test.h"
+	//	int main(void) {
+	//	        puts("Hello World!!!");
+	//
+	//	        Temp testFile;
+	//	        testTemplate(testFile);
+	//
+	//	        return EXIT_SUCCESS;
+	//	}
+	public void testBug207320() throws Exception {
+		StringBuffer[] buffers= getContents(2);
+        String hcode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile hfile = importFile("test.h", hcode); 
+        IFile file = importFile("test.cpp", scode); 
+        TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
+        
+        int hoffset= hcode.indexOf("testTemplate"); 
+        int soffset = scode.indexOf("testTemplate"); 
+        IASTNode def = testF3(file, soffset+2);
+        assertTrue(def instanceof IASTName);
+        assertEquals(((IASTName)def).toString(), "testTemplate"); //$NON-NLS-1$
+        assertEquals(((ASTNode)def).getOffset(), hoffset);
+        assertEquals(((ASTNode)def).getLength(), 12);
+	}
+
+	// template<typename T>
+	// class C {
+	//   public: void assign(const T* s) {}
+	// };
+
+	// void main() {
+	//   C<char> a;
+	//   a.assign("aaa");
+	// }
+	public void testTemplateClassMethod_207320() throws Exception {
+		StringBuffer[] buffers= getContents(2);
+        String hcode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile hfile = importFile("test.h", hcode); //$NON-NLS-1$ 
+        IFile file = importFile("test.cpp", scode); //$NON-NLS-1$
+        TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
+        
+        int hoffset= hcode.indexOf("assign");  //$NON-NLS-1$
+        int soffset = scode.indexOf("assign");  //$NON-NLS-1$
+        IASTNode def = testF3(file, soffset + 2);
+        assertTrue(def instanceof IASTName);
+        assertEquals(((IASTName) def).toString(), "assign"); //$NON-NLS-1$
+        assertEquals(((ASTNode) def).getOffset(), hoffset);
+        assertEquals(((ASTNode) def).getLength(), 6);
+	}
+
+	// // the header
     // extern int MyInt;       // MyInt is in another file
     // extern const int MyConst;   // MyConst is in another file
     // void MyFunc(int);       // often used in header files
-    // struct MyStruct;        // often used in header files
     // typedef int NewInt;     // a normal typedef statement
-    // class MyClass;          // often used in header files
+	// struct MyStruct { int Member1; int Member2; };
+	// class MyClass { int MemberVar; };
     
     // #include "basicDefinition.h"
     // int MyInt;
     // extern const int MyConst = 42;
     // void MyFunc(int a) { cout << a << endl; }
-    // struct MyStruct { int Member1; int Member2; };
-    // class MyClass { int MemberVar; };
+	// class MyClass;          
+	// struct MyStruct;        
     public void testBasicDefinition() throws Exception {
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("basicDefinition.h", hcode); 
-        file = importFile("testBasicDefinition.cpp", scode); 
+        IFile hfile = importFile("basicDefinition.h", hcode); 
+        IFile file = importFile("testBasicDefinition.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         
         int hoffset= hcode.indexOf("MyInt"); 
@@ -230,14 +293,13 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
     
     // #include "testBasicTemplateInstance.h"
     // N::AAA<int> a;
-	public void _testBasicTemplateInstance() throws Exception{
+	public void testBasicTemplateInstance_207320() throws Exception{
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBasicTemplateInstance.h", hcode); 
-        file = importFile("testBasicTemplateInstance.cpp", scode); 
+        IFile hfile = importFile("testBasicTemplateInstance.h", hcode); 
+        IFile file = importFile("testBasicTemplateInstance.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
-        
         
         int hoffset= hcode.indexOf("AAA"); 
         int soffset = scode.indexOf("AAA<int>"); //$NON-NLS-1$
@@ -269,8 +331,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug86829A.h", hcode); 
-        file = importFile("testBug86829A.cpp", scode); 
+        IFile hfile = importFile("testBug86829A.h", hcode); 
+        IFile file = importFile("testBug86829A.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         
         int offset = scode.indexOf("X(2)"); 
@@ -293,14 +355,16 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
     // };
 	
 	// #include "testBug86829B.h"
+	// void testfunc() {
     // Y a;
     // int c = X(a); // OK: a.operator X().operator int()
+	// }
 	public void _testBug86829B() throws Exception {
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug86829B.h", hcode); 
-        file = importFile("testBug86829B.cpp", scode); 
+        IFile hfile = importFile("testBug86829B.h", hcode); 
+        IFile file = importFile("testBug86829B.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
 
 		
@@ -343,8 +407,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testCPPSpecDeclsDefs.h", hcode); 
-        file = importFile("testCPPSpecDeclsDefs.cpp", scode); 
+        IFile hfile = importFile("testCPPSpecDeclsDefs.h", hcode); 
+        IFile file = importFile("testCPPSpecDeclsDefs.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
 		        
         int offset0= hcode.indexOf("a;");
@@ -490,12 +554,12 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
 	// #include "testBug168533.h"
 	// using N::d; 					// declares 
 	// int a= d;
-	public void _testBug168533() throws Exception {
+	public void testBug168533() throws Exception {
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug168533.h", hcode); 
-        file = importFile("testBug168533.cpp", scode); 
+        IFile hfile = importFile("testBug168533.h", hcode); 
+        IFile file = importFile("testBug168533.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
 		        
         int offset0= hcode.indexOf("d;");
@@ -530,8 +594,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug95225.h", hcode); 
-        file = importFile("testBug95225.cpp", scode); 
+        IFile hfile = importFile("testBug95225.h", hcode); 
+        IFile file = importFile("testBug95225.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         IASTNode decl;
         int offset0, offset1;
@@ -572,8 +636,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug95202.h", hcode); 
-        file = importFile("testBug95202.cpp", scode); 
+        IFile hfile = importFile("testBug95202.h", hcode); 
+        IFile file = importFile("testBug95202.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         IASTNode decl;
         int offset0, offset1;
@@ -590,14 +654,14 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
 	
 	// #include "testBug101287.h"
 	// int main(int argc, char **argv) {
-	//    abc
+	//    abc;
 	// }
-	public void _testBug101287() throws Exception {
+	public void testBug101287() throws Exception {
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug101287.h", hcode); 
-        file = importFile("testBug101287.cpp", scode); 
+        IFile hfile = importFile("testBug101287.h", hcode); 
+        IFile file = importFile("testBug101287.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         IASTNode decl;
         int offset0, offset1;
@@ -622,8 +686,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug102258.h", hcode); 
-        file = importFile("testBug102258.cpp", scode); 
+        IFile hfile = importFile("testBug102258.h", hcode); 
+        IFile file = importFile("testBug102258.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         IASTNode decl;
         int offset0, offset1;
@@ -650,8 +714,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug103323.h", hcode); 
-        file = importFile("testBug103323.cpp", scode); 
+        IFile hfile = importFile("testBug103323.h", hcode); 
+        IFile file = importFile("testBug103323.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         IASTNode decl;
         int offset0, offset1;
@@ -670,7 +734,7 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
     // typedef int TestTypeTwo;
 
 	// #include "testBug78354.h"
-    // main()
+    // int main()
     // {
     //    TestTypeOne myFirstLink = 5;
     //    TestTypeTwo mySecondLink = 6;
@@ -680,8 +744,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug78354.h", hcode); 
-        file = importFile("testBug78354.cpp", scode); 
+        IFile hfile = importFile("testBug78354.h", hcode); 
+        IFile file = importFile("testBug78354.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         IASTNode decl;
         int offset0, offset1;
@@ -711,8 +775,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFileWithLink("testBug103697.h", hcode); 
-        file = importFileWithLink("testBug103697.cpp", scode); 
+        IFile hfile = importFileWithLink("testBug103697.h", hcode); 
+        IFile file = importFileWithLink("testBug103697.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         IASTNode decl;
         int offset0, offset1;
@@ -738,8 +802,8 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         StringBuffer[] buffers= getContents(2);
         String hcode= buffers[0].toString();
         String scode= buffers[1].toString();
-        hfile = importFile("testBug108202.h", hcode); 
-        file = importFile("testBug108202.cpp", scode); 
+        IFile hfile = importFile("testBug108202.h", hcode); 
+        IFile file = importFile("testBug108202.cpp", scode); 
         TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
         IASTNode decl;
         int offset0, offset1;
@@ -750,5 +814,290 @@ public abstract class CPPSelectionTestsAnyIndexer extends BaseSelectionTestsInde
         assertNode("foo", offset1, decl);
         decl = testF3(file, offset1);
         assertNode("foo", offset0, decl);        
+    }
+    
+    // void c();
+    
+    // #include "c.h"
+    // void c() {}
+
+    // void cpp();
+    
+    // #include "cpp.h"
+    // void cpp() {}
+    public void testCNavigationInCppProject_bug183973() throws Exception {
+        StringBuffer[] buffers= getContents(4);
+        String hccode= buffers[0].toString();
+        String ccode= buffers[1].toString();
+        String hcppcode= buffers[2].toString();
+        String cppcode= buffers[3].toString();
+        IFile hcfile = importFile("c.h", hccode); 
+        IFile cfile = importFile("c.c", ccode); 
+        IFile hcppfile = importFile("cpp.h", hcppcode); 
+        IFile cppfile = importFile("cpp.cpp", cppcode); 
+        CCorePlugin.getIndexManager().reindex(fCProject);
+        waitForIndex(MAX_WAIT_TIME);
+        
+        IASTNode decl;
+        int offset0, offset1;
+        // cpp navigation
+        offset0 = hcppcode.indexOf("cpp(");
+        offset1 = cppcode.indexOf("cpp(");
+        decl = testF3(hcppfile, offset0);
+        assertNode("cpp", offset1, decl);
+        decl = testF3(cppfile, offset1);
+        assertNode("cpp", offset0, decl);        
+
+        // plain-c navigation
+        offset0 = hccode.indexOf("c(");
+        offset1 = ccode.indexOf("c(");
+        decl = testF3(hcfile, offset0);
+        assertNode("c", offset1, decl);
+        decl = testF3(cfile, offset1);
+        assertNode("c", offset0, decl);        
+    }
+    
+    // typedef struct {
+    //    int a;
+    // } usertype;
+    // void func(usertype t);
+
+	// #include "testBug190730.h"
+    // void func(usertype t) {
+    // }
+    public void testFuncWithTypedefForAnonymousStruct_190730() throws Exception {
+        StringBuffer[] buffers= getContents(2);
+        String hcode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile hfile = importFile("testBug190730.h", hcode); 
+        IFile file = importFile("testBug190730.cpp", scode); 
+        TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
+        IASTNode decl;
+        int offset0, offset1;
+        
+        offset0 = hcode.indexOf("func");
+        offset1 = scode.indexOf("func");
+        decl = testF3(hfile, offset0);
+        assertNode("func", offset1, decl);
+        decl = testF3(file, offset1);
+        assertNode("func", offset0, decl);        
+    }
+    
+    // typedef enum {
+    //    int eitem
+    // } userEnum;
+    // void func(userEnum t);
+
+	// #include "testBug190730_2.h"
+    // void func(userEnum t) {
+    // }
+    public void testFuncWithTypedefForAnonymousEnum_190730() throws Exception {
+        StringBuffer[] buffers= getContents(2);
+        String hcode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile hfile = importFile("testBug190730_2.h", hcode); 
+        IFile file = importFile("testBug190730_2.cpp", scode); 
+        TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
+        IASTNode decl;
+        int offset0, offset1;
+        
+        offset0 = hcode.indexOf("func");
+        offset1 = scode.indexOf("func");
+        decl = testF3(hfile, offset0);
+        assertNode("func", offset1, decl);
+        decl = testF3(file, offset1);
+        assertNode("func", offset0, decl);        
+    }
+    
+    //    #define MY_MACRO 0xDEADBEEF
+    //    #define MY_FUNC() 00
+    //    #define MY_PAR( aRef );
+
+	//  #include "macrodef.h"
+	//	int basictest(void){
+	//	   int tester = MY_MACRO;  //OK: F3 works
+	//	   int xx= MY_FUNC();
+    //     MY_PAR(0);
+    //  }
+    public void testMacroNavigation() throws Exception {
+        StringBuffer[] buffers= getContents(2);
+        String hcode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile hfile = importFile("macrodef.h", hcode); 
+        IFile file = importFile("macronavi.cpp", scode); 
+        TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
+        IASTNode decl;
+        int offset0, offset1;
+        
+        offset0 = hcode.indexOf("MY_MACRO");
+        offset1 = scode.indexOf("MY_MACRO");
+        decl = testF3(file, offset1);
+        assertNode("MY_MACRO", offset0, decl);
+        
+        offset0 = hcode.indexOf("MY_FUNC");
+        offset1 = scode.indexOf("MY_FUNC");
+        decl = testF3(file, offset1);
+        assertNode("MY_FUNC", offset0, decl);
+
+        offset0 = hcode.indexOf("MY_PAR");
+        offset1 = scode.indexOf("MY_PAR");
+        decl = testF3(file, offset1);
+        assertNode("MY_PAR", offset0, decl);
+    }
+    
+    //  #define MY_MACRO 0xDEADBEEF
+    //  #define MY_PAR( aRef ) aRef;
+    //  int gvar;
+
+	//  #include "macrodef.h"
+	//	int basictest(void){
+	//	   int tester = MY_PAR(MY_MACRO);
+    //     tester= MY_PAR(gvar);
+    //  }
+    public void testMacroNavigation_Bug208300() throws Exception {
+        StringBuffer[] buffers= getContents(2);
+        String hcode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile hfile = importFile("macrodef.h", hcode); 
+        IFile file = importFile("macronavi.cpp", scode); 
+        TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
+        IASTNode decl;
+        int offset0, offset1;
+        
+        offset0 = hcode.indexOf("MY_PAR");
+        offset1 = scode.indexOf("MY_PAR");
+        decl = testF3(file, offset1);
+        assertNode("MY_PAR", offset0, decl);
+
+        offset0 = hcode.indexOf("MY_MACRO");
+        offset1 = scode.indexOf("MY_MACRO");
+        decl = testF3(file, offset1);
+        assertNode("MY_MACRO", offset0, decl);
+
+        offset0 = hcode.indexOf("gvar");
+        offset1 = scode.indexOf("gvar");
+        decl = testF3(file, offset1);
+        assertNode("gvar", offset0, decl);
+    }
+    
+    //  int wurscht;
+
+	//  #include "aheader.h"
+    public void testIncludeNavigation() throws Exception {
+        StringBuffer[] buffers= getContents(2);
+        String hcode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile hfile = importFile("aheader.h", hcode); 
+        IFile file = importFile("includenavi.cpp", scode); 
+        TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
+        IASTNode decl;
+        int offset0, offset1;
+
+        offset1 = scode.indexOf("aheader.h");
+        testF3(file, offset1);
+        IEditorPart part = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor(); 
+        IEditorInput input = part.getEditorInput();
+        assertEquals("aheader.h", ((FileEditorInput)input).getFile().getName());
+    }
+    
+	// void cfunc();
+	// void cxcpp() {
+	//    cfunc();
+	// }
+	
+	// extern "C" void cxcpp();
+	// void cppfunc() {
+	//    cxcpp();
+	// }
+    public void testNavigationCppCallsC() throws Exception {
+        StringBuffer[] buffers= getContents(2);
+        String ccode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile cfile = importFile("s.c", ccode); 
+        IFile cppfile = importFile("s.cpp", scode); 
+        TestSourceReader.waitUntilFileIsIndexed(index, cppfile, MAX_WAIT_TIME);
+        IASTNode decl;
+        int offset1, offset2;
+
+        offset1 = scode.indexOf("cxcpp");
+        offset2 = scode.indexOf("cxcpp", offset1+1);
+        testF3(cppfile, offset1);
+        IEditorPart part = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor(); 
+        IEditorInput input = part.getEditorInput();
+        assertEquals("s.c", ((FileEditorInput)input).getFile().getName());
+
+        testF3(cppfile, offset2);
+        part = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor(); 
+        input = part.getEditorInput();
+        assertEquals("s.c", ((FileEditorInput)input).getFile().getName());
+
+        offset1 = ccode.indexOf("cxcpp");
+        testF3(cfile, offset1);
+        part = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor(); 
+        input = part.getEditorInput();
+        assertEquals("s.cpp", ((FileEditorInput)input).getFile().getName());
+    }
+
+    // void cxcpp();
+	// void cfunc() {
+	//    cxcpp();
+	// }
+	
+	// void cppfunc() {}
+	// extern "C" {void cxcpp() {
+	//    cppfunc();
+	// }}
+    public void testNavigationCCallsCpp() throws Exception {
+        StringBuffer[] buffers= getContents(2);
+        String ccode= buffers[0].toString();
+        String scode= buffers[1].toString();
+        IFile cfile = importFile("s.c", ccode); 
+        IFile cppfile = importFile("s.cpp", scode); 
+        TestSourceReader.waitUntilFileIsIndexed(index, cppfile, MAX_WAIT_TIME);
+        IASTNode decl;
+        int offset1, offset2;
+
+        offset1 = ccode.indexOf("cxcpp");
+        offset2 = ccode.indexOf("cxcpp", offset1+1);
+        testF3(cfile, offset1);
+        IEditorPart part = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor(); 
+        IEditorInput input = part.getEditorInput();
+        assertEquals("s.cpp", ((FileEditorInput)input).getFile().getName());
+
+        testF3(cfile, offset2);
+        part = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor(); 
+        input = part.getEditorInput();
+        assertEquals("s.cpp", ((FileEditorInput)input).getFile().getName());
+
+        offset1 = scode.indexOf("cxcpp");
+        testF3(cppfile, offset1);
+        part = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor(); 
+        input = part.getEditorInput();
+        assertEquals("s.c", ((FileEditorInput)input).getFile().getName());
+    }
+    
+    //    #define ADD_TEXT(txt1,txt2) txt1" "txt2 
+    //    #define ADD(a,b) (a + b)
+    //    void main(void) {
+    //    #if defined(ADD_TEXT) && defined(ADD)
+    //    #endif
+    //    }
+    public void testNavigationInDefinedExpression_215906() throws Exception {
+        StringBuffer[] buffers= getContents(1);
+        String code= buffers[0].toString();
+        IFile file = importFile("s.cpp", code); 
+        TestSourceReader.waitUntilFileIsIndexed(index, file, MAX_WAIT_TIME);
+        IASTNode decl;
+        int offset1, offset2;
+
+        offset1 = code.indexOf("ADD_TEXT");
+        offset2 = code.indexOf("ADD_TEXT", offset1+1);
+        decl= testF3(file, offset2);
+        assertNode("ADD_TEXT", offset1, decl);
+        
+        offset1 = code.indexOf("ADD", offset1+1);
+        offset2 = code.indexOf("ADD", offset2+1);
+        decl= testF3(file, offset2);
+        assertNode("ADD", offset1, decl);
     }
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2007 IBM Corporation and others.
+ * Copyright (c) 2000, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,6 +18,7 @@ import junit.extensions.TestSetup;
 import junit.framework.Test;
 import junit.framework.TestCase;
 
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -71,12 +72,13 @@ public class AbstractSemanticHighlightingTest extends TestCase {
 			fTestFilename= testFilename;
 		}
 		
+		@Override
 		protected void setUp() throws Exception {
 			super.setUp();
 			
-			String sdkCode= 
+			String sdkCode=
 				"void SDKFunction();\n"+
-				"class SDKClass { public: SDKMethod(); };\n\n";
+				"class SDKClass { public: void SDKMethod(); };\n\n";
 			
 			fSdkFile= createExternalSDK(sdkCode);
 			assertNotNull(fSdkFile);
@@ -139,6 +141,7 @@ public class AbstractSemanticHighlightingTest extends TestCase {
 			return fTestFilename;
 		}
 
+		@Override
 		protected void tearDown () throws Exception {
 			EditorTestHelper.closeEditor(fEditor);
 			
@@ -146,8 +149,8 @@ public class AbstractSemanticHighlightingTest extends TestCase {
 			store.setToDefault(PreferenceConstants.EDITOR_SEMANTIC_HIGHLIGHTING_ENABLED);
 			
 			SemanticHighlighting[] semanticHighlightings= SemanticHighlightings.getSemanticHighlightings();
-			for (int i= 0, n= semanticHighlightings.length; i < n; i++) {
-				String enabledPreferenceKey= SemanticHighlightings.getEnabledPreferenceKey(semanticHighlightings[i]);
+			for (SemanticHighlighting semanticHighlighting : semanticHighlightings) {
+				String enabledPreferenceKey= SemanticHighlightings.getEnabledPreferenceKey(semanticHighlighting);
 				if (!store.isDefault(enabledPreferenceKey))
 					store.setToDefault(enabledPreferenceKey);
 			}
@@ -165,19 +168,35 @@ public class AbstractSemanticHighlightingTest extends TestCase {
 	public static final String LINKED_FOLDER= "resources/semanticHighlighting";
 	
 	public static final String PROJECT= "SHTest";
-	
+	public static final String TESTFILE= "/SHTest/src/SHTest.cpp";
 	private static CEditor fEditor;
 	
 	private static SourceViewer fSourceViewer;
 
 	private String fCurrentHighlighting;
 
+	private SemanticHighlightingTestSetup fProjectSetup;
+
+	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
+		if (!ResourcesPlugin.getWorkspace().getRoot().exists(new Path(PROJECT))) {
+			fProjectSetup= new SemanticHighlightingTestSetup(this, TESTFILE);
+			fProjectSetup.setUp();
+		}
 		disableAllSemanticHighlightings();
-		EditorTestHelper.runEventQueue(1000);
+		EditorTestHelper.runEventQueue(500);
 	}
 	
+	@Override
+	protected void tearDown() throws Exception {
+		if (fProjectSetup != null) {
+			fProjectSetup.tearDown();
+			fProjectSetup= null;
+		}
+		super.tearDown();
+	}
+
 	protected void assertEqualPositions(Position[] expected, Position[] actual) {
 		assertEquals(expected.length, actual.length);
 		for (int i= 0, n= expected.length; i < n; i++) {
@@ -197,8 +216,7 @@ public class AbstractSemanticHighlightingTest extends TestCase {
 		buf.append("// "+fCurrentHighlighting+'\n');
 		IDocument document= fSourceViewer.getDocument();
 		buf.append("Position[] expected= new Position[] {\n");
-		for (int i= 0, n= positions.length; i < n; i++) {
-			Position position= positions[i];
+		for (Position position : positions) {
 			int line= document.getLineOfOffset(position.getOffset());
 			int column= position.getOffset() - document.getLineOffset(line);
 			buf.append("\tcreatePosition(" + line + ", " + column + ", " + position.getLength() + "),\n");
@@ -235,8 +253,7 @@ public class AbstractSemanticHighlightingTest extends TestCase {
 		IPreferenceStore store= CUIPlugin.getDefault().getPreferenceStore();
 		store.setValue(PreferenceConstants.EDITOR_SEMANTIC_HIGHLIGHTING_ENABLED, true);
 		SemanticHighlighting[] semanticHilightings= SemanticHighlightings.getSemanticHighlightings();
-		for (int i= 0, n= semanticHilightings.length; i < n; i++) {
-			SemanticHighlighting semanticHilighting= semanticHilightings[i];
+		for (SemanticHighlighting semanticHilighting : semanticHilightings) {
 			if (store.getBoolean(SemanticHighlightings.getEnabledPreferenceKey(semanticHilighting)))
 				store.setValue(SemanticHighlightings.getEnabledPreferenceKey(semanticHilighting), false);
 		}

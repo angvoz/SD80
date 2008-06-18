@@ -1,31 +1,37 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM Rational Software - Initial API and implementation
- * Markus Schorn (Wind River Systems)
- * Yuan Zhang / Beth Tibbitts (IBM Research)
- * Bryan Wilkinson (QNX)
+ *    IBM Rational Software - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
+ *    Yuan Zhang / Beth Tibbitts (IBM Research)
+ *    Bryan Wilkinson (QNX)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
+import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionContext;
+import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.ICompositeType;
+import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.internal.core.dom.Linkage;
+import org.eclipse.cdt.internal.core.dom.parser.IASTInternalNameOwner;
 
 /**
  * @author jcamelon
  */
-public class CASTName extends CASTNode implements IASTName {
+public class CASTName extends CASTNode implements IASTName, IASTCompletionContext {
 
     private final char[] name;
 
@@ -34,9 +40,7 @@ public class CASTName extends CASTNode implements IASTName {
 
     private IBinding binding = null;
 
-    /**
-     * @param name
-     */
+    
     public CASTName(char[] name) {
         this.name = name;
     }
@@ -65,7 +69,9 @@ public class CASTName extends CASTNode implements IASTName {
     		}
     		node = node.getParent();
     	}
-    	
+    	if (getLength() > 0) {
+    		return this;
+    	}
     	return null;
     }
 
@@ -73,12 +79,9 @@ public class CASTName extends CASTNode implements IASTName {
         this.binding = binding;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#toString()
-     */
-    public String toString() {
+
+    @Override
+	public String toString() {
         if (name == EMPTY_CHAR_ARRAY)
             return EMPTY_STRING;
         return new String(name);
@@ -88,7 +91,8 @@ public class CASTName extends CASTNode implements IASTName {
         return name;
     }
 
-    public boolean accept(ASTVisitor action) {
+    @Override
+	public boolean accept(ASTVisitor action) {
         if (action.shouldVisitNames) {
             switch (action.visit(this)) {
             case ASTVisitor.PROCESS_ABORT:
@@ -113,11 +117,18 @@ public class CASTName extends CASTNode implements IASTName {
         return true;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.eclipse.cdt.core.dom.ast.IASTName#isDeclaration()
-     */
+
+	public int getRoleOfName(boolean allowResolution) {
+        IASTNode parent = getParent();
+        if (parent instanceof IASTInternalNameOwner) {
+        	return ((IASTInternalNameOwner) parent).getRoleForName(this, allowResolution);
+        }
+        if (parent instanceof IASTNameOwner) {
+            return ((IASTNameOwner) parent).getRoleForName(this);
+        }
+        return IASTNameOwner.r_unclear;
+	}
+
     public boolean isDeclaration() {
         IASTNode parent = getParent();
         if (parent instanceof IASTNameOwner) {
@@ -133,11 +144,7 @@ public class CASTName extends CASTNode implements IASTName {
         return false;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.eclipse.cdt.core.dom.ast.IASTName#isReference()
-     */
+
     public boolean isReference() {
         IASTNode parent = getParent();
         if (parent instanceof IASTNameOwner) {
@@ -168,5 +175,56 @@ public class CASTName extends CASTNode implements IASTName {
 
 	public ILinkage getLinkage() {
 		return Linkage.C_LINKAGE;
+	}
+
+	public IBinding[] findBindings(IASTName n, boolean isPrefix) {
+		IASTNode parent = getParent();
+		if (parent instanceof IASTElaboratedTypeSpecifier) {
+			IASTElaboratedTypeSpecifier specifier = (IASTElaboratedTypeSpecifier) parent;
+			int kind = specifier.getKind();
+			switch (kind) {
+			case IASTElaboratedTypeSpecifier.k_struct:
+			case IASTElaboratedTypeSpecifier.k_union:
+				break;
+			default:
+				return null;
+			}
+			IBinding[] bindings = CVisitor.findBindingsForContentAssist(n, isPrefix);
+			return filterByElaboratedTypeSpecifier(kind, bindings);
+		}
+		return null;
+	}
+
+	private IBinding[] filterByElaboratedTypeSpecifier(int kind, IBinding[] bindings) {
+		for (int i = 0; i < bindings.length; i++) {
+			if (bindings[i] instanceof ICompositeType) {
+				ICompositeType type = (ICompositeType) bindings[i];
+				
+				try {
+					switch (type.getKey()) { 
+					case ICompositeType.k_struct:
+						if (kind != IASTElaboratedTypeSpecifier.k_struct) {
+							bindings[i] = null;
+						}
+						break;
+					case ICompositeType.k_union:
+						if (kind != IASTElaboratedTypeSpecifier.k_union) {
+							bindings[i] = null;
+						}
+						break;
+					}
+				} catch (DOMException e) {
+					bindings[i] = null;
+					CCorePlugin.log(e);
+				}
+			} else {
+				bindings[i]= null;
+			}
+		}
+		return (IBinding[])ArrayUtil.removeNulls(IBinding.class, bindings);
+	}
+
+	public IASTName getLastName() {
+		return this;
 	}
 }

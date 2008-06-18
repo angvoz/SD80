@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2005 IBM Corporation and others.
+ * Copyright (c) 2002, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM Rational Software - Initial API and implementation
+ *    IBM Rational Software - Initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.parser.token;
 
@@ -15,7 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.eclipse.cdt.core.parser.ISourceElementRequestor;
+import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.parser.IToken;
 import org.eclipse.cdt.core.parser.ITokenDuple;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
@@ -33,8 +33,7 @@ public class BasicTokenDuple implements ITokenDuple {
 		lastToken = last; 
 	}
 	
-	//TODO - move numSegments to a subclass
-	private int numSegments = -1;
+	protected int numSegments = -1;
 	
 	BasicTokenDuple( ITokenDuple firstDuple, ITokenDuple secondDuple ){
 		this( firstDuple.getFirstToken(), secondDuple.getLastToken() );
@@ -43,21 +42,15 @@ public class BasicTokenDuple implements ITokenDuple {
 	protected final IToken firstToken, lastToken;
 
 	
-	/**
-	 * @return
-	 */
 	public IToken getFirstToken() {
 		return firstToken;
 	}
 
-	/**
-	 * @return
-	 */
 	public IToken getLastToken() {
 		return lastToken;
 	}
 	
-	public Iterator iterator()
+	public Iterator<IToken> iterator()
 	{
 		return new TokenIterator(); 
 	}
@@ -81,9 +74,9 @@ public class BasicTokenDuple implements ITokenDuple {
 			last = token;
 		}
 		
-		List [] args = getTemplateIdArgLists();
+		List<IASTNode> [] args = getTemplateIdArgLists();
 		if( args != null && args[ args.length - 1 ] != null ){
-			List newArgs = new ArrayList( 1 );
+			List<List<IASTNode>> newArgs = new ArrayList<List<IASTNode>>( 1 );
 			newArgs.add( args[ args.length - 1 ] );
 			return TokenFactory.createTokenDuple( first, last, newArgs );
 		} 
@@ -93,7 +86,7 @@ public class BasicTokenDuple implements ITokenDuple {
 	public ITokenDuple[] getSegments()
 	{
 		
-		List r = new ArrayList();
+		List<ITokenDuple> r = new ArrayList<ITokenDuple>();
 		IToken token = null;
 		IToken prev = null;
 		IToken last = getLastToken();
@@ -126,7 +119,7 @@ public class BasicTokenDuple implements ITokenDuple {
 			ITokenDuple d = TokenFactory.createTokenDuple( startOfSegment, last );
 			r.add( d );
 		}
-		return (ITokenDuple[]) r.toArray( new ITokenDuple[ r.size() ]);
+		return r.toArray( new ITokenDuple[ r.size() ]);
 
 	}
 	
@@ -163,8 +156,8 @@ public class BasicTokenDuple implements ITokenDuple {
 		}
 		
 		if( getTemplateIdArgLists() != null ){
-			List[] args = getTemplateIdArgLists();
-			List newArgs = new ArrayList( args.length - 1 );
+			List<IASTNode>[] args = getTemplateIdArgLists();
+			List<List<IASTNode>> newArgs = new ArrayList<List<IASTNode>>( args.length - 1 );
 			boolean foundArgs = false;
 			for( int i = 0; i < args.length - 1; i++ ){
 				newArgs.add( args[i] );
@@ -188,7 +181,7 @@ public class BasicTokenDuple implements ITokenDuple {
 	private static final char[] EMPTY_STRING = "".toCharArray(); //$NON-NLS-1$
 	private char[] stringRepresentation = null;
 	
-	private class TokenIterator implements Iterator
+	private class TokenIterator implements Iterator<IToken>
 	{
 		private IToken iter = firstToken;
 
@@ -202,7 +195,7 @@ public class BasicTokenDuple implements ITokenDuple {
 		/* (non-Javadoc)
 		 * @see java.util.Iterator#next()
 		 */
-		public Object next() {
+		public IToken next() {
 			if( ! hasNext() )
 				throw new NoSuchElementException();
 			IToken temp = iter;
@@ -235,7 +228,7 @@ public class BasicTokenDuple implements ITokenDuple {
 			if( prev != null && prev.getType() != IToken.tCOLONCOLON && 
 								prev.getType() != IToken.tIDENTIFIER && 
 								prev.getType() != IToken.tLT &&
-								prev.getType() != IToken.tCOMPL &&
+								prev.getType() != IToken.tBITCOMPLEMENT &&
 								iter.getType() != IToken.tGT && 
 								prev.getType() != IToken.tLBRACKET && 
 								iter.getType() != IToken.tRBRACKET && 
@@ -268,7 +261,7 @@ public class BasicTokenDuple implements ITokenDuple {
 			    prev.getType() != IToken.tCOLONCOLON && 
 				prev.getType() != IToken.tIDENTIFIER && 
 				prev.getType() != IToken.tLT &&
-				prev.getType() != IToken.tCOMPL &&
+				prev.getType() != IToken.tBITCOMPLEMENT &&
 				iter.getType() != IToken.tGT && 
 				prev.getType() != IToken.tLBRACKET && 
 				iter.getType() != IToken.tRBRACKET && 
@@ -286,6 +279,7 @@ public class BasicTokenDuple implements ITokenDuple {
 		
 	}
 	
+	@Override
 	public String toString() 
 	{
 		if( stringRepresentation == null )
@@ -293,11 +287,6 @@ public class BasicTokenDuple implements ITokenDuple {
 		return String.valueOf(stringRepresentation);
 	}
 	
-	public boolean isIdentifier()
-	{
-		return ( (firstToken == lastToken ) && (firstToken.getType() == IToken.tIDENTIFIER ));
-	}
-
     /* (non-Javadoc)
      * @see org.eclipse.cdt.core.parser.ITokenDuple#length()
      */
@@ -321,9 +310,6 @@ public class BasicTokenDuple implements ITokenDuple {
 		return TokenFactory.createTokenDuple( getToken( startIndex ), getToken( endIndex) );
     }
 
-    /**
-     * @param endIndex
-     */
     public IToken getToken(int index)
     {
         if( index < 0 ) return null;
@@ -366,12 +352,6 @@ public class BasicTokenDuple implements ITokenDuple {
 		return getLastToken().getEndOffset();
 	}
 	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.parser.ITokenDuple#getLineNumber()
-	 */
-	public int getLineNumber() {
-		return getFirstToken().getLineNumber();
-	}
-	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.parser.ITokenDuple#getStartOffset()
 	 */
 	public int getStartOffset() {
@@ -381,7 +361,7 @@ public class BasicTokenDuple implements ITokenDuple {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.parser.ITokenDuple#getTemplateIdArgLists()
 	 */
-	public List[] getTemplateIdArgLists() {
+	public List<IASTNode>[] getTemplateIdArgLists() {
 		return null;
 	}
 
@@ -409,7 +389,7 @@ public class BasicTokenDuple implements ITokenDuple {
 			}
 			switch( iter.getType() )
 			{
-				case IToken.tCOMPL:
+				case IToken.tBITCOMPLEMENT:
 				case IToken.tIDENTIFIER:
 				case IToken.tCOLONCOLON:
 				case IToken.t_operator:
@@ -426,6 +406,7 @@ public class BasicTokenDuple implements ITokenDuple {
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
+	@Override
 	public boolean equals(Object other) {
 		if( !(other instanceof ITokenDuple ) ) return false;
 		if( ((ITokenDuple) other).getFirstToken().equals( getFirstToken() ) &&
@@ -434,10 +415,48 @@ public class BasicTokenDuple implements ITokenDuple {
 		return false;
 	}
 	
+	public ITokenDuple getTemplateIdNameTokenDuple() {
+	 	ITokenDuple nameDuple = getLastSegment(); 
+	 	
+	    List<IASTNode>[] argLists = getTemplateIdArgLists(); 
+	    if( argLists == null || argLists[ argLists.length - 1 ] == null )
+	        return nameDuple;
+	 	
+	    IToken i = nameDuple.getFirstToken();
+	    IToken last = nameDuple.getLastToken();
+    	
+    	if( i.getType() == IToken.t_template )
+    		i = i.getNext();
+    	
+    	if( i == last )
+    		return TokenFactory.createTokenDuple(i, i);
+    	
+    	IToken first= i;
+    	    	
+    	//destructors
+    	if( i.getType() == IToken.tBITCOMPLEMENT ){
+    		i = i.getNext();
+    	} 
+    	//operators
+    	else if( i.getType() == IToken.t_operator ){
+    		i =  i.getNext();
+		    IToken temp = null;
+		    while( i != last ){
+		        temp = i.getNext();
+		        if( temp.getType() != IToken.tLT )
+		            i =  temp;
+		        else
+		            break;
+		    }
+    	}
+    	
+		return TokenFactory.createTokenDuple(first, i);
+	}
+
 	 public char[] extractNameFromTemplateId(){
 	 	ITokenDuple nameDuple = getLastSegment(); 
 	 	
-	    List [] argLists = getTemplateIdArgLists(); 
+	    List<IASTNode>[] argLists = getTemplateIdArgLists(); 
 	    if( argLists == null || argLists[ argLists.length - 1 ] == null )
 	        return nameDuple.toCharArray();
 	 	
@@ -463,7 +482,7 @@ public class BasicTokenDuple implements ITokenDuple {
     	//appending of spaces needs to be the same as in toString()
     	    	
     	//destructors
-    	if( i.getType() == IToken.tCOMPL ){
+    	if( i.getType() == IToken.tBITCOMPLEMENT ){
     		i = i.getNext();
     		tempArray = i.getCharImage();
     		CharArrayUtils.overWrite( nameBuffer, idx, tempArray );
@@ -519,7 +538,7 @@ public class BasicTokenDuple implements ITokenDuple {
 	 * 
 	 */
 	private String [] generateQualifiedName() {
-		List qn = new ArrayList();
+		List<String> qn = new ArrayList<String>();
 		IToken i = firstToken;
 		while( i != lastToken )
 		{
@@ -529,7 +548,7 @@ public class BasicTokenDuple implements ITokenDuple {
 				i = i.getNext();
 				continue;
 			}
-			if( i.getType() == IToken.tCOMPL )
+			if( i.getType() == IToken.tBITCOMPLEMENT )
 			{
 				compl = true;
 				i = i.getNext();
@@ -551,7 +570,7 @@ public class BasicTokenDuple implements ITokenDuple {
 		    qn.add( i.getImage() );
 		}
 		String [] qualifiedName = new String[ qn.size() ];
-		return (String[]) qn.toArray( qualifiedName );
+		return qn.toArray( qualifiedName );
 	}
 
 	/**
@@ -578,30 +597,11 @@ public class BasicTokenDuple implements ITokenDuple {
 	}
 
 	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.parser.ITokenDuple#freeReferences(org.eclipse.cdt.core.parser.ast.IReferenceManager)
-	 */
-	public void freeReferences() {
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.parser.ITokenDuple#acceptElement(org.eclipse.cdt.core.parser.ast.IReferenceManager)
-	 */
-	public void acceptElement(ISourceElementRequestor requestor) {
-	}
-
-	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.parser.ITokenDuple#toCharArray()
 	 */
 	public char[] toCharArray() {
 	    if( stringRepresentation == null )
 			stringRepresentation = createCharArrayRepresentation(firstToken, lastToken);
 	    return stringRepresentation;
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.parser.ITokenDuple#getFilename()
-	 */
-	public char[] getFilename() {
-		return firstToken.getFilename();
 	}
 }

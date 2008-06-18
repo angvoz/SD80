@@ -1,13 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2006 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM Rational Software - Initial API and implementation 
- * Markus Schorn (Wind River Systems)
+ *    IBM Rational Software - Initial API and implementation 
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c;
 
@@ -46,15 +46,16 @@ public class CBasicType implements ICBasicType {
 		   				  ( sds.isShort()   ? CBasicType.IS_SHORT : 0 ) |
 		   				  ( sds.isSigned()  ? CBasicType.IS_SIGNED: 0 ) |
 		   				  ( sds.isUnsigned()? CBasicType.IS_UNSIGNED : 0 ) |
-						  ( sds.isUnsigned()? CBasicType.IS_LONGLONG : 0 ) |
+						  ( sds.isLongLong()? CBasicType.IS_LONGLONG : 0 ) |
 						  ( sds.isComplex() ? CBasicType.IS_COMPLEX : 0 ) |
 						  ( sds.isImaginary()?CBasicType.IS_IMAGINARY : 0 );
 		
 		if( type == IBasicType.t_unspecified ){
 			if( (qualifiers & ( IS_COMPLEX | IS_IMAGINARY )) != 0 )
 				type = IBasicType.t_float;
-			else if( (qualifiers & ~( IS_COMPLEX | IS_IMAGINARY )) != 0 )
+			else {
 				type = IBasicType.t_int;
+			}
 		}
 	}
 	
@@ -65,8 +66,9 @@ public class CBasicType implements ICBasicType {
 		if( type == IBasicType.t_unspecified ){
 			if( (qualifiers & ( IS_COMPLEX | IS_IMAGINARY )) != 0 )
 				type = IBasicType.t_float;
-			else if( (qualifiers & ~( IS_COMPLEX | IS_IMAGINARY )) != 0 )
+			else {
 				type = IBasicType.t_int;
+			}
 		}
 	}
 	
@@ -135,7 +137,8 @@ public class CBasicType implements ICBasicType {
 				&& cObj.isImaginary() == this.isImaginary());
 	}
 	
-    public Object clone(){
+    @Override
+	public Object clone(){
         IType t = null;
    		try {
             t = (IType) super.clone();

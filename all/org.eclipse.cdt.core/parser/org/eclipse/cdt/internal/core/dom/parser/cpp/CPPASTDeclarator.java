@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
+ *    IBM - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -24,6 +25,7 @@ import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 /**
  * @author jcamelon
@@ -35,68 +37,72 @@ public class CPPASTDeclarator extends CPPASTNode implements IASTDeclarator {
     private IASTPointerOperator [] pointerOps = null;
     private int pointerOpsPos=-1;
 
+   
+    public CPPASTDeclarator() {
+	}
+
+	public CPPASTDeclarator(IASTName name) {
+		setName(name);
+	}
     
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTDeclarator#getPointerOperators()
-     */
-    public IASTPointerOperator[] getPointerOperators() {
+    public CPPASTDeclarator(IASTName name, IASTInitializer initializer) {
+		this(name);
+		setInitializer(initializer);
+	}
+
+	public IASTPointerOperator[] getPointerOperators() {
         if( pointerOps == null ) return IASTPointerOperator.EMPTY_ARRAY;
         pointerOps = (IASTPointerOperator[]) ArrayUtil.removeNullsAfter( IASTPointerOperator.class, pointerOps, pointerOpsPos );
         return pointerOps;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTDeclarator#getNestedDeclarator()
-     */
     public IASTDeclarator getNestedDeclarator() {
         return nestedDeclarator;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTDeclarator#getName()
-     */
     public IASTName getName() {
         return name;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTDeclarator#getInitializer()
-     */
     public IASTInitializer getInitializer() {
         return initializer;
     }
 
-    /**
-     * @param initializer
-     */
     public void setInitializer(IASTInitializer initializer) {
         this.initializer = initializer;
+        if (initializer != null) {
+			initializer.setParent(this);
+			initializer.setPropertyInParent(INITIALIZER);
+		}
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTDeclarator#addPointerOperator(org.eclipse.cdt.core.dom.ast.IASTPointerOperator)
-     */
     public void addPointerOperator(IASTPointerOperator operator) {
     	if (operator != null) {
+    		operator.setParent(this);
+			operator.setPropertyInParent(POINTER_OPERATOR);
     		pointerOps = (IASTPointerOperator[]) ArrayUtil.append( IASTPointerOperator.class, pointerOps, ++pointerOpsPos, operator );
     	}
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTDeclarator#setNestedDeclarator(org.eclipse.cdt.core.dom.ast.IASTDeclarator)
-     */
     public void setNestedDeclarator(IASTDeclarator nested) {
         this.nestedDeclarator = nested;
+        if (nested != null) {
+			nested.setParent(this);
+			nested.setPropertyInParent(NESTED_DECLARATOR);
+		}
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTDeclarator#setName(org.eclipse.cdt.core.dom.ast.IASTName)
-     */
+
     public void setName(IASTName name) {
         this.name = name;
+        if (name != null) {
+			name.setParent(this);
+			name.setPropertyInParent(DECLARATOR_NAME);
+		}
     }
 
-    public boolean accept( ASTVisitor action ){
+    @Override
+	public boolean accept( ASTVisitor action ){
         if( action.shouldVisitDeclarators ){
 		    switch( action.visit( this ) ){
 	            case ASTVisitor.PROCESS_ABORT : return false;
@@ -110,23 +116,20 @@ public class CPPASTDeclarator extends CPPASTNode implements IASTDeclarator {
             if( !ptrOps[i].accept( action ) ) return false;
         }
         
-        if( getPropertyInParent() != IASTTypeId.ABSTRACT_DECLARATOR &&
-    		nestedDeclarator == null )
-		{
-           if( getParent() instanceof IASTDeclarator )
-            {
-                IASTDeclarator outermostDeclarator = (IASTDeclarator) getParent();
-                while( outermostDeclarator.getParent() instanceof IASTDeclarator )
-                    outermostDeclarator = (IASTDeclarator) outermostDeclarator.getParent();
-                if( outermostDeclarator.getPropertyInParent() != IASTTypeId.ABSTRACT_DECLARATOR )
-                    if( name != null ) if( !name.accept( action ) ) return false;
+        if (nestedDeclarator == null && name != null) {
+        	IASTDeclarator outermost= CPPVisitor.findOutermostDeclarator(this);
+        	if (outermost.getPropertyInParent() != IASTTypeId.ABSTRACT_DECLARATOR) {
+        		if (!name.accept(action)) return false;
             }
-            else
-                if( name != null ) if( !name.accept( action ) ) return false;
 		}
         
-        if( nestedDeclarator != null ) if( !nestedDeclarator.accept( action ) ) return false;
+        if (nestedDeclarator != null) {
+        	if (!nestedDeclarator.accept(action)) return false;
+        }
       
+        if (!postAccept(action))
+        	return false;
+        
         if( action.shouldVisitDeclarators ){
 		    switch( action.leave( this ) ){
 	            case ASTVisitor.PROCESS_ABORT : return false;
@@ -134,8 +137,7 @@ public class CPPASTDeclarator extends CPPASTNode implements IASTDeclarator {
 	            default : break;
 	        }
 		}
-          
-        return postAccept( action );
+        return true;  
     }
     
     protected boolean postAccept( ASTVisitor action ){
@@ -144,9 +146,6 @@ public class CPPASTDeclarator extends CPPASTNode implements IASTDeclarator {
     }
 
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IASTNameOwner#getRoleForName(org.eclipse.cdt.core.dom.ast.IASTName)
-	 */
 	public int getRoleForName(IASTName n) {
         IASTNode getParent = getParent();
         boolean fnDtor = ( this instanceof IASTFunctionDeclarator );
@@ -154,15 +153,12 @@ public class CPPASTDeclarator extends CPPASTNode implements IASTDeclarator {
         {
             if( getParent instanceof IASTFunctionDefinition )
                 return r_definition;
-            if( getParent instanceof IASTSimpleDeclaration )
-            {
-                if( getInitializer() != null )
+            if( getParent instanceof IASTSimpleDeclaration ) {
+                final int storage = ((IASTSimpleDeclaration) getParent).getDeclSpecifier().getStorageClass(); 
+                if( getInitializer() != null || storage == IASTDeclSpecifier.sc_typedef)
                     return r_definition;
                 
-                IASTSimpleDeclaration sd = (IASTSimpleDeclaration) getParent;
-                int storage = sd.getDeclSpecifier().getStorageClass(); 
                 if( storage == IASTDeclSpecifier.sc_extern || 
-                    storage == IASTDeclSpecifier.sc_typedef ||
                     storage == IASTDeclSpecifier.sc_static )
                 {
                     return r_declaration;

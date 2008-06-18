@@ -1,19 +1,21 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
- * Bryan Wilkinson (QNX)
+ *    IBM - Initial API and implementation
+ *    Bryan Wilkinson (QNX)
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionContext;
@@ -22,6 +24,7 @@ import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.IEnumeration;
 import org.eclipse.cdt.core.dom.ast.IEnumerator;
 import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConversionName;
@@ -33,6 +36,9 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
+import org.eclipse.cdt.internal.core.dom.Linkage;
+import org.eclipse.cdt.internal.core.dom.parser.IASTInternalNameOwner;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
 
 /**
  * @author jcamelon
@@ -40,22 +46,14 @@ import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 public class CPPASTQualifiedName extends CPPASTNode implements
 		ICPPASTQualifiedName, IASTCompletionContext {
 
-	/**
-	 * @param duple
-	 */
 	public CPPASTQualifiedName() {
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.cdt.core.dom.ast.IASTName#resolveBinding()
-	 */
 	public IBinding resolveBinding() {
 		// The full qualified name resolves to the same thing as the last name
 		removeNullNames();
 		IASTName lastName = getLastName();
-		return lastName != null ? lastName.resolveBinding() : null;
+		return lastName == null ? null : lastName.resolveBinding();
 	}
 
 	public IASTCompletionContext getCompletionContext() {
@@ -70,45 +68,29 @@ public class CPPASTQualifiedName extends CPPASTNode implements
     	return null;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Object#toString()
-	 */
+	@Override
 	public String toString() {
-		if (signature == null)
-			return ""; //$NON-NLS-1$
-		return signature;
+		return (signature == null) ? "" : signature; //$NON-NLS-1$
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName#addName(org.eclipse.cdt.core.dom.ast.IASTName)
-	 */
 	public void addName(IASTName name) {
 		if (name != null) {
-			names = (IASTName[]) ArrayUtil.append( IASTName.class, names, ++namesPos, name );
+			names = (IASTName[]) ArrayUtil.append(IASTName.class, names, ++namesPos, name);
+			name.setParent(this);
+			name.setPropertyInParent(SEGMENT_NAME);
 		}
 	}
 
-	/**
-	 * @param decls2
-	 */
 	private void removeNullNames() {
-        names = (IASTName[]) ArrayUtil.removeNullsAfter( IASTName.class, names, namesPos );
+        names = (IASTName[]) ArrayUtil.removeNullsAfter(IASTName.class, names, namesPos);
 	}
 
 	private IASTName[] names = null;
-	private int namesPos=-1;
-	private boolean value;
+	private int namesPos= -1;
+	private boolean isFullyQualified;
 	private String signature;
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName#getNames()
-	 */
+
 	public IASTName[] getNames() {
 		if (names == null)
 			return IASTName.EMPTY_NAME_ARRAY;
@@ -117,20 +99,15 @@ public class CPPASTQualifiedName extends CPPASTNode implements
 	}
 
 	public IASTName getLastName() {
-		if (names == null || names.length == 0)
+		if (namesPos < 0)
 			return null;
 		
-		return names[names.length - 1];
+		return names[namesPos];
 	}
 	
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.cdt.core.dom.ast.IASTName#toCharArray()
-	 */
 	public char[] toCharArray() {
 		if (names == null)
-			return "".toCharArray(); //$NON-NLS-1$
+			return new char[0];
 		removeNullNames();
 
 		// count first
@@ -158,32 +135,20 @@ public class CPPASTQualifiedName extends CPPASTNode implements
 		return nameArray;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName#isFullyQualified()
-	 */
 	public boolean isFullyQualified() {
-		return value;
+		return isFullyQualified;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName#setFullyQualified(boolean)
-	 */
-	public void setFullyQualified(boolean value) {
-		this.value = value;
+	public void setFullyQualified(boolean isFullyQualified) {
+		this.isFullyQualified = isFullyQualified;
 	}
 
-	/**
-	 * @param string
-	 */
-	public void setValue(String string) {
-		this.signature = string;
 
+	public void setSignature(String signature) {
+		this.signature = signature;
 	}
 
+	@Override
 	public boolean accept(ASTVisitor action) {
 		if (action.shouldVisitNames) {
 			switch (action.visit(this)) {
@@ -198,8 +163,8 @@ public class CPPASTQualifiedName extends CPPASTNode implements
 		IASTName[] ns = getNames();
 		for (int i = 0; i < ns.length; i++) {
 			if (i == names.length - 1) {
-				if (names[i].toCharArray().length > 0
-						&& !names[i].accept(action))
+				// pointer-to-member qualified names have a dummy name as the last part of the name, don't visit it
+				if (names[i].toCharArray().length > 0 && !names[i].accept(action))
 					return false;
 			} else if (!names[i].accept(action))
 				return false;
@@ -218,80 +183,77 @@ public class CPPASTQualifiedName extends CPPASTNode implements
 		
 		return true;
 	}
+	
+	public int getRoleOfName(boolean allowResolution) {
+        IASTNode parent = getParent();
+        if (parent instanceof IASTInternalNameOwner) {
+        	return ((IASTInternalNameOwner) parent).getRoleForName(this, allowResolution);
+        }
+        if (parent instanceof IASTNameOwner) {
+            return ((IASTNameOwner) parent).getRoleForName(this);
+        }
+        return IASTNameOwner.r_unclear;
+	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IASTName#isDeclaration()
-	 */
 	public boolean isDeclaration() {
 		IASTNode parent = getParent();
 		if (parent instanceof IASTNameOwner) {
 			int role = ((IASTNameOwner) parent).getRoleForName(this);
-			if( role == IASTNameOwner.r_reference ) return false;
+			if (role == IASTNameOwner.r_reference) return false;
 			return true;
 		}
 		return false;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IASTName#isReference()
-	 */
 	public boolean isReference() {
 		IASTNode parent = getParent();
 		if (parent instanceof IASTNameOwner) {
 			int role = ((IASTNameOwner) parent).getRoleForName(this);
-			if( role == IASTNameOwner.r_reference ) return true;
+			if (role == IASTNameOwner.r_reference) return true;
 			return false;
 		}
 		return false;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IASTNameOwner#getRoleForName(org.eclipse.cdt.core.dom.ast.IASTName)
-	 */
 	public int getRoleForName(IASTName n) {
-		IASTName [] namez = getNames();
-		for( int i = 0; i < names.length; ++i )
-			if( namez[i] == n )
+		IASTName[] namez = getNames();
+		for(int i = 0; i < names.length; ++i)
+			if (namez[i] == n)
 			{
-				if( i < names.length - 1 )
+				if (i < names.length - 1)
 					return r_reference;
 				IASTNode p = getParent();
-				if( i == names.length - 1 && p instanceof IASTNameOwner )
+				if (i == names.length - 1 && p instanceof IASTNameOwner)
 					return ((IASTNameOwner)p).getRoleForName(this);
 				return r_unclear;
 			}
 		return r_unclear;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IASTName#getBinding()
-	 */
 	public IBinding getBinding() {
 		removeNullNames();
 		return names[names.length - 1].getBinding();
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IASTName#setBinding(org.eclipse.cdt.core.dom.ast.IBinding)
-	 */
 	public void setBinding(IBinding binding) {
 		removeNullNames();
-		names[names.length - 1].setBinding( binding );
+		names[names.length - 1].setBinding(binding);
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName#isConversionOrOperator()
-	 */
 	public boolean isConversionOrOperator() {
 		IASTName[] nonNullNames = getNames(); // ensure no null names
 		
 		int len=nonNullNames.length;
-		if (nonNullNames[len-1] instanceof ICPPASTConversionName || nonNullNames[len-1] instanceof ICPPASTOperatorName) return true;
+		if (nonNullNames[len - 1] instanceof ICPPASTConversionName || nonNullNames[len - 1] instanceof ICPPASTOperatorName) {
+			return true;
+		}
 		
 		// check templateId's name
-		if (nonNullNames[len-1] instanceof ICPPASTTemplateId) {
-			IASTName tempName = ((ICPPASTTemplateId)nonNullNames[len-1]).getTemplateName();
-			if (tempName instanceof ICPPASTConversionName || tempName instanceof ICPPASTOperatorName) return true;
+		if (nonNullNames[len - 1] instanceof ICPPASTTemplateId) {
+			IASTName tempName = ((ICPPASTTemplateId)nonNullNames[len - 1]).getTemplateName();
+			if (tempName instanceof ICPPASTConversionName || tempName instanceof ICPPASTOperatorName) {
+				return true;
+			}
 		}
 		
 		return false;
@@ -301,7 +263,7 @@ public class CPPASTQualifiedName extends CPPASTNode implements
         IASTNode parent = getParent();
         if (parent instanceof IASTNameOwner) {
             int role = ((IASTNameOwner) parent).getRoleForName(this);
-            if( role == IASTNameOwner.r_definition ) return true;
+            if (role == IASTNameOwner.r_definition) return true;
             return false;
         }
         return false;
@@ -315,10 +277,10 @@ public class CPPASTQualifiedName extends CPPASTNode implements
 			if (binding instanceof ICPPClassType) {
 				ICPPClassType classType = (ICPPClassType) binding;
 				final boolean isDeclaration = getParent().getParent() instanceof IASTSimpleDeclaration;
-				List filtered = filterClassScopeBindings(classType, bindings, isDeclaration);
+				List<IBinding> filtered = filterClassScopeBindings(classType, bindings, isDeclaration);
 			
-				if (isDeclaration && nameMatches(classType.getNameCharArray(), n
-								.toCharArray(), isPrefix)) {
+				if (isDeclaration && nameMatches(classType.getNameCharArray(),
+						n.toCharArray(), isPrefix)) {
 					try {
 						ICPPConstructor[] constructors = classType.getConstructors();
 						for (int i = 0; i < constructors.length; i++) {
@@ -330,16 +292,16 @@ public class CPPASTQualifiedName extends CPPASTNode implements
 					}
 				}
 				
-				return (IBinding[]) filtered.toArray(new IBinding[filtered.size()]);
+				return filtered.toArray(new IBinding[filtered.size()]);
 			}
 		}
 
 		return bindings;
 	}
 	
-	private List filterClassScopeBindings(ICPPClassType classType,
+	private List<IBinding> filterClassScopeBindings(ICPPClassType classType,
 			IBinding[] bindings, final boolean isDeclaration) {
-		List filtered = new ArrayList();
+		List<IBinding> filtered = new ArrayList<IBinding>();
 		
 		try {
 			for (int i = 0; i < bindings.length; i++) {
@@ -351,11 +313,13 @@ public class CPPASTQualifiedName extends CPPASTNode implements
 					if (method.isImplicit()) continue;
 					if (method.isDestructor() || method instanceof ICPPConstructor) {
 						if (!isDeclaration) continue;
-					} else if (!method.isStatic() && !isDeclaration) continue;
+					} else if (!method.isStatic() && !isDeclaration) {
+						continue;
+					}
 				} else if (bindings[i] instanceof ICPPClassType) {
 					ICPPClassType type = (ICPPClassType) bindings[i];
 					if (type.isSameType(classType)) continue;
-				} else if (!(bindings[i] instanceof IEnumerator) || isDeclaration) {
+				} else if (!(bindings[i] instanceof IEnumerator || bindings[i] instanceof IEnumeration) || isDeclaration) {
 					continue;
 				}
 				
@@ -368,10 +332,15 @@ public class CPPASTQualifiedName extends CPPASTNode implements
 	}
 	
 	private boolean nameMatches(char[] potential, char[] name, boolean isPrefix) {
-		if (isPrefix) {
+		if (isPrefix)
 			return CharArrayUtils.equals(potential, 0, name.length, name, true);
-		} else {
-			return CharArrayUtils.equals(potential, name);
-		}
+		return CharArrayUtils.equals(potential, name);
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.core.dom.ast.IASTName#getLinkage()
+	 */
+	public ILinkage getLinkage() {
+		return Linkage.CPP_LINKAGE;
 	}
 }

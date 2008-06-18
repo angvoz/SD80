@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,10 +13,8 @@ package org.eclipse.cdt.internal.core.parser.token;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.cdt.core.parser.ISourceElementRequestor;
 import org.eclipse.cdt.core.parser.IToken;
 import org.eclipse.cdt.core.parser.ITokenDuple;
-import org.eclipse.cdt.core.parser.ast.IASTExpression;
 
 /**
  * @author jcamelon
@@ -25,7 +23,6 @@ import org.eclipse.cdt.core.parser.ast.IASTExpression;
 public class TemplateTokenDuple extends BasicTokenDuple {
 
 	protected final List [] argLists;
-	private final int numSegments;
 
 	/**
 	 * @param first
@@ -43,9 +40,11 @@ public class TemplateTokenDuple extends BasicTokenDuple {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.parser.ITokenDuple#getSegmentCount()
 	 */
+	@Override
 	public int getSegmentCount() {
 		return numSegments;
 	}
+	@Override
 	public ITokenDuple getLastSegment()
 	{
 		IToken first = null, last = null, token = null;
@@ -93,46 +92,12 @@ public class TemplateTokenDuple extends BasicTokenDuple {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.parser.ITokenDuple#getTemplateIdArgLists()
 	 */
+	@Override
 	public List[] getTemplateIdArgLists() {
 		return argLists;
 	}
 	
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.parser.ITokenDuple#freeReferences(org.eclipse.cdt.core.parser.ast.IReferenceManager)
-	 */
-	public void freeReferences() {
-		if( argLists == null ) return;
-		for( int i = 0; i < argLists.length; ++i )
-		{
-			if( argLists[i] == null ) continue;
-			for( int j = 0; j < argLists[i].size(); ++ j )
-			{
-				IASTExpression e = (IASTExpression) argLists[i].get(j);
-				if( e != null )
-				    e.freeReferences();
-				
-			}
-		}
-	}
-	
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.parser.ITokenDuple#acceptElement(org.eclipse.cdt.core.parser.ast.IReferenceManager)
-	 */
-	public void acceptElement(ISourceElementRequestor requestor) {
-		if( argLists == null ) return;
-		for( int i = 0; i < argLists.length; ++i )
-		{
-			if( argLists[i] == null ) continue;
-			for( int j = 0; j < argLists[i].size(); ++ j )
-			{
-				IASTExpression e = (IASTExpression) argLists[i].get(j);
-				e.acceptElement(requestor);
-			}
-		}
-	}
-	
+	@Override
 	public ITokenDuple[] getSegments()
 	{
 		List r = new ArrayList();

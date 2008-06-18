@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,15 +8,16 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.core.pdom.dom;
 
 import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.ast.ASTNodeProperty;
+import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionContext;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
+import org.eclipse.cdt.core.dom.ast.IASTImageLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTNodeLocation;
@@ -29,12 +30,12 @@ import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
-import org.eclipse.cdt.internal.core.dom.parser.c.ICInternalBinding;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalBinding;
+import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.core.runtime.CoreException;
 
 public class PDOMASTAdapter {
@@ -83,7 +84,7 @@ public class PDOMASTAdapter {
 		}
 
 		public String getContainingFilename() {
-			return fDelegate.getContainingFilename();
+			return fLocation.getFileName();
 		}
 
 		public IASTFileLocation getFileLocation() {
@@ -112,6 +113,10 @@ public class PDOMASTAdapter {
 
 		public IASTTranslationUnit getTranslationUnit() {
 			return fDelegate.getTranslationUnit();
+		}
+
+		public int getRoleOfName(boolean allowResolution) {
+			return fDelegate.getRoleOfName(allowResolution);
 		}
 
 		public boolean isDeclaration() {
@@ -149,6 +154,23 @@ public class PDOMASTAdapter {
 		public char[] toCharArray() {
 			return fDelegate.toCharArray();
 		}
+
+		public IASTImageLocation getImageLocation() {
+			return null;
+		}
+
+		public boolean isPartOfTranslationUnitFile() {
+			return fLocation.getFileName().equals(fDelegate.getTranslationUnit().getFilePath());
+		}
+		
+		@Override
+		public String toString() {
+			return fDelegate.toString();
+		}
+
+		public IASTName getLastName() {
+			return this;
+		}
 	}
 
 	private static class AnonymousEnumeration implements IEnumeration {
@@ -160,10 +182,12 @@ public class PDOMASTAdapter {
 			fDelegate= delegate;
 		}
 
+		@Override
 		public Object clone() {
 			throw new PDOMNotImplementedError();
 		}
 
+		@SuppressWarnings("unchecked")
 		public Object getAdapter(Class adapter) {
 			return fDelegate.getAdapter(adapter);
 		}
@@ -202,6 +226,7 @@ public class PDOMASTAdapter {
 			fDelegate= delegate;
 		}
 
+		@Override
 		public Object clone() {
 			throw new PDOMNotImplementedError();
 		}
@@ -210,6 +235,7 @@ public class PDOMASTAdapter {
 			return fDelegate.findField(name);
 		}
 
+		@SuppressWarnings("unchecked")
 		public Object getAdapter(Class adapter) {
 			return fDelegate.getAdapter(adapter);
 		}
@@ -247,15 +273,16 @@ public class PDOMASTAdapter {
 		}
 	}
 
-	private static class AnonymousClassType implements ICPPClassType {
-		private ICPPClassType fDelegate;
+	private static class AnonymousCPPBinding implements ICPPBinding {
+		protected ICPPBinding fDelegate;
 		private char[] fName;
 
-		public AnonymousClassType(char[] name, ICPPClassType delegate) {
+		public AnonymousCPPBinding(char[] name, ICPPBinding delegate) {
 			fName= name;
 			fDelegate= delegate;
 		}
 		
+		@Override
 		public Object clone() {
 			throw new PDOMNotImplementedError();
 		}
@@ -268,68 +295,31 @@ public class PDOMASTAdapter {
 			return fName;
 		}
 
-		public IField findField(String name) throws DOMException {
-			return fDelegate.findField(name);
+		public String[] getQualifiedName() throws DOMException {
+			String[] qn= fDelegate.getQualifiedName();
+			if (qn.length < 1) {
+				qn= new String[]{null};
+			}
+			qn[qn.length-1]= new String(fName);
+			return qn;
 		}
 
+		public char[][] getQualifiedNameCharArray() throws DOMException {
+			char[][] qn= fDelegate.getQualifiedNameCharArray();
+			if (qn.length < 1) {
+				qn= new char[][]{null};
+			}
+			qn[qn.length-1]= fName;
+			return qn;
+		}
+
+		@SuppressWarnings("unchecked")
 		public Object getAdapter(Class adapter) {
 			return fDelegate.getAdapter(adapter);
 		}
 
-		public ICPPMethod[] getAllDeclaredMethods() throws DOMException {
-			return fDelegate.getAllDeclaredMethods();
-		}
-
-		public ICPPBase[] getBases() throws DOMException {
-			return fDelegate.getBases();
-		}
-
-		public IScope getCompositeScope() throws DOMException {
-			return fDelegate.getCompositeScope();
-		}
-
-		public ICPPConstructor[] getConstructors() throws DOMException {
-			return fDelegate.getConstructors();
-		}
-
-		public ICPPField[] getDeclaredFields() throws DOMException {
-			return fDelegate.getDeclaredFields();
-		}
-
-		public ICPPMethod[] getDeclaredMethods() throws DOMException {
-			return fDelegate.getDeclaredMethods();
-		}
-
-		public IField[] getFields() throws DOMException {
-			return fDelegate.getFields();
-		}
-
-		public IBinding[] getFriends() throws DOMException {
-			return fDelegate.getFriends();
-		}
-
-		public int getKey() throws DOMException {
-			return fDelegate.getKey();
-		}
-
 		public ILinkage getLinkage() throws CoreException {
 			return fDelegate.getLinkage();
-		}
-
-		public ICPPMethod[] getMethods() throws DOMException {
-			return fDelegate.getMethods();
-		}
-
-		public ICPPClassType[] getNestedClasses() throws DOMException {
-			return fDelegate.getNestedClasses();
-		}
-
-		public String[] getQualifiedName() throws DOMException {
-			return fDelegate.getQualifiedName();
-		}
-
-		public char[][] getQualifiedNameCharArray() throws DOMException {
-			return fDelegate.getQualifiedNameCharArray();
 		}
 
 		public IScope getScope() throws DOMException {
@@ -339,9 +329,77 @@ public class PDOMASTAdapter {
 		public boolean isGloballyQualified() throws DOMException {
 			return fDelegate.isGloballyQualified();
 		}
+	}
+
+	private static class AnonymousCPPEnumeration extends AnonymousCPPBinding implements IEnumeration {
+		public AnonymousCPPEnumeration(char[] name, IEnumeration delegate) {
+			super(name, (ICPPBinding) delegate);
+		}
+
+		public IEnumerator[] getEnumerators() throws DOMException {
+			return ((IEnumeration) fDelegate).getEnumerators();
+		}
 
 		public boolean isSameType(IType type) {
-			return fDelegate.isSameType(type);
+			return ((IEnumeration) fDelegate).isSameType(type);
+		}
+	}
+
+	private static class AnonymousClassType extends AnonymousCPPBinding implements ICPPClassType {
+		public AnonymousClassType(char[] name, ICPPClassType delegate) {
+			super(name, delegate);
+		}
+		
+		public IField findField(String name) throws DOMException {
+			return ((ICPPClassType) fDelegate).findField(name);
+		}
+
+		public ICPPMethod[] getAllDeclaredMethods() throws DOMException {
+			return ((ICPPClassType) fDelegate).getAllDeclaredMethods();
+		}
+
+		public ICPPBase[] getBases() throws DOMException {
+			return ((ICPPClassType) fDelegate).getBases();
+		}
+
+		public IScope getCompositeScope() throws DOMException {
+			return ((ICPPClassType) fDelegate).getCompositeScope();
+		}
+
+		public ICPPConstructor[] getConstructors() throws DOMException {
+			return ((ICPPClassType) fDelegate).getConstructors();
+		}
+
+		public ICPPField[] getDeclaredFields() throws DOMException {
+			return ((ICPPClassType) fDelegate).getDeclaredFields();
+		}
+
+		public ICPPMethod[] getDeclaredMethods() throws DOMException {
+			return ((ICPPClassType) fDelegate).getDeclaredMethods();
+		}
+
+		public IField[] getFields() throws DOMException {
+			return ((ICPPClassType) fDelegate).getFields();
+		}
+
+		public IBinding[] getFriends() throws DOMException {
+			return ((ICPPClassType) fDelegate).getFriends();
+		}
+
+		public int getKey() throws DOMException {
+			return ((ICPPClassType) fDelegate).getKey();
+		}
+
+		public ICPPMethod[] getMethods() throws DOMException {
+			return ((ICPPClassType) fDelegate).getMethods();
+		}
+
+		public ICPPClassType[] getNestedClasses() throws DOMException {
+			return ((ICPPClassType) fDelegate).getNestedClasses();
+		}
+
+		public boolean isSameType(IType type) {
+			return ((ICPPClassType) fDelegate).isSameType(type);
 		}
 	}
 
@@ -352,84 +410,47 @@ public class PDOMASTAdapter {
 	 * is not appropriate (e.g. binding is not a type).
 	 * Otherwise, if the binding has a name it is returned unchanged.
 	 */
-	public static IBinding getAdapterIfAnonymous(IBinding binding) {
-		if (binding != null) {
+	public static IBinding getAdapterForAnonymousASTBinding(IBinding binding) {
+		if (binding != null && !(binding instanceof IIndexBinding)) {
 			char[] name= binding.getNameCharArray();
 			if (name.length == 0) {
 				if (binding instanceof IEnumeration) {
-					name= createNameForAnonymous(binding);
+					name= ASTTypeUtil.createNameForAnonymous(binding);
 					if (name != null) {
+						if (binding instanceof ICPPBinding) {
+							return new AnonymousCPPEnumeration(name, (IEnumeration) binding);
+						}
 						return new AnonymousEnumeration(name, (IEnumeration) binding);
 					}
 				}
 				else if (binding instanceof ICPPClassType) {
-					name= createNameForAnonymous(binding);
+					name= ASTTypeUtil.createNameForAnonymous(binding);
 					if (name != null) {
 						return new AnonymousClassType(name, (ICPPClassType) binding);
 					}
 				}
 				else if (binding instanceof ICompositeType) {
-					name= createNameForAnonymous(binding);
+					name= ASTTypeUtil.createNameForAnonymous(binding);
 					if (name != null) {
 						return new AnonymousCompositeType(name, (ICompositeType) binding);
 					}
 				}
+				return null;
 			}
 		}
 		return binding;
 	}
 
-	private static char[] createNameForAnonymous(IBinding binding) {
-		IASTNode node= null;
-		if (binding instanceof ICInternalBinding) {
-			node= ((ICInternalBinding) binding).getPhysicalNode();
-		}
-		else if (binding instanceof ICPPInternalBinding) {
-			node= ((ICPPInternalBinding) binding).getDefinition();
-		}
-		if (node != null) {
-			IASTFileLocation loc= node.getFileLocation();
-			if (loc == null) {
-				node= node.getParent();
-				if (node != null) {
-					loc= node.getFileLocation();
-				}
-			}
-			if (loc != null) {
-				char[] fname= loc.getFileName().toCharArray();
-				int fnamestart= findFileNameStart(fname);
-				StringBuffer buf= new StringBuffer();
-				buf.append('{');
-				buf.append(fname, fnamestart, fname.length-fnamestart);
-				buf.append(':');
-				buf.append(loc.getNodeOffset());
-				buf.append('}');
-				return buf.toString().toCharArray();
-			}
-		}
-		return null;
-	}
-
-	private static int findFileNameStart(char[] fname) {
-		for (int i= fname.length-2; i>=0; i--) {
-			switch (fname[i]) {
-			case '/':
-			case '\\':
-				return i+1;
-			}
-		}
-		return 0;
-	}
-
 	/**
 	 * If the name is empty and has no file location, either an adapter 
 	 * that has a file location is returned, or <code>null</code> if that 
-	 * is not possible.
-	 * Otherwise if the provided name is not empty, it is returned unchanged.
+	 * is not possible (no parent with a file location).
+	 * Otherwise if the provided name is not empty or has a file location, 
+	 * it is returned unchanged.
 	 */
 	public static IASTName getAdapterIfAnonymous(IASTName name) {
-		if (name.getFileLocation() == null) {
-			if (name.toCharArray().length == 0) {
+		if (name.toCharArray().length == 0) {
+			if (name.getFileLocation() == null) {
 				IASTNode parent= name.getParent();
 				if (parent != null) {
 					IASTFileLocation loc= parent.getFileLocation();
@@ -437,6 +458,7 @@ public class PDOMASTAdapter {
 						return new AnonymousASTName(name, loc);
 					}
 				}
+				return null;
 			}
 		}
 		return name;

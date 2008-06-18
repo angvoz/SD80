@@ -1,15 +1,15 @@
 /*******************************************************************************
- * Copyright (c) 2006 QNX Software Systems and others.
+ * Copyright (c) 2006, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX - Initial API and implementation
- * Markus Schorn (Wind River Systems)
+ *    QNX - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
+ *    Ed Swartz (Nokia)
  *******************************************************************************/
-
 package org.eclipse.cdt.internal.ui.search;
 
 import java.util.ArrayList;
@@ -36,9 +36,11 @@ import org.eclipse.ui.part.FileEditorInput;
 
 import org.eclipse.cdt.core.index.IIndexFileLocation;
 import org.eclipse.cdt.core.index.IIndexName;
+import org.eclipse.cdt.core.index.IndexLocationFactory;
 import org.eclipse.cdt.ui.CUIPlugin;
 
 import org.eclipse.cdt.internal.ui.util.ExternalEditorInput;
+import org.eclipse.cdt.internal.ui.util.Messages;
 
 /**
  * @author Doug Schaefer
@@ -47,66 +49,68 @@ import org.eclipse.cdt.internal.ui.util.ExternalEditorInput;
 public class PDOMSearchResult extends AbstractTextSearchResult implements IEditorMatchAdapter, IFileMatchAdapter {
 
 	private PDOMSearchQuery query;
+	private boolean indexerBusy;
 	
 	public PDOMSearchResult(PDOMSearchQuery query) {
 		super();
 		this.query = query;
 	}
 
+	@Override
 	public IEditorMatchAdapter getEditorMatchAdapter() {
 		return this;
 	}
 
+	@Override
 	public IFileMatchAdapter getFileMatchAdapter() {
 		return this;
 	}
 
 	private String getFileName(IEditorPart editor) {
-		IEditorInput input = editor.getEditorInput();
+		final IEditorInput input= editor.getEditorInput();
+		IPath path= null;
 		if (input instanceof FileEditorInput) {
-			FileEditorInput fileInput = (FileEditorInput)input;
-			return fileInput.getFile().getLocation().toOSString();
+			final FileEditorInput fileInput = (FileEditorInput)input;
+			path= fileInput.getFile().getLocation();
 		} else if (input instanceof ExternalEditorInput) {
-			ExternalEditorInput extInput = (ExternalEditorInput)input;
-			return extInput.getStorage().getFullPath().toOSString();
+			final ExternalEditorInput extInput = (ExternalEditorInput)input;
+			path= extInput.getStorage().getFullPath();
 		} else if (input instanceof IStorageEditorInput) {
-				try {
-					IStorage storage = ((IStorageEditorInput)input).getStorage();
-					if (storage.getFullPath() != null) {
-						return storage.getFullPath().toOSString();
-					}
-				} catch (CoreException exc) {
-					// ignore
-				}
+			try {
+				final IStorage storage= ((IStorageEditorInput)input).getStorage();
+				path= storage.getFullPath();
+			} catch (CoreException exc) {
+				// ignore
+			}
 		} else if (input instanceof IPathEditorInput) {
-			IPath path= ((IPathEditorInput)input).getPath();
+			path= ((IPathEditorInput)input).getPath();
+		} else {
+			ILocationProvider provider= (ILocationProvider) input.getAdapter(ILocationProvider.class);
+			if (provider != null) {
+				path= provider.getPath(input);
+			}
+		}		
+		if (path != null)
 			return path.toOSString();
-		}
-		ILocationProvider provider= (ILocationProvider) input.getAdapter(ILocationProvider.class);
-		if (provider != null) {
-			IPath path= provider.getPath(input);
-			return path.toOSString();
-		}
+		
 		return null;
 	}
 	
 	public boolean isShownInEditor(Match match, IEditorPart editor) {
-		try {
-			String filename = getFileName(editor);
-			if (filename != null && match instanceof PDOMSearchMatch)
-				return filename.equals(((PDOMSearchMatch)match).getFileName());
-		} catch (CoreException e) {
-			CUIPlugin.getDefault().log(e);
+		final String fileName= getFileName(editor);
+		if (fileName != null && match instanceof PDOMSearchMatch) {
+			final IPath filePath= new Path(fileName);
+			return filePath.equals(IndexLocationFactory.getAbsolutePath(((PDOMSearchMatch)match).getLocation()));
 		}
 		return false;
 	}
 	
 	private Match[] computeContainedMatches(AbstractTextSearchResult result, String filename) throws CoreException {
-		List list = new ArrayList(); 
+		IPath pfilename= new Path(filename);
+		List<Match> list = new ArrayList<Match>(); 
 		Object[] elements = result.getElements();
 		for (int i = 0; i < elements.length; ++i) {
-			if (((PDOMSearchElement) elements[i]).getFileName()
-					.equals(filename)) {
+			if (pfilename.equals(IndexLocationFactory.getAbsolutePath(((PDOMSearchElement)elements[i]).getLocation()))) {
 				Match[] matches = result.getMatches(elements[i]);
 				for (int j = 0; j < matches.length; ++j) {
 					if (matches[j] instanceof PDOMSearchMatch) {
@@ -115,7 +119,7 @@ public class PDOMSearchResult extends AbstractTextSearchResult implements IEdito
 				}
 			}
 		}
-		return (Match[])list.toArray(new Match[list.size()]);
+		return list.toArray(new Match[list.size()]);
 	}
 	
 	public Match[] computeContainedMatches(AbstractTextSearchResult result, IEditorPart editor) {
@@ -124,7 +128,7 @@ public class PDOMSearchResult extends AbstractTextSearchResult implements IEdito
 			if (filename != null)
 				return computeContainedMatches(result, filename);
 		} catch (CoreException e) {
-			CUIPlugin.getDefault().log(e);
+			CUIPlugin.log(e);
 		}
 		return new Match[0];
 	}
@@ -134,7 +138,7 @@ public class PDOMSearchResult extends AbstractTextSearchResult implements IEdito
 			String filename = file.getLocation().toOSString();
 			return computeContainedMatches(result, filename);
 		} catch (CoreException e) {
-			CUIPlugin.getDefault().log(e);
+			CUIPlugin.log(e);
 		}
 		return new Match[0];
 	}
@@ -153,7 +157,10 @@ public class PDOMSearchResult extends AbstractTextSearchResult implements IEdito
 	}
 
 	public String getLabel() {
-		return query.getLabel();
+		// report pattern and number of matches
+		String label = query.getLabel();
+		String countLabel = Messages.format(CSearchMessages.CSearchResultCollector_matches, new Integer(getMatchCount()));
+		return label + " " + countLabel; //$NON-NLS-1$
 	}
 
 	public String getTooltip() {
@@ -166,6 +173,21 @@ public class PDOMSearchResult extends AbstractTextSearchResult implements IEdito
 
 	public ISearchQuery getQuery() {
 		return query;
+	}
+
+	/**
+	 * Remember whether the indexer was busy when the search was performed.
+	 * @param b
+	 */
+	public void setIndexerBusy(boolean b) {
+		this.indexerBusy = b;
+	}
+	
+	/**
+	 * Tell if the indexer was busy when search results were gathered.
+	 */
+	public boolean wasIndexerBusy() {
+		return indexerBusy;
 	}
 
 }

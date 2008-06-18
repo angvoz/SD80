@@ -17,10 +17,13 @@
 <!-- =========================================================================== -->
    <extension-point id="textHovers" name="%textHoversName" schema="schema/textHovers.exsd"/>
    <extension-point id="IndexerPage" name="%indexerPage.name" schema="schema/IndexerPage.exsd"/>
-   <extension-point id="completionContributors" name="%completionContributors" schema="schema/completionContributors.exsd"/>
    <extension-point id="ProposalFilter" name="%proposalFilter.name" schema="schema/ProposalFilter.exsd"/>
    <extension-point id="completionProposalComputer" name="%completionProposalComputer" schema="schema/completionProposalComputer.exsd"/>
    <extension-point id="newCfgDialog" name="%NewCfgDialog.name" schema="schema/newCfgDialog.exsd"/>
+   <extension-point id="ConfigManager" name="%ConfigManager" schema="schema/ConfigManager.exsd"/>
+   <extension-point id="HelpInfo" name="%HelpInfo" schema="schema/HelpInfo.exsd"/>
+   <extension-point id="quickFixProcessors" name="%quickFixProcessorExtensionPoint" schema="schema/quickFixProcessors.exsd"/>
+   <extension-point id="DocCommentOwner" name="%DocCommentOwner.name" schema="schema/DocCommentOwner.exsd"/>
 
    <extension
          point="org.eclipse.core.runtime.adapters">
@@ -59,6 +62,9 @@
       <factory
             class="org.eclipse.cdt.internal.ui.PersistableCElementFactory"
             id="org.eclipse.cdt.ui.PersistableCElementFactory"/>
+      <factory
+            class="org.eclipse.cdt.internal.ui.util.ExternalEditorInputFactory"
+            id="org.eclipse.cdt.ui.ExternalEditorInputFactory"/>
    </extension>
 
 <!-- Implement our filters.  -->
@@ -126,7 +132,7 @@
             class="org.eclipse.cdt.internal.ui.filters.NonCElementFilter"
             id="org.eclipse.cdt.internal.ui.CView.NonCElementFilter">
       </filter>
-<!-- Outline Page -->
+<!-- C/C++ Outline Page -->
       <filter
             targetId="org.eclipse.cdt.ui.COutlinePage"
             name="%HideUsingDirective.label"
@@ -143,15 +149,18 @@
             class="org.eclipse.cdt.internal.ui.filters.MacroDirectiveFilter"
             id="org.eclipse.cdt.ui.COutlinePage.MacroDirectiveFilter">
       </filter>
+<!-- Asm Outline Page -->
+      <filter
+            targetId="org.eclipse.cdt.ui.AsmOutlinePage"
+            name="%HideMacroDirective.label"
+            enabled="false"
+            description="%HideMacroDirective.description"
+            class="org.eclipse.cdt.internal.ui.filters.MacroDirectiveFilter"
+            id="org.eclipse.cdt.ui.AsmOutlinePage.MacroDirectiveFilter">
+      </filter>
    </extension>
       <extension
          point="org.eclipse.cdt.ui.textHovers">
-      <hover
-            label="%cdocHover"
-            description="%cdocHoverDescription"
-            class="org.eclipse.cdt.internal.ui.text.c.hover.CDocHover"
-            id="org.eclipse.cdt.ui.CDocHover">
-      </hover>
       <hover
             label="%sequentialHover"
             description="%sequentialHoverDescription"
@@ -159,17 +168,29 @@
             id="org.eclipse.cdt.ui.BestMatchHover">
       </hover>
       <hover
+            label="%problemHover"
+            description="%problemHoverDescription"
+            class="org.eclipse.cdt.internal.ui.text.c.hover.ProblemHover"
+            id="org.eclipse.cdt.ui.ProblemHover">
+      </hover>
+      <hover
+            label="%cdocHover"
+            description="%cdocHoverDescription"
+            class="org.eclipse.cdt.internal.ui.text.c.hover.CDocHover"
+            id="org.eclipse.cdt.ui.CDocHover">
+      </hover>
+      <hover
             label="%sourceHover"
             description="%sourceHoverDescription"
             class="org.eclipse.cdt.internal.ui.text.c.hover.CSourceHover"
             id="org.eclipse.cdt.ui.CSourceHover">
       </hover>
-      <!--hover
-            label="%problemHover"
-            description="%problemHoverDescription"
-            class="org.eclipse.cdt.internal.ui.text.c.hover.ProblemHover"
-            id="org.eclipse.cdt.ui.ProblemHover">
-      </hover-->
+      <hover
+            label="%macroExpansionHover"
+            description="%macroExpansionHoverDescription"
+            class="org.eclipse.cdt.internal.ui.text.c.hover.CMacroExpansionHover"
+            id="org.eclipse.cdt.ui.CMacroExpansionHover">
+      </hover>
       <hover
             label="%annotationHover"
             description="%annotationHoverDescription"
@@ -213,6 +234,7 @@
          <actionSet id="org.eclipse.cdt.ui.buildConfigActionSet"/>
          <actionSet id="org.eclipse.cdt.ui.NavigationActionSet"/>
          <actionSet id="org.eclipse.cdt.ui.OpenActionSet"/>
+         <actionSet id="org.eclipse.cdt.ui.CodingActionSet"/>
          <actionSet id="org.eclipse.ui.edit.text.actionSet.presentation"/>
 
          <showInPart id="org.eclipse.cdt.ui.includeBrowser"/>
@@ -264,10 +286,10 @@
 <!-- For C Wizards -->
    <extension
          point="org.eclipse.ui.newWizards">
-      <category
+      <!--category
             name="%categoryCDT.name"
             id="org.eclipse.cdt.ui.newCDTWizards">
-      </category>
+      </category-->
       <category
             name="%newCWizardsCategory.name"
             id="org.eclipse.cdt.ui.newCWizards">
@@ -304,7 +326,7 @@
             category="org.eclipse.cdt.ui.newCWizards"
             finalPerspective="org.eclipse.cdt.ui.CPerspective"
             id="org.eclipse.cdt.ui.wizards.NewFileCreationWizard">
-         <class class="org.eclipse.cdt.ui.wizards.NewFileCreationWizard">
+         <class class="org.eclipse.cdt.internal.ui.wizards.filewizard.NewFileFromTemplateWizard">
             <parameter name="cfile" value="true"/>
          </class>
          <description>
@@ -388,7 +410,7 @@
             category="org.eclipse.cdt.ui.newCCWizards"
             finalPerspective="org.eclipse.cdt.ui.CPerspective"
             id="org.eclipse.cdt.ui.wizards.NewFileCreationWizard">
-         <class class="org.eclipse.cdt.ui.wizards.NewFileCreationWizard">
+         <class class="org.eclipse.cdt.internal.ui.wizards.filewizard.NewFileFromTemplateWizard">
             <parameter name="cfile" value="true"/>
          </class>
          <description>
@@ -422,7 +444,7 @@
          </description>
       </wizard>
       
-            <wizard
+      <!--wizard
             canFinishEarly="false"
             category="org.eclipse.cdt.ui.newCDTWizards"
             class="org.eclipse.cdt.ui.wizards.CDTProjectWizard"
@@ -435,7 +457,7 @@
           <description>
              %CDTproject.desc
           </description>
-       </wizard>
+       </wizard-->
       <wizard
             canFinishEarly="false"
             category="org.eclipse.cdt.ui.newCCWizards"
@@ -505,11 +527,11 @@
       </participant>
    </extension>
    <extension
-         id="org.eclipse.cdt.ui.CDocumentSetupParticipant"
-         name="%cDocumentSetupParticipant"
+         id="org.eclipse.cdt.ui.AsmDocumentSetupParticipant"
+         name="%asmDocumentSetupParticipant"
          point="org.eclipse.core.filebuffers.documentSetup">
       <participant
-            class="org.eclipse.cdt.internal.ui.editor.CDocumentSetupParticipant"
+            class="org.eclipse.cdt.internal.ui.editor.asm.AsmDocumentSetupParticipant"
             contentTypeId="org.eclipse.cdt.core.asmSource">
       </participant>
    </extension>
@@ -540,15 +562,18 @@
             id="org.eclipse.cdt.ui.editor.asm.AsmEditor">
             <contentTypeBinding contentTypeId="org.eclipse.cdt.core.asmSource"/>
       </editor>
-      <!-- deprecated -->
       <editor
-            symbolicFontName="org.eclipse.cdt.ui.editors.textfont"
-            class="org.eclipse.cdt.internal.ui.editor.ExternalSearchEditor"
-            icon="icons/obj16/c_file_obj.gif"
-            name="%ExternalSearchEditor.name"
-            id="org.eclipse.cdt.ui.editor.ExternalSearchEditor"/>
-      
+            class="org.eclipse.cdt.internal.ui.editor.DefaultBinaryFileEditor"
+            default="false"
+            icon="icons/obj16/bin_obj.gif"
+            id="org.eclipse.cdt.ui.binaryEditor"
+            name="%DefaultBinaryFileEditor.name">
+         <contentTypeBinding
+               contentTypeId="org.eclipse.cdt.core.binaryFile">
+         </contentTypeBinding>
+      </editor>
    </extension>
+
    <extension
        point="org.eclipse.ui.themes">
        <themeElementCategory label="%CPresentation.label" id="org.eclipse.cdt.ui.presentation"/>
@@ -572,16 +597,68 @@
          </description>
       </fontDefinition>
             <fontDefinition
-            label="%cCompareFontDefiniton.label"
+            label="%cCompareFontDefinition.label"
             defaultsTo="org.eclipse.cdt.ui.editors.textfont"
             categoryId="org.eclipse.compare.contentmergeviewer.TextMergeViewer"
             id="org.eclipse.cdt.internal.ui.compare.CMergeViewer">
          <description>
-            %cCompareFontDefiniton.description
+            %cCompareFontDefinition.description
          </description>
       </fontDefinition>
-      
+            <fontDefinition
+            label="%asmCompareFontDefinition.label"
+            defaultsTo="org.eclipse.cdt.ui.editors.textfont"
+            categoryId="org.eclipse.compare.contentmergeviewer.TextMergeViewer"
+            id="org.eclipse.cdt.internal.ui.compare.AsmMergeViewer">
+         <description>
+            %asmCompareFontDefinition.description
+         </description>
+      </fontDefinition>
+      <colorDefinition
+         id="org.eclipse.cdt.ui.content_assist_proposals_background"
+         isEditable="false"
+         label="%Dummy.label"
+         value="255,255,255">
+      </colorDefinition>
+      <colorDefinition
+         id="org.eclipse.cdt.ui.content_assist_proposals_foreground"
+         isEditable="false"
+         label="%Dummy.label"
+         value="0,0,0">
+      </colorDefinition>
+      <colorDefinition
+         id="org.eclipse.cdt.ui.content_assist_parameters_background"
+         isEditable="false"
+         label="%Dummy.label"
+         value="255,255,255">
+      </colorDefinition>
+      <colorDefinition
+         id="org.eclipse.cdt.ui.content_assist_parameters_foreground"
+         isEditable="false"
+         label="%Dummy.label"
+         value="0,0,0">
+      </colorDefinition>
+      <theme
+         id="org.eclipse.ui.ide.systemDefault">
+         <colorOverride
+            id="org.eclipse.cdt.ui.content_assist_proposals_background"
+            value="COLOR_LIST_BACKGROUND">
+         </colorOverride>
+         <colorOverride
+            id="org.eclipse.cdt.ui.content_assist_proposals_foreground"
+            value="COLOR_LIST_FOREGROUND">
+         </colorOverride>
+         <colorOverride
+            id="org.eclipse.cdt.ui.content_assist_parameters_background"
+            value="COLOR_LIST_BACKGROUND">
+         </colorOverride>
+         <colorOverride
+            id="org.eclipse.cdt.ui.content_assist_parameters_foreground"
+            value="COLOR_LIST_FOREGROUND">
+         </colorOverride>
+      </theme>
    </extension>
+
    <extension
          point="org.eclipse.ui.preferencePages">
       <page
@@ -669,12 +746,37 @@
             id="org.eclipse.cdt.ui.preferences.LanguageMappings"
             name="%CDTLanguagesProperty.name">
       </page>
+      <page
+            category="org.eclipse.cdt.ui.preferences.CPluginPreferencePage"
+            class="org.eclipse.cdt.internal.ui.preferences.TodoTaskPreferencePage"
+            id="org.eclipse.cdt.ui.preferences.TodoTaskPreferencePage"
+            name="%todoTaskPrefName"/>
+      <page
+            name="%codeTemplatePreferencePage.name"
+            category="org.eclipse.cdt.ui.preferences.CodeFormatterPreferencePage"
+            class="org.eclipse.cdt.internal.ui.preferences.CodeTemplatePreferencePage"
+            id="org.eclipse.cdt.ui.preferences.CodeTemplatePreferencePage"/>
+      <page
+            name="%markOccurrencesPreferencePage.name"
+            category="org.eclipse.cdt.ui.preferences.CEditorPreferencePage"
+            class="org.eclipse.cdt.internal.ui.preferences.MarkOccurrencesPreferencePage"
+            id="org.eclipse.cdt.ui.preferences.MarkOccurrencesPreferencePage"/>
+      <page
+            name="%ScalabilityPreferencePage.name"
+            category="org.eclipse.cdt.ui.preferences.CEditorPreferencePage"
+            class="org.eclipse.cdt.internal.ui.preferences.ScalabilityPreferencePage"
+            id="org.eclipse.cdt.ui.preferences.CScalabilityPreferences"/>
       <!--page
             name="%WorkInProgress.name"
             category="org.eclipse.cdt.ui.preferences.CPluginPreferencePage"
             class="org.eclipse.cdt.internal.ui.preferences.WorkInProgressPreferencePage"
             id="org.eclipse.cdt.ui.preferneces.WorkInProgressPreferencePage">
       </page-->
+      <page
+            class="org.eclipse.cdt.ui.templateengine.pages.TemplatePreferencePage"
+            name="%TemplatePreferencePage.name"
+            category="org.eclipse.cdt.ui.preferences.CPluginPreferencePage"
+            id="org.eclipse.cdt.core.templateengine.shareddefaults"/>
    </extension>
    <extension
          point="org.eclipse.ui.editorActions">
@@ -690,9 +792,9 @@
          </action>
          <action
                label="%Dummy.label"
-               class="org.eclipse.ui.texteditor.SelectRulerAction"
+               class="org.eclipse.cdt.internal.ui.text.correction.CSelectRulerAction"
                actionID="RulerClick"
-               id="org.eclipse.ui.texteditor.SelectRulerAction">
+               id="org.eclipse.cdt.internal.ui.text.correction.CSelectRulerAction">
          </action>
       </editorContribution>
    </extension>
@@ -712,6 +814,11 @@
             </or>
          </visibility>
          <action
+             class="org.eclipse.cdt.internal.ui.actions.FreshenIndexAction"
+             id="org.eclipse.cdt.ui.updateIndexAction"
+             label="%FreshenIndex.name"
+             menubarPath="org.eclipse.cdt.ui.indexmenu/update"/>
+         <action
              class="org.eclipse.cdt.internal.ui.actions.UpdateIndexWithModifiedFilesAction"
              id="org.eclipse.cdt.ui.syncIndexWithDiskAction"
              label="%SyncIndex.name"
@@ -721,7 +828,30 @@
                label="%Index.menu"
                path="buildGroup">
             <groupMarker name="rebuild"/>
-            <groupMarker name="update"/>
+            <separator name="update"/>
+            <separator name="search"/>
+            <separator name="log"/>
+         </menu>
+      </objectContribution>
+      <objectContribution
+            id="org.eclipse.cdt.ui.ctranslationunit.contrib"
+            objectClass="org.eclipse.cdt.core.model.ICElement">
+         <visibility>
+            <objectClass name="org.eclipse.cdt.core.model.ITranslationUnit"/>
+         </visibility>
+         <action
+             class="org.eclipse.cdt.internal.ui.actions.CreateParserLogAction"
+             id="org.eclipse.cdt.ui.parserLogAction"
+             label="%CreateParserLog.name"
+             menubarPath="org.eclipse.cdt.ui.indexmenu/log"/>
+         <menu
+               id="org.eclipse.cdt.ui.indexmenu"
+               label="%Index.menu"
+               path="buildGroup">
+            <groupMarker name="rebuild"/>
+            <separator name="update"/>
+            <separator name="search"/>
+            <separator name="log"/>
          </menu>
       </objectContribution>
       <objectContribution
@@ -732,18 +862,35 @@
              id="org.eclipse.cdt.ui.rebuildIndexAction"
              label="%RebuildIndex.name"
              menubarPath="org.eclipse.cdt.ui.indexmenu/rebuild"/>
+         <action
+             class="org.eclipse.cdt.internal.ui.search.actions.FindUnresolvedIncludesProjectAction"
+             id="org.eclipse.cdt.ui.searchUnresolvedIncludes"
+             label="%SearchUnresolvedIncludes.name"
+             menubarPath="org.eclipse.cdt.ui.indexmenu/search"/>
          <menu
                id="org.eclipse.cdt.ui.indexmenu"
                label="%Index.menu"
                path="buildGroup">
             <groupMarker name="rebuild"/>
-            <groupMarker name="update"/>
+            <separator name="update"/>
+            <separator name="search"/>
+            <separator name="log"/>
          </menu>
       </objectContribution>
       <!-- project explorer shows IProjects, we need to handle this -->
       <objectContribution 
           id="org.eclipse.cdt.ui.cproject.in.explorer.contrib"
           objectClass="org.eclipse.core.resources.IProject">
+         <visibility>
+              <objectState
+                 name="projectNature"
+                 value="org.eclipse.cdt.core.cnature"/>
+         </visibility>          
+         <action
+             class="org.eclipse.cdt.internal.ui.actions.FreshenIndexAction"
+             id="org.eclipse.cdt.ui.updateIndexAction"
+             label="%FreshenIndex.name"
+             menubarPath="org.eclipse.cdt.ui.indexmenu/update"/>
          <action
              class="org.eclipse.cdt.internal.ui.actions.UpdateIndexWithModifiedFilesAction"
              id="org.eclipse.cdt.ui.syncIndexWithDiskAction"
@@ -754,12 +901,19 @@
              id="org.eclipse.cdt.ui.rebuildIndexAction"
              label="%RebuildIndex.name"
              menubarPath="org.eclipse.cdt.ui.indexmenu/rebuild"/>
+         <action
+             class="org.eclipse.cdt.internal.ui.search.actions.FindUnresolvedIncludesProjectAction"
+             id="org.eclipse.cdt.ui.searchUnresolvedIncludes"
+             label="%SearchUnresolvedIncludes.name"
+             menubarPath="org.eclipse.cdt.ui.indexmenu/search"/>
          <menu
                id="org.eclipse.cdt.ui.indexmenu"
                label="%Index.menu"
                path="buildGroup">
             <groupMarker name="rebuild"/>
-            <groupMarker name="update"/>
+            <separator name="update"/>
+            <separator name="search"/>
+            <separator name="log"/>
          </menu>
       </objectContribution>
       <objectContribution
@@ -797,6 +951,14 @@
                menubarPath="add"
                id="org.eclipse.ui.texteditor.BookmarkRulerAction">
          </action>
+         <action
+               class="org.eclipse.cdt.internal.ui.text.correction.CSelectRulerAction"
+               definitionId="org.eclipse.jdt.ui.edit.text.java.correction.assist.proposals"
+               id="org.eclipse.cdt.internal.ui.text.correction.CSelectRulerAction"
+               label="%QuickFix.label"
+               menubarPath="additions"
+               tooltip="%QuickFix.tooltip">
+         </action>            
       </viewerContribution>
       <viewerContribution
             targetID="#ASMEditorRulerContext"
@@ -843,6 +1005,7 @@
                name="type"
                value="org.eclipse.cdt.core.problem"/>
       </objectContribution>
+      
      <objectContribution
            adaptable="true"
            id="org.eclipse.cdt.ui.buildConfigContribution"
@@ -862,27 +1025,12 @@
               label="%ManageConfigAction.label"
               menubarPath="org.eclipse.cdt.ui.cfgmenu/gm2"
               />
-        <action
-              class="org.eclipse.cdt.ui.actions.DeleteResConfigsAction"
-              enablesFor="+"
-              id="org.eclipse.cdt.ui.deleteConfigsAction0"
-              label="%DeleteRcConfigAction.label"
-              menubarPath="org.eclipse.cdt.ui.cfgmenu/gm1"
-              />
-        <action
-              class="org.eclipse.cdt.ui.actions.ExcludeFromBuildAction"
-              enablesFor="+"
-              id="org.eclipse.cdt.ui.excludeAction0"
-              label="%ExcludeAction.label"
-              menubarPath="buildGroup"
-              />
         <menu
               id="org.eclipse.cdt.ui.cfgmenu"
               label="%Configurations.menu"
               path="buildGroup">
-           <groupMarker
-                 name="gm1">
-           </groupMarker>
+           <groupMarker name="gm1"/>
+           <groupMarker name="gm3"/>
            <separator
                  name="sep1">
            </separator>
@@ -894,9 +1042,36 @@
         <visibility>
               <objectState
                  name="projectNature"
+                 value="org.eclipse.cdt.core.cnature"/>
+        </visibility>
+     </objectContribution>
+
+     <objectContribution
+           adaptable="true"
+           id="org.eclipse.cdt.ui.buildConfigContributionM"
+           objectClass="org.eclipse.core.resources.IResource">
+        <action
+              class="org.eclipse.cdt.ui.actions.DeleteResConfigsAction"
+              enablesFor="+"
+              id="org.eclipse.cdt.ui.deleteConfigsAction0"
+              label="%DeleteRcConfigAction.label"
+              menubarPath="org.eclipse.cdt.ui.cfgmenu/gm3"
+              />
+        <action
+              class="org.eclipse.cdt.ui.actions.ExcludeFromBuildAction"
+              enablesFor="+"
+              id="org.eclipse.cdt.ui.excludeAction0"
+              label="%ExcludeAction.label"
+              menubarPath="buildGroup"
+              />
+        
+        <visibility>
+              <objectState
+                 name="projectNature"
                  value="org.eclipse.cdt.managedbuilder.core.managedBuildNature"/>
         </visibility>
      </objectContribution>
+     
    </extension>
    
    <extension
@@ -945,9 +1120,77 @@
 			contentTypeId="org.eclipse.cdt.core.cxxHeader"
             contentMergeViewerId="org.eclipse.cdt.ui.compare.CContentViewerCreator">
 	  </contentTypeBinding>
+      <viewer
+            class="org.eclipse.cdt.internal.ui.compare.AsmContentViewerCreator"
+            extensions="asm"
+            id="org.eclipse.cdt.ui.compare.AsmContentViewerCreator"/>
+      <contentTypeBinding
+			contentTypeId="org.eclipse.cdt.core.asmSource"
+            contentMergeViewerId="org.eclipse.cdt.ui.compare.AsmContentViewerCreator"/>
    </extension>
    <extension
          point="org.eclipse.ui.actionSets">
+      <actionSet
+            label="%CodingActionSet.label"
+            description="%CodingActionSet.description"
+            visible="false"
+            id="org.eclipse.cdt.ui.CodingActionSet">
+         <menu
+               label="%Refactoring.menu.label"
+               path="edit"
+               id="org.eclipse.jdt.ui.refactoring.menu">
+            <separator name="reorgGroup"/>
+            <separator name="codingGroup"/>
+            <separator name="reorgGroup2"/>
+            <separator name="typeGroup"/>
+            <separator name="typeGroup2"/>
+            <separator name="codingGroup2"/>
+            <separator name="typeGroup3"/>            
+         </menu>
+         <!-- reorg group  -->
+         <action
+               definitionId="org.eclipse.cdt.ui.edit.text.rename.element"
+               label="%Refactoring.renameAction.label"
+               menubarPath="org.eclipse.jdt.ui.refactoring.menu/reorgGroup"
+               id="org.eclipse.cdt.ui.actions.Rename"
+               retarget="true">
+         </action>
+         <action
+               definitionId="org.eclipse.cdt.ui.refactor.hide.method"
+               label="%Refactoring.hideMethod.label"
+               menubarPath="org.eclipse.jdt.ui.refactoring.menu/codingGroup"
+               id="org.eclipse.cdt.ui.actions.HideMethod"
+               retarget="true">
+         </action>
+         <action
+               definitionId="org.eclipse.cdt.ui.refactor.extract.function"
+               label="%Refactoring.extractFunction.label"
+               menubarPath="org.eclipse.jdt.ui.refactoring.menu/codingGroup"
+               id="org.eclipse.cdt.ui.actions.ExtractMethod"
+               retarget="true">
+         </action>
+         <action
+               definitionId="org.eclipse.cdt.ui.refactor.extract.constant"
+               label="%Refactoring.extractConstant.label"
+               menubarPath="org.eclipse.jdt.ui.refactoring.menu/codingGroup"
+               id="org.eclipse.cdt.ui.actions.ExtractConstant"
+               retarget="true">
+         </action>
+         <action
+               definitionId="org.eclipse.cdt.ui.refactor.getters.and.setters"
+               label="%Refactoring.gettersAndSetters.label"
+               menubarPath="org.eclipse.jdt.ui.refactoring.menu/codingGroup2"
+               id="org.eclipse.cdt.ui.actions.GettersAndSetters"
+               retarget="true">
+         </action>
+         <action
+               definitionId="org.eclipse.cdt.ui.refactor.implement.method"
+               label="%Refactoring.implementMethod.label"
+               menubarPath="org.eclipse.jdt.ui.refactoring.menu/codingGroup2"
+               id="org.eclipse.cdt.ui.actions.ImplementMethod"
+               retarget="true">
+         </action>
+      </actionSet>
       <actionSet
             label="%CSearchActionSet.label"
             description="%CSearchActionSet.description"
@@ -1005,6 +1248,14 @@
             visible="false"
             id="org.eclipse.cdt.ui.OpenActionSet">
          <action
+               definitionId="org.eclipse.cdt.ui.edit.open.include.browser"
+               id="org.eclipse.cdt.ui.actions.OpenIncludeBrowser"
+               label="%OpenIncludeBrowser.label"
+               menubarPath="navigate/open.ext"
+               retarget="true"
+               tooltip="%OpenIncludeBrowser.tooltip">
+         </action>
+         <action
                definitionId="org.eclipse.cdt.ui.edit.open.call.hierarchy"
                id="org.eclipse.cdt.ui.actions.OpenCallHierarchy"
                label="%OpenCallHierarchy.label"
@@ -1015,9 +1266,18 @@
          <action
                definitionId="org.eclipse.cdt.ui.edit.open.type.hierarchy"
                label="%OpenTypeHierarchyAction.label"
+               tooltip="%OpenTypeHierarchyAction.tooltip"
                retarget="true"
                menubarPath="navigate/open.ext"
                id="org.eclipse.cdt.ui.actions.OpenTypeHierarchy">
+         </action>
+         <action
+               definitionId="org.eclipse.cdt.ui.edit.opendecl"
+               label="%OpenDeclarationAction.label"
+               tooltip="%OpenDeclarationAction.tooltip"
+               retarget="true"
+               menubarPath="navigate/open.ext"
+               id="org.eclipse.cdt.ui.actions.OpenDeclaration">
          </action>
       </actionSet>
       <actionSet
@@ -1025,6 +1285,26 @@
            id="org.eclipse.cdt.ui.buildConfigActionSet"
            label="%BuildConfigActionSet.label"
            visible="false">
+        <menu
+              id="org.eclipse.cdt.ui.prjmenu"
+              label="%Configurations.menu"
+              path="project/build">
+           <groupMarker
+                 name="gm1">
+           </groupMarker>
+           <separator
+                 name="s2">
+           </separator>
+           <groupMarker
+                 name="gm2">
+           </groupMarker>
+           <separator
+                 name="s3">
+           </separator>
+           <groupMarker
+                 name="gm3">
+           </groupMarker>
+        </menu>
         <action
               class="org.eclipse.cdt.ui.actions.ChangeBuildConfigMenuAction"
               disabledIcon="icons/dlcl16/config-tool.gif"
@@ -1043,8 +1323,17 @@
               menubarPath="project/org.eclipse.cdt.ui.prjmenu/gm1"
               style="pulldown"
               tooltip="%BuildConfigAction.tooltip"/>
-
-        <action
+       <action
+              class="org.eclipse.cdt.ui.actions.BuildActiveConfigMenuAction"
+              disabledIcon="icons/dlcl16/build_exec.png"
+              enablesFor="+"
+              icon="icons/elcl16/build_exec.png"
+              id="org.eclipse.cdt.ui.buildActiveConfigToolbarAction"
+              label="%BuildActiveConfiguration.label"
+              style="pulldown"
+              toolbarPath="buildConfig"
+              tooltip="%BuildActiveConfiguration.tooltip"/>
+         <action
               class="org.eclipse.cdt.ui.actions.ManageConfigsAction"
               enablesFor="+"
               id="org.eclipse.cdt.ui.manageConfigsAction2"
@@ -1058,20 +1347,13 @@
               label="%DeleteRcConfigAction.label"
               menubarPath="project/org.eclipse.cdt.ui.prjmenu/gm1"
               />
-        <menu
-              id="org.eclipse.cdt.ui.prjmenu"
-              label="%Configurations.menu"
-              path="project/build">
-           <groupMarker
-                 name="gm1">
-           </groupMarker>
-           <separator
-                 name="s2">
-           </separator>
-           <groupMarker
-                 name="gm2">
-           </groupMarker>
-        </menu>
+        <action
+              class="org.eclipse.cdt.ui.actions.WorkingSetConfigAction"
+              id="org.eclipse.cdt.ui.wsselection"
+              label="%wsselection"
+              menubarPath="project/org.eclipse.cdt.ui.prjmenu/gm3"
+              style="push"
+              />
      </actionSet>
      <actionSet
             label="%CElementCreationActionSet.label"
@@ -1119,6 +1401,24 @@
                tooltip="%NewProjectDropDownAction.tooltip">
          </action>
       </actionSet>
+      <actionSet
+            label="%CEditorPresentationActionSet.label"
+            visible="false"
+            id="org.eclipse.cdt.ui.text.c.actionSet.presentation">
+         <action
+               allowLabelUpdate="true"
+               style="toggle"
+               toolbarPath="org.eclipse.ui.edit.text.actionSet.presentation/Presentation"
+               id="org.eclipse.cdt.ui.edit.text.c.toggleMarkOccurrences"
+               definitionId="org.eclipse.cdt.ui.edit.text.c.toggleMarkOccurrences"
+               disabledIcon="$nl$/icons/dtool16/mark_occurrences.gif"
+               icon="$nl$/icons/etool16/mark_occurrences.gif"
+               helpContextId="toggle_mark_occurrences_action"
+               label="%toggleMarkOccurrences.label"
+               retarget="true"
+               tooltip="%toggleMarkOccurrences.tooltip">
+         </action>
+      </actionSet>
    </extension>
    <extension
          point="org.eclipse.ui.ide.projectNatureImages">
@@ -1148,8 +1448,16 @@
             id="org.eclipse.cdt.ui.cViewScope" 
             parentId="org.eclipse.ui.contexts.window"
       />
-   </extension>   
+      <context
+            name="%macroExpansionHoverScope.name" 
+            description="%macroExpansionHoverScope.description" 
+            id="org.eclipse.cdt.ui.macroExpansionHoverScope" 
+            parentId="org.eclipse.ui.contexts.dialogAndWindow"
+      />
+   </extension>
+
    <extension point="org.eclipse.ui.bindings">
+ 
       <!--  win32:  M1=CTRL,    M2=SHIFT, M3=ALT, M4=-
             carbon: M1=COMMAND, M2=SHIFT, M3=ALT, M4=CTRL -->
    	 <key
@@ -1157,6 +1465,11 @@
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
             contextId="org.eclipse.cdt.ui.cEditorScope"
             commandId="org.eclipse.cdt.ui.edit.text.c.format"/>      
+   	 <key
+            sequence="M2+TAB"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            contextId="org.eclipse.cdt.ui.cEditorScope"
+            commandId="org.eclipse.ui.edit.text.shiftLeft"/>      
      <key
             sequence="M1+/"
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
@@ -1186,6 +1499,16 @@
             sequence="M1+M3+H"
             contextId="org.eclipse.cdt.ui.cViewScope"
             commandId="org.eclipse.cdt.ui.edit.open.call.hierarchy"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+     <key
+            sequence="M1+M3+I"
+            contextId="org.eclipse.cdt.ui.cEditorScope"
+            commandId="org.eclipse.cdt.ui.edit.open.include.browser"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+     <key
+            sequence="M1+M3+I"
+            contextId="org.eclipse.cdt.ui.cViewScope"
+            commandId="org.eclipse.cdt.ui.edit.open.include.browser"
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
      <!--removed, see bug 167162
      <key
@@ -1284,10 +1607,222 @@
             commandId="org.eclipse.cdt.ui.edit.text.c.goto.matching.bracket"
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
      <key
-            sequence="M1+E"
+            sequence="M1+TAB"
             contextId="org.eclipse.cdt.ui.cEditorScope"
             commandId="org.eclipse.cdt.ui.edit.text.c.toggle.source.header"
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+     <key
+            sequence="M3+ARROW_LEFT"
+            contextId="org.eclipse.cdt.ui.macroExpansionHoverScope"
+            commandId="org.eclipse.cdt.ui.hover.backwardMacroExpansion"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+     <key
+            sequence="M3+ARROW_RIGHT"
+            contextId="org.eclipse.cdt.ui.macroExpansionHoverScope"
+            commandId="org.eclipse.cdt.ui.hover.forwardMacroExpansion"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+     <key
+            sequence="F3"
+            contextId="org.eclipse.cdt.ui.macroExpansionHoverScope"
+            commandId="org.eclipse.cdt.ui.edit.opendecl"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+	 <key
+	        sequence="M2+M3+O"
+	        contextId="org.eclipse.cdt.ui.cEditorScope"
+	        commandId="org.eclipse.cdt.ui.edit.text.c.toggleMarkOccurrences"
+	        schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+     <key
+            sequence="M1+="
+            contextId="org.eclipse.cdt.ui.cEditorScope"
+            commandId="org.eclipse.cdt.ui.edit.open.quick.macro.explorer"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+     <key
+            sequence="M1+#"
+            contextId="org.eclipse.cdt.ui.cEditorScope"
+            commandId="org.eclipse.cdt.ui.edit.open.quick.macro.explorer"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+     <key
+            sequence="M2+M3+R"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            contextId="org.eclipse.cdt.ui.cEditorScope"
+            commandId="org.eclipse.cdt.ui.edit.text.rename.element"/>
+   	 <key
+            sequence="M2+M3+R"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            contextId="org.eclipse.cdt.ui.cViewScope"
+            commandId="org.eclipse.cdt.ui.edit.text.rename.element"/>
+     <key
+            sequence="M2+M3+M"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            contextId="org.eclipse.cdt.ui.cEditorScope"
+            commandId="org.eclipse.cdt.ui.refactor.extract.function"/>
+     <key
+            sequence="M3+C"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            contextId="org.eclipse.cdt.ui.cEditorScope"
+            commandId="org.eclipse.cdt.ui.refactor.extract.constant"/>
+            
+      <scheme
+            id="org.eclipse.cdt.ui.visualstudio"
+			parentId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            name="%keybinding.MSVS"/>
+
+<!-- =================================================================================== -->
+<!-- MICROSOFT VISUAL STUDIO KEY SHORTCUTS                                               -->
+<!-- =================================================================================== -->
+		<!-- C/C++ Source Keys -->
+	   
+	    <!-- MSVS Edit.GoToDefinition -->
+		<key
+			sequence="F12"
+			commandId="org.eclipse.cdt.ui.edit.opendef"
+			contextId="org.eclipse.cdt.ui.cEditorScope"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- Edit Keys -->
+
+		<key
+			sequence="F3"
+			commandId="org.eclipse.ui.edit.findNext"
+			contextId="org.eclipse.ui.textEditorScope"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<key
+			sequence="M2+F3"
+			commandId="org.eclipse.ui.edit.findPrevious"
+			contextId="org.eclipse.ui.textEditorScope"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+
+		<key
+			sequence="M1+F3"
+			commandId="org.eclipse.cdt.ui.edit.text.c.find.word"
+			contextId="org.eclipse.cdt.ui.cEditorScope"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+
+	   	<key
+			sequence="M1+M2+F"
+			commandId="org.eclipse.search.ui.openSearchDialog"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+
+	   	<!-- File Keys -->	   
+	   	<!-- Help Keys -->
+		<!-- MakeFile Source Keys -->
+	   
+		<!-- Navigate Keys -->
+		<key
+            sequence="M1+F2" 
+            commandId="org.eclipse.ui.edit.addBookmark"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+
+		<key
+            sequence="M2+F2" 
+            commandId="org.eclipse.cdt.ui.edit.text.c.goto.next.bookmark"
+            contextId="org.eclipse.cdt.ui.cEditorScope"
+            schemeId="org.eclipse.cdt.ui.visualstudio"/>
+
+		<key
+            sequence="M1+G" 
+            commandId="org.eclipse.ui.edit.text.goto.line"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- Project Keys -->
+	   
+		<!-- MSVS RebuildSolution -->
+<!-- THERE IS CURRENTLY NO REBUILD
+		<key
+			sequence="M1+M2+B"
+			commandId="org.eclipse.ui.project.rebuildProject"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+-->
+		<!-- MSVS NewProject -->   
+		<key
+			sequence="M1+M2+N"
+			commandId="org.eclipse.ui.newWizard"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- Run/Debug Keys -->	   
+		<!-- MSVS Start -->
+		<key
+			sequence="M1+F5"
+			commandId="org.eclipse.debug.ui.commands.RunLast"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- MSVS StartWithoutDebugging -->
+		<key
+			sequence="F5"
+			commandId="org.eclipse.debug.ui.commands.DebugLast"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- MSVS StepInto -->
+		<key
+			sequence="F11"
+			commandId="org.eclipse.debug.ui.commands.StepInto"
+			contextId="org.eclipse.debug.ui.debugging"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- MSVS StepOver -->
+		<key
+			sequence="F10"
+			commandId="org.eclipse.debug.ui.commands.StepOver"
+			contextId="org.eclipse.debug.ui.debugging"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- MSVS StepReturn -->
+		<key
+			sequence="M2+F11"
+			commandId="org.eclipse.debug.ui.commands.StepReturn"
+			contextId="org.eclipse.debug.ui.debugging"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- MSVS ToggleBreakpoint -->
+		<key
+			sequence="F9"
+			commandId="org.eclipse.debug.ui.commands.ToggleBreakpoint"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- MSVS RunToCursor -->
+		<key
+			sequence="M1+F10"
+			commandId="org.eclipse.debug.ui.commands.RunToLine"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- MSVS Breakpoints -->
+		<key
+			sequence="M1+M3+B"
+			commandId="org.eclipse.debug.ui.BreakpointView"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+
+		<!-- Search Keys -->
+		<!-- Text Editing Keys -->
+	   
+		<key	
+			sequence="M1+ARROW_LEFT"
+			commandId="org.eclipse.ui.edit.text.goto.wordPrevious"
+			contextId="org.eclipse.ui.textEditorScope"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<key
+			sequence="M1+ARROW_RIGHT"
+			commandId="org.eclipse.ui.edit.text.goto.wordNext"
+			contextId="org.eclipse.ui.textEditorScope"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+	   
+		<!-- View Keys -->
+		<!-- Views Keys -->
+		<!-- Window Keys -->
+			
+		<!-- MSVC Window NextDocumentWindow --> 
+		<key
+			sequence="M1+TAB"
+            commandId="org.eclipse.ui.window.nextEditor"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+
+		<!-- MSVC Window.PreviousDocumentWindow -->
+		<key
+			sequence="M1+M2+TAB"
+            commandId="org.eclipse.ui.window.previousEditor"
+			schemeId="org.eclipse.cdt.ui.visualstudio"/>
+            
    </extension>
    <extension
          point="org.eclipse.ui.commands">
@@ -1372,6 +1907,12 @@
             id="org.eclipse.cdt.ui.edit.open.type.hierarchy">
       </command>
       <command
+            categoryId="org.eclipse.ui.category.navigate"
+            description="%ActionDefinition.openIncludeBrowser.description"
+            name="%ActionDefinition.openIncludeBrowser.name"
+            id="org.eclipse.cdt.ui.edit.open.include.browser">
+      </command>
+      <command
             name="%ActionDefinition.openTypeInHierarchy.name"
             description="%ActionDefinition.openTypeInHierarchy.description"
             categoryId="org.eclipse.ui.category.navigate"
@@ -1420,11 +1961,80 @@
             id="org.eclipse.cdt.ui.edit.text.c.goto.matching.bracket">
       </command>
       <command
+            name="%ActionDefinition.gotoNextBookmark.name"
+            description="%ActionDefinition.gotoNextBookmark.description"
+            categoryId="org.eclipse.cdt.ui.category.source"
+            id="org.eclipse.cdt.ui.edit.text.c.goto.next.bookmark">
+      </command>
+      <command
+            name="%ActionDefinition.FindWord.name"
+            description="%ActionDefinition.FindWord.description"
+            categoryId="org.eclipse.cdt.ui.category.source"
+            id="org.eclipse.cdt.ui.edit.text.c.find.word">
+      </command>
+      <command
             name="%ActionDefinition.toggleSourceHeader.name"
             description="%ActionDefinition.toggleSourceHeader.description"
             categoryId="org.eclipse.cdt.ui.category.source"
             id="org.eclipse.cdt.ui.edit.text.c.toggle.source.header">
       </command>
+      <command
+            name="%ActionDefinition.backwardMacroExpansion.name"
+            description="%ActionDefinition.backwardMacroExpansion.description"
+            categoryId="org.eclipse.cdt.ui.category.source"
+            id="org.eclipse.cdt.ui.hover.backwardMacroExpansion"/>
+      <command
+            name="%ActionDefinition.forwardMacroExpansion.name"
+            description="%ActionDefinition.forwardMacroExpansion.description"
+            categoryId="org.eclipse.cdt.ui.category.source"
+            id="org.eclipse.cdt.ui.hover.forwardMacroExpansion"/>
+      <command
+            name="%toggleMarkOccurrences.label"
+            description="%toggleMarkOccurrences.description"
+            categoryId="org.eclipse.cdt.ui.category.source"
+            id="org.eclipse.cdt.ui.edit.text.c.toggleMarkOccurrences"/>
+      <command
+            name="%ActionDefinition.showMacroExplorer.name"
+            description="%ActionDefinition.showMacroExplorer.description"
+            categoryId="org.eclipse.cdt.ui.category.source"
+            id="org.eclipse.cdt.ui.edit.open.quick.macro.explorer"/>
+      <category
+	        name="%category.refactoring.name"
+	        description="%category.refactoring.description"
+	        id="org.eclipse.cdt.ui.category.refactoring"/>
+	  <command
+	        categoryId="org.eclipse.cdt.ui.category.refactoring"
+	        id="org.eclipse.cdt.ui.refactoring.command.ExtractConstant"
+	        name="%refactoringExtractConstant.label"/>
+	  <command
+	        categoryId="org.eclipse.cdt.ui.category.refactoring"
+	        id="org.eclipse.cdt.ui.refactor.hide.method"   
+	        name="%refactoringHideMethod.label"/>
+      <command
+            name="%ActionDefinition.renameElement.name"
+            description="%ActionDefinition.renameElement.description"
+            categoryId="org.eclipse.cdt.ui.category.refactoring"
+            id="org.eclipse.cdt.ui.edit.text.rename.element"/>
+      <command
+            name="%ActionDefinition.extractConstant.name"
+            description="%ActionDefinition.extractConstant.description"
+            categoryId="org.eclipse.cdt.ui.category.refactoring"
+            id="org.eclipse.cdt.ui.refactor.extract.constant"/>
+      <command
+            name="%ActionDefinition.extractFunction.name"
+            description="%ActionDefinition.extractFunction.description"
+            categoryId="org.eclipse.cdt.ui.category.refactoring"
+            id="org.eclipse.cdt.ui.refactor.extract.function"/>
+      <command
+            name="%ActionDefinition.implementMethod.name"
+            description="%ActionDefinition.implementMethod.description"
+            categoryId="org.eclipse.cdt.ui.category.refactoring"
+            id="org.eclipse.cdt.ui.refactor.implement.method"/>
+      <command
+      		name="%ActionDefinition.gettersAndSetters.name"
+            description="%ActionDefinition.gettersAndSetters.description"
+	        categoryId="org.eclipse.cdt.ui.category.refactoring"
+	        id="org.eclipse.cdt.ui.refactor.getters.and.setters"/>
    </extension>
    <extension
          id="pdomSearchPage"
@@ -1443,24 +2053,33 @@
 
    <extension
          point="org.eclipse.ui.actionSetPartAssociations">
-      <actionSetPartAssociation
+      <actionSetPartAssociation 
             targetID="org.eclipse.cdt.ui.SearchActionSet">
-         <part
-               id="org.eclipse.cdt.ui.CView">
-         </part>
-         <part
-               id="org.eclipse.cdt.ui.editor.CEditor">
-         </part>
-         <part
-               id="org.eclipse.search.SearchResultView">
-         </part>
+         <part id="org.eclipse.cdt.ui.CView"/>
+         <part id="org.eclipse.cdt.ui.editor.CEditor"/>
+         <part id="org.eclipse.search.SearchResultView"/>
+      </actionSetPartAssociation>
+      <actionSetPartAssociation 
+            targetID="org.eclipse.cdt.ui.CodingActionSet">
+         <part id="org.eclipse.cdt.ui.editor.CEditor"/>
+         <part id="org.eclipse.cdt.ui.CView"/>
+      </actionSetPartAssociation>
+      <actionSetPartAssociation 
+      		targetID="org.eclipse.cdt.ui.OpenActionSet">
+         <part id="org.eclipse.cdt.ui.editor.CEditor"/>
+      </actionSetPartAssociation>
+      <actionSetPartAssociation 
+            targetID="org.eclipse.cdt.ui.NavigationActionSet">
+         <part id="org.eclipse.cdt.ui.editor.CEditor"/>
       </actionSetPartAssociation>
       <actionSetPartAssociation
             targetID="org.eclipse.ui.edit.text.actionSet.annotationNavigation">
-         <part
-               id="org.eclipse.cdt.ui.editor.CEditor">
-         </part>
+         <part id="org.eclipse.cdt.ui.editor.CEditor"/>
       </actionSetPartAssociation>      
+      <actionSetPartAssociation
+            targetID="org.eclipse.cdt.ui.text.c.actionSet.presentation">
+         <part id="org.eclipse.cdt.ui.editor.CEditor"/>
+      </actionSetPartAssociation>               
    </extension>
    <extension
          point="org.eclipse.cdt.ui.BinaryParserPage">
@@ -1501,6 +2120,7 @@
       </workingSet>
    </extension>
    <extension
+         id="org.eclipse.cdt.ui.annotations"
          point="org.eclipse.ui.editors.markerAnnotationSpecification">
       <specification
       		colorPreferenceValue="254,155,0"
@@ -1525,6 +2145,31 @@
             isGoToPreviousNavigationTargetKey="isIndexResultGoToPreviousNavigationTarget"
 	        isGoToPreviousNavigationTarget="false">
       </specification>
+	  <specification
+            annotationType="org.eclipse.cdt.ui.occurrences"
+            label="%OccurrenceAnnotation.label"
+            icon="$nl$/icons/obj16/searchm_obj.gif"
+            textPreferenceKey="org.eclipse.cdt.ui.occurrenceIndication"
+            textPreferenceValue="false"
+            highlightPreferenceKey="org.eclipse.cdt.ui.occurrenceHighlighting"
+            highlightPreferenceValue="true"
+            contributesToHeader="false"
+            overviewRulerPreferenceKey="org.eclipse.cdt.ui.occurrenceIndicationInOverviewRuler"
+            overviewRulerPreferenceValue="true"
+            verticalRulerPreferenceKey="org.eclipse.cdt.ui.occurrenceIndicationInVerticalRuler"
+            verticalRulerPreferenceValue="false"
+            colorPreferenceKey="org.eclipse.cdt.ui.occurrenceIndicationColor"
+            colorPreferenceValue="212,212,212"
+            presentationLayer="4"
+            showInNextPrevDropdownToolbarActionKey="org.eclipse.cdt.ui.showOccurrenceInNextPrevDropdownToolbarAction"
+            showInNextPrevDropdownToolbarAction="true"
+            isGoToNextNavigationTargetKey="org.eclipse.cdt.ui.isOccurrenceGoToNextNavigationTarget"
+	        isGoToNextNavigationTarget="false"
+            isGoToPreviousNavigationTargetKey="org.eclipse.cdt.ui.isOccurrenceGoToPreviousNavigationTarget"
+	        isGoToPreviousNavigationTarget="false"
+            textStylePreferenceKey="org.eclipse.cdt.ui.occurrenceTextStyle"
+            textStylePreferenceValue="NONE">
+	  </specification>
    </extension>
    <extension
          point="org.eclipse.search.searchResultViewPages">
@@ -1543,7 +2188,7 @@
             >
          <filter
                name="projectNature"
-               value="org.eclipse.cdt.managedbuilder.core.managedBuildNature">
+               value="org.eclipse.cdt.core.cnature">
          </filter>            
          <enabledWhen>
             <or>
@@ -1615,7 +2260,20 @@
             </and>
          </enabledWhen>
       </page>
+
+      <page
+            name="%CodeFormatterPreferencePage.name"
+            class="org.eclipse.cdt.internal.ui.preferences.CodeFormatterPreferencePage"
+            category="org.eclipse.cdt.ui.newui.Page_head_general"
+            id="org.eclipse.cdt.ui.propertyPages.CodeFormatterPreferencePage">
+         <enabledWhen>
+		     <adapt type="org.eclipse.core.resources.IProject">
+		          <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+		     </adapt>         
+         </enabledWhen>
+      </page>
    </extension>
+
    <extension
          point="org.eclipse.cdt.ui.PathContainerPage">
       <PathContainerPage
@@ -1649,12 +2307,28 @@
          markerType="org.eclipse.cdt.core.indexermarker"
          name="org.eclipse.cdt.ui.indexmarker">
       </type>
+      <type
+         name="org.eclipse.cdt.ui.occurrences">
+      </type>
+   </extension>
+   <extension point="org.eclipse.ui.workbench.texteditor.spellingEngine">
+      <engine
+            preferencesClass="org.eclipse.cdt.internal.ui.preferences.SpellingPreferenceBlock"
+            label="%cSpellingEngine.label"
+            class="org.eclipse.cdt.internal.ui.text.spelling.SpellingEngineDispatcher"
+            default="false"
+            id="org.eclipse.cdt.internal.ui.text.spelling.CSpellingEngine">
+      </engine>
    </extension>
    <extension
          point="org.eclipse.core.runtime.preferences">
       <initializer class="org.eclipse.cdt.ui.CUIPreferenceInitializer"/>
    </extension>
-
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer class="org.eclipse.cdt.ui.text.doctools.doxygen.DoxygenHelper"/>
+   </extension>
+   
 <!-- Default folding -->
 	<extension
 		point= "org.eclipse.cdt.ui.foldingStructureProviders">
@@ -1681,6 +2355,14 @@
       </contextType>
       <include
       		file="templates/default-templates.xml"
+      		translations="$nl$/templates/default-templates.properties">
+      </include>
+      <include
+      		file="templates/default-codetemplates.xml"
+      		translations="$nl$/templates/default-templates.properties">
+      </include>
+      <include
+      		file="templates/default-filetemplates.xml"
       		translations="$nl$/templates/default-templates.properties">
       </include>
    </extension>
@@ -1726,6 +2408,13 @@
     </extension>
     <extension
         point="org.eclipse.cdt.ui.completionProposalComputer"
+        id="helpProposalCategory"
+        name="%HelpProposalCategory">
+        <proposalCategory
+            icon="$nl$/icons/elcl16/helpprop_co.gif"/>
+    </extension>
+    <extension
+        point="org.eclipse.cdt.ui.completionProposalComputer"
         id="textProposalCategory"
         name="%TextProposalCategory">
         <proposalCategory
@@ -1737,38 +2426,28 @@
        <completionProposalComputer
              categoryId="org.eclipse.cdt.ui.parserProposalCategory"
              class="org.eclipse.cdt.internal.ui.text.contentassist.DOMCompletionProposalComputer">
-          <partition
-                type="__dftl_partition_content_type">
-          </partition>
-          <partition
-                type="__c_preprocessor">
-          </partition>
+          <partition type="__dftl_partition_content_type"/>
+          <partition type="__c_preprocessor"/>
+       </completionProposalComputer>
+    </extension>
+    <extension
+          id="InclusionProposalComputer"
+          point="org.eclipse.cdt.ui.completionProposalComputer">
+       <completionProposalComputer
+             categoryId="org.eclipse.cdt.ui.parserProposalCategory"
+             class="org.eclipse.cdt.internal.ui.text.contentassist.InclusionProposalComputer">
+          <partition type="__c_preprocessor"/>
        </completionProposalComputer>
     </extension>
      
-    <!-- legacy completions (completionContributors) -->   
-    <extension
-        point="org.eclipse.cdt.ui.completionProposalComputer"
-        id="LegacyCompletionProposalComputer">
-        <completionProposalComputer 
-            class="org.eclipse.cdt.internal.ui.text.contentassist.LegacyCompletionProposalComputer"
-            categoryId="org.eclipse.cdt.ui.parserProposalCategory">
-            <partition type="__dftl_partition_content_type"/>
-            <partition type="__c_preprocessor"/>
-        </completionProposalComputer>
-    </extension>
     <extension
           id="KeywordCompletionProposalComputer"
           point="org.eclipse.cdt.ui.completionProposalComputer">
        <completionProposalComputer
              categoryId="org.eclipse.cdt.ui.parserProposalCategory"
              class="org.eclipse.cdt.internal.ui.text.contentassist.KeywordCompletionProposalComputer">
-          <partition
-                type="__dftl_partition_content_type">
-          </partition>
-          <partition
-                type="__c_preprocessor">
-          </partition>
+          <partition type="__dftl_partition_content_type"/>
+          <partition type="__c_preprocessor"/>
        </completionProposalComputer>
     </extension>
     <extension
@@ -1777,9 +2456,7 @@
        <completionProposalComputer
              categoryId="org.eclipse.cdt.ui.parserProposalCategory"
              class="org.eclipse.cdt.internal.ui.text.contentassist.HelpCompletionProposalComputer">
-          <partition
-                type="__dftl_partition_content_type">
-          </partition>
+          <partition type="__dftl_partition_content_type"/>
        </completionProposalComputer>
     </extension>
     <!-- template proposals -->
@@ -1791,9 +2468,20 @@
             categoryId="org.eclipse.cdt.ui.templateProposalCategory">
             <partition type="__dftl_partition_content_type"/>
             <partition type="__c_multiline_comment"/>
+            <partition type="__c_singleline_comment"/>
         </completionProposalComputer>
     </extension>
-    <!-- hippie word completions -->   
+    <!-- help provider proposals -->
+    <extension
+        point="org.eclipse.cdt.ui.completionProposalComputer"
+        id="HelpCompletionProposalComputer">
+        <completionProposalComputer
+            class="org.eclipse.cdt.internal.ui.text.contentassist.HelpCompletionProposalComputer"
+            categoryId="org.eclipse.cdt.ui.helpProposalCategory">
+            <partition type="__dftl_partition_content_type"/>
+        </completionProposalComputer>
+    </extension>
+    <!-- hippie word proposals -->
     <extension
         point="org.eclipse.cdt.ui.completionProposalComputer"
         id="HippieCompletionProposalComputer">
@@ -1824,8 +2512,20 @@
         </command>
    </extension>
 
+   <extension
+         point="org.eclipse.cdt.ui.quickFixProcessors">
+      <quickFixProcessor
+            name="%spellingQuickFixProcessor"
+            class="org.eclipse.cdt.internal.ui.text.spelling.WordQuickFixProcessor"
+            id= "org.eclipse.cdt.ui.text.correction.spelling.QuickFixProcessor">
+            <handledMarkerTypes>
+                <markerType id="org.eclipse.cdt.internal.spelling"/>
+	        </handledMarkerTypes>
+      </quickFixProcessor>
+   </extension>
+
 <!--- Common Navigator extensions -->
- <extension
+  <extension
        point="org.eclipse.ui.navigator.navigatorContent">
     <navigatorContent
           activeByDefault="true"
@@ -1842,24 +2542,14 @@
                       property="org.eclipse.core.resources.projectNature"
                       value="org.eclipse.cdt.core.cnature"/>
              </adapt>
-             <instanceof value="org.eclipse.core.resources.IWorkspaceRoot"/>
-             <instanceof value="org.eclipse.core.resources.IFolder" />
-             <instanceof value="org.eclipse.core.resources.IFile" />
-             <instanceof value="org.eclipse.core.resources.IStorage" />
-             <instanceof value="org.eclipse.cdt.core.model.ICProject"/>
-             <instanceof value="org.eclipse.cdt.core.model.ICContainer"/>
+             <instanceof value="org.eclipse.core.resources.IResource"/>
              <instanceof value="org.eclipse.cdt.core.model.ICElement"/>
              <instanceof value="org.eclipse.cdt.ui.CElementGrouping"/>
           </or>
        </triggerPoints>
        <possibleChildren>
           <or>
-             <instanceof value="org.eclipse.core.resources.IWorkspaceRoot"/>
-	         <instanceof value="org.eclipse.core.resources.IFolder" />
-	         <instanceof value="org.eclipse.core.resources.IFile" />
-	         <instanceof value="org.eclipse.core.resources.IStorage" />
-             <instanceof value="org.eclipse.cdt.core.model.ICProject"/>
-             <instanceof value="org.eclipse.cdt.core.model.ICContainer"/>
+             <instanceof value="org.eclipse.core.resources.IResource"/>
              <instanceof value="org.eclipse.cdt.core.model.ICElement"/>
              <instanceof value="org.eclipse.cdt.ui.CElementGrouping"/>
           </or>
@@ -1904,7 +2594,16 @@
              class="org.eclipse.cdt.internal.ui.navigator.CNavigatorSearchActionProvider"
              id="org.eclipse.cdt.ui.navigator.actions.search">
           <enablement>
-             <instanceof value="org.eclipse.cdt.core.model.ICElement"/>
+             <and>
+                <instanceof
+                      value="org.eclipse.cdt.core.model.ISourceReference">
+                </instanceof>
+                <not>
+                   <instanceof
+                         value="org.eclipse.cdt.core.model.ITranslationUnit">
+                   </instanceof>
+                </not>
+             </and>
           </enablement>
        </actionProvider>
        <actionProvider
@@ -1921,7 +2620,12 @@
           <enablement>
 			<or>
 				<instanceof value="org.eclipse.cdt.core.model.ICElement" />
-				<instanceof value="org.eclipse.core.resources.IResource" />
+				<instanceof value="org.eclipse.core.resources.IFile" />
+				<instanceof value="org.eclipse.core.resources.IFolder" />
+				<and>
+				   <instanceof value="org.eclipse.core.resources.IProject" />
+	               <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+				</and>
 			</or>
           </enablement>
        </actionProvider>
@@ -1931,8 +2635,13 @@
              overrides="org.eclipse.ui.navigator.resources.actions.RefactorActions">
           <enablement>
 			<or>
-			    <instanceof value="org.eclipse.cdt.core.model.ICElement" />	
-				<instanceof value="org.eclipse.core.resources.IResource" />
+				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
+				<instanceof value="org.eclipse.core.resources.IFile" />
+				<instanceof value="org.eclipse.core.resources.IFolder" />
+				<and>
+				   <instanceof value="org.eclipse.core.resources.IProject" />
+	               <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+				</and>
 			</or>
           </enablement>
        </actionProvider>
@@ -1941,32 +2650,14 @@
 	         menuGroupId="org.eclipse.cdt.ui.newProject"
 	         type="new"
 	         wizardId="org.eclipse.cdt.ui.wizards.NewCWizard1">
-		 <enablement>
-			<or>
-				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
-	            <adapt type="org.eclipse.core.resources.IProject">
-	               <test
-	                     property="org.eclipse.core.resources.projectNature"
-	                     value="org.eclipse.cdt.core.cnature"/>
-	            </adapt>
-			</or>
-         </enablement>
+		 <enablement/>
 	   </commonWizard>
 	   <commonWizard
 	         associatedExtensionId="org.eclipse.cdt.ui.navigator.content"
 	         menuGroupId="org.eclipse.cdt.ui.newProject"
 	         type="new"
 	         wizardId="org.eclipse.cdt.ui.wizards.NewCWizard2">
-		 <enablement>
-			<or>
-				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
-	            <adapt type="org.eclipse.core.resources.IProject">
-	               <test
-	                     property="org.eclipse.core.resources.projectNature"
-	                     value="org.eclipse.cdt.core.cnature"/>
-	            </adapt>
-			</or>
-         </enablement>
+		 <enablement/>
 	   </commonWizard>
 	   <commonWizard
 	         associatedExtensionId="org.eclipse.cdt.ui.navigator.content"
@@ -2032,6 +2723,21 @@
 			</or>
          </enablement>
 	   </commonWizard>
+	   <commonWizard
+	         associatedExtensionId="org.eclipse.cdt.ui.navigator.content"
+	         type="new"
+	         wizardId="org.eclipse.cdt.ui.wizards.NewFileCreationWizard">
+		 <enablement>
+			<or>
+				<instanceof value="org.eclipse.cdt.core.model.ICElement" />	
+	            <adapt type="org.eclipse.core.resources.IProject">
+	               <test
+	                     property="org.eclipse.core.resources.projectNature"
+	                     value="org.eclipse.cdt.core.cnature"/>
+	            </adapt>
+			</or>
+         </enablement>
+	   </commonWizard>
      <dropAssistant
            class="org.eclipse.cdt.internal.ui.navigator.CNavigatorDropAdapterAssistant"
            id="org.eclipse.cdt.ui.navigator.dropAssistant">
@@ -2075,21 +2781,41 @@
           description="%HideNonCElements.description"
           id="org.eclipse.cdt.ui.navigator.filters.NonCElementFilter"
           name="%HideNonCElements.label"/>
- </extension>
- <extension
+  </extension>
+  <extension
+         point="org.eclipse.ui.navigator.linkHelper">
+      <linkHelper
+            class="org.eclipse.cdt.internal.ui.navigator.CNavigatorLinkHelper"
+            id="org.eclipse.cdt.ui.navigator.linkHelper">
+         <editorInputEnablement>
+            <or>
+               <instanceof value="org.eclipse.ui.IFileEditorInput"/>
+               <instanceof value="org.eclipse.cdt.internal.ui.editor.ITranslationUnitEditorInput"/>
+            </or>
+         </editorInputEnablement>
+         <selectionEnablement>
+            <or>
+               <instanceof value="org.eclipse.core.resources.IResource" />
+               <instanceof value="org.eclipse.cdt.core.model.ICElement"/>
+            </or>
+         </selectionEnablement>
+      </linkHelper>
+  </extension>
+  
+  <extension
        point="org.eclipse.ui.navigator.viewer">
     <viewerContentBinding viewerId="org.eclipse.ui.navigator.ProjectExplorer">
        <includes>
           <contentExtension pattern="org.eclipse.cdt.ui.navigator.content"/>
           <contentExtension pattern="org.eclipse.cdt.ui.navigator.filters.*"/>
           <contentExtension pattern="org.eclipse.cdt.ui.wizards.*"/>
+          <contentExtension pattern="org.eclipse.cdt.ui.navigator.linkHelper"/>
        </includes>
     </viewerContentBinding>
     <dragAssistant
           class="org.eclipse.cdt.internal.ui.navigator.CNavigatorDragAdapterAssistant"
           viewerId="org.eclipse.ui.navigator.ProjectExplorer"/>
- </extension>
-
+  </extension>
   <extension
         point="org.eclipse.core.expressions.propertyTesters">
       <propertyTester
@@ -2131,23 +2857,6 @@
            name="%exportWizard.CDTCategory.name">
      </category>
   </extension>
-
-   <extension
-         point="org.eclipse.ui.perspectiveExtensions">
-      <perspectiveExtension
-            targetID="org.eclipse.ui.resourcePerspective">
-      </perspectiveExtension>
-   </extension>
-
-   <extension
-         point="org.eclipse.ui.preferencePages">
-      <page
-            class="org.eclipse.cdt.ui.templateengine.pages.TemplatePreferencePage"
-            name="%TemplatePreferencePage.name"
-            category="org.eclipse.cdt.ui.preferences.CPluginPreferencePage"
-            id="org.eclipse.cdt.core.templateengine.shareddefaults"/>
-   </extension>
-  
    <extension
             id="TemplateEngineWizard"
             name="%Template.Engine.Wizard"
@@ -2157,5 +2866,107 @@
                name="%Template.Wizard">
          </wizard>
    </extension>
-  
+
+   <extension
+         point="org.eclipse.ui.editors.markerUpdaters">
+      <updater
+            class="org.eclipse.cdt.internal.ui.editor.CDocumentProvider$ProblemMarkerUpdater"
+            id="org.eclipse.cdt.ui.problemMarkerUpdater"
+            markerType="org.eclipse.cdt.core.problem">
+      </updater>
+   </extension>
+   <extension
+         id="doccomment.multiline"
+         point="org.eclipse.cdt.ui.completionProposalComputer">
+      <completionProposalComputer
+            activate="true"
+            categoryId="org.eclipse.cdt.ui.parserProposalCategory"
+            class="org.eclipse.cdt.internal.ui.text.doctools.DocCommentMultilineProposalComputer">
+         <partition
+               type="__c_multiline_doc_comment">
+         </partition>
+      </completionProposalComputer>
+   </extension>
+   <extension
+         id="doccomment.singleline"
+         point="org.eclipse.cdt.ui.completionProposalComputer">
+      <completionProposalComputer
+            activate="true"
+            categoryId="org.eclipse.cdt.ui.parserProposalCategory"
+            class="org.eclipse.cdt.internal.ui.text.doctools.DocCommentSinglelineProposalComputer">
+         <partition
+               type="__c_singleline_doc_comment">
+         </partition>
+      </completionProposalComputer>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.ui.CHelpProvider">
+      <provider
+            class="org.eclipse.cdt.internal.ui.help.CHelpProvider"
+            id="org.eclipse.cdt.ui.provider1">
+      </provider>
+   </extension>
+   
+   <extension
+         point="org.eclipse.cdt.ui.DocCommentOwner">
+      <owner
+            id="org.eclipse.cdt.ui.doxygen"
+            name="%Doxygen.name"
+            multiline="org.eclipse.cdt.ui.text.doctools.doxygen.DoxygenMultilineConfiguration"
+            singleline="org.eclipse.cdt.ui.text.doctools.doxygen.DoxygenSingleConfiguration">
+      </owner>
+   </extension>
+   <extension
+         point="org.eclipse.ltk.ui.refactoring.changePreviewViewers">
+         <changePreviewViewer
+            class="org.eclipse.cdt.internal.ui.refactoring.dialogs.CreateFileChangePreview"
+    		id="org.eclipse.cdt.internal.ui.refactoring.createFileChangePreviewhangePreview">
+         <enablement>
+            <instanceof value="org.eclipse.cdt.internal.ui.refactoring.CreateFileChange"/>
+         </enablement>
+      </changePreviewViewer>
+         <changePreviewViewer
+            class="org.eclipse.cdt.internal.ui.refactoring.dialogs.CTextEditChangePreviewViewer"
+    		id="org.eclipse.cdt.internal.ui.refactoring.CTextChangePreviewhangePreview">
+         <enablement>
+            <instanceof value="org.eclipse.cdt.ui.refactoring.CTextFileChange"/>
+         </enablement>
+      </changePreviewViewer>
+   </extension>
+   <extension
+         point="org.eclipse.ui.decorators">
+      <decorator
+            class="org.eclipse.cdt.internal.ui.viewsupport.IndexedFilesLabelProvider"
+            id="org.eclipse.cdt.ui.indexedFiles"
+            label="%indexedFilesDecorator.label"
+            lightweight="true"
+            state="false">
+         <enablement>
+            <or>
+               <objectClass name="org.eclipse.cdt.core.model.ITranslationUnit"/>
+               <objectClass name="org.eclipse.core.resources.IFile"/>
+            </or>
+         </enablement>
+      </decorator>
+   </extension>
+
+   <!-- Hyperlinking support -->
+   <extension
+         point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectorTargets">
+      <target
+            id="org.eclipse.cdt.ui.cCode"
+            name="%cEditorHyperlinkTarget">
+            <context type="org.eclipse.ui.texteditor.ITextEditor"/>
+      </target>
+   </extension>
+   <extension
+         point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectors">
+       <hyperlinkDetector
+            class="org.eclipse.cdt.internal.ui.editor.CElementHyperlinkDetector"
+            id="org.eclipse.cdt.ui.editor.CElementHyperlinkDetector"
+            name="%cElementHyperlinkDetector"
+            targetId="org.eclipse.cdt.ui.cCode">
+      </hyperlinkDetector>
+   </extension>
+
 </plugin>

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Institute for Software, HSR Hochschule fuer Technik  
+ * Copyright (c) 2008 Institute for Software, HSR Hochschule fuer Technik  
  * Rapperswil, University of applied sciences and others.
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
@@ -14,6 +14,7 @@ package org.eclipse.cdt.core.parser.tests.ast2;
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.dom.ast.IASTComment;
+import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.internal.core.parser.ParserException;
@@ -119,17 +120,17 @@ public class CommentTests extends AST2BaseTest {
 	
 	private String getCppSource() {
 		StringBuffer buffer = new StringBuffer();
-		buffer.append("CppClass()\n");
+		buffer.append("void CppClass()\n");
 		buffer.append("{\n");
 		buffer.append("   // Comment in cpp\n");
-		buffer.append("   value = 1 + /*The magic 5 */5 * 6;\n");
+		buffer.append("   int value = 1 + /*The magic 5 */5 * 6;\n");
 		buffer.append("   // Another comment\n");
 		buffer.append("   value++;\n");
 		buffer.append("}\n");
 		buffer.append("/* A blockcomment \n");
 		buffer.append("* over multiple lines */\n");
 		buffer.append("//Toplevel comment\n");
-		buffer.append("doIrgendwas(){\n");
+		buffer.append("void doIrgendwas(){\n");
 		buffer.append("   //A little bit code\n");
 		buffer.append("   int i = 3; //Trailing comment\n");
 		buffer.append("		;\n");
@@ -151,7 +152,7 @@ public class CommentTests extends AST2BaseTest {
 		buffer.append("   int n = i++ +5;\n");
 		buffer.append("  //Last comment in cpp\n");
 		buffer.append("}\n");
-		buffer.append("globaleFuntktion(){\n");
+		buffer.append("int globaleFuntktion(){\n");
 		buffer.append("//An integer\n");
 		buffer.append("int i;\n");
 		buffer.append("}\n");
@@ -199,13 +200,53 @@ public class CommentTests extends AST2BaseTest {
 	// #else 
 	// // comment2
 	// #endif
-	public void _testCommentsInInactiveCode_bug183930() throws Exception {
+	public void testCommentsInInactiveCode_bug183930() throws Exception {
 		StringBuffer code= getContents(1)[0];
 		IASTTranslationUnit tu = parse(code.toString(), ParserLanguage.CPP, false, true, true);
 		IASTComment[] comments = tu.getComments();
 		
 		assertEquals(2, comments.length);
 		assertEquals("// comment1", new String(comments[0].getComment()));
-		assertEquals("// comment2", new String(comments[0].getComment()));
+		assertEquals("// comment2", new String(comments[1].getComment()));
+	}
+	
+	// //comment
+	public void testCommentLocation_bug186337() throws Exception{
+		StringBuffer code= getContents(1)[0];
+		IASTTranslationUnit tu = parse(code.toString(), ParserLanguage.CPP, false, true, true);
+		IASTComment[] comments = tu.getComments();
+		
+		assertEquals(1, comments.length);
+		assertNotNull(comments[0].getFileLocation());
+		assertNotNull(comments[0].getNodeLocations());
+
+		tu = parse(code.toString(), ParserLanguage.C, false, true, true);
+		comments = tu.getComments();
+		
+		assertEquals(1, comments.length);
+		assertNotNull(comments[0].getFileLocation());
+		assertNotNull(comments[0].getNodeLocations());
+	}
+	
+	// // TODO: shows up in task list 
+	// #include "somefile.h"  // TODO: ignored
+    //
+	// #ifdef WHATEVA // TODO: ignored
+	// #endif // TODO: ignored
+	// // TODO: shows up in task list
+
+	public void testCommentInDirectives_bug192546() throws Exception {
+		StringBuffer code= getContents(1)[0];
+		IASTTranslationUnit tu = parse(code.toString(), ParserLanguage.CPP, false, false, true);
+		IASTComment[] comments = tu.getComments();
+		
+		assertEquals(5, comments.length);
+		assertNotNull(comments[0].getFileLocation());
+		assertNotNull(comments[0].getNodeLocations());
+		for (IASTComment comment : comments) {
+			IASTFileLocation loc= comment.getFileLocation();
+			int idx= loc.getNodeOffset() + comment.getRawSignature().indexOf("TODO");
+			assertEquals("TODO", code.substring(idx, idx+4));			
+		}
 	}
 }

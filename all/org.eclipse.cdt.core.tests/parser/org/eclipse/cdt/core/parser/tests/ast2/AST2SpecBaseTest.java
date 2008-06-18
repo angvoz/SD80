@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,27 +7,24 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.tests.ast2;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
-import org.eclipse.cdt.core.dom.ast.c.CASTVisitor;
-import org.eclipse.cdt.core.dom.ast.cpp.CPPASTVisitor;
-import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.ISourceCodeParser;
 import org.eclipse.cdt.core.dom.parser.c.ANSICParserExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.c.GCCParserExtensionConfiguration;
-import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.c.ICParserExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.cpp.ANSICPPParserExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.cpp.GPPParserExtensionConfiguration;
-import org.eclipse.cdt.core.dom.parser.cpp.GPPScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.cpp.ICPPParserExtensionConfiguration;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IParserLogService;
@@ -38,18 +35,14 @@ import org.eclipse.cdt.core.parser.ParserMode;
 import org.eclipse.cdt.core.parser.ScannerInfo;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.c.GNUCSourceParser;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.parser.ParserException;
-import org.eclipse.cdt.internal.core.parser.scanner2.DOMScanner;
-import org.eclipse.cdt.internal.core.parser.scanner2.FileCodeReaderFactory;
-
-import junit.framework.TestCase;
 
 /**
  * @author dsteffle
  */
-public class AST2SpecBaseTest extends TestCase {
+public class AST2SpecBaseTest extends AST2BaseTest {
     private static final IParserLogService NULL_LOG = new NullLogService();
 
 	public AST2SpecBaseTest() {
@@ -69,20 +62,30 @@ public class AST2SpecBaseTest extends TestCase {
 	 * @throws ParserException
 	 */
 	protected void parseCandCPP( String code, boolean checkBindings, int expectedProblemBindings ) throws ParserException {
-		parse( code, ParserLanguage.C, false, true, checkBindings, expectedProblemBindings);
-		parse( code, ParserLanguage.CPP, false, true, checkBindings, expectedProblemBindings );
+		parse( code, ParserLanguage.C, false, true, checkBindings, expectedProblemBindings, null);
+		parse( code, ParserLanguage.CPP, false, true, checkBindings, expectedProblemBindings, null );
 	}
-		
-	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean checkBindings, int expectedProblemBindings ) throws ParserException {
-    	return parse(code, lang, false, true, checkBindings, expectedProblemBindings );
+
+	protected IASTTranslationUnit parseWithErrors( String code, ParserLanguage lang) throws ParserException {
+    	return parse(code, lang, false, false, false, 0, null );
     }
+
+	protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean checkBindings, int expectedProblemBindings ) throws ParserException {
+    	return parse(code, lang, false, true, checkBindings, expectedProblemBindings, null );
+    }
+	
+	protected IASTTranslationUnit parse(String code, ParserLanguage lang, String[] problems) throws ParserException {
+    	return parse(code, lang, false, true, true, problems.length, problems );
+	}
+
     
-    private IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings ) throws ParserException {
+    private IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems, 
+    		boolean checkBindings, int expectedProblemBindings, String[] problems ) throws ParserException {
 		// TODO beef this up with tests... i.e. run once with \n, and then run again with \r\n replacing \n ... etc
 		// TODO another example might be to replace all characters with corresponding trigraph/digraph tests...
 		
 		CodeReader codeReader = new CodeReader(code.toCharArray());
-		return parse(codeReader, lang, useGNUExtensions, expectNoProblems, checkBindings, expectedProblemBindings);
+		return parse(codeReader, lang, useGNUExtensions, expectNoProblems, checkBindings, expectedProblemBindings, problems);
     }
 	
 //	private IASTTranslationUnit parse( IFile filename, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems ) throws ParserException {
@@ -98,14 +101,10 @@ public class AST2SpecBaseTest extends TestCase {
 //		return parse(codeReader, lang, useGNUExtensions, expectNoProblems);
 //    }
 	
-	private IASTTranslationUnit parse(CodeReader codeReader, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings) throws ParserException {
+	private IASTTranslationUnit parse(CodeReader codeReader, ParserLanguage lang, boolean useGNUExtensions, 
+			boolean expectNoProblems, boolean checkBindings, int expectedProblemBindings, String[] problems) throws ParserException {
         ScannerInfo scannerInfo = new ScannerInfo();
-        IScannerExtensionConfiguration configuration = null;
-        if( lang == ParserLanguage.C )
-            configuration = new GCCScannerExtensionConfiguration();
-        else
-            configuration = new GPPScannerExtensionConfiguration();
-        IScanner scanner = new DOMScanner( codeReader, scannerInfo, ParserMode.COMPLETE_PARSE, lang, NULL_LOG, configuration, FileCodeReaderFactory.getInstance() );
+        IScanner scanner= AST2BaseTest.createScanner(codeReader, lang, ParserMode.COMPLETE_PARSE, scannerInfo, false);
         
         ISourceCodeParser parser2 = null;
         if( lang == ParserLanguage.CPP )
@@ -136,90 +135,74 @@ public class AST2SpecBaseTest extends TestCase {
 		
 		// resolve all bindings
 		if (checkBindings) {
-			if ( lang == ParserLanguage.CPP ) {
-				CPPNameResolver res = new CPPNameResolver();
-		        tu.accept( res );
-				if (res.numProblemBindings != expectedProblemBindings )
-					throw new ParserException("Expected " + expectedProblemBindings + " problems, encountered " + res.numProblemBindings ); //$NON-NLS-1$ //$NON-NLS-2$
-			} else if (lang == ParserLanguage.C ) {
-				CNameResolver res = new CNameResolver();
-		        tu.accept( res );
-				if (res.numProblemBindings != expectedProblemBindings )
-					throw new ParserException("Expected " + expectedProblemBindings + " problems, encountered " + res.numProblemBindings ); //$NON-NLS-1$ //$NON-NLS-2$
+			NameResolver res = new NameResolver();
+	        tu.accept( res );
+			if (res.problemBindings.size() != expectedProblemBindings )
+				throw new ParserException("Expected " + expectedProblemBindings + " problems, encountered " + res.problemBindings.size() ); 
+			if (problems != null) {
+				for (int i = 0; i < problems.length; i++) {
+					assertEquals(problems[i], res.problemBindings.get(i));
+				}
 			}
 		}
 
         if( parser2.encounteredError() && expectNoProblems )
-            throw new ParserException( "FAILURE"); //$NON-NLS-1$
+            throw new ParserException( "FAILURE"); 
          
         if( lang == ParserLanguage.C && expectNoProblems )
         {
 			if (CVisitor.getProblems(tu).length != 0) {
-				throw new ParserException (" CVisitor has AST Problems " ); //$NON-NLS-1$
+				throw new ParserException (" CVisitor has AST Problems " ); 
 			}
 			if (tu.getPreprocessorProblems().length != 0) {
-				throw new ParserException (" C TranslationUnit has Preprocessor Problems " ); //$NON-NLS-1$
+				throw new ParserException (" C TranslationUnit has Preprocessor Problems " ); 
 			}
         }
         else if ( lang == ParserLanguage.CPP && expectNoProblems )
         {
 			if (CPPVisitor.getProblems(tu).length != 0) {
-				throw new ParserException (" CPPVisitor has AST Problems " ); //$NON-NLS-1$
+				throw new ParserException (" CPPVisitor has AST Problems " ); 
 			}
 			if (tu.getPreprocessorProblems().length != 0) {
-				throw new ParserException (" CPP TranslationUnit has Preprocessor Problems " ); //$NON-NLS-1$
+				throw new ParserException (" CPP TranslationUnit has Preprocessor Problems " ); 
 			}
         }
         
         return tu;
 	}
 	
-	static protected class CNameResolver extends CASTVisitor {
-		{
-			shouldVisitNames = true;
-		}
-		public int numProblemBindings=0;
-		public int numNullBindings=0;
-		public List nameList = new ArrayList();
-		public int visit( IASTName name ){
-			nameList.add( name );
-			IBinding binding = name.resolveBinding();
-			if (binding instanceof IProblemBinding)
-				numProblemBindings++;
-			if (binding == null)
-				numNullBindings++;
-			return PROCESS_CONTINUE;
-		}
-		public IASTName getName( int idx ){
-			if( idx < 0 || idx >= nameList.size() )
-				return null;
-			return (IASTName) nameList.get( idx );
-		}
-		public int size() { return nameList.size(); } 
-	}
 	
-	static protected class CPPNameResolver extends CPPASTVisitor {
+	
+	static protected class NameResolver extends ASTVisitor {
 		{
 			shouldVisitNames = true;
 		}
-		public int numProblemBindings=0;
-		public int numNullBindings=0;
-		public List nameList = new ArrayList();
-		public int visit( IASTName name ){
-			nameList.add( name );
+		
+		public List<IASTName> nameList = new ArrayList<IASTName>();
+		public List<String> problemBindings = new ArrayList<String>();
+		public int numNullBindings = 0;
+		
+		
+		@Override
+		public int visit(IASTName name) {
+			nameList.add(name);
 			IBinding binding = name.resolveBinding();
 			if (binding instanceof IProblemBinding)
-				numProblemBindings++;
+				problemBindings.add(name.toString());
 			if (binding == null)
 				numNullBindings++;
 			return PROCESS_CONTINUE;
 		}
-		public IASTName getName( int idx ){
-			if( idx < 0 || idx >= nameList.size() )
+		
+		public IASTName getName(int idx) {
+			if(idx < 0 || idx >= nameList.size())
 				return null;
-			return (IASTName) nameList.get( idx );
+			return nameList.get(idx);
 		}
-		public int size() { return nameList.size(); } 
+		
+		public int size() { 
+			return nameList.size(); 
+		}
 	}
 	
 }

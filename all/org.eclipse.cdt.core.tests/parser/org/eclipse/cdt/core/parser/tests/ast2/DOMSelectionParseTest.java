@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2005 IBM Corporation and others.
+ * Copyright (c) 2002, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM Rational Software - Initial API and implementation
+ *    IBM Rational Software - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.tests.ast2;
 
@@ -14,6 +15,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 
 import org.eclipse.cdt.core.dom.IName;
+import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
@@ -96,9 +98,9 @@ public class DOMSelectionParseTest extends DOMSelectionParseBaseTest {
 	
 	public void testBaseCase_FunctionDeclaration() throws Exception
 	{
-		String code = "int x(); x( );"; //$NON-NLS-1$
-		int offset1 = code.indexOf( "x()" ); //$NON-NLS-1$
-		int offset2 = code.indexOf( "()"); //$NON-NLS-1$
+		String code = "int x(); void test() {x( );}"; //$NON-NLS-1$
+		int offset1 = code.indexOf( "x( )" ); //$NON-NLS-1$
+		int offset2 = code.indexOf( "( )"); //$NON-NLS-1$
 		IASTNode node = parse( code, offset1, offset2 );
 		assertTrue( node instanceof IASTName );
 		assertTrue( ((IASTName)node).resolveBinding() instanceof IFunction );
@@ -1531,8 +1533,7 @@ public class DOMSelectionParseTest extends DOMSelectionParseBaseTest {
         decls = getDeclarationOffTU((IASTName)node);
         assertEquals(decls.length, 1);
         assertEquals( decls[0].toString(), "test" ); //$NON-NLS-1$
-        assertEquals( ((ASTNode)decls[0]).getOffset(), 132);
-        assertEquals( ((ASTNode)decls[0]).getLength(), 4);
+        assertLocation(code, "test:", 4, decls[0]);
     }   
 
     public void testBugMethodDef() throws Exception {
@@ -1598,7 +1599,6 @@ public class DOMSelectionParseTest extends DOMSelectionParseBaseTest {
 	
     public void testBug86698B() throws Exception {
         Writer writer = new StringWriter();
-        writer.write("void foo() {\n"); //$NON-NLS-1$
 		writer.write("int f(int);\n"); //$NON-NLS-1$
 		writer.write("class C {\n"); //$NON-NLS-1$
 		writer.write("int i;\n"); //$NON-NLS-1$
@@ -1617,7 +1617,6 @@ public class DOMSelectionParseTest extends DOMSelectionParseBaseTest {
 		writer.write("//		 handles exceptions thrown from the ctorinitializer\n"); //$NON-NLS-1$
 		writer.write("//		 and from the constructor function body\n"); //$NON-NLS-1$
 		writer.write("}\n"); //$NON-NLS-1$
-		writer.write("}\n"); //$NON-NLS-1$
 		
 		String code = writer.toString();
             
@@ -1630,7 +1629,7 @@ public class DOMSelectionParseTest extends DOMSelectionParseBaseTest {
         IName[] decls = getDeclarationOffTU((IASTName)node);
         assertEquals(decls.length, 1);
         assertEquals( decls[0].toString(), "i" ); //$NON-NLS-1$
-        assertEquals( ((ASTNode)decls[0]).getOffset(), 39);
+        assertEquals( code.indexOf("int i") + 4, ((ASTNode)decls[0]).getOffset());
         assertEquals( ((ASTNode)decls[0]).getLength(), 1);
     }   
 
@@ -1694,7 +1693,7 @@ public class DOMSelectionParseTest extends DOMSelectionParseBaseTest {
         buffer.append("char c; // selection on this fails because offset for \n"); //$NON-NLS-1$
         buffer.append("_END_STD_C\n"); //$NON-NLS-1$
         buffer.append("char foo() {\n"); //$NON-NLS-1$
-        buffer.append("return c;   \n"); //$NON-NLS-1$
+        buffer.append("return c; // ref   \n"); //$NON-NLS-1$
         buffer.append("}\n"); //$NON-NLS-1$            
         
         String code = buffer.toString();
@@ -1707,8 +1706,7 @@ public class DOMSelectionParseTest extends DOMSelectionParseBaseTest {
         IName[] decls = getDeclarationOffTU((IASTName)node);
         assertEquals(decls.length, 1);
         assertEquals( decls[0].toString(), "c" ); //$NON-NLS-1$
-        assertEquals( ((ASTNode)decls[0]).getOffset(), 86);
-        assertEquals( ((ASTNode)decls[0]).getLength(), 1);
+        assertLocation(code, "c;", 1, decls[0]);
         
         index = code.indexOf("char c"); //$NON-NLS-1$
         node = parse( code, index + 5, index + 6, true );
@@ -1718,11 +1716,17 @@ public class DOMSelectionParseTest extends DOMSelectionParseBaseTest {
         IName[] refs = getReferencesOffTU((IASTName)node);
         assertEquals(refs.length, 1);
         assertEquals( refs[0].toString(), "c" ); //$NON-NLS-1$
-        assertEquals( ((ASTNode)refs[0]).getOffset(), 168);
-        assertEquals( ((ASTNode)decls[0]).getLength(), 1);
+        assertLocation(code, "c; // ref", 1, refs[0]);
     }
     
-    public void testBug92632() throws Exception
+    private void assertLocation(String code, String occur, int length, IName name) {
+    	int offset= code.indexOf(occur);
+    	final IASTFileLocation loc= name.getFileLocation();
+    	assertEquals(offset, loc.getNodeOffset());
+    	assertEquals(length, loc.getNodeLength());
+	}
+
+	public void testBug92632() throws Exception
     {
         StringBuffer buffer = new StringBuffer();
         buffer.append("namespace N{ \n"); //$NON-NLS-1$

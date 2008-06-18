@@ -1,13 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
- * Markus Schorn (Wind River Systems)
+ *    IBM - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.tests.ast2;
 
@@ -55,7 +55,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.CPPASTVisitor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPDelegate;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMember;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
@@ -63,15 +62,12 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPReferenceType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPVariable;
-import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.ISourceCodeParser;
 import org.eclipse.cdt.core.dom.parser.c.ANSICParserExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.c.GCCParserExtensionConfiguration;
-import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.c.ICParserExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.cpp.ANSICPPParserExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.cpp.GPPParserExtensionConfiguration;
-import org.eclipse.cdt.core.dom.parser.cpp.GPPScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.cpp.ICPPParserExtensionConfiguration;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IScanner;
@@ -82,11 +78,9 @@ import org.eclipse.cdt.core.parser.ScannerInfo;
 import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.c.GNUCSourceParser;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.parser.ParserException;
-import org.eclipse.cdt.internal.core.parser.scanner2.DOMScanner;
-import org.eclipse.cdt.internal.core.parser.scanner2.FileCodeReaderFactory;
 import org.eclipse.core.runtime.Platform;
 
 /**
@@ -111,7 +105,8 @@ public class CompleteParser2Tests extends BaseTestCase {
             shouldVisitNames = true;
         }
         public List nameList = new ArrayList();
-        public int visit( IASTName name ){
+        @Override
+		public int visit( IASTName name ){
             nameList.add( name );
             return PROCESS_CONTINUE;
         }
@@ -127,7 +122,8 @@ public class CompleteParser2Tests extends BaseTestCase {
             shouldVisitNames = true;
         }
         public List nameList = new ArrayList();
-        public int visit( IASTName name ){
+        @Override
+		public int visit( IASTName name ){
             nameList.add( name );
             return PROCESS_CONTINUE;
         }
@@ -183,13 +179,8 @@ public class CompleteParser2Tests extends BaseTestCase {
         CodeReader codeReader = new CodeReader(code
                 .toCharArray());
         ScannerInfo scannerInfo = new ScannerInfo();
-        IScannerExtensionConfiguration configuration = null;
-        if( lang == ParserLanguage.C )
-            configuration = new GCCScannerExtensionConfiguration();
-        else
-            configuration = new GPPScannerExtensionConfiguration();
         ISourceCodeParser parser2 = null;
-        IScanner scanner = new DOMScanner( codeReader, scannerInfo, ParserMode.COMPLETE_PARSE, lang, NULL_LOG, configuration, FileCodeReaderFactory.getInstance() );
+        IScanner scanner= AST2BaseTest.createScanner(codeReader, lang, ParserMode.COMPLETE_PARSE, scannerInfo, false);
         if (lang == ParserLanguage.CPP) {
             ICPPParserExtensionConfiguration config = null;
             if (gcc)
@@ -424,10 +415,10 @@ public class CompleteParser2Tests extends BaseTestCase {
  		assertInstances( col, C, 2 );
  		assertInstances( col, y, 1 );
  		
- 		ICPPDelegate [] ds = using_x.getDelegates();
- 		assertSame( ds[0].getBinding(), x );
- 		assertSame( using_C.getDelegates()[0].getBinding(), C );
- 		assertSame( using_y.getDelegates()[0].getBinding(), y );
+ 		IBinding [] ds = using_x.getDelegates();
+ 		assertSame( ds[0], x );
+ 		assertSame( using_C.getDelegates()[0], C );
+ 		assertSame( using_y.getDelegates()[0], y );
 	}
 	
 	public void testEnumerations() throws Exception
@@ -546,8 +537,8 @@ public class CompleteParser2Tests extends BaseTestCase {
  		assertInstances( col, A, 2 );
  		assertInstances( col, bar, 1 );
  		
- 		assertSame( using_foo.getDelegates()[0].getBinding(), foo );
- 		assertSame( using_bar.getDelegates()[0].getBinding(), bar );
+ 		assertSame( using_foo.getDelegates()[0], foo );
+ 		assertSame( using_bar.getDelegates()[0], bar );
 	}
 	
 	public void testLinkageSpec() throws Exception
@@ -719,6 +710,45 @@ public class CompleteParser2Tests extends BaseTestCase {
 		parse( "asm ( \"blah blah blah\" );" ); //$NON-NLS-1$
 	}
 
+	
+	/** 
+	 *  Tests GNU extensions to asm
+	 *  e.g. asm volatile ("stuff");
+	 *       asm ("addl %%ebx,%%eax" : "=a"(foo) : "a"(foo),"b"(bar) ); 
+	 */
+	public void testGNUASMExtension() throws Exception
+	{
+		// volatile keyword
+		parse( "asm volatile( \"blah blah blah\" );", true, ParserLanguage.C, true ); //$NON-NLS-1$
+		parse( "asm volatile( \"blah blah blah\" );", true, ParserLanguage.CPP, true ); //$NON-NLS-1$
+		
+		// Use of operands
+		parse( "asm (\"addl  %%ebx,%%eax\" : \"=a\"(foo) :\"a\"(foo), \"b\"(bar) );", true, ParserLanguage.C, true );//$NON-NLS-1$
+		parse( "asm (\"addl  %%ebx,%%eax\" : \"=a\"(foo) :\"a\"(foo), \"b\"(bar) );", true, ParserLanguage.CPP, true );//$NON-NLS-1$
+		
+		// Invalid use of operands
+		parse( "asm (\"addl  %%ebx,%%eax\"  \"=a\"(foo) :\"a\"(foo) : \"b\"(bar) );", false, ParserLanguage.C, true );//$NON-NLS-1$
+		parse( "asm (\"addl  %%ebx,%%eax\"  \"=a\"(foo) :\"a\"(foo) : \"b\"(bar) );", false, ParserLanguage.CPP, true );//$NON-NLS-1$
+
+		// Code from bug 145389.
+		parse("#define mb()  __asm__ __volatile__ (\"sync\" : : : \"memory\")\r\n" + 
+				"\r\n" + 
+				"int main(int argc, char **argv) {\r\n" + 
+				"        mb();\r\n" + 
+				"}");
+		// Code from bug 117001
+		parse("static inline long\r\n" + 
+				"div_ll_X_l_rem(long long divs, long div, long *rem)\r\n" + 
+				"{\r\n" + 
+				"        long dum2;\r\n" + 
+				"      __asm__(\"divl %2\":\"=a\"(dum2), \"=d\"(*rem) // syntax error indicated at \":\"\r\n" + 
+				"      : \"rm\"(div), \"A\"(divs));\r\n" + 
+				"\r\n" + 
+				"        return dum2;\r\n" + 
+				"\r\n" + 
+				"}");
+	}
+
 	public void testOverride() throws Exception
 	{
 		IASTTranslationUnit tu = parse( "void foo();\n void foo( int );\n"); //$NON-NLS-1$
@@ -824,9 +854,8 @@ public class CompleteParser2Tests extends BaseTestCase {
  		assertInstances( col, A, 2 );
 	}
 	 
-	public void testNewExpressions() throws Exception
-	{
-		IASTTranslationUnit tu = parse( "typedef int A; int B; int C; int D; int P; int*p = new  (P) (A)[B][C][D];" ); //$NON-NLS-1$
+	public void testNewExpressions() throws Exception {
+		IASTTranslationUnit tu = parse( "typedef int A; int B; int C; int D; int P; int*p = new  (P) (A[B][C][D]);" ); //$NON-NLS-1$
 		CPPNameCollector col = new CPPNameCollector();
  		tu.accept( col );
  		
@@ -2206,11 +2235,10 @@ public class CompleteParser2Tests extends BaseTestCase {
 		writer.write( "int func3 (void) __attribute__((id,id (3)));\n" ); //$NON-NLS-1$
 		writer.write( "int func4 (void) __attribute__((id,id (1+2)));\n" ); //$NON-NLS-1$
 		writer.write( "void (****f1)(void) __attribute__((noreturn));\n" ); //$NON-NLS-1$
-/* not yet supported by the GCC compiler:	
- * 	    writer.write( "void (__attribute__((noreturn)) ****f2) (void);\n" ); //$NON-NLS-1$
- *		writer.write( "char *__attribute__((aligned(8))) *f3;\n" ); //$NON-NLS-1$
- *		writer.write( "char * __attribute__((aligned(8))) * f3;\n" ); //$NON-NLS-1$
-*/		writer.write( "void fatal1 () __attribute__ ((noreturn));\n" ); //$NON-NLS-1$
+  	    writer.write( "void (__attribute__((noreturn)) ****f2) (void);\n" ); //$NON-NLS-1$
+ 		writer.write( "char *__attribute__((aligned(8))) *f3;\n" ); //$NON-NLS-1$
+ 		writer.write( "char * __attribute__((aligned(8))) * f3;\n" ); //$NON-NLS-1$
+		writer.write( "void fatal1 () __attribute__ ((noreturn));\n" ); //$NON-NLS-1$
 		writer.write( "int square1 (int) __attribute__ ((pure));\n" ); //$NON-NLS-1$
 		writer.write( "extern int\n" ); //$NON-NLS-1$
 		writer.write( "my_printf1 (void *my_object, const char *my_format, ...)\n" ); //$NON-NLS-1$

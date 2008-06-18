@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,35 +7,44 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
+ *     Andrew Ferguson (Symbian)
  *******************************************************************************/
-
-/*
- * Created on Nov 22, 2004
- */
 package org.eclipse.cdt.core.parser.tests.ast2;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+
+import junit.framework.AssertionFailedError;
 
 import org.eclipse.cdt.core.dom.ast.ASTSignatureUtil;
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
+import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
+import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTConditionalExpression;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTExpressionStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.ICompositeType;
+import org.eclipse.cdt.core.dom.ast.IField;
 import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
@@ -55,20 +64,21 @@ import org.eclipse.cdt.core.dom.parser.cpp.ICPPParserExtensionConfiguration;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.IParserLogService;
 import org.eclipse.cdt.core.parser.IScanner;
+import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.NullLogService;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.ParserMode;
 import org.eclipse.cdt.core.parser.ScannerInfo;
+import org.eclipse.cdt.core.parser.tests.scanner.FileCodeReaderFactory;
 import org.eclipse.cdt.core.testplugin.CTestPlugin;
 import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
 import org.eclipse.cdt.core.testplugin.util.TestSourceReader;
 import org.eclipse.cdt.internal.core.dom.parser.c.CVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.c.GNUCSourceParser;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPVisitor;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 import org.eclipse.cdt.internal.core.parser.ParserException;
-import org.eclipse.cdt.internal.core.parser.scanner2.DOMScanner;
-import org.eclipse.cdt.internal.core.parser.scanner2.FileCodeReaderFactory;
+import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
 
 /**
  * @author aniefer
@@ -103,17 +113,8 @@ public class AST2BaseTest extends BaseTestCase {
     }
     
     protected IASTTranslationUnit parse( String code, ParserLanguage lang, boolean useGNUExtensions, boolean expectNoProblems , boolean parseComments) throws ParserException {
-        CodeReader codeReader = new CodeReader(code
-                .toCharArray());
-        ScannerInfo scannerInfo = new ScannerInfo();
-        IScannerExtensionConfiguration configuration = null;
-        if( lang == ParserLanguage.C )
-            configuration = new GCCScannerExtensionConfiguration();
-        else
-            configuration = new GPPScannerExtensionConfiguration();
-        IScanner scanner = new DOMScanner( codeReader, scannerInfo, ParserMode.COMPLETE_PARSE, lang, NULL_LOG, configuration, FileCodeReaderFactory.getInstance() );
-        scanner.setScanComments(parseComments);
-        
+        IScanner scanner = createScanner(new CodeReader(code.toCharArray()), lang, ParserMode.COMPLETE_PARSE, 
+        		new ScannerInfo(), parseComments);
         ISourceCodeParser parser2 = null;
         if( lang == ParserLanguage.CPP )
         {
@@ -157,6 +158,19 @@ public class AST2BaseTest extends BaseTestCase {
         
         return tu;
     }
+
+	public static IScanner createScanner(CodeReader codeReader, ParserLanguage lang, ParserMode mode,
+			IScannerInfo scannerInfo, boolean parseComments) {
+		IScannerExtensionConfiguration configuration = null;
+        if( lang == ParserLanguage.C )
+            configuration = new GCCScannerExtensionConfiguration();
+        else
+            configuration = new GPPScannerExtensionConfiguration();
+        IScanner scanner;
+        scanner= new CPreprocessor(codeReader, scannerInfo, lang, NULL_LOG, configuration, 
+        		FileCodeReaderFactory.getInstance());
+		return scanner;
+	}
 
     /**
      * @param string
@@ -252,7 +266,8 @@ public class AST2BaseTest extends BaseTestCase {
             shouldVisitNames = true;
         }
         public List nameList = new ArrayList();
-        public int visit( IASTName name ){
+        @Override
+		public int visit( IASTName name ){
             nameList.add( name );
             return PROCESS_CONTINUE;
         }
@@ -280,17 +295,26 @@ public class AST2BaseTest extends BaseTestCase {
         {
             shouldVisitNames = true;
         }
-        public List nameList = new ArrayList();
-        public int visit( IASTName name ){
-            nameList.add( name );
+        public List<IASTName> nameList = new ArrayList<IASTName>();
+        @Override
+		public int visit(IASTName name) {
+            nameList.add(name);
             return PROCESS_CONTINUE;
         }
-        public IASTName getName( int idx ){
-            if( idx < 0 || idx >= nameList.size() )
+        public IASTName getName(int idx) {
+            if (idx < 0 || idx >= nameList.size())
                 return null;
-            return (IASTName) nameList.get( idx );
+            return nameList.get(idx);
         }
-        public int size() { return nameList.size(); } 
+        public int size() { return nameList.size(); }
+        
+        public void dump() {
+        	for(int i=0; i<size(); i++) {
+        		IASTName name= getName(i);
+        		String parent= name.getParent() != null ? name.getParent().getRawSignature() : "";
+        		System.out.println(i+": #"+name.getRawSignature()+"# "+parent);
+        	}
+        }
     }
 
     protected void assertInstances( CPPNameCollector collector, IBinding binding, int num ) throws Exception {
@@ -347,6 +371,7 @@ public class AST2BaseTest extends BaseTestCase {
 		public int numProblemBindings=0;
 		public int numNullBindings=0;
 		public List nameList = new ArrayList();
+		@Override
 		public int visit( IASTName name ){
 			nameList.add( name );
 			IBinding binding = name.resolveBinding();
@@ -371,6 +396,7 @@ public class AST2BaseTest extends BaseTestCase {
 		public int numProblemBindings=0;
 		public int numNullBindings=0;
 		public List nameList = new ArrayList();
+		@Override
 		public int visit( IASTName name ){
 			nameList.add( name );
 			IBinding binding = name.resolveBinding();
@@ -388,8 +414,167 @@ public class AST2BaseTest extends BaseTestCase {
 		public int size() { return nameList.size(); } 
 	}
 	
+	protected String getAboveComment() throws IOException {
+		return getContents(1)[0].toString();
+	}
+	
 	protected StringBuffer[] getContents(int sections) throws IOException {
-		return TestSourceReader.getContentsForTest(
-				CTestPlugin.getDefault().getBundle(), "parser", getClass(), getName(), sections);
+		CTestPlugin plugin = CTestPlugin.getDefault();
+		if(plugin == null)
+			throw new AssertionFailedError("This test must be run as a JUnit plugin test");
+		return TestSourceReader.getContentsForTest(plugin.getBundle(), "parser", getClass(), getName(), sections);
+	}
+	
+	protected static <T> T assertInstance(Object o, Class<T> clazz, Class... cs) {
+		assertNotNull("Expected object of "+clazz.getName()+" but got a null value", o);
+		assertTrue("Expected "+clazz.getName()+" but got "+o.getClass().getName(), clazz.isInstance(o));
+		for(Class c : cs) {
+			assertNotNull("Expected object of "+c.getName()+" but got a null value", o);
+			assertTrue("Expected "+c.getName()+" but got "+o.getClass().getName(), c.isInstance(o));
+		}
+		return clazz.cast(o);
+	}
+	
+	protected static void assertField(IBinding binding, String fieldName, String ownerName) throws DOMException {
+    	assertInstance(binding, IField.class);
+    	assertEquals(fieldName, binding.getName());
+    	ICompositeType struct = ((IField) binding).getCompositeTypeOwner();
+    	assertEquals(ownerName, struct.getName());
+    }
+	
+	protected class BindingAssertionHelper {
+		protected IASTTranslationUnit tu;
+		protected String contents;
+		protected boolean isCPP;
+    	
+    	public BindingAssertionHelper(String contents, boolean isCPP) throws ParserException {
+    		this.contents= contents;
+    		this.isCPP= isCPP;
+    		this.tu= parse(contents, isCPP ? ParserLanguage.CPP : ParserLanguage.C, true, false );
+		}
+    	
+    	public IBinding assertProblem(String section, int len) {
+    		IBinding binding= binding(section, len);
+    		assertTrue("Non-ProblemBinding for name: " + section.substring(0, len),
+    				binding instanceof IProblemBinding);
+    		return binding;
+    	}
+    	
+    	public IBinding assertNonProblem(String section, int len) {
+    		IBinding binding= binding(section, len);
+    		if(binding instanceof IProblemBinding) {
+    			IProblemBinding problem= (IProblemBinding) binding;
+    			fail("ProblemBinding for name: " + section.substring(0, len) + " (" + renderProblemID(problem.getID())+")"); 
+    		}
+    		if(binding == null) {
+    			fail("Null binding resolved for name: " + section.substring(0, len));
+    		}
+    		return binding;
+    	}
+    	
+    	private String renderProblemID(int i) {
+    		try {
+    			for(Field field : IProblemBinding.class.getDeclaredFields()) {
+    				if(field.getName().startsWith("SEMANTIC_")) {
+    					if(field.getType() == int.class) {
+    						Integer ci= (Integer) field.get(null);
+    						if(ci.intValue() == i) {
+    							return field.getName();
+    						}
+    					}
+    				}
+    			}
+    		} catch(IllegalAccessException iae) {
+    			throw new RuntimeException(iae);
+    		}
+    		return "Unknown problem ID";
+    	}
+    	
+    	public <T extends IBinding> T assertNonProblem(String section, int len, Class<T> type, Class... cs) {
+    		IBinding binding= binding(section, len);
+    		assertTrue("ProblemBinding for name: " + section.substring(0, len),
+    				!(binding instanceof IProblemBinding));
+    		assertInstance(binding, type);
+    		for (Class c : cs) {
+    			assertInstance(binding, c);
+    		}
+    		return type.cast(binding);
+    	}
+    	
+    	private IBinding binding(String section, int len) {
+    		final int offset = contents.indexOf(section);
+    		final String selection = section.substring(0, len);
+			IASTName name= tu.getNodeSelector(null).findName(offset, len);
+			assertNotNull("did not find \""+selection+"\"", name);
+    		assertEquals(selection, name.getRawSignature());
+    			
+    		IBinding binding = name.resolveBinding();
+    		assertNotNull("No binding for "+name.getRawSignature(), binding);
+    		
+    		return name.resolveBinding();
+    	}
+    }
+
+	final protected IASTTranslationUnit parseAndCheckBindings( String code, ParserLanguage lang ) throws Exception {
+		return parseAndCheckBindings(code, lang, false);
+	}
+
+	final protected IASTTranslationUnit parseAndCheckBindings( String code, ParserLanguage lang, boolean useGnuExtensions) throws Exception {
+		IASTTranslationUnit tu = parse( code, lang, useGnuExtensions ); 
+		CNameCollector col = new CNameCollector();
+		tu.accept(col);
+		assertNoProblemBindings( col );
+		return tu;
+	}
+
+	final protected void assertNoProblemBindings(CNameCollector col) {
+		Iterator i = col.nameList.iterator();
+		while (i.hasNext()) {
+			IASTName n = (IASTName) i.next();
+			assertFalse(n.resolveBinding() instanceof IProblemBinding);
+		}
+	}
+
+	final protected void assertProblemBindings(CNameCollector col, int count) {
+		Iterator i = col.nameList.iterator();
+		int sum = 0;
+		while (i.hasNext()) {
+			IASTName n = (IASTName) i.next();
+			if (n.getBinding() instanceof IProblemBinding)
+				++sum;
+		}
+		assertEquals(count, sum);
+	}
+
+	final protected <T extends IASTDeclaration> T getDeclaration(IASTTranslationUnit tu, int i_decl) {
+		Class<T> tclass;
+		IASTDeclaration[] decls= tu.getDeclarations();
+		assertTrue(decls.length > i_decl);
+		return (T) decls[i_decl];
+	}
+
+	final protected <T extends IASTDeclaration> T getDeclaration(IASTCompositeTypeSpecifier ct, int i_decl) {
+		Class<T> tclass;
+		IASTDeclaration[] decls= ct.getMembers();
+		assertTrue(decls.length > i_decl);
+		return (T) decls[i_decl];
+	}
+
+	final protected <T extends IASTCompositeTypeSpecifier> T getCompositeType(IASTTranslationUnit tu, int i_decl) {
+		IASTSimpleDeclaration sdecl= getDeclaration(tu, i_decl);
+		return (T) sdecl.getDeclSpecifier();
+	}
+
+	final protected <T extends IASTStatement> T getStatement(IASTFunctionDefinition fdef, int i_stmt) {
+		IASTCompoundStatement compound= (IASTCompoundStatement) fdef.getBody();
+		IASTStatement[] stmts= compound.getStatements();
+		assertTrue(stmts.length > i_stmt);
+		return (T) stmts[i_stmt];
+	}
+
+	final protected <T extends IASTExpression> T getExpressionOfStatement(IASTFunctionDefinition fdef, int i) {
+		IASTStatement stmt= getStatement(fdef, i);
+		assertInstance(stmt, IASTExpressionStatement.class);
+		return (T) ((IASTExpressionStatement) stmt).getExpression();
 	}
 }

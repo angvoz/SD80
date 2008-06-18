@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,11 +7,8 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
-
-/*
- * Created on Sep 9, 2004
- */
 package org.eclipse.cdt.ui.tests.text.contentassist;
 
 import java.io.ByteArrayInputStream;
@@ -58,11 +55,12 @@ public class ContentAssistTests extends BaseUITestCase {
     static IProject 				project;
     static boolean 					disabledHelpContributions = false;
     
-    public void setUp() {
+    @Override
+	public void setUp() {
 		//(CCorePlugin.getDefault().getCoreModel().getIndexManager()).reset();
     	
     	if (project == null) {
-    		ICProject cPrj; 
+    		ICProject cPrj;
     		try {
     			cPrj = CProjectHelper.createCCProject("ContentAssistTestProject", "bin", IPDOMManager.ID_FAST_INDEXER); //$NON-NLS-1$ //$NON-NLS-2$
 
@@ -95,9 +93,9 @@ public class ContentAssistTests extends BaseUITestCase {
 			public ITranslationUnit getTranslationUnit(){return null;}
 			}
 		);
-		for( int i = 0; i < helpBooks.length; i++ ){
-		    if( helpBooks[i] != null )
-		        helpBooks[i].enable( false );
+		for (CHelpBookDescriptor helpBook : helpBooks) {
+		    if( helpBook != null )
+		        helpBook.enable( false );
 		}
     }
     
@@ -108,6 +106,7 @@ public class ContentAssistTests extends BaseUITestCase {
     }
     
     public void cleanupProject() throws Exception {
+        closeAllEditors();
         try{
 	        project.delete( true, false, monitor );
 	        project = null;
@@ -116,30 +115,33 @@ public class ContentAssistTests extends BaseUITestCase {
 	    }
     }
     
-    protected void tearDown() throws Exception {
-        if( project == null || !project.exists() ) 
+    @Override
+	protected void tearDown() throws Exception {
+        if( project == null || !project.exists() )
             return;
         
+        closeAllEditors();
+
         IResource [] members = project.members();
-        for( int i = 0; i < members.length; i++ ){
-            if( members[i].getName().equals( ".project" ) || members[i].getName().equals( ".cdtproject" ) ) //$NON-NLS-1$ //$NON-NLS-2$
+        for (IResource member : members) {
+            if( member.getName().equals( ".project" ) || member.getName().equals( ".cproject" ) ) //$NON-NLS-1$ //$NON-NLS-2$
                 continue;
-            if (members[i].getName().equals(".settings")) 
+            if (member.getName().equals(".settings"))
             	continue;
             try{
-                members[i].delete( false, monitor );
+                member.delete( false, monitor );
             } catch( Throwable e ){
                 /*boo*/
             }
         }
-        project= null;
+
 	}
     
     protected IFile importFile(String fileName, String contents ) throws Exception{
 		//Obtain file handle
 		IFile file = project.getProject().getFile(fileName);
 		
-		InputStream stream = new ByteArrayInputStream( contents.getBytes() ); 
+		InputStream stream = new ByteArrayInputStream( contents.getBytes() );
 		//Create file input stream
 		if( file.exists() )
 		    file.setContents( stream, false, false, monitor );
@@ -175,7 +177,7 @@ public class ContentAssistTests extends BaseUITestCase {
 		return processor.computeCompletionProposals(editor.getViewer(), offset);
     }
     
-    public void testBug69334() throws Exception {
+    public void testBug69334a() throws Exception {
         importFile( "test.h", "class Test{ public : Test( int ); }; \n" );  //$NON-NLS-1$//$NON-NLS-2$
         StringWriter writer = new StringWriter();
         writer.write( "#include \"test.h\"                \n"); //$NON-NLS-1$
@@ -183,6 +185,24 @@ public class ContentAssistTests extends BaseUITestCase {
         writer.write( "int main() {                       \n"); //$NON-NLS-1$
         writer.write( "   int veryLongName = 1;           \n"); //$NON-NLS-1$
         writer.write( "   Test * ptest = new Test( very   \n"); //$NON-NLS-1$
+        
+        String code = writer.toString();
+        IFile cu = importFile( "test.cpp", code ); //$NON-NLS-1$
+        
+        ICompletionProposal [] results = getResults( cu, code.indexOf( "very " ) + 4 ); //$NON-NLS-1$
+        
+        assertEquals( 1, results.length );
+        assertEquals( "veryLongName : int", results[0].getDisplayString() ); //$NON-NLS-1$
+    }
+
+    public void testBug69334b() throws Exception {
+        importFile( "test.h", "class Test{ public : Test( int ); }; \n" );  //$NON-NLS-1$//$NON-NLS-2$
+        StringWriter writer = new StringWriter();
+        writer.write( "#include \"test.h\"                \n"); //$NON-NLS-1$
+        writer.write( "Test::Test( int i ) { return; }    \n"); //$NON-NLS-1$
+        writer.write( "int main() {                       \n"); //$NON-NLS-1$
+        writer.write( "   int veryLongName = 1;           \n"); //$NON-NLS-1$
+        writer.write( "   Test test( very   \n"); //$NON-NLS-1$
         
         String code = writer.toString();
         IFile cu = importFile( "test.cpp", code ); //$NON-NLS-1$
@@ -217,12 +237,15 @@ public class ContentAssistTests extends BaseUITestCase {
         cu = importFile( "strategy.cpp", c2 ); //$NON-NLS-1$
         
         results = getResults( cu, c2.indexOf( "::" ) + 2 ); //$NON-NLS-1$
-        assertEquals( 3, results.length );
+        assertEquals( 4, results.length );
         assertEquals( "CHEAT", results[0].getDisplayString()  ); //$NON-NLS-1$
         assertEquals( "IDIOT", results[1].getDisplayString()  ); //$NON-NLS-1$
         assertEquals( "NORMAL", results[2].getDisplayString()  ); //$NON-NLS-1$
+        // "_Ability" is here due to fix for bug 199598 
+        // Difficult to differentiate between declaration and expression context
+        assertEquals( "_Ability", results[3].getDisplayString()  ); //$NON-NLS-1$
 
-        // in a method definition context, constructors and methods should be proposed 
+        // in a method definition context, constructors and methods should be proposed
         
         c2 = code + "return 0;}\nStrategy::\n"; //$NON-NLS-1$
 
@@ -230,7 +253,7 @@ public class ContentAssistTests extends BaseUITestCase {
         
         results = getResults( cu, c2.indexOf( "::" ) + 2 ); //$NON-NLS-1$
         assertEquals( 2, results.length );
-        assertEquals( "getAbility(void) enum _Ability", results[1].getDisplayString()  ); //$NON-NLS-1$
+        assertEquals( "getAbility(void) : enum _Ability", results[1].getDisplayString()  ); //$NON-NLS-1$
         assertEquals( "Strategy(enum _Ability a)", results[0].getDisplayString()  ); //$NON-NLS-1$
 }
     

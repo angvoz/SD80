@@ -1,17 +1,19 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
+ *    IBM - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
@@ -19,6 +21,7 @@ import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguityParent;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 /**
  * @author jcamelon
@@ -30,56 +33,59 @@ public class CPPASTFunctionDefinition extends CPPASTNode implements
     private IASTFunctionDeclarator declarator;
     private IASTStatement bodyStatement;
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition#getDeclSpecifier()
-     */
-    public IASTDeclSpecifier getDeclSpecifier() {
+    public CPPASTFunctionDefinition() {
+	}
+
+	public CPPASTFunctionDefinition(IASTDeclSpecifier declSpecifier,
+			IASTFunctionDeclarator declarator, IASTStatement bodyStatement) {
+		setDeclSpecifier(declSpecifier);
+		setDeclarator(declarator);
+		setBody(bodyStatement);
+	}
+
+	public IASTDeclSpecifier getDeclSpecifier() {
         return declSpecifier;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition#setDeclSpecifier(org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier)
-     */
     public void setDeclSpecifier(IASTDeclSpecifier declSpec) {
         declSpecifier = declSpec;
+        if (declSpec != null) {
+			declSpec.setParent(this);
+			declSpec.setPropertyInParent(DECL_SPECIFIER);
+		}
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition#getDeclarator()
-     */
     public IASTFunctionDeclarator getDeclarator() {
         return declarator;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition#setDeclarator(org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator)
-     */
     public void setDeclarator(IASTFunctionDeclarator declarator) {
         this.declarator = declarator;
+        if (declarator != null) {
+        	IASTDeclarator outerDtor= CPPVisitor.findOutermostDeclarator(declarator);
+        	outerDtor.setParent(this);
+        	outerDtor.setPropertyInParent(DECLARATOR);
+		}
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition#getBody()
-     */
     public IASTStatement getBody() {
         return bodyStatement;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition#setBody(org.eclipse.cdt.core.dom.ast.IASTStatement)
-     */
     public void setBody(IASTStatement statement) {
         bodyStatement = statement;
+        if (statement != null) {
+			statement.setParent(this);
+			statement.setPropertyInParent(FUNCTION_BODY);
+		} 
     }
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition#getScope()
-	 */
 	public IScope getScope() {
 		return ((ICPPASTFunctionDeclarator)declarator).getFunctionScope();
 	}
 
-    public boolean accept( ASTVisitor action ){
+    @Override
+	public boolean accept( ASTVisitor action ){
         if( action.shouldVisitDeclarations ){
 		    switch( action.visit( this ) ){
 	            case ASTVisitor.PROCESS_ABORT : return false;
@@ -89,7 +95,8 @@ public class CPPASTFunctionDefinition extends CPPASTNode implements
 		}
         
         if( declSpecifier != null ) if( !declSpecifier.accept( action ) ) return false;
-        if( declarator != null ) if( !declarator.accept( action ) ) return false;
+        final IASTDeclarator outerDtor= CPPVisitor.findOutermostDeclarator(declarator);
+        if( outerDtor != null ) if( !outerDtor.accept( action ) ) return false;
         if( bodyStatement != null ) if( !bodyStatement.accept( action ) ) return false;
         
         if( action.shouldVisitDeclarations ){
@@ -110,5 +117,4 @@ public class CPPASTFunctionDefinition extends CPPASTNode implements
             bodyStatement = (IASTStatement) other;
         }
     }
-    
 }

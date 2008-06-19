@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,9 +17,11 @@ package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import org.eclipse.cdt.core.dom.IName;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBlockScope;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 /**
  * @author aniefer
@@ -29,10 +31,16 @@ public class CPPBlockScope extends CPPNamespaceScope implements ICPPBlockScope {
 		super( physicalNode );
 	}
 	
+	@Override
 	public IName getScopeName(){
 	    IASTNode node = getPhysicalNode();
-	    if( node instanceof IASTCompoundStatement && node.getParent() instanceof IASTFunctionDefinition ){
-	        return ((IASTFunctionDefinition)node.getParent()).getDeclarator().getName();
+	    if (node instanceof IASTCompoundStatement) {
+	    	final IASTNode parent= node.getParent();
+	    	if (parent instanceof IASTFunctionDefinition) {
+	    		IASTDeclarator dtor= ((IASTFunctionDefinition)parent).getDeclarator();
+	    		dtor = CPPVisitor.findInnermostDeclarator(dtor);
+				return dtor.getName();
+	    	}
 	    }
 	    return null;
 	}

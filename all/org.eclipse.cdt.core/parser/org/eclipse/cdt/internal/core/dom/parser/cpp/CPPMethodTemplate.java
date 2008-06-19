@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2006 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,9 +9,6 @@
  * IBM - Initial API and implementation
  * Markus Schorn (Wind River Systems)
  *******************************************************************************/
-/*
- * Created on Mar 31, 2005
- */
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import org.eclipse.cdt.core.dom.ast.DOMException;
@@ -25,13 +22,14 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisiblityLabel;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateScope;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.parser.ASTInternal;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 /**
  * @author aniefer
@@ -49,8 +47,8 @@ public class CPPMethodTemplate extends CPPFunctionTemplate implements
 	public IASTDeclaration getPrimaryDeclaration() throws DOMException{
 		//first check if we already know it
 		if( declarations != null ){
-			for( int i = 0; i < declarations.length; i++ ){
-			    IASTNode parent = declarations[i].getParent();
+			for (IASTName declaration : declarations) {
+			    IASTNode parent = declaration.getParent();
 			    while( !(parent instanceof IASTDeclaration) )
 			        parent = parent.getParent();
 
@@ -68,25 +66,25 @@ public class CPPMethodTemplate extends CPPFunctionTemplate implements
 		ICPPClassScope clsScope = (ICPPClassScope) scope;
 		ICPPASTCompositeTypeSpecifier compSpec = (ICPPASTCompositeTypeSpecifier) ASTInternal.getPhysicalNodeOfScope(clsScope);
 		IASTDeclaration [] members = compSpec.getMembers();
-		for( int i = 0; i < members.length; i++ ){
-		    if( members[i] instanceof ICPPASTTemplateDeclaration ){
-		        IASTDeclaration decl = ((ICPPASTTemplateDeclaration)members[i]).getDeclaration();
+		for (IASTDeclaration member : members) {
+		    if( member instanceof ICPPASTTemplateDeclaration ){
+		        IASTDeclaration decl = ((ICPPASTTemplateDeclaration)member).getDeclaration();
 		        if( decl instanceof IASTSimpleDeclaration ){
 					IASTDeclarator [] dtors = ((IASTSimpleDeclaration)decl).getDeclarators();
-					for( int j = 0; j < dtors.length; j++ ){
-						IASTName name = CPPVisitor.getMostNestedDeclarator( dtors[j] ).getName();
+					for (IASTDeclarator dtor : dtors) {
+						IASTName name = CPPVisitor.findInnermostDeclarator(dtor).getName();
 						if( CharArrayUtils.equals( name.toCharArray(), myName ) &&
 							name.resolveBinding() == this )
 						{
-							return members[i];
+							return member;
 						}
 					}
 				} else if( decl instanceof IASTFunctionDefinition ){
-					IASTName name = CPPVisitor.getMostNestedDeclarator( ((IASTFunctionDefinition) decl).getDeclarator() ).getName();
+					IASTName name = CPPVisitor.findInnermostDeclarator(((IASTFunctionDefinition) decl).getDeclarator()).getName();
 					if( CharArrayUtils.equals( name.toCharArray(), myName ) &&
 						name.resolveBinding() == this )
 					{
-						return members[i];
+						return member;
 					}
 				}
 		    }
@@ -98,36 +96,38 @@ public class CPPMethodTemplate extends CPPFunctionTemplate implements
 	public int getVisibility() throws DOMException {
 		IASTDeclaration decl = getPrimaryDeclaration();
 		if( decl == null ){
-			IScope scope = getScope();
-			if( scope instanceof ICPPTemplateScope)
-				scope = scope.getParent();
-			if( scope instanceof ICPPClassScope ){
-				ICPPClassType cls = ((ICPPClassScope)scope).getClassType();
-				if( cls != null )
-					return ( cls.getKey() == ICPPClassType.k_class ) ? ICPPASTVisiblityLabel.v_private : ICPPASTVisiblityLabel.v_public;
+			ICPPClassType cls = getClassOwner();
+			if (cls != null) {
+				return ( cls.getKey() == ICPPClassType.k_class ) ? ICPPASTVisibilityLabel.v_private : ICPPASTVisibilityLabel.v_public;
 			}
-			return ICPPASTVisiblityLabel.v_private;
+			return ICPPASTVisibilityLabel.v_private;
 		}
 		IASTCompositeTypeSpecifier cls = (IASTCompositeTypeSpecifier) decl.getParent();
 		IASTDeclaration [] members = cls.getMembers();
-		ICPPASTVisiblityLabel vis = null;
-		for( int i = 0; i < members.length; i++ ){
-			if( members[i] instanceof ICPPASTVisiblityLabel )
-				vis = (ICPPASTVisiblityLabel) members[i];
-			else if( members[i] == decl )
+		ICPPASTVisibilityLabel vis = null;
+		for (IASTDeclaration member : members) {
+			if( member instanceof ICPPASTVisibilityLabel )
+				vis = (ICPPASTVisibilityLabel) member;
+			else if( member == decl )
 				break;
 		}
 		if( vis != null ){
 			return vis.getVisibility();
 		} else if( cls.getKey() == ICPPASTCompositeTypeSpecifier.k_class ){
-			return ICPPASTVisiblityLabel.v_private;
+			return ICPPASTVisibilityLabel.v_private;
 		} 
-		return ICPPASTVisiblityLabel.v_public;
+		return ICPPASTVisibilityLabel.v_public;
 	}
 	
 	public ICPPClassType getClassOwner() throws DOMException {
-		ICPPClassScope scope = (ICPPClassScope)getScope();
-		return scope.getClassType();
+		IScope scope= getScope();
+		if (scope instanceof ICPPTemplateScope) {
+			scope= scope.getParent();
+		}
+		if( scope instanceof ICPPClassScope ){
+			return ((ICPPClassScope)scope).getClassType();
+		}
+		return null;
 	}
 
     public boolean isVirtual() {
@@ -135,7 +135,8 @@ public class CPPMethodTemplate extends CPPFunctionTemplate implements
         return false;
     }
 
-    public boolean isInline() throws DOMException {
+    @Override
+	public boolean isInline() throws DOMException {
         IASTDeclaration decl = getPrimaryDeclaration();
         if( decl instanceof ICPPASTTemplateDeclaration && ((ICPPASTTemplateDeclaration)decl).getDeclaration() instanceof IASTFunctionDefinition )
             return true;

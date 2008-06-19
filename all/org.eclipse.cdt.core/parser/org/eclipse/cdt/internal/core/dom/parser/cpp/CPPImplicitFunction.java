@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
+ *    IBM - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -16,9 +17,8 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IFunctionType;
 import org.eclipse.cdt.core.dom.ast.IParameter;
 import org.eclipse.cdt.core.dom.ast.IScope;
-import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 /**
  * The CPPImplicitFunction is used to represent implicit functions that exist on the translation
@@ -28,77 +28,64 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
  * 
  * @author dsteffle
  */
-public class CPPImplicitFunction extends CPPFunction implements ICPPFunction, ICPPInternalBinding {
+public class CPPImplicitFunction extends CPPFunction {
 
 	private IParameter[] parms=null;
 	private IScope scope=null;
-	private IType returnType=null;
     private IFunctionType functionType=null;
 	private boolean takesVarArgs=false;
 	private char[] name=null;
 	
-	public CPPImplicitFunction(char[] name, IScope scope, IType type, IParameter[] parms, boolean takesVarArgs) {
+	public CPPImplicitFunction(char[] name, IScope scope, IFunctionType type, IParameter[] parms, boolean takesVarArgs) {
         super( null );
         this.name=name;
 		this.scope=scope;
-		this.returnType=type;
+		this.functionType= type;
 		this.parms=parms;
 		this.takesVarArgs=takesVarArgs;
 	}
 
-    public IParameter [] getParameters() {
+    @Override
+	public IParameter [] getParameters() {
         return parms;
     }
     
-    public IFunctionType getType() {
-        if( functionType == null ){
-            ICPPASTFunctionDeclarator primary = getPrimaryDeclaration();
-            
-            if( primary != null ){
-                functionType = super.getType();
-            } else {
-                functionType = CPPVisitor.createImplicitFunctionType( returnType, parms );
-            }
-        }
-        
-        return functionType;
+    @Override
+	public IFunctionType getType() {
+    	return functionType;
     }
     
-    private ICPPASTFunctionDeclarator getPrimaryDeclaration() {
-        if (definition != null)
-            return definition;
-        else if (declarations != null && declarations.length > 0)
-            return declarations[0];
-            
-        return null;
-    }
-
-    public String getName() {
+    @Override
+	public String getName() {
         return String.valueOf( name );
     }
 
     /* (non-Javadoc)
      * @see org.eclipse.cdt.core.dom.ast.IBinding#getNameCharArray()
      */
-    public char[] getNameCharArray() {
+    @Override
+	public char[] getNameCharArray() {
         return name;
     }
     /* (non-Javadoc)
      * @see org.eclipse.cdt.core.dom.ast.IBinding#getScope()
      */
-    public IScope getScope() {
+    @Override
+	public IScope getScope() {
         return scope;
     }
     
     /* (non-Javadoc)
      * @see org.eclipse.cdt.core.dom.ast.IFunction#getFunctionScope()
      */
-    public IScope getFunctionScope() {
+    @Override
+	public IScope getFunctionScope() {
         return null;
     }
     
-    public IBinding resolveParameter( IASTParameterDeclaration param ){
-        IASTName aName = param.getDeclarator().getName();
+    @Override
+	public IBinding resolveParameter( IASTParameterDeclaration param ){
+        IASTName aName = CPPVisitor.findInnermostDeclarator(param.getDeclarator()).getName();
         IParameter binding = (IParameter) aName.getBinding();
         if( binding != null )
             return binding;
@@ -117,14 +104,14 @@ public class CPPImplicitFunction extends CPPFunction implements ICPPFunction, IC
         IASTParameterDeclaration temp = null;
         if( definition != null ){
             temp = definition.getParameters()[i];
-            IASTName n = temp.getDeclarator().getName();
+            IASTName n = CPPVisitor.findInnermostDeclarator(temp.getDeclarator()).getName();
             n.setBinding( binding );
             ((CPPParameter)binding).addDeclaration( n );
         }
         if( declarations != null ){
-            for( int j = 0; j < declarations.length; j++ ){
+            for( int j = 0; j < declarations.length && declarations[j] != null; j++ ){
                 temp = declarations[j].getParameters()[i];
-                IASTName n = temp.getDeclarator().getName();
+                IASTName n = CPPVisitor.findInnermostDeclarator(temp.getDeclarator()).getName();
                 n.setBinding( binding );
                 ((CPPParameter)binding).addDeclaration( n );
             }
@@ -132,14 +119,15 @@ public class CPPImplicitFunction extends CPPFunction implements ICPPFunction, IC
         return binding;
     }
    
-    protected void updateParameterBindings( ICPPASTFunctionDeclarator fdtor ){
+    @Override
+	protected void updateParameterBindings( ICPPASTFunctionDeclarator fdtor ){
         if( parms != null ){
             IASTParameterDeclaration [] nps = fdtor.getParameters();
             if( nps.length != parms.length )
                 return;
 
             for( int i = 0; i < nps.length; i++ ){
-                IASTName aName = nps[i].getDeclarator().getName(); 
+                IASTName aName = CPPVisitor.findInnermostDeclarator(nps[i].getDeclarator()).getName(); 
                 aName.setBinding( parms[i] );
 				if( parms[i] instanceof ICPPInternalBinding )
 					((ICPPInternalBinding)parms[i]).addDeclaration( aName );
@@ -147,7 +135,8 @@ public class CPPImplicitFunction extends CPPFunction implements ICPPFunction, IC
         }
     }
 
-    public boolean takesVarArgs() {
+    @Override
+	public boolean takesVarArgs() {
         return takesVarArgs;
     }
 }

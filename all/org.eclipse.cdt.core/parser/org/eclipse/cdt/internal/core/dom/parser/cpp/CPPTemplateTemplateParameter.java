@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,13 +7,13 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
-/*
- * Created on Apr 13, 2005
- */
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
@@ -29,7 +29,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassTemplatePartialSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPDelegate;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPScope;
@@ -38,218 +37,144 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTemplateParameter;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.core.parser.util.ObjectMap;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 /**
  * @author aniefer
  */
 public class CPPTemplateTemplateParameter extends CPPTemplateParameter implements
-		ICPPTemplateTemplateParameter, ICPPClassType, ICPPInternalTemplate, ICPPInternalUnknown {
+		ICPPTemplateTemplateParameter, ICPPClassType, ICPPInternalTemplate, ICPPUnknownBinding {
 
-	private ICPPTemplateParameter [] templateParameters = null;
-	private ObjectMap instances = null;
-	private ICPPScope unknownScope = null;
+	private ICPPTemplateParameter[] templateParameters;
+	private ObjectMap instances;
+	private ICPPScope unknownScope;
 	
 	/**
 	 * @param name
 	 */
 	public CPPTemplateTemplateParameter(IASTName name) {
 		super(name);
-		// TODO Auto-generated constructor stub
 	}
 
 	public ICPPScope getUnknownScope() {
-	    if( unknownScope == null ) {
+	    if (unknownScope == null) {
 	    	IASTName n = null;
 	    	IASTNode[] nodes = getDeclarations();
-	    	if( nodes != null && nodes.length > 0 )
+	    	if (nodes != null && nodes.length > 0)
 	    		n = (IASTName) nodes[0];
-	        unknownScope = new CPPUnknownScope( this, n );
+	        unknownScope = new CPPUnknownScope(this, n);
 	    }
 	    return unknownScope;
 	}
 	
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTemplateParameter#getTemplateParameters()
-	 */
 	public ICPPTemplateParameter[] getTemplateParameters() {
-		if( templateParameters == null ){
+		if (templateParameters == null) {
 			ICPPASTTemplatedTypeTemplateParameter template = (ICPPASTTemplatedTypeTemplateParameter) getPrimaryDeclaration().getParent();
-			ICPPASTTemplateParameter [] params = template.getTemplateParameters();
+			ICPPASTTemplateParameter[] params = template.getTemplateParameters();
 			ICPPTemplateParameter p = null;
-			ICPPTemplateParameter [] result = null;
-			for (int i = 0; i < params.length; i++) {
-				if( params[i] instanceof ICPPASTSimpleTypeTemplateParameter ){
-					p = (ICPPTemplateParameter) ((ICPPASTSimpleTypeTemplateParameter)params[i]).getName().resolveBinding();
-				} else if( params[i] instanceof ICPPASTParameterDeclaration ) {
-					p = (ICPPTemplateParameter) ((ICPPASTParameterDeclaration)params[i]).getDeclarator().getName().resolveBinding();
-				} else if( params[i] instanceof ICPPASTTemplatedTypeTemplateParameter ){
-					p = (ICPPTemplateParameter) ((ICPPASTTemplatedTypeTemplateParameter)params[i]).getName().resolveBinding();
-				}
-				
-				if( p != null ){
-					result = (ICPPTemplateParameter[]) ArrayUtil.append( ICPPTemplateParameter.class, result, p );
+			ICPPTemplateParameter[] result = null;
+			for (ICPPASTTemplateParameter param : params) {
+				p= (ICPPTemplateParameter) CPPTemplates.getTemplateParameterName(param).resolveBinding();
+				if (p != null) {
+					result = (ICPPTemplateParameter[]) ArrayUtil.append(ICPPTemplateParameter.class, result, p);
 				}
 			}
-			templateParameters = (ICPPTemplateParameter[]) ArrayUtil.trim( ICPPTemplateParameter.class, result );
+			templateParameters = (ICPPTemplateParameter[]) ArrayUtil.trim(ICPPTemplateParameter.class, result);
 		}
 		return templateParameters;
 	}
 
-	/**
-	 * @param templateParameter
-	 * @return
-	 */
 	public IBinding resolveTemplateParameter(ICPPASTTemplateParameter templateParameter) {
-		IASTName name = CPPTemplates.getTemplateParameterName( templateParameter );
+		IASTName name = CPPTemplates.getTemplateParameterName(templateParameter);
 		
 		IBinding binding = name.getBinding();
-		if( binding == null ){
+		if (binding == null) {
 			//create a new binding and set it for the corresponding parameter in all known decls
-	    	if( templateParameter instanceof ICPPASTSimpleTypeTemplateParameter )
-	    		binding = new CPPTemplateTypeParameter( name );
-	    	else if( templateParameter instanceof ICPPASTParameterDeclaration )
-	    		binding = new CPPTemplateNonTypeParameter( name );
+	    	if (templateParameter instanceof ICPPASTSimpleTypeTemplateParameter)
+	    		binding = new CPPTemplateTypeParameter(name);
+	    	else if (templateParameter instanceof ICPPASTParameterDeclaration)
+	    		binding = new CPPTemplateNonTypeParameter(name);
 	    	else 
-	    		binding = new CPPTemplateTemplateParameter( name );
-	    	name.setBinding( binding );
+	    		binding = new CPPTemplateTemplateParameter(name);
+	    	name.setBinding(binding);
 		}
 		return binding;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition#getTemplateSpecializations()
-	 */
 	public ICPPClassTemplatePartialSpecialization[] getTemplateSpecializations() throws DOMException {
 		return ICPPClassTemplatePartialSpecialization.EMPTY_PARTIAL_SPECIALIZATION_ARRAY;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateTemplateParameter#getDefault()
-	 */
 	public IType getDefault() throws DOMException {
-		// TODO Auto-generated method stub
+		IASTNode[] nds = getDeclarations();
+		if (nds == null || nds.length == 0)
+		    return null;
+		IASTName name = (IASTName) nds[0];
+		ICPPASTTemplatedTypeTemplateParameter param = (ICPPASTTemplatedTypeTemplateParameter) name.getParent();
+		IASTExpression defaultValue = param.getDefaultValue();
+		if (defaultValue != null)
+		    return CPPVisitor.createType(defaultValue);
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#getBases()
-	 */
 	public ICPPBase[] getBases() {
-		// TODO Auto-generated method stub
 		return ICPPBase.EMPTY_BASE_ARRAY;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#getFields()
-	 */
 	public IField[] getFields() throws DOMException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#findField(java.lang.String)
-	 */
 	public IField findField(String name) throws DOMException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#getDeclaredFields()
-	 */
 	public ICPPField[] getDeclaredFields() throws DOMException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#getMethods()
-	 */
 	public ICPPMethod[] getMethods() throws DOMException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#getAllDeclaredMethods()
-	 */
 	public ICPPMethod[] getAllDeclaredMethods() throws DOMException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#getDeclaredMethods()
-	 */
 	public ICPPMethod[] getDeclaredMethods() throws DOMException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#getConstructors()
-	 */
 	public ICPPConstructor[] getConstructors() {
 		return ICPPConstructor.EMPTY_CONSTRUCTOR_ARRAY;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType#getFriends()
-	 */
 	public IBinding[] getFriends() throws DOMException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.ICompositeType#getKey()
-	 */
 	public int getKey() throws DOMException {
-		// TODO Auto-generated method stub
 		return 0;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.ICompositeType#getCompositeScope()
-	 */
 	public IScope getCompositeScope() throws DOMException {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalBinding#createDelegate(org.eclipse.cdt.core.dom.ast.IASTName)
-	 */
-	public ICPPDelegate createDelegate(IASTName name) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalBinding#addDefinition(org.eclipse.cdt.core.dom.ast.IASTNode)
-	 */
+	@Override
 	public void addDefinition(IASTNode node) {
-		// TODO Auto-generated method stub
-		
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalBinding#addDeclaration(org.eclipse.cdt.core.dom.ast.IASTNode)
-	 */
+	@Override
 	public void addDeclaration(IASTNode node) {
-		// TODO Auto-generated method stub
-		
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.IType#isSameType(org.eclipse.cdt.core.dom.ast.IType)
-	 */
-    public boolean isSameType( IType type ) {
-        if( type == this )
+    public boolean isSameType(IType type) {
+        if (type == this)
             return true;
-        if( type instanceof ITypedef )
-            return ((ITypedef)type).isSameType( this );
+        if (type instanceof ITypedef)
+            return ((ITypedef)type).isSameType(this);
         return false;
     }
 
@@ -258,58 +183,62 @@ public class CPPTemplateTemplateParameter extends CPPTemplateParameter implement
 	}
 
 	public IBinding instantiate(IType[] arguments) {
-		return deferredInstance( arguments );
+		return deferredInstance(null, arguments);
 	}
 
-	public ICPPSpecialization deferredInstance(IType[] arguments) {
-		ICPPSpecialization instance = getInstance( arguments );
-		if( instance == null ){
-			instance = new CPPDeferredClassInstance( this, arguments );
-			addSpecialization( arguments, instance );
+	public ICPPSpecialization deferredInstance(ObjectMap argMap, IType[] arguments) {
+		ICPPSpecialization instance = getInstance(arguments);
+		if (instance == null) {
+			instance = new CPPDeferredClassInstance(this, argMap, arguments);
+			addSpecialization(arguments, instance);
 		}
 		return instance;
 	}
 
-	public ICPPSpecialization getInstance( IType [] arguments ) {
-		if( instances == null )
+	public ICPPSpecialization getInstance(IType[] arguments) {
+		if (instances == null)
 			return null;
 		
 		int found = -1;
-		for( int i = 0; i < instances.size(); i++ ){
-			IType [] args = (IType[]) instances.keyAt( i );
-			if( args.length == arguments.length ){
+		for (int i = 0; i < instances.size(); i++) {
+			IType[] args = (IType[]) instances.keyAt(i);
+			if (args.length == arguments.length) {
 				int j = 0;
-				for(; j < args.length; j++) {
-					if( !( args[j].isSameType( arguments[j] ) ) )
+				for (; j < args.length; j++) {
+					if (!(args[j].isSameType(arguments[j])))
 						break;
 				}
-				if( j == args.length ){
+				if (j == args.length) {
 					found = i;
 					break;
 				}
 			}
 		}
-		if( found != -1 ){
+		if (found != -1) {
 			return (ICPPSpecialization) instances.getAt(found);
 		}
 		return null;
 	}
 	
-	public void addSpecialization( IType [] types, ICPPSpecialization spec ){
-		if( instances == null )
-			instances = new ObjectMap( 2 );
-		instances.put( types, spec );
+	public void addSpecialization(IType[] types, ICPPSpecialization spec) {
+		if (instances == null)
+			instances = new ObjectMap(2);
+		instances.put(types, spec);
 	}
-
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalUnknown#resolveUnknown(org.eclipse.cdt.core.parser.util.ObjectMap)
-     */
-    public IBinding resolveUnknown( ObjectMap argMap ) {
-        // TODO Auto-generated method stub
-        return null;
-    }
 
 	public ICPPClassType[] getNestedClasses() {
 		return ICPPClassType.EMPTY_CLASS_ARRAY;
+	}
+	
+	public IBinding resolvePartially(ICPPUnknownBinding parentBinding, ObjectMap argMap, ICPPScope instantiationScope) {
+		return null;
+	}
+
+	public IASTName getUnknownName() {
+		return new CPPASTName(getNameCharArray());
+	}
+
+	public ICPPUnknownBinding getUnknownContainerBinding() {
+		return null;
 	}
 }

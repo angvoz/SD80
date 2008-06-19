@@ -1,13 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM Rational Software - Initial API and implementation
- * Markus Schorn (Wind River Systems) 
+ *    IBM Rational Software - Initial API and implementation
+ *    Markus Schorn (Wind River Systems) 
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.c;
 
@@ -34,7 +34,6 @@ import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.Linkage;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPVisitor;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.PlatformObject;
 
@@ -70,25 +69,30 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
     	return null;
     }
     public void addDeclarator( IASTFunctionDeclarator fnDeclarator ){
-        updateParameterBindings( fnDeclarator );
-        if( fnDeclarator.getParent() instanceof IASTFunctionDefinition || fnDeclarator instanceof ICASTKnRFunctionDeclarator ) 
+        if( fnDeclarator.getParent() instanceof IASTFunctionDefinition || fnDeclarator instanceof ICASTKnRFunctionDeclarator ) {
+        	if (definition == fnDeclarator) {
+        		// recursion?
+        		return;
+        	}
+            updateParameterBindings( fnDeclarator );
             definition = fnDeclarator;
-        else {
-            if( declarators == null ){
-                declarators = new IASTStandardFunctionDeclarator[] { (IASTStandardFunctionDeclarator) fnDeclarator };
-            	return;
-            }
-            for( int i = 0; i < declarators.length; i++ ){
-                if( declarators[i] == null ){
-                    declarators[i] = (IASTStandardFunctionDeclarator) fnDeclarator;
-                    return;
-                }
-            }
-            IASTStandardFunctionDeclarator tmp [] = new IASTStandardFunctionDeclarator [ declarators.length * 2 ];
-            System.arraycopy( declarators, 0, tmp, 0, declarators.length );
-            tmp[ declarators.length ] = (IASTStandardFunctionDeclarator) fnDeclarator;
-            declarators = tmp;
+            return;
         }
+		updateParameterBindings( fnDeclarator );
+		if( declarators == null ){
+		    declarators = new IASTStandardFunctionDeclarator[] { (IASTStandardFunctionDeclarator) fnDeclarator };
+			return;
+		}
+		for( int i = 0; i < declarators.length; i++ ){
+		    if( declarators[i] == null ){
+		        declarators[i] = (IASTStandardFunctionDeclarator) fnDeclarator;
+		        return;
+		    }
+		}
+		IASTStandardFunctionDeclarator tmp [] = new IASTStandardFunctionDeclarator [ declarators.length * 2 ];
+		System.arraycopy( declarators, 0, tmp, 0, declarators.length );
+		tmp[ declarators.length ] = (IASTStandardFunctionDeclarator) fnDeclarator;
+		declarators = tmp;
     }
 	
     protected IASTTranslationUnit getTranslationUnit() {
@@ -104,7 +108,7 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
 	        bits |= RESOLUTION_IN_PROGRESS;
 		    IASTTranslationUnit tu = getTranslationUnit();
 	        if( tu != null ){
-	            CPPVisitor.getDeclarations( tu, this );
+	            CVisitor.getDeclarations( tu, this );
 	        }
 	        declarators = (IASTStandardFunctionDeclarator[]) ArrayUtil.trim( IASTStandardFunctionDeclarator.class, declarators );
 	        bits |= FULLY_RESOLVED;
@@ -131,7 +135,7 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
 			if( size > 0 ){
 				for( int i = 0; i < size; i++ ){
 					IASTParameterDeclaration p = params[i];
-					result[i] = (IParameter) p.getDeclarator().getName().resolveBinding();
+					result[i] = (IParameter) CVisitor.findInnermostDeclarator(p.getDeclarator()).getName().resolveBinding();
 				}
 			}
 		} else if (dtor instanceof ICASTKnRFunctionDeclarator) {
@@ -267,7 +271,7 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
     	    	IASTParameterDeclaration [] parameters = ((IASTStandardFunctionDeclarator)definition).getParameters();
     	    	if( parameters.length > idx ) {
 	    	        temp = parameters[idx];
-	        		temp.getDeclarator().getName().setBinding( binding );
+	    	        CVisitor.findInnermostDeclarator(temp.getDeclarator()).getName().setBinding( binding );
     	    	}
     	    } else if( definition instanceof ICASTKnRFunctionDeclarator ){
     	    	fKnRDtor = (ICASTKnRFunctionDeclarator) definition;
@@ -286,7 +290,7 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
     		for( int j = 0; j < declarators.length && declarators[j] != null; j++ ){
     		    if( declarators[j].getParameters().length > idx ){
 					temp = declarators[j].getParameters()[idx];
-		    		temp.getDeclarator().getName().setBinding( binding );
+					CVisitor.findInnermostDeclarator(temp.getDeclarator()).getName().setBinding( binding );
     		    }
     		}
     	}
@@ -302,7 +306,7 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
         	if(params.length < nps.length )
         	    return; 
         	for( int i = 0; i < nps.length; i++ ){
-        		IASTName name = nps[i].getDeclarator().getName();
+        		IASTName name = CVisitor.findInnermostDeclarator(nps[i].getDeclarator()).getName();
         		name.setBinding( params[i] );
         		if( params[i] instanceof CParameter )
         			((CParameter)params[i]).addDeclaration( name );
@@ -329,15 +333,20 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
      * @see org.eclipse.cdt.core.dom.ast.IFunction#isStatic()
      */
     public boolean isStatic() {
-        return hasStorageClass( IASTDeclSpecifier.sc_static );
+    	return isStatic(true);
     }
-
-	public boolean hasStorageClass( int storage ){
-	    if( (bits & FULLY_RESOLVED) == 0 ){
+    
+    public boolean isStatic(boolean resolveAll) {
+        if( resolveAll && (bits & FULLY_RESOLVED) == 0 ){
             resolveAllDeclarations();
         }
+		return hasStorageClass( IASTDeclSpecifier.sc_static );
+    }
+
+	public boolean hasStorageClass( int storage){
 	    IASTDeclarator dtor = definition;
 	    IASTDeclarator[] ds = declarators;
+
         int i = -1;
         do{ 
             if( dtor != null ){
@@ -351,8 +360,9 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
 	            } else if( parent instanceof IASTFunctionDefinition )
 	                declSpec = ((IASTFunctionDefinition)parent).getDeclSpecifier();
 	            
-	            if( declSpec.getStorageClass() == storage )
-	                return true;
+	            if( declSpec != null && declSpec.getStorageClass() == storage ) {
+	            	return true;
+	            }
             }
             
             if( ds != null && ++i < ds.length )
@@ -363,30 +373,35 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
         return false;
 	}
 	
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IFunction#isExtern()
-     */
+
     public boolean isExtern() {
-        return hasStorageClass( IASTDeclSpecifier.sc_extern );
+    	return isExtern(true);
+    }
+    
+    public boolean isExtern(boolean resolveAll) {
+        if( resolveAll && (bits & FULLY_RESOLVED) == 0 ){
+            resolveAllDeclarations();
+        }
+        return hasStorageClass( IASTDeclSpecifier.sc_extern);
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IFunction#isAuto()
-     */
+
     public boolean isAuto() {
-        return hasStorageClass( IASTDeclSpecifier.sc_auto );
+        if( (bits & FULLY_RESOLVED) == 0 ){
+            resolveAllDeclarations();
+        }
+        return hasStorageClass( IASTDeclSpecifier.sc_auto);
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IFunction#isRegister()
-     */
+  
     public boolean isRegister() {
-        return hasStorageClass( IASTDeclSpecifier.sc_register );
+        if( (bits & FULLY_RESOLVED) == 0 ){
+            resolveAllDeclarations();
+        }
+        return hasStorageClass( IASTDeclSpecifier.sc_register);
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IFunction#isInline()
-     */
+ 
     public boolean isInline() {
         if( (bits & FULLY_RESOLVED) == 0 ){
             resolveAllDeclarations();
@@ -406,7 +421,7 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
 	            } else if( parent instanceof IASTFunctionDefinition )
 	                declSpec = ((IASTFunctionDefinition)parent).getDeclSpecifier();
 	
-	            if( declSpec.isInline() )
+	            if( declSpec != null && declSpec.isInline() )
 	                return true;
             }
             if( ds != null && ++i < ds.length )
@@ -418,9 +433,7 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
         return false;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IFunction#takesVarArgs()
-     */
+
     public boolean takesVarArgs() {
         if( (bits & FULLY_RESOLVED) == 0 ){
             resolveAllDeclarations();
@@ -447,5 +460,13 @@ public class CFunction extends PlatformObject implements IFunction, ICInternalFu
 
 	public ILinkage getLinkage() throws CoreException {
 		return Linkage.C_LINKAGE;
+	}
+
+	public IASTNode[] getDeclarations() {
+		return declarators;
+	}
+
+	public IASTNode getDefinition() {
+		return definition;
 	}
 }

@@ -1,15 +1,14 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2008 IBM Corporation and others.
+ * Copyright (c) 2007 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     IBM Corporation - initial API and implementation
- *     QNX Software System
- *     Anton Leherbauer (Wind River Systems)
+ *     Anton Leherbauer (Wind River Systems) - initial API and implementation
  *******************************************************************************/
+
 package org.eclipse.cdt.internal.ui.compare;
 
 import org.eclipse.compare.CompareConfiguration;
@@ -21,45 +20,47 @@ import org.eclipse.swt.widgets.Composite;
 
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.text.ICPartitions;
-import org.eclipse.cdt.ui.text.doctools.IDocCommentOwner;
-
-import org.eclipse.cdt.internal.ui.text.CSourceViewerConfiguration;
-import org.eclipse.cdt.internal.ui.text.CTextTools;
-import org.eclipse.cdt.internal.ui.text.doctools.DocCommentOwnerManager;
+import org.eclipse.cdt.internal.ui.editor.asm.AsmSourceViewerConfiguration;
+import org.eclipse.cdt.internal.ui.editor.asm.AsmTextTools;
 
 /**
- * A merge viewer for C/C++ code.
+ * A merge viewer for assembly code.
  */
-public class CMergeViewer extends AbstractMergeViewer {
-	
-	private static final String TITLE= "CMergeViewer.title"; //$NON-NLS-1$
+public class AsmMergeViewer extends AbstractMergeViewer {
 
-	CSourceViewerConfiguration fSourceViewerConfiguration;
-		
-	public CMergeViewer(Composite parent, int styles, CompareConfiguration mp) {
-		super(parent, styles, mp);
+	private static final String TITLE= "AsmMergeViewer.title"; //$NON-NLS-1$
+
+	AsmSourceViewerConfiguration fSourceViewerConfiguration;
+
+	/**
+	 * Create a new assembly merge viewer.
+	 * 
+	 * @param parent
+	 * @param style
+	 * @param configuration
+	 */
+	public AsmMergeViewer(Composite parent, int style, CompareConfiguration configuration) {
+		super(parent, style, configuration);
 	}
 
 	@Override
 	protected SourceViewerConfiguration getSourceViewerConfiguration() {
 		if (fSourceViewerConfiguration == null) {
-			CTextTools tools= CUIPlugin.getDefault().getTextTools();
-			IPreferenceStore store = getPreferenceStore();
-			fSourceViewerConfiguration = new CSourceViewerConfiguration(tools.getColorManager(), store, null, ICPartitions.C_PARTITIONING);
+			AsmTextTools tools= CUIPlugin.getDefault().getAsmTextTools();
+			IPreferenceStore store= getPreferenceStore();
+			fSourceViewerConfiguration= new AsmSourceViewerConfiguration(tools.getColorManager(), store, null, ICPartitions.C_PARTITIONING);
 		}
 		return fSourceViewerConfiguration;
 	}
 
 	@Override
-	protected IDocumentPartitioner getDocumentPartitioner() {
-		// use workspace default for highlighting doc comments in compare viewer
-		IDocCommentOwner owner= DocCommentOwnerManager.getInstance().getWorkspaceCommentOwner();
-		return CUIPlugin.getDefault().getTextTools().createDocumentPartitioner(owner);
+	public String getTitle() {
+		return CUIPlugin.getResourceString(TITLE);
 	}
 
 	@Override
-	public String getTitle() {
-		return CUIPlugin.getResourceString(TITLE);
+	protected IDocumentPartitioner getDocumentPartitioner() {
+		return CUIPlugin.getDefault().getAsmTextTools().createDocumentPartitioner();
 	}
 
 	@Override

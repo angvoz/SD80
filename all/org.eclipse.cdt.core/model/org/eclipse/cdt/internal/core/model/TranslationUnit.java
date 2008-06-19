@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,30 +10,42 @@
  *     Markus Schorn (Wind River Systems)
  *     IBM Corporation
  *     Anton Leherbauer (Wind River Systems)
+ *     Warren Paul (Nokia) - Bug 218266
  *******************************************************************************/
-
 package org.eclipse.cdt.internal.core.model;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
+import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.index.IIndexFile;
+import org.eclipse.cdt.core.index.IIndexFileLocation;
+import org.eclipse.cdt.core.index.IIndexInclude;
+import org.eclipse.cdt.core.index.IndexLocationFactory;
 import org.eclipse.cdt.core.model.AbstractLanguage;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.CoreModelUtil;
 import org.eclipse.cdt.core.model.IBuffer;
+import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IContributedModelBuilder;
+import org.eclipse.cdt.core.model.IFunctionDeclaration;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.INamespace;
@@ -41,18 +53,30 @@ import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.IProblemRequestor;
 import org.eclipse.cdt.core.model.ISourceRange;
 import org.eclipse.cdt.core.model.ISourceReference;
+import org.eclipse.cdt.core.model.ITemplate;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.model.IUsing;
 import org.eclipse.cdt.core.model.IWorkingCopy;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.parser.CodeReader;
+import org.eclipse.cdt.core.parser.IParserLogService;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfoProvider;
 import org.eclipse.cdt.core.parser.ParserUtil;
 import org.eclipse.cdt.core.parser.ScannerInfo;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.internal.core.dom.NullCodeReaderFactory;
 import org.eclipse.cdt.internal.core.dom.SavedCodeReaderFactory;
 import org.eclipse.cdt.internal.core.index.IndexBasedCodeReaderFactory;
+import org.eclipse.cdt.internal.core.parser.ParserLogService;
+import org.eclipse.cdt.internal.core.pdom.indexer.ProjectIndexerInputAdapter;
+import org.eclipse.cdt.internal.core.util.ICanceler;
+import org.eclipse.cdt.internal.core.util.MementoTokenizer;
+import org.eclipse.core.filesystem.EFS;
+import org.eclipse.core.filesystem.IFileInfo;
+import org.eclipse.core.filesystem.IFileStore;
+import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -67,7 +91,7 @@ import org.eclipse.core.runtime.content.IContentType;
  */
 public class TranslationUnit extends Openable implements ITranslationUnit {
 
-	private IPath location = null;
+	private URI location = null;
 	private String contentTypeId;
 
 	/**
@@ -77,16 +101,17 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 	protected IProblemRequestor problemRequestor;
 
 	SourceManipulationInfo sourceManipulationInfo = null;
+	private ILanguage fLanguageOfContext;
 
 	public TranslationUnit(ICElement parent, IFile file, String idType) {
 		super(parent, file, ICElement.C_UNIT);
 		setContentTypeID(idType);
 	}
 
-	public TranslationUnit(ICElement parent, IPath path, String idType) {
-		super(parent, (IResource)null, path.toString(), ICElement.C_UNIT);
+	public TranslationUnit(ICElement parent, URI uri, String idType) {
+		super(parent, (IResource)null, uri.toString(), ICElement.C_UNIT);
+		location= uri;
 		setContentTypeID(idType);
-		setLocation(path);
 	}
 
 	public ITranslationUnit getTranslationUnit() {
@@ -123,12 +148,12 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 
 	public ICElement getElementAtLine(int line) throws CModelException {
 		ICElement[] celements = getChildren();
-		for (int i = 0; i < celements.length; i++) {
-			ISourceRange range = ((ISourceReference)celements[i]).getSourceRange();
+		for (ICElement celement : celements) {
+			ISourceRange range = ((ISourceReference)celement).getSourceRange();
 			int startLine = range.getStartLine();
 			int endLine = range.getEndLine();
 			if (line >= startLine && line <= endLine) {
-				return celements[i];
+				return celement;
 			}
 		}
 		return null;
@@ -156,9 +181,9 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		}
 		try {
 			ICElement[] celements = getChildren();
-			for (int i = 0; i < celements.length; i++) {
-				if (name.equals(celements[i].getElementName())) {
-					return celements[i];
+			for (ICElement celement : celements) {
+				if (name.equals(celement.getElementName())) {
+					return celement;
 				}
 			}
 		} catch (CModelException e) {
@@ -172,9 +197,9 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 				try {
 					ICElement[] celements = ((IParent) current).getChildren();
 					current = null;
-					for (int i = 0; i < celements.length; i++) {
-						if (names[j].equals(celements[i].getElementName())) {
-							current = celements[i];
+					for (ICElement celement : celements) {
+						if (names[j].equals(celement.getElementName())) {
+							current = celement;
 							break;
 						}
 					}
@@ -191,10 +216,10 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 	public IInclude getInclude(String name) {
 		try {
 			ICElement[] celements = getChildren();
-			for (int i = 0; i < celements.length; i++) {
-				if (celements[i].getElementType() == ICElement.C_INCLUDE) {
-					if (name.equals(celements[i].getElementName())) {
-						return (IInclude) celements[i];
+			for (ICElement celement : celements) {
+				if (celement.getElementType() == ICElement.C_INCLUDE) {
+					if (name.equals(celement.getElementName())) {
+						return (IInclude) celement;
 					}
 				}
 			}
@@ -205,22 +230,22 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 
 	public IInclude[] getIncludes() throws CModelException {
 		ICElement[] celements = getChildren();
-		ArrayList aList = new ArrayList();
-		for (int i = 0; i < celements.length; i++) {
-			if (celements[i].getElementType() == ICElement.C_INCLUDE) {
-				aList.add(celements[i]);
+		ArrayList<ICElement> aList = new ArrayList<ICElement>();
+		for (ICElement celement : celements) {
+			if (celement.getElementType() == ICElement.C_INCLUDE) {
+				aList.add(celement);
 			}
 		}
-		return (IInclude[]) aList.toArray(new IInclude[0]);
+		return aList.toArray(new IInclude[0]);
 	}
 
 	public IUsing getUsing(String name) {
 		try {
 			ICElement[] celements = getChildren();
-			for (int i = 0; i < celements.length; i++) {
-				if (celements[i].getElementType() == ICElement.C_USING) {
-					if (name.equals(celements[i].getElementName())) {
-						return (IUsing) celements[i];
+			for (ICElement celement : celements) {
+				if (celement.getElementType() == ICElement.C_USING) {
+					if (name.equals(celement.getElementName())) {
+						return (IUsing) celement;
 					}
 				}
 			}
@@ -231,13 +256,13 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 
 	public IUsing[] getUsings() throws CModelException {
 		ICElement[] celements = getChildren();
-		ArrayList aList = new ArrayList();
-		for (int i = 0; i < celements.length; i++) {
-			if (celements[i].getElementType() == ICElement.C_USING) {
-				aList.add(celements[i]);
+		ArrayList<ICElement> aList = new ArrayList<ICElement>();
+		for (ICElement celement : celements) {
+			if (celement.getElementType() == ICElement.C_USING) {
+				aList.add(celement);
 			}
 		}
-		return (IUsing[]) aList.toArray(new IUsing[0]);
+		return aList.toArray(new IUsing[0]);
 	}
 
 	public INamespace getNamespace(String name) {
@@ -248,10 +273,10 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 				if (current instanceof IParent) {
 					ICElement[] celements = ((IParent) current).getChildren();
 					current = null;
-					for (int i = 0; i < celements.length; i++) {
-						if (celements[i].getElementType() == ICElement.C_NAMESPACE) {
-							if (name.equals(celements[i].getElementName())) {
-								current = celements[i];
+					for (ICElement celement : celements) {
+						if (celement.getElementType() == ICElement.C_NAMESPACE) {
+							if (name.equals(celement.getElementName())) {
+								current = celement;
 								break;
 							}
 						}
@@ -270,16 +295,16 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 
 	public INamespace[] getNamespaces() throws CModelException {
 		ICElement[] celements = getChildren();
-		ArrayList aList = new ArrayList();
-		for (int i = 0; i < celements.length; i++) {
-			if (celements[i].getElementType() == ICElement.C_NAMESPACE) {
-				aList.add(celements[i]);
+		ArrayList<ICElement> aList = new ArrayList<ICElement>();
+		for (ICElement celement : celements) {
+			if (celement.getElementType() == ICElement.C_NAMESPACE) {
+				aList.add(celement);
 			}
 		}
-		return (INamespace[]) aList.toArray(new INamespace[0]);
+		return aList.toArray(new INamespace[0]);
 	}
 
-	protected void setLocation(IPath loc) {
+	protected void setLocationURI(URI loc) {
 		location = loc;
 	}
 
@@ -287,9 +312,22 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		if (location == null) {
 			IFile file = getFile();
 			if (file != null) {
-				location = file.getLocation();
+				return file.getLocation();
 			} else {
-				return getPath();
+				return null;
+			}
+		}
+		return URIUtil.toPath(location);
+	}
+	
+	@Override
+	public URI getLocationURI() {
+		if (location == null) {
+			IFile file = getFile();
+			if (file != null) {
+				location = file.getLocationURI();
+			} else {
+				return null;
 			}
 		}
 		return location;
@@ -341,6 +379,7 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		return sourceManipulationInfo;
 	}
 
+	@Override
 	protected CElementInfo createElementInfo() {
 		return new TranslationUnitInfo(this);
 	}
@@ -353,6 +392,7 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 	 * 
 	 * @see Object#equals(java.lang.Object)
 	 */
+	@Override
 	public boolean equals(Object o) {
 		if (!(o instanceof ITranslationUnit)) return false;
 		return super.equals(o) && !((ITranslationUnit) o).isWorkingCopy();
@@ -363,29 +403,27 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		// if factory is null, default factory must be used
 		if (factory == null) factory = BufferManager.getDefaultBufferManager();
 
-		// In order to be shared, working copies have to denote the same translation unit 
+		// In order to be shared, working copies have to denote the same translation unit
 		// AND use the same buffer factory.
 		// Assuming there is a little set of buffer factories, then use a 2 level Map cache.
-		Map sharedWorkingCopies = CModelManager.getDefault().sharedWorkingCopies;
+		Map<IBufferFactory, Map<ITranslationUnit, WorkingCopy>> sharedWorkingCopies = CModelManager.getDefault().sharedWorkingCopies;
 
-		Map perFactoryWorkingCopies = (Map) sharedWorkingCopies.get(factory);
+		Map<ITranslationUnit, WorkingCopy> perFactoryWorkingCopies = sharedWorkingCopies.get(factory);
 		if (perFactoryWorkingCopies == null) return null;
-		return (WorkingCopy) perFactoryWorkingCopies.get(this);
+		return perFactoryWorkingCopies.get(this);
 	}
 
-	public synchronized boolean isOpen() {
-		return super.isOpen();
-	}
-
+	@Override
 	public synchronized CElementInfo getElementInfo(IProgressMonitor monitor) throws CModelException {
 		return super.getElementInfo(monitor);
 	}
 
-	protected boolean buildStructure(OpenableInfo info, IProgressMonitor pm, Map newElements, IResource underlyingResource) throws CModelException {
+	@Override
+	protected boolean buildStructure(OpenableInfo info, IProgressMonitor pm, Map<ICElement, CElementInfo> newElements, IResource underlyingResource) throws CModelException {
 		TranslationUnitInfo unitInfo = (TranslationUnitInfo) info;
 
 		// We reuse the general info cache in the CModelBuilder, We should not do this
-		// and instead create the info explicitely(see JDT).
+		// and instead create the info explicitly(see JDT).
 		// So to get by we need to remove in the LRU all the info of this handle
 		CModelManager.getDefault().removeChildrenInfo(this);
 
@@ -428,17 +466,17 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 
 		CModelManager manager = CModelManager.getDefault();
 
-		// In order to be shared, working copies have to denote the same translation unit 
+		// In order to be shared, working copies have to denote the same translation unit
 		// AND use the same buffer factory.
 		// Assuming there is a little set of buffer factories, then use a 2 level Map cache.
-		Map sharedWorkingCopies = manager.sharedWorkingCopies;
+		Map<IBufferFactory, Map<ITranslationUnit, WorkingCopy>> sharedWorkingCopies = manager.sharedWorkingCopies;
 
-		Map perFactoryWorkingCopies = (Map) sharedWorkingCopies.get(factory);
+		Map<ITranslationUnit, WorkingCopy> perFactoryWorkingCopies = sharedWorkingCopies.get(factory);
 		if (perFactoryWorkingCopies == null) {
-			perFactoryWorkingCopies = new HashMap();
+			perFactoryWorkingCopies = new HashMap<ITranslationUnit, WorkingCopy>();
 			sharedWorkingCopies.put(factory, perFactoryWorkingCopies);
 		}
-		WorkingCopy workingCopy = (WorkingCopy)perFactoryWorkingCopies.get(this);
+		WorkingCopy workingCopy = perFactoryWorkingCopies.get(this);
 		if (workingCopy != null) {
 			workingCopy.useCount++;
 			return workingCopy;
@@ -458,7 +496,7 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		if (file != null) {
 			workingCopy= new WorkingCopy(getParent(), file, getContentTypeId(), factory);
 		} else {
-			workingCopy= new WorkingCopy(getParent(), getLocation(), getContentTypeId(), factory);
+			workingCopy= new WorkingCopy(getParent(), getLocationURI(), getContentTypeId(), factory);
 		}
 		// open the working copy now to ensure contents are that of the current state of this element
 		workingCopy.open(monitor);
@@ -468,11 +506,13 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 	/**
 	 * Returns true if this element may have an associated source buffer.
 	 */
+	@Override
 	protected boolean hasBuffer() {
 		return true;
 	}
 
-	protected void openParent(Object childInfo, Map newElements, IProgressMonitor pm) throws CModelException {
+	@Override
+	protected void openParent(CElementInfo childInfo, Map<ICElement, CElementInfo> newElements, IProgressMonitor pm) throws CModelException {
 		try {
 			super.openParent(childInfo, newElements, pm);
 		} catch (CModelException e) {
@@ -483,16 +523,18 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		}
 	}
 
+	@Override
 	public boolean isConsistent() throws CModelException {
-		return CModelManager.getDefault().getElementsOutOfSynchWithBuffers().get(this) == null;
+		return isOpen() && CModelManager.getDefault().getElementsOutOfSynchWithBuffers().get(this) == null;
 	}
 
+	@Override
 	public void makeConsistent(IProgressMonitor monitor, boolean forced) throws CModelException {
-		makeConsistent(false, monitor);
+		makeConsistent(forced, monitor);
 	}
 
 	protected IASTTranslationUnit makeConsistent(boolean computeAST, IProgressMonitor monitor) throws CModelException {
-		if (isConsistent()) {
+		if (!computeAST && isConsistent()) {
 			return null;
 		}
 		
@@ -507,13 +549,13 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 			info= createElementInfo();
 		}
 		try {
-			HashMap newElements = manager.getTemporaryCache();
+			Map<ICElement, CElementInfo> newElements = manager.getTemporaryCache();
 			openWhenClosed(info, monitor);
 			if (newElements.get(this) == null) {
 				// close any buffer that was opened for the new elements
-				Iterator iterator = newElements.keySet().iterator();
+				Iterator<ICElement> iterator = newElements.keySet().iterator();
 				while (iterator.hasNext()) {
-					ICElement element = (ICElement)iterator.next();
+					ICElement element = iterator.next();
 					if (element instanceof Openable) {
 						((Openable)element).closeBuffer();
 					}
@@ -536,6 +578,7 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		return null;
 	}
 
+	@Override
 	protected boolean isSourceElement() {
 		return true;
 	}
@@ -544,6 +587,7 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		return false;
 	}
 
+	@Override
 	protected IBuffer openBuffer(IProgressMonitor pm) throws CModelException {
 
 		// create buffer - translation units only use default buffer factory
@@ -582,14 +626,14 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		return buffer;
 	}
 
-	public Map parse() {
+	public Map<?, ?> parse() {
 		throw new UnsupportedOperationException("Deprecated method"); //$NON-NLS-1$
 	}
 
 	/**
 	 * Parse the buffer contents of this element.
 	 */
-	private void parse(Map newElements, IProgressMonitor monitor) {
+	private void parse(Map<ICElement, CElementInfo> newElements, IProgressMonitor monitor) {
 		boolean quickParseMode = ! (CCorePlugin.getDefault().useStructuralParseMode());
 		IContributedModelBuilder mb = LanguageManager.getInstance().getContributedModelBuilderFor(this);
 		if (mb == null) {
@@ -601,9 +645,9 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 
 	/**
 	 * Parse the buffer contents of this element.
-	 * @param monitor 
+	 * @param monitor
 	 */
-	private void parseUsingCModelBuilder(Map newElements, boolean quickParseMode, IProgressMonitor monitor) {
+	private void parseUsingCModelBuilder(Map<ICElement, CElementInfo> newElements, boolean quickParseMode, IProgressMonitor monitor) {
 		try {
 			new CModelBuilder2(this, monitor).parse(quickParseMode);
 		} catch (OperationCanceledException oce) {
@@ -612,7 +656,7 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 			}
 		} catch (Exception e) {
 			// use the debug log for this exception.
-			Util.debugLog( "Exception in CModelBuilder", IDebugLogConstants.MODEL);  //$NON-NLS-1$
+			Util.debugLog( "Exception in CModelBuilder", DebugLogConstants.MODEL);  //$NON-NLS-1$
 		}
 	}
 
@@ -621,7 +665,7 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 			mb.parse(quickParseMode);
 		} catch (Exception e) {
 			// use the debug log for this exception.
-			Util.debugLog( "Exception in contributed model builder", IDebugLogConstants.MODEL);  //$NON-NLS-1$
+			Util.debugLog( "Exception in contributed model builder", DebugLogConstants.MODEL);  //$NON-NLS-1$
 		}
 	}
 
@@ -666,25 +710,49 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		return CCorePlugin.CONTENT_TYPE_ASMSOURCE.equals(contentTypeId);
 	}
 
+	@Override
 	public boolean exists() {
 		IResource res = getResource();
 		if (res != null)
 			return res.exists();
 		if (location != null) {
-			return location.toFile().exists();
+			try {
+				IFileStore fileStore = EFS.getStore(location);
+				IFileInfo info = fileStore.fetchInfo();
+				
+				return info.exists();
+			} catch (CoreException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 		}
 		return false;
 	}
 
 	public ILanguage getLanguage() throws CoreException {
 		ILanguage language = null;
-
+		
+		ICProject cProject = getCProject();
+		IProject project= cProject.getProject();
+		
+		ICProjectDescription description = CoreModel.getDefault().getProjectDescription(project, true);
+		ICConfigurationDescription configuration;
+		
+		if (description == null) {
+			// TODO: Sometimes, CoreModel returns a null ICProjectDescription
+			// so for now, fall back to configuration-less language determination.
+			configuration = null;
+		} else {
+			configuration = description.getActiveConfiguration();
+		}
+		
 		IFile file= getFile();
 		if (file != null) {
-			language= LanguageManager.getInstance().getLanguageForFile(file, contentTypeId);
+			language = LanguageManager.getInstance().getLanguageForFile(file, configuration, contentTypeId);
 		}
 		else {
-			language = LanguageManager.getInstance().getLanguageForFile(getLocation(), getCProject().getProject(), contentTypeId);
+			language = LanguageManager.getInstance().getLanguageForFile(getLocation(), getCProject().getProject(), configuration, contentTypeId);
 		}
 		return language;
 	}
@@ -697,6 +765,7 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		contentTypeId = id;
 	}
 
+	@Override
 	protected void closing(Object info) throws CModelException {
 		IContentType cType = CCorePlugin.getContentType(getCProject().getProject(), getElementName());
 		if (cType != null) {
@@ -720,21 +789,17 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 	}
 
 	public IASTTranslationUnit getAST() throws CoreException {
-		return getAST(null, 0);
+		return getAST(null, 0, null);
 	}
 
 	public IASTTranslationUnit getAST(IIndex index, int style) throws CoreException {
-		ICodeReaderFactory codeReaderFactory;
-		if ((style & ITranslationUnit.AST_SKIP_NONINDEXED_HEADERS) != 0) {
-			codeReaderFactory= NullCodeReaderFactory.getInstance();
-		} else {
-			codeReaderFactory= SavedCodeReaderFactory.getInstance();
-		}
-		if (index != null && (style & ITranslationUnit.AST_SKIP_INDEXED_HEADERS) != 0) {
-			codeReaderFactory= new IndexBasedCodeReaderFactory(index, codeReaderFactory);
-		}
+		return getAST(index, style, null);
+	}
+
+	public IASTTranslationUnit getAST(IIndex index, int style, IProgressMonitor monitor) throws CoreException {
+		ITranslationUnit configureWith = getSourceContextTU(index, style);
 		
-		IScannerInfo scanInfo = getScannerInfo( (style & ITranslationUnit.AST_SKIP_IF_NO_BUILD_INFO) == 0);
+		IScannerInfo scanInfo= configureWith.getScannerInfo( (style & AST_SKIP_IF_NO_BUILD_INFO) == 0);
 		if (scanInfo == null) {
 			return null;
 		}
@@ -743,40 +808,100 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		reader = getCodeReader();
 		
 		if (reader != null) {
-			ILanguage language= getLanguage();
+			ILanguage language= configureWith.getLanguage();
+			fLanguageOfContext= language;
 			if (language != null) {
-				if (language instanceof AbstractLanguage) {
-					int options= 0;
-					if ((style & AST_SKIP_FUNCTION_BODIES) != 0) {
-						options |= AbstractLanguage.OPTION_SKIP_FUNCTION_BODIES;
-					}
-					if ((style & AST_CREATE_COMMENT_NODES) != 0) {
-						options |= AbstractLanguage.OPTION_ADD_COMMENTS;
-					}
-					return ((AbstractLanguage)language).getASTTranslationUnit(reader, scanInfo, codeReaderFactory, index, options, ParserUtil.getParserLogService());
+				ICodeReaderFactory crf= getCodeReaderFactory(style, index, language.getLinkageID());
+				int options= 0;
+				if ((style & AST_SKIP_FUNCTION_BODIES) != 0) {
+					options |= ILanguage.OPTION_SKIP_FUNCTION_BODIES;
 				}
-				return language.getASTTranslationUnit(reader, scanInfo, codeReaderFactory, index, ParserUtil.getParserLogService());
+				if ((style & AST_CREATE_COMMENT_NODES) != 0) {
+					options |= ILanguage.OPTION_ADD_COMMENTS;
+				}
+				if (isSourceUnit()) {
+					options |= ILanguage.OPTION_IS_SOURCE_UNIT;
+				}
+				final IParserLogService log;
+				if (monitor instanceof ICanceler) {
+					log= new ParserLogService(DebugLogConstants.PARSER, (ICanceler)monitor);
+				} else {
+					log= ParserUtil.getParserLogService();
+				}
+				return ((AbstractLanguage)language).getASTTranslationUnit(reader, scanInfo, crf, index, options, log);
 			}
 		}
 		return null;
 	}
 
-	public IASTCompletionNode getCompletionNode(IIndex index, int style, int offset) throws CoreException {
+	private ICodeReaderFactory getCodeReaderFactory(int style, IIndex index, int linkageID) {
 		ICodeReaderFactory codeReaderFactory;
-		if (index != null && (style & (ITranslationUnit.AST_SKIP_INDEXED_HEADERS | ITranslationUnit.AST_SKIP_ALL_HEADERS)) != 0) {
-			ICodeReaderFactory fallbackFactory;
-			if ((style & ITranslationUnit.AST_SKIP_ALL_HEADERS) != 0) {
-				fallbackFactory= NullCodeReaderFactory.getInstance();
-			} else {
-				fallbackFactory= SavedCodeReaderFactory.getInstance();
-			}
-			codeReaderFactory= new IndexBasedCodeReaderFactory(index, fallbackFactory);
-		}
-		else {
-			codeReaderFactory = SavedCodeReaderFactory.getInstance();
+		if ((style & AST_SKIP_NONINDEXED_HEADERS) != 0) {
+			codeReaderFactory= NullCodeReaderFactory.getInstance();
+		} else {
+			codeReaderFactory= SavedCodeReaderFactory.getInstance();
 		}
 		
-		IScannerInfo scanInfo = getScannerInfo( (style & ITranslationUnit.AST_SKIP_IF_NO_BUILD_INFO) == 0);
+		if (index != null && (style & AST_SKIP_INDEXED_HEADERS) != 0) {
+			IndexBasedCodeReaderFactory ibcf= new IndexBasedCodeReaderFactory(index, new ProjectIndexerInputAdapter(getCProject()), linkageID, codeReaderFactory);
+			if ((style & AST_CONFIGURE_USING_SOURCE_CONTEXT) != 0) {
+				ibcf.setSupportFillGapFromContextToHeader(true);
+			}
+			codeReaderFactory= ibcf;
+		}
+
+		return codeReaderFactory;
+	}
+
+	private static int[] CTX_LINKAGES= {ILinkage.CPP_LINKAGE_ID, ILinkage.C_LINKAGE_ID};
+	public ITranslationUnit getSourceContextTU(IIndex index, int style) {
+		if (index != null && (style & AST_CONFIGURE_USING_SOURCE_CONTEXT) != 0) {
+			try {
+				fLanguageOfContext= null;
+				for (int element : CTX_LINKAGES) {
+					IIndexFile context= null;
+					final IIndexFileLocation ifl = IndexLocationFactory.getIFL(this);
+					if (ifl != null) {
+						IIndexFile indexFile= index.getFile(element, ifl);
+						if (indexFile != null) {
+							// bug 199412, when a source-file includes itself the context may recurse.
+							HashSet<IIndexFile> visited= new HashSet<IIndexFile>();
+							visited.add(indexFile);
+							indexFile = getParsedInContext(indexFile);
+							while (indexFile != null && visited.add(indexFile)) {
+								context= indexFile;
+								indexFile= getParsedInContext(indexFile);
+							}
+						}
+						if (context != null) {
+							ITranslationUnit tu= CoreModelUtil.findTranslationUnitForLocation(context.getLocation(), getCProject());
+							if (tu != null && tu.isSourceUnit()) {
+								return tu;
+							}
+						}
+					}
+				}
+			}
+			catch (CoreException e) {
+				CCorePlugin.log(e);
+			}
+		}
+		return this;
+	}
+
+	private IIndexFile getParsedInContext(IIndexFile indexFile)
+			throws CoreException {
+		IIndexInclude include= indexFile.getParsedInContext();
+		if (include != null) {
+			return include.getIncludedBy();
+		}
+		return null;
+	}
+
+	public IASTCompletionNode getCompletionNode(IIndex index, int style, int offset) throws CoreException {
+		ITranslationUnit configureWith= getSourceContextTU(index, style);
+		
+		IScannerInfo scanInfo = configureWith.getScannerInfo( (style & ITranslationUnit.AST_SKIP_IF_NO_BUILD_INFO) == 0);
 		if (scanInfo == null) {
 			return null;
 		}
@@ -784,9 +909,11 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		CodeReader reader;
 		reader = getCodeReader();
 		
-		ILanguage language= getLanguage();
+		ILanguage language= configureWith.getLanguage();
+		fLanguageOfContext= language;
 		if (language != null) {
-			return language.getCompletionNode(reader, scanInfo, codeReaderFactory, index, ParserUtil.getParserLogService(), offset);
+			ICodeReaderFactory crf= getCodeReaderFactory(style, index, language.getLinkageID());
+			return language.getCompletionNode(reader, scanInfo, crf, index, ParserUtil.getParserLogService(), offset);
 		}
 		return null;
 	}
@@ -799,11 +926,11 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 				reader= new CodeReader(getContents());
 			}
 			else {
-				reader= new CodeReader(location.toOSString(), getContents());
+				reader= new CodeReader(location.toString(), getContents());
 			}
 		}
 		else {
-			reader= ParserUtil.createReader(location.toOSString(), null);
+			reader= ParserUtil.createReader(location.toString(), null);
 		}
 		return reader;
 	}
@@ -812,14 +939,14 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		IResource resource = getResource();
 		ICProject project = getCProject();
 		IProject rproject = project.getProject();
+		IResource infoResource = resource != null ? resource : rproject;
 
-		if (!force && CoreModel.isScannerInformationEmpty(resource)) {
+		if (!force && CoreModel.isScannerInformationEmpty(infoResource)) {
 			return null;
 		}
 		
 		IScannerInfoProvider provider = CCorePlugin.getDefault().getScannerInfoProvider(rproject);
 		if (provider != null) {
-			IResource infoResource = resource != null ? resource : rproject;
 			IScannerInfo scanInfo = provider.getScannerInformation(infoResource);
 			if (scanInfo != null)
 				return scanInfo;
@@ -829,4 +956,164 @@ public class TranslationUnit extends Openable implements ITranslationUnit {
 		}
 		return null;
 	}
+	
+	/**
+	 * Return the language of the context this file was parsed in. Works only after using
+	 * {@link #getAST(IIndex, int, IProgressMonitor)} with the flag {@link ITranslationUnit#AST_CONFIGURE_USING_SOURCE_CONTEXT}.
+	 */
+	public ILanguage getLanguageOfContext() throws CoreException {
+		final ILanguage result= fLanguageOfContext;
+		return result != null ? result : getLanguage();
+	}
+
+	@Override
+	public IPath getPath() {
+		if (getFile() != null) {
+			return super.getPath();
+		}
+		IPath path= getLocation();
+		if (path != null) {
+			return path;
+		}
+		return super.getPath();
+	}
+
+	@Override
+	public ICElement getHandleFromMemento(String token, MementoTokenizer memento) {
+		switch (token.charAt(0)) {
+		case CEM_SOURCEELEMENT:
+			if (!memento.hasMoreTokens()) return this;
+			token= memento.nextToken();
+			// element name
+			final String elementName;
+			if (token.charAt(0) != CEM_ELEMENTTYPE) {
+				elementName= token;
+				token= memento.nextToken();
+			} else {
+				// anonymous
+				elementName= ""; //$NON-NLS-1$
+			}
+			// element type
+			assert token.charAt(0) == CEM_ELEMENTTYPE;
+			String typeString= memento.nextToken();
+			int elementType;
+			try {
+				elementType= Integer.parseInt(typeString);
+			} catch (NumberFormatException nfe) {
+				CCorePlugin.log(nfe);
+				return null;
+			}
+			token= null;
+			// optional: parameters
+			String[] mementoParams= {};
+			if (memento.hasMoreTokens()) {
+				List<String> params= new ArrayList<String>();
+				do {
+					token= memento.nextToken();
+					if (token.charAt(0) != CEM_PARAMETER) {
+						break;
+					}
+					params.add(memento.nextToken());
+					token= null;
+				} while (memento.hasMoreTokens());
+				mementoParams= params.toArray(new String[params.size()]);
+			}
+			CElement element= null;
+			ICElement[] children;
+			try {
+				children= getChildren();
+			} catch (CModelException exc) {
+				CCorePlugin.log(exc);
+				return null;
+			}
+			switch (elementType) {
+			case ICElement.C_FUNCTION:
+			case ICElement.C_FUNCTION_DECLARATION:
+			case ICElement.C_METHOD:
+			case ICElement.C_METHOD_DECLARATION:
+			case ICElement.C_TEMPLATE_FUNCTION:
+			case ICElement.C_TEMPLATE_FUNCTION_DECLARATION:
+			case ICElement.C_TEMPLATE_METHOD:
+			case ICElement.C_TEMPLATE_METHOD_DECLARATION:
+				// search for matching function
+				for (ICElement element2 : children) {
+						if (elementType == element2.getElementType()
+								&& elementName.equals(element2.getElementName())) {
+							assert element2 instanceof IFunctionDeclaration;
+							String[] functionParams= ((IFunctionDeclaration)element2).getParameterTypes();
+							if (Arrays.equals(functionParams, mementoParams)) {
+								element= (CElement) element2;
+								break;
+							}
+						}
+					}
+				break;
+			case ICElement.C_TEMPLATE_CLASS:
+			case ICElement.C_TEMPLATE_STRUCT:
+			case ICElement.C_TEMPLATE_UNION:
+				// search for matching template type
+				for (ICElement element2 : children) {
+						if (elementType == element2.getElementType()
+								&& elementName.equals(element2.getElementName())) {
+							assert element2 instanceof ITemplate;
+							String[] templateParams= ((ITemplate)element2).getTemplateParameterTypes();
+							if (Arrays.equals(templateParams, mementoParams)) {
+								element= (CElement) element2;
+								break;
+							}
+						}
+					}
+				break;
+			default:
+				// search for matching element
+				for (ICElement element2 : children) {
+						if (elementType == element2.getElementType()
+								&& elementName.equals(element2.getElementName())) {
+							element= (CElement) element2;
+							break;
+						}
+					}
+				break;
+			}
+			if (element != null) {
+				if (token != null) {
+					return element.getHandleFromMemento(token, memento);
+				} else {
+					return element.getHandleFromMemento(memento);
+				}
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public void getHandleMemento(StringBuilder buff) {
+		if (getResource() == null) {
+			// external translation unit
+			((CElement)getCProject()).getHandleMemento(buff);
+			buff.append(getHandleMementoDelimiter());
+			final IPath fileLocation= getLocation();
+			if (fileLocation != null) {
+				escapeMementoName(buff, fileLocation.toPortableString());
+			}
+		} else if (getParent() instanceof ICContainer) {
+			// regular case: translation unit under source container
+			super.getHandleMemento(buff);
+		} else {
+			// translation unit below a binary
+			((CElement)getCProject()).getHandleMemento(buff);
+			buff.append(getHandleMementoDelimiter());
+			// project relative path
+			final IPath projectPath= getResource().getFullPath().removeFirstSegments(1);
+			if (projectPath != null) {
+				escapeMementoName(buff, projectPath.toPortableString());
+			}
+		}
+	}
+	
+	@Override
+	protected char getHandleMementoDelimiter() {
+		return CElement.CEM_TRANSLATIONUNIT;
+	}
+
 }

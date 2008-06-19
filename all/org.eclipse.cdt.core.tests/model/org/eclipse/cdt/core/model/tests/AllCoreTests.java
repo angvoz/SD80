@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,8 +13,8 @@ package org.eclipse.cdt.core.model.tests;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
-import org.eclipse.cdt.core.model.failedTests.FailedDeclaratorsTest;
-import org.eclipse.cdt.core.settings.model.CProjectDescriptionTests;
+import org.eclipse.cdt.core.settings.model.AllCProjectDescriptionTests;
+import org.eclipse.cdt.core.settings.model.PathSettingsContainerTests;
 
 
 /**
@@ -39,18 +39,24 @@ public class AllCoreTests {
         // each class being tested
 		suite.addTest(AllLanguageInterfaceTests.suite());
         suite.addTest(CModelTests.suite());
+        suite.addTest(CModelElementsTests.suite());
+        suite.addTest(CModelIdentifierTests.suite());
         suite.addTest(CModelExceptionTest.suite());
         suite.addTest(FlagTests.suite());
         suite.addTest(ArchiveTests.suite());
         suite.addTest(TranslationUnitTests.suite());
 		suite.addTest(DeclaratorsTests.suite());
-		suite.addTest(FailedDeclaratorsTest.suite());
+		suite.addTest(MacroTests.suite());
+//		suite.addTest(FailedMacroTests.suite());
 		suite.addTest(CPathEntryTest.suite());
 //		suite.addTest(CConfigurationDescriptionReferenceTests.suite());
 		//the CProjectDescriptionTests now groups all New Project Model related tests
 		//which includes the CConfigurationDescriptionReferenceTests
-		suite.addTest(CProjectDescriptionTests.suite());
+		suite.addTest(AllCProjectDescriptionTests.suite());
+		suite.addTest(PathSettingsContainerTests.suite());
 		suite.addTest(ASTCacheTests.suite());
+		suite.addTest(AsmModelBuilderTest.suite());
+		suite.addTest(CModelBuilderBugsTest.suite());
         return suite;
 
     }

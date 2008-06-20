@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2007 QNX Software Systems and others.
+ * Copyright (c) 2007, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX - Initial API and implementation
+ *    QNX - Initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom.cpp;
 
@@ -19,15 +19,18 @@ import org.eclipse.cdt.core.dom.IPDOMVisitor;
 import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
+import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassTemplate;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassTemplatePartialSpecialization;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
 import org.eclipse.cdt.core.parser.util.ObjectMap;
 import org.eclipse.cdt.internal.core.Util;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPTemplates;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
+import org.eclipse.cdt.internal.core.index.IIndexCPPBindingConstants;
 import org.eclipse.cdt.internal.core.index.IndexCPPSignatureUtil;
 import org.eclipse.cdt.internal.core.pdom.PDOM;
 import org.eclipse.cdt.internal.core.pdom.db.PDOMNodeLinkedList;
@@ -39,19 +42,19 @@ import org.eclipse.core.runtime.CoreException;
 
 /**
  * @author Bryan Wilkinson
- * 
  */
 class PDOMCPPClassTemplatePartialSpecialization extends
 		PDOMCPPClassTemplate implements ICPPClassTemplatePartialSpecialization, ICPPSpecialization, IPDOMOverloader {
 	
 	private static final int ARGUMENTS = PDOMCPPClassTemplate.RECORD_SIZE + 0;
-	private static final int SIGNATURE_MEMENTO = PDOMCPPClassTemplate.RECORD_SIZE + 4;
+	private static final int SIGNATURE_HASH = PDOMCPPClassTemplate.RECORD_SIZE + 4;
 	private static final int PRIMARY = PDOMCPPClassTemplate.RECORD_SIZE + 8;
 	private static final int NEXT_PARTIAL = PDOMCPPClassTemplate.RECORD_SIZE + 12;
 	
 	/**
 	 * The size in bytes of a PDOMCPPClassTemplatePartialSpecialization record in the database.
 	 */
+	@SuppressWarnings("hiding")
 	protected static final int RECORD_SIZE = PDOMCPPClassTemplate.RECORD_SIZE + 16;
 	
 	public PDOMCPPClassTemplatePartialSpecialization(PDOM pdom,
@@ -61,8 +64,8 @@ class PDOMCPPClassTemplatePartialSpecialization extends
 		primary.addPartial(this);
 		
 		try {
-			Integer memento = IndexCPPSignatureUtil.getSignatureMemento(partial);
-			pdom.getDB().putInt(record + SIGNATURE_MEMENTO, memento != null ? memento.intValue() : 0);
+			Integer sigHash = IndexCPPSignatureUtil.getSignatureHash(partial);
+			pdom.getDB().putInt(record + SIGNATURE_HASH, sigHash != null ? sigHash.intValue() : 0);
 		} catch (DOMException e) {
 			throw new CoreException(Util.createStatus(e));
 		}
@@ -73,16 +76,18 @@ class PDOMCPPClassTemplatePartialSpecialization extends
 		super(pdom, bindingRecord);
 	}
 	
-	public int getSignatureMemento() throws CoreException {
-		return pdom.getDB().getInt(record + SIGNATURE_MEMENTO);
+	public int getSignatureHash() throws CoreException {
+		return pdom.getDB().getInt(record + SIGNATURE_HASH);
 	}
 	
+	@Override
 	protected int getRecordSize() {
 		return RECORD_SIZE;
 	}
 
+	@Override
 	public int getNodeType() {
-		return PDOMCPPLinkage.CPP_CLASS_TEMPLATE_PARTIAL_SPEC;
+		return IIndexCPPBindingConstants.CPP_CLASS_TEMPLATE_PARTIAL_SPEC;
 	}
 
 	public PDOMCPPClassTemplatePartialSpecialization getNextPartial() throws CoreException {
@@ -116,16 +121,16 @@ class PDOMCPPClassTemplatePartialSpecialization extends
 	}
 	
 	private static class TemplateArgumentCollector implements IPDOMVisitor {
-		private List args = new ArrayList();
+		private List<IType> args = new ArrayList<IType>();
 		public boolean visit(IPDOMNode node) throws CoreException {
 			if (node instanceof IType)
-				args.add(node);
+				args.add((IType) node);
 			return false;
 		}
 		public void leave(IPDOMNode node) throws CoreException {
 		}
 		public IType[] getTemplateArguments() {
-			return (IType[])args.toArray(new IType[args.size()]);
+			return args.toArray(new IType[args.size()]);
 		}
 	}
 	
@@ -142,14 +147,15 @@ class PDOMCPPClassTemplatePartialSpecialization extends
 		}
 	}
 	
+	@Override
 	public int pdomCompareTo(PDOMBinding other) {
 		int cmp = super.pdomCompareTo(other);
 		if(cmp==0) {
 			if(other instanceof PDOMCPPClassTemplatePartialSpecialization) {
 				try {
 					PDOMCPPClassTemplatePartialSpecialization otherSpec = (PDOMCPPClassTemplatePartialSpecialization) other;
-					int mySM = getSignatureMemento();
-					int otherSM = otherSpec.getSignatureMemento();
+					int mySM = getSignatureHash();
+					int otherSM = otherSpec.getSignatureHash();
 					return mySM == otherSM ? 0 : mySM < otherSM ? -1 : 1;
 				} catch(CoreException ce) {
 					CCorePlugin.log(ce);
@@ -161,33 +167,18 @@ class PDOMCPPClassTemplatePartialSpecialization extends
 		return cmp;
 	}
 
+	@Override
 	public IBinding instantiate(IType[] args) {
+		args= SemanticUtil.getSimplifiedTypes(args);
+		
 		ICPPSpecialization instance = getInstance( args );
 		if( instance != null ){
 			return instance;
 		}
 		
-		IType [] specArgs = getArguments();
-		if( specArgs.length != args.length ){
-			return null;
-		}
-		
-		ObjectMap argMap = new ObjectMap( specArgs.length );
-		int numSpecArgs = specArgs.length;
-		for( int i = 0; i < numSpecArgs; i++ ){
-			IType spec = specArgs[i];
-			IType arg = args[i];
-			
-			//If the argument is a template parameter, we can't instantiate yet, defer for later
-			if( CPPTemplates.typeContainsTemplateParameter( arg ) ){
-				return deferredInstance( args );
-			}
-			try {
-				if( !CPPTemplates.deduceTemplateArgument( argMap,  spec, arg ) )
-					return null;
-			} catch (DOMException e) {
-				return null;
-			}
+		ObjectMap argMap= CPPTemplates.deduceTemplateArguments(getArguments(), args, true);
+		if (CPPTemplates.containsDependentArg(argMap)) {
+			return deferredInstance(argMap, args);
 		}
 		
 		ICPPTemplateParameter [] params = getTemplateParameters();
@@ -197,10 +188,78 @@ class PDOMCPPClassTemplatePartialSpecialization extends
 				return null;
 		}
 		
-		return (ICPPTemplateInstance) CPPTemplates.createInstance( (ICPPScope) getScope(), this, argMap, args );
+		return CPPTemplates.createInstance( (ICPPScope) getScope(), this, argMap, args );
 	}
 
+	private static class NodeCollector implements IPDOMVisitor {
+		private List<IPDOMNode> nodes = new ArrayList<IPDOMNode>();
+		public boolean visit(IPDOMNode node) throws CoreException {
+			nodes.add(node);
+			return false;
+		}
+		public void leave(IPDOMNode node) throws CoreException {
+		}
+		public IPDOMNode[] getNodes() {
+			return nodes.toArray(new IPDOMNode[nodes.size()]);
+		}
+	}
+	
 	public ObjectMap getArgumentMap() {
+		try {
+			PDOMNodeLinkedList argList = new PDOMNodeLinkedList(pdom, record + ARGUMENTS, getLinkageImpl());
+			ICPPTemplateParameter[] params;
+			try {
+				params = getPrimaryClassTemplate().getTemplateParameters();
+			} catch (DOMException e) {
+				return ObjectMap.EMPTY_MAP;
+			}
+			NodeCollector argVisitor = new NodeCollector();
+			argList.accept(argVisitor);
+			IPDOMNode[] argNodes = argVisitor.getNodes();
+			
+			ObjectMap map = new ObjectMap(params.length);
+			for (int i = 0; i < params.length; i++) {
+				map.put(params[i], argNodes[i]);
+			}
+			
+			return map;
+		} catch (CoreException e) {
+			CCorePlugin.log(e);
+		}
 		return null;
+	}
+	
+	@Override
+	public boolean isSameType(IType type) {
+		if (type instanceof ITypedef) {
+			return type.isSameType(this);
+		}
+		
+		if (type instanceof PDOMNode) {
+			PDOMNode node= (PDOMNode) type;
+			if (node.getPDOM() == getPDOM()) {
+				return node.getRecord() == getRecord();
+			}
+		}
+		
+		if( type instanceof ICPPSpecialization ) {
+	        	ICPPClassType ct1= (ICPPClassType) getSpecializedBinding();
+	        	ICPPClassType ct2= (ICPPClassType) ((ICPPSpecialization)type).getSpecializedBinding();
+	        	if(!ct1.isSameType(ct2))
+	        		return false;
+	        	
+	        	ObjectMap m1 = getArgumentMap(), m2 = ((ICPPSpecialization)type).getArgumentMap();
+	        	if( m1 == null || m2 == null || m1.size() != m2.size())
+	        		return false;
+	        	for( int i = 0; i < m1.size(); i++ ){
+	        		IType t1 = (IType) m1.getAt( i );
+	        		IType t2 = (IType) m2.getAt( i );
+	        		if(!CPPTemplates.isSameTemplateArgument(t1, t2 ))
+	        			return false;
+	        	}
+	        	return true;
+	        }
+		
+		return false;
 	}
 }

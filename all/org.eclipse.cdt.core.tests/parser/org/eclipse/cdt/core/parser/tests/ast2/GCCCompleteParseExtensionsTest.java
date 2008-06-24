@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2005 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM Rational Software - Initial API and implementation
+ *    IBM Rational Software - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.core.parser.tests.ast2;
 
@@ -111,7 +112,7 @@ public class GCCCompleteParseExtensionsTest extends AST2BaseTest {
 		writer.write( "__signed__ int signedInt;\n"); //$NON-NLS-1$
 		IASTDeclaration[] decls = parseGCC( writer.toString() ).getDeclarations();
 		
-        assertEquals(((IASTASMDeclaration)decls[0]).getAssembly(), "CODE"); //$NON-NLS-1$
+        assertEquals(((IASTASMDeclaration)decls[0]).getAssembly(), "\"CODE\""); //$NON-NLS-1$
         assertTrue( ((IASTFunctionDefinition)decls[1]).getDeclSpecifier().isInline() );
         assertTrue( ((IASTSimpleDeclaration)decls[2]).getDeclSpecifier().isConst() );
         assertTrue( ((IASTSimpleDeclaration)decls[3]).getDeclSpecifier().isVolatile() );
@@ -210,10 +211,11 @@ public class GCCCompleteParseExtensionsTest extends AST2BaseTest {
     {
 		parseGPP("class B { public: B(); int a;}; B::B() : a(({ 1; })) {}"); //$NON-NLS-1$
         Writer writer = new StringWriter();
+        writer.write( "int foo(); class B { public: B(); int a;};");
         writer.write( "B::B() : a(( { int y = foo (); int z;\n" ); //$NON-NLS-1$
         writer.write( "if (y > 0) z = y;\n" ); //$NON-NLS-1$
         writer.write( "else z = - y;\n" );//$NON-NLS-1$
-        writer.write( "z; }))\n" );//$NON-NLS-1$
+        writer.write( "z; })) {}\n" );//$NON-NLS-1$
 		parseGPP( writer.toString() );
         
         writer = new StringWriter();

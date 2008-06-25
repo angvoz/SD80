@@ -1,13 +1,15 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
- * Martin Oberhuber (Wind River Systems) - bug 155096
+ *     IBM - Initial API and implementation
+ *     Martin Oberhuber (Wind River Systems) - bug 155096
+ *     Gerhard Schaber (Wind River Systems)
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.make.internal.core.scannerconfig.gnu;
 
@@ -40,6 +42,7 @@ public class GCCPerFileBOPConsoleParserUtility extends AbstractGCCBOPConsolePars
     private int workingDirsN = 0;
     private int commandsN = 0;
     private int filesN = 0;
+	private String fDefaultMacroDefinitionValue= "1"; //$NON-NLS-1$
 
 
     /**
@@ -111,7 +114,8 @@ public class GCCPerFileBOPConsoleParserUtility extends AbstractGCCBOPConsolePars
             return;
         compiledFileList.add(longFileName);
 
-        CCommandDSC command = getNewCCommandDSC(genericLine, false); // assume .c file type
+        String[] tokens = genericLine.split("\\s+"); //$NON-NLS-1$
+        CCommandDSC command = getNewCCommandDSC(tokens, 0, false); // assume .c file type
         int index = commandsList2.indexOf(command);
         if (index == -1) {
             commandsList2.add(command);
@@ -130,11 +134,12 @@ public class GCCPerFileBOPConsoleParserUtility extends AbstractGCCBOPConsolePars
      * @param cppFileType
      * @return CCommandDSC compile command description 
      */
-    public CCommandDSC getNewCCommandDSC(String genericLine, boolean cppFileType) {
-        CCommandDSC command = new CCommandDSC(cppFileType);
-        String[] tokens = genericLine.split("\\s+"); //$NON-NLS-1$
-        command.addSCOption(new KVStringPair(SCDOptionsEnum.COMMAND.toString(), tokens[0]));
-        for (int i = 1; i < tokens.length; ++i) {
+    public CCommandDSC getNewCCommandDSC(String[] tokens, final int idxOfCompilerCommand, boolean cppFileType) {
+		ArrayList dirafter = new ArrayList();
+		ArrayList includes = new ArrayList();
+        CCommandDSC command = new CCommandDSC(cppFileType, getProject());
+        command.addSCOption(new KVStringPair(SCDOptionsEnum.COMMAND.toString(), tokens[idxOfCompilerCommand]));
+        for (int i = idxOfCompilerCommand+1; i < tokens.length; ++i) {
         	String token = tokens[i];
         	//Target specific options: see GccScannerInfoConsoleParser
 			if (token.startsWith("-m") ||		//$NON-NLS-1$
@@ -156,46 +161,84 @@ public class GCCPerFileBOPConsoleParserUtility extends AbstractGCCBOPConsolePars
 				continue;
         	}
             for (int j = SCDOptionsEnum.MIN; j <= SCDOptionsEnum.MAX; ++j) {
-                if (token.startsWith(SCDOptionsEnum.getSCDOptionsEnum(j).toString())) {
+                final SCDOptionsEnum optionKind = SCDOptionsEnum.getSCDOptionsEnum(j);
+				if (token.startsWith(optionKind.toString())) {
                     String option = token.substring(
-                            SCDOptionsEnum.getSCDOptionsEnum(j).toString().length()).trim();
+                            optionKind.toString().length()).trim();
                     if (option.length() > 0) {
                         // ex. -I/dir
                     }
-                    else if (SCDOptionsEnum.getSCDOptionsEnum(j).equals(SCDOptionsEnum.IDASH)) {
+                    else if (optionKind.equals(SCDOptionsEnum.IDASH)) {
+                    	for (Iterator iter=includes.iterator(); iter.hasNext(); ) {
+                    		option = (String)iter.next();
+                            KVStringPair pair = new KVStringPair(SCDOptionsEnum.IQUOTE.toString(), option);
+                        	command.addSCOption(pair);                    		
+                    	}
+                    	includes = new ArrayList();
                         // -I- has no parameter
                     }
                     else {
                         // ex. -I /dir
                         // take a next token
-                        ++i;
-                        if (i < tokens.length && !tokens[i].startsWith("-")) { //$NON-NLS-1$
-                            option = tokens[i];
+                        if (i+1 < tokens.length && !tokens[i+1].startsWith("-")) { //$NON-NLS-1$
+                            option = tokens[++i];
                         }
                         else break;
                     }
+                    
                     if (option.length() > 0 && (
-                            SCDOptionsEnum.getSCDOptionsEnum(j).equals(SCDOptionsEnum.INCLUDE) ||
-                            SCDOptionsEnum.getSCDOptionsEnum(j).equals(SCDOptionsEnum.INCLUDE_FILE) ||
-                            SCDOptionsEnum.getSCDOptionsEnum(j).equals(SCDOptionsEnum.IMACROS_FILE) ||
-                            SCDOptionsEnum.getSCDOptionsEnum(j).equals(SCDOptionsEnum.IDIRAFTER) ||
-                            SCDOptionsEnum.getSCDOptionsEnum(j).equals(SCDOptionsEnum.ISYSTEM))) {
+                            optionKind.equals(SCDOptionsEnum.INCLUDE) ||
+                            optionKind.equals(SCDOptionsEnum.INCLUDE_FILE) ||
+                            optionKind.equals(SCDOptionsEnum.IMACROS_FILE) ||
+                            optionKind.equals(SCDOptionsEnum.IDIRAFTER) ||
+                            optionKind.equals(SCDOptionsEnum.ISYSTEM) || 
+                            optionKind.equals(SCDOptionsEnum.IQUOTE) )) {
                         option = (getAbsolutePath(option)).toString();
                     }
-                    // add the pair
-                    command.addSCOption(new KVStringPair(SCDOptionsEnum.getSCDOptionsEnum(j).toString(), option));
+                    
+                    if (optionKind.equals(SCDOptionsEnum.IDIRAFTER)) {
+                        KVStringPair pair = new KVStringPair(SCDOptionsEnum.INCLUDE.toString(), option);
+                    	dirafter.add(pair);
+                    }
+                    else if (optionKind.equals(SCDOptionsEnum.INCLUDE)) {
+                    	includes.add(option);
+                    }
+                    else { // add the pair
+                    	if (optionKind.equals(SCDOptionsEnum.DEFINE)) {
+                        	if (option.indexOf('=') == -1) {
+                        		option += '='+ fDefaultMacroDefinitionValue;
+                        	}
+                    	}
+                        KVStringPair pair = new KVStringPair(optionKind.toString(), option);
+                    	command.addSCOption(pair);
+                    }
                     break;
                 }
             }
         }
+        String option;
+    	for (Iterator iter=includes.iterator(); iter.hasNext(); ) {
+    		option = (String)iter.next();
+            KVStringPair pair = new KVStringPair(SCDOptionsEnum.INCLUDE.toString(), option);
+        	command.addSCOption(pair);                    		
+    	}
+    	for (Iterator iter=dirafter.iterator(); iter.hasNext(); ) {
+        	command.addSCOption((KVStringPair)iter.next());                    		
+    	}
         return command;
     }
 
-    /**
+    public void setDefaultMacroDefinitionValue(String val) {
+    	if (val != null) {
+    		fDefaultMacroDefinitionValue= val;
+    	}
+	}
+
+	/**
      * @param filePath : String
      * @return filePath : IPath - not <code>null</code>
      */
-    IPath getAbsolutePath(String filePath) {
+    public IPath getAbsolutePath(String filePath) {
         IPath pFilePath;
         if (filePath.startsWith("/")) { //$NON-NLS-1$
         	return convertCygpath(new Path(filePath));
@@ -212,6 +255,14 @@ public class GCCPerFileBOPConsoleParserUtility extends AbstractGCCBOPConsolePars
             IPath cwd = getWorkingDirectory();
             if (!cwd.isAbsolute()) {
                 cwd = getBaseDirectory().append(cwd);
+            }
+            if (filePath.startsWith("`pwd`")) { //$NON-NLS-1$
+            	if (filePath.length() > 5 && (filePath.charAt(5) == '/' || filePath.charAt(5) == '\\')) {
+            		filePath = filePath.substring(6);
+            	}
+            	else {
+            		filePath = filePath.substring(5);
+            	}
             }
             pFilePath = cwd.append(filePath);
         }

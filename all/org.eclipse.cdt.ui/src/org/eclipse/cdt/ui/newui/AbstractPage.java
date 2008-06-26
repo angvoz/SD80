@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Intel Corporation and others.
+ * Copyright (c) 2007, 2008 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     Intel Corporation - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.ui.newui;
 
@@ -32,6 +33,8 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Preferences;
 import org.eclipse.core.runtime.QualifiedName;
+import org.eclipse.help.HelpSystem;
+import org.eclipse.help.IContext;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferencePageContainer;
@@ -43,6 +46,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -55,30 +59,38 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchPartReference;
-import org.eclipse.ui.IWorkbenchPropertyPage;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.WorkspaceModifyDelegatingOperation;
 import org.eclipse.ui.dialogs.PropertyPage;
 
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.core.model.util.CDTListComparator;
+import org.eclipse.cdt.core.settings.model.CConfigurationStatus;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
+import org.eclipse.cdt.core.settings.model.ICMultiItemsHolder;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
+import org.eclipse.cdt.core.settings.model.MultiItemsHolder;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.PreferenceConstants;
 import org.eclipse.cdt.utils.ui.controls.ControlFactory;
+
+import org.eclipse.cdt.internal.ui.CPluginImages;
 
 /**
  * It is a parent for all standard CDT property pages
  * in new CDT model. 
  * 
- * Although it is enougth for new page to implement
+ * Although it is enough for new page to implement
  * "IWorkbenchPropertyPage" interface, it would be
  * better to extend it from "AbstractPage".
  * 
@@ -98,23 +110,23 @@ import org.eclipse.cdt.utils.ui.controls.ControlFactory;
  */
 public abstract class AbstractPage extends PropertyPage 
 implements
-		IWorkbenchPropertyPage, // ext point 
 		IPreferencePageContainer, // dynamic pages
 		ICPropertyProvider // utility methods for tabs
 {
 	private static ICResourceDescription resd = null;
 	private static ICConfigurationDescription[] cfgDescs = null;
+	private static int cfgIndex = -1;
 	private static ICConfigurationDescription[] multiCfgs = null; // selected multi cfg
-	private static int cfgIndex = 0;
 	// tabs
 	private static final String EXTENSION_POINT_ID = "org.eclipse.cdt.ui.cPropertyTab"; //$NON-NLS-1$
-	public static final String ELEMENT_NAME = "tab"; //$NON-NLS-1$
-	public static final String CLASS_NAME = "class"; //$NON-NLS-1$
-	public static final String PARENT_NAME = "parent"; //$NON-NLS-1$
-	public static final String IMAGE_NAME = "icon"; //$NON-NLS-1$
-	public static final String TIP_NAME = "tooltip"; //$NON-NLS-1$
-	public static final String TEXT_NAME = "name"; //$NON-NLS-1$
-	public static final String WEIGHT_NAME = "weight"; //$NON-NLS-1$
+	private static final String ELEMENT_NAME = "tab"; //$NON-NLS-1$
+	private static final String CLASS_NAME = "class"; //$NON-NLS-1$
+	private static final String PARENT_NAME = "parent"; //$NON-NLS-1$
+	private static final String IMAGE_NAME = "icon"; //$NON-NLS-1$
+	private static final String TIP_NAME = "tooltip"; //$NON-NLS-1$
+	private static final String TEXT_NAME = "name"; //$NON-NLS-1$
+	private static final String WEIGHT_NAME = "weight"; //$NON-NLS-1$
+	private static final String HELPID_NAME = "helpId"; //$NON-NLS-1$
 
 	private static final Object NOT_NULL = new Object();
 	public static final String EMPTY_STR = "";  //$NON-NLS-1$
@@ -123,12 +135,17 @@ implements
 	private static final int SAVE_MODE_APPLY = 2;
 	private static final int SAVE_MODE_APPLYOK = 3;
 	
+	private final Image IMG_WARN = CPluginImages.get(CPluginImages.IMG_OBJS_REFACTORING_WARNING);
 	/*
 	 * Dialog widgets
 	 */
 	private Combo configSelector;
 	private Button manageButton;
 	private Button excludeFromBuildCheck;
+	private Label errIcon;
+	private Label errMessage;
+	private Composite errPane;
+	private Composite parentComposite;
 	/*
 	 * Bookeeping variables
 	 */
@@ -138,13 +155,14 @@ implements
 	protected boolean isProject = false;
 	protected boolean isFolder  = false;
 	protected boolean isFile    = false;
-	protected boolean isMulti   = false;
 	
 	// tabs
 	protected TabFolder folder;
-	protected ArrayList itabs = new ArrayList();
+	protected ArrayList<InternalTab> itabs = new ArrayList<InternalTab>();
 	protected ICPropertyTab currentTab;
 
+	private static boolean isNewOpening = true;
+	
 	protected class InternalTab {
 		Composite comp;
 		String text;
@@ -180,10 +198,11 @@ implements
 	public AbstractPage() {
 		if (CDTPropertyManager.getPagesCount() == 0) {
 			cfgDescs = null;
-			cfgIndex = 0;
+			cfgIndex = -1;
 		}
 	}
 	
+	@Override
 	protected Control createContents(Composite parent) {
 		//	Create the container we return to the property page editor
 		Composite composite = new Composite(parent, SWT.NULL);
@@ -199,7 +218,6 @@ implements
 			s = UIMessages.getString("AbstractPage.0"); //$NON-NLS-1$
 		} else if (!isApplicable()) {
 			return null;
-//			s = UIMessages.getString("AbstractPage.1"); //$NON-NLS-1$
 		} else if (!isCDTProject(getProject())) {
 			s = UIMessages.getString("AbstractPage.2"); //$NON-NLS-1$
 		}
@@ -221,91 +239,110 @@ implements
 	protected void contentForCDT(Composite composite) {
 		GridData gd;
 
-		// Add a config selection area
-		Group configGroup = ControlFactory.createGroup(composite, EMPTY_STR, 1);
-//		Composite configGroup = new Composite(composite, SWT.NONE);
-		gd = new GridData(GridData.HORIZONTAL_ALIGN_FILL);
-		gd.grabExcessHorizontalSpace = true;
-		configGroup.setLayoutData(gd);
-		// Use the form layout inside the group composite
-		GridLayout ff = new GridLayout(3, false);
-		configGroup.setLayout(ff);
-		Label configLabel = new Label(configGroup, SWT.NONE);
-		configLabel.setText(UIMessages.getString("AbstractPage.6")); //$NON-NLS-1$
-		configLabel.setLayoutData(new GridData(GridData.BEGINNING));
-		
-		configSelector = new Combo(configGroup, SWT.READ_ONLY | SWT.DROP_DOWN);
-		configSelector.addListener(SWT.Selection, new Listener() {
-			public void handleEvent(Event e) {
-				handleConfigSelection();
-			}
-		});
-		gd = new GridData(GridData.FILL);
-		gd.grabExcessHorizontalSpace = true;
-	    gd.grabExcessVerticalSpace = true;
-	    gd.horizontalAlignment = GridData.FILL;
-	    gd.verticalAlignment = GridData.FILL;
-	  	
-		configSelector.setLayoutData(gd);
-		
-		if (!CDTPrefUtil.getBool(CDTPrefUtil.KEY_NOMNG)) {
-			manageButton = new Button(configGroup, SWT.PUSH);
-			manageButton.setText(UIMessages.getString("AbstractPage.12")); //$NON-NLS-1$
-			gd = new GridData(GridData.END);
-			gd.widthHint = 150;
-			manageButton.setLayoutData(gd);
-			manageButton.addSelectionListener(new SelectionAdapter() {
-				public void widgetSelected(SelectionEvent e) {
-					if (ManageConfigDialog.manage(getProject(), false)) {
-						cfgDescs = null;
-						populateConfigurations();					
-					}
+		if (showsConfig()) {
+			// Add a config selection area
+			Group configGroup = ControlFactory.createGroup(composite, EMPTY_STR, 1);
+			gd = new GridData(GridData.HORIZONTAL_ALIGN_FILL);
+			gd.grabExcessHorizontalSpace = true;
+			gd.widthHint= 150;
+			configGroup.setLayoutData(gd);
+			configGroup.setLayout(new GridLayout(3, false));
+
+			Label configLabel = new Label(configGroup, SWT.NONE);
+			configLabel.setText(UIMessages.getString("AbstractPage.6")); //$NON-NLS-1$
+			configLabel.setLayoutData(new GridData(GridData.BEGINNING));
+
+			configSelector = new Combo(configGroup, SWT.READ_ONLY | SWT.DROP_DOWN);
+			configSelector.addListener(SWT.Selection, new Listener() {
+				public void handleEvent(Event e) {
+					handleConfigSelection();
 				}
 			});
-		} else { // dummy object to avoid breaking layout
-			new Label(configGroup, SWT.NONE).setLayoutData(new GridData(GridData.END));
-		}
-		
-		if (isForFolder() || isForFile()) {
-			excludeFromBuildCheck = new Button(configGroup, SWT.CHECK);
-			excludeFromBuildCheck.setText(UIMessages.getString("AbstractPage.7")); //$NON-NLS-1$
+			gd = new GridData(GridData.FILL_BOTH);
+			configSelector.setLayoutData(gd);
+
+			if (!CDTPrefUtil.getBool(CDTPrefUtil.KEY_NOMNG)) {
+				manageButton = new Button(configGroup, SWT.PUSH);
+				manageButton.setText(UIMessages.getString("AbstractPage.12")); //$NON-NLS-1$
+				gd = new GridData(GridData.END);
+				gd.minimumWidth = 150;
+				manageButton.setLayoutData(gd);
+				manageButton.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						IProject[] obs = new IProject[] { getProject() };
+						IConfigManager cm = ManageConfigSelector.getManager(obs);
+						if (cm != null && cm.manage(obs, false)) {
+							cfgDescs = null;
+							populateConfigurations();					
+						}
+					}
+				});
+			} else { // dummy object to avoid breaking layout
+				new Label(configGroup, SWT.NONE).setLayoutData(new GridData(GridData.END));
+			}
+
+			errPane = new Composite(configGroup, SWT.NONE);
 			gd = new GridData(GridData.FILL_HORIZONTAL);
 			gd.horizontalSpan = 3;
-			excludeFromBuildCheck.setLayoutData(gd);
-			excludeFromBuildCheck.addSelectionListener(new SelectionAdapter() {
-				public void widgetSelected(SelectionEvent e) {
-					getResDesc().setExcluded(excludeFromBuildCheck.getSelection());
-				}
-			});
+			errPane.setLayoutData(gd);
+			GridLayout gl = new GridLayout(2, false);
+			gl.marginHeight = 0;
+			gl.marginWidth = 0;
+			gl.verticalSpacing = 0;
+			gl.horizontalSpacing = 0;
+			errPane.setLayout(gl);
+
+			errIcon = new Label(errPane, SWT.LEFT);
+			errIcon.setLayoutData(new GridData(GridData.BEGINNING));
+			errIcon.setImage(IMG_WARN);
+
+			errMessage = new Label(errPane, SWT.LEFT);
+			errMessage.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+
+			if (isForFolder() || isForFile()) {
+				excludeFromBuildCheck = new Button(configGroup, SWT.CHECK);
+				excludeFromBuildCheck.setText(UIMessages.getString("AbstractPage.7")); //$NON-NLS-1$
+				gd = new GridData(GridData.FILL_HORIZONTAL);
+				gd.horizontalSpan = 3;
+				excludeFromBuildCheck.setLayoutData(gd);
+				excludeFromBuildCheck.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						getResDesc().setExcluded(excludeFromBuildCheck.getSelection());
+					}
+				});
+			}
 		}
-		
+
 		//	Update the contents of the configuration widget
 		populateConfigurations();
-		
 		if (excludeFromBuildCheck != null) {
 			excludeFromBuildCheck.setSelection(getResDesc().isExcluded());
 		}
 		//	Create the Specific objects for each page
 		createWidgets(composite);
 	}
-	
+
 	public void createWidgets(Composite c) {
-		Composite comp = new Composite(c, SWT.NONE);
-		comp.setLayoutData(new GridData(GridData.FILL_BOTH));
-		
+		GridData gd;
+		parentComposite = new Composite(c, SWT.NONE);
+		parentComposite.setLayoutData(gd= new GridData(GridData.FILL_BOTH));
+		gd.widthHint= 200;
 		itabs.clear(); 
 		if (!isSingle()) {
-			comp.setLayout(new FillLayout());
-			folder = new TabFolder(comp, SWT.NONE);
+			parentComposite.setLayout(new FillLayout());
+			folder = new TabFolder(parentComposite, SWT.NONE);
 //			folder.setBackground(Display.getDefault().getSystemColor(SWT.COLOR_DARK_GRAY));
 		}
-		loadExtensionsSynchronized(comp);
+		loadExtensionsSynchronized(parentComposite);
 		
 		// Set listener after data load, to avoid firing
 		// selection event on not-initialized tab items 
 		if (folder != null) {
 		    folder.addSelectionListener(new SelectionAdapter() {
-			      public void widgetSelected(org.eclipse.swt.events.SelectionEvent event) {
+			      @Override
+				public void widgetSelected(org.eclipse.swt.events.SelectionEvent event) {
 			    	  if (folder.getSelection().length > 0 ) {
 			    		  ICPropertyTab newTab = (ICPropertyTab)folder.getSelection()[0].getData();
 			    		  if (newTab != null && currentTab != newTab) {
@@ -342,7 +379,6 @@ implements
 	 * Event Handlers
 	 */
 	private void handleConfigSelection() {
-		isMulti = false; // no multi config selection by default 
 		// If there is nothing in config selection widget just bail
 		if (configSelector.getItemCount() == 0) return;
 		int selectionIndex = configSelector.getSelectionIndex();
@@ -350,46 +386,52 @@ implements
 
 		// Check if the user has selected the "all / multiple" configuration
 		if (selectionIndex >= cfgDescs.length) {
-			if ((selectionIndex - cfgDescs.length) == 0)  // all
+			if ((selectionIndex - cfgDescs.length) == 0) {  // all
 				multiCfgs = cfgDescs;
-			else {
-				ICConfigurationDescription[] mcfgs = ConfigMultiSelectionDialog.select(cfgDescs);
-				if (mcfgs == null || mcfgs.length == 0) {
-					// return back to previous selection, but not to multi !
-					if (cfgIndex >= cfgDescs.length) {
-						cfgIndex = 0;
-						configSelector.select(0);
-						cfgChanged(cfgDescs[0]);
-					} else {
-						configSelector.select(cfgIndex);
+				cfgIndex = selectionIndex; 
+			} else { // multiple
+				if (cfgIndex != selectionIndex) { // to avoid re-request on page change 
+					ICConfigurationDescription[] mcfgs = ConfigMultiSelectionDialog.select(cfgDescs);
+					if (mcfgs == null || mcfgs.length == 0) {
+						// return back to previous selection
+						if (cfgIndex > configSelector.getItemCount()) {
+							cfgIndex = 0;
+							configSelector.select(0);
+							cfgChanged(cfgDescs[0]);
+						} else {
+							configSelector.select(cfgIndex);
+						}
+						return;
 					}
-					return;
+					multiCfgs = mcfgs;
+					cfgIndex = selectionIndex;
 				}
-				multiCfgs = mcfgs;
 			}
-
-			isMulti = true;
-			// if tab does not support multi cfg,
-			// it will show 1st cfg, at least.
-			cfgChanged(multiCfgs[0]); 
+			cfgChanged(MultiItemsHolder.createCDescription(multiCfgs)); 
 			return;
-		} else {
-			ICConfigurationDescription newConfig = cfgDescs[selectionIndex];
-			if (newConfig != getResDesc()) {
-				cfgIndex = selectionIndex;
-				cfgChanged(newConfig);
-			}
 		}
+		String id1 = getResDesc() == null ? null : getResDesc().getId();
+		cfgIndex = selectionIndex;
+		ICConfigurationDescription newConfig = cfgDescs[selectionIndex];
+		String id2 = newConfig.getId();
+		if (id2 != null && !id2.equals(id1))
+			cfgChanged(newConfig);
 	}
 	
-    public boolean performCancel() {
+    @Override
+	public boolean performCancel() {
 		if (! noContentOnPage && displayedConfig) forEach(ICPropertyTab.CANCEL);
+		
+		CDTPropertyManager.performCancel(this);
+		
         return true;
     }
+	@Override
 	public void performDefaults() {
 		if (! noContentOnPage && displayedConfig) forEach(ICPropertyTab.DEFAULTS);
 	}
-    public void performApply() { performSave(SAVE_MODE_APPLY); }
+    @Override
+	public void performApply() { performSave(SAVE_MODE_APPLY); }
     
     /**
      * There are 2 ways to perform OK for CDT property pages.
@@ -409,14 +451,48 @@ implements
      *   <workspace>/.metadata/.plugins/org.eclipse.cdt.ui/apply_mode
      */
     
-    public boolean performOk() {
+    @Override
+	public boolean performOk() {
     	File f = CUIPlugin.getDefault().getStateLocation().append("apply_mode").toFile(); //$NON-NLS-1$
     	if (f.exists()) 
-        	return performSave(SAVE_MODE_APPLYOK); 
-        else 
-        	return performSave(SAVE_MODE_OK); 
+        	return performSave(SAVE_MODE_APPLYOK);
+		return performSave(SAVE_MODE_OK); 
         	
     }
+
+    /**
+     * Searches in the prj for the config description with the same ID as for given cfg.
+     * If there's no such cfgd, it will be created.
+     *  
+     *  @param prj - project description where we'll search (or create) config description
+     *  @param cfg - config description belonging to another project description, 
+     *               it is a sample for search and base for possile creation
+     *               of resulting configuration description.
+     *                  
+     *  @return the configuration description (found or created) or null in case of error
+     */
+    private ICConfigurationDescription findCfg(ICProjectDescription prj, ICConfigurationDescription cfg) {
+    	String id = cfg.getId();
+    	// find config with the same ID as original one
+		ICConfigurationDescription c = prj.getConfigurationById(id);
+		// if there's no cfg found, try to create it
+		if (c == null) {
+			try {
+				c = prj.createConfiguration(id, cfg.getName(), cfg);
+				c.setDescription(cfg.getDescription());
+			} catch (CoreException e) { 
+				/* do nothing: c is already null */ 
+			}
+		}
+		// if creation failed, report an error and return null
+		if (c == null) {
+			MessageBox mb = new MessageBox(getShell());
+			mb.setMessage(UIMessages.getString("AbstractPage.3")); //$NON-NLS-1$
+			mb.open();
+		}
+    	return c;
+    }
+    
     /**
      * The same code used to perform OK and Apply 
      */
@@ -427,9 +503,26 @@ implements
 		
 		final boolean needs = (mode != SAVE_MODE_OK);
 		final ICProjectDescription local_prjd = needs ? CoreModel.getDefault().getProjectDescription(getProject()) : null;
-		ICConfigurationDescription c = needs ? local_prjd.getConfigurationById(resd.getConfiguration().getId()) : null;
-		final ICResourceDescription local_cfgd = needs ? getResDesc(c) : null;
-
+		
+		ICResourceDescription lc = null;
+		
+		if (needs) { 
+			if (isMultiCfg()) {
+				ICResourceDescription[] rds = (ICResourceDescription[])((ICMultiItemsHolder)resd).getItems();
+				for (int i=0; i<rds.length; i++) {
+					ICConfigurationDescription c = local_prjd.getConfigurationById(rds[i].getConfiguration().getId());
+					rds[i] = getResDesc(c);
+				}
+				lc = MultiItemsHolder.createRDescription(rds);
+			} else {
+				ICConfigurationDescription c = findCfg(local_prjd, resd.getConfiguration());
+				if (c == null) 
+					return false; // cannot save: no cfg found
+				lc = getResDesc(c);
+			}
+		}
+		final ICResourceDescription local_cfgd = lc;
+		
 		IRunnableWithProgress runnable = new IRunnableWithProgress() {
 			
 			private void sendOK() {
@@ -448,20 +541,20 @@ implements
 				case SAVE_MODE_APPLYOK:
 					sendOK();
 					ICConfigurationDescription[] olds = CDTPropertyManager.getProjectDescription(AbstractPage.this, getProject()).getConfigurations();
-					for (int i=0; i<olds.length; i++) {
-						resd = getResDesc(olds[i]);
-						ICResourceDescription r = getResDesc(local_prjd.getConfigurationById(olds[i].getId()));
-						for (int j=0; j<CDTPropertyManager.getPagesCount(); j++) {
-							Object p = CDTPropertyManager.getPage(j);
-							if (p != null && p instanceof AbstractPage) { 
-								AbstractPage ap = (AbstractPage)p;
-								if (ap.displayedConfig) {
-									ap.forEach(ICPropertyTab.UPDATE, resd);
-									ap.forEach(ICPropertyTab.APPLY, r);
+					for (ICConfigurationDescription old : olds) {
+							resd = getResDesc(old);
+							ICResourceDescription r = getResDesc(local_prjd.getConfigurationById(old.getId()));
+							for (int j=0; j<CDTPropertyManager.getPagesCount(); j++) {
+								Object p = CDTPropertyManager.getPage(j);
+								if (p != null && p instanceof AbstractPage) { 
+									AbstractPage ap = (AbstractPage)p;
+									if (ap.displayedConfig) {
+										ap.forEach(ICPropertyTab.UPDATE, resd);
+										ap.forEach(ICPropertyTab.APPLY, r);
+									}
 								}
 							}
 						}
-					}
 					break;
 				case SAVE_MODE_APPLY:
 					forEach(ICPropertyTab.APPLY, local_cfgd);
@@ -495,29 +588,48 @@ implements
     }
 
 	private void populateConfigurations() {
-		// Do nothing if widget not created yet.
-		if (configSelector == null)	return;
+		IProject prj = getProject();
+		// Do nothing in case of Preferences page.
+		if (prj == null)
+			return;
 
 		// Do not re-read if list already created by another page
 		if (cfgDescs == null) {
-			cfgDescs = CDTPropertyManager.getProjectDescription(this, getProject()).getConfigurations();
+			cfgDescs = CDTPropertyManager.getProjectDescription(this, prj).getConfigurations();
 			if (cfgDescs == null || cfgDescs.length == 0) return;
 			Arrays.sort(cfgDescs, CDTListComparator.getInstance());
+			
+		} else {
+			// just register in CDTPropertyManager;
+			CDTPropertyManager.getProjectDescription(this, prj);
 		}
 		
+		// Do nothing if widget not created yet.
+		if (configSelector == null)	{
+			if (cfgDescs != null && cfgDescs.length > 0) {
+				for (int i = 0; i < cfgDescs.length; ++i) {
+					if (cfgIndex == -1 && cfgDescs[i].isActive()) 
+						cfgIndex = i;
+				}
+				if (cfgIndex < 0) {
+					cfgIndex = 0;
+				}
+				cfgChanged(cfgDescs[cfgIndex]); 
+			}
+			return;
+		}
+
 		// Clear and replace the contents of the selector widget
 		configSelector.removeAll();
 		for (int i = 0; i < cfgDescs.length; ++i) {
 			configSelector.add(cfgDescs[i].getName());
-			if (cfgDescs[i].isActive()) cfgIndex = i;
+			if (cfgIndex == -1 && cfgDescs[i].isActive()) 
+				cfgIndex = i;
 		}
-		// Handling of All/Multiple configurations can be disabled
-		if (CDTPrefUtil.getBool(CDTPrefUtil.KEY_MULTI)) {
-			if (cfgDescs.length > 1) // "All cfgs" - shown if at least 2 cfgs available
-				configSelector.add(UIMessages.getString("AbstractPage.4")); //$NON-NLS-1$
-			if (cfgDescs.length > 2)// "Multi cfgs" - shown if at least 3 cfgs available
-				configSelector.add(UIMessages.getString("AbstractPage.5")); //$NON-NLS-1$
-		}
+		if (cfgDescs.length > 1) // "All cfgs" - shown if at least 2 cfgs available
+			configSelector.add(UIMessages.getString("AbstractPage.4")); //$NON-NLS-1$
+		if (cfgDescs.length > 2)// "Multi cfgs" - shown if at least 3 cfgs available
+			configSelector.add(UIMessages.getString("AbstractPage.5")); //$NON-NLS-1$
 		configSelector.select(cfgIndex);
 		handleConfigSelection();
 	}
@@ -527,18 +639,21 @@ implements
 	public void updateTitle() {	}
 	public void updateContainer() {	}
 
+	@Override
 	public boolean isValid() {
 		updateContainer();
 		return super.isValid();
 	}
 	
+	@Override
 	public void setVisible(boolean visible) {
 		super.setVisible(visible);
 		if (visible) {
-			handleResize(visible);
+			handleResize(true);
 			displayedConfig = true;
 			if (excludeFromBuildCheck != null && resd != null)
 				excludeFromBuildCheck.setSelection(resd.isExcluded());
+			populateConfigurations();
 		}
 
 		if (itabs.size() < 1) return;
@@ -552,8 +667,12 @@ implements
 	}
 	
 	protected void handleResize(boolean visible) {
-		if (CDTPropertyManager.getPagesCount() > 1) return; // do not duplicate
-		if (CDTPrefUtil.getBool(CDTPrefUtil.KEY_NOSAVE)) return;
+		if (visible && !isNewOpening) return; // do not duplicate
+		if (visible) 
+			isNewOpening = false;
+		
+		int saveMode = CDTPrefUtil.getInt(CDTPrefUtil.KEY_POSSAVE);
+		if (saveMode == CDTPrefUtil.POSITION_SAVE_NONE) return;
 		
 		if (internalElement == null && !checkElement()) 
 			return; // not initialized. Do not process
@@ -569,12 +688,14 @@ implements
 			if (visible) {
 				String w = prj.getPersistentProperty(WIDTH);
 				String h = prj.getPersistentProperty(HEIGHT);
-				String x = prj.getPersistentProperty(XKEY);
-				String y = prj.getPersistentProperty(YKEY);
 				if (w != null) r.width  = Integer.parseInt(w);
 				if (h != null) r.height = Integer.parseInt(h);
-				if (x != null) r.x = Integer.parseInt(x);
-				if (y != null) r.y = Integer.parseInt(y);
+				if (saveMode == CDTPrefUtil.POSITION_SAVE_BOTH) {
+					String x = prj.getPersistentProperty(XKEY);
+					String y = prj.getPersistentProperty(YKEY);
+					if (x != null) r.x = Integer.parseInt(x);
+					if (y != null) r.y = Integer.parseInt(y);
+				}
 				getShell().setBounds(r);
 			} else {
 				prj.setPersistentProperty(WIDTH,  String.valueOf(r.width));
@@ -585,6 +706,7 @@ implements
 		} catch (CoreException e) {}
 	}
 
+	@Override
 	public IPreferenceStore getPreferenceStore() {
 		return CUIPlugin.getDefault().getPreferenceStore();
 	}
@@ -637,6 +759,9 @@ implements
 				populateConfigurations();
 				if (cfgDescs == null || cfgDescs.length == 0) return null;
 			}
+			if (cfgDescs.length == 0) {
+				return null;
+			}
 			resd = getResDesc(cfgDescs[cfgIndex]);			
 		}
 		return resd;
@@ -651,16 +776,20 @@ implements
 		IResource res = (IResource)ad; 
 		IPath p = res.getProjectRelativePath();
 		if (isForFolder() || isForFile()) {
-			out = cf.getResourceDescription(p, false);
-			if (! p.equals(out.getPath()) ) {
-				try {
-					if (isForFolder())
-						out = cf.createFolderDescription(p, (ICFolderDescription)out);
-					else
-						out = cf.createFileDescription(p, out);
-				} catch (CoreException e) {
-					System.out.println(UIMessages.getString("AbstractPage.10") + //$NON-NLS-1$
-							p.toOSString() + "\n" + e.getLocalizedMessage()); //$NON-NLS-1$
+			if (cf instanceof ICMultiItemsHolder) {
+				out = cf.getResourceDescription(p, isForFolder()); // sic ! 
+			} else {
+				out = cf.getResourceDescription(p, false);
+				if (! p.equals(out.getPath()) ) {
+					try {
+						if (isForFolder())
+							out = cf.createFolderDescription(p, (ICFolderDescription)out);
+						else
+							out = cf.createFileDescription(p, out);
+					} catch (CoreException e) {
+						System.out.println(UIMessages.getString("AbstractPage.10") + //$NON-NLS-1$
+								p.toOSString() + "\n" + e.getLocalizedMessage()); //$NON-NLS-1$
+					}
 				}
 			}
 		}
@@ -668,14 +797,25 @@ implements
 	}
 	
 	protected void cfgChanged(ICConfigurationDescription _cfgd) {
+		
+		CConfigurationStatus st = _cfgd.getConfigurationStatus();
+		if (errPane != null && errMessage != null) {
+			if (st.isOK()) {
+				errPane.setVisible(false);
+			} else {
+				errMessage.setText(st.getMessage());
+				errPane.setVisible(true);
+			}
+		}
+
 		resd = getResDesc(_cfgd);
 		
 		if (excludeFromBuildCheck != null) {
 			excludeFromBuildCheck.setEnabled(resd.canExclude(!resd.isExcluded()));
 			excludeFromBuildCheck.setSelection(resd.isExcluded());
 		}
-
-		for (int i=0; i<CDTPropertyManager.getPagesCount(); i++) {
+		int x = CDTPropertyManager.getPagesCount();
+		for (int i=0; i<x; i++) {
 			Object p = CDTPropertyManager.getPage(i);
 			if (p == null || !(p instanceof AbstractPage))
 				continue;
@@ -685,14 +825,17 @@ implements
 		}
 	}
 	
+	@Override
 	public void dispose() {
 		if (displayedConfig) forEach(ICPropertyTab.DISPOSE);
-		handleResize(false); // save page size 
+		
+		if (!isNewOpening)
+			handleResize(false); // save page size 
+		isNewOpening = true;
 		// clear static variables
 		if (CDTPropertyManager.getPagesCount() == 0) {
 			resd = null;
 			cfgDescs = null;
-			multiCfgs = null;
 		}
 	} 
 	
@@ -705,13 +848,20 @@ implements
 	abstract protected boolean isSingle(); 
 	
 	/**
+	 * Defines whether the configurations control is shown or not.
+	 * Subclasses may override this.
+	 * @return true, if the configurations control should be shown (default); false otherwise
+	 */
+	protected boolean showsConfig() { return true;	}
+
+	/**
 	 * Apply specified method to all tabs
 	 */
 	protected void forEach(int m) { forEach(m, null); }
 	protected void forEach(int m, Object pars) {
-		Iterator it = itabs.iterator();
+		Iterator<InternalTab> it = itabs.iterator();
 		while(it.hasNext()) {
-			InternalTab tab = (InternalTab)it.next();
+			InternalTab tab = it.next();
 			if (tab != null) tab.tab.handleTabEvent(m, pars);
 		}
 	}
@@ -744,11 +894,11 @@ implements
 			
 			Arrays.sort(elements, CDTListComparator.getInstance());
 			
-			for (int k = 0; k < elements.length; k++) {
-				if (elements[k].getName().equals(ELEMENT_NAME)) {
-					if (loadTab(elements[k], parent)) return;
+			for (IConfigurationElement element2 : elements) {
+				if (element2.getName().equals(ELEMENT_NAME)) {
+					if (loadTab(element2, parent)) return;
 				} else {
-					System.out.println(UIMessages.getString("AbstractPage.13") + elements[k].getName()); //$NON-NLS-1$
+					System.out.println(UIMessages.getString("AbstractPage.13") + element2.getName()); //$NON-NLS-1$
 				}
 			}
 		}
@@ -777,6 +927,13 @@ implements
 		}
 		if (page == null) return false;
 		
+		String helpId = element.getAttribute(HELPID_NAME);
+		if (helpId != null && helpId.length() > 0 
+   		    // TODO: in next version: refer to ICPropertyTab instead of AbstractCPropertyTab
+			&& page instanceof AbstractCPropertyTab) {
+			((AbstractCPropertyTab)page).setHelpContextId(helpId);
+		}
+		
 		Image _img = getIcon(element);
 		if (_img != null) page.handleTabEvent(ICPropertyTab.SET_ICON, _img);
 		
@@ -788,17 +945,16 @@ implements
 			itabs.add(itab);
 			currentTab = page;
 			return true; // don't load other tabs
-		} else {  // tabbed page
-			String _name   = element.getAttribute(TEXT_NAME);
-			String _tip = element.getAttribute(TIP_NAME);
-
-			Composite _comp = new Composite(folder, SWT.NONE);
-			page.createControls(_comp, this);	    
-			InternalTab itab = new InternalTab(_comp, _name, _img, page, _tip);
-			itab.createOn(folder);
-			itabs.add(itab);
-			return false;
 		}
+		String _name   = element.getAttribute(TEXT_NAME);
+		String _tip = element.getAttribute(TIP_NAME);
+
+		Composite _comp = new Composite(folder, SWT.NONE);
+		page.createControls(_comp, this);	    
+		InternalTab itab = new InternalTab(_comp, _name, _img, page, _tip);
+		itab.createOn(folder);
+		itabs.add(itab);
+		return false;
 	}
 	
 	private Image getIcon(IConfigurationElement config) {
@@ -843,21 +999,22 @@ implements
 				if (folder == null) {
 					if (itabs == null || itabs.size() == 0) 
 						return;
-					ICPropertyTab t = ((InternalTab)itabs.get(0)).tab;
+					ICPropertyTab t = itabs.get(0).tab;
 					if (! t.canBeVisible())
 						t.handleTabEvent(ICPropertyTab.VISIBLE, null);
+					return;
 				}
 				boolean willAdd = false;
 				TabItem[] ts = folder.getItems();
 				int x = folder.getSelectionIndex();
 				String currHeader = (x == -1) ? null : ts[x].getText();
 				for (int i=0; i<itabs.size(); i++) {
-					InternalTab itab = (InternalTab)itabs.get(i);
+					InternalTab itab = itabs.get(i);
 					TabItem ti = null;
-					for (int j=0; j<ts.length; j++) {
-						if (ts[j].isDisposed()) continue;
-						if (ts[j].getData() == itab.tab) {
-							ti = ts[j];
+					for (TabItem element2 : ts) {
+						if (element2.isDisposed()) continue;
+						if (element2.getData() == itab.tab) {
+							ti = element2;
 							break;
 						}
 					}
@@ -878,7 +1035,7 @@ implements
 							ts[j].dispose();
 					TabItem ti = null;
 					for (int i=0; i<itabs.size(); i++) {
-						InternalTab itab = (InternalTab)itabs.get(i);
+						InternalTab itab = itabs.get(i);
 						if (itab.tab.canBeVisible()) {
 							TabItem currTI = itab.createOn(folder);
 							if (currHeader != null && currHeader.equals(itab.text))
@@ -908,6 +1065,7 @@ implements
 	}
 	
 	// override parent's method to use proper class
+	@Override
 	public IAdaptable getElement() {
 		if (internalElement == null && !checkElement()) 
 			throw (new NullPointerException(UIMessages.getString("AbstractPage.15"))); //$NON-NLS-1$
@@ -918,9 +1076,7 @@ implements
 	public boolean isForFolder()   { return isFolder; }
 	public boolean isForFile()     { return isFile; }
 	public boolean isForPrefs()    { return false; }
-	
-	public boolean isMultiCfg()    { return isMulti; }
-	public ICConfigurationDescription[] getMultiCfg() { return (isMulti) ? multiCfgs : null; }
+	public boolean isMultiCfg()    { return resd instanceof ICMultiItemsHolder; }
 	
 	/**
 	 * Checks whether CDT property pages can be open for given object.
@@ -938,18 +1094,64 @@ implements
 			return false; // unknown element
 		if (isForFile()) // only source files are applicable
 			return true; //CoreModel.isValidSourceUnitName(getProject(), internalElement.getName());
-		else
-			return true; // Projects and folders are always applicable
+		return true; // Projects and folders are always applicable
 	}
 
-	// update views (in particular, display resource configurations)
+	/**
+	 * update views (in particular, display resource configurations)
+	 */
 	public static void updateViews(IResource res) {
 		if (res == null) return;  
 		IWorkbenchPartReference refs[] = CUIPlugin.getActiveWorkbenchWindow().getActivePage().getViewReferences();
-		for (int k = 0; k < refs.length; k++) {
-			IWorkbenchPart part = refs[k].getPart(false);
+		for (IWorkbenchPartReference ref : refs) {
+			IWorkbenchPart part = ref.getPart(false);
 			if (part != null && part instanceof IPropertyChangeListener)
 				((IPropertyChangeListener)part).propertyChange(new PropertyChangeEvent(res, PreferenceConstants.PREF_SHOW_CU_CHILDREN, null, null));
 		}
 	}
+
+	/**
+	 * Adjusts form size according to contents dimensions
+	 */
+	public void resize() {
+		Shell sh = parentComposite.getShell();
+		Point p0 = sh.getLocation();
+		Point p1 = sh.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+		Rectangle r = sh.getDisplay().getClientArea();
+		p1.x = Math.min(p1.x, (r.width - p0.x));
+		p1.y = Math.min(p1.y, (r.height - p0.y));
+		sh.setSize(p1);
+	}
+
+	/**
+	 * Returns Apply button widget
+	 * Allows public access to it.
+	 */
+	public Button getAButton() {
+		return getApplyButton();
+	}
+	
+	/**
+	 * Returns Default button widget.
+	 * Allows public access to it.
+	 */
+	public Button getDButton() {
+		return getDefaultsButton();
+	}
+
+	@Override
+	public void performHelp() {
+	    // TODO: in next version: refer to ICPropertyTab instead of AbstractCPropertyTab
+		if (currentTab != null && currentTab instanceof AbstractCPropertyTab) {
+			String s = ((AbstractCPropertyTab)currentTab).getHelpContextId();
+			if (s != null && s.length() > 0) {
+				IContext context= HelpSystem.getContext(s);
+				if (context != null)
+					PlatformUI.getWorkbench().getHelpSystem().displayHelp(context);
+				else
+					PlatformUI.getWorkbench().getHelpSystem().displayDynamicHelp();
+			}
+		}
+	}
+	
 }

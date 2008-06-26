@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Intel Corporation and others.
+ * Copyright (c) 2007, 2008 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,14 +7,18 @@
  *
  * Contributors:
  *     Intel Corporation - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.ui.newui;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IAdaptable;
@@ -27,8 +31,8 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -43,6 +47,7 @@ import org.eclipse.ui.model.WorkbenchLabelProvider;
 
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.ICExclusionPatternPathEntry;
+import org.eclipse.cdt.core.settings.model.ICMultiItemsHolder;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
@@ -54,7 +59,7 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 	
 	Label label;
 	TreeViewer tree;
-	ArrayList src;
+	ArrayList<_Entry> src;
 	ICResourceDescription cfgd;
 	ICProject cprj;
 	
@@ -70,17 +75,22 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 		
 		public String[] getExts() {
 			IPath[] p = getExtPaths();
-			if (p == null || p.length == 0) return new String[0];
+			if (p == null || p.length == 0) 
+				return new String[0];
 			String[] s = new String[p.length];
-			for (int i=0; i<p.length; i++) s[i] = p[i].toOSString();
+			for (int i=0; i<p.length; i++) 
+				s[i] = p[i].toOSString();
 			return s;
 		}
 		
+		@Override
 		public String toString() {
 			String[] s = getExts();
-			if (s.length == 0) return UIMessages.getString("CLocationTab.0"); //$NON-NLS-1$
+			if (s.length == 0) 
+				return UIMessages.getString("CLocationTab.0"); //$NON-NLS-1$
 			String x = UIMessages.getString("CLocationTab.1"); //$NON-NLS-1$
-			for (int i=0; i< s.length; i++) x = x + s[i] + UIMessages.getString("CLocationTab.2"); //$NON-NLS-1$
+			for (String element : s)
+				x = x + element + UIMessages.getString("CLocationTab.2"); //$NON-NLS-1$
 			x = x.substring(0, x.length() - 2) + UIMessages.getString("CLocationTab.3"); //$NON-NLS-1$
 			return x;
 		} 
@@ -93,6 +103,7 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 			ent = _ent;
 			f[0] = new _Filter(this);
 		}
+		@Override
 		public String toString() { 
 			return getPath() == null ? 
 					EMPTY_STR : 
@@ -106,6 +117,7 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 		} 
 	}
 	
+	@Override
 	public void createControls(Composite parent) {
 		super.createControls(parent);
 		usercomp.setLayout(new GridLayout(1, false));
@@ -113,11 +125,8 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 		label.setLayoutData(new GridData(GridData.BEGINNING));
 		tree = new TreeViewer(usercomp);
 		tree.getTree().setLayoutData(new GridData(GridData.FILL_BOTH));
-		tree.getTree().addSelectionListener(new SelectionListener() {
-			public void widgetDefaultSelected(SelectionEvent e) {
-				// TODO Auto-generated method stub
-				
-			}
+		tree.getTree().addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				updateButtons();
 			}});
@@ -145,6 +154,7 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 			}});
 
 		tree.setLabelProvider(new LabelProvider() {
+			@Override
 			public Image getImage(Object element) {
 				if (element instanceof _Entry)
 					return IMG_EN;
@@ -161,33 +171,42 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 	 * Edit: enabled if 1 element selected (entry or filter)
 	 * Delete: enabled if selected element is entry
 	 */
+	@Override
 	protected void updateButtons() {
 		TreeItem[] sel = tree.getTree().getSelection();
     	buttonSetEnabled(2, sel.length == 1);
     	buttonSetEnabled(3, sel.length > 0 && sel[0].getData() instanceof _Entry);
 	}
 	
+	@Override
 	public void buttonPressed(int x) {
-		String s;
 		Shell shell = usercomp.getShell();
 		TreeItem[] sel = tree.getTree().getSelection();
 		switch (x) {
 		// add
 		case 0:
-			s = getProjectDialog(shell, EMPTY_STR);
-			if (s != null) {
-				src.add(new _Entry(newEntry(new Path(s), new IPath[0], true)));
+			String[] ss = getProjectDialog(shell);
+			if (ss != null) {
+				for (String element : ss)
+					src.add(new _Entry(newEntry(new Path(element), new IPath[0], true)));
 				saveData();
 			}
 			break;
 		// create / link	
 		case 1:
-			NewFolderDialog  d = new NewFolderDialog(shell, page.getProject()); 
+			NewFolderDialog  d = new NewFolderDialog(shell, page.getProject()) {
+				@Override
+				public void create() {
+					super.create();
+					handleAdvancedButtonSelect();
+				}
+			};
 			if (d.open() == Window.OK) {
 				IFolder f = (IFolder)d.getFirstResult();
 				src.add(new _Entry(newEntry(f, new IPath[0], !f.isLinked())));
 				saveData();
 			}
+			break;
 		// edit filter	
 		case 2:
 			if (sel.length == 0) return;
@@ -209,9 +228,9 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 			break;
 		case 3:
 			if (sel.length == 0) return;
-			for (int i = 0; i < sel.length; i++) {
-				if (sel[i].getData() instanceof _Entry) src.remove(sel[i].getData());
-			}
+			for (TreeItem element : sel) {
+					if (element.getData() instanceof _Entry) src.remove(element.getData());
+				}
 			saveData();
 			break;
 		default:
@@ -219,23 +238,28 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 		}
 	}
 	
-	public void saveData() {
+	private void saveData() {
 		ICExclusionPatternPathEntry[] p = new ICExclusionPatternPathEntry[src.size()];
-		Iterator it = src.iterator();
+		Iterator<_Entry> it = src.iterator();
 		int i=0;
-		while(it.hasNext()) { p[i++] = ((_Entry)it.next()).ent; }
+		while(it.hasNext()) { p[i++] = (it.next()).ent; }
 		setEntries(cfgd, p);
 		tree.setInput(cfgd);
 		updateData(cfgd);
 	}
 	
+	@Override
 	public void updateData(ICResourceDescription _cfgd) {
-		cfgd = _cfgd;
-		ICExclusionPatternPathEntry[] ent = getEntries(cfgd);
-		src = new ArrayList(ent.length);
-		for (int i=0; i<ent.length; i++) {
-			src.add(new _Entry(ent[i]));
+		if (page.isMultiCfg()) {
+			setAllVisible(false, ""); //$NON-NLS-1$
+			return;
 		}
+		
+		setAllVisible(true, null);
+		cfgd = _cfgd;
+		src = new ArrayList<_Entry>();
+		for (ICExclusionPatternPathEntry e : getEntries(cfgd))
+			src.add(new _Entry(e));
 		tree.setInput(src);
 		// get CProject 
 		IAdaptable ad = page.getElement();
@@ -250,10 +274,12 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 	protected abstract ICExclusionPatternPathEntry newEntry(IPath p, IPath[] ex, boolean workspacePath);
 	protected abstract ICExclusionPatternPathEntry newEntry(IFolder f, IPath[] ex, boolean workspacePath);
 	
-	public void performApply(ICResourceDescription src, ICResourceDescription dst) {
+	@Override
+	protected void performApply(ICResourceDescription src, ICResourceDescription dst) {
 		setEntries(dst, getEntries(src));
 	}
 
+	@Override
 	protected void performDefaults() {
 			setEntries(cfgd, null);
 			updateData(cfgd);
@@ -261,14 +287,22 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 
 	
 	// This page can be displayed for project only
+	@Override
 	public boolean canBeVisible() {
+		if (page.getResDesc() instanceof ICMultiItemsHolder)
+			return false; // cannot work with multi cfg
+		
 		return page.isForProject();
 	}
 	
-	private String getProjectDialog(Shell shell, String text) {
-		IPath path = new Path(text);
+	private String[] getProjectDialog(Shell shell) {
+		IPath path = new Path(EMPTY_STR);
 		
-		LocDialog dialog = new LocDialog(shell);
+		Set<IPath> set = new HashSet<IPath>(src.size());
+		for (_Entry e : src)
+			set.add(e.getPath());
+		
+		LocDialog dialog = new LocDialog(shell, set);
 		dialog.setInput(page.getProject());
 	
 		IResource container = null;
@@ -281,21 +315,114 @@ public abstract class CLocationTab extends AbstractCPropertyTab {
 		dialog.setTitle(WORKSPACE_DIR_DIALOG_TITLE); 
            dialog.setMessage(WORKSPACE_DIR_DIALOG_MSG); 
 		if (dialog.open() == Window.OK) {
-			IResource resource = (IResource) dialog.getFirstResult();
-			if (resource != null) { 
-				return resource.getFullPath().toString();
+			Object[] resources = dialog.getResult();
+			if (resources != null) {
+				String[] ss = new String[resources.length];
+				for (int i=0; i<resources.length; i++)
+					ss[i] = ((Holder)resources[i]).getPath().toString();
+				return ss;
 			}
 		}
 		return null;
 	}
 
+	/**
+	 * This class should hold elements for source location tree 
+	 */
+	class Holder implements IAdaptable {
+		private IFolder  f = null;
+		private boolean isRoot = false;
+		private IPath p = null;
+		
+		Holder(IProject _p) {
+			f = _p.getFolder(_p.getName());
+			isRoot = true;
+			p = _p.getFullPath();
+		}
+		
+		Holder(IFolder _f) {
+			f = _f;
+			isRoot = false;
+			p = _f.getFullPath();
+		}
+		
+		@SuppressWarnings("unchecked")
+		public Object getAdapter(Class adapter) {
+			return f.getAdapter(adapter);
+		}
+		public boolean isRoot() {
+			return isRoot;
+		}
+		public IFolder getFolder() {
+			return f;
+		}
+		public IPath getPath() {
+			return p;
+		}
+	}
+	
 	class LocDialog extends  ElementTreeSelectionDialog {
-	    public LocDialog(Shell parent) {
-	        super(parent, new WorkbenchLabelProvider(), new WorkbenchContentProvider());
+		Set <IPath> existing;
+		
+		public LocDialog(Shell parent, Set <IPath> ex) {
+			super(parent,
+					
+			new WorkbenchLabelProvider() {
+ 			    @Override
+				protected String decorateText(String input, Object element) {
+			    	if (element instanceof Holder &&
+			    	    ((Holder)element).isRoot())
+			    			return UIMessages.getString("CLocationTab.8"); //$NON-NLS-1$
+			    	return super.decorateText(input, element);
+			    }
+			},
+			
+			new WorkbenchContentProvider() {
+				@Override
+				public Object[] getChildren(Object element) {
+					if (element instanceof IProject) {
+						Object[] ob1 = super.getChildren(element);
+						Object[] ob2 = new Object[ob1.length + 1];
+						int cnt = 0;
+						ob2[cnt++] = new Holder((IProject)element);
+						for (Object ob: ob1) {
+							if (ob instanceof IFolder)
+								ob2[cnt++] = new Holder((IFolder)ob);
+						}
+						ob1 = new Object[cnt];
+						System.arraycopy(ob2, 0, ob1, 0, cnt);
+						return ob1;
+					} else if (element instanceof Holder) {
+						Holder h = (Holder)element;
+						if (h.isRoot())
+							return new Object[0];
+						Object[] ob1 = super.getChildren(h.getFolder());
+						Object[] ob2 = new Object[ob1.length];
+						int cnt = 0;
+						for (Object ob: ob1) {
+							if (ob instanceof IFolder)
+								ob2[cnt++] = new Holder((IFolder)ob);
+						}
+						ob1 = new Object[cnt];
+						System.arraycopy(ob2, 0, ob1, 0, cnt);
+						return ob1;
+					} else 
+						return super.getChildren(element);
+				}
+			});
+			
 			addFilter(new ViewerFilter () {
+				@Override
 				public boolean select(Viewer viewer, Object parentElement, Object element) {
-					return element instanceof IFolder;
+					if (! (element instanceof Holder))
+						return false;
+					if (existing == null || existing.size() == 0)
+						return true;
+					Holder h = (Holder)element;
+					return (! existing.contains(h.getPath()));
 				}});
-	    }
+			
+			existing = ex;
+		}
 	}	
 }

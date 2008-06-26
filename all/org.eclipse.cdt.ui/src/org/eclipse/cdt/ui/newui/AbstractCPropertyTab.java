@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Intel Corporation and others.
+ * Copyright (c) 2007, 2008 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,10 +7,12 @@
  *
  * Contributors:
  *     Intel Corporation - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.ui.newui;
 
-import java.util.Arrays;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -20,31 +22,31 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.jface.viewers.ILabelProvider;
-import org.eclipse.jface.viewers.ILabelProviderListener;
-import org.eclipse.jface.viewers.IStructuredContentProvider;
-import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.FontMetrics;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.ElementTreeSelectionDialog;
 import org.eclipse.ui.dialogs.ISelectionStatusValidator;
-import org.eclipse.ui.dialogs.ListDialog;
 import org.eclipse.ui.model.WorkbenchContentProvider;
 import org.eclipse.ui.model.WorkbenchLabelProvider;
 import org.eclipse.ui.views.navigator.ResourceComparator;
@@ -77,10 +79,9 @@ import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
  *   communication way for new CDT model pages and tabs.   
  */
 public abstract class AbstractCPropertyTab implements ICPropertyTab {
+	
+	public static final Method GRAY_METHOD = getGrayEnabled();
 	public static final int BUTTON_WIDTH = 120; // used as hint for all push buttons
-
-	// use 3-state buttons in property pages
-	public static final boolean USE_TRI_STATE = false;
 
 	// commonly used button names
 	public static final String EMPTY_STR = ""; //$NON-NLS-1$
@@ -100,12 +101,25 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 	public static final String WORKSPACE_FILE_DIALOG_MSG = UIMessages.getString("BrowseEntryDialog.wsp.file.dlg.msg");	//$NON-NLS-1$
 	public static final String WORKSPACE_FILE_DIALOG_ERR = UIMessages.getString("BrowseEntryDialog.wsp.file.dlg.err");	//$NON-NLS-1$
 	public static final String WORKSPACE_DIR_DIALOG_ERR = UIMessages.getString("BrowseEntryDialog.wsp.dir.dlg.err");	//$NON-NLS-1$
+	public static final String BACKGROUND_TEXT_DEFAULT = UIMessages.getString("AbstractCPropertyTab.2"); //$NON-NLS-1$
+	public static final Color BACKGROUND_FOR_USER_VAR = new Color(Display.getDefault(), 255, 255, 200); // light yellow
 
+	private static final String PREFIX = "org.eclipse.cdt.ui."; //$NON-NLS-1$
+	
+	public static final int TRI_UNKNOWN = 2;
+	public static final int TRI_YES = 1;
+	public static final int TRI_NO = 0;
+
+	protected static final String ENUM = "enum"; //$NON-NLS-1$
+	protected static final String SSET = "set";  //$NON-NLS-1$
+	
+	private   CLabel  background; 
 	protected Composite usercomp; // space where user can create widgets 
 	protected Composite buttoncomp; // space for buttons on the right
 	private Button[] buttons;     // buttons in buttoncomp
 	public ICPropertyProvider page;
 	protected Image icon = null; 
+	private String helpId = EMPTY_STR; 
 	
 	protected boolean visible;
 
@@ -122,13 +136,24 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 	 * @param parent
 	 */
 	protected void createControls(Composite parent) {
-		parent.setLayout(new GridLayout(2, false));
-		usercomp = new Composite(parent, SWT.NONE);
-		usercomp.setLayoutData(new GridData(GridData.FILL_BOTH));
-		buttoncomp = new Composite(parent, SWT.NONE);
-		GridData d = new GridData(GridData.END);
-		d.widthHint = 1;
-		buttoncomp.setLayoutData(d);
+		parent.setLayout(new FillLayout());
+		Composite comp= new Composite(parent, SWT.NONE);
+		comp.setLayout(new GridLayout(3, false));
+		
+		background = new CLabel(comp, SWT.CENTER | SWT.SHADOW_NONE);
+		background.setText(EMPTY_STR);
+		background.setVisible(false);
+		
+		GridData d;
+		usercomp = new Composite(comp, SWT.NONE);
+		usercomp.setLayoutData(d= new GridData(GridData.FILL_BOTH));
+		d.widthHint= 20;
+		
+		buttoncomp = new Composite(comp, SWT.NONE);
+		buttoncomp.setLayoutData(d = new GridData(GridData.END));
+		d.widthHint= 10;
+		
+	    PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, helpId);
 	}
 	
 	/**
@@ -174,7 +199,8 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 			
 			buttons[i].setLayoutData(gdb);
 			buttons[i].addSelectionListener(new SelectionAdapter() {
-		        public void widgetSelected(SelectionEvent event) {
+		        @Override
+				public void widgetSelected(SelectionEvent event) {
 		        	buttonPressed(event);
 		        }});
 		}
@@ -252,8 +278,7 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 	protected boolean buttonIsEnabled(int i) {
 		if (buttons == null || buttons.length <= i ) 
 			return false;
-		else
-			return buttons[i].isEnabled();
+		return buttons[i].isEnabled();
 	}
 	
 	/**
@@ -278,6 +303,13 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 	protected void buttonSetText(int i, String text) {
 		if (buttons == null || buttons.length <= i ) return;
 		buttons[i].setText(text);
+		Composite c = buttons[i].getParent();
+		if (c != null) {
+			c.pack();
+			c = c.getParent();
+			if (c != null)
+				c.layout(true);
+		}
 	}
 
 	/**********************************************
@@ -320,56 +352,38 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 		 b.setText(name);
 		 setupControl(b, span, mode);
 		 b.addSelectionListener(new SelectionAdapter() {
-		    public void widgetSelected(SelectionEvent event) {
+		    @Override
+			public void widgetSelected(SelectionEvent event) {
+		    	setGrayed((Button)event.widget, false);
 		    	checkPressed(event);
 		 }});
 		 return b;
 	}
 
-	protected TriButton setupTri(Composite c, String name, int span, int mode) {
-		 TriButton b = new TriButton(c, 0, USE_TRI_STATE);
-		 b.setText(name);
-		 setupControl(b, span, mode);
-		 b.addSelectionListener(new SelectionAdapter() {
-		    public void widgetSelected(SelectionEvent event) {
-		    	triButtonPressed(event);
-		 }});
-		 return b;
-	}
-
 	/**
-	 * Selection handler for checkbox created by method "setupCheck()" 
-	 * Descendants should override this method if they use "setupCheck".  
+	 * Selection handler for checkbox created 
+	 * by methods "setupCheck()" or "setupTri()" 
+	 * Descendants should override this method 
+	 * if they use "setupCheck".  
 	 * Usually the method body will look like:
 	 * { 
-	 * 		Button b = (Button)e.widget;
+	 * 		Control b = (Control)e.widget;
 	 *   	if (b.equals(myFirstCheckbox) { ... } 
 	 *   	else if (b.equals(mySecondCheckbox) { ... }
 	 *   ... } 
 	 */
     protected void checkPressed(SelectionEvent e) {}
     
-    /**
-     * Substitutes combo or button
-     * with its parent (triButton)
-     * @param e
-     */
-    protected void triButtonPressed(SelectionEvent e) {
-    	Control w = (Control)e.widget;
-    	e.widget = w.getParent();
-    	checkPressed(e);
-    }
-    
 	protected void setupControl(Control c, int span, int mode) {
 		// although we use GridLayout usually,
 		// exceptions can occur: do nothing. 
-		if (span != 0) {
-			GridData gd = new GridData(mode);
-			gd.horizontalSpan = span;
-			c.setLayoutData(gd);
-		}
-		Composite p = c.getParent();
 		if (c != null) {
+			if (span != 0) {
+				GridData gd = new GridData(mode);
+				gd.horizontalSpan = span;
+				c.setLayoutData(gd);
+			}
+			Composite p = c.getParent();
 			c.setFont(p.getFont());
 		}
 	}
@@ -396,32 +410,7 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 	public static String getVariableDialog(Shell shell, ICConfigurationDescription cfgd) {
 		
 		ICdtVariableManager vm = CCorePlugin.getDefault().getCdtVariableManager();
-		
-		ListDialog dialog = new ListDialog(shell);
-		dialog.setContentProvider(new IStructuredContentProvider() {
-					public Object[] getElements(Object inputElement) {
-						Object[] obs = (Object[])inputElement;
-						Arrays.sort(obs, CDTListComparator.getInstance());
-						return obs;
-					}
-					public void dispose() {}
-					public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
-				});
-		dialog.setLabelProvider(new ILabelProvider() {
-					public Image getImage(Object element) { return null; }
-					public String getText(Object element) {
-							if (element instanceof ICdtVariable) 
-								return ((ICdtVariable)element).getName();
-							return null;
-						}
-					public void addListener(ILabelProviderListener listener) {}
-					public void dispose() {}
-					public boolean isLabelProperty(Object element, String property) { return false; }
-					public void removeListener(ILabelProviderListener listener) {
-				}});
-		
-		dialog.setInput(vm.getVariables(cfgd));
-		dialog.setHeightInChars(10);
+		BuildVarListDialog dialog = new BuildVarListDialog(shell, vm.getVariables(cfgd));
 		dialog.setTitle(UIMessages.getString("AbstractCPropertyTab.0")); //$NON-NLS-1$
 		if (dialog.open() == Window.OK) {
 			Object[] selected = dialog.getResult();
@@ -526,7 +515,7 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 			if (canBeVisible()) performCancel();
 			break;
 		case ICPropertyTab.DEFAULTS:
-			if (canBeVisible() && getResDesc() != null) {
+			if (canBeVisible() /*&& getResDesc() != null*/) {
 				updateData(getResDesc());
 				performDefaults();
 			}
@@ -569,5 +558,135 @@ public abstract class AbstractCPropertyTab implements ICPropertyTab {
 		return fFontMetrics;
 	}
 
+	/**
+	 * Sets checkbox to appropriate state: 
+	 * 	  unchecked or checked
+	 * @param b - checkbox to set
+	 * @param state  
+	 */
+	public static void setTriSelection(Button b, boolean state) {
+		setTriSelection(b, state ? TRI_YES : TRI_NO);
+	}
+	
+	/**
+	 * Sets checkbox to appropriate state: 
+	 * 	  unchecked, checked or unknown (grayed)
+	 * @param b - checkbox to set
+	 * @param state 
+	 */
+	public static void setTriSelection(Button b, int state) {
+		switch (state) {
+		case TRI_NO:
+			setGrayed(b, false);
+			b.setSelection(false);
+			break;
+		case TRI_YES:
+			setGrayed(b, false);
+			b.setSelection(true);
+			break;
+		case TRI_UNKNOWN:
+			b.setSelection(true);
+			setGrayed(b, true);
+			break;
+		}
+	}
+	 
+	/**
+	 * This method will be simplified after M5 release,
+	 * when Button.setGrayed() method will be accessible.
+	 * In this case, reflection will not be required.
+	 * 
+	 * @param b
+	 * @param value
+	 */
+	public static void setGrayed(Button b, boolean value) {
+		// TODO: uncomment before M5
+		// b.setGrayed(value);
+		if (GRAY_METHOD != null)
+			try {
+				GRAY_METHOD.invoke(b, new Object[] { new Boolean(value) });
+			}
+			catch (InvocationTargetException e) {}
+			catch (IllegalAccessException e) {}
+	}
 
+	/**
+	 * This method will be removed after M5 release,
+	 * when Button.setGrayed() will be officially accessible.
+	 * 
+	 * @return reference to Button.setGrayed() method
+	 */
+	private static Method getGrayEnabled() {
+		try {
+			Class<?> cl = Class.forName("org.eclipse.swt.widgets.Button"); //$NON-NLS-1$
+			return cl.getMethod("setGrayed", new Class[] { boolean.class }); //$NON-NLS-1$
+		} catch (ClassNotFoundException e) {
+			return null;
+		} catch (NoSuchMethodException e) {
+			return null;
+		}
+	}
+
+	/**
+	 * Utility method to show/hide working panes
+	 * When panes are hidden, message becomes visible 
+	 * 
+	 * @param visible - true or false
+	 * @param msg - text to be shown instead of panes
+	 */
+	protected void setAllVisible(boolean visible, String msg) {
+		setBackgroundText(visible ? EMPTY_STR : msg);
+		background.setVisible(!visible);
+		usercomp.setVisible(visible);
+		buttoncomp.setVisible(visible);
+		if (page != null) {
+			Button b = page.getAButton();
+			if (b != null)
+				b.setVisible(visible);
+			b = page.getDButton();
+			if (b != null)
+				b.setVisible(visible);
+		}
+	}
+	
+	/**
+	 * Allows changing message on background pane,
+	 * which becomes visible after usercomp hidden
+	 * 
+	 * @param s - text to display or null for default  
+	 */
+	protected void setBackgroundText(String s) {
+		background.setText(s == null ? BACKGROUND_TEXT_DEFAULT : s);
+	}
+	
+	protected void updateLbs(Label lb1, Label lb2) {
+		if (page.isMultiCfg()) {
+			if (lb1 != null) {
+				lb1.setText(CDTPrefUtil.getDMode());
+				lb1.setVisible(true);
+			}
+			if (lb2 != null) {
+				lb2.setText(CDTPrefUtil.getWMode());
+				lb2.setVisible(true);
+			}
+		} else {
+			if (lb1 != null)
+				lb1.setVisible(false);
+			if (lb2 != null)
+				lb2.setVisible(false);
+		}
+	}
+
+	protected boolean isWModifyMode() {
+		int wmode = CDTPrefUtil.getInt(CDTPrefUtil.KEY_WMODE);
+		return (wmode == CDTPrefUtil.WMODE_MODIFY);
+	}
+
+	public String getHelpContextId() {
+		return helpId;
+	}
+	
+	public void setHelpContextId(String id) {
+		helpId = PREFIX + id;
+	}
 }

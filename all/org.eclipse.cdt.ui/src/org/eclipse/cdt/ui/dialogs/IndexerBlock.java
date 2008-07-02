@@ -1,19 +1,19 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
- * Markus Schorn (Wind River Systems)
+ *    IBM - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.ui.dialogs;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 
@@ -32,6 +32,8 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.ui.IPluginContribution;
+import org.eclipse.ui.activities.WorkbenchActivityHelper;
 import org.eclipse.ui.dialogs.PropertyPage;
 
 import com.ibm.icu.text.Collator;
@@ -49,9 +51,7 @@ import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
 import org.eclipse.cdt.internal.core.CCoreInternals;
 import org.eclipse.cdt.internal.core.pdom.indexer.IndexerPreferences;
 
-/**
- * @author Bogdan Gheorghe
- */
+import org.eclipse.cdt.internal.ui.preferences.IndexerPreferencePage;
 
 /**
  * This <code>IndexerBlock</code> is used in the <code>MakeProjectWizardOptionPage</code> and
@@ -63,16 +63,17 @@ public class IndexerBlock extends AbstractCOptionPage {
     private static final String ATTRIB_CLASS = "class"; //$NON-NLS-1$
 	private static final String ATTRIB_NAME = "name"; //$NON-NLS-1$
 	private static final String ATTRIB_INDEXERID = "indexerID"; //$NON-NLS-1$
+	private static final String ATTRIB_ID = "id"; //$NON-NLS-1$
 
 	private static final String PREF_PAGE_ID = "org.eclipse.cdt.ui.preferences.IndexerPreferencePage"; //$NON-NLS-1$
 
-	private static final String INDEXER_LABEL = "C/C++ Indexer"; //$NON-NLS-1$
-	private static final String INDEXER_DESCRIPTION = "C/C++ Indexer setting for this project."; //$NON-NLS-1$
-	private static final String INDEXER_COMBO_LABEL = "Select indexer"; //$NON-NLS-1$
+	private static final String INDEXER_LABEL = CUIPlugin.getResourceString("BaseIndexerBlock.label" ); //$NON-NLS-1$
+	private static final String INDEXER_DESCRIPTION = CUIPlugin.getResourceString("BaseIndexerBlock.desc"); //$NON-NLS-1$
+	private static final String INDEXER_COMBO_LABEL = CUIPlugin.getResourceString("BaseIndexerBlock.comboLabel"); //$NON-NLS-1$
 	
 	private PreferenceScopeBlock    fPrefScopeBlock;
     private Combo 					fIndexersComboBox;
-    private HashMap 				fIndexerConfigMap;
+    private HashMap<String, IndexerConfig> 				fIndexerConfigMap;
 	private Composite 				fIndexerPageComposite;
     private AbstractIndexerPage 	fCurrentPage;
     private Properties				fCurrentProperties;
@@ -92,7 +93,7 @@ public class IndexerBlock extends AbstractCOptionPage {
 	/**
      * Create a profile page only on request
      */
-    private static class IndexerConfig {
+    private static class IndexerConfig implements IPluginContribution {
     	private AbstractIndexerPage fPage;
         private IConfigurationElement fElement;
 
@@ -106,7 +107,7 @@ public class IndexerBlock extends AbstractCOptionPage {
             		fPage= (AbstractIndexerPage) fElement.createExecutableExtension(ATTRIB_CLASS);
             	}
             	catch (Exception e) {
-            		CUIPlugin.getDefault().log(e);
+            		CUIPlugin.log(e);
             	}
             	if (fPage == null) {
             		fPage= new NullIndexerBlock();
@@ -122,9 +123,18 @@ public class IndexerBlock extends AbstractCOptionPage {
         public String getIndexerID(){
         	return fElement.getAttribute(ATTRIB_INDEXERID); 
         }
+
+		public String getLocalId() {
+			return fElement.getAttribute(ATTRIB_ID);
+		}
+
+		public String getPluginId() {
+			return fElement.getContributor().getName();
+		}
     }
 
-    public void createControl(Composite parent) {
+    @Override
+	public void createControl(Composite parent) {
 		fParent= parent;
 
         Composite composite = ControlFactory.createComposite(parent, 1);
@@ -137,6 +147,7 @@ public class IndexerBlock extends AbstractCOptionPage {
       
 		if (getProject() != null || getContainer() instanceof ICOptionContainerExtension) {
 			fPrefScopeBlock= new PreferenceScopeBlock(PREF_PAGE_ID) {
+				@Override
 				protected void onPreferenceScopeChange() {
 					IndexerBlock.this.onPreferenceScopeChange();
 				}
@@ -157,6 +168,7 @@ public class IndexerBlock extends AbstractCOptionPage {
 		gd.grabExcessHorizontalSpace= true;
 		fIndexersComboBox = ControlFactory.createSelectCombo(group,"", ""); //$NON-NLS-1$ //$NON-NLS-2$
 		fIndexersComboBox.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				onIndexerChange();
 			}
@@ -175,7 +187,8 @@ public class IndexerBlock extends AbstractCOptionPage {
         	fUseFixedBuildConfig= ControlFactory.createRadioButton(group, DialogsMessages.IndexerBlock_fixedBuildConfig, null, null);
         	fBuildConfigComboBox= ControlFactory.createSelectCombo(group, "", ""); //$NON-NLS-1$ //$NON-NLS-2$
         	final SelectionAdapter listener = new SelectionAdapter() {
-        		public void widgetSelected(SelectionEvent e) {
+        		@Override
+				public void widgetSelected(SelectionEvent e) {
         			setUseActiveBuildConfig(fUseActiveBuildButton.getSelection());
         		}
         	};
@@ -196,9 +209,10 @@ public class IndexerBlock extends AbstractCOptionPage {
 		}
 		IProject prj= getProject();
 		if (prj != null) {
-			ICProjectDescriptionManager prjDescMgr= CCorePlugin.getDefault().getProjectDescriptionManager();
-			if (prjDescMgr.isNewStyleProject(prj)) {
-				return true;
+			if (IndexerPreferencePage.showBuildConfiguration()) {
+				ICProjectDescriptionManager prjDescMgr= CCorePlugin.getDefault().getProjectDescriptionManager();
+				if (prjDescMgr.isNewStyleProject(prj)) 
+					return true;
 			}
 		}
 		return false;
@@ -209,7 +223,7 @@ public class IndexerBlock extends AbstractCOptionPage {
 			if (scope == IndexerPreferences.SCOPE_INSTANCE) {
 		    	ICProjectDescriptionManager prjDescMgr= CCorePlugin.getDefault().getProjectDescriptionManager();
 		    	ICProjectDescriptionWorkspacePreferences prefs= prjDescMgr.getProjectDescriptionWorkspacePreferences(false);
-		    	boolean useActive= prefs.getConfigurationReltations() == ICProjectDescriptionPreferences.CONFIGS_LINK_SETTINGS_AND_ACTIVE;
+		    	boolean useActive= prefs.getConfigurationRelations() == ICProjectDescriptionPreferences.CONFIGS_LINK_SETTINGS_AND_ACTIVE;
 		    	setUseActiveBuildConfig(useActive);
 			}
 		}
@@ -274,11 +288,12 @@ public class IndexerBlock extends AbstractCOptionPage {
 	private void initializeIndexerCombo() {
 		String[] names= new String[fIndexerConfigMap.size()];
 		int j= 0;
-		for (Iterator i = fIndexerConfigMap.values().iterator(); i.hasNext();) {
-			IndexerConfig config = (IndexerConfig) i.next();
+		for (IndexerConfig config : fIndexerConfigMap.values()) {
 			names[j++]= config.getName();
         }
-		Arrays.sort(names, Collator.getInstance());
+		@SuppressWarnings("unchecked")
+		final Comparator<Object> collator = Collator.getInstance();
+		Arrays.sort(names, collator);
 		fIndexersComboBox.setItems(names);
 	}
 
@@ -286,14 +301,16 @@ public class IndexerBlock extends AbstractCOptionPage {
 		if (fBuildConfigComboBox != null) {
 	    	ICProjectDescriptionManager prjDescMgr= CCorePlugin.getDefault().getProjectDescriptionManager();
 	    	ICProjectDescription prefs= prjDescMgr.getProjectDescription(getProject(), false);
-	    	setUseActiveBuildConfig(prefs.getConfigurationReltations() == ICProjectDescriptionPreferences.CONFIGS_LINK_SETTINGS_AND_ACTIVE);
+	    	setUseActiveBuildConfig(prefs.getConfigurationRelations() == ICProjectDescriptionPreferences.CONFIGS_LINK_SETTINGS_AND_ACTIVE);
 	    	ICConfigurationDescription[] configs= prefs.getConfigurations();
 	    	String[] names= new String[configs.length];
 	    	for (int i = 0; i < configs.length; i++) {
 				ICConfigurationDescription config = configs[i];
 				names[i]= config.getName();
 			}
-			Arrays.sort(names, Collator.getInstance());
+			@SuppressWarnings("unchecked")
+			final Comparator<Object> collator = Collator.getInstance();
+			Arrays.sort(names, collator);
 			fBuildConfigComboBox.setItems(names);
 	        selectBuildConfigInCombo(prefs.getDefaultSettingConfiguration().getName());
 		}
@@ -396,15 +413,15 @@ public class IndexerBlock extends AbstractCOptionPage {
      * Adds all the contributed Indexer Pages to a map
      */
     private void initializeIndexerConfigMap() {
-        fIndexerConfigMap = new HashMap(5);        
+        fIndexerConfigMap = new HashMap<String, IndexerConfig>(5);        
         IExtensionPoint extensionPoint = Platform.getExtensionRegistry().getExtensionPoint(CUIPlugin.getPluginId(), "IndexerPage"); //$NON-NLS-1$
         IConfigurationElement[] infos = extensionPoint.getConfigurationElements();
-        for (int i = 0; i < infos.length; i++) {
-            if (infos[i].getName().equals(NODE_INDEXERUI)) { 
-                String id = infos[i].getAttribute(ATTRIB_INDEXERID);
-                if (id != null) {
-                	IndexerConfig config= new IndexerConfig(infos[i]);
-                	if (config.getName() != null) {
+        for (final IConfigurationElement info : infos) {
+        	if (info.getName().equals(NODE_INDEXERUI)) { 
+            	final String id = info.getAttribute(ATTRIB_INDEXERID);
+            	if (id != null) {
+                	IndexerConfig config= new IndexerConfig(info);
+                	if (config.getName() != null && !WorkbenchActivityHelper.filterItem(config)) {
                 		fIndexerConfigMap.put(id, config);
                 	}
                 }
@@ -413,7 +430,7 @@ public class IndexerBlock extends AbstractCOptionPage {
     }
   
     private String getIndexerName(String indexerID) {
-        IndexerConfig configElement= (IndexerConfig) fIndexerConfigMap.get(indexerID);
+        IndexerConfig configElement= fIndexerConfigMap.get(indexerID);
         if (configElement != null) {
             return configElement.getName();
         }
@@ -421,10 +438,9 @@ public class IndexerBlock extends AbstractCOptionPage {
     }
 
     private String getIndexerID(String indexerName) {
-    	for (Iterator i = fIndexerConfigMap.entrySet().iterator(); i.hasNext();) {
-			Map.Entry entry = (Map.Entry) i.next();
-			String id = (String) entry.getKey();
-			IndexerConfig config = (IndexerConfig) entry.getValue();
+    	for (Map.Entry<String, IndexerConfig> entry : fIndexerConfigMap.entrySet()) {
+			String id = entry.getKey();
+			IndexerConfig config = entry.getValue();
 			if (indexerName.equals(config.getName())) {
 				return id;
 			}
@@ -433,18 +449,19 @@ public class IndexerBlock extends AbstractCOptionPage {
     }
     
     private AbstractIndexerPage getIndexerPage(String indexerID) {
-        IndexerConfig configElement= (IndexerConfig) fIndexerConfigMap.get(indexerID);
+        IndexerConfig configElement= fIndexerConfigMap.get(indexerID);
         if (configElement != null) {
             try {
                 return configElement.getPage();
             } catch (CoreException e) {
-            	CUIPlugin.getDefault().log(e);
+            	CUIPlugin.log(e);
             }
         }
         return null;
     }
     
-    public void performApply(IProgressMonitor monitor) throws CoreException {
+    @Override
+	public void performApply(IProgressMonitor monitor) throws CoreException {
     	int scope= computeScope();
     	IProject project= getProject();
     	String indexerID = getSelectedIndexerID();
@@ -488,10 +505,11 @@ public class IndexerBlock extends AbstractCOptionPage {
     		}
     		prjDescMgr.setProjectDescription(getProject(), prefs);
     	}
-    	CCoreInternals.savePreferences(project);
+    	CCoreInternals.savePreferences(project, scope == IndexerPreferences.SCOPE_PROJECT_SHARED);
     }
 
-    public void performDefaults() {
+    @Override
+	public void performDefaults() {
     	fCurrentProperties= null;
     	if (fPrefScopeBlock != null) {
     		fPrefScopeBlock.setInstanceScope();
@@ -506,6 +524,7 @@ public class IndexerBlock extends AbstractCOptionPage {
     /**
      * @deprecated always returns false
      */
+	@Deprecated
 	public boolean isIndexEnabled() {
 		return false;
 	}

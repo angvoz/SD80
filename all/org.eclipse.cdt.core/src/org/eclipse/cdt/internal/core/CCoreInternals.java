@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,7 +8,6 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.core;
 
 import org.eclipse.cdt.core.CCorePlugin;
@@ -43,13 +42,16 @@ public class CCoreInternals {
 	 * @param project the project for which to save preferences, may be <code>null</code>
 	 * @since 4.0
 	 */
-	public static void savePreferences(final IProject project) {
+	public static void savePreferences(final IProject project, final boolean saveSharedPrefs) {
     	Job job= new Job(CCorePlugin.getResourceString("CCoreInternals.savePreferencesJob")) { //$NON-NLS-1$
-        	protected IStatus run(IProgressMonitor monitor) {
+        	@Override
+			protected IStatus run(IProgressMonitor monitor) {
         		try {
         			if (project != null) {
     					new LocalProjectScope(project).getNode(CCorePlugin.PLUGIN_ID).flush();
-    					new ProjectScope(project).getNode(CCorePlugin.PLUGIN_ID).flush();
+    					if (saveSharedPrefs && project.isOpen()) {
+    						new ProjectScope(project).getNode(CCorePlugin.PLUGIN_ID).flush();
+    					}
         			}
         			new InstanceScope().getNode(CCorePlugin.PLUGIN_ID).flush();
 				} catch (BackingStoreException e) {
@@ -70,6 +72,6 @@ public class CCoreInternals {
     		};
     		job.setRule(MultiRule.combine(rules));
     	}
-    	job.schedule(2000);
+    	job.schedule();
 	}
 }

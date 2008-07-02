@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,10 +8,8 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.core.pdom.indexer;
 
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 
@@ -50,6 +48,7 @@ public class IndexerPreferences {
 	public static final String KEY_FILES_TO_PARSE_UP_FRONT= "filesToParseUpFront"; //$NON-NLS-1$
 	public static final String KEY_SKIP_ALL_REFERENCES= "skipReferences"; //$NON-NLS-1$
 	public static final String KEY_SKIP_TYPE_REFERENCES= "skipTypeReferences"; //$NON-NLS-1$
+	public static final String KEY_SKIP_MACRO_REFERENCES= "skipMacroReferences"; //$NON-NLS-1$
 	public static final String KEY_UPDATE_POLICY= "updatePolicy"; //$NON-NLS-1$
 
 	private static final String KEY_INDEXER_PREFS_SCOPE = "preferenceScope"; //$NON-NLS-1$
@@ -81,7 +80,7 @@ public class IndexerPreferences {
 				if (get(project, scope, KEY_INDEXER_ID, null) == null) {
 					scope= SCOPE_INSTANCE;
 					ppp.putInt(KEY_INDEXER_PREFS_SCOPE, scope);
-					CCoreInternals.savePreferences(project);
+					CCoreInternals.savePreferences(project, false);
 				}
 			}
 		}
@@ -185,8 +184,7 @@ public class IndexerPreferences {
 	}
 
 	private static void setProperties(Preferences prefs, Properties props) {
-		for (Iterator i = props.entrySet().iterator(); i.hasNext();) {
-			Map.Entry entry = (Map.Entry) i.next();
+		for (Map.Entry<Object,Object> entry : props.entrySet()) {
 			String key = (String) entry.getKey();
 			String val = (String) entry.getValue();
 			prefs.put(key, val);
@@ -233,20 +231,8 @@ public class IndexerPreferences {
 		if (prjPrefs.get(KEY_INDEXER_ID, null) != null) {
 			scope= SCOPE_PROJECT_SHARED;
 		}
-		else {
-			Preferences oldStyle= prjPrefs.parent();
-			String id= oldStyle.get(KEY_INDEXER_ID, null);
-			if (id != null) {
-				prjPrefs.put(KEY_INDEXER_ID, id);
-				String value= oldStyle.get(KEY_INDEX_ALL_FILES, null);
-				if (value != null) {
-					prjPrefs.put(KEY_INDEX_ALL_FILES, value);
-				}
-				scope= SCOPE_PROJECT_SHARED;
-			}
-		}
 		getLocalPreferences(project).putInt(KEY_INDEXER_PREFS_SCOPE, scope);
-		CCoreInternals.savePreferences(project);
+		CCoreInternals.savePreferences(project, false);
 		return scope;
 	}
 
@@ -314,10 +300,15 @@ public class IndexerPreferences {
 		prefs.putBoolean(KEY_INDEX_ALL_FILES, false);
 		prefs.putBoolean(KEY_SKIP_ALL_REFERENCES, false);
 		prefs.putBoolean(KEY_SKIP_TYPE_REFERENCES, false);
+		prefs.putBoolean(KEY_SKIP_MACRO_REFERENCES, false);
 		prefs.put(KEY_INDEX_IMPORT_LOCATION, DEFAULT_INDEX_IMPORT_LOCATION);
 		prefs.put(KEY_FILES_TO_PARSE_UP_FRONT, DEFAULT_FILES_TO_PARSE_UP_FRONT);
 	}
 
+	public static void setDefaultIndexerId(String defaultId) {
+		getDefaultPreferences().put(KEY_INDEXER_ID, defaultId);
+	}
+	
 	public static void addChangeListener(IProject prj, IPreferenceChangeListener pcl) {
 		Preferences node= getProjectPreferences(prj);
 		addListener(node, pcl);
@@ -374,13 +365,13 @@ public class IndexerPreferences {
 	public static void setIndexImportLocation(IProject project, String location) {
 		if (!location.equals(getIndexImportLocation(project))) {
 			getProjectPreferences(project).put(KEY_INDEX_IMPORT_LOCATION, location);
-			CCoreInternals.savePreferences(project);
+			CCoreInternals.savePreferences(project, true);
 		}
 	}
 
 	public static int getUpdatePolicy(IProject project) {
 		// no support for project specific policies
-		Preferences[] prefs= getPreferences(null);
+		Preferences[] prefs= getInstancePreferencesArray();
 		return getUpdatePolicy(prefs);
 	}
 
@@ -401,9 +392,5 @@ public class IndexerPreferences {
 			}
 		}
 		return DEFAULT_UPDATE_POLICY;
-	}
-
-	public static boolean getIndexAllFiles(IProject project) {
-		return "true".equals(IndexerPreferences.get(project.getProject(), IndexerPreferences.KEY_INDEX_ALL_FILES, null)); //$NON-NLS-1$
 	}
 }

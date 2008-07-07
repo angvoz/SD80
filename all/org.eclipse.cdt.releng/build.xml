@@ -5,39 +5,46 @@
 	</target>
 	
 	<target name="build" depends="zips,test"/>
-	<target name="nightly" depends="tag,zips,test,copy"/>
+	<target name="nightly" depends="tag,zips,sign,test,copy"/>
+	<target name="testbuild" depends="zips,test,copy"/>
+	<target name="buildcopy" depends="zips,copy"/>
 	<target name="cdtbuild" depends="tag,zips,test,upload"/>
 	
 	<target name="init">
 		<touch file="${user.home}/.cvspass" />
 		<tstamp/>
-		<property name="branchVersion" value="4.0.0"/>
+		<property name="eclipseDist" value="/home/data/httpd/download.eclipse.org/eclipse/downloads/drops/S-3.4-200806172000/eclipse-SDK-3.4-linux-gtk-ppc.tar.gz"/>
+		<property name="mylynDist" value="/home/data/httpd/download.eclipse.org/tools/mylyn/update/ganymede/mylyn-3.0.0.v20080619-1900-e3.4.zip"/>
+		<property name="branchVersion" value="5.0.1"/>
 		<property name="timestamp" value="${DSTAMP}${TSTAMP}" />
 		<property name="forceContextQualifier" value="${timestamp}"/>
-		<property name="buildDirectory" value="${basedir}/results" />
+		<property name="buildingOSGi" value="true"/>
+		<property name="buildDirectory" value="${basedir}/results"/>
+		<property name="testDirectory" value="${buildDirectory}/test"/>
 		<property name="baseLocation" value="${buildDirectory}/eclipse"/>
-		<property name="pde.build.scripts" value="${eclipse.home}/plugins/org.eclipse.pde.build/scripts"/>
-		<property name="eclipseDist" value="eclipseDist undefined"/>
+		<property name="pde.build.scripts" value="${eclipse.pdebuild.scripts}"/>
 		<property name="collectingFolder" value="eclipse"/>
 		<property name="archivePrefix" value="eclipse"/>
 		<property name="buildType" value="I" />
 		<property name="buildId" value="${buildType}${timestamp}"/>
 		<property name="zipsdir" value="${buildDirectory}/${buildType}.${buildId}"/>
-		<property name="milestonedir" value="${buildDirectory}/${milestone}"/>
-		<property name="buildingOSGi" value="true"/>
+		<property name="masterFile" value="cdt-master-${branchVersion}-${buildId}.zip"/>
+		<property name="eclipseTest" value="org.eclipse.test_3.2.0"/>
 		<property name="messagefile" value="message.in"/>
-		<property name="mailto" value="cdt-test-dev@eclipse.org"/>
-		<property name="remotedir" value="dschaefer@dev.eclipse.org:cdt/builds/${branchVersion}"/>
+		<property name="mailto" value="vivkong@ca.ibm.com"/>
 		<property name="eclipseRoot" value=":pserver:anonymous@dev.eclipse.org:/cvsroot/eclipse"/>
 		<property name="baseos" value="${osgi.os}"/>
 		<property name="basews" value="${osgi.ws}"/>
 		<property name="basearch" value="${osgi.arch}"/>
 		<property name="tagbranch" value=""/>
 		<property name="tagname" value="v${timestamp}"/>
+		<property name="testReports" value="${zipsdir}/testReports"/>
+		<property name="junit-report-output" value="${testReports}"/>
 		<condition property="onWindows">
 			<os family="windows"/>
 		</condition>
 		<mkdir dir="${buildDirectory}"/>
+		<mkdir dir="${testReports}"/>
 	</target>
 	
 	<target name="fetch" depends="init">
@@ -50,6 +57,21 @@
 		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
 			<property name="builder" value="${basedir}/gdbjtag"/>
 		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
+			<property name="builder" value="${basedir}/lrparser"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
+			<property name="builder" value="${basedir}/upc"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
+			<property name="builder" value="${basedir}/xlc"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
+			<property name="builder" value="${basedir}/xlc.sdk"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="preBuild">
+			<property name="builder" value="${basedir}/util"/>
+		</ant>
 		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
 			<property name="builder" value="${basedir}/platform"/>
 		</ant>
@@ -59,24 +81,31 @@
 		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
 			<property name="builder" value="${basedir}/gdbjtag"/>
 		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
+			<property name="builder" value="${basedir}/lrparser"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
+			<property name="builder" value="${basedir}/upc"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
+			<property name="builder" value="${basedir}/xlc"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
+			<property name="builder" value="${basedir}/xlc.sdk"/>
+		</ant>
+		<ant antfile="build.xml" dir="${pde.build.scripts}" target="fetch">
+			<property name="builder" value="${basedir}/util"/>
+		</ant>
 	</target>
 	
 	<target name="unzip" depends="init" unless="dontUnzip">
-		<antcall target="unpack">
-			<param name="srcPrefix" value="${eclipseDist}"/>
-			<param name="dest" value="${buildDirectory}"/>
-		</antcall>
+		<untar src="${eclipseDist}" dest="${buildDirectory}" compression="gzip"/>
+		<unzip src="${mylynDist}" dest="${buildDirectory}/eclipse"/>
 	</target>
 	
 	<target name="zips" depends="init,unzip">
 		<ant antfile="build.xml" dir="${pde.build.scripts}">
-			<property name="builder" value="${basedir}/platform" />
-		</ant>
-		<ant antfile="build.xml" dir="${pde.build.scripts}">
-			<property name="builder" value="${basedir}/sdk" />
-		</ant>
-		<ant antfile="build.xml" dir="${pde.build.scripts}">
-			<property name="builder" value="${basedir}/gdbjtag" />
+			<property name="builder" value="${basedir}/master" />
 		</ant>
 		<concat destfile="${zipsdir}/compilelog.txt">
 			<fileset dir="${buildDirectory}/plugins" includes="**/*.bin.log"/>
@@ -90,44 +119,65 @@
 			<replacefilter token="@branchVersion@" value="${branchVersion}"/>
 			<replacefilter token="@buildId@" value="${buildId}"/>
 		</replace>
+		<move file="${zipsdir}/${masterFile}" todir="${buildDirectory}"/>
+		<unzip src="${buildDirectory}/${masterFile}" dest="${buildDirectory}/site"/>
+		<move file="${buildDirectory}/site/linux.gtk.x86/eclipse/epl-v10.html" todir="${buildDirectory}/site/eclipse"/>
+		<move file="${buildDirectory}/site/linux.gtk.x86/eclipse/notice.html" todir="${buildDirectory}/site/eclipse"/>
+		<copy file="buildsite.xml" tofile="${buildDirectory}/site/eclipse/site.xml"/>
+		<replace file="${buildDirectory}/site/eclipse/site.xml">
+			<replacefilter token="@buildVersion@" value="${branchVersion}.${timestamp}"/>
+		</replace>
+		<copy file="pack.properties" todir="${buildDirectory}/site/eclipse"/>
+		<!-- for some reason LPG isn't getting picked up-->		
+		<copy file="${buildDirectory}/plugins/net.sourceforge.lpg.lpgjavaruntime_1.1.0.v200803061910.jar"
+			todir="${buildDirectory}/site/eclipse/plugins"/>
+
+		<zip destfile="${zipsdir}/${masterFile}"
+			basedir="${buildDirectory}/site/eclipse"/>
 	</target>
 
-	<target name="unpackzip" if="onWindows">
-		<unzip src="${srcPrefix}.zip" dest="${dest}"/>
-	</target>
-
-	<target name="unpacktar" unless="onWindows">
-		<untar src="${srcPrefix}.tar.gz" dest="${dest}"
-			compression="gzip"/>
-	</target>
-
-	<target name="unpack">
-		<antcall target="unpackzip"/>
-		<antcall target="unpacktar"/>
-	</target>
-	
 	<target name="test" depends="init" unless="hasErrors">
-		<ant antfile="build.xml" dir="${pde.build.scripts}">
-			<property name="builder" value="${basedir}/testing" />
-		</ant>
-		<antcall target="unpack">
-			<param name="srcPrefix" value="${zipsdir}/cdt-${branchVersion}-${buildId}-${osgi.os}.${osgi.arch}"/>
-			<param name="dest" value="${buildDirectory}"/>
-		</antcall>
-		<unzip src="${zipsdir}/cdt-testing-${branchVersion}-${buildId}.zip" dest="${buildDirectory}"/>
-		<ant antfile="test.xml" dir="${buildDirectory}/eclipse/plugins/org.eclipse.cdt.testing_${branchVersion}.${forceContextQualifier}">
-			<property name="eclipse-home" value="${buildDirectory}/eclipse"/>
-			<property name="library-file" value="${buildDirectory}/eclipse/plugins/org.eclipse.test_3.1.0/library.xml"/>
+		<record name="${testReports}/testsLog.txt" action="start" loglevel="verbose"/>
+		<untar src="${eclipseDist}" dest="${testDirectory}" compression="gzip"/>
+		<unzip src="${mylynDist}" dest="${testDirectory}/eclipse"/>
+		<unzip src="${zipsdir}/cdt-master-${branchVersion}-${buildId}.zip"
+			dest="${testDirectory}/eclipse"/>
+		<unzip src="${testDirectory}/eclipse/plugins/org.eclipse.cdt.testing_${branchVersion}.${timestamp}.jar"
+			dest="${testDirectory}/test/cdt"/>
+		<unzip src="${testDirectory}/eclipse/plugins/${eclipseTest}.jar"
+			dest="${testDirectory}/test/eclipse"/>		
+		<delete file="${testDirectory}/eclipse/site.xml"/>
+		<delete file="${testDirectory}/eclipse/pack.properties"/>
+		<ant antfile="test.xml" dir="${testDirectory}/test/cdt">
+			<property name="eclipse-home" value="${testDirectory}/eclipse"/>
+			<property name="library-file" value="${testDirectory}/test/eclipse/library.xml"/>
 			<property name="os" value="${baseos}"/>
 			<property name="ws" value="${basews}"/>
 			<property name="arch" value="${basearch}"/>
 		</ant>
 		<xslt style="${basedir}/JUNIT.XSL"
-			in="${buildDirectory}/eclipse/org.eclipse.cdt.testing.xml"
+			in="${testDirectory}/eclipse/org.eclipse.cdt.testing.xml"
 			out="${zipsdir}/junits.html"/>
+		<copy file="${testDirectory}/eclipse/org.eclipse.cdt.testing.xml"
+		    tofile="${testReports}/org.eclipse.cdt.testing.xml"
+		    failonerror="false"/>
+		<record name="${testReports}/testsLog.txt" action="stop"/>
 	</target>
 	
+	<target name="sign" depends="init" unless="hasErrors">
+		<exec executable="sign">
+			<arg value="/home/data/httpd/download-staging.priv/tools/cdt/releng/results/${buildType}.${buildId}/${masterFile}"/>
+			<arg value="nomail"/>
+			<arg value="/home/data/httpd/download-staging.priv/tools/cdt/releng/results/signed"/>
+		</exec>
+		<waitfor maxwait="30" maxwaitunit="minute">
+			<available file="${buildDirectory}/signed/${masterFile}"/>
+		</waitfor>
+		<move file="${buildDirectory}/signed/${masterFile}" todir="${zipsdir}"/>
+	</target>
+
 	<target name="upload" depends="init" unless="hasErrors">
+		<property name="remotedir" value="dschaefer@dev.eclipse.org:cdt/builds/${branchVersion}"/>
 		<exec dir="${buildDirectory}" executable="scp">
 			<arg line="${remotedir}/index.html index.html"/>
 		</exec>
@@ -149,7 +199,7 @@
 	</target>
 	
 	<target name="copy" depends="init" unless="hasErrors">
-		<property name="copyToDir" value="/var/www/html/builds/${branchVersion}"/>
+		<property name="copyToDir" value="/home/www/tools/cdt/builds/${branchVersion}"/>
 		<replace file="${copyToDir}/index.html">
 			<replacetoken><![CDATA[  <!-- add here -->]]></replacetoken>
 			<replacevalue><![CDATA[  <li><a href="@buildType@.@buildId@/index.html">@buildId@</a></li>
@@ -163,6 +213,9 @@
 		<copy todir="${copyToDir}/${buildType}.${buildId}">
 			<fileset dir="${buildDirectory}/${buildType}.${buildId}"/>
 		</copy>
+		<!-- Create symlink to latest build -->
+		<symlink action="delete" link="${copyToDir}/latest" failonerror="false"/>
+		<symlink link="${copyToDir}/latest" resource="${copyToDir}/${buildType}.${buildId}" overwrite="true"/> 
 	</target>
 
 	<target name="mail" depends="init">
@@ -190,8 +243,7 @@
 	</target>
 
 	<target name="tagone">
-		<cvs cvsroot=":ext:dschaefer@dev.eclipse.org:/cvsroot/tools" cvsrsh="ssh"
-			command="rtag ${tagbranch} ${tagname} ${tagmodule}"/>
+		<cvs cvsroot="/cvsroot/tools" command="rtag ${tagbranch} ${tagname} ${tagmodule}"/>
 	</target>
 	
 	<target name="tag" depends="init">
@@ -231,12 +283,6 @@
 		</antcall>
 		<antcall target="tagone">
 			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.core.win32"/>
-		</antcall>
-		<antcall target="tagone">
-			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.refactoring"/>
-		</antcall>
-		<antcall target="tagone">
-			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.refactoring.tests"/>
 		</antcall>
 		<antcall target="tagone">
 			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.ui"/>
@@ -299,6 +345,15 @@
 			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt"/>
 		</antcall>
 		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.platform-feature"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.gnu.build-feature"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.gnu.debug-feature"/>
+		</antcall>
+		<antcall target="tagone">
 			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt-feature"/>
 		</antcall>
 		<antcall target="tagone">
@@ -317,16 +372,67 @@
 			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.testing-feature"/>
 		</antcall>
 		<antcall target="tagone">
-			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.debug.gdbjtag"/>
+			<param name="tagmodule" value="org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag"/>
 		</antcall>
 		<antcall target="tagone">
-			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.debug.gdbjtag.core"/>
+			<param name="tagmodule" value="org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag.core"/>
 		</antcall>
 		<antcall target="tagone">
-			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.debug.gdbjtag.ui"/>
+			<param name="tagmodule" value="org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag.ui"/>
 		</antcall>
 		<antcall target="tagone">
-			<param name="tagmodule" value="org.eclipse.cdt/all/org.eclipse.cdt.debug.gdbjtag-feature"/>
+			<param name="tagmodule" value="org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag-feature"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser.feature"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc.feature"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/xlc/org.eclipse.cdt.managedbuilder.xlc.core"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/xlc/org.eclipse.cdt.managedbuilder.xlc.ui"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/xlc/org.eclipse.cdt.errorparsers.xlc"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/xlc/org.eclipse.cdt.errorparsers.xlc.tests"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/xlc/org.eclipse.cdt.make.xlc.core"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/xlc/org.eclipse.cdt.xlc.feature"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/xlc/org.eclipse.cdt.xlc.sdk-feature"/>
+		</antcall>		
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/util/org.eclipse.cdt.util"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/util/org.eclipse.cdt.util-feature"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn.ui"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/mylyn/org.eclipse.cdt.mylyn-feature"/>
+		</antcall>
+		<antcall target="tagone">
+			<param name="tagmodule" value="org.eclipse.cdt/releng/org.eclipse.cdt.master"/>
 		</antcall>
 	</target>
 </project>

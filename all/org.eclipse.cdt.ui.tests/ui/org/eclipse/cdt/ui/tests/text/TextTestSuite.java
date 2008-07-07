@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,11 +7,14 @@
  *
  * Contributors:
  *    Markus Schorn - initial API and implementation
- *******************************************************************************/ 
+ *    Andrew Ferguson (Symbian)
+ *******************************************************************************/
 
 package org.eclipse.cdt.ui.tests.text;
 
 import junit.framework.TestSuite;
+
+import org.eclipse.cdt.ui.tests.text.doctools.DocCommentTestSuite;
 
 public class TextTestSuite extends TestSuite {
 
@@ -20,11 +23,15 @@ public class TextTestSuite extends TestSuite {
     }
     
     public TextTestSuite() {
-        super("Tests in package org.eclipse.cdt.ui.tests.text");
+        super(TextTestSuite.class.getName());
 
+        // documentation tool extension tests
+        addTest(DocCommentTestSuite.suite());
+        
         // partitioning tests
 		addTest(PartitionTokenScannerTest.suite());
 		addTest(CPartitionerTest.suite());
+		addTest(AsmPartitionerTest.suite());
 
         // smart edit tests
 		addTest(CAutoIndentTest.suite());
@@ -32,7 +39,11 @@ public class TextTestSuite extends TestSuite {
 		addTest(BracketInserterTest.suite());
 		addTest(IndentActionTest.suite());
 		addTest(FormatActionTest.suite());
-
+		addTest(ShiftActionTest.suite());
+		addTest(CodeFormatterTest.suite());
+		addTest(CIndenterTest.suite());
+		addTest(TemplateFormatterTest.suite());
+		
 		// Break iterator tests.
 		addTest(CBreakIteratorTest.suite());
 		addTest(CWordIteratorTest.suite());
@@ -43,11 +54,25 @@ public class TextTestSuite extends TestSuite {
 		addTest(CHeaderRuleTest.suite());
 		addTest(NumberRuleTest.suite());
 		addTest(PairMatcherTest.suite());
+		addTest(MarkOccurrenceTest.suite());
 
 		// folding tests
 		addTest(FoldingTest.suite());
 		
 		// basic editing tests
 		addTest(BasicCEditorTest.suite());
+		
+		// editor hyperlink tests
+		addTest(HyperlinkTest.suite());
+
+		// word detection
+		addTest(CWordFinderTest.suite());
+		
+		// compare tests
+		addTest(CStructureCreatorTest.suite());
+		
+		// block comment tests
+		addTest(AddBlockCommentTest.suite());
+		addTest(RemoveBlockCommentTest.suite());
     }
 }

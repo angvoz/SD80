@@ -1,24 +1,27 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
+ *    IBM - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
+import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTSimpleDeclSpecifier;
+import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguityParent;
 
 /**
  * @author jcamelon
  */
 public class GPPASTSimpleDeclSpecifier extends CPPASTSimpleDeclSpecifier
-        implements IGPPASTSimpleDeclSpecifier {
+        implements IGPPASTSimpleDeclSpecifier, IASTAmbiguityParent {
 
     private boolean longLong;
     private boolean restrict;
@@ -26,49 +29,45 @@ public class GPPASTSimpleDeclSpecifier extends CPPASTSimpleDeclSpecifier
     private boolean imaginary=false;
     private IASTExpression typeOfExpression;
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTSimpleDeclSpecifier#isLongLong()
-     */
-    public boolean isLongLong() {
+    
+    
+    public GPPASTSimpleDeclSpecifier() {
+	}
+
+	public GPPASTSimpleDeclSpecifier(IASTExpression typeofExpression) {
+		setTypeofExpression(typeofExpression);
+	}
+
+	public boolean isLongLong() {
         return longLong;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTSimpleDeclSpecifier#setLongLong(boolean)
-     */
     public void setLongLong(boolean value) {
         longLong = value;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTDeclSpecifier#isRestrict()
-     */
     public boolean isRestrict() {
         return restrict;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTDeclSpecifier#setRestrict(boolean)
-     */
     public void setRestrict(boolean value) {
         restrict = value;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTSimpleDeclSpecifier#setTypeofExpression(org.eclipse.cdt.core.dom.ast.IASTExpression)
-     */
     public void setTypeofExpression(IASTExpression typeofExpression) {
         typeOfExpression = typeofExpression;
+        if (typeofExpression != null) {
+			typeofExpression.setParent(this);
+			typeofExpression.setPropertyInParent(TYPEOF_EXPRESSION);
+		}
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTSimpleDeclSpecifier#getTypeofExpression()
-     */
     public IASTExpression getTypeofExpression() {
         return typeOfExpression;
     }
 
-    public boolean accept( ASTVisitor action ){
+    @Override
+	public boolean accept( ASTVisitor action ){
         if( action.shouldVisitDeclSpecifiers ){
 		    switch( action.visit( this ) ){
 	            case ASTVisitor.PROCESS_ABORT : return false;
@@ -103,5 +102,13 @@ public class GPPASTSimpleDeclSpecifier extends CPPASTSimpleDeclSpecifier
 
 	public void setImaginary(boolean value) {
 		this.imaginary = value;
+	}
+	
+	public void replace(IASTNode child, IASTNode other) {
+        if (child == typeOfExpression) {
+            other.setPropertyInParent(child.getPropertyInParent());
+            other.setParent(child.getParent());
+            typeOfExpression= (IASTExpression) other;
+        }
 	}
 }

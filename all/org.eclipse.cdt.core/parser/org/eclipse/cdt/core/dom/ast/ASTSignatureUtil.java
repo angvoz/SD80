@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,8 +7,8 @@
  *
  * Contributors:
  *     Rational Software - initial implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
-
 package org.eclipse.cdt.core.dom.ast;
 
 import org.eclipse.cdt.core.dom.ast.c.ICASTArrayDesignator;
@@ -20,7 +20,6 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTFieldDesignator;
 import org.eclipse.cdt.core.dom.ast.c.ICASTPointer;
 import org.eclipse.cdt.core.dom.ast.c.ICASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTTypeIdInitializerExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclSpecifier;
@@ -37,12 +36,12 @@ import org.eclipse.cdt.core.dom.ast.gnu.IGNUASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.gnu.IGNUASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.gnu.c.IGCCASTArrayRangeDesignator;
-import org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTPointer;
 import org.eclipse.cdt.core.dom.ast.gnu.cpp.IGPPASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.parser.GCCKeywords;
 import org.eclipse.cdt.core.parser.Keywords;
+import org.eclipse.cdt.internal.core.dom.parser.ASTProblem;
 
 /**
  * This is a utility class to help convert AST elements to Strings corresponding
@@ -65,7 +64,6 @@ public class ASTSignatureUtil {
 	 * TODO Remove this function when done testing if it is no longer needed
 	 * 
 	 * @param node
-	 * @return
 	 */
 	public static String getNodeSignature(IASTNode node) {
 		if (node instanceof IASTDeclarator)
@@ -723,11 +721,7 @@ public class ASTSignatureUtil {
 	}
 	
 	private static String getLiteralExpression( IASTLiteralExpression expression ){
-		StringBuffer result = new StringBuffer();
-		if (expression.getKind() == IASTLiteralExpression.lk_string_literal) result.append("\""); //$NON-NLS-1$
-		result.append(expression.toString());
-		if (expression.getKind() == IASTLiteralExpression.lk_string_literal) result.append("\""); //$NON-NLS-1$		
-		return result.toString();
+		return expression.toString();
 	}
 	
 	private static String getIdExpression( IASTIdExpression expression ){
@@ -739,8 +733,11 @@ public class ASTSignatureUtil {
 		result.append(SPACE);
 		result.append(Keywords.cpQUESTION);
 		result.append(SPACE);
-		result.append(getExpressionString(expression.getPositiveResultExpression()));
-		result.append(SPACE);
+		final IASTExpression positiveExpression = expression.getPositiveResultExpression();
+		if (positiveExpression != null) {
+			result.append(getExpressionString(positiveExpression));
+			result.append(SPACE);
+		}
 		result.append(Keywords.cpCOLON);
 		result.append(SPACE);
 		result.append(getExpressionString(expression.getNegativeResultExpression()));
@@ -926,29 +923,6 @@ public class ASTSignatureUtil {
 	public static String getBinaryOperatorString(IASTBinaryExpression be) {
 		int op = be.getOperator();
 		String opString = EMPTY_STRING;
-		
-		if (be instanceof ICPPASTBinaryExpression) {
-			switch(op) {
-				case ICPPASTBinaryExpression.op_pmarrow:
-					opString = String.valueOf(Keywords.cpARROW);
-					break;
-				case ICPPASTBinaryExpression.op_pmdot:
-					opString = String.valueOf(Keywords.cpDOT);
-					break;
-			}
-		} else if (be instanceof IGPPASTBinaryExpression) {
-			switch(op) {
-				case IGPPASTBinaryExpression.op_max:
-					opString = String.valueOf(Keywords.cpMAX);
-					break;
-				case IGPPASTBinaryExpression.op_min:
-					opString = String.valueOf(Keywords.cpMIN);
-					break;
-			}
-		}
-		
-		if (!opString.equals(EMPTY_STRING)) return opString;
-		
 		switch(op) {
 			case IASTBinaryExpression.op_multiply:
 				opString = String.valueOf(Keywords.cpSTAR);
@@ -1037,12 +1011,18 @@ public class ASTSignatureUtil {
 			case IASTBinaryExpression.op_notequals:
 				opString = String.valueOf(Keywords.cpNOTEQUAL);
 				break;
-            case IGPPASTBinaryExpression.op_max:
+            case IASTBinaryExpression.op_max:
                 opString = String.valueOf(Keywords.cpMAX);
                 break;
-            case IGPPASTBinaryExpression.op_min:
+            case IASTBinaryExpression.op_min:
                 opString = String.valueOf(Keywords.cpMIN);
                 break;
+			case IASTBinaryExpression.op_pmarrow:
+				opString = String.valueOf(Keywords.cpARROW);
+				break;
+			case IASTBinaryExpression.op_pmdot:
+				opString = String.valueOf(Keywords.cpDOT);
+				break;
 		}
 		
 		return opString;
@@ -1082,4 +1062,8 @@ public class ASTSignatureUtil {
 		return result;
 	}
 
+
+	public static String getProblemMessage(int problemID, String detail) {
+		return ASTProblem.getMessage(problemID, detail);
+	}
 }

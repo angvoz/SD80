@@ -1,20 +1,24 @@
 /*******************************************************************************
- * Copyright (c) 2007 QNX Software Systems and others.
+ * Copyright (c) 2007, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX - Initial API and implementation
+ *    QNX - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom.cpp;
 
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IScope;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.internal.core.Util;
+import org.eclipse.cdt.internal.core.index.IIndexCPPBindingConstants;
 import org.eclipse.cdt.internal.core.pdom.PDOM;
 import org.eclipse.cdt.internal.core.pdom.db.Database;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMBinding;
@@ -38,6 +42,7 @@ class PDOMCPPMethodSpecialization extends PDOMCPPFunctionSpecialization
 	/**
 	 * The size in bytes of a PDOMCPPMethodSpecialization record in the database.
 	 */
+	@SuppressWarnings("hiding")
 	protected static final int RECORD_SIZE = PDOMCPPFunctionSpecialization.RECORD_SIZE + 1;
 	
 	/**
@@ -64,12 +69,14 @@ class PDOMCPPMethodSpecialization extends PDOMCPPFunctionSpecialization
 		super(pdom, bindingRecord);
 	}
 	
+	@Override
 	protected int getRecordSize() {
 		return RECORD_SIZE;
 	}
 
+	@Override
 	public int getNodeType() {
-		return PDOMCPPLinkage.CPP_METHOD_SPECIALIZATION;
+		return IIndexCPPBindingConstants.CPP_METHOD_SPECIALIZATION;
 	}
 	
 	public boolean isDestructor() throws DOMException {
@@ -84,15 +91,22 @@ class PDOMCPPMethodSpecialization extends PDOMCPPFunctionSpecialization
 		return getBit(getByte(record + ANNOTATION1), PDOMCPPAnnotation.VIRTUAL_OFFSET);
 	}
 
+	@Override
 	public boolean isExtern() throws DOMException {
 		// ISO/IEC 14882:2003 9.2.6
 		return false;
 	}
 	
+	@Override
+	public boolean isExternC() {
+		return false;
+	}
+
 	public ICPPClassType getClassOwner() throws DOMException {
-		ICPPMethod f = (ICPPMethod) getSpecializedBinding();
-		if( f != null )
-			return f.getClassOwner();
+		IScope scope= getScope();
+		if (scope instanceof ICPPClassScope) {
+			return ((ICPPClassScope) scope).getClassType();
+		}
 		return null;
 	}
 
@@ -100,10 +114,12 @@ class PDOMCPPMethodSpecialization extends PDOMCPPFunctionSpecialization
 		return PDOMCPPAnnotation.getVisibility(getByte(record + ANNOTATION));
 	}
 	
+	@Override
 	public boolean isConst() {
 		return getBit(getByte(record + ANNOTATION1), PDOMCAnnotation.CONST_OFFSET + CV_OFFSET);
 	}
 
+	@Override
 	public boolean isVolatile() {
 		return getBit(getByte(record + ANNOTATION1), PDOMCAnnotation.VOLATILE_OFFSET + CV_OFFSET);
 	}

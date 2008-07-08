@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,117 +7,109 @@
  *
  * Contributors:
  *    Markus Schorn - initial API and implementation
+ *    Sergey Prigogin (Google)
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.core.pdom.indexer;
 
-import java.net.URI;
-import java.text.MessageFormat;
 import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Calendar;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.IPDOMIndexer;
 import org.eclipse.cdt.core.dom.IPDOMIndexerTask;
-import org.eclipse.cdt.core.dom.ast.IASTPreprocessorIncludeStatement;
-import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.index.IIndexFile;
-import org.eclipse.cdt.core.index.IIndexFileLocation;
-import org.eclipse.cdt.core.index.IIndexInclude;
 import org.eclipse.cdt.core.index.IIndexManager;
-import org.eclipse.cdt.core.index.IndexLocationFactory;
 import org.eclipse.cdt.core.model.AbstractLanguage;
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.CoreModelUtil;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.model.LanguageManager;
-import org.eclipse.cdt.core.parser.CodeReader;
-import org.eclipse.cdt.core.parser.IExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfoProvider;
 import org.eclipse.cdt.core.parser.ScannerInfo;
-import org.eclipse.cdt.internal.core.CContentTypes;
-import org.eclipse.cdt.internal.core.index.IIndexFragmentFile;
 import org.eclipse.cdt.internal.core.index.IWritableIndex;
+import org.eclipse.cdt.internal.core.index.IWritableIndexManager;
+import org.eclipse.cdt.internal.core.pdom.AbstractIndexerTask;
+import org.eclipse.cdt.internal.core.pdom.ITodoTaskUpdater;
 import org.eclipse.cdt.internal.core.pdom.IndexerProgress;
-import org.eclipse.cdt.internal.core.pdom.PDOMWriter;
 import org.eclipse.cdt.internal.core.pdom.db.ChunkCache;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.content.IContentType;
+import org.eclipse.osgi.util.NLS;
 
-public abstract class PDOMIndexerTask extends PDOMWriter implements IPDOMIndexerTask {
-	private static final Object NO_CONTEXT = new Object();
-	private static final int MAX_ERRORS = 500;
+/**
+ * Configures the abstract indexer task suitable for indexing projects.
+ */
+public abstract class PDOMIndexerTask extends AbstractIndexerTask implements IPDOMIndexerTask {
 	private static final String TRUE = "true"; //$NON-NLS-1$
-	private static final IIndexFileLocation[] NO_LOCATIONS= {};
-	private static final IASTPreprocessorIncludeStatement[] NO_INCLUDES= {};
 	
 	private AbstractPDOMIndexer fIndexer;
-	protected Map/*<IIndexFileLocation, Object>*/ fContextMap = new HashMap/*<IIndexFileLocation, Object>*/();
-	private List fFilesUpFront= new ArrayList();
-	private String fDummyFileName;
-	private URI fDummyFileURI;
-	private int fUpdateFlags= IIndexManager.UPDATE_ALL;
-
-	protected PDOMIndexerTask(AbstractPDOMIndexer indexer) {
+	private boolean fWriteInfoToLog;
+	
+	protected PDOMIndexerTask(ITranslationUnit[] forceFiles, ITranslationUnit[] updateFiles, ITranslationUnit[] removeFiles, 
+			AbstractPDOMIndexer indexer, boolean isFastIndexer) {
+		super(concat(forceFiles, updateFiles), removeFiles, new ProjectIndexerInputAdapter(indexer.getProject()), isFastIndexer);
 		fIndexer= indexer;
 		setShowActivity(checkDebugOption(TRACE_ACTIVITY, TRUE));
+		setShowInclusionProblems(checkDebugOption(TRACE_INCLUSION_PROBLEMS, TRUE));
+		setShowScannerProblems(checkDebugOption(TRACE_SCANNER_PROBLEMS, TRUE));
+		setShowSyntaxProblems(checkDebugOption(TRACE_SYNTAX_PROBLEMS, TRUE));
 		setShowProblems(checkDebugOption(TRACE_PROBLEMS, TRUE));
 		if (checkProperty(IndexerPreferences.KEY_SKIP_ALL_REFERENCES)) {
 			setSkipReferences(SKIP_ALL_REFERENCES);
 		}
-		else if (checkProperty(IndexerPreferences.KEY_SKIP_TYPE_REFERENCES)) {
-			setSkipReferences(SKIP_TYPE_REFERENCES);
+		else {
+			int skipRefs= 0;
+			if (checkProperty(IndexerPreferences.KEY_SKIP_TYPE_REFERENCES)) {
+				skipRefs |= SKIP_TYPE_REFERENCES;
+			}
+			if (checkProperty(IndexerPreferences.KEY_SKIP_MACRO_REFERENCES)) {
+				skipRefs |= SKIP_MACRO_REFERENCES;
+			}
+			if (skipRefs != 0) {
+				setSkipReferences(skipRefs);
+			}
 		}
+		if (getIndexAllFiles()) {
+			setIndexFilesWithoutBuildConfiguration(true);
+			setIndexHeadersWithoutContext(true);
+		}
+		else {
+			setIndexFilesWithoutBuildConfiguration(false);
+			setIndexHeadersWithoutContext(false);
+		}
+		setUpdateFlags(IIndexManager.UPDATE_CHECK_TIMESTAMPS);
+		setForceFirstFiles(forceFiles.length);
+	}
+	
+	private static ITranslationUnit[] concat(ITranslationUnit[] added, ITranslationUnit[] changed) {
+		ITranslationUnit[] result= new ITranslationUnit[added.length+changed.length];
+		System.arraycopy(added, 0, result, 0, added.length);
+		System.arraycopy(changed, 0, result, added.length, changed.length);
+		return result;
+	}
+	
+	public final void setParseUpFront() {
+		setParseUpFront(fIndexer.getFilesToParseUpFront());
 	}
 
-	final public IPDOMIndexer getIndexer() {
+
+	public final IPDOMIndexer getIndexer() {
 		return fIndexer;
 	}
 	
-	final public ICProject getProject() {
-		return fIndexer.getProject();
-	}
-	
-	final public IndexerProgress getProgressInformation() {
-		return super.getProgressInformation();
-	}
-	
-	public void setUpateFlags(int flags) {
-		fUpdateFlags= flags;
-	}
-	
-	final public boolean updateAll() {
-		return (fUpdateFlags & IIndexManager.UPDATE_ALL) != 0;
-	}
-	
-	final public boolean updateChangedTimestamps() {
-		return (fUpdateFlags & IIndexManager.UPDATE_CHECK_TIMESTAMPS) != 0;
-	}
-
-	final public boolean updateChangedConfiguration() {
-		return (fUpdateFlags & IIndexManager.UPDATE_CHECK_CONFIGURATION) != 0;
-	}
-		
-	final public void setParseUpFront() {
-		fFilesUpFront.addAll(Arrays.asList(fIndexer.getFilesToParseUpFront()));
+	public final void run(IProgressMonitor monitor) throws InterruptedException {
+		long start = System.currentTimeMillis();
+		runTask(monitor);
+		traceEnd(start, fIndex, monitor.isCanceled());
 	}
 	
 	/**
@@ -131,12 +123,7 @@ public abstract class PDOMIndexerTask extends PDOMWriter implements IPDOMIndexer
 		return internallyActivated || (trace != null && trace.equalsIgnoreCase(value));
 	}
 
-	/**
-	 * Figurues out whether all files (sources without config, headers not included)
-	 * should be parsed.
-	 * @since 4.0
-	 */
-	final protected boolean getIndexAllFiles() {
+	private boolean getIndexAllFiles() {
 		return checkProperty(IndexerPreferences.KEY_INDEX_ALL_FILES);
 	}
 
@@ -144,395 +131,221 @@ public abstract class PDOMIndexerTask extends PDOMWriter implements IPDOMIndexer
 		return TRUE.equals(getIndexer().getProperty(key));
 	}
 
-	private IASTTranslationUnit createAST(ITranslationUnit tu, IScannerInfo scannerInfo, int options, IProgressMonitor pm) throws CoreException {
-		IPath path = tu.getLocation();
-		if (path == null) {
-			return null;
-		}
-		ILanguage language = tu.getLanguage();
-		if (! (language instanceof AbstractLanguage))
-			return null;
-
-		CodeReader codeReader = tu.getCodeReader();
-		if (codeReader == null) {
-			return null;
-		}
-
-		return createAST((AbstractLanguage)language, codeReader, scannerInfo, options, pm);
-	}
-
-	/**
-	 * Called to create the ast for a translation unit or a pre-parsed file. 
-	 * May return <code>null</code>.
-	 * @see #parseTUs(IWritableIndex, int, Collection, Collection, IProgressMonitor)
-	 * @since 4.0
-	 */
-	abstract protected IASTTranslationUnit createAST(AbstractLanguage lang, CodeReader codeReader, IScannerInfo scanInfo, int options, IProgressMonitor pm) throws CoreException;
-
-	/**
-	 * Convenience method for subclasses, parses the files calling out to the methods 
-	 * {@link #createAST(AbstractLanguage, CodeReader, IScannerInfo, int, IProgressMonitor)}, 
-	 * {@link #needToUpdate(IIndexFileLocation,int)}, 
-	 * {@link #addSymbols(IASTTranslationUnit, IWritableIndex, int, IProgressMonitor)}
-	 * {@link #postAddToIndex(IIndexFileLocation, IIndexFile)},
-	 * {@link #getLastModified(IIndexFileLocation)} and
-	 * {@link #findLocation(String)}
-	 * @since 4.0
-	 */
-	protected void parseTUs(IWritableIndex index, int readlockCount, Collection sources, Collection headers, IProgressMonitor monitor) throws CoreException, InterruptedException {
-		int options= 0;
-		if (checkProperty(IndexerPreferences.KEY_SKIP_ALL_REFERENCES)) {
-			options |= AbstractLanguage.OPTION_SKIP_FUNCTION_BODIES;
-		}
-		for (Iterator iter = fFilesUpFront.iterator(); iter.hasNext();) {
-			String upfront= (String) iter.next();
-			parseUpFront(upfront, options, index, readlockCount, monitor);
-		}
-		
-		// sources first
-		for (Iterator iter = sources.iterator(); iter.hasNext();) {
-			if (monitor.isCanceled()) 
-				return;
-			ITranslationUnit tu = (ITranslationUnit) iter.next();
-			final IIndexFileLocation ifl = IndexLocationFactory.getIFL(tu);
-			if (needToUpdate(ifl, 0)) {
-				parseTU(ifl, tu, options, index, readlockCount, monitor);
-			}
-		}
-
-		// headers with context
-		for (Iterator iter = headers.iterator(); iter.hasNext();) {
-			if (monitor.isCanceled()) 
-				return;
-			ITranslationUnit tu = (ITranslationUnit) iter.next();
-			final IIndexFileLocation ifl = IndexLocationFactory.getIFL(tu);
-			if (!needToUpdate(ifl, 0)) {
-				iter.remove();
-			} 
-			else {
-				ITranslationUnit context= findContext(index, ifl);
-				if (context != null) {
-					parseTU(ifl, context, options, index, readlockCount, monitor);
-				}
-			}
-		}
-
-		// headers without context
-		if (getIndexAllFiles()) {
-			for (Iterator iter = headers.iterator(); iter.hasNext();) {
-				if (monitor.isCanceled()) 
-					return;
-				ITranslationUnit tu = (ITranslationUnit) iter.next();
-				final IIndexFileLocation ifl = IndexLocationFactory.getIFL(tu);
-				if (!needToUpdate(ifl, 0)) {
-					iter.remove();
-				}
-				else {
-					parseTU(ifl, tu, options, index, readlockCount, monitor);
-				}
-			}
-		}
-	}
 	
-	/**
-	 * Convinience method to check whether a translation unit in the index is outdated
-	 * with respect to its timestamp.
-	 * @throws CoreException
-	 * @since 4.0
-	 */
-	final protected boolean isOutdated(ITranslationUnit tu, IIndexFile indexFile) throws CoreException {
-		if (indexFile == null) {
-			return true;
+	@Override
+	protected String getASTPathForParsingUpFront() {
+		final IProject project = getProject().getProject();
+		final IPath prjLocation= project.getLocation();
+		if (prjLocation == null) {
+			return null;
 		}
-		IResource res= tu.getResource();
-		if (res != null) {
-			if (indexFile != null) {
-				if (res.getLocalTimeStamp() == indexFile.getTimestamp()) {
-					return false;
-				}
-			}
-			return true;
-		}
-		return false;
+		return prjLocation.append(super.getASTPathForParsingUpFront()).toString(); 
 	}
 
+	@Override
+	protected AbstractLanguage[] getLanguages(String filename) {
+		IContentType ct= CCorePlugin.getContentType(getProject().getProject(), filename);
+		if (ct != null) {
+			ILanguage l = LanguageManager.getInstance().getLanguage(ct);
+			if (l instanceof AbstractLanguage) {
+				if (ct.getId().equals(CCorePlugin.CONTENT_TYPE_CXXHEADER) && l.getLinkageID() == ILinkage.CPP_LINKAGE_ID) {
+					ILanguage l2= LanguageManager.getInstance().getLanguageForContentTypeID(CCorePlugin.CONTENT_TYPE_CHEADER);
+					if (l2 instanceof AbstractLanguage) {
+						return new AbstractLanguage[] {(AbstractLanguage) l, (AbstractLanguage) l2};
+					}
+				}
+				return new AbstractLanguage[] {(AbstractLanguage) l};
+			}
+		}
+		return new AbstractLanguage[0];
+	}
 
-	private void parseTU(IIndexFileLocation originator, ITranslationUnit tu, int options, IWritableIndex index, int readlockCount, IProgressMonitor pm) throws CoreException, InterruptedException {
-		IPath path= tu.getPath();
+	@Override
+	protected IScannerInfo createDefaultScannerConfig(int linkageID) {
+		IProject project= getProject().getProject();
+		IScannerInfoProvider provider= CCorePlugin.getDefault().getScannerInfoProvider(project);
+		IScannerInfo scanInfo;
+		if (provider != null) { 
+			String filename= linkageID == ILinkage.C_LINKAGE_ID ? "__cdt__.c" : "__cdt__.cpp";  //$NON-NLS-1$//$NON-NLS-2$
+			IFile file= project.getFile(filename);
+			scanInfo= provider.getScannerInformation(file);
+			if (scanInfo == null || scanInfo.getDefinedSymbols().isEmpty()) {
+				scanInfo= provider.getScannerInformation(project);
+				if (linkageID == ILinkage.C_LINKAGE_ID) {
+					final Map<String, String> definedSymbols = scanInfo.getDefinedSymbols();
+					definedSymbols.remove("__cplusplus__"); //$NON-NLS-1$
+					definedSymbols.remove("__cplusplus"); //$NON-NLS-1$
+				}
+			}
+		}
+		else {
+			scanInfo= new ScannerInfo();
+		}
+		return scanInfo;
+	}
+
+	private ICProject getProject() {
+		return getIndexer().getProject();
+	}
+
+	@Override
+	protected final IWritableIndex createIndex() {
 		try {
-			// skip if no scanner info
-			IScannerInfo scanner= tu.getScannerInfo(getIndexAllFiles());
-			if (scanner == null) {
-				updateInfo(0, 0, -1);
-			}
-			else {
-				final int configHash = computeHashCode(scanner);
-				if (needToUpdate(originator, configHash)) {
-					if (fShowActivity) {
-						System.out.println("Indexer: parsing " + path.toOSString()); //$NON-NLS-1$
-					}
-					pm.subTask(MessageFormat.format(Messages.PDOMIndexerTask_parsingFileTask,
-							new Object[]{path.lastSegment(), path.removeLastSegments(1).toString()}));
-					long start= System.currentTimeMillis();
-					IASTTranslationUnit ast= createAST(tu, scanner, options, pm);
-					fStatistics.fParsingTime += System.currentTimeMillis()-start;
-					if (ast != null) {
-						addSymbols(ast, index, readlockCount, configHash, pm);
-					}
-				}
-			}
-		}
-		catch (CoreException e) {
-			swallowError(path, e); 
-		}
-		catch (RuntimeException e) {
-			swallowError(path, e); 
-		}
-		catch (Error e) {
-			swallowError(path, e); 
-		}
-	}
-
-	private void parseUpFront(String file, int options, IWritableIndex index, int readlockCount, IProgressMonitor pm) throws CoreException, InterruptedException {
-		file= file.trim();
-		if (file.length() == 0) {
-			return;
-		}
-		IPath path= new Path(file);
-		try {
-			if (fShowActivity) {
-				System.out.println("Indexer: parsing " + file + " up front"); //$NON-NLS-1$ //$NON-NLS-2$
-			}
-			pm.subTask(MessageFormat.format(Messages.PDOMIndexerTask_parsingFileTask,
-					new Object[]{path.lastSegment(), path.removeLastSegments(1).toString()}));
-			long start= System.currentTimeMillis();
-
-			IASTTranslationUnit ast= null;
-			final IProject project = getProject().getProject();
-			IContentType ct= CContentTypes.getContentType(project, file);
-			if (ct != null) {
-				ILanguage l = LanguageManager.getInstance().getLanguage(ct);
-				if (l instanceof AbstractLanguage) {
-					AbstractLanguage lang= (AbstractLanguage) l;
-					IScannerInfoProvider provider= CCorePlugin.getDefault().getScannerInfoProvider(project);
-					IScannerInfo scanInfo;
-					if (provider != null) { 
-						scanInfo= provider.getScannerInformation(project);
-					}
-					else {
-						scanInfo= new ScannerInfo();
-					}
-					String code= "#include \"" + file + "\"\n"; //$NON-NLS-1$ //$NON-NLS-2$
-					if (fDummyFileName == null) {
-						fDummyFileName= project.getLocation().append("___").toString(); //$NON-NLS-1$
-						fDummyFileURI= findLocation(fDummyFileName).getURI();
-					}
-					CodeReader codeReader= new CodeReader(fDummyFileName, code.toCharArray());
-					ast= createAST(lang, codeReader, scanInfo, options, pm);
-				}
-			}
-				
-			fStatistics.fParsingTime += System.currentTimeMillis()-start;
-			if (ast != null) {
-				addSymbols(ast, index, readlockCount, 0, pm);
-				updateInfo(-1, +1, 0);
-			}
-		}
-		catch (CoreException e) {
-			swallowError(path, e); 
-		}
-		catch (RuntimeException e) {
-			swallowError(path, e); 
-		}
-		catch (Error e) {
-			swallowError(path, e); 
-		}
-	}
-
-	/**
-	 * Overriders must call super.needToUpdate(). If <code>false</code> is returned
-	 * this must be passed on to their caller:
-	 * <pre>
-	 *   if (super.needToUpdate()) {
-	 *      // your code
-	 *   }
-	 *   return false;
-	 */
-	protected boolean needToUpdate(IIndexFileLocation fileLoc, int configHash) throws CoreException {
-		return fDummyFileURI==null || !fDummyFileURI.equals(fileLoc.getURI());
-	}
-	
-	private void swallowError(IPath file, Throwable e) throws CoreException {
-		IStatus status= CCorePlugin.createStatus(
-				MessageFormat.format(Messages.PDOMIndexerTask_errorWhileParsing, new Object[]{file}), e);
-		CCorePlugin.log(status);
-		if (++fStatistics.fErrorCount > MAX_ERRORS) {
-			throw new CoreException(CCorePlugin.createStatus(
-					MessageFormat.format(Messages.PDOMIndexerTask_tooManyIndexProblems, new Object[]{getIndexer().getProject().getElementName()})));
-		}
-	}
-
-	private ITranslationUnit findContext(IIndex index, IIndexFileLocation location) {
-		Object cachedContext= fContextMap.get(location);
-		if (cachedContext != null) {
-			return cachedContext == NO_CONTEXT ? null : (ITranslationUnit) cachedContext;
-		}
-
-		fContextMap.put(location, NO_CONTEXT); // prevent recursion
-		IIndexFile pdomFile;
-		try {
-			pdomFile = index.getFile(location);
-			if (pdomFile != null) {
-				ICProject project= getIndexer().getProject();
-				IIndexInclude[] includedBy = index.findIncludedBy(pdomFile, IIndex.DEPTH_ZERO);
-				for (int i = includedBy.length-1; i >=0; i--) {
-					IIndexInclude include = includedBy[i];
-					IIndexFileLocation incLocation = include.getIncludedByLocation();
-					ITranslationUnit context= null;
-					if (CoreModel.isValidSourceUnitName(project.getProject(), incLocation.getURI().toString())) { // FIXME - is this ok?
-						context = CoreModelUtil.findTranslationUnitForLocation(IndexLocationFactory.getAbsolutePath(incLocation), project);
-					}
-					else {
-						context= findContext(index, incLocation);
-					}
-					if (context != null) {
-						fContextMap.put(location, context);
-						return context;
-					}
-				}
-			}
+			return ((IWritableIndexManager) CCorePlugin.getIndexManager()).getWritableIndex(getProject());
 		} catch (CoreException e) {
 			CCorePlugin.log(e);
 		}
 		return null;
 	}
 
-	/**
-	 * Conveninence method for subclasses, removes a translation unit from the index.
-	 * @since 4.0
-	 */
-	protected void removeTU(IWritableIndex index, ITranslationUnit tu, int readlocks) throws CoreException, InterruptedException {
-		index.acquireWriteLock(readlocks);
-		try {
-			IIndexFragmentFile file = (IIndexFragmentFile) index.getFile(IndexLocationFactory.getIFL(tu));
-			if (file != null)
-				index.clearFile(file, NO_INCLUDES, NO_LOCATIONS);
-		} finally {
-			index.releaseWriteLock(readlocks);
-		}
+	@Override
+	protected final ITodoTaskUpdater createTodoTaskUpdater() {
+		return new TodoTaskUpdater();
 	}
-
-	protected void traceEnd(long start, IWritableIndex index) {
+	
+	protected void traceEnd(long start, IWritableIndex index, boolean wasCancelled) {
+		// log entry
+		if (fWriteInfoToLog && !wasCancelled && index != null) {
+			final long totalTime = System.currentTimeMillis() - start;
+			final IndexerProgress info= getProgressInformation();
+			final int sum= fStatistics.fDeclarationCount+fStatistics.fReferenceCount+fStatistics.fProblemBindingCount;
+			final double problemPct= sum==0 ? 0.0 : (double) fStatistics.fProblemBindingCount / (double) sum;
+			NumberFormat nfGroup= NumberFormat.getNumberInstance();
+			nfGroup.setGroupingUsed(true);
+			NumberFormat nfPercent= NumberFormat.getPercentInstance();
+			nfPercent.setMaximumFractionDigits(2);
+			nfPercent.setMinimumFractionDigits(2);
+			NumberFormat nfTime= NumberFormat.getNumberInstance();
+			nfTime.setMaximumFractionDigits(2);
+			nfTime.setMinimumFractionDigits(2);
+			nfTime.setGroupingUsed(true);
+			final String msg= NLS.bind(Messages.PDOMIndexerTask_indexerInfo,
+					new Object[] {
+						getCProject().getElementName(), 
+						nfGroup.format(info.fCompletedSources), 
+						nfGroup.format(info.fCompletedHeaders),
+						nfTime.format((double) totalTime/1000),
+						nfGroup.format(fStatistics.fDeclarationCount), 
+						nfGroup.format(fStatistics.fReferenceCount),
+						nfGroup.format(fStatistics.fUnresolvedIncludesCount),
+						nfGroup.format(fStatistics.fPreprocessorProblemCount + fStatistics.fSyntaxProblemsCount),
+						nfGroup.format(fStatistics.fProblemBindingCount),
+						nfPercent.format(problemPct)
+					}
+			);
+			CCorePlugin.getDefault().getLog().log(new Status(IStatus.INFO, CCorePlugin.PLUGIN_ID, msg));
+		}
+		
+		// tracing
 		if (checkDebugOption(IPDOMIndexerTask.TRACE_STATISTICS, TRUE)) {
-			IndexerProgress info= getProgressInformation();
-			String name= getClass().getName();
-			name= name.substring(name.lastIndexOf('.')+1);
-
-			System.out.println(name + " " + getProject().getElementName()  //$NON-NLS-1$
-					+ " (" + info.fCompletedSources + " sources, "  //$NON-NLS-1$ //$NON-NLS-2$
-					+ info.fCompletedHeaders + " headers)"); //$NON-NLS-1$
+			String ident= "   ";   //$NON-NLS-1$
+			final long totalTime = System.currentTimeMillis() - start;
+			final IndexerProgress info= getProgressInformation();
+			final int sum= fStatistics.fDeclarationCount+fStatistics.fReferenceCount+fStatistics.fProblemBindingCount;
+			final double problemPct= sum==0 ? 0.0 : (double) fStatistics.fProblemBindingCount / (double) sum;
+			String kind= getIndexer().getClass().getName();
+			kind= kind.substring(kind.lastIndexOf('.')+1);
+			final long dbSize= index.getDatabaseSizeBytes();
+			
+			System.out.println("C/C++ Indexer: Project '" + getProject().getElementName()     //$NON-NLS-1$
+					+ "' (" + info.fCompletedSources + " sources, "      //$NON-NLS-1$//$NON-NLS-2$
+					+ info.fCompletedHeaders + " headers)");    //$NON-NLS-1$
 			boolean allFiles= getIndexAllFiles();
 			boolean skipRefs= checkProperty(IndexerPreferences.KEY_SKIP_ALL_REFERENCES);
 			boolean skipTypeRefs= skipRefs || checkProperty(IndexerPreferences.KEY_SKIP_TYPE_REFERENCES);
-			System.out.println(name + " Options: "  //$NON-NLS-1$
-					+ "parseAllFiles=" + allFiles //$NON-NLS-1$
-					+ ",skipReferences=" + skipRefs //$NON-NLS-1$
-					+ ", skipTypeReferences=" + skipTypeRefs //$NON-NLS-1$
-					+ "."); //$NON-NLS-1$
-			System.out.println(name + " Timings: "  //$NON-NLS-1$
-					+ (System.currentTimeMillis() - start) + " total, " //$NON-NLS-1$
-					+ fStatistics.fParsingTime + " parser, " //$NON-NLS-1$
-					+ fStatistics.fResolutionTime + " resolution, " //$NON-NLS-1$
-					+ fStatistics.fAddToIndexTime + " index update."); //$NON-NLS-1$
-			System.out.println(name + " Errors: " //$NON-NLS-1$
-					+ fStatistics.fUnresolvedIncludes + " unresolved includes, " //$NON-NLS-1$
-					+ fStatistics.fErrorCount + " unexpected errors."); //$NON-NLS-1$
+			boolean skipMacroRefs= skipRefs || checkProperty(IndexerPreferences.KEY_SKIP_MACRO_REFERENCES);
+			System.out.println(ident + " Options: "     //$NON-NLS-1$
+					+ "indexer='" + kind    //$NON-NLS-1$
+					+ "', parseAllFiles=" + allFiles    //$NON-NLS-1$
+					+ ", skipReferences=" + skipRefs    //$NON-NLS-1$
+					+ ", skipTypeReferences=" + skipTypeRefs    //$NON-NLS-1$
+					+ ", skipMacroReferences=" + skipMacroRefs    //$NON-NLS-1$
+					+ ".");    //$NON-NLS-1$
+			System.out.println(ident + " Database: " + dbSize + " bytes");   //$NON-NLS-1$ //$NON-NLS-2$
+			System.out.println(ident + " Timings: "     //$NON-NLS-1$
+					+ totalTime + " total, "    //$NON-NLS-1$
+					+ fStatistics.fParsingTime + " parser, "    //$NON-NLS-1$
+					+ fStatistics.fResolutionTime + " resolution, "    //$NON-NLS-1$
+					+ fStatistics.fAddToIndexTime + " index update.");    //$NON-NLS-1$
+			System.out.println(ident + " Errors: "    //$NON-NLS-1$
+					+ fStatistics.fErrorCount + " internal, "    //$NON-NLS-1$
+					+ fStatistics.fUnresolvedIncludesCount + " include, "     //$NON-NLS-1$
+					+ fStatistics.fPreprocessorProblemCount + " scanner, "     //$NON-NLS-1$
+					+ fStatistics.fSyntaxProblemsCount + " syntax errors.");    //$NON-NLS-1$
 
-			int sum= fStatistics.fDeclarationCount+fStatistics.fReferenceCount+fStatistics.fProblemBindingCount;
-			double problemPct= sum==0 ? 0.0 : (double) fStatistics.fProblemBindingCount / (double) sum;
-			NumberFormat nf= NumberFormat.getPercentInstance();
-			nf.setMaximumFractionDigits(2);
-			nf.setMinimumFractionDigits(2);
-			System.out.println(name + " Result: " //$NON-NLS-1$
-					+ fStatistics.fDeclarationCount + " declarations, " //$NON-NLS-1$
-					+ fStatistics.fReferenceCount + " references, " //$NON-NLS-1$
-					+ fStatistics.fProblemBindingCount + "(" + nf.format(problemPct) + ") problems.");  //$NON-NLS-1$ //$NON-NLS-2$
+			NumberFormat nfPercent= NumberFormat.getPercentInstance();
+			nfPercent.setMaximumFractionDigits(2);
+			nfPercent.setMinimumFractionDigits(2);
+			System.out.println(ident + " Names: "    //$NON-NLS-1$
+					+ fStatistics.fDeclarationCount + " declarations, "    //$NON-NLS-1$
+					+ fStatistics.fReferenceCount + " references, "    //$NON-NLS-1$
+					+ fStatistics.fProblemBindingCount + "(" + nfPercent.format(problemPct) + ") unresolved.");     //$NON-NLS-1$ //$NON-NLS-2$
 			
-			if (index != null) {
-				long misses= index.getCacheMisses();
-				long hits= index.getCacheHits();
-				long tries= misses+hits;
-				double missPct= tries==0 ? 0.0 : (double) misses / (double) tries;
-				nf.setMinimumFractionDigits(4);
-				nf.setMaximumFractionDigits(4);
-				System.out.println(name + " Cache[" //$NON-NLS-1$
-					+ ChunkCache.getSharedInstance().getMaxSize() / 1024 / 1024 + "mb]: " + //$NON-NLS-1$
-					+ hits + " hits, "   //$NON-NLS-1$
-					+ misses + "(" + nf.format(missPct)+ ") misses.");   //$NON-NLS-1$//$NON-NLS-2$
+			long misses= index.getCacheMisses();
+			long hits= index.getCacheHits();
+			long tries= misses+hits;
+			double missPct= tries==0 ? 0.0 : (double) misses / (double) tries;
+			System.out.println(ident + " Cache["    //$NON-NLS-1$
+					+ ChunkCache.getSharedInstance().getMaxSize() / 1024 / 1024 + "mb]: " +    //$NON-NLS-1$
+					+ hits + " hits, "      //$NON-NLS-1$
+					+ misses + "(" + nfPercent.format(missPct)+ ") misses.");      //$NON-NLS-1$ //$NON-NLS-2$
+
+			if ("true".equals(System.getProperty("SHOW_COMPRESSED_INDEXER_INFO"))) {    //$NON-NLS-1$ //$NON-NLS-2$
+				Calendar cal = Calendar.getInstance();
+				NumberFormat twoDigits= NumberFormat.getNumberInstance();
+				twoDigits.setMinimumIntegerDigits(2);
+				NumberFormat nfGroup= NumberFormat.getNumberInstance();
+				nfGroup.setGroupingUsed(true);
+
+				final String sep0 = "|"; //$NON-NLS-1$
+				final String sep = "|  "; //$NON-NLS-1$
+				final String sec = "s"; //$NON-NLS-1$
+				final String mb = "mb"; //$NON-NLS-1$
+				final String million = "M"; //$NON-NLS-1$
+				System.out.print(sep0);   
+				System.out.print(cal.get(Calendar.YEAR) + twoDigits.format(cal.get(Calendar.MONTH)+1) + twoDigits.format(cal.get(Calendar.DAY_OF_MONTH)));
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(info.fCompletedSources));
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(info.fCompletedHeaders));
+				System.out.print(sep);   
+				System.out.print(nfGroup.format((totalTime+500)/1000) + sec);   
+				System.out.print(sep);   
+				System.out.print(nfGroup.format((fStatistics.fParsingTime+500)/1000) + sec);   
+				System.out.print(sep);    
+				System.out.print(nfGroup.format((fStatistics.fResolutionTime+500)/1000) + sec);   
+				System.out.print(sep);   
+				System.out.print(nfGroup.format((fStatistics.fAddToIndexTime+500)/1000) + sec);   
+				System.out.print(sep);   
+				System.out.print(nfGroup.format((dbSize+1024*512)/1024/1024) + mb);   
+				System.out.print(sep);   
+				System.out.print(nfGroup.format((tries+1000*500)/1000000) + million);   
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(fStatistics.fDeclarationCount));  
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(fStatistics.fReferenceCount));  
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(fStatistics.fProblemBindingCount));  
+				System.out.print(sep);   
+				System.out.print(nfPercent.format(problemPct));   
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(fStatistics.fErrorCount));  
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(fStatistics.fUnresolvedIncludesCount));  
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(fStatistics.fPreprocessorProblemCount));  
+				System.out.print(sep);   
+				System.out.print(nfGroup.format(fStatistics.fSyntaxProblemsCount));  
+				System.out.println(sep0);   
 			}
 		}
 	}
 
-	protected long getLastModified(IIndexFileLocation location)	throws CoreException {
-		String fullPath= location.getFullPath();
-		if (fullPath != null) {
-			IResource res= ResourcesPlugin.getWorkspace().getRoot().findMember(fullPath);
-			if (res != null) {
-				return res.getLocalTimeStamp();
-			}
-		}
-		return super.getLastModified(location);
+	protected ICProject getCProject() {
+		return fIndexer.project;
 	}
 
-	protected static int computeHashCode(IScannerInfo scannerInfo) {
-		int result= 0;
-		Map macros= scannerInfo.getDefinedSymbols();
-		if (macros != null) {
-			for (Iterator i = macros.entrySet().iterator(); i.hasNext();) {
-				Map.Entry entry = (Map.Entry) i.next();
-				String key = (String) entry.getKey();
-				String value = (String) entry.getValue();
-				result= addToHashcode(result, key);
-				if (value != null && value.length() > 0) {
-					result= addToHashcode(result, value);
-				}
-			}
-		}
-		String[] a= scannerInfo.getIncludePaths();
-		if (a != null) {
-			for (int i = 0; i < a.length; i++) {
-				result= addToHashcode(result, a[i]);
-
-			}
-		}
-		if (scannerInfo instanceof IExtendedScannerInfo) {
-			IExtendedScannerInfo esi= (IExtendedScannerInfo) scannerInfo;
-			a= esi.getIncludeFiles();
-			if (a != null) {
-				for (int i = 0; i < a.length; i++) {
-					result= addToHashcode(result, a[i]);
-
-				}
-			}			
-			a= esi.getLocalIncludePath();
-			if (a != null) {
-				for (int i = 0; i < a.length; i++) {
-					result= addToHashcode(result, a[i]);
-
-				}
-			}		
-			a= esi.getMacroFiles();
-			if (a != null) {
-				for (int i = 0; i < a.length; i++) {
-					result= addToHashcode(result, a[i]);
-
-				}
-			}		
-		}
-		return result;
-	}
-
-	private static int addToHashcode(int result, String key) {
-		return result*31 + key.hashCode();
+	public void setWriteInfoToLog() {
+		fWriteInfoToLog= true;
 	}
 }

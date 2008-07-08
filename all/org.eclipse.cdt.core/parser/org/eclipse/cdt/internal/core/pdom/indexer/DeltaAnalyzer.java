@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,14 +8,12 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.core.pdom.indexer;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICElementDelta;
@@ -24,13 +22,11 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
 public class DeltaAnalyzer {
-	private boolean fAllFiles;
-	private List fAdded= new ArrayList();
-	private List fChanged= new ArrayList();
-	private List fRemoved= new ArrayList();
+	private List<ITranslationUnit> fForce= new ArrayList<ITranslationUnit>();
+	private List<ITranslationUnit> fChanged= new ArrayList<ITranslationUnit>();
+	private List<ITranslationUnit> fRemoved= new ArrayList<ITranslationUnit>();
 	
-	public DeltaAnalyzer(boolean allFiles) {
-		fAllFiles= allFiles;
+	public DeltaAnalyzer() {
 	}
 	
 	public void analyzeDelta(ICElementDelta delta) throws CoreException {
@@ -55,15 +51,11 @@ public class DeltaAnalyzer {
 				switch (delta.getKind()) {
 				case ICElementDelta.CHANGED:
 					if ((flags & ICElementDelta.F_CONTENT) != 0) {
-						if (fAllFiles || !CoreModel.isScannerInformationEmpty(tu.getResource()) || tu.isHeaderUnit()) {
-							fChanged.add(tu);
-						}
+						fChanged.add(tu);
 					}
 					break;
 				case ICElementDelta.ADDED:
-					if (fAllFiles || !CoreModel.isScannerInformationEmpty(tu.getResource()) || tu.isHeaderUnit()) {
-						fAdded.add(tu);
-					}
+					fChanged.add(tu);
 					break;
 				case ICElementDelta.REMOVED:
 					fRemoved.add(tu);
@@ -74,25 +66,33 @@ public class DeltaAnalyzer {
 		case ICElement.C_CCONTAINER:
 			ICContainer folder= (ICContainer) element;
 			if (delta.getKind() == ICElementDelta.ADDED) {
-				collectSources(folder, fAdded);
+				collectSources(folder, fChanged);
 			}
 			break;
 		}
 	}
 
-	private void collectSources(ICContainer container, Collection sources) throws CoreException {
-		container.accept(new TranslationUnitCollector(sources, sources, fAllFiles, new NullProgressMonitor()));
+	private void collectSources(ICContainer container, Collection<ITranslationUnit> sources) throws CoreException {
+		container.accept(new TranslationUnitCollector(sources, sources, new NullProgressMonitor()));
 	}
 
-	public ITranslationUnit[] getAddedTUs() {
-		return (ITranslationUnit[]) fAdded.toArray(new ITranslationUnit[fAdded.size()]);
+	public ITranslationUnit[] getForcedTUs() {
+		return fForce.toArray(new ITranslationUnit[fForce.size()]);
 	}
 
 	public ITranslationUnit[] getChangedTUs() {
-		return (ITranslationUnit[]) fChanged.toArray(new ITranslationUnit[fChanged.size()]);
+		return fChanged.toArray(new ITranslationUnit[fChanged.size()]);
 	}
 
 	public ITranslationUnit[] getRemovedTUs() {
-		return (ITranslationUnit[]) fRemoved.toArray(new ITranslationUnit[fRemoved.size()]);
+		return fRemoved.toArray(new ITranslationUnit[fRemoved.size()]);
+	}
+
+	public List<ITranslationUnit> getForcedList() {
+		return fForce;
+	}
+
+	public List<ITranslationUnit> getChangedList() {
+		return fChanged;
 	}
 }

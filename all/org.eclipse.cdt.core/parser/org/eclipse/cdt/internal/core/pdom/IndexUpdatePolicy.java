@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,7 +8,6 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.core.pdom;
 
 import java.util.HashSet;
@@ -30,10 +29,11 @@ public class IndexUpdatePolicy {
 	private final ICProject fCProject;
 	private int fKind;
 	
-	private HashSet fAdded= new HashSet();
-	private HashSet fChanged= new HashSet();
-	private HashSet fRemoved= new HashSet();
+	private HashSet<ITranslationUnit> fForce= new HashSet<ITranslationUnit>();
+	private HashSet<ITranslationUnit> fTimestamp= new HashSet<ITranslationUnit>();
+	private HashSet<ITranslationUnit> fRemoved= new HashSet<ITranslationUnit>();
 	private IPDOMIndexer fIndexer;
+	private boolean fReindexRequested;
 
 	public IndexUpdatePolicy(ICProject project, int kind) {
 		fCProject= project;
@@ -55,25 +55,13 @@ public class IndexUpdatePolicy {
 	}
 
 	public void clearTUs() {
-		fAdded.clear();
-		fChanged.clear();
+		fForce.clear();
+		fTimestamp.clear();
 		fRemoved.clear();
 	}
 
 	public boolean hasTUs() {
-		return !(fAdded.isEmpty() && fChanged.isEmpty() && fRemoved.isEmpty());
-	}
-
-	private ITranslationUnit[] getAdded() {
-		return (ITranslationUnit[]) fAdded.toArray(new ITranslationUnit[fAdded.size()]);
-	}
-
-	private ITranslationUnit[] getChanged() {
-		return (ITranslationUnit[]) fChanged.toArray(new ITranslationUnit[fChanged.size()]);
-	}
-
-	private ITranslationUnit[] getRemoved() {
-		return (ITranslationUnit[]) fRemoved.toArray(new ITranslationUnit[fRemoved.size()]);
+		return !(fForce.isEmpty() && fTimestamp.isEmpty() && fRemoved.isEmpty());
 	}
 
 	public void setIndexer(IPDOMIndexer indexer) {
@@ -84,7 +72,7 @@ public class IndexUpdatePolicy {
 		return fIndexer;
 	}
 
-	public IPDOMIndexerTask handleDelta(ITranslationUnit[] added, ITranslationUnit[] changed, ITranslationUnit[] removed) {
+	public IPDOMIndexerTask handleDelta(ITranslationUnit[] force, ITranslationUnit[] changed, ITranslationUnit[] removed) {
 		if (isNullIndexer()) {
 			return null;
 		}
@@ -94,28 +82,27 @@ public class IndexUpdatePolicy {
 			return null;
 		case IndexUpdatePolicy.POST_CHANGE:
 			if (fIndexer != null) {
-				return fIndexer.createTask(added, changed, removed);
+				return fIndexer.createTask(force, changed, removed);
 			}
 			break;
 		}
 		
 		for (int i = 0; i < removed.length; i++) {
 			ITranslationUnit tu = removed[i];
-			fAdded.remove(tu);
-			fChanged.remove(tu);
+			fForce.remove(tu);
+			fTimestamp.remove(tu);
 			fRemoved.add(tu);
 		}
-		for (int i = 0; i < added.length; i++) {
-			ITranslationUnit tu = added[i];
-			if (!fChanged.contains(tu)) {
-				fAdded.add(tu);
-			}
+		for (int i = 0; i < force.length; i++) {
+			ITranslationUnit tu = force[i];
+			fForce.add(tu);
+			fTimestamp.remove(tu);
 			fRemoved.remove(tu);
 		}
 		for (int i = 0; i < changed.length; i++) {
 			ITranslationUnit tu = changed[i];
-			if (!fAdded.contains(tu)) {
-				fChanged.add(tu);
+			if (!fForce.contains(tu)) {
+				fTimestamp.add(tu);
 			}
 			fRemoved.remove(tu);
 		}
@@ -126,11 +113,15 @@ public class IndexUpdatePolicy {
 		IPDOMIndexerTask task= null;
 		if (fIndexer != null && hasTUs()) {
 			if (fKind != IndexUpdatePolicy.MANUAL && !isNullIndexer()) {
-				task= fIndexer.createTask(getAdded(), getChanged(), getRemoved());
+				task= fIndexer.createTask(toarray(fForce), toarray(fTimestamp), toarray(fRemoved));
 			}
 			clearTUs();
 		}
 		return task;
+	}
+
+	private ITranslationUnit[] toarray(HashSet<ITranslationUnit> set) {
+		return set.toArray(new ITranslationUnit[set.size()]);
 	}
 
 	private boolean isNullIndexer() {
@@ -155,5 +146,17 @@ public class IndexUpdatePolicy {
 			}
 		}
 		return task;
+	}
+
+	public void requestInitialReindex() {
+		fReindexRequested= true;
+	}
+
+	public void clearInitialFlags() {
+		fReindexRequested= false;
+	}
+
+	public boolean isInitialRebuildRequested() {
+		return fReindexRequested;
 	}
 }

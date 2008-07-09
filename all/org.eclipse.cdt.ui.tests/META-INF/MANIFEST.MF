@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: org.eclipse.cdt.ui.tests
 Bundle-SymbolicName: org.eclipse.cdt.ui.tests; singleton:=true
-Bundle-Version: 4.0.0.qualifier
+Bundle-Version: 5.0.1.qualifier
 Bundle-ClassPath: cdtuitests.jar
 Bundle-Activator: org.eclipse.cdt.ui.testplugin.CTestPlugin
 Export-Package: org.eclipse.cdt.ui.testplugin,
@@ -10,6 +10,8 @@ Export-Package: org.eclipse.cdt.ui.testplugin,
  org.eclipse.cdt.ui.tests,
  org.eclipse.cdt.ui.tests.DOMAST,
  org.eclipse.cdt.ui.tests.chelp,
+ org.eclipse.cdt.ui.tests.refactoring,
+ org.eclipse.cdt.ui.tests.refactoring.rename,
  org.eclipse.cdt.ui.tests.text,
  org.eclipse.cdt.ui.tests.text.contentassist,
  org.eclipse.cdt.ui.tests.text.selection
@@ -33,6 +35,7 @@ Require-Bundle: org.eclipse.jface.text,
  org.eclipse.core.expressions,
  org.eclipse.cdt.make.core,
  com.ibm.icu,
- org.eclipse.cdt.refactoring.tests
-Eclipse-LazyStart: true
+ org.eclipse.ltk.core.refactoring;bundle-version="3.4.0"
+Bundle-ActivationPolicy: lazy
 Bundle-Vendor: Eclipse.org
+Bundle-RequiredExecutionEnvironment: J2SE-1.5

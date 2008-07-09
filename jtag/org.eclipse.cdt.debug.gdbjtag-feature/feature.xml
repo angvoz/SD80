@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="org.eclipse.cdt.debug.gdbjtag"
-      label="GDB Hardware Debugging"
-      version="1.0.0"
-      provider-name="Eclipse.org">
+      label="%featureName"
+      version="5.0.1.qualifier"
+      provider-name="%providerName"
+      image="eclipse_update_120.jpg">
 
    <description>
       %description
@@ -18,8 +19,23 @@
    </license>
 
    <url>
-      <update label="%updateSiteName" url="http://download.eclipse.org/tools/cdt/releases/europa"/>
+      <update label="%updateSiteName" url="http://download.eclipse.org/tools/cdt/releases/ganymede"/>
    </url>
+
+   <requires>
+      <import feature="org.eclipse.cdt.gnu.debug" version="5.0.0"/>
+      <import plugin="org.eclipse.core.runtime"/>
+      <import plugin="org.eclipse.debug.core"/>
+      <import plugin="org.eclipse.cdt.launch"/>
+      <import plugin="org.eclipse.cdt.debug.core"/>
+      <import plugin="org.eclipse.cdt.debug.mi.core"/>
+      <import plugin="org.eclipse.cdt.core"/>
+      <import plugin="org.eclipse.core.variables"/>
+      <import plugin="org.eclipse.ui"/>
+      <import plugin="org.eclipse.debug.ui"/>
+      <import plugin="org.eclipse.cdt.ui"/>
+      <import plugin="org.eclipse.cdt.managedbuilder.ui"/>
+   </requires>
 
    <plugin
          id="org.eclipse.cdt.debug.gdbjtag.core"
@@ -39,6 +55,7 @@
          id="org.eclipse.cdt.debug.gdbjtag"
          download-size="0"
          install-size="0"
-         version="0.0.0"/>
+         version="0.0.0"
+         unpack="false"/>
 
 </feature>

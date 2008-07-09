@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2005 QNX Software Systems and others.
+ * Copyright (c) 2000, 2007 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,14 +10,17 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.mi.core.cdi.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.cdt.debug.core.cdi.CDIException;
+import org.eclipse.cdt.debug.core.cdi.ICDIFormat;
 import org.eclipse.cdt.debug.core.cdi.model.ICDITarget;
 import org.eclipse.cdt.debug.core.cdi.model.ICDIValue;
 import org.eclipse.cdt.debug.core.cdi.model.ICDIVariable;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDIArrayType;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDIBoolType;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDICharType;
-import org.eclipse.cdt.debug.core.cdi.model.type.ICDIDerivedType;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDIDoubleType;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDIEnumType;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDIFloatType;
@@ -78,15 +81,16 @@ import org.eclipse.cdt.debug.mi.core.output.MIVarShowAttributesInfo;
 /**
  */
 public abstract class Variable extends VariableDescriptor implements ICDIVariable {
-
+	private static final ICDIVariable[] NO_CHILDREN = new ICDIVariable[0];
 	protected MIVarCreate fVarCreateCMD;
 	protected MIVar fMIVar;
 	Value value;
-	public ICDIVariable[] children = new ICDIVariable[0];
+	public ICDIVariable[] children = NO_CHILDREN;
 	String editable = null;
 	String language;
 	boolean isFake = false;
 	boolean isUpdated = true;
+	private String hexAddress;
 
 	public Variable(VariableDescriptor obj, MIVarCreate var) {
 		super(obj);
@@ -148,6 +152,19 @@ public abstract class Variable extends VariableDescriptor implements ICDIVariabl
 			}
 		}
 		return fMIVar;
+	}
+
+	private String getHexAddress() throws CDIException {
+		if (hexAddress != null) {
+			return hexAddress;
+		}
+		VariableManager vm = ((Session)((Target)getTarget()).getSession()).getVariableManager();
+		String qualName = "&(" + getQualifiedName() + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+		VariableDescriptor desc = createDescriptor((Target)getTarget(), (Thread)getThread(), (StackFrame)getStackFrame(), getName(), qualName, getPosition(), getStackDepth());
+		Variable v = vm.createVariable( desc );
+		v.setFormat(ICDIFormat.HEXADECIMAL);
+		hexAddress = v.getValue().getValueString();		
+		return hexAddress;
 	}
 
 	public Variable getChild(String name) {
@@ -223,93 +240,71 @@ public abstract class Variable extends VariableDescriptor implements ICDIVariabl
 			if (info == null) {
 				throw new CDIException(CdiResources.getString("cdi.Common.No_answer")); //$NON-NLS-1$
 			}
-			MIVar[] vars = info.getMIVars();
-			children = new Variable[vars.length];
-			// For C++ in GDB the children of the
-			// the struture are the scope and the inherited classes.
-			// For example:
-			// class foo: public bar {
-			// int x;
-			// public: int y;
-			// } foobar;
-			// This will map to
-			// - foobar
-			// + bar
-			// - private
-			// - x
-			// - public
-			// - y
-			// So we choose to ignore the first set of children
-			// but carry over to those "fake" variables the typename and the qualified name
-			boolean cppFakeLayer = isCPPLanguage() && (!isFake() || (isFake() && !isAccessQualifier(fName)));
-			ICDIType t = getType();
-			boolean container = isStructureProvider(t);
+			final MIVar[] vars = info.getMIVars();
+			final List childrenList = new ArrayList(vars.length);
+			final ICDIType t = getType();
+			final boolean cpp = isCPPLanguage();
 			for (int i = 0; i < vars.length; i++) {
-				String prefix = "(" + getFullName() + ")"; // parent qualified name
-				String childName = vars[i].getExp(); // chield simple name
-				String childFullName = prefix + "." + childName; // fallback full name
-				ICDIType childType = null;
+				String fn = getQualifiedName();
+				String childName = vars[i].getExp();
 				boolean childFake = false;
-				if (cppFakeLayer && container) {
+				if (cpp && isAccessQualifier(childName)) {
+					// since access qualifier is keyword this only possible when gdb returns this as fake fields
+					// so it is pretty safe without to do without any other type checks
 					childFake = true;
-					childType = t;
-					if (!isAccessQualifier(childName)) {
-						// if field is not access modifier and fake - it is a basetype
-						// cast to it to see reduced structure as value
-						childFullName = "(" + childName + ")" + prefix;
+					// fn remains unchanged otherwise it would be like x->public
+				} else if (t instanceof ICDIArrayType) {
+					// For Array gdb varobj only return the index, override here.
+					int index = castingIndex + i;
+					fn = "(" + fn + ")[" + index + "]"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+					childName = getName() + "[" + index + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+				} else if (t instanceof ICDIPointerType) {
+					ICDIType subType = ((ICDIPointerType) t).getComponentType();
+					if (subType instanceof ICDIStructType || subType instanceof IncompleteType) {
+						fn = "(" + fn + ")->" + childName; //$NON-NLS-1$ //$NON-NLS-2$
 					} else {
-						childFullName = prefix;
+						fn = "*(" + fn + ")"; //$NON-NLS-1$ //$NON-NLS-2$
 					}
-				} else {
-					if (t instanceof ICDIArrayType) {
-						// For Array gdb varobj only return the index, override here.
+				} else if (t instanceof ICDIReferenceType) {
+					ICDIType subType = ((ICDIReferenceType) t).getComponentType();
+					if (subType instanceof ICDIStructType || subType instanceof IncompleteType) {
+						fn = "(" + fn + ")." + childName; //$NON-NLS-1$ //$NON-NLS-2$
+					} else if (subType instanceof ICDIPointerType) {
+						fn = "(" + fn + ")->" + childName; //$NON-NLS-1$ //$NON-NLS-2$
+					} else if (subType instanceof ICDIArrayType) {
 						int index = castingIndex + i;
-						childFullName = prefix + "[" + index + "]"; //$NON-NLS-1$ //$NON-NLS-2$ 
-						childName = getName() + "[" + index + "]"; //$NON-NLS-1$ //$NON-NLS-2$
-					} else if (t instanceof ICDIPointerType) {
-						if (container) {
-							childFullName = prefix + "->" + childName; //$NON-NLS-1$ 
-						} else {
-							childFullName = "*" + prefix; //$NON-NLS-1$ 
-						}
-					} else if (t instanceof ICDIReferenceType) {
-						if (container) {
-							childFullName = prefix + "." + childName; //$NON-NLS-1$  
-						} else {
-							childFullName = prefix;
-						}
-					} else if (t instanceof ICDIStructType) {
-						// already correct name
+						fn = "(" + fn + ")[" + index + "]"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+						// set this to look pretty
+						childName = getName() + "[" + index + "]";  //$NON-NLS-1$ //$NON-NLS-2$
+					} else {
+						fn = "*(" + fn + ")"; //$NON-NLS-1$ //$NON-NLS-2$
 					}
+				} else if (t instanceof ICDIStructType || t instanceof IncompleteType) {
+					fn = "(" + fn + ")." + childName; //$NON-NLS-1$ //$NON-NLS-2$
 				}
-				Variable v = createVariable((Target) getTarget(), (Thread) getThread(), (StackFrame) getStackFrame(), childName,
-				        childFullName, getPosition(), getStackDepth(), vars[i]);
-				if (childType != null) {
+				Variable v = createVariable((Target)getTarget(), (Thread)getThread(), (StackFrame)getStackFrame(),
+						childName, fn, getPosition(), getStackDepth(), vars[i]);
+				if (childFake) {
+					v.setIsFake(childFake);
 					// Hack to reset the typename to a known value
-					v.fType = childType;
-				}
-				v.setIsFake(childFake);
-				children[i] = v;
+					v.fType = t;
+					// don't add these, add their kids
+					ICDIVariable[] grandchildren = v.getChildren();
+					for (int j = 0; j < grandchildren.length; ++j)
+						childrenList.add(grandchildren[j]);
+				} else
+					childrenList.add(v);
 			}
+			
+			children = (ICDIVariable[])childrenList.toArray(new ICDIVariable[childrenList.size()]);
 		} catch (MIException e) {
 			throw new MI2CDIException(e);
 		}
 		return children;
 	}
 
-	private boolean isStructureProvider(ICDIType t) {
-		// IncompleteType can be only struct or class, so same rules apply
-	    if (t instanceof ICDIStructType || t instanceof IncompleteType)
-	    	return true;
-	    if (t instanceof ICDIPointerType || t instanceof ICDIReferenceType) {
-	    	ICDIType type = ((ICDIDerivedType)t).getComponentType();
-	    	return (type instanceof ICDIStructType || type instanceof IncompleteType);
-	    }
-	    return false;
-	    			
-    }
-
-	 boolean isAccessQualifier(String foo) {
+	boolean isAccessQualifier(String foo) {
+		if (foo==null) return false;
 	    return foo.equals("private") || foo.equals("public") || foo.equals("protected");  //$NON-NLS-1$  //$NON-NLS-2$  //$NON-NLS-3$ 
     }
 
@@ -351,9 +346,9 @@ public abstract class Variable extends VariableDescriptor implements ICDIVariabl
 			} else if (t instanceof ICDIPointerType) {
 				value = new PointerValue(this);
 			} else if (t instanceof ICDIReferenceType) {
-				value = new ReferenceValue(this);
+				value = new ReferenceValue(this, getHexAddress());
 			} else if (t instanceof ICDIArrayType) {
-				value = new ArrayValue(this);
+				value = new ArrayValue(this, getHexAddress());
 			} else if (t instanceof ICDIStructType) {
 				value = new StructValue(this);
 			} else {
@@ -527,4 +522,6 @@ public abstract class Variable extends VariableDescriptor implements ICDIVariabl
 	public void setMIVarCreate(MIVarCreate miVar) {
 		fVarCreateCMD = miVar;
 	}
+
+	abstract protected VariableDescriptor createDescriptor(Target target, Thread thread, StackFrame frame, String n, String fn, int pos, int depth); 
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2005 QNX Software Systems and others.
+ * Copyright (c) 2004, 2007 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,8 +14,10 @@ import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.IAddressFactory;
+import org.eclipse.cdt.core.IAddressFactory2;
 import org.eclipse.cdt.debug.core.CDebugCorePlugin;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.core.cdi.CDIException;
@@ -133,16 +135,43 @@ public class CMemoryBlockRetrievalExtension extends PlatformObject implements IM
 		abort( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.3" ), null ); //$NON-NLS-1$
 	}
 
+	/**
+	 * Convert a simple literal address (e.g., "0x1000") to a BigInteger value
+	 * using the debug target's address factory.
+	 * 
+	 * We throw a NumberFormatException if the string is not a valid literal
+	 * address. If the backend implements the new&improved factory interface,
+	 * we'll throw a NumberFormatException if the string is a literal address
+	 * but is outside of the valid range. Old address factories will simply
+	 * truncate the value.
+	 * 
+	 * @param expression
+	 * @return
+	 */
+	private BigInteger evaluateLiteralAddress(String addr) {
+		IAddressFactory addrFactory = getDebugTarget().getAddressFactory();
+		if (addrFactory instanceof IAddressFactory2) {
+			return ((IAddressFactory2)addrFactory).createAddress(addr, false).getValue();
+		}
+		else {
+			return addrFactory.createAddress(addr).getValue();
+		}
+	}
+	
 	private void createMemoryBlocks( String[] expressions, String[] memorySpaceIDs ) {
 		ArrayList list = new ArrayList( expressions.length );
 		for ( int i = 0; i < expressions.length; ++i ) {
-			IAddress address = getDebugTarget().getAddressFactory().createAddress( expressions[i] );
-			if ( address != null ) {
-				if (memorySpaceIDs[i] == null) {
-					list.add( new CMemoryBlockExtension( getDebugTarget(), address.toHexAddressString(), address.getValue() ) );
-				} else {
-					list.add( new CMemoryBlockExtension( getDebugTarget(), address.getValue(), memorySpaceIDs[i] ) );
+			try {
+				IAddress address = getDebugTarget().getAddressFactory().createAddress( expressions[i] );
+				if ( address != null ) {
+					if (memorySpaceIDs[i] == null) {
+						list.add( new CMemoryBlockExtension( getDebugTarget(), address.toHexAddressString(), address.getValue() ) );
+					} else {
+						list.add( new CMemoryBlockExtension( getDebugTarget(), address.getValue(), memorySpaceIDs[i] ) );
+					}
 				}
+			} catch (NumberFormatException exc) {
+				CDebugCorePlugin.log(exc);
 			}
 		}
 		DebugPlugin.getDefault().getMemoryBlockManager().addMemoryBlocks( (IMemoryBlock[])list.toArray( new IMemoryBlock[list.size()] ) );
@@ -222,36 +251,46 @@ public class CMemoryBlockRetrievalExtension extends PlatformObject implements IM
 				// See if the expression is a simple numeric value; if it is, we can avoid some costly
 				// processing (calling the backend to resolve the expression)
 				try {
-					IAddressFactory addrFactory = ((CDebugTarget)target).getAddressFactory();
-					String hexstr = addrFactory.createAddress(expression).toString(16);
-					return new CMemoryBlockExtension((CDebugTarget)target, expression, new BigInteger(hexstr, 16));
-				} catch (NumberFormatException nfexc) {
-					// OK, expression is not a simple, absolute numeric value; keep trucking and try to resolve as expression
-				}
-				
+					return new CMemoryBlockExtension((CDebugTarget)target, expression, evaluateLiteralAddress(expression));
+				} catch (NumberFormatException nfexc) {}
+
+				// OK, expression is not a simple literal address; keep trucking and try to resolve as expression					
 				CStackFrame frame = getStackFrame( debugElement );
 				if ( frame != null ) {
-					// We need to provide a better way for retrieving the address of expression
+					// Get the address of the expression
 					ICDIExpression cdiExpression = frame.getCDITarget().createExpression( expression );
 					exp = new CExpression( frame, cdiExpression, null );
 					IValue value = exp.getValue();
 					if ( value instanceof ICValue ) {
 						ICType type = ((ICValue)value).getType();
-						if ( type != null && (type.isPointer() || type.isIntegralType()) ) {
-							address = value.getValueString();
-							exp.dispose();
-							if ( address != null ) {
-								// ???
-								BigInteger a = ( address.startsWith( "0x" ) ) ? new BigInteger( address.substring( 2 ), 16 ) : new BigInteger( address ); //$NON-NLS-1$
-								return new CMemoryBlockExtension( (CDebugTarget)target, expression, a );
+						if ( type != null ) {
+							// get the address for the expression, allow all types
+							String rawExpr = exp.getExpressionString();
+							String voidExpr = "(void *)(" + rawExpr + ")";
+							String attempts[] = { rawExpr, voidExpr };
+							for (int i = 0; i < attempts.length; i++) {
+								String expr = attempts[i];
+								address = frame.evaluateExpressionToString(expr);
+								if (address != null) {
+									try {
+										BigInteger a = (address.startsWith("0x")) ? new BigInteger(address.substring(2), 16) : new BigInteger(address); //$NON-NLS-1$
+										return new CMemoryBlockExtension((CDebugTarget) target, expression, a);
+									} catch (NumberFormatException e) {
+										// not pointer? lets cast it to void*
+										if (i == 0)
+											continue;
+										throw e;
+									}
+								}
 							}
+	
 						}
 						else {
-							msg = MessageFormat.format( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.1" ), new String[] { expression } ); //$NON-NLS-1$
+							msg = MessageFormat.format( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.1" ), (Object[])new String[] { expression } ); //$NON-NLS-1$
 						}
 					}
 					else {
-						msg = MessageFormat.format( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.2" ), new String[] { expression } ); //$NON-NLS-1$
+						msg = MessageFormat.format( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.2" ), (Object[])new String[] { expression } ); //$NON-NLS-1$
 					}
 				}
 			}
@@ -260,8 +299,14 @@ public class CMemoryBlockRetrievalExtension extends PlatformObject implements IM
 			msg = e.getMessage();
 		}
 		catch( NumberFormatException e ) {
-			msg = MessageFormat.format( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.0" ), new String[] { expression, address } ); //$NON-NLS-1$
+			msg = MessageFormat.format( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.0" ), (Object[])new String[] { expression } ); //$NON-NLS-1$
 		}
+		finally {
+			if (exp != null) {
+				exp.dispose();
+			}
+		}
+		
 		throw new DebugException( new Status( IStatus.ERROR, CDebugCorePlugin.getUniqueIdentifier(), DebugException.REQUEST_FAILED, msg, null ) );
 	}
 
@@ -303,14 +348,13 @@ public class CMemoryBlockRetrievalExtension extends PlatformObject implements IM
 				IDebugTarget target = debugElement.getDebugTarget();
 				if ( target instanceof CDebugTarget ) {
 					if ( address != null ) {
-						BigInteger addr = ( address.startsWith( "0x" ) ) ? new BigInteger( address.substring( 2 ), 16 ) : new BigInteger( address ); //$NON-NLS-1$
-						return new CMemoryBlockExtension( (CDebugTarget)target, addr, memorySpaceID );
-					}
+						return new CMemoryBlockExtension((CDebugTarget)target, evaluateLiteralAddress(address), memorySpaceID);
+					} 
 				}
 			}
 		}
 		catch( NumberFormatException e ) {
-			msg = MessageFormat.format( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.4" ), new String[] { address } ); //$NON-NLS-1$
+			msg = MessageFormat.format( InternalDebugCoreMessages.getString( "CMemoryBlockRetrievalExtension.4" ), (Object[])new String[] { address } ); //$NON-NLS-1$
 		}
 		throw new DebugException( new Status( IStatus.ERROR, CDebugCorePlugin.getUniqueIdentifier(), DebugException.REQUEST_FAILED, msg, null ) );
 	}

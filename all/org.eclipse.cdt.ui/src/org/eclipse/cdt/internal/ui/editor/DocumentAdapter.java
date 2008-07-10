@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2007 IBM Corporation and others.
+ * Copyright (c) 2002, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,26 +12,25 @@
 package org.eclipse.cdt.internal.ui.editor;
 
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.cdt.core.model.BufferChangedEvent;
-import org.eclipse.cdt.core.model.CModelException;
-import org.eclipse.cdt.core.model.IBuffer;
-import org.eclipse.cdt.core.model.IBufferChangedListener;
-import org.eclipse.cdt.core.model.IOpenable;
-import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.core.filebuffers.FileBuffers;
 import org.eclipse.core.filebuffers.ITextFileBuffer;
 import org.eclipse.core.filebuffers.ITextFileBufferManager;
 import org.eclipse.core.filebuffers.LocationKind;
+import org.eclipse.core.filesystem.EFS;
+import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourceAttributes;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -42,19 +41,25 @@ import org.eclipse.jface.text.DocumentEvent;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IDocumentListener;
 import org.eclipse.jface.text.ISynchronizable;
-import org.eclipse.core.runtime.Assert;
 import org.eclipse.swt.widgets.Display;
+
+import org.eclipse.cdt.core.model.BufferChangedEvent;
+import org.eclipse.cdt.core.model.CModelException;
+import org.eclipse.cdt.core.model.IBuffer;
+import org.eclipse.cdt.core.model.IBufferChangedListener;
+import org.eclipse.cdt.core.model.IOpenable;
+import org.eclipse.cdt.ui.CUIPlugin;
 
 
 /**
  * Adapts <code>IDocument</code> to <code>IBuffer</code>. Uses the
- * same algorithm as the text widget to determine the buffer's line delimiter. 
+ * same algorithm as the text widget to determine the buffer's line delimiter.
  * All text inserted into the buffer is converted to this line delimiter.
  * This class is <code>public</code> for test purposes only.
  * 
  * This class is similar to the JDT DocumentAdapter class.
  */
-public class DocumentAdapter implements IBuffer, IDocumentListener {
+public class DocumentAdapter implements IBuffer, IDocumentListener, IAdaptable {
 
 	/**
 	 * Internal implementation of a NULL instanceof IBuffer.
@@ -178,13 +183,15 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 	private DocumentSetCommand fSetCmd= new DocumentSetCommand();
 	private DocumentReplaceCommand fReplaceCmd= new DocumentReplaceCommand();
 
-	private Set fLegalLineDelimiters;
+	private Set<String> fLegalLineDelimiters;
 
-	private List fBufferListeners= new ArrayList(3);
+	private List<IBufferChangedListener> fBufferListeners= new ArrayList<IBufferChangedListener>(3);
 	private IStatus fStatus;
 
 	final private IPath fLocation;
 	final private LocationKind fLocationKind;
+
+	private IFileStore fFileStore;
 
 	
 	public DocumentAdapter(IOpenable owner, IFile file) {
@@ -193,28 +200,46 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 		fLocation= file.getFullPath();
 		fLocationKind= LocationKind.IFILE;
 
-		initialize();			
+		initialize();
 	}
 
 	public DocumentAdapter(IOpenable owner, IPath location) {
 		fOwner= owner;
 		fLocation= location;
-		fLocationKind= LocationKind.LOCATION;
+		fLocationKind= LocationKind.NORMALIZE;
 		
-		initialize();			
+		initialize();
+	}
+
+	public DocumentAdapter(IOpenable owner, URI locationUri) throws CoreException {
+		fOwner= owner;
+		fFileStore= EFS.getStore(locationUri);
+
+		fLocation= null;
+		fLocationKind= null;
+
+		initialize();
 	}
 
 	private void initialize() {
 		ITextFileBufferManager manager= FileBuffers.getTextFileBufferManager();
 		try {
-			manager.connect(fLocation, fLocationKind, new NullProgressMonitor());
-			fTextFileBuffer= manager.getTextFileBuffer(fLocation, fLocationKind);
+			if (fLocation != null) {
+				manager.connect(fLocation, fLocationKind, new NullProgressMonitor());
+				fTextFileBuffer= manager.getTextFileBuffer(fLocation, fLocationKind);
+			} else {
+				manager.connectFileStore(fFileStore, new NullProgressMonitor());
+				fTextFileBuffer= manager.getFileStoreTextFileBuffer(fFileStore);
+			}
 			fDocument= fTextFileBuffer.getDocument();
 		} catch (CoreException x) {
 			fStatus= x.getStatus();
-			fDocument= manager.createEmptyDocument(fLocation, fLocationKind);
-			if (fDocument instanceof ISynchronizable)
+			if (fLocation != null) {
+				fDocument= manager.createEmptyDocument(fLocation, fLocationKind);
+			}
+			if (fDocument instanceof ISynchronizable) {
 				((ISynchronizable)fDocument).setLockObject(new Object());
+			}
 		}
 		fDocument.addPrenotifiedDocumentListener(this);
 	}
@@ -261,7 +286,7 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 	 * @see org.eclipse.cdt.core.model.IBuffer#append(char[])
 	 */
 	public void append(char[] text) {
-		append(new String(text));		
+		append(new String(text));
 	}
 
 	/**
@@ -271,7 +296,7 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 		if (DEBUG_LINE_DELIMITERS) {
 			validateLineDelimiters(text);
 		}
-		fReplaceCmd.replace(fDocument.getLength(), 0, text);		
+		fReplaceCmd.replace(fDocument.getLength(), 0, text);
 	}
 
 
@@ -290,7 +315,11 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 		if (fTextFileBuffer != null) {
 			ITextFileBufferManager manager= FileBuffers.getTextFileBufferManager();
 			try {
-				manager.disconnect(fLocation, fLocationKind, new NullProgressMonitor());
+				if (fLocation != null) {
+					manager.disconnect(fLocation, fLocationKind, new NullProgressMonitor());
+				} else {
+					manager.disconnectFileStore(fFileStore, new NullProgressMonitor());
+				}
 			} catch (CoreException x) {
 				// ignore
 			}
@@ -384,14 +413,14 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 				return attributes.isReadOnly();
 			}
 		}
-		return false;		
+		return false;
 	}
 
 	/**
 	 * @see org.eclipse.cdt.core.model.IBuffer#replace(int, int, char[])
 	 */
 	public void replace(int position, int length, char[] text) {
-		replace(position, length, new String(text));		
+		replace(position, length, new String(text));
 	}
 
 	/**
@@ -420,7 +449,7 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 	 * @see org.eclipse.cdt.core.model.IBuffer#setContents(char[])
 	 */
 	public void setContents(char[] contents) {
-		setContents(new String(contents));		
+		setContents(new String(contents));
 	}
 
 	/**
@@ -451,7 +480,7 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 
 		if (fLegalLineDelimiters == null) {
 			// collect all line delimiters in the document
-			HashSet existingDelimiters= new HashSet();
+			HashSet<String> existingDelimiters= new HashSet<String>();
 
 			for (int i= fDocument.getNumberOfLines() - 1; i >= 0; i-- ) {
 				try {
@@ -460,7 +489,7 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 						existingDelimiters.add(curr);
 					}
 				} catch (BadLocationException e) {
-					CUIPlugin.getDefault().log(e);
+					CUIPlugin.log(e);
 				}
 			}
 			if (existingDelimiters.isEmpty()) {
@@ -485,10 +514,10 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 					for (int k= 0; k < curr.length(); k++) {
 						buf.append(String.valueOf((int) curr.charAt(k)));
 					}
-					CUIPlugin.getDefault().log(new Exception(buf.toString()));
+					CUIPlugin.log(new Exception(buf.toString()));
 				}
 			} catch (BadLocationException e) {
-				CUIPlugin.getDefault().log(e);
+				CUIPlugin.log(e);
 			}
 		}
 	}
@@ -509,10 +538,19 @@ public class DocumentAdapter implements IBuffer, IDocumentListener {
 	
 	private void fireBufferChanged(BufferChangedEvent event) {
 		if (fBufferListeners != null && fBufferListeners.size() > 0) {
-			Iterator e= new ArrayList(fBufferListeners).iterator();
+			Iterator<IBufferChangedListener> e= new ArrayList<IBufferChangedListener>(fBufferListeners).iterator();
 			while (e.hasNext())
-				((IBufferChangedListener) e.next()).bufferChanged(event);
+				e.next().bufferChanged(event);
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	public Object getAdapter(Class adapter) {
+		if (adapter.isAssignableFrom(ITextFileBuffer.class)) {
+			return fTextFileBuffer;
+		} else if (adapter.isAssignableFrom(IDocument.class)) {
+			return fDocument;
+		}
+		return null;
+	}
 }

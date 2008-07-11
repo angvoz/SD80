@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2005 QNX Software Systems and others.
+ * Copyright (c) 2000, 2007 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -61,6 +61,7 @@ public class ProjectTargets {
 	private static final String TARGET_USE_DEFAULT_CMD = "useDefaultCommand"; //$NON-NLS-1$
 	private static final String TARGET_ARGUMENTS = "buildArguments"; //$NON-NLS-1$
 	private static final String TARGET_COMMAND = "buildCommand"; //$NON-NLS-1$
+	private static final String TARGET_RUN_ALL_BUILDERS = "runAllBuilders";
 	private static final String BAD_TARGET = "buidlTarget"; //$NON-NLS-1$
 	private static final String TARGET = "buildTarget"; //$NON-NLS-1$
 
@@ -232,6 +233,10 @@ public class ProjectTargets {
 		elem = doc.createElement(TARGET_USE_DEFAULT_CMD);
 		elem.appendChild(doc.createTextNode(new Boolean(target.isDefaultBuildCmd()).toString()));
 		targetElem.appendChild(elem);
+		
+		elem = doc.createElement(TARGET_RUN_ALL_BUILDERS);
+		elem.appendChild(doc.createTextNode(new Boolean(target.runAllBuilders()).toString()));
+		targetElem.appendChild(elem);
 		return targetElem;
 	}
 
@@ -370,6 +375,9 @@ public class ProjectTargets {
 						option = getString(node, TARGET_ARGUMENTS);
 						if (option != null) {
 							target.setBuildAttribute(IMakeCommonBuildInfo.BUILD_ARGUMENTS, option);
+						} else if (!target.isDefaultBuildCmd()) {
+							// Clear build-arguments set in target constructor to project defaults
+							target.setBuildAttribute(IMakeCommonBuildInfo.BUILD_ARGUMENTS, ""); //$NON-NLS-1$
 						}
 						option = getString(node, BAD_TARGET);
 						if (option != null) {
@@ -378,6 +386,10 @@ public class ProjectTargets {
 						option = getString(node, TARGET);
 						if (option != null) {
 							target.setBuildAttribute(IMakeTarget.BUILD_TARGET, option);
+						}
+						option = getString(node, TARGET_RUN_ALL_BUILDERS);
+						if (option != null) {
+							target.setRunAllBuilders(Boolean.valueOf(option).booleanValue());
 						}
 						add(target);
 					} catch (CoreException e) {

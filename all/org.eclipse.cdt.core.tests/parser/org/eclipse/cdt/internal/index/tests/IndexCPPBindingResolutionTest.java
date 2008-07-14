@@ -1,12 +1,14 @@
 /*******************************************************************************
- * Copyright (c) 2007 Symbian Software Systems and others.
+ * Copyright (c) 2007, 2008 Symbian Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Andrew Ferguson (Symbian) - Initial implementation
+ *    Andrew Ferguson (Symbian) - Initial implementation
+ *    Markus Schorn (Wind River Systems)
+ *    Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.index.tests;
 
@@ -31,6 +33,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunction;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPFunctionType;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespace;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPNamespaceScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPPointerToMemberType;
@@ -59,6 +62,164 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 		suite.addTest(suite(SingleProject.class));
 		suite.addTest(suite(ProjectWithDepProj.class));
 	}
+	
+	//	namespace ns { class A; enum E {E1}; typedef int T; }
+	//
+	//	class B {
+	//    public:
+	//	  void m(ns::A* a);
+	//    void n(ns::E* a);
+	// 	  void o(ns::T* a);
+	//    void p(ns::E a);
+	//	};
+	
+	//	namespace ns {
+	//	  class A {};
+	//    typedef int T;
+	//	}
+	//
+	//	using ns::A;
+	//	using ns::E;
+	//	using ns::T;
+	//  using ns::E1;
+	// 
+	//	void B::m(A* a) {}
+	//	void B::n(E* a) {}
+	//	void B::o(T* a) {}
+    //  void B::p(E a) {}
+	//
+	//  void usage() {
+	//    B b;
+	//    b.p(E1);
+	//  }
+	public void testUsingTypeDirective_201177() {
+		IBinding b0= getBindingFromASTName("B::m", 4);
+		IBinding b1= getBindingFromASTName("B::n", 4);
+		IBinding b2= getBindingFromASTName("B::o", 4);
+		IBinding b3= getBindingFromASTName("p(E1)", 1);
+		assertInstance(b0, ICPPMethod.class);
+		assertInstance(b1, ICPPMethod.class);
+		assertInstance(b2, ICPPMethod.class);
+	}
+	
+	// namespace n { class A{}; class B{}; class C{}; }
+
+	// namespace m {
+	//    using namespace n;
+	//    class D{};
+	// }
+	// m::C c;
+	// m::D d;
+	public void testUsingNamingDirective_177917_1a() {
+		IBinding b0= getBindingFromASTName("C c", 1);
+		IBinding b1= getBindingFromASTName("D d", 1);
+	}
+	
+	// namespace n { class A{}; }
+	// namespace m {
+	// using namespace n;
+	//     class B {};
+	// }
+
+	// #include "header.h"
+	// namespace n { class C{}; }
+	// m::C c;
+	public void testUsingNamingDirective_177917_1b() {
+		IBinding b0= getBindingFromASTName("C c", 1);
+	}
+
+	// int ff(int x) { return x; }
+	// namespace n { class A {}; }
+	// namespace m { class B {}; enum C{CE1,CE2}; }
+	// namespace o { int (*f)(int)= ff; }
+
+	// using n::A;
+	// A a;
+	// using namespace m;
+	// B b;
+	// C c= CE1;
+	// using o::f;
+	// int g(int x) {return 4;}
+	// int g(char x) {return 2;}
+	// int nn= g(f(2));
+	public void testUsingTypeDirective_177917_1() {
+		IBinding b1= getBindingFromASTName("A a", 1);
+		IBinding b2= getBindingFromASTName("B b", 1);
+		IBinding b3= getBindingFromASTName("C c", 1);
+		IBinding b4= getBindingFromASTName("CE1", 3);
+		IBinding b5= getBindingFromASTName("f(2", 1);
+	}
+	
+	// namespace a { class A {}; }
+	// namespace b {
+	//     using a::A;
+	//     class B {};
+	// }
+
+	// #include "header.h"
+	// b::A aa;
+	// b::B bb;
+	public void testUsingTypeDirective_177917_2() {
+		IBinding b0= getBindingFromASTName("A aa", 1);
+		IBinding b1= getBindingFromASTName("B bb", 1);
+	}
+	
+	//	namespace header {
+	//		class clh {
+	//		};
+	//		void fh();
+	//		void fh(int a);
+	//		
+	//		class cl {
+	//		};
+	//		void f();
+	//		void f(int a);
+	//	}
+	//	using header::clh;
+	//	using header::fh;
+		
+	//	#include "header.h"
+	//	namespace source {
+	//		class cls {
+	//		};
+	//		void fs();
+	//		void fs(int a);
+	//		
+	//	}
+	//	using header::cl;
+	//	using header::f;
+	//
+	//
+	//	using source::cls;
+	//	using source::fs;
+	//
+	//	void test() {
+	//		fh();
+	//		fh(1);  
+	//		      
+	//		clh c;
+	//		
+	//		f();
+	//		f(1);
+	//		cl c1;
+	//
+	//		fs();
+	//		fs(1);
+	//		cls c2;
+	//	}
+	public void testUsingOverloadedFunctionDirective() {
+		IBinding b;
+		b= getBindingFromASTName("fh()", 2);
+		b= getBindingFromASTName("fh(1)", 2);
+		b= getBindingFromASTName("clh c", 3);
+		b= getBindingFromASTName("f()", 1);
+		b= getBindingFromASTName("f(1)", 1);
+		b= getBindingFromASTName("cl c1", 2);
+		b= getBindingFromASTName("fs()", 2);
+		b= getBindingFromASTName("fs(1)", 2);
+		b= getBindingFromASTName("cls c2", 3);
+	}
+
 	
 	// int (*f)(int);
 	// int g(int n){return n;}
@@ -835,6 +996,24 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 
 	public void _testAddressOfOverloadedMethod() throws DOMException { fail("aftodo"); }
 
+	// struct C {
+	//	 int m1(int a);
+	//	 int m2(int a) const;
+	// };
+	//
+	// C* func(int (C::*m)(int) const);
+	// C* func(int (C::*m)(int));
+
+	// void ref() {
+	//	 func(&C::m1);
+	//	 func(&C::m2);
+	// }
+    public void _testAddressOfConstMethod_233889() throws Exception {
+		IBinding fn1= getBindingFromASTName("func(&C::m1", 4, ICPPFunction.class);
+		IBinding fn2= getBindingFromASTName("func(&C::m2", 4, ICPPFunction.class);
+		assertNotSame(fn1, fn2);
+    }
+
 	// // the header
 	// void f_int(int);
 	// void f_const_int(const int);
@@ -846,9 +1025,9 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	//   const int 		const_int		= 0;
 	//
 	//   f_int(i);				 // ok
-	//   f_int(const int);       // ok (passed as value)
+	//   f_int(const_int);       // ok (passed as value)
 	//   f_const_int(i);		 // ok
-	//   f_const_int(const int); // ok
+	//   f_const_int(const_int); // ok
 	// }
 	//
 	//  void f_const_int(const int const_int) {
@@ -856,9 +1035,9 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 	//  }  
 	public void testConstIntParameter() {
 		getBindingFromASTName("f_int(i)", 5);
-		getBindingFromASTName("f_int(const int)", 5);
+		getBindingFromASTName("f_int(const_int)", 5);
 		getBindingFromASTName("f_const_int(i)", 11);
-		getBindingFromASTName("f_const_int(const int)", 11);
+		getBindingFromASTName("f_const_int(const_int)", 11);
 		getProblemFromASTName("f_int_ptr(&const_int)", 9);
 	}
 
@@ -1070,19 +1249,79 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 		assertEquals(binding2, getBindingFromASTName("f(const_int_ptr_const)", 1));
 		assertEquals(binding2, getBindingFromASTName("f(int_const_ptr_const)", 1));
 
-		if(strategy.isCompositeIndex()) {
-			// getIndex() returns the index for the referencing content only
-			assertEquals(0, getIndex().findNames(binding1, IIndex.FIND_DECLARATIONS).length);
-			assertEquals(0, getIndex().findNames(binding2, IIndex.FIND_DECLARATIONS).length);
-			assertEquals(1, getIndex().findNames(binding1, IIndex.FIND_DEFINITIONS).length);
-			assertEquals(1, getIndex().findNames(binding2, IIndex.FIND_DEFINITIONS).length);
-		} else {
-			assertEquals(2, getIndex().findNames(binding1, IIndex.FIND_DECLARATIONS).length);
-			assertEquals(4, getIndex().findNames(binding2, IIndex.FIND_DECLARATIONS).length);
-			assertEquals(1, getIndex().findNames(binding1, IIndex.FIND_DEFINITIONS).length);
-			assertEquals(1, getIndex().findNames(binding2, IIndex.FIND_DEFINITIONS).length);
-		}
+		assertEquals(2, getIndex().findNames(binding1, IIndex.FIND_DECLARATIONS).length);
+		assertEquals(4, getIndex().findNames(binding2, IIndex.FIND_DECLARATIONS).length);
+		assertEquals(1, getIndex().findNames(binding1, IIndex.FIND_DEFINITIONS).length);
+		assertEquals(1, getIndex().findNames(binding2, IIndex.FIND_DEFINITIONS).length);
 	}
+
+	// // header file
+	// struct myStruct {
+	//    int a;
+	// };
+	// union myUnion {
+	//    int b;
+	// };
+
+	// // referencing content
+	// struct myStruct; 
+	// union myUnion;
+	// void test() {
+	//    struct myStruct* u;
+	//    union myUnion* v;
+	//    u->a= 1;  // since we include the definition, we may use the type.
+	//    v->b= 1;  // since we include the definition, we may use the type.
+	// }
+	public void testTypeDefinitionWithFwdDeclaration() {
+		getBindingFromASTName("a= 1", 1);
+		getBindingFromASTName("b= 1", 1);
+	}
+	
+	// namespace x {
+	//    int a(int);
+	// }
+    // using namespace x;
+	// using x::a;
+	
+	// #include "header.h"
+	// void test() {
+	//    a(1);
+	// }
+    public void testLegalConflictWithUsingDeclaration() throws Exception {
+		getBindingFromASTName("a(1)", 1);
+    }
+    
+	//	class A {};
+	//	class B {};
+	//	class C {
+	//	public:
+	//		operator B() {B b; return b;}
+	//	};
+	//	class D : public C {};
+	//	void foo(B b) {}
+	
+    //  class E : public C {};
+	//	void refs() {
+	//		C c;
+	//		foo(c);
+	//		D d;
+	//		foo(d);
+	//		E e;
+	//		foo(e);
+	//	}
+    public void testUserDefinedConversionOperator_224364() throws Exception {
+    	IBinding ca=   getBindingFromASTName("C c;", 1);
+    	assertInstance(ca, ICPPClassType.class);
+    	    	
+    	IBinding foo1= getBindingFromASTName("foo(c)", 3);
+    	
+    	IBinding da=   getBindingFromASTName("D d", 1);
+    	assertInstance(da, ICPPClassType.class);
+    	    	
+		IBinding foo2= getBindingFromASTName("foo(d)", 3);
+		IBinding foo3= getBindingFromASTName("foo(e)", 3);
+    }
+
 
 	/* CPP assertion helpers */
 	/* ##################################################################### */
@@ -1164,8 +1403,8 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
 		Set expectedEnumerators = new HashSet();
 		expectedEnumerators.addAll(Arrays.asList(enumerators));
 		Set actualEnumerators = new HashSet();
-		for(int i=0; i<aEnumerators.length; i++){
-			actualEnumerators.add(aEnumerators[i].getName());
+		for (IEnumerator enumerator : aEnumerators) {
+			actualEnumerators.add(enumerator.getName());
  		}
  		assertEquals(expectedEnumerators, actualEnumerators);
  	}
@@ -1175,19 +1414,19 @@ public abstract class IndexCPPBindingResolutionTest extends IndexBindingResoluti
  	 * @param cqn
  	 * @param qn may be null
  	 */
- 	static protected void assertPTM(IType type, String cqn, String qn) {
- 		try {
- 			assertTrue(type instanceof ICPPPointerToMemberType);
- 			ICPPPointerToMemberType ptmt = (ICPPPointerToMemberType) type;
- 			ICPPClassType classType = ptmt.getMemberOfClass();
- 			assertQNEquals(cqn, classType);
- 			if(qn!=null) {
- 				assert(ptmt.getType() instanceof ICPPBinding);
- 				ICPPBinding tyBinding = (ICPPBinding) ptmt.getType();
- 				assertQNEquals(qn, tyBinding);
- 			}
- 		} catch(DOMException de) {
- 			fail(de.getMessage());
-  	}
- }
+	static protected void assertPTM(IType type, String cqn, String qn) {
+		try {
+			assertTrue(type instanceof ICPPPointerToMemberType);
+			ICPPPointerToMemberType ptmt = (ICPPPointerToMemberType) type;
+			ICPPClassType classType = (ICPPClassType) ptmt.getMemberOfClass();
+			assertQNEquals(cqn, classType);
+			if(qn!=null) {
+				assert(ptmt.getType() instanceof ICPPBinding);
+				ICPPBinding tyBinding = (ICPPBinding) ptmt.getType();
+				assertQNEquals(qn, tyBinding);
+			}
+		} catch(DOMException de) {
+			fail(de.getMessage());
+		}
+	}
 }

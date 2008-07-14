@@ -1,12 +1,14 @@
 /*******************************************************************************
- * Copyright (c) 2007 QNX Software Systems and others.
+ * Copyright (c) 2007, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX - Initial API and implementation
+ *    QNX - Initial API and implementation
+ *    Andrew Ferguson (Symbian)
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom.cpp;
 
@@ -25,7 +27,6 @@ import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassScope;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
@@ -33,12 +34,17 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.index.IIndexBinding;
+import org.eclipse.cdt.core.index.IIndexFileSet;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
 import org.eclipse.cdt.core.parser.util.ObjectMap;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPClassScope;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPSemantics;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPTemplates;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPClassType;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPClassSpecializationScope;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.ICPPInternalBase;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPSemantics;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPTemplates;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.SemanticUtil;
+import org.eclipse.cdt.internal.core.index.IIndexCPPBindingConstants;
 import org.eclipse.cdt.internal.core.index.IIndexScope;
 import org.eclipse.cdt.internal.core.index.IIndexType;
 import org.eclipse.cdt.internal.core.pdom.PDOM;
@@ -55,7 +61,7 @@ import org.eclipse.core.runtime.CoreException;
  * 
  */
 class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
-		ICPPClassType, ICPPClassScope, IPDOMMemberOwner, IIndexType, IIndexScope {
+		ICPPClassType, ICPPClassSpecializationScope, IPDOMMemberOwner, IIndexType, IIndexScope {
 
 	private static final int FIRSTBASE = PDOMCPPSpecialization.RECORD_SIZE + 0;
 	private static final int MEMBERLIST = PDOMCPPSpecialization.RECORD_SIZE + 4;
@@ -63,6 +69,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 	/**
 	 * The size in bytes of a PDOMCPPClassSpecialization record in the database.
 	 */
+	@SuppressWarnings("hiding")
 	protected static final int RECORD_SIZE = PDOMCPPSpecialization.RECORD_SIZE + 8;
 	
 	public PDOMCPPClassSpecialization(PDOM pdom, PDOMNode parent, ICPPClassType classType, PDOMBinding specialized)
@@ -79,12 +86,18 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		super(pdom, bindingRecord);
 	}
 	
+	@Override
 	protected int getRecordSize() {
 		return RECORD_SIZE;
 	}
 
+	@Override
 	public int getNodeType() {
-		return PDOMCPPLinkage.CPP_CLASS_SPECIALIZATION;
+		return IIndexCPPBindingConstants.CPP_CLASS_SPECIALIZATION;
+	}
+
+	public ICPPClassType getOriginalClassType() {
+		return (ICPPClassType) getSpecializedBinding();
 	}
 
 	public PDOMCPPBase getFirstBase() throws CoreException {
@@ -108,7 +121,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		PDOMCPPBase predecessor= null;
 		int nameRec= pdomName.getRecord();
 		while (base != null) {
-			PDOMName name = base.getBaseClassSpecifierNameImpl();
+			PDOMName name = base.getBaseClassSpecifierName();
 			if (name != null && name.getRecord() == nameRec) {
 				break;
 			}
@@ -134,11 +147,11 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 				getSpecializedBinding() instanceof ICPPTemplateDefinition) {
 			//this is an explicit specialization
 			try {
-				List list = new ArrayList();
+				List<PDOMCPPBase> list = new ArrayList<PDOMCPPBase>();
 				for (PDOMCPPBase base = getFirstBase(); base != null; base = base.getNextBase())
 					list.add(base);
 				Collections.reverse(list);
-				ICPPBase[] bases = (ICPPBase[])list.toArray(new ICPPBase[list.size()]);
+				ICPPBase[] bases = list.toArray(new ICPPBase[list.size()]);
 				return bases;
 			} catch (CoreException e) {
 				CCorePlugin.log(e);
@@ -150,13 +163,12 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 			if (pdomBases != null) {
 				ICPPBase[] result = null;
 				
-				for (int i = 0; i < pdomBases.length; i++) {
-					ICPPBase origBase = pdomBases[i];
+				for (ICPPBase origBase : pdomBases) {
 					ICPPBase specBase = (ICPPBase) ((ICPPInternalBase)origBase).clone();
 					IBinding origClass = origBase.getBaseClass();
 					if (origClass instanceof IType) {
-						IType specClass = CPPTemplates.instantiateType((IType) origClass, getArgumentMap());
-						specClass = CPPSemantics.getUltimateType(specClass, true);
+						IType specClass = CPPTemplates.instantiateType((IType) origClass, getArgumentMap(), this);
+						specClass = SemanticUtil.getUltimateType(specClass, true);
 						if (specClass instanceof IBinding) {
 							((ICPPInternalBase)specBase).setBaseClass((IBinding) specClass);
 						}
@@ -171,23 +183,9 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		return new ICPPBase[0];
 	}
 
-	private static class ConstructorCollector implements IPDOMVisitor {
-		private List fConstructors = new ArrayList();
-		public boolean visit(IPDOMNode node) throws CoreException {
-			if (node instanceof ICPPConstructor)
-				fConstructors.add(node);
-			return false;
-		}
-		public void leave(IPDOMNode node) throws CoreException {
-		}
-		public ICPPConstructor[] getConstructors() {
-			return (ICPPConstructor[])fConstructors.toArray(new ICPPConstructor[fConstructors.size()]);
-		}
-	}
-
 	public ICPPConstructor[] getConstructors() throws DOMException {
 		try {
-			ConstructorCollector visitor= new ConstructorCollector();
+			PDOMClassUtil.ConstructorCollector visitor= new PDOMClassUtil.ConstructorCollector();
 			accept(visitor);
 			return visitor.getConstructors();
 		} catch (CoreException e) {
@@ -196,13 +194,35 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		}
 	}
 	
-	//ICPPClassType unimplemented
-	public ICPPField[] getDeclaredFields() throws DOMException { fail(); return null; }
-	public ICPPMethod[] getDeclaredMethods() throws DOMException { fail(); return null; }
+	public ICPPMethod[] getDeclaredMethods() throws DOMException {
+		try {
+			PDOMClassUtil.MethodCollector methods = new PDOMClassUtil.MethodCollector(false);
+			accept(methods);
+			return methods.getMethods();
+		} catch (CoreException e) {
+			return new ICPPMethod[0];
+		}
+	}
+	
+	public ICPPField[] getDeclaredFields() throws DOMException {
+		try {
+			PDOMClassUtil.FieldCollector visitor = new PDOMClassUtil.FieldCollector();
+			accept(visitor);
+			return visitor.getFields();
+		} catch (CoreException e) {
+			CCorePlugin.log(e);
+			return new ICPPField[0];
+		}
+	}
+	
+	//ICPPClassType unimplemented	
 	public IField[] getFields() throws DOMException { fail(); return null; }
 	public IBinding[] getFriends() throws DOMException { fail(); return null; }
-	public ICPPMethod[] getMethods() throws DOMException { fail(); return null; }
 	public ICPPClassType[] getNestedClasses() throws DOMException { fail(); return null; }
+
+	public ICPPMethod[] getMethods() throws DOMException { 
+		return CPPClassType.getMethods(this);
+	}
 
 	public IScope getCompositeScope() throws DOMException {
 		return this;
@@ -213,18 +233,42 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 	}
 
 	public boolean isSameType(IType type) {
-        if( type instanceof PDOMNode ) {
-			PDOMNode node = (PDOMNode) type;
-			if (node.getPDOM() == getPDOM() && node.getRecord() == getRecord()) {
-				return true;
+		if( type == this )
+			return true;
+
+		if( type instanceof ITypedef )
+			return type.isSameType( this );
+
+		if (type instanceof PDOMNode) {
+			PDOMNode node= (PDOMNode) type;
+			if (node.getPDOM() == getPDOM()) {
+				return node.getRecord() == getRecord();
 			}
-        }
-        if( type instanceof ITypedef )
-            return ((ITypedef)type).isSameType( this );
-        
-        return false;
+		}
+
+		if( type instanceof ICPPSpecialization ){
+			ICPPClassType myCT= (ICPPClassType) getSpecializedBinding();
+			ICPPClassType otherCT= (ICPPClassType) ((ICPPSpecialization)type).getSpecializedBinding(); 
+			if(!myCT.isSameType(otherCT)) {
+				return false;
+			}
+
+			ObjectMap m1 = getArgumentMap(), m2 = ((ICPPSpecialization)type).getArgumentMap();
+			if( m1 == null || m2 == null || m1.size() != m2.size())
+				return false;
+			for( int i = 0; i < m1.size(); i++ ){
+				IType t1 = (IType) m1.getAt( i );
+				IType t2 = (IType) m2.getAt( i );
+				if( t1 == null || ! t1.isSameType( t2 ) )
+					return false;
+			}
+			return true;
+		}
+
+		return false;
 	}
 	
+	@Override
 	public Object clone() {fail();return null;}
 
 	public ICPPClassType getClassType() {
@@ -235,8 +279,8 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		private ObjectMap specMap;
 		public SpecializationFinder(IBinding[] specialized) {
 			specMap = new ObjectMap(specialized.length);
-			for (int i = 0; i < specialized.length; i++) {
-				specMap.put(specialized[i], null);
+			for (IBinding element : specialized) {
+				specMap.put(element, null);
 			}
 		}
 		public boolean visit(IPDOMNode node) throws CoreException {
@@ -271,37 +315,11 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 	}
 	
 	public IBinding[] find(String name) throws DOMException {
-		return find(name, false);
-	}
-
-	public IBinding[] find(String name, boolean prefixLookup)
-			throws DOMException {
-		if (!(this instanceof ICPPTemplateDefinition) && 
-				getSpecializedBinding() instanceof ICPPTemplateDefinition) {
-			//this is an explicit specialization
-			try {
-				BindingCollector visitor = new BindingCollector(getLinkageImpl(), name.toCharArray(), null, prefixLookup, !prefixLookup);
-				accept(visitor);
-				return visitor.getBindings();
-			} catch (CoreException e) {
-				CCorePlugin.log(e);
-			}
-		} else {
-			//this is an implicit specialization
-			try {						
-				IBinding[] specialized = ((ICPPClassType) getSpecializedBinding())
-						.getCompositeScope().find(name.toString(), prefixLookup);			
-				SpecializationFinder visitor = new SpecializationFinder(specialized);
-				accept(visitor);
-				return visitor.getSpecializations();
-			} catch (CoreException e) {
-				CCorePlugin.log(e);
-			}
-		}
-		return null;
+		return CPPSemantics.findBindings( this, name, false );
 	}
 	
-	public IBinding getBinding(IASTName name, boolean resolve)
+	@Override
+	public IBinding getBinding(IASTName name, boolean resolve, IIndexFileSet fileSet)
 			throws DOMException {
 		if (!(this instanceof ICPPTemplateDefinition) && 
 				getSpecializedBinding() instanceof ICPPTemplateDefinition) {
@@ -332,7 +350,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 			    }
 				
 				IBinding[] specialized = ((ICPPClassType) getSpecializedBinding())
-						.getCompositeScope().find(name.toString());			
+						.getCompositeScope().getBindings(name, resolve, false);			
 				SpecializationFinder visitor = new SpecializationFinder(specialized);
 				accept(visitor);
 				return CPPSemantics.resolveAmbiguities(name, visitor.getSpecializations());
@@ -344,36 +362,20 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		return null;
 	}
 	
-	private static class MethodCollector implements IPDOMVisitor {
-		private final List methods;
-		private final boolean acceptImplicit;
-		private final boolean acceptAll;
-		public MethodCollector(boolean acceptImplicit) {
-			this(acceptImplicit, true);
+	public IBinding getInstance(IBinding original) {
+		SpecializationFinder visitor = new SpecializationFinder(new IBinding[] {original});
+		try {
+			accept(visitor);
+			return visitor.getSpecializations()[0];
+		} catch (CoreException e) {
+			CCorePlugin.log(e);
 		}
-		public MethodCollector(boolean acceptImplicit, boolean acceptExplicit) {
-			this.methods = new ArrayList();
-			this.acceptImplicit= acceptImplicit;
-			this.acceptAll= acceptImplicit && acceptExplicit;
-		}
-		public boolean visit(IPDOMNode node) throws CoreException {
-			if (node instanceof ICPPMethod) {
-				if (acceptAll || ((ICPPMethod) node).isImplicit() == acceptImplicit) {
-					methods.add(node);
-				}
-			}
-			return false; // don't visit the method
-		}
-		public void leave(IPDOMNode node) throws CoreException {
-		}
-		public ICPPMethod[] getMethods() {
-			return (ICPPMethod[])methods.toArray(new ICPPMethod[methods.size()]); 
-		}
+		return original;
 	}
 	
 	public ICPPMethod[] getImplicitMethods() {
 		try {
-			MethodCollector methods = new MethodCollector(true, false);
+			PDOMClassUtil.MethodCollector methods = new PDOMClassUtil.MethodCollector(true, false);
 			accept(methods);
 			return methods.getMethods();
 		} catch (CoreException e) {
@@ -385,6 +387,7 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		return this;
 	}
 
+	@Override
 	public void addChild(PDOMNode member) throws CoreException {
 		addMember(member);
 	}
@@ -394,12 +397,14 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 		list.addMember(member);
 	}
 
+	@Override
 	public void accept(IPDOMVisitor visitor) throws CoreException {
 		super.accept(visitor);
 		PDOMNodeLinkedList list = new PDOMNodeLinkedList(pdom, record + MEMBERLIST, getLinkageImpl());
 		list.accept(visitor);
 	}
 	
+	@Override
 	public String toString() {
 		String result= super.toString();
 		ObjectMap map= getArgumentMap();
@@ -407,4 +412,46 @@ class PDOMCPPClassSpecialization extends PDOMCPPSpecialization implements
 			result+=" <"+map.keyAt(i)+"=>"+getArgumentMap().getAt(i)+">";  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 		return result;
 	}
+
+	@Override
+	public IBinding[] getBindings(IASTName name, boolean resolve, boolean prefixLookup, IIndexFileSet fileSet) throws DOMException {
+		IBinding[] result = null;
+		if (!(this instanceof ICPPTemplateDefinition)
+				&& getSpecializedBinding() instanceof ICPPTemplateDefinition) {
+			// this is an explicit specialization
+			try {
+				if ((!prefixLookup && getDBName().compare(name.toCharArray(), true) == 0)
+						|| (prefixLookup && getDBName().comparePrefix(name.toCharArray(), false) == 0)) {
+					// 9.2 ... The class-name is also inserted into the scope of
+					// the class itself
+					result = (IBinding[]) ArrayUtil.append(IBinding.class, result, this);
+				}
+				BindingCollector visitor = new BindingCollector(getLinkageImpl(), name.toCharArray(), null, prefixLookup, !prefixLookup);
+				accept(visitor);
+				result = (IBinding[]) ArrayUtil.addAll(IBinding.class, result, visitor.getBindings());
+			} catch (CoreException e) {
+				CCorePlugin.log(e);
+			}
+		} else {
+			// this is an implicit specialization
+			try {
+				if ((!prefixLookup && getDBName().compare(name.toCharArray(), true) == 0)
+						|| (prefixLookup && getDBName().comparePrefix(name.toCharArray(), false) == 0)) {
+					// 9.2 ... The class-name is also inserted into the
+					// scope of the class itself
+					result = (IBinding[]) ArrayUtil.append(IBinding.class, result, this);
+				}
+
+				IBinding[] specialized = ((ICPPClassType) getSpecializedBinding())
+						.getCompositeScope().getBindings(name, resolve, prefixLookup);
+				SpecializationFinder visitor = new SpecializationFinder(specialized);
+				accept(visitor);
+				result = (IBinding[]) ArrayUtil.addAll(IBinding.class, result, visitor.getSpecializations());
+			} catch (CoreException e) {
+				CCorePlugin.log(e);
+			}
+		}
+		return (IBinding[]) ArrayUtil.trim(IBinding.class, result);
+	}
+
 }

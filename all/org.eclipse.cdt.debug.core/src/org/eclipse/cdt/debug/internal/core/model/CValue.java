@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2007 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,23 +8,30 @@
  * Contributors:
  *     QNX Software Systems - Initial API and implementation
  *     Mark Mitchell, CodeSourcery - Bug 136896: View variables in binary format
- *******************************************************************************/
+ *     Warren Paul (Nokia) - 150860, 150864, 150862, 150863, 217493
+ *     Ken Ryall (Nokia) - 207675
+*******************************************************************************/
 package org.eclipse.cdt.debug.internal.core.model;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.IAddressFactory;
+import org.eclipse.cdt.debug.core.CDebugUtils;
 import org.eclipse.cdt.debug.core.cdi.CDIException;
 import org.eclipse.cdt.debug.core.cdi.ICDIFormat;
 import org.eclipse.cdt.debug.core.cdi.ICDIFormattable;
 import org.eclipse.cdt.debug.core.cdi.model.ICDITargetConfiguration2;
 import org.eclipse.cdt.debug.core.cdi.model.ICDIValue;
 import org.eclipse.cdt.debug.core.cdi.model.ICDIVariable;
+import org.eclipse.cdt.debug.core.cdi.model.type.ICDIBoolValue;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDICharValue;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDIDoubleValue;
 import org.eclipse.cdt.debug.core.cdi.model.type.ICDIFloatValue;
@@ -131,7 +138,15 @@ public class CValue extends AbstractCValue {
 				fVariables = new ArrayList( vars.size() );
 				Iterator it = vars.iterator();
 				while( it.hasNext() ) {
-					fVariables.add( CVariableFactory.createLocalVariable( this, (ICDIVariable)it.next() ) );
+					if (getParentVariable() instanceof CGlobalVariable) {
+						fVariables.add(CVariableFactory.createGlobalVariable( 
+								this, 
+								null, 
+								(ICDIVariable)it.next()));
+					}
+					else {
+						fVariables.add( CVariableFactory.createLocalVariable( this, (ICDIVariable)it.next() ) );
+					}
 				}
 				resetStatus();
 			}
@@ -209,6 +224,8 @@ public class CValue extends AbstractCValue {
 
 	private String processUnderlyingValue( ICDIValue cdiValue ) throws CDIException {
 		if ( cdiValue != null ) {
+			if ( cdiValue instanceof ICDIBoolValue )
+				return getBoolValueString( (ICDIBoolValue)cdiValue );
 			if ( cdiValue instanceof ICDICharValue )
 				return getCharValueString( (ICDICharValue)cdiValue );
 			else if ( cdiValue instanceof ICDIShortValue )
@@ -230,7 +247,30 @@ public class CValue extends AbstractCValue {
 			else if ( cdiValue instanceof ICDIWCharValue )
 				return getWCharValueString( (ICDIWCharValue)cdiValue );
 			else
-				return cdiValue.getValueString();
+				return  getGenericValueString(cdiValue.getValueString());
+		}
+		return null;
+	}
+
+	private String getBoolValueString( ICDIBoolValue value ) throws CDIException {
+		CVariableFormat format = getParentVariable().getFormat(); 
+		if ( CVariableFormat.NATURAL.equals( format ) ) {
+			short byteValue = value.shortValue();
+			if (byteValue == 0)
+				return "false";//$NON-NLS-1$
+			else if (byteValue == 1)
+				return "true";//$NON-NLS-1$
+			else
+				return Integer.toString( value.shortValue() );
+		}
+		else if ( CVariableFormat.DECIMAL.equals( format ) ) {
+			return Integer.toString( value.shortValue() );
+		}
+		else if ( CVariableFormat.HEXADECIMAL.equals( format ) ) {
+			StringBuffer sb = new StringBuffer( "0x" ); //$NON-NLS-1$
+			String stringValue = (isUnsigned()) ? Integer.toHexString( value.shortValue() ) : Integer.toHexString( (byte)value.byteValue() );
+			sb.append( (stringValue.length() > 2) ? stringValue.substring( stringValue.length() - 2 ) : stringValue );
+			return sb.toString();
 		}
 		return null;
 	}
@@ -239,7 +279,7 @@ public class CValue extends AbstractCValue {
 		CVariableFormat format = getParentVariable().getFormat(); 
 		if ( CVariableFormat.NATURAL.equals( format ) ) {
 			byte byteValue = (byte)value.byteValue();
-			return ((Character.isISOControl( (char)byteValue ) && byteValue != '\b' && byteValue != '\t' && byteValue != '\n' && byteValue != '\f' && byteValue != '\r') || byteValue < 0) ? "" : new String( new byte[]{ '\'', byteValue, '\'' } ); //$NON-NLS-1$
+			return ((Character.isISOControl( (char)byteValue ) && byteValue != '\b' && byteValue != '\t' && byteValue != '\n' && byteValue != '\f' && byteValue != '\r') || byteValue < 0) ? Byte.toString(byteValue) : new String( new byte[]{ '\'', byteValue, '\'' } ); //$NON-NLS-1$
 		}
 		else if ( CVariableFormat.DECIMAL.equals( format ) ) {
 			return (isUnsigned()) ? Integer.toString( value.shortValue() ) : Integer.toString( (byte)value.byteValue() );
@@ -391,28 +431,59 @@ public class CValue extends AbstractCValue {
 		return null;
 	}
 
+	private String getGenericValueString(String svalue) throws CDIException {
+		try {
+			BigInteger bigValue = new BigInteger(svalue);
+			CVariableFormat format = getParentVariable().getFormat();
+			if (CVariableFormat.NATURAL.equals(format)) {
+				format = CVariableFormat.DECIMAL;
+			}
+			if (CVariableFormat.DECIMAL.equals(format)) {
+				return svalue;
+			} else if (CVariableFormat.HEXADECIMAL.equals(format)) {
+				StringBuffer sb = new StringBuffer("0x"); //$NON-NLS-1$
+				if (isUnsigned()) {
+					sb.append(bigValue.toString(16));
+				} else
+					sb.append(Long.toHexString(bigValue.longValue()));
+				return sb.toString();
+			} else if (CVariableFormat.BINARY.equals(format)) {
+				StringBuffer sb = new StringBuffer("0b"); //$NON-NLS-1$
+				if (isUnsigned()) {
+					sb.append(bigValue.toString(2));
+				} else
+					sb.append(Long.toBinaryString(bigValue.longValue()));
+				return sb.toString();
+			}
+		} catch (NumberFormatException e) {
+		}
+		return svalue;
+	}
+	
+	
 	private String getFloatValueString( ICDIFloatValue value ) throws CDIException {
 		float floatValue = value.floatValue();
-		Float flt = new Float( floatValue );
-		if ( flt.isNaN() || flt.isInfinite() )
-			return ""; //$NON-NLS-1$
-		long longValue = flt.longValue();
+		if ( Float.isNaN(floatValue) )
+			return "NaN"; //$NON-NLS-1$
+		if ( Float.isInfinite(floatValue) )
+			return "inf"; //$NON-NLS-1$
+
 		CVariableFormat format = getParentVariable().getFormat(); 
 		if ( CVariableFormat.NATURAL.equals( format ) ) {
 			return Float.toString( floatValue );
 		}
 		else if ( CVariableFormat.DECIMAL.equals( format ) ) {
-			return Long.toString( longValue );
+			return Long.toString( Float.floatToIntBits(floatValue) );
 		}
 		else if ( CVariableFormat.HEXADECIMAL.equals( format ) ) {
 			StringBuffer sb = new StringBuffer( "0x" ); //$NON-NLS-1$
-			String stringValue = Long.toHexString( longValue );
+			String stringValue = Long.toHexString( Float.floatToIntBits(floatValue) );
 			sb.append( (stringValue.length() > 8) ? stringValue.substring( stringValue.length() - 8 ) : stringValue );
 			return sb.toString();
 		}
 		else if ( CVariableFormat.BINARY.equals( format ) ) {
 			StringBuffer sb = new StringBuffer( "0b" ); //$NON-NLS-1$
-			String stringValue = Long.toBinaryString( longValue );
+			String stringValue = Long.toBinaryString( Float.floatToIntBits(floatValue) );
 			sb.append( (stringValue.length() > 32) ? stringValue.substring( stringValue.length() - 32 ) : stringValue );
 			return sb.toString();
 		}
@@ -421,26 +492,27 @@ public class CValue extends AbstractCValue {
 
 	private String getDoubleValueString( ICDIDoubleValue value ) throws CDIException {
 		double doubleValue = value.doubleValue();
-		Double dbl = new Double( doubleValue );
-		if ( dbl.isNaN() || dbl.isInfinite() )
-			return ""; //$NON-NLS-1$
-		long longValue = dbl.longValue();
+		if ( Double.isNaN(doubleValue) )
+			return "NaN"; //$NON-NLS-1$
+		if ( Double.isInfinite(doubleValue) )
+			return "inf"; //$NON-NLS-1$
+
 		CVariableFormat format = getParentVariable().getFormat(); 
 		if ( CVariableFormat.NATURAL.equals( format ) ) {
-			return dbl.toString();
+			return Double.toString(doubleValue);
 		}
 		else if ( CVariableFormat.DECIMAL.equals( format ) ) {
-			return Long.toString( longValue );
+			return Long.toString( Double.doubleToLongBits(doubleValue) );
 		}
 		else if ( CVariableFormat.HEXADECIMAL.equals( format ) ) {
 			StringBuffer sb = new StringBuffer( "0x" ); //$NON-NLS-1$
-			String stringValue = Long.toHexString( longValue );
+			String stringValue = Long.toHexString( Double.doubleToLongBits(doubleValue) );
 			sb.append( (stringValue.length() > 16) ? stringValue.substring( stringValue.length() - 16 ) : stringValue );
 			return sb.toString();
 		}
 		else if ( CVariableFormat.BINARY.equals( format ) ) {
 			StringBuffer sb = new StringBuffer( "0b" ); //$NON-NLS-1$
-			String stringValue = Long.toHexString( longValue );
+			String stringValue = Long.toBinaryString( Double.doubleToLongBits(doubleValue) );
 			sb.append( (stringValue.length() > 64) ? stringValue.substring( stringValue.length() - 64 ) : stringValue );
 			return sb.toString();
 		}
@@ -471,7 +543,22 @@ public class CValue extends AbstractCValue {
 			int size = ((CVariable)getParentVariable()).sizeof();
 			if ( size == 2 ) {
 				CVariableFormat format = getParentVariable().getFormat(); 
-				if ( CVariableFormat.NATURAL.equals( format ) || CVariableFormat.DECIMAL.equals( format ) ) {
+				if ( CVariableFormat.NATURAL.equals( format ) ) {					
+					ByteBuffer buffer = ByteBuffer.allocate(4);
+					buffer.putInt(value.intValue());
+					buffer.position(2);					
+					String stringValue;
+					try {
+						stringValue = new String(CDebugUtils.getCharsetDecoder().decode(buffer).array());
+					} catch (CharacterCodingException e) {
+						stringValue = e.toString();
+					}
+					StringBuffer sb = new StringBuffer("'");
+					sb.append(stringValue);
+					sb.append('\'');
+					return sb.toString();
+				}
+				else if ( CVariableFormat.DECIMAL.equals( format ) ) {
 					return (isUnsigned()) ? Integer.toString( value.intValue() ) : Short.toString( value.shortValue() );
 				}
 				else if ( CVariableFormat.HEXADECIMAL.equals( format ) ) {
@@ -489,7 +576,22 @@ public class CValue extends AbstractCValue {
 			}
 			if ( size == 4 ) {
 				CVariableFormat format = getParentVariable().getFormat(); 
-				if ( CVariableFormat.NATURAL.equals( format ) || CVariableFormat.DECIMAL.equals( format ) ) {
+				if ( CVariableFormat.NATURAL.equals( format ) ) {					
+					ByteBuffer buffer = ByteBuffer.allocate(8);
+					buffer.putLong(value.longValue());
+					buffer.position(4);					
+					String stringValue;
+					try {
+						stringValue = new String(CDebugUtils.getCharsetDecoder().decode(buffer).array());
+					} catch (CharacterCodingException e) {
+						stringValue = e.toString();
+					}
+					StringBuffer sb = new StringBuffer("'");
+					sb.append(stringValue);
+					sb.append('\'');
+					return sb.toString();
+				}
+				else if ( CVariableFormat.DECIMAL.equals( format ) ) {
 					return (isUnsigned()) ? Long.toString( value.longValue() ) : Integer.toString( value.intValue() );
 				}
 				else if ( CVariableFormat.HEXADECIMAL.equals( format ) ) {

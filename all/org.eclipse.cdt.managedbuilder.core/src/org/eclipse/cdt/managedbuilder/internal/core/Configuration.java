@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2007 IBM Corporation and others.
+ * Copyright (c) 2003, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -13,8 +13,8 @@ package org.eclipse.cdt.managedbuilder.internal.core;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +23,7 @@ import java.util.Vector;
 
 import org.eclipse.cdt.build.core.scannerconfig.ICfgScannerConfigBuilderInfo2Set;
 import org.eclipse.cdt.build.internal.core.scannerconfig.CfgDiscoveredPathManager.PathInfoCache;
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CLibraryPathEntry;
 import org.eclipse.cdt.core.settings.model.CSourceEntry;
@@ -86,7 +87,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.PluginVersionIdentifier;
 import org.osgi.service.prefs.Preferences;
 
-public class Configuration extends BuildObject implements IConfiguration, IBuildPropertiesRestriction, IBuildPropertyChangeListener {
+public class Configuration extends BuildObject implements IConfiguration, IBuildPropertiesRestriction, IBuildPropertyChangeListener, IRealBuildObjectAssociation {
 	
 	private static final String EMPTY_STRING = "";	//$NON-NLS-1$
 	private static final IPath EMPTY_PATH_ARRAY[] = new IPath[0];
@@ -97,10 +98,6 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 	private IConfiguration parent;
 	private ProjectType projectType;
 	private ManagedProject managedProject;
-//	private ToolChain toolChain;
-//	private List resourceConfigurationList;
-//	private Map resourceConfigurationMap;
-	//  Managed Build model attributes
 	private String artifactName;
 	private String cleanCommand;
 	private String artifactExtension;
@@ -138,7 +135,7 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 	
 	//property name for holding the rebuild state
 	private static final String REBUILD_STATE = "rebuildState";  //$NON-NLS-1$
-
+	
 	//The resource delta passed to the builder is not always up-to-date
 	//for the given configuration because between two builds of the same configuration
 	//any number of other configuration builds may occur
@@ -156,7 +153,7 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 	//property for holding the resource change state
 	private static final String RC_CHANGE_STATE = "rcState";  //$NON-NLS-1$
 	//resource change state
-	private int resourceChangeState;
+	private int resourceChangeState = -1;
 
 	//Internal Builder state
 	//NOTE: these are temporary properties
@@ -959,7 +956,7 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 			LanguageSettingEntriesSerializer.serializeEntries(sourceEntries, el);
 		}
 		// I am clean now
-		isDirty = false;
+		setDirty(false);
 	}
 
 	/*
@@ -1177,16 +1174,19 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 	 * @see org.eclipse.cdt.managedbuilder.core.IConfiguration#getArtifactExtension()
 	 */
 	public String getArtifactExtension() {
+		String ext = getArtifactExtensionAttribute(true);
+		return ext != null ? ext : EMPTY_STRING;
+	}
+
+	public String getArtifactExtensionAttribute(boolean querySuperClass) {
 		if (artifactExtension == null) {
 			// Ask my parent first
 			if (parent != null) {
 				return parent.getArtifactExtension();
-			} else {
-				return EMPTY_STRING;
-			}
-		} else {
-			return artifactExtension;
-		}
+			} 
+			return null; 
+		} 
+		return artifactExtension;
 	}
 
 	/* (non-Javadoc)
@@ -1388,41 +1388,25 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 	 * @see org.eclipse.cdt.managedbuilder.core.IConfiguration#getErrorParserList()
 	 */
 	public String[] getErrorParserList() {
-//		String parserIDs = getErrorParserIds();
-//		String[] errorParsers;
-//		if (parserIDs != null) {
-//			// Check for an empty string
-//			if (parserIDs.length() == 0) {
-//				errorParsers = new String[0];
-//			} else {
-//				StringTokenizer tok = new StringTokenizer(parserIDs, ";"); //$NON-NLS-1$
-//				List list = new ArrayList(tok.countTokens());
-//				while (tok.hasMoreElements()) {
-//					list.add(tok.nextToken());
-//				}
-//				String[] strArr = {""};	//$NON-NLS-1$
-//				errorParsers = (String[]) list.toArray(strArr);
-//			}
-//		} else {
-//			// If no error parsers are specified, the default is 
-//			// all error parsers
-//			errorParsers = CCorePlugin.getDefault().getAllErrorParsersIDs();
-//		}
-//		return errorParsers;
-		Set set = contributeErrorParsers(null, true);
-		String result[] = new String[set.size()];
-		set.toArray(result);
-		return result;
+		Set<String> set = contributeErrorParsers(null, true);
+		if(set != null){
+			String result[] = new String[set.size()];
+			set.toArray(result);
+			return result;
+		}
+		return CCorePlugin.getDefault().getAllErrorParsersIDs();
 	}
 
-	public Set contributeErrorParsers(Set set, boolean includeChildren) {
+	public Set<String> contributeErrorParsers(Set<String> set, boolean includeChildren) {
 		String parserIDs = getErrorParserIdsAttribute();
-		if(set == null)
-			set = new HashSet();
-		if (parserIDs != null && parserIDs.length() != 0) {
-			StringTokenizer tok = new StringTokenizer(parserIDs, ";"); //$NON-NLS-1$
-			while (tok.hasMoreElements()) {
-				set.add(tok.nextToken());
+		if (parserIDs != null){
+			if(set == null)
+				set = new LinkedHashSet<String>();
+			if(parserIDs.length() != 0) {
+				StringTokenizer tok = new StringTokenizer(parserIDs, ";"); //$NON-NLS-1$
+				while (tok.hasMoreElements()) {
+					set.add(tok.nextToken());
+				}
 			}
 		}
 		
@@ -1430,7 +1414,7 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 			IResourceInfo[] rcInfos = getResourceInfos();
 			for(int i = 0; i < rcInfos.length; i++){
 				ResourceInfo rcInfo = (ResourceInfo)rcInfos[i];
-				rcInfo.contributeErrorParsers(set);
+				set = rcInfo.contributeErrorParsers(set);
 			}
 		}
 		return set;
@@ -1610,9 +1594,9 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 	 * @see org.eclipse.cdt.managedbuilder.core.IConfiguration#isSupported()
 	 */
 	public boolean isSupported(){
-		IToolChain toolChain = getToolChain();
-		if(toolChain != null)
-			return toolChain.isSupported();
+		IFolderInfo foInfo = getRootFolderInfo();
+		if(foInfo != null)
+			return foInfo.isSupported();
 		return false;
 	}
 	
@@ -2305,8 +2289,8 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 	}
 
 	public ICSourceEntry[] getSourceEntries() {
-		if(sourceEntries == null){
-			if(parent != null)
+		if(sourceEntries == null || sourceEntries.length == 0){
+			if(parent != null && sourceEntries == null)
 				return parent.getSourceEntries();
 			return new ICSourceEntry[]{new CSourceEntry(Path.EMPTY, null, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED)}; //$NON-NLS-1$
 			
@@ -2347,21 +2331,24 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	public void setErrorParserList(String[] ids) {
 		if(ids == null){
 			//reset
 			resetErrorParsers();
 		} else {
 			resetErrorParsers();
-			Set oldSet = contributeErrorParsers(null, true);
-			HashSet newSet = new HashSet();
+			Set<String> oldSet = contributeErrorParsers(null, true);
+			if(oldSet == null)
+				oldSet = new LinkedHashSet<String>();
+			LinkedHashSet<String> newSet = new LinkedHashSet<String>();
 			newSet.addAll(Arrays.asList(ids));
 			newSet.remove(null);
-			HashSet newCopy = (HashSet)newSet.clone();
+			LinkedHashSet<String> newCopy = (LinkedHashSet<String>)newSet.clone();
 			newSet.removeAll(oldSet);
 			oldSet.removeAll(newCopy);
-			Set removed = oldSet;
-			Set added = newSet;
+			Set<String> removed = oldSet;
+			Set<String> added = newSet;
 			
 			removeErrorParsers(removed);
 			setErrorParserAttribute((String[])added.toArray(new String[added.size()]));
@@ -2377,8 +2364,11 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 		}
 	}
 	
-	void removeErrorParsers(Set set){
-		Set oldSet = contributeErrorParsers(null, false);
+	void removeErrorParsers(Set<String> set){
+		Set<String> oldSet = contributeErrorParsers(null, false);
+		if(oldSet == null)
+			oldSet = new LinkedHashSet<String>();
+		
 		oldSet.removeAll(set);
 		setErrorParserAttribute((String[])oldSet.toArray(new String[oldSet.size()]));
 		
@@ -2490,7 +2480,7 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 			return true;
 		
 		if(getProjectType() != null)
-			return getProjectType().isTestProjectType();
+			return getProjectType().isSystemObject();
 		
 		return false;
 	}
@@ -2685,9 +2675,17 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 					List list = new ArrayList(entries.length + 1);
 					
 					list.add(new CIncludePathEntry(path.toString(), ICLanguageSettingEntry.VALUE_WORKSPACE_PATH));
+
+					entries = CDataUtil.resolveEntries(entries, des);
 					for(int i = 0; i < entries.length; i++){
 						ICOutputEntry out = entries[i];
-						ICLibraryPathEntry lib = new CLibraryPathEntry(out.getValue(), out.getFlags() & (~ICLanguageSettingEntry.RESOLVED));
+						String value = out.getValue();
+
+						IPath p = new Path(value);
+						if(!p.isAbsolute())
+							value = getOwner().getFullPath().append(value).toString();
+						
+						ICLibraryPathEntry lib = new CLibraryPathEntry(value, out.getFlags() & (~ICSettingEntry.RESOLVED));
 						list.add(lib);
 					}
 					
@@ -2986,4 +2984,35 @@ public class Configuration extends BuildObject implements IConfiguration, IBuild
 		}
 	}
 
+	public IRealBuildObjectAssociation getExtensionObject() {
+		return isExtensionConfig ? this : (Configuration)getParent();
+	}
+
+	public IRealBuildObjectAssociation[] getIdenticBuildObjects() {
+		return new Configuration[]{(Configuration)getExtensionObject()};
+	}
+
+	public IRealBuildObjectAssociation getRealBuildObject() {
+		return getExtensionObject();
+	}
+
+	public IRealBuildObjectAssociation getSuperClassObject() {
+		return (IRealBuildObjectAssociation)getParent();
+	}
+
+	public int getType() {
+		return OBJECT_CONFIGURATION;
+	}
+
+	public boolean isRealBuildObject() {
+		return getRealBuildObject() == this;
+	}
+
+	public String getUniqueRealName() {
+		return getName();
+	}
+
+	public boolean isExtensionBuildObject() {
+		return isExtensionElement();
+	}
 }

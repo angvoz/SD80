@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,7 @@
  *     IBM Corporation - initial API and implementation
  *     QNX Software System
  *     Anton Leherbauer (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui;
 
@@ -31,7 +32,7 @@ import org.eclipse.cdt.core.model.ICElement;
  */
 public class CElementAdapterFactory implements IAdapterFactory {
 	
-	private static Class[] PROPERTIES= new Class[] {
+	private static Class<?>[] PROPERTIES= new Class[] {
 		IPropertySource.class,
 		IResource.class,
 		IWorkbenchAdapter.class,
@@ -41,17 +42,19 @@ public class CElementAdapterFactory implements IAdapterFactory {
 	};
 	
 	private static CWorkbenchAdapter fgCWorkbenchAdapter;
+	private static CActionFilter fgCActionFilter;
 	
 	/**
 	 * @see CElementAdapterFactory#getAdapterList
 	 */
-	public Class[] getAdapterList() {
+	public Class<?>[] getAdapterList() {
 		return PROPERTIES;
 	}
 
 	/**
 	 * @see CElementAdapterFactory#getAdapter
 	 */	
+	@SuppressWarnings("unchecked")
 	public Object getAdapter(Object element, Class key) {
 		ICElement celem = (ICElement) element;
 		
@@ -69,7 +72,7 @@ public class CElementAdapterFactory implements IAdapterFactory {
 		} else if (IWorkbenchAdapter.class.equals(key)) {
 			return getWorkbenchAdapter(celem);
 		} else if (IActionFilter.class.equals(key)) {
-			return getWorkbenchAdapter(celem);
+			return getActionFilter(celem);
 		}
 		return null; 
 	}
@@ -101,5 +104,12 @@ public class CElementAdapterFactory implements IAdapterFactory {
 			fgCWorkbenchAdapter = new CWorkbenchAdapter();
 		}
 		return fgCWorkbenchAdapter;
+	}
+	
+	private IActionFilter getActionFilter(ICElement celement) {
+		if (fgCActionFilter == null) {
+			fgCActionFilter = new CActionFilter();
+		}
+		return fgCActionFilter;
 	}
 }

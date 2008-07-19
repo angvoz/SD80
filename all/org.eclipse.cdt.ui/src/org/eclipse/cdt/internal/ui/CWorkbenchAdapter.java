@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *     QNX Software System
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui;
 
@@ -17,15 +18,13 @@ import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.internal.ui.viewsupport.CElementImageProvider;
 import org.eclipse.cdt.ui.CElementLabelProvider;
 import org.eclipse.cdt.ui.CUIPlugin;
-import org.eclipse.core.resources.IResource;
 import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.ui.IActionFilter;
 import org.eclipse.ui.model.IWorkbenchAdapter;
 
 /**
- * An imlementation of the IWorkbenchAdapter for CElements.
+ * An implementation of the IWorkbenchAdapter for CElements.
  */
-public class CWorkbenchAdapter implements IWorkbenchAdapter, IActionFilter {
+public class CWorkbenchAdapter implements IWorkbenchAdapter {
 
 	private static final Object[] fgEmptyArray = new Object[0];
 	private CElementImageProvider fImageProvider;
@@ -47,7 +46,7 @@ public class CWorkbenchAdapter implements IWorkbenchAdapter, IActionFilter {
 					return members;
 				}
 			} catch (CModelException e) {
-				CUIPlugin.getDefault().log(e);
+				CUIPlugin.log(e);
 			}
 		}
 		return fgEmptyArray;
@@ -83,17 +82,5 @@ public class CWorkbenchAdapter implements IWorkbenchAdapter, IActionFilter {
 			return ((ICElement) o).getParent();
 		}
 		return null;
-	}
-
-	public boolean testAttribute(Object target, String name, String value) {
-		ICElement element = (ICElement)target;
-		IResource resource = element.getResource();
-		if (resource != null) {
-			IActionFilter filter = (IActionFilter)resource.getAdapter(IActionFilter.class);
-			if (filter != null) {
-				return filter.testAttribute(resource, name, value);
-			}
-		}
-		return false;
 	}
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2006 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -127,7 +127,7 @@ public class DialogField {
 		if (fLabel == null) {
 			assertCompositeNotNull(parent);
 			
-			fLabel= new Label(parent, SWT.LEFT | SWT.WRAP);
+			fLabel= new Label(parent, SWT.LEFT);
 			fLabel.setFont(parent.getFont());
 			fLabel.setEnabled(fEnabled);		
 			if (fLabelText != null && !"".equals(fLabelText)) { //$NON-NLS-1$

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 QNX Software Systems and others.
+ * Copyright (c) 2004, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,12 +7,19 @@
  *
  * Contributors:
  *     QNX Software Systems - initial API and implementation
- *******************************************************************************/
+ *     Anton Leherbauer (Wind River Systems)
+ *     Sergey Prigogin (Google)
+******************************************************************************/
 package org.eclipse.cdt.internal.ui.wizards.filewizard;
 
 import org.eclipse.cdt.core.CConventions;
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.ui.CodeGeneration;
+
+import org.eclipse.cdt.internal.corext.codemanipulation.StubUtility;
+
 import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.DialogField;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.IDialogFieldListener;
@@ -26,17 +33,20 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.jface.text.templates.Template;
+import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Text;
 
 public class NewHeaderFileCreationWizardPage extends AbstractFileCreationWizardPage {
-	
+	private final String KEY_LAST_USED_TEMPLATE = "LastUsedHeaderTemplate"; //$NON-NLS-1$
+
 	private ITranslationUnit fNewFileTU = null;
 	private StringDialogField fNewFileDialogField;
 	
 	public NewHeaderFileCreationWizardPage() {
-		super(NewFileWizardMessages.getString("NewHeaderFileCreationWizardPage.title")); //$NON-NLS-1$
-		setDescription(NewFileWizardMessages.getString("NewHeaderFileCreationWizardPage.description")); //$NON-NLS-1$
+		super(NewFileWizardMessages.NewHeaderFileCreationWizardPage_title); 
+		setDescription(NewFileWizardMessages.NewHeaderFileCreationWizardPage_description); 
 
 		fNewFileDialogField = new StringDialogField();
 		fNewFileDialogField.setDialogFieldListener(new IDialogFieldListener() {
@@ -44,23 +54,25 @@ public class NewHeaderFileCreationWizardPage extends AbstractFileCreationWizardP
 				handleFieldChanged(NEW_FILE_ID);
 			}
 		});
-		fNewFileDialogField.setLabelText(NewFileWizardMessages.getString("NewHeaderFileCreationWizardPage.headerFile.label")); //$NON-NLS-1$
+		fNewFileDialogField.setLabelText(NewFileWizardMessages.NewHeaderFileCreationWizardPage_headerFile_label); 
 	}
 	
 	/**
 	 * Sets the focus on the starting input field.
 	 */		
+	@Override
 	protected void setFocus() {
 		fNewFileDialogField.setFocus();
 	}
 
 	/**
 	 * Creates the controls for the file name field. Expects a <code>GridLayout</code> with at 
-	 * least 3 columns.
+	 * least 2 columns.
 	 * 
 	 * @param parent the parent composite
 	 * @param nColumns number of columns to span
 	 */		
+	@Override
 	protected void createFileControls(Composite parent, int nColumns) {
 		fNewFileDialogField.doFillIntoGrid(parent, nColumns);
 		Text textControl = fNewFileDialogField.getTextControl(null);
@@ -68,6 +80,7 @@ public class NewHeaderFileCreationWizardPage extends AbstractFileCreationWizardP
 		textControl.addFocusListener(new StatusFocusListener(NEW_FILE_ID));
 	}
 	
+	@Override
 	public IPath getFileFullPath() {
 		String str = fNewFileDialogField.getText();
         IPath path = null;
@@ -82,18 +95,19 @@ public class NewHeaderFileCreationWizardPage extends AbstractFileCreationWizardP
 	    return path;
 	}
 
+	@Override
 	protected IStatus fileNameChanged() {
 		StatusInfo status = new StatusInfo();
 		
 		IPath filePath = getFileFullPath();
 		if (filePath == null) {
-			status.setError(NewFileWizardMessages.getString("NewHeaderFileCreationWizardPage.error.EnterFileName")); //$NON-NLS-1$
+			status.setError(NewFileWizardMessages.NewHeaderFileCreationWizardPage_error_EnterFileName); 
 			return status;
 		}
 
 		IPath sourceFolderPath = getSourceFolderFullPath();
 		if (sourceFolderPath == null || !sourceFolderPath.isPrefixOf(filePath)) {
-			status.setError(NewFileWizardMessages.getString("NewHeaderFileCreationWizardPage.error.FileNotInSourceFolder")); //$NON-NLS-1$
+			status.setError(NewFileWizardMessages.NewHeaderFileCreationWizardPage_error_FileNotInSourceFolder); 
 			return status;
 		}
 		
@@ -101,11 +115,11 @@ public class NewHeaderFileCreationWizardPage extends AbstractFileCreationWizardP
 		IResource file = getWorkspaceRoot().findMember(filePath);
 		if (file != null && file.exists()) {
 	    	if (file.getType() == IResource.FILE) {
-	    		status.setError(NewFileWizardMessages.getString("NewHeaderFileCreationWizardPage.error.FileExists")); //$NON-NLS-1$
+	    		status.setError(NewFileWizardMessages.NewHeaderFileCreationWizardPage_error_FileExists); 
 	    	} else if (file.getType() == IResource.FOLDER) {
-	    		status.setError(NewFileWizardMessages.getString("NewHeaderFileCreationWizardPage.error.MatchingFolderExists")); //$NON-NLS-1$
+	    		status.setError(NewFileWizardMessages.NewHeaderFileCreationWizardPage_error_MatchingFolderExists); 
 	    	} else {
-	    		status.setError(NewFileWizardMessages.getString("NewHeaderFileCreationWizardPage.error.MatchingResourceExists")); //$NON-NLS-1$
+	    		status.setError(NewFileWizardMessages.NewHeaderFileCreationWizardPage_error_MatchingResourceExists); 
 	    	}
 			return status;
 		}
@@ -114,20 +128,21 @@ public class NewHeaderFileCreationWizardPage extends AbstractFileCreationWizardP
 		IPath folderPath = filePath.removeLastSegments(1).makeRelative();
 		IResource folder = getWorkspaceRoot().findMember(folderPath);
 		if (folder == null || !folder.exists() || (folder.getType() != IResource.PROJECT && folder.getType() != IResource.FOLDER)) {
-		    status.setError(NewFileWizardMessages.getFormattedString("NewHeaderFileCreationWizardPage.error.FolderDoesNotExist", folderPath)); //$NON-NLS-1$
+		    status.setError(NLS.bind(NewFileWizardMessages.NewHeaderFileCreationWizardPage_error_FolderDoesNotExist, folderPath)); 
 			return status;
 		}
 
 		IStatus convStatus = CConventions.validateHeaderFileName(getCurrentProject(), filePath.lastSegment());
 		if (convStatus.getSeverity() == IStatus.ERROR) {
-			status.setError(NewFileWizardMessages.getFormattedString("NewHeaderFileCreationWizardPage.error.InvalidFileName", convStatus.getMessage())); //$NON-NLS-1$
+			status.setError(NLS.bind(NewFileWizardMessages.NewHeaderFileCreationWizardPage_error_InvalidFileName, convStatus.getMessage())); 
 			return status;
 		} else if (convStatus.getSeverity() == IStatus.WARNING) {
-			status.setWarning(NewFileWizardMessages.getFormattedString("NewHeaderFileCreationWizardPage.warning.FileNameDiscouraged", convStatus.getMessage())); //$NON-NLS-1$
+			status.setWarning(NLS.bind(NewFileWizardMessages.NewHeaderFileCreationWizardPage_warning_FileNameDiscouraged, convStatus.getMessage())); 
 		}
 		return status;
 	}
 	
+	@Override
 	public void createFile(IProgressMonitor monitor) throws CoreException {
         IPath filePath = getFileFullPath();
         if (filePath != null) {
@@ -138,6 +153,14 @@ public class NewHeaderFileCreationWizardPage extends AbstractFileCreationWizardP
 	            IFile newFile = NewSourceFileGenerator.createHeaderFile(filePath, true, monitor);
 	            if (newFile != null) {
 	            	fNewFileTU = (ITranslationUnit) CoreModel.getDefault().create(newFile);
+	            	if (fNewFileTU != null) {
+	            		String lineDelimiter= StubUtility.getLineDelimiterUsed(fNewFileTU);
+						String content= CodeGeneration.getHeaderFileContent(getTemplate(), fNewFileTU, null, null, lineDelimiter);
+						if (content != null) {
+							fNewFileTU.getBuffer().setContents(content.toCharArray());
+							fNewFileTU.save(monitor, true);
+						}
+	            	}
 	            }
 	        } finally {
 	            monitor.done();
@@ -148,7 +171,33 @@ public class NewHeaderFileCreationWizardPage extends AbstractFileCreationWizardP
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.internal.ui.wizards.filewizard.AbstractFileCreationWizardPage#getCreatedFileTU()
 	 */
+	@Override
 	public ITranslationUnit getCreatedFileTU() {
 		return fNewFileTU;
+	}
+
+	/*
+	 * @see org.eclipse.cdt.internal.ui.wizards.filewizard.AbstractFileCreationWizardPage#getApplicableTemplates()
+	 */
+	@Override
+	protected Template[] getApplicableTemplates() {
+		return StubUtility.getFileTemplatesForContentTypes(
+				new String[] { CCorePlugin.CONTENT_TYPE_CXXHEADER, CCorePlugin.CONTENT_TYPE_CHEADER }, null);
+	}
+	
+	/*
+	 * @see org.eclipse.cdt.internal.ui.wizards.filewizard.AbstractFileCreationWizardPage#getPreferredTemplateName()
+	 */
+	@Override
+	public String getLastUsedTemplateName() {
+		return getDialogSettings().get(KEY_LAST_USED_TEMPLATE);
+	}
+	
+	/*
+	 * @see org.eclipse.cdt.internal.ui.wizards.filewizard.AbstractFileCreationWizardPage#savePreferredTemplateName(String)
+	 */
+	@Override
+	public void saveLastUsedTemplateName(String name) {
+		getDialogSettings().put(KEY_LAST_USED_TEMPLATE, name);
 	}
 }

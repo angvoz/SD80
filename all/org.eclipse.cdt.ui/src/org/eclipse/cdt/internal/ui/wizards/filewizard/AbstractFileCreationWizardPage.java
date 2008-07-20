@@ -8,8 +8,13 @@
  * Contributors:
  *     QNX Software Systems - initial API and implementation
  *     IBM Corporation
+ *     Anton Leherbauer (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.wizards.filewizard;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -22,21 +27,29 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.text.ITextSelection;
+import org.eclipse.jface.text.templates.Template;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.window.Window;
+import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.FocusListener;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPart;
+import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.views.contentoutline.ContentOutline;
 
 import org.eclipse.cdt.core.model.CModelException;
@@ -53,9 +66,11 @@ import org.eclipse.cdt.internal.corext.util.CModelUtil;
 
 import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
 import org.eclipse.cdt.internal.ui.editor.CEditor;
+import org.eclipse.cdt.internal.ui.preferences.CodeTemplatePreferencePage;
 import org.eclipse.cdt.internal.ui.viewsupport.IViewPartInputProvider;
 import org.eclipse.cdt.internal.ui.wizards.NewElementWizardPage;
 import org.eclipse.cdt.internal.ui.wizards.SourceFolderSelectionDialog;
+import org.eclipse.cdt.internal.ui.wizards.dialogfields.ComboDialogField;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.DialogField;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.IDialogFieldListener;
 import org.eclipse.cdt.internal.ui.wizards.dialogfields.IStringButtonAdapter;
@@ -66,6 +81,7 @@ import org.eclipse.cdt.internal.ui.wizards.dialogfields.StringButtonDialogField;
 public abstract class AbstractFileCreationWizardPage extends NewElementWizardPage {
 
 	private static final int MAX_FIELD_CHARS = 50;
+	private static final String NO_TEMPLATE = ""; //$NON-NLS-1$
 	
 	private IWorkspaceRoot fWorkspaceRoot;
 
@@ -85,19 +101,29 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
      * created.
      */
     private boolean isFirstTime = false;
+
+	private Template[] fTemplates;
+
+	private ComboDialogField fTemplateDialogField;
 	
 	public AbstractFileCreationWizardPage(String name) {
 		super(name);
 
-		setDescription(NewFileWizardMessages.getString("AbstractFileCreationWizardPage.description")); //$NON-NLS-1$
+		setDescription(NewFileWizardMessages.AbstractFileCreationWizardPage_description); 
 		
 		fWorkspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
 		
 		SourceFolderFieldAdapter sourceFolderAdapter = new SourceFolderFieldAdapter();
 		fSourceFolderDialogField = new StringButtonDialogField(sourceFolderAdapter);
 		fSourceFolderDialogField.setDialogFieldListener(sourceFolderAdapter);
-		fSourceFolderDialogField.setLabelText(NewFileWizardMessages.getString("AbstractFileCreationWizardPage.sourceFolder.label")); //$NON-NLS-1$
-		fSourceFolderDialogField.setButtonLabel(NewFileWizardMessages.getString("AbstractFileCreationWizardPage.sourceFolder.button")); //$NON-NLS-1$
+		fSourceFolderDialogField.setLabelText(NewFileWizardMessages.AbstractFileCreationWizardPage_sourceFolder_label); 
+		fSourceFolderDialogField.setButtonLabel(NewFileWizardMessages.AbstractFileCreationWizardPage_sourceFolder_button); 
+
+		fTemplates= getApplicableTemplates();
+		if (fTemplates != null && fTemplates.length > 0) {
+			fTemplateDialogField= new ComboDialogField(SWT.NONE);
+			fTemplateDialogField.setLabelText(NewFileWizardMessages.AbstractFileCreationWizardPage_template_label);
+		}
 
 		fSourceFolderStatus = STATUS_OK;
 		fNewFileStatus = STATUS_OK;
@@ -109,7 +135,7 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
 	
 	// -------- UI Creation ---------
 
-    public void createControl(Composite parent) {
+	public void createControl(Composite parent) {
         initializeDialogUnits(parent);
         
         Composite composite = new Composite(parent, SWT.NONE);
@@ -123,9 +149,13 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
         
         createSourceFolderControls(composite, nColumns);
         
-        createFileControls(composite, nColumns);
-        
-		composite.layout();			
+        createFileControls(composite, nColumns - 1);
+        // Placeholder for the right column.
+        (new Composite(composite, SWT.NO_FOCUS)).setLayoutData(new GridData(1, 1));
+
+        createTemplateControls(composite, nColumns);
+
+		composite.layout();
 
 		setErrorMessage(null);
 		setMessage(null);
@@ -161,12 +191,100 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
 	
 	/**
 	 * Creates the controls for the file name field. Expects a <code>GridLayout</code> with at 
-	 * least 3 columns.
+	 * least 2 columns.
 	 * 
 	 * @param parent the parent composite
 	 * @param nColumns number of columns to span
 	 */		
 	protected abstract void createFileControls(Composite parent, int nColumns);
+
+	/**
+	 * Creates the controls for the file template field. Expects a <code>GridLayout</code> with at 
+	 * least 3 columns.
+	 * 
+	 * @param parent the parent composite
+	 * @param columns number of columns to span
+	 */		
+	protected void createTemplateControls(Composite parent, int columns) {
+		if (fTemplateDialogField != null) {
+			fTemplateDialogField.doFillIntoGrid(parent, columns - 1);
+			Button configureButton= new Button(parent, SWT.PUSH);
+			configureButton.setText(NewFileWizardMessages.AbstractFileCreationWizardPage_configure_label);
+			configureButton.setLayoutData(new GridData(GridData.HORIZONTAL_ALIGN_FILL));
+			configureButton.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					editTemplates();
+				}
+			});
+			Combo comboControl= fTemplateDialogField.getComboControl(null);
+			LayoutUtil.setWidthHint(comboControl, getMaxFieldWidth());
+		}
+	}
+
+	protected void editTemplates() {
+		String prefPageId= CodeTemplatePreferencePage.PREF_ID;
+		Map<String, String> data= null;
+		String templateName= null;
+		Template template= getSelectedTemplate();
+		if (template != null) {
+			templateName= template.getName();
+		}
+		if (templateName != null) {
+			data= new HashMap<String, String>();
+			data.put(CodeTemplatePreferencePage.DATA_SELECT_TEMPLATE, templateName);
+		}
+		PreferenceDialog dialog= PreferencesUtil.createPreferenceDialogOn(getShell(), prefPageId, new String[] { prefPageId }, data);
+		if (dialog.open() == Window.OK) {
+			updateTemplates();
+		}
+	}
+
+	protected void updateTemplates() {
+		Template selected= getSelectedTemplate();
+		String name = selected != null ?
+				selected.getName() :
+				getLastUsedTemplateName();
+		fTemplates= getApplicableTemplates();
+		int idx= NO_TEMPLATE.equals(name) ? 0 : 1;
+		String[] names= new String[fTemplates.length + 1];
+		for (int i = 0; i < fTemplates.length; i++) {
+			names[i + 1]= fTemplates[i].getName();
+			if (name != null && name.equals(names[i + 1])) {
+				idx= i + 1;
+			}
+		}
+		names[0]= NewFileWizardMessages.AbstractFileCreationWizardPage_noTemplate;
+		fTemplateDialogField.setItems(names);
+		fTemplateDialogField.selectItem(idx);
+	}
+
+	/**
+     * Configure the set of templates to select from.
+	 * @return the set of templates
+	 */
+	protected abstract Template[] getApplicableTemplates();
+
+	/**
+	 * Returns the selected template and saves its name for future use.
+	 *  
+	 * @return the selected template or <code>null</code> if none.
+	 */
+	protected Template getTemplate() {
+		Template template = getSelectedTemplate();
+		saveLastUsedTemplateName(template != null ? template.getName() : NO_TEMPLATE);
+		return template;
+	}
+
+	private Template getSelectedTemplate() {
+		if (fTemplateDialogField != null) {
+			int index= fTemplateDialogField.getSelectionIndex() - 1;
+			if (index >= 0 && index < fTemplates.length) {
+				return fTemplates[index];
+			}
+		}
+		return null;
+	}
 	
     /**
      * The wizard owning this page is responsible for calling this method with the
@@ -200,8 +318,8 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
     				IResource resource = (IResource) adaptable.getAdapter(IResource.class);
     				if (resource != null && resource.getType() != IResource.ROOT) {
     					while (celem == null && resource.getType() != IResource.PROJECT) {
-    						resource = resource.getParent();
     						celem = (ICElement) resource.getAdapter(ICElement.class);
+    						resource = resource.getParent();
     					}
     					if (celem == null) {
     						celem = CoreModel.getDefault().create(resource); // c project
@@ -241,7 +359,7 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
     				celem = projects[0];
     			}
     		} catch (CModelException e) {
-    			CUIPlugin.getDefault().log(e);
+    			CUIPlugin.log(e);
     		}
     	}
     	return celem;
@@ -255,6 +373,7 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
      */
     protected void initFields(ICElement elem) {
 	    initSourceFolder(elem);
+	    updateTemplates();
     	handleFieldChanged(ALL_FIELDS);
     }
 
@@ -277,7 +396,7 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
     					        folder = roots[0];
     					}
     				} catch (CModelException e) {
-    					CUIPlugin.getDefault().log(e);
+    					CUIPlugin.log(e);
     				}
     				if (folder == null) {
     				    folder = cproject.findSourceRoot(cproject.getResource());
@@ -376,7 +495,7 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
 		
 		IPath folderPath = getSourceFolderFullPath();
 		if (folderPath == null) {
-			status.setError(NewFileWizardMessages.getString("AbstractFileCreationWizardPage.error.EnterSourceFolderName")); //$NON-NLS-1$
+			status.setError(NewFileWizardMessages.AbstractFileCreationWizardPage_error_EnterSourceFolderName); 
 			return status;
 		}
 
@@ -386,27 +505,27 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
 			if (resType == IResource.PROJECT || resType == IResource.FOLDER) {
 				IProject proj = res.getProject();
 				if (!proj.isOpen()) {
-					status.setError(NewFileWizardMessages.getFormattedString("AbstractFileCreationWizardPage.error.NotAFolder", folderPath)); //$NON-NLS-1$
+					status.setError(NLS.bind(NewFileWizardMessages.AbstractFileCreationWizardPage_error_NotAFolder, folderPath)); 
 					return status;
 				}
 			    if (!CoreModel.hasCCNature(proj) && !CoreModel.hasCNature(proj)) {
 					if (resType == IResource.PROJECT) {
-						status.setError(NewFileWizardMessages.getString("AbstractFileCreationWizardPage.warning.NotACProject")); //$NON-NLS-1$
+						status.setError(NewFileWizardMessages.AbstractFileCreationWizardPage_warning_NotACProject); 
 						return status;
 					}
-					status.setWarning(NewFileWizardMessages.getString("AbstractFileCreationWizardPage.warning.NotInACProject")); //$NON-NLS-1$
+					status.setWarning(NewFileWizardMessages.AbstractFileCreationWizardPage_warning_NotInACProject); 
 				}
 			    ICElement e = CoreModel.getDefault().create(res.getFullPath());
 			    if (CModelUtil.getSourceFolder(e) == null) {
-					status.setError(NewFileWizardMessages.getFormattedString("AbstractFileCreationWizardPage.error.NotASourceFolder", folderPath)); //$NON-NLS-1$
+					status.setError(NLS.bind(NewFileWizardMessages.AbstractFileCreationWizardPage_error_NotASourceFolder, folderPath)); 
 					return status;
 				}
 			} else {
-				status.setError(NewFileWizardMessages.getFormattedString("AbstractFileCreationWizardPage.error.NotAFolder", folderPath)); //$NON-NLS-1$
+				status.setError(NLS.bind(NewFileWizardMessages.AbstractFileCreationWizardPage_error_NotAFolder, folderPath)); 
 				return status;
 			}
 		} else {
-			status.setError(NewFileWizardMessages.getFormattedString("AbstractFileCreationWizardPage.error.FolderDoesNotExist", folderPath)); //$NON-NLS-1$
+			status.setError(NLS.bind(NewFileWizardMessages.AbstractFileCreationWizardPage_error_FolderDoesNotExist, folderPath)); 
 			return status;
 		}
 
@@ -500,6 +619,7 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
 	/*
 	 * @see WizardPage#becomesVisible
 	 */
+	@Override
 	public void setVisible(boolean visible) {
 		super.setVisible(visible);
 		if (visible) {
@@ -595,4 +715,16 @@ public abstract class AbstractFileCreationWizardPage extends NewElementWizardPag
 	 * @see #createFile(IProgressMonitor)
 	 */			
 	public abstract ITranslationUnit getCreatedFileTU();
+	
+	/**
+	 * @return the name of the template used in the previous dialog invocation. 
+	 */
+	public abstract String getLastUsedTemplateName();
+	
+	/**
+	 * Saves the name of the last used template.
+	 * 
+	 * @param name the name of a template, or an empty string for no template.
+	 */
+	public abstract void saveLastUsedTemplateName(String name);
 }

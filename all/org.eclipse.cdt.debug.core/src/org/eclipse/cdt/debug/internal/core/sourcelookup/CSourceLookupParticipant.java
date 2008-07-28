@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 QNX Software Systems and others.
+ * Copyright (c) 2004, 2006, 2007 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,12 +7,16 @@
  *
  * Contributors:
  * QNX Software Systems - Initial API and implementation
- * Nokia - Added support for AbsoluteSourceContainer( 159833 ) 
- * Nokia - Added support for CSourceNotFoundElement ( 167305 )
+ * Ken Ryall (Nokia) - Added support for AbsoluteSourceContainer( 159833 ) 
+ * Ken Ryall (Nokia) - Added support for CSourceNotFoundElement ( 167305 )
+ * Ken Ryall (Nokia) - Option to open disassembly view when no source ( 81353 )
 *******************************************************************************/
 package org.eclipse.cdt.debug.internal.core.sourcelookup; 
 
+import java.io.File;
+
 import org.eclipse.cdt.debug.core.model.ICStackFrame;
+import org.eclipse.cdt.debug.core.sourcelookup.AbsolutePathSourceContainer;
 import org.eclipse.cdt.debug.core.sourcelookup.ISourceLookupChangeListener;
 import org.eclipse.cdt.debug.internal.core.ListenerList;
 import org.eclipse.core.runtime.CoreException;
@@ -69,15 +73,26 @@ public class CSourceLookupParticipant extends AbstractSourceLookupParticipant {
 			if ( frame != null ) {
 				name = frame.getFile().trim();
 				if ( name == null || name.length() == 0 )
-					return new Object[] { gfNoSource };
+				{
+					if (object instanceof IDebugElement)
+						return new Object[] { new CSourceNotFoundElement( (IDebugElement) object ) };
+					else
+						return new Object[] { gfNoSource };					
+				}
 			}
 		}
 		else if ( object instanceof String ) {
 			name = (String)object;
 		}
 		Object[] foundElements = super.findSourceElements( object );
-		if (foundElements.length == 0 && (object instanceof IDebugElement))
-			foundElements = new Object[] { new CSourceNotFoundElement( (IDebugElement) object ) };
+		if (foundElements.length == 0 && (object instanceof IDebugElement)) {
+			// debugger could have resolved it itself and "name" is an absolute path
+			if (new File(name).exists()) {
+				foundElements = new AbsolutePathSourceContainer().findSourceElements(name);
+			} else {
+				foundElements = new Object[] { new CSourceNotFoundElement((IDebugElement) object) };
+			}
+		}
 		return foundElements;
 	}
 

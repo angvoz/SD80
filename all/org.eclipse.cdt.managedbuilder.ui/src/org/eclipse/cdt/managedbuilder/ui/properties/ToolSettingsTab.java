@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Intel Corporation and others.
+ * Copyright (c) 2007, 2008 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -28,7 +28,9 @@ import org.eclipse.cdt.managedbuilder.core.IResourceConfiguration;
 import org.eclipse.cdt.managedbuilder.core.IResourceInfo;
 import org.eclipse.cdt.managedbuilder.core.ITool;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
+import org.eclipse.cdt.managedbuilder.internal.core.MultiConfiguration;
 import org.eclipse.cdt.managedbuilder.internal.macros.BuildMacroProvider;
+import org.eclipse.cdt.ui.newui.AbstractPage;
 import org.eclipse.cdt.ui.newui.PageLayout;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.jface.preference.IPreferencePageContainer;
@@ -43,21 +45,17 @@ import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.ControlAdapter;
+import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.ScrollBar;
 
 
 public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPreferencePageContainer {
-		/*
-		 * String constants
-		 */
-		private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 20 };
-		
 		/*
 		 * Dialog widgets
 		 */
@@ -69,20 +67,21 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 		/*
 		 * Bookeeping variables
 		 */
-		private Map configToPageListMap;
+		private Map<String, List<AbstractToolSettingUI>> configToPageListMap;
 		private IPreferenceStore settingsStore;
 		private AbstractToolSettingUI currentSettingsPage;
 		private ToolListElement selectedElement;
 		private ToolListContentProvider listprovider;
 		private Object propertyObject;
-		
+
 		private IResourceInfo fInfo;
 		
+		@Override
 		public void createControls(Composite par)  {
 			super.createControls(par);
 			usercomp.setLayout(new GridLayout());
 
-			configToPageListMap = new HashMap();
+			configToPageListMap = new HashMap<String, List<AbstractToolSettingUI>>();
 			settingsStore = ToolSettingsPrefStore.getDefault();
 			
 			// Create the sash form
@@ -96,29 +95,33 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 			sashForm.setLayout(layout);
 			createSelectionArea(sashForm);
 			createEditArea(sashForm);
-			sashForm.setWeights(DEFAULT_SASH_WEIGHTS);
-			sashForm.addListener(SWT.Selection, new Listener() {
-				public void handleEvent(Event event) {
-					if (event.detail == SWT.DRAG) return;
-					int shift = event.x - sashForm.getBounds().x;
-					GridData data = (GridData) containerSC.getLayoutData();
-					if ((data.widthHint + shift) < 20) return;
-					Point computedSize = usercomp.getShell().computeSize(SWT.DEFAULT, SWT.DEFAULT);
-					Point currentSize = usercomp.getShell().getSize();
-					boolean customSize = !computedSize.equals(currentSize);
-					data.widthHint = data.widthHint;
-					sashForm.layout(true);
-					computedSize = usercomp.getShell().computeSize(SWT.DEFAULT, SWT.DEFAULT);
-					if (customSize)
-						computedSize.x = Math.max(computedSize.x, currentSize.x);
-					computedSize.y = Math.max(computedSize.y, currentSize.y);
-					if (computedSize.equals(currentSize)) {
-						return;
-					}
-				}
-			});
+			
+			usercomp.addControlListener(new ControlAdapter() {
+				@Override
+				public void controlResized(ControlEvent e) {
+					specificResize();
+				}});
+			
 			propertyObject = page.getElement();
 			setValues();
+		}
+		
+		private void specificResize() {
+			Point p1 = optionList.getTree().computeSize(-1, -1);
+			Point p2 = optionList.getTree().getSize();
+			Point p3 = usercomp.getSize();
+			p1.x += calcExtra();
+			if (p3.x >= p1.x && (p1.x < p2.x || (p2.x * 2 < p3.x))) {
+				optionList.getTree().setSize(p1.x , p2.y);
+				sashForm.setWeights(new int[] {p1.x, (p3.x - p1.x)});
+			} 
+		}
+		
+		private int calcExtra() {
+			int x = optionList.getTree().getBorderWidth() * 2;
+			ScrollBar sb = optionList.getTree().getVerticalBar();
+			if (sb != null) x += sb.getSize().x;
+			return x;
 		}
 		
 		protected void createSelectionArea (Composite parent) {
@@ -126,11 +129,11 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 			optionList.addSelectionChangedListener(new ISelectionChangedListener() {
 				public void selectionChanged(SelectionChangedEvent event) {
 					handleOptionSelection();
-				}
-			});
+				}});
 			optionList.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
 			optionList.setLabelProvider(new ToolListLabelProvider());
 			optionList.addFilter(new ViewerFilter() {
+				@Override
 				public boolean select(Viewer viewer,
 										Object parent,
 										Object element) {
@@ -157,18 +160,22 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 			currentSettingsPage = null;
 
 			// Create a new settings page if necessary
-			List pages = getPagesForConfig();
-			ListIterator iter = pages.listIterator();
+			List<AbstractToolSettingUI> pages = getPagesForConfig();
+			ListIterator<AbstractToolSettingUI> iter = pages.listIterator();
 			
 			while (iter.hasNext()) {
-				AbstractToolSettingUI page = (AbstractToolSettingUI) iter.next();
+				AbstractToolSettingUI page = iter.next();
 				if (page.isFor(optionHolder, category)) {
 					currentSettingsPage = page;
 					break;
 				}
 			}
 			if (currentSettingsPage == null) {
-				currentSettingsPage = new BuildOptionSettingsUI(this, fInfo, optionHolder, category);
+				currentSettingsPage = new BuildOptionSettingsUI(
+						this, 
+						fInfo, 
+						optionHolder, 
+						category);
 				pages.add(currentSettingsPage);
 				currentSettingsPage.setContainer(this);
 				if (currentSettingsPage.getControl() == null) {
@@ -207,10 +214,10 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 			currentSettingsPage = null;
 
 			// Create a new page if we need one
-			List pages = getPagesForConfig();
-			ListIterator iter = pages.listIterator();
+			List<AbstractToolSettingUI> pages = getPagesForConfig();
+			ListIterator<AbstractToolSettingUI> iter = pages.listIterator();
 			while (iter.hasNext()) {
-				AbstractToolSettingUI page = (AbstractToolSettingUI) iter.next();
+				AbstractToolSettingUI page = iter.next();
 				if (page.isFor(tool, null)) {
 					currentSettingsPage = page;
 					break;
@@ -267,6 +274,7 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 			settingsPageContainer.layout();
 		}
 
+		@Override
 		public void setVisible(boolean visible){
 			if(visible){
 				selectedElement = null;
@@ -311,7 +319,7 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 			}
 				
 			if (selectedElement == null) {
-				selectedElement = (ToolListElement)(newElements != null && newElements.length > 0 ? newElements[0] : null);
+				selectedElement = (newElements != null && newElements.length > 0 ? newElements[0] : null);
 			}
 				
 			if (selectedElement != null) {
@@ -326,6 +334,7 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 					optionList.setSelection(new StructuredSelection(selectedElement), true);
 				}
 			}
+			specificResize();
 		}
 							
 		private ToolListElement matchSelectionElement(ToolListElement currentElement, ToolListElement[] elements) {
@@ -381,6 +390,13 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 				} else {
 					displayOptionsForTool(toolListElement);
 				}
+				
+				ScrollBar sb = containerSC.getHorizontalBar();
+				if (sb != null && sb.isVisible()) {
+					settingsPageContainer.pack(true);
+					containerSC.setMinSize(settingsPageContainer.getSize());
+					((AbstractPage)page).resize();
+				}
 			}
 		}
 
@@ -388,13 +404,12 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 		 *  (non-Javadoc)
 		 * @see org.eclipse.cdt.ui.dialogs.ICOptionPage#performDefaults()
 		 */
-		public void performDefaults() {
+		@Override
+		protected void performDefaults() {
 			if (page.isForProject()) {
 				ManagedBuildManager.resetConfiguration(page.getProject(), getCfg());
 			} else {
-//				ManagedBuildManager.resetResourceConfiguration(provider.getProject(), );
-//				ManagedBuildManager.performValueHandlerEvent(fInfo, IManagedOptionValueHandler.EVENT_SETDEFAULT);
-
+				ManagedBuildManager.resetOptionSettings(fInfo);
 			}
 			ITool tools[];
 			if (page.isForProject()) 
@@ -432,6 +447,7 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 			}
 		}
 
+		@SuppressWarnings("unchecked")
 		private void setOption(IOption op1, IOption op2, IHoldsOptions dst, IResourceInfo res){
 			try {
 				switch (op1.getValueType()) {
@@ -463,7 +479,7 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 					case IOption.UNDEF_LIBRARY_PATHS:
 					case IOption.UNDEF_LIBRARY_FILES:
 					case IOption.UNDEF_MACRO_FILES:
-						String[] data = (String[])((List)op1.getValue()).toArray(new String[0]);
+						String[] data = ((List<String>)op1.getValue()).toArray(new String[0]);
 						ManagedBuildManager.setOption(res, dst, op2, data);
 						break;
 					default :
@@ -524,11 +540,11 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 		/* (non-Javadoc)
 		 * Answers the list of settings pages for the selected configuration 
 		 */
-		private List getPagesForConfig() {
+		private List<AbstractToolSettingUI> getPagesForConfig() {
 			if (getCfg() == null) return null;
-			List pages = (List) configToPageListMap.get(getCfg().getId());
+			List<AbstractToolSettingUI> pages = configToPageListMap.get(getCfg().getId());
 			if (pages == null) {
-				pages = new ArrayList();
+				pages = new ArrayList<AbstractToolSettingUI>();
 				configToPageListMap.put(getCfg().getId(), pages);	
 			}
 			return pages;
@@ -542,11 +558,11 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 		 * Sets the "dirty" state
 		 */
 		public void setDirty(boolean b) {
-			List pages = getPagesForConfig();
+			List<AbstractToolSettingUI> pages = getPagesForConfig();
 			if (pages == null) return;
-			ListIterator iter = pages.listIterator();
+			ListIterator<AbstractToolSettingUI> iter = pages.listIterator();
 			while (iter.hasNext()) {
-				AbstractToolSettingUI page = (AbstractToolSettingUI) iter.next();
+				AbstractToolSettingUI page = iter.next();
 				if (page == null) continue;
 				page.setDirty(b);
 			}
@@ -557,15 +573,15 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 		 */
 		public boolean isDirty() {
 			// Check each settings page
-			List pages = getPagesForConfig();
+			List<AbstractToolSettingUI> pages = getPagesForConfig();
 			// Make sure we have something to work on
 			if (pages == null) {
 				// Nothing to do
 				return false;
 			}
-			ListIterator iter = pages.listIterator();
+			ListIterator<AbstractToolSettingUI> iter = pages.listIterator();
 			while (iter.hasNext()) {
-				AbstractToolSettingUI page = (AbstractToolSettingUI) iter.next();
+				AbstractToolSettingUI page = iter.next();
 				if (page == null) continue;
 				if (page.isDirty()) return true;
 			}
@@ -584,12 +600,14 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 			return (BuildMacroProvider)ManagedBuildManager.getBuildMacroProvider();
 		}
 	
+	@Override
 	public void updateData(ICResourceDescription cfgd) {
-		handleOptionSelection();
-		fInfo = getResCfg(cfgd);
-		setValues();
+			fInfo = getResCfg(cfgd);
+			setValues();
+			handleOptionSelection();
 	}
 
+	@Override
 	protected void performApply(ICResourceDescription src, ICResourceDescription dst) {
 		IResourceInfo ri1 = getResCfg(src);
 		IResourceInfo ri2 = getResCfg(dst);
@@ -609,11 +627,17 @@ public class ToolSettingsTab extends AbstractCBuildPropertyTab implements IPrefe
 	}
 
 	// IPreferencePageContainer methods
+	@Override
 	public void updateButtons() {}
 	public void updateMessage() {}
 	public void updateTitle() {}
 
+	@Override
 	public boolean canBeVisible() {
-		return getCfg().getBuilder().isManagedBuildOn();
+		IConfiguration cfg = getCfg();
+		if (cfg instanceof MultiConfiguration) 
+			return ((MultiConfiguration)cfg).isManagedBuildOn();
+		else	
+			return cfg.getBuilder().isManagedBuildOn();
 	}
 }

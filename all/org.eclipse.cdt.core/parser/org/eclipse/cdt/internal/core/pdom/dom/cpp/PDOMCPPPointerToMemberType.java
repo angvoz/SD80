@@ -13,19 +13,22 @@
 package org.eclipse.cdt.internal.core.pdom.dom.cpp;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPPointerToMemberType;
-import org.eclipse.cdt.internal.core.index.IIndexType;
+import org.eclipse.cdt.internal.core.index.IIndexCPPBindingConstants;
+import org.eclipse.cdt.internal.core.index.PointerTypeClone;
 import org.eclipse.cdt.internal.core.pdom.PDOM;
 import org.eclipse.cdt.internal.core.pdom.db.Database;
+import org.eclipse.cdt.internal.core.pdom.dom.PDOMLinkage;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMNode;
 import org.eclipse.cdt.internal.core.pdom.dom.PDOMPointerType;
 import org.eclipse.core.runtime.CoreException;
 
-class PDOMCPPPointerToMemberType extends PDOMPointerType 
-implements ICPPPointerToMemberType, IIndexType {
+class PDOMCPPPointerToMemberType extends PDOMPointerType implements ICPPPointerToMemberType {
 
 	private static final int TYPE = PDOMPointerType.RECORD_SIZE;
+	@SuppressWarnings("hiding")
 	private static final int RECORD_SIZE= TYPE+4;
 
 	public PDOMCPPPointerToMemberType(PDOM pdom, int record) {
@@ -37,7 +40,7 @@ implements ICPPPointerToMemberType, IIndexType {
 		Database db = pdom.getDB();
 		
 		// type
-		ICPPClassType ct = type.getMemberOfClass();
+		IType ct = type.getMemberOfClass();
 		int typeRec = 0;
 		if (ct != null) {
 			PDOMNode targetTypeNode = getLinkageImpl().addType(this, ct);
@@ -47,12 +50,14 @@ implements ICPPPointerToMemberType, IIndexType {
 		db.putInt(record + TYPE, typeRec);
 	}
 
+	@Override
 	protected int getRecordSize() {
 		return RECORD_SIZE;
 	}
 
+	@Override
 	public int getNodeType() {
-		return PDOMCPPLinkage.CPP_POINTER_TO_MEMBER_TYPE;
+		return IIndexCPPBindingConstants.CPP_POINTER_TO_MEMBER_TYPE;
 	}
 
 	public ICPPClassType getMemberOfClass() {
@@ -68,19 +73,27 @@ implements ICPPPointerToMemberType, IIndexType {
 		return null;
 	}
 	
+	@Override
 	public Object clone() {
 		return new PDOMCPPPointerToMemberTypeClone(this);
 	}
 	
-	private static class PDOMCPPPointerToMemberTypeClone extends PDOMPointerType.PDOMPointerTypeClone implements ICPPPointerToMemberType {
+	private static class PDOMCPPPointerToMemberTypeClone extends PointerTypeClone implements ICPPPointerToMemberType {
 		public PDOMCPPPointerToMemberTypeClone(ICPPPointerToMemberType pointer) {
 			super(pointer);
 		}
-		public ICPPClassType getMemberOfClass() {
-			return ((ICPPPointerToMemberType)delegate).getMemberOfClass();
+		public IType getMemberOfClass() {
+			return ((ICPPPointerToMemberType) delegate).getMemberOfClass();
 		}
+		@Override
 		public Object clone() {
-			return new PDOMCPPPointerToMemberTypeClone(this);
+			return new PDOMCPPPointerToMemberTypeClone((ICPPPointerToMemberType) delegate);
 		}
+	}
+	
+	@Override
+	public void delete(PDOMLinkage linkage) throws CoreException {
+		linkage.deleteType(getMemberOfClass(), record);
+		super.delete(linkage);
 	}
 }

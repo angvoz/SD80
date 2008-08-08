@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,228 +8,50 @@
  * Contributors:
  *     Anton Leherbauer (Wind River Systems) - initial API and implementation
  *     Sergey Prigogin, Google
+ *     Andrew Ferguson (Symbian)
+ *     Andrew Gvozdev
  *******************************************************************************/
 
 package org.eclipse.cdt.ui.tests.text;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 import junit.framework.Test;
-import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import org.eclipse.core.runtime.ILogListener;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Plugin;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.DefaultLineTracker;
 import org.eclipse.jface.text.Document;
-import org.eclipse.jface.text.DocumentCommand;
-import org.eclipse.jface.text.IAutoEditStrategy;
 import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.IRegion;
-import org.eclipse.jface.text.TextUtilities;
+import org.eclipse.jface.text.TabsToSpacesConverter;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.formatter.DefaultCodeFormatterConstants;
 import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.PreferenceConstants;
 import org.eclipse.cdt.ui.text.ICPartitions;
+import org.eclipse.cdt.ui.text.doctools.DefaultMultilineCommentAutoEditStrategy;
 
 import org.eclipse.cdt.internal.formatter.DefaultCodeFormatterOptions;
 
 import org.eclipse.cdt.internal.ui.text.CAutoIndentStrategy;
-import org.eclipse.cdt.internal.ui.text.CCommentAutoIndentStrategy;
 import org.eclipse.cdt.internal.ui.text.CTextTools;
 
 /**
  * Testing the auto indent strategies.
  */
-public class CAutoIndentTest extends TestCase {
+public class CAutoIndentTest extends AbstractAutoEditTest {
 
-	/**
-	 * Helper class to test the auto-edit strategies on a document.
-	 */
-	static class AutoEditTester {
-
-		private Map fStrategyMap = new HashMap();
-		private IDocument fDoc;
-		private String fPartitioning;
-		private int fCaretOffset;
-
-		public AutoEditTester(IDocument doc, String partitioning) {
-			super();
-			fDoc = doc;
-			fPartitioning = partitioning;
-		}
-
-		public void setAutoEditStrategy(String contentType, IAutoEditStrategy aes) {
-			fStrategyMap.put(contentType, aes);
-		}
-
-		public IAutoEditStrategy getAutoEditStrategy(String contentType) {
-			return (IAutoEditStrategy)fStrategyMap.get(contentType);
-		}
-
-		/**
-		 * Empties the document, and returns the caret to the origin (0,0)
-		 */
-		public void reset() {
-			try {
-				goTo(0,0);
-				fDoc.set("");
-			} catch(BadLocationException ble) {
-				fail(ble.getMessage());
-			}
-		}
-		
-		public void type(String text) throws BadLocationException {
-			for (int i = 0; i < text.length(); ++i) {
-				type(text.charAt(i));
-			}
-		}
-
-		public void type(char c) throws BadLocationException {
-			TestDocumentCommand command = new TestDocumentCommand(fCaretOffset, 0, new String(new char[] { c }));
-			customizeDocumentCommand(command);
-			fCaretOffset = command.exec(fDoc);
-		}
-
-		private void customizeDocumentCommand(TestDocumentCommand command) throws BadLocationException {
-			IAutoEditStrategy aes = getAutoEditStrategy(getContentType());
-			if (aes != null) {
-				aes.customizeDocumentCommand(fDoc, command);
-			}
-		}
-
-		public void type(int offset, String text) throws BadLocationException {
-			fCaretOffset = offset;
-			type(text);
-		}
-
-		public void type(int offset, char c) throws BadLocationException {
-			fCaretOffset = offset;
-			type(c);
-		}
-
-		public void paste(String text) throws BadLocationException {
-			TestDocumentCommand command = new TestDocumentCommand(fCaretOffset, 0, text);
-			customizeDocumentCommand(command);
-			fCaretOffset = command.exec(fDoc);
-		}
-
-		public void paste(int offset, String text) throws BadLocationException {
-			fCaretOffset = offset;
-			paste(text);
-		}
-
-		public void backspace(int n) throws BadLocationException {
-			for (int i = 0; i < n; ++i) {
-				backspace();
-			}
-		}
-		
-		public void backspace() throws BadLocationException {
-			TestDocumentCommand command = new TestDocumentCommand(fCaretOffset - 1, 1, ""); //$NON-NLS-1$
-			customizeDocumentCommand(command);
-			fCaretOffset = command.exec(fDoc);
-		}
-
-		public int getCaretOffset() {
-			return fCaretOffset;
-		}
-
-		public int setCaretOffset(int offset) {
-			fCaretOffset = offset;
-			if (fCaretOffset < 0)
-				fCaretOffset = 0;
-			else if (fCaretOffset > fDoc.getLength())
-				fCaretOffset = fDoc.getLength();
-			return fCaretOffset;
-		}
-		
-		/**
-		 * Moves caret right or left by the given number of characters.
-		 * 
-		 * @param shift Move distance.
-		 * @return New caret offset.
-		 */
-		public int moveCaret(int shift) {
-			return setCaretOffset(fCaretOffset + shift);
-		}
-		
-		public int goTo(int line) throws BadLocationException {
-			fCaretOffset = fDoc.getLineOffset(line);
-			return fCaretOffset;
-		}
-
-		public int goTo(int line, int column) throws BadLocationException {
-			if (column < 0 || column > fDoc.getLineLength(line)) {
-				throw new BadLocationException("No column " + column + " in line " + line); //$NON-NLS-1$ $NON-NLS-2$
-			}
-			fCaretOffset = fDoc.getLineOffset(line) + column;
-			return fCaretOffset;
-		}
-
-		public int getCaretLine() throws BadLocationException {
-			return fDoc.getLineOfOffset(fCaretOffset);
-		}
-
-		public int getCaretColumn() throws BadLocationException {
-			IRegion region = fDoc.getLineInformationOfOffset(fCaretOffset);
-			return fCaretOffset - region.getOffset();
-		}
-
-		public char getChar() throws BadLocationException {
-			return getChar(0);
-		}
-		
-		public char getChar(int i) throws BadLocationException {
-			return fDoc.getChar(fCaretOffset+i);
-		}
-		
-		public String getLine() throws BadLocationException {
-			return getLine(0);
-		}
-
-		public String getLine(int i) throws BadLocationException {
-			IRegion region = fDoc.getLineInformation(getCaretLine() + i);
-			return fDoc.get(region.getOffset(), region.getLength());
-		}
-
-		public String getContentType() throws BadLocationException {
-			return getContentType(0);
-		}
-
-		public String getContentType(int i) throws BadLocationException {
-			return TextUtilities.getContentType(fDoc, fPartitioning, fCaretOffset + i, false);
-		}
-	}
-
-	/**
-	 * A DocumentCommand with public constructor and exec method.
-	 */
-	static class TestDocumentCommand extends DocumentCommand {
-
-		public TestDocumentCommand(int offset, int length, String text) {
-			super();
-			doit = true;
-			this.text = text;
-
-			this.offset = offset;
-			this.length = length;
-
-			owner = null;
-			caretOffset = -1;
-		}
-
-		/**
-		 * Returns new caret position.
-		 */
-		public int exec(IDocument doc) throws BadLocationException {
-			doc.replace(offset, length, text);
-			return caretOffset != -1 ?
-						caretOffset :
-						offset + (text == null ? 0 : text.length());
-		}
-	}
-
-	private HashMap fOptions;
+	private HashMap<String, String> fOptions;
+	private List<IStatus> fStatusLog;
+	private ILogListener fLogListener;
 
 	
 	/**
@@ -249,12 +71,29 @@ public class CAutoIndentTest extends TestCase {
 //		shell.forceActive();
 //		shell.forceFocus();
 		fOptions= CCorePlugin.getOptions();
-	}
+
+		fStatusLog= Collections.synchronizedList(new ArrayList<IStatus>());
+		fLogListener= new ILogListener() {
+			public void logging(IStatus status, String plugin) {
+				if(!status.isOK()) {
+					fStatusLog.add(status);
+				}
+			}
+		};
+		final Plugin plugin = CUIPlugin.getDefault();
+		if (plugin != null) {
+			plugin.getLog().addLogListener(fLogListener);
+		}
+}
 	
 	/*
 	 * @see junit.framework.TestCase#tearDown()
 	 */
 	protected void tearDown() throws Exception {
+		final Plugin plugin = CUIPlugin.getDefault();
+		if (plugin != null) {
+			plugin.getLog().removeLogListener(fLogListener);
+		}
 		CCorePlugin.setOptions(fOptions);
 		super.tearDown();
 	}
@@ -264,8 +103,9 @@ public class CAutoIndentTest extends TestCase {
 		IDocument doc = new Document();
 		textTools.setupCDocument(doc);
 		AutoEditTester tester = new AutoEditTester(doc, ICPartitions.C_PARTITIONING);
+		
 		tester.setAutoEditStrategy(IDocument.DEFAULT_CONTENT_TYPE, new CAutoIndentStrategy(ICPartitions.C_PARTITIONING, null));
-		tester.setAutoEditStrategy(ICPartitions.C_MULTI_LINE_COMMENT, new CCommentAutoIndentStrategy());
+		tester.setAutoEditStrategy(ICPartitions.C_MULTI_LINE_COMMENT, new DefaultMultilineCommentAutoEditStrategy());
 		tester.setAutoEditStrategy(ICPartitions.C_PREPROCESSOR, new CAutoIndentStrategy(ICPartitions.C_PARTITIONING, null));
 		return tester;
 	}
@@ -360,7 +200,7 @@ public class CAutoIndentTest extends TestCase {
 	public void testCCommentAutoIndent() throws BadLocationException {
 		AutoEditTester tester = createAutoEditTester(); //$NON-NLS-1$
 		tester.type("/*\n"); //$NON-NLS-1$
-		assertEquals(ICPartitions.C_MULTI_LINE_COMMENT, tester.getContentType(-1));
+		assertEquals(ICPartitions.C_MULTI_LINE_COMMENT, tester.getContentType(tester.getCaretOffset()-1));
 		assertEquals(1, tester.getCaretLine());
 		assertEquals(3, tester.getCaretColumn());
 		assertEquals(" * ", tester.getLine()); //$NON-NLS-1$
@@ -426,6 +266,7 @@ public class CAutoIndentTest extends TestCase {
 	public void testBracketWithSemiColonInsertion() throws BadLocationException {
 		AutoEditTester tester = createAutoEditTester(); 
 		String[] kw= new String[] {"class", "union", "struct", "enum"};
+		String[] kw_inh= new String[] {"class", "union", "struct"};
 		String[] kw_anon= new String[] {"union", "struct", "enum"};
 
 		for(int i=0; i<kw.length; i++) {
@@ -438,8 +279,8 @@ public class CAutoIndentTest extends TestCase {
 		for(int i=0; i<kw.length; i++) {
 			tester.reset();
 
-			tester.type(kw[i]+" A {\n"); //$NON-NLS-1$
-			assertEquals(kw[i]+" A {\n\t\r\n};", tester.fDoc.get()); //$NON-NLS-1$
+			tester.type("\n\n\n"+kw[i]+" A {\n"); //$NON-NLS-1$
+			assertEquals("\n\n\n"+kw[i]+" A {\n\t\n};", tester.fDoc.get()); //$NON-NLS-1$
 		}
 		
 		for(int i=0; i<kw.length; i++) {		
@@ -461,11 +302,11 @@ public class CAutoIndentTest extends TestCase {
 		// this tests for a sensible behaviour for enums, although the
 		// code generated is invalid, its the user entered part that is
 		// the problem
-		for(int i=0; i<kw.length; i++) {		
+		for(int i=0; i<kw_inh.length; i++) {		
 			tester.reset();
 
-			tester.type("\n\n\n"+kw[i]+" A\n:\npublic B\n,\npublic C\n{\n"); //$NON-NLS-1$
-			assertEquals("\n\n\n"+kw[i]+" A\n:\n\tpublic B\n\t,\n\tpublic C\n\t{\n\t\n\t};", tester.fDoc.get()); //$NON-NLS-1$
+			tester.type("\n\n\n"+kw_inh[i]+" A\n:\npublic B\n,\npublic C\n{\n"); //$NON-NLS-1$
+			assertEquals("\n\n\n"+kw_inh[i]+" A\n:\n\tpublic B\n\t,\n\tpublic C\n\t{\n\t\t\n\t};", tester.fDoc.get()); //$NON-NLS-1$
 		}
 		
 		for(int i=0; i<kw.length; i++) {		
@@ -493,25 +334,34 @@ public class CAutoIndentTest extends TestCase {
 	public void testBracketInsertion() throws BadLocationException {
 		AutoEditTester tester = createAutoEditTester();
 		
-		tester.type("for (;;) {\n");
-		assertEquals("for (;;) {\n\t\r\n}", tester.fDoc.get()); //$NON-NLS-1$
+		tester.type("\nfor (;;) {\n");
+		assertEquals("\nfor (;;) {\n\t\n}", tester.fDoc.get()); //$NON-NLS-1$
 		
 		tester.reset();
-		tester.type("for /*class*/ (;;) {\n"); //$NON-NLS-1$
-		assertEquals("for /*class*/ (;;) {\n\t\r\n}", tester.fDoc.get()); //$NON-NLS-1$	
+		tester.type("\nfor /*class*/ (;;) {\n"); //$NON-NLS-1$
+		assertEquals("\nfor /*class*/ (;;) {\n\t\n}", tester.fDoc.get()); //$NON-NLS-1$	
 		
 		tester.reset();
-		tester.type("for (;;) /*class*/ {\n"); //$NON-NLS-1$
-		assertEquals("for (;;) /*class*/ {\n\t\r\n}", tester.fDoc.get()); //$NON-NLS-1$
+		tester.type("\nfor (;;) /*class*/ {\n"); //$NON-NLS-1$
+		assertEquals("\nfor (;;) /*class*/ {\n\t\n}", tester.fDoc.get()); //$NON-NLS-1$
 
 		tester.reset();
-		tester.type("int i[5]={\n"); //$NON-NLS-1$
-		assertEquals("int i[5]={\n\t\t\r\n};", tester.fDoc.get()); //$NON-NLS-1$
+		tester.type("\nint i[5]={\n"); //$NON-NLS-1$
+		assertEquals("\nint i[5]={\n\t\t\n};", tester.fDoc.get()); //$NON-NLS-1$
+	}
+
+	public void testBracketIndentForConstructorDefinition_Bug183814() throws BadLocationException {
+		DefaultCodeFormatterOptions whitesmiths= DefaultCodeFormatterOptions.getWhitesmithsSettings();
+		CCorePlugin.setOptions(new HashMap<String, String>(whitesmiths.getMap()));
+		AutoEditTester tester = createAutoEditTester(); //$NON-NLS-1$
+		
+		tester.type("Foo::Foo()\n{");
+		assertEquals("Foo::Foo()\n    {", tester.fDoc.get());
 	}
 	
 	public void testSmartPasteWhitesmiths_Bug180531() throws Exception {
 		DefaultCodeFormatterOptions whitesmiths= DefaultCodeFormatterOptions.getWhitesmithsSettings();
-		CCorePlugin.setOptions(new HashMap(whitesmiths.getMap()));
+		CCorePlugin.setOptions(new HashMap<String, String>(whitesmiths.getMap()));
 		AutoEditTester tester = createAutoEditTester(); //$NON-NLS-1$
 		
 		tester.type("A::~A()\n{");
@@ -524,6 +374,136 @@ public class CAutoIndentTest extends TestCase {
 		String copy= tester.fDoc.get();
 		tester.paste(copy);
 		assertEquals(copy+copy, tester.fDoc.get());
+	}
+	
+	public void testIndentInsideNamespaceDefinition_Bug188007() throws Exception {
+		AutoEditTester tester = createAutoEditTester();
+		
+		tester.type("namespace ns {\n");
+		assertEquals("", tester.getLine());
+		assertEquals(0, tester.getCaretColumn());
+		
+		DefaultCodeFormatterOptions defaultOptions= DefaultCodeFormatterOptions.getDefaultSettings();
+		defaultOptions.indent_body_declarations_compare_to_namespace_header= true;
+		CCorePlugin.setOptions(new HashMap<String, String>(defaultOptions.getMap()));
+		tester = createAutoEditTester();
+		
+		tester.type("namespace ns {\n");
+		assertEquals("\t", tester.getLine());
+		assertEquals(1, tester.getCaretColumn());
+	}
+	
+	public void testSmartPaste_Bug215310() throws Exception  {
+		AutoEditTester tester = createAutoEditTester(); //$NON-NLS-1$
+		
+		tester.type("#define S \\ \n");
+		tester.type("d\n");
+		tester.paste(
+			"class B : private A \n" + 
+			"{\n" + 
+			"};\n"
+		);
+		
+		assertNoError();
+	}
+
+	public void testAutoIndentDisabled_Bug219923() throws Exception  {
+		AutoEditTester tester = createAutoEditTester(); //$NON-NLS-1$
+		IPreferenceStore store= PreferenceConstants.getPreferenceStore();
+		try {
+			store.setValue(PreferenceConstants.EDITOR_AUTO_INDENT, false);
+			tester.type("void main() {\n"); //$NON-NLS-1$
+			assertEquals(1, tester.getCaretLine());
+			// Nested statement is not indented
+			assertEquals(0, tester.getCaretColumn());
+			// The brace was closed automatically.
+			assertEquals("}", tester.getLine(1)); //$NON-NLS-1$
+			tester.type('\t');
+			tester.type('\n');
+			// indent from previous line
+			assertEquals(1, tester.getCaretColumn());
+			tester.type('{');
+			tester.type('\n');
+			// indent from previous line
+			assertEquals(1, tester.getCaretColumn());
+			tester.type('}');
+			tester.type('\n');
+			// indent from previous line
+			assertEquals(1, tester.getCaretColumn());
+			tester.backspace();
+			tester.type('\n');
+			// indent from previous line
+			assertEquals(0, tester.getCaretColumn());
+		} finally {
+			store.setToDefault(PreferenceConstants.EDITOR_AUTO_INDENT);
+		}
+	}
+
+	public void testTabsAsSpaces_SmartIndentDisabled_Bug242707() throws Exception  {
+		HashMap<String, String> options = new HashMap<String, String>();
+		options.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		options.put(DefaultCodeFormatterConstants.FORMATTER_INDENTATION_SIZE, "3");
+		options.put(DefaultCodeFormatterConstants.FORMATTER_TAB_SIZE, "3");
+		DefaultCodeFormatterOptions defaultOptions= DefaultCodeFormatterOptions.getDefaultSettings();
+		defaultOptions.set(options);
+		CCorePlugin.setOptions(new HashMap<String, String>(defaultOptions.getMap()));
+		
+		IPreferenceStore store= PreferenceConstants.getPreferenceStore();
+		store.setValue(PreferenceConstants.EDITOR_SMART_TAB, false);
+		
+		AutoEditTester tester = createAutoEditTester();
+		
+		TabsToSpacesConverter tabToSpacesConverter = new TabsToSpacesConverter();
+		tabToSpacesConverter.setNumberOfSpacesPerTab(3);
+		tabToSpacesConverter.setLineTracker(new DefaultLineTracker());
+		tester.setTabsToSpacesConverter(tabToSpacesConverter);
+		
+		
+		try {
+			tester.type("void main() {\n"); //$NON-NLS-1$
+			assertEquals(1, tester.getCaretLine());
+			// Nested statement is indented
+			assertEquals(3, tester.getCaretColumn());
+			assertEquals("   ", tester.getLine(0)); //$NON-NLS-1$
+			// The brace was closed automatically.
+			assertEquals("}", tester.getLine(1)); //$NON-NLS-1$
+			tester.type('\t');
+			// Indent from previous line + expanded tab
+			assertEquals("      ", tester.getLine(0)); //$NON-NLS-1$
+			// Return normal indentation 
+			tester.backspace(3);
+			assertEquals("   ", tester.getLine(0)); //$NON-NLS-1$
+			tester.type("for (;;)\n");
+			// Check indentation under "for" operator
+			assertEquals("      ", tester.getLine(0)); //$NON-NLS-1$
+			// Remove all symbols on the line
+			tester.backspace(6);
+			assertEquals("", tester.getLine(0)); //$NON-NLS-1$
+			// Tabulation should not trigger autoindent, just 1 tab filled with spaces
+			tester.type("\t");
+			assertEquals("   ", tester.getLine(0)); //$NON-NLS-1$
+			tester.type("\t");
+			// Check one more tab
+			assertEquals("      ", tester.getLine(0)); //$NON-NLS-1$
+			// Clean the line to repeat 2 last entries but with spaces
+			tester.backspace(6);
+			assertEquals("", tester.getLine(0)); //$NON-NLS-1$
+			// 1-st sequence of spaces
+			tester.type("     ");
+			assertEquals("     ", tester.getLine(0)); //$NON-NLS-1$
+			// 2-nd sequence of spaces
+			tester.type("     ");
+			assertEquals("          ", tester.getLine(0)); //$NON-NLS-1$
+			
+		} finally {
+			store.setToDefault(PreferenceConstants.EDITOR_SMART_TAB);
+		}
+	}
+	
+	private void assertNoError() {
+		if (!fStatusLog.isEmpty()) {
+			fail(fStatusLog.get(0).toString());
+		}
 	}
 }
 

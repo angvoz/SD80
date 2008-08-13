@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2006 QNX Software Systems and others.
+ * Copyright (c) 2006, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX - Initial API and implementation
+ *   QNX - Initial API and implementation
+ *   IBM Corporation
  *******************************************************************************/
 
 package org.eclipse.cdt.internal.ui.search;
@@ -16,12 +17,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.regex.PatternSyntaxException;
 
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.ICElement;
-import org.eclipse.cdt.core.model.ICProject;
-import org.eclipse.cdt.internal.ui.ICHelpContextIds;
-import org.eclipse.cdt.internal.ui.util.RowLayouter;
-import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.jface.action.IStatusLineManager;
@@ -45,8 +40,10 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IViewSite;
 import org.eclipse.ui.IWorkbenchPage;
@@ -54,6 +51,15 @@ import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.IWorkingSet;
 import org.eclipse.ui.PlatformUI;
+
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICElement;
+import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.ui.CUIPlugin;
+
+import org.eclipse.cdt.internal.ui.ICHelpContextIds;
+import org.eclipse.cdt.internal.ui.util.Messages;
+import org.eclipse.cdt.internal.ui.util.RowLayouter;
 
 /**
  * @author Doug Schaefer
@@ -75,18 +81,18 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
     public final static String EXTERNALMATCH_VISIBLE = "externMatchVisible"; //$NON-NLS-1$
 
 	private static final String[] searchForText= {
-		CSearchMessages.getString("CSearchPage.searchFor.classStruct"), //$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.function"),	//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.variable"), 	//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.union"),		//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.method"), 		//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.field"),		//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.enum"),		//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.enumr"),		//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.namespace"),	//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.typedef"),	//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.macro"),	//$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.searchFor.any") 		//$NON-NLS-1$
+		CSearchMessages.CSearchPage_searchFor_classStruct, 
+		CSearchMessages.CSearchPage_searchFor_function,	
+		CSearchMessages.CSearchPage_searchFor_variable, 	
+		CSearchMessages.CSearchPage_searchFor_union,		
+		CSearchMessages.CSearchPage_searchFor_method, 		
+		CSearchMessages.CSearchPage_searchFor_field,		
+		CSearchMessages.CSearchPage_searchFor_enum,		
+		CSearchMessages.CSearchPage_searchFor_enumr,		
+		CSearchMessages.CSearchPage_searchFor_namespace,	
+		CSearchMessages.CSearchPage_searchFor_typedef,	
+		CSearchMessages.CSearchPage_searchFor_macro,	
+		CSearchMessages.CSearchPage_searchFor_any
 	};
 
 	// These must be in the same order as the Text
@@ -109,10 +115,10 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 	private static final int searchAllButtonIndex = searchForData.length - 1;
 
 	private static String[] limitToText = {
-		CSearchMessages.getString("CSearchPage.limitTo.declarations"), //$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.limitTo.definitions"), //$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.limitTo.references"), //$NON-NLS-1$
-		CSearchMessages.getString("CSearchPage.limitTo.allOccurrences") //$NON-NLS-1$
+		CSearchMessages.CSearchPage_limitTo_declarations, 
+		CSearchMessages.CSearchPage_limitTo_definitions, 
+		CSearchMessages.CSearchPage_limitTo_references, 
+		CSearchMessages.CSearchPage_limitTo_allOccurrences
 	};
 
 	// Must be in the same order as the text
@@ -175,13 +181,13 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 	    }
 	    
 		// get the list of elements for the scope
-		List elements = new ArrayList();
+		List<Object> elements = new ArrayList<Object>();
 		String scopeDescription = ""; //$NON-NLS-1$
 		switch (getContainer().getSelectedScope()) {
 		case ISearchPageContainer.SELECTED_PROJECTS_SCOPE:
 			if (structuredSelection != null) {
-				scopeDescription = CSearchMessages.getString("ProjectScope"); //$NON-NLS-1$
-				for (Iterator i = structuredSelection.iterator(); i.hasNext();) {
+				scopeDescription = CSearchMessages.ProjectScope; 
+				for (Iterator<?> i = structuredSelection.iterator(); i.hasNext();) {
 					ICProject project = getProject(i.next());
 					if (project != null)
 						elements.add(project);
@@ -190,8 +196,8 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 			break;
 		case ISearchPageContainer.SELECTION_SCOPE:
 			if( structuredSelection != null) {
-				scopeDescription = CSearchMessages.getString("SelectionScope"); //$NON-NLS-1$
-				for (Iterator i = structuredSelection.iterator(); i.hasNext();) {
+				scopeDescription = CSearchMessages.SelectionScope; 
+				for (Iterator<?> i = structuredSelection.iterator(); i.hasNext();) {
 					Object obj = i.next();
 					if (obj instanceof IResource)
 						elements.add(CoreModel.getDefault().create((IResource)obj));
@@ -202,12 +208,12 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 			}
 			break;
 		case ISearchPageContainer.WORKSPACE_SCOPE:
-			scopeDescription = CSearchMessages.getString("WorkspaceScope"); //$NON-NLS-1$
+			scopeDescription = CSearchMessages.WorkspaceScope; 
 			// Don't add anything
 			break;
 		case ISearchPageContainer.WORKING_SET_SCOPE:
 			IWorkingSet[] workingSets= getContainer().getSelectedWorkingSets();
-			scopeDescription = CSearchMessages.getFormattedString("WorkingSetScope", CSearchUtil.toString(workingSets)); //$NON-NLS-1$
+			scopeDescription = Messages.format(CSearchMessages.WorkingSetScope, CSearchUtil.toString(workingSets)); 
 			for (int i = 0; i < workingSets.length; ++i) {
 				IAdaptable[] wsElements = workingSets[i].getElements();
 				for (int j = 0; j < wsElements.length; ++j) {
@@ -222,7 +228,7 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 		ICElement[] scope
 			= elements.isEmpty()
 			? null
-			: (ICElement[])elements.toArray(new ICElement[elements.size()]);
+			: elements.toArray(new ICElement[elements.size()]);
 		
 		try {
 			PDOMSearchPatternQuery job = new PDOMSearchPatternQuery(scope, scopeDescription, patternStr, 
@@ -232,7 +238,7 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 		
 			NewSearchUI.runQueryInBackground(job);
 		} catch (PatternSyntaxException e) {
-			fLineManager.setErrorMessage(CSearchMessages.getString("PDOMSearch.query.pattern.error")); //$NON-NLS-1$
+			fLineManager.setErrorMessage(CSearchMessages.PDOMSearch_query_pattern_error); 
 			return false;
 		}
 		
@@ -327,7 +333,7 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 
 		// Pattern text + info
 		Label label = new Label( result, SWT.LEFT );
-		label.setText( CSearchMessages.getString( "CSearchPage.expression.label" ) ); //$NON-NLS-1$
+		label.setText( CSearchMessages.CSearchPage_expression_label ); 
 		gd = new GridData( GridData.BEGINNING );
 		gd.horizontalSpan = 2;
 		label.setLayoutData( gd );
@@ -335,6 +341,7 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 		// Pattern combo
 		patternCombo = new Combo( result, SWT.SINGLE | SWT.BORDER );
 		patternCombo.addSelectionListener( new SelectionAdapter() {
+			@Override
 			public void widgetSelected( SelectionEvent e ) {
 				//handlePatternSelected();
 			}
@@ -353,10 +360,11 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 
 		// Ignore case checkbox		
 		caseSensitiveButton= new Button(result, SWT.CHECK);
-		caseSensitiveButton.setText(CSearchMessages.getString("CSearchPage.expression.caseSensitive")); //$NON-NLS-1$
+		caseSensitiveButton.setText(CSearchMessages.CSearchPage_expression_caseSensitive); 
 		gd= new GridData();
 		caseSensitiveButton.setLayoutData(gd);
 		caseSensitiveButton.addSelectionListener( new SelectionAdapter() {
+			@Override
 			public void widgetSelected( SelectionEvent e ) {
 //				isCaseSensitive = caseSensitiveButton.getSelection();
 				setPerformActionEnabled();
@@ -368,16 +376,41 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 
 	private Control createLimitTo( Composite parent ) {
 		Group result = new Group(parent, SWT.NONE);
-		result.setText( CSearchMessages.getString("CSearchPage.limitTo.label") ); //$NON-NLS-1$
+		result.setText( CSearchMessages.CSearchPage_limitTo_label ); 
 		GridLayout layout = new GridLayout();
 		layout.numColumns = 2;
 		result.setLayout( layout );
 
+		Listener limitToListener = new Listener() {
+			public void handleEvent(Event event) {
+				Button me = (Button)event.widget;
+				if (me == limitToButtons[limitToAllButtonIndex]) {
+					if (me.getSelection()) {
+						for (int i = 0; i < limitToButtons.length; ++i) {
+							if (i != limitToAllButtonIndex) {
+								limitToButtons[i].setSelection(true);
+								limitToButtons[i].setEnabled(false);
+							}
+						}
+					} else {
+						for (int i = 0; i < limitToButtons.length; ++i) {
+							if (i != limitToAllButtonIndex) {
+								limitToButtons[i].setSelection(false);
+								limitToButtons[i].setEnabled(true);
+							}
+						}
+					}
+				}
+				setPerformActionEnabled();
+			}
+		};
+		
 		limitToButtons = new Button[limitToText.length];
 		for( int i = 0; i < limitToText.length; i++ ){
-			Button button = new Button(result, SWT.RADIO);
+			Button button = new Button(result, SWT.CHECK);
 			button.setText( limitToText[i] );
 			button.setData( limitToData[i] );
+			button.addListener(SWT.Selection, limitToListener);
 			limitToButtons[i] = button;
 		}
 
@@ -386,12 +419,13 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 	
 	private Control createSearchFor(Composite parent) {
 		Group result= new Group(parent, SWT.NONE);
-		result.setText(CSearchMessages.getString("CSearchPage.searchFor.label")); //$NON-NLS-1$
+		result.setText(CSearchMessages.CSearchPage_searchFor_label); 
 		GridLayout layout= new GridLayout();
 		layout.numColumns= 3;
 		result.setLayout(layout);
 		
 		SelectionAdapter searchForSelectionAdapter = new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent event) {
 				Button me = (Button)event.widget;
 				if (me == searchForButtons[searchAllButtonIndex]) {
@@ -463,6 +497,7 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 		return searchSettings;
 	}
 
+	@Override
 	public void setVisible(boolean visible) {
 		if (visible) {
 			if (firstTime) {
@@ -474,7 +509,7 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 				try {
 					searchFlags = settings.getInt(STORE_SEARCH_FLAGS);
 				} catch (NumberFormatException e) {
-					// Int was unitialized, assume the defaults
+					// was uninitialized, assume the defaults
 				}
 
 				previousPatterns = settings.getArray(STORE_PREVIOUS_PATTERNS);
@@ -561,9 +596,15 @@ public class PDOMSearchPage extends DialogPage implements ISearchPage {
 				
 				if ((searchFlags & PDOMSearchQuery.FIND_ALL_OCCURANCES) == PDOMSearchQuery.FIND_ALL_OCCURANCES) {
 					limitToButtons[limitToAllButtonIndex].setSelection(true);
+					for (int i = 0; i < limitToButtons.length; ++i) {
+						if (i != limitToAllButtonIndex) {
+							limitToButtons[i].setSelection(true);
+							limitToButtons[i].setEnabled(false);
+						}
+					}
 				} else {
 					limitToButtons[limitToAllButtonIndex].setSelection(false);
-					for (int i = 0; i < limitToButtons.length - 2; ++i) {
+					for (int i = 0; i < limitToButtons.length - 1; ++i) {
 						limitToButtons[i].setSelection(
 								(searchFlags & ((Integer)limitToButtons[i].getData()).intValue()) != 0);
 					}

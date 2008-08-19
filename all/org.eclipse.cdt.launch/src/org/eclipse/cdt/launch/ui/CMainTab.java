@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2006 QNX Software Systems and others.
+ * Copyright (c) 2005, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,8 @@
  *
  * Contributors:
  *     QNX Software Systems - initial API and implementation
+ *     Ken Ryall (Nokia) - bug 178731
+ *	   IBM Corporation
  *******************************************************************************/
 package org.eclipse.cdt.launch.ui;
 
@@ -22,12 +24,14 @@ import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.IBinary;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.launch.internal.ui.LaunchImages;
 import org.eclipse.cdt.launch.internal.ui.LaunchMessages;
 import org.eclipse.cdt.launch.internal.ui.LaunchUIPlugin;
 import org.eclipse.cdt.ui.CElementLabelProvider;
 import org.eclipse.cdt.utils.pty.PTY;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -286,7 +290,20 @@ public class CMainTab extends CLaunchConfigurationTab {
 	public void performApply(ILaunchConfigurationWorkingCopy config) {
 		ICProject cProject = this.getCProject();
 		if (cProject != null)
+		{
 			config.setMappedResources(new IResource[] { cProject.getProject() });
+			try { // Only initialize the build config ID once.
+				if (config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_BUILD_CONFIG_ID, "").length() == 0)//$NON-NLS-1$
+				{
+					ICProjectDescription projDes = CCorePlugin.getDefault().getProjectDescription(cProject.getProject());
+					if (projDes != null)
+					{
+						String buildConfigID = projDes.getActiveConfiguration().getId();
+						config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_BUILD_CONFIG_ID, buildConfigID);			
+					}				
+				}
+			} catch (CoreException e) { e.printStackTrace(); }
+		}
 		config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_NAME, fProjText.getText());
 		config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, fProgText.getText());
 		if (fTerminalButton != null) {
@@ -533,11 +550,20 @@ public class CMainTab extends CLaunchConfigurationTab {
 		}
 		IPath exePath = new Path(name);
 		if (!exePath.isAbsolute()) {
-			if (!project.getFile(name).exists()) {
+			IFile projFile = null;
+			try {
+				projFile = project.getFile(name);
+			}
+			catch (Exception exc) {
+				// throws an exception if it's a relative path pointing outside project
+				setErrorMessage(LaunchMessages.getString("CMainTab.Program_invalid_proj_path")); //$NON-NLS-1$
+				return false;
+			} 
+			if (projFile == null || !projFile.exists()) {
 				setErrorMessage(LaunchMessages.getString("CMainTab.Program_does_not_exist")); //$NON-NLS-1$
 				return false;
 			}
-			exePath = project.getFile(name).getLocation();
+			exePath = projFile.getLocation();
 		} else {
 			if (!exePath.toFile().exists()) {
 				setErrorMessage(LaunchMessages.getString("CMainTab.Program_does_not_exist")); //$NON-NLS-1$
@@ -617,6 +643,29 @@ public class CMainTab extends CLaunchConfigurationTab {
 	 * Set the program name attributes on the working copy based on the ICElement
 	 */
 	protected void initializeProgramName(ICElement cElement, ILaunchConfigurationWorkingCopy config) {
+
+		boolean renamed = false;
+
+		if (!(cElement instanceof IBinary))
+		{
+			cElement = cElement.getCProject();
+		}
+		
+		if (cElement instanceof ICProject) {
+
+			IProject project = cElement.getCProject().getProject();
+			String name = project.getName();
+			ICProjectDescription projDes = CCorePlugin.getDefault().getProjectDescription(project);
+			if (projDes != null) {
+				String buildConfigName = projDes.getActiveConfiguration().getName();
+				//bug 234951
+				name = LaunchMessages.getFormattedString("CMainTab.Configuration_name", new String[]{name, buildConfigName}); //$NON-NLS-1$
+			}
+			name = getLaunchConfigurationDialog().generateName(name);
+			config.rename(name);
+			renamed = true;
+		}
+
 		IBinary binary = null;
 		if (cElement instanceof ICProject) {
 			IBinary[] bins = getBinaryFiles((ICProject)cElement);
@@ -631,14 +680,21 @@ public class CMainTab extends CLaunchConfigurationTab {
 			String path;
 			path = binary.getResource().getProjectRelativePath().toOSString();
 			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, path);
-			String name = binary.getElementName();
-			int index = name.lastIndexOf('.');
-			if (index > 0) {
-				name = name.substring(0, index);
+			if (!renamed)
+			{
+				String name = binary.getElementName();
+				int index = name.lastIndexOf('.');
+				if (index > 0) {
+					name = name.substring(0, index);
+				}
+				name = getLaunchConfigurationDialog().generateName(name);
+				config.rename(name);
+				renamed = true;				
 			}
-			name = getLaunchConfigurationDialog().generateName(name);
-			config.rename(name);
-		} else {
+		}
+		
+		if (!renamed)
+		{
 			String name = getLaunchConfigurationDialog().generateName(cElement.getCProject().getElementName());
 			config.rename(name);
 		}

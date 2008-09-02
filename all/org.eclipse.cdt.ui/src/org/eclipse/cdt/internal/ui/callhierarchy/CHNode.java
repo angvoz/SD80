@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,7 +8,6 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.ui.callhierarchy;
 
 import java.util.ArrayList;
@@ -18,6 +17,7 @@ import java.util.List;
 import org.eclipse.core.runtime.IAdaptable;
 
 import org.eclipse.cdt.core.model.ICElement;
+import org.eclipse.cdt.core.model.IEnumerator;
 import org.eclipse.cdt.core.model.IMacro;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.model.IVariableDeclaration;
@@ -27,16 +27,18 @@ import org.eclipse.cdt.internal.ui.util.CoreUtility;
 /**
  * Represents a node in the include browser
  */
-public class CHNode implements IAdaptable {
+public class CHNode implements IAdaptable {	
 	private CHNode fParent;
 	private ICElement fRepresentedDecl;
 	private ITranslationUnit fFileOfReferences;
-    private List fReferences;
+    private List<CHReferenceInfo> fReferences;
     
-    private int fHashCode;
-    private boolean fIsRecursive;
+    protected int fHashCode;
     private long fTimestamp;
+    private boolean fIsRecursive;
 	private boolean fIsInitializer;
+	private boolean fIsReadAccess;
+	private boolean fIsWriteAccess;
 
     /**
      * Creates a new node for the include browser
@@ -44,7 +46,7 @@ public class CHNode implements IAdaptable {
     public CHNode(CHNode parent, ITranslationUnit fileOfReferences, long timestamp, ICElement decl) {
         fParent= parent;
         fFileOfReferences= fileOfReferences;
-        fReferences= Collections.EMPTY_LIST;
+        fReferences= Collections.emptyList();
         fRepresentedDecl= decl;
         fIsRecursive= computeIsRecursive(fParent, decl);
         fHashCode= computeHashCode();
@@ -52,7 +54,7 @@ public class CHNode implements IAdaptable {
     }
     
 	private int computeHashCode() {
-        int hashCode= 0;
+        int hashCode= 1;
         if (fParent != null) {
             hashCode= fParent.hashCode() * 31;
         }
@@ -62,11 +64,13 @@ public class CHNode implements IAdaptable {
         return hashCode;
     }   
 
-    public int hashCode() {
+    @Override
+	public int hashCode() {
         return fHashCode;
     }
     
-    public boolean equals(Object o) {
+    @Override
+	public boolean equals(Object o) {
 		if (!(o instanceof CHNode)) {
 			return false;
 		}
@@ -106,7 +110,7 @@ public class CHNode implements IAdaptable {
 	}
 	
 	public CHReferenceInfo getReference(int idx) {
-		return (CHReferenceInfo) fReferences.get(idx);
+		return fReferences.get(idx);
 	}
 	
 	public ICElement getRepresentedDeclaration() {
@@ -121,8 +125,9 @@ public class CHNode implements IAdaptable {
 		return fRepresentedDecl instanceof IMacro;
 	}
 
-	public boolean isVariable() {
-		return fRepresentedDecl instanceof IVariableDeclaration;
+	public boolean isVariableOrEnumerator() {
+		return fRepresentedDecl instanceof IVariableDeclaration ||
+			fRepresentedDecl instanceof IEnumerator;
 	}
 	
 	public int getFirstReferenceOffset() {
@@ -135,7 +140,7 @@ public class CHNode implements IAdaptable {
 			fReferences= Collections.singletonList(info);
 			return;
 		case 1:
-			fReferences= new ArrayList(fReferences);
+			fReferences= new ArrayList<CHReferenceInfo>(fReferences);
 			break;
 		}
 		fReferences.add(info);
@@ -145,6 +150,7 @@ public class CHNode implements IAdaptable {
 		return fFileOfReferences;
 	}
 
+	@SuppressWarnings("unchecked")
 	public Object getAdapter(Class adapter) {
 		if (adapter.isAssignableFrom(ICElement.class)) {
 			return getRepresentedDeclaration();
@@ -172,5 +178,18 @@ public class CHNode implements IAdaptable {
 		if (fReferences.size() > 1) {
 			Collections.sort(fReferences, CHReferenceInfo.COMPARE_OFFSET);
 		}
+	}
+
+	public void setRWAccess(boolean readAccess, boolean writeAccess) {
+		fIsReadAccess= readAccess;
+		fIsWriteAccess= writeAccess;
+	}
+
+	public boolean isReadAccess() {
+		return fIsReadAccess;
+	}
+
+	public boolean isWriteAccess() {
+		return fIsWriteAccess;
 	}
 }

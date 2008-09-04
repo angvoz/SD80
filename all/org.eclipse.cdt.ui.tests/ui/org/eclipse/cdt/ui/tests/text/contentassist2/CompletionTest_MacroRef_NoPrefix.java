@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2007 IBM Corporation and others.
+ * Copyright (c) 2007, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM Rational Software - Initial API and implementation
+ *    IBM Rational Software - Initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.ui.tests.text.contentassist2;
 import junit.framework.Test;
@@ -30,10 +30,22 @@ public class CompletionTest_MacroRef_NoPrefix  extends CompletionProposalsBaseTe
 			"AMacro(x)",
 			"DEBUG",
 			"XMacro(x, y)",
+			"__CDT_PARSER__",
 			"__DATE__",
 			"__FILE__",
 			"__LINE__",
-			"__TIME__"
+			"__STDC__",
+			"__TIME__",
+			"__builtin_constant_p(exp)",
+			"__builtin_types_compatible_p(x, y)",
+			"__builtin_va_arg(ap, type)",
+			"__complex__",
+			"__cplusplus",
+			"__extension__",
+			"__imag__",
+			"__null",
+			"__real__",
+			"__stdcall",
 	};
 	
 	public CompletionTest_MacroRef_NoPrefix(String name) {
@@ -49,6 +61,7 @@ public class CompletionTest_MacroRef_NoPrefix  extends CompletionProposalsBaseTe
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.codeassist.tests.CompletionProposalsTest#getCompletionPosition()
 	 */
+	@Override
 	protected int getCompletionPosition() {
 		return getBuffer().indexOf("#ifdef ") + 7;
 	}
@@ -56,6 +69,7 @@ public class CompletionTest_MacroRef_NoPrefix  extends CompletionProposalsBaseTe
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.codeassist.tests.CompletionProposalsTest#getExpectedPrefix()
 	 */
+	@Override
 	protected String getExpectedPrefix() {
 		return expectedPrefix;
 	}
@@ -63,6 +77,7 @@ public class CompletionTest_MacroRef_NoPrefix  extends CompletionProposalsBaseTe
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.codeassist.tests.CompletionProposalsTest#getExpectedResultsValues()
 	 */
+	@Override
 	protected String[] getExpectedResultsValues() {
 		return expectedResults;
 	}
@@ -70,6 +85,7 @@ public class CompletionTest_MacroRef_NoPrefix  extends CompletionProposalsBaseTe
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.codeassist.tests.CompletionProposalsTest#getFileName()
 	 */
+	@Override
 	protected String getFileName() {
 		return fileName;
 	}
@@ -77,12 +93,14 @@ public class CompletionTest_MacroRef_NoPrefix  extends CompletionProposalsBaseTe
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.codeassist.tests.CompletionProposalsTest#getFileFullPath()
 	 */
+	@Override
 	protected String getFileFullPath() {
 		return fileFullPath;
 	}
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.codeassist.tests.CompletionProposalsTest#getHeaderFileFullPath()
 	 */
+	@Override
 	protected String getHeaderFileFullPath() {
 		return headerFileFullPath;
 	}
@@ -90,6 +108,7 @@ public class CompletionTest_MacroRef_NoPrefix  extends CompletionProposalsBaseTe
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.codeassist.tests.CompletionProposalsTest#getHeaderFileName()
 	 */
+	@Override
 	protected String getHeaderFileName() {
 		return headerFileName;
 	}

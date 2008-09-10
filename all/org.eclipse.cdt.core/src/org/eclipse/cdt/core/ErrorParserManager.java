@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2006 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.core;
 
@@ -14,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -29,10 +31,10 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceProxy;
 import org.eclipse.core.resources.IResourceProxyVisitor;
 import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Platform;
 
 public class ErrorParserManager extends OutputStream {
 
@@ -43,13 +45,13 @@ public class ErrorParserManager extends OutputStream {
 
 	private IProject fProject;
 	private IMarkerGenerator fMarkerGenerator;
-	private Map fFilesInProject;
-	private List fNameConflicts;
+	// Maps a file name without directory to a IFile object or a list of a IFile objects. 
+	private Map<String, Object> fFilesInProject;	// Files or lists of files keyed by the file name
 
-	private Map fErrorParsers;
-	private ArrayList fErrors;
+	private Map<String, IErrorParser[]> fErrorParsers;
+	private ArrayList<ProblemMarkerInfo> fErrors;
 
-	private Vector fDirectoryStack;
+	private Vector<IPath> fDirectoryStack;
 	private IPath fBaseDirectory;
 
 	private String previousLine;
@@ -60,10 +62,6 @@ public class ErrorParserManager extends OutputStream {
 	
 	private boolean hasErrors = false;
 
-	// Cygpath helpers
-	private CygPath cygpath;
-	private boolean cygpathInstalled = Platform.getOS().equals(Platform.OS_WIN32);
-	
 	public ErrorParserManager(ACBuilder builder) {
 		this(builder.getProject(), builder);
 	}
@@ -81,10 +79,10 @@ public class ErrorParserManager extends OutputStream {
 		if (parsersIDs == null) {
 			enableAllParsers();
 		} else {
-			fErrorParsers = new LinkedHashMap(parsersIDs.length);
-			for (int i = 0; i < parsersIDs.length; i++) {
-				IErrorParser[] parsers = CCorePlugin.getDefault().getErrorParser(parsersIDs[i]);
-				fErrorParsers.put(parsersIDs[i], parsers);
+			fErrorParsers = new LinkedHashMap<String, IErrorParser[]>(parsersIDs.length);
+			for (String parsersID : parsersIDs) {
+				IErrorParser[] parsers = CCorePlugin.getDefault().getErrorParser(parsersID);
+				fErrorParsers.put(parsersID, parsers);
 			}
 		}
 		fMarkerGenerator = markerGenerator;
@@ -92,20 +90,30 @@ public class ErrorParserManager extends OutputStream {
 	}
 
 	private void initErrorParserManager(IPath workingDirectory) {
-		fFilesInProject = new HashMap();
-		fNameConflicts = new ArrayList();
-		fDirectoryStack = new Vector();
-		fErrors = new ArrayList();
+		fFilesInProject = new HashMap<String, Object>();
+		fDirectoryStack = new Vector<IPath>();
+		fErrors = new ArrayList<ProblemMarkerInfo>();
 
-		List collectedFiles = new ArrayList();
+		List<IResource> collectedFiles = new ArrayList<IResource>();
 		fBaseDirectory = (workingDirectory == null || workingDirectory.isEmpty()) ? fProject.getLocation() : workingDirectory;
 		collectFiles(fProject, collectedFiles);
 
 		for (int i = 0; i < collectedFiles.size(); i++) {
 			IFile file = (IFile) collectedFiles.get(i);
-			Object existing = fFilesInProject.put(file.getName(), file);
+			String filename = file.getName();
+			Object existing = fFilesInProject.put(filename, file);
 			if (existing != null) {
-				fNameConflicts.add(file.getName());
+				Collection<IFile> files;
+				if (existing instanceof IFile) {
+					files = new ArrayList<IFile>();
+					files.add((IFile) existing);
+				} else {
+					@SuppressWarnings("unchecked")
+					final Collection<IFile> casted = (Collection<IFile>) existing;
+					files = casted;
+				}
+				files.add(file);
+				fFilesInProject.put(filename, files);
 			}
 		}
 	}
@@ -116,9 +124,9 @@ public class ErrorParserManager extends OutputStream {
 	
 	public IPath getWorkingDirectory() {
 		if (fDirectoryStack.size() != 0) {
-			return (IPath) fDirectoryStack.lastElement();
+			return fDirectoryStack.lastElement();
 		}
-		// Fallback to the Project Location
+		// Fall back to the Project Location
 		return fBaseDirectory;
 	}
 
@@ -138,7 +146,7 @@ public class ErrorParserManager extends OutputStream {
 	public IPath popDirectory() {
 		int i = fDirectoryStack.size();
 		if (i != 0) {
-			IPath dir = (IPath) fDirectoryStack.lastElement();
+			IPath dir = fDirectoryStack.lastElement();
 			fDirectoryStack.removeElementAt(i - 1);
 			return dir;
 		}
@@ -150,11 +158,11 @@ public class ErrorParserManager extends OutputStream {
 	}
 
 	private void enableAllParsers() {
-		fErrorParsers = new LinkedHashMap();
+		fErrorParsers = new LinkedHashMap<String, IErrorParser[]>();
 		String[] parserIDs = CCorePlugin.getDefault().getAllErrorParsersIDs();
-		for (int i = 0; i < parserIDs.length; i++) {
-			IErrorParser[] parsers = CCorePlugin.getDefault().getErrorParser(parserIDs[i]);
-			fErrorParsers.put(parserIDs[i], parsers);
+		for (String parserID : parserIDs) {
+			IErrorParser[] parsers = CCorePlugin.getDefault().getErrorParser(parserID);
+			fErrorParsers.put(parserID, parsers);
 		}
 		if (fErrorParsers.size() == 0) {
 			initErrorParsersMap();
@@ -164,16 +172,16 @@ public class ErrorParserManager extends OutputStream {
 
 	private void initErrorParsersMap() {
 		String[] parserIDs = CCorePlugin.getDefault().getAllErrorParsersIDs();
-		for (int i = 0; i < parserIDs.length; i++) {
-			IErrorParser[] parsers = CCorePlugin.getDefault().getErrorParser(parserIDs[i]);
-			fErrorParsers.put(parserIDs[i], parsers);
+		for (String parserID : parserIDs) {
+			IErrorParser[] parsers = CCorePlugin.getDefault().getErrorParser(parserID);
+			fErrorParsers.put(parserID, parsers);
 		}
 	}
 
-	protected void collectFiles(IProject parent, final List result) {
+	protected void collectFiles(IProject parent, final List<IResource> result) {
 		try {
 			parent.accept(new IResourceProxyVisitor() {
-				public boolean visit(IResourceProxy proxy) throws CoreException {
+				public boolean visit(IResourceProxy proxy) {
 					if (proxy.getType() == IResource.FILE) {
 						result.add(proxy.requestResource());
 						return false;
@@ -199,50 +207,67 @@ public class ErrorParserManager extends OutputStream {
 			return;
 		
 		String[] parserIDs = new String[fErrorParsers.size()];
-		Iterator items = fErrorParsers.keySet().iterator();
+		Iterator<String> items = fErrorParsers.keySet().iterator();
 		for (int i = 0; items.hasNext(); i++) {
-			parserIDs[i] = (String) items.next();
+			parserIDs[i] = items.next();
 		}
 
-		for (int i = 0; i <parserIDs.length; ++i) {
-			IErrorParser[] parsers = (IErrorParser[])fErrorParsers.get(parserIDs[i]);
-			for (int j = 0; j < parsers.length; j++) {
-				IErrorParser curr = parsers[j];
+		for (int i = 0; i < parserIDs.length; ++i) {
+			IErrorParser[] parsers = fErrorParsers.get(parserIDs[i]);
+			for (IErrorParser curr : parsers) {
 				if (curr.processLine(line, this)) {
 					return;
 				}
 			}
 		}
-
-// This old way of doing was trouble because it did not
-// respect the ordering provide by the users.
-//
-//		int top = parserIDs.length - 1;
-//		int i = top;
-//		do {
-//			IErrorParser[] parsers = (IErrorParser[]) fErrorParsers.get(parserIDs[i]);
-//			for (int j = 0; j < parsers.length; j++) {
-//				IErrorParser curr = parsers[j];
-//				if (curr.processLine(line, this)) {
-//					if (i != top) {
-//						// move to top
-//						Object used = fErrorParsers.remove(parserIDs[i]);
-//						fErrorParsers.put(parserIDs[i], used);
-//						//savePreferences();
-//					}
-//					return;
-//				}
-//			}
-//			i--;
-//		} while (i >= 0);
 	}
 
 	/**
-	 * Called by the error parsers.
+	 * Returns the project file with the given name if that file can be uniquely identified.
+	 * Otherwise returns <code>null</code>. 
 	 */
-	public IFile findFileName(String fileName) {
+    public IFile findFileName(String fileName) {
 		IPath path = new Path(fileName);
-		return (IFile) fFilesInProject.get(path.lastSegment());
+		Object obj = fFilesInProject.get(path.lastSegment());
+		if (obj == null) {
+			return null;
+		}
+		if (obj instanceof IFile) {
+			IFile file = (IFile) obj;
+			if (isPossibleMatch(path, file.getLocation())) {
+				return file;
+			}
+			return null;
+		}
+        IFile matchingFile = null;
+        @SuppressWarnings("unchecked")
+		Collection<IFile> files = (Collection<IFile>) obj;
+		for (IFile file : files) {
+			if (isPossibleMatch(path, file.getLocation())) {
+				if (matchingFile != null) {
+					return null;	// Ambiguous match
+				}
+				matchingFile = file;
+			}
+		}
+		return matchingFile;
+	}
+
+	/**
+	 * Checks if a file system path {@code location} may point to the same
+	 * file as an absolute file system path {@code absoluteLocation}.
+	 * @param location an absolute or relative file system path.
+	 * @param absoluteLocation an absolute file system path.
+	 * @return {@code true} if 
+	 */
+	private boolean isPossibleMatch(IPath location, IPath absoluteLocation) {
+	    Assert.isLegal(absoluteLocation.isAbsolute());
+		if (location.isAbsolute()) {
+			return location.equals(absoluteLocation);
+		} else {
+			int prefixLen = absoluteLocation.segmentCount() - location.segmentCount(); 
+			return prefixLen >= 0 && absoluteLocation.removeFirstSegments(prefixLen).equals(location);
+		}
 	}
 
 	protected IFile findFileInWorkspace(IPath path) {
@@ -253,9 +278,9 @@ public class ErrorParserManager extends OutputStream {
 			// It may be a link resource so we must check it also.
 			if (file == null) {
 				IFile[] files = root.findFilesForLocation(path);
-				for (int i = 0; i < files.length; i++) {
-					if (files[i].getProject().equals(fProject)) {
-						file = files[i];
+				for (IFile file2 : files) {
+					if (file2.getProject().equals(fProject)) {
+						file = file2;
 						break;
 					}
 				}
@@ -268,11 +293,12 @@ public class ErrorParserManager extends OutputStream {
 	}
 
 	/**
-	 * Called by the error parsers.
+	 * Returns <code>true</code> if the project contains more than one file with the given name.
 	 */
 	public boolean isConflictingName(String fileName) {
 		IPath path = new Path(fileName);
-		return fNameConflicts.contains(path.lastSegment());
+		Object obj = fFilesInProject.get(path.lastSegment());
+		return obj != null && !(obj instanceof IFile);
 	}
 
 	/**
@@ -301,10 +327,10 @@ public class ErrorParserManager extends OutputStream {
 		}
 
 		// That didn't work, see if it is a cygpath
-		if (file == null && cygpathInstalled) {
+		if (file == null) {
+			CygPath cygpath = null;
 			try {
-				if (cygpath == null)
-					cygpath = new CygPath();
+				cygpath = new CygPath();
 				fp = new Path(cygpath.getFileName(filePath));
 				if (fBaseDirectory.isPrefixOf(fp)) {
 					int segments = fBaseDirectory.matchingFirstSegments(fp);
@@ -313,10 +339,11 @@ public class ErrorParserManager extends OutputStream {
 					path = fp;
 				}
 				file = findFileInWorkspace(path);
-			} catch (IOException e) {
-				// cygpath must not be installed, don't try this again
-				cygpathInstalled = false;
 			} catch (Exception e) {
+			}
+			finally {
+				if (cygpath != null)
+					cygpath.dispose();
 			}
 		}
 		
@@ -351,7 +378,6 @@ public class ErrorParserManager extends OutputStream {
 			hasErrors = true;
 	}
 
-	
 	/**
 	 * Called by the error parsers.  Return the previous line, save in the working buffer.
 	 */
@@ -361,7 +387,7 @@ public class ErrorParserManager extends OutputStream {
 
 	/**
 	 * Method setOutputStream.
-	 * @param cos
+	 * @param os
 	 */
 	public void setOutputStream(OutputStream os) {
 		outputStream = os;
@@ -380,6 +406,7 @@ public class ErrorParserManager extends OutputStream {
 	/**
 	 * @see java.io.OutputStream#close()
 	 */
+	@Override
 	public void close() throws IOException {
 		if (nOpens > 0 && --nOpens == 0) {
 			checkLine(true);
@@ -393,6 +420,7 @@ public class ErrorParserManager extends OutputStream {
 	/**
 	 * @see java.io.OutputStream#flush()
 	 */
+	@Override
 	public void flush() throws IOException {
 		if (outputStream != null)
 			outputStream.flush();
@@ -401,6 +429,7 @@ public class ErrorParserManager extends OutputStream {
 	/**
 	 * @see java.io.OutputStream#write(int)
 	 */
+	@Override
 	public synchronized void write(int b) throws IOException {
 		currentLine.append((char) b);
 		checkLine(false);
@@ -408,6 +437,7 @@ public class ErrorParserManager extends OutputStream {
 			outputStream.write(b);
 	}
 
+	@Override
 	public synchronized void write(byte[] b, int off, int len) throws IOException {
 		if (b == null) {
 			throw new NullPointerException();
@@ -445,9 +475,9 @@ public class ErrorParserManager extends OutputStream {
 	public boolean reportProblems() {
 		boolean reset = false;
 		if (nOpens == 0) {
-			Iterator iter = fErrors.iterator();
+			Iterator<ProblemMarkerInfo> iter = fErrors.iterator();
 			while (iter.hasNext()) {
-				ProblemMarkerInfo problemMarkerInfo = (ProblemMarkerInfo) iter.next();
+				ProblemMarkerInfo problemMarkerInfo = iter.next();
 				if (problemMarkerInfo.severity == IMarkerGenerator.SEVERITY_ERROR_BUILD) {
 					reset = true;
 				}

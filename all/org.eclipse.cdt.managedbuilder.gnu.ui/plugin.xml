@@ -93,7 +93,7 @@
                command="-L"
                id="gnu.c.link.option.paths"
                browseType="directory"
-               valueType="stringList">
+               valueType="libPaths">
          </option>
          <optionCategory
                owner="cdt.managedbuild.tool.gnu.c.linker"
@@ -204,6 +204,22 @@
 			  		value="true"/>
 			  </enablement>
 		 </outputType>
+         <option
+               applicabilityCalculator="org.eclipse.cdt.managedbuilder.gnu.ui.GprofAppCalculator"
+               command="-pg"
+               defaultValue="false"
+               id="gnu.c.link.option.debugging.gprof"
+               name="%Option.Posix.Debug.gprof"
+               valueType="boolean">
+         </option>
+         <option
+               applicabilityCalculator="org.eclipse.cdt.managedbuilder.gnu.ui.ProfAppCalculator"
+               command="-p"
+               defaultValue="false"
+               id="gnu.c.link.option.debugging.prof"
+               name="%Option.Posix.Debug.prof"
+               valueType="boolean">
+         </option>
       </tool>
       <tool
             natureFilter="ccnature"
@@ -278,7 +294,7 @@
                command="-L"
                id="gnu.cpp.link.option.paths"
                browseType="directory"
-               valueType="stringList">
+               valueType="libPaths">
          </option>
          <optionCategory
                owner="cdt.managedbuild.tool.gnu.cpp.linker"
@@ -389,6 +405,22 @@
 			  		value="true"/>
 			  </enablement>
          </outputType>
+         <option
+               applicabilityCalculator="org.eclipse.cdt.managedbuilder.gnu.ui.GprofAppCalculator"
+               command="-pg"
+               defaultValue="false"
+               id="gnu.cpp.link.option.debugging.gprof"
+               name="%Option.Posix.Debug.gprof"
+               valueType="boolean">
+         </option>
+         <option
+               applicabilityCalculator="org.eclipse.cdt.managedbuilder.gnu.ui.ProfAppCalculator"
+               command="-p"
+               defaultValue="false"
+               id="gnu.cpp.link.option.debugging.prof"
+               name="%Option.Posix.Debug.prof"
+               valueType="boolean">
+         </option>
       </tool>
       <tool
             natureFilter="both"
@@ -651,7 +683,7 @@
                command="-L"
                id="macosx.c.link.option.paths"
                browseType="directory"
-               valueType="stringList">
+               valueType="libPaths">
          </option>
          <optionCategory
                owner="cdt.managedbuild.tool.macosx.c.linker"
@@ -816,7 +848,7 @@
                command="-L"
                id="macosx.cpp.link.option.paths"
                browseType="directory"
-               valueType="stringList">
+               valueType="libPaths">
          </option>
          <optionCategory
                owner="cdt.managedbuild.tool.macosx.cpp.linker"
@@ -964,7 +996,7 @@
 			  category="gnu.c.compiler.category.symbols"
 			  command="-U"
 			  id="gnu.c.compiler.option.preprocessor.undef.symbol"
-			  valueType="stringList">
+			  valueType="undefDefinedSymbols">
 		  </option>
 		  <optionCategory
 			  owner="cdt.managedbuild.tool.gnu.c.compiler"
@@ -1259,7 +1291,7 @@
 			  category="gnu.cpp.compiler.category.preprocessor"
 			  command="-U"
 			  id="gnu.cpp.compiler.option.preprocessor.undef"
-			  valueType="stringList">
+			  valueType="undefDefinedSymbols">
 		  </option>
 		  <optionCategory
 			  owner="cdt.managedbuild.tool.gnu.cpp.compiler"
@@ -1510,6 +1542,7 @@
           </outputType>
 		  <outputType
 	          outputs="dll,a.dll"
+	          outputPrefix=""
 			  buildVariable="LIBRARIES"
 			  id="cdt.managedbuild.tool.gnu.c.linker.cygwin.output.so"
 			  superClass="cdt.managedbuild.tool.gnu.c.linker.output.so">
@@ -1531,6 +1564,7 @@
 		  </outputType>
 		  <outputType
 	          outputs="dll,a.dll"
+	          outputPrefix=""
 			  buildVariable="LIBRARIES"
 			  id="cdt.managedbuild.tool.gnu.cpp.linker.cygwin.output.so"
 			  superClass="cdt.managedbuild.tool.gnu.cpp.linker.output.so">
@@ -1591,7 +1625,7 @@
           ignoreErrCmd="-k"
           parallelBuildCmd="-j*"
           errorParsers="org.eclipse.cdt.core.MakeErrorParser"
-          name="Gnu Make Builder">
+          name="%GNUMakeBuilder.name">
    	  </builder>   
    	  
       <toolChain
@@ -1660,16 +1694,17 @@
 			  </toolChain>
  
               <toolChain
-                     archList="all"
-                     osList="win32"
-                     name="%ToolChainName.Cygwin"
-                     configurationEnvironmentSupplier="org.eclipse.cdt.managedbuilder.gnu.cygwin.GnuCygwinConfigurationEnvironmentSupplier"
-                     targetTool="cdt.managedbuild.tool.gnu.cpp.linker.cygwin.base;cdt.managedbuild.tool.gnu.c.linker.cygwin.base;cdt.managedbuild.tool.gnu.archiver"
-                     id="cdt.managedbuild.toolchain.gnu.cygwin.base">
+                    archList="all"
+                    configurationEnvironmentSupplier="org.eclipse.cdt.managedbuilder.gnu.cygwin.GnuCygwinConfigurationEnvironmentSupplier"
+                    id="cdt.managedbuild.toolchain.gnu.cygwin.base"
+                    isToolChainSupported="org.eclipse.cdt.managedbuilder.gnu.cygwin.IsGnuCygwinToolChainSupported"
+                    name="%ToolChainName.Cygwin"
+                    osList="win32"
+                    targetTool="cdt.managedbuild.tool.gnu.cpp.linker.cygwin.base;cdt.managedbuild.tool.gnu.c.linker.cygwin.base;cdt.managedbuild.tool.gnu.archiver">
                   <targetPlatform
 					  id="cdt.managedbuild.target.gnu.platform.cygwin.base"
 				 	  name="%PlatformName.Dbg"
-                      binaryParser="org.eclipse.cdt.core.PE"            					  
+                      binaryParser="org.eclipse.cdt.core.Cygwin_PE"            					  
 					  osList="win32"					  
 					  archList="all">
 				  </targetPlatform>
@@ -1731,6 +1766,7 @@
                     archList="all"
                     configurationEnvironmentSupplier="org.eclipse.cdt.managedbuilder.gnu.mingw.MingwEnvironmentVariableSupplier"
                     id="cdt.managedbuild.toolchain.gnu.mingw.base"
+                    isToolChainSupported="org.eclipse.cdt.managedbuilder.gnu.mingw.MingwIsToolChainSupported"
                     name="%ToolChainName.MinGW"
                     osList="win32"
                     targetTool="cdt.managedbuild.tool.gnu.cpp.linker.mingw.base;cdt.managedbuild.tool.gnu.c.linker.mingw.base;cdt.managedbuild.tool.gnu.archiver">
@@ -3733,23 +3769,66 @@
 
    <extension point="org.eclipse.cdt.core.templates">
       <template
+            id="org.eclipse.cdt.build.core.templates.HelloWorldCCProject"
             filterPattern=".*"
-            location="templates/projecttemplates/HelloWorldCCProject/template.xml"
+            location="$nl$/templates/projecttemplates/HelloWorldCCProject/template.xml"
             projectType="org.eclipse.cdt.build.core.buildArtefactType.exe">
+      </template>
+      <template
+            id="org.eclipse.cdt.build.templates.HelloWorldCAnsiProject"
+            filterPattern=".*"
+            location="$nl$/templates/projecttemplates/HelloWorldCAnsiProject/template.xml"
+            projectType="org.eclipse.cdt.build.core.buildArtefactType.exe">
+      </template>      
+      <template
+            id="org.eclipse.cdt.build.core.templates.MakefileHelloWorldCCProject"
+            filterPattern=".*"
+            location="$nl$/templates/projecttemplates/MakefileHelloWorldCCProject/template.xml"
+            projectType="org.eclipse.cdt.build.makefile.projectType">
+      </template>
+      </extension>
+
+<extension
+      point="org.eclipse.cdt.core.templateAssociations">
+      <template id="org.eclipse.cdt.build.core.templates.EmptyProject">
+            <toolChain id="cdt.managedbuild.toolchain.gnu.mingw.base"/>
             <toolChain id="cdt.managedbuild.toolchain.gnu.cygwin.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.macosx.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.solaris.base"/>
+      </template>
+      <template id="org.eclipse.cdt.build.core.templates.HelloWorldCAnsiProject">
+            <toolChain id="cdt.managedbuild.toolchain.gnu.mingw.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.cygwin.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.macosx.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.solaris.base"/>
+      </template>
+      <template id="org.eclipse.cdt.build.core.templates.HelloWorldCCProject">
+            <toolChain id="cdt.managedbuild.toolchain.gnu.mingw.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.cygwin.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.macosx.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.solaris.base"/>
       </template>
       <template
-            filterPattern=".*"
-            location="templates/projecttemplates/HelloWorldCAnsiProject/template.xml"
-            projectType="org.eclipse.cdt.build.core.buildArtefactType.exe">
+            id="org.eclipse.cdt.build.core.templates.MakefileHelloWorldCCProject">
             <toolChain id="cdt.managedbuild.toolchain.gnu.mingw.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.cygwin.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.macosx.base"/>
+            <toolChain id="cdt.managedbuild.toolchain.gnu.solaris.base"/>
       </template>
-      <template
-            filterPattern=".*"
-            location="templates/projecttemplates/EmptyProject/template.xml"
-            projectType="org.eclipse.cdt.build.core.buildArtefactType.exe">
-            <toolChain id="cdt.managedbuild.toolchain.gnu.mingw.base"/>
-      </template>
-   </extension>
+</extension>
+<extension
+      point="org.eclipse.cdt.core.templateProcessTypes">
+   <processType
+         name="SimpleGNUMakefileGenerator"
+         processRunner="org.eclipse.cdt.managedbuilder.gnu.templates.SimpleMakefileGenerator">
+      <simple
+            name="projectName">
+      </simple>
+   </processType>
+</extension>
 
 </plugin>

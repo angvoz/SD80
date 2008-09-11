@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Intel Corporation and others.
+ * Copyright (c) 2007, 2008 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,26 +7,30 @@
  *
  * Contributors:
  *     Intel Corporation - initial API and implementation
+ *     IBM Corporation
  *******************************************************************************/
 package org.eclipse.cdt.managedbuilder.ui.wizards;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
+import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.core.templateengine.process.ProcessFailureException;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildPropertyValue;
+import org.eclipse.cdt.managedbuilder.core.BuildException;
 import org.eclipse.cdt.managedbuilder.core.IBuilder;
 import org.eclipse.cdt.managedbuilder.core.IConfiguration;
 import org.eclipse.cdt.managedbuilder.core.IProjectType;
@@ -38,10 +42,12 @@ import org.eclipse.cdt.managedbuilder.internal.core.ManagedProject;
 import org.eclipse.cdt.managedbuilder.ui.properties.ManagedBuilderUIPlugin;
 import org.eclipse.cdt.managedbuilder.ui.properties.Messages;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
+import org.eclipse.cdt.ui.templateengine.IWizardDataPage;
 import org.eclipse.cdt.ui.templateengine.Template;
 import org.eclipse.cdt.ui.templateengine.TemplateEngineUI;
 import org.eclipse.cdt.ui.templateengine.TemplateEngineUIUtil;
 import org.eclipse.cdt.ui.templateengine.pages.UIWizardPage;
+import org.eclipse.cdt.ui.wizards.CDTCommonProjectWizard;
 import org.eclipse.cdt.ui.wizards.CDTMainWizardPage;
 import org.eclipse.cdt.ui.wizards.CWizardHandler;
 import org.eclipse.cdt.ui.wizards.EntryDescriptor;
@@ -54,11 +60,14 @@ import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.wizard.IWizard;
 import org.eclipse.jface.wizard.IWizardPage;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.accessibility.AccessibleAdapter;
+import org.eclipse.swt.accessibility.AccessibleEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.ui.dialogs.WizardNewProjectCreationPage;
 
 /**
  * This object is created per each Project type
@@ -70,6 +79,7 @@ import org.eclipse.swt.widgets.TableItem;
  */
 public class MBSWizardHandler extends CWizardHandler {
 	public static final String ARTIFACT = "org.eclipse.cdt.build.core.buildArtefactType";  //$NON-NLS-1$
+	public static final String EMPTY_STR = "";  //$NON-NLS-1$
 	
 	private static final String PROPERTY = "org.eclipse.cdt.build.core.buildType"; //$NON-NLS-1$
 	private static final String PROP_VAL = PROPERTY + ".debug"; //$NON-NLS-1$
@@ -80,7 +90,7 @@ public class MBSWizardHandler extends CWizardHandler {
 		Messages.getString("CWizardHandler.4") + //$NON-NLS-1$
 		Messages.getString("CWizardHandler.5"); //$NON-NLS-1$
 	
-	protected SortedMap full_tcs = new TreeMap();
+	protected SortedMap<String, IToolChain> full_tcs = new TreeMap<String, IToolChain>();
 	private String propertyId = null;
 	private IProjectType pt = null;
 	protected IWizardItemsListListener listener;
@@ -89,9 +99,17 @@ public class MBSWizardHandler extends CWizardHandler {
 	private IWizard wizard;
 	private IWizardPage startingPage;
 //	private EntryDescriptor entryDescriptor = null;
-	private EntryInfo entryInfo; 
+	private EntryInfo entryInfo;
+	protected CfgHolder[] cfgs = null;
+	protected IWizardPage[] customPages;
 	
+	/**
+	 * Current list of preferred toolchains
+	 */
+	private List<String> preferredTCs = new ArrayList<String>();
+		
 	protected static final class EntryInfo {
+		private SortedMap<String, IToolChain> tcs;
 		private EntryDescriptor entryDescriptor;
 		private Template template;
 		private boolean initialized;
@@ -102,8 +120,9 @@ public class MBSWizardHandler extends CWizardHandler {
 		private IWizardPage predatingPage;
 		private IWizardPage followingPage;
 		
-		public EntryInfo(EntryDescriptor dr){
+		public EntryInfo(EntryDescriptor dr, SortedMap<String, IToolChain> _tcs){
 			entryDescriptor = dr;
+			tcs = _tcs;
 		}
 		
 		public boolean isValid(){
@@ -132,7 +151,8 @@ public class MBSWizardHandler extends CWizardHandler {
 					break;
 			
 				projectTypeId = path[0];
-				if(path.length > 1){
+				if(!entryDescriptor.isDefaultForCategory() && 
+						path.length > 1 && (!path[0].equals(ManagedBuildWizard.OTHERS_LABEL))){
 					templateId = path[path.length - 1]; 
 					Template templates[] = TemplateEngineUI.getDefault().getTemplates(projectTypeId);
 					if(templates.length == 0)
@@ -155,18 +175,20 @@ public class MBSWizardHandler extends CWizardHandler {
 			initialized = true;
 		}
 		
-		public Template getInitializedTemplate(IWizardPage predatingPage, IWizardPage followingPage, Map map){
+		public Template getInitializedTemplate(IWizardPage predatingPage, IWizardPage followingPage, Map<String, String> map){
 			getNextPage(predatingPage, followingPage);
 			
 			Template template = getTemplate();
 			
 			if(template != null){
-				Map/*<String, String>*/ valueStore = template.getValueStore();
+				Map<String, String> valueStore = template.getValueStore();
 //				valueStore.clear();
 				for(int i=0; i < templatePages.length; i++) {
 					IWizardPage page = templatePages[i];
 					if (page instanceof UIWizardPage)
 						valueStore.putAll(((UIWizardPage)page).getPageData());
+					if (page instanceof IWizardDataPage)
+						valueStore.putAll(((IWizardDataPage)page).getPageData());
 				}
 				if (map != null) {
 					valueStore.putAll(map);
@@ -195,13 +217,65 @@ public class MBSWizardHandler extends CWizardHandler {
 			return followingPage;
 		}
 		
-		public boolean canFinish(IWizardPage predatingPage, IWizardPage followingPage){
+		private boolean canFinish(IWizardPage predatingPage, IWizardPage followingPage){
 			getNextPage(predatingPage, followingPage);
 			for(int i = 0; i < templatePages.length; i++){
 				if(!templatePages[i].isPageComplete())
 					return false;
 			}
 			return true;
+		}
+		
+		/**
+		 * Filters toolchains   
+		 * 
+		 * @return - set of compatible toolchain's IDs
+		 */
+		protected Set<String> tc_filter() {
+			Set<String> full = tcs.keySet();
+			if (entryDescriptor == null) 
+				return full;
+			Set<String> out = new LinkedHashSet<String>(full.size());
+			for (String s : full)
+				if (isToolChainAcceptable(s)) 
+					out.add(s);
+			return out;
+		}
+
+		/**
+		 * Checks whether given toolchain can be displayed
+		 * 
+		 * @param tcId - toolchain _NAME_ to check
+		 * @return - true if toolchain can be displayed
+		 */
+		public boolean isToolChainAcceptable(String tcId) {
+			if (template == null || template.getTemplateInfo() == null) 
+				return true;
+			
+			String[] ss = template.getTemplateInfo().getToolChainIds();
+			if (ss == null || ss.length == 0) 
+				return true;
+			
+			Object ob = tcs.get(tcId);
+			if (ob == null)
+				return true; // sic ! This can occur with Other Toolchain only
+			if (!(ob instanceof IToolChain))
+				return false;
+			
+			String id1 = ((IToolChain)ob).getId();
+			IToolChain sup = ((IToolChain)ob).getSuperClass();
+			String id2 = sup == null ? null : sup.getId();
+			
+			for (int i=0; i<ss.length; i++) {
+				if ((ss[i] != null && ss[i].equals(id1)) ||
+					(ss[i] != null && ss[i].equals(id2)))
+					return true;
+			}
+			return false;
+		}
+
+		public int getToolChainsCount() {
+			return tc_filter().size();
 		}
 	}
 	
@@ -234,18 +308,18 @@ public class MBSWizardHandler extends CWizardHandler {
 		return startingPage;
 	}
 	
-	public Map getMainPageData() {
-		CDTMainWizardPage page = (CDTMainWizardPage)getStartingPage();
-		Map data = new HashMap();
+	public Map<String, String> getMainPageData() {
+		WizardNewProjectCreationPage page = (WizardNewProjectCreationPage)getStartingPage();
+		Map<String, String> data = new HashMap<String, String>();
 		String projName = page.getProjectName();
-		projName = projName != null ? projName.trim() : "";  //$NON-NLS-1$ 
+		projName = projName != null ? projName.trim() : EMPTY_STR; 
 		data.put("projectName", projName); //$NON-NLS-1$
 		data.put("baseName", getBaseName(projName)); //$NON-NLS-1$
 		data.put("baseNameUpper", getBaseName(projName).toUpperCase() ); //$NON-NLS-1$
 		data.put("baseNameLower", getBaseName(projName).toLowerCase() ); //$NON-NLS-1$
-		String location = page.getProjectLocationPath();
+		String location = page.getLocationPath().toOSString();
 		if(location == null)
-			location = "";  //$NON-NLS-1$
+			location = EMPTY_STR;
 		data.put("location", location); //getProjectLocation().toPortableString()); //$NON-NLS-1$
 		return data;
 	}
@@ -264,46 +338,143 @@ public class MBSWizardHandler extends CWizardHandler {
 	}
 	
 	public void handleSelection() {
-		List preferred = CDTPrefUtil.getPreferredTCs();
+		List<String> preferred = CDTPrefUtil.getPreferredTCs();
 		
 		if (table == null) {
 			table = new Table(parent, SWT.MULTI | SWT.V_SCROLL | SWT.BORDER);
+			table.getAccessible().addAccessibleListener(
+					 new AccessibleAdapter() {                       
+		                 public void getName(AccessibleEvent e) {
+		                	 if (e.result == null)
+		                		 e.result = head;
+		                 }
+		             }
+				 );
 			table.setToolTipText(tooltip);
-			Iterator it = tc_filter(full_tcs.keySet()).iterator();
-			int counter = 0;
-			int position = 0;
-			while (it.hasNext()) {
-				TableItem ti = new TableItem(table, SWT.NONE);
-				String s = (String)it.next();
-				Object obj = full_tcs.get(s);
-				String id = CDTPrefUtil.NULL;
-				if (obj instanceof IToolChain) {
-					IToolChain tc = (IToolChain)obj;
-					String name = tc.getUniqueRealName();
-					id = tc.getId();
-					//TODO: add version
-					ti.setText(name);
-					ti.setData(tc);
-				} else { // NULL for -NO TOOLCHAIN-
-					ti.setText(s);
+			if (entryInfo != null) {
+				int counter = 0;
+				int position = 0;
+				for (String s : entryInfo.tc_filter()) {
+					TableItem ti = new TableItem(table, SWT.NONE);
+					Object obj = full_tcs.get(s);
+					String id = CDTPrefUtil.NULL;
+					if (obj instanceof IToolChain) {
+						IToolChain tc = (IToolChain)obj;
+						String name = tc.getUniqueRealName();
+						id = tc.getId();
+						//TODO: add version
+						ti.setText(name);
+						ti.setData(tc);
+					} else { // NULL for -NO TOOLCHAIN-
+						ti.setText(s);
+					}
+					if (position == 0 && preferred.contains(id)) position = counter;
+					counter++;
 				}
-				if (position == 0 && preferred.contains(id)) position = counter;
-				counter++;
-			}
-			if (counter > 0) table.select(position);
-			
+				if (counter > 0) table.select(position);
+			}			
 			table.addSelectionListener(new SelectionAdapter() {
 				public void widgetSelected(SelectionEvent e) {
-					if (listener != null)
-						listener.toolChainListChanged(table.getSelectionCount());
+					handleToolChainSelection();
 				}});
 		}
 		updatePreferred(preferred);
+		loadCustomPages();
 		table.setVisible(true);
 		parent.layout();
 		if (fConfigPage != null) fConfigPage.pagesLoaded = false;
 	}
 
+	private void handleToolChainSelection() {
+		loadCustomPages();
+		// Notify listener, if any.
+		if (listener != null)
+			listener.toolChainListChanged(table.getSelectionCount());
+	}
+	
+	private void loadCustomPages() {
+		if (! (getWizard() instanceof CDTCommonProjectWizard)) 
+			return; // not probable 
+		
+		CDTCommonProjectWizard wz = (CDTCommonProjectWizard)getWizard();
+		
+		if (customPages == null) {
+			MBSCustomPageManager.init();
+			MBSCustomPageManager.addStockPage(getStartingPage(), CDTMainWizardPage.PAGE_ID);
+			MBSCustomPageManager.addStockPage(getConfigPage(), CDTConfigWizardPage.PAGE_ID);
+
+			// load all custom pages specified via extensions
+			try	{
+				MBSCustomPageManager.loadExtensions();
+			} catch (BuildException e) { e.printStackTrace(); }
+
+			customPages = MBSCustomPageManager.getCustomPages();
+
+			if (customPages == null) 
+				customPages = new IWizardPage[0];
+			
+			for (int k = 0; k < customPages.length; k++) 
+				customPages[k].setWizard(wz);
+		}
+		setCustomPagesFilter(wz);
+	}
+
+	private void setCustomPagesFilter(CDTCommonProjectWizard wz) {
+		String[] natures = wz.getNatures();
+		if (natures == null || natures.length == 0)
+			MBSCustomPageManager.addPageProperty(MBSCustomPageManager.PAGE_ID, MBSCustomPageManager.NATURE, null);
+		else if (natures.length == 1)
+			MBSCustomPageManager.addPageProperty(MBSCustomPageManager.PAGE_ID, MBSCustomPageManager.NATURE, natures[0]);
+		else {
+			TreeSet<String> x = new TreeSet<String>();
+			for (int i=0; i<natures.length; i++) x.add(natures[i]);
+			MBSCustomPageManager.addPageProperty(MBSCustomPageManager.PAGE_ID, MBSCustomPageManager.NATURE, x);
+		}
+		// Project type can be obtained either from Handler (for old-style projects),
+		// or multiple values will be got from separate ToolChains (for new-style).
+		boolean ptIsNull = (getProjectType() == null);
+		if (!ptIsNull)
+			MBSCustomPageManager.addPageProperty(
+					MBSCustomPageManager.PAGE_ID, 
+					MBSCustomPageManager.PROJECT_TYPE, 
+					getProjectType().getId()
+				);
+
+		IToolChain[] tcs = getSelectedToolChains();
+		int n = (tcs == null) ? 0 : tcs.length;
+		ArrayList<IToolChain> x = new ArrayList<IToolChain>();			
+		TreeSet<String> y = new TreeSet<String>();	
+		for (int i=0; i<n; i++) {
+			if (tcs[i] == null) // --- NO TOOLCHAIN ---
+				continue;       // has no custom pages.
+			x.add(tcs[i]);
+
+			IConfiguration cfg = tcs[i].getParent();
+			if (cfg == null)
+				continue;
+			IProjectType pt = cfg.getProjectType();
+			if (pt != null)
+				y.add(pt.getId());
+		}
+		MBSCustomPageManager.addPageProperty(
+				MBSCustomPageManager.PAGE_ID, 
+				MBSCustomPageManager.TOOLCHAIN, 
+				x);
+		
+		if (ptIsNull) {
+			if (y.size() > 0)
+				MBSCustomPageManager.addPageProperty(
+						MBSCustomPageManager.PAGE_ID, 
+						MBSCustomPageManager.PROJECT_TYPE, 
+						y);
+			else
+				MBSCustomPageManager.addPageProperty(
+						MBSCustomPageManager.PAGE_ID, 
+						MBSCustomPageManager.PROJECT_TYPE, 
+						null);
+		}
+	}
+	
 	public void handleUnSelection() {
 		if (table != null) {
 			table.setVisible(false);
@@ -325,19 +496,14 @@ public class MBSWizardHandler extends CWizardHandler {
 		full_tcs.put(tc.getUniqueRealName(), tc);
 	}
 		
-	public void createProject(IProject project, boolean defaults) throws CoreException {
-		CoreModel coreModel = CoreModel.getDefault();
-		ICProjectDescription des = coreModel.createProjectDescription(project, false);
+	public void createProject(IProject project, boolean defaults, boolean onFinish) throws CoreException {
+		ICProjectDescriptionManager mngr = CoreModel.getDefault().getProjectDescriptionManager();
+		ICProjectDescription des = mngr.createProjectDescription(project, false, !onFinish);
 		ManagedBuildInfo info = ManagedBuildManager.createBuildInfo(project);
-		CfgHolder[] cfgs = null;
-		if (defaults) {
+
+		cfgs = fConfigPage.getCfgItems(false);
+		if (cfgs == null || cfgs.length == 0) 
 			cfgs = CDTConfigWizardPage.getDefaultCfgs(this);
-		} else {
-			getConfigPage(); // ensure that page is created
-			cfgs = fConfigPage.getCfgItems(defaults);
-			if (cfgs == null || cfgs.length == 0) 
-				cfgs = CDTConfigWizardPage.getDefaultCfgs(this);
-		}
 		
 		if (cfgs == null || cfgs.length == 0 || cfgs[0].getConfiguration() == null) {
 			throw new CoreException(new Status(IStatus.ERROR, 
@@ -349,8 +515,10 @@ public class MBSWizardHandler extends CWizardHandler {
 		info.setManagedProject(mProj);
 
 		cfgs = CfgHolder.unique(cfgs);
+		cfgs = CfgHolder.reorder(cfgs);
 		
-		ICConfigurationDescription active = null;
+		ICConfigurationDescription cfgDebug = null;
+		ICConfigurationDescription cfgFirst = null;
 		
 		for(int i = 0; i < cfgs.length; i++){
 			cf = (Configuration)cfgs[i].getConfiguration();
@@ -364,33 +532,33 @@ public class MBSWizardHandler extends CWizardHandler {
 			IBuilder bld = config.getEditableBuilder();
 			if (bld != null) { 	bld.setManagedBuildOn(true); }
 			
-			String s = project.getName();
 			config.setName(cfgs[i].getName());
-			config.setArtifactName(s);
+			config.setArtifactName(removeSpaces(project.getName()));
 			
 			IBuildProperty b = config.getBuildProperties().getProperty(PROPERTY);
-			if (b != null && b.getValue() != null && PROP_VAL.equals(b.getValue().getId()))
-				active = cfgDes;
-			else if (active == null) // select at least first configuration 
-				active = cfgDes; 
+			if (cfgDebug == null && b != null && b.getValue() != null && PROP_VAL.equals(b.getValue().getId()))
+				cfgDebug = cfgDes;
+			if (cfgFirst == null) // select at least first configuration 
+				cfgFirst = cfgDes; 
 		}
-		if (active != null) active.setActive();
-		coreModel.setProjectDescription(project, des);
-		
-		doPostProcess(project);
-		
-		// process custom pages
-		if (fConfigPage != null && fConfigPage.pagesLoaded)
-			doCustom();
+		mngr.setProjectDescription(project, des);
+		doTemplatesPostProcess(project);
+		doCustom(project);
 	}
 	
-	protected void doPostProcess(IProject prj) {
+	protected void doTemplatesPostProcess(IProject prj) {
 		if(entryInfo == null)
 			return;
 		
 		Template template = entryInfo.getInitializedTemplate(getStartingPage(), getConfigPage(), getMainPageData());
 		if(template == null)
 			return;
+
+		List<IConfiguration> configs = new ArrayList<IConfiguration>();
+		for(int i = 0; i < cfgs.length; i++){
+			configs.add((IConfiguration)cfgs[i].getConfiguration());
+		}
+		template.getTemplateInfo().setConfigurations(configs);
 
 		IStatus[] statuses = template.executeTemplateProcesses(null, false);
 	    if (statuses.length == 1 && statuses[0].getException() instanceof ProcessFailureException) {
@@ -407,27 +575,34 @@ public class MBSWizardHandler extends CWizardHandler {
 	
 	public IWizardPage getSpecificPage() {
 		return entryInfo.getNextPage(getStartingPage(), getConfigPage());
-//		if (fConfigPage == null) {
-//			fConfigPage = new CDTConfigWizardPage(this);
-//		}
-//		return fConfigPage; 
 	}
 	
 	/**
 	 * Mark preferred toolchains with specific images
+	 * @
 	 */
-	public void updatePreferred(List prefs) {
+	
+	public void updatePreferred(List<String> prefs) {
+		preferredTCs.clear();
 		int x = table.getItemCount();
 		for (int i=0; i<x; i++) {
 			TableItem ti = table.getItem(i);
 			IToolChain tc = (IToolChain)ti.getData();
 			String id = (tc == null) ? CDTPrefUtil.NULL : tc.getId();
-			ti.setImage( prefs.contains(id) ? IMG1 : IMG0);
+			if (prefs.contains(id)) {
+				ti.setImage(IMG1);
+				preferredTCs.add(tc.getName());
+			}
+			else
+				ti.setImage(IMG0);
 		}
 	}
+	
+	public List<String> getPreferredTCNames() {
+		return preferredTCs;
+	}
+	
 	public String getHeader() { return head; }
-//	public String getName() { return name; }
-//	public Image getIcon() { return null; /*image;*/ }
 	public boolean isDummy() { return false; }
 	public boolean supportsPreferred() { return true; }
 
@@ -466,7 +641,10 @@ public class MBSWizardHandler extends CWizardHandler {
 		return ts;
 	}
 	public int getToolChainsCount() {
-		return tc_filter(full_tcs.keySet()).size();
+		if (entryInfo == null)
+			return full_tcs.size();
+		else 
+			return entryInfo.tc_filter().size();
 	}
 	public String getPropertyId() {
 		return propertyId;
@@ -485,12 +663,10 @@ public class MBSWizardHandler extends CWizardHandler {
 		TableItem[] tis = table.getSelection();
 		if (tis == null || tis.length == 0)
 			return Messages.getString("MBSWizardHandler.0"); //$NON-NLS-1$
-		if (fConfigPage != null && fConfigPage.isVisible && !fConfigPage.isCustomPageComplete())
-			return Messages.getString("MBSWizardHandler.1"); //$NON-NLS-1$
 		return null;
 	}
 	
-	private void doCustom() {
+	protected void doCustom(IProject newProject) {
 		IRunnableWithProgress[] operations = MBSCustomPageManager.getOperations();
 		if(operations != null)
 			for(int k = 0; k < operations.length; k++)
@@ -503,10 +679,21 @@ public class MBSWizardHandler extends CWizardHandler {
 				}
 	}
 	
-	public void postProcess(IProject newProject) {
+	public void postProcess(IProject newProject, boolean created) {
 		deleteExtraConfigs(newProject);
+		// calls are required only if the project was
+		// created before for <Advanced Settings> feature.
+		if (created) {
+			doTemplatesPostProcess(newProject);
+			doCustom(newProject);
+		}
 	}
 	
+	/**
+	 * Deletes configurations 
+	 * 
+	 * @param newProject - affected project
+	 */
 	private void deleteExtraConfigs(IProject newProject) {
 		if (isChanged()) return; // no need to delete 
 		if (listener != null && listener.isCurrent()) return; // nothing to delete
@@ -536,53 +723,18 @@ public class MBSWizardHandler extends CWizardHandler {
 	}
 	
 	public boolean isApplicable(EntryDescriptor data) { 
-		EntryInfo info = new EntryInfo(data);
-		return info.isValid();
+		EntryInfo info = new EntryInfo(data, full_tcs);
+		return info.isValid() && (info.getToolChainsCount() > 0);
 	}
 	
 	public void initialize(EntryDescriptor data) throws CoreException {
-		EntryInfo info = new EntryInfo(data);
+		EntryInfo info = new EntryInfo(data, full_tcs);
 		if(!info.isValid())
-			throw new CoreException(new Status(IStatus.ERROR, ManagedBuilderUIPlugin.getUniqueIdentifier(), "inappropriate descriptor"));
+			throw new CoreException(new Status(IStatus.ERROR, ManagedBuilderUIPlugin.getUniqueIdentifier(), "inappropriate descriptor")); //$NON-NLS-1$
 		
 		entryInfo = info;
 	}
 
-	/**
-	 * Filters toolchains according to entryDescriptor data  
-	 * 
-	 * @param full - full set of toolchain IDs
-	 * @return - set of compatible toolchain's IDs
-	 * 
-	 * Note that full_tcs map should remain unchanged
-	 */
-	protected Set tc_filter(Set full) {
-		if(entryInfo == null)
-			return full;
-		
-		EntryDescriptor entryDescriptor = entryInfo.getDescriptor();
-		if (entryDescriptor == null) 
-			return full;
-		Set out = new LinkedHashSet(full.size());
-		Iterator it = full.iterator();
-		while (it.hasNext()) {
-			String s = (String)it.next();
-			if (isToolChainAcceptable(s, entryDescriptor)) 
-				out.add(s);
-		}
-		return out;
-	}
-	
-	/**
-	 * Checks whether given toolchain can be displayed
-	 * 
-	 * @param tcId - toolchain to check
-	 * @param ed   - Entry descriptor (Who Am I) 
-	 * @return - true if toolchain can be displayed
-	 */
-	protected boolean isToolChainAcceptable(String tcId, EntryDescriptor ed) {
-		return true;
-	}
 	/**
 	 * Clones itself.
 	 */
@@ -600,14 +752,22 @@ public class MBSWizardHandler extends CWizardHandler {
 		return clone;
 	}
 
-	public boolean canFinich() {
+	public boolean canFinish() {
 		if(entryInfo == null)
 			return false;
 		
-		if(!entryInfo.canFinish(getStartingPage(), getConfigPage()))
+		if (!getConfigPage().isCustomPageComplete())
 			return false;
 		
-		return super.canFinich();
+		if(!entryInfo.canFinish(startingPage, getConfigPage()))
+			return false;
+		
+		if (customPages != null)
+			for (int i=0; i<customPages.length; i++)
+				if (!customPages[i].isPageComplete())
+					return false;
+		
+		return super.canFinish();
 	}
 	
 	

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Symbian Software Ltd. and others.
+ * Copyright (c) 2006, 2008 Symbian Software Ltd. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,15 +7,24 @@
  *
  * Contributors:
  *    Andrew Ferguson (Symbian) - initial API and implementation
+ *    Markus Schorn (Wind River Systems)
  *******************************************************************************/ 
 package org.eclipse.cdt.core.index;
 
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Comparator;
+
+import org.eclipse.cdt.core.CProjectNature;
+import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.internal.core.index.IndexFileLocation;
 import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
@@ -32,6 +41,25 @@ import org.eclipse.core.runtime.Path;
  * @since 4.0
  */
 public class IndexLocationFactory {
+	/**
+	 * Comparator to sort files for location.
+	 */
+	private static final class FILE_COMPARATOR implements Comparator<IFile> {
+		public int compare(IFile o1, IFile o2) {
+			return compare(o1.getLocationURI(), o2.getLocationURI());
+		}
+
+		private int compare(URI uri1, URI uri2) {
+			if (uri1 == uri2)
+				return 0;
+			if (uri1 == null)
+				return -1;
+			if (uri2 == null)
+				return 1;
+			return uri1.toString().compareTo(uri2.toString());
+		}
+	}
+
 	/**
 	 * Returns
 	 * <ul>
@@ -54,7 +82,6 @@ public class IndexLocationFactory {
 	/**
 	 * Returns the absolute file path of an URI or null if the 
 	 * URI is not a filesystem path.
-	 * @param uri 
 	 * @return the absolute file path of an URI or null if the 
 	 * URI is not a filesystem path.
 	 */
@@ -62,6 +89,14 @@ public class IndexLocationFactory {
 		return URIUtil.toPath(location.getURI());
 	}
 	
+	/**
+	 * Equivalent to the overloaded form with the ICProject parameter set to null
+	 * @see IndexLocationFactory#getIFLExpensive(ICProject, String)
+	 */
+	public static IIndexFileLocation getIFLExpensive(String absolutePath) {
+		return getIFLExpensive(null, absolutePath);
+	}
+		
 	/**
 	 * Returns an IIndexFileLocation by searching the workspace for resources that are mapped
 	 * onto the specified absolute path.
@@ -73,15 +108,43 @@ public class IndexLocationFactory {
 	 * <p>
 	 * N.B. As this searches the workspace, following links and potentially reading from alternate
 	 * file systems, this method may be expensive.
+	 * @param cproject the ICProject to prefer when resolving external includes to workspace resources (may be null)
 	 * @param absolutePath
 	 * @return an IIndexFileLocation for the specified resource, containing a workspace relative path if possible.
 	 */
-	public static IIndexFileLocation getIFLExpensive(String absolutePath) {
+	public static IIndexFileLocation getIFLExpensive(ICProject cproject, String absolutePath) {
 		IFile[] files = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocation(new Path(absolutePath));
-		if(files.length==1) {
-			return getWorkspaceIFL(files[0]);
+		if (files.length==1) {
+			IFile file = files[0];
+			if (file.exists())
+				return getWorkspaceIFL(file);
+		} else {
+			Arrays.sort(files, new FILE_COMPARATOR());
+			final IProject preferredProject= cproject == null ? null : cproject.getProject();
+			IFile fileInCProject= null;
+			for (IFile file : files) {
+				if (file.exists()) {
+					// check for preferred project
+					final IProject project = file.getProject();
+					if (preferredProject != null && preferredProject.equals(project)) 
+						return getWorkspaceIFL(file);
+
+					if (fileInCProject == null) {
+						try {
+							if (project.hasNature(CProjectNature.C_NATURE_ID)) {
+								fileInCProject= file;
+							}
+						} catch (CoreException e) {
+							// treat as non-c project
+						}
+					}
+				}
+			}
+			if (fileInCProject != null) 
+				return getWorkspaceIFL(fileInCProject);
 		}
-		return new IndexFileLocation(URIUtil.toURI(absolutePath), null);
+		
+		return getExternalIFL(absolutePath);
 	}
 	
 	/**
@@ -103,12 +166,17 @@ public class IndexLocationFactory {
 	}
 	
 	/**
-	 * Returns an IIndexFileLocation for the specified workspace file
+	 * Returns an IIndexFileLocation for the specified workspace file, or <code>null</code> if it does not
+	 * have a location.
 	 * @param file
 	 * @return an IIndexFileLocation for the specified workspace file
 	 */
 	public static IIndexFileLocation getWorkspaceIFL(IFile file) {
-		return new IndexFileLocation(file.getLocationURI(), file.getFullPath().toString());
+		final URI locationURI = file.getLocationURI();
+		if (locationURI != null) {
+			return new IndexFileLocation(locationURI, file.getFullPath().toString());
+		}
+		return null;
 	}
 	
 	/**
@@ -124,13 +192,11 @@ public class IndexLocationFactory {
 		IResource res = tu.getResource();
 		if(res instanceof IFile) {
 			return getWorkspaceIFL((IFile)res);
-		} else {
-			IPath location = tu.getLocation();
-			if(location!=null) {
-				return getExternalIFL(location);
-			} else {
-				return null;
-			}
 		}
+		IPath location = tu.getLocation();
+		if(location!=null) {
+			return getExternalIFL(location);
+		}
+		return null;
 	}
 }

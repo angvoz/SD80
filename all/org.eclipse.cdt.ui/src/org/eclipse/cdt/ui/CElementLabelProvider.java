@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 IBM Corporation and others.
+ * Copyright (c) 2000, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,6 +14,7 @@ package org.eclipse.cdt.ui;
 
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.model.WorkbenchLabelProvider;
 
 import org.eclipse.cdt.core.model.ICElement;
@@ -82,7 +83,7 @@ public class CElementLabelProvider extends LabelProvider {
 	
 	public final static int SHOW_DEFAULT= new Integer(SHOW_PARAMETERS | SHOW_OVERLAY_ICONS).intValue();
 	
-	private WorkbenchLabelProvider fWorkbenchLabelProvider;
+	private volatile WorkbenchLabelProvider fWorkbenchLabelProvider;
 	protected CElementImageProvider fImageLabelProvider;
 	private CUILabelProvider fCElementLabelProvider;
 
@@ -95,24 +96,42 @@ public class CElementLabelProvider extends LabelProvider {
 	}
 
 	public CElementLabelProvider(int flags) {
-		fWorkbenchLabelProvider= new WorkbenchLabelProvider();
+		// WorkbenchLabelProvider may only be initialized on the UI thread
+		// http://bugs.eclipse.org/247274
+		if (Display.getCurrent() != null) {
+			fWorkbenchLabelProvider= new WorkbenchLabelProvider();
+		} else {
+			// Delay initialization
+			CUIPlugin.getStandardDisplay().asyncExec(new Runnable() {
+				public void run() {
+					if (fCElementLabelProvider != null) {
+						fWorkbenchLabelProvider= new WorkbenchLabelProvider();
+					}
+				}});
+		}
 		fImageLabelProvider= new CElementImageProvider();
 
 		fFlags = flags;
 		fCElementLabelProvider= new CUILabelProvider(getTextFlags() | CElementBaseLabels.TEMPLATE_PARAMETERS, getImageFlags());
 	}
 
+	@Override
 	public String getText(Object element) {
 		if (element instanceof ICElement) {
 			return fCElementLabelProvider.getText(element);
 		}
-		return fWorkbenchLabelProvider.getText(element);
+		if (fWorkbenchLabelProvider != null) {
+			return fWorkbenchLabelProvider.getText(element);
+		}
+		return super.getText(element);
 	}
 
+	@Override
 	public Image getImage(Object element) {
 		return fImageLabelProvider.getImageLabel(element, getImageFlags());
 	}
 	
+	@Override
 	public void dispose() {
 		if (fCElementLabelProvider != null) {
 			fCElementLabelProvider.dispose();

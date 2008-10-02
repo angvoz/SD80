@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2007 IBM Corporation and others.
+ * Copyright (c) 2000, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,22 +10,24 @@
  *     Anton Leherbauer (Wind River Systems) - Adapted for CDT
  *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
-
 package org.eclipse.cdt.internal.ui.editor;
 
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IDocumentExtension4;
+import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IPartListener2;
 import org.eclipse.ui.IWindowListener;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchPartReference;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.texteditor.ITextEditor;
 
-import org.eclipse.cdt.core.IPositionConverter;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.ui.CUIPlugin;
@@ -55,6 +57,7 @@ public final class ASTProvider {
 		/*
 		 * @see java.lang.Object#toString()
 		 */
+		@Override
 		public String toString() {
 			return fName;
 		}
@@ -212,6 +215,7 @@ public final class ASTProvider {
 	private ASTCache fCache= new ASTCache();
 	private ActivationListener fActivationListener;
 	private IWorkbenchPart fActiveEditor;
+	private long fTimeStamp;
 
 	/**
 	 * Returns the C plug-in's AST provider.
@@ -252,6 +256,7 @@ public final class ASTProvider {
 		}
 		synchronized (this) {
 			fActiveEditor= editor;
+			fTimeStamp= IDocumentExtension4.UNKNOWN_MODIFICATION_STAMP;
 			fCache.setActiveElement((ITranslationUnit)cElement);
 		}
 	}
@@ -264,7 +269,7 @@ public final class ASTProvider {
 	 * @return <code>true</code> if the given translation unit is the active one
 	 */
 	public boolean isActive(ITranslationUnit tu) {
-		return fCache.isActiveElement(tu);
+		return fCache.isActiveElement(tu) && tu.isOpen();
 	}
 
 	/**
@@ -278,27 +283,35 @@ public final class ASTProvider {
 			return;
 		Assert.isTrue(cElement instanceof ITranslationUnit);
 		fCache.aboutToBeReconciled((ITranslationUnit)cElement);
+		updateModificationStamp();
 	}
 
-	/**
-	 * Returns a shared translation unit AST for the given
-	 * C element.
-	 * <p>
-	 * Clients are not allowed to modify the AST and must
-	 * synchronize all access to its nodes.
-	 * </p>
-	 *
-	 * @param cElement				the C element
-	 * @param index				the index used to create the AST, needs to be read-locked.
-	 * @param waitFlag			{@link #WAIT_YES}, {@link #WAIT_NO} or {@link #WAIT_ACTIVE_ONLY}
-	 * @param progressMonitor	the progress monitor or <code>null</code>
-	 * @return					the AST or <code>null</code> if the AST is not available
-	 */
-	public IASTTranslationUnit getAST(ICElement cElement, IIndex index, WAIT_FLAG waitFlag, IProgressMonitor progressMonitor) {
-		if (cElement == null)
-			return null;
-		Assert.isTrue(cElement instanceof ITranslationUnit);
-		return fCache.getAST((ITranslationUnit)cElement, index, waitFlag != WAIT_NO, progressMonitor);
+	private boolean updateModificationStamp() {
+		long timeStamp= IDocumentExtension4.UNKNOWN_MODIFICATION_STAMP;
+		ITextEditor textEditor= null;
+		synchronized (this) {
+			if (fActiveEditor instanceof ITextEditor) {
+				textEditor= (ITextEditor) fActiveEditor;
+				timeStamp= fTimeStamp;
+			}
+		}
+		if (textEditor != null) {
+			IEditorInput editorInput= textEditor.getEditorInput();
+			IDocument document= textEditor.getDocumentProvider().getDocument(editorInput);
+			if (document instanceof IDocumentExtension4) {
+				IDocumentExtension4 docExt= (IDocumentExtension4) document;
+				long newTimeStamp= docExt.getModificationStamp();
+				if (newTimeStamp != timeStamp) {
+					synchronized (this) {
+						if (fActiveEditor == textEditor && fTimeStamp == timeStamp) {
+							fTimeStamp= newTimeStamp;
+							return true;
+						}
+					}
+				}
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -316,7 +329,7 @@ public final class ASTProvider {
 	/*
 	 * @see org.eclipse.cdt.internal.ui.text.ICReconcilingListener#reconciled()
 	 */
-	void reconciled(IASTTranslationUnit ast, IPositionConverter converter, ICElement cElement, IProgressMonitor progressMonitor) {
+	void reconciled(IASTTranslationUnit ast, ICElement cElement, IProgressMonitor progressMonitor) {
 		if (cElement == null)
 			return;
 		Assert.isTrue(cElement instanceof ITranslationUnit);
@@ -326,18 +339,13 @@ public final class ASTProvider {
 	public IStatus runOnAST(ICElement cElement, WAIT_FLAG waitFlag, IProgressMonitor monitor,
 			ASTCache.ASTRunnable astRunnable) {
 		Assert.isTrue(cElement instanceof ITranslationUnit);
+		boolean isActive= isActive((ITranslationUnit)cElement);
+		if (waitFlag == WAIT_ACTIVE_ONLY && !isActive) {
+			return Status.CANCEL_STATUS;
+		}
+		if (isActive && updateModificationStamp()) {
+			fCache.disposeAST();
+		}
 		return fCache.runOnAST((ITranslationUnit)cElement, waitFlag != WAIT_NO, monitor, astRunnable);
 	}
-
-	/**
-	 * @param cElement
-	 * @param index
-	 * @param monitor
-	 * @return an AST or <code>null</code>, if no AST could be computed
-	 */
-	public IASTTranslationUnit createAST(ICElement cElement, IIndex index, IProgressMonitor monitor) {
-		Assert.isTrue(cElement instanceof ITranslationUnit);
-		return fCache.createAST((ITranslationUnit)cElement, index, monitor);
-	}
 }
-

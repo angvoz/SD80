@@ -1,14 +1,14 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
- * Markus Schorn (Wind River Systems)
- * Anton Leherbauer (Wind River Systems)
+ *    IBM - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
+ *    Anton Leherbauer (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser;
 
@@ -30,12 +30,14 @@ import org.eclipse.cdt.internal.core.dom.parser.c.CBasicType;
 import org.eclipse.cdt.internal.core.dom.parser.c.CFunctionType;
 import org.eclipse.cdt.internal.core.dom.parser.c.CImplicitFunction;
 import org.eclipse.cdt.internal.core.dom.parser.c.CImplicitTypedef;
+import org.eclipse.cdt.internal.core.dom.parser.c.CBuiltinVariable;
 import org.eclipse.cdt.internal.core.dom.parser.c.CPointerType;
 import org.eclipse.cdt.internal.core.dom.parser.c.CQualifierType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBasicType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPFunctionType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPImplicitFunction;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPImplicitTypedef;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPBuiltinVariable;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPPointerType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPQualifierType;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.GPPBasicType;
@@ -84,7 +86,8 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
 	private static final char[] __BUILTIN_CLZLL   = "__builtin_clzll".toCharArray(); //$NON-NLS-1$
 	private static final char[] __BUILTIN_CTZLL   = "__builtin_ctzll".toCharArray(); //$NON-NLS-1$
 	private static final char[] __BUILTIN_POPCOUNTLL = "__builtin_popcountll".toCharArray(); //$NON-NLS-1$
-	private static final char[] __BUILTIN_PARITYLL   = "__builtin_parityll".toCharArray(); //$NON-NLS-1$	
+	private static final char[] __BUILTIN_PARITYLL   = "__builtin_parityll".toCharArray(); //$NON-NLS-1$
+	private static final char[] __BUILTIN_CHOOSE_EXPR = "__builtin_choose_expr".toCharArray(); //$NON-NLS-1$
 	private static final char[] __BUILTIN_TYPES_COMPATIBLE_P = "__builtin_types_compatible_p".toCharArray(); //$NON-NLS-1$
 	private static final char[] __BUILTIN_POWI   = "__builtin_powi".toCharArray(); //$NON-NLS-1$	
 	private static final char[] __BUILTIN_POWIF   = "__builtin_powif".toCharArray(); //$NON-NLS-1$	
@@ -160,8 +163,11 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
     private static final char[] __BUILTIN_ISLESSEQUAL = "__builtin_islessequal".toCharArray(); //$NON-NLS-1$
     private static final char[] __BUILTIN_ISLESSGREATER = "__builtin_islessgreater".toCharArray(); //$NON-NLS-1$
     private static final char[] __BUILTIN_ISUNORDERED = "__builtin_isunordered".toCharArray(); //$NON-NLS-1$
+    private static final char[] __FUNC__ = "__func__".toCharArray(); //$NON-NLS-1$
+    private static final char[] __FUNCTION__ = "__FUNCTION__".toCharArray(); //$NON-NLS-1$
+    private static final char[] __PRETTY_FUNCTION__ = "__PRETTY_FUNCTION__".toCharArray(); //$NON-NLS-1$
 
-    private static final int NUM_OTHER_GCC_BUILTINS = 105; // the total number of builtin functions listed above
+    private static final int NUM_OTHER_GCC_BUILTINS = 109; // the total number of builtin functions listed above
 	
     static final private  IType c_unspecified;
     static final private  IType c_char;
@@ -262,19 +268,19 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
 		cpp_const_char_p_r = new GPPPointerType(new CPPQualifierType(cpp_char, true, false), false, false, true);
 		
 		cpp_double = new CPPBasicType(IBasicType.t_double, 0);
-		cpp_double_complex = new GPPBasicType(IBasicType.t_double, GPPBasicType.IS_COMPLEX, null);
+		cpp_double_complex = new GPPBasicType(IBasicType.t_double, ICPPBasicType.IS_COMPLEX, null);
 		cpp_float = new CPPBasicType(IBasicType.t_float, 0);
-		cpp_float_complex = new GPPBasicType(IBasicType.t_float, GPPBasicType.IS_COMPLEX, null);
+		cpp_float_complex = new GPPBasicType(IBasicType.t_float, ICPPBasicType.IS_COMPLEX, null);
 		cpp_int = new CPPBasicType(IBasicType.t_int, 0);
 		cpp_long_int = new CPPBasicType(IBasicType.t_int, ICPPBasicType.IS_LONG);
 		cpp_long_double = new CPPBasicType(IBasicType.t_double, ICPPBasicType.IS_LONG);
-		cpp_long_double_complex = new GPPBasicType(IBasicType.t_double, ICPPBasicType.IS_LONG | GPPBasicType.IS_COMPLEX, null);
-		cpp_long_long_int = new CPPBasicType(IBasicType.t_int, GPPBasicType.IS_LONGLONG);
+		cpp_long_double_complex = new GPPBasicType(IBasicType.t_double, ICPPBasicType.IS_LONG | ICPPBasicType.IS_COMPLEX, null);
+		cpp_long_long_int = new GPPBasicType(IBasicType.t_int, ICPPBasicType.IS_LONG_LONG, null);
 		cpp_signed_long_int = new CPPBasicType(IBasicType.t_int, ICPPBasicType.IS_LONG | ICPPBasicType.IS_SIGNED);
 		
 		cpp_unsigned_int = new CPPBasicType(IBasicType.t_int, ICPPBasicType.IS_UNSIGNED);
 		cpp_unsigned_long = new CPPBasicType(IBasicType.t_int, ICPPBasicType.IS_UNSIGNED | ICPPBasicType.IS_LONG);
-		cpp_unsigned_long_long = new GPPBasicType(IBasicType.t_int, ICPPBasicType.IS_UNSIGNED | GPPBasicType.IS_LONGLONG, null);
+		cpp_unsigned_long_long = new GPPBasicType(IBasicType.t_int, ICPPBasicType.IS_UNSIGNED | ICPPBasicType.IS_LONG_LONG, null);
 		
 		cpp_size_t = cpp_unsigned_long; // assumed unsigned long int
 		cpp_va_list = new CPPFunctionType( cpp_char_p, new IType[0]); // assumed: char * va_list();
@@ -306,6 +312,7 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
         __builtin_unsigned_long();
         __builtin_unsigned_long_long();
         __builtin_types_compatible_p();
+        __builtin_choose_expr();
 		__builtin_powi();
         __builtin_exit();
         __builtin_conj();
@@ -318,8 +325,26 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
         __builtin_mem();
         __builtin_str_strn();
         __builtin_less_greater();
+        __func__();
 	}
 	
+	private void __func__() {
+		// const char * __func__;
+		IBinding temp1, temp2, temp3;
+        if (lang == ParserLanguage.C) {
+            temp1 = new CBuiltinVariable(c_const_char_p, __FUNC__, scope);
+            temp2 = new CBuiltinVariable(c_const_char_p, __FUNCTION__, scope);
+            temp3 = new CBuiltinVariable(c_const_char_p, __PRETTY_FUNCTION__, scope);
+        } else {
+            temp1 = new CPPBuiltinVariable(cpp_const_char_p, __FUNC__, scope);
+            temp2 = new CPPBuiltinVariable(cpp_const_char_p, __FUNCTION__, scope);
+            temp3 = new CPPBuiltinVariable(cpp_const_char_p, __PRETTY_FUNCTION__, scope);
+        }
+		bindings = (IBinding[])ArrayUtil.append(IBinding.class, bindings, temp1);
+		bindings = (IBinding[])ArrayUtil.append(IBinding.class, bindings, temp2);
+		bindings = (IBinding[])ArrayUtil.append(IBinding.class, bindings, temp3);
+	}
+
 	private void __builtin_va_list() {
 		// char * __builtin_va_list();
 		IBinding temp = null;
@@ -810,7 +835,26 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
 		}
 		bindings = (IBinding[])ArrayUtil.append(IBinding.class, bindings, temp);
 	}
-	
+
+	private void __builtin_choose_expr() {
+		// type __builtin_choose_expr (const_exp, exp1, exp2)
+		IBinding temp = null;
+		if (lang == ParserLanguage.C) {
+			IFunctionType functionType = null;
+			IType[] parms = new IType[3];
+			parms[0] = c_unspecified;
+			parms[1] = c_unspecified;
+			parms[2] = c_unspecified;
+			functionType = new CFunctionType(c_unspecified, parms);
+			IParameter[] theParms = new IParameter[3];
+			theParms[0] = new CBuiltinParameter(parms[0]);
+			theParms[1] = theParms[0];
+			theParms[2] = theParms[0];
+			temp = new CImplicitFunction(__BUILTIN_CHOOSE_EXPR, scope, functionType, theParms, true);
+			bindings = (IBinding[])ArrayUtil.append(IBinding.class, bindings, temp);
+		} 
+	}
+
 	private void __builtin_types_compatible_p() {
 		// int __builtin_types_compatible_p( type1, type2 ) implemented via ( ... )
 		IBinding temp = null;
@@ -2387,6 +2431,10 @@ public class GCCBuiltinSymbolProvider implements IBuiltinBindingsProvider {
         public boolean isExtern() {
             return false;
         }
+
+		public boolean isExternC() {
+			return false;
+		}
 
         /**
          * returns false

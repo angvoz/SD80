@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,12 +9,9 @@
  *     IBM Corporation - initial API and implementation
  *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
-
-/*
- * Created on Dec 13, 2004
- */
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
+import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IQualifierType;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
@@ -35,16 +32,19 @@ public class CPPQualifierType implements IQualifierType, ITypeContainer {
         this.isVolatile = isVolatile;
     }
     
-    public boolean isSameType( IType o ){
-	    if( o instanceof ITypedef || o instanceof IIndexType)
-	        return o.isSameType( this );
-	    if( !( o instanceof CPPQualifierType ) ) 
-	        return false;
-	    
-	    CPPQualifierType pt = (CPPQualifierType) o;
-	    if( isConst() == pt.isConst() && isVolatile() == pt.isVolatile() )
-	        return type.isSameType( pt.getType() );
-	    return false;
+    public boolean isSameType(IType o) {
+		if (o instanceof ITypedef || o instanceof IIndexType)
+			return o.isSameType(this);
+		if (!(o instanceof IQualifierType))
+			return false;
+
+		IQualifierType pt = (IQualifierType) o;
+		try {
+			if (isConst() == pt.isConst() && isVolatile() == pt.isVolatile())
+				return type.isSameType(pt.getType());
+		} catch (DOMException e) {
+		}
+		return false;
 	}
     
     /* (non-Javadoc)
@@ -72,7 +72,8 @@ public class CPPQualifierType implements IQualifierType, ITypeContainer {
         type = t;
     }
     
-    public Object clone(){
+    @Override
+	public Object clone(){
         IType t = null;
    		try {
             t = (IType) super.clone();

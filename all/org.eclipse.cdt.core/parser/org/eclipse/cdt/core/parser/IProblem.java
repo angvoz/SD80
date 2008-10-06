@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2005 IBM Corporation and others.
+ * Copyright (c) 2000, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -43,6 +43,12 @@ public interface IProblem
 	String getMessage();
 
 	/**
+	 * Returns a human-readable message string describing the problem, adding
+	 * location information.
+	 */
+	String getMessageWithLocation();
+
+	/**
 	 * Return to the client a map between parameter names and values.  
 	 * 
 	 * The keys and values are all Strings.  
@@ -50,7 +56,7 @@ public interface IProblem
 	 *
 	 * @return a map between parameter names and values.
 	 */
-	String getArguments();
+	String[] getArguments();
 
 	/**
 	 * Answer the file name in which the problem was found.
@@ -320,6 +326,12 @@ public interface IProblem
 	 */
 	public final static int SCANNER_BAD_CONDITIONAL_EXPRESSION = SCANNER_RELATED | 0x00E;
 	
+	/** 
+	 * Bad binary encountered by Scanner. 
+	 * Required attributes: none.  
+	 */
+	public final static int SCANNER_BAD_BINARY_FORMAT = SCANNER_RELATED | 0x00F;
+
 
 	/*
 	 * Preprocessor Problems
@@ -474,7 +486,7 @@ public interface IProblem
 
 	/**
 	 * Invalid type provided
-	 * Required attribugtes: A_TYPE_NAME
+	 * Required attributes: A_TYPE_NAME
 	 * @see #A_TYPE_NAME
 	 */
 	public static final int SEMANTIC_INVALID_TYPE = SEMANTICS_RELATED | 0x007;

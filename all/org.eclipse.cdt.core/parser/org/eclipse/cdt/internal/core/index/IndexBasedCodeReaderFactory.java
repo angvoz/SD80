@@ -1,254 +1,303 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 QNX Software Systems and others.
+ * Copyright (c) 2005, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX - Initial API and implementation
- * Markus Schorn (Wind River Systems)
- * Andrew Ferguson (Symbian)
- * Anton Leherbauer (Wind River Systems)
+ *    QNX - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
+ *    Andrew Ferguson (Symbian)
+ *    Anton Leherbauer (Wind River Systems)
+ *    IBM Corporation
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.index;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
-import org.eclipse.cdt.core.dom.IMacroCollector;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDirective;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexFile;
 import org.eclipse.cdt.core.index.IIndexFileLocation;
 import org.eclipse.cdt.core.index.IIndexInclude;
 import org.eclipse.cdt.core.index.IIndexMacro;
-import org.eclipse.cdt.core.index.IndexLocationFactory;
 import org.eclipse.cdt.core.parser.CodeReader;
 import org.eclipse.cdt.core.parser.ICodeReaderCache;
-import org.eclipse.cdt.core.parser.IMacro;
 import org.eclipse.cdt.core.parser.ParserUtil;
-import org.eclipse.cdt.internal.core.parser.scanner2.ObjectStyleMacro;
-import org.eclipse.cdt.internal.core.pdom.dom.PDOMMacro;
+import org.eclipse.cdt.internal.core.parser.scanner.IIndexBasedCodeReaderFactory;
+import org.eclipse.cdt.internal.core.parser.scanner.IncludeFileContent;
+import org.eclipse.cdt.internal.core.parser.scanner.IncludeFileContent.InclusionKind;
+import org.eclipse.cdt.internal.core.pdom.ASTFilePathResolver;
+import org.eclipse.cdt.internal.core.pdom.AbstractIndexerTask;
+import org.eclipse.cdt.internal.core.pdom.AbstractIndexerTask.FileContent;
 import org.eclipse.core.runtime.CoreException;
 
 /**
- * @author Doug Schaefer
- *
+ * Code reader factory, that fakes code readers for header files already stored in the 
+ * index.
  */
-public class IndexBasedCodeReaderFactory implements ICodeReaderFactory {
-	public static interface CallbackHandler {
-		boolean needToUpdate(IndexFileInfo fileInfo) throws CoreException;		
-	}
-	public static class IndexFileInfo {
-		public final static int NOT_REQUESTED= 0;
-		public final static int REQUESTED_IF_CONFIG_CHANGED= 1;
-		public final static int REQUESTED= 2;
-		
-		private IndexFileInfo() {}
-		private IMacro[] fMacros= null;
+public final class IndexBasedCodeReaderFactory implements IIndexBasedCodeReaderFactory {
+	private static final class NeedToParseException extends Exception {}
+	private static final String GAP = "__gap__"; //$NON-NLS-1$
 
-		public IIndexFile fFile= null;
-		public int fRequested= 0;
+	private final IIndex fIndex;
+	private int fLinkage;
+	private Set<IIndexFileLocation> fIncludedFiles= new HashSet<IIndexFileLocation>();
+	/** The fall-back code reader factory used in case a header file is not indexed */
+	private final ICodeReaderFactory fFallBackFactory;
+	private final ASTFilePathResolver fPathResolver;
+	private final AbstractIndexerTask fRelatedIndexerTask;
+	private boolean fSupportFillGapFromContextToHeader= false;
+	
+	public IndexBasedCodeReaderFactory(IIndex index, ASTFilePathResolver pathResolver, int linkage, 
+			ICodeReaderFactory fallbackFactory) {
+		this(index, pathResolver, linkage, fallbackFactory, null);
+	}
+
+	public IndexBasedCodeReaderFactory(IIndex index, ASTFilePathResolver pathResolver, int linkage,
+			ICodeReaderFactory fallbackFactory, AbstractIndexerTask relatedIndexerTask) {
+		fIndex= index;
+		fFallBackFactory= fallbackFactory;
+		fPathResolver= pathResolver;
+		fRelatedIndexerTask= relatedIndexerTask;
+		fLinkage= linkage;
+	}
+
+	public void setSupportFillGapFromContextToHeader(boolean val) {
+		fSupportFillGapFromContextToHeader= val;
 	}
 	
-	private final static boolean CASE_SENSITIVE_FILES= !new File("a").equals(new File("A"));  //$NON-NLS-1$//$NON-NLS-2$
-	private final IIndex index;
-	private Map/*<IIndexFileLocation,FileInfo>*/ fileInfoCache;
-	private Map/*<String,IIndexFileLocation>*/ iflCache;
-	private List usedMacros = new ArrayList();
-	private Set/*<FileInfo>*/ fIncluded= new HashSet();
-	/** The fallback code reader factory used in case a header file is not indexed */
-	private ICodeReaderFactory fFallBackFactory;
-	private CallbackHandler fCallbackHandler;
+	public void setLinkage(int linkageID) {
+		fLinkage= linkageID;
+	}
+
+	public void cleanupAfterTranslationUnit() {
+		fIncludedFiles.clear();
+	}
 	
-	private static final char[] EMPTY_CHARS = new char[0];
-	
-	private static class NeedToParseException extends Exception {
-		private static final long serialVersionUID = 1L;
-	}
-	public IndexBasedCodeReaderFactory(IIndex index) {
-		this(index, new HashMap/*<String,IIndexFileLocation>*/());
-	}
-
-	public IndexBasedCodeReaderFactory(IIndex index, ICodeReaderFactory fallbackFactory) {
-		this(index, new HashMap/*<String,IIndexFileLocation>*/(), fallbackFactory);
-	}
-
-	public IndexBasedCodeReaderFactory(IIndex index, Map iflCache) {
-		this(index, iflCache, null);
-	}
-
-	public IndexBasedCodeReaderFactory(IIndex index, Map iflCache, ICodeReaderFactory fallbackFactory) {
-		this.index = index;
-		this.fileInfoCache = new HashMap/*<IIndexFileLocation,FileInfo>*/();
-		this.iflCache = iflCache;
-		this.fFallBackFactory= fallbackFactory;
-	}
-
 	public int getUniqueIdentifier() {
 		return 0;
 	}
 
-	public CodeReader createCodeReaderForTranslationUnit(String path) {
-		return ParserUtil.createReader(path, null);
-	}
-	
-	public CodeReader createCodeReaderForInclusion(IMacroCollector scanner, String path) {
-		// if the file is in the index, we skip it
-		File location= new File(path);
-		String canonicalPath= path;
-		if (!location.exists()) {
-			return null;
-		}
-		if (!CASE_SENSITIVE_FILES) {
-			try {
-				canonicalPath= location.getCanonicalPath();
-			}
-			catch (IOException e) {
-				// just use the original
-			}
-		}
-		try {
-			IIndexFileLocation incLocation = findLocation(canonicalPath);
-			IndexFileInfo info= createInfo(incLocation, null);
-
-			if (isIncluded(info)) {
-				return new CodeReader(canonicalPath, EMPTY_CHARS);
-			}
-
-			// try to build macro dictionary off index
-			if (info.fFile != null) {
-				try {
-					LinkedHashSet infos= new LinkedHashSet();
-					getInfosForMacroDictionary(info, infos);
-					for (Iterator iter = infos.iterator(); iter.hasNext();) {
-						IndexFileInfo fi = (IndexFileInfo) iter.next();
-						if (fi.fMacros == null) {
-							assert fi.fFile != null;
-							IIndexMacro[] macros= fi.fFile.getMacros();
-							IMacro[] converted= new IMacro[macros.length];
-							for (int i = 0; i < macros.length; i++) {
-								IIndexMacro macro = macros[i];
-								converted[i]= ((PDOMMacro)macro).getMacro();
-							}
-							fi.fMacros= converted;
-						}
-						for (int i = 0; i < fi.fMacros.length; ++i) {
-							scanner.addDefinition(fi.fMacros[i]);
-						}
-						// record the macros we used.
-						usedMacros.add(fi.fMacros);
-					}
-					return new CodeReader(canonicalPath, EMPTY_CHARS);
-				} catch (NeedToParseException e) {
-				}
-			}
-			setIncluded(info);
-		}
-		catch (CoreException e) {
-			CCorePlugin.log(e);
-			// still try to parse the file.
-		}
-
-		if (fFallBackFactory != null) {
-			return fFallBackFactory.createCodeReaderForInclusion(scanner, canonicalPath);
-		}
-		return ParserUtil.createReader(canonicalPath, null);
-	}
-
-	/**
-	 * Mark the given inclusion as included.
-	 * @param info
-	 */
-	private void setIncluded(IndexFileInfo info) {
-		fIncluded.add(info);
-	}
-
-	/**
-	 * Test whether the given inclusion is already included.
-	 * @param info
-	 * @return <code>true</code> if the inclusion is already included.
-	 */
-	private boolean isIncluded(IndexFileInfo info) {
-		return fIncluded.contains(info);
-	}
-
-	private IndexFileInfo createInfo(IIndexFileLocation location, IIndexFile file) throws CoreException {
-		IndexFileInfo info= (IndexFileInfo) fileInfoCache.get(location);
-		if (info == null) {
-			info= new IndexFileInfo();			
-			info.fFile= file == null ? index.getFile(location) : file;
-			fileInfoCache.put(location, info);
-		}
-		return info;
-	}
-	
-	private void getInfosForMacroDictionary(IndexFileInfo fileInfo, LinkedHashSet/*<FileInfo>*/ target) throws CoreException, NeedToParseException {
-		if (!target.add(fileInfo)) {
-			return;
-		}
-		if (isIncluded(fileInfo)) {
-			return;
-		}
-		final IIndexFile file= fileInfo.fFile;
-		if (file == null || 
-				(fCallbackHandler != null && fCallbackHandler.needToUpdate(fileInfo))) {
-			throw new NeedToParseException();
-		}
-
-		// Follow the includes
-		IIndexInclude[] includeDirectives= file.getIncludes();
-		for (int i = 0; i < includeDirectives.length; i++) {
-			IIndexFile includedFile= index.resolveInclude(includeDirectives[i]);
-			if (includedFile != null) {
-				IndexFileInfo nextInfo= createInfo(includedFile.getLocation(), includedFile);
-				getInfosForMacroDictionary(nextInfo, target);
-			}
-		}
-		setIncluded(fileInfo);
-	}
-	
-	public void clearMacroAttachements() {
-		Iterator i = usedMacros.iterator();
-		while (i.hasNext()) {
-			IMacro[] macros = (IMacro[])i.next();
-			for (int j = 0; j < macros.length; ++j) {
-				if (macros[j] instanceof ObjectStyleMacro) {
-					((ObjectStyleMacro)macros[j]).attachment = null;
-				}
-			}
-		}
-		usedMacros.clear();
-		fIncluded.clear();
-	}
-
 	public ICodeReaderCache getCodeReaderCache() {
-		// No need for cache here
 		return null;
 	}
 	
-	public IndexFileInfo createFileInfo(IIndexFileLocation location) throws CoreException {
-		return createInfo(location, null);
-	}
-	
-	public IIndexFileLocation findLocation(String absolutePath) {
-		if(!iflCache.containsKey(absolutePath)) {
-			iflCache.put(absolutePath, IndexLocationFactory.getIFLExpensive(absolutePath));
+	public CodeReader createCodeReaderForTranslationUnit(String path) {
+		if (fFallBackFactory != null) {
+			return fFallBackFactory.createCodeReaderForTranslationUnit(path);
 		}
-		return (IIndexFileLocation) iflCache.get(absolutePath);
+		return ParserUtil.createReader(path, null);
 	}
 
-	public void setCallbackHandler(CallbackHandler callbackHandler) {
-		fCallbackHandler= callbackHandler;
+	public CodeReader createCodeReaderForInclusion(String path) {
+		if (fFallBackFactory != null) {
+			return fFallBackFactory.createCodeReaderForInclusion(path);
+		}
+		return ParserUtil.createReader(path, null);
+	}
+
+	public boolean getInclusionExists(String path) {
+		return fPathResolver.doesIncludeFileExist(path); 
+	}
+	
+	public void reportTranslationUnitFile(String path) {
+		IIndexFileLocation ifl= fPathResolver.resolveASTPath(path);
+		fIncludedFiles.add(ifl);
+	}
+
+	public boolean hasFileBeenIncludedInCurrentTranslationUnit(String path) {
+		IIndexFileLocation ifl= fPathResolver.resolveASTPath(path);
+		return fIncludedFiles.contains(ifl);
+	}
+	
+	public IncludeFileContent getContentForInclusion(String path) {
+		IIndexFileLocation ifl= fPathResolver.resolveIncludeFile(path);
+		if (ifl == null) {
+			return null;
+		}
+		path= fPathResolver.getASTPath(ifl);
+		
+		// include files once, only.
+		if (!fIncludedFiles.add(ifl)) {
+			return new IncludeFileContent(path, InclusionKind.SKIP_FILE);
+		}
+		
+		try {
+			IIndexFile file= fIndex.getFile(fLinkage, ifl);
+			if (file != null) {
+				try {
+					LinkedHashMap<IIndexFileLocation, FileContent> fileContentMap= new LinkedHashMap<IIndexFileLocation, FileContent>();
+					List<IIndexFile> files= new ArrayList<IIndexFile>();
+					collectFileContent(file, fileContentMap, files, false);
+					ArrayList<IIndexMacro> allMacros= new ArrayList<IIndexMacro>();
+					ArrayList<ICPPUsingDirective> allDirectives= new ArrayList<ICPPUsingDirective>();
+					for (Map.Entry<IIndexFileLocation,FileContent> entry : fileContentMap.entrySet()) {
+						final FileContent content= entry.getValue();
+						allMacros.addAll(Arrays.asList(content.fMacros));
+						allDirectives.addAll(Arrays.asList(content.fDirectives));
+						fIncludedFiles.add(entry.getKey());
+					}
+					return new IncludeFileContent(path, allMacros, allDirectives, files);
+				}
+				catch (NeedToParseException e) {
+				}
+			}
+		}
+		catch (CoreException e) {
+			CCorePlugin.log(e);
+		}
+
+		CodeReader codeReader= createCodeReaderForInclusion(path);
+		if (codeReader != null) {
+			return new IncludeFileContent(codeReader);
+		}
+		return null;
+	}
+
+
+	private void collectFileContent(IIndexFile file, Map<IIndexFileLocation, FileContent> macroMap, List<IIndexFile> files, boolean checkIncluded) throws CoreException, NeedToParseException {
+		IIndexFileLocation ifl= file.getLocation();
+		if (macroMap.containsKey(ifl) || (checkIncluded && fIncludedFiles.contains(ifl))) {
+			return;
+		}
+		FileContent content;
+		if (fRelatedIndexerTask != null) {
+			content= fRelatedIndexerTask.getFileContent(fLinkage, ifl);
+			if (content == null) {
+				throw new NeedToParseException();
+			}
+		}
+		else {
+			content= new FileContent();
+			content.fMacros= file.getMacros();
+			content.fDirectives= file.getUsingDirectives();
+		}
+		macroMap.put(ifl, content); // prevent recursion
+		files.add(file);
+		
+		// follow the includes
+		IIndexInclude[] includeDirectives= file.getIncludes();
+		for (final IIndexInclude indexInclude : includeDirectives) {
+			IIndexFile includedFile= fIndex.resolveInclude(indexInclude);
+			if (includedFile != null) {
+				collectFileContent(includedFile, macroMap, files, true);
+			}
+		}
+	}
+
+	public IncludeFileContent getContentForContextToHeaderGap(String path) {
+		if (!fSupportFillGapFromContextToHeader) {
+			return null;
+		}
+		
+		IIndexFileLocation ifl= fPathResolver.resolveASTPath(path);
+		if (ifl == null) {
+			return null;
+		}
+		
+		try {
+			IIndexFile targetFile= fIndex.getFile(fLinkage, ifl);
+			if (targetFile == null) {
+				return null;
+			}
+			
+			IIndexFile contextFile= findContext(targetFile);
+			if (contextFile == targetFile || contextFile == null) {
+				return null;
+			}
+			
+			HashSet<IIndexFile> filesIncluded= new HashSet<IIndexFile>();
+			ArrayList<IIndexMacro> macros= new ArrayList<IIndexMacro>();
+			ArrayList<ICPPUsingDirective> directives= new ArrayList<ICPPUsingDirective>();
+			if (!collectFileContentForGap(contextFile, ifl, filesIncluded, macros, directives)) {
+				return null;
+			}
+
+			// mark the files in the gap as included
+			for (IIndexFile file : filesIncluded) {
+				fIncludedFiles.add(file.getLocation());
+			}
+			Collections.reverse(macros);
+			return new IncludeFileContent(GAP, macros, directives, new ArrayList<IIndexFile>(filesIncluded));
+		}
+		catch (CoreException e) {
+			CCorePlugin.log(e);
+		}
+		return null;
+	}
+
+	private IIndexFile findContext(IIndexFile file) throws CoreException {
+		final HashSet<IIndexFile> ifiles= new HashSet<IIndexFile>();
+		ifiles.add(file);
+		IIndexInclude include= file.getParsedInContext();
+		while (include != null) {
+			final IIndexFile context= include.getIncludedBy();
+			if (!ifiles.add(context)) {
+				return file;
+			}
+			file= context;
+		}
+		return file;
+	}
+
+	private boolean collectFileContentForGap(IIndexFile from, IIndexFileLocation to,
+			Set<IIndexFile> filesIncluded, List<IIndexMacro> macros,
+			List<ICPPUsingDirective> directives) throws CoreException {
+
+		final IIndexFileLocation ifl= from.getLocation();
+		if (ifl.equals(to)) {
+			return true;
+		}
+
+		if (fIncludedFiles.contains(ifl) || !filesIncluded.add(from)) {
+			return false;
+		}
+
+		final IIndexInclude[] includeDirectives= from.getIncludes();
+		IIndexInclude success= null;
+		for (IIndexInclude indexInclude : includeDirectives) {
+			IIndexFile includedFile= fIndex.resolveInclude(indexInclude);
+			if (includedFile != null) {
+				if (collectFileContentForGap(includedFile, to, filesIncluded, macros, directives)) {
+					success= indexInclude;
+					break;
+				}
+			}
+		}
+
+		IIndexMacro[] mymacros= from.getMacros();
+		ICPPUsingDirective[] mydirectives= from.getUsingDirectives();
+		int startm, startd;
+		if (success == null) {
+			startm= mymacros.length-1;
+			startd= mydirectives.length-1;
+		}
+		else {
+			startm= startd= -1;
+			final int offset= success.getNameOffset();
+			for (IIndexMacro macro : from.getMacros()) {
+				if (macro.getFileLocation().getNodeOffset() < offset) {
+					startm++;
+				}
+			}
+		}
+		for (int i= startm; i >= 0; i--) {
+			macros.add(mymacros[i]);
+		}
+		for (int i= startd; i >= 0; i--) {
+			directives.add(mydirectives[i]);
+		}
+		return success != null;
 	}
 }

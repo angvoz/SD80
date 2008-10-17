@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 QNX Software Systems and others.
+ * Copyright (c) 2004, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX Software Systems - Initial API and implementation
+ *     QNX Software Systems - Initial API and implementation
+ *     oyvind.harboe@zylin.com - http://bugs.eclipse.org/250638
  *******************************************************************************/
 package org.eclipse.cdt.debug.internal.core.model;
 
@@ -17,6 +18,9 @@ import org.eclipse.cdt.core.IAddressFactory;
 import org.eclipse.cdt.debug.core.CDebugCorePlugin;
 import org.eclipse.cdt.debug.core.ICDebugConstants;
 import org.eclipse.cdt.debug.core.cdi.CDIException;
+import org.eclipse.cdt.debug.core.cdi.event.ICDIEvent;
+import org.eclipse.cdt.debug.core.cdi.event.ICDIEventListener;
+import org.eclipse.cdt.debug.core.cdi.event.ICDIMemoryChangedEvent;
 import org.eclipse.cdt.debug.core.cdi.model.ICDIInstruction;
 import org.eclipse.cdt.debug.core.cdi.model.ICDIMixedInstruction;
 import org.eclipse.cdt.debug.core.cdi.model.ICDITarget;
@@ -30,7 +34,7 @@ import org.eclipse.debug.core.DebugException;
 /**
  * CDI implementation of IDisassembly 
  */
-public class Disassembly extends CDebugElement implements IDisassembly {
+public class Disassembly extends CDebugElement implements IDisassembly, ICDIEventListener {
 
 	final static private int DISASSEMBLY_BLOCK_SIZE = 100;
 
@@ -43,6 +47,7 @@ public class Disassembly extends CDebugElement implements IDisassembly {
 	 */
 	public Disassembly( CDebugTarget target ) {
 		super( target );
+		getCDISession().getEventManager().addEventListener( this );
 	}
 
 	/* (non-Javadoc)
@@ -61,7 +66,9 @@ public class Disassembly extends CDebugElement implements IDisassembly {
 			String fileName = frame.getFile();
 			int lineNumber = frame.getLineNumber();
 			ICDIMixedInstruction[] mixedInstrs = new ICDIMixedInstruction[0];
-			IAddress address = frame.getAddress();				
+			IAddress address = frame.getAddress();
+			if (address==null)
+				return null;
 			if ( fileName != null && fileName.length() > 0 ) {
 				try {
 					mixedInstrs = target.getMixedInstructions( fileName, 
@@ -117,6 +124,8 @@ public class Disassembly extends CDebugElement implements IDisassembly {
 	}
 
 	public void dispose() {
+		getCDISession().getEventManager().removeEventListener( this );
+        CDebugCorePlugin.getDefault().getDisassemblyContextService().unregister( this );
 		for ( int i = 0; i < fBlocks.length; ++i )
 			if ( fBlocks[i] != null ) {
 				fBlocks[i].dispose();
@@ -127,6 +136,7 @@ public class Disassembly extends CDebugElement implements IDisassembly {
 	/* (non-Javadoc)
 	 * @see org.eclipse.core.runtime.IAdaptable#getAdapter(java.lang.Class)
 	 */
+	@Override
 	public Object getAdapter( Class adapter ) {
 		if ( IExecFileInfo.class.equals( adapter ) )
 			return getDebugTarget().getAdapter( adapter );
@@ -147,5 +157,28 @@ public class Disassembly extends CDebugElement implements IDisassembly {
 	 */
 	public IAddressFactory getAddressFactory() {
 		return ((CDebugTarget)getDebugTarget()).getAddressFactory();
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.core.cdi.event.ICDIEventListener#handleDebugEvents(org.eclipse.cdt.debug.core.cdi.event.ICDIEvent[])
+	 */
+	public void handleDebugEvents( ICDIEvent[] events ) {
+		boolean update = false;
+		for ( int i = 0; i < events.length; ++i ) {
+			if ( events[i] instanceof ICDIMemoryChangedEvent ) {
+				BigInteger[] addresses = ((ICDIMemoryChangedEvent)events[i]).getAddresses();
+				for ( int j = 0; j < addresses.length; ++j ) {
+					IAddress address = getAddressFactory().createAddress( addresses[j] );
+					for ( int k = 0; k < fBlocks.length; ++k ) {
+						if ( fBlocks[k] != null && fBlocks[k].contains( address ) ) {
+							update = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		if ( update )
+			reset();
 	}
 }

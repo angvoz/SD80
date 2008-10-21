@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -20,10 +20,13 @@ import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfil
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariableManager;
+import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.resources.ACBuilder;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerConfigBuilderInfo2;
 import org.eclipse.cdt.make.internal.core.scannerconfig2.SCProfileInstance;
+import org.eclipse.cdt.make.internal.core.scannerconfig2.ScannerConfigProfileManager;
 import org.eclipse.cdt.managedbuilder.core.IConfiguration;
 import org.eclipse.cdt.managedbuilder.core.IManagedBuildInfo;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
@@ -56,7 +59,7 @@ public class ScannerConfigBuilder extends ACBuilder {
 	public static final int FORCE_DISCOVERY = 1 << 1;
 
 	public final static String BUILDER_ID = ManagedBuilderCorePlugin.getUniqueIdentifier() + ".ScannerConfigBuilder"; //$NON-NLS-1$
-
+	
 	public ScannerConfigBuilder() {
 		super();
 	}
@@ -74,9 +77,32 @@ public class ScannerConfigBuilder extends ACBuilder {
 		if(bInfo != null){
 			IConfiguration cfgs[] = bInfo.getManagedProject().getConfigurations();
 			if(cfgs.length != 0){
-				monitor.beginTask(MakeMessages.getString("ScannerConfigBuilder.Invoking_Builder"), cfgs.length); //$NON-NLS-1$
-				for(int i = 0; i < cfgs.length; i++){
-					build(cfgs[i], 0, new SubProgressMonitor(monitor, 1));
+				if(!needAllConfigBuild()){
+					ICProjectDescription des = CoreModel.getDefault().getProjectDescription(getProject(), false);
+					IConfiguration cfg = null;
+					if(des != null){
+						ICConfigurationDescription settingCfgDes = des.getDefaultSettingConfiguration();
+						if(settingCfgDes != null){
+							for(int i = 0; i < cfgs.length; i++){
+								if(settingCfgDes.getId().equals(cfgs[i].getId())){
+									cfg = cfgs[i];
+									break;
+								}
+							}
+						}
+					}
+					if(cfg != null){
+						cfgs = new IConfiguration[]{cfg};
+					} else {
+						cfgs = new IConfiguration[0];
+					}
+				}
+				int numWork = cfgs.length;
+				if(numWork > 0){
+					monitor.beginTask(MakeMessages.getString("ScannerConfigBuilder.Invoking_Builder"), numWork); //$NON-NLS-1$
+					for(int i = 0; i < cfgs.length; i++){
+						build(cfgs[i], 0, new SubProgressMonitor(monitor, 1));
+					}
 				}
 			}
 			
@@ -151,7 +177,10 @@ public class ScannerConfigBuilder extends ACBuilder {
             	env = calcEnvironment(cfg);
             
             // get scanner info from all external providers
-            SCProfileInstance instance = CfgSCJobsUtil.getProviderScannerInfo(project, context, null, buildInfo2, env, new SubProgressMonitor(monitor, 70));
+            SCProfileInstance instance = ScannerConfigProfileManager.getInstance().
+        		getSCProfileInstance(project, context.toInfoContext(), buildInfo2.getSelectedProfileId());
+            if((instance == null) || !buildInfo2.getProviderIdList().isEmpty()) 
+            	instance = CfgSCJobsUtil.getProviderScannerInfo(project, context, instance, buildInfo2, env, new SubProgressMonitor(monitor, 70));
 
             // update and persist scanner configuration
             CfgSCJobsUtil.updateScannerConfiguration(project, context, instance, buildInfo2, new SubProgressMonitor(monitor, 30));

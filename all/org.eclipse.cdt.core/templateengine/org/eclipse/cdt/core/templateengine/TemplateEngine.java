@@ -1,26 +1,29 @@
 /*******************************************************************************
- * Copyright (c) 2007 Symbian Software Limited and others.
+ * Copyright (c) 2007, 2008 Symbian Software Limited and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Bala Torati (Symbian) - Initial API and implementation
+ *     Bala Torati (Symbian) - Initial API and implementation
+ *     Mark Espiritu (VaST Systems) - bug 215960
  *******************************************************************************/
 package org.eclipse.cdt.core.templateengine;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
@@ -32,7 +35,7 @@ import org.w3c.dom.NodeList;
 
 /**
  * TemplateEngine is implemented as a Singleton. TemplateEngine is responsible for 
- * creating SharedDefaults and initializing the SharedDefaults. Template instances
+ * creating SharedDefaults and initialising the SharedDefaults. Template instances
  * are obtained from TemplateEngine.
  * 
  * @since 4.0
@@ -40,83 +43,93 @@ import org.w3c.dom.NodeList;
 public class TemplateEngine {
 
 	public static String TEMPLATES_EXTENSION_ID = CCorePlugin.PLUGIN_ID + ".templates"; //$NON-NLS-1$
+	public static String TEMPLATE_ASSOCIATIONS_EXTENSION_ID = CCorePlugin.PLUGIN_ID + ".templateAssociations"; //$NON-NLS-1$
 	
 	/**
 	 * static reference to the Singleton TemplateEngine instance.
 	 */
-	private static TemplateEngine TEMPLATE_ENGINE = new TemplateEngine();
+	private static TemplateEngine TEMPLATE_ENGINE;
 	
 	/**
 	 * This is a Map <WizardID, TemplateInfo>.
 	 */
-	private Map/*<String, List<TemplateInfo>>*/ templateInfoMap;
+	private Map<String, List<TemplateInfo>> templateInfoMap;
 
 	/**
-	 * TemplateEngine constructor, create and initialize SharedDefaults.
+	 * TemplateEngine constructor, create and initialise SharedDefaults.
 	 */
 	private TemplateEngine() {
-		templateInfoMap = new HashMap/*<String, List<TemplateInfo>>*/();
+		templateInfoMap = new LinkedHashMap<String, List<TemplateInfo>>();
 		initializeTemplateInfoMap();
 	}
 
 	/**
-	 * get All the templates, no filtering is done.
-	 * 
-	 * @return
+	 * Returns all the TemplateCore objects, no filtering is done.
 	 */
 	public TemplateCore[] getTemplates() {
 		TemplateInfo[] templateInfoArray = getTemplateInfos();
-		List/*<Template>*/ templatesList = new ArrayList/*<Template>*/();
+		List<TemplateCore> tcores = new ArrayList<TemplateCore>();
 		for (int i=0; i<templateInfoArray.length; i++) {
 			TemplateInfo info = templateInfoArray[i];
 			try {
-				templatesList.add(TemplateCore.getTemplate(info));
-			} catch (Exception e) {
+				tcores.add(TemplateCore.getTemplate(info));
+			} catch (TemplateInitializationException e) {
+				CCorePlugin.log(CCorePlugin.createStatus(e.getMessage(), e));
 			}
 		}
-		return (TemplateCore[]) templatesList.toArray(new TemplateCore[templatesList.size()]);
+		return tcores.toArray(new TemplateCore[tcores.size()]);
 	}
 
 	/**
-	 * This method will be called by Contianer UIs (Wizard, PropertyPage,
-	 * PreferencePage). Create a Template instance, update the ValueStore, with
-	 * SharedDefaults. This method calls the getTemplate(URL), after getting URL
-	 * for the given String TemplateDescriptor.
-	 * 
-	 * @param StringTemplateDescriptor,
-	 *            TemplateDescriptor name.
-	 * @throws IOException
+	 * Returns the first template defined for the specified parameters
+	 * @param projectType may not be null
+	 * @param toolChain may be null to indicate no tool-chain filtering
+	 * @param usageFilter a regex in java.util.regex.Pattern format, may be null to indicate no filtering
+	 * @see java.util.regex.Pattern
+	 * @return the TemplateCore for the first template defined for the specified parameters, or null
+	 * if no such definition exists, or if there is an error initializing the template (the error will
+	 * be logged).
+	 */
+	public TemplateCore getFirstTemplate(String projectType, String toolChain, String usageFilter) {
+		TemplateInfo[] infos= getTemplateInfos(projectType, toolChain, usageFilter);
+		if(infos.length>0) {
+			try {
+				return TemplateCore.getTemplate(infos[0]);
+			} catch(TemplateInitializationException tie) {
+				CCorePlugin.log(tie);
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * Equivalent to calling the overloaded version of getFirstTemplate with null arguments for
+	 * toolChain and usageFilter.
+	 * @see TemplateEngine#getFirstTemplate(String, String, String)
+	 * @return the first TemplateCore object registered, or null if this does not exist
 	 */
 	public TemplateCore getFirstTemplate(String projectType) {
 		return getFirstTemplate(projectType, null, null);
 	}
 
-	public TemplateCore getFirstTemplate(String projectType, String toolChain, String usageFilter) {
-		try {
-			return TemplateCore.getTemplate(getTemplateInfos(projectType, toolChain, usageFilter)[0]);
-		} catch (Exception e) {
-			// ignore
-		}				
-		return null;
-	}
-
 	/**
-	 * This method will be called by Contianer UIs (Wizard, PropertyPage,
+	 * This method will be called by Container UIs (Wizard, PropertyPage,
 	 * PreferencePage). Create a Template instance, update the ValueStore, with
 	 * SharedDefaults. This method calls the getTemplate(URL), after getting URL
 	 * for the given String TemplateDescriptor.
 	 */
 	public TemplateCore[] getTemplates(String projectType, String toolChain, String usageFilter) {
 		TemplateInfo[] templateInfoArray = getTemplateInfos(projectType, toolChain, usageFilter);
-		List/*<Template>*/ templatesList = new ArrayList/*<Template>*/();
+		List<TemplateCore> templatesList = new ArrayList<TemplateCore>();
 		for (int i=0; i<templateInfoArray.length; i++) {
 			TemplateInfo info = templateInfoArray[i];
 			try {
 				templatesList.add(TemplateCore.getTemplate(info));
-			} catch (Exception e) {
+			} catch (TemplateInitializationException tie) {
+				CCorePlugin.log(tie);
 			}
 		}
-		return (TemplateCore[]) templatesList.toArray(new TemplateCore[templatesList.size()]);
+		return templatesList.toArray(new TemplateCore[templatesList.size()]);
 	}
 	
 	public TemplateCore[] getTemplates(String projectType, String toolChain) {
@@ -140,11 +153,9 @@ public class TemplateEngine {
 	}
 	
 	/**
-	 * return the SharedDefaults.
-	 * 
-	 * @return
+	 * @return the SharedDefaults.
 	 */
-	public Map/*<String, String>*/ getSharedDefaults() {
+	public static Map<String, String> getSharedDefaults() {
 		return SharedDefaults.getInstance().getSharedDefaultsMap();
 	}
 
@@ -157,14 +168,11 @@ public class TemplateEngine {
 	 * values of IDs in ValueStore, which are also present in PersistTrueIDs
 	 * vector.
 	 * @param template
-	 * @param aSharedValue
 	 */
 	public void updateSharedDefaults(TemplateCore template) {
-		Map/*<String, String>*/ tobePersisted = new HashMap/*<String, String>*/();
-		Map/*<String, String>*/ valueStore = template.getValueStore();
-		
-		for (Iterator i = template.getPersistTrueIDs().iterator(); i.hasNext();) {
-			String key = (String) i.next();
+		Map<String, String> tobePersisted = new HashMap<String, String>();
+		Map<String, String> valueStore = template.getValueStore();
+		for(String key : template.getPersistTrueIDs()) {
 			tobePersisted.put(key, valueStore.get(key));
 		}
 		SharedDefaults.getInstance().updateShareDefaultsMap(tobePersisted);
@@ -181,6 +189,9 @@ public class TemplateEngine {
      * @since 4.0
 	 */
 	public static TemplateEngine getDefault() {
+		if(TEMPLATE_ENGINE==null) {
+			TEMPLATE_ENGINE = new TemplateEngine();
+		}
 		return TEMPLATE_ENGINE;
 	}
 
@@ -190,62 +201,107 @@ public class TemplateEngine {
 	 * extension point "templates"
 	 */
 	private void initializeTemplateInfoMap() {
+		String templateId = null;
 		String location = null;
 		String pluginId = null;
 		String projectType = null;
 		String filterPattern = null;
-		String usage = null;
 		boolean isCategory = false;
-		String extraPagesProvider = null;
-
+		
 		IExtension[] extensions = Platform.getExtensionRegistry().getExtensionPoint(TEMPLATES_EXTENSION_ID).getExtensions();
 		for(int i=0; i<extensions.length; i++) {
 			IExtension extension = extensions[i];
 			IConfigurationElement[] configElements = extension.getConfigurationElements();
-			pluginId = extension.getNamespaceIdentifier(); // Plugin-id of the extending plugin.
+			pluginId = extension.getNamespaceIdentifier(); // Plug-in id of the extending plug-in.
 			for(int j=0; j<configElements.length; j++) {
+				Object /*IPagesAfterTemplateSelectionProvider*/ extraPagesProvider = null;
 				IConfigurationElement config = configElements[j];
+				templateId = config.getAttribute(TemplateEngineHelper.ID);
 				location = config.getAttribute(TemplateEngineHelper.LOCATION);
 				projectType = config.getAttribute(TemplateEngineHelper.PROJECT_TYPE);
 				filterPattern = config.getAttribute(TemplateEngineHelper.FILTER_PATTERN);
-				usage = config.getAttribute(TemplateEngineHelper.USAGE_DESCRIPTION);
 				isCategory = Boolean.valueOf(config.getAttribute(TemplateEngineHelper.IS_CATEGORY)).booleanValue();
-				extraPagesProvider = config.getAttribute(TemplateEngineHelper.EXTRA_PAGES_PROVIDER);
-				
+				String providerAttribute = config.getAttribute(TemplateEngineHelper.EXTRA_PAGES_PROVIDER);
+				if (providerAttribute != null) {
+					try {
+						extraPagesProvider = config.createExecutableExtension(TemplateEngineHelper.EXTRA_PAGES_PROVIDER);
+					} catch (CoreException e) {
+						CCorePlugin.log(CCorePlugin.createStatus("Unable to create extra pages for "+providerAttribute,e)); //$NON-NLS-1$
+					}				
+				}
+
 				IConfigurationElement[] toolChainConfigs = config.getChildren(TemplateEngineHelper.TOOL_CHAIN);
-				Set toolChainIdSet = new HashSet();
+				Set<String> toolChainIdSet = new LinkedHashSet<String>();
 				for (int k=0; k < toolChainConfigs.length; k++) {
 					toolChainIdSet.add(toolChainConfigs[k].getAttribute(TemplateEngineHelper.ID));
 				}
 				
-				TemplateInfo templateInfo = new TemplateInfo(projectType, filterPattern, location, 
+				TemplateInfo templateInfo = new TemplateInfo(templateId, projectType, filterPattern, location, 
 														pluginId, toolChainIdSet,
-														usage, extraPagesProvider, isCategory);
+														extraPagesProvider, isCategory);
 				if (!templateInfoMap.containsKey(projectType)) {
-					templateInfoMap.put(projectType, new ArrayList/*<TemplateInfo>*/());
+					templateInfoMap.put(projectType, new ArrayList<TemplateInfo>());
 				}
-				((List/*<TemplateInfo>*/)templateInfoMap.get(projectType)).add(templateInfo);
+				(templateInfoMap.get(projectType)).add(templateInfo);
+			}
+		}
+		// Check for tool Chains added to the templates outside template info definition
+		addToolChainsToTemplates();
+	}
+
+	private void addToolChainsToTemplates() {
+		String templateId = null;
+		TemplateCore[] templates = getTemplates();
+
+		IExtension[] extensions = Platform.getExtensionRegistry().getExtensionPoint(TEMPLATE_ASSOCIATIONS_EXTENSION_ID).getExtensions();
+		for(int i=0; i<extensions.length; i++) {
+			IExtension extension = extensions[i];
+			IConfigurationElement[] configElements = extension.getConfigurationElements();
+			for(int j=0; j<configElements.length; j++) {
+				IConfigurationElement config = configElements[j];
+				templateId = config.getAttribute(TemplateEngineHelper.ID);
+				
+				IConfigurationElement[] toolChainConfigs = config.getChildren(TemplateEngineHelper.TOOL_CHAIN);
+				Set<String> toolChainIdSet = new LinkedHashSet<String>();
+				for (int k=0; k < toolChainConfigs.length; k++) {
+					toolChainIdSet.add(toolChainConfigs[k].getAttribute(TemplateEngineHelper.ID));
+				}
+				
+				for (int k=0; k < templates.length; k++) {
+					String id = templates[k].getTemplateInfo().getTemplateId();
+					if (id == null) {
+						id = templates[k].getTemplateId();
+					}
+					if (id != null && id.equals(templateId)) {
+						toolChainIdSet.addAll(Arrays.asList(templates[k].getTemplateInfo().getToolChainIds()));
+						templates[k].getTemplateInfo().setToolChainSet(toolChainIdSet);
+					}
+				}
 			}
 		}
 	}
-
+	
 	/**
-	 * Gets an array of template info objects matching the criteria passed as params.
+	 * Gets an array of template info objects matching the criteria passed as parameters.
+	 * @param projectType may not be null
+	 * @param toolChain may be null to indicate no tool-chain
+	 * @param usageFilter a usage string which is matched against the filter from the template, may be null
+	 * to indicate no usage filtering
+	 * @return an array of TemplateInfo objects (never null)
 	 */
 	public TemplateInfo[] getTemplateInfos(String projectType, String toolChain, String usageFilter) {
-		List/*<TemplateInfo>*/ templateInfoList = (List/*<TemplateInfo*/) templateInfoMap.get(projectType.trim());
-		List/*<TemplateInfo>*/ matchedTemplateInfoList = new ArrayList/*<TemplateInfo>*/();
+		List<TemplateInfo> templateInfoList = templateInfoMap.get(projectType.trim());
+		List<TemplateInfo> matchedTemplateInfoList = new ArrayList<TemplateInfo>();
 		
 		if (templateInfoList != null) {
-			for (Iterator i = templateInfoList.iterator(); i.hasNext(); ) {
-				TemplateInfo templateInfo = (TemplateInfo) i.next();
+			for(TemplateInfo templateInfo : templateInfoList) {
 				String filterPattern = templateInfo.getFilterPattern();
 				String[] toolChains = templateInfo.getToolChainIds();
 
 				if (toolChain != null) {
 					for (int j=0; j < toolChains.length; j++) {
 						if (toolChains[j].equals(toolChain)) {
-							if (usageFilter != null && filterPattern.matches(usageFilter)) {
+							if ((usageFilter != null) && (filterPattern != null) && usageFilter.matches(filterPattern)) {
 								matchedTemplateInfoList.add(templateInfo);
 							} else if (usageFilter == null) {
 								matchedTemplateInfoList.add(templateInfo);
@@ -254,7 +310,7 @@ public class TemplateEngine {
 						}
 					}
 				} else {
-					if (usageFilter != null && filterPattern.matches(usageFilter)) {
+					if ((usageFilter != null) && (filterPattern != null) && usageFilter.matches(filterPattern)) {
 						matchedTemplateInfoList.add(templateInfo);
 					} else if (usageFilter == null) {
 						matchedTemplateInfoList.add(templateInfo);
@@ -262,7 +318,7 @@ public class TemplateEngine {
 				}
 			}
 		}
-		return (TemplateInfo[]) matchedTemplateInfoList.toArray(new TemplateInfo[matchedTemplateInfoList.size()]);
+		return matchedTemplateInfoList.toArray(new TemplateInfo[matchedTemplateInfoList.size()]);
 	}
 
 	public TemplateInfo[] getTemplateInfos(String projectType, String toolChain) {
@@ -273,22 +329,22 @@ public class TemplateEngine {
 		return getTemplateInfos(projectType, null, null);
 	}
 
+	/**
+	 * @return all TemplateInfo objects known to the TemplateEngine
+	 */
 	public TemplateInfo[] getTemplateInfos() {
-		List/*<TemplateInfo>*/ infoList = new ArrayList/*<TemplateInfo>*/();
-		for (Iterator i = templateInfoMap.values().iterator(); i.hasNext();) {
-			infoList.addAll((List/*<TemplateInfo>*/)i.next());
+		List<TemplateInfo> infoList = new ArrayList<TemplateInfo>();
+		for(List<TemplateInfo> infos : templateInfoMap.values()) {
+			infoList.addAll(infos);
 		}
-
-		return (TemplateInfo[]) infoList.toArray(new TemplateInfo[infoList.size()]);
+		return infoList.toArray(new TemplateInfo[infoList.size()]);
 	}
 
 
 	/**
-	 * Getter for templateInfoMap
-	 * 
-	 * @return
+	 * @return the map from project-type ID's to all associated TemplateInfo instances
 	 */
-	public Map/*<String, List<TemplateInfo>>*/ getTemplateInfoMap() {
+	public Map<String, List<TemplateInfo>> getTemplateInfoMap() {
 		return templateInfoMap;
 	}
 
@@ -305,12 +361,12 @@ public class TemplateEngine {
 	/**
 	 * Returns the Children of the Element.
 	 * @param element
-	 * @return List of the child elelments
+	 * @return List of the child elements
      * 
      * @since 4.0
 	 */
-	public static List/*<Element>*/ getChildrenOfElement(Element element) {
-		List/*<Element>*/ list = new ArrayList/*<Element>*/();
+	public static List<Element> getChildrenOfElement(Element element) {
+		List<Element> list = new ArrayList<Element>();
 		NodeList children = element.getChildNodes();
 		for (int i = 0, l = children.getLength(); i < l; i++) {
 			Node child = children.item(i);
@@ -330,8 +386,8 @@ public class TemplateEngine {
      * 
      * @since 4.0
 	 */
-	public static List/*<Element>*/ getChildrenOfElementByTag(Element element, String tag) {
-		List/*<Element>*/ list = new ArrayList/*<Element>*/();
+	public static List<Element> getChildrenOfElementByTag(Element element, String tag) {
+		List<Element> list = new ArrayList<Element>();
 		NodeList children = element.getChildNodes();
 		for (int i = 0, l = children.getLength(); i < l; i++) {
 			Node child = children.item(i);

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 IBM Corporation and others.
+ * Copyright (c) 2000, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,9 +10,16 @@
  *     Markus Schorn (Wind River Systems)
  *     Ed Swartz (Nokia)
  *******************************************************************************/
-
 package org.eclipse.cdt.internal.ui.search.actions;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -21,31 +28,88 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextSelection;
+import org.eclipse.jface.text.Region;
 import org.eclipse.swt.widgets.Display;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IName;
+import org.eclipse.cdt.core.dom.ast.ASTVisitor;
+import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IASTNodeSelector;
 import org.eclipse.cdt.core.dom.ast.IASTPreprocessorIncludeStatement;
-import org.eclipse.cdt.core.dom.ast.IASTPreprocessorStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IProblemBinding;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPUsingDeclaration;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.index.IIndexBinding;
+import org.eclipse.cdt.core.index.IIndexMacro;
 import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.index.IIndexName;
+import org.eclipse.cdt.core.index.IndexFilter;
+import org.eclipse.cdt.core.model.ICElement;
+import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.core.model.ILanguage;
+import org.eclipse.cdt.core.model.ISourceRange;
+import org.eclipse.cdt.core.model.ISourceReference;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.model.IWorkingCopy;
+import org.eclipse.cdt.core.model.util.CElementBaseLabels;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
+import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.ui.CUIPlugin;
 
+import org.eclipse.cdt.internal.core.model.ASTCache.ASTRunnable;
+import org.eclipse.cdt.internal.core.model.ext.CElementHandleFactory;
+import org.eclipse.cdt.internal.core.model.ext.ICElementHandle;
+
+import org.eclipse.cdt.internal.ui.actions.OpenActionUtil;
+import org.eclipse.cdt.internal.ui.editor.ASTProvider;
 import org.eclipse.cdt.internal.ui.editor.CEditor;
 import org.eclipse.cdt.internal.ui.editor.CEditorMessages;
+import org.eclipse.cdt.internal.ui.text.CWordFinder;
+import org.eclipse.cdt.internal.ui.viewsupport.IndexUI;
 
-public class OpenDeclarationsAction extends SelectionParseAction {
-	public static final IASTName[] BLANK_NAME_ARRAY = new IASTName[0];
-	ITextSelection selNode;
+public class OpenDeclarationsAction extends SelectionParseAction implements ASTRunnable {
+	public static boolean sIsJUnitTest = false;	
+	public static boolean sAllowFallback= true;
+	
+	private static final int KIND_OTHER = 0;
+	private static final int KIND_USING_DECL = 1;
+	private static final int KIND_DEFINITION = 2;
+
+	private class WrapperJob extends Job {
+		WrapperJob() {
+			super(CEditorMessages.getString("OpenDeclarations.dialog.title")); //$NON-NLS-1$
+		}
+		@Override
+		protected IStatus run(IProgressMonitor monitor) {
+			try {
+				return performNavigation(monitor);
+			}
+			catch (CoreException e) {
+				return e.getStatus();
+			}
+		}		
+	}
+	
+	
+	ITextSelection fTextSelection;
+	private String fSelectedText;
+	private IWorkingCopy fWorkingCopy;
+	private IIndex fIndex;
+	private IProgressMonitor fMonitor;
 
 	/**
 	 * Creates a new action with the given editor
@@ -57,141 +121,343 @@ public class OpenDeclarationsAction extends SelectionParseAction {
 		setDescription(CEditorMessages.getString("OpenDeclarations.description")); //$NON-NLS-1$
 	}
 
-	private class Runner extends Job {
-		Runner() {
-			super(CEditorMessages.getString("OpenDeclarations.dialog.title")); //$NON-NLS-1$
+	
+	protected IStatus performNavigation(IProgressMonitor monitor) throws CoreException {
+		clearStatusLine();
+
+		fMonitor= monitor;
+		fWorkingCopy = CUIPlugin.getDefault().getWorkingCopyManager().getWorkingCopy(fEditor.getEditorInput());
+		if (fWorkingCopy == null)
+			return Status.CANCEL_STATUS;
+
+		fIndex= CCorePlugin.getIndexManager().getIndex(fWorkingCopy.getCProject(),
+				IIndexManager.ADD_DEPENDENCIES | IIndexManager.ADD_DEPENDENT);
+
+		try {
+			fIndex.acquireReadLock();
+		} catch (InterruptedException e) {
+			return Status.CANCEL_STATUS;
 		}
 
-		protected IStatus run(IProgressMonitor monitor) {
-			try {
-				int selectionStart = selNode.getOffset();
-				int selectionLength = selNode.getLength();
-					
-				IWorkingCopy workingCopy = CUIPlugin.getDefault().getWorkingCopyManager().getWorkingCopy(fEditor.getEditorInput());
-				if (workingCopy == null)
-					return Status.CANCEL_STATUS;
-
-				IIndex index = CCorePlugin.getIndexManager().getIndex(workingCopy.getCProject(),
-						IIndexManager.ADD_DEPENDENCIES | IIndexManager.ADD_DEPENDENT);
-				
-				try {
-					index.acquireReadLock();
-				} catch (InterruptedException e) {
-					return Status.CANCEL_STATUS;
-				}
-				
-				try {
-					IASTTranslationUnit ast = workingCopy.getAST(index, ITranslationUnit.AST_SKIP_ALL_HEADERS);
-					IASTName[] selectedNames = workingCopy.getLanguage().getSelectedNames(ast, selectionStart, selectionLength);
-					
-					if (selectedNames.length > 0 && selectedNames[0] != null) { // just right, only one name selected
-						IASTName searchName = selectedNames[0];
-						boolean isDefinition= searchName.isDefinition();
-						IBinding binding = searchName.resolveBinding();
-						if (binding != null && !(binding instanceof IProblemBinding)) {
-							// 1. Try definition
-							IName[] declNames= isDefinition ?
-									findDeclarations(index, ast, binding) :
-									findDefinitions(index, ast, binding);
-							
-							if (declNames.length == 0) {
-								declNames= isDefinition ?
-										findDefinitions(index, ast, binding) :
-										findDeclarations(index, ast, binding);
-							}
-
-							for (int i = 0; i < declNames.length; i++) {
-								IASTFileLocation fileloc = declNames[i].getFileLocation();
-								if (fileloc != null) {
-									final IPath path = new Path(fileloc.getFileName());
-									final int offset = fileloc.getNodeOffset();
-									final int length = fileloc.getNodeLength();
-									
-									runInUIThread(new Runnable() {
-										public void run() {
-											try {
-												open(path, offset, length);
-											} catch (CoreException e) {
-												CUIPlugin.getDefault().log(e);
-											}
-										}
-									});
-									break;
-								}
-							}
-						}
-					} else {
-						// Check if we're in an include statement
-						IASTPreprocessorStatement[] preprocs = ast.getAllPreprocessorStatements();
-						for (int i = 0; i < preprocs.length; ++i) {
-							if (!(preprocs[i] instanceof IASTPreprocessorIncludeStatement))
-								continue;
-							IASTPreprocessorIncludeStatement incStmt = (IASTPreprocessorIncludeStatement)preprocs[i];
-							if (!incStmt.isResolved())
-								continue;
-							IASTFileLocation loc = preprocs[i].getFileLocation();
-							if (loc != null
-									&& loc.getFileName().equals(ast.getFilePath())
-									&& loc.getNodeOffset() < selectionStart
-									&& loc.getNodeOffset() + loc.getNodeLength() > selectionStart) {
-								// Got it
-								String name = incStmt.getPath();
-								if (name != null) {
-									final IPath path = new Path(name);
-									runInUIThread(new Runnable() {
-										public void run() {
-											try {
-												open(path, 0, 0);
-											} catch (CoreException e) {
-												CUIPlugin.getDefault().log(e);
-											}
-										}
-									});
-								}
-								break;
-							}
-						}
-					}
-				} finally {
-					index.releaseReadLock();
-				}
-
-				return Status.OK_STATUS;
-			} catch (CoreException e) {
-				return e.getStatus();
-			}
-		}
-
-		private IName[] findDefinitions(IIndex index, IASTTranslationUnit ast,
-				IBinding binding) throws CoreException {
-			IName[] declNames= ast.getDefinitionsInAST(binding);
-			if (declNames.length == 0) {
-					// 2. Try definition in index
-				declNames = index.findDefinitions(binding);
-			}
-			return declNames;
-		}
-
-		private IName[] findDeclarations(IIndex index, IASTTranslationUnit ast,
-				IBinding binding) throws CoreException {
-			IName[] declNames= ast.getDeclarationsInAST(binding);
-			for (int i = 0; i < declNames.length; i++) {
-				IName name = declNames[i];
-				if (name.isDefinition()) 
-					declNames[i]= null;
-			}
-			declNames= (IName[]) ArrayUtil.removeNulls(IName.class, declNames);
-			if (declNames.length == 0) {
-				declNames= index.findNames(binding, IIndex.FIND_DECLARATIONS);
-			}
-			return declNames;
+		try {
+			return ASTProvider.getASTProvider().runOnAST(fWorkingCopy, ASTProvider.WAIT_YES, monitor, this);
+		} finally {
+			fIndex.releaseReadLock();
 		}
 	}
 
+	public IStatus runOnAST(ILanguage lang, IASTTranslationUnit ast) throws CoreException {
+		if (ast == null) {
+			return Status.OK_STATUS;
+		}
+		int selectionStart = fTextSelection.getOffset();
+		int selectionLength = fTextSelection.getLength();
+
+		final IASTNodeSelector nodeSelector = ast.getNodeSelector(null);
+		IASTName searchName= nodeSelector.findEnclosingName(selectionStart, selectionLength);
+		if (searchName != null) { // just right, only one name selected
+			boolean found= false;
+			final IASTNode parent = searchName.getParent();
+			if (parent instanceof IASTPreprocessorIncludeStatement) {
+				openInclude(((IASTPreprocessorIncludeStatement) parent));
+				return Status.OK_STATUS;
+			}
+			IBinding binding = searchName.resolveBinding();
+			if (binding != null && !(binding instanceof IProblemBinding)) {
+				int isKind= KIND_OTHER;
+				if (searchName.isDefinition()) {
+					if (binding instanceof ICPPUsingDeclaration) {
+						isKind= KIND_USING_DECL;
+					} else {
+						isKind= KIND_DEFINITION;
+					}
+				}
+				IName[] declNames = findNames(fIndex, ast, isKind, binding);
+				if (declNames.length == 0) {
+					if (binding instanceof ICPPSpecialization) {
+						// bug 207320, handle template instances
+						IBinding specialized= ((ICPPSpecialization) binding).getSpecializedBinding();
+						if (specialized != null && !(specialized instanceof IProblemBinding)) {
+							declNames = findNames(fIndex, ast, KIND_DEFINITION, specialized);
+						}
+					} else if (binding instanceof ICPPMethod) {
+						// bug 86829, handle implicit methods.
+						ICPPMethod method= (ICPPMethod) binding;
+						if (method.isImplicit()) {
+							try {
+								IBinding clsBinding= method.getClassOwner();
+								if (clsBinding != null && !(clsBinding instanceof IProblemBinding)) {
+									declNames= findNames(fIndex, ast, KIND_OTHER, clsBinding);
+								}
+							} catch (DOMException e) {
+								// don't log problem bindings.
+							}
+						}
+					}
+				}
+				if (navigateViaCElements(fWorkingCopy.getCProject(), fIndex, declNames)) {
+					found= true;
+				}
+				else {
+					// leave old method as fallback for local variables, parameters and 
+					// everything else not covered by ICElementHandle.
+					found = navigateOneLocation(declNames);
+				}
+			}
+			if (!found && !navigationFallBack(ast)) {
+				reportSymbolLookupFailure(new String(searchName.toCharArray()));
+			}
+			return Status.OK_STATUS;
+		} 
+
+		// no enclosing name, check if we're in an include statement
+		IASTNode node= nodeSelector.findEnclosingNode(selectionStart, selectionLength);
+		if (node instanceof IASTPreprocessorIncludeStatement) {
+			openInclude(((IASTPreprocessorIncludeStatement) node));
+			return Status.OK_STATUS;
+		}
+		if (!navigationFallBack(ast)) {
+			reportSelectionMatchFailure();
+		}
+		return Status.OK_STATUS; 
+	}
+
+	private boolean navigationFallBack(IASTTranslationUnit ast) {
+		// bug 102643, as a fall-back we look up the selected word in the index
+		if (sAllowFallback && fSelectedText != null && fSelectedText.length() > 0) {
+			try {
+				final ICProject project = fWorkingCopy.getCProject();
+				final char[] name = fSelectedText.toCharArray();
+				List<ICElement> elems= new ArrayList<ICElement>();
+								
+				// bug 252549, search for names in the AST first
+				Set<IBinding> bindings= new HashSet<IBinding>();
+				Set<IBinding> ignoreIndexBindings= new HashSet<IBinding>();
+				ASTNameCollector nc= new ASTNameCollector(fSelectedText);
+				ast.accept(nc);
+				IASTName[] candidates= nc.getNames();
+				for (IASTName astName : candidates) {
+					try {
+						IBinding b= astName.resolveBinding();
+						if (b!=null && !(b instanceof IProblemBinding)) {
+							if (bindings.add(b)) {
+								ignoreIndexBindings.add(fIndex.adaptBinding(b));
+							}
+						}
+					} catch (RuntimeException e) {
+						CCorePlugin.log(e);
+					}
+				}
+				
+				// search the index, also
+				final IndexFilter filter = IndexFilter.getDeclaredBindingFilter(ast.getLinkage().getLinkageID(), false);
+				final IIndexBinding[] idxBindings = fIndex.findBindings(name, false, filter, fMonitor);
+				for (IIndexBinding idxBinding : idxBindings) {
+					if (!ignoreIndexBindings.contains(idxBinding)) {
+						bindings.add(idxBinding);
+					}
+				}
+				
+				// search for a macro in the index
+				IIndexMacro[] macros= fIndex.findMacros(name, filter, fMonitor);
+				for (IIndexMacro macro : macros) {
+					ICElement elem= IndexUI.getCElementForMacro(project, fIndex, macro);
+					if (elem != null) {
+						elems.add(elem);
+					}
+				}
+				
+				// convert bindings to CElements
+				for (IBinding binding : bindings) {
+					final IName[] names = findNames(fIndex, ast, KIND_OTHER, binding);
+					convertToCElements(project, fIndex, names, elems);
+				}
+				return navigateCElements(elems);
+			} catch (CoreException e) {
+				CCorePlugin.log(e);
+			}
+		}
+		return false;
+	}
+
+	private void openInclude(IASTPreprocessorIncludeStatement incStmt) {
+		String name = null;
+		if (incStmt.isResolved())
+			name = incStmt.getPath();
+
+		if (name != null) {
+			final IPath path = new Path(name);
+			runInUIThread(new Runnable() {
+				public void run() {
+					try {
+						open(path, 0, 0);
+					} catch (CoreException e) {
+						CUIPlugin.log(e);
+					}
+				}
+			});
+		} else {
+			reportIncludeLookupFailure(new String(incStmt.getName().toCharArray()));
+		}
+	}
+
+	private boolean navigateOneLocation(IName[] declNames) {
+		for (IName declName : declNames) {
+			IASTFileLocation fileloc = declName.getFileLocation();
+			if (fileloc != null) {
+
+				final IPath path = new Path(fileloc.getFileName());
+				final int offset = fileloc.getNodeOffset();
+				final int length = fileloc.getNodeLength();
+
+				runInUIThread(new Runnable() {
+					public void run() {
+						try {
+							open(path, offset, length);
+						} catch (CoreException e) {
+							CUIPlugin.log(e);
+						}
+					}
+				});
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean navigateViaCElements(ICProject project, IIndex index, IName[] declNames) {
+		final ArrayList<ICElement> elements= new ArrayList<ICElement>();
+		convertToCElements(project, index, declNames, elements);
+		return navigateCElements(elements);
+	}
+
+
+	private void convertToCElements(ICProject project, IIndex index, IName[] declNames, List<ICElement> elements) {
+		for (IName declName : declNames) {
+			try {
+				ICElement elem = getCElementForName(project, index, declName);
+				if (elem instanceof ISourceReference) {
+					elements.add(elem);
+				}
+			} catch (CoreException e) {
+				CUIPlugin.log(e);
+			}
+		}
+	}
+	
+	private boolean navigateCElements(final List<ICElement> elements) {
+		if (elements.isEmpty()) {
+			return false;
+		}
+
+		runInUIThread(new Runnable() {
+			public void run() {
+				ISourceReference target= null;
+				if (elements.size() == 1) {
+					target= (ISourceReference) elements.get(0);
+				}
+				else {
+					if (sIsJUnitTest) {
+						throw new RuntimeException("ambiguous input"); //$NON-NLS-1$
+					}
+					ICElement[] elemArray= elements.toArray(new ICElement[elements.size()]);
+					target = (ISourceReference) OpenActionUtil.selectCElement(elemArray, getSite().getShell(),
+							CEditorMessages.getString("OpenDeclarationsAction.dialog.title"), CEditorMessages.getString("OpenDeclarationsAction.selectMessage"), //$NON-NLS-1$ //$NON-NLS-2$
+							CElementBaseLabels.ALL_DEFAULT | CElementBaseLabels.ALL_FULLY_QUALIFIED | CElementBaseLabels.MF_POST_FILE_QUALIFIED, 0);
+				}
+				if (target != null) {
+					ITranslationUnit tu= target.getTranslationUnit();
+					ISourceRange sourceRange;
+					try {
+						sourceRange = target.getSourceRange();
+						if (tu != null && sourceRange != null) {
+							open(tu.getLocation(), sourceRange.getIdStartPos(), sourceRange.getIdLength());
+						}
+					} catch (CoreException e) {
+						CUIPlugin.log(e);
+					}
+				}
+			}
+		});
+		return true;
+	}
+
+	private ICElementHandle getCElementForName(ICProject project, IIndex index, IName declName) 
+	throws CoreException {
+		if (declName instanceof IIndexName) {
+			return IndexUI.getCElementForName(project, index, (IIndexName) declName);
+		}
+		if (declName instanceof IASTName) {
+			IASTName astName = (IASTName) declName;
+			IBinding binding= astName.resolveBinding();
+			if (binding != null) {
+				ITranslationUnit tu= IndexUI.getTranslationUnit(project, astName);
+				if (tu != null) {
+					IASTFileLocation loc= astName.getFileLocation();
+					IRegion region= new Region(loc.getNodeOffset(), loc.getNodeLength());
+					return CElementHandleFactory.create(tu, binding, astName.isDefinition(), region, 0);
+				}
+			}
+			return null;
+		}
+		return null;
+	}
+
+	private IName[] findNames(IIndex index, IASTTranslationUnit ast, int isKind, IBinding binding) throws CoreException {
+		IName[] declNames;
+		if (isKind == KIND_DEFINITION) {
+			declNames= findDeclarations(index, ast, binding);
+		} else {
+			declNames= findDefinitions(index, ast, isKind, binding);
+		}
+
+		if (declNames.length == 0) {
+			if (isKind == KIND_DEFINITION) {
+				declNames= findDefinitions(index, ast, isKind, binding);
+			} else {
+				declNames= findDeclarations(index, ast, binding);
+			}
+		}
+		return declNames;
+	}
+
+	private IName[] findDefinitions(IIndex index, IASTTranslationUnit ast, int isKind, IBinding binding) throws CoreException {
+		List<IASTName> declNames= new ArrayList<IASTName>();
+		declNames.addAll(Arrays.asList(ast.getDefinitionsInAST(binding)));
+		for (Iterator<IASTName> i = declNames.iterator(); i.hasNext();) {
+			IASTName name= i.next();
+			if (name.resolveBinding() instanceof ICPPUsingDeclaration) {
+				i.remove();
+			}
+		}
+		if (!declNames.isEmpty()) {
+			return declNames.toArray(new IASTName[declNames.size()]);
+		}
+
+		// 2. Try definition in index
+		return index.findNames(binding, IIndex.FIND_DEFINITIONS | IIndex.SEARCH_ACROSS_LANGUAGE_BOUNDARIES);
+	}
+
+	private IName[] findDeclarations(IIndex index, IASTTranslationUnit ast,
+			IBinding binding) throws CoreException {
+		IName[] declNames= ast.getDeclarationsInAST(binding);
+		for (int i = 0; i < declNames.length; i++) {
+			IName name = declNames[i];
+			if (name.isDefinition()) 
+				declNames[i]= null;
+		}
+		declNames= (IName[]) ArrayUtil.removeNulls(IName.class, declNames);
+		if (declNames.length == 0) {
+			declNames= index.findNames(binding, IIndex.FIND_DECLARATIONS | IIndex.SEARCH_ACROSS_LANGUAGE_BOUNDARIES);
+		}
+		return declNames;
+	}
+
+	@Override
 	public void run() {
-		selNode = getSelectedStringFromEditor();
-		if (selNode != null) {
-			new Runner().schedule();
+		computeSelectedWord();
+		if (fTextSelection != null) {
+			new WrapperJob().schedule();
 		}
 	}
 
@@ -208,11 +474,73 @@ public class OpenDeclarationsAction extends SelectionParseAction {
 	 * For the purpose of regression testing.
 	 * @since 4.0
 	 */
-	public void runSync() {
-		selNode = getSelectedStringFromEditor();
-		if (selNode != null) {
-			new Runner().run(new NullProgressMonitor());
+	public void runSync() throws CoreException {
+		computeSelectedWord();
+		if (fTextSelection != null) {
+			performNavigation(new NullProgressMonitor());
 		}
 	}
+
+
+	private void computeSelectedWord() {
+		fTextSelection = getSelectedStringFromEditor();
+		fSelectedText= null;
+		if (fTextSelection != null) {
+			if (fTextSelection.getLength() > 0) {
+				fSelectedText= fTextSelection.getText();
+			}
+			else {
+				IDocument document= fEditor.getDocumentProvider().getDocument(fEditor.getEditorInput());
+				IRegion reg= CWordFinder.findWord(document, fTextSelection.getOffset());
+				if (reg != null && reg.getLength() > 0) {
+					try {
+						fSelectedText= document.get(reg.getOffset(), reg.getLength());
+					} catch (BadLocationException e) {
+						CCorePlugin.log(e);
+					}
+				}
+			}
+		}
+	}
+	
+	private final static class ASTNameCollector extends ASTVisitor {
+		
+		private char[] fName;
+		private ArrayList<IASTName> fFound= new ArrayList<IASTName>(4);
+
+		/**
+		 * Construct a name collector for the given name.
+		 */
+		public ASTNameCollector(char[] name) {
+			Assert.isNotNull(name);
+			fName= name;
+			shouldVisitNames = true;
+		}
+		
+		/**
+		 * Construct a name collector for the given name.
+		 */
+		public ASTNameCollector(String name) {
+			this(name.toCharArray());
+		}
+		
+		@Override
+		public int visit(IASTName name) {
+			if (name != null && !(name instanceof ICPPASTQualifiedName) && !(name instanceof ICPPASTTemplateId)) {
+				if (CharArrayUtils.equals(fName, name.toCharArray())) {
+					fFound.add(name);
+				}
+			}
+			return PROCESS_CONTINUE;
+		}
+
+		/**
+		 * Return the array of matching names.
+		 */
+		public IASTName[] getNames() {
+			return fFound.toArray(new IASTName[fFound.size()]);
+		}
+	}
+
 }
 

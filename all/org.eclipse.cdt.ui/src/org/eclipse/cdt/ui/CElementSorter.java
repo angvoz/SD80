@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000 2005 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,47 +8,34 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *     QNX Software System
+ *     Anton Leherbauer (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.ui;
 
-import org.eclipse.cdt.core.model.CModelException;
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.IArchive;
-import org.eclipse.cdt.core.model.IArchiveContainer;
-import org.eclipse.cdt.core.model.IBinary;
-import org.eclipse.cdt.core.model.IBinaryContainer;
-import org.eclipse.cdt.core.model.ICContainer;
-import org.eclipse.cdt.core.model.ICElement;
-import org.eclipse.cdt.core.model.ICModel;
-import org.eclipse.cdt.core.model.ICProject;
-import org.eclipse.cdt.core.model.IFunction;
-import org.eclipse.cdt.core.model.IFunctionDeclaration;
-import org.eclipse.cdt.core.model.IInclude;
-import org.eclipse.cdt.core.model.IIncludeReference;
-import org.eclipse.cdt.core.model.ILibraryReference;
-import org.eclipse.cdt.core.model.IMacro;
-import org.eclipse.cdt.core.model.IMethod;
-import org.eclipse.cdt.core.model.IMethodDeclaration;
-import org.eclipse.cdt.core.model.INamespace;
-import org.eclipse.cdt.core.model.ISourceRoot;
-import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.core.model.IUsing;
-import org.eclipse.cdt.core.model.IVariable;
-import org.eclipse.cdt.core.model.IVariableDeclaration;
-import org.eclipse.cdt.internal.ui.cview.IncludeRefContainer;
-import org.eclipse.cdt.internal.ui.cview.LibraryRefContainer;
-import org.eclipse.core.resources.IContainer;
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
+import java.util.Comparator;
+
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IStorage;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.viewers.ContentViewer;
 import org.eclipse.jface.viewers.IBaseLabelProvider;
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.ui.model.IWorkbenchAdapter;
+
+import org.eclipse.cdt.core.model.CModelException;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.IArchiveContainer;
+import org.eclipse.cdt.core.model.IBinaryContainer;
+import org.eclipse.cdt.core.model.ICElement;
+import org.eclipse.cdt.core.model.IIncludeReference;
+import org.eclipse.cdt.core.model.ILibraryReference;
+import org.eclipse.cdt.core.model.IMember;
+import org.eclipse.cdt.core.model.IMethodDeclaration;
+import org.eclipse.cdt.core.model.ISourceRoot;
 
 /**
  *	A sorter to sort the file and the folders in the C viewer in the following order:
@@ -65,7 +52,6 @@ public class CElementSorter extends ViewerSorter {
 
     protected static final int CMODEL = 0;
 	protected static final int PROJECTS = 10;
-	//protected static final int OUTPUTREFCONTAINER = 11;
 	protected static final int BINARYCONTAINER = 12;
 	protected static final int ARCHIVECONTAINER = 13;
 	protected static final int INCLUDEREFCONTAINER = 14;
@@ -105,115 +91,162 @@ public class CElementSorter extends ViewerSorter {
 	protected static final int STORAGE= 202;
 	protected static final int OTHERS= 500;
 
+
+	/*
+	 * Constants added for names starting with '_' or '__'
+	 */
+	private static final int NORMAL = 0;
+	private static final int RESERVED = 1;
+	private static final int SYSTEM = 2;
+
+	/*
+	 * Constants for ordering different member kinds.
+	 */
+	private static final int STATIC_MEMBER = 0;
+	private static final int CONSTRUCTOR = 1;
+	private static final int DESTRUCTOR = 2;
+	private static final int MEMBER = 3;
+
+	/**
+	 * Flag indicating whether header files and source files should be separated.
+	 * If <code>true</code>, header files will be sorted before source files,
+	 * otherwise header and source files will be sorted by name.
+	 */
+	private boolean fSeparateHeaderAndSource;
+
+	/**
+	 * Default constructor for use as executable extension.
+	 */
+	public CElementSorter() {
+		final IPreferenceStore store= CUIPlugin.getDefault().getPreferenceStore();
+		fSeparateHeaderAndSource= store.getBoolean(PreferenceConstants.CVIEW_SEPARATE_HEADER_AND_SOURCE);
+	}
+	
+	@Override
 	public int category (Object element) {
-		if (element instanceof ICModel) {
-			return CMODEL;
-		} else if (element instanceof ICProject) {
-			return PROJECTS;
-		} else if (element instanceof ISourceRoot) {
-			return SOURCEROOTS;
-		} else if (element instanceof IBinaryContainer) {
-			return BINARYCONTAINER;
-		} else if (element instanceof IArchiveContainer) {
-			return ARCHIVECONTAINER;
-		} else if (element instanceof ICContainer) {
-			return CCONTAINERS;
-		} else if (element instanceof ITranslationUnit) {
-			ITranslationUnit tu = (ITranslationUnit)element;
-			if (CoreModel.isValidHeaderUnitName(tu.getCProject().getProject(), tu.getElementName())) {
-				return TRANSLATIONUNIT_HEADERS;
-			}
-			if (CoreModel.isValidSourceUnitName(tu.getCProject().getProject(), tu.getElementName())) {
-				return TRANSLATIONUNIT_SOURCE;
-			}
-			return TRANSLATIONUNITS;
-		} else if (element instanceof IInclude) {
-			return INCLUDES;
-		} else if (element instanceof IMacro) {
-			return MACROS;
-		} else if (element instanceof INamespace) {
-			String name = ((ICElement)element).getElementName();
-			if( name.length() > 0 ) {
-				if (name.startsWith("__")) { //$NON-NLS-1$
-					return NAMESPACES_SYSTEM;
+		if (element instanceof ICElement) {
+			ICElement cElement = (ICElement) element;
+			switch (cElement.getElementType()) {
+			case ICElement.C_MODEL:
+				return CMODEL;
+			case ICElement.C_PROJECT:
+				return PROJECTS;
+			case ICElement.C_CCONTAINER:
+				if (element instanceof ISourceRoot) {
+					return SOURCEROOTS;
 				}
-				if (name.charAt(0) == '_') {
-					return NAMESPACES_RESERVED;
+				return CCONTAINERS;
+			case ICElement.C_VCONTAINER:
+				if (element instanceof IBinaryContainer) {
+					return BINARYCONTAINER;
+				} else if (element instanceof IArchiveContainer) {
+					return ARCHIVECONTAINER;
+				} else if (element instanceof ILibraryReference) {
+					return LIBRARYREFERENCES;
+				} else if (element instanceof IIncludeReference) {
+					return INCLUDEREFERENCES;
 				}
-			}
-			return NAMESPACES;
-		} else if (element instanceof IUsing) {
-			return USINGS;
-		} else if (element instanceof IFunctionDeclaration && ! (element instanceof IFunction)) {
-			return FUNCTIONDECLARATIONS;
-		} else if (element instanceof IMethodDeclaration && !(element instanceof IMethod)) {
-			return METHODDECLARATIONS;
-		} else if (element instanceof IVariableDeclaration) {
-			return VARIABLEDECLARATIONS;
-		} else if (element instanceof IVariable) {
-			String name = ((ICElement)element).getElementName();
-			if (name.startsWith("__")) { //$NON-NLS-1$
-				return VARIABLES_SYSTEM;
-			}
-			if (name.charAt(0) == '_') {
-				return VARIABLES_RESERVED;
-			}
-			return VARIABLES;
-		} else if (element instanceof IFunction) {
-			String name = ((ICElement)element).getElementName();
-			if (name.startsWith("__")) { //$NON-NLS-1$
-				return FUNCTIONS_SYSTEM;
-			}
-			if (name.charAt(0) == '_') {
-				return FUNCTIONS_RESERVED;
-			}
-			return FUNCTIONS;
-		} else if (element instanceof IArchive) {
-			return ARCHIVES;
-		} else if (element instanceof IBinary) {
-			return BINARIES;
-		} else if (element instanceof ILibraryReference) {
-			return LIBRARYREFERENCES;
-		} else if (element instanceof IIncludeReference) {
-			return INCLUDEREFERENCES;
-		} else if (element instanceof ICElement) {
-			String name = ((ICElement)element).getElementName();
-			if( name.length() > 0 ) {
-				if (name.startsWith("__")) { //$NON-NLS-1$
-					return CELEMENTS_SYSTEM;
+				return CCONTAINERS;
+			case ICElement.C_UNIT:
+				if (fSeparateHeaderAndSource) {
+					if (CoreModel.isValidHeaderUnitName(cElement.getCProject().getProject(), cElement.getElementName())) {
+						return TRANSLATIONUNIT_HEADERS;
+					}
+					if (CoreModel.isValidSourceUnitName(cElement.getCProject().getProject(), cElement.getElementName())) {
+						return TRANSLATIONUNIT_SOURCE;
+					}
 				}
-				if (name.charAt(0) == '_') {
-					return CELEMENTS_RESERVED;
-				}
+				return TRANSLATIONUNITS;
+			case ICElement.C_INCLUDE:
+				return INCLUDES;
+			case ICElement.C_MACRO:
+				return MACROS;
+			case ICElement.C_NAMESPACE:
+				return NAMESPACES + getNameKind(cElement.getElementName());
+			case ICElement.C_USING:
+				return USINGS;
+			case ICElement.C_TYPEDEF:
+			case ICElement.C_CLASS: 
+			case ICElement.C_CLASS_DECLARATION:
+			case ICElement.C_TEMPLATE_CLASS:
+			case ICElement.C_TEMPLATE_CLASS_DECLARATION:
+			case ICElement.C_STRUCT:
+			case ICElement.C_STRUCT_DECLARATION:
+			case ICElement.C_TEMPLATE_STRUCT:
+			case ICElement.C_TEMPLATE_STRUCT_DECLARATION:
+			case ICElement.C_UNION:
+			case ICElement.C_UNION_DECLARATION:
+			case ICElement.C_TEMPLATE_UNION:
+			case ICElement.C_TEMPLATE_UNION_DECLARATION:
+			case ICElement.C_ENUMERATION:
+				// TODO need own categories
+				return NAMESPACES;
+			case ICElement.C_FUNCTION_DECLARATION:
+			case ICElement.C_TEMPLATE_FUNCTION_DECLARATION:
+				return FUNCTIONDECLARATIONS;
+			case ICElement.C_METHOD_DECLARATION:
+			case ICElement.C_TEMPLATE_METHOD_DECLARATION:
+				return METHODDECLARATIONS;
+			case ICElement.C_VARIABLE_DECLARATION:
+				return VARIABLEDECLARATIONS;
+			case ICElement.C_VARIABLE:
+			case ICElement.C_TEMPLATE_VARIABLE:
+			case ICElement.C_FIELD:
+				return VARIABLES + getNameKind(cElement.getElementName());
+			case ICElement.C_FUNCTION:
+			case ICElement.C_TEMPLATE_FUNCTION:
+			case ICElement.C_METHOD:
+			case ICElement.C_TEMPLATE_METHOD:
+				return FUNCTIONS + getNameKind(cElement.getElementName());
+			case ICElement.C_ARCHIVE:
+				return ARCHIVES;
+			case ICElement.C_BINARY:
+				return BINARIES;
+			default:
+				return CELEMENTS + getNameKind(cElement.getElementName());
 			}
-			return CELEMENTS;
-		} else if (element instanceof IFile) {
-			return RESOURCES;
-		} else if (element instanceof IProject) {
-			return PROJECTS;
-		} else if (element instanceof IContainer) {
-			return RESOURCEFOLDERS;
+		} else if (element instanceof IResource) {
+			IResource resource = (IResource) element;
+			switch (resource.getType()) {
+			case IResource.PROJECT:
+				return PROJECTS;
+			case IResource.FOLDER:
+				return RESOURCEFOLDERS;
+			default:
+				return RESOURCES;
+			}
 		} else if (element instanceof IStorage) {
 			return STORAGE;
-		} else if (element instanceof LibraryRefContainer) {
-			return LIBRARYREFCONTAINER;
-		} else if (element instanceof IncludeRefContainer) {
-			return INCLUDEREFCONTAINER;
 		} else if (element instanceof CElementGrouping) {
 			int type = ((CElementGrouping)element).getType();
-			if (type == CElementGrouping.INCLUDES_GROUPING) {
+			switch (type) {
+			case CElementGrouping.INCLUDES_GROUPING:
 				return INCLUDES;
-			} else if (type == CElementGrouping.CLASS_GROUPING) {
+			case CElementGrouping.CLASS_GROUPING:
 				return VARIABLES;
-			} else if (type == CElementGrouping.NAMESPACE_GROUPING) {
+			case CElementGrouping.NAMESPACE_GROUPING:
 				return NAMESPACES;
+			case CElementGrouping.LIBRARY_REF_CONTAINER:
+				return LIBRARYREFCONTAINER;
+			case CElementGrouping.INCLUDE_REF_CONTAINER:
+				return INCLUDEREFCONTAINER;
 			}
 		}
 		return OTHERS;
 	}
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.viewers.ViewerSorter#compare(org.eclipse.jface.viewers.Viewer, java.lang.Object, java.lang.Object)
-	 */
+
+	private int getNameKind(String name) {
+		int length = name.length();
+		if (length > 0 && name.charAt(0) == '_') {
+			if (length > 1 && name.charAt(1) == '_') {
+				return SYSTEM;
+			}
+			return RESERVED;
+		}
+		return NORMAL;
+	}
+
+	@Override
 	public int compare(Viewer viewer, Object e1, Object e2) {
 		int cat1 = category(e1);
 		int cat2 = category(e2);
@@ -223,10 +256,12 @@ public class CElementSorter extends ViewerSorter {
 
 		// cat1 == cat2
 
+		@SuppressWarnings("unchecked")
+		final Comparator<Object> comparator = getComparator();
 		if (cat1 == PROJECTS) {
 			IWorkbenchAdapter a1= (IWorkbenchAdapter)((IAdaptable)e1).getAdapter(IWorkbenchAdapter.class);
 			IWorkbenchAdapter a2= (IWorkbenchAdapter)((IAdaptable)e2).getAdapter(IWorkbenchAdapter.class);
-			return getComparator().compare(a1.getLabel(e1), a2.getLabel(e2));
+			return comparator.compare(a1.getLabel(e1), a2.getLabel(e2));
 		}
 
 		if (cat1 == SOURCEROOTS) {
@@ -254,46 +289,100 @@ public class CElementSorter extends ViewerSorter {
 			return compareWithLabelProvider(viewer, e1, e2);
 		}
 		
+		if (cat1 == NAMESPACES) {
+			// workaround for missing category for classes, structs, etc.
+			int type1 = ((ICElement) e1).getElementType();
+			int type2 = ((ICElement) e2).getElementType();
+			if (type1 != type2) {
+				if (type1 == ICElement.C_NAMESPACE || type2 == ICElement.C_NAMESPACE) {
+					return type1 - type2;
+				}
+			}
+		}
+
+		String ns1 = ""; //$NON-NLS-1$
+		String ns2 = ns1;
+		
 		String name1;
-		boolean e1destructor = false;
 		String name2;
-		boolean e2destructor = false;
 
 		if (e1 instanceof ICElement) {
 			name1 = ((ICElement)e1).getElementName();
-		    if (e1 instanceof IMethodDeclaration) {
-		        IMethodDeclaration method = (IMethodDeclaration)e1;
-		        try {
-			        if (method.isDestructor()) {
-						name1 = ((ICElement)e1).getElementName().substring(1);
-						e1destructor = true;
-			        }
-		        } catch (CModelException e) {
-		        }
+			int idx = name1.lastIndexOf("::"); //$NON-NLS-1$
+			if (idx >= 0) {
+				ns1 = name1.substring(0, idx);
+				name1 = name1.substring(idx + 2);
+			}
+		    if (name1.length() > 0 && name1.charAt(0) == '~') {
+		    	name1 = name1.substring(1);
 		    }
 		} else {
 			name1 = e1.toString();
 		}
 		if (e2 instanceof ICElement) {
 			name2 = ((ICElement)e2).getElementName();
-		    if (e2 instanceof IMethodDeclaration) {
-		        IMethodDeclaration method = (IMethodDeclaration)e2;
-		        try {
-			        if (method.isDestructor()) {
-						name2 = ((ICElement)e2).getElementName().substring(1);
-						e2destructor = true;
-			        }
-		        } catch (CModelException e) {
-		        }
+			int idx = name2.lastIndexOf("::"); //$NON-NLS-1$
+			if (idx >= 0) {
+				ns2 = name2.substring(0, idx);
+				name2 = name2.substring(idx + 2);
+			}
+		    if (name2.length() > 0 && name2.charAt(0) == '~') {
+		    	name2 = name1.substring(1);
 		    }
 		} else {
 			name2 = e2.toString();
 		}
-		int result = getComparator().compare(name1, name2);
-		if (result == 0 && (e1destructor != e2destructor)) {
-		    result = e1destructor ? 1 : -1;
+		
+		// compare namespace
+		int result = comparator.compare(ns1, ns2);
+		if (result != 0) {
+			return result;
+		}
+		
+		// compare method/member kind
+		if (e1 instanceof IMethodDeclaration && e2 instanceof IMethodDeclaration) {
+			result = getMethodKind((IMethodDeclaration) e1) - getMethodKind((IMethodDeclaration) e2);
+		} else if (e1 instanceof IMember && e2 instanceof IMember) {
+			result = getMemberKind((IMember) e1) - getMemberKind((IMember) e2);
+		}
+		if (result != 0) {
+			return result;
+		}
+
+		// compare simple name
+		result = comparator.compare(name1, name2);
+		if (result != 0) {
+			return result;
 		}
 		return result;
+	}
+
+	private int getMethodKind(IMethodDeclaration method) {
+		try {
+			if (method.isStatic()) {
+				return STATIC_MEMBER;
+			}
+			if (method.isConstructor()) {
+				return CONSTRUCTOR;
+			}
+			if (method.isDestructor()) {
+				return DESTRUCTOR;
+			}
+		} catch (CModelException exc) {
+			// ignore
+		}
+		return MEMBER;
+	}
+
+	private int getMemberKind(IMember member) {
+		try {
+			if (member.isStatic()) {
+				return STATIC_MEMBER;
+			}
+		} catch (CModelException exc) {
+			// ignore
+		}
+		return MEMBER;
 	}
 
 	private ISourceRoot getSourceRoot(Object element) {
@@ -305,14 +394,16 @@ public class CElementSorter extends ViewerSorter {
 	}
 
 	private int compareWithLabelProvider(Viewer viewer, Object e1, Object e2) {
-		if (viewer == null || !(viewer instanceof ContentViewer)) {
+		if (viewer instanceof ContentViewer) {
 			IBaseLabelProvider prov = ((ContentViewer) viewer).getLabelProvider();
 			if (prov instanceof ILabelProvider) {
 				ILabelProvider lprov= (ILabelProvider) prov;
 				String name1 = lprov.getText(e1);
 				String name2 = lprov.getText(e2);
 				if (name1 != null && name2 != null) {
-					return getComparator().compare(name1, name2);
+					@SuppressWarnings("unchecked")
+					final Comparator<Object> comparator = getComparator();
+					return comparator.compare(name1, name2);
 				}
 			}
 		}

@@ -12,28 +12,20 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.text;
 
-import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.AbstractTreeViewer;
 import org.eclipse.jface.viewers.IContentProvider;
 import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Tree;
-import org.eclipse.ui.PlatformUI;
-
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.model.util.CElementBaseLabels;
-
-import org.eclipse.cdt.internal.ui.CPluginImages;
-import org.eclipse.cdt.internal.ui.ICHelpContextIds;
-import org.eclipse.cdt.internal.ui.actions.ActionMessages;
 import org.eclipse.cdt.internal.ui.editor.CContentOutlinerProvider;
+import org.eclipse.cdt.internal.ui.editor.LexicalSortingAction;
 import org.eclipse.cdt.internal.ui.util.ProblemTreeViewer;
 import org.eclipse.cdt.internal.ui.viewsupport.AppearanceAwareLabelProvider;
 import org.eclipse.cdt.internal.ui.viewsupport.DecoratingCLabelProvider;
@@ -73,13 +65,14 @@ public class COutlineInformationControl extends AbstractInformationControl {
 	/**
 	 * {@inheritDoc}
 	 */
-    protected TreeViewer createTreeViewer(Composite parent, int treeStyle) {
+    @Override
+	protected TreeViewer createTreeViewer(Composite parent, int treeStyle) {
         TreeViewer treeViewer = new ProblemTreeViewer(parent, treeStyle);
         final Tree tree = treeViewer.getTree();
         tree.setLayoutData(new GridData(GridData.FILL_BOTH));
         fOutlineContentProvider = new CContentOutlinerProvider(treeViewer);
         treeViewer.setContentProvider(fOutlineContentProvider);
-        fSortingAction= new LexicalSortingAction(treeViewer);
+        fSortingAction= new LexicalSortingAction(treeViewer, ".isChecked"); //$NON-NLS-1$
 		treeViewer.addFilter(new NamePatternFilter());
         treeViewer.setLabelProvider(new DecoratingCLabelProvider(
                 new AppearanceAwareLabelProvider(TEXT_FLAGS, IMAGE_FLAGS), true));
@@ -90,6 +83,7 @@ public class COutlineInformationControl extends AbstractInformationControl {
 	/*
 	 * @see org.eclipse.cdt.internal.ui.text.AbstractInformationControl#getId()
 	 */
+	@Override
 	protected String getId() {
 		return "org.eclipse.cdt.internal.ui.text.QuickOutline"; //$NON-NLS-1$
 	}
@@ -97,6 +91,7 @@ public class COutlineInformationControl extends AbstractInformationControl {
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public void setInput(Object information) {
 		if (information == null || information instanceof String) {
 			inputChanged(null, null);
@@ -113,6 +108,7 @@ public class COutlineInformationControl extends AbstractInformationControl {
 	/*
 	 * @see org.eclipse.jdt.internal.ui.text.AbstractInformationControl#fillViewMenu(org.eclipse.jface.action.IMenuManager)
 	 */
+	@Override
 	protected void fillViewMenu(IMenuManager viewMenu) {
 		super.fillViewMenu(viewMenu);
 
@@ -120,73 +116,4 @@ public class COutlineInformationControl extends AbstractInformationControl {
 		viewMenu.add(fSortingAction);
 
 	}
-
-	private class LexicalCSorter extends ViewerComparator {		
-		public boolean isSorterProperty(Object element, Object property) {
-			return true;
-		}
-		
-		public int category(Object obj) {
-			if (obj instanceof ICElement) {
-				ICElement elem= (ICElement)obj;
-				switch (elem.getElementType()) {
-					case ICElement.C_MACRO: return 1;
-					case ICElement.C_INCLUDE: return 2;
-					
-					case ICElement.C_CLASS: return 3;
-					case ICElement.C_STRUCT: return 4;
-					case ICElement.C_UNION: return 5;
-					
-					case ICElement.C_FIELD: return 6;
-					case ICElement.C_FUNCTION: return 7;		
-				}
-				
-			}
-			return 0;
-		}
-	}
-
-    /**
-     * 
-     * The view menu's Sort action.
-     *
-     * @author P.Tomaszewski
-     */
-    private class LexicalSortingAction extends Action {
-
-    	private static final String STORE_LEXICAL_SORTING_CHECKED= "LexicalSortingAction.isChecked"; //$NON-NLS-1$
-
-    	/** The tree viewer */
-    	private TreeViewer fOutlineViewer;
-        /** Sorter for tree viewer. */
-        private LexicalCSorter fSorter;
-
-    	/**
-    	 * Creates new action.
-    	 */
-    	public LexicalSortingAction(TreeViewer treeViewer) {
-    		super(ActionMessages.getString("COutlineInformationControl.viewMenu.sort.label"), IAction.AS_CHECK_BOX); //$NON-NLS-1$
-    		CPluginImages.setLocalImageDescriptors(this, CPluginImages.IMG_ALPHA_SORTING);
-    		PlatformUI.getWorkbench().getHelpSystem().setHelp(this, ICHelpContextIds.LEXICAL_SORTING_BROWSING_ACTION);
-
-    		fOutlineViewer= treeViewer;
-            fSorter= new LexicalCSorter();
-            
-    		boolean checked= getDialogSettings().getBoolean(STORE_LEXICAL_SORTING_CHECKED);
-    		setChecked(checked);
-
-    		if (checked && fOutlineViewer != null) {
-    			fOutlineViewer.setComparator(fSorter);
-    		}
-    	}
-
-    	/*
-    	 * @see org.eclipse.jface.action.Action#run()
-    	 */
-    	public void run() {
-    		final boolean on= isChecked();
-    		fOutlineViewer.setComparator(on ? fSorter : null);
-    		getDialogSettings().put(STORE_LEXICAL_SORTING_CHECKED, on);
-    	}
-    }
 }

@@ -1,12 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2006 Nokia and others.
+ * Copyright (c) 2006, 2008 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Nokia - Initial implementation (159833)
+ *     Nokia - Initial implementation (159833)
+ *     Broadcom - http://bugs.eclipse.org/247853
  *******************************************************************************/
 
 package org.eclipse.cdt.debug.core.sourcelookup;
@@ -24,7 +25,9 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.sourcelookup.ISourceContainerType;
+import org.eclipse.debug.core.sourcelookup.ISourceLookupDirector;
 import org.eclipse.debug.core.sourcelookup.containers.AbstractSourceContainer;
 import org.eclipse.debug.core.sourcelookup.containers.LocalFileStorage;
 
@@ -48,13 +51,23 @@ public class AbsolutePathSourceContainer extends AbstractSourceContainer {
 				return wfiles;
 			
 			// The file is not already in the workspace so try to create an external translation unit for it.
-			String projectName = getDirector().getLaunchConfiguration().getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_NAME, ""); //$NON-NLS-1$
-			ICProject project = CoreModel.getDefault().getCModel().getCProject(projectName);
-			if (project != null)
+			ISourceLookupDirector director = getDirector();
+			if (director != null)
 			{
-				IPath path = Path.fromOSString(file.getCanonicalPath());
-				String id = CoreModel.getRegistedContentTypeId(project.getProject(), path.lastSegment());
-				return new ExternalTranslationUnit[] { new ExternalTranslationUnit(project, new Path(file.getCanonicalPath()), id) };
+				ILaunchConfiguration launchConfiguration = director.getLaunchConfiguration();
+				if (launchConfiguration != null)
+				{
+					String projectName = launchConfiguration.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_NAME, ""); //$NON-NLS-1$
+					if (projectName.length() > 0) {
+						ICProject project = CoreModel.getDefault().getCModel().getCProject(projectName);
+						if (project != null)
+						{
+							IPath path = Path.fromOSString(file.getCanonicalPath());
+							String id = CoreModel.getRegistedContentTypeId(project.getProject(), path.lastSegment());
+							return new ExternalTranslationUnit[] { new ExternalTranslationUnit(project, file.toURI(), id) };
+						}
+					}
+				}
 			}
 		} catch (IOException e) { // ignore if getCanonicalPath throws
 		} catch (CoreException e) {
@@ -95,4 +108,15 @@ public class AbsolutePathSourceContainer extends AbstractSourceContainer {
 		return getSourceContainerType( TYPE_ID );
 	}
 
+	@Override
+	public int hashCode() {
+		return TYPE_ID.hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+	    if (!(obj instanceof AbsolutePathSourceContainer))
+		    return false;
+	    return true;
+    }
 }

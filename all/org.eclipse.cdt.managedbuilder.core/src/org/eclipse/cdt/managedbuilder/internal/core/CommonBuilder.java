@@ -28,17 +28,25 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.CommandLauncher;
 import org.eclipse.cdt.core.ConsoleOutputStream;
 import org.eclipse.cdt.core.ErrorParserManager;
+import org.eclipse.cdt.core.IMarkerGenerator;
+import org.eclipse.cdt.core.ProblemMarkerInfo;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariableManager;
+import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICModelMarker;
 import org.eclipse.cdt.core.resources.ACBuilder;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.util.ListComparator;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerConfigBuilderInfo2;
+import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoCollector;
+import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoConsoleParser;
 import org.eclipse.cdt.make.core.scannerconfig.InfoContext;
-import org.eclipse.cdt.make.internal.core.scannerconfig.ScannerInfoConsoleParserFactory;
+import org.eclipse.cdt.make.internal.core.scannerconfig2.SCProfileInstance;
+import org.eclipse.cdt.make.internal.core.scannerconfig2.ScannerConfigProfile;
+import org.eclipse.cdt.make.internal.core.scannerconfig2.ScannerConfigProfileManager;
 import org.eclipse.cdt.managedbuilder.buildmodel.BuildDescriptionManager;
 import org.eclipse.cdt.managedbuilder.buildmodel.IBuildDescription;
 import org.eclipse.cdt.managedbuilder.buildmodel.IBuildIOType;
@@ -46,11 +54,20 @@ import org.eclipse.cdt.managedbuilder.buildmodel.IBuildResource;
 import org.eclipse.cdt.managedbuilder.buildmodel.IBuildStep;
 import org.eclipse.cdt.managedbuilder.core.IBuilder;
 import org.eclipse.cdt.managedbuilder.core.IConfiguration;
+import org.eclipse.cdt.managedbuilder.core.IFileInfo;
+import org.eclipse.cdt.managedbuilder.core.IFolderInfo;
+import org.eclipse.cdt.managedbuilder.core.IInputType;
 import org.eclipse.cdt.managedbuilder.core.IManagedBuildInfo;
+import org.eclipse.cdt.managedbuilder.core.IResourceInfo;
+import org.eclipse.cdt.managedbuilder.core.ITool;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuilderCorePlugin;
+import org.eclipse.cdt.managedbuilder.internal.buildmodel.BuildDescription;
+import org.eclipse.cdt.managedbuilder.internal.buildmodel.BuildStateManager;
 import org.eclipse.cdt.managedbuilder.internal.buildmodel.DescriptionBuilder;
 import org.eclipse.cdt.managedbuilder.internal.buildmodel.IBuildModelBuilder;
+import org.eclipse.cdt.managedbuilder.internal.buildmodel.IConfigurationBuildState;
+import org.eclipse.cdt.managedbuilder.internal.buildmodel.IProjectBuildState;
 import org.eclipse.cdt.managedbuilder.internal.buildmodel.ParallelBuilder;
 import org.eclipse.cdt.managedbuilder.internal.buildmodel.StepBuilder;
 import org.eclipse.cdt.managedbuilder.macros.BuildMacroException;
@@ -113,6 +130,8 @@ public class CommonBuilder extends ACBuilder {
 	public static boolean VERBOSE = false;
 
 	private static CfgBuildSet fBuildSet = new CfgBuildSet();
+	
+	private boolean fBuildErrOccured;
 
 	public CommonBuilder() {
 	}
@@ -463,6 +482,11 @@ public class CommonBuilder extends ACBuilder {
 			return true;
 		}
 	}
+	
+	protected boolean isCdtProjectCreated(IProject project){
+		ICProjectDescription des = CoreModel.getDefault().getProjectDescription(project, false);
+		return des != null && !des.isCdtProjectCreating();
+	}
 
 	/**
 	 * @see IncrementalProjectBuilder#build
@@ -471,13 +495,29 @@ public class CommonBuilder extends ACBuilder {
 		fBuildSet.start(this);
 
 		IProject project = getProject();
+		
+		if(!isCdtProjectCreated(project))
+			return project.getReferencedProjects();
 
 		if(VERBOSE)
 			outputTrace(project.getName(), ">>build requested, type = " + kind); //$NON-NLS-1$
 
-		IBuilder builders[] = BuilderFactory.createBuilders(project, args);
-		IProject[] projects = build(kind, project, builders, true, monitor);
-
+		IProject[] projects = null; 
+		if (needAllConfigBuild()) {
+			IManagedBuildInfo info = ManagedBuildManager.getBuildInfo(project);
+			IConfiguration[] cfgs = info.getManagedProject().getConfigurations();
+			IConfiguration defCfg = info.getDefaultConfiguration();
+			for (IConfiguration cfg : cfgs) {
+				info.setDefaultConfiguration(cfg);
+				IBuilder builders[] = ManagedBuilderCorePlugin.createBuilders(project, args);
+				projects = build(kind, project, builders, true, monitor);
+			}
+			info.setDefaultConfiguration(defCfg);
+		} else {
+			IBuilder builders[] = ManagedBuilderCorePlugin.createBuilders(project, args);
+			projects = build(kind, project, builders, true, monitor);
+		}
+		
 		if(VERBOSE)
 			outputTrace(project.getName(), "<<done build requested, type = " + kind); //$NON-NLS-1$
 
@@ -485,6 +525,9 @@ public class CommonBuilder extends ACBuilder {
 	}
 	
 	protected IProject[] build(int kind, IProject project, IBuilder[] builders, boolean isForeground, IProgressMonitor monitor) throws CoreException{
+		if(!isCdtProjectCreated(project))
+			return project.getReferencedProjects();
+
 		int num = builders.length;
 		IManagedBuildInfo info = ManagedBuildManager.getBuildInfo(project);
 		IConfiguration activeCfg = info.getDefaultConfiguration();
@@ -494,15 +537,15 @@ public class CommonBuilder extends ACBuilder {
 			if(status.getSeverity() != IStatus.OK)
 				throw new CoreException(status);
 
-			IConfiguration cfgs[] = getReferencedConfigs(builders);
+			IConfiguration rcfgs[] = getReferencedConfigs(builders);
 
-			monitor.beginTask("", num + cfgs.length); //$NON-NLS-1$
+			monitor.beginTask("", num + rcfgs.length); //$NON-NLS-1$
 
-			if(cfgs.length != 0){
-				Set set = buildReferencedConfigs(cfgs, new SubProgressMonitor(monitor, 1));// = getProjectsSet(cfgs);
+			if(rcfgs.length != 0){
+				Set<IProject> set = buildReferencedConfigs(rcfgs, new SubProgressMonitor(monitor, 1));// = getProjectsSet(cfgs);
 				if(set.size() != 0){
 					set.addAll(Arrays.asList(refProjects));
-					refProjects = (IProject[])set.toArray(new IProject[set.size()]);
+					refProjects = set.toArray(new IProject[set.size()]);
 				}
 			}
 
@@ -518,8 +561,8 @@ public class CommonBuilder extends ACBuilder {
 		return project.getReferencedProjects();		
 	}
 	
-	private Set buildReferencedConfigs(IConfiguration[] cfgs, IProgressMonitor monitor){
-		Set projSet = getProjectsSet(cfgs);
+	private Set<IProject> buildReferencedConfigs(IConfiguration[] cfgs, IProgressMonitor monitor){
+		Set<IProject> projSet = getProjectsSet(cfgs);
 		cfgs = filterConfigsToBuild(cfgs);
 
 		if(cfgs.length != 0){
@@ -580,7 +623,7 @@ public class CommonBuilder extends ACBuilder {
 	}
 
 	private IConfiguration[] getReferencedConfigs(IBuilder[] builders){
-		Set set = new HashSet();
+		Set<IConfiguration> set = new HashSet<IConfiguration>();
 		for(int i = 0; i < builders.length; i++){
 			IConfiguration cfg = builders[i].getParent().getParent();
 			IConfiguration refs[] = ManagedBuildManager.getReferencedConfigurations(cfg);
@@ -588,14 +631,14 @@ public class CommonBuilder extends ACBuilder {
 				set.add(refs[k]);
 			}
 		}
-		return (IConfiguration[]) set.toArray(new Configuration[set.size()]);
+		return set.toArray(new Configuration[set.size()]);
 	}
 	
-	private Set getProjectsSet(IConfiguration[] cfgs){
+	private Set<IProject> getProjectsSet(IConfiguration[] cfgs){
 		if(cfgs.length == 0)
-			return new HashSet(0);
+			return new HashSet<IProject>(0);
 		
-		Set set = new HashSet();
+		Set<IProject> set = new HashSet<IProject>();
 		for(int i = 0; i < cfgs.length; i++){
 			set.add(cfgs[i].getOwner().getProject());
 		}
@@ -729,7 +772,6 @@ public class CommonBuilder extends ACBuilder {
 //		}
 		
 		if (status.isBuild()) {
-//			IManagedBuilderMakefileGenerator makeGen = null;
 			IConfiguration cfg = bInfo.getConfiguration();
 			
 			if(!builder.isCustomBuilder()){
@@ -759,6 +801,8 @@ public class CommonBuilder extends ACBuilder {
 					cfg.setRebuildState(true);
 					throw e;
 				}
+				
+				PropertyManager.getInstance().serialize(cfg);
 			} else if(status.getConsoleMessagesList().size() != 0) {
 				emitMessage(bInfo, concatMessages(status.getConsoleMessagesList()));
 			}
@@ -871,20 +915,17 @@ public class CommonBuilder extends ACBuilder {
 		try {
 			int flags = 0;
 			IResourceDelta delta = getDelta(currentProject);
+			BuildStateManager bsMngr = BuildStateManager.getInstance();
+			IProjectBuildState pBS = bsMngr.getProjectBuildState(currentProject);
+			IConfigurationBuildState cBS = pBS.getConfigurationBuildState(cfg.getId(), true);
 			
-			if(delta != null){
+//			if(delta != null){
 				flags = BuildDescriptionManager.REBUILD | BuildDescriptionManager.REMOVED | BuildDescriptionManager.DEPS;
 //				delta = getDelta(currentProject);
-			}
+//			}
 			
 			boolean buildIncrementaly = delta != null;
 			
-			IBuildDescription des = BuildDescriptionManager.createBuildDescription(cfg, delta, flags);
-	
-			DescriptionBuilder dBuilder = null;
-			if (!isParallel)
-				dBuilder = new DescriptionBuilder(des, buildIncrementaly, resumeOnErr);
-
 			// Get a build console for the project
 			StringBuffer buf = new StringBuffer();
 //			console = CCorePlugin.getDefault().getConsole();
@@ -914,7 +955,13 @@ public class CommonBuilder extends ACBuilder {
 			}
 			consoleOutStream.write(buf.toString().getBytes());
 			consoleOutStream.flush();
+
+			IBuildDescription des = BuildDescriptionManager.createBuildDescription(cfg, cBS, delta, flags);
 			
+			DescriptionBuilder dBuilder = null;
+			if (!isParallel)
+				dBuilder = new DescriptionBuilder(des, buildIncrementaly, resumeOnErr, cBS);
+
 			if(isParallel || dBuilder.getNumCommands() > 0) {
 				// Remove all markers for this project
 				removeAllMarkers(currentProject);
@@ -982,6 +1029,8 @@ public class CommonBuilder extends ACBuilder {
 						.getResourceString(MARKERS));
 //TODO:				addBuilderMarkers(epm);
 				epm.reportProblems();
+
+				bsMngr.setProjectBuildState(currentProject, pBS);
 			} else {
 				buf = new StringBuffer();
 				buf.append(ManagedMakeMessages.getFormattedString(NOTHING_BUILT, currentProject.getName()));
@@ -997,7 +1046,7 @@ public class CommonBuilder extends ACBuilder {
 							.getResourceString(BUILD_ERROR);
 				buf.append(errorDesc);
 				buf.append(System.getProperty("line.separator", "\n")); //$NON-NLS-1$//$NON-NLS-2$
-				buf.append("(").append(e.getLocalizedMessage()).append(")"); //$NON-NLS-1$ //$NON-NLS-2$
+				buf.append(e.getLocalizedMessage());
 				buf.append(System.getProperty("line.separator", "\n")); //$NON-NLS-1$//$NON-NLS-2$
 
 				try {
@@ -1169,7 +1218,7 @@ public class CommonBuilder extends ACBuilder {
 				{
 					IBuildStep step = (IBuildStep) stepIter.next();
 					
-					StepBuilder stepBuilder = new StepBuilder(step);
+					StepBuilder stepBuilder = new StepBuilder(step, null);
 					
 					int status = stepBuilder.build(consoleOutStream, epmOutputStream, new SubProgressMonitor(monitor, 1, SubProgressMonitor.PREPEND_MAIN_LABEL_TO_SUBTASK));
 					
@@ -1311,6 +1360,18 @@ public class CommonBuilder extends ACBuilder {
 				//TODO:		messages.add(status);
 					}				
 				}
+			} else if (result.getCode() == IStatus.ERROR){
+				StringBuffer buf = new StringBuffer();
+				buf.append(ManagedMakeMessages.getString("CommonBuilder.23")).append(NEWLINE); //$NON-NLS-1$
+				String message = result.getMessage();
+				if(message != null && message.length() != 0){
+					buf.append(message).append(NEWLINE);
+				}
+				
+				buf.append(ManagedMakeMessages.getString("CommonBuilder.24")).append(NEWLINE); //$NON-NLS-1$
+				message = buf.toString();
+				buildStatus.getConsoleMessagesList().add(message);
+				buildStatus.cancelBuild();
 			}
 
 			checkCancel(monitor);
@@ -1435,7 +1496,11 @@ public class CommonBuilder extends ACBuilder {
 	
 	protected void clean(IProgressMonitor monitor) throws CoreException {
 		IProject curProject = getProject();
-		IBuilder[] builders = BuilderFactory.createBuilders(curProject, null);
+		
+		if(!isCdtProjectCreated(curProject))
+			return;
+		
+		IBuilder[] builders = ManagedBuilderCorePlugin.createBuilders(curProject, null);
 		for(int i = 0; i < builders.length; i++){
 			IBuilder builder = builders[i];
 			CfgBuildInfo bInfo = new CfgBuildInfo(builder, true);
@@ -1443,19 +1508,58 @@ public class CommonBuilder extends ACBuilder {
 		}
 	}
 	
+	public void addMarker(IResource file, int lineNumber, String errorDesc,
+			int severity, String errorVar) {
+		super.addMarker(file, lineNumber, errorDesc, severity, errorVar);
+		if(severity == IStatus.ERROR)
+			fBuildErrOccured = true;
+	}
+
+	public void addMarker(ProblemMarkerInfo problemMarkerInfo) {
+		super.addMarker(problemMarkerInfo);
+		if(problemMarkerInfo.severity == IStatus.ERROR)
+			fBuildErrOccured = true;
+	}
+
 	protected void clean(CfgBuildInfo bInfo, IProgressMonitor monitor) throws CoreException{
 		if (shouldBuild(CLEAN_BUILD, bInfo.getBuilder())) {
-			boolean performExternalClean = true;
-			if(shouldCleanProgrammatically(bInfo)){
-				try {
-					cleanProgrammatically(bInfo, monitor);
-					performExternalClean = false;
-				} catch (CoreException e) {
-				}
+			BuildStateManager bsMngr = BuildStateManager.getInstance();
+			IProject project = bInfo.getProject();
+			IConfiguration cfg = bInfo.getConfiguration();
+			IProjectBuildState pbs = bsMngr.getProjectBuildState(project);
+			IConfigurationBuildState cbs = pbs.getConfigurationBuildState(cfg.getId(), false);
+			if(cbs != null){
+				pbs.removeConfigurationBuildState(cfg.getId());
+				bsMngr.setProjectBuildState(project, pbs);
 			}
 			
-			if(performExternalClean){
+			if(!cfg.getEditableBuilder().isManagedBuildOn()){
 				performExternalClean(bInfo, false, monitor);
+			} else {
+				boolean programmatically = true;
+				IPath path = ManagedBuildManager.getBuildFullPath(cfg, bInfo.getBuilder());
+				IResource rc = path != null ? ResourcesPlugin.getWorkspace().getRoot().findMember(path) : null;
+				
+				if(path == null || (rc != null && rc.getType() != IResource.FILE)){
+					if(!cfg.getEditableBuilder().isInternalBuilder()){
+						fBuildErrOccured = false;
+						try {
+							performExternalClean(bInfo, false, monitor);
+						} catch (CoreException e) {
+							fBuildErrOccured = true;
+						}
+						if(!fBuildErrOccured)
+							programmatically = false;
+					}
+					
+					if(programmatically){
+						try {
+							cleanWithInternalBuilder(bInfo, monitor);
+						} catch (CoreException e) {
+							cleanProgrammatically(bInfo, monitor);
+						}
+					}
+				}
 			}
 		}
 		
@@ -1506,6 +1610,60 @@ public class CommonBuilder extends ACBuilder {
 //			return false;
 //		
 //		return cfg.getOwner().getProject().getFullPath().isPrefixOf(path);
+	}
+	
+	protected void cleanWithInternalBuilder(CfgBuildInfo bInfo, IProgressMonitor monitor) throws CoreException {
+//		referencedProjects = getProject().getReferencedProjects();
+		IProject curProject = bInfo.getProject();
+		outputTrace(curProject.getName(), "Clean build with Internal Builder requested");	//$NON-NLS-1$
+		IConfiguration cfg = bInfo.getConfiguration();
+		int flags = BuildDescriptionManager.DEPFILES;
+		BuildDescription des = (BuildDescription)BuildDescriptionManager.createBuildDescription(cfg, null, null, flags);
+		
+		IBuildStep cleanStep = des.getCleanStep();
+		
+		StepBuilder sBuilder = new StepBuilder(cleanStep, null, null);
+		
+		try {
+			// try the brute force approach first
+			StringBuffer buf = new StringBuffer();
+			// write to the console
+//			
+//			IConsole console = CCorePlugin.getDefault().getConsole();
+//			console.start(getProject());
+			IConsole console = bInfo.getConsole();
+			ConsoleOutputStream consoleOutStream = console.getOutputStream();
+			String[] consoleHeader = new String[3];
+			consoleHeader[0] = ManagedMakeMessages.getResourceString(TYPE_CLEAN);
+			consoleHeader[1] = cfg.getName();
+			consoleHeader[2] = curProject.getName();
+			buf.append(System.getProperty("line.separator", "\n"));	//$NON-NLS-1$	//$NON-NLS-2$
+			buf.append(ManagedMakeMessages.getFormattedString(CONSOLE_HEADER, consoleHeader));
+			buf.append(System.getProperty("line.separator", "\n"));	//$NON-NLS-1$	//$NON-NLS-2$
+			consoleOutStream.write(buf.toString().getBytes());
+			consoleOutStream.flush();
+			buf = new StringBuffer();
+			int result = sBuilder.build(consoleOutStream, consoleOutStream, monitor);
+			//Throw a core exception indicating that the clean command failed
+			if(result == StepBuilder.STATUS_ERROR_LAUNCH)
+			{
+			    try
+			    {
+			        consoleOutStream.close();
+			    }
+			    catch(IOException e){}
+			    Status status = new Status(Status.INFO, ManagedBuilderCorePlugin.getUniqueIdentifier(), "Failed to exec delete command");//$NON-NLS-1
+			    throw new CoreException(status);
+			}
+			// Report a successful clean
+			String successMsg = ManagedMakeMessages.getFormattedString(BUILD_FINISHED, curProject.getName());
+			buf.append(successMsg);
+			buf.append(System.getProperty("line.separator", "\n"));  //$NON-NLS-1$//$NON-NLS-2$
+			consoleOutStream.write(buf.toString().getBytes());
+			consoleOutStream.flush();
+			consoleOutStream.close();
+		}  catch (IOException io) {}	//  Ignore console failures...		
+
 	}
 	
 	protected void cleanProgrammatically(CfgBuildInfo bInfo, IProgressMonitor monitor) throws CoreException {
@@ -1584,6 +1742,95 @@ public class CommonBuilder extends ACBuilder {
 		return invokeMake(kind, bInfo, monitor);
 	}
 
+	private ConsoleOutputSniffer createBuildOutputSniffer(OutputStream outputStream,
+			OutputStream errorStream,
+			IProject project,
+			IConfiguration cfg,
+			IPath workingDirectory,
+			IMarkerGenerator markerGenerator,
+			IScannerInfoCollector collector){
+		ICfgScannerConfigBuilderInfo2Set container = CfgScannerConfigProfileManager.getCfgScannerConfigBuildInfo(cfg);
+		Map map = container.getInfoMap();
+		List clParserList = new ArrayList();
+		
+		if(container.isPerRcTypeDiscovery()){
+			IResourceInfo[] rcInfos = cfg.getResourceInfos();
+			for(int q = 0; q < rcInfos.length; q++){
+				IResourceInfo rcInfo = rcInfos[q];
+				ITool tools[];
+				if(rcInfo instanceof IFileInfo){
+					tools = ((IFileInfo)rcInfo).getToolsToInvoke();
+				} else {
+					tools = ((IFolderInfo)rcInfo).getFilteredTools();
+				}
+				for(int i = 0; i < tools.length; i++){
+					ITool tool = tools[i];
+					IInputType[] types = tool.getInputTypes();
+					
+					if(types.length != 0){
+						for(int k = 0; k < types.length; k++){
+							IInputType type = types[k];
+							CfgInfoContext c = new CfgInfoContext(rcInfo, tool, type);
+							contributeToConsoleParserList(project, map, c, workingDirectory, markerGenerator, collector, clParserList);
+						}
+					} else {
+						CfgInfoContext c = new CfgInfoContext(rcInfo, tool, null);
+						contributeToConsoleParserList(project, map, c, workingDirectory, markerGenerator, collector, clParserList);
+					}
+				}
+			}
+		} 
+		
+		if(clParserList.size() == 0){
+			contributeToConsoleParserList(project, map, new CfgInfoContext(cfg), workingDirectory, markerGenerator, collector, clParserList);
+		}
+		
+		if(clParserList.size() != 0){
+			return new ConsoleOutputSniffer(outputStream, errorStream, 
+					(IScannerInfoConsoleParser[])clParserList.toArray(new IScannerInfoConsoleParser[clParserList.size()]));
+		}
+		
+		return null;
+	}
+	
+	private boolean contributeToConsoleParserList(
+			IProject project, 
+			Map map, 
+			CfgInfoContext context, 
+			IPath workingDirectory,
+			IMarkerGenerator markerGenerator,
+			IScannerInfoCollector collector,
+			List parserList){
+		IScannerConfigBuilderInfo2 info = (IScannerConfigBuilderInfo2)map.get(context);
+		InfoContext ic = context.toInfoContext();
+		boolean added = false;
+		if (info != null && 
+				info.isAutoDiscoveryEnabled() &&
+				info.isBuildOutputParserEnabled()) {
+			
+			String id = info.getSelectedProfileId();
+			ScannerConfigProfile profile = ScannerConfigProfileManager.getInstance().getSCProfileConfiguration(id);
+			if(profile.getBuildOutputProviderElement() != null){
+				// get the make builder console parser 
+				SCProfileInstance profileInstance = ScannerConfigProfileManager.getInstance().
+						getSCProfileInstance(project, ic, id);
+				
+				IScannerInfoConsoleParser clParser = profileInstance.createBuildOutputParser();
+                if (collector == null) {
+                    collector = profileInstance.getScannerInfoCollector();
+                }
+                if(clParser != null){
+					clParser.startup(project, workingDirectory, collector,
+                            info.isProblemReportingEnabled() ? markerGenerator : null);
+					parserList.add(clParser);
+					added = true;
+                }
+			
+			}
+		}
+
+		return added;
+	}
 	
 	protected boolean invokeMake(int kind, CfgBuildInfo bInfo, IProgressMonitor monitor) throws CoreException {
 		boolean isClean = false;
@@ -1650,13 +1897,13 @@ public class CommonBuilder extends ACBuilder {
 				// Set the environment
 				String[] env = calcEnvironment(builder);
 				String[] buildArguments = targets;
-				if (builder.isDefaultBuildCmd()) {
+//				if (builder.isDefaultBuildCmd()) {
 //					if (!builder.isStopOnError()) {
 //						buildArguments = new String[targets.length + 1];
 //						buildArguments[0] = "-k"; //$NON-NLS-1$
 //						System.arraycopy(targets, 0, buildArguments, 1, targets.length);
 //					}
-				} else {
+//				} else {
 					String args = builder.getBuildArguments();
 					if (args != null && !(args = args.trim()).equals("")) { //$NON-NLS-1$
 						String[] newArgs = makeArray(args);
@@ -1664,7 +1911,7 @@ public class CommonBuilder extends ACBuilder {
 						System.arraycopy(newArgs, 0, buildArguments, 0, newArgs.length);
 						System.arraycopy(targets, 0, buildArguments, newArgs.length, targets.length);
 					}
-				}
+//				}
 //					MakeRecon recon = new MakeRecon(buildCommand, buildArguments, env, workingDirectory, makeMonitor, cos);
 //					recon.invokeMakeRecon();
 //					cos = recon;
@@ -1679,17 +1926,18 @@ public class CommonBuilder extends ACBuilder {
 				OutputStream stdout = epm.getOutputStream();
 				OutputStream stderr = epm.getOutputStream();
 				// Sniff console output for scanner info
-				ICfgScannerConfigBuilderInfo2Set container = CfgScannerConfigProfileManager.getCfgScannerConfigBuildInfo(cfg);
-				CfgInfoContext context = new CfgInfoContext(cfg);
-				InfoContext baseContext; 
-				IScannerConfigBuilderInfo2 info = container.getInfo(context);
-				if(info == null){
-					baseContext = new InfoContext(currProject);
-				} else {
-					baseContext = context.toInfoContext();
-				}
-				ConsoleOutputSniffer sniffer = ScannerInfoConsoleParserFactory.getMakeBuilderOutputSniffer(
-						stdout, stderr, currProject, baseContext, workingDirectory, info, this, null);
+//				ICfgScannerConfigBuilderInfo2Set container = CfgScannerConfigProfileManager.getCfgScannerConfigBuildInfo(cfg);
+//				CfgInfoContext context = new CfgInfoContext(cfg);
+//				InfoContext baseContext; 
+//				IScannerConfigBuilderInfo2 info = container.getInfo(context);
+//				if(info == null){
+//					baseContext = new InfoContext(currProject);
+//				} else {
+//					baseContext = context.toInfoContext();
+//				}
+//				ConsoleOutputSniffer sniffer = ScannerInfoConsoleParserFactory.getMakeBuilderOutputSniffer(
+//						stdout, stderr, currProject, baseContext, workingDirectory, info, this, null);
+				ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, currProject, cfg, workingDirectory, this, null);
 				OutputStream consoleOut = (sniffer == null ? stdout : sniffer.getOutputStream());
 				OutputStream consoleErr = (sniffer == null ? stderr : sniffer.getErrorStream());
 				Process p = launcher.execute(buildCommand, buildArguments, env, workingDirectory);
@@ -1819,31 +2067,103 @@ public class CommonBuilder extends ACBuilder {
 	}
 
 	// Turn the string into an array.
-	String[] makeArray(String string) {
-		string.trim();
-		char[] array = string.toCharArray();
-		ArrayList aList = new ArrayList();
-		StringBuffer buffer = new StringBuffer();
-		boolean inComment = false;
+	private String[] makeArray(String line) {
+		// this method is extracted as CommandLineUtil.argumentsToArray on HEAD
+		final int INITIAL = 0;
+		final int IN_DOUBLE_QUOTES = 1;
+		final int IN_DOUBLE_QUOTES_ESCAPED = 2;
+		final int ESCAPED = 3;
+		final int IN_SINGLE_QUOTES = 4;
+		final int IN_ARG = 5;
+
+		if (line == null) { 
+			line = ""; //$NON-NLS-1$
+		}
+				
+		char[] array = line.trim().toCharArray();
+		ArrayList<String> aList = new ArrayList<String>();
+		StringBuilder buffer = new StringBuilder();
+		int state = INITIAL;
 		for (int i = 0; i < array.length; i++) {
 			char c = array[i];
-			if (array[i] == '"' || array[i] == '\'') {
-				if (i > 0 && array[i - 1] == '\\') {
-					inComment = false;
-				} else {
-					inComment = !inComment;
-				}
-			}
-			if (c == ' ' && !inComment) {
-				aList.add(buffer.toString());
-				buffer = new StringBuffer();
-			} else {
-				buffer.append(c);
+			switch (state) {
+				case IN_ARG:
+					// fall through
+				case INITIAL:
+					switch (c) {
+						case ' ':
+							if (state == INITIAL) break; // ignore extra spaces
+							// add argument
+							state = INITIAL;
+							String arg = buffer.toString();
+							buffer = new StringBuilder();
+							aList.add(arg);
+							break;
+						case '\\':
+							state = ESCAPED;
+							break;
+						case '\'':
+							state = IN_SINGLE_QUOTES;
+							break;
+						case '\"':
+							state = IN_DOUBLE_QUOTES;
+							break;
+						default:
+							state = IN_ARG;
+							buffer.append(c);
+							break;
+					}
+					break;
+				case IN_DOUBLE_QUOTES:
+					switch (c) {
+						case '\\':
+							state = IN_DOUBLE_QUOTES_ESCAPED;
+							break;
+						case '\"':
+							state = IN_ARG;
+							break;
+						default:
+							buffer.append(c);
+							break;
+					}
+					break;
+				case IN_SINGLE_QUOTES:
+					switch (c) {
+						case '\'':
+							state = IN_ARG;
+							break;
+						default:
+							buffer.append(c);
+							break;
+					}
+					break;
+				case IN_DOUBLE_QUOTES_ESCAPED:
+					switch (c) {
+						case '\"':
+						case '\\':
+							buffer.append(c);
+							break;
+						case 'n':
+							buffer.append('\n');
+							break;
+						default:
+							buffer.append('\\');
+							buffer.append(c);
+						break;
+					}
+					state = IN_DOUBLE_QUOTES;
+					break;
+				case ESCAPED:
+					buffer.append(c);
+					state = IN_ARG;
+					break;
 			}
 		}
-		if (buffer.length() > 0)
+		
+		if (state!=INITIAL) { // this allow to process empty string as an argument
 			aList.add(buffer.toString());
-		return (String[]) aList.toArray(new String[aList.size()]);
+		}
+		return aList.toArray(new String[aList.size()]);
 	}
 
 	private void removeAllMarkers(IProject currProject) throws CoreException {

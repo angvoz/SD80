@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,7 +8,6 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.ui.tests.callhierarchy;
 
 import java.io.IOException;
@@ -18,20 +17,20 @@ import junit.framework.Test;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
-import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.ide.IDE;
 
 import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
+
+import org.eclipse.cdt.internal.core.model.CoreModelMessages;
 
 import org.eclipse.cdt.internal.ui.callhierarchy.CHNode;
 import org.eclipse.cdt.internal.ui.editor.CEditor;
 
 
 public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
+	private static final String ANON= CoreModelMessages.getString("CElementLabels.anonymous");
 	
 	public BasicCallHierarchyTest(String name) {
 		super(name);
@@ -61,13 +60,13 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testFunctions");
 		IFile file= createFile(getProject(), filename, content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 
 		editor.selectAndReveal(content.indexOf("proto"), 5);
 		openCallHierarchy(editor);
 		Tree tree = getCHTreeViewer().getTree();
 		checkTreeNode(tree, 0, "proto()");
+		expandTreeItem(tree, 0);
 		checkTreeNode(tree, 0, 0, "main()");
 
 		editor.selectAndReveal(content.indexOf("func"), 2);
@@ -80,7 +79,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		checkTreeNode(tree, 0, "proto()");
 		checkTreeNode(tree, 0, 0, "main()");
 
-		editor.selectAndReveal(content.indexOf("func(); //ref"), 7);
+		editor.selectAndReveal(content.indexOf("func(); //ref"), 4);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "func()");
 		checkTreeNode(tree, 0, 0, "main()");
@@ -105,8 +104,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testVariables");
 		IFile file= createFile(getProject(), filename, content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 
 		editor.selectAndReveal(content.indexOf("extern_var"), 0);
 		openCallHierarchy(editor);
@@ -161,8 +159,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment(contentTag);
 		IFile file= createFile(getProject(), filename, content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 
 		editor.selectAndReveal(content.indexOf("enumerator"), 0);
 		openCallHierarchy(editor);
@@ -217,8 +214,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testStructMembers");
 		IFile file= createFile(getProject(), "struct_member.c", content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 		
 		editor.selectAndReveal(content.indexOf("mem1"), 0);
 		openCallHierarchy(editor);
@@ -229,11 +225,11 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		editor.selectAndReveal(content.indexOf("mem2"), 0);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "s2::mem2");
-		checkTreeNode(tree, 0, 0, "main()");
+		checkTreeNode(tree, 0, 0, "main() (2 matches)");
 		
 		editor.selectAndReveal(content.indexOf("mem3"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		
 		editor.selectAndReveal(content.indexOf("mem4"), 0);
 		openCallHierarchy(editor);
@@ -242,7 +238,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		
 		editor.selectAndReveal(content.indexOf("mem5"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem5");
+		checkTreeNode(tree, 0, ANON+"::mem5");
 		
 		editor.selectAndReveal(content.indexOf("mem1; //ref"), 0);
 		openCallHierarchy(editor);
@@ -252,7 +248,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		editor.selectAndReveal(content.indexOf("mem2; //ref"), 0);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "s2::mem2");
-		checkTreeNode(tree, 0, 0, "main()");
+		checkTreeNode(tree, 0, 0, "main() (2 matches)");
 		
 		editor.selectAndReveal(content.indexOf("mem4."), 0);
 		openCallHierarchy(editor);
@@ -264,8 +260,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testStructMembers");
 		IFile file= createFile(getProject(), "struct_member.cpp", content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 		
 		editor.selectAndReveal(content.indexOf("mem1"), 0);
 		openCallHierarchy(editor);
@@ -276,11 +271,11 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		editor.selectAndReveal(content.indexOf("mem2"), 0);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "s2::mem2");
-		checkTreeNode(tree, 0, 0, "main()");
+		checkTreeNode(tree, 0, 0, "main() (2 matches)");
 		
 		editor.selectAndReveal(content.indexOf("mem3"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		
 		editor.selectAndReveal(content.indexOf("mem4"), 0);
 		openCallHierarchy(editor);
@@ -289,7 +284,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		
 		editor.selectAndReveal(content.indexOf("mem5"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "s4::(anon)::mem5");
+		checkTreeNode(tree, 0, "s4::"+ANON+"::mem5");
 		
 		editor.selectAndReveal(content.indexOf("mem1; //ref"), 0);
 		openCallHierarchy(editor);
@@ -299,7 +294,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		editor.selectAndReveal(content.indexOf("mem2; //ref"), 0);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "s2::mem2");
-		checkTreeNode(tree, 0, 0, "main()");
+		checkTreeNode(tree, 0, 0, "main() (2 matches)");
 		
 		editor.selectAndReveal(content.indexOf("mem4."), 0);
 		openCallHierarchy(editor);
@@ -311,28 +306,27 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testStructMembers");
 		IFile file= createFile(getProject(), "anon_struct_member.c", content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 		
 		editor.selectAndReveal(content.indexOf("mem3"), 0);
 		openCallHierarchy(editor);
 		Tree tree = getCHTreeViewer().getTree();
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem5"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem5");
+		checkTreeNode(tree, 0, ANON+"::mem5");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem3; //ref"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem5; //ref"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem5");
+		checkTreeNode(tree, 0, ANON+"::mem5");
 		checkTreeNode(tree, 0, 0, "main()");
 	}
 	
@@ -340,28 +334,27 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testStructMembers");
 		IFile file= createFile(getProject(), "anon_struct_member.cpp", content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 		
 		editor.selectAndReveal(content.indexOf("mem3"), 0);
 		openCallHierarchy(editor);
 		Tree tree = getCHTreeViewer().getTree();
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem5"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "s4::(anon)::mem5");
+		checkTreeNode(tree, 0, "s4::"+ANON+"::mem5");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem3; //ref"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem5; //ref"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "s4::(anon)::mem5");
+		checkTreeNode(tree, 0, "s4::"+ANON+"::mem5");
 		checkTreeNode(tree, 0, 0, "main()");
 	}
 	
@@ -403,8 +396,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testUnionMembers");
 		IFile file= createFile(getProject(), "union_member.c", content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 		
 		editor.selectAndReveal(content.indexOf("mem1"), 0);
 		openCallHierarchy(editor);
@@ -415,11 +407,11 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		editor.selectAndReveal(content.indexOf("mem2"), 0);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "u2::mem2");
-		checkTreeNode(tree, 0, 0, "main()");
+		checkTreeNode(tree, 0, 0, "main() (2 matches)");
 		
 		editor.selectAndReveal(content.indexOf("mem3"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		
 		editor.selectAndReveal(content.indexOf("mem4"), 0);
 		openCallHierarchy(editor);
@@ -428,7 +420,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		
 		editor.selectAndReveal(content.indexOf("mem5"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem5");
+		checkTreeNode(tree, 0, ANON+"::mem5");
 		
 		editor.selectAndReveal(content.indexOf("mem1; //ref"), 0);
 		openCallHierarchy(editor);
@@ -438,7 +430,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		editor.selectAndReveal(content.indexOf("mem2; //ref"), 0);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "u2::mem2");
-		checkTreeNode(tree, 0, 0, "main()");
+		checkTreeNode(tree, 0, 0, "main() (2 matches)");
 		
 		editor.selectAndReveal(content.indexOf("mem4."), 0);
 		openCallHierarchy(editor);
@@ -450,8 +442,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testUnionMembers");
 		IFile file= createFile(getProject(), "union_member.cpp", content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 		
 		editor.selectAndReveal(content.indexOf("mem1"), 0);
 		openCallHierarchy(editor);
@@ -462,11 +453,11 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		editor.selectAndReveal(content.indexOf("mem2"), 0);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "u2::mem2");
-		checkTreeNode(tree, 0, 0, "main()");
+		checkTreeNode(tree, 0, 0, "main() (2 matches)");
 		
 		editor.selectAndReveal(content.indexOf("mem3"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		
 		editor.selectAndReveal(content.indexOf("mem4"), 0);
 		openCallHierarchy(editor);
@@ -475,7 +466,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		
 		editor.selectAndReveal(content.indexOf("mem5"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "u4::(anon)::mem5");
+		checkTreeNode(tree, 0, "u4::"+ANON+"::mem5");
 		
 		editor.selectAndReveal(content.indexOf("mem1; //ref"), 0);
 		openCallHierarchy(editor);
@@ -485,7 +476,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		editor.selectAndReveal(content.indexOf("mem2; //ref"), 0);
 		openCallHierarchy(editor);
 		checkTreeNode(tree, 0, "u2::mem2");
-		checkTreeNode(tree, 0, 0, "main()");
+		checkTreeNode(tree, 0, 0, "main() (2 matches)");
 		
 		editor.selectAndReveal(content.indexOf("mem4."), 0);
 		openCallHierarchy(editor);
@@ -497,28 +488,27 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testUnionMembers");
 		IFile file= createFile(getProject(), "anon_union_member.c", content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 		
 		editor.selectAndReveal(content.indexOf("mem3"), 0);
 		openCallHierarchy(editor);
 		Tree tree = getCHTreeViewer().getTree();
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem5"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem5");
+		checkTreeNode(tree, 0, ANON+"::mem5");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem3; //ref"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem5; //ref"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem5");
+		checkTreeNode(tree, 0, ANON+"::mem5");
 		checkTreeNode(tree, 0, 0, "main()");
 	}
 	
@@ -526,32 +516,30 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		String content = readTaggedComment("testUnionMembers");
 		IFile file= createFile(getProject(), "anon_union_member.cpp", content);
 		waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		CEditor editor = openEditor(file);
 		
 		editor.selectAndReveal(content.indexOf("mem3"), 0);
 		openCallHierarchy(editor);
 		Tree tree = getCHTreeViewer().getTree();
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem5"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "u4::(anon)::mem5");
+		checkTreeNode(tree, 0, "u4::"+ANON+"::mem5");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem3; //ref"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "(anon)::mem3");
+		checkTreeNode(tree, 0, ANON+"::mem3");
 		checkTreeNode(tree, 0, 0, "main()");
 		
 		editor.selectAndReveal(content.indexOf("mem5; //ref"), 0);
 		openCallHierarchy(editor);
-		checkTreeNode(tree, 0, "u4::(anon)::mem5");
+		checkTreeNode(tree, 0, "u4::"+ANON+"::mem5");
 		checkTreeNode(tree, 0, 0, "main()");
 	}
 	
-	// {testStaticFunctions}
 	// void gf();
 	// static void sf() {
 	//     gf();
@@ -571,22 +559,20 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		waitForIndexer(fIndex, file1, INDEXER_WAIT_TIME);
 		waitForIndexer(fIndex, file2, INDEXER_WAIT_TIME);
 
-		TreeItem i0, i1, i2, i3, i4, i5, i6;
+		TreeItem i1, i2, i3, i4, i5, i6;
 		Tree tree;
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-		CEditor editor;
+		CEditor editor= openEditor(file1);
 		
 		// first file with definition of gf()
-		editor= (CEditor) IDE.openEditor(page, file1);
 		editor.selectAndReveal(content1.indexOf("sf"), 0);
 		openCallHierarchy(editor);
 		tree = getCHTreeViewer().getTree();
-		i0= checkTreeNode(tree, 0, "sf()");
+		checkTreeNode(tree, 0, "sf()");
 		assertEquals(1, tree.getItemCount());
 
-		i1= checkTreeNode(i0, 0, "gf()");	// sf()[f1] <- gf()
-		i2= checkTreeNode(i0, 1, "sf()");   // sf()[f1] <- sf()[f1]
-		checkTreeNode(i0, 2, null);
+		i1= checkTreeNode(tree, 0, 0, "gf()");	// sf()[f1] <- gf()
+		i2= checkTreeNode(tree, 0, 1, "sf()");   // sf()[f1] <- sf()[f1]
+		checkTreeNode(tree, 0, 2, null);
 
 		expandTreeItem(i1);
 		expandTreeItem(i2);
@@ -596,7 +582,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		i5= checkTreeNode(i1, 2, "sf()");   // sf()[f1] <- gf() <- sf()[f2]
 
 		if (((CHNode) i4.getData()).getRepresentedDeclaration().getResource().equals(file2)) {
-			i0= i4; i4=i5; i5=i0;
+			TreeItem i0= i4; i4=i5; i5=i0;
 		}
 		expandTreeItem(i3);
 		expandTreeItem(i4);
@@ -609,21 +595,20 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		checkTreeNode(i6, 0, null);
 
 		// second file without definition of gf()
-		editor= (CEditor) IDE.openEditor(page, file2);
+		editor = openEditor(file2);
 		editor.selectAndReveal(content1.indexOf("sf"), 0);
 		openCallHierarchy(editor);
 		tree = getCHTreeViewer().getTree();
-		i0= checkTreeNode(tree, 0, "sf()");
+		checkTreeNode(tree, 0, "sf()");
 		assertEquals(1, tree.getItemCount());
 
-		i1= checkTreeNode(i0, 0, "sf()");	// sf()[f2] <- sf()[f2]
-		checkTreeNode(i0, 1, null);			// not called by gf()
+		i1= checkTreeNode(tree, 0, 0, "sf()");	// sf()[f2] <- sf()[f2]
+		checkTreeNode(tree, 0, 1, null);			// not called by gf()
 
 		expandTreeItem(i1);
 		checkTreeNode(i1, 0, null);
 	}
 
-	// {testStaticFunctions}
 	// void gf();
 	// static void sf() {
 	//     gf();
@@ -645,20 +630,19 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 
 		TreeItem i0, i1, i2, i3, i4, i5, i6;
 		Tree tree;
-		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
 		CEditor editor;
 		
 		// first file with definition of gf()
-		editor= (CEditor) IDE.openEditor(page, file1);
+		editor= openEditor(file1);
 		editor.selectAndReveal(content1.indexOf("sf"), 0);
 		openCallHierarchy(editor);
 		tree = getCHTreeViewer().getTree();
 		i0= checkTreeNode(tree, 0, "sf()");
 		assertEquals(1, tree.getItemCount());
 
-		i1= checkTreeNode(i0, 0, "gf()");	// sf()[f1] <- gf()
-		i2= checkTreeNode(i0, 1, "sf()");   // sf()[f1] <- sf()[f1]
-		checkTreeNode(i0, 2, null);
+		i1= checkTreeNode(tree, 0, 0, "gf()");	// sf()[f1] <- gf()
+		i2= checkTreeNode(tree, 0, 1, "sf()");   // sf()[f1] <- sf()[f1]
+		checkTreeNode(tree, 0, 2, null);
 
 		expandTreeItem(i1);
 		expandTreeItem(i2);
@@ -681,15 +665,15 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 		checkTreeNode(i6, 0, null);
 
 		// second file without definition of gf()
-		editor= (CEditor) IDE.openEditor(page, file2);
+		editor= openEditor(file2);
 		editor.selectAndReveal(content1.indexOf("sf"), 0);
 		openCallHierarchy(editor);
 		tree = getCHTreeViewer().getTree();
 		i0= checkTreeNode(tree, 0, "sf()");
 		assertEquals(1, tree.getItemCount());
 
-		i1= checkTreeNode(i0, 0, "sf()");	// sf()[f2] <- sf()[f2]
-		checkTreeNode(i0, 1, null);			// not called by gf()
+		i1= checkTreeNode(tree, 0, 0, "sf()");	// sf()[f2] <- sf()[f2]
+		checkTreeNode(tree, 0, 1, null);			// not called by gf()
 
 		expandTreeItem(i1);
 		checkTreeNode(i1, 0, null);
@@ -718,8 +702,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 			String content = readTaggedComment("testFunctionsWithParams");
 			IFile file= createFile(getProject(), filename, content);
 			waitForIndexer(fIndex, file, INDEXER_WAIT_TIME);
-			IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-			CEditor editor= (CEditor) IDE.openEditor(page, file);
+			CEditor editor = openEditor(file);
 
 			editor.selectAndReveal(content.indexOf("proto"), 5);
 			openCallHierarchy(editor);
@@ -737,7 +720,7 @@ public class BasicCallHierarchyTest extends CallHierarchyBaseTest {
 			checkTreeNode(tree, 0, "proto(int)");
 			checkTreeNode(tree, 0, 0, "main(int)");
 
-			editor.selectAndReveal(content.indexOf("func(1); //ref"), 7);
+			editor.selectAndReveal(content.indexOf("func(1); //ref"), 4);
 			openCallHierarchy(editor);
 			checkTreeNode(tree, 0, "func(int)");
 			checkTreeNode(tree, 0, 0, "main(int)");

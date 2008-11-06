@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,7 +8,6 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.ui.tests.typehierarchy;
 
 import org.eclipse.core.resources.IFile;
@@ -37,6 +36,7 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.tests.BaseUITestCase;
+import org.eclipse.cdt.ui.tests.text.EditorTestHelper;
 
 import org.eclipse.cdt.internal.ui.editor.CEditor;
 import org.eclipse.cdt.internal.ui.typehierarchy.THViewPart;
@@ -52,6 +52,7 @@ public class TypeHierarchyBaseTest extends BaseUITestCase {
 		super(name);
 	}
 
+	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
 		fCProject= CProjectHelper.createCCProject("__thTest__", "bin", IPDOMManager.ID_FAST_INDEXER);
@@ -59,7 +60,9 @@ public class TypeHierarchyBaseTest extends BaseUITestCase {
 		fIndex= CCorePlugin.getIndexManager().getIndex(fCProject);
 	}
 	
+	@Override
 	protected void tearDown() throws Exception {
+		closeAllEditors();
 		if (fCProject != null) {
 			CProjectHelper.delete(fCProject);
 		}
@@ -70,9 +73,10 @@ public class TypeHierarchyBaseTest extends BaseUITestCase {
 		return fCProject.getProject();
 	}
 	
-	protected CEditor openFile(IFile file) throws PartInitException {
+	protected CEditor openEditor(IFile file) throws PartInitException {
 		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
 		CEditor editor= (CEditor) IDE.openEditor(page, file);
+		EditorTestHelper.joinReconciler(EditorTestHelper.getSourceViewer(editor), 100, 500, 10);
 		return editor;
 	}	
 
@@ -133,7 +137,6 @@ public class TypeHierarchyBaseTest extends BaseUITestCase {
 			}
 			runEventQueue(10);
 		}
-		fail();
 		return null;
 	}
 
@@ -150,56 +153,11 @@ public class TypeHierarchyBaseTest extends BaseUITestCase {
 		assertNotNull(th);
 		return th.getMemberViewer();
 	}
-
-	protected TreeItem checkTreeNode(Tree tree, int i0, String label) {
-		TreeItem root= null;
-		try {
-			for (int i=0; i<100; i++) {
-				root= tree.getItem(i0);
-				try {
-					if (!"...".equals(root.getText())) {
-						break;
-					}
-				} catch (SWTException e) {
-					// in case widget was disposed, item may be replaced
-				}
-				runEventQueue(10);
-			}
-		}
-		catch (IllegalArgumentException e) {
-			fail("Tree node " + label + "{" + i0 + "} does not exist!");
-		}
-		assertEquals(label, root.getText());
-		return root;
-	}
-
-	protected TreeItem checkTreeNode(Tree tree, int i0, int i1, String label) {
-		TreeItem item= null;
-		try {
-			TreeItem root= tree.getItem(i0);
-			for (int i=0; i<40; i++) {
-				item= root.getItem(i1);
-				try {
-					if (!"...".equals(item.getText())) {
-						break;
-					}
-				} catch (SWTException e) {
-					// in case widget was disposed, item may be replaced
-				}
-				runEventQueue(50);
-			}
-		}
-		catch (IllegalArgumentException e) {
-			fail("Tree node " + label + "{" + i0 + "," + i1 + "} does not exist!");
-		}
-		assertEquals(label, item.getText());
-		return item;
-	}
-	
+		
 	protected TreeItem checkTreeNode(TreeItem root, int i1, String label) {
 		TreeItem item= null;
 		try {
-			for (int i=0; i<40; i++) {
+			for (int i=0; i<200; i++) {
 				item= root.getItem(i1);
 				try {
 					if ("".equals(item.getText())) {
@@ -214,7 +172,7 @@ public class TypeHierarchyBaseTest extends BaseUITestCase {
 				} catch (SWTException e) {
 					// in case widget was disposed, item may be replaced
 				}
-				runEventQueue(50);
+				runEventQueue(10);
 			}
 		}
 		catch (IllegalArgumentException e) {

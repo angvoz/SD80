@@ -113,6 +113,9 @@ public class CStorage implements ICSettingsStorage{
 		
 		xmlEl = (Element)fElement.appendChild(xmlEl);
 		xmlEl.setAttribute(MODULE_ID_ATTRIBUTE, id);
+		
+		fIsDirty = true;
+		
 		return createAddStorageElement(id, xmlEl);
 	}
 
@@ -126,12 +129,18 @@ public class CStorage implements ICSettingsStorage{
 			
 			fIsDirty = true;
 			Document doc = fElement.getOwnerDocument();
-			Element child = doc.createElement(MODULE_ELEMENT_NAME);
-			child.setAttribute(MODULE_ID_ATTRIBUTE, id);
+			Element child = createStorageXmlElement(doc, id);
 			fElement.appendChild(child);
 			se = createAddStorageElement(id, child);
 		}
 		return se;
+	}
+
+	public static Element createStorageXmlElement(Document doc, String storageId){
+		Element child = doc.createElement(MODULE_ELEMENT_NAME);
+		child.setAttribute(MODULE_ID_ATTRIBUTE, storageId);
+
+		return child;
 	}
 	
 	public void removeStorage(String id){
@@ -143,8 +152,16 @@ public class CStorage implements ICSettingsStorage{
 				throw ExceptionFactory.createIsReadOnlyException();
 
 			fIsDirty = true;
+			Node nextSibling = se.fElement.getNextSibling();
 			fElement.removeChild(se.fElement);
 			se.removed();
+			if (nextSibling != null && nextSibling.getNodeType() == Node.TEXT_NODE) {
+				String value = nextSibling.getNodeValue();
+				if (value != null && value.trim().length() == 0) {
+					// remove whitespace
+					fElement.removeChild(nextSibling);
+				}
+			}
 		}
 	}
 	
@@ -159,6 +176,15 @@ public class CStorage implements ICSettingsStorage{
 		}
 		
 		return false;
+	}
+	
+	void setReadOnly(boolean readOnly, boolean keepModify){
+		fIsReadOnly = readOnly;
+		fIsDirty &= keepModify;
+		for(Iterator iter = fStorageElementMap.values().iterator(); iter.hasNext();){
+			InternalXmlStorageElement el = (InternalXmlStorageElement)iter.next();
+			el.setReadOnly(readOnly, keepModify);
+		}
 	}
 
 	public void setDirty(boolean isDirty){

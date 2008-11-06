@@ -1,19 +1,19 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 QNX Software Systems and others.
+ * Copyright (c) 2005, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX - Initial API and implementation
- * Markus Schorn (Wind River Systems)
- * IBM Corporation
+ *    Doug Schaefer (QNX) - Initial API and implementation
+ *    Markus Schorn (Wind River Systems)
+ *    IBM Corporation
  *******************************************************************************/
-
 package org.eclipse.cdt.core.model;
 
 import org.eclipse.cdt.core.dom.ICodeReaderFactory;
+import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
@@ -25,43 +25,61 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 
 /**
- * Models differences between languages. The interace is not supposed to be implemented directly.
+ * Models differences between languages. The interface is not supposed to be implemented directly.
  * Rather than that clients may subclass {@link AbstractLanguage}.
- * @author Doug Schaefer
+ * 
+ * @noimplement This interface is not intended to be implemented by clients.
  */
 public interface ILanguage extends IAdaptable {
 
-	//public static final QualifiedName KEY = new QualifiedName(CCorePlugin.PLUGIN_ID, "language"); //$NON-NLS-1$
-	public static final String KEY = "language"; //$NON-NLS-1$
+	/**
+	 * Option for {@link #getASTTranslationUnit(CodeReader, IScannerInfo, ICodeReaderFactory, IIndex, int, IParserLogService)}
+	 * Instructs the parser to skip function and method bodies.
+	 */
+	public final static int OPTION_SKIP_FUNCTION_BODIES= 0x1;
 
 	/**
-	 * @deprecated has no effect.
+	 * Option for {@link #getASTTranslationUnit(CodeReader, IScannerInfo, ICodeReaderFactory, IIndex, int, IParserLogService)}
+	 * Instructs the parser to add comment nodes to the ast.
 	 */
-	public static final int AST_USE_INDEX = 1;
+	public final static int OPTION_ADD_COMMENTS= 0x2;
 
 	/**
-	 * @deprecated use {@link ITranslationUnit#AST_SKIP_ALL_HEADERS}
+	 * Option for {@link #getASTTranslationUnit(CodeReader, IScannerInfo, ICodeReaderFactory, IIndex, int, IParserLogService)}
+	 * Performance optimization, instructs the parser not to create image-locations. 
+	 * When using this option {@link IASTName#getImageLocation()} will always return <code>null</code>.
 	 */
-	public static final int AST_SKIP_ALL_HEADERS = ITranslationUnit.AST_SKIP_ALL_HEADERS;
+	public final static int OPTION_NO_IMAGE_LOCATIONS= 0x4;
 
 	/**
-	 * @deprecated use {@link ITranslationUnit#AST_SKIP_INDEXED_HEADERS}
+	 * Option for {@link #getASTTranslationUnit(CodeReader, IScannerInfo, ICodeReaderFactory, IIndex, int, IParserLogService)}
+	 * Marks the ast as being based on a source-file rather than a header-file. This makes a difference
+	 * when bindings from the AST are used for searching the index, e.g. for static variables. 
 	 */
-	public static final int AST_SKIP_INDEXED_HEADERS = ITranslationUnit.AST_SKIP_INDEXED_HEADERS;
+	public final static int OPTION_IS_SOURCE_UNIT= 0x8;
 
 	/**
-	 * @deprecated use {@link ITranslationUnit#AST_SKIP_IF_NO_BUILD_INFO}
+	 * Option for {@link #getASTTranslationUnit(CodeReader, IScannerInfo, ICodeReaderFactory, IIndex, int, IParserLogService)}
+	 * Instructs the parser not to create ast nodes for expressions within aggregate initializers
+	 * when they do not contain names.
+	 * Will be part of 6.0
 	 */
-	public static final int AST_SKIP_IF_NO_BUILD_INFO = ITranslationUnit.AST_SKIP_IF_NO_BUILD_INFO;
-	
+	// public final static int OPTION_SKIP_TRIVIAL_EXPRESSIONS_IN_AGGREGATE_INITIALIZERS= 0x10;
+
 	/**
 	 * Return the language id for this language.
-	 * This is to differentiate languages from eachother.
-	 * 
-	 * @return language id
+	 * This is to differentiate languages from each other.
 	 */
 	public String getId();
 
+	/**
+	 * Return the id of the linkage this language contributes to. This is especially important
+	 * for languages that write to the index.
+	 * @see ILinkage
+	 * @since 5.0
+	 */
+	public int getLinkageID();
+	
 	/**
 	 * @return the human readable name corresponding to this language, suitable for display.
 	 * @since 4.0
@@ -69,30 +87,7 @@ public interface ILanguage extends IAdaptable {
 	public String getName();
 	
 	/**
-	 * @deprecated use {@link ITranslationUnit#getAST()}.
-	 */
-	public IASTTranslationUnit getASTTranslationUnit(
-			ITranslationUnit file,
-			int style) throws CoreException;
-
-	/**
-	 * @deprecated use {@link ITranslationUnit#getAST(...)}.
-	 */
-	public IASTTranslationUnit getASTTranslationUnit(
-			ITranslationUnit file,
-			ICodeReaderFactory codeReaderFactory,
-			int style) throws CoreException;
-
-	/**
 	 * Return the AST completion node for the given offset.
-	 * 
-	 * @param reader
-	 * @param scanInfo
-	 * @param fileCreator
-	 * @param index
-	 * @param log
-	 * @param offset
-	 * @return
 	 * @throws CoreException
 	 */
 	public IASTCompletionNode getCompletionNode(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, IParserLogService log, int offset) throws CoreException;
@@ -101,13 +96,9 @@ public interface ILanguage extends IAdaptable {
 	/**
 	 * Gather the list of IASTNames that appear the selection with the given start offset
 	 * and length in the given ITranslationUnit.
-	 * 
-	 * @param tu
-	 * @param start
-	 * @param length
-	 * @param style
-	 * @return
+	 * @deprecated use {@link IASTTranslationUnit#getNodeSelector(String)}, instead.
 	 */
+	@Deprecated
 	public IASTName[] getSelectedNames(IASTTranslationUnit ast, int start, int length);
 	
 	/**
@@ -122,6 +113,8 @@ public interface ILanguage extends IAdaptable {
 
 	/**
 	 * Construct an AST for the source code provided by <code>reader</code>.
+	 * Fully equivalent to 
+	 * <code> getASTTranslationUnit(reader, scanInfo, fileCreator, index, 0, log) </code>
 	 * @param reader source code to be parsed.
 	 * @param scanInfo provides include paths and defined symbols.
 	 * @param fileCreator factory that provides CodeReaders for files included
@@ -132,5 +125,29 @@ public interface ILanguage extends IAdaptable {
 	 * @return an AST for the source code provided by reader.
 	 * @throws CoreException
 	 */
-	public IASTTranslationUnit getASTTranslationUnit(CodeReader reader, IScannerInfo scanInfo, ICodeReaderFactory fileCreator, IIndex index, IParserLogService log) throws CoreException;
+	public IASTTranslationUnit getASTTranslationUnit(CodeReader reader, IScannerInfo scanInfo, 
+			ICodeReaderFactory fileCreator, IIndex index, IParserLogService log) 
+			throws CoreException;
+	
+	/**
+	 * Construct an AST for the source code provided by <code>reader</code>.
+	 * As an option you can supply 
+	 * @param reader source code to be parsed.
+	 * @param scanInfo provides include paths and defined symbols.
+	 * @param fileCreator factory that provides CodeReaders for files included
+	 *                    by the source code being parsed.
+	 * @param index (optional) index to use to provide support for ambiguity
+	 *              resolution.
+	 * @param options A combination of 
+	 * {@link #OPTION_SKIP_FUNCTION_BODIES}, {@link #OPTION_ADD_COMMENTS},
+	 * {@link #OPTION_NO_IMAGE_LOCATIONS}, {@link #OPTION_IS_SOURCE_UNIT},
+	 *  or <code>0</code>.
+	 * @param log logger
+	 * @return an AST for the source code provided by reader.
+	 * @throws CoreException
+	 */
+	public IASTTranslationUnit getASTTranslationUnit(CodeReader reader, IScannerInfo scanInfo,
+			ICodeReaderFactory fileCreator, IIndex index, int options, IParserLogService log)
+			throws CoreException;
+
 }

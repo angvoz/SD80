@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2007 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -30,6 +30,8 @@ import org.eclipse.core.runtime.IProgressMonitor;
  * If a <code>.c</code> file cannot be parsed, its structure remains unknown.
  * Use <code>ICElement.isStructureKnown</code> to determine whether this is 
  * the case.
+ * 
+ * @noimplement This interface is not intended to be implemented by clients.
  */
 public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISourceReference, ISourceManipulation {
 	
@@ -38,25 +40,25 @@ public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISource
 	 * Meaning: Skip function and method bodies.
 	 * @since 4.0
 	 */
-	public static final int AST_SKIP_FUNCTION_BODIES= 1;
+	public static final int AST_SKIP_FUNCTION_BODIES= 0x1;
 
 	/**
 	 * Style constant for {@link #getAST(IIndex, int)}. 
 	 * Meaning: Skip over headers that are found in the index, parse all others.
 	 * Macro definitions and bindings are taken from index for skipped files.
 	 */
-	public static final int AST_SKIP_INDEXED_HEADERS = 2;
+	public static final int AST_SKIP_INDEXED_HEADERS = 0x2;
 
 	/**
 	 * Style constant for {@link #getAST(IIndex, int)}. 
 	 * Meaning: Skip headers even if they are not found in the index. 
-	 * Makes practically only sense in combination with {@link AST_SKIP_INDEXED_HEADERS}.
+	 * Makes practically only sense in combination with {@link #AST_SKIP_INDEXED_HEADERS}.
 	 */
-	public static final int AST_SKIP_NONINDEXED_HEADERS = 4;
+	public static final int AST_SKIP_NONINDEXED_HEADERS = 0x4;
 
 	/**
 	 * Style constant for {@link #getAST(IIndex, int)}. 
-	 * A combination of {@link AST_SKIP_INDEXED_HEADERS} and {@link AST_SKIP_NONINDEXED_HEADERS}.
+	 * A combination of {@link #AST_SKIP_INDEXED_HEADERS} and {@link #AST_SKIP_NONINDEXED_HEADERS}.
 	 * Meaning: Don't parse header files at all, be they indexed or not. 
 	 * Macro definitions and bindings are taken from the index if available.
 	 */
@@ -66,14 +68,31 @@ public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISource
 	 * Style constant for {@link #getAST(IIndex, int)}. 
 	 * Meaning: Don't parse the file if there is no build information for it.
 	 */
-	public static final int AST_SKIP_IF_NO_BUILD_INFO = 8;
+	public static final int AST_SKIP_IF_NO_BUILD_INFO = 0x8;
 
 	/**
 	 * Style constant for {@link #getAST(IIndex, int)}. 
 	 * Meaning: Add nodes for comments to the ast.
 	 * @since 4.0
 	 */
-	public static final int AST_CREATE_COMMENT_NODES = 16;
+	public static final int AST_CREATE_COMMENT_NODES = 0x10;
+	
+	/**
+	 * Style constant for {@link #getAST(IIndex, int)}. 
+	 * Meaning: Configure the parser with language and build-information taken from a source file
+	 * that directly or indirectly includes this file. If no suitable file is found in the index,
+	 * the flag is ignored.
+	 * @since 4.0
+	 */
+	public static final int AST_CONFIGURE_USING_SOURCE_CONTEXT= 0x20;
+
+	/**
+	 * Style constant for {@link #getAST(IIndex, int)}. 
+	 * Instructs the parser not to create ast nodes for expressions within aggregate initializers
+	 * when they do not contain names.
+	 * Will be part of 6.0
+	 */
+	// public final static int AST_SKIP_TRIVIAL_EXPRESSIONS_IN_AGGREGATE_INITIALIZERS= 0x40;
 
 	/**
 	 * Creates and returns an include declaration in this translation unit
@@ -367,22 +386,17 @@ public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISource
 	boolean isSourceUnit();
 
 	/**
-	 * True if the code is C
-	 * @return
+	 * Returns <code>true</code> if the code is C
 	 */
 	boolean isCLanguage();
 
 	/**
-	 * True if the code is C++
-	 * 
-	 * @return
+	 * Returns <code>true</code> if the code is C++
 	 */
 	boolean isCXXLanguage();
 
 	/**
-	 * True if assembly
-	 * 
-	 * @return
+	 * Returns <code>true</code> if the code is assembly
 	 */
 	boolean isASMLanguage();
 
@@ -416,12 +430,11 @@ public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISource
 	 * @deprecated this is currently only used by the core tests. It should
 	 * be removed from the interface.
 	 */
-	Map parse();
+	@Deprecated
+	Map<?,?> parse();
 
 	/**
 	 * Return the language for this translation unit.
-	 * 
-	 * @return
 	 */
 	ILanguage getLanguage() throws CoreException;
 	
@@ -477,7 +490,8 @@ public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISource
 	 * translation unit does not support ASTs.
 	 * @param index	index to back up the parsing of the AST, may be <code>null</code>
 	 * @param style <code>0</code> or a combination of {@link #AST_SKIP_ALL_HEADERS}, 
-	 * {@link #AST_SKIP_IF_NO_BUILD_INFO}, {@link #AST_SKIP_INDEXED_HEADERS} and {@value #AST_CREATE_COMMENT_NODES}.
+	 * {@link #AST_SKIP_IF_NO_BUILD_INFO}, {@link #AST_SKIP_INDEXED_HEADERS}, {@link #AST_CREATE_COMMENT_NODES}
+	 * and {@link #AST_CONFIGURE_USING_SOURCE_CONTEXT}.
 	 * @return the AST requested or <code>null</code>
 	 * @throws CoreException
 	 * @since 4.0
@@ -486,12 +500,6 @@ public interface ITranslationUnit extends ICElement, IParent, IOpenable, ISource
 	
 	/**
 	 * Return the completion node using the given index and parsing style at the given offset.
-	 * 
-	 * @param index
-	 * @param style
-	 * @param offset
-	 * @return
-	 * @throws CoreException
 	 */
 	public IASTCompletionNode getCompletionNode(IIndex index, int style, int offset) throws CoreException;	
 }

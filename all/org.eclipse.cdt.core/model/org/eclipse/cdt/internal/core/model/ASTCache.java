@@ -1,18 +1,20 @@
 /*******************************************************************************
- * Copyright (c) 2007 Wind River Systems, Inc. and others. All rights reserved.
+ * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others. All rights reserved.
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  * 
- * Contributors: Anton Leherbauer (Wind River Systems) - initial API and
- * implementation
+ * Contributors: 
+ *     Anton Leherbauer (Wind River Systems) - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  ******************************************************************************/
 package org.eclipse.cdt.internal.core.model;
 
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -36,23 +38,25 @@ public class ASTCache {
 	private static final String DEBUG_PREFIX= "[ASTCache] "; //$NON-NLS-1$
 
 	/** Full parse mode (no PDOM) */
-	public static int PARSE_MODE_FULL= 0;
+	public static int PARSE_MODE_FULL= ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT;
 	/** Fast parse mode (use PDOM) */
-	public static int PARSE_MODE_FAST= ITranslationUnit.AST_SKIP_INDEXED_HEADERS;
+	public static int PARSE_MODE_FAST= ITranslationUnit.AST_SKIP_ALL_HEADERS | ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT
+		| 0x40 /*ITranslationUnit.AST_SKIP_TRIVIAL_EXPRESSIONS_IN_AGGREGATE_INITIALIZERS*/;
 
 	/**
 	 * Do something with an AST.
 	 * 
-	 * @see #runOnAST(IASTTranslationUnit)
+	 * @see #runOnAST(ILanguage, IASTTranslationUnit)
 	 */
 	public static interface ASTRunnable {
 		/**
 		 * Do something with the given AST.
 		 * 
+		 * @param lang the language with which the AST has been created.
 		 * @param ast  the translation unit AST, may be <code>null</code>
 		 * @return a status object
 		 */
-		IStatus runOnAST(IASTTranslationUnit ast);
+		IStatus runOnAST(ILanguage lang, IASTTranslationUnit ast) throws CoreException;
 	}
 	
 	private final int fParseMode;
@@ -68,7 +72,7 @@ public class ASTCache {
 	 * write access afterwards.
 	 */
 	private long fLastWriteOnIndex;
-	/** Inidicates whether the AST is currenty being computed */
+	/** Indicates whether the AST is currently being computed */
 	private boolean fIsReconciling;
 
 	/**
@@ -93,7 +97,7 @@ public class ASTCache {
 	 * @param progressMonitor	the progress monitor or <code>null</code>
 	 * @return					the AST or <code>null</code> if the AST is not available
 	 */
-	public IASTTranslationUnit getAST(ITranslationUnit tUnit, IIndex index, boolean wait, IProgressMonitor progressMonitor) {
+	private IASTTranslationUnit getAST(ITranslationUnit tUnit, IIndex index, boolean wait, IProgressMonitor progressMonitor) {
 		if (tUnit == null)
 			return null;
 		
@@ -177,7 +181,7 @@ public class ASTCache {
 	}
 
 	/**
-	 * Executes {@link ASTRunnable#runOnAST(IASTTranslationUnit)} with the AST
+	 * Executes {@link ASTRunnable#runOnAST(ILanguage, IASTTranslationUnit)} with the AST
 	 * provided by this cache for the given translation unit. Handles acquiring
 	 * and releasing the index read-lock for the client.
 	 * 
@@ -194,7 +198,7 @@ public class ASTCache {
 			ASTRunnable astRunnable) {
 		IIndex index;
 		try {
-			index = CCorePlugin.getIndexManager().getIndex(tUnit.getCProject());
+			index = CCorePlugin.getIndexManager().getIndex(tUnit.getCProject(), IIndexManager.ADD_DEPENDENCIES);
 			index.acquireReadLock();
 		} catch (CoreException e) {
 			return e.getStatus();
@@ -204,7 +208,16 @@ public class ASTCache {
 		
 		try {
 			IASTTranslationUnit ast= getAST(tUnit, index, wait, monitor);
-			return astRunnable.runOnAST(ast);
+			ILanguage lang= (tUnit instanceof TranslationUnit) ? ((TranslationUnit) tUnit).getLanguageOfContext() : tUnit.getLanguage();
+			if (ast == null) {
+				return astRunnable.runOnAST(lang, ast);
+			}
+			synchronized (ast) {
+				return astRunnable.runOnAST(lang, ast);
+			}
+		}
+		catch (CoreException e) {
+			return e.getStatus();
 		}
 		finally {
 			index.releaseReadLock();

@@ -1,5 +1,5 @@
 /**********************************************************************
- * Copyright (c) 2004, 2005 QNX Software Systems Ltd and others.
+ * Copyright (c) 2004, 2007 QNX Software Systems Ltd and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,10 +7,15 @@
  *
  * Contributors:
  *     QNX Software Systems Ltd - initial API and implementation
+ *     Anton Leherbauer (Wind River Systems)
  ***********************************************************************/
 
 package org.eclipse.cdt.core.cdescriptor.tests;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import junit.extensions.TestSetup;
 import junit.framework.Assert;
 import junit.framework.Test;
@@ -22,9 +27,12 @@ import org.eclipse.cdt.core.CDescriptorEvent;
 import org.eclipse.cdt.core.CProjectNature;
 import org.eclipse.cdt.core.ICDescriptor;
 import org.eclipse.cdt.core.ICDescriptorListener;
+import org.eclipse.cdt.core.ICDescriptorOperation;
 import org.eclipse.cdt.core.ICExtensionReference;
 import org.eclipse.cdt.core.ICOwnerInfo;
 import org.eclipse.cdt.core.testplugin.CTestPlugin;
+import org.eclipse.cdt.internal.core.pdom.PDOMManager;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
@@ -33,6 +41,7 @@ import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 /**
@@ -68,13 +77,19 @@ public class CDescriptorTests extends TestCase {
 		suite.addTest(new CDescriptorTests("testExtensionRemove"));
 		suite.addTest(new CDescriptorTests("testProjectDataCreate"));
 		suite.addTest(new CDescriptorTests("testProjectDataDelete"));
-
+		suite.addTest(new CDescriptorTests("testAccumulatingBlankLinesInProjectData"));
+		suite.addTest(new CDescriptorTests("testConcurrentDescriptorCreation"));
+		suite.addTest(new CDescriptorTests("testConcurrentDescriptorCreation2"));
+		suite.addTest(new CDescriptorTests("testDeadlockDuringProjectCreation"));
+		
 		TestSetup wrapper = new TestSetup(suite) {
 
+			@Override
 			protected void setUp() throws Exception {
 				oneTimeSetUp();
 			}
 
+			@Override
 			protected void tearDown() throws Exception {
 				oneTimeTearDown();
 			}
@@ -145,6 +160,116 @@ public class CDescriptorTests extends TestCase {
 		Assert.assertEquals(fProject, desc.getProject());
 		Assert.assertEquals("*", desc.getPlatform());
 	}
+
+	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=185930
+	public void testConcurrentDescriptorCreation() throws Exception {
+		fProject.close(null);
+		fProject.open(null);
+		Thread t= new Thread() {
+			@Override
+			public void run() {
+				try {
+					CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+				} catch (CoreException exc) {
+				}
+			}
+		};
+		t.start();
+		ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+		t.join();
+		
+		Element data = desc.getProjectData("testElement0");
+		data.appendChild(data.getOwnerDocument().createElement("test"));
+		desc.saveProjectData();
+		fLastEvent = null;
+ 	}
+
+	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=185930
+	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=193503
+	// https://bugs.eclipse.org/bugs/show_bug.cgi?id=196118
+	public void testConcurrentDescriptorCreation2() throws Exception {
+		for (int i=0; i<20; ++i) {
+			PDOMManager pdomMgr= (PDOMManager)CCorePlugin.getIndexManager();
+			pdomMgr.shutdown();
+			fProject.close(null);
+			fProject.open(null);
+			pdomMgr.startup().schedule();
+			ICDescriptor desc= CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+			NodeList childNodes= desc.getProjectData("testElement").getChildNodes();
+			int lengthBefore= childNodes.getLength();
+			final Throwable[] exception= new Throwable[10];
+			Thread[] threads= new Thread[10];
+			for (int j = 0; j < 10; j++) {
+				final int index= j;
+				Thread t= new Thread() {
+					@Override
+					public void run() {
+						try {
+							ICDescriptorOperation operation= new ICDescriptorOperation() {
+								public void execute(ICDescriptor descriptor, IProgressMonitor monitor) throws CoreException {
+									assertFalse(descriptor.getConfigurationDescription().isReadOnly());
+									try {
+										Thread.sleep(10);
+									} catch (InterruptedException exc) {
+									}
+									Element data = descriptor.getProjectData("testElement");
+									data.appendChild(data.getOwnerDocument().createElement("test"));
+									assertFalse(descriptor.getConfigurationDescription().isReadOnly());
+									descriptor.saveProjectData();
+								}};
+								CCorePlugin.getDefault().getCDescriptorManager().runDescriptorOperation(fProject, operation, null);
+						} catch (Throwable exc) {
+							exception[index]= exc;
+							exc.printStackTrace();
+						}
+					}
+				};
+				t.start();
+				threads[j] = t;
+				Thread.sleep(10);
+			}
+			for (int j = 0; j < threads.length; j++) {
+				if (threads[j] != null) {
+					threads[j].join();
+				}
+				assertNull(exception[j]);
+			}
+			desc= CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+			childNodes= desc.getProjectData("testElement").getChildNodes();
+			int lengthAfter= childNodes.getLength();
+			assertEquals(threads.length, lengthAfter - lengthBefore);
+
+			fLastEvent = null;
+		}
+	}
+
+	public void testDeadlockDuringProjectCreation() throws Exception {
+		for (int i=0; i < 10; ++i) {
+			oneTimeTearDown();
+			oneTimeSetUp();
+			Thread t= new Thread() {
+				@Override
+				public void run() {
+					try {
+						ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+						Element data = desc.getProjectData("testElement0");
+						data.appendChild(data.getOwnerDocument().createElement("test"));
+						desc.saveProjectData();
+					} catch (CoreException exc) {
+					}
+				}
+			};
+			t.start();
+
+			ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+			Element data = desc.getProjectData("testElement0");
+			data.appendChild(data.getOwnerDocument().createElement("test"));
+			desc.saveProjectData();
+			t.join();
+			
+			fLastEvent = null;
+		}
+ 	}
 
 	public void testDescriptorOwner() throws Exception {
 		ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
@@ -236,4 +361,77 @@ public class CDescriptorTests extends TestCase {
 		Assert.assertEquals(fLastEvent.getFlags(), 0);
 		fLastEvent = null;
 	}
+
+	public void testAccumulatingBlankLinesInProjectData() throws Exception {
+		ICDescriptor desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+		Element data = desc.getProjectData("testElement");
+		data.appendChild(data.getOwnerDocument().createElement("test"));
+		desc.saveProjectData();
+
+		fProject.close(null);
+		fProject.open(null);
+
+		String dotCProject1 = readDotCProjectFile(fProject);
+		long mtime1 = fProject.getFile(".cproject").getLocalTimeStamp();
+		
+		desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+		data = desc.getProjectData("testElement");
+		Node child = data.getFirstChild();
+		while (child != null) {
+			data.removeChild(child);
+			child = data.getFirstChild();
+		}
+		data.appendChild(data.getOwnerDocument().createElement("test"));
+		desc.saveProjectData();
+
+		String dotCProject2 = readDotCProjectFile(fProject);
+		long mtime2 = fProject.getFile(".cproject").getLocalTimeStamp();
+		assertEquals("Difference in .cproject file", dotCProject1, dotCProject2);
+		assertTrue(".cproject file has been written", mtime1 == mtime2);
+
+		// do it a second time - just to be sure
+		fProject.close(null);
+		fProject.open(null);
+
+		desc = CCorePlugin.getDefault().getCProjectDescription(fProject, true);
+		data = desc.getProjectData("testElement");
+		child = data.getFirstChild();
+		while (child != null) {
+			data.removeChild(child);
+			child = data.getFirstChild();
+		}
+		data.appendChild(data.getOwnerDocument().createElement("test"));
+		desc.saveProjectData();
+
+		String dotCProject3 = readDotCProjectFile(fProject);
+		long mtime3 = fProject.getFile(".cproject").getLocalTimeStamp();
+		assertEquals("Difference in .cproject file", dotCProject2, dotCProject3);
+		assertTrue(".cproject file has been written", mtime2 == mtime3);
+	}
+
+	/**
+	 * Read .cproject file.
+	 * 
+	 * @param project
+	 * @return content of .cproject file
+	 * @throws CoreException 
+	 * @throws IOException 
+	 */
+	private static String readDotCProjectFile(IProject project) throws CoreException, IOException {
+		IFile cProjectFile = project.getFile(".cproject");
+		InputStream in = cProjectFile.getContents();
+		try {
+			Reader reader = new InputStreamReader(in, "UTF-8");
+			StringBuilder sb = new StringBuilder();
+			char[] b = new char[4096];
+			int n;
+			while ((n = reader.read(b)) > 0) {
+				sb.append(b, 0, n);
+			}
+			return sb.toString();
+		} finally {
+			in.close();
+		}
+	}
+
 }

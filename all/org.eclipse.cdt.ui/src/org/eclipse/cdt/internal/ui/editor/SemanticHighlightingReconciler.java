@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2007 IBM Corporation and others.
+ * Copyright (c) 2000, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,40 +10,42 @@
  *     Anton Leherbauer (Wind River Systems) - Adapted for CDT
  *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
-
 package org.eclipse.cdt.internal.ui.editor;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.Position;
-import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.TextPresentation;
 import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IWorkbenchPartSite;
 
-import org.eclipse.cdt.core.IPositionConverter;
-import org.eclipse.cdt.core.dom.ast.ASTVisitor;
-import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
-import org.eclipse.cdt.core.dom.ast.IASTExpression;
-import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
-import org.eclipse.cdt.core.dom.ast.IASTMacroExpansion;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTImageLocation;
+import org.eclipse.cdt.core.dom.ast.IASTMacroExpansionLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTNodeLocation;
 import org.eclipse.cdt.core.dom.ast.IASTPreprocessorMacroDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTPreprocessorMacroExpansion;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.ast.cpp.CPPASTVisitor;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCatchHandler;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionTryBlockDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.model.ICElement;
+import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.ui.CUIPlugin;
 
 import org.eclipse.cdt.internal.core.model.ASTCache;
@@ -64,74 +66,93 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 	/**
 	 * Collects positions from the AST.
 	 */
-	private class PositionCollector extends ASTVisitor {
+	private class PositionCollector extends CPPASTVisitor {
 		{
 			shouldVisitTranslationUnit= true;
 			shouldVisitNames= true;
 			shouldVisitDeclarations= true;
 			shouldVisitExpressions= true;
 			shouldVisitStatements= true;
-			shouldVisitDeclSpecifiers= true;
 			shouldVisitDeclarators= true;
+			shouldVisitNamespaces= true;
 		}
+		private boolean shouldVisitCatchHandlers= true;
 		
 		/** The semantic token */
 		private SemanticToken fToken= new SemanticToken();
-		private String fFilePath;
-		private IPositionConverter fPositionTracker;
 		private int fMinLocation;
 		
-		/**
-		 * @param filePath
-		 * @param positionTracker
-		 */
-		public PositionCollector(String filePath, IPositionConverter positionTracker) {
-			fFilePath= filePath;
-			fPositionTracker= positionTracker;
+		public PositionCollector() {
 			fMinLocation= -1;
 		}
 
 		/*
 		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTTranslationUnit)
 		 */
+		@Override
 		public int visit(IASTTranslationUnit tu) {
+			
 			// visit macro definitions
 			IASTPreprocessorMacroDefinition[] macroDefs= tu.getMacroDefinitions();
-			for (int i= 0; i < macroDefs.length; i++) {
-				IASTPreprocessorMacroDefinition macroDef= macroDefs[i];
-				if (fFilePath.equals(macroDef.getContainingFilename())) {
-					visit(macroDef.getName());
+			for (IASTPreprocessorMacroDefinition macroDef : macroDefs) {
+				if (macroDef.isPartOfTranslationUnitFile()) {
+					visitNode(macroDef.getName());
 				}
 			}
-			// TODO visit macro expansions
-//			IASTName[] macroExps= tu.getMacroExpansions();
-//			for (int i= 0; i < macroExps.length; i++) {
-//				IASTName macroExp= macroExps[i];
-//				if (fFilePath.equals(macroExp.getContainingFilename())) {
-//					visitMacroExpansion(macroExp);
-//				}
-//			}
+			fMinLocation= -1;
+
+			// visit macro expansions
+			IASTPreprocessorMacroExpansion[] macroExps= tu.getMacroExpansions();
+			for (IASTPreprocessorMacroExpansion macroExp : macroExps) {
+				if (macroExp.isPartOfTranslationUnitFile()) {
+					IASTName macroRef= macroExp.getMacroReference();
+					visitNode(macroRef);
+					IASTName[] nestedMacroRefs= macroExp.getNestedMacroReferences();
+					for (IASTName nestedMacroRef : nestedMacroRefs) {
+						visitNode(nestedMacroRef);
+					}
+				}
+			}
+			fMinLocation= -1;
+
+			// visit ordinary code
 			return super.visit(tu);
 		}
 
 		/*
 		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTDeclaration)
 		 */
+		@Override
 		public int visit(IASTDeclaration declaration) {
-			if (!fFilePath.equals(declaration.getContainingFilename())) {
-				return PROCESS_SKIP;
-			}
-			if (checkForMacro(declaration)) {
+			if (!declaration.isPartOfTranslationUnitFile()) {
 				return PROCESS_SKIP;
 			}
 			return PROCESS_CONTINUE;
 		}
 
 		/*
-		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier)
+		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#leave(org.eclipse.cdt.core.dom.ast.IASTDeclaration)
 		 */
-		public int visit(IASTDeclSpecifier declSpec) {
-			if (checkForMacro(declSpec)) {
+		@Override
+		public int leave(IASTDeclaration declaration) {
+			if (!shouldVisitCatchHandlers && declaration instanceof IASTFunctionDefinition) {
+				shouldVisitCatchHandlers= true;
+				IASTFunctionDefinition functionDef= (IASTFunctionDefinition) declaration;
+				ICPPASTFunctionTryBlockDeclarator declarator= (ICPPASTFunctionTryBlockDeclarator) functionDef.getDeclarator();
+				ICPPASTCatchHandler[] catchHandlers= declarator.getCatchHandlers();
+				for (ICPPASTCatchHandler catchHandler : catchHandlers) {
+					catchHandler.accept(this);
+				}
+			}
+			return PROCESS_CONTINUE;
+		}
+		
+		/*
+		 * @see org.eclipse.cdt.core.dom.ast.cpp.CPPASTVisitor#visit(org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition)
+		 */
+		@Override
+		public int visit(ICPPASTNamespaceDefinition namespace) {
+			if (!namespace.isPartOfTranslationUnitFile()) {
 				return PROCESS_SKIP;
 			}
 			return PROCESS_CONTINUE;
@@ -140,19 +161,10 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 		/*
 		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTDeclarator)
 		 */
+		@Override
 		public int visit(IASTDeclarator declarator) {
-			if (checkForMacro(declarator)) {
-				return PROCESS_SKIP;
-			}
-			return PROCESS_CONTINUE;
-		}
-		
-		/*
-		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTExpression)
-		 */
-		public int visit(IASTExpression expression) {
-			if (checkForMacro(expression)) {
-				return PROCESS_SKIP;
+			if (declarator instanceof ICPPASTFunctionTryBlockDeclarator) {
+				shouldVisitCatchHandlers= false;
 			}
 			return PROCESS_CONTINUE;
 		}
@@ -160,8 +172,9 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 		/*
 		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTStatement)
 		 */
+		@Override
 		public int visit(IASTStatement statement) {
-			if (checkForMacro(statement)) {
+			if (!shouldVisitCatchHandlers && statement instanceof ICPPASTCatchHandler) {
 				return PROCESS_SKIP;
 			}
 			return PROCESS_CONTINUE;
@@ -170,72 +183,59 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 		/*
 		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTName)
 		 */
+		@Override
 		public int visit(IASTName name) {
-			if (checkForMacro(name)) {
-				return PROCESS_SKIP;
-			}
 			if (visitNode(name)) {
 				return PROCESS_SKIP;
 			}
 			return PROCESS_CONTINUE;
 		}
 		
-		private boolean checkForMacro(IASTNode node) {
-			IASTNodeLocation[] nodeLocations= node.getNodeLocations();
-			if (nodeLocations.length == 1 && nodeLocations[0] instanceof IASTMacroExpansion) {
-				IASTNodeLocation useLocation= getMinFileLocation(nodeLocations);
-				if (useLocation != null) {
-					final int useOffset = useLocation.getNodeOffset();
-					if (useOffset <= fMinLocation) {
-						// performance: we had that macro expansion already
-						return true;
-					}
-					fMinLocation= useOffset;
-					// TLETODO This does not work correctly for nested macro substitutions
-					IASTPreprocessorMacroDefinition macroDef= ((IASTMacroExpansion)nodeLocations[0]).getMacroDefinition();
-					final int macroLength;
-					IASTNodeLocation defLocation= macroDef.getName().getFileLocation();
-					if (defLocation != null) {
-						macroLength= defLocation.getNodeLength();
-					} else {
-						macroLength= macroDef.getName().toCharArray().length;
-					}
-					IASTNode macroNode= node.getTranslationUnit().selectNodeForLocation(fFilePath, useOffset, macroLength);
-					if (macroNode != null && visitMacro(macroNode, macroLength)) {
-						return true;
-					}
-				}
-			}
-			return false;
-		}
-
-		private boolean visitMacro(IASTNode node, int macroLength) {
-			fToken.update(node);
-			for (int i= 0, n= fJobSemanticHighlightings.length; i < n; ++i) {
-				SemanticHighlighting semanticHighlighting= fJobSemanticHighlightings[i];
-				if (fJobHighlightings[i].isEnabled() && semanticHighlighting.consumes(fToken)) {
-					addMacroLocation(node.getFileLocation(), macroLength, fJobHighlightings[i]);
-					break;
-				}
-			}
-			fToken.clear();
-			// always consume this node
-			return true;
-		}
-
 		private boolean visitNode(IASTNode node) {
 			boolean consumed= false;
 			fToken.update(node);
 			for (int i= 0, n= fJobSemanticHighlightings.length; i < n; ++i) {
 				SemanticHighlighting semanticHighlighting= fJobSemanticHighlightings[i];
 				if (fJobHighlightings[i].isEnabled() && semanticHighlighting.consumes(fToken)) {
-					addNodeLocation(node.getFileLocation(), fJobHighlightings[i]);
+					if (node instanceof IASTName) {
+						addNameLocation((IASTName)node, fJobHighlightings[i]);
+					} else {
+						addNodeLocation(node.getFileLocation(), fJobHighlightings[i]);
+					}
 					consumed= true;
 					break;
 				}
 			}
 			fToken.clear();
 			return consumed;
+		}
+
+		/**
+		 * Add the a location range for the given name.
+		 * 
+		 * @param name  The name
+		 * @param highlighting The highlighting
+		 */
+		private void addNameLocation(IASTName name, HighlightingStyle highlightingStyle) {
+			IASTImageLocation imageLocation= name.getImageLocation();
+			if (imageLocation != null) {
+				if (imageLocation.getLocationKind() != IASTImageLocation.MACRO_DEFINITION) {
+					int offset= imageLocation.getNodeOffset();
+					if (offset >= fMinLocation) {
+						int length= imageLocation.getNodeLength();
+						if (offset > -1 && length > 0) {
+							fMinLocation= offset + length;
+							addPosition(offset, length, highlightingStyle);
+						}
+					}
+				}
+			} else {
+				// fallback in case no image location available
+				IASTNodeLocation[] nodeLocations= name.getNodeLocations();
+				if (nodeLocations.length == 1 && !(nodeLocations[0] instanceof IASTMacroExpansionLocation)) {
+					addNodeLocation(nodeLocations[0], highlightingStyle);
+				}
+			}
 		}
 
 		/**
@@ -249,52 +249,13 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 				return;
 			}
 			int offset= nodeLocation.getNodeOffset();
-			int length= nodeLocation.getNodeLength();
-			if (fPositionTracker != null) {
-				IRegion actualPos= fPositionTracker.historicToActual(new Region(offset, length));
-				offset= actualPos.getOffset();
-				length= actualPos.getLength();
+			if (offset >= fMinLocation) {
+				int length= nodeLocation.getNodeLength();
+				if (offset > -1 && length > 0) {
+					fMinLocation= offset + length;
+					addPosition(offset, length, highlighting);
+				}
 			}
-			if (offset > -1 && length > 0) {
-				addPosition(offset, length, highlighting);
-			}
-		}
-
-		/**
-		 * Add the a location range for the given macro highlighting.
-		 * 
-		 * @param macroUseLocaton The location of the macro occurrence
-		 * @param macroLength  the length of the macro name
-		 * @param highlighting The highlighting
-		 */
-		private void addMacroLocation(IASTNodeLocation macroUseLocation, int macroLength, HighlightingStyle highlighting) {
-			if (macroUseLocation == null) {
-				return;
-			}
-			int offset= macroUseLocation.getNodeOffset();
-			int length= macroLength;
-			if (fPositionTracker != null) {
-				IRegion actualPos= fPositionTracker.historicToActual(new Region(offset, length));
-				offset= actualPos.getOffset();
-				length= actualPos.getLength();
-			}
-			if (offset > -1 && length > 0) {
-				addPosition(offset, length, highlighting);
-			}
-		}
-
-		private IASTFileLocation getMinFileLocation(IASTNodeLocation[] locations) {
-			if (locations == null || locations.length == 0) {
-				return null;
-			}
-			final IASTNodeLocation nodeLocation= locations[0];
-			if (nodeLocation instanceof IASTFileLocation) {
-				return (IASTFileLocation)nodeLocation;
-			} else if (nodeLocation instanceof IASTMacroExpansion) {
-				IASTNodeLocation[] macroLocations= ((IASTMacroExpansion)nodeLocation).getExpansionLocations();
-				return getMinFileLocation(macroLocations);
-			}
-			return null;
 		}
 
 		/**
@@ -308,7 +269,7 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 			boolean isExisting= false;
 			// TODO: use binary search
 			for (int i= 0, n= fRemovedPositions.size(); i < n; i++) {
-				HighlightedPosition position= (HighlightedPosition) fRemovedPositions.get(i);
+				HighlightedPosition position= fRemovedPositions.get(i);
 				if (position == null)
 					continue;
 				if (position.isEqual(offset, length, highlighting)) {
@@ -320,7 +281,7 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 			}
 
 			if (!isExisting) {
-				Position position= fJobPresenter.createHighlightedPosition(offset, length, highlighting);
+				HighlightedPosition position= fJobPresenter.createHighlightedPosition(offset, length, highlighting);
 				fAddedPositions.add(position);
 			}
 		}
@@ -337,9 +298,9 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 	private HighlightingStyle[] fHighlightings;
 
 	/** Background job's added highlighted positions */
-	private List fAddedPositions= new ArrayList();
+	private List<HighlightedPosition> fAddedPositions= new ArrayList<HighlightedPosition>();
 	/** Background job's removed highlighted positions */
-	private List fRemovedPositions= new ArrayList();
+	private List<HighlightedPosition> fRemovedPositions= new ArrayList<HighlightedPosition>();
 	/** Number of removed positions */
 	private int fNOfRemovedPositions;
 
@@ -370,15 +331,14 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 	}
 
 	/*
-	 * @see org.eclipse.cdt.internal.ui.text.ICReconcilingListener#reconciled(IASTTranslationUnit, IPositionConverter, IProgressMonitor)
+	 * @see org.eclipse.cdt.internal.ui.text.ICReconcilingListener#reconciled(IASTTranslationUnit, boolean, IProgressMonitor)
 	 */
-	public void reconciled(IASTTranslationUnit ast, IPositionConverter positionTracker, IProgressMonitor progressMonitor) {
+	public void reconciled(IASTTranslationUnit ast, boolean force, IProgressMonitor progressMonitor) {
 		// ensure at most one thread can be reconciling at any time
 		synchronized (fReconcileLock) {
 			if (fIsReconciling)
 				return;
-			else
-				fIsReconciling= true;
+			fIsReconciling= true;
 		}
 		fJobPresenter= fPresenter;
 		fJobSemanticHighlightings= fSemanticHighlightings;
@@ -393,7 +353,7 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 			if (ast == null || fJobPresenter.isCanceled())
 				return;
 			
-			PositionCollector collector= new PositionCollector(ast.getFilePath(), positionTracker);
+			PositionCollector collector= new PositionCollector();
 
 			startReconcilingPositions();
 			
@@ -434,14 +394,19 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 	 */
 	private void reconcilePositions(IASTTranslationUnit ast, PositionCollector visitor) {
 		ast.accept(visitor);
-		List oldPositions= fRemovedPositions;
-		List newPositions= new ArrayList(fNOfRemovedPositions);
+		List<HighlightedPosition> oldPositions= fRemovedPositions;
+		List<HighlightedPosition> newPositions= new ArrayList<HighlightedPosition>(fNOfRemovedPositions);
 		for (int i= 0, n= oldPositions.size(); i < n; i ++) {
-			Object current= oldPositions.get(i);
+			HighlightedPosition current= oldPositions.get(i);
 			if (current != null)
 				newPositions.add(current);
 		}
 		fRemovedPositions= newPositions;
+		// positions need to be sorted by ascending offset
+		Collections.sort(fAddedPositions, new Comparator<Position>() {
+			public int compare(final Position p1, final Position p2) {
+				return p1.getOffset() - p2.getOffset();
+			}});
 	}
 
 	/**
@@ -451,7 +416,7 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 	 * @param addedPositions the added positions
 	 * @param removedPositions the removed positions
 	 */
-	private void updatePresentation(TextPresentation textPresentation, List addedPositions, List removedPositions) {
+	private void updatePresentation(TextPresentation textPresentation, List<HighlightedPosition> addedPositions, List<HighlightedPosition> removedPositions) {
 		Runnable runnable= fJobPresenter.createUpdateRunnable(textPresentation, addedPositions, removedPositions);
 		if (runnable == null)
 			return;
@@ -536,12 +501,13 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 			
 			if (element != null) {
 				fJob= new Job(CEditorMessages.getString("SemanticHighlighting_job")) { //$NON-NLS-1$
+					@Override
 					protected IStatus run(final IProgressMonitor monitor) {
 						if (oldJob != null) {
 							try {
 								oldJob.join();
 							} catch (InterruptedException e) {
-								CUIPlugin.getDefault().log(e);
+								CUIPlugin.log(e);
 								return Status.CANCEL_STATUS;
 							}
 						}
@@ -550,9 +516,9 @@ public class SemanticHighlightingReconciler implements ICReconcilingListener {
 						
 						final Job me= this;
 						ASTProvider astProvider= CUIPlugin.getDefault().getASTProvider();
-						IStatus status= astProvider.runOnAST(element, ASTProvider.WAIT_YES, monitor, new ASTCache.ASTRunnable() {
-							public IStatus runOnAST(IASTTranslationUnit ast) {
-								reconciled(ast, null, monitor);
+						IStatus status= astProvider.runOnAST(element, ASTProvider.WAIT_IF_OPEN, monitor, new ASTCache.ASTRunnable() {
+							public IStatus runOnAST(ILanguage lang, IASTTranslationUnit ast) {
+								reconciled(ast, true, monitor);
 								synchronized (fJobLock) {
 									// allow the job to be gc'ed
 									if (fJob == me)

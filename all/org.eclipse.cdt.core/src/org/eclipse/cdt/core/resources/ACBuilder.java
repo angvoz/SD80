@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,8 +19,12 @@ import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.Preferences;
 
 public abstract class ACBuilder extends IncrementalProjectBuilder implements IMarkerGenerator {
+
+	private static final String PREF_BUILD_ALL_CONFIGS = "build.all.configs.enabled"; //$NON-NLS-1$
+	private static final Preferences prefs = CCorePlugin.getDefault().getPluginPreferences();
 
 	/**
 	 * Constructor for ACBuilder
@@ -48,10 +52,10 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 			 * Try to find matching markers and don't put in duplicates
 			 */
 			if ((cur != null) && (cur.length > 0)) {
-				for (int i = 0; i < cur.length; i++) {
-					int line = ((Integer) cur[i].getAttribute(IMarker.LOCATION)).intValue();
-					int sev = ((Integer) cur[i].getAttribute(IMarker.SEVERITY)).intValue();
-					String mesg = (String) cur[i].getAttribute(IMarker.MESSAGE);
+				for (IMarker element : cur) {
+					int line = ((Integer) element.getAttribute(IMarker.LINE_NUMBER)).intValue();
+					int sev = ((Integer) element.getAttribute(IMarker.SEVERITY)).intValue();
+					String mesg = (String) element.getAttribute(IMarker.MESSAGE);
 					if (line == problemMarkerInfo.lineNumber && sev == mapMarkerSeverity(problemMarkerInfo.severity) && mesg.equals(problemMarkerInfo.description)) {
 						return;
 					}
@@ -59,7 +63,6 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 			}
 			
 			IMarker marker = markerResource.createMarker(ICModelMarker.C_MODEL_PROBLEM_MARKER);
-			marker.setAttribute(IMarker.LOCATION, problemMarkerInfo.lineNumber);
 			marker.setAttribute(IMarker.MESSAGE, problemMarkerInfo.description);
 			marker.setAttribute(IMarker.SEVERITY, mapMarkerSeverity(problemMarkerInfo.severity));
 			marker.setAttribute(IMarker.LINE_NUMBER, problemMarkerInfo.lineNumber);
@@ -90,4 +93,13 @@ public abstract class ACBuilder extends IncrementalProjectBuilder implements IMa
 		}
 		return IMarker.SEVERITY_ERROR;
 	}
+	
+	public static boolean needAllConfigBuild() {
+		return prefs.getBoolean(PREF_BUILD_ALL_CONFIGS);
+	}
+	
+	public static void setAllConfigBuild(boolean enable) {
+		prefs.setValue(PREF_BUILD_ALL_CONFIGS, enable);		
+	}
+	
 }

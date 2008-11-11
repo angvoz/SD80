@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Nokia and others.
+ * Copyright (c) 2007, 2008 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -124,9 +124,12 @@ public class BreakpointProblems {
 							lineBreakpoint.getMarker().getResource(),
 							lineBreakpoint.getLineNumber(), description, severity,
 							"")); //$NON-NLS-1$
-					marker.setAttribute(BREAKPOINT_PROBLEM_TYPE, problemType);
-					marker.setAttribute(BREAKPOINT_CONTEXT_NAME, contextName);
-					marker.setAttribute(BREAKPOINT_CONTEXT_ID, contextID);
+					if (marker != null)
+					{
+						marker.setAttribute(BREAKPOINT_PROBLEM_TYPE, problemType);
+						marker.setAttribute(BREAKPOINT_CONTEXT_NAME, contextName);
+						marker.setAttribute(BREAKPOINT_CONTEXT_ID, contextID);						
+					}
 				}
 				return marker;
 			}
@@ -149,7 +152,7 @@ public class BreakpointProblems {
 			 */
 			if ((cur != null) && (cur.length > 0)) {
 				for (int i = 0; i < cur.length; i++) {
-					int line = ((Integer) cur[i].getAttribute(IMarker.LOCATION)).intValue();
+					int line = ((Integer) cur[i].getAttribute(IMarker.LINE_NUMBER)).intValue();
 					int sev = ((Integer) cur[i].getAttribute(IMarker.SEVERITY)).intValue();
 					String mesg = (String) cur[i].getAttribute(IMarker.MESSAGE);
 					if (line == problemMarkerInfo.lineNumber && sev == problemMarkerInfo.severity && mesg.equals(problemMarkerInfo.description)) {
@@ -159,7 +162,6 @@ public class BreakpointProblems {
 			}
 
 			IMarker marker = markerResource.createMarker(BREAKPOINT_PROBLEM_MARKER_ID);
-			marker.setAttribute(IMarker.LOCATION, problemMarkerInfo.lineNumber);
 			marker.setAttribute(IMarker.MESSAGE, problemMarkerInfo.description);
 			marker.setAttribute(IMarker.SEVERITY, problemMarkerInfo.severity);
 			marker.setAttribute(IMarker.LINE_NUMBER, problemMarkerInfo.lineNumber);

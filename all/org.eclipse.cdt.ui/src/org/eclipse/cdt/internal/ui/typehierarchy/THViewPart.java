@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,8 +7,8 @@
  *
  * Contributors:
  *    Markus Schorn - initial API and implementation
+ *    IBM Corporation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.ui.typehierarchy;
 
 import java.util.ArrayList;
@@ -39,6 +39,9 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.accessibility.ACC;
+import org.eclipse.swt.accessibility.AccessibleAdapter;
+import org.eclipse.swt.accessibility.AccessibleEvent;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.ViewForm;
@@ -56,6 +59,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IMemento;
 import org.eclipse.ui.IViewSite;
@@ -63,6 +67,7 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.IWorkingSet;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.contexts.IContextActivation;
 import org.eclipse.ui.contexts.IContextService;
@@ -79,12 +84,15 @@ import org.eclipse.cdt.core.model.IMember;
 import org.eclipse.cdt.core.model.IMethodDeclaration;
 import org.eclipse.cdt.core.model.util.CElementBaseLabels;
 import org.eclipse.cdt.core.parser.ast.ASTAccessVisibility;
-import org.eclipse.cdt.refactoring.actions.CRefactoringActionGroup;
 import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.actions.CdtActionConstants;
 import org.eclipse.cdt.ui.actions.OpenViewActionGroup;
+import org.eclipse.cdt.ui.refactoring.actions.CRefactoringActionGroup;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
+import org.eclipse.cdt.internal.ui.ICHelpContextIds;
 import org.eclipse.cdt.internal.ui.IContextMenuConstants;
+import org.eclipse.cdt.internal.ui.editor.ICEditorActionDefinitionIds;
 import org.eclipse.cdt.internal.ui.search.actions.SelectionSearchGroup;
 import org.eclipse.cdt.internal.ui.viewsupport.AdaptingSelectionProvider;
 import org.eclipse.cdt.internal.ui.viewsupport.CElementImageProvider;
@@ -127,7 +135,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
     private boolean fShowsMessage= true;
 	private int fCurrentViewOrientation= -1;
 	private boolean fInComputeOrientation= false;
-	private ArrayList fHistoryEntries= new ArrayList(MAX_HISTORY_SIZE);
+	private ArrayList<ICElement> fHistoryEntries= new ArrayList<ICElement>(MAX_HISTORY_SIZE);
 	private int fIgnoreSelectionChanges= 0;
 
     // widgets
@@ -180,7 +188,8 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 	private CRefactoringActionGroup fRefactoringActionGroup;
 	private IContextActivation fContextActivation;
     
-    public void setFocus() {
+    @Override
+	public void setFocus() {
         fPagebook.setFocus();
     }
 
@@ -210,6 +219,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
     	fModel.computeGraph();
     }
 
+	@Override
 	public void createPartControl(Composite parent) {
         fPagebook = new PageBook(parent, SWT.NULL);
         fPagebook.setLayoutData(new GridData(GridData.FILL_BOTH));
@@ -229,8 +239,11 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
     	if (ctxService != null) {
     		fContextActivation= ctxService.activateContext(CUIPlugin.CVIEWS_SCOPE);
     	}
-    }
+
+		PlatformUI.getWorkbench().getHelpSystem().setHelp(fPagebook, ICHelpContextIds.TYPE_HIERARCHY_VIEW);
+	}
 	
+	@Override
 	public void dispose() {
 		if (fContextActivation != null) {
 			IContextService ctxService = (IContextService)getSite().getService(IContextService.class);
@@ -316,13 +329,15 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 		fMemberToolbarManager.update(true);
     }
 
+	@Override
 	public void init(IViewSite site, IMemento memento) throws PartInitException {
         fMemento= memento;
         super.init(site, memento);
     }
 
 
-    public void saveState(IMemento memento) {
+    @Override
+	public void saveState(IMemento memento) {
         if (fWorkingSetFilterUI != null) {
         	fWorkingSetFilterUI.saveState(memento, KEY_WORKING_SET_FILTER);
         }
@@ -382,6 +397,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 						CElementLabels.getTextLabel(elem, CElementBaseLabels.ALL_FULLY_QUALIFIED | CElementBaseLabels.M_PARAMETER_TYPES)
 				});
 				menu.appendToGroup(IContextMenuConstants.GROUP_OPEN, new Action(label) {
+					@Override
 					public void run() {
 						setInput(elem, null);
 					}
@@ -443,7 +459,8 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 			}
     	});
     	fMemberViewer.setSorter(new ViewerSorter() {
-    		public int category(Object element) {
+    		@Override
+			public int category(Object element) {
     			if (element instanceof ICElement) {
     				ICElement celem= (ICElement)element;
     				switch (celem.getElementType()) {
@@ -455,7 +472,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 								if (md.isConstructor()) return 2;
 								if (md.isDestructor()) return 3;
 							} catch (CModelException e) {
-								CUIPlugin.getDefault().log(e);
+								CUIPlugin.log(e);
 							}
     						break;
     				}
@@ -464,8 +481,24 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
     		}
     	});   
         
-		ToolBar memberToolBar= new ToolBar(parent, SWT.FLAT | SWT.WRAP);
+		final ToolBar memberToolBar= new ToolBar(parent, SWT.FLAT | SWT.WRAP);
 		parent.setTopCenter(memberToolBar);
+		
+		memberToolBar.getAccessible().addAccessibleListener(new AccessibleAdapter() {
+			@Override
+			public void getName(AccessibleEvent e) {
+				if (e.childID != ACC.CHILDID_SELF) {
+					ToolItem item = memberToolBar.getItem(e.childID);
+					if (item != null) {
+						String toolTip = item.getToolTipText();
+						if (toolTip != null) {
+							e.result = toolTip;
+						}
+					}
+				}
+			}
+		});
+
 		fMemberToolbarManager= new ToolBarManager(memberToolBar);
     	return fMemberViewer.getControl();
 	}
@@ -529,19 +562,23 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
     	fOpenViewActionGroup= new OpenViewActionGroup(this);
     	fOpenViewActionGroup.setSuppressTypeHierarchy(true);
     	fOpenViewActionGroup.setSuppressProperties(true);
+    	fOpenViewActionGroup.setEnableIncludeBrowser(true);
     	fSelectionSearchGroup= new SelectionSearchGroup(getSite());
     	fRefactoringActionGroup= new CRefactoringActionGroup(this);
     	
     	fWorkingSetFilterUI= new WorkingSetFilterUI(this, fMemento, KEY_WORKING_SET_FILTER) {
-            protected void onWorkingSetChange() {
+            @Override
+			protected void onWorkingSetChange() {
                 updateWorkingSetFilter(this);
             }
-            protected void onWorkingSetNameChange() {
+            @Override
+			protected void onWorkingSetNameChange() {
                 updateDescription();
             }
         };
 
 		fHorizontalOrientation= new Action(Messages.THViewPart_HorizontalOrientation, IAction.AS_RADIO_BUTTON) {
+			@Override
 			public void run() {
 				setOrientation(ORIENTATION_HORIZONTAL);
 			}
@@ -549,6 +586,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 		CPluginImages.setImageDescriptors(fHorizontalOrientation, CPluginImages.T_LCL, CPluginImages.IMG_LCL_HORIZONTAL_ORIENTATION);
 
 		fVerticalOrientation= new Action(Messages.THViewPart_VerticalOrientation, IAction.AS_RADIO_BUTTON) {
+			@Override
 			public void run() {
 				setOrientation(ORIENTATION_VERTICAL);
 			}
@@ -556,6 +594,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 		CPluginImages.setImageDescriptors(fVerticalOrientation, CPluginImages.T_LCL, CPluginImages.IMG_LCL_VERTICAL_ORIENTATION);
 
 		fAutomaticOrientation= new Action(Messages.THViewPart_AutomaticOrientation, IAction.AS_RADIO_BUTTON) {
+			@Override
 			public void run() {
 				setOrientation(ORIENTATION_AUTOMATIC);
 			}
@@ -563,6 +602,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 		CPluginImages.setImageDescriptors(fAutomaticOrientation, CPluginImages.T_LCL, CPluginImages.IMG_LCL_AUTOMATIC_ORIENTATION);
 
 		fSingleOrientation= new Action(Messages.THViewPart_SinglePaneOrientation, IAction.AS_RADIO_BUTTON) {
+			@Override
 			public void run() {
 				setOrientation(ORIENTATION_SINGLE);
 			}
@@ -570,6 +610,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 		CPluginImages.setImageDescriptors(fSingleOrientation, CPluginImages.T_LCL, CPluginImages.IMG_LCL_SINGLE_ORIENTATION);
 
 		fShowTypeHierarchyAction= new Action(Messages.THViewPart_CompleteTypeHierarchy, IAction.AS_RADIO_BUTTON) {
+			@Override
 			public void run() {
 				if (isChecked()) {
 					onSetHierarchyKind(THHierarchyModel.TYPE_HIERARCHY);
@@ -580,6 +621,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         CPluginImages.setImageDescriptors(fShowTypeHierarchyAction, CPluginImages.T_LCL, CPluginImages.IMG_LCL_TYPE_HIERARCHY);       
 
 		fShowSubTypeHierarchyAction= new Action(Messages.THViewPart_SubtypeHierarchy, IAction.AS_RADIO_BUTTON) {
+			@Override
 			public void run() {
 				if (isChecked()) {
 					onSetHierarchyKind(THHierarchyModel.SUB_TYPE_HIERARCHY);
@@ -590,6 +632,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         CPluginImages.setImageDescriptors(fShowSubTypeHierarchyAction, CPluginImages.T_LCL, CPluginImages.IMG_LCL_SUB_TYPE_HIERARCHY);       
 
 		fShowSuperTypeHierarchyAction= new Action(Messages.THViewPart_SupertypeHierarchy, IAction.AS_RADIO_BUTTON) {
+			@Override
 			public void run() {
 				if (isChecked()) {
 					onSetHierarchyKind(THHierarchyModel.SUPER_TYPE_HIERARCHY);
@@ -600,6 +643,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         CPluginImages.setImageDescriptors(fShowSuperTypeHierarchyAction, CPluginImages.T_LCL, CPluginImages.IMG_LCL_SUPER_TYPE_HIERARCHY);       
 
 		fShowInheritedMembersAction= new Action(Messages.THViewPart_ShowInherited_label, IAction.AS_CHECK_BOX) {
+			@Override
 			public void run() {
 				onShowInheritedMembers(isChecked());
 			}
@@ -608,7 +652,8 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         CPluginImages.setImageDescriptors(fShowInheritedMembersAction, CPluginImages.T_LCL, CPluginImages.IMG_LCL_SHOW_INHERITED_MEMBERS);       
 
         fFieldFilter= new ViewerFilter() {
-            public boolean select(Viewer viewer, Object parentElement, Object element) {
+            @Override
+			public boolean select(Viewer viewer, Object parentElement, Object element) {
                 if (element instanceof ICElement) {
                 	ICElement node= (ICElement) element;
                 	switch (node.getElementType()) {
@@ -625,33 +670,36 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
             }
         };
         fStaticFilter= new ViewerFilter() {
-            public boolean select(Viewer viewer, Object parentElement, Object element) {
+            @Override
+			public boolean select(Viewer viewer, Object parentElement, Object element) {
                 if (element instanceof IDeclaration) {
                 	IDeclaration node= (IDeclaration) element;
                 	try {
 						return !node.isStatic();
 					} catch (CModelException e) {
-						CUIPlugin.getDefault().log(e);
+						CUIPlugin.log(e);
 					}
                 }
                 return true;
             }
         };
         fNonPublicFilter= new ViewerFilter() {
-            public boolean select(Viewer viewer, Object parentElement, Object element) {
+            @Override
+			public boolean select(Viewer viewer, Object parentElement, Object element) {
                 if (element instanceof IMember) {
                 	IMember node= (IMember) element;
                 	try {
 						return ASTAccessVisibility.PUBLIC.equals(node.getVisibility());
 					} catch (CModelException e) {
-						CUIPlugin.getDefault().log(e);
+						CUIPlugin.log(e);
 					}
                 }
                 return true;
             }
         };
         fFieldFilterAction= new Action(Messages.THViewPart_HideFields_label, IAction.AS_CHECK_BOX) {
-            public void run() {
+            @Override
+			public void run() {
                 if (isChecked()) {
                     fMemberViewer.addFilter(fFieldFilter);
                 }
@@ -664,7 +712,8 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         CPluginImages.setImageDescriptors(fFieldFilterAction, CPluginImages.T_LCL, CPluginImages.IMG_ACTION_HIDE_FIELDS);       
 
         fStaticFilterAction= new Action(Messages.THViewPart_HideStatic_label, IAction.AS_CHECK_BOX) {
-            public void run() {
+            @Override
+			public void run() {
                 if (isChecked()) {
                     fMemberViewer.addFilter(fStaticFilter);
                 }
@@ -677,7 +726,8 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         CPluginImages.setImageDescriptors(fStaticFilterAction, CPluginImages.T_LCL, CPluginImages.IMG_ACTION_HIDE_STATIC);       
 
         fNonPublicFilterAction= new Action(Messages.THViewPart_HideNonPublic_label, IAction.AS_CHECK_BOX) {
-            public void run() {
+            @Override
+			public void run() {
                 if (isChecked()) {
                     fMemberViewer.addFilter(fNonPublicFilter);
                 }
@@ -690,21 +740,25 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         CPluginImages.setImageDescriptors(fNonPublicFilterAction, CPluginImages.T_LCL, CPluginImages.IMG_ACTION_SHOW_PUBLIC);       
 
         fOpenElement= new Action(Messages.THViewPart_Open) {
-        	public void run() {
+        	@Override
+			public void run() {
         		onOpenElement(getSite().getSelectionProvider().getSelection());
         	}
         };
         fOpenElement.setToolTipText(Messages.THViewPart_Open_tooltip);
+        fOpenElement.setActionDefinitionId(ICEditorActionDefinitionIds.OPEN_DECL);
         
         fShowFilesInLabelsAction= new Action(Messages.THViewPart_ShowFileNames, IAction.AS_CHECK_BOX) {
-            public void run() {
+            @Override
+			public void run() {
                 onShowFilesInLabels(isChecked());
             }
         };
         fShowFilesInLabelsAction.setToolTipText(Messages.THViewPart_ShowFileNames_tooltip);
 
         fRefreshAction = new Action(Messages.THViewPart_Refresh) {
-            public void run() {
+            @Override
+			public void run() {
                 onRefresh();
             }
         };
@@ -712,7 +766,8 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         CPluginImages.setImageDescriptors(fRefreshAction, CPluginImages.T_LCL, CPluginImages.IMG_REFRESH);       
 
         fCancelAction = new Action(Messages.THViewPart_Cancel) {
-            public void run() {
+            @Override
+			public void run() {
                 onCancel();
             }
         };
@@ -728,6 +783,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
         fOpenViewActionGroup.fillActionBars(actionBars);
         fSelectionSearchGroup.fillActionBars(actionBars);
         
+        actionBars.setGlobalActionHandler(CdtActionConstants.OPEN_DECLARATION, fOpenElement);
         actionBars.setGlobalActionHandler(ActionFactory.REFRESH.getId(), fRefreshAction);
         actionBars.updateActionBars();
         
@@ -779,7 +835,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 			try {
 				EditorOpener.open(page, elem);
 			} catch (CModelException e) {
-				CUIPlugin.getDefault().log(e);
+				CUIPlugin.log(e);
 			}
 		}
 	}
@@ -926,7 +982,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 	private ICElement selectionToElement(ISelection selection) {
 		if (selection instanceof IStructuredSelection) {
 			IStructuredSelection ss= (IStructuredSelection) selection;
-			for (Iterator iter = ss.iterator(); iter.hasNext(); ) {
+			for (Iterator<?> iter = ss.iterator(); iter.hasNext(); ) {
 				Object cand= iter.next();
 				if (cand instanceof ICElement) {
 					return (ICElement) cand;
@@ -945,7 +1001,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 	private THNode selectionToNode(ISelection selection) {
 		if (selection instanceof IStructuredSelection) {
 			IStructuredSelection ss= (IStructuredSelection) selection;
-			for (Iterator iter = ss.iterator(); iter.hasNext(); ) {
+			for (Iterator<?> iter = ss.iterator(); iter.hasNext(); ) {
 				Object cand= iter.next();
 				if (cand instanceof THNode) {
 					return (THNode) cand;
@@ -960,7 +1016,7 @@ public class THViewPart extends ViewPart implements ITHModelPresenter {
 	}
 
 	public ICElement[] getHistoryEntries() {
-		return (ICElement[]) fHistoryEntries.toArray(new ICElement[fHistoryEntries.size()]);
+		return fHistoryEntries.toArray(new ICElement[fHistoryEntries.size()]);
 	}
 
 	public void setHistoryEntries(ICElement[] remaining) {

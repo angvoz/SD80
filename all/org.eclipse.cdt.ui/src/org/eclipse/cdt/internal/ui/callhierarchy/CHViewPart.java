@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,7 +8,6 @@
  * Contributors:
  *    Markus Schorn - initial API and implementation
  *******************************************************************************/ 
-
 package org.eclipse.cdt.internal.ui.callhierarchy;
 
 import java.util.ArrayList;
@@ -52,6 +51,7 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.IWorkingSet;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.contexts.IContextActivation;
 import org.eclipse.ui.contexts.IContextService;
@@ -64,12 +64,15 @@ import org.eclipse.cdt.core.model.IFunction;
 import org.eclipse.cdt.core.model.IMethod;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.model.util.CElementBaseLabels;
-import org.eclipse.cdt.refactoring.actions.CRefactoringActionGroup;
 import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.actions.CdtActionConstants;
 import org.eclipse.cdt.ui.actions.OpenViewActionGroup;
+import org.eclipse.cdt.ui.refactoring.actions.CRefactoringActionGroup;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
+import org.eclipse.cdt.internal.ui.ICHelpContextIds;
 import org.eclipse.cdt.internal.ui.IContextMenuConstants;
+import org.eclipse.cdt.internal.ui.editor.ICEditorActionDefinitionIds;
 import org.eclipse.cdt.internal.ui.search.actions.SelectionSearchGroup;
 import org.eclipse.cdt.internal.ui.util.CoreUtility;
 import org.eclipse.cdt.internal.ui.util.Messages;
@@ -77,6 +80,7 @@ import org.eclipse.cdt.internal.ui.viewsupport.AdaptingSelectionProvider;
 import org.eclipse.cdt.internal.ui.viewsupport.CElementLabels;
 import org.eclipse.cdt.internal.ui.viewsupport.EditorOpener;
 import org.eclipse.cdt.internal.ui.viewsupport.ExtendedTreeViewer;
+import org.eclipse.cdt.internal.ui.viewsupport.IndexUI;
 import org.eclipse.cdt.internal.ui.viewsupport.TreeNavigator;
 import org.eclipse.cdt.internal.ui.viewsupport.WorkingSetFilterUI;
 
@@ -96,7 +100,7 @@ public class CHViewPart extends ViewPart {
     private CHNode fNavigationNode;
     private int fNavigationDetail;
     
-	private ArrayList fHistoryEntries= new ArrayList(MAX_HISTORY_SIZE);
+	private ArrayList<ICElement> fHistoryEntries= new ArrayList<ICElement>(MAX_HISTORY_SIZE);
 
     // widgets
     private PageBook fPagebook;
@@ -135,7 +139,8 @@ public class CHViewPart extends ViewPart {
 	private IContextActivation fContextActivation;
 
     
-    public void setFocus() {
+    @Override
+	public void setFocus() {
         fPagebook.setFocus();
     }
 
@@ -170,6 +175,19 @@ public class CHViewPart extends ViewPart {
     	updateActionEnablement();
     }
 
+	public void reportNotIndexed(ICElement input) {
+		if (input != null && getInput() == input) {
+			setMessage(IndexUI.getFileNotIndexedMessage(input));
+		}
+	}
+
+	public void reportInputReplacement(ICElement input, ICElement inputHandle) {
+		if (input == getInput()) {
+			fTreeViewer.setInput(inputHandle);
+			fTreeViewer.setExpandedState(inputHandle, true);
+		}
+	}
+
 	private boolean allowsRefTo(ICElement element) {
 		if (element instanceof IFunction || element instanceof IMethod) {
 			return true;
@@ -178,6 +196,7 @@ public class CHViewPart extends ViewPart {
 		return false;
 	}
 
+	@Override
 	public void createPartControl(Composite parent) {
         fPagebook = new PageBook(parent, SWT.NULL);
         fPagebook.setLayoutData(new GridData(GridData.FILL_BOTH));
@@ -198,8 +217,11 @@ public class CHViewPart extends ViewPart {
     	if (ctxService != null) {
     		fContextActivation= ctxService.activateContext(CUIPlugin.CVIEWS_SCOPE);
     	}
-    }
+
+		PlatformUI.getWorkbench().getHelpSystem().setHelp(fPagebook, ICHelpContextIds.CALL_HIERARCHY_VIEW);
+	}
 	
+	@Override
 	public void dispose() {
 		if (fContextActivation != null) {
 			IContextService ctxService = (IContextService)getSite().getService(IContextService.class);
@@ -253,13 +275,15 @@ public class CHViewPart extends ViewPart {
         updateSorter();
     }
 
-    public void init(IViewSite site, IMemento memento) throws PartInitException {
+    @Override
+	public void init(IViewSite site, IMemento memento) throws PartInitException {
         fMemento= memento;
         super.init(site, memento);
     }
 
 
-    public void saveState(IMemento memento) {
+    @Override
+	public void saveState(IMemento memento) {
         if (fWorkingSetFilterUI != null) {
         	fWorkingSetFilterUI.saveState(memento, KEY_WORKING_SET_FILTER);
         }
@@ -290,7 +314,7 @@ public class CHViewPart extends ViewPart {
         fViewerPage.setSize(100, 100);
         fViewerPage.setLayout(new FillLayout());
 
-        fContentProvider= new CHContentProvider(display); 
+        fContentProvider= new CHContentProvider(this, display); 
         fLabelProvider= new CHLabelProvider(display, fContentProvider);
         fTreeViewer= new ExtendedTreeViewer(fViewerPage);
         fTreeViewer.setContentProvider(fContentProvider);
@@ -318,25 +342,29 @@ public class CHViewPart extends ViewPart {
     }
 
     private void createActions() {
-    	// action gruops
+    	// action groups
     	fOpenViewActionGroup= new OpenViewActionGroup(this);
     	fOpenViewActionGroup.setSuppressCallHierarchy(true);
     	fOpenViewActionGroup.setSuppressProperties(true);
+    	fOpenViewActionGroup.setEnableIncludeBrowser(true);
     	fSelectionSearchGroup= new SelectionSearchGroup(getSite());
     	fRefactoringActionGroup= new CRefactoringActionGroup(this);
     	
     	fWorkingSetFilterUI= new WorkingSetFilterUI(this, fMemento, KEY_WORKING_SET_FILTER) {
-            protected void onWorkingSetChange() {
+            @Override
+			protected void onWorkingSetChange() {
                 updateWorkingSetFilter(this);
             }
-            protected void onWorkingSetNameChange() {
+            @Override
+			protected void onWorkingSetNameChange() {
                 updateDescription();
             }
         };
 
         fReferencedByAction= 
             new Action(CHMessages.CHViewPart_ShowCallers_label, IAction.AS_RADIO_BUTTON) { 
-                public void run() {
+                @Override
+				public void run() {
                     if (isChecked()) {
                         onSetShowReferencedBy(true);
                     }
@@ -347,7 +375,8 @@ public class CHViewPart extends ViewPart {
 
         fMakesReferenceToAction= 
             new Action(CHMessages.CHViewPart_ShowCallees_label, IAction.AS_RADIO_BUTTON) { 
-                public void run() {
+                @Override
+				public void run() {
                     if (isChecked()) {
                         onSetShowReferencedBy(false);
                     }
@@ -357,16 +386,18 @@ public class CHViewPart extends ViewPart {
         CPluginImages.setImageDescriptors(fMakesReferenceToAction, CPluginImages.T_LCL, CPluginImages.IMG_ACTION_SHOW_RELATES_TO);       
 
         fVariableFilter= new ViewerFilter() {
-            public boolean select(Viewer viewer, Object parentElement, Object element) {
+            @Override
+			public boolean select(Viewer viewer, Object parentElement, Object element) {
                 if (element instanceof CHNode) {
                 	CHNode node= (CHNode) element;
-                    return !node.isVariable();
+                    return !node.isVariableOrEnumerator();
                 }
                 return true;
             }
         };
         fFilterVariablesAction= new Action(CHMessages.CHViewPart_FilterVariables_label, IAction.AS_CHECK_BOX) {
-            public void run() {
+            @Override
+			public void run() {
                 if (isChecked()) {
                     fTreeViewer.addFilter(fVariableFilter);
                 }
@@ -377,38 +408,18 @@ public class CHViewPart extends ViewPart {
         };
         fFilterVariablesAction.setToolTipText(CHMessages.CHViewPart_FilterVariables_tooltip);
         CPluginImages.setImageDescriptors(fFilterVariablesAction, CPluginImages.T_LCL, CPluginImages.IMG_ACTION_HIDE_FIELDS);       
-
-//        fMacroFilter= new ViewerFilter() {
-//            public boolean select(Viewer viewer, Object parentElement, Object element) {
-//                if (element instanceof CHNode) {
-//                    CHNode node= (CHNode) element;
-//                    return !node.isMacro();
-//                }
-//                return true;
-//            }
-//        };
-//        fFilterMacrosAction= new Action(CHMessages.CHViewPart_HideMacros_label, IAction.AS_CHECK_BOX) {
-//            public void run() {
-//                if (isChecked()) {
-//                    fTreeViewer.addFilter(fMacroFilter);
-//                }
-//                else {
-//                    fTreeViewer.removeFilter(fMacroFilter);
-//                }
-//            }
-//        };
-//        fFilterMacrosAction.setToolTipText(CHMessages.CHViewPart_HideMacros_tooltip);
-//        CPluginImages.setImageDescriptors(fFilterMacrosAction, CPluginImages.T_LCL, CPluginImages.IMG_ACTION_HIDE_MACROS);       
         
         fSorterAlphaNumeric= new ViewerComparator();
         fSorterReferencePosition= new ViewerComparator() {
-            public int category(Object element) {
+            @Override
+			public int category(Object element) {
                 if (element instanceof CHNode) {
                     return 0;
                 }
                 return 1;
             }
-            public int compare(Viewer viewer, Object e1, Object e2) {
+            @Override
+			public int compare(Viewer viewer, Object e1, Object e2) {
                 if (!(e1 instanceof CHNode)) {
                     if (!(e2 instanceof CHNode)) {
                         return 0;
@@ -427,26 +438,31 @@ public class CHViewPart extends ViewPart {
         };
         
         fShowReference= new Action(CHMessages.CHViewPart_ShowReference_label) {
-        	public void run() {
+        	@Override
+			public void run() {
         		onShowSelectedReference(fTreeViewer.getSelection());
         	}
         };
         fShowReference.setToolTipText(CHMessages.CHViewPart_ShowReference_tooltip);	
         fOpenElement= new Action(CHMessages.CHViewPart_Open_label) {
-        	public void run() {
+        	@Override
+			public void run() {
         		onOpenElement(fTreeViewer.getSelection());
         	}
         };
         fOpenElement.setToolTipText(CHMessages.CHViewPart_Open_tooltip);
+        fOpenElement.setActionDefinitionId(ICEditorActionDefinitionIds.OPEN_DECL);
         
         fShowFilesInLabelsAction= new Action(CHMessages.CHViewPart_ShowFiles_label, IAction.AS_CHECK_BOX) {
-            public void run() {
+            @Override
+			public void run() {
                 onShowFilesInLabels(isChecked());
             }
         };
         fShowFilesInLabelsAction.setToolTipText(CHMessages.CHViewPart_ShowFiles_tooltip);
         fNextAction = new Action(CHMessages.CHViewPart_NextReference_label) {
-            public void run() {
+            @Override
+			public void run() {
                 onNextOrPrevious(true);
             }
         };
@@ -454,7 +470,8 @@ public class CHViewPart extends ViewPart {
         CPluginImages.setImageDescriptors(fNextAction, CPluginImages.T_LCL, CPluginImages.IMG_SHOW_NEXT);       
 
         fPreviousAction = new Action(CHMessages.CHViewPart_PreviousReference_label) {
-            public void run() {
+            @Override
+			public void run() {
                 onNextOrPrevious(false);
             }
         };
@@ -462,7 +479,8 @@ public class CHViewPart extends ViewPart {
         CPluginImages.setImageDescriptors(fPreviousAction, CPluginImages.T_LCL, CPluginImages.IMG_SHOW_PREV);       
 
         fRefreshAction = new Action(CHMessages.CHViewPart_Refresh_label) {
-            public void run() {
+            @Override
+			public void run() {
                 onRefresh();
             }
         };
@@ -478,6 +496,7 @@ public class CHViewPart extends ViewPart {
         fOpenViewActionGroup.fillActionBars(actionBars);
         fSelectionSearchGroup.fillActionBars(actionBars);
         
+        actionBars.setGlobalActionHandler(CdtActionConstants.OPEN_DECLARATION, fOpenElement);
         actionBars.setGlobalActionHandler(ActionFactory.NEXT.getId(), fNextAction);
         actionBars.setGlobalActionHandler(ActionFactory.PREVIOUS.getId(), fPreviousAction);
         actionBars.setGlobalActionHandler(ActionFactory.REFRESH.getId(), fRefreshAction);
@@ -550,8 +569,14 @@ public class CHViewPart extends ViewPart {
 	}
         
 	protected void onShowSelectedReference(ISelection selection) {
-		fNavigationDetail= 0;
-    	fNavigationNode= selectionToNode(selection);
+		CHNode node= selectionToNode(selection);
+		if (node != null && node == fNavigationNode && node.getReferenceCount() > 0) {
+			fNavigationDetail= (fNavigationDetail + 1) % node.getReferenceCount();
+		}
+		else {
+			fNavigationDetail= 0;
+		}
+    	fNavigationNode= node; 
         showReference();
 	}
 
@@ -568,7 +593,7 @@ public class CHViewPart extends ViewPart {
     			try {
 					EditorOpener.open(page, elem);
 				} catch (CModelException e) {
-					CUIPlugin.getDefault().log(e);
+					CUIPlugin.log(e);
 				}
     		}
     	}
@@ -684,6 +709,7 @@ public class CHViewPart extends ViewPart {
 					String label= Messages.format(CHMessages.CHViewPart_FocusOn_label, 
 							CElementLabels.getTextLabel(element, CElementBaseLabels.ALL_FULLY_QUALIFIED | CElementBaseLabels.M_PARAMETER_TYPES));
 					menu.appendToGroup(IContextMenuConstants.GROUP_OPEN, new Action(label) {
+						@Override
 						public void run() {
 							setInput(element);
 						}
@@ -705,45 +731,34 @@ public class CHViewPart extends ViewPart {
     }
     	    
     private void showReference() {
-    	CHNode node= getReferenceNode();
-        if (node != null) {
-        	ITranslationUnit file= node.getFileOfReferences();
+        if (fNavigationNode != null) {
+        	ITranslationUnit file= fNavigationNode.getFileOfReferences();
         	if (file != null) {
         		IWorkbenchPage page= getSite().getPage();
-        		if (node.getReferenceCount() > 0) {
-        			long timestamp= node.getTimestamp();
+        		if (fNavigationNode.getReferenceCount() > 0) {
+        			long timestamp= fNavigationNode.getTimestamp();
         			if (fNavigationDetail < 0) {
         				fNavigationDetail= 0;
         			}
-        			else if (fNavigationDetail >= node.getReferenceCount()-1) {
-        				fNavigationDetail= node.getReferenceCount()-1;
+        			else if (fNavigationDetail >= fNavigationNode.getReferenceCount()-1) {
+        				fNavigationDetail= fNavigationNode.getReferenceCount()-1;
         			}
 
-        			CHReferenceInfo ref= node.getReference(fNavigationDetail);
+        			CHReferenceInfo ref= fNavigationNode.getReference(fNavigationDetail);
         			Region region= new Region(ref.getOffset(), ref.getLength());
         			EditorOpener.open(page, file, region, timestamp);
         		}
         		else {
         			try {
-        				EditorOpener.open(page, node.getRepresentedDeclaration());
+        				EditorOpener.open(page, fNavigationNode.getRepresentedDeclaration());
         			} catch (CModelException e) {
-        				CUIPlugin.getDefault().log(e);
+        				CUIPlugin.log(e);
         			}
         		}
         	}
         }
     }
     
-	private CHNode getReferenceNode() {
-		if (fNavigationNode != null) {
-			CHNode parent = fNavigationNode.getParent();
-			if (parent instanceof CHMultiDefNode) {
-				return parent;
-			}
-    	}
-		return fNavigationNode;
-	}
-	
 	private int getReferenceCount(CHNode node) {
 		if (node != null) {
 			CHNode parent = node.getParent();
@@ -759,7 +774,7 @@ public class CHViewPart extends ViewPart {
 	private CHNode selectionToNode(ISelection selection) {
 		if (selection instanceof IStructuredSelection) {
 			IStructuredSelection ss= (IStructuredSelection) selection;
-			for (Iterator iter = ss.iterator(); iter.hasNext(); ) {
+			for (Iterator<?> iter = ss.iterator(); iter.hasNext(); ) {
 				Object cand= iter.next();
 				if (cand instanceof CHNode) {
 					return (CHNode) cand;
@@ -774,7 +789,7 @@ public class CHViewPart extends ViewPart {
 	}
 
 	public ICElement[] getHistoryEntries() {
-		return (ICElement[]) fHistoryEntries.toArray(new ICElement[fHistoryEntries.size()]);
+		return fHistoryEntries.toArray(new ICElement[fHistoryEntries.size()]);
 	}
 
 	public void setHistoryEntries(ICElement[] remaining) {

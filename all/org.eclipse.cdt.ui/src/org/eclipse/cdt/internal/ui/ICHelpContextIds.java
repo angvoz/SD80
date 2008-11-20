@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 IBM Corporation and others.
+ * Copyright (c) 2006, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *     QNX Software System
+ *     Anton Leherbauer (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui;
 
@@ -45,13 +46,13 @@ public interface ICHelpContextIds {
 	public static final String PREVIOUS_PROBLEM_ACTION= PREFIX + "previous_problem_action";	//$NON-NLS-1$
 	public static final String GOTO_NEXT_ERROR_ACTION= PREFIX + "goto_next_error_action"; 	 //$NON-NLS-1$	
 	public static final String GOTO_PREVIOUS_ERROR_ACTION=	PREFIX + "goto_previous_error_action"; 	 //$NON-NLS-1$	
+	public static final String TOGGLE_MARK_OCCURRENCES_ACTION= PREFIX + "toggle_mark_occurrences_action_context"; //$NON-NLS-1$
 
 	// Preference/property pages
 	public static final String C_PREF_PAGE = PREFIX + "c_pref"; //$NON-NLS-1$
 	public static final String C_EDITOR_PREF_PAGE = PREFIX + "c_editor_gen"; //$NON-NLS-1$
 	public static final String C_EDITOR_COLORS_PREF_PAGE = PREFIX + "c_editor_color"; //$NON-NLS-1$
 	public static final String C_EDITOR_CONTENT_ASSIST_PREF_PAGE = PREFIX + "c_editor_con_assist"; //$NON-NLS-1$
-	public static final String C_EDITOR_NAVIGATION_PAGE = PREFIX + "c_editor_navigation"; //$NON-NLS-1$
 	public static final String C_EDITOR_HOVERS_PAGE = PREFIX + "c_editor_hov"; //$NON-NLS-1$
 	public static final String C_EDITOR_TYPING_PAGE = PREFIX + "c_editor_typing"; //$NON-NLS-1$;
 	public static final String C_EDITOR_FOLDING_PAGE = PREFIX + "c_editor_folding"; //$NON-NLS-1$;
@@ -82,6 +83,8 @@ public interface ICHelpContextIds {
 	public static final String PROJECT_INCLUDE_PATHS_SYMBOLS = PREFIX + "std_prop_include";  //$NON-NLS-1$
 
 	public static final String APPEARANCE_PREFERENCE_PAGE = PREFIX + "appearance_preference_page_context"; //$NON-NLS-1$
+	public static final String SPELLING_CONFIGURATION_BLOCK= PREFIX + "spelling_configuration_block_context"; //$NON-NLS-1$
+	public static final String CODE_TEMPLATES_PREFERENCE_PAGE = PREFIX + "code_templates_preference_context"; //$NON-NLS-1$
 
 	// Console view
 	public static final String CLEAR_CONSOLE_ACTION = PREFIX + "clear_console_action_context"; //$NON-NLS-1$
@@ -119,16 +122,16 @@ public interface ICHelpContextIds {
 	public static final String CLEAR_WORKING_SET_ACTION= PREFIX + "clear_working_set_action"; //$NON-NLS-1$
 	public static final String SELECT_WORKING_SET_ACTION= PREFIX + "select_working_set_action"; //$NON-NLS-1$	
 
+	// Dialogs
+	public static final String EDIT_TEMPLATE_DIALOG = PREFIX + "edit_template_dialog_context"; //$NON-NLS-1$
+	public static final String OPEN_ELEMENT_DIALOG = PREFIX + "open_element_dialog_context"; //$NON-NLS-1$
+
 	// view parts
 	public static final String TYPE_HIERARCHY_VIEW= PREFIX + "type_hierarchy_view_context"; //$NON-NLS-1$
-	public static final String PACKAGES_VIEW= PREFIX + "package_view_context"; //$NON-NLS-1$
-	public static final String PROJECTS_VIEW= PREFIX + "projects_view_context"; //$NON-NLS-1$
-	public static final String PACKAGES_BROWSING_VIEW= PREFIX + "packages_browsing_view_context"; //$NON-NLS-1$
-	public static final String TYPES_VIEW= PREFIX + "types_view_context"; //$NON-NLS-1$
-	public static final String MEMBERS_VIEW= PREFIX + "members_view_context"; //$NON-NLS-1$
+	public static final String CALL_HIERARCHY_VIEW= PREFIX + "call_hierarchy_view_context"; //$NON-NLS-1$
+	public static final String INCLUDE_BROWSER_VIEW= PREFIX + "include_browser_view_context"; //$NON-NLS-1$
 
 	public static final String OPEN_ACTION = PREFIX + "open_action"; //$NON-NLS-1$
-	public static final String OPEN_C_BROWSING_PERSPECTIVE_ACTION = PREFIX + "open_c_browsing_perspective_action"; //$NON-NLS-1$
 	public static final String OPEN_PROJECT_ACTION = PREFIX + "open_project_action"; //$NON-NLS-1$
 
 	public static final String OPEN_TYPE_ACTION = PREFIX + "open_type_action"; //$NON-NLS-1$
@@ -163,5 +166,7 @@ public interface ICHelpContextIds {
 	public static final String C_SEARCH_VIEW = PREFIX + "search_view"; //$NON-NLS-1$
 
 	public static final String PATHENTRY_VARIABLES_PREFERENCE_PAGE= PREFIX + "pathentry_variables_preference_page_context"; //$NON-NLS-1$
-	
+
+	public static final String SCALABILITY_PREFERENCE_PAGE = PREFIX + "scalability_preference_page_context"; //$NON-NLS-1$
+
 }

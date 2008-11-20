@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?NLS TYPE="org.eclipse.help.contexts"?>
-<!--
-******************************************************************
-**  (C) COPYRIGHT International Business Machines Corp. 2001,2004
-**  All Rights Reserved * Licensed Materials - Property of IBM
-******************************************************************
--->
 <contexts>
 
 <context id ="projects_view">
@@ -33,11 +27,6 @@
    <topic href="reference/cdt_u_editor_view.htm"
    	label="Editor view"/>
 </context>
-<context id ="console_view">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_console_view.htm"
-   	label="Console view"/>
-</context>
 <context id ="problems_view">
    <description>Click below to see help.</description>
    <topic href="reference/cdt_u_problems_view.htm"
@@ -52,41 +41,6 @@
    <description>Click below to see help.</description>
    <topic href="reference/cdt_u_search_view.htm"
    	label="Search view"/>
-</context>
-<context id ="registers_view">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_registersview.htm"
-   	label="Registers view"/>
-</context>
-<context id ="memory_view">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_memoryview.htm"
-   	label="Memory view"/>
-</context>
-<context id ="mem_view_pref">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_mem_view_pref.htm"
-   	label="Memory view preferences"/>
-</context>
-<context id ="modules_view">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_modules_view.htm"
-   	label="Modules view"/>
-</context>
-<context id ="signals_view">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_signals_view.htm"
-   	label="Signals view"/>
-</context>
-<context id ="dbg_view">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_dbg_view.htm"
-   	label="Debug view"/>
-</context>
-<context id ="dbg_pref">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_dbg_pref.htm"
-   	label="Debug preferences"/>
 </context>
 <context id ="find_replace">
    <description>Click below to see help.</description>
@@ -106,42 +60,47 @@
 <context id ="code_temp">
    <description>Click below to see help.</description>
    <topic href="reference/cdt_u_code_temp.htm"
-   	label="Code Templates"/>
+   	label="C/C++ Editor Templates Preferences"/>
+</context>
+<context id ="codeformatter_preference_page_context">
+   <description>Click below to see help.</description>
+   <topic href="reference/cdt_u_c_code_style_pref.htm"
+   	label="C/C++ Code Style Preferences"/>
 </context>
 <context id ="c_editor_gen">
    <description>Click below to see help.</description>
    <topic href="reference/cdt_u_c_editor_gen.htm"
-   	label="Editor General Preferences"/>
+   	label="C/C++ Editor Preferences"/>
 </context>
 <context id ="c_editor_color">
    <description>Click below to see help.</description>
    <topic href="reference/cdt_u_c_editor_color.htm"
-   	label="Editor Colors Preferences"/>
+   	label="C/C++ Editor Syntax Coloring Preferences"/>
 </context>
 <context id ="c_editor_con_assist">
    <description>Click below to see help.</description>
    <topic href="reference/cdt_u_c_editor_con_assist.htm"
-   	label="Editor Content Assist Preferences"/>
+   	label="C/C++ Editor Content Assist Preferences"/>
 </context>
 <context id ="c_editor_hov">
    <description>Click below to see help.</description>
    <topic href="reference/cdt_u_c_editor_hov.htm"
-   	label="Editor Hovers Preferences"/>
+   	label="C/C++ Editor Hovers Preferences"/>
+</context>
+<context id ="scalability_preference_page_context">
+   <description>This page allows to configure editor scalability mode options. The scalability mode helps to deal with very large source files.</description>
+   <topic href="reference/cdt_u_c_editor_scalability.htm"
+   	label="C/C++ Editor Scalability Preferences"/>
 </context>
 <context id ="c_editor_typing">
    <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_c_pref.htm"
-   	label="C/C++ Preferences"/>
+   <topic href="reference/cdt_u_c_editor_typing.htm"
+   	label="C/C++ Editor Typing Preferences"/>
 </context>
 <context id ="c_editor_folding">
    <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_c_pref.htm"
-   	label="C/C++ Preferences"/>
-</context>
-<context id ="c_editor_navigation">
-   <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_c_editor_navigation.htm"
-   	label="Editor Navigation Preferences"/>
+   <topic href="reference/cdt_u_c_editor_folding.htm"
+   	label="C/C++ Editor Folding Preferences"/>
 </context>
 <context id ="c_file_types">
    <description>Click below to see help.</description>
@@ -195,7 +154,7 @@
 </context>
 <context id ="man_prop_indexer">
    <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_mprop_indexer.htm"
+   <topic href="reference/cdt_u_prop_general_idx.htm"
    	label="Indexer"/>
 </context>
 <context id ="man_prop_error">
@@ -230,7 +189,7 @@
 </context>
 <context id ="std_prop_indexer">
    <description>Click below to see help.</description>
-   <topic href="reference/cdt_u_sprop_indexer.htm"
+   <topic href="reference/cdt_u_prop_general_idx.htm"
    	label="Indexer"/>
 </context>
 <context id ="std_prop_build">
@@ -379,9 +338,180 @@
    	label="Common"/>
 </context>
 <context id ="cdt_u_search">
-   <description>Click below to see help.</description>
+   <description>Use the C/C++ Search to search for occurrences of C/C++ elements.</description>
    <topic href="reference/cdt_u_search.htm"
    	label="C/C++ search page"/>
 </context>
+<context id ="open_element_dialog_context">
+   <description>This dialog allows to open up the declaration of C/C++ classes, structures, unions, typedefs, enumerations, namespaces, functions, methods, variables and macros.</description>
+   <topic href="reference/cdt_u_open_element.htm"
+   	label="Open Element"/>
+</context>
+<context id="code_templates_preference_context">
+    <description>Specify the templates used for code generation and new files.</description>
+    <topic label="Code Templates Preferences" href="reference/cdt_u_c_code_templates_pref.htm"/>
+</context>
+<context id="toggle_mark_occurrences_action_context">
+    <description>Allows you to switch mark occurrences on and off.</description>
+</context>
+<context id="appearance_preference_page_context">
+    <description>Customize the appearance of C/C++ elements in viewers.</description>
+    <topic label="Appearance Preferences" href="reference/cdt_u_appearance_pref.htm"/>
+</context>
 
+<context id="cdt_u_prop_build">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build.htm" label="C/C++ Build"/> 
+</context>                         
+<context id="cdt_u_prop_build_variables">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_variables.htm" label="Build Variables"/> 
+</context>
+<context id="cdt_u_prop_build_discovery">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_discovery.htm" label="Discovery Options"/> 
+</context>               
+<context id="cdt_u_prop_build_environment">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_environment.htm"    	
+   label="Environment tab"/> 
+</context>             
+<context id="cdt_u_prop_build_setting_tool">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_setting_tool.htm"    	
+   label="Tool Settings"/> 
+</context>            
+<context id="cdt_u_prop_build_setting_steps">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_setting_steps.htm"    	
+   label="Build Steps"/> 
+</context>           
+<context id="cdt_u_prop_build_setting_artifact">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_setting_artifact.htm"    	
+   label="Build Artifact"/>
+</context>        
+<context id="cdt_u_prop_build_setting_binparser">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_setting_binparser.htm"    	
+   label="Binary Parsers"/> 
+</context>       
+<context id="cdt_u_prop_build_setting_errparser">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_setting_errparser.htm"    	
+   label="Error Parsers"/> 
+</context>       
+<context id="cdt_u_prop_build_toolchain">
+   <description></description>
+   <topic href="reference/cdt_u_prop_build_toolchain.htm"    	
+   label="Tool Chain Editor"/> 
+</context>               
+<context id="cdt_u_prop_pns_inc">
+   <description></description>
+   <topic href="reference/cdt_u_prop_pns_inc.htm"    	
+   label="Include paths"/> 
+</context>                       
+<context id="cdt_u_prop_pns_sym">
+   <description></description>
+   <topic href="reference/cdt_u_prop_pns_sym.htm"    	
+   label="Symbols"/> </context>                       
+<context id="cdt_u_prop_pns_libpath">
+   <description></description>
+   <topic href="reference/cdt_u_prop_pns_libpath.htm"    	
+   label="Library paths"/> 
+</context>                   
+<context id="cdt_u_prop_pns_lib">
+   <description></description>
+   <topic href="reference/cdt_u_prop_pns_lib.htm"    	
+   label="Libraries"/> 
+</context>                       
+<context id="cdt_u_prop_pns_ref">
+   <description></description>
+   <topic href="reference/cdt_u_prop_pns_ref.htm"    	
+   label="References"/> 
+</context>                       
+<context id="cdt_u_prop_pns_src">
+   <description></description>
+   <topic href="reference/cdt_u_prop_pns_src.htm"    	
+   label="Source Location"/> 
+</context>                       
+<context id="cdt_u_prop_pns_out">
+   <description></description>
+   <topic href="reference/cdt_u_prop_pns_out.htm"    	
+   label="Output Locations"/> 
+</context>                       
+<context id="cdt_u_prop_exp">
+   <description></description>
+   <topic href="reference/cdt_u_prop_exp.htm"    	
+   label="Exported data"/> 
+</context>                           
+<context id="cdt_u_prop_resource">
+   <description></description>
+   <topic href="reference/cdt_u_prop_resource.htm"    	
+   label="Resource"/> 
+</context>                      
+<context id="cdt_u_prop_builders">
+   <description></description>
+   <topic href="reference/cdt_u_prop_builders.htm"    	
+   label="Builders"/> 
+</context>                      
+<context id="cdt_u_prop_general">
+   <description></description>
+   <topic href="reference/cdt_u_prop_general.htm"    	
+   label="Common"/> 
+</context>                       
+<context id="cdt_u_prop_general_doc">
+   <description></description>
+   <topic href="reference/cdt_u_prop_general_doc.htm"    	
+   label="Documentation"/> 
+</context>                   
+<context id="cdt_u_prop_general_typ">
+   <description></description>
+   <topic href="reference/cdt_u_prop_general_typ.htm"    	
+   label="File Types"/> 
+</context>                   
+<context id="cdt_u_prop_general_idx">
+   <description></description>
+   <topic href="reference/cdt_u_prop_general_idx.htm"    	
+   label="Indexer"/> 
+</context>                   
+<context id="cdt_u_prop_general_lng">
+   <description></description>
+   <topic href="reference/cdt_u_prop_general_lng.htm"    	
+   label="Language Mappings"/> 
+</context>                   
+
+<context id="cdt_u_pref_multi_cfg">
+   <description></description>
+   <topic href="reference/cdt_u_pref_multi_cfg.htm"    	
+   label="Multi Configuration Edit tab"/> 
+</context>                   
+<context id="cdt_u_pref_prop_pages">
+   <description></description>
+   <topic href="reference/cdt_u_pref_prop_pages.htm"    	
+   label="Property Pages Settins tab"/> 
+</context>                   
+<context id="cdt_u_pref_wizard_defaults">
+   <description></description>
+   <topic href="reference/cdt_u_pref_wizard_defaults.htm"    	
+   label="CDT New Project Wizard Defaults tab"/> 
+</context>                   
+<context id="cdt_u_pref_wizard_toolchains">
+   <description></description>
+   <topic href="reference/cdt_u_pref_wizard_toolchains.htm"    	
+   label="Preferred Toolchains tab"/> 
+</context>                   
+
+<context id="type_hierarchy_view_context" title="About Type Hierarchy view">
+    <description>This view displays a type&apos;s hierarchy.</description>
+    <topic label="Type Hierarchy view" href="reference/cdt_u_type_hierarchy_view.htm"/>
+</context>
+<context id="call_hierarchy_view_context" title="About Call Hierarchy view">
+    <description>The Call Hierarchy shows all callers or callees of the given function.</description>
+    <topic label="Call Hierarchy view" href="reference/cdt_u_call_hierarchy_view.htm"/>
+</context>
+<context id="include_browser_view_context" title="About Include Browser view">
+    <description>This view displays include file relationships.</description>
+    <topic label="Include Browser view" href="reference/cdt_u_include_browser_view.htm"/>
+</context>
 </contexts>

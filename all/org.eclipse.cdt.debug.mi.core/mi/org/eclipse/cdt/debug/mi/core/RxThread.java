@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2006 QNX Software Systems and others.
+ * Copyright (c) 2000, 2007 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -357,7 +357,7 @@ public class RxThread extends Thread {
 			OutputStream target = session.getMIInferior().getPipedOutputStream();
 			if (target != null) {
 				MITargetStreamOutput out = (MITargetStreamOutput) stream;
-				String str = out.getString();
+				String str = out.getCString();
 				if (str != null) {
 					try {
 						target.write(str.getBytes());
@@ -506,14 +506,14 @@ public class RxThread extends Thread {
 			} else if (rr != null) {
 				event = new MIInferiorExitEvent(session, rr);
 			}
-			session.getMIInferior().setTerminated();
+			session.getMIInferior().setTerminated(0,false);
 		} else if ("exited-signalled".equals(reason)) { //$NON-NLS-1$
 			if (exec != null) {
 				event = new MIInferiorSignalExitEvent(session, exec);
 			} else if (rr != null) {
 				event = new MIInferiorSignalExitEvent(session, rr);
 			}
-			session.getMIInferior().setTerminated();
+			session.getMIInferior().setTerminated(0,false);
 		} else if ("shlib-event".equals(reason)) { //$NON-NLS-1$
 			if (exec != null) {
 				event = new MISharedLibEvent(session, exec);

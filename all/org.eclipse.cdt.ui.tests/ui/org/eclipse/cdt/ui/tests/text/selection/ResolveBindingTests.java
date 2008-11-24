@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 Wind River Systems, Inc. and others.
+ * Copyright (c) 2006, 2008 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -28,9 +28,11 @@ import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.LanguageManager;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.ui.tests.BaseUITestCase;
 
@@ -65,19 +67,21 @@ public class ResolveBindingTests extends BaseUITestCase  {
 		// get the language from the language manager
 		ILanguage language = null;
 		try {
-			language = LanguageManager.getInstance().getLanguageForFile(astTU.getFilePath(), fCProject.getProject());
+			IProject project = fCProject.getProject();
+			ICConfigurationDescription configuration = CoreModel.getDefault().getProjectDescription(project, false).getActiveConfiguration();
+			language = LanguageManager.getInstance().getLanguageForFile(astTU.getFilePath(), project, configuration);
 		} catch (CoreException e) {
 			fail("Unexpected exception while getting language for file.");
 		}
 		
 		assertNotNull("No language for file " + astTU.getFilePath().toString(), language);
 		
-		IASTName[] names= language.getSelectedNames(astTU, offset, len);
-		assertEquals(1, names.length);
-		return names[0];
+		IASTName name= astTU.getNodeSelector(null).findName(offset, len);
+		assertNotNull(name);
+		return name;
 	}
 
-	private void checkBinding(IASTName name, Class clazz) {
+	private void checkBinding(IASTName name, Class<?> clazz) {
 		IBinding binding;
 		binding= name.resolveBinding();
 		assertNotNull("Cannot resolve binding", binding);

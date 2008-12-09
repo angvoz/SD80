@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2006 IBM Corporation and others.
+ * Copyright (c) 2005, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -33,6 +33,7 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.c.ICCompositeTypeScope;
 import org.eclipse.cdt.core.parser.util.ArrayUtil;
+import org.eclipse.cdt.core.parser.util.CharArrayUtils;
 import org.eclipse.cdt.internal.core.dom.Linkage;
 import org.eclipse.cdt.internal.core.dom.parser.ASTInternal;
 import org.eclipse.cdt.internal.core.dom.parser.ProblemBinding;
@@ -155,67 +156,65 @@ public class CStructure extends PlatformObject implements ICompositeType, ICInte
 		return (IField[]) ArrayUtil.trim( IField.class, fields );
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.dom.ast.ICompositeType#findField(org.eclipse.cdt.core.dom.ast.IASTName)
-	 */
 	public IField findField(String name) throws DOMException {
-	    if( definition == null ){
-	        ICASTCompositeTypeSpecifier temp = checkForDefinition( (IASTElaboratedTypeSpecifier) declarations[0].getParent() );
-	        if( temp == null )
-	            return new CField.CFieldProblem( declarations[0], IProblemBinding.SEMANTIC_DEFINITION_NOT_FOUND, getNameCharArray() );
-	        definition = temp.getName();
-	    }
-	    
-	    ICCompositeTypeScope scope = (ICCompositeTypeScope) getCompositeScope();
-	    if( scope != null && ASTInternal.isFullyCached(scope) ){
-	        IBinding binding = scope.getBinding( name.toCharArray() );
-	        if( binding instanceof IField )
-	            return (IField) binding;
-	    } else {
-	        ICASTCompositeTypeSpecifier compSpec = (ICASTCompositeTypeSpecifier) definition.getParent();
-	        ICASTCompositeTypeSpecifier [] specStack = null;
-	        int stackIdx = -1;
-	    	IASTDeclaration[] members = compSpec.getMembers();
-	    	IField found = null;
-	    	while( members != null ){
-		    	int size = members.length;
-	    		for( int i = 0; i < size; i++ ){
-	    			IASTNode node = members[i];
-	    			if( node instanceof IASTSimpleDeclaration ){
-	    				IASTDeclarator[] declarators = ((IASTSimpleDeclaration)node).getDeclarators();
-	    				for( int j = 0; j < declarators.length; j++ ){
-	    					IASTDeclarator declarator = declarators[j];
-	    					IASTName dtorName = declarator.getName();
-	    					if( scope != null )
-	    					    ASTInternal.addName( scope,  dtorName );
-	    					if( name.equals( dtorName.toString() ) ){
-	    						IBinding binding = dtorName.resolveBinding();
-	    						if( binding instanceof IField )
-	    							found = (IField) binding;
-	    					}
-	    				}
-	    				//anonymous structurs and unions
-	    				if( declarators.length == 0 && ((IASTSimpleDeclaration)node).getDeclSpecifier() instanceof IASTCompositeTypeSpecifier ){
-	    				    IASTCompositeTypeSpecifier declSpec = (IASTCompositeTypeSpecifier) ((IASTSimpleDeclaration)node).getDeclSpecifier();
-	    				    IASTName n = declSpec.getName();
-	    				    if( n.toCharArray().length == 0 ){
-	    				        specStack = (ICASTCompositeTypeSpecifier[])ArrayUtil.append( ICASTCompositeTypeSpecifier.class, specStack, declSpec );
-	    				    }
-	    				}
-	    			}
-	    		}
-		    	if( specStack != null && ++stackIdx < specStack.length && specStack[stackIdx] != null ){
-		    	    members = specStack[stackIdx].getMembers();
-		    	} else {
-		    	    members = null;
-		    	}
-	    	}
-    		if( scope != null )
-    		    ASTInternal.setFullyCached(scope, true);
-    		if( found != null )
-    		    return found;
-	    }
-	    
+		if (definition == null) {
+			ICASTCompositeTypeSpecifier temp = checkForDefinition((IASTElaboratedTypeSpecifier) declarations[0].getParent());
+			if (temp == null)
+				return new CField.CFieldProblem(declarations[0], IProblemBinding.SEMANTIC_DEFINITION_NOT_FOUND, getNameCharArray());
+			definition = temp.getName();
+		}
+
+		final char[] nchars= name.toCharArray();
+		ICCompositeTypeScope scope = (ICCompositeTypeScope) getCompositeScope();
+		if (scope != null && ASTInternal.isFullyCached(scope)) {
+			IBinding binding = scope.getBinding(nchars);
+			if (binding instanceof IField)
+				return (IField) binding;
+		} else {
+			ICASTCompositeTypeSpecifier compSpec = (ICASTCompositeTypeSpecifier) definition.getParent();
+			ICASTCompositeTypeSpecifier[] specStack = null;
+			int stackIdx = -1;
+			IASTDeclaration[] members = compSpec.getMembers();
+			IField found = null;
+			while (members != null) {
+				int size = members.length;
+				for (int i = 0; i < size; i++) {
+					IASTNode node = members[i];
+					if (node instanceof IASTSimpleDeclaration) {
+						IASTDeclarator[] declarators = ((IASTSimpleDeclaration) node).getDeclarators();
+						for (int j = 0; j < declarators.length; j++) {
+							IASTDeclarator declarator = declarators[j];
+							IASTName dtorName = CVisitor.findInnermostDeclarator(declarator).getName();
+							if (scope != null)
+								ASTInternal.addName(scope, dtorName);
+							if (CharArrayUtils.equals(nchars, dtorName.toCharArray())) {
+								IBinding binding = dtorName.resolveBinding();
+								if (binding instanceof IField)
+									found = (IField) binding;
+							}
+						}
+						// anonymous structures and unions
+						if (declarators.length == 0 && ((IASTSimpleDeclaration) node).getDeclSpecifier() instanceof IASTCompositeTypeSpecifier) {
+							IASTCompositeTypeSpecifier declSpec = (IASTCompositeTypeSpecifier) ((IASTSimpleDeclaration) node).getDeclSpecifier();
+							IASTName n = declSpec.getName();
+							if (n.toCharArray().length == 0) {
+								specStack = (ICASTCompositeTypeSpecifier[]) ArrayUtil.append(ICASTCompositeTypeSpecifier.class, specStack, declSpec);
+							}
+						}
+					}
+				}
+				if (specStack != null && ++stackIdx < specStack.length && specStack[stackIdx] != null) {
+					members = specStack[stackIdx].getMembers();
+				} else {
+					members = null;
+				}
+			}
+			if (scope != null)
+				ASTInternal.setFullyCached(scope, true);
+			if (found != null)
+				return found;
+		}
+
 		return null;
 	}
 
@@ -234,7 +233,8 @@ public class CStructure extends PlatformObject implements ICompositeType, ICInte
 		return (definition != null ) ? ((IASTCompositeTypeSpecifier)definition.getParent()).getScope() : null;
 	}
 	
-    public Object clone(){
+    @Override
+	public Object clone(){
         IType t = null;
    		try {
             t = (IType) super.clone();
@@ -265,5 +265,13 @@ public class CStructure extends PlatformObject implements ICompositeType, ICInte
     
 	public ILinkage getLinkage() {
 		return Linkage.C_LINKAGE;
+	}
+
+	public IASTNode[] getDeclarations() {
+		return declarations;
+	}
+
+	public IASTNode getDefinition() {
+		return definition;
 	}
 }

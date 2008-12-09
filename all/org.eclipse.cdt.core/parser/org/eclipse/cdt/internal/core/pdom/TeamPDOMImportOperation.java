@@ -30,15 +30,12 @@ import java.util.zip.ZipFile;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.IPDOMIndexerTask;
-import org.eclipse.cdt.core.dom.ast.IASTPreprocessorIncludeStatement;
 import org.eclipse.cdt.core.index.IIndexFileLocation;
-import org.eclipse.cdt.core.index.IndexLocationFactory;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.internal.core.CCoreInternals;
 import org.eclipse.cdt.internal.core.index.IIndexFragmentFile;
-import org.eclipse.cdt.internal.core.index.IndexFileLocation;
 import org.eclipse.cdt.internal.core.pdom.indexer.IndexerPreferences;
 import org.eclipse.cdt.internal.core.pdom.indexer.Messages;
 import org.eclipse.cdt.internal.core.pdom.indexer.PDOMIndexerTask;
@@ -65,15 +62,15 @@ public class TeamPDOMImportOperation implements IWorkspaceRunnable {
 	private static final String PROJECT_VAR_REPLACEMENT_BEGIN = "\\${$1:"; //$NON-NLS-1$
 	private static final String PROJECT_VAR_REPLACEMENT_END = "}"; //$NON-NLS-1$
 	private static final String DOLLAR_OR_BACKSLASH_REPLACEMENT = "\\\\$0"; //$NON-NLS-1$
-	private static final IASTPreprocessorIncludeStatement[] NO_INCLUDES = {};
 	private static final Pattern DOLLAR_OR_BACKSLASH_PATTERN= Pattern.compile("[\\$\\\\]"); //$NON-NLS-1$
-	private static final IIndexFragmentFile[] NO_IDS = {};
 
 	private static final class FileAndChecksum {
 		public ITranslationUnit fFile;
+		public IIndexFragmentFile fIFile;
 		public byte[] fChecksum;
-		public FileAndChecksum(ITranslationUnit tu, byte[] checksum) {
+		public FileAndChecksum(ITranslationUnit tu, IIndexFragmentFile ifile, byte[] checksum) {
 			fFile= tu;
+			fIFile= ifile;
 			fChecksum= checksum;
 		}
 	}
@@ -140,7 +137,9 @@ public class TeamPDOMImportOperation implements IWorkspaceRunnable {
 		IStringVariableManager varManager= VariablesPlugin.getDefault().getStringVariableManager();
 		IPath location= new Path(varManager.performStringSubstitution(loc));
 		if (!location.isAbsolute()) {
-			location= project.getLocation().append(location);
+			
+			if(project.getLocation() != null)
+				location= project.getLocation().append(location);
 		}
 		return location.toFile();
 	}
@@ -196,25 +195,30 @@ public class TeamPDOMImportOperation implements IWorkspaceRunnable {
 	}
 
 	private void checkIndex(Map checksums, IProgressMonitor monitor) throws CoreException, InterruptedException {
-		List filesToCheck= new ArrayList();		
-
-		WritablePDOM pdom= (WritablePDOM) CCoreInternals.getPDOMManager().getPDOM(fProject);
+		IPDOM obj= CCoreInternals.getPDOMManager().getPDOM(fProject);
+		if (!(obj instanceof WritablePDOM)) {
+			return;
+		}
+		
+		WritablePDOM pdom= (WritablePDOM) obj;
 		pdom.acquireReadLock();
 		try {
-			if (pdom.versionMismatch()) {
+			List filesToCheck= new ArrayList();		
+			if (!pdom.isSupportedVersion()) {
 				throw new CoreException(CCorePlugin.createStatus(					
 						NLS.bind(Messages.PDOMImportTask_errorInvalidPDOMVersion, fProject.getElementName())));
 			}
 
 			final IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-			List filesToDelete= pdom.getAllFileLocations();
-			for (Iterator i = filesToDelete.iterator(); i.hasNext();) {
+			IIndexFragmentFile[] filesToDelete= pdom.getAllFiles();
+			for (int i = 0; i < filesToDelete.length; i++) {
 				checkMonitor(monitor);
+				IIndexFragmentFile ifile = filesToDelete[i];
 
 				byte[] checksum= null;
 				ITranslationUnit tu= null;
 
-				IIndexFileLocation ifl = (IIndexFileLocation) i.next();
+				IIndexFileLocation ifl = ifile.getLocation();
 				String fullPathStr= ifl.getFullPath();
 				if (fullPathStr != null) {
 					Path fullPath= new Path(fullPathStr);
@@ -236,8 +240,8 @@ public class TeamPDOMImportOperation implements IWorkspaceRunnable {
 					}
 				}
 				if (checksum != null) {
-					filesToCheck.add(new FileAndChecksum(tu, checksum));
-					i.remove();
+					filesToCheck.add(new FileAndChecksum(tu, ifile, checksum));
+					filesToDelete[i]= null;
 				}
 			}			
 			try {
@@ -259,22 +263,22 @@ public class TeamPDOMImportOperation implements IWorkspaceRunnable {
 		}
 	}
 
-	private void deleteFiles(WritablePDOM pdom, final int giveupReadlocks, List filesToDelete,
+	private void deleteFiles(WritablePDOM pdom, final int giveupReadlocks, IIndexFragmentFile[] filesToDelete,
 			List updateTimestamps, IProgressMonitor monitor) throws InterruptedException, CoreException {
 		pdom.acquireWriteLock(giveupReadlocks);
 		try {
-			for (Iterator i = filesToDelete.iterator(); i.hasNext();) {
-				checkMonitor(monitor);
-				
-				IndexFileLocation ifl = (IndexFileLocation) i.next();
-				IIndexFragmentFile file= pdom.getFile(ifl);
-				pdom.clearFile(file, NO_INCLUDES, NO_IDS);
+			for (int i = 0; i < filesToDelete.length; i++) {
+				IIndexFragmentFile ifile = filesToDelete[i];
+				if (ifile != null) {
+					checkMonitor(monitor);
+					pdom.clearFile(ifile, null);
+				}
 			}
 			for (Iterator i = updateTimestamps.iterator(); i.hasNext();) {
 				checkMonitor(monitor);
 				
 				FileAndChecksum fc = (FileAndChecksum) i.next();
-				IIndexFragmentFile file= pdom.getFile(IndexLocationFactory.getIFL(fc.fFile));
+				IIndexFragmentFile file= fc.fIFile;
 				if (file != null) {
 					IResource r= fc.fFile.getResource();
 					if (r != null) {
@@ -285,7 +289,7 @@ public class TeamPDOMImportOperation implements IWorkspaceRunnable {
 			}
 		}
 		finally {
-			pdom.releaseWriteLock(giveupReadlocks);
+			pdom.releaseWriteLock(giveupReadlocks, true);
 		}
 	}
 	
@@ -300,9 +304,14 @@ public class TeamPDOMImportOperation implements IWorkspaceRunnable {
 				IPath location= tu.getLocation();
 				if (location != null) {
 					try {
-						byte[] checksum= Checksums.computeChecksum(md, location.toFile());
-						if (!Arrays.equals(checksum, cs.fChecksum)) {
+						final File file = location.toFile();
+						if (!file.isFile()) {
 							i.remove();
+						} else {
+							byte[] checksum= Checksums.computeChecksum(md, file);
+							if (!Arrays.equals(checksum, cs.fChecksum)) {
+								i.remove();
+							}
 						}
 					}
 					catch (IOException e) {

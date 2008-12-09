@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2006 IBM Corporation and others.
+ * Copyright (c) 2003, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,16 +21,9 @@ import org.eclipse.cdt.core.parser.ParserFactory;
  */
 public class InternalParserUtil extends ParserFactory {
 
-	
-
-	/**
-	 * @param finalPath
-	 * @return
-	 */
 	public static CodeReader createFileReader(String finalPath) {
 		File includeFile = new File(finalPath);
-		if (includeFile.exists() && includeFile.isFile()) 
-		{
+		if (includeFile.isFile()) {
 			try {
 			    //use the canonical path so that in case of non-case-sensitive OSs
 			    //the CodeReader always has the same name as the file on disk with

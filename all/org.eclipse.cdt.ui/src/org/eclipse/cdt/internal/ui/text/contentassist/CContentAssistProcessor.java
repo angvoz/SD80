@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2007 IBM Corporation and others.
+ * Copyright (c) 2000, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,17 +9,19 @@
  *     IBM Corporation - initial API and implementation
  *     Anton Leherbauer (Wind River Systems)
  *     Bryan Wilkinson (QNX)
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.text.contentassist;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.InvalidRegistryObjectException;
+import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.jface.text.contentassist.ContentAssistant;
@@ -36,7 +38,9 @@ import org.eclipse.cdt.ui.text.contentassist.ContentAssistInvocationContext;
 import org.eclipse.cdt.ui.text.contentassist.IProposalFilter;
 
 import org.eclipse.cdt.internal.ui.preferences.ProposalFilterPreferencesUtil;
+import org.eclipse.cdt.internal.ui.text.CHeuristicScanner;
 import org.eclipse.cdt.internal.ui.text.CParameterListValidator;
+import org.eclipse.cdt.internal.ui.text.Symbols;
 
 /**
  * C/C++ content assist processor.
@@ -65,7 +69,7 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 		 * @see org.eclipse.cdt.ui.text.ICCompletionProposal#getRelevance()
 		 */
 		public int getRelevance() {
-			return -1;
+			return RelevanceConstants.CASE_MATCH_RELEVANCE + RelevanceConstants.KEYWORD_TYPE_RELEVANCE;
 		}
 
 		/*
@@ -131,6 +135,7 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 	/*
 	 * @see org.eclipse.jface.text.contentassist.IContentAssistProcessor#getContextInformationValidator()
 	 */
+	@Override
 	public IContextInformationValidator getContextInformationValidator() {
 		if (fValidator == null) {
 			fValidator= new CParameterListValidator();
@@ -141,29 +146,49 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 	/*
 	 * @see org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistProcessor#filterAndSort(java.util.List, org.eclipse.core.runtime.IProgressMonitor)
 	 */
-	protected List filterAndSortProposals(List proposals, IProgressMonitor monitor, ContentAssistInvocationContext context) {
+	@Override
+	protected List<ICompletionProposal> filterAndSortProposals(List<ICompletionProposal> proposals, IProgressMonitor monitor, ContentAssistInvocationContext context) {
 		IProposalFilter filter = getCompletionFilter();
 		ICCompletionProposal[] proposalsInput= new ICCompletionProposal[proposals.size()];
 		// wrap proposals which are no ICCompletionProposals
+		boolean wrapped= false;
 		int i=0;
-		for (Iterator iterator = proposals.iterator(); iterator.hasNext(); ) {
-			ICompletionProposal proposal= (ICompletionProposal) iterator.next();
+		for (ICompletionProposal proposal : proposals) {
 			if (proposal instanceof ICCompletionProposal) {
 				proposalsInput[i++]= (ICCompletionProposal)proposal;
 			} else {
+				wrapped= true;
 				proposalsInput[i++]= new CCompletionProposalWrapper(proposal);
 			}
 		}
+		// filter
 		ICCompletionProposal[] proposalsFiltered = filter.filterProposals(proposalsInput);
-		// unwrap again
-		ArrayList filteredList= new ArrayList(proposalsFiltered.length);
-		for (int j= 0; j < proposalsFiltered.length; j++) {
-			ICCompletionProposal proposal= proposalsFiltered[j];
-			if (proposal instanceof CCompletionProposalWrapper) {
-				filteredList.add(((CCompletionProposalWrapper)proposal).unwrap());
-			} else {
-				filteredList.add(proposal);
+
+		// sort
+		boolean sortByAlphabet= CUIPlugin.getDefault().getPreferenceStore().getBoolean(ContentAssistPreference.ORDER_PROPOSALS);
+		if (sortByAlphabet) {
+			// already sorted alphabetically by DefaultProposalFilter
+			// in case of custom proposal filter, keep ordering applied by filter
+		} else {
+			// sort by relevance
+			CCompletionProposalComparator propsComp= new CCompletionProposalComparator();
+			propsComp.setOrderAlphabetically(sortByAlphabet);
+			Arrays.sort(proposalsFiltered, propsComp);
+		}
+		List<ICompletionProposal> filteredList;
+		if (wrapped) {
+			// unwrap again
+			filteredList= new ArrayList<ICompletionProposal>(proposalsFiltered.length);
+			for (ICCompletionProposal proposal : proposalsFiltered) {
+				if (proposal instanceof CCompletionProposalWrapper) {
+					filteredList.add(((CCompletionProposalWrapper)proposal).unwrap());
+				} else {
+					filteredList.add(proposal);
+				}
 			}
+		} else {
+			final ICompletionProposal[] tmp= proposalsFiltered;
+			filteredList= Arrays.asList(tmp);
 		}
 		return filteredList;
 	}
@@ -181,10 +206,10 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 			}
 		} catch (InvalidRegistryObjectException e) {
 			// No action required since we will be using the fail-safe default filter
-			CUIPlugin.getDefault().log(e);
+			CUIPlugin.log(e);
 		} catch (CoreException e) {
 			// No action required since we will be using the fail-safe default filter
-			CUIPlugin.getDefault().log(e);
+			CUIPlugin.log(e);
 		}
 
 		if (null == filter) {
@@ -194,7 +219,8 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 		return filter;
 	}
 	
-	protected List filterAndSortContextInformation(List contexts,
+	@Override
+	protected List<IContextInformation> filterAndSortContextInformation(List<IContextInformation> contexts,
 			IProgressMonitor monitor) {
 		return contexts;
 	}
@@ -202,8 +228,44 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 	/*
 	 * @see org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistProcessor#createContext(org.eclipse.jface.text.ITextViewer, int)
 	 */
+	@Override
 	protected ContentAssistInvocationContext createContext(ITextViewer viewer, int offset, boolean isCompletion) {
-		return new CContentAssistInvocationContext(viewer, offset, fEditor, isCompletion);
+		return new CContentAssistInvocationContext(viewer, offset, fEditor, isCompletion, isAutoActivated());
+	}
+
+	/*
+	 * @see org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistProcessor#verifyAutoActivation(org.eclipse.jface.text.ITextViewer, int)
+	 */
+	@Override
+	protected boolean verifyAutoActivation(ITextViewer viewer, int offset) {
+		IDocument doc= viewer.getDocument();
+		if (doc == null) {
+			return false;
+		}
+		if (offset <= 0) {
+			return false;
+		}
+		try {
+			char activationChar= doc.getChar(--offset);
+			switch (activationChar) {
+			case ':':
+				return offset > 0 && doc.getChar(--offset) == ':';
+			case '>':
+				return offset > 0 && doc.getChar(--offset) == '-';
+			case '.':
+				// avoid completion of float literals
+				CHeuristicScanner scanner= new CHeuristicScanner(doc);
+				int token= scanner.previousToken(--offset, Math.max(0, offset - 200));
+				// the scanner reports numbers as identifiers
+				if (token == Symbols.TokenIDENT && !Character.isJavaIdentifierStart(doc.getChar(scanner.getPosition() + 1))) {
+					// not a valid identifier
+					return false;
+				}
+				return true;
+			}
+		} catch (BadLocationException exc) {
+		}
+		return false;
 	}
 
 }

@@ -1,23 +1,20 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM Rational Software - Initial API and implementation
+ *     IBM Rational Software - Initial API and implementation
  *******************************************************************************/
 
 package org.eclipse.cdt.internal.ui.text.contentassist;
 
 
-import org.eclipse.cdt.internal.ui.text.CTextTools;
-import org.eclipse.cdt.ui.CUIPlugin;
-import org.eclipse.cdt.ui.text.ICCompletionProposal;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceConverter;
-import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.BadPositionCategoryException;
 import org.eclipse.jface.text.DefaultPositionUpdater;
@@ -51,6 +48,11 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.ui.texteditor.link.EditorLinkedModeUI;
+
+import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.text.ICCompletionProposal;
+
+import org.eclipse.cdt.internal.ui.text.CTextTools;
 
 public class CCompletionProposal implements ICCompletionProposal, ICompletionProposalExtension, ICompletionProposalExtension2, ICompletionProposalExtension3 {
 	
@@ -169,7 +171,7 @@ public class CCompletionProposal implements ICCompletionProposal, ICompletionPro
 		Assert.isTrue(cursorPosition >= 0);
 		fCursorPosition= cursorPosition;
 		fContextInformationPosition= (fContextInformation != null ? fCursorPosition : -1);
-	}	
+	}
 	
 	/*
 	 * @see ICompletionProposalExtension#apply(IDocument, char, int)
@@ -259,7 +261,7 @@ public class CCompletionProposal implements ICCompletionProposal, ICompletionPro
 
 			} catch (BadPositionCategoryException e) {
 				// should not happen
-				CUIPlugin.getDefault().log(e);
+				CUIPlugin.log(e);
 			}
 		}
 	
@@ -276,7 +278,7 @@ public class CCompletionProposal implements ICCompletionProposal, ICompletionPro
 				 
 			} catch (BadPositionCategoryException e) {
 				// should not happen
-				CUIPlugin.getDefault().log(e);
+				CUIPlugin.log(e);
 			}
 			return fPosition.getOffset();
 		}
@@ -478,11 +480,7 @@ public class CCompletionProposal implements ICCompletionProposal, ICompletionPro
 		if (offset < fReplacementOffset)
 			return false;
 				
-		/* 
-		 * See http://dev.eclipse.org/bugs/show_bug.cgi?id=17667
-		String word= fReplacementString;
-		 */ 
-		boolean validated= startsWith(document, offset, fDisplayString);	
+		boolean validated= startsWith(document, offset, fReplacementString);	
 
 		if (validated && event != null) {
 			// adapt replacement range to document change
@@ -514,7 +512,10 @@ public class CCompletionProposal implements ICCompletionProposal, ICompletionPro
 	 * <code>false</code> otherwise.
 	 */	
 	protected boolean startsWith(IDocument document, int offset, String word) {
-		int wordLength= word == null ? 0 : word.length();
+		if (word == null) 
+			return false;
+		
+		final int wordLength= word.length();
 		if (offset >  fReplacementOffset + wordLength)
 			return false;
 		
@@ -670,6 +671,7 @@ public class CCompletionProposal implements ICCompletionProposal, ICompletionPro
 	/*
 	 * @see java.lang.Object#hashCode()
 	 */
+	@Override
 	public int hashCode() {
 		return fIdString.hashCode();
 	}
@@ -677,6 +679,7 @@ public class CCompletionProposal implements ICCompletionProposal, ICompletionPro
 	/*
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
+	@Override
 	public boolean equals(Object other) {
 		if(!(other instanceof ICCompletionProposal))
 			return false;

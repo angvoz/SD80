@@ -1,16 +1,18 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2007 IBM Corporation and others.
+ * Copyright (c) 2002, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Rational Software - Initial API and implementation
- * Anton Leherbauer (Wind River Systems)
+ *     Rational Software - Initial API and implementation
+ *     Anton Leherbauer (Wind River Systems)
  *******************************************************************************/
 
 package org.eclipse.cdt.internal.core.model;
+
+import java.util.Arrays;
 
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
@@ -35,24 +37,17 @@ import org.eclipse.core.runtime.IPath;
  * It also does some processing on the <code>CElement</code>s involved
  * (e.g. closing them or updating classpaths).
  */
-public class DeltaProcessor {
+final class DeltaProcessor {
 	
 	/**
 	 * The <code>CElementDelta</code> corresponding to the <code>IResourceDelta</code> being translated.
 	 */
-	protected CElementDelta fCurrentDelta;
-	
-	/* The C element that was last created (see createElement(IResource). 
-	 * This is used as a stack of C elements (using getParent() to pop it, and 
-	 * using the various get*(...) to push it. */
-	ICElement currentElement;
+	private CElementDelta fCurrentDelta;
 	
 	static final ICElementDelta[] NO_DELTA = new ICElementDelta[0];
 
-	public static boolean VERBOSE = false;
-
 	// Hold on the element bein renamed.
-	ICElement movedFromElement = null;
+	private ICElement movedFromElement = null;
 
 	/**
 	 * Creates the create corresponding to this resource.
@@ -440,7 +435,10 @@ public class DeltaProcessor {
 				traverseDelta(root, delta); // traverse delta
 				translatedDeltas[i] = fCurrentDelta;
 			}
-			return filterRealDeltas(translatedDeltas);
+			ICElementDelta[] filteredDeltas= filterRealDeltas(translatedDeltas);
+			// release deltas
+			fCurrentDelta= null;
+			return filteredDeltas;
 		} finally {
 		}
 	}
@@ -458,7 +456,11 @@ public class DeltaProcessor {
 			IResource resource = delta.getResource();
 			ICElement current = createElement(resource);
 			updateChildren = updateCurrentDeltaAndIndex(current, delta);
-			if (current == null || current instanceof ISourceRoot) {
+			if (current == null) {
+				nonCResourcesChanged(parent, delta);
+				// no corresponding ICElement - we are done
+				return;
+			} else if (current instanceof ISourceRoot) {
 				nonCResourcesChanged(parent, delta);
 			} else if (current instanceof ICProject) {
 				ICProject cprj = (ICProject)current;
@@ -467,9 +469,7 @@ public class DeltaProcessor {
 					nonCResourcesChanged(parent, delta);
 				}
 			}
-			if (current != null) {
-				parent = current;
-			}
+			parent = current;
 		} catch (CModelException e) {
 		}
 		if (updateChildren){
@@ -494,17 +494,31 @@ public class DeltaProcessor {
 				fCurrentDelta.addResourceDelta(delta);
 				return;
 			case ICElement.C_PROJECT: {
-				((CProjectInfo)info).setNonCResources(null);
-				// deal with project == sourceroot.  For that case the parent could have been the sourceroot
-				// so we must update the sourceroot nonCResource array also.
-				ICProject cproject = (ICProject)parent;
-				ISourceRoot[] roots = cproject.getAllSourceRoots();
-				for (int i = 0; i < roots.length; i++) {
-					IResource r = roots[i].getResource();
-					if (r instanceof IProject) {
-						CElementInfo cinfo = (CElementInfo) CModelManager.getDefault().peekAtInfo(roots[i]);
-						if (cinfo instanceof CContainerInfo) {
-							((CContainerInfo)cinfo).setNonCResources(null);
+				final CProjectInfo pInfo= (CProjectInfo)info;
+				pInfo.setNonCResources(null);
+				
+				ISourceRoot[] roots= pInfo.sourceRoots;
+				if (roots != null) {
+					ICProject cproject = (ICProject)parent;
+					if (isFolderAddition(delta)) {
+						// if source roots changed - refresh from scratch
+						// see http://bugs.eclipse.org/215112
+						pInfo.sourceRoots= null;
+						ISourceRoot[] newRoots= cproject.getAllSourceRoots();
+						if (!Arrays.equals(roots, newRoots)) {
+							cproject.close();
+							break;
+						}
+					}
+					// deal with project == sourceroot.  For that case the parent could have been the sourceroot
+					// so we must update the sourceroot nonCResource array also.
+					for (int i = 0; i < roots.length; i++) {
+						IResource r = roots[i].getResource();
+						if (r instanceof IProject) {
+							CElementInfo cinfo = (CElementInfo) CModelManager.getDefault().peekAtInfo(roots[i]);
+							if (cinfo instanceof CContainerInfo) {
+								((CContainerInfo)cinfo).setNonCResources(null);
+							}
 						}
 					}
 				}
@@ -527,6 +541,25 @@ public class DeltaProcessor {
 		}
 	}
 
+	/**
+	 * Test whether this delta or any of its children represents a folder addition.
+	 * @param delta
+	 * @return <code>true</code>, if the delta contains at least one new folder
+	 */
+	private static boolean isFolderAddition(IResourceDelta delta) {
+		if (delta.getResource().getType() != IResource.FOLDER)
+			return false;
+		if (delta.getKind() == IResourceDelta.ADDED)
+			return true;
+		IResourceDelta[] children= delta.getAffectedChildren();
+		for (int i = 0; i < children.length; i++) {
+			if (isFolderAddition(children[i])) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/*
 	 * Update the current delta (ie. add/remove/change the given element) and update the
 	 * correponding index.
@@ -541,7 +574,12 @@ public class DeltaProcessor {
 			case IResourceDelta.ADDED :
 				if (element != null) {
 					elementAdded(element, delta);
-					return element instanceof ICContainer;
+					// no need to traverse further
+					if (element instanceof ICContainer) {
+						return ((ICContainer) element).isOpen();
+					} else if (element instanceof ICProject) {
+						return ((ICProject) element).isOpen();
+					}
 				}
 				return false;
 
@@ -565,7 +603,7 @@ public class DeltaProcessor {
 						if (element != null) {
 							if (project.isOpen()) {
 								elementOpened(element, delta);
-								return false;
+								return element instanceof ICProject && ((ICProject) element).isOpen();
 							}
 							elementClosed(element, delta);
 							//Don't process children

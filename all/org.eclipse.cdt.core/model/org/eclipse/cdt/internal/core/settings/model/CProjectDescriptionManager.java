@@ -7,6 +7,8 @@
  *
  * Contributors:
  * Intel Corporation - Initial API and implementation
+ * Markus Schorn (Wind River Systems)
+ * IBM Corporation
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.settings.model;
 
@@ -18,12 +20,14 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,6 +52,7 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.CExternalSetting;
 import org.eclipse.cdt.core.settings.model.CProjectDescriptionEvent;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICDescriptionDelta;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
@@ -71,7 +76,7 @@ import org.eclipse.cdt.core.settings.model.extension.CFolderData;
 import org.eclipse.cdt.core.settings.model.extension.CLanguageData;
 import org.eclipse.cdt.core.settings.model.extension.CResourceData;
 import org.eclipse.cdt.core.settings.model.extension.ICProjectConverter;
-import org.eclipse.cdt.core.settings.model.extension.impl.CDataFacroty;
+import org.eclipse.cdt.core.settings.model.extension.impl.CDataFactory;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.CSettingEntryFactory;
 import org.eclipse.cdt.core.settings.model.util.KindBasedStore;
@@ -84,6 +89,7 @@ import org.eclipse.cdt.internal.core.model.CElementDelta;
 import org.eclipse.cdt.internal.core.model.CModelManager;
 import org.eclipse.cdt.internal.core.settings.model.CExternalSettinsDeltaCalculator.ExtSettingsDelta;
 import org.eclipse.core.filesystem.EFS;
+import org.eclipse.core.filesystem.IFileInfo;
 import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -120,13 +126,16 @@ import org.w3c.dom.ProcessingInstruction;
 import org.xml.sax.SAXException;
 
 public class CProjectDescriptionManager implements ICProjectDescriptionManager {
+	public static final int INTERNAL_GET_IGNORE_CLOSE = 1 << 31 ;
+
+	
 	private static final String OLD_PROJECT_DESCRIPTION = "cdtproject"; //$NON-NLS-1$
 	private static final String OLD_CDTPROJECT_FILE_NAME = ".cdtproject";	//$NON-NLS-1$
 	private static final String OLD_PROJECT_OWNER_ID = "id"; //$NON-NLS-1$
 	private static final String CONVERTED_CFG_NAME = "convertedConfig"; //$NON-NLS-1$
 	private static final String CONVERTED_CFG_ID_PREFIX = "converted.config"; //$NON-NLS-1$
 	
-	private static final String STORAGE_FILE_NAME = ".cproject";	//$NON-NLS-1$
+	static final String STORAGE_FILE_NAME = ".cproject";	//$NON-NLS-1$
 //	private static final QualifiedName PROJECT_DESCRCIPTION_PROPERTY = new QualifiedName(CCorePlugin.PLUGIN_ID, "projectDescription");	//$NON-NLS-1$
 	private static final String ROOT_ELEMENT_NAME = "cproject";	//$NON-NLS-1$
 	private static final String VERSION_ELEMENT_NAME = "fileVersion";	//$NON-NLS-1$
@@ -141,7 +150,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	private static final String PREFERENCES_ELEMENT = "preferences";	//$NON-NLS-1$
 	private static final String ID = "id";	//$NON-NLS-1$
 	private static final String PREFERENCE_CFG_ID_PREFIX = "preference.";	//$NON-NLS-1$
-	private static final String PREFERENCE_CFG_NAME = "Preference Configuration";	//$NON-NLS-1$
+	private static final String PREFERENCE_CFG_NAME = SettingsModelMessages.getString("CProjectDescriptionManager.15"); //$NON-NLS-1$
 	private static final String ROOT_PREFERENCE_ELEMENT = "preferences";	//$NON-NLS-1$
 	private static final String DEFAULT_CFG_ID_PREFIX = CCorePlugin.PLUGIN_ID + ".default.config"; //$NON-NLS-1$
 	private static final String DEFAULT_CFG_NAME = "Configuration"; //$NON-NLS-1$
@@ -187,6 +196,10 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 				monitor.done();
 			}
 		}
+		
+		public boolean isEmpty(){
+			return fRunnables.isEmpty();
+		}
 	}
 
 	private class DesSerializationRunnable implements IWorkspaceRunnable {
@@ -226,6 +239,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	private static class ThreadInfo {
 		Map fDescriptionLoaddingMap;
 		Map fDescriptionApplyingMap;
+		Map fProjectFileSerializationMap;
 		
 		public Map getDescriptionLoaddingMap(boolean create){
 			if(fDescriptionLoaddingMap == null && create){
@@ -240,6 +254,14 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			}
 			return fDescriptionApplyingMap;
 		}
+		
+		public Map getProjectFileSerializationMap(boolean create){
+			if(fProjectFileSerializationMap == null && create){
+				fProjectFileSerializationMap = new HashMap();
+			}
+			return fProjectFileSerializationMap;
+		}
+
 	}
 
 	private Map fProviderMap;
@@ -251,6 +273,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	private Map fDescriptionMap = new HashMap(); //calls to this map are "manually" synchronized with the CProjectDescriptionManager object lock;
 	private ResourceChangeHandler fRcChangeHandler;
 	private CProjectDescriptionWorkspacePreferences fPreferences;
+	private boolean fAllowEmptyCreatingDescription = true; // allowed by default
 
 //	private CStorage fPrefCfgStorage;
 	private ICDataProxyContainer fPrefUpdater = new ICDataProxyContainer(){
@@ -275,56 +298,65 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	private static CProjectDescriptionManager fInstance;
 
 	private CProjectDescriptionManager(){
-		
 	}
 	
 	public static CProjectDescriptionManager getInstance(){
+		if(fInstance == null)
+			fInstance = getInstanceSynch();
+		return fInstance;
+	}
+	
+	private static synchronized CProjectDescriptionManager getInstanceSynch(){
 		if(fInstance == null)
 			fInstance = new CProjectDescriptionManager();
 		return fInstance;
 	}
 
-	public void startup(){
+	public Job startup(){
 		if(fRcChangeHandler == null){
 			fRcChangeHandler = new ResourceChangeHandler();
-	
+
 			ResourcesPlugin.getWorkspace().addResourceChangeListener(
 					fRcChangeHandler, 
 					IResourceChangeEvent.POST_CHANGE 
 					| IResourceChangeEvent.PRE_DELETE
 					| IResourceChangeEvent.PRE_CLOSE
-					/*| IResourceChangeEvent.POST_BUILD*/);
+			/*| IResourceChangeEvent.POST_BUILD*/);
 
 			if(fDescriptorManager == null){
 				fDescriptorManager = CConfigBasedDescriptorManager.getInstance();
 				fDescriptorManager.startup();
 			}
-			
+
 			CExternalSettingsManager.getInstance().startup();
-			
-			IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-			Job rcJob = new Job(SettingsModelMessages.getString("CProjectDescriptionManager.0")){ //$NON-NLS-1$
-				protected IStatus run(IProgressMonitor monitor) {
-					try{
-						startSaveParticipant();
-					} catch (CoreException e){
-						CCorePlugin.log(e);
-						return e.getStatus();
-					}
-					return new Status(
-							IStatus.OK,
-							CCorePlugin.PLUGIN_ID,
-							IStatus.OK,
-							new String(),
-							null);
-				}
-			};
-						
-			rcJob.setRule(root);
-			rcJob.setPriority(Job.INTERACTIVE);
-			rcJob.setSystem(true);
-			rcJob.schedule();
 		}
+		return createPostStartupJob();
+	}
+	
+	private Job createPostStartupJob() {
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		Job rcJob = new Job(SettingsModelMessages.getString("CProjectDescriptionManager.0")){ //$NON-NLS-1$
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				try{
+					startSaveParticipant();
+				} catch (CoreException e){
+					CCorePlugin.log(e);
+					return e.getStatus();
+				}
+				return new Status(
+						IStatus.OK,
+						CCorePlugin.PLUGIN_ID,
+						IStatus.OK,
+						new String(),
+						null);
+			}
+		};
+
+		rcJob.setRule(root);
+		rcJob.setPriority(Job.INTERACTIVE);
+		rcJob.setSystem(true);
+		return rcJob;
 	}
 
 	/*
@@ -370,10 +402,11 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 	}
 	
-	private void clearDescriptionLoadding(IProject project){
+	private CProjectDescription clearDescriptionLoadding(IProject project){
 		Map map = getDescriptionLoaddingMap(false);
 		if(map != null)
-			map.remove(project);
+			return (CProjectDescription)map.remove(project);
+		return null;
 	}
 	
 	private Map getDescriptionLoaddingMap(boolean create){
@@ -390,6 +423,84 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return null;
 	}
 
+	private Map getProjectFileSerializationMap(boolean create){
+		ThreadInfo info = getThreadInfo(create);
+		if(info != null)
+			return info.getProjectFileSerializationMap(create);
+		return null;
+	}
+	
+	private void aboutToSaveProjectFile(IProject project){
+		getProjectFileSerializationMap(true).put(project, Boolean.TRUE);
+	}
+
+	private void doneSaveProjectFile(IProject project){
+//		Map map = getProjectFileSerializationMap(false);
+//		if(map != null){
+//			if(map.remove(project) != null){
+//				CCorePlugin.log("incorrect .cproject file save state, ingnoring");
+//			}
+//		}
+	}
+	
+	private boolean streamsMatch(InputStream stream1, InputStream stream2) throws IOException{
+		do{
+			int i1 = stream1.read();
+			int i2 = stream2.read();
+			
+			if(i1 != i2){
+				return false;
+			} else if (i1 == -1){
+				break;
+			}
+		}while(true);
+		
+		return true;
+	}
+
+	CProjectDescription checkExternalProjectFileModification(IResource rc) throws CoreException{
+		Map map = getProjectFileSerializationMap(false);
+		IProject project = rc.getProject();
+		if(map != null){
+			if(map.remove(project) != null)
+				return null;
+		}
+		
+		CProjectDescription des = (CProjectDescription)getProjectDescription(project, GET_IF_LOADDED);
+		if(des == null || des.isLoadding())
+			return null;
+
+		//check whether contents differ 
+		try {
+			ICStorageElement oldEl = des.doGetCachedRootStorageElement();
+			if(oldEl != null){
+				InputStream newContents = getSharedProperty(project, STORAGE_FILE_NAME);
+				if (newContents != null) {
+					ByteArrayOutputStream oldOut = write(oldEl);
+					InputStream oldContents = new ByteArrayInputStream(oldOut.toByteArray());
+					try {
+						if(streamsMatch(newContents, oldContents))
+							return null;
+					} finally {
+						newContents.close();
+					}
+				}
+			}
+		} catch (CoreException e){
+			CCorePlugin.log(e);
+			//continue
+		} catch (IOException e) {
+			CCorePlugin.log(e);
+			//continue
+		}
+		
+		des = (CProjectDescription)loadProjectDescription(project);
+		des = createWritableDescription(des);
+		des.touch();
+		
+		return des;
+	}
+
 	private ThreadInfo getThreadInfo(boolean create){
 		ThreadInfo info = (ThreadInfo)fThreadInfo.get();
 		if(info == null && create){
@@ -404,16 +515,31 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 
 	public ICProjectDescription getProjectDescription(IProject project, boolean load, boolean write){
+		int flags = load ? 0 : GET_IF_LOADDED;
+		if(write)
+			flags |= GET_WRITABLE;
+		
+		return getProjectDescription(project, flags);
+	}
+
+	public ICProjectDescription getProjectDescription(IProject project, int flags){
+
 		ICProjectDescription des = null;
-		IProjectDescription eDes = null; 
+		boolean write = checkFlags(flags, GET_WRITABLE);
+		boolean load = !checkFlags(flags, GET_IF_LOADDED);
+		boolean ignoreClose = checkFlags(flags, INTERNAL_GET_IGNORE_CLOSE);
+		SettingsContext context = null;
 		
 		des = getDescriptionApplying(project);
-		
-		if(des == null)
-			des = getLoaddedDescription(project);
 
 		if(des == null)
 			des = getDescriptionLoadding(project);
+
+		if(des == null && (ignoreClose || project.isOpen()))
+			des = getLoaddedDescription(project);
+
+//		if(des == null)
+//			des = getDescriptionLoadding(project);
 		
 		if(des == null && load && project.isOpen()){
 			try {
@@ -424,17 +550,18 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			if(des == null){
 				//TODO: check if conversion needed
 				try {
-					eDes = project.getDescription();
-					des = getConvertedDescription(project, eDes);
+					context = new SettingsContext(project);
+					des = getConvertedDescription(project, context);
 				} catch (CoreException e) {
+					CCorePlugin.log(e);
 				}
 			}
 	
 			if(des != null){
 				if(setLoaddedDescriptionOnLoad(project, des)){
 
-					if(eDes != null)
-						saveConversion(project, eDes, (CProjectDescription)des, new NullProgressMonitor());
+					if(context != null)
+						saveConversion(project, context, (CProjectDescription)des, new NullProgressMonitor());
 	
 					CProjectDescriptionEvent event = createLoaddedEvent(des);
 					notifyListeners(event);
@@ -453,19 +580,23 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 		
 		if(des != null && write){
-			CProjectDescription cache = (CProjectDescription)des;
-			ICStorageElement el = null;
-			try {
-				el = cache.getRootStorageElement();
-				el = copyElement((InternalXmlStorageElement)el, false);
-			} catch (CoreException e) {
-				CCorePlugin.log(e);
-			}
-			
-			des = new CProjectDescription((CProjectDescription)des, false, el);
-			CProjectDescriptionEvent event = createCopyCreatedEvent(des, cache);
-			notifyListeners(event);
+			des = createWritableDescription((CProjectDescription)des);
 		}
+		return des;
+	}
+	
+	private CProjectDescription createWritableDescription(CProjectDescription cache){
+		ICStorageElement el = null;
+		try {
+			el = cache.getRootStorageElement();
+			el = copyElement((InternalXmlStorageElement)el, false);
+		} catch (CoreException e) {
+			CCorePlugin.log(e);
+		}
+		
+		CProjectDescription des = new CProjectDescription(cache, false, el, cache.isCdtProjectCreating());
+		CProjectDescriptionEvent event = createCopyCreatedEvent(des, cache);
+		notifyListeners(event);
 		return des;
 	}
 	
@@ -482,7 +613,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 
 	private CProjectDescriptionEvent createLoaddedEvent(ICProjectDescription des){
-		return new CProjectDescriptionEvent(CProjectDescriptionEvent.LOADDED,
+		return new CProjectDescriptionEvent(CProjectDescriptionEvent.LOADED,
 				null,
 				des,
 				null,
@@ -533,22 +664,26 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return null;
 	}
 
-	private ICProjectDescription getConvertedDescription(IProject project, IProjectDescription eDes) throws CoreException{
+	private ICProjectDescription getConvertedDescription(IProject project, SettingsContext context) throws CoreException{
 		Object info[] = loadProjectDescriptionFromOldstyleStorage(project);
-		CProjectDescription des;
+		CProjectDescription des = null;
 		String ownerId;
 		try {
 			if(info != null){
 				ownerId = (String)info[0];
 				des = (CProjectDescription)info[1];
 				setDescriptionLoadding(project, des);
+				des.setLoadding(true);
 			} else {
 				ownerId = null;
 				des = null;
 			}
 			
+			IProjectDescription eDes = context.getEclipseProjectDescription();
+			
 			ICProjectConverter converter = getConverter(project, ownerId, des);
 			if(converter != null){
+
 				CProjectDescription convertedDes = (CProjectDescription)converter.convertProject(project, eDes, ownerId, des);
 				if(convertedDes != null){
 ///					ICConfigurationDescription activeCfg = convertedDes.getActiveConfiguration();
@@ -567,47 +702,47 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			if(des != null && des.isValid()){
 				//TODO: should be set via the CModel operation?
 				InternalXmlStorageElement el = null;
+				context.setEclipseProjectDescription(eDes);
+				
 				try {
 					el = copyElement((InternalXmlStorageElement)des.getRootStorageElement(), false);
 				} catch (CoreException e2) {
 				}
 	
-				des = new CProjectDescription(des, true, el);
-				setDescriptionApplying(project, des);
-				des.applyDatas();
-				clearDescriptionApplying(project);
-				
+				des = new CProjectDescription(des, true, el, des.isCdtProjectCreating());
 				try {
-					((InternalXmlStorageElement)des.getRootStorageElement()).setReadOnly(true);
-				} catch (CoreException e1) {
+					setDescriptionApplying(project, des);
+					des.applyDatas(context);
+					des.doneApplying();
+				} finally {
+					clearDescriptionApplying(project);
 				}
 			}
 		}finally{
-			clearDescriptionLoadding(project);
+			CProjectDescription d = clearDescriptionLoadding(project);
+			if(d != null)
+				d.setLoadding(false);
+			if(des != null)
+				des.setLoadding(false);
 		}
 		return des;
 	}
 	
 	private void saveConversion(final IProject proj, 
-			final IProjectDescription eDes,
+			final SettingsContext context,
 			CProjectDescription des,
 			IProgressMonitor monitor) {
 		
-		CompositeWorkspaceRunnable r = new CompositeWorkspaceRunnable(null);
-		r.add(new IWorkspaceRunnable(){
-
-			public void run(IProgressMonitor monitor) throws CoreException {
-				proj.setDescription(eDes, monitor);
-			}
-		});
 		
 		try {
-			r.add(createDesSerializationRunnable(des));
+			context.addWorkspaceRunnable(createDesSerializationRunnable(des));
 		} catch (CoreException e1) {
 			CCorePlugin.log(e1);
 		}
-		
-		runWspModification(r, monitor);
+
+		IWorkspaceRunnable toRun = context.createOperationRunnable();
+		if(toRun != null)
+			runWspModification(toRun, monitor);
 	}
 	
 	public Job runWspModification(final IWorkspaceRunnable runnable, IProgressMonitor monitor){
@@ -636,6 +771,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		
 		if(scheduleRule){
 			Job job = new Job(SettingsModelMessages.getString("CProjectDescriptionManager.12")){ //$NON-NLS-1$
+				@Override
 				protected IStatus run(IProgressMonitor monitor) {
 					try {
 						runAtomic(runnable, monitor);
@@ -765,20 +901,27 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		
 		IExtensionPoint extensionPoint = Platform.getExtensionRegistry().getExtensionPoint(CProjectConverterDesciptor.PROJECT_CONVERTER_EXTPOINT_ID);
 		IExtension exts[] = extensionPoint.getExtensions();
-		fConverters = new CProjectConverterDesciptor[exts.length];
+		CProjectConverterDesciptor[] dess = new CProjectConverterDesciptor[exts.length];
 		
 		for(int i = 0; i < exts.length; i++){
-			fConverters[i] = new CProjectConverterDesciptor(exts[i]);
+			dess[i] = new CProjectConverterDesciptor(exts[i]);
 		}
+		
+		fConverters = dess;
 	}
 
 	
 	public ICProjectDescription createProjectDescription(IProject project, boolean loadIfExists) throws CoreException{
-		ICProjectDescription des = loadIfExists ? getProjectDescription(project) : null;
-		
-		if(des == null){
+		return createProjectDescription(project, loadIfExists, false);
+	}
+	
+	public ICProjectDescription createProjectDescription(IProject project, boolean loadIfExists, boolean creating) throws CoreException{
+		ICProjectDescription des = getProjectDescription(project, loadIfExists, true);
+		if(des == null || !loadIfExists){
+			if(creating && des != null)
+				creating = des.isCdtProjectCreating();
 			ICStorageElement element = createStorage(project, false, true, false);
-			des = new CProjectDescription(project, element, false);
+			des = new CProjectDescription(project, element, false, creating);
 		}
 		return des;
 	}
@@ -857,10 +1000,15 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		if(!overwriteIfExists && fDescriptionMap.get(project) != null)
 			return false;
 		
-		if(des != null)
-			fDescriptionMap.put(project, des);
-		else
+		if(des != null){
+			if(project.exists() && project.isOpen()){
+				fDescriptionMap.put(project, des);
+			} else {
+				CCorePlugin.log(SettingsModelMessages.getString("CProjectDescriptionManager.16")); //$NON-NLS-1$
+			}
+		}else {
 			fDescriptionMap.remove(project);
+		}
 
 		return true;
 ////		try {
@@ -885,12 +1033,13 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 
 	private ICProjectDescription loadProjectDescription(IProject project) throws CoreException{
-		ICStorageElement storage = CProjectDescriptionManager.getInstance().createStorage(project, true, false, true);
-		CProjectDescription des = new CProjectDescription(project, storage, true);
+		ICStorageElement storage = CProjectDescriptionManager.getInstance().createStorage(project, true, false, false);
+		CProjectDescription des = new CProjectDescription(project, storage, true, false);
 		if(des != null){
 			try {
 				setDescriptionLoadding(project, des);
 				des.loadDatas();
+				des.doneLoadding();
 			}finally{
 				clearDescriptionLoadding(project);
 			}
@@ -1041,7 +1190,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		Set curSet = new HashSet(Arrays.asList(natureIds));
 //		Set newSet = new HashSet(Arrays.asList(newNatures));
 //		Set oldSet = new HashSet(Arrays.asList(oldNatures));
-		Set newCurSet = new HashSet(curSet);
+		HashSet newCurSet = new HashSet(curSet);
 //		newSet.removeAll(oldSet);
 //		oldSet.removeAll(tmp);
 		
@@ -1056,46 +1205,10 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 		
 		return false;
-			
-////		List[] natureDiff = ListComparator.compare(newNatures, oldNatures);
-//		
-////		String newBuilderIds[] = newDr.getBuilderIds();
-////		String oldBuilderIds[] = oldDr.getBuilderIds();
-////		List[] builderDiff = ListComparator.compare(newBuilderIds, oldBuilderIds);
-//		
-//		if(natureDiff != null /*|| builderDiff != null*/){
-////			boolean applyDes = false;
-////			if(des == null){
-////				des = project.getDescription();
-////				applyDes = true;
-////			}
-//			
-//			String natureIds[] = des.getNatureIds();
-//			if(natureDiff[1] != null){
-//				List remaining = ListComparator.getAdded(natureIds, natureDiff[1].toArray());
-//				if(remaining != null){
-//					natureIds = (String[])remaining.toArray(new String[remaining.size()]); 
-//				}
-//			}
-//			
-//			if(natureDiff[0] != null){
-//				Set set = new HashSet();
-//				set.addAll(Arrays.asList(natureIds));
-//				set.addAll(natureDiff[0]);
-//				natureIds = (String[])set.toArray(new String[set.size()]);
-//			}
-////			if(builderDiff != null){
-////	
-////			}
-//
-//			if(natureDiff != null)
-//				des.setNatureIds(natureIds);
-//			
-////			if(applyDes)
-////				project.setDescription(des, monitor);
-//			return true;
-//		}
-//		return false;
+
+
+
+
 	}
 
 	public void setProjectDescription(IProject project, ICProjectDescription des) throws CoreException {
@@ -1103,19 +1216,36 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 	
 	public void setProjectDescription(IProject project, ICProjectDescription des, boolean force, IProgressMonitor monitor) throws CoreException {
-		if(!force && !des.isModified())
-			return;
-
-		if(((CProjectDescription)des).isLoadding()){
-			//do nothing
-//			throw ExceptionFactory.createCoreException("description is being loadded");
-			return;
-		}
-
-		if(((CProjectDescription)des).isApplying()){
-			//do nothing
-//			throw ExceptionFactory.createCoreException("description is being applied");
-			return;
+		int flags = 0;
+		if(force)
+			flags |= SET_FORCE;
+		setProjectDescription(project, des, flags, monitor);
+	}
+	
+	static boolean checkFlags(int flags, int check){
+		return (flags & check) == check;
+	}
+	
+	public void setProjectDescription(IProject project, ICProjectDescription des, int flags, IProgressMonitor monitor) throws CoreException {
+		
+		if(des != null){
+			if(!des.isValid() && (!fAllowEmptyCreatingDescription || !des.isCdtProjectCreating()))
+				throw ExceptionFactory.createCoreException(SettingsModelMessages.getString("CProjectDescriptionManager.17") + project.getName()); //$NON-NLS-1$
+	
+			if(!checkFlags(flags, SET_FORCE) && !des.isModified())
+				return;
+	
+			if(((CProjectDescription)des).isLoadding()){
+				//do nothing
+	//			throw ExceptionFactory.createCoreException("description is being loadded");
+				return;
+			}
+	
+			if(((CProjectDescription)des).isApplying()){
+				//do nothing
+	//			throw ExceptionFactory.createCoreException("description is being applied");
+				return;
+			}
 		}
 		
 		if(monitor == null)
@@ -1124,30 +1254,12 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		CModelManager manager = CModelManager.getDefault();
 		ICProject cproject = manager.create(project);
 
-		SetCProjectDescriptionOperation op = new SetCProjectDescriptionOperation(cproject, (CProjectDescription)des);
-		op.runOperation(monitor);
-		
-		
-//		CProjectDescription newDes = new CProjectDescription((CProjectDescription)des, true);
-		
-/*TODO: calculate delta, etc.
- 		ICProjectDescription previousDes = getProjecDescription(project, false);
-
-		if(des != previousDes){
-			ICConfigurationDescription cfgDess[] = des.getConfigurations();
+		SetCProjectDescriptionOperation op = new SetCProjectDescriptionOperation(cproject, (CProjectDescription)des, flags);
+		try {
+			op.runOperation(monitor);
+		} catch (IllegalArgumentException e){
+			throw ExceptionFactory.createCoreException(e);
 		}
-*/
-//		ICProjectDescription oldDes = getProjectDescription(project, false);
-//		setLoaddedDescription(newDes.getProject(), newDes);
-		
-//		ICProjectDescriptionDelta delta = createDelta(newDes, oldDes);
-		//TODO: notify listeners
-		
-//		ICStorageElement element = newDes.getRootStorageElement();
-		
-//		serialize(newDes.getProject(), STORAGE_FILE_NAME, element);
-		
-//		serialize(newDes);
 	}
 	
 	IWorkspaceRunnable createDesSerializationRunnable(CProjectDescription des) throws CoreException{
@@ -1293,7 +1405,13 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 				file.createNewFile();
 			}
 			fileStream = new FileOutputStream(file);
-			fileStream.write(utfString.getBytes());
+			byte[] bytes;
+			try {
+				bytes = utfString.getBytes("UTF-8"); //$NON-NLS-1$
+			} catch (UnsupportedEncodingException e){
+				bytes = utfString.getBytes();
+			}
+			fileStream.write(bytes);
 			fileStream.close();
 			// Close the streams
 			stream.close();
@@ -1306,11 +1424,9 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 	}
 
-	
-	private void serialize(IProject project, String file, ICStorageElement element) throws CoreException{
+	private ByteArrayOutputStream write(ICStorageElement element) throws CoreException {
 		Document doc = getDocument(element);
-		
-		// Transform the document to something we can save in a file
+
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
 		try {
 			Transformer transformer = TransformerFactory.newInstance().newTransformer();
@@ -1320,56 +1436,67 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			DOMSource source = new DOMSource(doc);
 			StreamResult result = new StreamResult(stream);
 			transformer.transform(source, result);
-			
-			// Save the document
-			IFile projectFile = project.getFile(file);
-			String utfString = stream.toString("UTF-8");	//$NON-NLS-1$
-	
-			if (projectFile.exists()) {
-				if (projectFile.isReadOnly()) {						
-					// Inform Eclipse that we are intending to modify this file
-					// This will provide the user the opportunity, via UI prompts, to fetch the file from source code control
-					// reset a read-only file protection to write etc.
-					// If there is no shell, i.e. shell is null, then there will be no user UI interaction
-	
-					//TODO
-					//IStatus status = projectFile.getWorkspace().validateEdit(new IFile[]{projectFile}, shell);
-					
-					// If the file is still read-only, then we should not attempt the write, since it will
-					// just fail - just throw an exception, to be caught below, and inform the user
-					// For other non-successful status, we take our chances, attempt the write, and pass
-					// along any exception thrown
-					
-					//if (!status.isOK()) {
-					 //   if (status.getCode() == IResourceStatus.READ_ONLY_LOCAL) {
-					  //  	stream.close();
-	    	           //     throw new CoreException(status);						
-					    //}
-					//}
-				}
-				try {
-					projectFile.setContents(new ByteArrayInputStream(utfString.getBytes("UTF-8")), IResource.FORCE, new NullProgressMonitor());	//$NON-NLS-1$
-				} catch (CoreException e) {
-					if (projectFile.getLocation().toFile().isHidden()) {
-						String os = System.getProperty("os.name"); //$NON-NLS-1$
-						if (os != null && os.startsWith("Win")) { //$NON-NLS-1$
-							projectFile.delete(true, null);
-							projectFile.create(new ByteArrayInputStream(utfString.getBytes("UTF-8")), IResource.FORCE, new NullProgressMonitor());	//$NON-NLS-1$
-							CCorePlugin.log(e.getLocalizedMessage() +
-							    "\n** Error occured because of file status <hidden>." +  //$NON-NLS-1$
-							    "\n** This status is disabled now, to allow writing.");  //$NON-NLS-1$
-						} else throw(e);
-					} else throw(e);
-				}
-			} else {
-				projectFile.create(new ByteArrayInputStream(utfString.getBytes("UTF-8")), IResource.FORCE, new NullProgressMonitor());	//$NON-NLS-1$
-			}
-			// Close the streams
-			stream.close();
+
+			return stream;
 		} catch (TransformerConfigurationException e){
 			throw ExceptionFactory.createCoreException(e);
 		} catch (TransformerException e) {
 			throw ExceptionFactory.createCoreException(e);
+		}
+	}
+	
+	private void serialize(IProject project, String file, ICStorageElement element) throws CoreException{
+		try {
+			IFile projectFile = project.getFile(file);
+			ByteArrayOutputStream stream = write(element);	//$NON-NLS-1$
+	
+			String utfString = stream.toString("UTF-8");	//$NON-NLS-1$
+			aboutToSaveProjectFile(project);
+
+			try {
+				if (projectFile.exists()) {
+					if (projectFile.isReadOnly()) {						
+						// Inform Eclipse that we are intending to modify this file
+						// This will provide the user the opportunity, via UI prompts, to fetch the file from source code control
+						// reset a read-only file protection to write etc.
+						// If there is no shell, i.e. shell is null, then there will be no user UI interaction
+		
+						//TODO
+						//IStatus status = projectFile.getWorkspace().validateEdit(new IFile[]{projectFile}, shell);
+						
+						// If the file is still read-only, then we should not attempt the write, since it will
+						// just fail - just throw an exception, to be caught below, and inform the user
+						// For other non-successful status, we take our chances, attempt the write, and pass
+						// along any exception thrown
+						
+						//if (!status.isOK()) {
+						 //   if (status.getCode() == IResourceStatus.READ_ONLY_LOCAL) {
+						  //  	stream.close();
+		    	           //     throw new CoreException(status);						
+						    //}
+						//}
+					}
+					try {
+						projectFile.setContents(new ByteArrayInputStream(utfString.getBytes("UTF-8")), IResource.FORCE, new NullProgressMonitor());	//$NON-NLS-1$
+					} catch (CoreException e) {
+						if (projectFile.getLocation().toFile().isHidden()) {
+							String os = System.getProperty("os.name"); //$NON-NLS-1$
+							if (os != null && os.startsWith("Win")) { //$NON-NLS-1$
+								projectFile.delete(true, null);
+								projectFile.create(new ByteArrayInputStream(utfString.getBytes("UTF-8")), IResource.FORCE, new NullProgressMonitor());	//$NON-NLS-1$
+								CCorePlugin.log(e.getLocalizedMessage() +
+								    "\n** Error occured because of file status <hidden>." +  //$NON-NLS-1$
+								    "\n** This status is disabled now, to allow writing.");  //$NON-NLS-1$
+							} else throw(e);
+						} else throw(e);
+					}
+				} else {
+					projectFile.create(new ByteArrayInputStream(utfString.getBytes("UTF-8")), IResource.FORCE, new NullProgressMonitor());	//$NON-NLS-1$
+				}
+			}finally{
+				doneSaveProjectFile(project);
+				stream.close();
+			}
 		} catch (IOException e) {
 			throw ExceptionFactory.createCoreException(e);
 		}
@@ -1380,7 +1507,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 
 	Map createCfgStorages(ICProjectDescription des) throws CoreException{
-		Map map = new HashMap();
+		LinkedHashMap map = new LinkedHashMap();
 		ICStorageElement rootElement = des.getStorage(MODULE_ID, false);
 		if(rootElement != null){
 			ICStorageElement children[] = rootElement.getChildren();
@@ -1511,12 +1638,13 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return provider.loadConfiguration(des, monitor);
 	}
 	
-	CConfigurationData applyData(ICConfigurationDescription des, ICConfigurationDescription baseDescription, CConfigurationData base, IProgressMonitor monitor) throws CoreException {
+	CConfigurationData applyData(CConfigurationDescriptionCache des, ICConfigurationDescription baseDescription, CConfigurationData base, SettingsContext context, IProgressMonitor monitor) throws CoreException {
 		if(monitor == null)
 			monitor = new NullProgressMonitor();
 		
 		CConfigurationDataProvider provider = getProvider(des);
-		return provider.applyConfiguration(des, baseDescription, base, monitor);
+		context.init(des);
+		return provider.applyConfiguration(des, baseDescription, base, context, monitor);
 	}
 
 	void notifyCached(ICConfigurationDescription des, CConfigurationData data, IProgressMonitor monitor) {
@@ -1842,13 +1970,15 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			// see https://bugs.eclipse.org/bugs/show_bug.cgi?id=96258
 			URI location = rscFile.getLocationURI();
 			if (location != null) {
-				File file = toLocalFile(location, null/*no progress monitor available*/);
-				if (file != null && file.exists()) {
-					try {
-						stream = new FileInputStream(file);
-					} catch (FileNotFoundException e) {
-						throw ExceptionFactory.createCoreException(e);
-					}
+				IFileStore file = EFS.getStore(location);
+				IFileInfo info = null;
+				
+				if(file != null) {
+					info = file.fetchInfo();
+				}
+				
+				if (info != null && info.exists()) {
+					stream = file.openInputStream(EFS.NONE, null);
 				}
 			}
 		}
@@ -1885,7 +2015,9 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 
 			if(checkCfgChange(newDescription, oldDescription, false))
 				delta.addChangeFlags(ICDescriptionDelta.INDEX_CFG);
-
+			
+			if(oldDescription.isCdtProjectCreating() && !newDescription.isCdtProjectCreating())
+				delta.addChangeFlags(ICDescriptionDelta.PROJECT_CREAION_COMPLETED);
 		}
 		return delta.isEmpty() ? null : delta;
 	}
@@ -2489,7 +2621,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 //			}
 			ICConfigurationDescription oldIndexCfg = oldDes.getDefaultSettingConfiguration();
 			ICDescriptionDelta indexDelta;
-			if(oldIndexCfg.getId().equals(indexCfg.getId())){
+			if(oldIndexCfg != null && oldIndexCfg.getId().equals(indexCfg.getId())){
 				indexDelta = findDelta(indexCfg.getId(), projDesDelta);
 			} else {
 				indexDelta = createDelta(indexCfg, oldIndexCfg);
@@ -2590,8 +2722,11 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 				generateCElementDeltasFromLanguageDelta(el, ld, list);
 			} else {
 				if(newRcDes.getType() == ICSettingBase.SETTING_FOLDER){
-					ICFolderDescription oldFoDes = oldRcDes.getType() == ICSettingBase.SETTING_FOLDER ?
-								(ICFolderDescription)oldRcDes : null;
+					ICFolderDescription oldFoDes = null;
+					if (oldRcDes != null) {
+						if (oldRcDes.getType() == ICSettingBase.SETTING_FOLDER)
+							oldFoDes = (ICFolderDescription)oldRcDes;
+					}
 					ICDescriptionDelta folderDelta = createDelta((ICFolderDescription)newRcDes, oldFoDes);
 					if(folderDelta != null){
 						ICDescriptionDelta children[] = folderDelta.getChildren();
@@ -2686,13 +2821,13 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 	
 	public void addCProjectDescriptionListener(ICProjectDescriptionListener listener, int eventTypes){
-		synchronized(this){
+		synchronized(fListeners){
 			fListeners.add(new ListenerDescriptor(listener, eventTypes));
 		}
 	}
 
 	public void removeCProjectDescriptionListener(ICProjectDescriptionListener listener){
-		synchronized(this){
+		synchronized(fListeners){
 			int size = fListeners.size();
 			ListenerDescriptor des;
 			for(int i = 0; i < size; i++){
@@ -2706,7 +2841,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	}
 	
 	private ListenerDescriptor[] getListeners(){
-		synchronized(this){
+		synchronized(fListeners){
 			return (ListenerDescriptor[])fListeners.toArray(new ListenerDescriptor[fListeners.size()]);
 		}
 	}
@@ -2753,6 +2888,12 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			throw ExceptionFactory.createCoreException(e);
 		}
 		
+	}
+
+	InternalXmlStorageElement copyConfigurationElement(InternalXmlStorageElement el, String newId, boolean readOnly) throws CoreException {
+		el = copyElement(el, readOnly);
+		el.setAttribute(CConfigurationSpecSettings.ID, newId);
+		return el;
 	}
 
 	InternalXmlStorageElement copyElement(InternalXmlStorageElement el, boolean readOnly) throws CoreException {
@@ -2826,6 +2967,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 
 	}
+	
 	void checkRemovedConfigurations(ICDescriptionDelta delta){
 		if(delta == null)
 			return;
@@ -2848,6 +2990,15 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return getPreferenceConfiguration(buildSystemId, true);
 	}
 
+	private void runContextOperations(SettingsContext context, IProgressMonitor monitor){
+		IWorkspaceRunnable toRun = context.createOperationRunnable();
+		if(toRun != null){
+			runWspModification(toRun, monitor);
+		} else if (monitor != null){
+			monitor.done();
+		}
+	}
+	
 	public ICConfigurationDescription getPreferenceConfiguration(String buildSystemId, boolean write) throws CoreException {
 		ICConfigurationDescription des = getLoaddedPreference(buildSystemId);
 		if(des == null){
@@ -2917,8 +3068,10 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 	private CConfigurationDescriptionCache createPreferenceCache(ICConfigurationDescription des) throws CoreException{
 		IInternalCCfgInfo cfgDes = (IInternalCCfgInfo)des;
 		CConfigurationData baseData = cfgDes.getConfigurationData(false);
+		CConfigurationDescriptionCache baseCache = null;
 		if(baseData instanceof CConfigurationDescriptionCache){
-			baseData = ((CConfigurationDescriptionCache)baseData).getConfigurationData();
+			baseCache = (CConfigurationDescriptionCache)baseData;
+			baseData = baseCache.getConfigurationData();
 		}
 		CConfigurationSpecSettings settings = cfgDes.getSpecSettings();
 		ICStorageElement rootEl = getBuildSystemConfigPreferenceStorage(des.getBuildSystemId(), true, false);
@@ -2926,11 +3079,13 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		rootParent.removeChild(rootEl);
 		ICStorageElement baseRootEl = settings.getRootStorageElement();
 		rootEl = rootParent.importChild(baseRootEl);
-		CConfigurationDescriptionCache cache = new CConfigurationDescriptionCache(des, baseData, cfgDes.getSpecSettings(), null, rootEl);
+		CConfigurationDescriptionCache cache = new CConfigurationDescriptionCache(des, baseData, baseCache, cfgDes.getSpecSettings(), null, rootEl);
 		CSettingEntryFactory factory = new CSettingEntryFactory();
-		cache.applyData(factory);
+		SettingsContext context = new SettingsContext(null);
+		cache.applyData(factory, context);
 		cache.doneInitialization();
 		factory.clear();
+		runContextOperations(context, null);
 		return cache;
 	}
 	
@@ -3047,13 +3202,13 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		return fDescriptorManager;
 	}
 
-	public CConfigurationData createDefaultConfigData(IProject project, CDataFacroty factory) throws CoreException{
+	public CConfigurationData createDefaultConfigData(IProject project, CDataFactory factory) throws CoreException{
 		return createDefaultConfigData(project, CDataUtil.genId(DEFAULT_CFG_ID_PREFIX), DEFAULT_CFG_NAME, factory);
 	}
 
-	public CConfigurationData createDefaultConfigData(IProject project, String id, String name, CDataFacroty factory) throws CoreException{
+	public CConfigurationData createDefaultConfigData(IProject project, String id, String name, CDataFactory factory) throws CoreException{
 		if(factory == null)
-			factory = new CDataFacroty();
+			factory = new CDataFactory();
 		
 		CConfigurationData data = CDataUtil.createEmptyData(id, name, factory, true);
 //		CDataUtil.
@@ -3163,7 +3318,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 			return null;
 		
 		ICResourceDescription rcDes = cfgDes.getResourceDescription(path, false);
-		if(!ignoreExcludeStatus && rcDes.isExcluded())
+		if(rcDes == null || (!ignoreExcludeStatus && rcDes.isExcluded()))
 			return null;
 		
 		if(rcDes.getType() == ICSettingBase.SETTING_FOLDER){
@@ -3202,6 +3357,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 				if(!settingsCustomized(project, (CFolderData)parentRcData, (CFolderData)childRcData)){
 					try {
 						data.removeResourceData(childRcData);
+						child.remove();
 						modified = true;
 					} catch (CoreException e) {
 						CCorePlugin.log(e);
@@ -3212,6 +3368,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 				if(!settingsCustomized(project, (CResourceData)parent.getValue(), (CFileData)childRcData)){
 					try {
 						data.removeResourceData(childRcData);
+						child.remove();
 						modified = true;
 					} catch (CoreException e) {
 						CCorePlugin.log(e);
@@ -3336,7 +3493,7 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		try {
 			do {
 				if(oldPrefs != prefs){
-					if(prefs.getConfigurationReltations() != oldPrefs.getConfigurationReltations()){
+					if(prefs.getConfigurationRelations() != oldPrefs.getConfigurationRelations()){
 						changed = true;
 						break;
 					}
@@ -3394,6 +3551,19 @@ public class CProjectDescriptionManager implements ICProjectDescriptionManager {
 		}
 		if(createIfNotFound)
 			return el.createChild(PREFERENCES_ELEMENT);
-		throw ExceptionFactory.createCoreException("workspace info element does not exist");
+		throw ExceptionFactory.createCoreException(SettingsModelMessages.getString("CProjectDescriptionManager.14")); //$NON-NLS-1$
 	}
+	
+	public void updateExternalSettingsProviders(String[] ids, IProgressMonitor monitor){
+		ExtensionContainerFactory.updateReferencedProviderIds(ids, monitor);
+	}
+	
+	boolean isEmptyCreatingDescriptionAllowed(){
+		return fAllowEmptyCreatingDescription;
+	}
+	
+	void setEmptyCreatingDescriptionAllowed(boolean allow){
+		fAllowEmptyCreatingDescription = allow;
+	}
+
 }

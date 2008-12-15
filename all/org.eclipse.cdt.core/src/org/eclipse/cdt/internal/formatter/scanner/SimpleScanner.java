@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,7 +17,7 @@ import java.io.Reader;
 import java.util.HashMap;
 
 /**
- * A C/C++ lexical scanner, which does no preprocessing, 
+ * A C/C++ lexical scanner, which does no preprocessing,
  * but tokenizes preprocessor directives, whitespace and comments.
  *
  * @since 4.0
@@ -25,7 +25,7 @@ import java.util.HashMap;
 public class SimpleScanner {
 
 	private static final int EOFCHAR= -1;
-	protected static HashMap fgKeywords= new HashMap();
+	protected static HashMap<String, Integer> fgKeywords= new HashMap<String, Integer>();
 
     protected Token fCurrentToken;
 	protected ScannerContext fContext;
@@ -231,73 +231,80 @@ public class SimpleScanner {
 	            boolean hex = false;
 	            boolean floatingPoint = c == '.';
 	            boolean firstCharZero = c == '0';
-	
+	            
 	            c = getChar();
 	
-	            if (c == 'x') {
-	                if (!firstCharZero && floatingPoint) {
-	                    ungetChar(c);
-	                    return newToken(Token.tDOT);
-	                }
+                if (firstCharZero && c == 'x') {
 	                hex = true;
 	                c = getChar();
 	            }
 	
+                int digits= 0;
+                
 	            while ((c >= '0' && c <= '9') || (hex && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))) {
+	            	++digits;
 	                c = getChar();
 	            }
-	
-	            if (c == '.') {
-	                if (floatingPoint || hex) {
-	                    if (fTokenBuffer.toString().equals("..") && getChar() == '.') //$NON-NLS-1$
-	                        return newToken(Token.tELIPSE);
-	                }
-	
-	                floatingPoint = true;
-	                c = getChar();
-	                while ((c >= '0' && c <= '9')) {
-	                    c = getChar();
-	                }
+
+	            if (!hex) {
+	            	if (c == '*') {
+	            		return newToken(Token.tDOTSTAR);
+	            	} else if (c == '.') {
+	            		if (floatingPoint && digits == 0) {
+	            			// encountered ..
+	            			if ((c= getChar()) == '.') {
+	            				return newToken(Token.tELIPSE);
+	            			} else {
+	            				ungetChar(c);
+	            				ungetChar('.');
+	            				return newToken(Token.tDOT);
+	            			}
+	            		}
+
+	            		floatingPoint = true;
+	            		c = getChar();
+	            		while ((c >= '0' && c <= '9')) {
+	            			++digits;
+	            			c = getChar();
+	            		}
+	            	} else if (digits > 0 && (c == 'e' || c == 'E')) {
+	            		floatingPoint = true;
+
+	            		// exponent type for floating point
+	            		c = getChar();
+
+	            		// optional + or -
+	            		if (c == '+' || c == '-') {
+	            			c = getChar();
+	            		}
+
+	            		// digit sequence of exponent part
+	            		while ((c >= '0' && c <= '9')) {
+	            			c = getChar();
+	            		}
+	            	}
 	            }
-	
-	            if (c == 'e' || c == 'E') {
-	                if (!floatingPoint)
-	                    floatingPoint = true;
-	                // exponent type for floating point 
-	                c = getChar();
-	
-	                // optional + or - 
-	                if (c == '+' || c == '-') {
-	                    c = getChar();
-	                }
-	
-	                // digit sequence of exponent part 
-	                while ((c >= '0' && c <= '9')) {
-	                    c = getChar();
-	                }
-	
-	                // optional suffix 
-	                if (c == 'l' || c == 'L' || c == 'f' || c == 'F') {
-	                    c = getChar();
-	                }
+	            if (floatingPoint) {
+	            	if (digits > 0) {
+	            		//floating-suffix
+	            		if (c == 'l' || c == 'L' || c == 'f' || c == 'F') {
+	            			c = getChar();
+	            		}
+	            	} else {
+	            		ungetChar(c);
+	            		return newToken(Token.tDOT);
+	            	}
 	            } else {
-	                if (floatingPoint) {
-	                    //floating-suffix
-	                    if (c == 'l' || c == 'L' || c == 'f' || c == 'F') {
-	                        c = getChar();
-	                    }
-	                } else {
-	                    //integer suffix
-	                    if (c == 'u' || c == 'U') {
-	                        c = getChar();
-	                        if (c == 'l' || c == 'L')
-	                            c = getChar();
-	                    } else if (c == 'l' || c == 'L') {
-	                        c = getChar();
-	                        if (c == 'u' || c == 'U')
-	                            c = getChar();
-	                    }
-	                }
+	            	//integer suffix
+	            	if (c == 'u' || c == 'U') {
+	            		c = getChar();
+	            		if (c == 'l' || c == 'L')
+	            			c = getChar();
+	            	} else if (c == 'l' || c == 'L') {
+	            		c = getChar();
+	            		if (c == 'u' || c == 'U')
+	            			c = getChar();
+	            	}
 	            }
 	
 	            ungetChar(c);
@@ -621,7 +628,7 @@ public class SimpleScanner {
 	                matchCharLiteral();
 	                return newToken(Token.tCHAR);
 	                    
-	            case '"': 
+	            case '"':
 	                if (fTokenBuffer.length() > 1) {
 	                    if (fPreprocessorToken==0) {
 	                        fPreprocessorToken= categorizePreprocessor(fTokenBuffer);
@@ -653,7 +660,7 @@ public class SimpleScanner {
 	                    }
 	                    fPreprocessorToken= 0;
 	                    return result;
-	                } 
+	                }
 	                if (next == '*') {
 	                    if (fTokenBuffer.length() > 2) {
 	                        ungetChar(next);
@@ -682,7 +689,7 @@ public class SimpleScanner {
 	    ungetChar(c);
 	    Token result= null;
 	    if (fTokenBuffer.length() > 0) {
-	        result= newPreprocessorToken();         
+	        result= newPreprocessorToken();
 	    }
 	    fPreprocessorToken= 0;
 	    return result;
@@ -698,7 +705,7 @@ public class SimpleScanner {
 	            c = getChar();
 	        }
 	        if (c == '/') {
-	            // we need to peek ahead at the next character to see if 
+	            // we need to peek ahead at the next character to see if
 	            // this is a comment or not
 	            int next = getChar();
 	            if (next == '/') {

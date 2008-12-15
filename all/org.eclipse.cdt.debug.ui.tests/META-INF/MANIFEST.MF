@@ -1,9 +1,8 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: org.eclipse.cdt.debug.ui.tests
-Bundle-SymbolicName: org.eclipse.cdt.debug.ui.tests
-Bundle-Version: 4.0.0.qualifier
-Bundle-ClassPath: cdtdebuguitests.jar
+Bundle-SymbolicName: org.eclipse.cdt.debug.ui.tests;singleton:=true
+Bundle-Version: 5.0.0.qualifier
 Bundle-Activator: org.eclipse.core.internal.compatibility.PluginActivator
 Bundle-Localization: plugin
 Export-Package: org.eclipse.cdt.debug.core.tests,
@@ -17,6 +16,7 @@ Require-Bundle: org.eclipse.ui.ide,
  org.eclipse.cdt.core,
  org.eclipse.ui,
  org.eclipse.core.runtime.compatibility
-Eclipse-LazyStart: true
+Bundle-ActivationPolicy: lazy
 Plugin-Class: org.eclipse.cdt.debug.testplugin.CTestPlugin
 Bundle-Vendor: Eclipse.org
+Bundle-RequiredExecutionEnvironment: J2SE-1.5

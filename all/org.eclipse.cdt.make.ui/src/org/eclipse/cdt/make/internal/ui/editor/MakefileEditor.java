@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,7 +7,7 @@
  *
  * Contributors:
  *     QNX Software Systems - Initial API and implementation
- *     Anton Leherbauer, Wind River Systems, Inc.
+ *     Anton Leherbauer (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.make.internal.ui.editor;
 
@@ -22,17 +22,34 @@ import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.jface.text.*;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.FindReplaceDocumentAdapter;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IRegion;
+import org.eclipse.jface.text.ITextOperationTarget;
+import org.eclipse.jface.text.ITextViewerExtension;
 import org.eclipse.jface.text.rules.IWordDetector;
-import org.eclipse.jface.text.source.*;
-import org.eclipse.jface.text.source.projection.*;
+import org.eclipse.jface.text.source.IOverviewRuler;
+import org.eclipse.jface.text.source.ISourceViewer;
+import org.eclipse.jface.text.source.IVerticalRuler;
+import org.eclipse.jface.text.source.SourceViewerConfiguration;
+import org.eclipse.jface.text.source.projection.ProjectionAnnotationModel;
+import org.eclipse.jface.text.source.projection.ProjectionSupport;
+import org.eclipse.jface.text.source.projection.ProjectionViewer;
 import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.jface.viewers.*;
+import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.ui.*;
-import org.eclipse.ui.editors.text.EditorsUI;
+import org.eclipse.ui.IPartService;
+import org.eclipse.ui.IWorkbenchPart;
+import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.editors.text.TextEditor;
-import org.eclipse.ui.texteditor.*;
+import org.eclipse.ui.texteditor.DefaultRangeIndicator;
+import org.eclipse.ui.texteditor.ITextEditorActionConstants;
+import org.eclipse.ui.texteditor.ITextEditorActionDefinitionIds;
+import org.eclipse.ui.texteditor.TextOperationAction;
 import org.eclipse.ui.views.contentoutline.IContentOutlinePage;
 
 public class MakefileEditor extends TextEditor implements ISelectionChangedListener, IReconcilingParticipant {
@@ -107,10 +124,7 @@ public class MakefileEditor extends TextEditor implements ISelectionChangedListe
 		setEditorContextMenuId("#MakefileEditorContext"); //$NON-NLS-1$
 		setRulerContextMenuId("#MakefileRulerContext"); //$NON-NLS-1$
 		setDocumentProvider(MakeUIPlugin.getDefault().getMakefileDocumentProvider());
-		IPreferenceStore[] stores = new IPreferenceStore[2];
-		stores[0] = MakeUIPlugin.getDefault().getPreferenceStore();
-		stores[1] = EditorsUI.getPreferenceStore();
-		ChainedPreferenceStore chainedStore = new ChainedPreferenceStore(stores);
+		IPreferenceStore chainedStore = MakeUIPlugin.getDefault().getCombinedPreferenceStore();
 		setPreferenceStore(chainedStore);
 		setSourceViewerConfiguration(new MakefileSourceConfiguration(chainedStore, this));
 	}
@@ -429,4 +443,23 @@ public class MakefileEditor extends TextEditor implements ISelectionChangedListe
 		System.arraycopy(parentPrefPageIds, 0, prefPageIds, nIds, parentPrefPageIds.length);
 		return prefPageIds;
 	}
+	
+	/*
+	 * @see org.eclipse.ui.texteditor.AbstractDecoratedTextEditor#isTabsToSpacesConversionEnabled()
+	 */
+	protected boolean isTabsToSpacesConversionEnabled() {
+		// always false for Makefiles
+		// see http://bugs.eclipse.org/186106
+		return false;
+	}
+	
+	/*
+	 * @see org.eclipse.ui.editors.text.TextEditor#initializeKeyBindingScopes()
+	 * @see http://bugs.eclipse.org/172331
+	 */
+	@Override
+	protected void initializeKeyBindingScopes() {
+		setKeyBindingScopes(new String [] { "org.eclipse.cdt.make.ui.makefileEditorScope" } ); //$NON-NLS-1$
+	}
+
 }

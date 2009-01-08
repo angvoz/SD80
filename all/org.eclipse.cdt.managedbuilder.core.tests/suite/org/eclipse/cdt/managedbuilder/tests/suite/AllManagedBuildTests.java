@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 IBM Corporation and others.
+ * Copyright (c) 2004, 2007 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -32,6 +32,10 @@ import org.eclipse.cdt.managedbuilder.core.tests.MultiVersionSupportTests;
 import org.eclipse.cdt.managedbuilder.core.tests.OptionEnablementTests;
 import org.eclipse.cdt.managedbuilder.core.tests.PathConverterTest;
 import org.eclipse.cdt.managedbuilder.core.tests.ResourceBuildCoreTests;
+import org.eclipse.cdt.projectmodel.tests.BackwardCompatiblityTests;
+import org.eclipse.cdt.projectmodel.tests.CProjectDescriptionSerializationTests;
+import org.eclipse.cdt.projectmodel.tests.OptionStringListValueTests;
+import org.eclipse.cdt.projectmodel.tests.ProjectModelTests;
 
 /**
  *
@@ -67,6 +71,10 @@ public class AllManagedBuildTests {
 
 		suite.addTest(BuildDescriptionModelTests.suite());
 		suite.addTest(PathConverterTest.suite());
+		suite.addTest(ProjectModelTests.suite());
+		suite.addTest(OptionStringListValueTests.suite());
+		suite.addTest(BackwardCompatiblityTests.suite());
+		suite.addTest(CProjectDescriptionSerializationTests.suite());
 		//$JUnit-END$
 		return suite;
 	}

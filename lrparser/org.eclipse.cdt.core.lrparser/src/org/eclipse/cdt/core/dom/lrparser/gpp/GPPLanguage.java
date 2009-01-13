@@ -8,51 +8,50 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.dom.lrparser.c99;
+package org.eclipse.cdt.core.dom.lrparser.gpp;
 
 import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.lrparser.IDOMTokenMap;
 import org.eclipse.cdt.core.dom.lrparser.IParser;
-import org.eclipse.cdt.core.dom.lrparser.ScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
 import org.eclipse.cdt.core.model.IContributedModelBuilder;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.parser.ParserLanguage;
-import org.eclipse.cdt.internal.core.dom.lrparser.c99.C99Parser;
-import org.eclipse.cdt.internal.core.dom.parser.c.CNodeFactory;
+import org.eclipse.cdt.internal.core.dom.lrparser.gpp.GPPParser;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPNodeFactory;
 
 /**
- * ILanguage implementation for the C99 parser.
+ * ILanguage implementation for the GPP parser.
  * 
  * @author Mike Kucera
  */
 @SuppressWarnings("restriction")
-public class C99Language extends BaseExtensibleLanguage {
+public class GPPLanguage extends BaseExtensibleLanguage {
 
-	public static final String ID = "org.eclipse.cdt.core.lrparser.c99"; //$NON-NLS-1$ 
+	public static final String ID = "org.eclipse.cdt.core.lrparser.gpp"; //$NON-NLS-1$ 
 	
-	private static C99Language DEFAULT = new C99Language();
+	private static GPPLanguage DEFAULT = new GPPLanguage();
 	
-	
-	public static C99Language getDefault() {
+	public static GPPLanguage getDefault() {
 		return DEFAULT;
 	}
 	
 	@Override
 	protected IParser getParser() {
-		return new C99Parser();
+		return new GPPParser();
 	}
 
 	@Override
 	protected IDOMTokenMap getTokenMap() {
-		return DOMToC99TokenMap.DEFAULT_MAP;
+		return DOMToGPPTokenMap.DEFAULT_MAP;
 	}
 
 	@Override
 	protected IScannerExtensionConfiguration getScannerExtensionConfiguration() {
-		return ScannerExtensionConfiguration.createC();
+		return GCCScannerExtensionConfiguration.getInstance();
 	}
 	
 	public IContributedModelBuilder createModelBuilder(@SuppressWarnings("unused") ITranslationUnit tu) {
@@ -64,17 +63,17 @@ public class C99Language extends BaseExtensibleLanguage {
 	}
 
 	public int getLinkageID() {
-		return ILinkage.C_LINKAGE_ID;
+		return ILinkage.CPP_LINKAGE_ID;
 	}
 
 	@Override
 	protected ParserLanguage getParserLanguage() {
-		return ParserLanguage.C;
+		return ParserLanguage.CPP;
 	}
 
 	@Override
 	protected IASTTranslationUnit createASTTranslationUnit() {
-		return CNodeFactory.getDefault().newTranslationUnit();
+		return CPPNodeFactory.getDefault().newTranslationUnit();
 	}
 
 }

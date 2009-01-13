@@ -8,19 +8,19 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.core.dom.lrparser.c99;
+package org.eclipse.cdt.core.dom.lrparser.gcc;
 
 import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.lrparser.BaseExtensibleLanguage;
 import org.eclipse.cdt.core.dom.lrparser.IDOMTokenMap;
 import org.eclipse.cdt.core.dom.lrparser.IParser;
-import org.eclipse.cdt.core.dom.lrparser.ScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.IScannerExtensionConfiguration;
+import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
 import org.eclipse.cdt.core.model.IContributedModelBuilder;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.parser.ParserLanguage;
-import org.eclipse.cdt.internal.core.dom.lrparser.c99.C99Parser;
+import org.eclipse.cdt.internal.core.dom.lrparser.gcc.GCCParser;
 import org.eclipse.cdt.internal.core.dom.parser.c.CNodeFactory;
 
 /**
@@ -29,30 +29,29 @@ import org.eclipse.cdt.internal.core.dom.parser.c.CNodeFactory;
  * @author Mike Kucera
  */
 @SuppressWarnings("restriction")
-public class C99Language extends BaseExtensibleLanguage {
+public class GCCLanguage extends BaseExtensibleLanguage {
 
-	public static final String ID = "org.eclipse.cdt.core.lrparser.c99"; //$NON-NLS-1$ 
+	public static final String ID = "org.eclipse.cdt.core.lrparser.gcc"; //$NON-NLS-1$ 
 	
-	private static C99Language DEFAULT = new C99Language();
+	private static GCCLanguage DEFAULT = new GCCLanguage();
 	
-	
-	public static C99Language getDefault() {
+	public static GCCLanguage getDefault() {
 		return DEFAULT;
 	}
 	
 	@Override
 	protected IParser getParser() {
-		return new C99Parser();
+		return new GCCParser();
 	}
 
 	@Override
 	protected IDOMTokenMap getTokenMap() {
-		return DOMToC99TokenMap.DEFAULT_MAP;
+		return DOMToGCCTokenMap.DEFAULT_MAP;
 	}
 
 	@Override
 	protected IScannerExtensionConfiguration getScannerExtensionConfiguration() {
-		return ScannerExtensionConfiguration.createC();
+		return GCCScannerExtensionConfiguration.getInstance();
 	}
 	
 	public IContributedModelBuilder createModelBuilder(@SuppressWarnings("unused") ITranslationUnit tu) {

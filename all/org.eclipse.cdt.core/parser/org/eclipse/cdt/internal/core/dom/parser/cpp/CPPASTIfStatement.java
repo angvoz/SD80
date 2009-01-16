@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -23,55 +23,67 @@ import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguityParent;
  * @author jcamelon
  */
 public class CPPASTIfStatement extends CPPASTNode implements ICPPASTIfStatement, IASTAmbiguityParent {
+	
     private IASTExpression condition;
     private IASTStatement thenClause;
     private IASTStatement elseClause;
     private IASTDeclaration condDecl;
     private IScope scope;
+    
+    
+    public CPPASTIfStatement() {
+	}
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTIfStatement#getCondition()
-     */
-    public IASTExpression getConditionExpression() {
+	public CPPASTIfStatement(IASTDeclaration condition, IASTStatement thenClause, IASTStatement elseClause) {
+		setConditionDeclaration(condition);
+		setThenClause(thenClause);
+		setElseClause(elseClause);
+	}
+    
+    public CPPASTIfStatement(IASTExpression condition, IASTStatement thenClause, IASTStatement elseClause) {
+		setConditionExpression(condition);
+		setThenClause(thenClause);
+		setElseClause(elseClause);
+	}
+
+	public IASTExpression getConditionExpression() {
         return condition;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTIfStatement#setCondition(org.eclipse.cdt.core.dom.ast.IASTExpression)
-     */
     public void setConditionExpression(IASTExpression condition) {
         this.condition = condition;
+        if (condition != null) {
+			condition.setParent(this);
+			condition.setPropertyInParent(CONDITION);
+		}
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTIfStatement#getThenClause()
-     */
     public IASTStatement getThenClause() {
         return thenClause;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTIfStatement#setThenClause(org.eclipse.cdt.core.dom.ast.IASTStatement)
-     */
     public void setThenClause(IASTStatement thenClause) {
         this.thenClause = thenClause;
+        if (thenClause != null) {
+			thenClause.setParent(this);
+			thenClause.setPropertyInParent(THEN);
+		}
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTIfStatement#getElseClause()
-     */
     public IASTStatement getElseClause() {
         return elseClause;
     }
 
-    /* (non-Javadoc)
-     * @see org.eclipse.cdt.core.dom.ast.IASTIfStatement#setElseClause(org.eclipse.cdt.core.dom.ast.IASTStatement)
-     */
     public void setElseClause(IASTStatement elseClause) {
         this.elseClause = elseClause;
+        if (elseClause != null) {
+			elseClause.setParent(this);
+			elseClause.setPropertyInParent(ELSE);
+		} 
     }
 
-    public boolean accept( ASTVisitor action ){
+    @Override
+	public boolean accept( ASTVisitor action ){
         if( action.shouldVisitStatements ){
 		    switch( action.visit( this ) ){
 	            case ASTVisitor.PROCESS_ABORT : return false;
@@ -96,24 +108,23 @@ public class CPPASTIfStatement extends CPPASTNode implements ICPPASTIfStatement,
     }
     
     public void replace(IASTNode child, IASTNode other) {
-        if( thenClause == child )
-        {
-            other.setParent( child.getParent() );
-            other.setPropertyInParent( child.getPropertyInParent() );
-            thenClause = (IASTStatement) other;
-        }
-        else if( elseClause == child )
-        {
-            other.setParent( child.getParent() );
-            other.setPropertyInParent( child.getPropertyInParent() );
-            elseClause = (IASTStatement) other;            
-        }
-        if( condDecl == child )
-        {
-            other.setParent( child.getParent() );
-            other.setPropertyInParent( child.getPropertyInParent() );
-            condDecl = (IASTDeclaration) other;
-        }
+    	if (thenClause == child) {
+    		other.setParent(child.getParent());
+    		other.setPropertyInParent(child.getPropertyInParent());
+    		thenClause = (IASTStatement) other;
+    	} else if (elseClause == child) {
+    		other.setParent(child.getParent());
+    		other.setPropertyInParent(child.getPropertyInParent());
+    		elseClause = (IASTStatement) other;
+    	} else if (condDecl == child) {
+    		other.setParent(child.getParent());
+    		other.setPropertyInParent(child.getPropertyInParent());
+    		condDecl = (IASTDeclaration) other;
+    	} else if (condition == child) {
+    		other.setParent(child.getParent());
+    		other.setPropertyInParent(child.getPropertyInParent());
+    		condition = (IASTExpression) other;
+    	}
     }
 
     public IASTDeclaration getConditionDeclaration() {
@@ -122,6 +133,10 @@ public class CPPASTIfStatement extends CPPASTNode implements ICPPASTIfStatement,
 
     public void setConditionDeclaration(IASTDeclaration d) {
         condDecl = d;
+        if (d != null) {
+			d.setParent(this);
+			d.setPropertyInParent(CONDITION);
+		}
     }
     
 	public IScope getScope() {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Intel Corporation and others.
+ * Copyright (c) 2007, 2008 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  * Intel Corporation - Initial API and implementation
+ * James Blackburn (Broadcom Corp.)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.settings.model;
 
@@ -17,6 +18,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.cdtvariables.ICdtVariablesContributor;
+import org.eclipse.cdt.core.settings.model.CConfigurationStatus;
 import org.eclipse.cdt.core.settings.model.ICBuildSetting;
 import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -77,7 +79,7 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 	}
 
 	/**
-	 * creating a new configuration
+	 * Creating a new configuration as a copy of an existing base CConfigurationDescription
 	 * 
 	 * @param id
 	 * @param name
@@ -89,9 +91,16 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 		super(null, projectDes, null);
 
 		setConfiguration(this);
-		fCfgSpecSettings = new CConfigurationSpecSettings(this, ((CConfigurationDescription)base).getSpecSettings());
+		internalSetId(id);
+
+		CConfigurationSpecSettings baseSettings = ((CConfigurationDescription)base).getSpecSettings();
+		InternalXmlStorageElement baseRootEl = (InternalXmlStorageElement)baseSettings.getRootStorageElement();
+		ICStorageElement newRootEl = CProjectDescriptionManager.getInstance().createStorage(projectDes.getStorageBase(), id, baseRootEl);
+
+		fCfgSpecSettings = new CConfigurationSpecSettings(this, baseSettings, newRootEl);
 		fCfgSpecSettings.setId(id);
 		fCfgSpecSettings.setName(name);
+		fCfgSpecSettings.serializeId();
 		CConfigurationData baseData = ((IInternalCCfgInfo)base).getConfigurationData(false);
 		if(baseData instanceof CConfigurationDescriptionCache){
 			baseData = ((CConfigurationDescriptionCache)baseData).getConfigurationData();
@@ -115,7 +124,7 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 		CProjectDescriptionManager mngr = CProjectDescriptionManager.getInstance();
 		CConfigurationData data = mngr.createDefaultConfigData(projectDes.getProject(), id, name, PathEntryConfigurationDataProvider.getDataFactory());
 		setData(data);
-		fCfgSpecSettings.reconsileExtensionSettings(false);
+		fCfgSpecSettings.reconcileExtensionSettings(false);
 	}
 
 	/*
@@ -147,6 +156,7 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 //		return fCfgCache;
 //	}
 	
+	@Override
 	public String getId() {
 		String id = super.getId();
 		if(id == null){
@@ -159,6 +169,7 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 		return id;
 	}
 
+	@Override
 	public String getName() {
 		String name = super.getName();
 		if(name == null){
@@ -236,12 +247,13 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 		return null;
 	}
 
+	@Override
 	protected IProxyProvider createChildProxyProvider() {
 		ICDataScope scope = new ICDataScope(){
 
 			public CDataObject[] getChildren() {
 				CConfigurationData data = getConfigurationData(false);
-				List list = new ArrayList();
+				List<CDataObject> list = new ArrayList<CDataObject>();
 				CResourceData rcDatas[] = data.getResourceDatas();
 				for(int i = 0; i < rcDatas.length; i++){
 					list.add(rcDatas[i]);
@@ -251,7 +263,7 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 				CBuildData buildData = data.getBuildData();
 				list.add(buildData);
 				// TODO add other data types
-				return (CDataObject[])list.toArray(new CDataObject[list.size()]);
+				return list.toArray(new CDataObject[list.size()]);
 			}
 
 			public boolean isStatic() {
@@ -361,9 +373,13 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 	}
 
 	public CConfigurationData getConfigurationData() {
-		return getConfigurationData(true);
+		CConfigurationData data = getConfigurationData(true);
+		if(data instanceof CConfigurationDescriptionCache){
+			data = ((CConfigurationDescriptionCache)data).getConfigurationData();
+		}
+		return data;
 	}
-
+	
 	public void setConfigurationData(String buildSystemId, CConfigurationData data) throws WriteAccessException {
 		String oldId = getId();
 		setData(data);
@@ -372,8 +388,8 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 		}
 		try {
 			CConfigurationSpecSettings settings = getSpecSettings();
-			settings.setId(getId());
-			settings.setName(getName());
+			settings.setId(data.getId());
+			settings.setName(data.getName());
 			settings.setBuildSystemId(buildSystemId);
 		} catch (CoreException e) {
 		}
@@ -476,124 +492,15 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 	public void setSourceEntries(ICSourceEntry[] entries) throws CoreException {
 		CConfigurationData data = getConfigurationData(true);
 		IProject project = fIsPreference ? null : getProjectDescription().getProject();
-		if(entries != null && entries.length == 0)
-			entries = null;
-		entries = CDataUtil.adjustEntries(entries, false, project);
-		data.setSourceEntries(entries);
+		if(entries != null){
+			entries = CDataUtil.adjustEntries(entries, false, project);
+		}
 		
-//		ICSourceEntry entry;
-//		IPath entryPath;
-//		IPath paths[];
-//		PathSettingsContainer cr = PathSettingsContainer.createRootContainer();
-//		cr.setValue(Boolean.valueOf(getRootFolderDescription().isExcluded()));
-//		Set srcPathSet = new HashSet();
-//		IProject project = fIsPreference ? null : getProjectDescription().getProject();
-//		IPath projPath = project != null ? project.getFullPath() : null;
-////		Map exclusionMap = new HashMap();
-//		
-////		HashSet pathSet = new HashSet();
-//		
-//		if(entries == null){
-//			IPath pasePath = projPath != null ? projPath : Path.EMPTY;
-//			entries = new ICSourceEntry[]{new CSourceEntry(pasePath, null, ICLanguageSettingEntry.RESOLVED | ICLanguageSettingEntry.VALUE_WORKSPACE_PATH)};
-//		}
-//
-//		for(int i = 0 ; i < entries.length; i++){
-//			entry = entries[i];
-//			entryPath = entry.getFullPath();
-//			if(projPath != null){
-//				if(projPath.isPrefixOf(entryPath)){
-//					entryPath = entryPath.removeFirstSegments(projPath.segmentCount());
-//				} else {
-//					continue;
-//				}
-//			} 
-////			else {
-////				if(entryPath.segmentCount() > 0)
-////					entryPath = entryPath.removeFirstSegments(1);
-////				else
-////					continue;
-////			}
-//			if(srcPathSet.add(entryPath)){
-//	//			exclusionMap.put(entryPath, Boolean.TRUE);
-//				PathSettingsContainer entryCr = cr.getChildContainer(entryPath, true, true);
-//				entryCr.setValue(Boolean.TRUE);
-//	
-//				
-//				paths = entry.getExclusionPatterns();
-//				
-//				
-//				for(int j = 0; j < paths.length; j++){
-//					IPath path = paths[j];
-//					PathSettingsContainer exclusion = entryCr.getChildContainer(path, true, true);
-//					if(exclusion.getValue() == null)
-//						exclusion.setValue(Boolean.FALSE);
-//	//				if(null == exclusionMap.get(path))
-//	//					exclusionMap.put(path, Boolean.FALSE);
-//				}
-//			}
-//		}
-//
-//		CConfigurationData data = getConfigurationData(true);
-//		data.setSourcePaths((IPath[])srcPathSet.toArray(new IPath[srcPathSet.size()]));
-//		ICResourceDescription rcDess[] = getResourceDescriptions();
-//		ICResourceDescription rcDes;
-//		Set pathSet = new HashSet();
-//		
-//		for(int i = 0; i < rcDess.length; i++){
-//			rcDes = rcDess[i];
-//			IPath path  = rcDes.getPath();
-//			pathSet.add(path);
-////			Boolean b = (Boolean)exclusionMap.remove(path);
-//			Boolean b = (Boolean)cr.getChildContainer(path, false, false).getValue();
-//			assert (b != null);
-//			if(Boolean.TRUE == b) {
-//				if(rcDes.isExcluded())
-//					rcDes.setExcluded(false);
-//			} else {
-//				if(/*(rcDes.getType() == ICSettingBase.SETTING_FILE
-//						|| !((ICFolderDescription)rcDes).isRoot())
-//						   &&*/ !rcDes.isExcluded())
-//					rcDes.setExcluded(true);
-//			}
-//		}
-//		
-//		PathSettingsContainer crs[] = cr.getChildren(true);
-//		for(int i= 0; i < crs.length; i++){
-//			PathSettingsContainer c = crs[i];
-//			IPath path = c.getPath();
-//			if(!pathSet.remove(path)){
-//				Boolean b = (Boolean)c.getValue();
-//				assert (b != null);
-//				ICResourceDescription base = getResourceDescription(path, false);
-//				if(b == Boolean.TRUE){
-//					if(base.isExcluded()){
-//						ICResourceDescription newDes = createResourceDescription(path, base);
-//						if(newDes == null){
-//							ICResourceDescription fo = getResourceDescription(path, false);
-//							if(fo.getType() == ICSettingBase.SETTING_FILE){
-//								fo = getResourceDescription(path.removeLastSegments(1), false);
-//							}
-//							newDes = createFolderDescription(path, (ICFolderDescription)fo);
-//						}
-//						newDes.setExcluded(false);
-//					}
-//				} else {
-//					if(!base.isExcluded()){
-//						ICResourceDescription newDes = createResourceDescription(path, base);
-//						if(newDes == null){
-//							ICResourceDescription fo = getResourceDescription(path, false);
-//							if(fo.getType() == ICSettingBase.SETTING_FILE){
-//								fo = getResourceDescription(path.removeLastSegments(1), false);
-//							}
-//							newDes = createFolderDescription(path, (ICFolderDescription)fo);
-//						}
-//						newDes.setExcluded(true);
-//					}
-//				}
-//			}
-//		}
-//		
+		data.setSourceEntries(entries);
+
+		if(entries == null){
+			CExternalSettingsManager.getInstance().restoreSourceEntryDefaults(this);
+		}
 	}
 	
 //	private ICResourceDescription createResourceDescription(IPath path, ICResourceDescription base){
@@ -621,16 +528,16 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 //		return des;
 //	}
 
-	public Map getReferenceInfo() {
+	public Map<String, String> getReferenceInfo() {
 		try {
 			CConfigurationSpecSettings specs = getSpecSettings();
 			return specs.getReferenceInfo();
 		} catch (CoreException e) {
 		}
-		return new HashMap(0);
+		return new HashMap<String, String>(0);
 	}
 
-	public void setReferenceInfo(Map refs) {
+	public void setReferenceInfo(Map<String, String> refs) {
 		try {
 			CConfigurationSpecSettings specs = getSpecSettings();
 			specs.setReferenceInfo(refs);
@@ -731,6 +638,7 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 		return fIsPreference;
 	}
 	
+	@Override
 	protected boolean containsWritableData(){
 		if(super.containsWritableData())
 			return true;
@@ -841,5 +749,11 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 	public ICSourceEntry[] getResolvedSourceEntries() {
 		ICSourceEntry[] entries = getSourceEntries();
 		return CDataUtil.resolveEntries(entries, this);
+	}
+
+	public CConfigurationStatus getConfigurationStatus() {
+		CConfigurationData data = getConfigurationData(false);
+		CConfigurationStatus status = data.getStatus();
+		return status != null ? status : CConfigurationStatus.CFG_STATUS_OK;
 	}
 }

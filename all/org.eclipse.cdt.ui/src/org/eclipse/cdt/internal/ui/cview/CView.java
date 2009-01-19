@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2007 QNX Software Systems and others.
+ * Copyright (c) 2000, 2008 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -74,6 +74,8 @@ import org.eclipse.ui.part.ISetSelectionTarget;
 import org.eclipse.ui.part.IShowInSource;
 import org.eclipse.ui.part.IShowInTarget;
 import org.eclipse.ui.part.IShowInTargetList;
+import org.eclipse.ui.part.PluginDropAdapter;
+import org.eclipse.ui.part.PluginTransfer;
 import org.eclipse.ui.part.ResourceTransfer;
 import org.eclipse.ui.part.ShowInContext;
 import org.eclipse.ui.part.ViewPart;
@@ -119,7 +121,7 @@ import org.eclipse.cdt.internal.ui.viewsupport.DecoratingCLabelProvider;
 /**
  * 
  * CView
- *  
+ * 
  */
 public class CView extends ViewPart implements ISetSelectionTarget, IPropertyChangeListener, IShowInTarget, IShowInTargetList {
 
@@ -198,6 +200,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 	/**
 	 * @see IWorkbenchPart#setFocus()
 	 */
+	@Override
 	public void setFocus() {
 		viewer.getTree().setFocus();
 		//composite.setFocus ();
@@ -255,7 +258,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 
 	/**
 	 * Handles a key release in the viewer. Does nothing by default.
-	 *  
+	 * 
 	 */
 	protected void handleKeyReleased(KeyEvent event) {
 		if (getActionGroup() != null) {
@@ -309,6 +312,8 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 	/**
 	 * Answer the property defined by key.
 	 */
+	@SuppressWarnings("unchecked")
+	@Override
 	public Object getAdapter(Class key) {
 		if (key.equals(ISelectionProvider.class)) {
 			return viewer;
@@ -323,6 +328,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 	/*
 	 * (non-Javadoc) Method declared on IViewPart.
 	 */
+	@Override
 	public void init(IViewSite site, IMemento memento) throws PartInitException {
 		super.init(site, memento);
 		this.memento = memento;
@@ -376,7 +382,8 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 		Transfer[] transfers= new Transfer[] {
 				LocalSelectionTransfer.getInstance(),
 				ResourceTransfer.getInstance(),
-				FileTransfer.getInstance()
+				FileTransfer.getInstance(),
+				PluginTransfer.getInstance()
 		};
 		TransferDragSourceListener[] dragListeners= new TransferDragSourceListener[] {
 				new SelectionTransferDragAdapter(viewer),
@@ -391,11 +398,14 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 		Transfer[] transfers= new Transfer[] {
 			LocalSelectionTransfer.getInstance(),
 			ResourceTransfer.getInstance(),
-			FileTransfer.getInstance()};
+			FileTransfer.getInstance(),
+			PluginTransfer.getInstance()};
 		TransferDropTargetListener[] dropListeners= new TransferDropTargetListener[] {
 			new SelectionTransferDropAdapter(viewer),
 			new ResourceTransferDropAdapter(viewer),
-			new FileTransferDropAdapter(viewer)
+			new FileTransferDropAdapter(viewer),
+			new PluginTransferDropAdapter(viewer),
+			
 		};
 		viewer.addDropSupport(ops, transfers, new DelegatingDropAdapter(dropListeners));
 	}
@@ -496,16 +506,19 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 
 		viewer.getControl().addKeyListener(new KeyAdapter() {
 
+			@Override
 			public void keyPressed(KeyEvent e) {
 				handleKeyPressed(e);
 			}
 
+			@Override
 			public void keyReleased(KeyEvent e) {
 				handleKeyReleased(e);
 			}
 		});
 	}
 
+	@Override
 	public void createPartControl(Composite parent) {
 
 		viewer = createViewer(parent);
@@ -577,6 +590,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 	/*
 	 * (non-Javadoc) Method declared on IWorkbenchPart.
 	 */
+	@Override
 	public void dispose() {
 		if (fContextActivation != null) {
 			IContextService ctxService = (IContextService)getSite().getService(IContextService.class);
@@ -920,7 +934,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 
 		IMemento childMem = memento.getChild(TAG_EXPANDED);
 		if (childMem != null) {
-			ArrayList elements = new ArrayList();
+			ArrayList<ICElement> elements = new ArrayList<ICElement>();
 			IMemento[] elementMem = childMem.getChildren(TAG_ELEMENT);
 			for (int i = 0; i < elementMem.length; i++) {
 				String p = elementMem[i].getString(TAG_PATH);
@@ -936,7 +950,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 		}
 		childMem = memento.getChild(TAG_SELECTION);
 		if (childMem != null) {
-			ArrayList list = new ArrayList();
+			ArrayList<ICElement> list = new ArrayList<ICElement>();
 			IMemento[] elementMem = childMem.getChildren(TAG_ELEMENT);
 			for (int i = 0; i < elementMem.length; i++) {
 				String p = elementMem[i].getString(TAG_PATH);
@@ -977,6 +991,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 		}
 	}
 
+	@Override
 	public void saveState(IMemento memento) {
 		if (viewer == null) {
 			if (this.memento != null) { //Keep the old state;
@@ -998,7 +1013,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 					IMemento elementMem = expandedMem.createChild(TAG_ELEMENT);
 					ICElement e = (ICElement) o;
 					IResource res = e.getResource();
-					if (res != null) {
+					if (res != null && res.getLocation() != null) {
 						elementMem.putString(TAG_PATH, res.getLocation().toOSString());
 					}
 				}
@@ -1013,7 +1028,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 				if (elements[i] instanceof ICElement) {
 					ICElement e = (ICElement) elements[i];
 					IResource r = e.getResource();
-					if (r != null) {
+					if (r != null && r.getLocation() != null) {
 						IMemento elementMem = selectionMem.createChild(TAG_ELEMENT);
 						elementMem.putString(TAG_PATH, r.getLocation().toString());
 					}
@@ -1047,7 +1062,7 @@ public class CView extends ViewPart implements ISetSelectionTarget, IPropertyCha
 	 */
 	public boolean show(ShowInContext context) {
 		ISelection selection= context.getSelection();
-		if (selection != null) {
+		if (selection != null && !selection.isEmpty() && selection instanceof IStructuredSelection) {
 			selectReveal(selection);
 			return true;
 		}

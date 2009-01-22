@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,6 +16,7 @@ import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTBinaryExpression;
 import org.eclipse.cdt.internal.core.dom.parser.IASTAmbiguityParent;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
 
 /**
  * @author jcamelon
@@ -26,8 +27,18 @@ public class CPPASTBinaryExpression extends CPPASTNode implements
     private int op;
     private IASTExpression operand1;
     private IASTExpression operand2;
+    private IType type;
 
-    public int getOperator() {
+    public CPPASTBinaryExpression() {
+	}
+
+	public CPPASTBinaryExpression(int op, IASTExpression operand1, IASTExpression operand2) {
+		this.op = op;
+		setOperand1(operand1);
+		setOperand2(operand2);
+	}
+
+	public int getOperator() {
         return op;
     }
 
@@ -45,13 +56,22 @@ public class CPPASTBinaryExpression extends CPPASTNode implements
 
     public void setOperand1(IASTExpression expression) {
         operand1 = expression;   
+        if (expression != null) {
+			expression.setParent(this);
+			expression.setPropertyInParent(OPERAND_ONE);
+		}
     }
 
     public void setOperand2(IASTExpression expression) {
         operand2 = expression;
+        if (expression != null) {
+			expression.setParent(this);
+			expression.setPropertyInParent(OPERAND_TWO);
+		}
     }
 
-    public boolean accept( ASTVisitor action ){
+    @Override
+	public boolean accept( ASTVisitor action ){
         if( action.shouldVisitExpressions ){
 		    switch( action.visit( this ) ){
 	            case ASTVisitor.PROCESS_ABORT : return false;
@@ -89,7 +109,9 @@ public class CPPASTBinaryExpression extends CPPASTNode implements
     }
 
     public IType getExpressionType() {
-    	return CPPVisitor.getExpressionType(this);
+    	if (type == null) {
+    		type= CPPVisitor.getExpressionType(this);
+    	}
+    	return type;
     }
-    
 }

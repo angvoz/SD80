@@ -1,16 +1,21 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- Schema file written by PDE -->
-<schema targetNamespace="org.eclipse.cdt.managedbuilder.core">
+<schema targetNamespace="org.eclipse.cdt.managedbuilder.core" xmlns="http://www.w3.org/2001/XMLSchema">
 <annotation>
-      <appInfo>
+      <appinfo>
          <meta.schema plugin="org.eclipse.cdt.managedbuilder.core" id="buildDefinitions" name="Managed Build Definitions"/>
-      </appInfo>
+      </appinfo>
       <documentation>
          The managed build object model describes project-types, configurations, tool-chains, etc. for the managed build system.
       </documentation>
    </annotation>
 
    <element name="extension">
+      <annotation>
+         <appinfo>
+            <meta.element />
+         </appinfo>
+      </annotation>
       <complexType>
          <sequence>
             <element ref="projectType" minOccurs="0" maxOccurs="unbounded"/>
@@ -42,9 +47,9 @@
                <documentation>
                   
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
       </complexType>
@@ -72,9 +77,9 @@
                <documentation>
                   A human-readable project type name, such as &apos;Executable&apos;. This will be the name the user sees displayed in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="superClass" type="string">
@@ -110,9 +115,9 @@
                <documentation>
                   Specifies the name of the class that implements IProjectEnvironmentVariableSupplier in order to provide project level environment variables.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.envvar.IProjectEnvironmentVariableSupplier"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="projectMacroSupplier" type="string">
@@ -120,9 +125,9 @@
                <documentation>
                   Specifies the name of the class that implements IProjectBuildMacroSupplier in order to provide project level build macros.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.macros.IProjectBuildMacroSupplier"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="configurationNameProvider" type="string">
@@ -130,9 +135,9 @@
                <documentation>
                   Contains the name of a class that implements an interface with a method for returning a default name for a configuration.  The configuration names in a user&apos;s project must be unique.  A projectType can contain configuration children with the same name.  In this case, a configurationNameProvider must be specified to make the names unique before they are displayed to the user in the New Project and New Configuration dialog boxes.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IConfigurationNameProvider"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="convertToId" type="string">
@@ -181,9 +186,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   The name of the project that the user sees displayed in the UI.  This is the name that the user entered in the New Project wizard.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="projectType" type="string" use="required">
@@ -207,6 +212,8 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
             <element ref="toolChain" minOccurs="0" maxOccurs="1"/>
             <element ref="resourceConfiguration" minOccurs="0" maxOccurs="unbounded"/>
             <element ref="enablement" minOccurs="0" maxOccurs="unbounded"/>
+            <element ref="folderInfo" minOccurs="0" maxOccurs="unbounded"/>
+            <element ref="fileInfo" minOccurs="0" maxOccurs="unbounded"/>
          </sequence>
          <attribute name="id" type="string" use="required">
             <annotation>
@@ -220,9 +227,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   A descriptive name for the configuration to be used in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="parent" type="string">
@@ -279,9 +286,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   Specifies the string to be displayed when the pre-build command step is run.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="postannouncebuildStep" type="string">
@@ -289,9 +296,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   Specifies the string to be displayed when the post-build command step is run.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="description" type="string">
@@ -299,9 +306,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   Specifies the description of the configuration that will be displayed to the user while creating a project and managing configurations.  The description is only displayed in the UI - it is not considered to be part of the configuration name.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="buildProperties" type="string">
@@ -336,11 +343,12 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
       </annotation>
       <complexType>
          <sequence>
-            <element ref="tool" minOccurs="1" maxOccurs="unbounded"/>
+            <element ref="tool" minOccurs="0" maxOccurs="unbounded"/>
             <element ref="targetPlatform" minOccurs="0" maxOccurs="1"/>
             <element ref="builder" minOccurs="0" maxOccurs="1"/>
             <element ref="optionCategory" minOccurs="0" maxOccurs="unbounded"/>
             <element ref="option" minOccurs="0" maxOccurs="unbounded"/>
+            <element ref="supportedProperties" minOccurs="0" maxOccurs="1"/>
          </sequence>
          <attribute name="id" type="string" use="required">
             <annotation>
@@ -354,9 +362,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   A descriptive name for the tool-chain to be used in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="superClass" type="string">
@@ -427,9 +435,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   Specifies the name of the class that implements IManagedIsToolChainSupported.  This provides a method to be called to determine if support for the tool-chain is currently installed on the system.  MBS uses this information in order to filter the choices presented to the CDT user and to inform the user when support needed by their project is not installed. If the isToolChainSupported callback is not provided by the tool-chain definition, the tool-chain is treated as supported.  If all configurations defined for the given project type are not supported the project type is treated as unsupported.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IManagedIsToolChainSupported"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="configurationEnvironmentSupplier" type="string">
@@ -437,9 +445,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   Specifies the name of the class that implements IConfigurationEnvironmentVariableSupplier in order to provide configuration level environment variables.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.envvar.IConfigurationEnvironmentVariableSupplier"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="configurationMacroSupplier" type="string">
@@ -447,9 +455,9 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
                <documentation>
                   Specifies the name of the class that implements IConfigurationBuildMacroSupplier in order to provide configuration level build macros.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.macros.IConfigurationBuildMacroSupplier"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="versionsSupported" type="string">
@@ -473,15 +481,29 @@ Specifying this attribute is fully equivalent to specifying the &quot;org.eclips
 
 The pathConverter of a toolchain applies for all tools of the toolchain except if a tool defines it&apos;s own pathConverter. In this case the pathConverter supplied by the toolchain is ignored.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IPathConverter"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="supportsManagedBuild" type="boolean">
             <annotation>
                <documentation>
                   Specifies whether or not the tool-chain supports managed build. Default value is true.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="isSystem" type="boolean">
+            <annotation>
+               <documentation>
+                  the system elements are used by the system for specific needs and are not displayed in UI
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="resourceTypeBasedDiscovery" type="boolean">
+            <annotation>
+               <documentation>
+                  Defines if toolChain supports resource type discovery.
                </documentation>
             </annotation>
          </attribute>
@@ -576,9 +598,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Human-readable name for the tool to be used in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="superClass" type="string">
@@ -607,9 +629,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Deprecated - use the InputType element.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute deprecated="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="headerExtensions" type="string">
@@ -617,9 +639,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Deprecated - use the InputType element.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute deprecated="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="outputs" type="string">
@@ -627,9 +649,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Deprecated - use the OutputType element.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute deprecated="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="outputFlag" type="string">
@@ -644,9 +666,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Deprecated - use the OutputType element.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute deprecated="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="natureFilter">
@@ -685,9 +707,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Specifies the name of the class that implements IManagedCommandLineGenerator in order to provide custom command line generation logic.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="dependencyCalculator" type="string">
@@ -695,9 +717,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Deprecated - use the InputType element.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.makegen.IManagedDependencyGenerator" deprecated="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="errorParsers" type="string">
@@ -726,9 +748,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Specifies a string that is written to the build output prior to each invocation of the tool.  The default value is “Invoking tool-name (tool-id)…”
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="icon" type="string">
@@ -736,9 +758,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Path to a 16x16 pixel big icon that is to be displayed instead of the default icon. The path is relative to the plug-in directory which defines .buildDefinitions.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="resource"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="versionsSupported" type="string">
@@ -760,15 +782,22 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Tools like Cygwin based Gnu tools can accept paths which are not valid for the OS platform. E.g. &quot;/usr/include&quot; is well difined for a Cygwin gcc compiler while it is not a meaningful path for a java.io.File. Therefore tools can specify a pathConverter which will be applied to include and library paths configured in the Managed Build System.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IPathConverter"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="supportsManagedBuild" type="boolean">
             <annotation>
                <documentation>
                   Specifies whether or not the tool supports managed build. Default value is true.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="isSystem" type="boolean">
+            <annotation>
+               <documentation>
+                  the system elements are used by the system for specific needs and are not displayed in UI
                </documentation>
             </annotation>
          </attribute>
@@ -799,9 +828,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   The name of the input type that is displayed to the user in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="superClass" type="string">
@@ -872,9 +901,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   Specifies the class that provides the source file dependency calculation for this input-type. You can replace the default calculator with a class that implements the &lt;code&gt;IManagedDependencyGenerator&lt;/code&gt; interface.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.makegen.IManagedDependencyGenerator"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="buildVariable" type="string">
@@ -895,7 +924,20 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
             <annotation>
                <documentation>
                   Represents the language id, i.e. the id of language defined via the org.eclipse.cdt.core.language extension point
+
+The value of this attribute is used only in case languageInfoCalculator is not specified
                </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="languageInfoCalculator" type="string">
+            <annotation>
+               <documentation>
+                  Specifies the name of the class that implements org.eclipse.cdt.managedbuilder.core.ILanguageInfoCalculator for dinamic providing the language id info.
+Overrides language id specified with the languageId attribute.
+               </documentation>
+               <appinfo>
+                  <meta.attribute kind="java" basedOn=":org.eclipse.cdt.managedbuilder.core.ILanguageInfoCalculator"/>
+               </appinfo>
             </annotation>
          </attribute>
       </complexType>
@@ -988,9 +1030,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   The name of the output type that is displayed to the user in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="superClass" type="string">
@@ -1068,9 +1110,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   The name of the class that implements the &lt;code&gt;IManagedOutputNameProvider&lt;/code&gt; interface.  If specified, the outputNames and namePattern are ignored.  When multipleOfType is true, this attribute, or the outputNames attribute, is required in order for MBS to know the names of the output files.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IManagedOutputNameProvider"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="buildVariable" type="string">
@@ -1102,9 +1144,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                <documentation>
                   A human-readable category name, such as &apos;Preprocessor Options&apos;. This will be the name the user sees displayed in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="owner" type="string">
@@ -1120,9 +1162,9 @@ The pathConverter of a toolchain applies for all tools of the toolchain except i
                   Path to a 16x16 pixel big icon that is to be displayed instead of the default icon.
 The path is relative to the plug-in directory which defines .buildDefinitions.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="resource"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
       </complexType>
@@ -1155,9 +1197,9 @@ Options can also be associated with a toolchain. However in such a case the opti
                <documentation>
                   A descriptive name for the option.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="superClass" type="string">
@@ -1304,9 +1346,9 @@ Additional special types exist to flag options of special relevance to the build
                <documentation>
                   This field is unused in 2.0
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="tip" type="string">
@@ -1314,9 +1356,9 @@ Additional special types exist to flag options of special relevance to the build
                <documentation>
                   Specifies a &quot;tip&quot; that can be displayed in hover help or on the property page.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="contextId" type="string">
@@ -1331,9 +1373,9 @@ Additional special types exist to flag options of special relevance to the build
                <documentation>
                   The id of a class that implements the IManagedOptionValueHandler interface.  This interface is used to dynamically manage the value of an option.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IManagedOptionValueHandler"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="valueHandlerExtraArgument" type="string">
@@ -1348,9 +1390,9 @@ Additional special types exist to flag options of special relevance to the build
                <documentation>
                   Optional class which is used to determine dynamically at runtime whether the option is visible, enabled, and used in command line generation.  This class must impelment the IOptionApplicability interface.  If no calculator is specified then the option is always visible, enabled, and used in command line generation.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IOptionApplicability"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="contextId" type="string">
@@ -1382,9 +1424,9 @@ Additional special types exist to flag options of special relevance to the build
                <documentation>
                   A descriptive name for the enumeration.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="isDefault" type="boolean">
@@ -1447,9 +1489,9 @@ Additional special types exist to flag options of special relevance to the build
                <documentation>
                   Human-readable name for the builder to be used in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="superClass" type="string">
@@ -1492,9 +1534,9 @@ Additional special types exist to flag options of special relevance to the build
                <documentation>
                   Allows you to supply a custom build file generator that conforms to the &lt;code&gt;IManagedBuilderMakefileGenerator&lt;/code&gt; interface.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.makegen.IManagedBuilderMakefileGenerator"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="errorParsers" type="string">
@@ -1539,9 +1581,9 @@ If this attribute is not specified, MBS will assume that there are no reserved m
 1. macro names that the IReservedMacroNamesSupplier specifies as reserved
 2. a macro name that is equal to one of the build variable names specified int the InputType elements of the tools used in the tool-chain
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.macros.IReservedMacroNameSupplier"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="macroInputFileNameValue" type="string">
@@ -1675,6 +1717,13 @@ If the builder supports specifying custom number of parallel jobs, the option de
                </documentation>
             </annotation>
          </attribute>
+         <attribute name="isSystem" type="boolean">
+            <annotation>
+               <documentation>
+                  the system elements are used by the system for specific needs and are not displayed in UI
+               </documentation>
+            </annotation>
+         </attribute>
       </complexType>
    </element>
 
@@ -1697,9 +1746,9 @@ If the builder supports specifying custom number of parallel jobs, the option de
                <documentation>
                   Human-readable name for the target platform to be used in the UI.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="superClass" type="string">
@@ -1759,9 +1808,9 @@ If the builder supports specifying custom number of parallel jobs, the option de
                <documentation>
                   The class that implements the &lt;code&gt;IManagedConfigElementProvider&lt;/code&gt; interface. The logic of determining the elements is left to the implementer, but they must be correctly formed or the build model will have trouble loading.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IManagedConfigElementProvider"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="name" type="string" use="required">
@@ -1769,9 +1818,9 @@ If the builder supports specifying custom number of parallel jobs, the option de
                <documentation>
                   A meaningful name for the type of element being provided.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute translatable="true"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
       </complexType>
@@ -1789,9 +1838,9 @@ If the builder supports specifying custom number of parallel jobs, the option de
                <documentation>
                   The class that implements the &lt;code&gt;IManagedBuildDefinitionsStartup&lt;/code&gt; interface. This class may not actually do anything, but additional initialization can be done here is desired.
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IManagedBuildDefinitionsStartup"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
          <attribute name="name" type="string" use="required">
@@ -1871,9 +1920,9 @@ If the &quot;buildPathResolver&quot; attribute is specified, the &quot;pathDelim
                <documentation>
                   Should be set to the IBuildPathResolver interface that the tool-integrator can supply in order to provide his/her own logic of resolving the variable values to the build paths
                </documentation>
-               <appInfo>
+               <appinfo>
                   <meta.attribute kind="java" basedOn="org.eclipse.cdt.managedbuilder.core.IBuildPathResolver"/>
-               </appInfo>
+               </appinfo>
             </annotation>
          </attribute>
       </complexType>
@@ -1895,6 +1944,7 @@ If the &quot;buildPathResolver&quot; attribute is specified, the &quot;pathDelim
             <element ref="false" minOccurs="0" maxOccurs="unbounded"/>
             <element ref="checkHolder" minOccurs="0" maxOccurs="unbounded"/>
             <element ref="checkBuildProperty" minOccurs="0" maxOccurs="unbounded"/>
+            <element ref="hasNature" minOccurs="0" maxOccurs="unbounded"/>
          </choice>
          <attribute name="type" type="string" use="default" value="ALL">
             <annotation>
@@ -2200,46 +2250,150 @@ The way the value is specified and treated depends on the value of the isRegex a
       </complexType>
    </element>
 
+   <element name="folderInfo">
+      <annotation>
+         <documentation>
+            Represents per-folder settings.
+         </documentation>
+      </annotation>
+      <complexType>
+         <sequence>
+            <element ref="toolChain"/>
+         </sequence>
+         <attribute name="resourcePath" type="string" use="required">
+            <annotation>
+               <documentation>
+                  Project-relative resource path
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="exclude" type="boolean">
+            <annotation>
+               <documentation>
+                  Specifies whether the resource is excluded from building in the parent configuration.  The default is false.  The resourceConfiguration element retains its tool children, if any exist, even when excluded from the build.
+               </documentation>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="fileInfo">
+      <annotation>
+         <documentation>
+            Represents per-file settings.
+This element has the same meaning as resourceConfiguration.
+It is added for consistency with the folderInfo element.
+The only difference between this element and the resourceConfiguration is that resourceConfiguration specifies the resource full path, while the fileInfo specifies project-relative resource path in the same way as the folderInfo does.
+         </documentation>
+      </annotation>
+      <complexType>
+         <attribute name="resourcePath" type="string">
+            <annotation>
+               <documentation>
+                  Project-relative resource path
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="exclude" type="boolean">
+            <annotation>
+               <documentation>
+                  Specifies whether the resource is excluded from building in the parent configuration.  The default is false.  The resourceConfiguration element retains its tool children, if any exist, even when excluded from the build.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="rcbsApplicability">
+            <annotation>
+               <documentation>
+                  Identifies how the user desires to apply a resource custom build step:
+     1.  Apply rcbs tool before any other tools defined for the resource.
+     2.  Apply rcbs tool after any other tools defined for the resource.
+     3.  Apply rcbs tool overriding any other tools defined for the resource.
+     4.  Disable (don&apos;t apply) the rcbs tool.
+               </documentation>
+            </annotation>
+            <simpleType>
+               <restriction base="string">
+                  <enumeration value="before">
+                  </enumeration>
+                  <enumeration value="after">
+                  </enumeration>
+                  <enumeration value="override">
+                  </enumeration>
+                  <enumeration value="disable">
+                  </enumeration>
+               </restriction>
+            </simpleType>
+         </attribute>
+         <attribute name="toolsToInvoke" type="string">
+            <annotation>
+               <documentation>
+                  Identifies which tools to invoke by a semicolon separated list of child tool ids.  Applies as follows:
+     1.  Defaults to all tools in the order found
+     2.  Use specified ordered list of children to invoke
+     3.  If empty string, treat as if no resource configuration existed, i.e., use project level tool.
+               </documentation>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="hasNature">
+      <annotation>
+         <documentation>
+            Checks whether the project containing the resource has a given nature
+         </documentation>
+      </annotation>
+      <complexType>
+         <attribute name="natureId" type="string">
+            <annotation>
+               <documentation>
+                  The id of the nature
+               </documentation>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
    <annotation>
-      <appInfo>
+      <appinfo>
          <meta.section type="since"/>
-      </appInfo>
+      </appinfo>
       <documentation>
          This extension point was added in CDT 2.1
       </documentation>
    </annotation>
 
    <annotation>
-      <appInfo>
+      <appinfo>
          <meta.section type="examples"/>
-      </appInfo>
+      </appinfo>
       <documentation>
          [Enter examples here.]
       </documentation>
    </annotation>
 
    <annotation>
-      <appInfo>
+      <appinfo>
          <meta.section type="apiInfo"/>
-      </appInfo>
+      </appinfo>
       <documentation>
          [Enter API information here.]
       </documentation>
    </annotation>
 
    <annotation>
-      <appInfo>
+      <appinfo>
          <meta.section type="implementation"/>
-      </appInfo>
+      </appinfo>
       <documentation>
          An implementation of this extension point is supplied in &lt;samp&gt;org.eclipse.cdt.ui&lt;/samp&gt;
       </documentation>
    </annotation>
 
    <annotation>
-      <appInfo>
+      <appinfo>
          <meta.section type="copyright"/>
-      </appInfo>
+      </appinfo>
       <documentation>
          Copyright (c) 2003, 2006 IBM Corporation and others.
 All rights reserved. This program and the accompanying materials are made available under the terms of the Eclipse Public License v1.0 which accompanies this distribution, and is available on the &lt;a href=&quot;http://www.eclipse.org/legal/epl-v10.html&quot;&gt; Eclipse&lt;/a&gt; website.

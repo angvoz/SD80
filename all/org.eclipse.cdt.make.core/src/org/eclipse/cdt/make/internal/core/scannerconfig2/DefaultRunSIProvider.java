@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 IBM Corporation and others.
+ * Copyright (c) 2004, 2008 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -105,15 +105,11 @@ public class DefaultRunSIProvider implements IExternalScannerInfoProvider {
             // Print the command for visual interaction.
             launcher.showCommand(true);
 
-            // add additional arguments
-            // subclass can change default behavior
-            String[] compileArguments = prepareArguments( 
-                    buildInfo.isUseDefaultProviderCommand(providerId));
-
-            String ca = coligate(compileArguments);
+            String[] comandLineOptions = getCommandLineOptions();
+            String ca = coligate(comandLineOptions);
 
             monitor.subTask(MakeMessages.getString("ExternalScannerInfoProvider.Invoking_Command")  //$NON-NLS-1$
-                    + fCompileCommand.toString() + ca);
+                    + getCommandToLaunch() + ca);
             cos = new StreamMonitor(new SubProgressMonitor(monitor, 70), cos, 100);
             
             ConsoleOutputSniffer sniffer = ScannerInfoConsoleParserFactory.getESIProviderOutputSniffer(
@@ -121,7 +117,7 @@ public class DefaultRunSIProvider implements IExternalScannerInfoProvider {
             OutputStream consoleOut = (sniffer == null ? cos : sniffer.getOutputStream());
             OutputStream consoleErr = (sniffer == null ? cos : sniffer.getErrorStream());
             TraceUtil.outputTrace("Default provider is executing command:", fCompileCommand.toString() + ca, ""); //$NON-NLS-1$ //$NON-NLS-2$
-            Process p = launcher.execute(fCompileCommand, compileArguments, setEnvironment(launcher, env), fWorkingDirectory);
+            Process p = launcher.execute(getCommandToLaunch(), comandLineOptions, setEnvironment(launcher, env), fWorkingDirectory);
             if (p != null) {
                 try {
                     // Close the input of the Process explicitely.
@@ -158,7 +154,16 @@ public class DefaultRunSIProvider implements IExternalScannerInfoProvider {
         return true;
     }
     
-
+    protected IPath getCommandToLaunch() {
+    	return fCompileCommand;
+    }
+    
+    protected String[] getCommandLineOptions() {
+        // add additional arguments
+        // subclass can change default behavior
+        return prepareArguments( 
+                buildInfo.isUseDefaultProviderCommand(providerId));
+    }
     
     /**
      * Initialization of protected fields. 
@@ -211,9 +216,13 @@ public class DefaultRunSIProvider implements IExternalScannerInfoProvider {
     protected String[] setEnvironment(CommandLauncher launcher, Properties initialEnv) {
         // Set the environmennt, some scripts may need the CWD var to be set.
         Properties props = initialEnv != null ? initialEnv : launcher.getEnvironment();
-        props.put("CWD", fWorkingDirectory.toOSString()); //$NON-NLS-1$
-        props.put("PWD", fWorkingDirectory.toOSString()); //$NON-NLS-1$
-        // On POSIX (Linux, UNIX) systems reset LANG variable to English with UTF-8 encoding
+        
+        if (fWorkingDirectory != null) {
+			props.put("CWD", fWorkingDirectory.toOSString()); //$NON-NLS-1$
+			props.put("PWD", fWorkingDirectory.toOSString()); //$NON-NLS-1$
+		}
+        // On POSIX (Linux, UNIX) systems reset LANG variable to English with
+		// UTF-8 encoding
         // since GNU compilers can handle only UTF-8 characters. English language is chosen
         // beacuse GNU compilers inconsistently handle different locales when generating
         // output of the 'gcc -v' command. Include paths with locale characters will be
@@ -222,14 +231,14 @@ public class DefaultRunSIProvider implements IExternalScannerInfoProvider {
             props.put(LANG_ENV_VAR, "en_US.UTF-8"); //$NON-NLS-1$
         }
         String[] env = null;
-        ArrayList envList = new ArrayList();
-        Enumeration names = props.propertyNames();
+        ArrayList<String> envList = new ArrayList<String>();
+        Enumeration<?> names = props.propertyNames();
         if (names != null) {
             while (names.hasMoreElements()) {
                 String key = (String) names.nextElement();
                 envList.add(key + "=" + props.getProperty(key)); //$NON-NLS-1$
             }
-            env = (String[]) envList.toArray(new String[envList.size()]);
+            env = envList.toArray(new String[envList.size()]);
         }
         return env;
     }

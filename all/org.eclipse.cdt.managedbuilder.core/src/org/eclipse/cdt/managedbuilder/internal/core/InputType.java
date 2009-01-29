@@ -811,6 +811,13 @@ public class InputType extends BuildObject implements IInputType {
 		setDirty(true);
 		return addlInput;
 	}
+	
+	IAdditionalInput createAdditionalInput(IAdditionalInput base) {
+		AdditionalInput newAdditionalInput = new AdditionalInput(this, (AdditionalInput)base);
+		getAdditionalInputList().add(newAdditionalInput);
+		setDirty(true);
+		return newAdditionalInput;
+	}
 
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.build.managed.IInputType#getAdditionalInputs()
@@ -1486,7 +1493,11 @@ public class InputType extends BuildObject implements IInputType {
 	 * @see org.eclipse.cdt.core.build.managed.IInputType#isSourceExtension()
 	 */
 	public boolean isSourceExtension(ITool tool, String ext) {
-		String[] exts = getSourceExtensions(tool);
+		return isSourceExtension(tool, ext, ((Tool)tool).getProject());
+	}
+
+	public boolean isSourceExtension(ITool tool, String ext, IProject project) {
+		String[] exts = getSourceExtensions(tool, project);
 		for (int i=0; i<exts.length; i++) {
 			if (ext.equals(exts[i])) return true;
 		}
@@ -1557,7 +1568,7 @@ public class InputType extends BuildObject implements IInputType {
 				superClass = ManagedBuildManager.getExtensionInputType(superClassId);
 				if (superClass == null) {
 					// Report error
-					ManagedBuildManager.OutputResolveError(
+					ManagedBuildManager.outputResolveError(
 							"superClass",	//$NON-NLS-1$
 							superClassId,
 							"inputType",	//$NON-NLS-1$
@@ -1804,8 +1815,15 @@ public class InputType extends BuildObject implements IInputType {
 
 	public String getDiscoveryProfileId(ITool tool) {
 		String id = getDiscoveryProfileIdAttribute();
-		if(id == null){
+		if (id == null){
 			id = ((Tool)tool).getDiscoveryProfileId();
+		}
+		// if there is more than one ('|'-separated), return the first one
+		// TODO: expand interface with String[] getDiscoveryProfileIds(ITool tool)
+		if (null != id) {
+			int nPos = id.indexOf('|');
+			if (nPos > 0)
+				id = id.substring(0, nPos);
 		}
 		return id;
 	}

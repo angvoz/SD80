@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2007 IBM Corporation and others.
+ * Copyright (c) 2003, 2009 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,23 +10,18 @@
  *     Markus Schorn (Wind River Systems)
  *     Gerhard Schaber (Wind River Systems)
  *******************************************************************************/
-/*
- * Created on Jun 24, 2003
- */
 package org.eclipse.cdt.core.model.util;
-
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.IPath;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.IBinary;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
+import org.eclipse.cdt.core.model.IEnumerator;
 import org.eclipse.cdt.core.model.IField;
 import org.eclipse.cdt.core.model.IFunctionDeclaration;
 import org.eclipse.cdt.core.model.IInheritance;
+import org.eclipse.cdt.core.model.IMacro;
 import org.eclipse.cdt.core.model.IMethodDeclaration;
 import org.eclipse.cdt.core.model.ISourceRoot;
 import org.eclipse.cdt.core.model.ITemplate;
@@ -35,6 +30,9 @@ import org.eclipse.cdt.core.model.ITypeDef;
 import org.eclipse.cdt.core.model.IVariableDeclaration;
 import org.eclipse.cdt.core.parser.ast.ASTAccessVisibility;
 import org.eclipse.cdt.internal.core.model.CoreModelMessages;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.IPath;
 
 /**
  * Creates labels for ICElement objects.
@@ -47,6 +45,13 @@ public class CElementBaseLabels {
 	 * e.g. <code>foo(int)</code>
 	 */
 	public final static int M_PARAMETER_TYPES= 1 << 0;
+
+	/**
+	 * Method definition names without qualifier.
+	 * e.g. <code>foo(int)</code>
+	 * @since 5.1
+	 */
+	public final static int M_SIMPLE_NAME= 1 << 1;
 
 	/**
 	 * Method names contain thrown exceptions.
@@ -83,6 +88,13 @@ public class CElementBaseLabels {
 	 * e.g. <code>ClassName<T></code>
 	 */
 	public final static int TEMPLATE_PARAMETERS= 1 << 7;
+
+	/**
+	 * Static field names without qualifier.
+	 * e.g. <code>fHello</code>
+	 * @since 5.1
+	 */
+	public final static int F_SIMPLE_NAME= 1 << 8;
 
 	/**
 	 * Field names contain the declared type (appended)
@@ -239,6 +251,9 @@ public class CElementBaseLabels {
 			buf.append(CONCAT_STRING);
 		}		
 		switch (type) {
+			case ICElement.C_MACRO:
+				getMacroLabel((IMacro) element, flags, buf);
+				break;
 			case ICElement.C_METHOD : 
 			case ICElement.C_METHOD_DECLARATION:
 			case ICElement.C_TEMPLATE_METHOD:
@@ -258,6 +273,9 @@ public class CElementBaseLabels {
 			case ICElement.C_VARIABLE_DECLARATION:
 				getVariableLabel( (IVariableDeclaration) element, flags, buf);
 				break;
+			case ICElement.C_ENUMERATOR:
+				getEnumeratorLabel((IEnumerator) element, flags, buf);
+				break;
 			case ICElement.C_CLASS:
 			case ICElement.C_STRUCT:
 			case ICElement.C_UNION:
@@ -268,6 +286,7 @@ public class CElementBaseLabels {
 			case ICElement.C_TEMPLATE_CLASS_DECLARATION:
 			case ICElement.C_TEMPLATE_STRUCT_DECLARATION:
 			case ICElement.C_TEMPLATE_UNION_DECLARATION:
+			case ICElement.C_NAMESPACE:
 				getTypeLabel( element, flags, buf );
 				break;
 			case ICElement.C_TYPEDEF:
@@ -304,6 +323,24 @@ public class CElementBaseLabels {
 	}
 	
 	/**
+	 * Appends the label for a macro definition to a StringBuffer.
+	 * @param macro a macro definition
+	 * @param flags {@link #MF_POST_FILE_QUALIFIED}, or 0.
+	 * @param buf the buffer to append the label to.
+	 * @since 5.0
+	 */
+	public static void getMacroLabel(IMacro macro, int flags, StringBuffer buf) {
+		buf.append(macro.getElementName());
+		if( getFlag(flags, MF_POST_FILE_QUALIFIED)) {
+			IPath path= macro.getPath();
+			if (path != null) {
+				buf.append( CONCAT_STRING );
+				buf.append(path.toString());
+			}
+		}
+	}
+
+	/**
 	 * Appends the label for a method declaration to a StringBuffer.
 	 * @param method a method declaration
 	 * @param flags any of the M_* flags, and MF_POST_FILE_QUALIFIED
@@ -326,7 +363,11 @@ public class CElementBaseLabels {
 			}
 		}
 		
-		buf.append( method.getElementName() );
+		if (getFlag(flags, M_SIMPLE_NAME)) {
+			buf.append(getSimpleName(method.getElementName()));
+		} else {
+			buf.append(method.getElementName());
+		}
 		
 		//template parameters
 		if (method instanceof ITemplate) {
@@ -339,12 +380,11 @@ public class CElementBaseLabels {
 
 			String[] types = method.getParameterTypes();
 			
-			for (int i= 0; i < types.length; i++) {
-				if (i > 0) {
-					buf.append( COMMA_STRING );
-				}
-				
-				if (types != null) {
+			if (types != null) {
+				for (int i= 0; i < types.length; i++) {
+					if (i > 0) {
+						buf.append( COMMA_STRING );
+					}
 					buf.append( types[i] );
 				}
 			}
@@ -391,6 +431,20 @@ public class CElementBaseLabels {
 		}
 	}
 
+	/**
+	 * Strip any qualifier from the given name.
+	 * 
+	 * @param elementName
+	 * @return a "simple" name
+	 */
+	private static String getSimpleName(String elementName) {
+		int idx = elementName.indexOf("::"); //$NON-NLS-1$
+		if (idx >= 0) {
+			return elementName.substring(idx+2);
+		}
+		return elementName;
+	}
+
 	private static void getTemplateParameters(ITemplate template, int flags, StringBuffer buf) {
 		if (getFlag(flags, TEMPLATE_PARAMETERS)) {
 			String[] types = template.getTemplateParameterTypes();
@@ -430,7 +484,11 @@ public class CElementBaseLabels {
 			}
 		}
 		
-		buf.append( field.getElementName() );
+		if (getFlag(flags, F_SIMPLE_NAME)) {
+			buf.append(getSimpleName(field.getElementName()));
+		} else {
+			buf.append(field.getElementName());
+		}
 				
 		if( getFlag( flags, F_APP_TYPE_SIGNATURE ) && field.exists()) {
 			buf.append( DECL_STRING );
@@ -505,6 +563,41 @@ public class CElementBaseLabels {
 	}
 
 	/**
+	 * Appends the label for an enumerator to a StringBuffer.
+	 * @param var an enumerator
+	 * @param flags any of the F_* flags, and MF_POST_FILE_QUALIFIED
+	 * @param buf the buffer to append the label
+	 */
+	public static void getEnumeratorLabel(IEnumerator var, int flags, StringBuffer buf ) {
+		//qualification
+		if( getFlag( flags, F_FULLY_QUALIFIED ) ){
+			ICElement parent = var.getParent();
+			if (parent != null && parent.exists() && parent.getElementType() == ICElement.C_NAMESPACE) {
+				getTypeLabel( parent, T_FULLY_QUALIFIED, buf );
+				buf.append( "::" ); //$NON-NLS-1$
+			}
+		}
+		
+		buf.append( var.getElementName() );
+						
+		// post qualification
+		if( getFlag(flags, F_POST_QUALIFIED)) {
+			ICElement parent = var.getParent();
+			if (parent != null && parent.exists() && parent.getElementType() == ICElement.C_NAMESPACE) {
+				buf.append( CONCAT_STRING );
+				getTypeLabel( var.getParent(), T_FULLY_QUALIFIED, buf );
+			}
+		}
+		if( getFlag(flags, MF_POST_FILE_QUALIFIED)) {
+			IPath path= var.getPath();
+			if (path != null) {
+				buf.append( CONCAT_STRING );
+				buf.append(path.toString());
+			}
+		}
+	}
+
+	/**
 	 * Appends the label for a function declaration to a StringBuffer.
 	 * @param func a function declaration
 	 * @param flags any of the M_* flags, and MF_POST_FILE_QUALIFIED
@@ -539,12 +632,11 @@ public class CElementBaseLabels {
 
 			String[] types = func.getParameterTypes();
 			
-			for (int i= 0; i < types.length; i++) {
-				if (i > 0) {
-					buf.append( COMMA_STRING );
-				}
-				
-				if (types != null) {
+			if (types != null) {
+				for (int i= 0; i < types.length; i++) {
+					if (i > 0) {
+						buf.append( COMMA_STRING );
+					}
 					buf.append( types[i] );
 				}
 			}
@@ -663,19 +755,18 @@ public class CElementBaseLabels {
 	private static void getFolderLabel(ICContainer container, int flags, StringBuffer buf) {
 		IResource resource= container.getResource();
 		boolean rootQualified= getFlag(flags, ROOT_QUALIFIED);
-		boolean referencedQualified= getFlag(flags, PROJECT_POST_QUALIFIED)
-			&& (container instanceof ISourceRoot && isReferenced((ISourceRoot)container))
-			&& resource != null;
 		if (rootQualified) {
 			buf.append(container.getPath().makeRelative().toString());
 		} else {
 			buf.append(container.getElementName());
-			if (referencedQualified) {
-				buf.append(CONCAT_STRING);
-				buf.append(resource.getProject().getName());
-			} else if (getFlag(flags, ROOT_POST_QUALIFIED)) {
-				buf.append(CONCAT_STRING);
-				buf.append(container.getParent().getElementName());
+			if (getFlag(flags, ROOT_QUALIFIED)) {
+				if (resource != null && container instanceof ISourceRoot && isReferenced((ISourceRoot)container)) {
+					buf.append(CONCAT_STRING);
+					buf.append(resource.getProject().getName());
+				} else {
+					buf.append(CONCAT_STRING);
+					buf.append(container.getParent().getElementName());
+				}
 			}
 		}
 	}
@@ -815,7 +906,6 @@ public class CElementBaseLabels {
 	/**
 	 * Returns the source root of <code>ICElement</code>. If the given
 	 * element is already a source root, the element itself is returned.
-	 * @see org.eclipse.cdt.internal.corext.util.CModelUtil
 	 */
 	public static ISourceRoot getSourceRoot(ICElement element) {
 		ICElement root = element;
@@ -835,7 +925,6 @@ public class CElementBaseLabels {
 	 * referenced. This means it is own by a different project but is referenced
 	 * by the root's parent. Returns <code>false</code> if the given root
 	 * doesn't have an underlying resource.
-	 * @see org.eclipse.cdt.internal.corext.util.CModelUtil
 	 */
 	public static boolean isReferenced(ISourceRoot root) {
 		IResource resource= root.getResource();

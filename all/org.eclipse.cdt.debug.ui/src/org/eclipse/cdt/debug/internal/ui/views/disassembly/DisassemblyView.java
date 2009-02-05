@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.internal.ui.views.disassembly;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+
 import org.eclipse.cdt.debug.core.CDebugCorePlugin;
 import org.eclipse.cdt.debug.core.ICDebugConstants;
 import org.eclipse.cdt.debug.core.model.ICStackFrame;
@@ -268,7 +269,7 @@ public class DisassemblyView extends AbstractDebugEventHandlerView
 	public DisassemblyView() {
 		super();
 		setViewContextMenuId( "#DisassemblyViewContext" ); //$NON-NLS-1$
-		setRulerContextMenuId( "#DisassemblyEditorRulerContext" ); //$NON-NLS-1$
+		setRulerContextMenuId( "#DisassemblyViewRulerContext" ); //$NON-NLS-1$
 		fAnnotationPreferences = new MarkerAnnotationPreferences();
 	}
 
@@ -437,7 +438,7 @@ public class DisassemblyView extends AbstractDebugEventHandlerView
 		resetViewerInput();
 	}
 
-	protected void setViewerInput( IEditorInput input ) {
+	public void setViewerInput( IEditorInput input ) {
 		SourceViewer viewer = getSourceViewer();
 		if ( viewer == null )
 			return;
@@ -865,7 +866,7 @@ public class DisassemblyView extends AbstractDebugEventHandlerView
 
 		// register the context menu such that other plugins may contribute to it
 		if ( getSite() != null ) {
-			getSite().registerContextMenu( getViewContextMenuId(), manager, getSourceViewer() );
+			getSite().registerContextMenu( id, manager, getSourceViewer() );
 		}
 	}
 
@@ -878,6 +879,10 @@ public class DisassemblyView extends AbstractDebugEventHandlerView
 		setRulerContextMenu( manager.createContextMenu( rulerControl ) );
 		rulerControl.setMenu( getRulerContextMenu() );
 		rulerControl.addMouseListener( getRulerMouseListener() );
+
+		if ( getSite() != null ) {
+            getSite().registerContextMenu( id, manager, getSourceViewer() );
+        }
 	}
 
 	private Menu getTextContextMenu() {

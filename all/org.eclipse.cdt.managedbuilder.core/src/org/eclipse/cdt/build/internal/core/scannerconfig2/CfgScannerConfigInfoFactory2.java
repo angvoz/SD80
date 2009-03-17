@@ -136,6 +136,9 @@ public class CfgScannerConfigInfoFactory2 {
 	
 					if(info == null){
 						String id = cfg.getDiscoveryProfileId();
+						if(id == null)
+							id = CfgScannerConfigUtil.getFirstProfileId(cfg.getFilteredTools());
+						
 						IScannerConfigBuilderInfo2 prefInfo = null;
 						if(!cfg.isPreference()){
 							IConfiguration prefCfg = ManagedBuildManager.getPreferenceConfiguration(false);
@@ -183,7 +186,7 @@ public class CfgScannerConfigInfoFactory2 {
 											if(superContext != null && superContext.getResourceInfo() != null){
 												info = (IScannerConfigBuilderInfo2)configMap.get(superContext);
 											}
-											String id = CfgScannerConfigUtil.getDefaultProfileId(context);
+											String id = CfgScannerConfigUtil.getDefaultProfileId(context, true);
 											InfoContext baseContext = context.toInfoContext();
 											if(info == null){
 												if(id != null){
@@ -205,12 +208,14 @@ public class CfgScannerConfigInfoFactory2 {
 									}
 								}
 							} else {
+								if(cfg.isPreference())
+									continue;
 								CfgInfoContext context = new CfgInfoContext(rcInfo, tool, null);
 								context = CfgScannerConfigUtil.adjustPerRcTypeContext(context);
 								if(context != null && context.getResourceInfo() != null){
 									IScannerConfigBuilderInfo2 info = (IScannerConfigBuilderInfo2)configMap.get(context);
 									if(info == null){
-										String id = CfgScannerConfigUtil.getDefaultProfileId(context);
+										String id = CfgScannerConfigUtil.getDefaultProfileId(context, true);
 										InfoContext baseContext = context.toInfoContext();
 										if(id != null){
 											info = container.createInfo(baseContext, id);
@@ -301,7 +306,7 @@ public class CfgScannerConfigInfoFactory2 {
 			if(!isPerRcTypeDiscovery())
 				return true;
 
-			return !CfgScannerConfigProfileManager.isPerFileProfile(profileId);
+			return CfgScannerConfigProfileManager.isPerFileProfile(profileId);
 		}
 	}
 

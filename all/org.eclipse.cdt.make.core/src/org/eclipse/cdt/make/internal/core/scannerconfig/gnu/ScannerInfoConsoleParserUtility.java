@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 IBM Corporation and others.
+ * Copyright (c) 2004, 2007 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -205,7 +205,7 @@ public class ScannerInfoConsoleParserUtility extends AbstractGCCBOPConsoleParser
 					if (fileName.startsWith("..")) {	//$NON-NLS-1$
 						// probably multiple choices for cwd, hopeless
 						final String error = MakeMessages.getString("ConsoleParser.Working_Directory_Error_Message"); //$NON-NLS-1$
-						TraceUtil.outputError(error, fileName); //$NON-NLS-1$
+						TraceUtil.outputError(error, fileName);
 						generateMarker(file, -1, error,	 IMarkerGenerator.SEVERITY_WARNING, fileName);				
 						break;
 					}

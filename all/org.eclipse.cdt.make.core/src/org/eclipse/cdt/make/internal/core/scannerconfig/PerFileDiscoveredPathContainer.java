@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2005 IBM Corporation and others.
+ * Copyright (c) 2004, 2007 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -59,7 +59,7 @@ public class PerFileDiscoveredPathContainer extends DiscoveredPathContainer
     				Map syms = filePathInfo.getSymbols(path);
     				for (Iterator iter = syms.entrySet().iterator(); iter.hasNext(); ) {
     					Entry entry = (Entry)iter.next();
-    					entries.add(CoreModel.newMacroEntry(path, (String)entry.getKey(), (String)entry.getValue())); //$NON-NLS-1$
+    					entries.add(CoreModel.newMacroEntry(path, (String)entry.getKey(), (String)entry.getValue()));
     				}
         		}
         		// compare the resource with include and macros files

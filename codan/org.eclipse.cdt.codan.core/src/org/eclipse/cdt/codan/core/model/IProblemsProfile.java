@@ -10,22 +10,14 @@
  *******************************************************************************/
 package org.eclipse.cdt.codan.core.model;
 
-public interface IProblemCategory extends IProblemElement {
-	String getName();
+/**
+ * @author Alena
+ * 
+ */
+public interface IProblemsProfile extends IProblemElement {
+	IProblemCategory getRoot();
 
-	String getId();
-
-	Object[] getChildren();
-
-	/**
-	 * @param id
-	 * @return
-	 */
 	IProblem findProblem(String id);
 
-	/**
-	 * @param id
-	 * @return
-	 */
-	IProblemCategory findCategory(String id);
+	IProblem[] getProblems();
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2006 QNX Software Systems and others.
+ * Copyright (c) 2004, 2009 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,8 @@
  * Contributors:
  *     QNX Software Systems - initial API and implementation
  *     IBM Corporation
+ *     Warren Paul (Nokia) - 173555
+ *     Anton Leherbauer (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.wizards.classwizard;
 
@@ -15,11 +17,28 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.Document;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.text.edits.MalformedTreeException;
+import org.eclipse.text.edits.TextEdit;
+
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.browser.IQualifiedTypeName;
 import org.eclipse.cdt.core.browser.ITypeReference;
 import org.eclipse.cdt.core.browser.PathUtil;
 import org.eclipse.cdt.core.browser.QualifiedTypeName;
+import org.eclipse.cdt.core.formatter.CodeFormatter;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICContainer;
@@ -32,19 +51,14 @@ import org.eclipse.cdt.core.model.IWorkingCopy;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfoProvider;
 import org.eclipse.cdt.core.parser.ast.ASTAccessVisibility;
-import org.eclipse.cdt.internal.corext.util.CModelUtil;
-import org.eclipse.cdt.internal.ui.wizards.filewizard.NewSourceFileGenerator;
 import org.eclipse.cdt.ui.CUIPlugin;
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.cdt.ui.CodeGeneration;
+
+import org.eclipse.cdt.internal.corext.codemanipulation.StubUtility;
+import org.eclipse.cdt.internal.corext.util.CModelUtil;
+import org.eclipse.cdt.internal.corext.util.CodeFormatterUtil;
+
+import org.eclipse.cdt.internal.ui.wizards.filewizard.NewSourceFileGenerator;
 
 public class NewClassCodeGenerator {
 
@@ -52,12 +66,12 @@ public class NewClassCodeGenerator {
     private IPath fSourcePath = null;
     private String fClassName = null;
     private IQualifiedTypeName fNamespace = null;
-    private String fLineDelimiter;
     private IBaseClassInfo[] fBaseClasses = null;
     private IMethodStub[] fMethodStubs = null;
     private ITranslationUnit fCreatedHeaderTU = null;
     private ITranslationUnit fCreatedSourceTU = null;
     private ICElement fCreatedClass = null;
+	private String fFullyQualifiedClassName;
     
 	public static class CodeGeneratorException extends CoreException {
         /**
@@ -83,9 +97,13 @@ public class NewClassCodeGenerator {
         if (namespace != null && namespace.length() > 0) {
             fNamespace = new QualifiedTypeName(namespace);
         }
+        if (fNamespace != null) {
+        	fFullyQualifiedClassName= fNamespace.append(fClassName).getFullyQualifiedName();
+        } else {
+        	fFullyQualifiedClassName= fClassName;
+        }
         fBaseClasses = baseClasses;
         fMethodStubs = methodStubs;
-        fLineDelimiter = NewSourceFileGenerator.getLineDelimiter();
     }
 
     public ICElement getCreatedClass() {
@@ -140,35 +158,32 @@ public class NewClassCodeGenerator {
             if (fHeaderPath != null) {
 
                 // get method stubs
-                List publicMethods = getStubs(ASTAccessVisibility.PUBLIC, false);
-                List protectedMethods = getStubs(ASTAccessVisibility.PROTECTED, false);
-                List privateMethods = getStubs(ASTAccessVisibility.PRIVATE, false);
+                List<IMethodStub> publicMethods = getStubs(ASTAccessVisibility.PUBLIC, false);
+                List<IMethodStub> protectedMethods = getStubs(ASTAccessVisibility.PROTECTED, false);
+                List<IMethodStub> privateMethods = getStubs(ASTAccessVisibility.PRIVATE, false);
                 
 	            IFile headerFile = NewSourceFileGenerator.createHeaderFile(fHeaderPath, true, new SubProgressMonitor(monitor, 50));
 	            if (headerFile != null) {
 	                headerTU = (ITranslationUnit) CoreModel.getDefault().create(headerFile);
+	
+	                // create a working copy with a new owner
+	                headerWorkingCopy = headerTU.getWorkingCopy();
+	                // headerWorkingCopy = headerTU.getSharedWorkingCopy(null, CUIPlugin.getDefault().getBufferFactory());
+
+	                String headerContent = constructHeaderFileContent(headerTU, publicMethods, protectedMethods, privateMethods, headerWorkingCopy.getBuffer().getContents(), new SubProgressMonitor(monitor, 100));
+	                headerContent= formatSource(headerContent, headerTU);
+	                headerWorkingCopy.getBuffer().setContents(headerContent);
+
+	                if (monitor.isCanceled()) {
+	                	throw new InterruptedException();
+	                }
+
+	                headerWorkingCopy.reconcile();
+	                headerWorkingCopy.commit(true, monitor);
+	                monitor.worked(50);
+
+	                createdClass = headerWorkingCopy.getElement(fFullyQualifiedClassName);
 	            }
-	
-	            // create a working copy with a new owner
-	            headerWorkingCopy = headerTU.getWorkingCopy();
-	            // headerWorkingCopy = headerTU.getSharedWorkingCopy(null, CUIPlugin.getDefault().getBufferFactory());
-	
-	            String headerContent = constructHeaderFileContent(headerTU, publicMethods, protectedMethods, privateMethods, headerWorkingCopy.getBuffer().getContents(), new SubProgressMonitor(monitor, 100));
-	            headerWorkingCopy.getBuffer().setContents(headerContent);
-	
-	            if (monitor.isCanceled()) {
-	                throw new InterruptedException();
-	            }
-	
-	            headerWorkingCopy.reconcile();
-	            headerWorkingCopy.commit(true, monitor);
-	            monitor.worked(50);
-	
-	            IQualifiedTypeName className = new QualifiedTypeName(fClassName);
-	            if(fNamespace != null){
-	            	className = fNamespace.append(className);
-	            }
-	            createdClass = headerWorkingCopy.getElement(className.getFullyQualifiedName());
 	            fCreatedClass = createdClass;
 	            fCreatedHeaderTU = headerTU;
             }
@@ -176,9 +191,9 @@ public class NewClassCodeGenerator {
             if (fSourcePath != null) {
                 
                 // get method stubs
-                List publicMethods = getStubs(ASTAccessVisibility.PUBLIC, true);
-                List protectedMethods = getStubs(ASTAccessVisibility.PROTECTED, true);
-                List privateMethods = getStubs(ASTAccessVisibility.PRIVATE, true);
+                List<IMethodStub> publicMethods = getStubs(ASTAccessVisibility.PUBLIC, true);
+                List<IMethodStub> protectedMethods = getStubs(ASTAccessVisibility.PROTECTED, true);
+                List<IMethodStub> privateMethods = getStubs(ASTAccessVisibility.PRIVATE, true);
                 
                 if (publicMethods.isEmpty() && protectedMethods.isEmpty() && privateMethods.isEmpty()) {
                     //TODO need prefs option
@@ -188,22 +203,23 @@ public class NewClassCodeGenerator {
 		            IFile sourceFile = NewSourceFileGenerator.createSourceFile(fSourcePath, true, new SubProgressMonitor(monitor, 50));
 		            if (sourceFile != null) {
 		                sourceTU = (ITranslationUnit) CoreModel.getDefault().create(sourceFile);
+		                monitor.worked(50);
+
+		                // create a working copy with a new owner
+		                sourceWorkingCopy = sourceTU.getWorkingCopy();
+
+		                String sourceContent = constructSourceFileContent(sourceTU, headerTU, publicMethods, protectedMethods, privateMethods, sourceWorkingCopy.getBuffer().getContents(), new SubProgressMonitor(monitor, 100));
+		                sourceContent= formatSource(sourceContent, sourceTU);
+		                sourceWorkingCopy.getBuffer().setContents(sourceContent);
+
+		                if (monitor.isCanceled()) {
+		                	throw new InterruptedException();
+		                }
+
+		                sourceWorkingCopy.reconcile();
+		                sourceWorkingCopy.commit(true, monitor);
+		                monitor.worked(50);
 		            }
-		            monitor.worked(50);
-		
-		            // create a working copy with a new owner
-		            sourceWorkingCopy = sourceTU.getWorkingCopy();
-		
-		            String sourceContent = constructSourceFileContent(sourceTU, headerTU, publicMethods, protectedMethods, privateMethods, sourceWorkingCopy.getBuffer().getContents(), new SubProgressMonitor(monitor, 100));
-		            sourceWorkingCopy.getBuffer().setContents(sourceContent);
-		
-		            if (monitor.isCanceled()) {
-		                throw new InterruptedException();
-		            }
-		
-		            sourceWorkingCopy.reconcile();
-		            sourceWorkingCopy.commit(true, monitor);
-		            monitor.worked(50);
 		
 		            fCreatedSourceTU = sourceTU;
                 }
@@ -221,13 +237,40 @@ public class NewClassCodeGenerator {
         return fCreatedClass;
     }
 
-    public String constructHeaderFileContent(ITranslationUnit headerTU, List publicMethods, List protectedMethods, List privateMethods, String oldContents, IProgressMonitor monitor) throws CodeGeneratorException {
+    /**
+     * Format given source content according to the project's code style options.
+     * 
+	 * @param content  the source content
+	 * @param tu  the translation unit
+	 * @return the formatted source text or the original if the text could not be formatted successfully
+     * @throws CModelException 
+	 */
+	private String formatSource(String content, ITranslationUnit tu) throws CModelException {
+        String lineDelimiter= StubUtility.getLineDelimiterUsed(tu);
+        TextEdit edit= CodeFormatterUtil.format(CodeFormatter.K_TRANSLATION_UNIT, content, 0, lineDelimiter, tu.getCProject().getOptions(true));
+        if (edit != null) {
+        	IDocument doc= new Document(content);
+        	try {
+				edit.apply(doc);
+            	content= doc.get();
+			} catch (MalformedTreeException exc) {
+				CUIPlugin.log(exc);
+			} catch (BadLocationException exc) {
+				CUIPlugin.log(exc);
+			}
+        }
+        return content;
+	}
+
+	public String constructHeaderFileContent(ITranslationUnit headerTU, List<IMethodStub> publicMethods, List<IMethodStub> protectedMethods, List<IMethodStub> privateMethods, String oldContents, IProgressMonitor monitor) throws CoreException {
         monitor.beginTask(NewClassWizardMessages.getString("NewClassCodeGeneration.createType.task.header"), 100); //$NON-NLS-1$
         
-        if (oldContents != null && oldContents.length() == 0)
+        String lineDelimiter= StubUtility.getLineDelimiterUsed(headerTU);
+
+		if (oldContents != null && oldContents.length() == 0)
             oldContents = null;
         
-        //TODO should use code templates
+
         StringBuffer text = new StringBuffer();
         
         int appendFirstCharPos = -1;
@@ -246,45 +289,46 @@ public class NewClassCodeGenerator {
 	            }
 	            appendFirstCharPos = prependLastCharPos + 1;
 	        }
-            text.append(fLineDelimiter);
+            text.append(lineDelimiter);
             
             // insert a blank line before class definition
-            text.append(fLineDelimiter);
+            text.append(lineDelimiter);
         }
 
         if (fBaseClasses != null && fBaseClasses.length > 0) {
-            addBaseClassIncludes(headerTU, text, new SubProgressMonitor(monitor, 50));
-            text.append(fLineDelimiter);
+            addBaseClassIncludes(headerTU, text, lineDelimiter, new SubProgressMonitor(monitor, 50));
+            text.append(lineDelimiter);
         }
         
         if (fNamespace != null) {
-            beginNamespace(text);
+            beginNamespace(text, lineDelimiter);
         }
         
         text.append("class "); //$NON-NLS-1$
         text.append(fClassName);
         addBaseClassInheritance(text);
-        text.append(fLineDelimiter);
+        text.append(lineDelimiter);
         text.append('{');
-        text.append(fLineDelimiter);
+        text.append(lineDelimiter);
 
         //TODO sort methods (eg constructor always first?)
         if (!publicMethods.isEmpty()
 	            || !protectedMethods.isEmpty()
 	            || !privateMethods.isEmpty()) {
-            addMethodDeclarations(publicMethods, protectedMethods, privateMethods, text);
+            addMethodDeclarations(headerTU, publicMethods, protectedMethods, privateMethods, text, lineDelimiter);
         }
 
         text.append("};"); //$NON-NLS-1$
-        text.append(fLineDelimiter);
+        text.append(lineDelimiter);
 
         if (fNamespace != null) {
-            endNamespace(text);
+            endNamespace(text, lineDelimiter);
         }
 
+        String fileContent;
         if (oldContents != null && appendFirstCharPos != -1) {
             // insert a blank line after class definition
-            text.append(fLineDelimiter);
+            text.append(lineDelimiter);
             
             // skip over any extra whitespace
             int len = oldContents.length();
@@ -294,11 +338,14 @@ public class NewClassCodeGenerator {
             if (appendFirstCharPos < len) {
                 text.append(oldContents.substring(appendFirstCharPos));
             }
+            fileContent= text.toString();
+        } else {
+        	String classComment= getClassComment(headerTU, lineDelimiter);
+    		fileContent= CodeGeneration.getHeaderFileContent(headerTU, classComment, text.toString(), lineDelimiter);
         }
-        
-        String newContents = text.toString();
+
         monitor.done();
-        return newContents;
+        return fileContent;
     }
 
     private int getClassDefInsertionPos(String contents) {
@@ -317,65 +364,103 @@ public class NewClassCodeGenerator {
         return insertPos;
     }
     
-    private void beginNamespace(StringBuffer text) {
+	/**
+	 * Retrieve the class comment. Returns the content of the 'type comment' template.
+	 * 
+	 * @param tu the translation unit
+	 * @param lineDelimiter the line delimiter to use
+	 * @return the type comment or <code>null</code> if a type comment 
+	 * is not desired
+     *
+     * @since 5.0
+	 */		
+	private String getClassComment(ITranslationUnit tu, String lineDelimiter) {
+		if (isAddComments(tu)) {
+			try {
+				String fqName= fFullyQualifiedClassName;
+				String comment= CodeGeneration.getClassComment(tu, fqName, lineDelimiter);
+				if (comment != null && isValidComment(comment)) {
+					return comment;
+				}
+			} catch (CoreException e) {
+				CUIPlugin.log(e);
+			}
+		}
+		return null;
+	}
+
+	private boolean isValidComment(String template) {
+		// TODO verify comment
+		return true;
+	}
+	
+	/**
+	 * Returns if comments are added. The settings as specified in the preferences is used.
+	 * 
+	 * @param tu
+	 * @return Returns <code>true</code> if comments can be added
+	 * @since 5.0
+	 */
+	public boolean isAddComments(ITranslationUnit tu) {
+		return StubUtility.doAddComments(tu.getCProject()); 
+	}
+			
+    private void beginNamespace(StringBuffer text, String lineDelimiter) {
         for (int i = 0; i < fNamespace.segmentCount(); ++i) {
 	        text.append("namespace "); //$NON-NLS-1$
 	        text.append(fNamespace.segment(i));
-	        text.append(fLineDelimiter);
+	        text.append(lineDelimiter);
 	        text.append('{');
-	        text.append(fLineDelimiter);
-	        text.append(fLineDelimiter);
+	        text.append(lineDelimiter);
+	        text.append(lineDelimiter);
         }
     }
 
-    private void endNamespace(StringBuffer text) {
+    private void endNamespace(StringBuffer text, String lineDelimiter) {
         for (int i = 0; i < fNamespace.segmentCount(); ++i) {
-            text.append(fLineDelimiter);
+            text.append(lineDelimiter);
 	        text.append("}"); //$NON-NLS-1$
-	        text.append(fLineDelimiter);
+	        text.append(lineDelimiter);
         }
     }
 
-    private void addMethodDeclarations(List publicMethods, List protectedMethods, List privateMethods, StringBuffer text) {
+    private void addMethodDeclarations(ITranslationUnit tu, List<IMethodStub> publicMethods, List<IMethodStub> protectedMethods, List<IMethodStub> privateMethods, StringBuffer text, String lineDelimiter) throws CoreException {
         if (!publicMethods.isEmpty()) {
             text.append("public:"); //$NON-NLS-1$
-            text.append(fLineDelimiter);
-            for (Iterator i = publicMethods.iterator(); i.hasNext();) {
-                IMethodStub stub = (IMethodStub) i.next();
-                String code = stub.createMethodDeclaration(fClassName, fBaseClasses, fLineDelimiter);
+            text.append(lineDelimiter);
+            for (IMethodStub stub : publicMethods) {
+                String code = stub.createMethodDeclaration(tu, fClassName, fBaseClasses, lineDelimiter);
                 text.append('\t');
                 text.append(code);
-                text.append(fLineDelimiter);
+                text.append(lineDelimiter);
             }
         }
 
         if (!protectedMethods.isEmpty()) {
             text.append("protected:"); //$NON-NLS-1$
-            text.append(fLineDelimiter);
-            for (Iterator i = protectedMethods.iterator(); i.hasNext();) {
-                IMethodStub stub = (IMethodStub) i.next();
-                String code = stub.createMethodDeclaration(fClassName, fBaseClasses, fLineDelimiter);
+            text.append(lineDelimiter);
+            for (IMethodStub stub : protectedMethods) {
+                String code = stub.createMethodDeclaration(tu, fClassName, fBaseClasses, lineDelimiter);
                 text.append('\t');
                 text.append(code);
-                text.append(fLineDelimiter);
+                text.append(lineDelimiter);
             }
         }
 
         if (!privateMethods.isEmpty()) {
             text.append("private:"); //$NON-NLS-1$
-            text.append(fLineDelimiter);
-            for (Iterator i = privateMethods.iterator(); i.hasNext();) {
-                IMethodStub stub = (IMethodStub) i.next();
-                String code = stub.createMethodDeclaration(fClassName, fBaseClasses, fLineDelimiter);
+            text.append(lineDelimiter);
+            for (IMethodStub stub : privateMethods) {
+                String code = stub.createMethodDeclaration(tu, fClassName, fBaseClasses, lineDelimiter);
                 text.append('\t');
                 text.append(code);
-                text.append(fLineDelimiter);
+                text.append(lineDelimiter);
             }
         }
     }
 
-    private List getStubs(ASTAccessVisibility access, boolean skipInline) {
-        List list = new ArrayList();
+    private List<IMethodStub> getStubs(ASTAccessVisibility access, boolean skipInline) {
+        List<IMethodStub> list = new ArrayList<IMethodStub>();
         if (fMethodStubs != null) {
             for (int i = 0; i < fMethodStubs.length; ++i) {
                 IMethodStub stub = fMethodStubs[i];
@@ -411,32 +496,31 @@ public class NewClassCodeGenerator {
         }
     }
 
-    private void addBaseClassIncludes(ITranslationUnit headerTU, StringBuffer text, IProgressMonitor monitor) throws CodeGeneratorException {
+    private void addBaseClassIncludes(ITranslationUnit headerTU, StringBuffer text, String lineDelimiter, IProgressMonitor monitor) throws CodeGeneratorException {
 
         monitor.beginTask(NewClassWizardMessages.getString("NewClassCodeGeneration.createType.task.header.includePaths"), 100); //$NON-NLS-1$
         
         ICProject cProject = headerTU.getCProject();
         IProject project = cProject.getProject();
-        IPath projectLocation = project.getLocation();
-        IPath headerLocation = headerTU.getResource().getLocation();
+        IPath projectLocation = new Path(project.getLocationURI().getPath());
+        IPath headerLocation = new Path(headerTU.getResource().getLocationURI().getPath());
         
-        List includePaths = getIncludePaths(headerTU);
-        List baseClassPaths = getBaseClassPaths(verifyBaseClasses());
+        List<IPath> includePaths = getIncludePaths(headerTU);
+        List<IPath> baseClassPaths = getBaseClassPaths(verifyBaseClasses());
         
 	    // add the missing include paths to the project
         if (createIncludePaths()) {
-	        List newIncludePaths = getMissingIncludePaths(projectLocation, includePaths, baseClassPaths);
+	        List<IPath> newIncludePaths = getMissingIncludePaths(projectLocation, includePaths, baseClassPaths);
 	        if (!newIncludePaths.isEmpty()) {
 			    addIncludePaths(cProject, newIncludePaths, monitor);
 	        }
         }
 
-        List systemIncludes = new ArrayList();
-        List localIncludes = new ArrayList();
+        List<IPath> systemIncludes = new ArrayList<IPath>();
+        List<IPath> localIncludes = new ArrayList<IPath>();
         
         // sort the include paths into system and local
-        for (Iterator bcIter = baseClassPaths.iterator(); bcIter.hasNext(); ) {
-            IPath baseClassLocation = (IPath) bcIter.next();
+        for (IPath baseClassLocation : baseClassPaths) {
             boolean isSystemIncludePath = false;
 
             IPath includePath = PathUtil.makeRelativePathToProjectIncludes(baseClassLocation, project);
@@ -450,7 +534,7 @@ public class NewClassCodeGenerator {
                 includePath = baseClassLocation;
             
             // make the new #include path in the source file only point to a relative file (i.e. now that the path has been included above in the project)
-            includePath = includePath.removeFirstSegments(includePath.segmentCount() - 1);
+            includePath = includePath.removeFirstSegments(includePath.segmentCount() - 1).setDevice(null);
             
             if (isSystemIncludePath)
                 systemIncludes.add(includePath);
@@ -459,22 +543,20 @@ public class NewClassCodeGenerator {
         }
         
         // write the system include paths, e.g. #include <header.h>
-        for (Iterator i = systemIncludes.iterator(); i.hasNext(); ) {
-            IPath includePath = (IPath) i.next();
-			if (!(headerTU.getElementName().equals(includePath.toString()))) {
+        for (IPath includePath : systemIncludes) {
+            if (!(headerTU.getElementName().equals(includePath.toString()))) {
 			    String include = getIncludeString(includePath.toString(), true);
 			    text.append(include);
-			    text.append(fLineDelimiter);
+			    text.append(lineDelimiter);
 			}
         }
         
         // write the local include paths, e.g. #include "header.h"
-        for (Iterator i = localIncludes.iterator(); i.hasNext(); ) {
-            IPath includePath = (IPath) i.next();
-			if (!(headerTU.getElementName().equals(includePath.toString()))) {
+        for (IPath includePath : localIncludes) {
+            if (!(headerTU.getElementName().equals(includePath.toString()))) {
 			    String include = getIncludeString(includePath.toString(), false);
 			    text.append(include);
-			    text.append(fLineDelimiter);
+			    text.append(lineDelimiter);
 			}
         }
         
@@ -499,14 +581,14 @@ public class NewClassCodeGenerator {
         return NewClassWizardPrefs.createIncludePaths();
     }
 
-    private void addIncludePaths(ICProject cProject, List newIncludePaths, IProgressMonitor monitor) throws CodeGeneratorException {
+    private void addIncludePaths(ICProject cProject, List<IPath> newIncludePaths, IProgressMonitor monitor) throws CodeGeneratorException {
         monitor.beginTask(NewClassWizardMessages.getString("NewClassCodeGeneration.createType.task.header.addIncludePaths"), 100); //$NON-NLS-1$
 
         //TODO prefs option whether to add to project or parent source folder?
         IPath addToResourcePath = cProject.getPath();
         try {
-            List pathEntryList = new ArrayList();
-            List checkEntryList = new ArrayList();
+            List<IPathEntry> pathEntryList = new ArrayList<IPathEntry>();
+            List<IPathEntry> checkEntryList = new ArrayList<IPathEntry>();
             
             IPathEntry[] checkEntries = cProject.getResolvedPathEntries();
             IPathEntry[] pathEntries = cProject.getRawPathEntries();
@@ -515,27 +597,26 @@ public class NewClassCodeGenerator {
                 	pathEntryList.add(pathEntries[i]);
                 }
             }
-            for (int i=0; i < checkEntries.length; i++) {
-            	if (checkEntries[i] instanceof IIncludeEntry)
-            		checkEntryList.add(checkEntries[i]);
+            for (IPathEntry checkEntrie : checkEntries) {
+            	if (checkEntrie instanceof IIncludeEntry)
+            		checkEntryList.add(checkEntrie);
             }
             
-            for (Iterator ipIter = newIncludePaths.iterator(); ipIter.hasNext(); ) {
-                IPath folderToAdd = (IPath) ipIter.next();
-                
+            for (IPath folderToAdd : newIncludePaths) {
                 // do not add any #includes that are local to the project
                 if (cProject.getPath().segment(0).equals(folderToAdd.segment(0)))
                 	continue;
                 
                 ICProject includeProject = PathUtil.getEnclosingProject(folderToAdd);
-
-                // make sure that the include is made the same way that build properties for projects makes them, so .contains below is a valid check
-                IIncludeEntry entry = CoreModel.newIncludeEntry(addToResourcePath, null, includeProject.getProject().getLocation(), true);
-                
-                if (!checkEntryList.contains(entry)) // if the path already exists in the #includes then don't add it
-                	pathEntryList.add(entry);
+                if (includeProject != null) {
+                    // make sure that the include is made the same way that build properties for projects makes them, so .contains below is a valid check
+                    IIncludeEntry entry = CoreModel.newIncludeEntry(addToResourcePath, null, new Path(includeProject.getProject().getLocationURI().getPath()), true);
+                    
+                    if (!checkEntryList.contains(entry)) // if the path already exists in the #includes then don't add it
+                    	pathEntryList.add(entry);
+                }
             }
-            pathEntries = (IPathEntry[]) pathEntryList.toArray(new IPathEntry[pathEntryList.size()]);
+            pathEntries = pathEntryList.toArray(new IPathEntry[pathEntryList.size()]);
             cProject.setRawPathEntries(pathEntries, new SubProgressMonitor(monitor, 80));
         } catch (CModelException e) {
             throw new CodeGeneratorException(e);
@@ -543,12 +624,10 @@ public class NewClassCodeGenerator {
         monitor.done();
     }
 
-    private List getMissingIncludePaths(IPath projectLocation, List includePaths, List baseClassPaths) {
+    private List<IPath> getMissingIncludePaths(IPath projectLocation, List<IPath> includePaths, List<IPath> baseClassPaths) {
         // check for missing include paths
-        List newIncludePaths = new ArrayList();
-        for (Iterator bcIter = baseClassPaths.iterator(); bcIter.hasNext(); ) {
-            IPath baseClassLocation = (IPath) bcIter.next();
-            
+        List<IPath> newIncludePaths = new ArrayList<IPath>();
+        for (IPath baseClassLocation : baseClassPaths) {
             // skip any paths inside the same project
             //TODO possibly a preferences option?
             if (projectLocation.isPrefixOf(baseClassLocation)) {
@@ -561,9 +640,8 @@ public class NewClassCodeGenerator {
                 folderToAdd = canonPath;
 
             // see if folder or its parent hasn't already been added
-            for (Iterator newIter = newIncludePaths.iterator(); newIter.hasNext(); ) {
-                IPath newFolder = (IPath) newIter.next();
-	            if (newFolder.isPrefixOf(folderToAdd)) {
+            for (IPath newFolder : newIncludePaths) {
+                if (newFolder.isPrefixOf(folderToAdd)) {
 	                folderToAdd = null;
 	                break;
 	            }
@@ -572,17 +650,16 @@ public class NewClassCodeGenerator {
             if (folderToAdd != null) {
 	            // search include paths
                 boolean foundPath = false;
-	            for (Iterator ipIter = includePaths.iterator(); ipIter.hasNext(); ) {
-	                IPath includePath = (IPath) ipIter.next();
-		            if (includePath.isPrefixOf(folderToAdd) || includePath.equals(folderToAdd)) {
+	            for (IPath includePath : includePaths) {
+	                if (includePath.isPrefixOf(folderToAdd) || includePath.equals(folderToAdd)) {
 		                foundPath = true;
 		                break;
 		            }
 	            }
 	            if (!foundPath) {
                     // remove any children of this folder
-                    for (Iterator newIter = newIncludePaths.iterator(); newIter.hasNext(); ) {
-                        IPath newFolder = (IPath) newIter.next();
+                    for (Iterator<IPath> newIter = newIncludePaths.iterator(); newIter.hasNext(); ) {
+                        IPath newFolder = newIter.next();
         	            if (folderToAdd.isPrefixOf(newFolder)) {
         	                newIter.remove();
         	            }
@@ -596,7 +673,7 @@ public class NewClassCodeGenerator {
         return newIncludePaths;
     }
 
-    private List getIncludePaths(ITranslationUnit headerTU) throws CodeGeneratorException {
+    private List<IPath> getIncludePaths(ITranslationUnit headerTU) throws CodeGeneratorException {
         IProject project = headerTU.getCProject().getProject();
         // get the parent source folder
         ICContainer sourceFolder = CModelUtil.getSourceFolder(headerTU);
@@ -611,7 +688,7 @@ public class NewClassCodeGenerator {
             if (info != null) {
                 String[] includePaths = info.getIncludePaths();
                 if (includePaths != null) {
-                    List list = new ArrayList();
+                    List<IPath> list = new ArrayList<IPath>();
                     for (int i = 0; i < includePaths.length; ++i) {
                         //TODO do we need to canonicalize these paths first?
                         IPath path = new Path(includePaths[i]);
@@ -626,8 +703,8 @@ public class NewClassCodeGenerator {
         return null;
     }
     
-    private List getBaseClassPaths(boolean verifyLocation) throws CodeGeneratorException {
-        List list = new ArrayList();
+    private List<IPath> getBaseClassPaths(boolean verifyLocation) throws CodeGeneratorException {
+        List<IPath> list = new ArrayList<IPath>();
 	    for (int i = 0; i < fBaseClasses.length; ++i) {
 	        IBaseClassInfo baseClass = fBaseClasses[i];
 	        ITypeReference ref = baseClass.getType().getResolvedReference();
@@ -647,9 +724,10 @@ public class NewClassCodeGenerator {
 	    return list;
     }
     
-    public String constructSourceFileContent(ITranslationUnit sourceTU, ITranslationUnit headerTU, List publicMethods, List protectedMethods, List privateMethods, String oldContents, IProgressMonitor monitor) {
+    public String constructSourceFileContent(ITranslationUnit sourceTU, ITranslationUnit headerTU, List<IMethodStub> publicMethods, List<IMethodStub> protectedMethods, List<IMethodStub> privateMethods, String oldContents, IProgressMonitor monitor) throws CoreException {
         monitor.beginTask(NewClassWizardMessages.getString("NewClassCodeGeneration.createType.task.source"), 150); //$NON-NLS-1$
         
+        String lineDelimiter= StubUtility.getLineDelimiterUsed(sourceTU);
         if (oldContents != null && oldContents.length() == 0)
             oldContents = null;
 
@@ -673,27 +751,27 @@ public class NewClassCodeGenerator {
     	        int insertionPos = getIncludeInsertionPos(oldContents);
     	        if (insertionPos == -1) {
     		        text.append(oldContents);
-                    text.append(fLineDelimiter);
+                    text.append(lineDelimiter);
                     text.append(includeString);
-                    text.append(fLineDelimiter);
+                    text.append(lineDelimiter);
     	        } else {
     	            text.append(oldContents.substring(0, insertionPos));
                     text.append(includeString);
-                    text.append(fLineDelimiter);
+                    text.append(lineDelimiter);
                     text.append(oldContents.substring(insertionPos));
     	        }
             } else {
                 text.append(includeString);
-                text.append(fLineDelimiter);
+                text.append(lineDelimiter);
             }
 
             // add a blank line
-            text.append(fLineDelimiter);
+            text.append(lineDelimiter);
         } else if (oldContents != null) {
 	        text.append(oldContents);
 
 	        // add a blank line
-            text.append(fLineDelimiter);
+            text.append(lineDelimiter);
         }
         
         //TODO sort methods (eg constructor always first?)
@@ -703,26 +781,32 @@ public class NewClassCodeGenerator {
             // no methods
         } else {
             if (fNamespace != null) {
-                beginNamespace(text);
+                beginNamespace(text, lineDelimiter);
             }
 
-            addMethodBodies(publicMethods, protectedMethods, privateMethods, text, new SubProgressMonitor(monitor, 50));
+            addMethodBodies(sourceTU, publicMethods, protectedMethods, privateMethods, text, lineDelimiter, new SubProgressMonitor(monitor, 50));
 
             if (fNamespace != null) {
-                endNamespace(text);
+                endNamespace(text, lineDelimiter);
             }
         }
 
-        String newContents = text.toString();
+        String fileContent;
+        if (oldContents != null) {
+        	fileContent = text.toString();
+        } else {
+        	fileContent= CodeGeneration.getBodyFileContent(sourceTU, null, text.toString(), lineDelimiter);
+        }
         monitor.done();
-        return newContents;
+        return fileContent;
     }
     
     private String getHeaderIncludeString(ITranslationUnit sourceTU, ITranslationUnit headerTU, StringBuffer text, IProgressMonitor monitor) {
         IProject project = headerTU.getCProject().getProject();
-        IPath projectLocation = project.getLocation();
-        IPath headerLocation = headerTU.getResource().getLocation();
-        IPath sourceLocation = sourceTU.getResource().getLocation();
+        
+        IPath projectLocation = new Path(project.getLocationURI().getPath());
+        IPath headerLocation = new Path(headerTU.getResource().getLocationURI().getPath());
+        IPath sourceLocation = new Path(sourceTU.getResource().getLocationURI().getPath());
 
         IPath includePath = PathUtil.makeRelativePathToProjectIncludes(headerLocation, project);
         boolean isSystemIncludePath = false;
@@ -798,37 +882,37 @@ public class NewClassCodeGenerator {
         return -1;
     }
 
-    private void addMethodBodies(List publicMethods, List protectedMethods, List privateMethods, StringBuffer text, IProgressMonitor monitor) {
+    private void addMethodBodies(ITranslationUnit tu, List<IMethodStub> publicMethods, List<IMethodStub> protectedMethods, List<IMethodStub> privateMethods, StringBuffer text, String lineDelimiter, IProgressMonitor monitor) throws CoreException {
         if (!publicMethods.isEmpty()) {
-            for (Iterator i = publicMethods.iterator(); i.hasNext();) {
-                IMethodStub stub = (IMethodStub) i.next();
-                String code = stub.createMethodImplementation(fClassName, fBaseClasses, fLineDelimiter);
+            for (Iterator<IMethodStub> i = publicMethods.iterator(); i.hasNext();) {
+                IMethodStub stub = i.next();
+                String code = stub.createMethodImplementation(tu, fClassName, fBaseClasses, lineDelimiter);
                 text.append(code);
-                text.append(fLineDelimiter);
+                text.append(lineDelimiter);
                 if (i.hasNext())
-                    text.append(fLineDelimiter);
+                    text.append(lineDelimiter);
             }
         }
 
         if (!protectedMethods.isEmpty()) {
-            for (Iterator i = protectedMethods.iterator(); i.hasNext();) {
-                IMethodStub stub = (IMethodStub) i.next();
-                String code = stub.createMethodImplementation(fClassName, fBaseClasses, fLineDelimiter);
+            for (Iterator<IMethodStub> i = protectedMethods.iterator(); i.hasNext();) {
+                IMethodStub stub = i.next();
+                String code = stub.createMethodImplementation(tu, fClassName, fBaseClasses, lineDelimiter);
                 text.append(code);
-                text.append(fLineDelimiter);
+                text.append(lineDelimiter);
                 if (i.hasNext())
-                    text.append(fLineDelimiter);
+                    text.append(lineDelimiter);
             }
         }
 
         if (!privateMethods.isEmpty()) {
-            for (Iterator i = privateMethods.iterator(); i.hasNext();) {
-                IMethodStub stub = (IMethodStub) i.next();
-                String code = stub.createMethodImplementation(fClassName, fBaseClasses, fLineDelimiter);
+            for (Iterator<IMethodStub> i = privateMethods.iterator(); i.hasNext();) {
+                IMethodStub stub = i.next();
+                String code = stub.createMethodImplementation(tu, fClassName, fBaseClasses, lineDelimiter);
                 text.append(code);
-                text.append(fLineDelimiter);
+                text.append(lineDelimiter);
                 if (i.hasNext())
-                    text.append(fLineDelimiter);
+                    text.append(lineDelimiter);
             }
         }
     }

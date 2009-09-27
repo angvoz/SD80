@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Intel Corporation and others.
+ * Copyright (c) 2007, 2009 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -90,17 +90,38 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected ICLanguageSetting [] ls; // all languages known
 	private boolean fHadSomeModification;
 	
-	protected final static String[] BUTTONS = {ADD_STR, EDIT_STR, DEL_STR, 
+	private static final int BUTTON_ADD = 0;
+	private static final int BUTTON_EDIT = 1;
+	private static final int BUTTON_DELETE = 2;
+	private static final int BUTTON_EXPORT_UNEXPORT = 3;
+	// there is a separator instead of button #4
+	private static final int BUTTON_MOVE_UP = 5;
+	private static final int BUTTON_MOVE_DOWN = 6;
+
+	protected final static String[] BUTTONS = {
+			ADD_STR,
+			EDIT_STR,
+			DEL_STR, 
 			UIMessages.getString("AbstractLangsListTab.2"), //$NON-NLS-1$
-    		null, MOVEUP_STR, MOVEDOWN_STR };
-	protected final static String[] BUTTSYM = {ADD_STR, EDIT_STR, DEL_STR, 
-		UIMessages.getString("AbstractLangsListTab.2")}; //$NON-NLS-1$
+			null,
+			MOVEUP_STR,
+			MOVEDOWN_STR
+		};
+	protected final static String[] BUTTSYM = {
+			ADD_STR,
+			EDIT_STR,
+			DEL_STR, 
+			UIMessages.getString("AbstractLangsListTab.2") //$NON-NLS-1$
+		};
 
 	private static final Comparator<Object> comp = CDTListComparator.getInstance();
 
-	private final static Image IMG_FS = CPluginImages.get(CPluginImages.IMG_FILESYSTEM); 
-	private final static Image IMG_WS = CPluginImages.get(CPluginImages.IMG_WORKSPACE); 
-	private final static Image IMG_MK = CPluginImages.get(CPluginImages.IMG_OBJS_MACRO);
+	private final static Image IMG_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_FOLDER); 
+	private final static Image IMG_INCLUDES_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER); 
+	private final static Image IMG_BUILTIN_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER_SYSTEM); 
+	private final static Image IMG_WORKSPACE = CPluginImages.get(CPluginImages.IMG_WORKSPACE); 
+	private final static Image IMG_INCLUDES_FOLDER_WORKSPACE = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER_WORKSPACE); 
+	private final static Image IMG_MACRO = CPluginImages.get(CPluginImages.IMG_OBJS_MACRO);
 	private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
 	
 	@Override
@@ -121,14 +142,14 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		sashForm.setLayout(layout);
 
 		addTree(sashForm).setLayoutData(new GridData(GridData.FILL_VERTICAL));
-	    table = new Table(sashForm, SWT.BORDER | SWT.MULTI | SWT.V_SCROLL | SWT.FULL_SELECTION);
-	    gd = new GridData(GridData.FILL_BOTH);
-	    gd.widthHint = 150;
-	    table.setLayoutData(gd);
-  	    table.setHeaderVisible(isHeaderVisible());
-  	    table.setLinesVisible(true);
+		table = new Table(sashForm, SWT.BORDER | SWT.MULTI | SWT.V_SCROLL | SWT.FULL_SELECTION);
+		gd = new GridData(GridData.FILL_BOTH);
+		gd.widthHint = 150;
+		table.setLayoutData(gd);
+		table.setHeaderVisible(isHeaderVisible());
+		table.setLinesVisible(true);
 
-  	    sashForm.setWeights(DEFAULT_SASH_WEIGHTS);
+		sashForm.setWeights(DEFAULT_SASH_WEIGHTS);
 		
 		sashForm.addListener(SWT.Selection, new Listener() {
 			public void handleEvent(Event event) {
@@ -151,7 +172,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			}
 		});
 
-  	    tv = new TableViewer(table);
+		tv = new TableViewer(table);
 
 		tv.setContentProvider(new IStructuredContentProvider() {
 			public Object[] getElements(Object inputElement) {
@@ -160,73 +181,77 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			public void dispose() {}
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 		});
-  	    
-  	    tv.setLabelProvider(new RichLabelProvider());
-  	    
-	    table.addSelectionListener(new SelectionAdapter() {
-	    	@Override
+
+		tv.setLabelProvider(new RichLabelProvider());
+
+		table.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
-	    		updateButtons();
-	    	}
-	    	@Override
+				updateButtons();
+			}
+
+			@Override
 			public void widgetDefaultSelected(SelectionEvent e) {
-	    		if (buttonIsEnabled(1) && table.getSelectionIndex() != -1)
-    				buttonPressed(1);
-	    	}
-	    });
-	    
-	    table.addControlListener(new ControlListener() {
+				if (buttonIsEnabled(1) && table.getSelectionIndex() != -1)
+					buttonPressed(1);
+			}
+		});
+
+		table.addControlListener(new ControlListener() {
 			public void controlMoved(ControlEvent e) {
 				setColumnToFit();
 			}
 			public void controlResized(ControlEvent e) {
 				setColumnToFit();
 			}});
-	    
-	    setupLabel(usercomp, EMPTY_STR, 1, 0);
-	    
-	    lb1 = new Label(usercomp, SWT.BORDER | SWT.CENTER);
-	    lb1.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-	    lb1.setToolTipText(UIMessages.getString("EnvironmentTab.15")); //$NON-NLS-1$
-	    lb1.addMouseListener(new MouseAdapter() {
+
+		setupLabel(usercomp, EMPTY_STR, 1, 0);
+
+		lb1 = new Label(usercomp, SWT.BORDER | SWT.CENTER);
+		lb1.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		lb1.setToolTipText(UIMessages.getString("EnvironmentTab.15")); //$NON-NLS-1$
+		lb1.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseDoubleClick(MouseEvent e) {
 				CDTPrefUtil.spinDMode();
 				update();
-			}});
+			}
+		});
 
-	    showBIButton = setupCheck(usercomp, UIMessages.getString("AbstractLangsListTab.0"), 1, GridData.FILL_HORIZONTAL); //$NON-NLS-1$
-	    showBIButton.addSelectionListener(new SelectionAdapter() {
-	    	@Override
+		showBIButton = setupCheck(usercomp,
+				UIMessages.getString("AbstractLangsListTab.0"), 1, GridData.FILL_HORIZONTAL); //$NON-NLS-1$
+		showBIButton.addSelectionListener(new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
-	    		update(); 
-	    	}
-	    });
-	    
-	    lb2 = new Label(usercomp, SWT.BORDER | SWT.CENTER);
-	    lb2.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-	    lb2.setToolTipText(UIMessages.getString("EnvironmentTab.23")); //$NON-NLS-1$
-	    lb2.addMouseListener(new MouseAdapter() {
+				update();
+			}
+		});
+
+		lb2 = new Label(usercomp, SWT.BORDER | SWT.CENTER);
+		lb2.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		lb2.setToolTipText(UIMessages.getString("EnvironmentTab.23")); //$NON-NLS-1$
+		lb2.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseDoubleClick(MouseEvent e) {
 				CDTPrefUtil.spinWMode();
 				updateLbs(null, lb2);
-			}});
+			}
+		});
 
-	    additionalTableSet();
-	    initButtons((getKind() == ICSettingEntry.MACRO) ? BUTTSYM : BUTTONS); 
-	    updateData(getResDesc());
+		additionalTableSet();
+		initButtons((getKind() == ICSettingEntry.MACRO) ? BUTTSYM : BUTTONS);
+		updateData(getResDesc());
 	}
 	
-    /**
-     * Updates state for all buttons
-     * Called when table selection changes.
-     */
-    @Override
+	/**
+	 * Updates state for all buttons
+	 * Called when table selection changes.
+	 */
+	@Override
 	protected void updateButtons() {
-    	int index = table.getSelectionIndex();
-    	int[] ids = table.getSelectionIndices(); 
-    	boolean canAdd = langTree.getItemCount() > 0;
+		int index = table.getSelectionIndex();
+		int[] ids = table.getSelectionIndices();
+		boolean canAdd = langTree.getItemCount() > 0;
 		boolean canExport = index != -1;
 		boolean canEdit = canExport && ids.length == 1;
 		boolean canDelete = canExport;
@@ -236,11 +261,11 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			if (ent.isReadOnly()) canEdit = false;
 			if (ent.isReadOnly()) canDelete = false;
 			if (exported.contains(ent))
-				buttonSetText(3, UIMessages.getString("AbstractLangsListTab.4")); //$NON-NLS-1$
+				buttonSetText(BUTTON_EXPORT_UNEXPORT, UIMessages.getString("AbstractLangsListTab.4")); //$NON-NLS-1$
 			else
-				buttonSetText(3, UIMessages.getString("AbstractLangsListTab.2")); //$NON-NLS-1$
+				buttonSetText(BUTTON_EXPORT_UNEXPORT, UIMessages.getString("AbstractLangsListTab.2")); //$NON-NLS-1$
 		} else {
-			buttonSetText(3, UIMessages.getString("AbstractLangsListTab.2")); //$NON-NLS-1$
+			buttonSetText(BUTTON_EXPORT_UNEXPORT, UIMessages.getString("AbstractLangsListTab.2")); //$NON-NLS-1$
 		}
 		boolean canMoveUp = false;
 		boolean canMoveDown = false;
@@ -248,55 +273,54 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			canMoveUp = canEdit && index > 0 && !ent.isBuiltIn();
 			canMoveDown = canEdit && (index < table.getItemCount() - 1) && !ent.isBuiltIn();
 		}
-    	if (canMoveDown && showBIButton.getSelection()) {
-    		ent = (ICLanguageSettingEntry)(table.getItem(index+1).getData());
-    		if (ent.isBuiltIn()) canMoveDown = false; // cannot exchange with built in
-    	}
-    	buttonSetEnabled(0, canAdd); // add
-    	buttonSetEnabled(1, canEdit); // edit
-    	buttonSetEnabled(2, canDelete); // delete
-    	buttonSetEnabled(3, canExport && !page.isMultiCfg()); // export
-    	// there is a separator instead of button #4
-    	buttonSetEnabled(5, canMoveUp && !page.isMultiCfg()); // up
-    	buttonSetEnabled(6, canMoveDown && !page.isMultiCfg()); // down
-    }
+		if (canMoveDown && showBIButton.getSelection()) {
+			ent = (ICLanguageSettingEntry)(table.getItem(index+1).getData());
+			if (ent.isBuiltIn()) canMoveDown = false; // cannot exchange with built in
+		}
+		buttonSetEnabled(BUTTON_ADD, canAdd);
+		buttonSetEnabled(BUTTON_EDIT, canEdit);
+		buttonSetEnabled(BUTTON_DELETE, canDelete);
+		buttonSetEnabled(BUTTON_EXPORT_UNEXPORT, canExport && !page.isMultiCfg());
+		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp && !page.isMultiCfg());
+		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown && !page.isMultiCfg());
+	}
 	
 	private Tree addTree(Composite comp) {
 		langTree = new Tree(comp, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL);
 		langTree.setLayoutData(new GridData(GridData.FILL_VERTICAL));
 		langTree.setHeaderVisible(true);
-		
+
 		langTree.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				TreeItem[] items = langTree.getSelection();
 				if (items.length > 0) {
-					ICLanguageSetting ls = (ICLanguageSetting)items[0].getData(); 
+					ICLanguageSetting ls = (ICLanguageSetting) items[0].getData();
 					if (ls != null) {
 						lang = ls;
 						update();
 					}
 				}
-			}});
+			}
+		});
 		langTree.addPaintListener(new PaintListener() {
 			public void paintControl(PaintEvent e) {
 				int x = langTree.getBounds().width - 5;
 				if (langCol.getWidth() != x)
 					langCol.setWidth(x);
-			}});
-		
+			}
+		});
+
 		langCol = new TreeColumn(langTree, SWT.NONE);
 		langCol.setText(UIMessages.getString("AbstractLangsListTab.1")); //$NON-NLS-1$
 		langCol.setWidth(200);
 		langCol.setResizable(false);
-		langTree.getAccessible().addAccessibleListener(
-			   new AccessibleAdapter() {                       
-	               @Override
-				public void getName(AccessibleEvent e) {
-	                       e.result = UIMessages.getString("AbstractLangsListTab.1"); //$NON-NLS-1$
-	               }
-			   }
-		);
+		langTree.getAccessible().addAccessibleListener(new AccessibleAdapter() {
+			@Override
+			public void getName(AccessibleEvent e) {
+				e.result = UIMessages.getString("AbstractLangsListTab.1"); //$NON-NLS-1$
+			}
+		});
 		return langTree;
 	}
 
@@ -306,7 +330,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	public abstract int getKind();
 	public abstract ICLanguageSettingEntry doAdd();
 	public abstract ICLanguageSettingEntry doEdit(ICLanguageSettingEntry ent);
-    public void additionalTableSet() {} // may be not overwritten
+	public void additionalTableSet() {} // may be not overwritten
 	
 	/**
 	 * Called when language changed or item added/edited/removed.
@@ -315,7 +339,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	 * Note, this method is rewritten in Symbols tab.
 	 */
 	public void update() { update(0); } 
-   
+
 	public void update(int shift) {
 		if (lang != null) {
 			int x = table.getSelectionIndex();
@@ -363,10 +387,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		ls = getLangSetting(cfg);
 		if (ls != null) {
 			Arrays.sort(ls, CDTListComparator.getInstance());
-			for (int i=0; i<ls.length; i++) {
-				if ((ls[i].getSupportedEntryKinds() & getKind()) != 0) {
+			for (ICLanguageSetting element : ls) {
+				if ((element.getSupportedEntryKinds() & getKind()) != 0) {
 					TreeItem t = new TreeItem(langTree, SWT.NONE);
-					String s = ls[i].getLanguageId();
+					String s = element.getLanguageId();
 					if (s != null && !s.equals(EMPTY_STR)) {
 						// Bug #178033: get language name via LangManager.
 						ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(s);
@@ -376,13 +400,19 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 							s = ld.getName();
 					}
 					if (s == null || s.equals(EMPTY_STR))
-						s = ls[i].getName();
+						s = element.getName();
 					t.setText(0, s);
-					t.setData(ls[i]);
+					t.setData(element);
 					if (firstItem == null) { 
 						firstItem = t;
-						lang = ls[i];
+						lang = element;
 					}
+					// FIXME temporary stub to make testing easier
+					if (s != null && s.startsWith("GNU C++")) {
+						firstItem = t;
+						lang = element;
+					}
+					
 				}
 			}
 
@@ -472,8 +502,9 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 				performMulti(ent, old);
 			} else {
 				ICLanguageSettingEntry[] del = null;  
-				if (! ent.getName().equals(old.getName()))
-					del = new ICLanguageSettingEntry[] {old};
+				if (!ent.getName().equals(old.getName()) || ent.getFlags() != old.getFlags()) {
+					del = new ICLanguageSettingEntry[] { old };
+				}
 				changeIt(ent, del);
 			}
 			update();
@@ -511,37 +542,36 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		int ids[] = table.getSelectionIndices();
 		
 		switch (i) {
-		case 0: // add
+		case BUTTON_ADD:
 			toAllCfgs = false;
 			toAllLang = false;
 			performAdd(doAdd());
 			break;
-		case 1: // edit
+		case BUTTON_EDIT:
 			performEdit(n);
 			break;
-		case 2: // delete
+		case BUTTON_DELETE:
 			performDelete(n);
 			break;
-		case 3: // toggle export	
+		case BUTTON_EXPORT_UNEXPORT:
 			if (n == -1) return;
 			for (int x=ids.length-1; x>=0; x--) {
 				old = (ICLanguageSettingEntry)(table.getItem(ids[x]).getData());
 				if (exported.contains(old)) {
 					deleteExportSetting(old);
 				} else {
-					page.getResDesc().getConfiguration().createExternalSetting(new String[] {lang.getId()}, null, null, new ICLanguageSettingEntry[] {old});
+					page.getResDesc().getConfiguration().createExternalSetting(null, null, null, new ICLanguageSettingEntry[] {old});
 				}
 			}
 			updateExport();
 			update();
 			break;
-		// there is a separator instead of button #4
-		case 5: // move up	
-		case 6: // move down
+		case BUTTON_MOVE_UP:
+		case BUTTON_MOVE_DOWN:
 			old = (ICLanguageSettingEntry)(table.getItem(n).getData());
 			int x = shownEntries.indexOf(old);
 			if (x < 0) break;
-			if (i == 6) x++; // "down" simply means "up underlying item"
+			if (i == BUTTON_MOVE_DOWN) x++; // "down" simply means "up underlying item"
 			old = shownEntries.get(x);
 			ICLanguageSettingEntry old2 = shownEntries.get(x - 1);
 			shownEntries.remove(x);
@@ -550,7 +580,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			shownEntries.add(x, old2);
 			
 			setSettingEntries(getKind(), shownEntries, false);
-			update(i == 5 ? -1 : 1);			
+			update(i == BUTTON_MOVE_UP ? -1 : 1);			
 			break;			
 		default:
 			break;
@@ -563,8 +593,8 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		ICConfigurationDescription cfg = getResDesc().getConfiguration();
 		ICExternalSetting[] vals = cfg.getExternalSettings();
 		if (!(vals == null || vals.length == 0)) {
-			for (int i=0; i<vals.length; i++) {
-				ICSettingEntry[] ents = vals[i].getEntries(getKind());
+			for (ICExternalSetting val : vals) {
+				ICSettingEntry[] ents = val.getEntries(getKind());
 				if (ents == null || ents.length == 0) continue;
 				for (int j=0; j<ents.length; j++) {
 					if (ents[j].equalsByName(ent)) {
@@ -572,10 +602,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 						int index = 0;
 						for (int k=0; k<ents.length; k++) 
 							if (k != j) arr[index++] = ents[k];
-						cfg.removeExternalSetting(vals[i]);
-						cfg.createExternalSetting(vals[i].getCompatibleLanguageIds(), 
-								vals[i].getCompatibleContentTypeIds(),
-								vals[i].getCompatibleExtensions(),
+						cfg.removeExternalSetting(val);
+						cfg.createExternalSetting(val.getCompatibleLanguageIds(), 
+								val.getCompatibleContentTypeIds(),
+								val.getCompatibleExtensions(),
 								arr);
 						return;
 					}
@@ -593,8 +623,8 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		ICConfigurationDescription[] cfgs = page.getCfgsEditable();
 		ICResourceDescription cur_cfg = page.getResDesc();
 		String id = lang.getName(); // getLanguageId() sometimes returns null.
-		for (int i = 0; i < cfgs.length; i++) {
-			ICResourceDescription rcfg = page.getResDesc(cfgs[i]); 
+		for (ICConfigurationDescription cfg : cfgs) {
+			ICResourceDescription rcfg = page.getResDesc(cfg); 
 			if (rcfg == null) 
 				continue;
 			if (!toAllCfgs && !(cur_cfg.equals(rcfg)))
@@ -643,8 +673,8 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected void performDefaults() {
 		fHadSomeModification= true;
 		TreeItem[] tis = langTree.getItems();
-		for (int i=0; i<tis.length; i++) {
-			Object ob = tis[i].getData();
+		for (TreeItem ti : tis) {
+			Object ob = ti.getData();
 			if (ob != null && ob instanceof ICLanguageSetting) {
 				((ICLanguageSetting)ob).setSettingEntries(getKind(), (List<ICLanguageSettingEntry>)null);
 			}
@@ -662,12 +692,25 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		public Image getColumnImage(Object element, int columnIndex) {
 			if (columnIndex > 0) return null;
 			if (! (element instanceof ICLanguageSettingEntry)) return null;
+
 			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
 			if (le.getKind() == ICSettingEntry.MACRO)
-				return IMG_MK;				
-			if ((le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0)
-				return IMG_WS;
-			return IMG_FS;
+				return IMG_MACRO;
+			if ((le.getFlags() & ICSettingEntry.BUILTIN) != 0)
+				return IMG_BUILTIN_FOLDER;
+
+			boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
+			if (le.getKind() == ICSettingEntry.INCLUDE_PATH || le.getKind() == ICSettingEntry.INCLUDE_FILE) {
+				if (isWorkspacePath)
+					return IMG_INCLUDES_FOLDER_WORKSPACE;
+				else
+					return IMG_INCLUDES_FOLDER;
+			} else {
+				if (isWorkspacePath)
+					return IMG_WORKSPACE;
+				else
+					return IMG_FOLDER;
+			}
 		}
 		@Override
 		public String getText(Object element) {
@@ -729,10 +772,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		lsets = new ICLanguageSetting[fs.length];
 		for (int i=0; i<fs.length; i++) {
 			ArrayList<ICLanguageSetting> list = new ArrayList<ICLanguageSetting>(ls.length);
-			for (int j=0; j<ls.length; j++) {
-				int x = Arrays.binarySearch(ls[j], fs[i], comp);
+			for (ICLanguageSetting[] element : ls) {
+				int x = Arrays.binarySearch(element, fs[i], comp);
 				if (x >= 0)
-					list.add(ls[j][x]);
+					list.add(element[x]);
 			}
 			if (list.size() == 1)
 				lsets[i] = list.get(0);
@@ -748,8 +791,8 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		if (getResDesc() == null) return true;
 		ICLanguageSetting [] ls = getLangSetting(getResDesc());
 		if (ls == null) return false;
-		for (int i=0; i<ls.length; i++) {
-			if ((ls[i].getSupportedEntryKinds() & getKind()) != 0)
+		for (ICLanguageSetting element : ls) {
+			if ((element.getSupportedEntryKinds() & getKind()) != 0)
 				return true;
 		}
 		return false;
@@ -794,5 +837,20 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	 */
 	protected final boolean hadSomeModification() {
 		return fHadSomeModification;
+	}
+	
+	@Override
+	protected final boolean isIndexerAffected() {
+		switch(getKind()) {
+		case ICSettingEntry.INCLUDE_PATH:
+		case ICSettingEntry.MACRO:
+		case ICSettingEntry.INCLUDE_FILE:
+		case ICSettingEntry.MACRO_FILE:
+			if (hadSomeModification()) {
+				return true;
+			}
+			break;
+		}
+		return false;
 	}
 }

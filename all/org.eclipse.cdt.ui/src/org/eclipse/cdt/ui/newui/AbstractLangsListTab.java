@@ -412,6 +412,12 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 						firstItem = t;
 						lang = langSetting;
 					}
+					// FIXME temporary stub to make testing easier
+					if (langId != null && langId.startsWith("GNU C++")) {
+						firstItem = t;
+						lang = langSetting;
+					}
+					
 				}
 			}
 

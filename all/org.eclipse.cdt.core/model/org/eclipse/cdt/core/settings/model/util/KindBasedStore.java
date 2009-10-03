@@ -13,7 +13,21 @@ package org.eclipse.cdt.core.settings.model.util;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 
-public class KindBasedStore implements Cloneable {
+/**
+ * A storage where stored data is organized by "kind".
+ * In most cases kind is one of {@link ICLanguageSettingEntry}, i.e. include path, macro etc.
+ * 
+ * @see ICSettingEntry#INCLUDE_PATH
+ * @see ICSettingEntry#INCLUDE_FILE
+ * @see ICSettingEntry#MACRO
+ * @see ICSettingEntry#MACRO_FILE
+ * @see ICSettingEntry#LIBRARY_PATH
+ * @see ICSettingEntry#LIBRARY_FILE
+ * @see ICSettingEntry#OUTPUT_PATH
+ * @see ICSettingEntry#SOURCE_PATH
+ *
+ */
+public class KindBasedStore<TypeStored> implements Cloneable {
 	private static final int INDEX_INCLUDE_PATH = 0;
 	private static final int INDEX_INCLUDE_FILE = 1;
 	private static final int INDEX_MACRO = 2;
@@ -106,11 +120,11 @@ public class KindBasedStore implements Cloneable {
 	}
 
 	public static int[] getLanguageEntryKinds(){
-		return (int[])LANG_ENTRY_KINDS.clone();
+		return LANG_ENTRY_KINDS.clone();
 	}
 
 	public static int[] getAllEntryKinds(){
-		return (int[])ALL_ENTRY_KINDS.clone();
+		return ALL_ENTRY_KINDS.clone();
 	}
 
 	private int indexToKind(int index){
@@ -134,13 +148,15 @@ public class KindBasedStore implements Cloneable {
 		}
 		throw new IllegalArgumentException(UtilMessages.getString("KindBasedStore.1")); //$NON-NLS-1$
 	}
-	public Object get(int kind){
-		return fEntryStorage[kindToIndex(kind)];
+	@SuppressWarnings("unchecked")
+	public TypeStored get(int kind){
+		return (TypeStored) fEntryStorage[kindToIndex(kind)];
 	}
 
-	public Object put(int kind, Object object){
+	@SuppressWarnings("unchecked")
+	public TypeStored put(int kind, TypeStored object){
 		int index = kindToIndex(kind);
-		Object old = fEntryStorage[index];
+		TypeStored old = (TypeStored) fEntryStorage[index];
 		fEntryStorage[index] = object;
 		return old;
 	}
@@ -196,8 +212,9 @@ public class KindBasedStore implements Cloneable {
 	@Override
 	public Object clone() {
 		try {
-			KindBasedStore clone = (KindBasedStore)super.clone();
-			clone.fEntryStorage = (Object[])fEntryStorage.clone();
+			@SuppressWarnings("unchecked")
+			KindBasedStore<TypeStored> clone = (KindBasedStore<TypeStored>)super.clone();
+			clone.fEntryStorage = fEntryStorage.clone();
 			return clone;
 		} catch (CloneNotSupportedException e) {
 		}

@@ -49,6 +49,14 @@
             file="contexts_CDT_DEBUGGER.xml"
             plugin="org.eclipse.cdt.debug.ui">
       </contexts>
+	  <contexts 
+	  		file="contexts_CDT_DEBUGGER.xml" 
+	  		plugin="org.eclipse.debug.ui"> 
+      </contexts>
+      <contexts
+      		file="contexts_CDT_DEBUGGER.xml" 
+      		plugin="org.eclipse.ui.console"> 
+      </contexts>
    </extension>
    <extension
          point="org.eclipse.help.contexts">
@@ -70,6 +78,71 @@
             file="contexts_CDT_LAUNCH.xml"
             plugin="org.eclipse.cdt.launch">
       </contexts>
+   </extension>
+   
+<!-- ============================================================================= -->
+<!-- KEYWORD INDEX EXTENSION                                                       -->
+<!-- ============================================================================= -->
+	<!--
+	<extension 
+		point="org.eclipse.help.index" >
+		<index file="index.xml" />
+	</extension>
+	-->
+
+
+<!-- ============================================================================= -->
+<!-- CHEATSHEET EXTENSION                                                       -->
+<!-- ============================================================================= -->
+
+	<extension
+       point="org.eclipse.ui.cheatsheets.cheatSheetContent">
+    	<category
+    		id="org.eclipse.cdt-doc.category.tutorials"
+    		name="%CheatSheet.name">
+    	</category>
+    	<cheatsheet
+    		category="org.eclipse.cdt-doc.category.tutorials"
+    		composite="false"
+    		contentFile="$nl$/cheatsheets/cs_cdt_basic.xml"
+    		id="org.eclipse.cdt-doc.cheatsheet.cdt_basic"
+    		name="%CreateProjectTutorial.name">
+       		<description>
+          		%CreateProjectTutorial.description
+       		</description>
+    	</cheatsheet>
+    	<cheatsheet
+    		category="org.eclipse.cdt-doc.category.tutorials"
+    		composite="false"
+    		contentFile="$nl$/cheatsheets/cs_cdt_import_project.xml"
+    		id="org.eclipse.cdt-doc.cheatsheet.cdt_import_project"
+    		name="%ImportProjectTutorial.name">
+       		<description>
+          		%ImportProjectTutorial.description
+       		</description>
+    	</cheatsheet>
+	</extension>
+
+   <extension
+         point="org.eclipse.ui.intro.configExtension">
+      <configExtension
+            content="$nl$/intro/cdtIntro.xml"
+            configId="org.eclipse.ui.intro.universalConfig">
+      </configExtension>
+   </extension>
+   <extension
+         point="org.eclipse.ui.intro.configExtension">
+      <configExtension
+            configId="org.eclipse.ui.intro.universalConfig"
+            content="$nl$/intro/cdtTutorial.xml">
+      </configExtension>
+   </extension>
+   <extension
+         point="org.eclipse.ui.intro.configExtension">
+      <configExtension
+            configId="org.eclipse.ui.intro.universalConfig"
+            content="$nl$/intro/cdtWhatsnew.xml">
+      </configExtension>
    </extension>
 
 </plugin>

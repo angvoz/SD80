@@ -17,11 +17,11 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer
 public abstract class ACSettingEntry implements ICSettingEntry {
 	public static final String UNKNOWN_PROVIDER = "org.eclipse.cdt.projectmodel.4.0.0";
 	
-	int fFlags;
-	String fName;
-	protected String fProviderId = UNKNOWN_PROVIDER;
+	private int fFlags;
+	private String fName;
+	private String fProviderId = UNKNOWN_PROVIDER;
 	
-	public ACSettingEntry(String name, int flags){
+	ACSettingEntry(String name, int flags){
 		fName = name;
 		fFlags = flags;
 	}

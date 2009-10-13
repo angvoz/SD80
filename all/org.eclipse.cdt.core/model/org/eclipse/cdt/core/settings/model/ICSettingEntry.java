@@ -46,6 +46,8 @@ public interface ICSettingEntry {
 	 */
 	int RESOLVED = 1 << 4;
 
+	int DISABLED = 1 << 5;
+	
 	int INCLUDE_PATH = 1;
 	int INCLUDE_FILE = 1 << 1;
 	int MACRO = 1 << 2;

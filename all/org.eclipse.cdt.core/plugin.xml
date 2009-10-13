@@ -32,22 +32,16 @@
 <!-- =================================================================================== -->
    <extension-point id="ScannerInfoProvider" name="%ScannerInfoProvider.name"/>
 <!-- =================================================================================== -->
-<!-- Extension Point: CFileType and CFileTypeAssociation for translation unit ident      -->
-<!-- =================================================================================== -->
-   <extension-point id="CLanguage" name="%CLanguage.name" schema="schema/CLanguage.exsd"/>
-   <extension-point id="CFileType" name="%CFileType.name" />
-   <extension-point id="CFileTypeAssociation" name="%CFileTypeAssociation.name" />
-<!-- =================================================================================== -->
 <!-- PathEntryContainer initialization, this is part of the IPathEntry framework         -->
 <!-- =================================================================================== -->
    <extension-point id="PathEntryContainerInitializer" name="%PathEntryContainerInitializer" schema="schema/PathEntryContainerInitializer.exsd"/>
    <extension-point id="CodeFormatter" name="%CodeFormatter.name" schema="schema/CodeFormatter.exsd"/>
    <extension-point id="CIndexer" name="%CIndexer.name" schema="schema/CIndexer.exsd"/>
    <extension-point id="language" name="%language.name" schema="schema/language.exsd"/>
-   <extension-point id="CConfigurationDataProvider" name="CConfigurationData provider" schema="schema/CConfigurationDataProvider.exsd"/>
-   <extension-point id="projectConverter" name="project converter" schema="schema/projectConverter.exsd"/>
-   <extension-point id="CIndex" name="CIndex" schema="schema/CIndex.exsd"/>
-   <extension-point id="externalSettingsProvider" name="External Settings provider" schema="schema/externalSettingsProvider.exsd"/>
+   <extension-point id="CConfigurationDataProvider" name="%CConfigurationDataProvider.name" schema="schema/CConfigurationDataProvider.exsd"/>
+   <extension-point id="projectConverter" name="%projectConverter.name" schema="schema/projectConverter.exsd"/>
+   <extension-point id="CIndex" name="%CIndex.name" schema="schema/CIndex.exsd"/>
+   <extension-point id="externalSettingsProvider" name="%externalSettingsProvider.name" schema="schema/externalSettingsProvider.exsd"/>
 <!-- =================================================================================== -->
 <!-- Define the list of the Binary Parser provided by the CDT                            -->
 <!-- =================================================================================== -->
@@ -226,7 +220,7 @@
    </extension>
    <extension
          id="GeneratePDOM"
-         name="GeneratePDOM"
+         name="%GeneratePDOMApplication.name"
          point="org.eclipse.core.runtime.applications">
       <application
             visible="true">
@@ -235,92 +229,6 @@
          </run>
       </application>
    </extension>
-   <extension
-         id="GeneratePDOM"
-         name="GeneratePDOM"
-         point="org.eclipse.core.runtime.applications">
-      <application
-            visible="true">
-         <run
-               class="org.eclipse.cdt.internal.core.pdom.export.GeneratePDOMApplication">
-         </run>
-      </application>
-   </extension>
-<!-- =================================================================================== -->
-<!-- CDT file type mappings                                                              -->
-<!-- =================================================================================== -->
-   <!--extension
-         point="org.eclipse.cdt.core.CLanguage">
-      <language
-            name="C"
-            id="org.eclipse.cdt.core.language.c">
-      </language>
-      <language
-            name="C++"
-            id="org.eclipse.cdt.core.language.cxx">
-      </language>
-      <language
-            name="%fileTypeMapping.AssemblyLanguage"
-            id="org.eclipse.cdt.core.language.asm">
-      </language>
-   </extension>
-   <extension
-         point="org.eclipse.cdt.core.CFileType">
-      <fileType
-            name="%fileTypeMapping.cSourceFile"
-            type="source"
-            id="org.eclipse.cdt.core.fileType.c_source"
-            language="org.eclipse.cdt.core.language.c">
-      </fileType>
-      <fileType
-            name="%fileTypeMapping.cHeaderFile"
-            type="header"
-            id="org.eclipse.cdt.core.fileType.c_header"
-            language="org.eclipse.cdt.core.language.c">
-      </fileType>
-      <fileType
-            name="%fileTypeMapping.cppSourceFile"
-            type="source"
-            id="org.eclipse.cdt.core.fileType.cxx_source"
-            language="org.eclipse.cdt.core.language.cxx">
-      </fileType>
-      <fileType
-            name="%fileTypeMapping.cppHeaderFile"
-            type="header"
-            id="org.eclipse.cdt.core.fileType.cxx_header"
-            language="org.eclipse.cdt.core.language.cxx">
-      </fileType>
-      <fileType
-            name="%fileTypeMapping.assemblySourceFile"
-            type="source"
-            id="org.eclipse.cdt.core.fileType.asm_source"
-            language="org.eclipse.cdt.core.language.asm">
-      </fileType>
-   </extension>
-   <extension
-         point="org.eclipse.cdt.core.CFileTypeAssociation">
-      <association
-            type="org.eclipse.cdt.core.fileType.c_source"
-            pattern="*.c">
-      </association>
-      <association
-            type="org.eclipse.cdt.core.fileType.c_header"
-            pattern="*.h">
-      </association>
-      <association
-            type="org.eclipse.cdt.core.fileType.cxx_source"
-            pattern="*.cpp,*.cxx,*.cc,*.C">
-      </association>
-      <association
-            file="template/cpp_headers"
-            type="org.eclipse.cdt.core.fileType.cxx_header"
-            pattern="*.hpp,*.hxx,*.hh,*.H">
-      </association>
-      <association
-            type="org.eclipse.cdt.core.fileType.asm_source"
-            pattern="*.asm,*.s,*.S">
-      </association>
-   </extension-->
 <!-- =================================================================================== -->
 <!-- Some well known C file extensions override for the team plugins                     -->
 <!-- =================================================================================== -->
@@ -380,7 +288,7 @@
       </fileTypes>
       <fileTypes
             type="text"
-            extension="cdtproject">
+            extension="cproject">
       </fileTypes>
    </extension>
 <!-- =================================================================================== -->
@@ -418,7 +326,7 @@
       </ignore>
    </extension>
 <!-- =================================================================================== -->
-<!-- C/C++ Task marker(disable for now)                                                  -->
+<!-- C/C++ Task marker                                                                   -->
 <!-- =================================================================================== -->
    <extension
          id="task"
@@ -460,19 +368,6 @@
             type="org.eclipse.core.resources.problemmarker">
       </super>
    </extension>
-
-<!-- =================================================================================== -->
-<!-- Code Formatter extension point                                                      -->
-<!-- =================================================================================== -->
-   <!--extension
-         id="codeFormatters"
-         name="%CodeFormatters.name"
-         point="org.eclipse.cdt.core.CodeFormatter">
-      <codeFormatter
-            class="org.eclipse.cdt.internal.formatter.DefaultCodeFormatter"
-            name="%DefaultCodeFormatter.name"
-            id="org.eclipse.cdt.core.defaultCodeFormatter"/>
-   </extension-->
 
 <!-- =================================================================================== -->
 <!-- Define C/C++ files ContentTypes                                                     -->
@@ -542,19 +437,19 @@
    		 id="nullindexer"
          name="%CDTIndexer.nullindexer"
          point="org.eclipse.cdt.core.CIndexer">
-      <run class="org.eclipse.cdt.internal.core.pdom.indexer.nulli.PDOMNullIndexer"/>
+      <run class="org.eclipse.cdt.internal.core.pdom.indexer.PDOMNullIndexer"/>
    </extension>
    <extension
          id="fastIndexer"
          name="%fastIndexer.name"
          point="org.eclipse.cdt.core.CIndexer">
-      <run class="org.eclipse.cdt.internal.core.pdom.indexer.fast.PDOMFastIndexer"/>
+      <run class="org.eclipse.cdt.internal.core.pdom.indexer.PDOMFastIndexer"/>
    </extension>
    <extension
          name="%CDTIndexer.domsourceindexer"
          id="domsourceindexer"
          point="org.eclipse.cdt.core.CIndexer">
-      <run class="org.eclipse.cdt.internal.core.pdom.indexer.full.PDOMFullIndexer"/>
+      <run class="org.eclipse.cdt.internal.core.pdom.indexer.PDOMFullIndexer"/>
    </extension>
    <extension
          point="org.eclipse.core.variables.dynamicVariables">
@@ -592,10 +487,16 @@
       <pdomLinkageFactory
             class="org.eclipse.cdt.internal.core.pdom.dom.cpp.PDOMCPPLinkageFactory"
             id="C++"/>
+      <language
+            class="org.eclipse.cdt.core.model.AssemblyLanguage"
+            id="assembly"
+            name="%language.name.asm">
+         <contentType id="org.eclipse.cdt.core.asmSource"/>
+      </language>
    </extension>
    <extension
          id="defaultConfigDataProvider"
-         name="Default Provider"
+         name="%defaultProvider.name"
          point="org.eclipse.cdt.core.CConfigurationDataProvider">
          <provider
          	class="org.eclipse.cdt.internal.core.settings.model.PathEntryConfigurationDataProvider"
@@ -626,9 +527,11 @@
 <!-- =================================================================================== -->
 <!-- Template engine extension points	 -->
 <!-- =================================================================================== -->
-   <extension-point id="templates" name="Templates Extension point" 
+   <extension-point id="templates" name="%templatesExtensionPoint.name" 
                     schema="schema/templates.exsd"/>
-   <extension-point id="templateProcessTypes" name="Process Types Extension point" schema="schema/templateProcessTypes.exsd"/>
+   <extension-point id="templateProcessTypes" name="%templateProcessTypes.name" schema="schema/templateProcessTypes.exsd"/>
+   <extension-point id="templateAssociations" name="%templateAssociations.name" schema="schema/templateAssociations.exsd"/>
+   <extension-point id="FileSystemUtility" name="File System Utility" schema="schema/FileSystemUtility.exsd"/>
 
    <extension
          point="org.eclipse.cdt.core.templateProcessTypes">

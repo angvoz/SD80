@@ -16,6 +16,7 @@ public interface ICSettingEntry {
 	int LOCAL = 1 << 2;
 	int VALUE_WORKSPACE_PATH = 1 << 3;
 	int RESOLVED = 1 << 4;
+	int DISABLED = 1 << 5;
 	
 	int INCLUDE_PATH = 1;
 	int INCLUDE_FILE = 1 << 1;

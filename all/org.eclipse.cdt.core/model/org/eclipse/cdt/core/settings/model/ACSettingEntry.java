@@ -15,11 +15,8 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer
 
 
 public abstract class ACSettingEntry implements ICSettingEntry {
-	public static final String UNKNOWN_PROVIDER = "org.eclipse.cdt.projectmodel.4.0.0";
-	
 	private int fFlags;
 	private String fName;
-	private String fProviderId = UNKNOWN_PROVIDER;
 	
 	ACSettingEntry(String name, int flags){
 		fName = name;
@@ -69,9 +66,6 @@ public abstract class ACSettingEntry implements ICSettingEntry {
 			return false;
 		
 		if(!fName.equals(e.fName))
-			return false;
-		
-		if(!fProviderId.equals(e.fProviderId))
 			return false;
 		
 		return true;
@@ -130,21 +124,9 @@ public abstract class ACSettingEntry implements ICSettingEntry {
 		buf.append('[').append(LanguageSettingEntriesSerializer.kindToString(getKind())).append(']').append(' ');
 		buf.append(contentsToString());
 		buf.append(" ; flags: ").append(LanguageSettingEntriesSerializer.composeFlagsString(getFlags())); //$NON-NLS-1$
-		buf.append(" ; provider: ").append(fProviderId); //$NON-NLS-1$
 		return buf.toString();
 	}
 	
 	protected abstract String contentsToString();
-
-
-	// TODO: should we still avoid setters? Need to measure performance impact.
-	public void setProviderId(String providerId) {
-		this.fProviderId = providerId;
-	}
-
-
-	public String getProviderId() {
-		return fProviderId;
-	}
 	
 }

@@ -15,16 +15,21 @@ import org.eclipse.core.runtime.IPath;
 
 public final class CIncludePathEntry extends ACPathEntry implements ICIncludePathEntry{
 
+	// FIXME: retire this constructor
 	public CIncludePathEntry(String value, int flags) {
-		super(value, flags);
+		this(value, flags, UNKNOWN_PROVIDER);
 	}
 
-	public CIncludePathEntry(IPath location, int flags) {
-		super(location, flags);
+	public CIncludePathEntry(String value, int flags, String providerId) {
+		super(value, flags, providerId);
+	}
+	
+	public CIncludePathEntry(IPath location, int flags, String providerId) {
+		super(location, flags, providerId);
 	}
 
-	public CIncludePathEntry(IFolder rc, int flags) {
-		super(rc, flags);
+	public CIncludePathEntry(IFolder rc, int flags, String providerId) {
+		super(rc, flags, providerId);
 	}
 
 	public boolean isLocal() {

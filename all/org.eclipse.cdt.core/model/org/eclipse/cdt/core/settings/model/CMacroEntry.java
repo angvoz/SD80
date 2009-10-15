@@ -15,8 +15,13 @@ package org.eclipse.cdt.core.settings.model;
 public final class CMacroEntry extends ACSettingEntry implements ICMacroEntry{
 	private String fValue;
 
+	// FIXME: retire this constructor
 	public CMacroEntry(String name, String value, int flags) {
-		super(name, flags);
+		this(name, value, flags, UNKNOWN_PROVIDER);
+	}
+	
+	public CMacroEntry(String name, String value, int flags, String providerId) {
+		super(name, flags, providerId);
 		fValue = value;
 		if(fValue == null)
 			fValue = "";	//$NON-NLS-1$

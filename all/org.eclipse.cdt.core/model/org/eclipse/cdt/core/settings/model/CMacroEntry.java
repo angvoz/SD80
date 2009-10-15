@@ -16,6 +16,7 @@ public final class CMacroEntry extends ACSettingEntry implements ICMacroEntry{
 	private String fValue;
 
 	// FIXME: retire this constructor
+	@Deprecated
 	public CMacroEntry(String name, String value, int flags) {
 		this(name, value, flags, UNKNOWN_PROVIDER);
 	}

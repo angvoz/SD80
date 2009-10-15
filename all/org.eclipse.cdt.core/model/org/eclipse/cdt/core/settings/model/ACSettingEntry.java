@@ -19,13 +19,21 @@ public abstract class ACSettingEntry implements ICSettingEntry {
 	
 	private int fFlags;
 	private String fName;
-	private String fProviderId = UNKNOWN_PROVIDER;
+	private String fProviderId;
 	
-	ACSettingEntry(String name, int flags){
+	// FIXME: retire this constructor
+	public ACSettingEntry(String name, int flags){
 		fName = name;
 		fFlags = flags;
+		fProviderId = UNKNOWN_PROVIDER;
 	}
 
+	public ACSettingEntry(String name, int flags, String providerId){
+		fName = name;
+		fFlags = flags;
+		fProviderId = providerId;
+	}
+	
 	public boolean isBuiltIn() {
 		return checkFlags(BUILTIN);
 	}
@@ -86,6 +94,10 @@ public abstract class ACSettingEntry implements ICSettingEntry {
 		return fFlags;
 	}
 
+	public String getProviderId() {
+		return fProviderId;
+	}
+
 	public boolean equalsByContents(ICSettingEntry entry) {
 		return equalsByName(entry);
 	}
@@ -135,16 +147,5 @@ public abstract class ACSettingEntry implements ICSettingEntry {
 	}
 	
 	protected abstract String contentsToString();
-
-
-	// TODO: should we still avoid setters? Need to measure performance impact.
-	public void setProviderId(String providerId) {
-		this.fProviderId = providerId;
-	}
-
-
-	public String getProviderId() {
-		return fProviderId;
-	}
 	
 }

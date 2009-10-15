@@ -21,7 +21,6 @@ public abstract class ACPathEntry extends ACSettingEntry
 //	IPath fLocation;
 //	private IPath fPath;
 	
-	// FIXME: retire this constructor
 	ACPathEntry(IResource rc, int flags) {
 		super(rc.getFullPath().toString(), flags | RESOLVED | VALUE_WORKSPACE_PATH);
 //		fFullPath = rc.getFullPath();
@@ -35,12 +34,10 @@ public abstract class ACPathEntry extends ACSettingEntry
 		fFullPath = fullPath;
 	}
 */
-	// FIXME: retire this constructor
 	ACPathEntry(String value, int flags) {
 		super(value, flags);
 	}
 	
-	// FIXME: retire this constructor
 	ACPathEntry(IPath path, int flags) {
 		super(path.toString(), flags /*| RESOLVED*/);
 //		fPath = path;
@@ -50,26 +47,6 @@ public abstract class ACPathEntry extends ACSettingEntry
 //			fLocation = path;
 	}
 
-	ACPathEntry(IResource rc, int flags, String providerId) {
-		super(rc.getFullPath().toString(), flags | RESOLVED | VALUE_WORKSPACE_PATH, providerId);
-//		fFullPath = rc.getFullPath();
-//		fPath = rc.getFullPath();
-//		fLocation = rc.getLocation();
-	}
-	
-	ACPathEntry(String value, int flags, String providerId) {
-		super(value, flags, providerId);
-	}
-	
-	ACPathEntry(IPath path, int flags, String providerId) {
-		super(path.toString(), flags /*| RESOLVED*/, providerId);
-//		fPath = path;
-//		if(isValueWorkspacePath())
-//			fFullPath = path;
-//		else
-//			fLocation = path;
-	}
-	
 	public IPath getFullPath() {
 		if(isValueWorkspacePath())
 			return new Path(getValue());

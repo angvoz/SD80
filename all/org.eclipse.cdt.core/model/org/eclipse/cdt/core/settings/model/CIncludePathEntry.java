@@ -16,6 +16,7 @@ import org.eclipse.core.runtime.IPath;
 public final class CIncludePathEntry extends ACPathEntry implements ICIncludePathEntry{
 
 	// FIXME: retire this constructor
+	@Deprecated
 	public CIncludePathEntry(String value, int flags) {
 		this(value, flags, UNKNOWN_PROVIDER);
 	}

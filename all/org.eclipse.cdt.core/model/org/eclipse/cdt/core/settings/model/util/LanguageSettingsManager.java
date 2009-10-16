@@ -44,5 +44,9 @@ public class LanguageSettingsManager {
 	public static void removeSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
 		LanguageSettingsStore.removeSettingEntries(descriptor, providerId);
 	}
+
+	public static String[] getProviders(LanguageSettingsResourceDescriptor descriptor) {
+		return LanguageSettingsStore.getProviders(descriptor);
+	}
 	
 }

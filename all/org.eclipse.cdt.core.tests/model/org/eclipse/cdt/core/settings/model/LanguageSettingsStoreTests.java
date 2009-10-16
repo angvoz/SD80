@@ -50,7 +50,32 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	}
 
 	/**
-	 * @throws Exception
+	 */
+	public void testEmptyStore() throws Exception {
+		// retrieve the entries for provider-1
+		{
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(TEST_RC_DESCRIPTOR, TEST_PROVIDER_1);
+			assertNotNull(retrieved);
+			assertEquals(0, retrieved.size());
+		}
+
+		// retrieve entries by kind
+		{
+			List<ICLanguageSettingEntry> includes = LanguageSettingsManager.getSettingEntriesFiltered(
+					TEST_RC_DESCRIPTOR, TEST_PROVIDER_1, ICSettingEntry.INCLUDE_PATH);
+			assertNotNull(includes);
+			assertEquals(0, includes.size());
+		}
+		
+		// get providers
+		{
+			String[] providers = LanguageSettingsManager.getProviders(TEST_RC_DESCRIPTOR);
+			assertNotNull(providers);
+			assertEquals(0, providers.length);
+		}
+	}
+
+	/**
 	 */
 	public void testClear() throws Exception {
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -68,7 +93,6 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	}
 
 	/**
-	 * @throws Exception
 	 */
 	public void testLanguageSettingsStore() throws Exception {
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -89,7 +113,6 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	}
 	
 	/**
-	 * @throws Exception
 	 */
 	public void testLanguageSettingsManagerBasic() throws Exception {
 		List<ICLanguageSettingEntry> original1 = new ArrayList<ICLanguageSettingEntry>();
@@ -129,6 +152,14 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			for (int i=0;i<original2.size();i++) {
 				assertEquals(originalArray[i], retrievedArray[i]);
 			}
+		}
+		
+		// get list of providers
+		{
+			String[] providers = LanguageSettingsManager.getProviders(TEST_RC_DESCRIPTOR);
+			assertEquals(TEST_PROVIDER_1, providers[0]);
+			assertEquals(TEST_PROVIDER_2, providers[1]);
+			assertEquals(2, providers.length);
 		}
 		
 		// reset the entries for provider-1
@@ -183,7 +214,6 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	}
 	
 	/**
-	 * @throws Exception
 	 */
 	public void testLanguageSettingsManagerFiltered() throws Exception {
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();

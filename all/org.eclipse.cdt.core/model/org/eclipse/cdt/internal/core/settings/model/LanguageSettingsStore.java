@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
@@ -105,6 +106,15 @@ public class LanguageSettingsStore {
 		fStorage.clear();
 	}
 	
+	public static String[] getProviders(LanguageSettingsResourceDescriptor descriptor) {
+		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
+		if (map!=null) {
+			Set<String> providers = map.keySet();
+			return providers.toArray(new String[0]);
+		}
+		return new String[0];
+	}
+
 	
 	
 	

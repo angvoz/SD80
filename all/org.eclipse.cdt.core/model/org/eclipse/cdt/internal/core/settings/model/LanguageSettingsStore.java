@@ -22,6 +22,12 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescript
 
 
 /**
+ * LanguageSettingsStore serves for storing lists of language settings ICLanguageSettingEntry 
+ * (org.eclipse.cdt.core analog for compiler options). It is represented internally as TODO .
+ * 
+ * Each provider can keep heterogeneous ordered list of settings where there is no distinction 
+ * between different kinds such as include paths or macros made. Entries with duplicate names
+ * are also allowed.
  * 
  */
 public class LanguageSettingsStore {
@@ -43,24 +49,6 @@ public class LanguageSettingsStore {
 		return new ArrayList<ICLanguageSettingEntry>();
 	}
 	
-	/**
-	 * 
-	 */
-	public static List<ICLanguageSettingEntry> getSettingEntriesFiltered(LanguageSettingsResourceDescriptor descriptor, String providerId, int kind) {
-		ArrayList<ICLanguageSettingEntry> filtered = new ArrayList<ICLanguageSettingEntry>();
-		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
-		if (map!=null) {
-			List<ICLanguageSettingEntry> list = map.get(providerId);
-			if (list!=null) {
-				for (ICLanguageSettingEntry entry : list) {
-					if (entry.getKind()==kind) {
-						filtered.add(entry);
-					}
-				}
-			}
-		}
-		return filtered;
-	}
 	
 	/**
 	 * This will replace old settings if existed with the new ones.
@@ -106,13 +94,12 @@ public class LanguageSettingsStore {
 		fStorage.clear();
 	}
 	
-	public static String[] getProviders(LanguageSettingsResourceDescriptor descriptor) {
+	public static List<String> getProviders(LanguageSettingsResourceDescriptor descriptor) {
 		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
 		if (map!=null) {
-			Set<String> providers = map.keySet();
-			return providers.toArray(new String[0]);
+			return new ArrayList<String>(map.keySet());
 		}
-		return new String[0];
+		return new ArrayList<String>();
 	}
 
 	

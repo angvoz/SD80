@@ -11,20 +11,50 @@
 
 package org.eclipse.cdt.core.settings.model.util;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsStore;
 
+/**
+ * TODO
+ * This layer of language settings in TODO
+ * 
+ * Duplicate entries are filtered where only first entry is preserved.
+ *
+ */
 public class LanguageSettingsManager {
-	public static final String UNKNOWN_PROVIDER = "org.eclipse.cdt.projectmodel.4.0.0";
+	public static final String PROVIDER_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
+	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user";
 	
 	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
 		return LanguageSettingsStore.getSettingEntries(descriptor, providerId);
 	}
 
-	public static List<ICLanguageSettingEntry> getSettingEntriesFiltered(LanguageSettingsResourceDescriptor descriptor, String providerId, int kind) {
-		return LanguageSettingsStore.getSettingEntriesFiltered(descriptor, providerId, kind);
+	private static boolean containsEntry(List<ICLanguageSettingEntry> list, String name) {
+		for (ICLanguageSettingEntry entry : list) {
+			if (entry.getName().equals(name)) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, int kind) {
+		List<ICLanguageSettingEntry> list = LanguageSettingsStore.getSettingEntries(descriptor, providerId);
+		ArrayList<ICLanguageSettingEntry> newList = new ArrayList<ICLanguageSettingEntry>(list.size());
+		for (ICLanguageSettingEntry entry : list) {
+			if (entry.getKind()==kind && !containsEntry(newList, entry.getName())) {
+				newList.add(entry);
+			}
+		}
+		return newList;
 	}
 	
 	/**
@@ -45,8 +75,48 @@ public class LanguageSettingsManager {
 		LanguageSettingsStore.removeSettingEntries(descriptor, providerId);
 	}
 
-	public static String[] getProviders(LanguageSettingsResourceDescriptor descriptor) {
-		return LanguageSettingsStore.getProviders(descriptor);
+	
+	// TODO: priority will be taken from extension point
+	private static int getProviderPriority(String providerId) {
+		if (PROVIDER_UI_USER.equals(providerId)) {
+			return 1;
+		}
+		if (PROVIDER_UNKNOWN.equals(providerId)) {
+			return 100;
+		}
+		return 666;
 	}
 	
+	public static List<String> getProviders(LanguageSettingsResourceDescriptor descriptor) {
+		Comparator<String> comparator = new Comparator<String>() {
+			public int compare(String provider1, String provider2) {
+				return getProviderPriority(provider1) - getProviderPriority(provider2);
+			}
+		};
+		List<String> providers = LanguageSettingsStore.getProviders(descriptor);
+		Collections.sort(providers, comparator);
+		return providers;
+	}
+	
+	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(LanguageSettingsResourceDescriptor descriptor, int kind) {
+		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
+		for (String provider: getProviders(descriptor)) {
+			for (ICLanguageSettingEntry entry : getSettingEntries(descriptor, provider, kind)) {
+				if (!containsEntry(list, entry.getName())) {
+					list.add(entry);
+				}
+			}
+		}
+		
+		Iterator<ICLanguageSettingEntry> iter = list.iterator();
+		while (iter.hasNext()) {
+			ICLanguageSettingEntry entry = iter.next();
+			if ((entry.getFlags() & ICSettingEntry.DISABLED)==ICSettingEntry.DISABLED) {
+				iter.remove();
+			}
+		}
+		return list;
+	}
+
+
 }

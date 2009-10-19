@@ -48,22 +48,24 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
-		LanguageSettingsStore.clear();
+		LanguageSettingsManager.clear();
 	}
 
 	/**
 	 */
 	public void testEmptyStore() throws Exception {
+		LanguageSettingsManager manager = new LanguageSettingsManager(null);
+
 		// retrieve the entries for provider-1
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
 
 		// retrieve entries by kind
 		{
-			List<ICLanguageSettingEntry> includes = LanguageSettingsManager.getSettingEntries(
+			List<ICLanguageSettingEntry> includes = manager.getSettingEntries(
 					TEST_RC_DESCRIPTOR, PROVIDER_1, ICSettingEntry.INCLUDE_PATH);
 			assertNotNull(includes);
 			assertEquals(0, includes.size());
@@ -71,7 +73,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 		// get providers
 		{
-			List<String> providers = LanguageSettingsManager.getProviders(TEST_RC_DESCRIPTOR);
+			List<String> providers = manager.getProviders(TEST_RC_DESCRIPTOR);
 			assertNotNull(providers);
 			assertEquals(0, providers.size());
 		}
@@ -80,30 +82,47 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	/**
 	 */
 	public void testClear() throws Exception {
-		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
-		original.add(new CIncludePathEntry("value1", 1));
-		original.add(new CIncludePathEntry("value2", 2));
+		LanguageSettingsManager manager = new LanguageSettingsManager(null);
 
-		// store and then clear the entries
-		LanguageSettingsStore.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_0, original);
-		List<ICLanguageSettingEntry> retrieved = LanguageSettingsStore.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_0);
-		assertEquals(original.size(), retrieved.size());
+		{
+			// add something
+			List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+			entries.add(new CIncludePathEntry("value1", 1));
+			manager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, entries);
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+			assertEquals(1, retrieved.size());
+		}
 
-		LanguageSettingsStore.clear();
-		retrieved = LanguageSettingsStore.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_0);
-		assertEquals(0, retrieved.size());
+		{
+			// clear
+			LanguageSettingsManager.clear();
+
+			// Check instantiated earlier manager
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+			assertEquals(0, retrieved.size());
+
+			// Check newly instantiated manager
+			LanguageSettingsManager manager1 = new LanguageSettingsManager(null);
+			retrieved = manager1.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+			assertEquals(0, retrieved.size());
+		}
+
+		// TODO: clear project
+
 	}
 
 	/**
 	 */
 	public void testLanguageSettingsStore() throws Exception {
+		LanguageSettingsStore store = new LanguageSettingsStore();
+
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("value1", 1));
 		original.add(new CIncludePathEntry("value2", 2));
 
 		// store and retrieve the entries
-		LanguageSettingsStore.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original);
-		List<ICLanguageSettingEntry> retrieved = LanguageSettingsStore.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+		store.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original);
+		List<ICLanguageSettingEntry> retrieved = store.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
 
 		assertNotSame(original, retrieved);
 		assertEquals(original.size(), retrieved.size());
@@ -117,6 +136,8 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	/**
 	 */
 	public void testLanguageSettingsManagerBasic() throws Exception {
+		LanguageSettingsManager manager = new LanguageSettingsManager(null);
+
 		List<ICLanguageSettingEntry> original1 = new ArrayList<ICLanguageSettingEntry>();
 		original1.add(new CIncludePathEntry("value1", 1));
 		original1.add(new CIncludePathEntry("value2", 2));
@@ -127,12 +148,12 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		original2.add(new CIncludePathEntry("value3", 2));
 
 		// store the entries
-		LanguageSettingsManager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original1);
-		LanguageSettingsManager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2, original2);
+		manager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original1);
+		manager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2, original2);
 
 		// retrieve the entries for provider-1
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
 
 			assertNotSame(original1, retrieved);
 			assertEquals(original1.size(), retrieved.size());
@@ -145,7 +166,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 		// retrieve the entries for provider-2
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2);
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2);
 
 			assertNotSame(original2, retrieved);
 			assertEquals(original2.size(), retrieved.size());
@@ -158,7 +179,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 		// get list of providers
 		{
-			List<String> providers = LanguageSettingsManager.getProviders(TEST_RC_DESCRIPTOR);
+			List<String> providers = manager.getProviders(TEST_RC_DESCRIPTOR);
 			assertTrue(providers.contains(PROVIDER_1));
 			assertTrue(providers.contains(PROVIDER_2));
 			assertEquals(2, providers.size());
@@ -170,8 +191,8 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			original1.add(new CIncludePathEntry("value10", 10));
 			original1.add(new CIncludePathEntry("value20", 20));
 
-			LanguageSettingsManager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original1);
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+			manager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original1);
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
 
 			assertNotSame(original1, retrieved);
 			assertEquals(original1.size(), retrieved.size());
@@ -184,11 +205,11 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 		// clear settings for provider-1
 		{
-			LanguageSettingsManager.removeSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
-			List<ICLanguageSettingEntry> retrieved_1 = LanguageSettingsManager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+			manager.removeSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+			List<ICLanguageSettingEntry> retrieved_1 = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
 			assertEquals(0, retrieved_1.size());
 
-			List<ICLanguageSettingEntry> retrieved_2 = LanguageSettingsManager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2);
+			List<ICLanguageSettingEntry> retrieved_2 = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2);
 			assertEquals(original2.size(), retrieved_2.size());
 		}
 
@@ -198,8 +219,8 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			original2a.add(new CIncludePathEntry("value4a", 1));
 			original2a.add(new CIncludePathEntry("value5a", 2));
 
-			LanguageSettingsManager.addSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2, original2a);
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2);
+			manager.addSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2, original2a);
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_2);
 
 			assertEquals(original2.size()+original2a.size(), retrieved.size());
 
@@ -217,7 +238,25 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 	/**
 	 */
+	public void testLanguageSettingsManagerGlobal() throws Exception {
+		// store the entries with manager1
+		LanguageSettingsManager manager1 = new LanguageSettingsManager(null);
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		manager1.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original);
+
+		// retrieve the entries with manager2
+		LanguageSettingsManager manager2 = new LanguageSettingsManager(null);
+		List<ICLanguageSettingEntry> retrieved = manager2.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1);
+
+		assertEquals(original.get(0), retrieved.get(0));
+	}
+
+	/**
+	 */
 	public void testLanguageSettingsManagerFiltered() throws Exception {
+		LanguageSettingsManager manager = new LanguageSettingsManager(null);
+
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		original.add(new CMacroEntry("MACRO0", "value0",0));
@@ -226,19 +265,19 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		original.add(new CIncludePathEntry("path2", 0));
 
 		// store the entries
-		LanguageSettingsManager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original);
+		manager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original);
 
 		// retrieve entries by kind
 		{
-			List<ICLanguageSettingEntry> includes = LanguageSettingsManager.getSettingEntries(
-					TEST_RC_DESCRIPTOR, PROVIDER_1, ICSettingEntry.INCLUDE_PATH);
+			List<ICLanguageSettingEntry> includes = manager
+				.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, ICSettingEntry.INCLUDE_PATH);
 			assertEquals(3, includes.size());
 			assertEquals(new CIncludePathEntry("path0", 0),includes.get(0));
 			assertEquals(new CIncludePathEntry("path1", 0),includes.get(1));
 			assertEquals(new CIncludePathEntry("path2", 0),includes.get(2));
 
-			List<ICLanguageSettingEntry> macros = LanguageSettingsManager.getSettingEntries(
-					TEST_RC_DESCRIPTOR, PROVIDER_1, ICSettingEntry.MACRO);
+			List<ICLanguageSettingEntry> macros = manager
+				.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, ICSettingEntry.MACRO);
 			assertEquals(2, macros.size());
 			assertEquals(new CMacroEntry("MACRO0", "value0",0), macros.get(0));
 			assertEquals(new CMacroEntry("MACRO1", "value1",0), macros.get(1));
@@ -249,18 +288,20 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	/**
 	 */
 	public void testLanguageSettingsManagerFilteredConflicting() throws Exception {
+		LanguageSettingsManager manager = new LanguageSettingsManager(null);
+
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path", ICSettingEntry.BUILTIN));
 		original.add(new CIncludePathEntry("path", ICSettingEntry.DISABLED));
 		original.add(new CIncludePathEntry("path", 0));
 
 		// store the entries
-		LanguageSettingsManager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original);
+		manager.setSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, original);
 
 		// retrieve entries by kind, only first entry is returned
 		{
-			List<ICLanguageSettingEntry> includes = LanguageSettingsManager.getSettingEntries(
-					TEST_RC_DESCRIPTOR, PROVIDER_1, ICSettingEntry.INCLUDE_PATH);
+			List<ICLanguageSettingEntry> includes = manager
+				.getSettingEntries(TEST_RC_DESCRIPTOR, PROVIDER_1, ICSettingEntry.INCLUDE_PATH);
 			assertEquals(1, includes.size());
 			assertEquals(original.get(0),includes.get(0));
 		}
@@ -271,25 +312,27 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	 * TODO: revisit the test after priorities are built in the new extension point
 	 */
 	public void testLanguageSettingsManagerReconciledProviders() throws Exception {
+		LanguageSettingsManager manager = new LanguageSettingsManager(null);
+
 		// store the entries
 		List<ICLanguageSettingEntry> originalLow = new ArrayList<ICLanguageSettingEntry>();
 		originalLow.add(new CIncludePathEntry("path0", ICSettingEntry.BUILTIN));
 		originalLow.add(new CIncludePathEntry("path1", ICSettingEntry.DISABLED));
 		originalLow.add(new CIncludePathEntry("path2", 0));
 		originalLow.add(new CIncludePathEntry("path3", 0));
-		LanguageSettingsManager.setSettingEntries(TEST_RC_DESCRIPTOR, LOW_PRIORITY_PROVIDER, originalLow);
+		manager.setSettingEntries(TEST_RC_DESCRIPTOR, LOW_PRIORITY_PROVIDER, originalLow);
 
 		// store the entries
 		List<ICLanguageSettingEntry> originalHigh = new ArrayList<ICLanguageSettingEntry>();
 		originalHigh.add(new CIncludePathEntry("path0", ICSettingEntry.RESOLVED));
 		originalHigh.add(new CIncludePathEntry("path1", 0));
 		originalHigh.add(new CIncludePathEntry("path2", ICSettingEntry.DISABLED));
-		LanguageSettingsManager.setSettingEntries(TEST_RC_DESCRIPTOR, HIGH_PRIORITY_PROVIDER, originalHigh);
+		manager.setSettingEntries(TEST_RC_DESCRIPTOR, HIGH_PRIORITY_PROVIDER, originalHigh);
 
 
 		// retrieve entries by kind
 		{
-			List<ICLanguageSettingEntry> includes = LanguageSettingsManager
+			List<ICLanguageSettingEntry> includes = manager
 				.getSettingEntriesReconciled(TEST_RC_DESCRIPTOR, ICSettingEntry.INCLUDE_PATH);
 			// path0 is taked from higher priority provider
 			assertEquals(originalHigh.get(0),includes.get(0));

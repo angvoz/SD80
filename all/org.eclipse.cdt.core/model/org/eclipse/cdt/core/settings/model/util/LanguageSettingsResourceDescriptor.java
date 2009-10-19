@@ -17,13 +17,13 @@ public class LanguageSettingsResourceDescriptor {
 	private String configurationId;
 	private IPath workspacePath;
 	private String langId;
-	
+
 	public LanguageSettingsResourceDescriptor(String configurationId, IPath workspacePath, String langId) {
 		this.configurationId = configurationId;
 		this.workspacePath = workspacePath;
 		this.langId = langId;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -33,7 +33,7 @@ public class LanguageSettingsResourceDescriptor {
 		result = prime * result + ((workspacePath == null) ? 0 : workspacePath.hashCode());
 		return result;
 	}
-	
+
 	@Override
 	public boolean equals(Object o) {
 		if (!(o instanceof LanguageSettingsResourceDescriptor)) return false;
@@ -43,5 +43,5 @@ public class LanguageSettingsResourceDescriptor {
 			&& this.langId.equals(that.langId)
 		;
 	}
-	
+
 }

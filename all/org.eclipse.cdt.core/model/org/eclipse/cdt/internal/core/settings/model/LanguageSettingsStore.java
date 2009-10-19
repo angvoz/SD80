@@ -15,26 +15,25 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
 
 
 /**
- * LanguageSettingsStore serves for storing lists of language settings ICLanguageSettingEntry 
+ * LanguageSettingsStore serves for storing lists of language settings ICLanguageSettingEntry
  * (org.eclipse.cdt.core analog for compiler options). It is represented internally as TODO .
- * 
- * Each provider can keep heterogeneous ordered list of settings where there is no distinction 
+ *
+ * Each provider can keep heterogeneous ordered list of settings where there is no distinction
  * between different kinds such as include paths or macros made. Entries with duplicate names
  * are also allowed.
- * 
+ *
  */
 public class LanguageSettingsStore {
 	// store Map<Resource, Map<ProviderId, List<SettingEntry>>>
 	private static Map<LanguageSettingsResourceDescriptor, Map<String, List<ICLanguageSettingEntry>>>
 		fStorage = new HashMap<LanguageSettingsResourceDescriptor, Map<String, List<ICLanguageSettingEntry>>>();
-	
+
 	/**
 	 * Get copy of the list
 	 */
@@ -48,8 +47,8 @@ public class LanguageSettingsStore {
 		}
 		return new ArrayList<ICLanguageSettingEntry>();
 	}
-	
-	
+
+
 	/**
 	 * This will replace old settings if existed with the new ones.
 	 */
@@ -61,7 +60,7 @@ public class LanguageSettingsStore {
 		}
 		map.put(providerId, new ArrayList<ICLanguageSettingEntry>(settings));
 	}
-	
+
 	/**
 	 * This will add new settings to the end.
 	 */
@@ -79,7 +78,7 @@ public class LanguageSettingsStore {
 		}
 		map.put(providerId, list);
 	}
-	
+
 	public static void removeSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
 		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
 		if (map!=null) {
@@ -89,11 +88,11 @@ public class LanguageSettingsStore {
 			fStorage.remove(descriptor);
 		}
 	}
-	
+
 	public static void clear() {
 		fStorage.clear();
 	}
-	
+
 	public static List<String> getProviders(LanguageSettingsResourceDescriptor descriptor) {
 		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
 		if (map!=null) {
@@ -102,23 +101,23 @@ public class LanguageSettingsStore {
 		return new ArrayList<String>();
 	}
 
-	
-	
-	
-	
-	
+
+
+
+
+
 	/**
 	 * TODO
-	 * 
+	 *
 	 * @param projectName - project name. Use {@code null} to load workspace level settings.
 	 */
 	public static void load(String projectName) {
-		
-	}
-	
-	public static void serialize() {
-		
+
 	}
 
-	
+	public static void serialize() {
+
+	}
+
+
 }

@@ -14,12 +14,15 @@ package org.eclipse.cdt.core.settings.model.util;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsStore;
+import org.eclipse.core.resources.IProject;
 
 /**
  * TODO
@@ -32,8 +35,24 @@ public class LanguageSettingsManager {
 	public static final String PROVIDER_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
 	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user";
 
-	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
-		return LanguageSettingsStore.getSettingEntries(descriptor, providerId);
+	private final IProject fProject;
+	private final LanguageSettingsStore fStore;
+	// null project means settings apply to any project in the workspace
+	// note that project settings can be added but not removed (only cleared)
+	private static final Map<IProject, LanguageSettingsStore> globalStoreMap = new HashMap<IProject, LanguageSettingsStore>();
+
+	public LanguageSettingsManager(IProject project) {
+		this.fProject = project;
+		LanguageSettingsStore store = globalStoreMap.get(project);
+		if (store==null) {
+			store = new LanguageSettingsStore();
+			globalStoreMap.put(project, store);
+		}
+		this.fStore = store;
+	}
+
+	public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
+		return fStore.getSettingEntries(descriptor, providerId);
 	}
 
 	private static boolean containsEntry(List<ICLanguageSettingEntry> list, String name) {
@@ -46,8 +65,8 @@ public class LanguageSettingsManager {
 		return false;
 	}
 
-	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, int kind) {
-		List<ICLanguageSettingEntry> list = LanguageSettingsStore.getSettingEntries(descriptor, providerId);
+	public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, int kind) {
+		List<ICLanguageSettingEntry> list = fStore.getSettingEntries(descriptor, providerId);
 		ArrayList<ICLanguageSettingEntry> newList = new ArrayList<ICLanguageSettingEntry>(list.size());
 		for (ICLanguageSettingEntry entry : list) {
 			if (entry.getKind()==kind && !containsEntry(newList, entry.getName())) {
@@ -60,45 +79,44 @@ public class LanguageSettingsManager {
 	/**
 	 * Note: old settings are discarded.
 	 */
-	public static void setSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, List<ICLanguageSettingEntry> entries) {
-		LanguageSettingsStore.setSettingEntries(descriptor, providerId, entries);
+	public void setSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, List<ICLanguageSettingEntry> entries) {
+		fStore.setSettingEntries(descriptor, providerId, entries);
 	}
 
 	/**
 	 * Settings added to the end.
 	 */
-	public static void addSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, List<ICLanguageSettingEntry> entries) {
-		LanguageSettingsStore.addSettingEntries(descriptor, providerId, entries);
+	public void addSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, List<ICLanguageSettingEntry> entries) {
+		fStore.addSettingEntries(descriptor, providerId, entries);
 	}
 
-	public static void removeSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
-		LanguageSettingsStore.removeSettingEntries(descriptor, providerId);
+	public void removeSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
+		fStore.removeSettingEntries(descriptor, providerId);
 	}
 
-
-	// TODO: priority will be taken from extension point
-	private static int getProviderPriority(String providerId) {
-		if (PROVIDER_UI_USER.equals(providerId)) {
-			return 1;
-		}
-		if (PROVIDER_UNKNOWN.equals(providerId)) {
-			return 100;
-		}
-		return 666;
-	}
-
-	public static List<String> getProviders(LanguageSettingsResourceDescriptor descriptor) {
+	public List<String> getProviders(LanguageSettingsResourceDescriptor descriptor) {
 		Comparator<String> comparator = new Comparator<String>() {
+			// TODO: priority will be taken from extension point
+			private int getProviderPriority(String providerId) {
+				if (PROVIDER_UI_USER.equals(providerId)) {
+					return 1;
+				}
+				if (PROVIDER_UNKNOWN.equals(providerId)) {
+					return 100;
+				}
+				return 666;
+			}
+
 			public int compare(String provider1, String provider2) {
 				return getProviderPriority(provider1) - getProviderPriority(provider2);
 			}
 		};
-		List<String> providers = LanguageSettingsStore.getProviders(descriptor);
+		List<String> providers = fStore.getProviders(descriptor);
 		Collections.sort(providers, comparator);
 		return providers;
 	}
 
-	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(LanguageSettingsResourceDescriptor descriptor, int kind) {
+	public List<ICLanguageSettingEntry> getSettingEntriesReconciled(LanguageSettingsResourceDescriptor descriptor, int kind) {
 		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
 		for (String provider: getProviders(descriptor)) {
 			for (ICLanguageSettingEntry entry : getSettingEntries(descriptor, provider, kind)) {
@@ -118,5 +136,16 @@ public class LanguageSettingsManager {
 		return list;
 	}
 
+	public static void clear(IProject project) {
+		// TODO: test case
+//		globalStoreMap.get(project).clear();
+	}
+
+	public static void clear() {
+		// Can't remove any store as it could be cached somewhere
+		for (LanguageSettingsStore store : globalStoreMap.values()) {
+			store.clear();
+		}
+	}
 
 }

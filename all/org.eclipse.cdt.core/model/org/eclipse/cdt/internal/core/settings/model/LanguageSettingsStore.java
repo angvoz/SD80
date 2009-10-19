@@ -30,9 +30,9 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescript
  *
  */
 public class LanguageSettingsStore {
-	// store Map<Resource, Map<ProviderId, List<SettingEntry>>>
-	private Map<LanguageSettingsResourceDescriptor, Map<String, List<ICLanguageSettingEntry>>>
-		fStorage = new HashMap<LanguageSettingsResourceDescriptor, Map<String, List<ICLanguageSettingEntry>>>();
+	// store Map<ProviderId, Map<Resource, List<SettingEntry>>>
+	private Map<String, Map<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>>>
+		fStorage = new HashMap<String, Map<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>>>();
 
 	public LanguageSettingsStore() {
 		// TODO
@@ -42,9 +42,9 @@ public class LanguageSettingsStore {
 	 * Get copy of the list
 	 */
 	public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
-		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
+		Map<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>> map = fStorage.get(providerId);
 		if (map!=null) {
-			List<ICLanguageSettingEntry> list = map.get(providerId);
+			List<ICLanguageSettingEntry> list = map.get(descriptor);
 			if (list!=null) {
 				return new ArrayList<ICLanguageSettingEntry>(list);
 			}
@@ -57,39 +57,39 @@ public class LanguageSettingsStore {
 	 * This will replace old settings if existed with the new ones.
 	 */
 	public void setSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, List<ICLanguageSettingEntry> settings) {
-		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
+		Map<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>> map = fStorage.get(providerId);
 		if (map==null) {
-			map = new HashMap<String, List<ICLanguageSettingEntry>>();
-			fStorage.put(descriptor, map);
+			map = new HashMap<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>>();
+			fStorage.put(providerId, map);
 		}
-		map.put(providerId, new ArrayList<ICLanguageSettingEntry>(settings));
+		map.put(descriptor, new ArrayList<ICLanguageSettingEntry>(settings));
 	}
 
 	/**
 	 * This will add new settings to the end.
 	 */
 	public void addSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId, List<ICLanguageSettingEntry> settings) {
-		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
+		Map<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>> map = fStorage.get(providerId);
 		if (map==null) {
-			map = new HashMap<String, List<ICLanguageSettingEntry>>();
-			fStorage.put(descriptor, map);
+			map = new HashMap<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>>();
+			fStorage.put(providerId, map);
 		}
-		List<ICLanguageSettingEntry> list = map.get(providerId);
+		List<ICLanguageSettingEntry> list = map.get(descriptor);
 		if (list==null) {
 			list = new ArrayList<ICLanguageSettingEntry>(settings);
 		} else {
 			list.addAll(settings);
 		}
-		map.put(providerId, list);
+		map.put(descriptor, list);
 	}
 
 	public void removeSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
-		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
+		Map<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>> map = fStorage.get(providerId);
 		if (map!=null) {
-			map.remove(providerId);
+			map.remove(descriptor);
 		}
 		if (map==null || map.size()==0) {
-			fStorage.remove(descriptor);
+			fStorage.remove(providerId);
 		}
 	}
 
@@ -98,11 +98,7 @@ public class LanguageSettingsStore {
 	}
 
 	public List<String> getProviders(LanguageSettingsResourceDescriptor descriptor) {
-		Map<String, List<ICLanguageSettingEntry>> map = fStorage.get(descriptor);
-		if (map!=null) {
-			return new ArrayList<String>(map.keySet());
-		}
-		return new ArrayList<String>();
+		return new ArrayList<String>(fStorage.keySet());
 	}
 
 

@@ -663,7 +663,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		{
 			List<ICLanguageSettingEntry> includes = manager
 				.getSettingEntriesReconciled(RC_DESCRIPTOR, ICSettingEntry.INCLUDE_PATH);
-			// path0 is taked from higher priority provider
+			// path0 is taken from higher priority provider
 			assertEquals(originalHigh.get(0),includes.get(0));
 			// path1 disablement by lower priority provider is ignored
 			assertEquals(originalHigh.get(1),includes.get(1));
@@ -671,6 +671,49 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			// path3 gets there from low priority provider
 			assertEquals(originalLow.get(3),includes.get(2));
 			assertEquals(3, includes.size());
+		}
+
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsManager_ParentFolder() throws Exception {
+		LanguageSettingsManager manager = new LanguageSettingsManager(null);
+
+		LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(
+				CONFIGURATION_ID, new Path("/ParentFolder/"), LANG_ID);
+
+		// store the entries in parent folder
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		manager.setSettingEntries(parentDescriptor, PROVIDER_0, original);
+
+		{
+			// retrieve entries for a derived resource (in a subfolder)
+			LanguageSettingsResourceDescriptor missingDescriptor = new LanguageSettingsResourceDescriptor(
+					CONFIGURATION_ID, new Path("/ParentFolder/Subfolder/resource"), LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(missingDescriptor, PROVIDER_0);
+			// taken from parent folder
+			assertEquals(original.get(0),retrieved.get(0));
+			assertEquals(original.size(), retrieved.size());
+		}
+
+		{
+			// retrieve entries for not related resource
+			LanguageSettingsResourceDescriptor missingDescriptor = new LanguageSettingsResourceDescriptor(
+					CONFIGURATION_ID, new Path("/AnotherFolder/Subfolder/resource"), LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(missingDescriptor, PROVIDER_0);
+			assertEquals(0, retrieved.size());
+		}
+
+		{
+			// test distinction between no settings and empty settings
+			LanguageSettingsResourceDescriptor emptyDescriptor = new LanguageSettingsResourceDescriptor(
+					CONFIGURATION_ID, new Path("/ParentFolder/Subfolder/empty"), LANG_ID);
+			manager.setSettingEntries(emptyDescriptor, PROVIDER_0, new ArrayList<ICLanguageSettingEntry>());
+			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(emptyDescriptor, PROVIDER_0);
+			// NOT taken from parent folder
+			assertEquals(0, retrieved.size());
 		}
 
 	}

@@ -45,7 +45,7 @@ public class LanguageSettingsManager {
 		this.fProject = project;
 		LanguageSettingsStore store = globalStoreMap.get(project);
 		if (store==null) {
-			store = new LanguageSettingsStore();
+			store = new LanguageSettingsStore(null);
 			globalStoreMap.put(project, store);
 		}
 		this.fStore = store;
@@ -111,7 +111,7 @@ public class LanguageSettingsManager {
 				return getProviderPriority(provider1) - getProviderPriority(provider2);
 			}
 		};
-		List<String> providers = fStore.getProviders(descriptor);
+		List<String> providers = fStore.getProviders();
 		Collections.sort(providers, comparator);
 		return providers;
 	}

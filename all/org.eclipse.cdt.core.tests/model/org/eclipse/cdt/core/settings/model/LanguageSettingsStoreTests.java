@@ -16,10 +16,13 @@ import java.util.List;
 
 import junit.framework.TestSuite;
 
+import org.eclipse.cdt.core.internal.errorparsers.tests.ResourceHelper;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
 import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsStore;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
@@ -28,7 +31,7 @@ import org.eclipse.core.runtime.Path;
  */
 public class LanguageSettingsStoreTests extends BaseTestCase {
 	private static final String CONFIGURATION_ID = "cfg.id";
-	private static final IPath WORKSPACE_PATH = new Path("/workspacePath");
+	private static final IPath PATH_0 = new Path("/path0");
 	private static final String LANG_ID = "lang.id";
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_1 = "test.provider.1.id";
@@ -36,7 +39,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	private static final String HIGH_PRIORITY_PROVIDER = LanguageSettingsManager.PROVIDER_UI_USER;
 	private static final String LOW_PRIORITY_PROVIDER = LanguageSettingsManager.PROVIDER_UNKNOWN;
 
-	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, WORKSPACE_PATH, LANG_ID);
+	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID);
 
 	public static TestSuite suite() {
 		return suite(LanguageSettingsStoreTests.class, "_");
@@ -49,6 +52,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	@Override
 	protected void tearDown() throws Exception {
 		LanguageSettingsManager.clear();
+//		ResourceHelper.cleanUp();
 	}
 
 	/**
@@ -113,8 +117,8 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsStore() throws Exception {
-		LanguageSettingsStore store = new LanguageSettingsStore();
+	public void testLanguageSettingsStore_Basic() throws Exception {
+		LanguageSettingsStore store = new LanguageSettingsStore(null);
 
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("value1", 1));
@@ -131,11 +135,336 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		for (int i=0;i<original.size();i++) {
 			assertEquals(originalArray[i], retrievedArray[i]);
 		}
+
+		// check providers
+		List<String> providers = store.getProviders();
+		assertEquals(PROVIDER_0, providers.get(0));
+		assertEquals(1, providers.size());
+
+		// check descriptors
+		List<LanguageSettingsResourceDescriptor> descriptors = store.getDescriptors(PROVIDER_0);
+		assertEquals(RC_DESCRIPTOR, descriptors.get(0));
+		assertEquals(1, descriptors.size());
 	}
 
 	/**
 	 */
-	public void testLanguageSettingsManagerBasic() throws Exception {
+	public void testLanguageSettingsStore_LoadEmpty() throws Exception {
+		IProject project = ResourceHelper.createCDTProject(getName());
+		IFile settingsFile = project.getFile("lang-settings.xml");
+		{
+			// no file available
+			assertFalse(settingsFile.exists());
+
+			// load
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.load();
+			assertEquals(0, store.getProviders().size());
+			// no file is created
+			assertFalse(settingsFile.exists());
+		}
+
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsStore_Serialize_CIncludePathEntry() throws Exception {
+		IProject project = ResourceHelper.createCDTProject(getName());
+		IFile settingsFile = project.getFile("lang-settings.xml");
+
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 1));
+
+		{
+			// serialize
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.setSettingEntries(RC_DESCRIPTOR, PROVIDER_0, original);
+			store.serialize();
+			assertTrue(settingsFile.exists());
+		}
+		{
+			// load
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.load();
+
+			List<String> providers = store.getProviders();
+			assertEquals(PROVIDER_0, providers.get(0));
+			assertEquals(1, providers.size());
+
+			List<LanguageSettingsResourceDescriptor> descriptors = store.getDescriptors(PROVIDER_0);
+			assertEquals(RC_DESCRIPTOR, descriptors.get(0));
+			assertEquals(1, descriptors.size());
+
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(RC_DESCRIPTOR, PROVIDER_0);
+			ICLanguageSettingEntry entry = entries.get(0);
+			assertTrue(entry instanceof CIncludePathEntry);
+			CIncludePathEntry includePathEntry = (CIncludePathEntry)entry;
+			assertEquals(original.get(0).getName(), includePathEntry.getName());
+			assertEquals(original.get(0).getValue(), includePathEntry.getValue());
+			assertEquals(original.get(0).getKind(), includePathEntry.getKind());
+			assertEquals(original.get(0).getFlags(), includePathEntry.getFlags());
+			assertEquals(original.get(0), includePathEntry);
+		}
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsStore_Serialize_CIncludeFileEntry() throws Exception {
+		IProject project = ResourceHelper.createCDTProject(getName());
+		IFile settingsFile = project.getFile("lang-settings.xml");
+
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludeFileEntry("name", 1));
+
+		{
+			// serialize
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.setSettingEntries(RC_DESCRIPTOR, PROVIDER_0, original);
+			store.serialize();
+			assertTrue(settingsFile.exists());
+		}
+		{
+			// load
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.load();
+
+			List<String> providers = store.getProviders();
+			assertEquals(PROVIDER_0, providers.get(0));
+			assertEquals(1, providers.size());
+
+			List<LanguageSettingsResourceDescriptor> descriptors = store.getDescriptors(PROVIDER_0);
+			assertEquals(RC_DESCRIPTOR, descriptors.get(0));
+			assertEquals(1, descriptors.size());
+
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(RC_DESCRIPTOR, PROVIDER_0);
+			ICLanguageSettingEntry entry = entries.get(0);
+			assertTrue(entry instanceof CIncludeFileEntry);
+			CIncludeFileEntry includeFileEntry = (CIncludeFileEntry)entry;
+			assertEquals(original.get(0).getName(), includeFileEntry.getName());
+			assertEquals(original.get(0).getValue(), includeFileEntry.getValue());
+			assertEquals(original.get(0).getKind(), includeFileEntry.getKind());
+			assertEquals(original.get(0).getFlags(), includeFileEntry.getFlags());
+			assertEquals(original.get(0), includeFileEntry);
+		}
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsStore_Serialize_CMacroEntry() throws Exception {
+		IProject project = ResourceHelper.createCDTProject(getName());
+		IFile settingsFile = project.getFile("lang-settings.xml");
+
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CMacroEntry("MACRO0", "value0",1));
+
+		{
+			// serialize
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.setSettingEntries(RC_DESCRIPTOR, PROVIDER_0, original);
+			store.serialize();
+			assertTrue(settingsFile.exists());
+		}
+		{
+			// load
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.load();
+
+			List<String> providers = store.getProviders();
+			assertEquals(PROVIDER_0, providers.get(0));
+			assertEquals(1, providers.size());
+
+			List<LanguageSettingsResourceDescriptor> descriptors = store.getDescriptors(PROVIDER_0);
+			assertEquals(RC_DESCRIPTOR, descriptors.get(0));
+			assertEquals(1, descriptors.size());
+
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(RC_DESCRIPTOR, PROVIDER_0);
+			ICLanguageSettingEntry entry = entries.get(0);
+			assertTrue(entry instanceof CMacroEntry);
+			CMacroEntry macroEntry = (CMacroEntry)entry;
+			assertEquals(original.get(0).getName(), macroEntry.getName());
+			assertEquals(original.get(0).getValue(), macroEntry.getValue());
+			assertEquals(original.get(0).getKind(), macroEntry.getKind());
+			assertEquals(original.get(0).getFlags(), macroEntry.getFlags());
+			assertEquals(original.get(0), macroEntry);
+		}
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsStore_Serialize_CMacroFileEntry() throws Exception {
+		IProject project = ResourceHelper.createCDTProject(getName());
+		IFile settingsFile = project.getFile("lang-settings.xml");
+
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CMacroFileEntry("name", 1));
+
+		{
+			// serialize
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.setSettingEntries(RC_DESCRIPTOR, PROVIDER_0, original);
+			store.serialize();
+			assertTrue(settingsFile.exists());
+		}
+		{
+			// load
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.load();
+
+			List<String> providers = store.getProviders();
+			assertEquals(PROVIDER_0, providers.get(0));
+			assertEquals(1, providers.size());
+
+			List<LanguageSettingsResourceDescriptor> descriptors = store.getDescriptors(PROVIDER_0);
+			assertEquals(RC_DESCRIPTOR, descriptors.get(0));
+			assertEquals(1, descriptors.size());
+
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(RC_DESCRIPTOR, PROVIDER_0);
+			ICLanguageSettingEntry entry = entries.get(0);
+			assertTrue(entry instanceof CMacroFileEntry);
+			CMacroFileEntry macroFileEntry = (CMacroFileEntry)entry;
+			assertEquals(original.get(0).getName(), macroFileEntry.getName());
+			assertEquals(original.get(0).getValue(), macroFileEntry.getValue());
+			assertEquals(original.get(0).getKind(), macroFileEntry.getKind());
+			assertEquals(original.get(0).getFlags(), macroFileEntry.getFlags());
+			assertEquals(original.get(0), macroFileEntry);
+		}
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsStore_Serialize_CLibraryPathEntry() throws Exception {
+		IProject project = ResourceHelper.createCDTProject(getName());
+		IFile settingsFile = project.getFile("lang-settings.xml");
+
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CLibraryPathEntry("name", 1));
+
+		{
+			// serialize
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.setSettingEntries(RC_DESCRIPTOR, PROVIDER_0, original);
+			store.serialize();
+			assertTrue(settingsFile.exists());
+		}
+		{
+			// load
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.load();
+
+			List<String> providers = store.getProviders();
+			assertEquals(PROVIDER_0, providers.get(0));
+			assertEquals(1, providers.size());
+
+			List<LanguageSettingsResourceDescriptor> descriptors = store.getDescriptors(PROVIDER_0);
+			assertEquals(RC_DESCRIPTOR, descriptors.get(0));
+			assertEquals(1, descriptors.size());
+
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(RC_DESCRIPTOR, PROVIDER_0);
+			ICLanguageSettingEntry entry = entries.get(0);
+			assertTrue(entry instanceof CLibraryPathEntry);
+			CLibraryPathEntry libraryPathEntry = (CLibraryPathEntry)entry;
+			assertEquals(original.get(0).getName(), libraryPathEntry.getName());
+			assertEquals(original.get(0).getValue(), libraryPathEntry.getValue());
+			assertEquals(original.get(0).getKind(), libraryPathEntry.getKind());
+			assertEquals(original.get(0).getFlags(), libraryPathEntry.getFlags());
+			assertEquals(original.get(0), libraryPathEntry);
+		}
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsStore_Serialize_CLibraryFileEntry() throws Exception {
+		IProject project = ResourceHelper.createCDTProject(getName());
+		IFile settingsFile = project.getFile("lang-settings.xml");
+
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CLibraryFileEntry("name", 1));
+		// TODO:
+//		public CLibraryFileEntry(String value,
+//				int flags,
+//				IPath sourceAttachmentPath,
+//				IPath sourceAttachmentRootPath,
+//				IPath sourceAttachmentPrefixMapping) {
+
+
+		{
+			// serialize
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.setSettingEntries(RC_DESCRIPTOR, PROVIDER_0, original);
+			store.serialize();
+			assertTrue(settingsFile.exists());
+		}
+		{
+			// load
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.load();
+
+			List<String> providers = store.getProviders();
+			assertEquals(PROVIDER_0, providers.get(0));
+			assertEquals(1, providers.size());
+
+			List<LanguageSettingsResourceDescriptor> descriptors = store.getDescriptors(PROVIDER_0);
+			assertEquals(RC_DESCRIPTOR, descriptors.get(0));
+			assertEquals(1, descriptors.size());
+
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(RC_DESCRIPTOR, PROVIDER_0);
+			ICLanguageSettingEntry entry = entries.get(0);
+			assertTrue(entry instanceof CLibraryFileEntry);
+			CLibraryFileEntry libraryFileEntry = (CLibraryFileEntry)entry;
+			assertEquals(original.get(0).getName(), libraryFileEntry.getName());
+			assertEquals(original.get(0).getValue(), libraryFileEntry.getValue());
+			assertEquals(original.get(0).getKind(), libraryFileEntry.getKind());
+			assertEquals(original.get(0).getFlags(), libraryFileEntry.getFlags());
+			assertEquals(original.get(0), libraryFileEntry);
+		}
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsStore_Serialize_Mixed() throws Exception {
+		IProject project = ResourceHelper.createCDTProject(getName());
+		IFile settingsFile = project.getFile("lang-settings.xml");
+		assertFalse(settingsFile.exists());
+
+		List<ICLanguageSettingEntry> original_1 = new ArrayList<ICLanguageSettingEntry>();
+		original_1.add(new CMacroEntry("MACRO0", "value0",1));
+		original_1.add(new CIncludePathEntry("path0", 1));
+		original_1.add(new CIncludePathEntry("path1", 1));
+
+		List<ICLanguageSettingEntry> original_2 = new ArrayList<ICLanguageSettingEntry>();
+		original_2.add(new CIncludePathEntry("path0", 2));
+		original_2.add(new CIncludePathEntry("path1", 2));
+		original_2.add(new CMacroEntry("MACRO1", "value1",2));
+		original_2.add(new CIncludePathEntry("path2", 2));
+		{
+			// Serialize settings
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.setSettingEntries(RC_DESCRIPTOR, PROVIDER_1, original_1);
+			store.setSettingEntries(RC_DESCRIPTOR, PROVIDER_2, original_2);
+			store.serialize();
+			assertTrue(settingsFile.exists());
+		}
+
+		{
+			// load settings
+			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
+			store.load();
+
+			List<ICLanguageSettingEntry> entries_1 = store.getSettingEntries(RC_DESCRIPTOR, PROVIDER_1);
+			assertEquals(original_1.get(0), entries_1.get(0));
+			assertEquals(original_1.get(1), entries_1.get(1));
+			assertEquals(original_1.size(), entries_1.size());
+
+			List<ICLanguageSettingEntry> entries_2 = store.getSettingEntries(RC_DESCRIPTOR, PROVIDER_2);
+			assertEquals(original_2.get(0), entries_2.get(0));
+			assertEquals(original_2.get(1), entries_2.get(1));
+			assertEquals(original_2.size(), entries_2.size());
+		}
+	}
+
+	/**
+	 */
+	public void testLanguageSettingsManager_Basic() throws Exception {
 		LanguageSettingsManager manager = new LanguageSettingsManager(null);
 
 		List<ICLanguageSettingEntry> original1 = new ArrayList<ICLanguageSettingEntry>();
@@ -238,7 +567,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsManagerGlobal() throws Exception {
+	public void testLanguageSettingsManager_Global() throws Exception {
 		// store the entries with manager1
 		LanguageSettingsManager manager1 = new LanguageSettingsManager(null);
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -254,7 +583,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsManagerFiltered() throws Exception {
+	public void testLanguageSettingsManager_Filtered() throws Exception {
 		LanguageSettingsManager manager = new LanguageSettingsManager(null);
 
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -287,7 +616,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsManagerFilteredConflicting() throws Exception {
+	public void testLanguageSettingsManager_FilteredConflicting() throws Exception {
 		LanguageSettingsManager manager = new LanguageSettingsManager(null);
 
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -311,7 +640,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	/**
 	 * TODO: revisit the test after priorities are built in the new extension point
 	 */
-	public void testLanguageSettingsManagerReconciledProviders() throws Exception {
+	public void testLanguageSettingsManager_ReconciledProviders() throws Exception {
 		LanguageSettingsManager manager = new LanguageSettingsManager(null);
 
 		// store the entries

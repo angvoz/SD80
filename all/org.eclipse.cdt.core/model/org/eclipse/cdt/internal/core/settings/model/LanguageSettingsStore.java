@@ -43,6 +43,7 @@ import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
@@ -109,6 +110,15 @@ public class LanguageSettingsStore {
 				return new ArrayList<ICLanguageSettingEntry>(list);
 			}
 		}
+
+		IPath path = descriptor.getWorkspacePath();
+		if (!path.isRoot() && !path.isEmpty()) {
+			IPath parentPath = path.removeLastSegments(1);
+			LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(descriptor.getConfigurationId(),
+					parentPath, descriptor.getLangId());
+
+			return getSettingEntries(parentDescriptor, providerId);
+		}
 		return new ArrayList<ICLanguageSettingEntry>();
 	}
 
@@ -143,6 +153,15 @@ public class LanguageSettingsStore {
 		map.put(descriptor, list);
 	}
 
+	/**
+	 * Note that {@code removeSettingEntries} will remove empty descriptor from the list
+	 * when no more entries are left meaning the settings are derived from parent folder.
+	 * Use {@link #setSettingEntries(LanguageSettingsResourceDescriptor, String, List)}
+	 * if empty list is desired.
+	 *
+	 * @param descriptor TODO
+	 * @param providerId TODO
+	 */
 	public void removeSettingEntries(LanguageSettingsResourceDescriptor descriptor, String providerId) {
 		Map<LanguageSettingsResourceDescriptor, List<ICLanguageSettingEntry>> map = fStorage.get(providerId);
 		if (map!=null) {

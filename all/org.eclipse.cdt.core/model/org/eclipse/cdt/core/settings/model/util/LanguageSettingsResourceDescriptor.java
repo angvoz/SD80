@@ -24,6 +24,18 @@ public class LanguageSettingsResourceDescriptor {
 		this.langId = langId;
 	}
 
+	public String getConfigurationId() {
+		return configurationId;
+	}
+
+	public IPath getWorkspacePath() {
+		return workspacePath;
+	}
+
+	public String getLangId() {
+		return langId;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;

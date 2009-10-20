@@ -129,7 +129,7 @@ public class LanguageSettingsManager {
 		Iterator<ICLanguageSettingEntry> iter = list.iterator();
 		while (iter.hasNext()) {
 			ICLanguageSettingEntry entry = iter.next();
-			if ((entry.getFlags() & ICSettingEntry.DISABLED)==ICSettingEntry.DISABLED) {
+			if ((entry.getFlags() & ICSettingEntry.UNDEFINED)==ICSettingEntry.UNDEFINED) {
 				iter.remove();
 			}
 		}

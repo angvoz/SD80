@@ -59,7 +59,7 @@ public class LanguageSettingEntriesSerializer {
 	public static final String LOCAL = "LOCAL"; //$NON-NLS-1$
 	public static final String VALUE_WORKSPACE_PATH = "VALUE_WORKSPACE_PATH"; //$NON-NLS-1$
 	public static final String RESOLVED = "RESOLVED"; //$NON-NLS-1$
-	public static final String DISABLED = "DISABLED"; //$NON-NLS-1$
+	public static final String UNDEFINED = "UNDEFINED"; //$NON-NLS-1$
 
 	public static final String FLAGS_SEPARATOR = "|"; //$NON-NLS-1$
 
@@ -281,11 +281,11 @@ public class LanguageSettingEntriesSerializer {
 
 			buf.append(RESOLVED);
 		}
-		if((flags & ICLanguageSettingEntry.DISABLED) != 0){
+		if((flags & ICLanguageSettingEntry.UNDEFINED) != 0){
 			if(buf.length() != 0)
 				buf.append(FLAGS_SEPARATOR);
 
-			buf.append(DISABLED);
+			buf.append(UNDEFINED);
 		}
 		return buf.toString();
 	}
@@ -309,8 +309,8 @@ public class LanguageSettingEntriesSerializer {
 				flags |= ICLanguageSettingEntry.VALUE_WORKSPACE_PATH;
 			if(RESOLVED.equals(f))
 				flags |= ICLanguageSettingEntry.RESOLVED;
-			if(DISABLED.equals(f))
-				flags |= ICLanguageSettingEntry.DISABLED;
+			if(UNDEFINED.equals(f))
+				flags |= ICLanguageSettingEntry.UNDEFINED;
 		}
 
 		return flags;

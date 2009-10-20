@@ -621,7 +621,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path", ICSettingEntry.BUILTIN));
-		original.add(new CIncludePathEntry("path", ICSettingEntry.DISABLED));
+		original.add(new CIncludePathEntry("path", ICSettingEntry.UNDEFINED));
 		original.add(new CIncludePathEntry("path", 0));
 
 		// store the entries
@@ -646,7 +646,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		// store the entries
 		List<ICLanguageSettingEntry> originalLow = new ArrayList<ICLanguageSettingEntry>();
 		originalLow.add(new CIncludePathEntry("path0", ICSettingEntry.BUILTIN));
-		originalLow.add(new CIncludePathEntry("path1", ICSettingEntry.DISABLED));
+		originalLow.add(new CIncludePathEntry("path1", ICSettingEntry.UNDEFINED));
 		originalLow.add(new CIncludePathEntry("path2", 0));
 		originalLow.add(new CIncludePathEntry("path3", 0));
 		manager.setSettingEntries(RC_DESCRIPTOR, LOW_PRIORITY_PROVIDER, originalLow);
@@ -655,7 +655,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		List<ICLanguageSettingEntry> originalHigh = new ArrayList<ICLanguageSettingEntry>();
 		originalHigh.add(new CIncludePathEntry("path0", ICSettingEntry.RESOLVED));
 		originalHigh.add(new CIncludePathEntry("path1", 0));
-		originalHigh.add(new CIncludePathEntry("path2", ICSettingEntry.DISABLED));
+		originalHigh.add(new CIncludePathEntry("path2", ICSettingEntry.UNDEFINED));
 		manager.setSettingEntries(RC_DESCRIPTOR, HIGH_PRIORITY_PROVIDER, originalHigh);
 
 

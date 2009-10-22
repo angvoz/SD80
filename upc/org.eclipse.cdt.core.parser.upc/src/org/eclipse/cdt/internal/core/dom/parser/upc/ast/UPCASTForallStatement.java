@@ -1,11 +1,11 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 IBM Corporation and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * Contributors:
+ *  Copyright (c) 2006, 2008 IBM Corporation and others.
+ *  All rights reserved. This program and the accompanying materials
+ *  are made available under the terms of the Eclipse Public License v1.0
+ *  which accompanies this distribution, and is available at
+ *  http://www.eclipse.org/legal/epl-v10.html
+ * 
+ *  Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.upc.ast;
@@ -16,12 +16,23 @@ import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.upc.ast.IUPCASTForallStatement;
 import org.eclipse.cdt.internal.core.dom.parser.c.CASTForStatement;
 
+@SuppressWarnings("restriction")
 public class UPCASTForallStatement extends CASTForStatement implements IUPCASTForallStatement {
 
 	private IASTExpression affinity;
 	private boolean affinityContinue;
 	
 
+	public UPCASTForallStatement() {
+	}
+
+	public UPCASTForallStatement(IASTStatement init, IASTExpression condition,
+			IASTExpression iterationExpression, IASTStatement body, IASTExpression affinity) {
+		super(init, condition, iterationExpression, body);
+		setAffinityExpression(affinity);
+	}
+	
+	
 	public boolean isAffinityContinue() {
 		return affinityContinue;
 	}
@@ -34,6 +45,10 @@ public class UPCASTForallStatement extends CASTForStatement implements IUPCASTFo
 		if(affinity != null)
 			this.affinityContinue = false;
 		this.affinity = affinity;
+		if(affinity != null) {
+			affinity.setParent(this);
+			affinity.setPropertyInParent(AFFINITY);
+		}
 	}
 
 	public void setAffinityContinue(boolean affinityContinue) {
@@ -43,6 +58,7 @@ public class UPCASTForallStatement extends CASTForStatement implements IUPCASTFo
 	}
 	
 
+	@Override
 	public boolean accept(ASTVisitor visitor) {
 		if(visitor.shouldVisitStatements) {
 			switch(visitor.visit(this)){

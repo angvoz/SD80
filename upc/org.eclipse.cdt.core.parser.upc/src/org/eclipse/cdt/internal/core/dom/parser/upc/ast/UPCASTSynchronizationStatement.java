@@ -1,11 +1,11 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 IBM Corporation and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * Contributors:
+ *  Copyright (c) 2006, 2008 IBM Corporation and others.
+ *  All rights reserved. This program and the accompanying materials
+ *  are made available under the terms of the Eclipse Public License v1.0
+ *  which accompanies this distribution, and is available at
+ *  http://www.eclipse.org/legal/epl-v10.html
+ * 
+ *  Contributors:
  *     IBM Corporation - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.upc.ast;
@@ -13,13 +13,24 @@ package org.eclipse.cdt.internal.core.dom.parser.upc.ast;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.upc.ast.IUPCASTSynchronizationStatement;
-import org.eclipse.cdt.internal.core.dom.parser.c.CASTNode;
+import org.eclipse.cdt.internal.core.dom.parser.ASTNode;
 
-public class UPCASTSynchronizationStatement extends CASTNode implements IUPCASTSynchronizationStatement {
+@SuppressWarnings("restriction")
+public class UPCASTSynchronizationStatement extends ASTNode implements IUPCASTSynchronizationStatement {
 
 	private int statmentKind;
 	private IASTExpression barrierExpression = null;
 	
+	
+	public UPCASTSynchronizationStatement() {
+	}
+
+	public UPCASTSynchronizationStatement(IASTExpression barrierExpression, int statmentKind) {
+		setBarrierExpression(barrierExpression);
+		this.statmentKind = statmentKind;
+	}
+
+
 	public IASTExpression getBarrierExpression() {
 		return barrierExpression;
 	}
@@ -30,7 +41,10 @@ public class UPCASTSynchronizationStatement extends CASTNode implements IUPCASTS
 
 	public void setBarrierExpression(IASTExpression expr) {
 		this.barrierExpression = expr;
-		
+		if(expr != null) {
+			expr.setParent(this);
+			expr.setPropertyInParent(BARRIER_EXPRESSION);
+		}
 	}
 
 	public void setStatementKind(int kind) {
@@ -38,6 +52,7 @@ public class UPCASTSynchronizationStatement extends CASTNode implements IUPCASTS
 	}
 	
 	
+	@Override
 	public boolean accept(ASTVisitor visitor) {
 		if(visitor.shouldVisitStatements) {
 			switch(visitor.visit(this)) {

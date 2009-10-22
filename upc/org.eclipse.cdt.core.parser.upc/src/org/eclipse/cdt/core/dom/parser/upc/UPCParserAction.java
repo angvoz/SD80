@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2007 IBM Corporation and others.
+ * Copyright (c) 2006, 2009 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,108 +10,86 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.dom.parser.upc;
 
+
+import static org.eclipse.cdt.internal.core.dom.parser.upc.UPCParsersym.TK_Completion;
+import static org.eclipse.cdt.internal.core.dom.parser.upc.UPCParsersym.TK_relaxed;
+import static org.eclipse.cdt.internal.core.dom.parser.upc.UPCParsersym.TK_shared;
+import static org.eclipse.cdt.internal.core.dom.parser.upc.UPCParsersym.TK_strict;
 import lpg.lpgjavaruntime.IToken;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTDeclarationStatement;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
-import org.eclipse.cdt.core.dom.ast.IASTExpressionStatement;
-import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
-import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.c.ICASTDeclSpecifier;
-import org.eclipse.cdt.core.dom.c99.IASTNodeFactory;
-import org.eclipse.cdt.core.dom.c99.IParserActionTokenProvider;
-import org.eclipse.cdt.core.dom.parser.c99.ASTStack;
-import org.eclipse.cdt.core.dom.parser.c99.C99ParserAction;
+import org.eclipse.cdt.core.dom.lrparser.action.ITokenStream;
+import org.eclipse.cdt.core.dom.lrparser.action.ISecondaryParserFactory;
+import org.eclipse.cdt.core.dom.lrparser.action.ScopedStack;
+import org.eclipse.cdt.core.dom.lrparser.action.c99.C99BuildASTParserAction;
 import org.eclipse.cdt.core.dom.upc.ast.IUPCASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.upc.ast.IUPCASTForallStatement;
 import org.eclipse.cdt.core.dom.upc.ast.IUPCASTKeywordExpression;
-import org.eclipse.cdt.core.dom.upc.ast.IUPCASTSizeofExpression;
 import org.eclipse.cdt.core.dom.upc.ast.IUPCASTSynchronizationStatement;
-import org.eclipse.cdt.internal.core.dom.parser.upc.UPCParsersym;
 
 
 /**
  * Extension to the C99ParserAction that adds support fot building
  * an AST with UPC specific nodes.
  */
-public class UPCParserAction extends C99ParserAction {
+public class UPCParserAction extends C99BuildASTParserAction {
 	
-	private final UPCASTNodeFactory nodeFactory;
-	private final ASTStack astStack;
+	private IUPCNodeFactory nodeFactory;
 	
-		
-	public UPCParserAction(IParserActionTokenProvider parser, String[] orderedTerminalSymbols) {
-		super(parser, orderedTerminalSymbols);
-		this.astStack = super.getASTStack();
-		this.nodeFactory = (UPCASTNodeFactory) super.getNodeFactory();
-	}
-
 	
 	/**
-	 * Adds support for UPC specific nodes.
-	 * Some of the methods in UPCASTNodeFactory are overrides
-	 * and are called up in C99ParserAction.
+	 * TODO why is the nodeFactory passed as an argument
+	 * @param nodeFactory
+	 * @param parser
+	 * @param tu
 	 */
-	protected IASTNodeFactory createNodeFactory() {
-		return new UPCASTNodeFactory();
+	public UPCParserAction(ITokenStream parser, ScopedStack<Object> astStack, IUPCNodeFactory nodeFactory, ISecondaryParserFactory parserFactory) {
+		super(parser, astStack, nodeFactory, parserFactory);
+		this.nodeFactory = nodeFactory;
+		nodeFactory.setUseC99SizeofExpressions();
 	}
 	
 	
+	@Override 
+	protected boolean isCompletionToken(IToken token) {
+		return token.getKind() == TK_Completion;
+	}
+		
+	
+
+
 	/**************************************************************************************
 	 * Semantic actions
 	 **************************************************************************************/
+	
+
+	public void consumeExpressionUnarySizeofOperator(int upcOp) {
+		nodeFactory.setUseUPCSizeofExpressions(upcOp);
+		super.consumeExpressionUnaryOperator(IASTUnaryExpression.op_sizeof);
+		nodeFactory.setUseC99SizeofExpressions();
+	}
+	
+	
+	public void consumeExpressionSizeofTypeId(int upcOp) {
+		nodeFactory.setUseUPCSizeofExpressions(upcOp);
+		super.consumeExpressionTypeId(IASTTypeIdExpression.op_sizeof);
+		nodeFactory.setUseC99SizeofExpressions();
+	}
+
 	
 	
 	/**
 	 * constant ::= 'MYTHREAD' | 'THREADS' | 'UPC_MAX_BLOCKSIZE'
 	 */
 	public void consumeKeywordExpression(int keywordKind) {
-		IUPCASTKeywordExpression expr = nodeFactory.newKeywordExpression();
-		expr.setKeywordKind(keywordKind);
+		IUPCASTKeywordExpression expr = nodeFactory.newKeywordExpression(keywordKind);
 		setOffsetAndLength(expr);
 		astStack.push(expr);
-	}
-	
-	
-	/**
-	 * unary_expression ::= 'upc_localsizeof' unary_expression
-     *                    | 'upc_blocksizeof' unary_expression
-     *                    | 'upc_elemsizeof'  unary_expression
-	 */
-	public void consumeExpressionUpcSizeofOperator(int sizeofOp) {
-		IUPCASTSizeofExpression expr = nodeFactory.newSizeofExpression();
-		expr.setUPCSizeofOperator(sizeofOp);
-		
-		IASTExpression operand = (IASTExpression) astStack.pop();
-		expr.setOperand(operand);
-		operand.setParent(expr);
-		operand.setPropertyInParent(IASTUnaryExpression.OPERAND);
-		
-		setOffsetAndLength(expr);
-		astStack.push(expr);
-	}
-	
-	
-	/**
-	 * unary_expression ::= 'upc_localsizeof' '(' type_name ')'
-     *                    | 'upc_blocksizeof' '(' type_name ')'
-     *                    | 'upc_elemsizeof'  '(' type_name ')'
-	 */
-	public void consumeExpressionUpcSizeofTypeName(int sizeofOp) {
-		IASTTypeId typeId = (IASTTypeId) astStack.pop();
-		IASTTypeIdExpression expr = nodeFactory.newTypeIdExpression();
-		
-		expr.setTypeId(typeId);
-		typeId.setParent(expr);
-		typeId.setPropertyInParent(IASTTypeIdExpression.TYPE_ID);
-		setOffsetAndLength(expr);
-		
-		astStack.push(expr);
-		consumeExpressionUpcSizeofOperator(sizeofOp);
 	}
 	
 	
@@ -125,16 +103,8 @@ public class UPCParserAction extends C99ParserAction {
      *                             | 'upc_fence' ';'
 	 */
 	public void consumeStatementSynchronizationStatement(int statementKind, boolean hasBarrierExpr) {
-		IUPCASTSynchronizationStatement statement = nodeFactory.newSyncronizationStatment();
-		statement.setStatementKind(statementKind);
-		
-		if(hasBarrierExpr) {
-			IASTExpression barrierExpression = (IASTExpression) astStack.pop();
-			statement.setBarrierExpression(barrierExpression);
-			barrierExpression.setParent(statement);
-			barrierExpression.setPropertyInParent(IUPCASTSynchronizationStatement.BARRIER_EXPRESSION);
-		}
-		
+		IASTExpression barrierExpression = hasBarrierExpr ? (IASTExpression) astStack.pop() : null;
+		IUPCASTSynchronizationStatement statement = nodeFactory.newSyncronizationStatment(barrierExpression, statementKind);
 		setOffsetAndLength(statement);
 		astStack.push(statement);
 	}
@@ -146,72 +116,32 @@ public class UPCParserAction extends C99ParserAction {
      *       | 'upc_forall' '(' declaration expression ';' expression ';' affinity ')' statement
 	 */
 	public void consumeStatementUPCForallLoop(boolean hasExpr1, boolean hasExpr2, boolean hasExpr3, boolean hasAffinity) {
-		IUPCASTForallStatement forStat = nodeFactory.newForallStatement();
-		
 		IASTStatement body = (IASTStatement) astStack.pop();
-		forStat.setBody(body);
-		body.setParent(forStat);
-		body.setPropertyInParent(IUPCASTForallStatement.BODY);
 		
+		boolean affinityContinue = false;
+		IASTExpression affinity = null;
 		if(hasAffinity) {
 			Object o = astStack.pop();
-			if(o instanceof IASTExpression) {
-				IASTExpression expr = (IASTExpression)o;
-				forStat.setAffinityExpression(expr);
-				expr.setParent(forStat);
-				expr.setPropertyInParent(IUPCASTForallStatement.AFFINITY);
-			}
-			if(o instanceof IToken) {
-				IToken token = (IToken) o;
-				assert token.getKind() == UPCParsersym.TK_continue;
-				forStat.setAffinityContinue(true);
-			}
+			if(o instanceof IASTExpression)
+				affinity = (IASTExpression)o;
+			else if(o instanceof IToken)
+				affinityContinue = true;
 		}
 		
-		if(hasExpr3) {
-			IASTExpression expr = (IASTExpression) astStack.pop();
-			forStat.setIterationExpression(expr);
-			expr.setParent(forStat);
-			expr.setPropertyInParent(IUPCASTForallStatement.ITERATION);
-		}
+		IASTExpression expr3 = hasExpr3 ? (IASTExpression) astStack.pop() : null;
+		IASTExpression expr2 = hasExpr2 ? (IASTExpression) astStack.pop() : null;
 		
-		if(hasExpr2) {
-			IASTExpression expr = (IASTExpression) astStack.pop();
-			forStat.setConditionExpression(expr);
-			expr.setParent(forStat);
-			expr.setPropertyInParent(IUPCASTForallStatement.CONDITION);
-		}
-		
+		IASTStatement initializer = nodeFactory.newNullStatement();
 		if(hasExpr1) { // may be an expression or a declaration
-			IASTNode node = (IASTNode) astStack.pop();
-			
-			if(node instanceof IASTExpression) {
-				IASTExpressionStatement stat = nodeFactory.newExpressionStatement();
-				IASTExpression expr = (IASTExpression)node;
-				stat.setExpression(expr);
-				expr.setParent(stat);
-				expr.setPropertyInParent(IASTExpressionStatement.EXPFRESSION);
-				
-				forStat.setInitializerStatement(stat);
-				stat.setParent(forStat);
-				stat.setPropertyInParent(IUPCASTForallStatement.INITIALIZER);
-			}
-			else if(node instanceof IASTDeclaration) {
-				IASTDeclarationStatement stat = nodeFactory.newDeclarationStatement();
-				IASTDeclaration declaration = (IASTDeclaration)node;
-				stat.setDeclaration(declaration);
-				declaration.setParent(stat);
-				declaration.setPropertyInParent(IASTDeclarationStatement.DECLARATION);
-				
-				forStat.setInitializerStatement(stat);
-				stat.setParent(forStat);
-				stat.setPropertyInParent(IUPCASTForallStatement.INITIALIZER);
-			}
-		}
-		else {
-			forStat.setInitializerStatement(nodeFactory.newNullStatement());
+			Object node = astStack.pop();
+			if(node instanceof IASTExpression)
+				initializer = nodeFactory.newExpressionStatement((IASTExpression)node);
+			else if(node instanceof IASTDeclaration)
+				initializer = nodeFactory.newDeclarationStatement((IASTDeclaration)node);
 		}
 		
+		IUPCASTForallStatement forStat = nodeFactory.newForallStatement(initializer, expr2, expr3, body, affinity);
+		forStat.setAffinityContinue(affinityContinue);
 		setOffsetAndLength(forStat);
 		astStack.push(forStat);
 	}
@@ -249,11 +179,12 @@ public class UPCParserAction extends C99ParserAction {
 	/**
 	 * Overrides setSpecifier to add support for temporary layout qualifier nodes.
 	 */
-	protected void setSpecifier(ICASTDeclSpecifier declSpec, Object o) {
-		if(o instanceof IToken)
-			setTokenSpecifier((IUPCASTDeclSpecifier)declSpec, (IToken)o);
+	@Override
+	public void setSpecifier(ICASTDeclSpecifier declSpec, Object specifier) {
+		if(specifier instanceof IToken)
+			setTokenSpecifier((IUPCASTDeclSpecifier)declSpec, (IToken)specifier);
 		else 
-			setLayoutQualifier((IUPCASTDeclSpecifier)declSpec, (UPCParserActionLayoutQualifier) o);
+			setLayoutQualifier((IUPCASTDeclSpecifier)declSpec, (UPCParserActionLayoutQualifier) specifier);
 	}
 	
 	
@@ -265,13 +196,13 @@ public class UPCParserAction extends C99ParserAction {
 	 */
 	protected void setTokenSpecifier(IUPCASTDeclSpecifier node, IToken token) {
 		switch(token.getKind()) {
-			case UPCParsersym.TK_relaxed:
+			case TK_relaxed:
 				node.setReferenceType(IUPCASTDeclSpecifier.rt_relaxed);
 				break;
-			case UPCParsersym.TK_strict:
+			case TK_strict:
 				node.setReferenceType(IUPCASTDeclSpecifier.rt_strict);
 				break;
-			case UPCParsersym.TK_shared:
+			case TK_shared:
 				node.setSharedQualifier(IUPCASTDeclSpecifier.sh_shared_default_block_size);
 				break;
 			default:
@@ -289,10 +220,7 @@ public class UPCParserAction extends C99ParserAction {
 		}
 		else if(layoutQualifier.expression != null) {
 			node.setSharedQualifier(IUPCASTDeclSpecifier.sh_shared_constant_expression);
-			IASTExpression expr = layoutQualifier.expression;
-			node.setBlockSizeExpression(expr);
-			expr.setParent(node);
-			expr.setPropertyInParent(IUPCASTDeclSpecifier.BLOCK_SIZE_EXPRESSION);
+			node.setBlockSizeExpression(layoutQualifier.expression);
 		}
 		else {
 			node.setSharedQualifier(IUPCASTDeclSpecifier.sh_shared_indefinite_allocation);

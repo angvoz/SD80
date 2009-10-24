@@ -286,6 +286,15 @@
             class="org.eclipse.cdt.internal.errorparsers.VCErrorParser">
       </errorparser>
    </extension>
+   <extension
+         id="RegexErrorParser"
+         name="%CDTRegexErrorParser.name"
+         point="org.eclipse.cdt.core.ErrorParser">
+      <errorparser
+            id="org.eclipse.cdt.core.RegexErrorParser"
+            name="%CDTRegexErrorParser.name">
+      </errorparser>
+   </extension>
 <!-- =================================================================================== -->
 <!-- CDT customized problem markers: C Problem markers                                   -->
 <!-- =================================================================================== -->
@@ -638,6 +647,7 @@
    <extension-point id="templateAssociations" name="%templateAssociations.name" schema="schema/templateAssociations.exsd"/>
    <extension-point id="ScannerInfoProvider2" name="%scannerInfoProvider2.name" schema="schema/ScannerInfoProvider2.exsd"/>
    <extension-point id="EFSExtensionProvider" name="EFSExtensionProvider" schema="schema/EFSExtensionProvider.exsd"/>
+   <extension-point id="LanguageSettingsContributor" name="%LanguageSettingsContributor" schema="schema/LanguageSettingsContributor.exsd"/>
 
    <extension
          point="org.eclipse.cdt.core.templateProcessTypes">

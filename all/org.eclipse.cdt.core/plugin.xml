@@ -18,7 +18,7 @@
 <!-- =================================================================================== -->
 <!-- Extension Point: IErrorParser, error parsers use when building                      -->
 <!-- =================================================================================== -->
-   <extension-point id="ErrorParser" name="%ErrorParser.name"/>
+   <extension-point id="ErrorParser" name="%ErrorParser.name" schema="schema/ErrorParser.exsd"/>
 <!-- =================================================================================== -->
 <!-- Extension Point: IBinaryParser, use to detect wheter an IFile is a binary           -->
 <!-- =================================================================================== -->
@@ -144,6 +144,8 @@
          name="%CDTGNUMakeErrorParser.name"
          point="org.eclipse.cdt.core.ErrorParser">
       <errorparser
+            id="org.eclipse.cdt.core.MakeErrorParser"
+            name="%CDTGNUMakeErrorParser.name"
             class="org.eclipse.cdt.internal.errorparsers.MakeErrorParser">
       </errorparser>
    </extension>
@@ -152,6 +154,8 @@
          name="%CDTGNUCErrorParser.name"
          point="org.eclipse.cdt.core.ErrorParser">
       <errorparser
+            id="org.eclipse.cdt.core.GCCErrorParser"
+            name="%CDTGNUCErrorParser.name"
             class="org.eclipse.cdt.internal.errorparsers.GCCErrorParser">
       </errorparser>
    </extension>
@@ -160,6 +164,8 @@
          name="%CDTGNUAssemblerErrorParser.name"
          point="org.eclipse.cdt.core.ErrorParser">
       <errorparser
+            id="org.eclipse.cdt.core.GASErrorParser"
+            name="%CDTGNUAssemblerErrorParser.name"
             class="org.eclipse.cdt.internal.errorparsers.GASErrorParser">
       </errorparser>
    </extension>
@@ -168,6 +174,8 @@
          name="%CDTGNULinkerErrorParser.name"
          point="org.eclipse.cdt.core.ErrorParser">
       <errorparser
+            id="org.eclipse.cdt.core.GLDErrorParser"
+            name="%CDTGNULinkerErrorParser.name"
             class="org.eclipse.cdt.internal.errorparsers.GLDErrorParser">
       </errorparser>
    </extension>
@@ -176,7 +184,18 @@
          name="%CDTVisualCErrorParser.name"
          point="org.eclipse.cdt.core.ErrorParser">
       <errorparser
+            id="org.eclipse.cdt.core.VCErrorParser"
+            name="%CDTVisualCErrorParser.name"
             class="org.eclipse.cdt.internal.errorparsers.VCErrorParser">
+      </errorparser>
+   </extension>
+   <extension
+         id="RegexErrorParser"
+         name="%CDTRegexErrorParser.name"
+         point="org.eclipse.cdt.core.ErrorParser">
+      <errorparser
+            id="org.eclipse.cdt.core.RegexErrorParser"
+            name="%CDTRegexErrorParser.name">
       </errorparser>
    </extension>
 <!-- =================================================================================== -->
@@ -401,7 +420,7 @@
 	  <!-- declares a content type for ASM Source files -->
       <content-type id="asmSource" name="%asmSourceName" 
           base-type="org.eclipse.core.runtime.text"
-          file-extensions="s,asm"
+          file-extensions="S,s,asm,ASM"
           priority="high"/>
       <content-type
             id="binaryFile"
@@ -536,6 +555,7 @@
                     schema="schema/templates.exsd"/>
    <extension-point id="templateProcessTypes" name="%templateProcessTypes.name" schema="schema/templateProcessTypes.exsd"/>
    <extension-point id="templateAssociations" name="%templateAssociations.name" schema="schema/templateAssociations.exsd"/>
+   <extension-point id="LanguageSettingsContributor" name="%LanguageSettingsContributor" schema="schema/LanguageSettingsContributor.exsd"/>
 
    <extension
          point="org.eclipse.cdt.core.templateProcessTypes">
@@ -586,6 +606,12 @@
       <processType
             name="CreateSourceFolder"
             processRunner="org.eclipse.cdt.core.templateengine.process.processes.CreateSourceFolder">
+         <simple name="projectName"/>
+         <simple name="path"/>
+      </processType>
+      <processType
+            name="CreateFolder"
+            processRunner="org.eclipse.cdt.core.templateengine.process.processes.CreateFolder">
          <simple name="projectName"/>
          <simple name="path"/>
       </processType>

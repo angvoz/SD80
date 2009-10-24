@@ -183,4 +183,53 @@
             scheme="EFSExtensionProviderTestsScheme">
       </EFSExtensionProvider>
    </extension>
+   <extension
+         point="org.eclipse.cdt.core.LanguageSettingsContributor">
+      <language
+            id="org.eclipse.cdt.core.tests.language.id">
+      </language>
+      <entry
+            kind="INCLUDE_PATH"
+            name="/usr/include/">
+         <flag
+               value="BUILTIN">
+         </flag>
+         <flag
+               value="READONLY">
+         </flag>
+         <flag
+               value="LOCAL">
+         </flag>
+         <flag
+               value="VALUE_WORKSPACE_PATH">
+         </flag>
+         <flag
+               value="RESOLVED">
+         </flag>
+         <flag
+               value="UNDEFINED">
+         </flag>
+      </entry>
+      <entry
+            kind="MACRO"
+            name="TEST_DEFINE"
+            value="100">
+      </entry>
+      <entry
+            kind="INCLUDE_FILE"
+            name="/include/file.inc">
+      </entry>
+      <entry
+            kind="LIBRARY_PATH"
+            name="/usr/lib/">
+      </entry>
+      <entry
+            kind="LIBRARY_FILE"
+            name="libdomain.a">
+      </entry>
+      <entry
+            kind="MACRO_FILE"
+            name="/macro/file.mac">
+      </entry>
+   </extension>
 </plugin>

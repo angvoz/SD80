@@ -150,4 +150,79 @@
             class="org.eclipse.cdt.core.internal.index.provider.test.Providers$Dummy5">
       </ReadOnlyPDOMProvider>
    </extension>
+   <extension
+         point="org.eclipse.core.filesystem.filesystems">
+      <filesystem
+            scheme="mem">
+         <run
+               class="org.eclipse.cdt.core.internal.tests.filesystem.ram.MemoryFileSystem">
+         </run>
+      </filesystem>
+   </extension>
+   <extension
+         id="RegexErrorParserId"
+         name="Test Plugin RegexErrorParser"
+         point="org.eclipse.cdt.core.ErrorParser">
+      <errorparser
+            id="org.eclipse.cdt.core.tests.RegexErrorParserId"
+            name="Test Plugin RegexErrorParser">
+         <pattern
+               description-expr="$3"
+               eat-processed-line="true"
+               file-expr="$1"
+               line-expr="$2"
+               regex="(.*):(.*):regex (.*)"
+               severity="Error">
+         </pattern>
+      </errorparser>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.core.LanguageSettingsContributor">
+      <language
+            id="org.eclipse.cdt.core.tests.language.id">
+      </language>
+      <entry
+            kind="INCLUDE_PATH"
+            name="/usr/include/">
+         <flag
+               value="BUILTIN">
+         </flag>
+         <flag
+               value="READONLY">
+         </flag>
+         <flag
+               value="LOCAL">
+         </flag>
+         <flag
+               value="VALUE_WORKSPACE_PATH">
+         </flag>
+         <flag
+               value="RESOLVED">
+         </flag>
+         <flag
+               value="UNDEFINED">
+         </flag>
+      </entry>
+      <entry
+            kind="MACRO"
+            name="TEST_DEFINE"
+            value="100">
+      </entry>
+      <entry
+            kind="INCLUDE_FILE"
+            name="/include/file.inc">
+      </entry>
+      <entry
+            kind="LIBRARY_PATH"
+            name="/usr/lib/">
+      </entry>
+      <entry
+            kind="LIBRARY_FILE"
+            name="libdomain.a">
+      </entry>
+      <entry
+            kind="MACRO_FILE"
+            name="/macro/file.mac">
+      </entry>
+   </extension>
 </plugin>

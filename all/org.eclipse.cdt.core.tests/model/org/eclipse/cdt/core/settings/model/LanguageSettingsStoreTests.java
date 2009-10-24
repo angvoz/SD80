@@ -48,10 +48,8 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		}
 
 		public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
-			// TODO Auto-generated method stub
 			return entries;
 		}
-
 	}
 
 	public static TestSuite suite() {
@@ -633,7 +631,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	/**
 	 * TODO: revisit the test after priorities are built in the new extension point
 	 */
-	public void testLanguageSettingsManager_ReconciledProviders() throws Exception {
+	public void testLanguageSettingsManager_ReconciledContributors() throws Exception {
 		// contribute the low ranked entries
 		List<ICLanguageSettingEntry> originalLow = new ArrayList<ICLanguageSettingEntry>();
 		originalLow.add(new CIncludePathEntry("path0", ICSettingEntry.BUILTIN));
@@ -720,7 +718,56 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			// NOT taken from parent folder
 			assertEquals(0, retrieved.size());
 		}
+	}
 
+	/**
+	 */
+	public void testLanguageSettingsManager_Serialize_Basic() throws Exception {
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+
+		class ClearableMockContributor extends ACLanguageSettingsSerializableContributor {
+			private List<ICLanguageSettingEntry> entries;
+			public ClearableMockContributor(String id, int rank, List<ICLanguageSettingEntry> entries) {
+				super(id, rank);
+				this.entries = entries;
+			}
+			public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
+				return entries;
+			}
+			public void clear() {
+				entries = null;
+			}
+		}
+		ClearableMockContributor contributor = new ClearableMockContributor(CONTRIBUTOR_0, 10, original);
+
+
+		// add mock serializable contributor
+		LanguageSettingsManager.addContributor(contributor);
+		{
+			// double-check that contributor returns proper data
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(RC_DESCRIPTOR, CONTRIBUTOR_0);
+			assertEquals(original.get(0), retrieved.get(0));
+			assertEquals(original.size(), retrieved.size());
+		}
+
+		// serialize
+		LanguageSettingsManager.serialize();
+
+		// clear contributor
+		contributor.clear();
+		{
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(RC_DESCRIPTOR, CONTRIBUTOR_0);
+			assertEquals(0, retrieved.size());
+		}
+
+		// re-load
+		LanguageSettingsManager.load();
+		{
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(RC_DESCRIPTOR, CONTRIBUTOR_0);
+			assertEquals(original.get(0), retrieved.get(0));
+			assertEquals(original.size(), retrieved.size());
+		}
 	}
 
 }

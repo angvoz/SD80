@@ -17,6 +17,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.cdt.core.settings.model.ACLanguageSettingsSerializableContributor;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
@@ -39,33 +40,6 @@ public class LanguageSettingsManager {
 //	private static final Map<IProject, LanguageSettingsStore> globalStoreMap = new HashMap<IProject, LanguageSettingsStore>();
 
 	private static final List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-
-	abstract public class ACLanguageSettingsContributor implements ICLanguageSettingsContributor {
-		public String id;
-		/**
-		 * lower value rank carry more weight
-		 */
-		public int rank;
-
-
-		// store Map<ProviderId, Map<Resource, List<SettingEntry>>>
-
-		public ACLanguageSettingsContributor(String id, int rank) {
-			this.id = id;
-			this.rank = rank;
-		}
-
-		/**
-		 * Get copy of the list
-		 */
-		public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
-			return null;
-		}
-
-		public void setSettingEntries(LanguageSettingsResourceDescriptor descriptor, List<ICLanguageSettingEntry> settings) {
-		}
-	}
-
 
 	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String contributorId) {
 		ICLanguageSettingsContributor contributor = getContributor(contributorId);
@@ -202,4 +176,19 @@ public class LanguageSettingsManager {
 		});
 	}
 
+	public static void load() {
+		for (ICLanguageSettingsContributor contributor : contributors) {
+			if (contributor instanceof ACLanguageSettingsSerializableContributor) {
+				((ACLanguageSettingsSerializableContributor) contributor).fromXML();
+			}
+		}
+	}
+
+	public static void serialize() {
+		for (ICLanguageSettingsContributor contributor : contributors) {
+			if (contributor instanceof ACLanguageSettingsSerializableContributor) {
+				((ACLanguageSettingsSerializableContributor) contributor).toXML();
+			}
+		}
+	}
 }

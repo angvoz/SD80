@@ -109,6 +109,12 @@
                   </enumeration>
                   <enumeration value="LOCAL">
                   </enumeration>
+                  <enumeration value="VALUE_WORKSPACE_PATH">
+                  </enumeration>
+                  <enumeration value="RESOLVED">
+                  </enumeration>
+                  <enumeration value="UNDEFINED">
+                  </enumeration>
                </restriction>
             </simpleType>
          </attribute>

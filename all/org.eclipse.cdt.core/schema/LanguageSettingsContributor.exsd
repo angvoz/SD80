@@ -49,6 +49,33 @@
       </complexType>
    </element>
 
+   <element name="contributor">
+      <complexType>
+         <attribute name="class" type="string" use="required">
+            <annotation>
+               <documentation>
+                  
+               </documentation>
+               <appInfo>
+                  <meta.attribute kind="java" basedOn=":org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor"/>
+               </appInfo>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="language">
+      <complexType>
+         <attribute name="id" type="string" use="required">
+            <annotation>
+               <documentation>
+                  
+               </documentation>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
    <element name="entry">
       <complexType>
          <sequence>
@@ -118,33 +145,6 @@
                   </enumeration>
                </restriction>
             </simpleType>
-         </attribute>
-      </complexType>
-   </element>
-
-   <element name="language">
-      <complexType>
-         <attribute name="id" type="string" use="required">
-            <annotation>
-               <documentation>
-                  
-               </documentation>
-            </annotation>
-         </attribute>
-      </complexType>
-   </element>
-
-   <element name="contributor">
-      <complexType>
-         <attribute name="class" type="string" use="required">
-            <annotation>
-               <documentation>
-                  
-               </documentation>
-               <appInfo>
-                  <meta.attribute kind="java" basedOn=":org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor"/>
-               </appInfo>
-            </annotation>
          </attribute>
       </complexType>
    </element>

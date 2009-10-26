@@ -21,6 +21,7 @@ import org.eclipse.cdt.core.settings.model.ACLanguageSettingsSerializableContrib
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -135,7 +136,7 @@ public class LanguageSettingsManager {
 			if (contributor.getId().equals(id))
 				return contributor;
 		}
-		return null;
+		return LanguageSettingsExtensionManager.getContributor(id);
 	}
 
 	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(LanguageSettingsResourceDescriptor descriptor, int kind) {
@@ -191,4 +192,13 @@ public class LanguageSettingsManager {
 			}
 		}
 	}
+
+	/**
+	 * @return IDs of language settings contributors of LanguageSettingContributor extension point.
+	 */
+	public static String[] getLanguageSettingsExtensionIds() {
+		return LanguageSettingsExtensionManager.getLanguageSettingsExtensionIds();
+	}
+
+
 }

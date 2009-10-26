@@ -12,6 +12,7 @@
 package org.eclipse.cdt.core.settings.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestSuite;
@@ -20,6 +21,7 @@ import org.eclipse.cdt.core.internal.errorparsers.tests.ResourceHelper;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
 import org.eclipse.cdt.core.testplugin.util.BaseTestCase;
+import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsDefaultContributor;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsStore;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -34,19 +36,21 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	private static final IPath PATH_0 = new Path("/path0");
 	private static final String LANG_ID = "test.lang.id";
 	/* as defined in test extension point */
-	private static final String CONTRIBUTOR_ID_EXTENSION_POINT = "org.eclipse.cdt.core.tests.StaticContributor";
-	private static final String LANG_ID_EXTENSION_POINT = "org.eclipse.cdt.core.tests.language.id";
+	private static final String CONTRIBUTOR_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.contributor";
+	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 	private static final String CONTRIBUTOR_0 = "test.contributor.0.id";
 	private static final String CONTRIBUTOR_1 = "test.contributor.1.id";
 	private static final String CONTRIBUTOR_2 = "test.contributor.2.id";
+	private static final String CONTRIBUTOR_NAME = "test.contributor.name";
 
 	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID);
+	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR_EXT = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID_EXT);
 
 	private class MockContributor extends ACLanguageSettingsContributor {
 		private final List<ICLanguageSettingEntry> entries;
 
 		public MockContributor(String id, int rank, List<ICLanguageSettingEntry> entries) {
-			super(id, rank);
+			super(id, CONTRIBUTOR_NAME, rank);
 			this.entries = entries;
 		}
 
@@ -680,7 +684,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		// store the entries in parent folder
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
-		ICLanguageSettingsContributor contributor = new ACLanguageSettingsContributor(CONTRIBUTOR_0, 10) {
+		ICLanguageSettingsContributor contributor = new ACLanguageSettingsContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME, 10) {
 
 			public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
 				if (descriptor.getWorkspacePath().equals(parentFolder)) {
@@ -725,13 +729,73 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 	/**
 	 */
-	public void testExtensionPoint() throws Exception {
-		String[] ids = LanguageSettingsManager.getLanguageSettingsExtensionIds();
-		for (String id : ids) {
-			if (id.equals(CONTRIBUTOR_ID_EXTENSION_POINT))
-				return;
+	public void testLanguageSettingsCoreContributor() throws Exception {
+		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		List<String> languages = new ArrayList<String>(2) {
+			{
+				add("bogus.language.id");
+				add(RC_DESCRIPTOR.getLangId());
+			}
+		};
+		LanguageSettingsDefaultContributor contributor = new LanguageSettingsDefaultContributor(
+				CONTRIBUTOR_0, CONTRIBUTOR_NAME, 10, languages, original);
+
+		{
+			LanguageSettingsResourceDescriptor descriptor = new LanguageSettingsResourceDescriptor(
+					CONFIGURATION_ID, PATH_0, "wrong.lang.id");
+			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(descriptor);
+			assertEquals(0, retrieved.size());
 		}
-		fail("extension " + CONTRIBUTOR_ID_EXTENSION_POINT + " not found");
+
+		{
+			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(RC_DESCRIPTOR);
+			assertEquals(original.get(0), retrieved.get(0));
+		}
+
+	}
+
+	/**
+	 */
+	public void testExtensionPoint() throws Exception {
+		int pos = Arrays.binarySearch(LanguageSettingsManager.getLanguageSettingsExtensionIds(), CONTRIBUTOR_ID_EXT);
+		assertTrue("extension " + CONTRIBUTOR_ID_EXT + " not found", pos>=0);
+
+		ICLanguageSettingsContributor contributorExt = LanguageSettingsManager.getContributor(CONTRIBUTOR_ID_EXT);
+		assertNotNull(contributorExt);
+
+		assertTrue(contributorExt instanceof LanguageSettingsDefaultContributor);
+		LanguageSettingsDefaultContributor contributor = (LanguageSettingsDefaultContributor)contributorExt;
+
+		// retrieve wrong language
+		assertEquals(0, contributor.getSettingEntries(RC_DESCRIPTOR).size());
+
+		// benchmarks matching extension point definition
+		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>() {
+			{
+				add(new CIncludePathEntry("/usr/include/",
+						ICSettingEntry.BUILTIN
+						| ICSettingEntry.READONLY
+						| ICSettingEntry.LOCAL
+						| ICSettingEntry.VALUE_WORKSPACE_PATH
+						| ICSettingEntry.RESOLVED
+						| ICSettingEntry.UNDEFINED
+				));
+				add(new CMacroEntry("TEST_DEFINE", "100", 0));
+				add(new CIncludeFileEntry("/include/file.inc", 0));
+				add(new CLibraryPathEntry("/usr/lib/", 0));
+				add(new CLibraryFileEntry("libdomain.a", 0));
+				add(new CMacroFileEntry("/macro/file.mac", 0));
+			}
+		};
+
+		// retrieve entries from extension point
+		List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(RC_DESCRIPTOR_EXT);
+
+		for (int i=0;i<entriesExt.size();i++) {
+			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
+		}
+		assertEquals(entriesExt.size(), retrieved.size());
 	}
 
 	/**
@@ -743,7 +807,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		class ClearableMockContributor extends ACLanguageSettingsSerializableContributor {
 			private List<ICLanguageSettingEntry> entries;
 			public ClearableMockContributor(String id, int rank, List<ICLanguageSettingEntry> entries) {
-				super(id, rank);
+				super(id, CONTRIBUTOR_NAME, rank);
 				this.entries = entries;
 			}
 			public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {

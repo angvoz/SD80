@@ -14,8 +14,8 @@ package org.eclipse.cdt.core.settings.model;
 
 public abstract class ACLanguageSettingsSerializableContributor extends ACLanguageSettingsContributor {
 
-	public ACLanguageSettingsSerializableContributor(String id, int rank) {
-		super(id, rank);
+	public ACLanguageSettingsSerializableContributor(String id, String name, int rank) {
+		super(id, name, rank);
 	}
 
 	public void toXML() {

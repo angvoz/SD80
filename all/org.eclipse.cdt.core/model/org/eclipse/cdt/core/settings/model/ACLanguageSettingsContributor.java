@@ -17,15 +17,21 @@ package org.eclipse.cdt.core.settings.model;
  */
 public abstract class ACLanguageSettingsContributor implements ICLanguageSettingsContributor {
 	private String id;
+	private String name;
 	private int rank;
 
-	public ACLanguageSettingsContributor(String id, int rank) {
+	public ACLanguageSettingsContributor(String id, String name, int rank) {
 		this.id = id;
+		this.name = name;
 		this.rank = rank;
 	}
 
 	public String getId() {
 		return id;
+	}
+
+	public String getName() {
+		return name;
 	}
 
 	public int getRank() {

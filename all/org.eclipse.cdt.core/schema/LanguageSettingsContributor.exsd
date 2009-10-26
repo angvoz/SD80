@@ -112,17 +112,17 @@
             </annotation>
             <simpleType>
                <restriction base="string">
-                  <enumeration value="INCLUDE_PATH">
+                  <enumeration value="includePath">
                   </enumeration>
-                  <enumeration value="MACRO">
+                  <enumeration value="macro">
                   </enumeration>
-                  <enumeration value="INCLUDE_FILE">
+                  <enumeration value="includeFile">
                   </enumeration>
-                  <enumeration value="LIBRARY_PATH">
+                  <enumeration value="libraryPath">
                   </enumeration>
-                  <enumeration value="LIBRARY_FILE">
+                  <enumeration value="libraryFile">
                   </enumeration>
-                  <enumeration value="MACRO_FILE">
+                  <enumeration value="macroFile">
                   </enumeration>
                </restriction>
             </simpleType>

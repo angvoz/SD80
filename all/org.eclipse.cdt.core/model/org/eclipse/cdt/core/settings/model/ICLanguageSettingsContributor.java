@@ -17,6 +17,7 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescript
 
 public interface ICLanguageSettingsContributor {
 	public String getId();
+	public String getName();
 	public int getRank();
 	public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor);
 }

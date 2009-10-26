@@ -32,7 +32,10 @@ import org.eclipse.core.runtime.Path;
 public class LanguageSettingsStoreTests extends BaseTestCase {
 	private static final String CONFIGURATION_ID = "cfg.id";
 	private static final IPath PATH_0 = new Path("/path0");
-	private static final String LANG_ID = "lang.id";
+	private static final String LANG_ID = "test.lang.id";
+	/* as defined in test extension point */
+	private static final String CONTRIBUTOR_ID_EXTENSION_POINT = "org.eclipse.cdt.core.tests.StaticContributor";
+	private static final String LANG_ID_EXTENSION_POINT = "org.eclipse.cdt.core.tests.language.id";
 	private static final String CONTRIBUTOR_0 = "test.contributor.0.id";
 	private static final String CONTRIBUTOR_1 = "test.contributor.1.id";
 	private static final String CONTRIBUTOR_2 = "test.contributor.2.id";
@@ -718,6 +721,17 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			// NOT taken from parent folder
 			assertEquals(0, retrieved.size());
 		}
+	}
+
+	/**
+	 */
+	public void testExtensionPoint() throws Exception {
+		String[] ids = LanguageSettingsManager.getLanguageSettingsExtensionIds();
+		for (String id : ids) {
+			if (id.equals(CONTRIBUTOR_ID_EXTENSION_POINT))
+				return;
+		}
+		fail("extension " + CONTRIBUTOR_ID_EXTENSION_POINT + " not found");
 	}
 
 	/**

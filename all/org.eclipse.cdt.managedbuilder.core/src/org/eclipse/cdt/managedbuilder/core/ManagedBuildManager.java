@@ -1,11 +1,11 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2008 IBM Corporation and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
- *
- * Contributors:
+ *  Copyright (c) 2003, 2009 IBM Corporation and others.
+ *  All rights reserved. This program and the accompanying materials
+ *  are made available under the terms of the Eclipse Public License v1.0
+ *  which accompanies this distribution, and is available at
+ *  http://www.eclipse.org/legal/epl-v10.html
+ * 
+ *  Contributors:
  *     IBM - Initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.managedbuilder.core;
@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,6 +60,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
+import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.XmlStorageUtil;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
@@ -126,6 +128,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.PluginVersionIdentifier;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.URIUtil;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Shell;
@@ -223,6 +226,8 @@ public class ManagedBuildManager extends AbstractCExtension {
 	private static Map extensionOutputTypeMap;
 	// Targets defined in the manifest files (CDT V2.0 object model)
 	private static Map extensionTargetMap;
+	
+	
 	// "Selected configuraton" elements defined in the manifest files.
 	// These are configuration elements that map to objects in the internal
 	// representation of the manifest files.  For example, ListOptionValues
@@ -232,7 +237,8 @@ public class ManagedBuildManager extends AbstractCExtension {
 	// From the PDE Guide:
 	//  A configuration element, with its attributes and children, directly 
 	//  reflects the content and structure of the extension section within the 
-	//  declaring plug-in's manifest (plugin.xml) file. 
+	//  declaring plug-in's manifest (plugin.xml) file.
+	// This map has a lifecycle corresponding to the build definitions extension loading.
 	private static Map configElementMap;
 	
 //	private static List sortedToolChains;
@@ -2249,6 +2255,12 @@ public class ManagedBuildManager extends AbstractCExtension {
 		if (projectTypesLoading)
 			return;
 		projectTypesLoading = true;
+
+		
+		// scalability issue:  configElementMap does not need to live past when loading is done, so we will
+		// deallocate it upon exit with a try...finally
+		
+		try {
 		
 		//The list of the IManagedBuildDefinitionsStartup callbacks 
 		List buildDefStartupList = null;
@@ -2555,6 +2567,12 @@ public class ManagedBuildManager extends AbstractCExtension {
 		projectTypesLoaded = true;
 		
 		ToolChainModificationManager.getInstance().start();
+		
+		} // try
+		
+		finally {
+			configElementMap = null;
+		}
 	}
 	
 	private static void performAdjustments(){
@@ -3207,6 +3225,9 @@ public class ManagedBuildManager extends AbstractCExtension {
 	}
 
 	private static Map getConfigElementMap() {
+		if(!projectTypesLoading)
+			throw new IllegalStateException();
+		
 		if (configElementMap == null) {
 			configElementMap = new HashMap();
 		}
@@ -3214,8 +3235,9 @@ public class ManagedBuildManager extends AbstractCExtension {
 	}
 	
 	/**
-	 * This method public for implementation reasons.  Not intended for use 
+	 * @noreference This method public for implementation reasons.  Not intended for use 
 	 * by clients.
+	 *
 	 */
 	public static void putConfigElement(IBuildObject buildObj, IManagedConfigElement configElement) {
 		getConfigElementMap().put(buildObj, configElement);
@@ -3229,7 +3251,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 	}
 
 	/**
-	 * This method public for implementation reasons.  Not intended for use 
+	 * @noreference This method public for implementation reasons.  Not intended for use 
 	 * by clients.
 	 */
 	public static IManagedConfigElement getConfigElement(IBuildObject buildObj) {
@@ -3889,7 +3911,12 @@ public class ManagedBuildManager extends AbstractCExtension {
 		}
 		return null;
 	}
-	
+
+	/**
+	 * Convert the IOption integer type ID to the {@link ICSettingEntry#getKind()} type ID
+	 * @param type {@link IOption#getValueType()}
+	 * @return ICSettingEntry type
+	 */
 	public static int optionTypeToEntryKind(int type){
 		switch(type){
 		case IOption.INCLUDE_PATH:
@@ -3900,16 +3927,20 @@ public class ManagedBuildManager extends AbstractCExtension {
 			return ICLanguageSettingEntry.INCLUDE_FILE;
 		case IOption.LIBRARY_PATHS:
 			return ICLanguageSettingEntry.LIBRARY_PATH;
+		case IOption.LIBRARIES:
 		case IOption.LIBRARY_FILES:
 			return ICLanguageSettingEntry.LIBRARY_FILE;
 		case IOption.MACRO_FILES:
 			return ICLanguageSettingEntry.MACRO_FILE;
-//		case IOption.LIBRARIES:
-//			return ICLanguageSettingEntry.LIBRARY_PATH;
 		}
 		return 0;
 	}
-	
+
+	/**
+	 * Convert the IOption integer type ID to the {@link ICSettingEntry#getKind()} type ID
+	 * @param type {@link IOption#getValueType()}
+	 * @return ICSettingEntry type
+	 */
 	public static int optionUndefTypeToEntryKind(int type){
 		switch(type){
 		case IOption.UNDEF_INCLUDE_PATH:
@@ -3924,8 +3955,6 @@ public class ManagedBuildManager extends AbstractCExtension {
 			return ICLanguageSettingEntry.LIBRARY_FILE;
 		case IOption.UNDEF_MACRO_FILES:
 			return ICLanguageSettingEntry.MACRO_FILE;
-//		case IOption.LIBRARIES:
-//			return ICLanguageSettingEntry.LIBRARY_PATH;
 		}
 		return 0;
 	}
@@ -4075,7 +4104,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 				buildDirectory = res.getLocation();
 			}
 		} else {
-			buildDirectory = project.getLocation();
+			buildDirectory = getPathForResource(project);
 			
 			if (buildDirectory != null) {
 				if (builder.isManagedBuildOn())
@@ -4084,7 +4113,38 @@ public class ManagedBuildManager extends AbstractCExtension {
 		}
 		return buildDirectory;
 	}
-	
+
+	/**
+	 * Return the Build Location URI or null if one couldn't be found
+	 * @param cfg
+	 * @param builder
+	 * @return build location URI or null if one couldn't be found
+	 * @since 6.0
+	 */
+	public static URI getBuildLocationURI(IConfiguration cfg, IBuilder builder) {
+		if(cfg.getOwner() == null)
+			return null;
+
+		IProject project = cfg.getOwner().getProject();
+		IPath buildDirectory = builder.getBuildLocation();
+		if (buildDirectory != null && !buildDirectory.isEmpty()) {
+			IResource res = project.getParent().findMember(buildDirectory);
+			if (res instanceof IContainer && res.exists()) {
+				return res.getLocationURI();
+			}
+		} else {
+			URI uri = project.getLocationURI();
+			if (buildDirectory != null && builder.isManagedBuildOn())
+				return URIUtil.append(uri, cfg.getName());
+			return uri;
+		}
+		return org.eclipse.core.filesystem.URIUtil.toURI(buildDirectory);
+	}
+
+	private static IPath getPathForResource(IResource resource) {
+		return new Path(resource.getLocationURI().getPath());
+	}
+
 	public static IBuilder[] createBuilders(IProject project, Map args){
 		return ManagedBuilderCorePlugin.createBuilders(project, args);
 	}

@@ -12,7 +12,6 @@
 package org.eclipse.cdt.core.settings.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestSuite;
@@ -501,8 +500,8 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			// get list of contributors
 			List<ICLanguageSettingsContributor> contributors = LanguageSettingsManager.getAllContributors();
 			assertTrue(contributors.contains(contributor1));
-			assertTrue(contributors.contains(contributor1));
-			assertEquals(2, contributors.size());
+			assertTrue(contributors.contains(contributor2));
+			assertTrue(contributors.size()>=2);
 		}
 
 		{
@@ -729,7 +728,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsCoreContributor() throws Exception {
+	public void testLanguageSettingsDefaultContributor() throws Exception {
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		List<String> languages = new ArrayList<String>(2) {
@@ -738,10 +737,13 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 				add(RC_DESCRIPTOR.getLangId());
 			}
 		};
+
+		// add default contributor
 		LanguageSettingsDefaultContributor contributor = new LanguageSettingsDefaultContributor(
 				CONTRIBUTOR_0, CONTRIBUTOR_NAME, 10, languages, original);
 
 		{
+			// attempt to get entries for wrong language
 			LanguageSettingsResourceDescriptor descriptor = new LanguageSettingsResourceDescriptor(
 					CONFIGURATION_ID, PATH_0, "wrong.lang.id");
 			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(descriptor);
@@ -749,54 +751,13 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		}
 
 		{
+			// retrieve the entries
 			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(RC_DESCRIPTOR);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
 
 	}
 
-	/**
-	 */
-	public void testExtensionPoint() throws Exception {
-		int pos = Arrays.binarySearch(LanguageSettingsManager.getLanguageSettingsExtensionIds(), CONTRIBUTOR_ID_EXT);
-		assertTrue("extension " + CONTRIBUTOR_ID_EXT + " not found", pos>=0);
-
-		ICLanguageSettingsContributor contributorExt = LanguageSettingsManager.getContributor(CONTRIBUTOR_ID_EXT);
-		assertNotNull(contributorExt);
-
-		assertTrue(contributorExt instanceof LanguageSettingsDefaultContributor);
-		LanguageSettingsDefaultContributor contributor = (LanguageSettingsDefaultContributor)contributorExt;
-
-		// retrieve wrong language
-		assertEquals(0, contributor.getSettingEntries(RC_DESCRIPTOR).size());
-
-		// benchmarks matching extension point definition
-		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>() {
-			{
-				add(new CIncludePathEntry("/usr/include/",
-						ICSettingEntry.BUILTIN
-						| ICSettingEntry.READONLY
-						| ICSettingEntry.LOCAL
-						| ICSettingEntry.VALUE_WORKSPACE_PATH
-						| ICSettingEntry.RESOLVED
-						| ICSettingEntry.UNDEFINED
-				));
-				add(new CMacroEntry("TEST_DEFINE", "100", 0));
-				add(new CIncludeFileEntry("/include/file.inc", 0));
-				add(new CLibraryPathEntry("/usr/lib/", 0));
-				add(new CLibraryFileEntry("libdomain.a", 0));
-				add(new CMacroFileEntry("/macro/file.mac", 0));
-			}
-		};
-
-		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(RC_DESCRIPTOR_EXT);
-
-		for (int i=0;i<entriesExt.size();i++) {
-			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
-		}
-		assertEquals(entriesExt.size(), retrieved.size());
-	}
 
 	/**
 	 */

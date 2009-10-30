@@ -22,7 +22,9 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.osgi.service.prefs.BackingStoreException;
 
 /**
  * TODO
@@ -72,8 +74,9 @@ public class LanguageSettingsManager {
 		return false;
 	}
 
-	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String id, int kind) {
-		ICLanguageSettingsContributor contributor = getContributor(id);
+	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor,
+			String contributorId, int kind) {
+		ICLanguageSettingsContributor contributor = getContributor(contributorId);
 		if (contributor==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
@@ -128,14 +131,16 @@ public class LanguageSettingsManager {
 //	}
 
 	public static List<ICLanguageSettingsContributor> getAllContributors() {
-		return new ArrayList<ICLanguageSettingsContributor>(contributors);
+		ArrayList<ICLanguageSettingsContributor> list = new ArrayList<ICLanguageSettingsContributor>(contributors);
+		list.addAll(LanguageSettingsExtensionManager.getAllContributorsFIXME());
+		return list;
 	}
 
 	public static ICLanguageSettingsContributor getContributor(String id) {
-		for (ICLanguageSettingsContributor contributor : contributors) {
-			if (contributor.getId().equals(id))
-				return contributor;
-		}
+//		for (ICLanguageSettingsContributor contributor : contributors) {
+//			if (contributor.getId().equals(id))
+//				return contributor;
+//		}
 		return LanguageSettingsExtensionManager.getContributor(id);
 	}
 
@@ -194,10 +199,48 @@ public class LanguageSettingsManager {
 	}
 
 	/**
+	 * Set and store in workspace area user defined contributors.
+	 *
+	 * @param contributors - array of user defined contributors
+	 * @throws CoreException in case of problems
+	 * @since 5.2
+	 */
+	public static void setUserDefinedContributors(ICLanguageSettingsContributor[] contributors) throws CoreException {
+		LanguageSettingsExtensionManager.setUserDefinedContributors(contributors);
+	}
+
+	/**
+	 * @return available contributors IDs which include contributed through extension + user defined ones
+	 * from workspace
+	 */
+	public static String[] getContributorAvailableIds() {
+		return LanguageSettingsExtensionManager.getContributorAvailableIds();
+	}
+
+	/**
 	 * @return IDs of language settings contributors of LanguageSettingContributor extension point.
 	 */
-	public static String[] getLanguageSettingsExtensionIds() {
-		return LanguageSettingsExtensionManager.getLanguageSettingsExtensionIds();
+	public static String[] getContributorExtensionIds() {
+		return LanguageSettingsExtensionManager.getContributorExtensionIds();
+	}
+
+	/**
+	 * Set and store default contributors IDs to be used if contributor list is empty.
+	 *
+	 * @param ids - default contributors IDs
+	 * @throws BackingStoreException in case of problem with storing
+	 * @since 5.2
+	 */
+	public static void setDefaultContributorIds(String[] ids) throws BackingStoreException {
+		LanguageSettingsExtensionManager.setDefaultContributorIds(ids);
+	}
+
+	/**
+	 * @return default contributors IDs to be used if contributor list is empty.
+	 * @since 5.2
+	 */
+	public static String[] getDefaultContributorIds() {
+		return LanguageSettingsExtensionManager.getDefaultContributorIds();
 	}
 
 

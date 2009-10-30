@@ -22,7 +22,7 @@
 <!-- =================================================================================== -->
 <!-- Extension Point: IBinaryParser, use to detect wheter an IFile is a binary           -->
 <!-- =================================================================================== -->
-   <extension-point id="BinaryParser" name="%BinaryParser.name"/>
+   <extension-point id="BinaryParser" name="%BinaryParser.name" schema="schema/BinaryParser.exsd"/>
 <!-- =================================================================================== -->
 <!-- Extension Point: IPathEntryStore, use to provide a storage for PathEtnry            -->
 <!-- =================================================================================== -->
@@ -30,7 +30,7 @@
 <!-- =================================================================================== -->
 <!-- Obsolete extension point, use the IPathEntry mechanism to provide include/macros    -->
 <!-- =================================================================================== -->
-   <extension-point id="ScannerInfoProvider" name="%ScannerInfoProvider.name"/>
+   <extension-point id="ScannerInfoProvider" name="%ScannerInfoProvider.name" schema="schema/CExtensionGeneric.exsd"/>
 <!-- =================================================================================== -->
 <!-- PathEntryContainer initialization, this is part of the IPathEntry framework         -->
 <!-- =================================================================================== -->
@@ -532,14 +532,6 @@
             class="org.eclipse.cdt.internal.core.settings.model.ConfigBasedEntriesContainerInitializer"
             id="org.eclipse.cdt.core.CFG_BASED_CONTAINER">
       </pathEntryContainerInitializer>
-   </extension>
-   <extension
-         point="org.eclipse.cdt.core.ScannerInfoProvider">
-      <cextension>
-         <run
-              class="org.eclipse.cdt.core.index.export.ConfigurableScannerInfoProvider">
-         </run>
-      </cextension>
    </extension>
    <extension
          point="org.eclipse.cdt.core.CIndex">

@@ -94,9 +94,11 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 		// get contributors
 		{
-			List<ICLanguageSettingsContributor> contributors = LanguageSettingsManager.getAllContributors();
-			assertNotNull(contributors);
-			assertEquals(0, contributors.size());
+			List<ICLanguageSettingsContributor> all = LanguageSettingsManager.getAllContributors();
+			assertNotNull(all);
+			String[] exts = LanguageSettingsManager.getContributorExtensionIds();
+			assertNotNull(exts);
+			assertEquals(exts.length, all.size());
 		}
 	}
 

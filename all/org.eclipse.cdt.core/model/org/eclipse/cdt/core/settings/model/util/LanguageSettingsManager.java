@@ -17,10 +17,13 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ACLanguageSettingsSerializableContributor;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -203,7 +206,6 @@ public class LanguageSettingsManager {
 	 *
 	 * @param contributors - array of user defined contributors
 	 * @throws CoreException in case of problems
-	 * @since 5.2
 	 */
 	public static void setUserDefinedContributors(ICLanguageSettingsContributor[] contributors) throws CoreException {
 		LanguageSettingsExtensionManager.setUserDefinedContributors(contributors);
@@ -229,7 +231,6 @@ public class LanguageSettingsManager {
 	 *
 	 * @param ids - default contributors IDs
 	 * @throws BackingStoreException in case of problem with storing
-	 * @since 5.2
 	 */
 	public static void setDefaultContributorIds(String[] ids) throws BackingStoreException {
 		LanguageSettingsExtensionManager.setDefaultContributorIds(ids);
@@ -237,10 +238,37 @@ public class LanguageSettingsManager {
 
 	/**
 	 * @return default contributors IDs to be used if contributor list is empty.
-	 * @since 5.2
 	 */
 	public static String[] getDefaultContributorIds() {
 		return LanguageSettingsExtensionManager.getDefaultContributorIds();
+	}
+
+	/**
+	 * This usage is discouraged TODO .
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	public static void setContributors(ICConfigurationDescription cfgDescription,
+			List<ICLanguageSettingsContributor> contributors) {
+		if (cfgDescription instanceof CConfigurationDescription) {
+			((CConfigurationDescription)cfgDescription).setLanguageSettingContributors(contributors);
+		} else {
+			String className = cfgDescription.getClass().getName();
+			CCorePlugin.log("Error setting ICLanguageSettingsContributor for wrong configuration description type " + className); //$NON-NLS-1$
+		}
+	}
+
+	/**
+	 * This usage is discouraged TODO .
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	public static List<ICLanguageSettingsContributor> getContributors(ICConfigurationDescription cfgDescription) {
+		if (cfgDescription instanceof CConfigurationDescription) {
+			return ((CConfigurationDescription)cfgDescription).getLanguageSettingContributors();
+		} else {
+			String className = cfgDescription.getClass().getName();
+			CCorePlugin.log("Error getting ICLanguageSettingsContributor for wrong configuration description type " + className); //$NON-NLS-1$
+		}
+		return new ArrayList<ICLanguageSettingsContributor>();
 	}
 
 

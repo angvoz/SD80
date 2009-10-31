@@ -18,10 +18,16 @@ import java.util.List;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import org.eclipse.cdt.core.dom.IPDOMManager;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
+import org.eclipse.cdt.core.testplugin.CProjectHelper;
+import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsDefaultContributor;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
@@ -485,5 +491,52 @@ public class LanguageSettingsManagerTests extends TestCase {
 //			assertNotSame(clone1, clone2);
 //		}
 		fail("UNDER CONSTRUCTION");
+	}
+
+	/**
+	 * FIXME .
+	 *
+	 * @throws Exception...
+	 */
+	public void test_SEPARATOR() throws Exception {
+	}
+
+	/**
+	 * TODO .
+	 *
+	 * @throws Exception...
+	 */
+	public void testConfigurationDescription() throws Exception {
+		String projectName = getName();
+
+		CoreModel coreModel = CoreModel.getDefault();
+		ICProjectDescriptionManager mngr = coreModel.getProjectDescriptionManager();
+
+		// Create model project and accompanied descriptions
+		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
+		IProject project = cproject.getProject();
+		// project description
+		ICProjectDescription projectDescription = mngr.getProjectDescription(project);
+		assertNotNull(projectDescription);
+		assertEquals(1, projectDescription.getConfigurations().length);
+		// configuration description
+		ICConfigurationDescription cfgDescription = projectDescription.getConfigurations()[0];
+		assertTrue(cfgDescription instanceof CConfigurationDescription);
+
+		// set contributors
+		ICLanguageSettingsContributor contributor1 = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null);
+		ICLanguageSettingsContributor contributor2 = new MockContributor(CONTRIBUTOR_2, CONTRIBUTOR_NAME_2, null);
+		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
+		contributors.add(contributor1);
+		contributors.add(contributor2);
+		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+
+		{
+			// get contributors
+			List<ICLanguageSettingsContributor> retrieved = LanguageSettingsManager.getContributors(cfgDescription);
+			assertEquals(contributor1, retrieved.get(0));
+			assertEquals(contributor2, retrieved.get(1));
+			assertEquals(contributors.size(), retrieved.size());
+		}
 	}
 }

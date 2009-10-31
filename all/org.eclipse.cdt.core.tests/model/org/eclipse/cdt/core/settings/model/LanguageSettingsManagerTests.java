@@ -320,6 +320,60 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
+	 * Check that default contributor IDs are stored properly.
+	 *
+	 * @throws Exception...
+	 */
+	public void testSerializeDefaultContributorIds() throws Exception {
+		final String[] testingDefaultContributorIds = {
+				"org.eclipse.cdt.core.test.language.settings.contributor0",
+				"org.eclipse.cdt.core.test.language.settings.contributor1",
+				"org.eclipse.cdt.core.test.language.settings.contributor2",
+		};
+		final String TESTING_IDS = toDelimitedString(testingDefaultContributorIds);
+		final String DEFAULT_IDS = toDelimitedString(LanguageSettingsManager.getDefaultContributorIds());
+
+		{
+			// setDefaultContributorIds
+			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(testingDefaultContributorIds);
+
+			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
+			assertNotNull(defaultContributorIds);
+			assertEquals(TESTING_IDS, toDelimitedString(defaultContributorIds));
+
+			// serialize them
+			LanguageSettingsExtensionManager.serializeDefaultContributorIds();
+		}
+
+		{
+			// Remove from internal list
+			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(null);
+			assertEquals(DEFAULT_IDS, toDelimitedString(LanguageSettingsManager.getDefaultContributorIds()));
+		}
+
+		{
+			// Re-load from persistent storage and check it out
+			LanguageSettingsExtensionManager.loadDefaultContributorIds();
+
+			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
+			assertNotNull(defaultContributorIds);
+			assertEquals(TESTING_IDS, toDelimitedString(defaultContributorIds));
+		}
+
+		{
+			// Reset IDs and serialize
+			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(null);
+			LanguageSettingsExtensionManager.serializeDefaultContributorIds();
+
+			// Check that default IDs are loaded
+			LanguageSettingsExtensionManager.loadDefaultContributorIds();
+			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
+			assertNotNull(defaultContributorIds);
+			assertEquals(DEFAULT_IDS, toDelimitedString(defaultContributorIds));
+		}
+	}
+
+	/**
 	 * Test serialization of user defined contributors.
 	 *
 	 * @throws Exception...
@@ -404,60 +458,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 //			assertEquals(TESTING_REGEX, errorPatterns[0].getPattern());
 //		}
 		fail("UNDER CONSTRUCTION");
-	}
-
-	/**
-	 * Check that default contributor IDs are stored properly.
-	 *
-	 * @throws Exception...
-	 */
-	public void testSerializeDefaultContributorIds() throws Exception {
-		final String[] testingDefaultContributorIds = {
-				"org.eclipse.cdt.core.test.language.settings.contributor0",
-				"org.eclipse.cdt.core.test.language.settings.contributor1",
-				"org.eclipse.cdt.core.test.language.settings.contributor2",
-		};
-		final String TESTING_IDS = toDelimitedString(testingDefaultContributorIds);
-		final String DEFAULT_IDS = toDelimitedString(LanguageSettingsManager.getDefaultContributorIds());
-
-		{
-			// setDefaultContributorIds
-			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(testingDefaultContributorIds);
-
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(TESTING_IDS, toDelimitedString(defaultContributorIds));
-
-			// serialize them
-			LanguageSettingsExtensionManager.serializeDefaultContributorIds();
-		}
-
-		{
-			// Remove from internal list
-			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(null);
-			assertEquals(DEFAULT_IDS, toDelimitedString(LanguageSettingsManager.getDefaultContributorIds()));
-		}
-
-		{
-			// Re-load from persistent storage and check it out
-			LanguageSettingsExtensionManager.loadDefaultContributorIds();
-
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(TESTING_IDS, toDelimitedString(defaultContributorIds));
-		}
-
-		{
-			// Reset IDs and serialize
-			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(null);
-			LanguageSettingsExtensionManager.serializeDefaultContributorIds();
-
-			// Check that default IDs are loaded
-			LanguageSettingsExtensionManager.loadDefaultContributorIds();
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(DEFAULT_IDS, toDelimitedString(defaultContributorIds));
-		}
 	}
 
 	/**

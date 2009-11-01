@@ -43,7 +43,6 @@ public class LanguageSettingsExtensionManager {
 	private static final String ATTR_CLASS = "class"; //$NON-NLS-1$
 	private static final String ATTR_ID = "id"; //$NON-NLS-1$
 	private static final String ATTR_NAME = "name"; //$NON-NLS-1$
-	private static final String ATTR_RANK = "rank"; //$NON-NLS-1$
 
 	private static final String ELEM_LANGUAGE = "language"; //$NON-NLS-1$
 
@@ -165,7 +164,6 @@ public class LanguageSettingsExtensionManager {
 		String conClass = ce.getAttribute(ATTR_CLASS);
 		String conId = determineAttributeValue(ce, ATTR_ID);
 		String conName = determineAttributeValue(ce, ATTR_NAME);
-		int conRank = Integer.parseInt(determineAttributeValue(ce, ATTR_RANK));
 		List<String> languages = null;
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 
@@ -205,7 +203,7 @@ public class LanguageSettingsExtensionManager {
 			contributor = (ICLanguageSettingsContributor)ce.createExecutableExtension(ATTR_CLASS);
 		}
 		if (contributor==null) {
-			contributor = new LanguageSettingsDefaultContributor(conId, conName, conRank, languages, entries);
+			contributor = new LanguageSettingsDefaultContributor(conId, conName, languages, entries);
 		}
 		return contributor;
 	}
@@ -247,7 +245,7 @@ public class LanguageSettingsExtensionManager {
 
 
 	/**
-	 * FIXME
+	 * FIXME - to clone
 	 * @param id - ID of contributor
 	 * @return cloned copy of contributor. Note that {@link ContributorNamedWrapper} returns
 	 * shallow copy with the same instance of underlying contributor.
@@ -266,12 +264,6 @@ public class LanguageSettingsExtensionManager {
 //		}
 		return contributor;
 	}
-
-	// FIXME:
-	public static List<ICLanguageSettingsContributor> getAllContributorsFIXME() {
-		return new ArrayList<ICLanguageSettingsContributor>(fExtensionContributors.values());
-	}
-
 
 	/**
 	 * @param ids - array of contributor IDs

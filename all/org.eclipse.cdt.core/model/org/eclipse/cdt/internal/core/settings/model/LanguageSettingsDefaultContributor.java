@@ -27,8 +27,8 @@ public class LanguageSettingsDefaultContributor extends ACLanguageSettingsContri
 	 * languages can be null: in that case all languages qualify.
 	 * entries cannot be null
 	 */
-	public LanguageSettingsDefaultContributor(String id, String name, int rank, List<String> languages, List<ICLanguageSettingEntry> entries) {
-		super(id, name, rank);
+	public LanguageSettingsDefaultContributor(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
+		super(id, name);
 		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
 		this.entries = new ArrayList<ICLanguageSettingEntry>(entries);
 	}

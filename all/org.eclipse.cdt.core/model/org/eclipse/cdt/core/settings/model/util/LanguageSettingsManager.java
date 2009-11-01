@@ -12,19 +12,17 @@
 package org.eclipse.cdt.core.settings.model.util;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.settings.model.ACLanguageSettingsSerializableContributor;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.osgi.service.prefs.BackingStoreException;
@@ -40,15 +38,10 @@ public class LanguageSettingsManager {
 	public static final String CONTRIBUTOR_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
 	public static final String CONTRIBUTOR_UI_USER = "org.eclipse.cdt.ui.user";
 
-//	private final LanguageSettingsStore fStore;
-	// null project means settings apply to all projects in the workspace
-	// note that project settings can be added but not removed (only cleared)
-//	private static final Map<IProject, LanguageSettingsStore> globalStoreMap = new HashMap<IProject, LanguageSettingsStore>();
+	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, LanguageSettingsResourceDescriptor descriptor, String contributorId) {
+		Assert.isNotNull(cfgDescription);
 
-	private static final List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-
-	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor, String contributorId) {
-		ICLanguageSettingsContributor contributor = getContributor(contributorId);
+		ICLanguageSettingsContributor contributor = getContributor(cfgDescription, contributorId);
 		if (contributor!=null) {
 			List<ICLanguageSettingEntry> list = contributor.getSettingEntries(descriptor);
 			if (list!=null) {
@@ -62,7 +55,7 @@ public class LanguageSettingsManager {
 			LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(
 					descriptor.getConfigurationId(), parentPath, descriptor.getLangId());
 
-			return getSettingEntries(parentDescriptor, contributorId);
+			return getSettingEntries(cfgDescription, parentDescriptor, contributorId);
 		}
 		return new ArrayList<ICLanguageSettingEntry>(0);
 	}
@@ -77,9 +70,9 @@ public class LanguageSettingsManager {
 		return false;
 	}
 
-	public static List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor,
-			String contributorId, int kind) {
-		ICLanguageSettingsContributor contributor = getContributor(contributorId);
+	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDecription,
+			LanguageSettingsResourceDescriptor descriptor, String contributorId, int kind) {
+		ICLanguageSettingsContributor contributor = getContributor(cfgDecription, contributorId);
 		if (contributor==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
@@ -93,64 +86,10 @@ public class LanguageSettingsManager {
 		return newList;
 	}
 
-//	/**
-//	 * Note: old settings are discarded.
-//	 */
-//	public void setSettingEntries(LanguageSettingsResourceDescriptor descriptor, String contributorId, List<ICLanguageSettingEntry> entries) {
-//		fStore.setSettingEntries(descriptor, contributorId, entries);
-//	}
-//
-//	/**
-//	 * Settings added to the end.
-//	 */
-//	public void addSettingEntries(LanguageSettingsResourceDescriptor descriptor, String contributorId, List<ICLanguageSettingEntry> entries) {
-//		fStore.addSettingEntries(descriptor, contributorId, entries);
-//	}
-//
-//	public void removeSettingEntries(LanguageSettingsResourceDescriptor descriptor, String contributorId) {
-//		fStore.removeSettingEntries(descriptor, contributorId);
-//	}
-
-//	public List<String> getProviders(LanguageSettingsResourceDescriptor descriptor) {
-//		Comparator<String> comparator = new Comparator<String>() {
-//			// TODO: priority will be taken from extension point
-//			private int getProviderPriority(String contributorId) {
-//				if (PROVIDER_UI_USER.equals(contributorId)) {
-//					return 1;
-//				}
-//				if (PROVIDER_UNKNOWN.equals(contributorId)) {
-//					return 100;
-//				}
-//				return 666;
-//			}
-//
-//			public int compare(String contributor1, String contributor2) {
-//				return getProviderPriority(contributor1) - getProviderPriority(contributor2);
-//			}
-//		};
-//		List<String> contributors = fStore.getProviders();
-//		Collections.sort(contributors, comparator);
-//		return contributors;
-//	}
-
-	public static List<ICLanguageSettingsContributor> getAllContributors() {
-		ArrayList<ICLanguageSettingsContributor> list = new ArrayList<ICLanguageSettingsContributor>(contributors);
-		list.addAll(LanguageSettingsExtensionManager.getAllContributorsFIXME());
-		return list;
-	}
-
-	public static ICLanguageSettingsContributor getContributor(String id) {
-//		for (ICLanguageSettingsContributor contributor : contributors) {
-//			if (contributor.getId().equals(id))
-//				return contributor;
-//		}
-		return LanguageSettingsExtensionManager.getContributor(id);
-	}
-
-	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(LanguageSettingsResourceDescriptor descriptor, int kind) {
+	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(ICConfigurationDescription cfgDescription, LanguageSettingsResourceDescriptor descriptor, int kind) {
 		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
-		for (ICLanguageSettingsContributor contributor: getAllContributors()) {
-			for (ICLanguageSettingEntry entry : getSettingEntries(descriptor, contributor.getId(), kind)) {
+		for (ICLanguageSettingsContributor contributor: getContributors(cfgDescription)) {
+			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, descriptor, contributor.getId(), kind)) {
 				if (!containsEntry(list, entry.getName())) {
 					list.add(entry);
 				}
@@ -167,38 +106,20 @@ public class LanguageSettingsManager {
 		return list;
 	}
 
-	public static void removeContributor(String id) {
-		for (ICLanguageSettingsContributor contributor : contributors) {
-			if (contributor.getId().equals(id)) {
-				contributors.remove(contributor);
-				return;
-			}
-		}
-	}
-
-	public static void addContributor(ICLanguageSettingsContributor contributor) {
-		contributors.add(contributor);
-		Collections.sort(contributors, new Comparator<ICLanguageSettingsContributor>() {
-			public int compare(ICLanguageSettingsContributor c0, ICLanguageSettingsContributor c1) {
-				return c0.getRank() - c1.getRank();
-			}
-		});
-	}
-
 	public static void load() {
-		for (ICLanguageSettingsContributor contributor : contributors) {
-			if (contributor instanceof ACLanguageSettingsSerializableContributor) {
-				((ACLanguageSettingsSerializableContributor) contributor).fromXML();
-			}
-		}
+//		for (ICLanguageSettingsContributor contributor : contributors) {
+//			if (contributor instanceof ACLanguageSettingsSerializableContributor) {
+//				((ACLanguageSettingsSerializableContributor) contributor).fromXML();
+//			}
+//		}
 	}
 
 	public static void serialize() {
-		for (ICLanguageSettingsContributor contributor : contributors) {
-			if (contributor instanceof ACLanguageSettingsSerializableContributor) {
-				((ACLanguageSettingsSerializableContributor) contributor).toXML();
-			}
-		}
+//		for (ICLanguageSettingsContributor contributor : contributors) {
+//			if (contributor instanceof ACLanguageSettingsSerializableContributor) {
+//				((ACLanguageSettingsSerializableContributor) contributor).toXML();
+//			}
+//		}
 	}
 
 	/**
@@ -224,6 +145,13 @@ public class LanguageSettingsManager {
 	 */
 	public static String[] getContributorExtensionIds() {
 		return LanguageSettingsExtensionManager.getContributorExtensionIds();
+	}
+
+	/**
+	 * TODO
+	 */
+	public static ICLanguageSettingsContributor getContributor(String id) {
+		return LanguageSettingsExtensionManager.getContributor(id);
 	}
 
 	/**
@@ -269,6 +197,18 @@ public class LanguageSettingsManager {
 			CCorePlugin.log("Error getting ICLanguageSettingsContributor for wrong configuration description type " + className); //$NON-NLS-1$
 		}
 		return new ArrayList<ICLanguageSettingsContributor>();
+	}
+
+	/**
+	 * TODO
+	 */
+	private static ICLanguageSettingsContributor getContributor(ICConfigurationDescription cfgDescription, String id) {
+		for (ICLanguageSettingsContributor contributor : getContributors(cfgDescription)) {
+			if (contributor.getId().equals(id)) {
+				return contributor;
+			}
+		}
+		return null;
 	}
 
 

@@ -60,7 +60,6 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 	private ResourceDescriptionHolder fRcHolder;
 	private CConfigurationSpecSettings fCfgSpecSettings;
 	private CConfigurationDescriptionCache fCfgCache;
-	private List<ICLanguageSettingsContributor> fLanguageSettingsContributors;
 	private boolean fIsPreference = false;
 
 	CConfigurationDescription(CConfigurationData data, ICDataProxyContainer cr) throws CoreException {
@@ -769,13 +768,19 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 	}
 
 	public void setLanguageSettingContributors(List<ICLanguageSettingsContributor> contributors) {
-		fLanguageSettingsContributors = new ArrayList<ICLanguageSettingsContributor>(contributors);
-	}
+		try {
+			getSpecSettings().setLanguageSettingContributors(contributors);
+		} catch (CoreException e) {
+			CCorePlugin.log(e);
+		}
+}
 
 	public List<ICLanguageSettingsContributor> getLanguageSettingContributors() {
-		if (fLanguageSettingsContributors==null) {
-			fLanguageSettingsContributors = new ArrayList<ICLanguageSettingsContributor>();
+		try {
+			return getSpecSettings().getLanguageSettingContributors();
+		} catch (CoreException e) {
+			CCorePlugin.log(e);
 		}
-		return fLanguageSettingsContributors;
+		return new ArrayList<ICLanguageSettingsContributor>(0);
 	}
 }

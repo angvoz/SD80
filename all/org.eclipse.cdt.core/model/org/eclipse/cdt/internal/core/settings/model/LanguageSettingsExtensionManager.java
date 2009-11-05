@@ -34,7 +34,7 @@ import org.osgi.service.prefs.BackingStoreException;
 public class LanguageSettingsExtensionManager {
 	private static final String PREFERENCE_CONTRIBUTOR_DEFAULT_IDS = "lang.settings.contributor.default.ids"; //$NON-NLS-1$
 	private static final String NONE = ""; //$NON-NLS-1$
-	private static final char CONTRIBUTOR_DELIMITER = ';';
+	public static final char CONTRIBUTOR_DELIMITER = ';';
 	/**
 	 * Name of the extension point for contributing language settings
 	 */

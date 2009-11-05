@@ -21,6 +21,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
+import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -37,7 +38,8 @@ import org.osgi.service.prefs.BackingStoreException;
 public class LanguageSettingsManager {
 	public static final String CONTRIBUTOR_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
 	public static final String CONTRIBUTOR_UI_USER = "org.eclipse.cdt.ui.user";
-
+	public static final char CONTRIBUTOR_DELIMITER = LanguageSettingsExtensionManager.CONTRIBUTOR_DELIMITER;
+	
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, LanguageSettingsResourceDescriptor descriptor, String contributorId) {
 		Assert.isNotNull(cfgDescription);
 
@@ -179,9 +181,11 @@ public class LanguageSettingsManager {
 			List<ICLanguageSettingsContributor> contributors) {
 		if (cfgDescription instanceof CConfigurationDescription) {
 			((CConfigurationDescription)cfgDescription).setLanguageSettingContributors(contributors);
-		} else {
+		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
+				((CConfigurationDescriptionCache)cfgDescription).setLanguageSettingContributors(contributors);
+		} else if (cfgDescription!=null) {
 			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error setting ICLanguageSettingsContributor for wrong configuration description type " + className); //$NON-NLS-1$
+			CCorePlugin.log("Error setting ICLanguageSettingsContributor for unsupported configuration description type " + className); //$NON-NLS-1$
 		}
 	}
 
@@ -192,13 +196,61 @@ public class LanguageSettingsManager {
 	public static List<ICLanguageSettingsContributor> getContributors(ICConfigurationDescription cfgDescription) {
 		if (cfgDescription instanceof CConfigurationDescription) {
 			return ((CConfigurationDescription)cfgDescription).getLanguageSettingContributors();
-		} else {
+		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
+			return ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingContributors();
+		} else if (cfgDescription!=null) {
 			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error getting ICLanguageSettingsContributor for wrong configuration description type " + className); //$NON-NLS-1$
+			CCorePlugin.log("Error getting ICLanguageSettingsContributor for unsupported configuration description type " + className); //$NON-NLS-1$
 		}
 		return new ArrayList<ICLanguageSettingsContributor>();
 	}
 
+	/**
+	 */
+	public static void setContributorIds(ICConfigurationDescription cfgDescription, List<String> ids) {
+		if (cfgDescription instanceof CConfigurationDescription) {
+			List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>(ids.size());
+			for (String id : ids) {
+				ICLanguageSettingsContributor contributor = getContributor(id);
+				if (contributor!=null) {
+					contributors.add(contributor);
+				}
+			}
+			((CConfigurationDescription)cfgDescription).setLanguageSettingContributors(contributors);
+		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
+			List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>(ids.size());
+			for (String id : ids) {
+				ICLanguageSettingsContributor contributor = getContributor(id);
+				if (contributor!=null) {
+					contributors.add(contributor);
+				}
+			}
+			((CConfigurationDescriptionCache)cfgDescription).setLanguageSettingContributors(contributors);
+		} else if (cfgDescription!=null) {
+			String className = cfgDescription.getClass().getName();
+			CCorePlugin.log("Error setting ICLanguageSettingsContributor for unsupported configuration description type " + className); //$NON-NLS-1$
+		}
+	}
+	
+	/**
+	 */
+	public static List<String> getContributorIds(ICConfigurationDescription cfgDescription) {
+		List<String> ids = new ArrayList<String>();
+		if (cfgDescription instanceof CConfigurationDescription) {
+			for (ICLanguageSettingsContributor contributor : ((CConfigurationDescription)cfgDescription).getLanguageSettingContributors()) {
+				ids.add(contributor.getId());
+			}
+		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
+			for (ICLanguageSettingsContributor contributor : ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingContributors()) {
+				ids.add(contributor.getId());
+			}
+		} else if (cfgDescription!=null) {
+			String className = cfgDescription.getClass().getName();
+			CCorePlugin.log("Error getting ICLanguageSettingsContributor for unsupported configuration description type " + className); //$NON-NLS-1$
+		}
+		return ids;
+	}
+	
 	/**
 	 * TODO
 	 */

@@ -24,6 +24,7 @@ import org.eclipse.cdt.core.settings.model.ICExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
@@ -53,6 +54,28 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.QualifiedName;
 
+/**
+ * CConfigurationDescriptionCache is a proxy class for serialization of configuration description data.
+ * 
+ * An inspection of the scenario where user changes project properties and saves it yields
+ * following sequence of events:
+ * - Initialization:
+ *   - After eclipse started a project is being opened. A new CConfigurationDescriptionCache is created
+ *     with CConfigurationDescriptionCache(ICStorageElement storage, CProjectDescription parent) constructor.
+ *   - Any clients needed ICConfigurationDescription get CConfigurationDescription using constructor
+ *     CConfigurationDescription(CConfigurationData data, String buildSystemId, ICDataProxyContainer cr)
+ *     where the CConfigurationDescriptionCache is passed as data. The reference to cache is kept in field fCfgCache.
+ *   - fCfgCache is used to getSpecSettings() CConfigurationSpecSettings, after that fCfgCache is set to null.
+ * - User enters project properties/settings:
+ *   - another CConfigurationDescription (settings configuration) created using the same constructor setting fCfgCache
+ *     to the CConfigurationDescriptionCache.
+ * - User changes settings (in the settings configuration CConfigurationDescription) and saves it:
+ *   - new CConfigurationDescriptionCache is created from the CConfigurationDescription via constructor
+ *     CConfigurationDescriptionCache(ICConfigurationDescription baseDescription, ...) where
+ *     baseDescription is saved as fBaseDescription.
+ *   - CConfigurationDescriptionCache.applyData(...) is used to persist the data. at that point
+ *     reference fBaseDescription gets set to null.
+ */
 public class CConfigurationDescriptionCache extends CDefaultConfigurationData
 		implements ICConfigurationDescription, IInternalCCfgInfo, ICachedData {
 	private CProjectDescription fParent;
@@ -535,4 +558,11 @@ public class CConfigurationDescriptionCache extends CDefaultConfigurationData
 		return status != null ? status : CConfigurationStatus.CFG_STATUS_OK;
 	}
 
+	public void setLanguageSettingContributors(List<ICLanguageSettingsContributor> contributors) {
+		fSpecSettings.setLanguageSettingContributors(contributors);
+	}
+
+	public List<ICLanguageSettingsContributor> getLanguageSettingContributors() {
+		return fSpecSettings.getLanguageSettingContributors();
+	}
 }

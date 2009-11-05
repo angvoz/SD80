@@ -396,7 +396,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 *
 	 * @throws Exception...
 	 */
-	public void testSerializeContributor() throws Exception {
+	public void testSerializeWorkspaceContributor() throws Exception {
 //		final String TESTING_ID = "org.eclipse.cdt.core.test.language.settings.contributor";
 //		final String TESTING_NAME = "A contributor";
 //
@@ -506,11 +506,27 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
-	 * FIXME .
-	 *
-	 * @throws Exception...
 	 */
-	public void test_SEPARATOR() throws Exception {
+	public void testConfigurationDescription_NullContributor() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		assertTrue(cfgDescription instanceof CConfigurationDescription);
+
+		// set contributor returning null with getSettingEntries()
+		ICLanguageSettingsContributor contributor0 = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null);
+		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
+		contributors.add(contributor0);
+		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+
+		// use contributor returning null
+		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_1);
+		assertNotNull(retrieved);
+		assertEquals(0, retrieved.size());
 	}
 
 	/**
@@ -518,7 +534,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 *
 	 * @throws Exception...
 	 */
-	public void testConfigurationDescription_Basic() throws Exception {
+	public void testConfigurationDescription_Contributors() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -546,31 +562,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsManager_NullContributor() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
-
-		// set contributor returning null with getSettingEntries()
-		ICLanguageSettingsContributor contributor0 = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null);
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		contributors.add(contributor0);
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
-
-		// use contributor returning null
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
-		List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_1);
-		assertNotNull(retrieved);
-		assertEquals(0, retrieved.size());
-	}
-
-	/**
-	 */
-	public void testLanguageSettingsManager_Basic() throws Exception {
+	public void testConfigurationDescription_Basic() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -684,7 +676,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsManager_Filtered() throws Exception {
+	public void testConfigurationDescription_Filtered() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -726,7 +718,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsManager_FilteredConflicting() throws Exception {
+	public void testConfigurationDescription_FilteredConflicting() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -758,7 +750,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsManager_ReconciledContributors() throws Exception {
+	public void testConfigurationDescription_ReconciledContributors() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -807,7 +799,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsManager_ParentFolder() throws Exception {
+	public void testConfigurationDescription_ParentFolder() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -871,40 +863,89 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testLanguageSettingsDefaultContributor() throws Exception {
-		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
-		original.add(new CIncludePathEntry("path0", 0));
-		List<String> languages = new ArrayList<String>(2) {
-			{
-				add("bogus.language.id");
-				add(RC_DESCRIPTOR.getLangId());
-			}
-		};
+	public void testConfigurationDescription_ContributorIds() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
 
-		// add default contributor
-		LanguageSettingsDefaultContributor contributor = new LanguageSettingsDefaultContributor(
-				CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, languages, original);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 		{
-			// attempt to get entries for wrong language
-			LanguageSettingsResourceDescriptor descriptor = new LanguageSettingsResourceDescriptor(
-					CONFIGURATION_ID, PATH_0, "wrong.lang.id");
-			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(descriptor);
-			assertEquals(0, retrieved.size());
+			// ensure no test contributor is set yet
+			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
+			assertFalse(ids.contains(CONTRIBUTOR_ID_EXT));
 		}
 
 		{
-			// retrieve the entries
-			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(RC_DESCRIPTOR);
-			assertEquals(original.get(0), retrieved.get(0));
+			// set test contributor
+			List<String> ids = new ArrayList<String>();
+			ids.add(CONTRIBUTOR_ID_EXT);
+			LanguageSettingsManager.setContributorIds(cfgDescription, ids);
+		}
+
+		{
+			// check that test contributor got there
+			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
+			assertTrue(ids.contains(CONTRIBUTOR_ID_EXT));
+		}
+	}
+
+	/**
+	 */
+	public void testConfigurationDescription_SerializeContributors() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
+
+		IProject project = cproject.getProject();
+		ICProjectDescription writableProjDescription = CoreModel.getDefault().getProjectDescription(project, true);
+
+		ICConfigurationDescription[] cfgDescriptions = writableProjDescription.getConfigurations();
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		assertTrue(cfgDescription instanceof CConfigurationDescription);
+
+		{
+			// ensure no test contributor is set yet
+			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
+			assertFalse(ids.contains(CONTRIBUTOR_ID_EXT));
+		}
+		{
+			// set test contributor
+			List<String> ids = new ArrayList<String>();
+			ids.add(CONTRIBUTOR_ID_EXT);
+			LanguageSettingsManager.setContributorIds(cfgDescription, ids);
+		}
+		{
+			// check that test contributor got there
+			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
+			assertTrue(ids.contains(CONTRIBUTOR_ID_EXT));
+		}
+
+		{
+			// serialize
+			CoreModel.getDefault().setProjectDescription(project, writableProjDescription);
+			// close and reopen the project
+			project.close(null);
+			project.open(null);
+		}
+
+		{
+			// check that test contributor got loaded
+			ICConfigurationDescription[] loadedCfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+			ICConfigurationDescription loadedCfgDescription = loadedCfgDescriptions[0];
+			assertTrue(cfgDescription instanceof CConfigurationDescription);
+
+			List<String> ids = LanguageSettingsManager.getContributorIds(loadedCfgDescription);
+			assertTrue(ids.contains(CONTRIBUTOR_ID_EXT));
 		}
 
 	}
 
-
 	/**
 	 */
-	public void testLanguageSettingsManager_Serialize_Basic() throws Exception {
+	public void testConfigurationDescription_SerializeContributorData_Basic() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -960,6 +1001,38 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
+	}
+
+	/**
+	 */
+	public void testDefaultContributor() throws Exception {
+		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		List<String> languages = new ArrayList<String>(2) {
+			{
+				add("bogus.language.id");
+				add(RC_DESCRIPTOR.getLangId());
+			}
+		};
+
+		// add default contributor
+		LanguageSettingsDefaultContributor contributor = new LanguageSettingsDefaultContributor(
+				CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, languages, original);
+
+		{
+			// attempt to get entries for wrong language
+			LanguageSettingsResourceDescriptor descriptor = new LanguageSettingsResourceDescriptor(
+					CONFIGURATION_ID, PATH_0, "wrong.lang.id");
+			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(descriptor);
+			assertEquals(0, retrieved.size());
+		}
+
+		{
+			// retrieve the entries
+			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(RC_DESCRIPTOR);
+			assertEquals(original.get(0), retrieved.get(0));
+		}
+
 	}
 
 }

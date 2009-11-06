@@ -56,7 +56,7 @@
          <attribute name="class" type="string">
             <annotation>
                <documentation>
-                  
+                  a fully qualified name of the Java class that implements &lt;samp&gt;org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor&lt;/samp&gt; interface.
                </documentation>
                <appInfo>
                   <meta.attribute kind="java" basedOn=":org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor"/>
@@ -71,13 +71,6 @@
             </annotation>
          </attribute>
          <attribute name="name" type="string" use="required">
-            <annotation>
-               <documentation>
-                  
-               </documentation>
-            </annotation>
-         </attribute>
-         <attribute name="rank" type="string" use="required">
             <annotation>
                <documentation>
                   

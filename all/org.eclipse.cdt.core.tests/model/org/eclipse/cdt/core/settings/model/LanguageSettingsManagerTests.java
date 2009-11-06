@@ -18,6 +18,7 @@ import java.util.List;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
@@ -25,7 +26,7 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsDefaultContributor;
+import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsBaseContributor;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
@@ -36,7 +37,9 @@ import org.eclipse.core.runtime.Path;
  */
 public class LanguageSettingsManagerTests extends TestCase {
 	// These should match id and name of extension point defined in plugin.xml
-	private static final String CONTRIBUTOR_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.contributor";
+	private static final String DEFAULT_CONTRIBUTOR_ID_EXT = "org.eclipse.cdt.core.tests.default.language.settings.contributor";
+	private static final String DEFAULT_CONTRIBUTOR_NAME_EXT = "Test Plugin Default Language Settings Contributor";
+	private static final String CONTRIBUTOR_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.contributor";
 	private static final String CONTRIBUTOR_NAME_EXT = "Test Plugin Language Settings Contributor";
 
 	private static final String CONFIGURATION_ID = "cfg.id";
@@ -54,7 +57,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID);
 	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR_EXT = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID_EXT);
 
-	private class MockContributor extends ACLanguageSettingsContributor {
+	private class MockContributor extends AbstractExecutableExtensionBase implements ICLanguageSettingsContributor {
 		private final List<ICLanguageSettingEntry> entries;
 
 		public MockContributor(String id, String name, List<ICLanguageSettingEntry> entries) {
@@ -144,20 +147,22 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testExtension() throws Exception {
 		{
-			int pos = Arrays.binarySearch(LanguageSettingsManager.getContributorExtensionIds(), CONTRIBUTOR_ID_EXT);
-			assertTrue("extension " + CONTRIBUTOR_ID_EXT + " not found", pos>=0);
+			int pos = Arrays.binarySearch(LanguageSettingsManager.getContributorExtensionIds(), DEFAULT_CONTRIBUTOR_ID_EXT);
+			assertTrue("extension " + DEFAULT_CONTRIBUTOR_ID_EXT + " not found", pos>=0);
 		}
 		{
-			int pos = Arrays.binarySearch(LanguageSettingsManager.getContributorAvailableIds(), CONTRIBUTOR_ID_EXT);
-			assertTrue("extension " + CONTRIBUTOR_ID_EXT + " not found", pos>=0);
+			int pos = Arrays.binarySearch(LanguageSettingsManager.getContributorAvailableIds(), DEFAULT_CONTRIBUTOR_ID_EXT);
+			assertTrue("extension " + DEFAULT_CONTRIBUTOR_ID_EXT + " not found", pos>=0);
 		}
 
 		// get test plugin extension contributor
-		ICLanguageSettingsContributor contributorExt = LanguageSettingsManager.getContributor(CONTRIBUTOR_ID_EXT);
+		ICLanguageSettingsContributor contributorExt = LanguageSettingsManager.getContributor(DEFAULT_CONTRIBUTOR_ID_EXT);
 		assertNotNull(contributorExt);
 
-		assertTrue(contributorExt instanceof LanguageSettingsDefaultContributor);
-		LanguageSettingsDefaultContributor contributor = (LanguageSettingsDefaultContributor)contributorExt;
+		assertTrue(contributorExt instanceof LanguageSettingsBaseContributor);
+		LanguageSettingsBaseContributor contributor = (LanguageSettingsBaseContributor)contributorExt;
+		assertEquals(DEFAULT_CONTRIBUTOR_ID_EXT, contributor.getId());
+		assertEquals(DEFAULT_CONTRIBUTOR_NAME_EXT, contributor.getName());
 
 		// retrieve wrong language
 		assertEquals(0, contributor.getSettingEntries(RC_DESCRIPTOR).size());
@@ -207,6 +212,21 @@ public class LanguageSettingsManagerTests extends TestCase {
 		}
 	}
 
+	/**
+	 * Make sure extensions contributed through extension point created with proper ID/name.
+	 *
+	 * @throws Exception...
+	 */
+	public void testExtensionsNameId() throws Exception {
+		// get test plugin extension non-default contributor
+		ICLanguageSettingsContributor contributorExt = LanguageSettingsManager.getContributor(CONTRIBUTOR_ID_EXT);
+		assertNotNull(contributorExt);
+		assertTrue(contributorExt instanceof TestLanguageSettingsContributor);
+
+		assertEquals(CONTRIBUTOR_ID_EXT, contributorExt.getId());
+		assertEquals(CONTRIBUTOR_NAME_EXT, contributorExt.getName());
+	}
+	
 	/**
 	 * Test setting/retrieval of contributors and their IDs.
 	 *
@@ -516,17 +536,55 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
-		// set contributor returning null with getSettingEntries()
-		ICLanguageSettingsContributor contributor0 = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null);
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		contributors.add(contributor0);
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		{
+			// set rough contributor returning null with getSettingEntries()
+			ICLanguageSettingsContributor contributorNull = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null);
+			List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
+			contributors.add(contributorNull);
+			LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		}
 
 		// use contributor returning null
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
-		List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_1);
-		assertNotNull(retrieved);
-		assertEquals(0, retrieved.size());
+		{
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
+					cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_1);
+			assertNotNull(retrieved);
+			assertEquals(0, retrieved.size());
+		}
+		{
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
+					cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_1, 0);
+			assertNotNull(retrieved);
+			assertEquals(0, retrieved.size());
+		}
+		
+		{
+			// set rough contributor returning null in getSettingEntries() array
+			ICLanguageSettingsContributor contributorNull = new MockContributor(CONTRIBUTOR_2, CONTRIBUTOR_NAME_2, 
+					new ArrayList<ICLanguageSettingEntry>() {
+						{
+							add(null);
+						}
+					}
+			);
+			List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
+			contributors.add(contributorNull);
+			LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		}
+		
+		// use contributor returning null as item in array
+		{
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
+					cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_2);
+			assertNotNull(retrieved);
+			assertEquals(1, retrieved.size());
+		}
+		{
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
+					cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_2, 0);
+			assertNotNull(retrieved);
+			assertEquals(0, retrieved.size());
+		}
 	}
 
 	/**
@@ -817,8 +875,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		ICLanguageSettingsContributor contributor = new ACLanguageSettingsContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0) {
-
+		ICLanguageSettingsContributor contributor = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, null)  {
+			@Override
 			public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
 				if (descriptor.getWorkspacePath().equals(parentFolder)) {
 					return original;
@@ -875,20 +933,20 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// ensure no test contributor is set yet
 			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
-			assertFalse(ids.contains(CONTRIBUTOR_ID_EXT));
+			assertFalse(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
 		}
 
 		{
 			// set test contributor
 			List<String> ids = new ArrayList<String>();
-			ids.add(CONTRIBUTOR_ID_EXT);
+			ids.add(DEFAULT_CONTRIBUTOR_ID_EXT);
 			LanguageSettingsManager.setContributorIds(cfgDescription, ids);
 		}
 
 		{
 			// check that test contributor got there
 			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
-			assertTrue(ids.contains(CONTRIBUTOR_ID_EXT));
+			assertTrue(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
 		}
 	}
 
@@ -909,18 +967,18 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// ensure no test contributor is set yet
 			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
-			assertFalse(ids.contains(CONTRIBUTOR_ID_EXT));
+			assertFalse(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
 		}
 		{
 			// set test contributor
 			List<String> ids = new ArrayList<String>();
-			ids.add(CONTRIBUTOR_ID_EXT);
+			ids.add(DEFAULT_CONTRIBUTOR_ID_EXT);
 			LanguageSettingsManager.setContributorIds(cfgDescription, ids);
 		}
 		{
 			// check that test contributor got there
 			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
-			assertTrue(ids.contains(CONTRIBUTOR_ID_EXT));
+			assertTrue(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
 		}
 
 		{
@@ -938,7 +996,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 			List<String> ids = LanguageSettingsManager.getContributorIds(loadedCfgDescription);
-			assertTrue(ids.contains(CONTRIBUTOR_ID_EXT));
+			assertTrue(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
 		}
 
 	}
@@ -1016,7 +1074,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		};
 
 		// add default contributor
-		LanguageSettingsDefaultContributor contributor = new LanguageSettingsDefaultContributor(
+		LanguageSettingsBaseContributor contributor = new LanguageSettingsBaseContributor(
 				CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, languages, original);
 
 		{

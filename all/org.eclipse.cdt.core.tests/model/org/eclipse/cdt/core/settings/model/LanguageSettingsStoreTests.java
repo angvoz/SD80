@@ -43,19 +43,6 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID);
 	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR_EXT = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID_EXT);
 
-	private class MockContributor extends ACLanguageSettingsContributor {
-		private final List<ICLanguageSettingEntry> entries;
-
-		public MockContributor(String id, int rank, List<ICLanguageSettingEntry> entries) {
-			super(id, CONTRIBUTOR_NAME);
-			this.entries = entries;
-		}
-
-		public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
-			return entries;
-		}
-	}
-
 	public static TestSuite suite() {
 		return suite(LanguageSettingsStoreTests.class, "_");
 	}

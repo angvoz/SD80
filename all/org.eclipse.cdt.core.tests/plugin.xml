@@ -187,8 +187,7 @@
          point="org.eclipse.cdt.core.LanguageSettingsContributor">
       <contributor
             id="org.eclipse.cdt.core.tests.language.settings.contributor"
-            name="Test Plugin Language Settings Contributor"
-            rank="1000">
+            name="Test Plugin Language Settings Contributor">
          <language
                id="org.eclipse.cdt.core.tests.language.id">
          </language>

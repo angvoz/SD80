@@ -14,11 +14,12 @@ package org.eclipse.cdt.internal.core.settings.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.cdt.core.settings.model.ACLanguageSettingsContributor;
+import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
 
-public class LanguageSettingsDefaultContributor extends ACLanguageSettingsContributor {
+public class LanguageSettingsBaseContributor extends AbstractExecutableExtensionBase implements ICLanguageSettingsContributor {
 	private List<String> languages;
 	private List<ICLanguageSettingEntry> entries;
 
@@ -27,7 +28,7 @@ public class LanguageSettingsDefaultContributor extends ACLanguageSettingsContri
 	 * languages can be null: in that case all languages qualify.
 	 * entries cannot be null
 	 */
-	public LanguageSettingsDefaultContributor(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
+	public LanguageSettingsBaseContributor(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
 		super(id, name);
 		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
 		this.entries = new ArrayList<ICLanguageSettingEntry>(entries);
@@ -45,12 +46,4 @@ public class LanguageSettingsDefaultContributor extends ACLanguageSettingsContri
 		return new ArrayList<ICLanguageSettingEntry>();
 	}
 
-	/**
-	 * Used only for debugging purposes.
-	 * @see java.lang.Object#toString()
-	 */
-	@Override
-	public String toString() {
-		return getId();
-	}
 }

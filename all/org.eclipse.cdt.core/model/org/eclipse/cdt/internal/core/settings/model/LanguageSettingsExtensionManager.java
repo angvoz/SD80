@@ -13,9 +13,13 @@ package org.eclipse.cdt.internal.core.settings.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
+import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
@@ -86,12 +90,19 @@ public class LanguageSettingsExtensionManager {
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	synchronized public static void loadContributorExtensions() {
+		// sort by name - for the contributors taken from platform extensions
+		Set<ICLanguageSettingsContributor> sortedContributors = new TreeSet<ICLanguageSettingsContributor>(
+				new Comparator<ICLanguageSettingsContributor>() {
+					public int compare(ICLanguageSettingsContributor contr1, ICLanguageSettingsContributor contr2) {
+						return contr1.getName().compareTo(contr2.getName());
+					}
+				}
+		);
 
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		loadContributorExtensions(Platform.getExtensionRegistry(), contributors);
+		loadContributorExtensions(Platform.getExtensionRegistry(), sortedContributors);
 
 		fExtensionContributors.clear();
-		for (ICLanguageSettingsContributor contributor : contributors) {
+		for (ICLanguageSettingsContributor contributor : sortedContributors) {
 			fExtensionContributors.put(contributor.getId(), contributor);
 		}
 
@@ -122,7 +133,7 @@ public class LanguageSettingsExtensionManager {
 	 * @param registry - extension registry
 	 * @param contributors - resulting set of contributors
 	 */
-	private static void loadContributorExtensions(IExtensionRegistry registry, List<ICLanguageSettingsContributor> contributors) {
+	private static void loadContributorExtensions(IExtensionRegistry registry, Set<ICLanguageSettingsContributor> contributors) {
 		contributors.clear();
 		IExtensionPoint extension = registry.getExtensionPoint(CCorePlugin.PLUGIN_ID, CONTRIBUTOR_EXTENSION_ID);
 		if (extension != null) {
@@ -161,9 +172,9 @@ public class LanguageSettingsExtensionManager {
 	 * @throws CoreException in case of failure
 	 */
 	private static ICLanguageSettingsContributor createExecutableContributor(IConfigurationElement ce) throws CoreException {
-		String conClass = ce.getAttribute(ATTR_CLASS);
-		String conId = determineAttributeValue(ce, ATTR_ID);
-		String conName = determineAttributeValue(ce, ATTR_NAME);
+		String ceClass = ce.getAttribute(ATTR_CLASS);
+		String ceId = determineAttributeValue(ce, ATTR_ID);
+		String ceName = determineAttributeValue(ce, ATTR_NAME);
 		List<String> languages = null;
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 
@@ -199,11 +210,16 @@ public class LanguageSettingsExtensionManager {
 		}
 
 		ICLanguageSettingsContributor contributor = null;
-		if (conClass!=null && !conClass.equals(LanguageSettingsDefaultContributor.class.getCanonicalName())) {
-			contributor = (ICLanguageSettingsContributor)ce.createExecutableExtension(ATTR_CLASS);
+		if (ceClass!=null && !ceClass.equals(LanguageSettingsBaseContributor.class.getCanonicalName())) {
+			Object base = ce.createExecutableExtension(ATTR_CLASS);
+			if (base instanceof AbstractExecutableExtensionBase) {
+				((AbstractExecutableExtensionBase) base).setId(ceId);
+				((AbstractExecutableExtensionBase) base).setName(ceName);
+			}
+			contributor = (ICLanguageSettingsContributor)base;
 		}
 		if (contributor==null) {
-			contributor = new LanguageSettingsDefaultContributor(conId, conName, languages, entries);
+			contributor = new LanguageSettingsBaseContributor(ceId, ceName, languages, entries);
 		}
 		return contributor;
 	}

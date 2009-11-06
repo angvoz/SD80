@@ -79,9 +79,13 @@ public class LanguageSettingsManager {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
 		List<ICLanguageSettingEntry> list = contributor.getSettingEntries(descriptor);
+		if (list==null) {
+			return new ArrayList<ICLanguageSettingEntry>(0);
+		}
+		
 		ArrayList<ICLanguageSettingEntry> newList = new ArrayList<ICLanguageSettingEntry>(list.size());
 		for (ICLanguageSettingEntry entry : list) {
-			if (entry.getKind()==kind && !containsEntry(newList, entry.getName())) {
+			if (entry!=null && entry.getKind()==kind && !containsEntry(newList, entry.getName())) {
 				newList.add(entry);
 			}
 		}

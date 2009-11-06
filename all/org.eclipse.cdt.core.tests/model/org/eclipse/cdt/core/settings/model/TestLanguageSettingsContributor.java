@@ -11,24 +11,15 @@
 
 package org.eclipse.cdt.core.settings.model;
 
-/**
- * Abstract class to support most basic contributors.
- *
- */
-public abstract class ACLanguageSettingsContributor implements ICLanguageSettingsContributor {
-	private String id;
-	private String name;
+import java.util.List;
 
-	public ACLanguageSettingsContributor(String id, String name) {
-		this.id = id;
-		this.name = name;
-	}
+import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
 
-	public String getId() {
-		return id;
-	}
+public class TestLanguageSettingsContributor extends AbstractExecutableExtensionBase
+		implements ICLanguageSettingsContributor {
 
-	public String getName() {
-		return name;
+	public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
+		return null;
 	}
 }

@@ -852,7 +852,10 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 	
 	private void decodeLanguageSettingContributors(ICStorageElement element) throws CoreException {
 		String id = element.getAttribute(PROJECT_EXTENSION_ATTR_ID);
-		fLanguageSettingsContributors.add(LanguageSettingsManager.getContributor(id));
+		ICLanguageSettingsContributor contributor = LanguageSettingsManager.getContributor(id);
+		if (contributor!=null) {
+			fLanguageSettingsContributors.add(contributor);
+		}
 	}
 
 	

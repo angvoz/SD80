@@ -59,7 +59,7 @@
                   a fully qualified name of the Java class that implements &lt;samp&gt;org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor&lt;/samp&gt; interface.
                </documentation>
                <appInfo>
-                  <meta.attribute kind="java" basedOn=":org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor"/>
+                  <meta.attribute kind="java" basedOn="org.eclipse.cdt.core.AbstractExecutableExtensionBase:org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor"/>
                </appInfo>
             </annotation>
          </attribute>

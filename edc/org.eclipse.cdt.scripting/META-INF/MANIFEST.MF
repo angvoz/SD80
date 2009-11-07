@@ -1,0 +1,20 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Scripting
+Bundle-SymbolicName: org.eclipse.cdt.scripting;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: org.eclipse.cdt.scripting.ScriptingPlugin
+Require-Bundle: org.eclipse.core.runtime,
+ javax.servlet;bundle-version="2.5.0",
+ org.eclipse.equinox.http.jetty;bundle-version="2.0.0",
+ org.eclipse.debug.core;bundle-version="3.5.0",
+ org.eclipse.debug.ui;bundle-version="3.5.0",
+ org.eclipse.cdt.debug.core;bundle-version="6.0.0",
+ org.eclipse.cdt.dsf;bundle-version="2.1.0",
+ org.eclipse.cdt.launch;bundle-version="6.0.0"
+Bundle-ActivationPolicy: lazy
+Bundle-RequiredExecutionEnvironment: J2SE-1.5
+Import-Package: org.eclipse.equinox.http.jetty,
+ org.eclipse.ui
+ 
+Export-Package: org.eclipse.cdt.scripting

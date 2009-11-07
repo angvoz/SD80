@@ -1,0 +1,8 @@
+org.eclipse.cdt.debug.edc/debug = false
+org.eclipse.cdt.debug.edc/debug/runControl = false
+org.eclipse.cdt.debug.edc/debug/stack = false
+org.eclipse.cdt.debug.edc/debug/expressionParse = false
+org.eclipse.cdt.debug.edc/debug/symbolReader = false
+org.eclipse.cdt.debug.edc/debug/variableValue = false
+org.eclipse.cdt.debug.edc/debug/breakpoints = false
+org.eclipse.cdt.debug.edc/debug/memory = false

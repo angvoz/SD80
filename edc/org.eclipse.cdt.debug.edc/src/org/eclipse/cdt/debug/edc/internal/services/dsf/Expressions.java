@@ -1,0 +1,635 @@
+/*******************************************************************************
+ * Copyright (c) 2009 Nokia and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ * Nokia - Initial API and implementation
+ *******************************************************************************/
+package org.eclipse.cdt.debug.edc.internal.services.dsf;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IInvalidExpression;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InstructionSequence;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Interpreter;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.VariableWithValue;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
+import org.eclipse.cdt.debug.edc.internal.symbols.IArrayBoundType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
+import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.internal.symbols.IField;
+import org.eclipse.cdt.debug.edc.internal.symbols.IInvalidVariableLocation;
+import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IRegisterVariableLocation;
+import org.eclipse.cdt.debug.edc.internal.symbols.IType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
+import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
+import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
+import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
+import org.eclipse.cdt.dsf.datamodel.DMContexts;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IExpressions;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
+import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
+import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+
+public class Expressions extends AbstractEDCService implements IExpressions {
+
+	// we need a property to hold the expression string when it differs from the
+	// string we display
+	// in the Variables view Name column or the Expressions view Expression
+	// column
+	public final static String EXPRESSION_PROP = "Expression"; //$NON-NLS-1$
+
+	private static int nextExpressionID = 100;
+
+	private HashMap<String, ICPPBasicType> basicTypes = null;
+
+	public class ExpressionDMC extends DMContext implements IExpressionDMContext {
+
+		private InstructionSequence parsedExpression;
+		private final ASTEvaluationEngine engine = new ASTEvaluationEngine();
+		private final StackFrameDMC frame;
+		private Object value;
+		private Object valueLocation;
+		private Object valueType;
+		private boolean hasChildren = false;
+
+		public ExpressionDMC(StackFrameDMC frame, String name) {
+			super(Expressions.this, new IDMContext[] { frame }, name, nextExpressionID++ + name);
+			this.frame = frame;
+		}
+
+		public StackFrameDMC getFrame() {
+			return frame;
+		}
+
+		public String getExpression() {
+			Object expression = getProperty(Expressions.EXPRESSION_PROP);
+			if (expression == null)
+				expression = getName();
+			return (String) expression;
+		}
+
+		public void evaluateExpression() {
+			if (value != null)
+				return;
+
+			String expression = getExpression();
+
+			if (parsedExpression == null)
+				parsedExpression = engine.getCompiledExpression(expression);
+
+			if (parsedExpression.getInstructions().length == 0) {
+				value = new InvalidExpression(EDCServicesMessages.Expressions_SyntaxError);
+				valueLocation = ""; //$NON-NLS-1$
+				valueType = ""; //$NON-NLS-1$
+				return;
+			}
+
+			Interpreter interpreter = engine.evaluateCompiledExpression(parsedExpression, frame);
+			value = interpreter.getResult();
+			valueLocation = interpreter.getValueLocation();
+			valueType = interpreter.getValueType();
+
+			if (value instanceof VariableWithValue) {
+				VariableWithValue variableValue = (VariableWithValue) value;
+
+				// change register variable location to the register name
+				if (valueLocation instanceof IRegisterVariableLocation) {
+					IRegisterVariableLocation regVarLocation = (IRegisterVariableLocation) valueLocation;
+					if (regVarLocation.getRegisterName() == null) {
+						Registers registerservice = variableValue.getServicesTracker().getService(Registers.class);
+						valueLocation = "$" + registerservice.getRegisterNameFromCommonID(regVarLocation.getRegisterID()); //$NON-NLS-1$
+					} else
+						valueLocation = "$" + regVarLocation.getRegisterName(); //$NON-NLS-1$
+				}
+
+				// for a structured type or array, return the location and note
+				// that it has children
+				if (valueType instanceof IAggregate) {
+					value = variableValue.getValueLocation();
+					if (!(value instanceof IInvalidVariableLocation))
+						hasChildren = true;
+				} else {
+					value = variableValue.getValue();
+				}
+
+				// if the location evaluates to NotLive, the types and values do
+				// not matter
+				if (valueLocation instanceof IInvalidVariableLocation) {
+					value = new InvalidExpression(((IInvalidVariableLocation) valueLocation).getMessage());
+					valueLocation = "";
+					return;
+				}
+
+				// for a structured type, array, or pointer return the value in
+				// hex
+				IType unqualifiedType = TypeUtils.getUnqualifiedType(valueType);
+				if (unqualifiedType instanceof IAggregate || unqualifiedType instanceof IPointerType) {
+					if (value instanceof Addr64)
+						value = "0x" + ((Addr64) value).toString(16); //$NON-NLS-1$
+					else if (value instanceof Integer)
+						value = "0x" + Integer.toHexString((Integer) value); //$NON-NLS-1$
+					else if (value instanceof BigInteger)
+						value = "0x" + ((BigInteger) value).toString(16); //$NON-NLS-1$
+					else if (value instanceof Long)
+						value = "0x" + Long.toHexString((Long) value); //$NON-NLS-1$
+				} else if (unqualifiedType instanceof ICPPBasicType
+						&& ((ICPPBasicType) unqualifiedType).getBaseType() == IBasicType.t_char) {
+					if (value instanceof Integer) {
+						Integer intValue = ((Integer) value);
+						if (intValue == 0)
+							value = "'\\0'"; //$NON-NLS-1$
+						else
+							value = "'" + (char) ((Integer) value).byteValue() + "'"; //$NON-NLS-1$ //$NON-NLS-2$
+					}
+				} else if (unqualifiedType instanceof IEnumeration) {
+					// for an enumerator, return the name, if any
+					if ((value instanceof Integer) || (value instanceof Long) || (value instanceof BigInteger)) {
+						long enumeratorValue = -1;
+						if (value instanceof Integer)
+							enumeratorValue = (Integer) value;
+						else if (value instanceof Long)
+							enumeratorValue = (Long) value;
+						else if (value instanceof BigInteger)
+							enumeratorValue = ((BigInteger) value).longValue();
+
+						IEnumerator enumerator = ((IEnumeration) unqualifiedType).getEnumeratorByValue(enumeratorValue);
+
+						if (enumerator != null)
+							value = enumerator.getName() + " [" + enumeratorValue + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+					}
+				}
+			}
+		}
+
+		public FormattedValueDMData getFormattedValue(FormattedValueDMContext dmc) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.VARIABLE_VALUE_TRACE, dmc);
+			evaluateExpression();
+			String result = ""; //$NON-NLS-1$
+
+			if (value instanceof IInvalidExpression) {
+				result = ((IInvalidExpression) value).getMessage();
+			} else if (value != null) {
+				result = value.toString();
+			}
+
+			if (dmc.getFormatID().equals(IFormattedValues.HEX_FORMAT)) {
+				if (value instanceof Integer)
+					result = Integer.toHexString((Integer) value);
+				else if (value instanceof Long)
+					result = Long.toHexString((Long) value);
+				else if (value instanceof BigInteger)
+					result = ((BigInteger) value).toString(16);
+				else if (value instanceof Float)
+					result = Float.toHexString((Float) value);
+				else if (value instanceof Double)
+					result = Double.toHexString((Double) value);
+			} else if (dmc.getFormatID().equals(IFormattedValues.DECIMAL_FORMAT)) {
+
+			} else if (dmc.getFormatID().equals(IFormattedValues.STRING_FORMAT)) {
+
+			}
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.VARIABLE_VALUE_TRACE, result);
+			return new FormattedValueDMData(result);
+		}
+
+		public Object getValueLocation() {
+			evaluateExpression();
+			return valueLocation;
+		}
+
+		public Object getEvaluatedValue() {
+			return value;
+		}
+
+		public Object getEvaluatedLocation() {
+			return valueLocation;
+		}
+
+		public Object getEvaluatedType() {
+			return valueType;
+		}
+
+		public String getTypeName() {
+			evaluateExpression();
+			if (valueType == null)
+				return ASTEvaluationEngine.UNKNOWN_TYPE;
+			return recursiveGetType(valueType);
+		}
+
+		private String recursiveGetType(Object typeValue) {
+			if (typeValue instanceof IPointerType)
+				return recursiveGetType(((IPointerType) typeValue).getType()) + " *"; //$NON-NLS-1$
+			if (typeValue instanceof IArrayType) {
+				IArrayType arrayType = (IArrayType) typeValue;
+				String returnType = recursiveGetType(arrayType.getType());
+
+				IArrayBoundType[] bounds = arrayType.getBounds();
+				for (IArrayBoundType bound : bounds) {
+					returnType += "[" + bound.getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+				}
+				return returnType;
+			}
+			if (typeValue instanceof IArrayDimensionType) {
+				IArrayDimensionType arrayDimensionType = (IArrayDimensionType) typeValue;
+				IArrayType arrayType = arrayDimensionType.getArrayType();
+				String returnType = recursiveGetType(arrayType.getType());
+
+				IArrayBoundType[] bounds = arrayType.getBounds();
+				for (int i = arrayDimensionType.getDimensionCount(); i < arrayType.getBoundsCount(); i++) {
+					returnType += "[" + bounds[i].getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+				}
+				return returnType;
+			}
+			if (typeValue instanceof ITypedef)
+				return ((ITypedef) typeValue).getName();
+			if (typeValue instanceof ICompositeType)
+				return ((ICompositeType) typeValue).getName();
+			if (typeValue instanceof IQualifierType)
+				return ((IQualifierType) typeValue).getName()
+						+ " " + recursiveGetType(((IQualifierType) typeValue).getType()); //$NON-NLS-1$
+			if (typeValue instanceof IType)
+				return ((IType) typeValue).getName() + recursiveGetType(((IType) typeValue).getType());
+			if (typeValue == null)
+				return ""; //$NON-NLS-1$
+			return typeValue.toString();
+		}
+
+		public boolean hasChildren() {
+			return this.hasChildren;
+		}
+	}
+
+	public class ExpressionData implements IExpressionDMData {
+
+		private final ExpressionDMC dmc;
+
+		public ExpressionData(ExpressionDMC dmc) {
+			this.dmc = dmc;
+		}
+
+		public BasicType getBasicType() {
+			return null;
+		}
+
+		public String getEncoding() {
+			return null;
+		}
+
+		public Map<String, Integer> getEnumerations() {
+			return null;
+		}
+
+		public String getName() {
+			if (dmc != null)
+				return dmc.getName();
+			else
+				return ""; //$NON-NLS-1$
+		}
+
+		public IRegisterDMContext getRegister() {
+			return null;
+		}
+
+		public String getTypeId() {
+			return TYPEID_INTEGER;
+		}
+
+		public String getTypeName() {
+			if (dmc != null)
+				return dmc.getTypeName();
+			else
+				return ""; //$NON-NLS-1$
+		}
+
+	}
+
+	protected static class InvalidContextExpressionDMC extends AbstractDMContext implements IExpressionDMContext {
+		private final String expression;
+
+		public InvalidContextExpressionDMC(String sessionId, String expr, IDMContext parent) {
+			super(sessionId, new IDMContext[] { parent });
+			expression = expr;
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return super.baseEquals(other) && expression == null ? ((InvalidContextExpressionDMC) other)
+					.getExpression() == null : expression.equals(((InvalidContextExpressionDMC) other).getExpression());
+		}
+
+		@Override
+		public int hashCode() {
+			return expression == null ? super.baseHashCode() : super.baseHashCode() ^ expression.hashCode();
+		}
+
+		@Override
+		public String toString() {
+			return baseToString() + ".invalid_expr[" + expression + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+		}
+
+		public String getExpression() {
+			return expression;
+		}
+	}
+
+	public class ExpressionDMAddress implements IExpressionDMAddress {
+
+		private final Object valueLocation;
+
+		public ExpressionDMAddress(IExpressionDMContext exprContext) {
+			if (exprContext instanceof ExpressionDMC)
+				valueLocation = ((ExpressionDMC) exprContext).getValueLocation();
+			else
+				valueLocation = new Addr64("0"); //$NON-NLS-1$
+		}
+
+		public IAddress getAddress() {
+			if (valueLocation instanceof IAddress)
+				return (IAddress) valueLocation;
+//			if (valueLocation instanceof IAddress || valueLocation instanceof String)
+//				return valueLocation;
+//			else if (valueLocation instanceof IInvalidVariableLocation) {
+//				return ((IInvalidVariableLocation)valueLocation).getMessage();
+//			}
+
+			return new Addr64("0"); //$NON-NLS-1$
+		}
+
+		public int getSize() {
+			return 4;
+		}
+
+	}
+
+	public Expressions(DsfSession session) {
+		super(session, new String[] { IExpressions.class.getName(), Expressions.class.getName() });
+	}
+
+	public void canWriteExpression(IExpressionDMContext exprContext, DataRequestMonitor<Boolean> rm) {
+		rm.setData(false);
+		rm.done();
+	}
+
+	public IExpressionDMContext createExpression(IDMContext context, String expression) {
+		StackFrameDMC frameDmc = DMContexts.getAncestorOfType(context, StackFrameDMC.class);
+
+		if (this.basicTypes == null && getTargetEnvironmentService() != null)
+			createBasicTypes();
+
+		if (frameDmc != null) {
+			return new ExpressionDMC(frameDmc, expression);
+		}
+		return new InvalidContextExpressionDMC(getSession().getId(), expression, context);
+	}
+
+	public void getBaseExpressions(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMContext[]> rm) {
+		rm.setData(new ExpressionDMC[0]);
+		rm.done();
+	}
+
+	public void getExpressionAddressData(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMAddress> rm) {
+		if (exprContext instanceof ExpressionDMC)
+			rm.setData(new ExpressionDMAddress(exprContext));
+		else
+			rm.setData(new ExpressionDMAddress(null));
+		rm.done();
+	}
+
+	public void getExpressionData(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMData> rm) {
+		if (exprContext instanceof ExpressionDMC)
+			rm.setData(new ExpressionData((ExpressionDMC) exprContext));
+		else
+			rm.setData(new ExpressionData(null));
+		rm.done();
+	}
+
+	public void getSubExpressionCount(IExpressionDMContext exprContext, DataRequestMonitor<Integer> rm) {
+		rm.setData(0);
+		rm.done();
+	}
+
+	public void getSubExpressions(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMContext[]> rm) {
+		if (!(exprContext instanceof ExpressionDMC) || ((ExpressionDMC) exprContext).getFrame() == null) {
+			rm.setData(new ExpressionDMC[0]);
+			rm.done();
+			return;
+		}
+
+		ExpressionDMC expr = (ExpressionDMC) exprContext;
+		StackFrameDMC frame = expr.getFrame();
+		IType exprType = TypeUtils.getUnqualifiedType(expr.getEvaluatedType());
+
+		// to expand it, it must either be a pointer or have children
+		if (!(exprType instanceof IAggregate) && !(exprType instanceof IPointerType)) {
+			rm.setData(new ExpressionDMC[0]);
+			rm.done();
+			return;
+		}
+
+		ArrayList<ExpressionDMC> exprList = new ArrayList<ExpressionDMC>();
+		ExpressionDMC exprChild;
+
+		// the expression string we need may be different from the name
+		// displayed in the
+		// Variables view Name column or the Expressions view Expression column
+		String exprName = expr.getExpression();
+
+		if (exprType instanceof ITypedef)
+			exprType = TypeUtils.getUnqualifiedType(((ITypedef) exprType).getType());
+
+		// should be a pointer, structure, or array
+		if (exprType instanceof IPointerType) {
+			expandPointedTo(frame, exprType, exprName, exprList);
+		} else if (exprType instanceof ICompositeType) {
+			// an artifact of following a pointer to a structure is that the
+			// name starts with '*'
+			if (exprName.startsWith("*")) //$NON-NLS-1$
+				exprName = exprName.substring(1) + "->"; //$NON-NLS-1$
+			else
+				exprName = exprName + "."; //$NON-NLS-1$
+
+			// for each field, evaluate an expression, then shorten the name
+			ICompositeType compositeType = (ICompositeType) exprType;
+
+			IField[] fields = compositeType.getFields();
+
+			for (IField field : fields) {
+				exprChild = new ExpressionDMC(frame, exprName + (field).getName());
+				if (exprChild != null) {
+					exprList.add(exprChild);
+				}
+			}
+		} else if (exprType instanceof IArrayType) {
+			IArrayType arrayType = (IArrayType) exprType;
+
+			if (arrayType.getBoundsCount() > 0) {
+				long upperBound = arrayType.getBound(0).getBoundCount();
+				for (int i = 0; i < upperBound; i++) {
+					exprChild = new ExpressionDMC(frame, exprName + "[" + i + "]"); //$NON-NLS-1$ //$NON-NLS-2$
+					if (exprChild != null) {
+						exprList.add(exprChild);
+					}
+				}
+			}
+		} else if (exprType instanceof IArrayDimensionType) {
+			IArrayDimensionType arrayDimensionType = (IArrayDimensionType) exprType;
+			IArrayType arrayType = arrayDimensionType.getArrayType();
+
+			if (arrayType.getBoundsCount() > arrayDimensionType.getDimensionCount()) {
+				long upperBound = arrayType.getBound(arrayDimensionType.getDimensionCount()).getBoundCount();
+				for (int i = 0; i < upperBound; i++) {
+					exprChild = new ExpressionDMC(frame, exprName + "[" + i + "]"); //$NON-NLS-1$ //$NON-NLS-2$
+					if (exprChild != null) {
+						exprList.add(exprChild);
+					}
+				}
+			}
+		}
+
+		ExpressionDMC[] children = new ExpressionDMC[exprList.size()];
+		for (int i = 0; i < exprList.size(); i++) {
+			final ExpressionDMC child = exprList.get(i);
+			children[i] = child;
+
+			// if needed, shorten the displayed name or expression associated
+			// with a child
+			String childName = child.getExpression();
+			if (childName.contains(".") || childName.contains("->")) { //$NON-NLS-1$ //$NON-NLS-2$
+				child.setProperty(Expressions.EXPRESSION_PROP, childName);
+				if (childName.contains(".")) //$NON-NLS-1$
+					childName = childName.substring(childName.lastIndexOf(".") + 1); //$NON-NLS-1$
+				if (childName.contains("->")) //$NON-NLS-1$
+					childName = childName.substring(childName.lastIndexOf("->") + 2); //$NON-NLS-1$
+				child.setName(childName);
+			}
+		}
+
+		rm.setData(children);
+		rm.done();
+	}
+
+	private void expandPointedTo(StackFrameDMC frame, IType exprType, String exprName, ArrayList<ExpressionDMC> exprList) {
+		ExpressionDMC exprChild;
+
+		// a pointer type has one child
+		IType typePointedTo = TypeUtils.getUnqualifiedType(exprType.getType());
+		if (typePointedTo instanceof ITypedef)
+			typePointedTo = TypeUtils.getUnqualifiedType(((ITypedef) typePointedTo).getType());
+
+		// if expression name already starts with "&", just remove it
+		if (exprName.startsWith("&")) { //$NON-NLS-1$
+			exprName = exprName.substring(1);
+			exprChild = new ExpressionDMC(frame, exprName);
+		} else {
+			exprChild = new ExpressionDMC(frame, "*" + exprName); //$NON-NLS-1$
+
+			// ALTERNATIVE EXPANSION: for struct s *p, show separate
+			// "struct s *" line expanding to "struct s" line
+			// if (exprChild != null) {
+			// exprList.add(exprChild);
+			// }
+
+			if (typePointedTo instanceof ICPPBasicType || typePointedTo instanceof IEnumeration
+					|| typePointedTo instanceof IPointerType) {
+				// for types without enumerators/elements
+				if (exprChild != null) {
+					exprList.add(exprChild);
+				}
+			} else if (typePointedTo instanceof ICompositeType) {
+				// for composites, go directly to showing the fields
+				exprName = exprName + "->"; //$NON-NLS-1$
+
+				// for each field, evaluate an expression, then shorten the name
+				ICompositeType compositeType = (ICompositeType) typePointedTo;
+
+				IField[] fields = compositeType.getFields();
+
+				for (IField field : fields) {
+					exprChild = new ExpressionDMC(frame, exprName + (field).getName());
+					if (exprChild != null) {
+						exprList.add(exprChild);
+					}
+				}
+			} else {
+				// for arrays
+				if (exprChild != null) {
+					exprList.add(exprChild);
+				}
+			}
+		}
+	}
+
+	public void getSubExpressions(IExpressionDMContext exprContext, int startIndex, int length,
+			DataRequestMonitor<IExpressionDMContext[]> rm) {
+		rm.setData(new ExpressionDMC[0]);
+		rm.done();
+	}
+
+	public void writeExpression(IExpressionDMContext exprContext, String expressionValue, String formatId,
+			RequestMonitor rm) {
+	}
+
+	public void getAvailableFormats(IFormattedDataDMContext formattedDataContext, DataRequestMonitor<String[]> rm) {
+		rm.setData(new String[] { IFormattedValues.BINARY_FORMAT, IFormattedValues.NATURAL_FORMAT,
+				IFormattedValues.HEX_FORMAT, IFormattedValues.OCTAL_FORMAT, IFormattedValues.DECIMAL_FORMAT });
+		rm.done();
+	}
+
+	public void getFormattedExpressionValue(FormattedValueDMContext formattedDataContext,
+			DataRequestMonitor<FormattedValueDMData> rm) {
+		IDMContext idmContext = formattedDataContext.getParents()[0];
+		FormattedValueDMData formattedValue = null;
+		ExpressionDMC exprDMC = null;
+
+		if (idmContext instanceof ExpressionDMC) {
+			exprDMC = (ExpressionDMC) formattedDataContext.getParents()[0];
+			formattedValue = exprDMC.getFormattedValue(formattedDataContext);
+		} else
+			formattedValue = new FormattedValueDMData(""); //$NON-NLS-1$
+
+		rm.setData(formattedValue);
+		String formattedValueStr = formattedValue.getFormattedValue();
+
+		if (exprDMC != null && exprDMC.getEvaluatedValue() instanceof IInvalidExpression)
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, formattedValueStr));
+		rm.done();
+	}
+
+	public FormattedValueDMContext getFormattedValueContext(IFormattedDataDMContext formattedDataContext,
+			String formatId) {
+		return new FormattedValueDMContext(this, formattedDataContext, formatId);
+	}
+
+	public void getModelData(IDMContext context, DataRequestMonitor<?> rm) {
+	}
+
+	private void createBasicTypes() {
+		// TODO: create basic types for standard C/C++ base types, for casting
+		// to types
+	}
+}

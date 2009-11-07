@@ -1,0 +1,44 @@
+/*******************************************************************************
+ * Copyright (c) 2009 Nokia and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ * Nokia - Initial API and implementation
+ *******************************************************************************/
+package org.eclipse.cdt.debug.edc.internal.snapshot;
+
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.debug.core.sourcelookup.ISourceContainerType;
+import org.eclipse.debug.core.sourcelookup.containers.AbstractSourceContainer;
+
+public class AlbumSourceContainer extends AbstractSourceContainer {
+
+	private Album album;
+
+	public static final String TYPE_ID = EDCDebugger.getUniqueIdentifier() + ".containerType.albumMapping"; //$NON-NLS-1$
+
+	public AlbumSourceContainer(Album album) {
+		this.album = album;
+	}
+
+	public AlbumSourceContainer() {
+	}
+
+	public Object[] findSourceElements(String name) throws CoreException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public String getName() {
+		return album.getName();
+	}
+
+	public ISourceContainerType getType() {
+		return getSourceContainerType(TYPE_ID);
+	}
+
+}

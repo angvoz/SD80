@@ -1,0 +1,1926 @@
+/*******************************************************************************
+ * Copyright (c) 2009 Nokia and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ * Nokia - Initial API and implementation
+ *******************************************************************************/
+package org.eclipse.cdt.debug.edc.internal.services.dsf;
+
+import java.nio.ByteBuffer;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
+import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.JumpToAddress;
+import org.eclipse.cdt.debug.edc.internal.disassembler.DisassembledInstruction;
+import org.eclipse.cdt.debug.edc.internal.disassembler.IDisassembler;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints.BreakpointDMData;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers.RegisterGroupDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
+import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
+import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.Immutable;
+import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
+import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
+import org.eclipse.cdt.dsf.datamodel.DMContexts;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.ICachingService;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
+import org.eclipse.cdt.dsf.debug.service.IRunControl;
+import org.eclipse.cdt.dsf.debug.service.IStack;
+import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
+import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
+import org.eclipse.cdt.dsf.debug.service.IModules.IModuleDMContext;
+import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
+import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
+import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterGroupDMContext;
+import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
+import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.debug.core.model.MemoryByte;
+import org.eclipse.tm.tcf.protocol.IService;
+import org.eclipse.tm.tcf.protocol.IToken;
+import org.eclipse.tm.tcf.protocol.Protocol;
+import org.eclipse.tm.tcf.services.IRunControl.DoneCommand;
+import org.eclipse.tm.tcf.services.IRunControl.RunControlContext;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+public class RunControl extends AbstractEDCService implements IRunControl, ICachingService, ISnapshotContributor,
+		IDSFServiceUsingTCF {
+
+	public static final String EXECUTION_CONTEXT = "execution_context";
+	public static final String EXECUTION_CONTEXT_REGISTERS = "execution_context_registers";
+	public static final String EXECUTION_CONTEXT_MODULES = "execution_context_modules";
+	public static final String EXECUTION_CONTEXT_FRAMES = "execution_context_frames";
+	/**
+	 * Context property names.
+	 */
+	public static final String PROP_PARENT_ID = "ParentID", PROP_IS_CONTAINER = "IsContainer",
+			PROP_HAS_STATE = "HasState", PROP_CAN_RESUME = "CanResume", PROP_CAN_COUNT = "CanCount",
+			PROP_CAN_SUSPEND = "CanSuspend", PROP_CAN_TERMINATE = "CanTerminate", PROP_IS_SUSPENDED = "State",
+			PROP_MESSAGE = "Message", PROP_SUSPEND_PC = "SuspendPC";
+
+	// Whether module is being loaded (if true) or unloaded (if false)
+
+	public static class SuspendedEvent extends AbstractDMEvent<IExecutionDMContext> implements ISuspendedDMEvent {
+
+		private final StateChangeReason reason;
+		private final Map<String, Object> params;
+
+		public SuspendedEvent(IExecutionDMContext dmc, StateChangeReason reason, Map<String, Object> params) {
+			super(dmc);
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+					new Object[] { dmc, reason, params });
+			this.reason = reason;
+			this.params = params;
+		}
+
+		public StateChangeReason getReason() {
+			return reason;
+		}
+
+		public Map<String, Object> getParams() {
+			return params;
+		}
+	}
+
+	public static class ResumedEvent extends AbstractDMEvent<IExecutionDMContext> implements IResumedDMEvent {
+
+		public ResumedEvent(IExecutionDMContext dmc) {
+			super(dmc);
+		}
+
+		public StateChangeReason getReason() {
+			return StateChangeReason.USER_REQUEST;
+		}
+	}
+
+	private static StateChangeReason toStateChangeReason(String s) {
+		if (s == null)
+			return StateChangeReason.UNKNOWN;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_USER_REQUEST))
+			return StateChangeReason.USER_REQUEST;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_STEP))
+			return StateChangeReason.STEP;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_BREAKPOINT))
+			return StateChangeReason.BREAKPOINT;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_EXCEPTION))
+			return StateChangeReason.EXCEPTION;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_CONTAINER))
+			return StateChangeReason.CONTAINER;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_WATCHPOINT))
+			return StateChangeReason.WATCHPOINT;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_SIGNAL))
+			return StateChangeReason.SIGNAL;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_SHAREDLIB))
+			return StateChangeReason.SHAREDLIB;
+		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_ERROR))
+			return StateChangeReason.ERROR;
+		return StateChangeReason.UNKNOWN;
+	}
+
+	@Immutable
+	private static class ExecutionData implements IExecutionDMData {
+		private final StateChangeReason reason;
+		private final String details;
+
+		ExecutionData(StateChangeReason reason, String details) {
+			this.reason = reason;
+			this.details = details;
+		}
+
+		public StateChangeReason getStateChangeReason() {
+			return reason;
+		}
+
+		public String getDetails() {
+			return details;
+		}
+	}
+
+	public abstract class ExecutionDMC extends DMContext implements IExecutionDMContext, IMemoryDMContext,
+			ISnapshotContributor {
+
+		private final List<ExecutionDMC> children = Collections.synchronizedList(new ArrayList<ExecutionDMC>());
+		private StateChangeReason stateChangeReason = StateChangeReason.UNKNOWN;
+		private String stateChangeDetails = null;
+		private final RunControlContext tcfContext;
+		private final ExecutionDMC parentExecutionDMC;
+		private String latestPC = null;
+		private RequestMonitor steppingRM = null;
+		private boolean isStepping = false;
+
+		public ExecutionDMC(ExecutionDMC parent, Map<String, Object> props, RunControlContext tcfContext) {
+			super(RunControl.this, parent == null ? new IDMContext[0] : new IDMContext[] { parent }, props);
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+					new Object[] { parent, properties });
+			this.parentExecutionDMC = parent;
+			this.tcfContext = tcfContext;
+			if (props != null) {
+				dmcsByID.put(getID(), this);
+			}
+			if (parent != null)
+				parent.addChild(this);
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		private void addChild(ExecutionDMC executionDMC) {
+			synchronized (children) {
+				children.add(executionDMC);
+			}
+		}
+
+		private void removeChild(ExecutionDMC executionDMC) {
+			synchronized (children) {
+				children.remove(executionDMC);
+			}
+		}
+
+		public ExecutionDMC[] getChildren() {
+			synchronized (children) {
+				return children.toArray(new ExecutionDMC[children.size()]);
+			}
+		}
+
+		public abstract ISymbolDMContext getSymbolDMContext();
+
+		public abstract ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext);
+
+		public void loadSnapshot(Element element) throws Exception {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, element);
+			NodeList ecElements = element.getElementsByTagName(EXECUTION_CONTEXT);
+			int numcontexts = ecElements.getLength();
+			for (int i = 0; i < numcontexts; i++) {
+				Element contextElement = (Element) ecElements.item(i);
+				if (contextElement.getParentNode().equals(element)) {
+					try {
+						Element propElement = (Element) contextElement.getElementsByTagName(SnapshotUtils.PROPERTIES)
+								.item(0);
+						HashMap<String, Object> properties = new HashMap<String, Object>();
+						SnapshotUtils.initializeFromXML(propElement, properties);
+						ExecutionDMC exeDMC = contextAdded(properties, null);
+						exeDMC.loadSnapshot(contextElement);
+					} catch (CoreException e) {
+						EDCDebugger.getMessageLogger().logError(null, e);
+					}
+				}
+
+			}
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+			Element contextElement = document.createElement(EXECUTION_CONTEXT);
+			contextElement.setAttribute(PROP_ID, this.getID());
+
+			Element propsElement = SnapshotUtils.makeXMLFromProperties(document, getProperties());
+			contextElement.appendChild(propsElement);
+
+			ExecutionDMC[] dmcs = getChildren();
+
+			for (ExecutionDMC executionDMC : dmcs) {
+				Element dmcElement = executionDMC.takeShapshot(album, document, monitor);
+				contextElement.appendChild(dmcElement);
+			}
+
+			return contextElement;
+		}
+
+		public boolean isSuspended() {
+			synchronized (properties) {
+				Boolean suspended = (Boolean) properties.get(PROP_IS_SUSPENDED);
+				if (suspended != null)
+					return suspended;
+			}
+			return false;
+		}
+
+		public StateChangeReason getStateChangeReason() {
+			return stateChangeReason;
+		}
+
+		public String getStateChangeDetails() {
+			return stateChangeDetails;
+		}
+
+		public void setIsSuspended(boolean isSuspended) {
+			synchronized (properties) {
+				properties.put(PROP_IS_SUSPENDED, isSuspended);
+			}
+			if (getParentExecutionDMC() != null)
+				getParentExecutionDMC().childIsSuspended(isSuspended);
+		}
+
+		private void childIsSuspended(boolean isSuspended) {
+			if (isSuspended) {
+				setIsSuspended(true);
+			} else {
+				boolean anySuspended = false;
+				for (ExecutionDMC childDMC : getChildren()) {
+					if (childDMC.isSuspended()) {
+						anySuspended = true;
+						break;
+					}
+				}
+				if (!anySuspended)
+					setIsSuspended(false);
+			}
+		}
+
+		public void contextException(String msg) {
+			setIsSuspended(true);
+			synchronized (properties) {
+				properties.put(PROP_MESSAGE, msg);
+			}
+			stateChangeReason = StateChangeReason.EXCEPTION;
+			getSession().dispatchEvent(
+					new SuspendedEvent(this, StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
+					RunControl.this.getProperties());
+		}
+
+		public void contextSuspended(String pc, String reason, final Map<String, Object> params) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+					new Object[] { pc, reason, params });
+			if (pc != null) {
+				// the PC from TCF agent is decimal string.
+				// convert it to hex string.
+				pc = Long.toHexString(Long.parseLong(pc));
+			}
+
+			latestPC = pc;
+
+			setIsSuspended(true);
+			synchronized (properties) {
+				properties.put(PROP_MESSAGE, reason);
+				properties.put(PROP_SUSPEND_PC, pc);
+			}
+			stateChangeReason = toStateChangeReason(reason);
+
+			stateChangeDetails = (String) params.get("message");
+
+			if (stateChangeReason == StateChangeReason.SHAREDLIB) {
+				handleSharedLibraryEvent(pc, params);
+			} else {
+				final IExecutionDMContext dmc = this;
+
+				preprocessSuspend(pc, new DataRequestMonitor<Boolean>(getExecutor(), null) {
+					@Override
+					protected void handleCompleted() {
+						if (getData()) { // do suspend
+
+							// Only after completion of adjustPC do we fire the
+							// event.
+							getSession().dispatchEvent(new SuspendedEvent(dmc, stateChangeReason, params),
+									RunControl.this.getProperties());
+
+							// All the following must be done in DSF dispatch
+							// thread
+							// to ensure data integrity.
+
+							// Mark done of the single step RM, if any pending.
+							if (steppingRM != null) {
+								steppingRM.done();
+								steppingRM = null;
+							}
+
+							// Mark any stepping as done.
+							setStepping(false);
+
+							// Remove temporary breakpoints set by stepping.
+							// Note we don't want to do this on a sharedLibrary
+							// event as otherwise
+							// stepping will be screwed up by that event.
+							//
+							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+							bpService.removeAllTempBreakpoints(new RequestMonitor(getExecutor(), null));
+						} else { // no suspend, say, due to breakpoint condition
+									// not met.
+							RunControl.this.resume(dmc, new RequestMonitor(getExecutor(), null));
+						}
+					}
+				});
+			}
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		private void handleSharedLibraryEvent(String pc, final Map<String, Object> params) {
+			final ISymbolDMContext symbolContext = getSymbolDMContext();
+
+			if (symbolContext != null) {
+				final ExecutionDMC dmc = this;
+				// The following needs be done in DSF dispatch thread.
+				getSession().getExecutor().execute(new Runnable() {
+					public void run() {
+						// based on params, either load or unload the module
+						boolean loaded = true;
+						Object loadedValue = params.get(IModuleProperty.PROP_MODULE_LOADED);
+						if (loadedValue != null) {
+							if (loadedValue instanceof Boolean)
+								loaded = (Boolean) loadedValue;
+						}
+
+						Modules modulesService = getServicesTracker().getService(Modules.class);
+						if (loaded)
+							modulesService.moduleLoaded(symbolContext, dmc, params);
+						else
+							modulesService.moduleUnloaded(symbolContext, dmc, params);
+					}
+				});
+			}
+		}
+
+		/**
+		 * Preprocessing for suspend event. This is done before we broadcast the
+		 * suspend event across the debugger. Here's what's done in the
+		 * preprocessing: <br>
+		 * 1. Adjust PC after control hits a software breakpoint where the PC
+		 * points at the byte right after the breakpoint instruction. This is to
+		 * move PC back to the address of the breakpoint instruction.<br>
+		 * 2. If we stops at a breakpoint, evaluate condition of the breakpoint
+		 * and determine if we should ignore the suspend event and resume or
+		 * should honor the suspend event and sent it up the ladder.
+		 * 
+		 * @param pc
+		 *            program pointer value from the event, in the format of
+		 *            big-endian hex string.
+		 * @param drm
+		 *            DataRequestMonitor whose result indicates whether to honor
+		 *            the suspend.
+		 */
+		private void preprocessSuspend(final String pc, final DataRequestMonitor<Boolean> drm) {
+			final ExecutionDMC dmc = this;
+
+			// The following needs be done in DSF dispatch thread.
+			getSession().getExecutor().execute(new Runnable() {
+
+				public void run() {
+					Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+					Registers regService = getServicesTracker().getService(Registers.class);
+					String pcString;
+
+					if (pc == null) {
+						// read PC register
+						pcString = regService.getRegisterValue(dmc, getTargetEnvironmentService().getPCRegisterID());
+					} else
+						pcString = pc;
+
+					latestPC = pcString;
+
+					// This check is to speed up handling of suspend due to
+					// other reasons such as "step".
+					// Is it safe to assume the TCF agents always report the
+					// "stateChangeReason" as BREAKPOINT when a breakpoint is
+					// hit ?
+					// Cross our fingers.
+					//
+					if (stateChangeReason != StateChangeReason.BREAKPOINT) {
+						drm.setData(true);
+						drm.done();
+						return;
+					}
+
+					if (!bpService.usesTCFBreakpointService()) {
+						// generic software breakpoint is used.
+						// We need to move PC back to the breakpoint
+						// instruction.
+						long pcValue;
+
+						pcValue = Long.valueOf(pcString, 16);
+						pcValue -= getTargetEnvironmentService()
+								.getBreakpointInstruction(dmc, new Addr64(pcString, 16)).length;
+						pcString = Long.toHexString(pcValue);
+
+						// Stopped but not due to breakpoint set by debugger.
+						// For instance, some Windows DLL has "int 3"
+						// instructions in it.
+						// 
+						if (bpService.findBreakpoint(new Addr64(pcString, 16)) != null) {
+							// Now adjust PC register.
+							regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), pcString);
+							latestPC = pcString;
+						}
+					}
+
+					// check if a conditional breakpoint (must be a user bp) is
+					// hit
+					//
+					BreakpointDMData bp = bpService.findUserBreakpoint(new Addr64(latestPC, 16));
+					if (bp != null) {
+						// evaluate the condition
+						evaluateBreakpointCondition(bp, drm);
+					} else {
+						drm.setData(true);
+						drm.done();
+					}
+				}
+			});
+		}
+
+		/**
+		 * Evaluate condition of given breakpoint, if any.
+		 * 
+		 * @param bp
+		 *            the breakpoint.
+		 * @param drm
+		 *            DataRequestMonitor that contains result indicating whether
+		 *            to stop execution of debugged program. The result value is
+		 *            true if <br>
+		 *            1. the breakpoint has no condition, or <br>
+		 *            2. the breakpoint condition is invalid in syntax, or <br>
+		 *            3. the breakpoint condition cannot be resolved, or <br>
+		 *            4. the breakpoint condition is true.<br>
+		 *            Otherwise the result in the drm is false.
+		 * 
+		 */
+		protected void evaluateBreakpointCondition(final BreakpointDMData bp, final DataRequestMonitor<Boolean> drm) {
+			final String expr = bp.getCondition();
+			if (expr == null || expr.length() == 0) {
+				drm.setData(true);
+				drm.done();
+				return;
+			}
+
+			Stack stackService = getServicesTracker().getService(Stack.class);
+
+			stackService.getTopFrame(this, new DataRequestMonitor<IFrameDMContext>(getExecutor(), drm) {
+
+				@Override
+				protected void handleCompleted() {
+					if (!isSuccess()) { // fail to get frame, namely cannot
+										// evaluate the condiiton
+						drm.setData(true);
+						drm.done();
+					} else {
+						Expressions exprService = getServicesTracker().getService(Expressions.class);
+						ExpressionDMC expression = (ExpressionDMC) exprService.createExpression(getData(), expr);
+						FormattedValueDMContext fvc = exprService.getFormattedValueContext(expression,
+								IFormattedValues.NATURAL_FORMAT);
+						FormattedValueDMData value = expression.getFormattedValue(fvc);
+						drm.setData(!value.getFormattedValue().equals("false")); // honor
+																					// the
+																					// breakpoint
+																					// if
+																					// the
+																					// condition
+																					// is
+																					// true
+																					// or
+																					// invalid.
+						drm.done();
+					}
+				}
+			});
+		}
+
+		public Boolean canTerminate() {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			Boolean result = false;
+			synchronized (properties) {
+				try {
+					result = (Boolean) properties.get(PROP_CAN_TERMINATE);
+				} catch (Exception e) {
+					EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+							"Error in canTerminate", e);
+				}
+			}
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE, result);
+			return result;
+		}
+
+		/**
+		 * Resume the context.
+		 * 
+		 * @param rm
+		 *            this is marked done as long as the resume command
+		 *            succeeds.
+		 */
+		public boolean supportsStepMode(StepType type) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+
+			int mode = 0;
+			switch (type) {
+			case STEP_OVER:
+				mode = org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER_RANGE;
+				break;
+			case STEP_INTO:
+				mode = org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO_RANGE;
+				break;
+			case STEP_RETURN:
+				mode = org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OUT;
+				break;
+			case INSTRUCTION_STEP_OVER:
+				mode = org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER;
+				break;
+			case INSTRUCTION_STEP_INTO:
+				mode = org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO;
+				break;
+			}
+
+			return tcfContext.canResume(mode);
+		}
+
+		/**
+		 * Resume the context.
+		 * 
+		 * @param rm
+		 *            this is marked done as long as the resume command
+		 *            succeeds.
+		 */
+		public void resume(final RequestMonitor rm) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+
+			flushCache(this);
+
+			// Fire the resumed event here instead of in the doneCommand() below
+			// as otherwise an asynchronous suspend event may get in the way.
+			// 
+			contextResumed(true);
+
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME, 0, new DoneCommand() {
+
+						public void doneCommand(IToken token, Exception error) {
+							if (error == null) {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Resume command succeeded.");
+							} else {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Resume command failed.");
+								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+										"Resume failed.", null));
+							}
+							rm.done();
+						}
+					});
+				}
+			});
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		/**
+		 * Resume the context but the request monitor is only marked done when
+		 * the context is suspended. (vs. regular resume()). <br>
+		 * Note this method does not wait for suspended-event.
+		 * 
+		 * @param rm
+		 */
+		public void resumeForStepping(final RequestMonitor rm) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+
+			setStepping(true);
+
+			flushCache(this);
+
+			// Fire the resumed event here instead of in the doneCommand() below
+			// as otherwise an asynchronous suspend event may get in the way.
+			// 
+			contextResumed(true);
+
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME, 0, new DoneCommand() {
+
+						public void doneCommand(IToken token, Exception error) {
+							if (error == null) {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Resume command succeeded.");
+								// we'll make it as done when we get next
+								// suspend event.
+								assert steppingRM == null;
+								steppingRM = rm;
+							} else {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Resume command failed.");
+								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+										"Resume failed.", null));
+								rm.done();
+							}
+						}
+					});
+				}
+			});
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		public void suspend(final RequestMonitor requestMonitor) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					tcfContext.suspend(new DoneCommand() {
+
+						public void doneCommand(IToken token, Exception error) {
+							EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+							requestMonitor.done();
+							EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+						}
+					});
+				}
+			});
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		public void terminate(final RequestMonitor requestMonitor) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+			if (tcfContext != null) {
+				Protocol.invokeLater(new Runnable() {
+					public void run() {
+						tcfContext.terminate(new DoneCommand() {
+
+							public void doneCommand(IToken token, Exception error) {
+								EDCDebugger.getDefault().getTrace()
+										.traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+								requestMonitor.done();
+								EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+							}
+						});
+					}
+				});
+			}
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		public ExecutionDMC getParentExecutionDMC() {
+			return parentExecutionDMC;
+		}
+
+		/**
+		 * get latest PC register value of the context.
+		 * 
+		 * @return hex string of the PC value.
+		 */
+		public String getPC() {
+			return latestPC;
+		}
+
+		public void contextRemoved(String contextId) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, contextId);
+			ExecutionDMC dmc = getContext(contextId);
+			removeChild(dmc);
+			getSession().dispatchEvent(new ExitedEvent(dmc), RunControl.this.getProperties());
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		public void contextResumed(boolean sendEvent) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+					new Object[] { this, sendEvent });
+			setIsSuspended(false);
+			if (sendEvent)
+				getSession().dispatchEvent(new ResumedEvent(this), RunControl.this.getProperties());
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		/**
+		 * Execute a single instruction. Note the "rm" is marked done() only
+		 * when we get the suspend event, not when we successfully send the
+		 * command to TCF agent.
+		 * 
+		 * @param rm
+		 */
+		public void singleStep(final boolean stepInto, final RequestMonitor rm) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
+
+			setStepping(true);
+
+			flushCache(this);
+
+			contextResumed(true);
+
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO
+							: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER;
+					tcfContext.resume(mode, 1, new DoneCommand() {
+
+						public void doneCommand(IToken token, Exception error) {
+							if (error == null) {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Single step command succeeded.");
+								// we'll make it as done when we get next
+								// suspend event.
+								assert steppingRM == null;
+								steppingRM = rm;
+							} else {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Single step command failed.");
+								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+										"singleStep() failed.", null));
+								rm.done();
+							}
+						}
+					});
+				}
+			});
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		/**
+		 * Step out of the current function. Note the "rm" is marked done() only
+		 * when we get the suspend event, not when we successfully send the
+		 * command to TCF agent.
+		 * 
+		 * @param rm
+		 */
+		public void stepOut(final RequestMonitor rm) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
+
+			setStepping(true);
+
+			flushCache(this);
+
+			contextResumed(true);
+
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OUT, 0, new DoneCommand() {
+
+						public void doneCommand(IToken token, Exception error) {
+							if (error == null) {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Step out command succeeded.");
+								// we'll make it as done when we get next
+								// suspend event.
+								assert steppingRM == null;
+								steppingRM = rm;
+							} else {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Step out command failed.");
+								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+										"stepOut() failed.", null));
+								rm.done();
+							}
+						}
+					});
+				}
+			});
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		public void stepRange(final boolean stepInto, final IAddress rangeStart, final IAddress rangeEnd,
+				final RequestMonitor rm) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
+
+			setStepping(true);
+
+			flushCache(this);
+
+			contextResumed(true);
+
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO_RANGE
+							: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER_RANGE;
+					Map<String, Object> params = new HashMap<String, Object>();
+					params.put("RANGE_START", rangeStart.getValue());
+					params.put("RANGE_END", rangeEnd.getValue());
+
+					tcfContext.resume(mode, 0, params, new DoneCommand() {
+
+						public void doneCommand(IToken token, Exception error) {
+							if (error == null) {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Step range command succeeded.");
+								// we'll make it as done when we get next
+								// suspend event.
+								assert steppingRM == null;
+								steppingRM = rm;
+							} else {
+								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+										"Step range command failed.");
+								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+										"stepRange() failed.", null));
+								rm.done();
+							}
+						}
+					});
+				}
+			});
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		/**
+		 * set whether debugger is stepping in the context.
+		 * 
+		 * @param isStepping
+		 */
+		public void setStepping(boolean isStepping) {
+			this.isStepping = isStepping;
+		}
+
+		/**
+		 * @return whether debugger is stepping the context.
+		 */
+		public boolean isStepping() {
+			return isStepping;
+		}
+
+	}
+
+	public class ProcessExecutionDMC extends ExecutionDMC implements IContainerDMContext, IProcessDMContext,
+			ISymbolDMContext,
+			// IBreakpointsTargetDMContext,
+			IDisassemblyDMContext {
+
+		public ProcessExecutionDMC(ExecutionDMC parent, Map<String, Object> properties, RunControlContext tcfContext) {
+			super(parent, properties, tcfContext);
+		}
+
+		@Override
+		public ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, properties);
+			ThreadExecutionDMC newDMC = new ThreadExecutionDMC(this, properties, tcfContext);
+			getSession().dispatchEvent(new StartedEvent(newDMC), RunControl.this.getProperties());
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE, newDMC);
+			return newDMC;
+		}
+
+		@Override
+		public ISymbolDMContext getSymbolDMContext() {
+			return this;
+		}
+
+		@Override
+		public void loadSnapshot(Element element) throws Exception {
+			super.loadSnapshot(element);
+			Modules modulesService = getServicesTracker().getService(Modules.class);
+			modulesService.loadModulesForContext(this, element);
+		}
+
+		@Override
+		public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+			Element contextElement = super.takeShapshot(album, document, monitor);
+			Element modulesElement = document.createElement(EXECUTION_CONTEXT_MODULES);
+			Modules modulesService = getServicesTracker().getService(Modules.class);
+
+			IModuleDMContext[] modules = modulesService.getModulesForContext(this.getID());
+			for (IModuleDMContext moduleContext : modules) {
+				ModuleDMC moduleDMC = (ModuleDMC) moduleContext;
+				modulesElement.appendChild(moduleDMC.takeShapshot(album, document, monitor));
+			}
+
+			contextElement.appendChild(modulesElement);
+			return contextElement;
+		}
+
+	}
+
+	public class ThreadExecutionDMC extends ExecutionDMC implements IThreadDMContext {
+
+		public ThreadExecutionDMC(ExecutionDMC parent, Map<String, Object> properties, RunControlContext tcfContext) {
+			super(parent, properties, tcfContext);
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+					new Object[] { parent, properties });
+			;
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		@Override
+		public ISymbolDMContext getSymbolDMContext() {
+			IDMContext[] parents = getParents();
+			for (IDMContext context : parents) {
+				if (context instanceof ISymbolDMContext)
+					return (ISymbolDMContext) context;
+			}
+			return null;
+		}
+
+		@Override
+		public void loadSnapshot(Element element) throws Exception {
+			super.loadSnapshot(element);
+			Registers regService = getServicesTracker().getService(Registers.class);
+			regService.loadGroupsForContext(this, element);
+
+			getSession().dispatchEvent(
+					new SuspendedEvent(this, StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
+					RunControl.this.getProperties());
+
+		}
+
+		@Override
+		public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+			Element contextElement = super.takeShapshot(album, document, monitor);
+			Element registersElement = document.createElement(EXECUTION_CONTEXT_REGISTERS);
+			Registers regService = getServicesTracker().getService(Registers.class);
+
+			IRegisterGroupDMContext[] regGroups = regService.getGroupsForContext(this);
+			for (IRegisterGroupDMContext registerGroupDMContext : regGroups) {
+				RegisterGroupDMC regDMC = (RegisterGroupDMC) registerGroupDMContext;
+				registersElement.appendChild(regDMC.takeShapshot(album, document, monitor));
+			}
+
+			contextElement.appendChild(registersElement);
+
+			Element framesElement = document.createElement(EXECUTION_CONTEXT_FRAMES);
+			Stack stackService = getServicesTracker().getService(Stack.class);
+
+			IFrameDMContext[] frames = stackService.getFramesForDMC(this, 0, IStack.ALL_FRAMES);
+			for (IFrameDMContext frameDMContext : frames) {
+				StackFrameDMC frameDMC = (StackFrameDMC) frameDMContext;
+				framesElement.appendChild(frameDMC.takeShapshot(album, document, monitor));
+			}
+
+			contextElement.appendChild(framesElement);
+
+			return contextElement;
+		}
+
+		@Override
+		public ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext) {
+			assert (false);
+			return null;
+		}
+
+	}
+
+	public class RootExecutionDMC extends ExecutionDMC implements ISourceLookupDMContext {
+
+		public RootExecutionDMC(Map<String, Object> props) {
+			super(null, props, null);
+		}
+
+		@Override
+		public ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext) {
+			ProcessExecutionDMC newDMC = new ProcessExecutionDMC(this, properties, tcfContext);
+			getSession().dispatchEvent(new StartedEvent(newDMC), RunControl.this.getProperties());
+			return newDMC;
+		}
+
+		@Override
+		public ISymbolDMContext getSymbolDMContext() {
+			return null;
+		}
+	}
+
+	private static final String EXECUTION_CONTEXTS = "execution_contexts";
+
+	private org.eclipse.tm.tcf.services.IRunControl tcfRunService;
+	private ExecutionDMC rootExecutionDMC;
+	private final Map<String, ExecutionDMC> dmcsByID = new HashMap<String, ExecutionDMC>();
+
+	public RunControl(DsfSession session) {
+		super(session, new String[] { IRunControl.class.getName(), RunControl.class.getName(),
+				ISnapshotContributor.class.getName() });
+		initializeRootExecutionDMC();
+	}
+
+	private void initializeRootExecutionDMC() {
+		HashMap<String, Object> props = new HashMap<String, Object>();
+		props.put(DMContext.PROP_ID, "root");
+		rootExecutionDMC = new RootExecutionDMC(props);
+	}
+
+	public void canResume(IExecutionDMContext context, DataRequestMonitor<Boolean> rm) {
+		rm.setData(((ExecutionDMC) context).isSuspended() ? Boolean.TRUE : Boolean.FALSE);
+		rm.done();
+	}
+
+	public void canStep(IExecutionDMContext context, StepType stepType, DataRequestMonitor<Boolean> rm) {
+		rm.setData(((ExecutionDMC) context).isSuspended() ? Boolean.TRUE : Boolean.FALSE);
+		rm.done();
+	}
+
+	public void canSuspend(IExecutionDMContext context, DataRequestMonitor<Boolean> rm) {
+		rm.setData(((ExecutionDMC) context).isSuspended() ? Boolean.FALSE : Boolean.TRUE);
+		rm.done();
+	}
+
+	public void getExecutionContexts(IContainerDMContext c, DataRequestMonitor<IExecutionDMContext[]> rm) {
+		if (c instanceof ProcessExecutionDMC) {
+			ProcessExecutionDMC edmc = (ProcessExecutionDMC) c;
+			ExecutionDMC[] threads = edmc.getChildren();
+			IExecutionDMContext[] threadArray = new IExecutionDMContext[threads.length];
+			System.arraycopy(threads, 0, threadArray, 0, threads.length);
+			rm.setData(threadArray);
+		}
+		rm.done();
+	}
+
+	public void getExecutionData(IExecutionDMContext dmc, DataRequestMonitor<IExecutionDMData> rm) {
+		if (dmc instanceof ExecutionDMC) {
+			ExecutionDMC exedmc = (ExecutionDMC) dmc;
+			rm.setData(new ExecutionData(exedmc.isSuspended() ? exedmc.getStateChangeReason()
+					: StateChangeReason.UNKNOWN, exedmc.getStateChangeDetails()));
+		} else
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE,
+					"Given context: " + dmc + " is not a recognized execution context.", null)); //$NON-NLS-1$ //$NON-NLS-2$
+		rm.done();
+	}
+
+	public boolean isStepping(IExecutionDMContext context) {
+		if (context instanceof ExecutionDMC) {
+			ExecutionDMC exedmc = (ExecutionDMC) context;
+			return exedmc.isStepping();
+		}
+		return false;
+	}
+
+	public boolean isSuspended(IExecutionDMContext context) {
+		if (context instanceof ExecutionDMC) {
+			ExecutionDMC exedmc = (ExecutionDMC) context;
+			return exedmc.isSuspended();
+		}
+		return false;
+	}
+
+	public void resume(IExecutionDMContext context, final RequestMonitor rm) {
+		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+				MessageFormat.format("resume context {0}", context));
+
+		if (!(context instanceof ExecutionDMC)) {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, MessageFormat.format(
+					"The context [{0}] is not a recognized execution context.", context), null));
+			rm.done();
+		}
+
+		final ExecutionDMC dmc = (ExecutionDMC) context;
+
+		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+		if (bpService.usesTCFBreakpointService()) {
+			dmc.resume(rm);
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
+					MessageFormat.format("resume() done on context {0}", dmc));
+		} else {
+			prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
+
+				@Override
+				protected void handleSuccess() {
+					dmc.resume(rm);
+					EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
+							MessageFormat.format("resume() done on context {0}", dmc));
+				}
+			});
+		}
+	}
+
+	/**
+	 * Prepare for resuming or stepping by <br>
+	 * - executing current instruction if PC is at a breakpoint.
+	 * 
+	 * @param dmc
+	 *            - the execution context, usually a thread.
+	 * @param drm
+	 *            - data request monitor which will contain boolean value on
+	 *            done indicating whether an instruction is executed during the
+	 *            preparation.
+	 */
+	private void prepareToRun(final ExecutionDMC dmc, final DataRequestMonitor<Boolean> drm) {
+		// If there is breakpoint at current PC, remove it => Single step =>
+		// Restore it.
+
+		String latestPC = dmc.getPC();
+
+		if (latestPC != null) {
+			final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+			final BreakpointDMData bp = bpService.findUserBreakpoint(new Addr64(latestPC, 16));
+			if (bp != null) {
+				bpService.disableBreakpoint(bp, new RequestMonitor(getExecutor(), drm) {
+
+					@Override
+					protected void handleSuccess() {
+						// Now step over the instruction
+						//
+						dmc.contextResumed(false);
+						dmc.singleStep(true, new RequestMonitor(getExecutor(), drm) {
+							@Override
+							protected void handleSuccess() {
+								// At this point the single instruction
+								// execution should be done
+								// and the context being suspended.
+								//
+								drm.setData(true); // indicates an instruction
+								// is executed
+
+								// Now restore the breakpoint.
+								bpService.enableBreakpoint(bp, drm);
+							}
+						});
+					}
+				});
+			} else { // no breakpoint at PC
+				drm.setData(false);
+				drm.done();
+			}
+		} else {
+			drm.setData(false);
+			drm.done();
+		}
+	}
+
+	public void step(IExecutionDMContext context, StepType stepType, final RequestMonitor rm) {
+		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+				MessageFormat.format("{0} context {1}", stepType, context));
+
+		if (!(context instanceof ExecutionDMC)) {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, MessageFormat.format(
+					"The context [{0}] is not a recognized execution context.", context), null));
+			rm.done();
+		}
+
+		final ExecutionDMC dmc = (ExecutionDMC) context;
+
+		dmc.setStepping(true);
+
+		IAddress pcAddress = null;
+
+		if (dmc.getPC() == null) { // PC is even unknown, can only do
+			// one-instruction step.
+			stepType = StepType.INSTRUCTION_STEP_INTO;
+		} else
+			pcAddress = new Addr64(dmc.getPC(), 16);
+
+		// For step-out (step-return), no difference between source level or
+		// instruction level.
+		//
+		if (stepType == StepType.STEP_RETURN)
+			stepType = StepType.INSTRUCTION_STEP_RETURN;
+
+		// Source level stepping request.
+		// 
+		if (stepType == StepType.STEP_OVER || stepType == StepType.STEP_INTO) {
+			Modules moduleService = getServicesTracker().getService(Modules.class);
+
+			ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+
+			ModuleDMC module = moduleService.getModuleByAddress(symCtx, pcAddress);
+
+			// Check if there is source info for PC address.
+			//
+			if (module != null) {
+				IEDCSymbolReader reader = module.getSymbolReader();
+				if (reader != null) {
+					IAddress linkAddress = module.toLinkAddress(pcAddress);
+					ICompileUnitScope cu = reader.getCompileUnitForAddress(linkAddress);
+					if (cu != null) {
+						ILineEntry line = cu.getLineEntryAtAddress(linkAddress);
+						if (line != null) {
+							// get runtime addresses of the line boundaries.
+							IAddress endAddr = module.toRuntimeAddress(line.getHighAddress());
+
+							// get the next source line entry that has a line #
+							// greater
+							// than the current line # (and in the same file),
+							// but is
+							// not outside of the function address range
+							// if found, the start addr of that entry is our end
+							// address, otherwise use the existing end address
+							ILineEntry nextLine = cu.getNextLineEntry(line);
+							if (nextLine != null) {
+								endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
+							}
+
+							/*
+							 * It's possible that PC is larger than startAddr
+							 * (e.g. user does a few instruction level stepping
+							 * then switch to source level stepping; or when we
+							 * just step out a function). We just parse and
+							 * stepping instructions within [pcAddr, endAddr)
+							 * instead of all those within [startAddr, endAddr).
+							 * One possible problem with the solution is when
+							 * control jumps from within [pcAddress, endAddr) to
+							 * somewhere within [startAddr, pcAddress), the
+							 * stepping would stop at somewhere within
+							 * [startAddr, pcAddress) instead of outside of the
+							 * [startAddr, endAddr). But that case is rare (e.g.
+							 * a source line contains a bunch of statements) and
+							 * that "problem" is not unacceptable as user could
+							 * just keep stepping or set a breakpoint and run.
+							 * 
+							 * We can overcome the problem but that would incur
+							 * much more complexity in the stepping code and
+							 * brings down the stepping speed.
+							 * ........................ 08/30/2009
+							 */
+							stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
+
+							EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
+									"source level stepping.");
+							return;
+						}
+					}
+				}
+			}
+
+			// No source found, fall back to instruction level step.
+			if (stepType == StepType.STEP_INTO)
+				stepType = StepType.INSTRUCTION_STEP_INTO;
+			else
+				stepType = StepType.INSTRUCTION_STEP_OVER;
+		}
+
+		// instruction level step
+		// 
+		if (stepType == StepType.INSTRUCTION_STEP_OVER)
+			stepOverOneInstruction(dmc, pcAddress, rm);
+		else if (stepType == StepType.INSTRUCTION_STEP_INTO)
+			stepIntoOneInstruction(dmc, rm);
+		else if (stepType == StepType.INSTRUCTION_STEP_RETURN)
+			stepOut(dmc, pcAddress, rm);
+
+		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+	}
+
+	private void stepOut(final ExecutionDMC dmc, IAddress pcAddress, final RequestMonitor rm) {
+
+		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+				"Step out from address " + pcAddress.toHexAddressString());
+
+		if (dmc.supportsStepMode(StepType.STEP_RETURN)) {
+			dmc.stepOut(rm);
+			return;
+		}
+
+		Stack stackService = getServicesTracker().getService(Stack.class);
+		IFrameDMContext[] frames = stackService.getFramesForDMC(dmc, 0, 1);
+		if (frames.length <= 1) {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+					"Cannot step out as no caller frame is available.", null));
+			rm.done();
+			return;
+		}
+
+		final IAddress stepToAddress = ((StackFrameDMC) frames[1]).getIPAddress();
+		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+
+		prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
+			@Override
+			protected void handleSuccess() {
+
+				boolean goon = true;
+
+				if (getData() == true) {
+					// one instruction has been executed
+					IAddress newPC = new Addr64(dmc.getPC(), 16);
+
+					// And we already stepped out (that instruction is return
+					// instruction).
+					//
+					if (newPC.equals(stepToAddress)) {
+						goon = false;
+					}
+				}
+
+				if (goon) {
+					bpService.setTempBreakpoint(dmc, stepToAddress, new RequestMonitor(getExecutor(), rm) {
+						@Override
+						protected void handleSuccess() {
+							dmc.resumeForStepping(rm);
+						}
+					});
+				} else
+					rm.done();
+			}
+		});
+	}
+
+	/**
+	 * check if the instruction at PC is a subroutine call. If yes, set a
+	 * breakpoint after it and resume; otherwise just execute one instruction.
+	 * 
+	 * @param dmc
+	 * @param pcAddress
+	 * @param rm
+	 */
+	private void stepOverOneInstruction(final ExecutionDMC dmc, final IAddress pcAddress, final RequestMonitor rm) {
+
+		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+				"address " + pcAddress.toHexAddressString());
+
+		if (dmc.supportsStepMode(StepType.INSTRUCTION_STEP_OVER)) {
+			dmc.singleStep(false, rm);
+			return;
+		}
+
+		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
+		if (disassembler == null) {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+					"No disassembler is available yet.", null));
+			rm.done();
+			return;
+		}
+
+		Memory memoryService = getServicesTracker().getService(Memory.class);
+		IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(dmc, IMemoryDMContext.class);
+
+		// We need to get the instruction at the PC. We have to
+		// retrieve memory bytes for longest instruction.
+		int maxInstLength = getTargetEnvironmentService().getLongestInstructionLength();
+
+		// Note this memory read will give us memory bytes with
+		// debugger breakpoints removed, which is just what we want.
+		memoryService.getMemory(mem_dmc, pcAddress, 0, 1, maxInstLength, new DataRequestMonitor<MemoryByte[]>(
+				getExecutor(), rm) {
+			@Override
+			protected void handleSuccess() {
+				MemoryByte[] data = getData();
+				final byte[] bytes = new byte[data.length];
+				for (int i = 0; i < data.length; i++)
+					bytes[i] = data[i].getValue();
+
+				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
+
+				DisassembledInstruction inst;
+
+				Map<String, Object> options = new HashMap<String, Object>();
+				try {
+					inst = disassembler.disassembleOneInstruction(pcAddress, codeBuf, options);
+				} catch (CoreException e) {
+					rm.setStatus(e.getStatus());
+					rm.done();
+					return;
+				}
+
+				final boolean isSubroutineCall = inst.getJumpToAddress() != null
+						&& inst.getJumpToAddress().isSubroutineAddress();
+				final IAddress nextInstructionAddress = pcAddress.add(inst.getSize());
+
+				stepIntoOneInstruction(dmc, new RequestMonitor(getExecutor(), rm) {
+					@Override
+					protected void handleSuccess() {
+						if (!isSubroutineCall)
+							rm.done();
+						else {
+							// If current instruction is subroutine call, set a
+							// temp
+							// breakpoint at next instruction and resume ...
+							//
+							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+							bpService.setTempBreakpoint(dmc, nextInstructionAddress, new RequestMonitor(getExecutor(),
+									rm) {
+								@Override
+								protected void handleSuccess() {
+									dmc.resumeForStepping(rm);
+								}
+							});
+						}
+					}
+				});
+			}
+		});
+	}
+
+	/**
+	 * Step into or over an address range. Note the startAddr is also the PC
+	 * value.
+	 * 
+	 * @param dmc
+	 * @param stepIn
+	 *            - whether to step-in.
+	 * @param startAddr
+	 *            - also the PC register value.
+	 * @param endAddr
+	 * @param rm
+	 *            - marked done after the stepping is over and context is
+	 *            suspended again.
+	 */
+	private void stepAddressRange(final ExecutionDMC dmc, final boolean stepIn, final IAddress startAddr,
+			final IAddress endAddr, final RequestMonitor rm) {
+
+		EDCDebugger.getDefault().getTrace().traceEntry(
+				IEDCTraceOptions.RUN_CONTROL_TRACE,
+				MessageFormat.format("address range [{0},{1})", startAddr.toHexAddressString(), endAddr
+						.toHexAddressString()));
+
+		if (dmc.supportsStepMode(stepIn ? StepType.STEP_INTO : StepType.STEP_OVER)) {
+			dmc.stepRange(stepIn, startAddr, endAddr, rm);
+			return;
+		}
+
+		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
+		if (disassembler == null) {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+					"No disassembler is available yet.", null));
+			rm.done();
+			return;
+		}
+
+		final Memory memoryService = getServicesTracker().getService(Memory.class);
+		IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(dmc, IMemoryDMContext.class);
+
+		int memSize = startAddr.distanceTo(endAddr).intValue();
+
+		final IAddress pcAddress = startAddr;
+
+		// Note this memory read will give us memory bytes with
+		// debugger breakpoints removed, which is just what we want.
+		memoryService.getMemory(mem_dmc, startAddr, 0, 1, memSize, new DataRequestMonitor<MemoryByte[]>(getExecutor(),
+				rm) {
+			@Override
+			protected void handleSuccess() {
+				MemoryByte[] data = getData();
+				final byte[] bytes = new byte[data.length];
+				for (int i = 0; i < data.length; i++)
+					bytes[i] = data[i].getValue();
+
+				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
+
+				List<DisassembledInstruction> instList;
+
+				Map<String, Object> options = new HashMap<String, Object>();
+				try {
+					instList = disassembler.disassembleInstructions(startAddr, endAddr, codeBuf, options);
+				} catch (CoreException e) {
+					rm.setStatus(e.getStatus());
+					rm.done();
+					return;
+				}
+
+				// Now collect all possible stop points
+				//
+				final List<IAddress> stopPoints = new ArrayList<IAddress>();
+				final List<IAddress> runToAndCheckPoints = new ArrayList<IAddress>();
+
+				for (DisassembledInstruction inst : instList) {
+					final IAddress instAddr = inst.getAddress();
+
+					JumpToAddress jta = inst.getJumpToAddress();
+					if (jta == null)
+						continue;
+
+					// the instruction is a control-change instruction
+					//
+					if (!jta.isImmediate()) {
+
+						if (inst.getAddress().equals(pcAddress)) {
+							// Control is already at the instruction, evaluate
+							// it.
+							//
+							String expr = (String) jta.getValue();
+							if (expr.equals(JumpToAddress.EXPRESSION_RETURN_FAR)
+									|| expr.equals(JumpToAddress.EXPRESSION_RETURN_NEAR)) {
+								// The current instruction is return
+								// instruction. Just execute it
+								// to step-out and we are done with the
+								// stepping. This way we avoid
+								// looking for return address from caller stack
+								// frame which may not
+								// even available.
+								// Is it possible that the destination address
+								// of the step-out
+								// is still within the [startAddr, endAddr)
+								// range ? In theory
+								// yes, but in practice it means one source line
+								// has several
+								// function bodies in it, who the hell would do
+								// that ?
+								//
+								stepIntoOneInstruction(dmc, rm);
+								return;
+							} else { // others
+								// evaluate the address expression
+								IAddressExpressionEvaluator evaluator = getTargetEnvironmentService()
+										.getAddressExpressionEvaluator();
+								if (evaluator == null) {
+									rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+											"No evaluator for address expression yet.", null));
+									rm.done();
+									return;
+								}
+
+								Registers regService = getServicesTracker().getService(Registers.class);
+
+								IAddress addr;
+								try {
+									addr = evaluator.evaluate(dmc, expr, regService, memoryService);
+								} catch (CoreException e) {
+									rm.setStatus(e.getStatus());
+									rm.done();
+									return;
+								}
+
+								stopPoints.add(addr);
+							}
+						} else {
+							// we must run to this instruction first
+							//
+							/*
+							 * What if control would skip (jump-over) this
+							 * instruction within the [startAddr, endAddr) range
+							 * ? So we should go on collecting stop points from
+							 * the remaining instructions in the range and then
+							 * do our two-phase stepping (see below)
+							 */
+							runToAndCheckPoints.add(instAddr);
+						}
+					} else { // "jta" is immediate address.
+
+						IAddress jumpAddress = (IAddress) jta.getValue();
+
+						if (jta.isSoleDestination()) {
+							if (jta.isSubroutineAddress()) {
+								// is subroutine call
+								if (stepIn) {
+									stopPoints.add(jumpAddress);
+									// no need to check remaining instructions
+									// !! Wrong. Control may jump over (skip)
+									// this instruction
+									// within the [startAddr, endAddr) range, so
+									// we still need
+									// to parse instructions after this
+									// instruction.
+									// break;
+								} else {
+									// step over the call instruction. Just stop
+									// at next instruction.
+									// nothing to do.
+								}
+							} else {
+								// Unconditional jump instruction
+								// ignore jump within the address range
+								if (!(startAddr.compareTo(jumpAddress) <= 0 && jumpAddress.compareTo(endAddr) < 0)) {
+									stopPoints.add(jumpAddress);
+								}
+							}
+						} else {
+							// conditional jump
+							// ignore jump within the address range
+							if (!(startAddr.compareTo(jumpAddress) <= 0 && jumpAddress.compareTo(endAddr) < 0))
+								stopPoints.add(jumpAddress);
+						}
+					}
+				} // end of parsing instructions
+
+				// need a temp breakpoint at the "endAddr".
+				stopPoints.add(endAddr);
+
+				if (runToAndCheckPoints.size() > 0) {
+					// Now do our two-phase stepping.
+					//
+
+					if (runToAndCheckPoints.size() > 1) {
+						/*
+						 * Wow, there are two control-change instructions in the
+						 * range that requires run-to-check (let's call them RTC
+						 * point). In theory the stepping might fail (not stop
+						 * as desired) in such case: When we try to run to the
+						 * first RTC, the control may skip the first RTC and run
+						 * to second RTC (note we don't know the stop points of
+						 * the second RTC yet) and run out of the range and be
+						 * gone with the wind...
+						 * 
+						 * There is no way we can solve the problem. Good thing
+						 * is, in practice is the case even possible ?
+						 */
+						// Log (and show it, get rid of the "show" part after
+						// tons of test) warning here.
+						EDCDebugger
+								.getMessageLogger()
+								.logAndShow(
+										new Status(
+												IStatus.WARNING,
+												EDCDebugger.PLUGIN_ID,
+												MessageFormat
+														.format(
+																"More than one run-to-check points in the address range [{0},{1}). Stepping might fail.",
+																startAddr.toHexAddressString(), endAddr
+																		.toHexAddressString())));
+					}
+
+					// ------------ Phase 1: run to the first RTC.
+					//
+					// recursive call
+					stepAddressRange(dmc, stepIn, startAddr, runToAndCheckPoints.get(0), new RequestMonitor(
+							getExecutor(), rm) {
+						@Override
+						protected void handleSuccess() {
+							IAddress newPC = new Addr64(dmc.getPC(), 16);
+
+							boolean doneWithStepping = false;
+							for (IAddress addr : stopPoints)
+								if (newPC.equals(addr)) {
+									doneWithStepping = true; // done with the
+									// stepping
+									break;
+								}
+
+							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+							if (bpService.findUserBreakpoint(newPC) != null) { // hit
+								// a
+								// user
+								// breakpoint
+								doneWithStepping = true;
+							}
+
+							if (!doneWithStepping)
+								// -------- Phase 2: run to the "endAddr".
+								//
+								stepAddressRange(dmc, stepIn, newPC, endAddr, rm); // Recursive
+							// call
+							else
+								rm.done();
+						}
+					});
+				} else { // no RTC points, set temp breakpoints at stopPoints
+					// and run...
+
+					// Make sure we step over breakpoint at PC (if any)
+					//
+					prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
+						@Override
+						protected void handleSuccess() {
+
+							boolean goon = true;
+
+							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+
+							if (getData() == true) {
+								// one instruction has been executed
+								IAddress newPC = new Addr64(dmc.getPC(), 16);
+
+								if (bpService.findUserBreakpoint(newPC) != null) {
+									// hit a user breakpoint. Stepping finishes.
+									goon = false;
+								} else {
+									// Check if we finish the stepping by
+									// checking the newPC against
+									// our stopPoints instead of checking if
+									// newPC is outside of [startAddr, endAddr)
+									// so that such case would not fail: step
+									// over this address range:
+									//
+									// 0x10000 call ... // a user breakpoint is
+									// set here
+									// 0x10004 ...
+									// 0x1000c ...
+									// 
+									//
+									for (IAddress addr : stopPoints)
+										if (newPC.equals(addr)) {
+											goon = false;
+											break;
+										}
+								}
+							}
+
+							if (goon) {
+								// Now set temp breakpoints at our stop points.
+								//
+								CountingRequestMonitor setTempBpRM = new CountingRequestMonitor(getExecutor(), rm) {
+									@Override
+									protected void handleSuccess() {
+										// we are done setting all temporary
+										// breakpoints
+										dmc.resumeForStepping(rm);
+									}
+								};
+
+								setTempBpRM.setDoneCount(stopPoints.size());
+
+								for (IAddress addr : stopPoints) {
+									bpService.setTempBreakpoint(dmc, addr, setTempBpRM);
+								}
+							} else
+								rm.done();
+						}
+					});
+				}
+
+			}
+		});
+	}
+
+	/**
+	 * step-into one instruction at current PC, namely execute only one
+	 * instruction.
+	 * 
+	 * @param dmc
+	 * @param rm
+	 *            - this RequestMonitor is marked done when the execution
+	 *            finishes and target suspends again.
+	 */
+	private void stepIntoOneInstruction(final ExecutionDMC dmc, final RequestMonitor rm) {
+
+		// TODO what about protocols that supports stepping past breakpoints
+		// like TRK?
+
+		prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
+			@Override
+			protected void handleSuccess() {
+				if (getData() == true /* already executed one instruction */)
+					// The "step" is over
+					rm.done();
+				else {
+					dmc.setStepping(true);
+					dmc.singleStep(true, rm);
+				}
+			}
+		});
+	}
+
+	public void suspend(IExecutionDMContext context, RequestMonitor requestMonitor) {
+		if (context instanceof ExecutionDMC) {
+			((ExecutionDMC) context).suspend(requestMonitor);
+		} else {
+			requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, MessageFormat
+					.format("The context [{0}] is not a recognized execution context.", context), null));
+			requestMonitor.done();
+		}
+	}
+
+	public void getModelData(IDMContext dmc, DataRequestMonitor<?> rm) {
+		rm.done();
+	}
+
+	public void flushCache(IDMContext context) {
+		if (isSnapshot())
+			return;
+		// Flush the Registers cache immediately
+		// For instance the readPCRegister() may get wrong PC value when an
+		// asynchronous suspend event comes too quick after resume.
+		Registers regService = getServicesTracker().getService(Registers.class);
+		regService.flushCache(context);
+	}
+
+	@Override
+	public void shutdown(RequestMonitor monitor) {
+		if (tcfRunService != null) {
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					tcfRunService.removeListener(runListener);
+				}
+			});
+		}
+		unregister();
+		super.shutdown(monitor);
+	}
+
+	public ExecutionDMC getRootDMC() {
+		return rootExecutionDMC;
+	}
+
+	public static class StartedEvent extends AbstractDMEvent<IExecutionDMContext> implements IStartedDMEvent {
+
+		public StartedEvent(IExecutionDMContext context) {
+			super(context);
+		}
+	}
+
+	public static class ExitedEvent extends AbstractDMEvent<IExecutionDMContext> implements IExitedDMEvent {
+
+		public ExitedEvent(IExecutionDMContext context) {
+			super(context);
+		}
+
+	}
+
+	private final org.eclipse.tm.tcf.services.IRunControl.RunControlListener runListener = new org.eclipse.tm.tcf.services.IRunControl.RunControlListener() {
+
+		public void containerResumed(String[] context_ids) {
+			// TODO Auto-generated method stub
+
+		}
+
+		public void containerSuspended(String context, String pc, String reason, Map<String, Object> params,
+				String[] suspended_ids) {
+			// TODO Auto-generated method stub
+
+		}
+
+		public void contextAdded(RunControlContext[] contexts) {
+			for (RunControlContext ctx : contexts) {
+				ExecutionDMC dmc = rootExecutionDMC;
+				String parentID = ctx.getParentID();
+				if (parentID != null)
+					dmc = dmcsByID.get(parentID);
+				if (dmc != null) {
+					dmc.contextAdded(ctx.getProperties(), ctx);
+				}
+			}
+		}
+
+		public void contextChanged(RunControlContext[] contexts) {
+			// TODO Auto-generated method stub
+
+		}
+
+		public void contextException(String context, String msg) {
+			ExecutionDMC dmc = getContext(context);
+			dmc.contextException(msg);
+		}
+
+		public void contextRemoved(String[] context_ids) {
+			for (String contextID : context_ids) {
+				ExecutionDMC dmc = getContext(contextID);
+				ExecutionDMC parent = dmc.getParentExecutionDMC();
+				if (parent != null) {
+					parent.contextRemoved(contextID);
+				}
+			}
+		}
+
+		public void contextResumed(String context) {
+			ExecutionDMC dmc = getContext(context);
+			dmc.contextResumed(true);
+		}
+
+		public void contextSuspended(final String context, final String pc, final String reason,
+				final Map<String, Object> params) {
+			ExecutionDMC dmc = getContext(context);
+			dmc.contextSuspended(pc, reason, params);
+		}
+	};
+
+	public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+		Element contextsElement = document.createElement(EXECUTION_CONTEXTS);
+
+		ExecutionDMC[] dmcs = rootExecutionDMC.getChildren();
+
+		for (ExecutionDMC executionDMC : dmcs) {
+			Element dmcElement = executionDMC.takeShapshot(album, document, monitor);
+			contextsElement.appendChild(dmcElement);
+		}
+		return contextsElement;
+	}
+
+	public ExecutionDMC getContext(String contextID) {
+		// TODO Handle missing DMCs
+		return dmcsByID.get(contextID);
+	}
+
+	public void loadSnapshot(Element snapshotRoot) throws Exception {
+		NodeList ecElements = snapshotRoot.getElementsByTagName(EXECUTION_CONTEXTS);
+		initializeRootExecutionDMC();
+		rootExecutionDMC.loadSnapshot((Element) ecElements.item(0));
+	}
+
+	public void tcfServiceReady(IService service) {
+		if (service instanceof org.eclipse.tm.tcf.services.IRunControl) {
+			tcfRunService = (org.eclipse.tm.tcf.services.IRunControl) service;
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					tcfRunService.addListener(runListener);
+				}
+			});
+		} else
+			assert false;
+	}
+}

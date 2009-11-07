@@ -1,0 +1,46 @@
+/*******************************************************************************
+ * Copyright (c) 2009 Nokia and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ * Nokia - Initial API and implementation
+ *******************************************************************************/
+package org.eclipse.cdt.debug.edc.launch;
+
+import java.text.MessageFormat;
+import java.util.MissingResourceException;
+import java.util.ResourceBundle;
+
+public class LaunchMessages {
+
+	private static final String BUNDLE_NAME = "org.eclipse.cdt.debug.edc.launch.LaunchMessages";//$NON-NLS-1$
+
+	private static ResourceBundle RESOURCE_BUNDLE = null;
+
+	static {
+		try {
+			RESOURCE_BUNDLE = ResourceBundle.getBundle(BUNDLE_NAME);
+		} catch (MissingResourceException x) {
+		}
+	}
+
+	private LaunchMessages() {
+	}
+
+	public static String getFormattedString(String key, String arg) {
+		return MessageFormat.format(getString(key), new Object[] { arg });
+	}
+
+	public static String getFormattedString(String key, String[] args) {
+		return MessageFormat.format(getString(key), (Object[]) args);
+	}
+
+	public static String getString(String key) {
+		if (RESOURCE_BUNDLE == null)
+			return '!' + key + '!';
+		return RESOURCE_BUNDLE.getString(key);
+	}
+}

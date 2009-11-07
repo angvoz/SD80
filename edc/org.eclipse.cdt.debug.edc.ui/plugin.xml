@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+
+  <extension
+         point="org.eclipse.debug.ui.launchConfigurationTypeImages">
+      <launchConfigurationTypeImage
+            icon="icons/obj16/snapshot_launch_config.png"
+            configTypeID="org.eclipse.cdt.debug.edc.snapshot"
+            id="org.eclipse.cdt.debug.edc.snapshotImage">
+      </launchConfigurationTypeImage>
+    </extension>
+
+   <extension
+         point="org.eclipse.debug.ui.launchConfigurationTabGroups">
+      <launchConfigurationTabGroup
+            type="org.eclipse.cdt.debug.edc.snapshot"
+            class="org.eclipse.cdt.debug.edc.internal.ui.launch.SnapshotTabGroup"
+            id="org.eclipse.cdt.debug.edc.launch.SnapshotTabGroup">
+      </launchConfigurationTabGroup>
+    </extension>
+
+   <extension
+         point="org.eclipse.ui.actionSets">
+      <actionSet
+            description="Snapshot Debugging"
+            id="org.eclipse.cdt.debug.edc.ui.snapshotDebuggingActionSet"
+            label="Snapshot Debugging"
+            visible="true">
+      </actionSet>
+   </extension>
+
+  <extension
+         point="org.eclipse.ui.commands">
+      <category
+            description="Set of commands for debug snapshots"
+            id="org.eclipse.cdt.debug.edc.ui.debugSnapshotCategory"
+            name="Debug Snapshots">
+      </category>
+      <command
+            categoryId="org.eclipse.cdt.debug.edc.ui.debugSnapshotCategory"
+            description="Create a snapshot of the debug session"
+            id="org.eclipse.cdt.debug.edc.ui.createSnapshot"
+            name="Create Snapshot">
+      </command>
+     <command
+            categoryId="org.eclipse.cdt.debug.edc.ui.debugSnapshotCategory"
+            description="Show the previous snapshot in the album"
+            id="org.eclipse.cdt.debug.edc.ui.previousSnapshot"
+            name="Previous Snapshot">
+      </command>
+     <command
+            categoryId="org.eclipse.cdt.debug.edc.ui.debugSnapshotCategory"
+            description="Show the next snapshot in the album"
+            id="org.eclipse.cdt.debug.edc.ui.nextSnapshot"
+            name="Next Snapshot">
+      </command>
+     <command
+            categoryId="org.eclipse.cdt.debug.edc.ui.debugSnapshotCategory"
+            description="Show each snapshot in the album"
+            id="org.eclipse.cdt.debug.edc.ui.playSnapshots"
+            name="Play Snapshots">
+      </command>
+   </extension>
+
+  <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            locationURI="toolbar:org.eclipse.debug.ui.DebugView?after=threadGroup">
+           <command
+                  commandId="org.eclipse.cdt.debug.edc.ui.createSnapshot"
+                  icon="icons/etool16/create_snapshot.png"
+                  id="org.eclipse.cdt.debug.edc.ui.button.createSnapshot"
+                  label="Create Snapshot"
+                  style="push">
+            <visibleWhen
+                  checkEnabled="false">
+               <reference
+                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotCreationAvailable">
+               </reference>
+            </visibleWhen>
+            </command>
+
+           <command
+                  commandId="org.eclipse.cdt.debug.edc.ui.playSnapshots"
+                  icon="icons/etool16/play_snapshots.gif"
+                  id="org.eclipse.cdt.debug.edc.ui.button.playSnapshots"
+                  label="Play Snapshot"
+                  style="push">
+            <visibleWhen
+                  checkEnabled="false">
+               <reference
+                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+               </reference>
+            </visibleWhen>
+            </command>
+ 
+           <command
+                  commandId="org.eclipse.cdt.debug.edc.ui.previousSnapshot"
+                  icon="icons/etool16/previous_snapshot.gif"
+                  id="org.eclipse.cdt.debug.edc.ui.button.previousSnapshot"
+                  label="Previous Snapshot"
+                  style="push">
+            <visibleWhen
+                  checkEnabled="false">
+               <reference
+                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+               </reference>
+            </visibleWhen>
+            </command>
+ 
+           <command
+                  commandId="org.eclipse.cdt.debug.edc.ui.nextSnapshot"
+                  icon="icons/etool16/next_snapshot.gif"
+                  id="org.eclipse.cdt.debug.edc.ui.button.nextSnapshot"
+                  label="Next Snapshot"
+                  style="push">
+            <visibleWhen
+                  checkEnabled="false">
+               <reference
+                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+               </reference>
+            </visibleWhen>
+            </command>
+      </menuContribution>
+       </extension>
+
+    <extension
+         point="org.eclipse.core.expressions.definitions">
+      <definition
+            id="org.eclipse.cdt.debug.edc.ui.testIsSnapshotDebuggingActionSetActive">
+         <with
+               variable="activeContexts">
+            <iterate
+                  operator="or">
+               <equals
+                     value="org.eclipse.cdt.debug.edc.ui.snapshotDebuggingActionSet">
+               </equals>
+            </iterate>
+         </with>
+      </definition>
+      <definition
+            id="org.eclipse.cdt.debug.edc.ui.testIsEDCUIPluginActive">
+         <with
+               variable="org.eclipse.core.runtime.Platform">
+            <test
+                  args="org.eclipse.cdt.debug.edc.ui"
+                  property="org.eclipse.core.runtime.bundleState"
+                  value="ACTIVE">
+            </test>
+         </with>
+      </definition>
+      <definition
+            id="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+         <and>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCUIPluginActive">
+            </reference>
+             <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotDebuggingActionSetActive">
+            </reference>
+             <or>
+               <with
+                     variable="activePart">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isSnapshotSession">
+                  </test>
+               </with>
+               <with
+                     variable="selection">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isSnapshotSession">
+                  </test>
+               </with>
+            </or>
+           </and>
+      </definition>
+      <definition
+            id="org.eclipse.cdt.debug.edc.ui.testIsSnapshotCreationAvailable">
+         <and>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCUIPluginActive">
+            </reference>
+             <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotDebuggingActionSetActive">
+            </reference>
+            <or>
+               <with
+                     variable="activePart">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isSnapshotCreationAvailable">
+                  </test>
+               </with>
+               <with
+                     variable="selection">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isSnapshotCreationAvailable">
+                  </test>
+               </with>
+            </or>
+           </and>
+      </definition>
+  </extension>
+  
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.CreateSnapshotCommandHandler"
+            commandId="org.eclipse.cdt.debug.edc.ui.createSnapshot">
+         <enabledWhen>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotCreationAvailable">
+            </reference>
+         </enabledWhen>
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.PlaySnapshotsCommandHandler"
+            commandId="org.eclipse.cdt.debug.edc.ui.playSnapshots">
+         <enabledWhen>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+            </reference>
+         </enabledWhen>
+      </handler>
+     <handler
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.PreviousSnapshotCommandHandler"
+            commandId="org.eclipse.cdt.debug.edc.ui.previousSnapshot">
+         <enabledWhen>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+            </reference>
+         </enabledWhen>
+      </handler>
+     <handler
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.NextSnapshotCommandHandler"
+            commandId="org.eclipse.cdt.debug.edc.ui.nextSnapshot">
+         <enabledWhen>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+            </reference>
+         </enabledWhen>
+      </handler>
+  </extension>
+ 
+  <extension
+         point="org.eclipse.core.expressions.propertyTesters">
+      <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.selectionSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isSnapshotCreationAvailable"
+            type="org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext">
+      </propertyTester>
+      <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.partSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isSnapshotCreationAvailable"
+            type="org.eclipse.ui.IWorkbenchPart">
+      </propertyTester>
+     <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.selectionSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isSnapshotSession"
+            type="org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext">
+      </propertyTester>
+      <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.partSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isSnapshotSession"
+            type="org.eclipse.ui.IWorkbenchPart">
+      </propertyTester>
+    </extension>
+   
+   <extension
+         point="org.eclipse.ui.actionSets">
+      <actionSet
+            description="EDC Debugger"
+            id="org.eclipse.cdt.debug.edc.ui.debugEDCActionSet"
+            label="EDC Debugger"
+            visible="true">
+      </actionSet>
+   </extension>
+    
+   <extension
+         point="org.eclipse.debug.ui.memoryRenderings">
+      <renderingBindings
+            defaultIds="org.eclipse.cdt.debug.ui.memory.traditional.TraditionalRendering"
+            primaryId="org.eclipse.cdt.debug.ui.memory.traditional.TraditionalRendering"
+            renderingIds="org.eclipse.cdt.debug.ui.memory.traditional.TraditionalRendering">
+      </renderingBindings>
+   </extension>
+  
+    <extension
+         point="org.eclipse.ui.activities">
+ 
+      <category
+            name="EDC Snapshot Debugging"
+            description="Elements associated with snapshot albums"
+            id="org.eclipse.cdt.debug.edc.ui.snapshotCatagory">
+      </category>
+  
+       <categoryActivityBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.snapshotActivity"
+            categoryId="com.nokia.carbide.cpp.debug.nokiacategory">
+      </categoryActivityBinding>
+  
+      <activity
+            name="Snapshot Actions"
+            description="These actions control snapshot albums"
+            id="org.eclipse.cdt.debug.edc.ui.snapshotActivity">
+       </activity>
+   
+      <activityPatternBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.snapshotActivity"
+            isEqualityPattern="true" 
+            pattern="org.eclipse.debug.ui.commands.Resume">
+      </activityPatternBinding>
+      
+     </extension>
+   
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            name="EDC TCF Trace"
+            icon="icons/obj16/tcf.gif"
+            category="org.eclipse.debug.ui"
+            class="org.eclipse.cdt.debug.edc.internal.ui.TraceView"
+            id="org.eclipse.cdt.debug.edc.TraceView">
+      </view>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.adapters">
+      <factory
+            adaptableType="org.eclipse.cdt.debug.edc.launch.EDCLaunch"
+            class="org.eclipse.cdt.debug.edc.ui.EDCAdapterFactory">
+         <adapter
+               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider">
+         </adapter>
+         <adapter
+               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory">
+         </adapter>
+         <adapter
+               type="org.eclipse.debug.ui.contexts.ISuspendTrigger">
+         </adapter>
+         <adapter
+               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IColumnPresentationFactory">
+         </adapter>
+      </factory>
+   </extension>
+
+   <extension
+         point="org.eclipse.cdt.ui.textHovers">
+      <hover
+            activate="true"
+            class="org.eclipse.cdt.dsf.debug.ui.DebugTextHover"
+            description="Shows formatted value in debugger hover"
+            id="org.eclipse.cdt.debug.edc.DebugTextHover"
+            label="Debug Text Hover">
+      </hover>
+   </extension>
+   
+</plugin>

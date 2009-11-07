@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.cdt.debug.edc.tcfAgentDescriptor">
+      <descriptor
+            class="org.eclipse.cdt.debug.edc.windows.Win32AgentDescriptor">
+      </descriptor>
+   </extension>
+
+  <extension
+        point="org.eclipse.debug.core.launchDelegates">
+     <launchDelegate
+           delegate="org.eclipse.cdt.debug.edc.windows.launch.WindowsLaunchDelegate"
+           delegateDescription="Start new process under control of EDC debugger"
+           id="org.eclipse.cdt.debug.edc.windows.localLaunchDelegate"
+           modes="run,debug"
+           name="EDC Create Process (Windows)"
+           sourceLocatorId="org.eclipse.cdt.debug.ui.DefaultSourceLocator"
+           sourcePathComputerId="org.eclipse.cdt.debug.core.sourcePathComputer"
+           type="org.eclipse.cdt.launch.applicationLaunchType">
+     </launchDelegate>
+     <launchDelegate
+           delegate="org.eclipse.cdt.debug.edc.windows.launch.WindowsLaunchDelegate"
+           delegateDescription="Attach EDC debugger to a running program."
+           id="org.eclipse.cdt.debug.edc.windows.attachLaunchDelegate"
+           modes="debug"
+           name="EDC Attach to process (Windows)"
+           sourceLocatorId="org.eclipse.cdt.debug.core.sourceLocator"
+           sourcePathComputerId="org.eclipse.cdt.debug.core.sourcePathComputer"
+           type="org.eclipse.cdt.launch.attachLaunchType">
+     </launchDelegate>
+  </extension>
+
+   <extension
+         point="org.eclipse.ui.console.consoleFactories">
+      <consoleFactory
+            class="org.eclipse.cdt.debug.edc.windows.launch.WindowsProgramOutputConsoleFactory"
+            label="Windows Program Output Console">
+      </consoleFactory>
+   </extension>
+
+ 	<extension
+         point="org.eclipse.ui.console.consolePageParticipants">
+      <consolePageParticipant
+            class="org.eclipse.cdt.debug.edc.ui.console.LoggingConsolePageParticipant"
+            id="com.nokia.carbide.cpp.edc.WindowsConsolePageParticipant">
+         <enablement>
+            <test property="org.eclipse.ui.console.consoleTypeTest" value="WindowsProgramOutputConsoleFactory"/>
+         </enablement>
+      </consolePageParticipant>
+   </extension>
+
+</plugin>

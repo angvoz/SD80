@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension-point id="tcfAgentDescriptor" name="TCF Agent Descriptor" schema="schema/tcfAgentDescriptor.exsd"/>
+
+   <extension
+         id="EDCApplication"
+         name="EDC Application"
+         point="org.eclipse.core.runtime.applications">
+      <application
+            visible="true">
+         <run
+               class="org.eclipse.cdt.debug.edc.internal.EDCApplication">
+         </run>
+      </application>
+   </extension>
+
+   <extension
+         point="org.eclipse.debug.core.launchConfigurationTypes">
+     <launchConfigurationType
+            sourceLocatorId="org.eclipse.cdt.debug.core.sourceLocator"
+            sourcePathComputerId="org.eclipse.cdt.debug.core.sourcePathComputer"
+            name="Snapshot Album"
+            delegate="org.eclipse.cdt.debug.edc.internal.launch.SnapshotLaunchDelegate"
+            modes="debug"
+            public="true"
+            id="org.eclipse.cdt.debug.edc.snapshot">
+      </launchConfigurationType>
+  </extension>
+   
+      <extension
+         point="org.eclipse.debug.core.sourceContainerTypes">
+      <sourceContainerType
+            class="org.eclipse.cdt.debug.edc.internal.snapshot.AlbumSourceContainerType"
+            description="Maps files to the album archive"
+            id="org.eclipse.cdt.debug.edc.containerType.albumMapping"
+            name="Album Mapping"/>
+    </extension>
+
+ <!--
+<extension
+       point="org.eclipse.cdt.debug.core.SourceFilesProvider">
+      <provider class="org.eclipse.cdt.debug.edc.internal.symbols.EDCSourceFilesProvider"/>
+   </extension>
+ -->
+   
+   <extension
+         point="org.eclipse.cdt.scripting.scriptableFeature">
+      <scriptableClass
+            class="org.eclipse.cdt.debug.edc.internal.scripting.EDC"
+            name="edc">
+      </scriptableClass>
+      <scriptableClass
+            class="org.eclipse.cdt.debug.edc.internal.scripting.ExecutionContext"
+            name="executionContext">
+      </scriptableClass>
+      <scriptableClass
+            class="org.eclipse.cdt.debug.edc.internal.scripting.Launcher"
+            name="launcher">
+      </scriptableClass>
+      <scriptableClass
+            class="org.eclipse.cdt.debug.edc.internal.scripting.LaunchConfiguration"
+            name="launchConfiguration">
+      </scriptableClass>
+   </extension>
+
+</plugin>

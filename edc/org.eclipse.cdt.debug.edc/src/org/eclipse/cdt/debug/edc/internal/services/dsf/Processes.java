@@ -23,6 +23,7 @@ import org.eclipse.cdt.dsf.debug.service.command.IEventListener;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.tm.tcf.services.IRunControl;
 
 public class Processes extends AbstractEDCService implements IProcesses, IEventListener {
 
@@ -35,7 +36,7 @@ public class Processes extends AbstractEDCService implements IProcesses, IEventL
 		String id;
 
 		public ExecutionDMData(ExecutionDMC dmc) {
-			id = (String) dmc.getProperty(DMContext.PROP_ID);
+			id = (String) dmc.getProperty(IRunControl.PROP_PROCESS_ID);
 			name = (String) dmc.getProperty(DMContext.PROP_NAME);
 		}
 

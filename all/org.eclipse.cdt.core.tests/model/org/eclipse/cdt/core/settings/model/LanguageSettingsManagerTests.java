@@ -20,6 +20,7 @@ import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.dom.IPDOMManager;
+import org.eclipse.cdt.core.internal.errorparsers.tests.ResourceHelper;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
@@ -28,8 +29,10 @@ import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsBaseContributor;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
 
 /**
@@ -41,12 +44,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String DEFAULT_CONTRIBUTOR_NAME_EXT = "Test Plugin Default Language Settings Contributor";
 	private static final String CONTRIBUTOR_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.contributor";
 	private static final String CONTRIBUTOR_NAME_EXT = "Test Plugin Language Settings Contributor";
+	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 
 	private static final String CONFIGURATION_ID = "cfg.id";
-	private static final IPath PATH_0 = new Path("/path0");
+	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
-	/* as defined in test extension point */
-	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 	private static final String CONTRIBUTOR_0 = "test.contributor.0.id";
 	private static final String CONTRIBUTOR_1 = "test.contributor.1.id";
 	private static final String CONTRIBUTOR_2 = "test.contributor.2.id";
@@ -54,8 +56,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String CONTRIBUTOR_NAME_1 = "test.contributor.1.name";
 	private static final String CONTRIBUTOR_NAME_2 = "test.contributor.2.name";
 
-	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID);
-	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR_EXT = new LanguageSettingsResourceDescriptor(CONFIGURATION_ID, PATH_0, LANG_ID_EXT);
+	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR = new LanguageSettingsResourceDescriptor(FILE_0, LANG_ID);
+	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR_EXT = new LanguageSettingsResourceDescriptor(FILE_0, LANG_ID_EXT);
 
 	private class MockContributor extends AbstractExecutableExtensionBase implements ICLanguageSettingsContributor {
 		private final List<ICLanguageSettingEntry> entries;
@@ -859,17 +861,19 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testConfigurationDescription_ParentFolder() throws Exception {
 		// Create model project and accompanied descriptions
-		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
+		ICProject cproject = CProjectHelper.createNewStileCProject(getName(), IPDOMManager.ID_NO_INDEXER);
 		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
-		final IPath parentFolder = new Path("/ParentFolder/");
-		final Path emptySettingsPath = new Path("/ParentFolder/Subfolder/empty");
-		LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(
-				CONFIGURATION_ID, parentFolder, LANG_ID);
+		IProject project = cproject.getProject();
+		final IFolder parentFolder = ResourceHelper.createFolder(project, "/ParentFolder/");
+		assertNotNull(parentFolder);
+		final IFile emptySettingsPath = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/empty");
+		assertNotNull(emptySettingsPath);
+
+		LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(parentFolder, LANG_ID);
 
 		// store the entries in parent folder
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -878,10 +882,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ICLanguageSettingsContributor contributor = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, null)  {
 			@Override
 			public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
-				if (descriptor.getWorkspacePath().equals(parentFolder)) {
+				IFolder pf = parentFolder;
+				if (descriptor.getResource().equals(parentFolder)) {
 					return original;
 				}
-				if (descriptor.getWorkspacePath().equals(emptySettingsPath)) {
+				if (descriptor.getResource().equals(emptySettingsPath)) {
 					return new ArrayList<ICLanguageSettingEntry>(0);
 				}
 				return null;
@@ -893,8 +898,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// retrieve entries for a derived resource (in a subfolder)
+			IFile derived = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/resource");
 			LanguageSettingsResourceDescriptor missingDescriptor = new LanguageSettingsResourceDescriptor(
-					CONFIGURATION_ID, new Path("/ParentFolder/Subfolder/resource"), LANG_ID);
+					derived, LANG_ID);
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, missingDescriptor, CONTRIBUTOR_0);
 			// taken from parent folder
 			assertEquals(original.get(0),retrieved.get(0));
@@ -903,8 +909,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// retrieve entries for not related resource
+			IFile notRelated = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/AnotherFolder/Subfolder/resource"));
 			LanguageSettingsResourceDescriptor missingDescriptor = new LanguageSettingsResourceDescriptor(
-					CONFIGURATION_ID, new Path("/AnotherFolder/Subfolder/resource"), LANG_ID);
+					notRelated, LANG_ID);
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, missingDescriptor, CONTRIBUTOR_0);
 			assertEquals(0, retrieved.size());
 		}
@@ -912,7 +919,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// test distinction between no settings and empty settings
 			LanguageSettingsResourceDescriptor emptyDescriptor = new LanguageSettingsResourceDescriptor(
-					CONFIGURATION_ID, emptySettingsPath, LANG_ID);
+					emptySettingsPath, LANG_ID);
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, emptyDescriptor, CONTRIBUTOR_0);
 			// NOT taken from parent folder
 			assertEquals(0, retrieved.size());
@@ -1080,7 +1087,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// attempt to get entries for wrong language
 			LanguageSettingsResourceDescriptor descriptor = new LanguageSettingsResourceDescriptor(
-					CONFIGURATION_ID, PATH_0, "wrong.lang.id");
+					FILE_0, "wrong.lang.id");
 			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(descriptor);
 			assertEquals(0, retrieved.size());
 		}

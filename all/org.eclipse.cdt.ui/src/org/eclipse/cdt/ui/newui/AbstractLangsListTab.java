@@ -81,15 +81,15 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected boolean toAllCfgs = false;
 	protected boolean toAllLang = false;
 	protected Label  lb1, lb2;
-	protected TableColumn columnToFit = null; 
-	
+	protected TableColumn columnToFit = null;
+
 	protected ICLanguageSetting lang;
 	protected LinkedList<ICLanguageSettingEntry> shownEntries;
-	protected ArrayList<ICSettingEntry> exported; 
+	protected ArrayList<ICSettingEntry> exported;
 	protected SashForm sashForm;
 	protected ICLanguageSetting [] ls; // all languages known
 	private boolean fHadSomeModification;
-	
+
 	private static final int BUTTON_ADD = 0;
 	private static final int BUTTON_EDIT = 1;
 	private static final int BUTTON_DELETE = 2;
@@ -101,7 +101,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected final static String[] BUTTONS = {
 			ADD_STR,
 			EDIT_STR,
-			DEL_STR, 
+			DEL_STR,
 			UIMessages.getString("AbstractLangsListTab.2"), //$NON-NLS-1$
 			null,
 			MOVEUP_STR,
@@ -110,32 +110,32 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected final static String[] BUTTSYM = {
 			ADD_STR,
 			EDIT_STR,
-			DEL_STR, 
+			DEL_STR,
 			UIMessages.getString("AbstractLangsListTab.2") //$NON-NLS-1$
 		};
 
 	private static final Comparator<Object> comp = CDTListComparator.getInstance();
 
-	private final static Image IMG_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_FOLDER); 
-	private final static Image IMG_INCLUDES_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER); 
-	private final static Image IMG_BUILTIN_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER_SYSTEM); 
-	private final static Image IMG_WORKSPACE = CPluginImages.get(CPluginImages.IMG_WORKSPACE); 
-	private final static Image IMG_INCLUDES_FOLDER_WORKSPACE = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER_WORKSPACE); 
+	private final static Image IMG_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_FOLDER);
+	private final static Image IMG_INCLUDES_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER);
+	private final static Image IMG_BUILTIN_FOLDER = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER_SYSTEM);
+	private final static Image IMG_WORKSPACE = CPluginImages.get(CPluginImages.IMG_WORKSPACE);
+	private final static Image IMG_INCLUDES_FOLDER_WORKSPACE = CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER_WORKSPACE);
 	private final static Image IMG_MACRO = CPluginImages.get(CPluginImages.IMG_OBJS_MACRO);
 	private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
-	
+
 	@Override
 	public void createControls(Composite parent) {
 		super.createControls(parent);
 		usercomp.setLayout(new GridLayout(2, true));
-		
+
 		// Create the sash form
 		sashForm = new SashForm(usercomp, SWT.NONE);
 		sashForm.setOrientation(SWT.HORIZONTAL);
 		GridData gd = new GridData(GridData.FILL_BOTH);
 		gd.horizontalSpan = 2;
 		sashForm.setLayoutData(gd);
-		
+
 		GridLayout layout = new GridLayout();
 		layout.numColumns = 2;
 		layout.marginHeight = 5;
@@ -150,7 +150,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		table.setLinesVisible(true);
 
 		sashForm.setWeights(DEFAULT_SASH_WEIGHTS);
-		
+
 		sashForm.addListener(SWT.Selection, new Listener() {
 			public void handleEvent(Event event) {
 				if (event.detail == SWT.DRAG) return;
@@ -242,7 +242,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		initButtons((getKind() == ICSettingEntry.MACRO) ? BUTTSYM : BUTTONS);
 		updateData(getResDesc());
 	}
-	
+
 	/**
 	 * Updates state for all buttons
 	 * Called when table selection changes.
@@ -284,7 +284,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp && !page.isMultiCfg());
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown && !page.isMultiCfg());
 	}
-	
+
 	private Tree addTree(Composite comp) {
 		langTree = new Tree(comp, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL);
 		langTree.setLayoutData(new GridData(GridData.FILL_VERTICAL));
@@ -325,33 +325,33 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	}
 
 	/*
-	 * Methods to be implemented in descendants 
+	 * Methods to be implemented in descendants
 	 */
 	public abstract int getKind();
 	public abstract ICLanguageSettingEntry doAdd();
 	public abstract ICLanguageSettingEntry doEdit(ICLanguageSettingEntry ent);
 	public void additionalTableSet() {} // may be not overwritten
-	
+
 	/**
 	 * Called when language changed or item added/edited/removed.
 	 * Refreshes whole table contwnts
-	 * 
+	 *
 	 * Note, this method is rewritten in Symbols tab.
 	 */
-	public void update() { update(0); } 
+	public void update() { update(0); }
 
 	public void update(int shift) {
 		if (lang != null) {
 			int x = table.getSelectionIndex();
-			if (x == -1) x = 0; 
-			else x += shift; // used only for UP/DOWN 
-			
-			shownEntries = getIncs(); 
+			if (x == -1) x = 0;
+			else x += shift; // used only for UP/DOWN
+
+			shownEntries = getIncs();
 			tv.setInput(shownEntries.toArray(new Object[shownEntries.size()]));
 			if (table.getItemCount() > x) table.setSelection(x);
 			else if (table.getItemCount() > 0) table.setSelection(0);
-		}		
-		
+		}
+
 		updateLbs(lb1, lb2);
 		updateButtons();
 	}
@@ -361,19 +361,19 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		List<ICLanguageSettingEntry> lst = getSettingEntriesList(getKind());
 		if (lst != null) {
 			for (ICLanguageSettingEntry ent : lst) {
-				if (!ent.isBuiltIn()) 
+				if (!ent.isBuiltIn())
 					l.add(ent);
 			}
 			if (showBIButton.getSelection()) {
 				for (ICLanguageSettingEntry ent : lst)
-					if (ent.isBuiltIn()) 
+					if (ent.isBuiltIn())
 						l.add(ent);
 			}
 		}
 		return l;
 	}
-	
-	
+
+
 	/**
 	 * Called when configuration changed
 	 * Refreshes languages list and calls table refresh.
@@ -403,7 +403,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 						s = element.getName();
 					t.setText(0, s);
 					t.setData(element);
-					if (firstItem == null) { 
+					if (firstItem == null) {
 						firstItem = t;
 						lang = element;
 					}
@@ -412,7 +412,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 						firstItem = t;
 						lang = element;
 					}
-					
+
 				}
 			}
 
@@ -422,7 +422,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		}
 		update();
 	}
-	
+
 	private void updateExport() {
 		exported = new ArrayList<ICSettingEntry>();
 		ICExternalSetting[] vals = getResDesc().getConfiguration().getExternalSettings();
@@ -435,7 +435,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			}
 		}
 	}
-	
+
 	private void performAdd(ICLanguageSettingEntry ent) {
 		if (ent != null) {
 			fHadSomeModification= true;
@@ -468,16 +468,16 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			ls.add(add);
 		setSettingEntries(getKind(), ls, toAllLang);
 	}
-	
+
 	private void performMulti(ICLanguageSettingEntry ent, ICLanguageSettingEntry del) {
 		MultiLanguageSetting ms = (MultiLanguageSetting)lang;
 		ICLanguageSetting[] ls = (ICLanguageSetting[])ms.getItems();
 		ICLanguageSettingEntry[][] es = ms.getSettingEntriesM(getKind());
 		for (int i=0; i<ls.length; i++) {
-			List<ICLanguageSettingEntry> entries = 
+			List<ICLanguageSettingEntry> entries =
 				new ArrayList<ICLanguageSettingEntry>(Arrays.asList(es[i]));
 			if (del != null) {
-				for (ICLanguageSettingEntry e : entries) { 
+				for (ICLanguageSettingEntry e : entries) {
 					if (e.getName().equals(del.getName())) {
 						entries.remove(e);
 						break;
@@ -489,7 +489,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			ls[i].setSettingEntries(getKind(), entries);
 		}
 	}
-	
+
 	private void performEdit(int n) {
 		if (n == -1) return;
 		ICLanguageSettingEntry old = (ICLanguageSettingEntry)(table.getItem(n).getData());
@@ -501,7 +501,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			if (isWModifyMode() && (lang instanceof MultiLanguageSetting)) {
 				performMulti(ent, old);
 			} else {
-				ICLanguageSettingEntry[] del = null;  
+				ICLanguageSettingEntry[] del = null;
 				if (!ent.getName().equals(old.getName()) || ent.getFlags() != old.getFlags()) {
 					del = new ICLanguageSettingEntry[] { old };
 				}
@@ -510,7 +510,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			update();
 		}
 	}
-	
+
 	private void performDelete(int n) {
 		if (n == -1) return;
 		fHadSomeModification= true;
@@ -530,7 +530,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			changeIt(null, del);
 		}
 		update();
-		
+
 	}
 	/**
 	 * Unified buttons handler
@@ -540,7 +540,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		ICLanguageSettingEntry old;
 		int n = table.getSelectionIndex();
 		int ids[] = table.getSelectionIndices();
-		
+
 		switch (i) {
 		case BUTTON_ADD:
 			toAllCfgs = false;
@@ -578,10 +578,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			shownEntries.remove(x - 1);
 			shownEntries.add(x - 1, old);
 			shownEntries.add(x, old2);
-			
+
 			setSettingEntries(getKind(), shownEntries, false);
-			update(i == BUTTON_MOVE_UP ? -1 : 1);			
-			break;			
+			update(i == BUTTON_MOVE_UP ? -1 : 1);
+			break;
 		default:
 			break;
 		}
@@ -600,10 +600,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 					if (ents[j].equalsByName(ent)) {
 						ICSettingEntry[] arr = new ICSettingEntry[ents.length - 1];
 						int index = 0;
-						for (int k=0; k<ents.length; k++) 
+						for (int k=0; k<ents.length; k++)
 							if (k != j) arr[index++] = ents[k];
 						cfg.removeExternalSetting(val);
-						cfg.createExternalSetting(val.getCompatibleLanguageIds(), 
+						cfg.createExternalSetting(val.getCompatibleLanguageIds(),
 								val.getCompatibleContentTypeIds(),
 								val.getCompatibleExtensions(),
 								arr);
@@ -613,10 +613,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			}
 		}
 	}
-	
-	
+
+
 	/**
-	 * Adds entry to all configurations 
+	 * Adds entry to all configurations
 	 * @param ent - entry to add
 	 */
 	private void addToAll(ICLanguageSettingEntry ent) {
@@ -624,8 +624,8 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		ICResourceDescription cur_cfg = page.getResDesc();
 		String id = lang.getName(); // getLanguageId() sometimes returns null.
 		for (ICConfigurationDescription cfg : cfgs) {
-			ICResourceDescription rcfg = page.getResDesc(cfg); 
-			if (rcfg == null) 
+			ICResourceDescription rcfg = page.getResDesc(cfg);
+			if (rcfg == null)
 				continue;
 			if (!toAllCfgs && !(cur_cfg.equals(rcfg)))
 				continue;
@@ -638,7 +638,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			}
 		}
 	}
-	
+
 	@Override
 	protected void performApply(ICResourceDescription src, ICResourceDescription dst) {
 		fHadSomeModification= false;
@@ -647,7 +647,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			if (dst instanceof ICMultiItemsHolder) {
 				for (Object ob : ((ICMultiItemsHolder)dst).getItems()) {
 					if (ob instanceof ICResourceDescription) {
-						ICLanguageSetting [] ds = getLangSetting((ICResourceDescription)ob);			
+						ICLanguageSetting [] ds = getLangSetting((ICResourceDescription)ob);
 						if (ds == null || sr.length != ds.length) return;
 						for (int i=0; i<sr.length; i++) {
 							ICLanguageSettingEntry[] ents = null;
@@ -666,9 +666,9 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 				ents = sr[i].getSettingEntries(getKind());
 				ds[i].setSettingEntries(getKind(), ents);
 			}
-		}	
+		}
 	}
-	
+
 	@Override
 	protected void performDefaults() {
 		fHadSomeModification= true;
@@ -681,7 +681,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		}
 		updateData(this.getResDesc());
 	}
-	
+
 	// Extended label provider
 	private class RichLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider*/{
 		public RichLabelProvider(){}
@@ -731,10 +731,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 				switch (columnIndex) {
 					case 1: return le.getValue();
 				}
-			} 
+			}
 			return EMPTY_STR;
 		}
-		
+
 		public Font getFont(Object element) {
 			if (! (element instanceof ICLanguageSettingEntry)) return null;
 			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
@@ -754,7 +754,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			ICFolderDescription foDes = (ICFolderDescription)rcDes;
 			if (foDes instanceof ICMultiFolderDescription) {
 				return getLS((ICMultiFolderDescription)foDes);
-			}  
+			}
 			return foDes.getLanguageSettings();
 		case ICSettingBase.SETTING_FILE:
 			ICFileDescription fiDes = (ICFileDescription)rcDes;
@@ -763,10 +763,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		}
 		return null;
 	}
-	
+
 	private ICLanguageSetting[] getLS(ICMultiFolderDescription foDes) {
 		ICLanguageSetting[] lsets;
-		
+
 		ICLanguageSetting[][] ls = foDes.getLanguageSettingsM(comp);
 		ICLanguageSetting[] fs = conv2LS(CDTPrefUtil.getListForDisplay(ls, comp));
 		lsets = new ICLanguageSetting[fs.length];
@@ -785,7 +785,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		return lsets;
 	}
 
-	
+
 	@Override
 	public boolean canBeVisible() {
 		if (getResDesc() == null) return true;
@@ -797,7 +797,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		}
 		return false;
 	}
-	
+
 	private void setSettingEntries(int kind, List<ICLanguageSettingEntry> incs, boolean toAll) {
 		if (page.isMultiCfg()) {
 			((ICMultiResourceDescription)getResDesc()).setSettingEntries(lang, kind, incs, toAll);
@@ -811,10 +811,10 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			ICLanguageSettingEntry[] out = new ICLanguageSettingEntry[res.length];
 			System.arraycopy(res, 0, out, 0, res.length);
 			return Arrays.asList(out);
-		} 
+		}
 		return lang.getSettingEntriesList(kind);
 	}
-	
+
 	private ICLanguageSetting[] conv2LS(Object[] ob) {
 		ICLanguageSetting[] se = new ICLanguageSetting[ob.length];
 		System.arraycopy(ob, 0, se, 0, ob.length);
@@ -831,14 +831,14 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	}
 
 	/**
-	 * Returns whether the tab was modified by the user in any way. The flag is  
+	 * Returns whether the tab was modified by the user in any way. The flag is
 	 * cleared after pressing apply or ok.
 	 * @since 5.1
 	 */
 	protected final boolean hadSomeModification() {
 		return fHadSomeModification;
 	}
-	
+
 	@Override
 	protected final boolean isIndexerAffected() {
 		switch(getKind()) {

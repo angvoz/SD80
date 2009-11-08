@@ -591,6 +591,62 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 *
 	 * @throws Exception...
 	 */
+	public void testConfigurationDescription_Use() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+
+		final ICConfigurationDescription modelCfgDescription = cfgDescriptions[0];
+		assertTrue(modelCfgDescription instanceof CConfigurationDescription);
+
+		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+
+		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
+		ICLanguageSettingsContributor contributorYes = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, null)  {
+			@Override
+			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+				if (cfgDescription.getId().equals(modelCfgDescription.getId())) {
+					return original;
+				}
+				return null;
+			}
+
+		};
+		contributors.add(contributorYes);
+		ICLanguageSettingsContributor contributorNo = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null)  {
+			@Override
+			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+				if (cfgDescription.getId().equals(modelCfgDescription.getId())) {
+					return null;
+				}
+				return original;
+			}
+			
+		};
+		contributors.add(contributorNo);
+		LanguageSettingsManager.setContributors(modelCfgDescription, contributors);
+
+		{
+			// retrieve the entries for model configuration description
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(modelCfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0);
+			assertEquals(original.get(0), retrieved.get(0));
+			assertEquals(original.size(), retrieved.size());
+		}
+		
+		{
+			// retrieve the entries for different configuration description
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(modelCfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_1);
+			assertEquals(0, retrieved.size());
+		}
+	}
+	
+	/**
+	 * TODO .
+	 *
+	 * @throws Exception...
+	 */
 	public void testConfigurationDescription_Contributors() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();

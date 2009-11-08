@@ -35,7 +35,7 @@
 <listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
 <listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/win_agent}&quot;"/>
 </option>
-<option id="gnu.cpp.compiler.option.preprocessor.def.82616184" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+<option id="gnu.cpp.compiler.option.preprocessor.def.82616184" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 <listOptionValue builtIn="false" value="_DEBUG"/>
 </option>
 <inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.843378569" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -511,6 +511,7 @@
 <option id="gnu.cpp.compiler.mingw.exe.release.option.debugging.level.38623966" name="Debug Level" superClass="gnu.cpp.compiler.mingw.exe.release.option.debugging.level" value="gnu.cpp.compiler.debugging.level.none" valueType="enumerated"/>
 <option id="gnu.cpp.compiler.option.include.paths.653960025" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 <listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
+<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/win_agent}&quot;"/>
 </option>
 <inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.474725460" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 </tool>
@@ -521,6 +522,12 @@
 </tool>
 <tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.release.94608933" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.release"/>
 <tool id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.release.500637091" name="MinGW C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.release">
+<option id="gnu.cpp.link.option.libs.995621225" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
+<listOptionValue builtIn="false" value="ws2_32"/>
+<listOptionValue builtIn="false" value="Psapi"/>
+<listOptionValue builtIn="false" value="shell32"/>
+<listOptionValue builtIn="false" value="Iphlpapi"/>
+</option>
 <inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1472560075" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 <additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 <additionalInput kind="additionalinput" paths="$(LIBS)"/>

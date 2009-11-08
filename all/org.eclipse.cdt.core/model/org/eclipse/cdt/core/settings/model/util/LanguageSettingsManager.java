@@ -40,24 +40,20 @@ public class LanguageSettingsManager {
 	public static final String CONTRIBUTOR_UI_USER = "org.eclipse.cdt.ui.user";
 	public static final char CONTRIBUTOR_DELIMITER = LanguageSettingsExtensionManager.CONTRIBUTOR_DELIMITER;
 	
-	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, LanguageSettingsResourceDescriptor descriptor, String contributorId) {
+	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, String contributorId) {
 		Assert.isNotNull(cfgDescription);
 
 		ICLanguageSettingsContributor contributor = getContributor(cfgDescription, contributorId);
 		if (contributor!=null) {
-			List<ICLanguageSettingEntry> list = contributor.getSettingEntries(descriptor);
+			List<ICLanguageSettingEntry> list = contributor.getSettingEntries(rc, languageId);
 			if (list!=null) {
 				return new ArrayList<ICLanguageSettingEntry>(list);
 			}
 		}
 
-		IResource path = descriptor.getResource();
-		IResource parent = path.getParent();
-		if (parent!=null) {
-			LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(
-					parent, descriptor.getLangId());
-
-			return getSettingEntries(cfgDescription, parentDescriptor, contributorId);
+		IResource parentFolder = rc.getParent();
+		if (parentFolder!=null) {
+			return getSettingEntries(cfgDescription, parentFolder, languageId, contributorId);
 		}
 		return new ArrayList<ICLanguageSettingEntry>(0);
 	}
@@ -73,12 +69,12 @@ public class LanguageSettingsManager {
 	}
 
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDecription,
-			LanguageSettingsResourceDescriptor descriptor, String contributorId, int kind) {
+			IResource rc, String languageId, String contributorId, int kind) {
 		ICLanguageSettingsContributor contributor = getContributor(cfgDecription, contributorId);
 		if (contributor==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
-		List<ICLanguageSettingEntry> list = contributor.getSettingEntries(descriptor);
+		List<ICLanguageSettingEntry> list = contributor.getSettingEntries(rc, languageId);
 		if (list==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
@@ -92,10 +88,10 @@ public class LanguageSettingsManager {
 		return newList;
 	}
 
-	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(ICConfigurationDescription cfgDescription, LanguageSettingsResourceDescriptor descriptor, int kind) {
+	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
 		for (ICLanguageSettingsContributor contributor: getContributors(cfgDescription)) {
-			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, descriptor, contributor.getId(), kind)) {
+			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, rc, languageId, contributor.getId(), kind)) {
 				if (!containsEntry(list, entry.getName())) {
 					list.add(entry);
 				}

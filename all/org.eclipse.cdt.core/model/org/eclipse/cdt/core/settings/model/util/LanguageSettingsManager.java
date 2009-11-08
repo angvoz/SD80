@@ -45,7 +45,7 @@ public class LanguageSettingsManager {
 
 		ICLanguageSettingsContributor contributor = getContributor(cfgDescription, contributorId);
 		if (contributor!=null) {
-			List<ICLanguageSettingEntry> list = contributor.getSettingEntries(rc, languageId);
+			List<ICLanguageSettingEntry> list = contributor.getSettingEntries(cfgDescription, rc, languageId);
 			if (list!=null) {
 				return new ArrayList<ICLanguageSettingEntry>(list);
 			}
@@ -68,13 +68,13 @@ public class LanguageSettingsManager {
 		return false;
 	}
 
-	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDecription,
+	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
 			IResource rc, String languageId, String contributorId, int kind) {
-		ICLanguageSettingsContributor contributor = getContributor(cfgDecription, contributorId);
+		ICLanguageSettingsContributor contributor = getContributor(cfgDescription, contributorId);
 		if (contributor==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
-		List<ICLanguageSettingEntry> list = contributor.getSettingEntries(rc, languageId);
+		List<ICLanguageSettingEntry> list = contributor.getSettingEntries(cfgDescription, rc, languageId);
 		if (list==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}

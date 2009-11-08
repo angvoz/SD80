@@ -64,7 +64,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			this.entries = entries;
 		}
 
-		public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId) {
+		public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 			return entries;
 		}
 	}
@@ -164,7 +164,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertEquals(DEFAULT_CONTRIBUTOR_NAME_EXT, contributor.getName());
 
 		// retrieve wrong language
-		assertEquals(0, contributor.getSettingEntries(FILE_0, LANG_ID).size());
+		assertEquals(0, contributor.getSettingEntries(null, FILE_0, LANG_ID).size());
 
 		// benchmarks matching extension point definition
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>() {
@@ -186,7 +186,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		};
 
 		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(FILE_0, LANG_ID_EXT);
+		List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(null, FILE_0, LANG_ID_EXT);
 		for (int i=0;i<entriesExt.size();i++) {
 			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
 		}
@@ -876,7 +876,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
 		ICLanguageSettingsContributor contributor = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, null)  {
 			@Override
-			public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId) {
+			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 				IFolder pf = parentFolder;
 				if (rc.equals(parentFolder)) {
 					return original;
@@ -1017,7 +1017,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 				super(id, name);
 				this.entries = entries;
 			}
-			public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId) {
+			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 				return entries;
 			}
 			public void clear() {
@@ -1075,13 +1075,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// attempt to get entries for wrong language
-			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(FILE_0, "wrong.lang.id");
+			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(null, FILE_0, "wrong.lang.id");
 			assertEquals(0, retrieved.size());
 		}
 
 		{
 			// retrieve the entries
-			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(FILE_0, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(null, FILE_0, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
 

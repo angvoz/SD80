@@ -19,7 +19,7 @@ import org.eclipse.core.resources.IResource;
 public class TestLanguageSettingsContributor extends AbstractExecutableExtensionBase
 		implements ICLanguageSettingsContributor {
 
-	public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId) {
+	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		return null;
 	}
 }

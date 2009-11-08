@@ -123,7 +123,10 @@ extern int ftruncate(int f, int64_t size);
 #define utimbuf _utimbuf
 #define utime   _utime
 #define futime  _futime
+#if !defined(__MINGW32__)
 #define snprintf _snprintf
+#endif
+
 
 #define loc_gai_strerror gai_strerror
 

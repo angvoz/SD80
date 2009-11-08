@@ -24,7 +24,6 @@ import org.eclipse.cdt.core.internal.errorparsers.tests.ResourceHelper;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsBaseContributor;
@@ -32,6 +31,7 @@ import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionMan
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
 
@@ -56,9 +56,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String CONTRIBUTOR_NAME_1 = "test.contributor.1.name";
 	private static final String CONTRIBUTOR_NAME_2 = "test.contributor.2.name";
 
-	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR = new LanguageSettingsResourceDescriptor(FILE_0, LANG_ID);
-	private static final LanguageSettingsResourceDescriptor RC_DESCRIPTOR_EXT = new LanguageSettingsResourceDescriptor(FILE_0, LANG_ID_EXT);
-
 	private class MockContributor extends AbstractExecutableExtensionBase implements ICLanguageSettingsContributor {
 		private final List<ICLanguageSettingEntry> entries;
 
@@ -67,7 +64,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			this.entries = entries;
 		}
 
-		public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
+		public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId) {
 			return entries;
 		}
 	}
@@ -167,7 +164,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertEquals(DEFAULT_CONTRIBUTOR_NAME_EXT, contributor.getName());
 
 		// retrieve wrong language
-		assertEquals(0, contributor.getSettingEntries(RC_DESCRIPTOR).size());
+		assertEquals(0, contributor.getSettingEntries(FILE_0, LANG_ID).size());
 
 		// benchmarks matching extension point definition
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>() {
@@ -189,7 +186,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		};
 
 		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(RC_DESCRIPTOR_EXT);
+		List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(FILE_0, LANG_ID_EXT);
 		for (int i=0;i<entriesExt.size();i++) {
 			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
 		}
@@ -549,13 +546,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// use contributor returning null
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_1);
+					cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_1);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_1, 0);
+					cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_1, 0);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
@@ -577,13 +574,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// use contributor returning null as item in array
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_2);
+					cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_2);
 			assertNotNull(retrieved);
 			assertEquals(1, retrieved.size());
 		}
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_2, 0);
+					cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_2, 0);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
@@ -658,7 +655,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// retrieve the entries for contributor-1
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_1);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_1);
 
 			assertNotSame(original1, retrieved);
 			assertEquals(original1.size(), retrieved.size());
@@ -671,7 +668,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// retrieve the entries for contributor-2
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_2);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_2);
 
 			assertNotSame(original2, retrieved);
 			assertEquals(original2.size(), retrieved.size());
@@ -761,14 +758,14 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries by kind
 			List<ICLanguageSettingEntry> includes = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_0, ICSettingEntry.INCLUDE_PATH);
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0, ICSettingEntry.INCLUDE_PATH);
 			assertEquals(3, includes.size());
 			assertEquals(new CIncludePathEntry("path0", 0),includes.get(0));
 			assertEquals(new CIncludePathEntry("path1", 0),includes.get(1));
 			assertEquals(new CIncludePathEntry("path2", 0),includes.get(2));
 
 			List<ICLanguageSettingEntry> macros = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_0, ICSettingEntry.MACRO);
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0, ICSettingEntry.MACRO);
 			assertEquals(2, macros.size());
 			assertEquals(new CMacroEntry("MACRO0", "value0",0), macros.get(0));
 			assertEquals(new CMacroEntry("MACRO1", "value1",0), macros.get(1));
@@ -801,7 +798,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries by kind, only first entry is returned
 			List<ICLanguageSettingEntry> includes = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_0, ICSettingEntry.INCLUDE_PATH);
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0, ICSettingEntry.INCLUDE_PATH);
 			assertEquals(1, includes.size());
 			assertEquals(original.get(0),includes.get(0));
 		}
@@ -844,7 +841,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// retrieve entries by kind
 		{
 			List<ICLanguageSettingEntry> includes = LanguageSettingsManager
-				.getSettingEntriesReconciled(cfgDescription, RC_DESCRIPTOR, ICSettingEntry.INCLUDE_PATH);
+				.getSettingEntriesReconciled(cfgDescription, FILE_0, LANG_ID, ICSettingEntry.INCLUDE_PATH);
 			// path0 is taken from higher priority provider
 			assertEquals(originalHigh.get(0),includes.get(0));
 			// path1 disablement by lower priority provider is ignored
@@ -873,20 +870,18 @@ public class LanguageSettingsManagerTests extends TestCase {
 		final IFile emptySettingsPath = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/empty");
 		assertNotNull(emptySettingsPath);
 
-		LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(parentFolder, LANG_ID);
-
 		// store the entries in parent folder
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
 		ICLanguageSettingsContributor contributor = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, null)  {
 			@Override
-			public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
+			public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId) {
 				IFolder pf = parentFolder;
-				if (descriptor.getResource().equals(parentFolder)) {
+				if (rc.equals(parentFolder)) {
 					return original;
 				}
-				if (descriptor.getResource().equals(emptySettingsPath)) {
+				if (rc.equals(emptySettingsPath)) {
 					return new ArrayList<ICLanguageSettingEntry>(0);
 				}
 				return null;
@@ -899,9 +894,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries for a derived resource (in a subfolder)
 			IFile derived = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/resource");
-			LanguageSettingsResourceDescriptor missingDescriptor = new LanguageSettingsResourceDescriptor(
-					derived, LANG_ID);
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, missingDescriptor, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, derived, LANG_ID, CONTRIBUTOR_0);
 			// taken from parent folder
 			assertEquals(original.get(0),retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
@@ -910,17 +903,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries for not related resource
 			IFile notRelated = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/AnotherFolder/Subfolder/resource"));
-			LanguageSettingsResourceDescriptor missingDescriptor = new LanguageSettingsResourceDescriptor(
-					notRelated, LANG_ID);
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, missingDescriptor, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, notRelated, LANG_ID, CONTRIBUTOR_0);
 			assertEquals(0, retrieved.size());
 		}
 
 		{
 			// test distinction between no settings and empty settings
-			LanguageSettingsResourceDescriptor emptyDescriptor = new LanguageSettingsResourceDescriptor(
-					emptySettingsPath, LANG_ID);
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, emptyDescriptor, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, emptySettingsPath, LANG_ID, CONTRIBUTOR_0);
 			// NOT taken from parent folder
 			assertEquals(0, retrieved.size());
 		}
@@ -1028,7 +1017,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 				super(id, name);
 				this.entries = entries;
 			}
-			public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor) {
+			public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId) {
 				return entries;
 			}
 			public void clear() {
@@ -1044,7 +1033,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// double-check that contributor returns proper data
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
@@ -1055,14 +1044,14 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// clear contributor
 		contributor.clear();
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0);
 			assertEquals(0, retrieved.size());
 		}
 
 		// re-load
 		LanguageSettingsManager.load();
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, RC_DESCRIPTOR, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
@@ -1076,7 +1065,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		List<String> languages = new ArrayList<String>(2) {
 			{
 				add("bogus.language.id");
-				add(RC_DESCRIPTOR.getLangId());
+				add(LANG_ID);
 			}
 		};
 
@@ -1086,15 +1075,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// attempt to get entries for wrong language
-			LanguageSettingsResourceDescriptor descriptor = new LanguageSettingsResourceDescriptor(
-					FILE_0, "wrong.lang.id");
-			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(descriptor);
+			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(FILE_0, "wrong.lang.id");
 			assertEquals(0, retrieved.size());
 		}
 
 		{
 			// retrieve the entries
-			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(RC_DESCRIPTOR);
+			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(FILE_0, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
 

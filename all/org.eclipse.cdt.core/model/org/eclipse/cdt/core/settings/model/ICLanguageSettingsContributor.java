@@ -13,10 +13,10 @@ package org.eclipse.cdt.core.settings.model;
 
 import java.util.List;
 
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
+import org.eclipse.core.resources.IResource;
 
 public interface ICLanguageSettingsContributor {
 	public String getId();
 	public String getName();
-	public List<ICLanguageSettingEntry> getSettingEntries(LanguageSettingsResourceDescriptor descriptor);
+	public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId);
 }

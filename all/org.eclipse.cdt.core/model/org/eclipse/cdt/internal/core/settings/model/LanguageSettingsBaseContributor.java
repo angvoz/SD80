@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
 import org.eclipse.core.resources.IResource;
@@ -34,7 +35,7 @@ public class LanguageSettingsBaseContributor extends AbstractExecutableExtension
 		this.entries = new ArrayList<ICLanguageSettingEntry>(entries);
 	}
 
-	public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId) {
+	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		if (languages==null) {
 			return new ArrayList<ICLanguageSettingEntry>(entries);
 		}

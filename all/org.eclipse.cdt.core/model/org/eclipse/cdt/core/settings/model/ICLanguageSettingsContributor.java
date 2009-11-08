@@ -18,5 +18,5 @@ import org.eclipse.core.resources.IResource;
 public interface ICLanguageSettingsContributor {
 	public String getId();
 	public String getName();
-	public List<ICLanguageSettingEntry> getSettingEntries(IResource rc, String languageId);
+	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId);
 }

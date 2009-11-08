@@ -41,11 +41,10 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsResourceDescriptor;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -111,11 +110,10 @@ public class LanguageSettingsStore {
 			}
 		}
 
-		IPath path = descriptor.getWorkspacePath();
-		if (!path.isRoot() && !path.isEmpty()) {
-			IPath parentPath = path.removeLastSegments(1);
-			LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(descriptor.getConfigurationId(),
-					parentPath, descriptor.getLangId());
+		IResource parent = descriptor.getResource();
+		if (parent!=null) {
+			LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(parent,
+					descriptor.getLangId());
 
 			return getSettingEntries(parentDescriptor, providerId);
 		}
@@ -214,9 +212,8 @@ public class LanguageSettingsStore {
 					List<ICLanguageSettingEntry> settingEntries = rcMapEntry.getValue();
 
 					Element elementResourceDescriptor = doc.createElement(ELEM_RESOURCE_DESCRIPTOR);
-					elementResourceDescriptor.setAttribute(ATTR_CONFIGURATION, rcDescriptor.getConfigurationId());
 					elementResourceDescriptor.setAttribute(ATTR_LANGUAGE, rcDescriptor.getLangId());
-					elementResourceDescriptor.setAttribute(ATTR_PROJECT_PATH, rcDescriptor.getWorkspacePath().toString());
+					elementResourceDescriptor.setAttribute(ATTR_PROJECT_PATH, rcDescriptor.getResource().getProjectRelativePath().toString());
 					elementProvider.appendChild(elementResourceDescriptor);
 
 					for (ICLanguageSettingEntry entry : settingEntries) {
@@ -324,12 +321,17 @@ public class LanguageSettingsStore {
 						continue;
 
 					NamedNodeMap descriptorAttributes = descriptorNode.getAttributes();
-					String configurationId = determineNodeValue(descriptorAttributes.getNamedItem(ATTR_CONFIGURATION));
-					String workspacePath = determineNodeValue(descriptorAttributes.getNamedItem(ATTR_PROJECT_PATH));
+					String projectPath = determineNodeValue(descriptorAttributes.getNamedItem(ATTR_PROJECT_PATH));
 					String languageId = determineNodeValue(descriptorAttributes.getNamedItem(ATTR_LANGUAGE));
 
+					IProject project = file.getProject();
+					IResource rc = project.findMember(projectPath);
+					if (rc==null) {
+						continue;
+					}
+
 					LanguageSettingsResourceDescriptor descriptor = new LanguageSettingsResourceDescriptor(
-							configurationId, new Path(workspacePath), languageId);
+							rc, languageId);
 
 					List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
 					NodeList settingEntryNodes = descriptorNode.getChildNodes();

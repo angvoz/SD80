@@ -23,9 +23,9 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 import org.osgi.service.prefs.BackingStoreException;
 
 /**
@@ -51,11 +51,11 @@ public class LanguageSettingsManager {
 			}
 		}
 
-		IPath path = descriptor.getWorkspacePath();
-		if (!path.isRoot() && !path.isEmpty()) {
-			IPath parentPath = path.removeLastSegments(1);
+		IResource path = descriptor.getResource();
+		IResource parent = path.getParent();
+		if (parent!=null) {
 			LanguageSettingsResourceDescriptor parentDescriptor = new LanguageSettingsResourceDescriptor(
-					descriptor.getConfigurationId(), parentPath, descriptor.getLangId());
+					parent, descriptor.getLangId());
 
 			return getSettingEntries(cfgDescription, parentDescriptor, contributorId);
 		}

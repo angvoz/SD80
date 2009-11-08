@@ -11,27 +11,21 @@
 
 package org.eclipse.cdt.core.settings.model.util;
 
-import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.resources.IResource;
 
 public class LanguageSettingsResourceDescriptor {
-	private String configurationId;
-	private IPath workspacePath;
+	private IResource rc;
 	private String langId;
 
-	public LanguageSettingsResourceDescriptor(String configurationId, IPath workspacePath, String langId) {
-		this.configurationId = configurationId;
-		this.workspacePath = workspacePath;
+	public LanguageSettingsResourceDescriptor(IResource rc, String langId) {
+		this.rc = rc;
 		this.langId = langId;
 	}
 
-	public String getConfigurationId() {
-		return configurationId;
+	public IResource getResource() {
+		return rc;
 	}
-
-	public IPath getWorkspacePath() {
-		return workspacePath;
-	}
-
+	
 	public String getLangId() {
 		return langId;
 	}
@@ -40,9 +34,8 @@ public class LanguageSettingsResourceDescriptor {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((configurationId == null) ? 0 : configurationId.hashCode());
 		result = prime * result + ((langId == null) ? 0 : langId.hashCode());
-		result = prime * result + ((workspacePath == null) ? 0 : workspacePath.hashCode());
+		result = prime * result + ((rc == null) ? 0 : rc.hashCode());
 		return result;
 	}
 
@@ -50,8 +43,7 @@ public class LanguageSettingsResourceDescriptor {
 	public boolean equals(Object o) {
 		if (!(o instanceof LanguageSettingsResourceDescriptor)) return false;
 		LanguageSettingsResourceDescriptor that = (LanguageSettingsResourceDescriptor)o;
-		return this.configurationId.equals(that.configurationId)
-			&& this.workspacePath.equals(that.workspacePath)
+		return this.rc.equals(that.rc)
 			&& this.langId.equals(that.langId)
 		;
 	}

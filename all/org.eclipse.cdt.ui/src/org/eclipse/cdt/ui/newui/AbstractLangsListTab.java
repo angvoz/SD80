@@ -367,19 +367,12 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected LinkedList<ICLanguageSettingEntry> getIncs() {
 		LinkedList<ICLanguageSettingEntry> l = new LinkedList<ICLanguageSettingEntry>();
 
-		String id = lang.getLanguageId();
-		ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(id);
-		if (ld == null) {
-			id = null;
-		} else {
-			id = ld.getId();
-		}
-		if (id==null) {
-			System.err.println("id=null: languageSetting=" +lang.getName());
-		}
-		IResource rc = ResourcesPlugin.getWorkspace().getRoot().findMember(getResDesc().getPath());
-		if (rc!=null) {
-			l.addAll(LanguageSettingsManager.getSettingEntriesReconciled(getResDesc().getConfiguration(), rc, id, getKind()));
+		String langId = lang.getLanguageId();
+		if (langId!=null) {
+			IResource rc = ResourcesPlugin.getWorkspace().getRoot().findMember(getResDesc().getPath());
+			if (rc!=null) {
+				l.addAll(LanguageSettingsManager.getSettingEntriesReconciled(getResDesc().getConfiguration(), rc, langId, getKind()));
+			}
 		}
 		return l;
 	}

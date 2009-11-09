@@ -3,7 +3,7 @@
 <schema targetNamespace="org.eclipse.cdt.core" xmlns="http://www.w3.org/2001/XMLSchema">
 <annotation>
       <appInfo>
-         <meta.schema plugin="org.eclipse.cdt.core" id="LanguageSettingsContributor" name="LanguageSettingsContributor"/>
+         <meta.schema plugin="org.eclipse.cdt.core" id="LanguageSettingsProvider" name="LanguageSettingsProvider"/>
       </appInfo>
       <documentation>
          [Enter description of this extension point.]
@@ -18,7 +18,7 @@
       </annotation>
       <complexType>
          <sequence>
-            <element ref="contributor"/>
+            <element ref="provider"/>
          </sequence>
          <attribute name="point" type="string" use="required">
             <annotation>
@@ -47,7 +47,7 @@
       </complexType>
    </element>
 
-   <element name="contributor">
+   <element name="provider">
       <complexType>
          <sequence>
             <element ref="language" minOccurs="0" maxOccurs="unbounded"/>
@@ -56,10 +56,10 @@
          <attribute name="class" type="string">
             <annotation>
                <documentation>
-                  a fully qualified name of the Java class that implements &lt;samp&gt;org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor&lt;/samp&gt; interface.
+                  a fully qualified name of the Java class that implements &lt;samp&gt;org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider&lt;/samp&gt; interface.
                </documentation>
                <appInfo>
-                  <meta.attribute kind="java" basedOn="org.eclipse.cdt.core.AbstractExecutableExtensionBase:org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor"/>
+                  <meta.attribute kind="java" basedOn="org.eclipse.cdt.core.AbstractExecutableExtensionBase:org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider"/>
                </appInfo>
             </annotation>
          </attribute>

@@ -26,7 +26,7 @@ import org.eclipse.cdt.core.settings.model.ICExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
@@ -767,20 +767,20 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 		return status != null ? status : CConfigurationStatus.CFG_STATUS_OK;
 	}
 
-	public void setLanguageSettingContributors(List<ICLanguageSettingsContributor> contributors) {
+	public void setLanguageSettingProviders(List<ICLanguageSettingsProvider> providers) {
 		try {
-			getSpecSettings().setLanguageSettingContributors(contributors);
+			getSpecSettings().setLanguageSettingProviders(providers);
 		} catch (CoreException e) {
 			CCorePlugin.log(e);
 		}
 }
 
-	public List<ICLanguageSettingsContributor> getLanguageSettingContributors() {
+	public List<ICLanguageSettingsProvider> getLanguageSettingProviders() {
 		try {
-			return getSpecSettings().getLanguageSettingContributors();
+			return getSpecSettings().getLanguageSettingProviders();
 		} catch (CoreException e) {
 			CCorePlugin.log(e);
 		}
-		return new ArrayList<ICLanguageSettingsContributor>(0);
+		return new ArrayList<ICLanguageSettingsProvider>(0);
 	}
 }

@@ -27,7 +27,7 @@ import org.eclipse.cdt.core.settings.model.ICBuildSetting;
 import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICExternalSetting;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingsStorage;
 import org.eclipse.cdt.core.settings.model.ICStorageElement;
@@ -67,7 +67,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 	private static final String PROJECT_EXTENSIONS = "extensions"; //$NON-NLS-1$
 	private static final String OWNER_ID = "owner"; //$NON-NLS-1$
 	private static final String OLD_OWNER_ID = "id"; //$NON-NLS-1$
-	private static final String LANG_SETTINGS_CONTRIBUTOR_ELEM = "languageSettingsContributor"; //$NON-NLS-1$
+	private static final String LANG_SETTINGS_PROVIDER_ELEM = "languageSettingsProvider"; //$NON-NLS-1$
 
 	static final String ID = "id";	//$NON-NLS-1$
 	static final String NAME = "name";	//$NON-NLS-1$
@@ -101,7 +101,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		}
 	}
 
-	private List<ICLanguageSettingsContributor> fLanguageSettingsContributors = new ArrayList<ICLanguageSettingsContributor>(0);
+	private List<ICLanguageSettingsProvider> fLanguageSettingsProviders = new ArrayList<ICLanguageSettingsProvider>(0);
 	
 	public CConfigurationSpecSettings(ICConfigurationDescription des, ICStorageElement storage) throws CoreException{
 		fCfg = des;
@@ -114,7 +114,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 		setCOwner(settings.getAttribute(OWNER_ID));
 		
-		fLanguageSettingsContributors = new ArrayList<ICLanguageSettingsContributor>(0);
+		fLanguageSettingsProviders = new ArrayList<ICLanguageSettingsProvider>(0);
 
 		for (ICStorageElement child : settings.getChildren()) {
 			String name = child.getName();
@@ -128,7 +128,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 			} else if(StorableEnvironment.ENVIRONMENT_ELEMENT_NAME.equals(name)){
 				fEnvironment = new StorableEnvironment(child, fCfg.isReadOnly());
 			} else if(PROJECT_EXTENSIONS.equals(name)){
-				fLanguageSettingsContributors.clear();
+				fLanguageSettingsProviders.clear();
 				loadExtensionInfo(child, false);
 			}
 		}
@@ -144,7 +144,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 		loadOldStileDescription(oldInfo);
 			
-		fLanguageSettingsContributors = new ArrayList<ICLanguageSettingsContributor>(0);
+		fLanguageSettingsProviders = new ArrayList<ICLanguageSettingsProvider>(0);
 	}
 	private void loadOldStileDescription(ICStorageElement storage) throws CoreException{
 		setCOwner(storage.getAttribute(OLD_OWNER_ID));
@@ -190,7 +190,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 		copyExtensionInfo(base);
 		
-		fLanguageSettingsContributors = new ArrayList<ICLanguageSettingsContributor>(base.getLanguageSettingContributors());
+		fLanguageSettingsProviders = new ArrayList<ICLanguageSettingsProvider>(base.getLanguageSettingProviders());
 	}
 
 //	private void copyRefInfos(Map infosMap){
@@ -399,7 +399,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 		ICStorageElement extEl = settings.createChild(PROJECT_EXTENSIONS);
 		encodeProjectExtensions(extEl);
-		encodeLanguageSettingContributors(extEl);
+		encodeLanguageSettingProviders(extEl);
 	}
 
 	public boolean isReadOnly(){
@@ -793,9 +793,9 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 					} catch (CoreException e) {
 						CCorePlugin.log(e);
 					}
-				} else if (childNode.getName().equals(LANG_SETTINGS_CONTRIBUTOR_ELEM)) {
+				} else if (childNode.getName().equals(LANG_SETTINGS_PROVIDER_ELEM)) {
 					try {
-						decodeLanguageSettingContributors(childNode);
+						decodeLanguageSettingProviders(childNode);
 					} catch (CoreException e) {
 						CCorePlugin.log(e);
 					}
@@ -842,19 +842,19 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		}
 	}
 
-	private void encodeLanguageSettingContributors(ICStorageElement configRootElement) {
+	private void encodeLanguageSettingProviders(ICStorageElement configRootElement) {
 		ICStorageElement element;
-		for (ICLanguageSettingsContributor contributor : fLanguageSettingsContributors) {
-			element = configRootElement.createChild(LANG_SETTINGS_CONTRIBUTOR_ELEM);
-			element.setAttribute(PROJECT_EXTENSION_ATTR_ID, contributor.getId());
+		for (ICLanguageSettingsProvider provider : fLanguageSettingsProviders) {
+			element = configRootElement.createChild(LANG_SETTINGS_PROVIDER_ELEM);
+			element.setAttribute(PROJECT_EXTENSION_ATTR_ID, provider.getId());
 		}
 	}
 	
-	private void decodeLanguageSettingContributors(ICStorageElement element) throws CoreException {
+	private void decodeLanguageSettingProviders(ICStorageElement element) throws CoreException {
 		String id = element.getAttribute(PROJECT_EXTENSION_ATTR_ID);
-		ICLanguageSettingsContributor contributor = LanguageSettingsManager.getContributor(id);
-		if (contributor!=null) {
-			fLanguageSettingsContributors.add(contributor);
+		ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
+		if (provider!=null) {
+			fLanguageSettingsProviders.add(provider);
 		}
 	}
 
@@ -1008,12 +1008,12 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		ExtensionContainerFactory.updateReferencedProviderIds(fCfg, ids);
 	}
 	
-	public void setLanguageSettingContributors(List<ICLanguageSettingsContributor> contributors) {
-		fLanguageSettingsContributors = new ArrayList<ICLanguageSettingsContributor>(contributors);
+	public void setLanguageSettingProviders(List<ICLanguageSettingsProvider> providers) {
+		fLanguageSettingsProviders = new ArrayList<ICLanguageSettingsProvider>(providers);
 		fIsModified = true;
 	}
 
-	public List<ICLanguageSettingsContributor> getLanguageSettingContributors() {
-		return new ArrayList<ICLanguageSettingsContributor>(fLanguageSettingsContributors);
+	public List<ICLanguageSettingsProvider> getLanguageSettingProviders() {
+		return new ArrayList<ICLanguageSettingsProvider>(fLanguageSettingsProviders);
 	}
 }

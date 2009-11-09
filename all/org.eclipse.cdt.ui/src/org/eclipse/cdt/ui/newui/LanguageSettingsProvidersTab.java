@@ -51,7 +51,7 @@ import com.ibm.icu.text.MessageFormat;
 
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
@@ -97,15 +97,15 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	private CheckboxTableViewer fTableViewer;
 	private ICConfigurationDescription fCfgDesc;
 
-	private final Map<String, ICLanguageSettingsContributor> fAvailableContributors = new LinkedHashMap<String, ICLanguageSettingsContributor>();
+	private final Map<String, ICLanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ICLanguageSettingsProvider>();
 	private final Map<String, ICOptionPage> fOptionsPageMap = new HashMap<String, ICOptionPage>();
 	private ICOptionPage fCurrentOptionsPage = null;
 
 	private Composite fCompositeForOptionsPage;
 	
 	// FIXME dummy
-	private class RegexContributor implements ICLanguageSettingsContributor {
-		public RegexContributor(String id, String name) {
+	private class RegexProvider implements ICLanguageSettingsProvider {
+		public RegexProvider(String id, String name) {
 			// TODO Auto-generated constructor stub
 		}
 		public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
@@ -123,8 +123,8 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	}
 
 	// FIXME dummy
-	private class RegexContributorOptionPage implements ICOptionPage {
-		public RegexContributorOptionPage(RegexContributor contributor, boolean isContributorsEditable) {
+	private class RegexProviderOptionPage implements ICOptionPage {
+		public RegexProviderOptionPage(RegexProvider provider, boolean isProvidersEditable) {
 			// TODO Auto-generated method stub
 		}
 
@@ -221,7 +221,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	public void createControls(Composite parent) {
 
 		super.createControls(parent);
-//		PlatformUI.getWorkbench().getHelpSystem().setHelp(usercomp, ICHelpContextIds.CONTRIBUTORS_PAGE);
+//		PlatformUI.getWorkbench().getHelpSystem().setHelp(usercomp, ICHelpContextIds.PROVIDERS_PAGE);
 
 		usercomp.setLayout(new GridLayout(1, false));
 
@@ -259,9 +259,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			public String getText(Object element) {
 				if (element instanceof String) {
 					String id = (String)element;
-					ICLanguageSettingsContributor contributor = fAvailableContributors.get(id);
-					if (contributor!=null) {
-						String name = contributor.getName();
+					ICLanguageSettingsProvider provider = fAvailableProviders.get(id);
+					if (provider!=null) {
+						String name = provider.getName();
 						if (name!=null && name.length()>0) {
 							return name;
 						}
@@ -305,11 +305,11 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	}
 
 	private void initMapParsers() {
-		fAvailableContributors.clear();
+		fAvailableProviders.clear();
 		fOptionsPageMap.clear();
-		for (String id : LanguageSettingsManager.getContributorAvailableIds()) {
-			ICLanguageSettingsContributor contributor = LanguageSettingsManager.getContributor(id);
-			fAvailableContributors.put(id, contributor);
+		for (String id : LanguageSettingsManager.getProviderAvailableIds()) {
+			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
+			fAvailableProviders.put(id, provider);
 			initializeOptionsPage(id);
 		}
 
@@ -318,19 +318,19 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			ICConfigurationDescription srcCfgDesc = fCfgDesc.getConfiguration();
 			if (srcCfgDesc instanceof ICMultiConfigDescription) {
 				// FIXME
-//				String[][] ss = ((ICMultiConfigDescription)srcCfgDesc).getContributorIDs();
+//				String[][] ss = ((ICMultiConfigDescription)srcCfgDesc).getProviderIDs();
 //				ids = CDTPrefUtil.getStrListForDisplay(ss);
 				ids = new String[0];
 			} else {
-//				ids = srcCfgDesc.getBuildSetting().getContributorIDs();
-				ids = LanguageSettingsManager.getContributorIds(fCfgDesc).toArray(new String[0]);
+//				ids = srcCfgDesc.getBuildSetting().getProviderIDs();
+				ids = LanguageSettingsManager.getProviderIds(fCfgDesc).toArray(new String[0]);
 			}
 			Set<String> setIds = new LinkedHashSet<String>(Arrays.asList(ids));
-			setIds.addAll(fAvailableContributors.keySet());
+			setIds.addAll(fAvailableProviders.keySet());
 			fTableViewer.setInput(setIds.toArray(new String[0]));
 		} else {
-			fTableViewer.setInput(fAvailableContributors.keySet().toArray(new String[0]));
-			ids = LanguageSettingsManager.getDefaultContributorIds();
+			fTableViewer.setInput(fAvailableProviders.keySet().toArray(new String[0]));
+			ids = LanguageSettingsManager.getDefaultProviderIds();
 		}
 		fTableViewer.setCheckedElements(ids);
 
@@ -338,14 +338,14 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	}
 
 	private void initializeOptionsPage(String id) {
-		ICLanguageSettingsContributor contributor = fAvailableContributors.get(id);
-		if (contributor!=null) {
-			String name = contributor.getName();
+		ICLanguageSettingsProvider provider = fAvailableProviders.get(id);
+		if (provider!=null) {
+			String name = provider.getName();
 			if (name!=null && name.length()>0) {
-				// RegexContributor has an Options page
-				if (contributor instanceof RegexContributor) {
+				// RegexProvider has an Options page
+				if (provider instanceof RegexProvider) {
 					// allow to edit only for Build Settings Preference Page (where cfgd==null)
-					RegexContributorOptionPage optionsPage = new RegexContributorOptionPage((RegexContributor) contributor, isContributorsEditable());
+					RegexProviderOptionPage optionsPage = new RegexProviderOptionPage((RegexProvider) provider, isProvidersEditable());
 					fOptionsPageMap.put(id, optionsPage);
 					optionsPage.setContainer(page);
 					optionsPage.createControl(fCompositeForOptionsPage);
@@ -379,13 +379,13 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	public void buttonPressed (int n) {
 		switch (n) {
 		case BUTTON_ADD:
-			addContributor();
+			addProvider();
 			break;
 		case BUTTON_EDIT:
-			editContributor();
+			editProvider();
 			break;
 		case BUTTON_DELETE:
-			deleteContributor();
+			deleteProvider();
 			break;
 		case BUTTON_MOVEUP:
 			moveItem(true);
@@ -420,17 +420,17 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		return CUIPlugin.PLUGIN_ID+'.'+name;
 	}
 
-	private void addContributor() {
+	private void addProvider() {
 		IInputStatusValidator inputValidator = new IInputStatusValidator() {
 			public IStatus isValid(String newText) {
 				StatusInfo status = new StatusInfo();
 				if (newText.trim().length() == 0) {
 					status.setError(UIMessages.getString("ErrorParsTab.error.NonEmptyName")); //$NON-NLS-1$
-				} else if (newText.indexOf(LanguageSettingsManager.CONTRIBUTOR_DELIMITER)>=0) {
+				} else if (newText.indexOf(LanguageSettingsManager.PROVIDER_DELIMITER)>=0) {
 					String message = MessageFormat.format( UIMessages.getString("ErrorParsTab.error.IllegalCharacter"), //$NON-NLS-1$
-							new Object[] { LanguageSettingsManager.CONTRIBUTOR_DELIMITER });
+							new Object[] { LanguageSettingsManager.PROVIDER_DELIMITER });
 					status.setError(message);
-				} else if (fAvailableContributors.containsKey(makeId(newText))) {
+				} else if (fAvailableProviders.containsKey(makeId(newText))) {
 					status.setError(UIMessages.getString("ErrorParsTab.error.NonUniqueID")); //$NON-NLS-1$
 				}
 				return status;
@@ -440,15 +440,15 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		InputStatusDialog addDialog = new InputStatusDialog(usercomp.getShell(),
 				UIMessages.getString("ErrorParsTab.title.Add"), //$NON-NLS-1$
 				UIMessages.getString("ErrorParsTab.label.EnterName"), //$NON-NLS-1$
-				UIMessages.getString("ErrorParsTab.label.DefaultRegexContributorName"), //$NON-NLS-1$
+				UIMessages.getString("ErrorParsTab.label.DefaultRegexProviderName"), //$NON-NLS-1$
 				inputValidator);
 		addDialog.setHelpAvailable(false);
 
 		if (addDialog.open() == Window.OK) {
 			String newName = addDialog.getValue();
 			String newId = makeId(newName);
-			ICLanguageSettingsContributor contributor = new RegexContributor(newId, newName);
-			fAvailableContributors.put(newId, contributor);
+			ICLanguageSettingsProvider provider = new RegexProvider(newId, newName);
+			fAvailableProviders.put(newId, provider);
 
 			fTableViewer.add(newId);
 			fTableViewer.setChecked(newId, true);
@@ -460,21 +460,21 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		}
 	}
 
-	private void editContributor() {
+	private void editProvider() {
 		int n = fTable.getSelectionIndex();
 		Assert.isTrue(n>=0);
 
 		String id = (String)fTableViewer.getElementAt(n);
-		ICLanguageSettingsContributor contributor = fAvailableContributors.get(id);
+		ICLanguageSettingsProvider provider = fAvailableProviders.get(id);
 
 		IInputStatusValidator inputValidator = new IInputStatusValidator() {
 			public IStatus isValid(String newText) {
 				StatusInfo status = new StatusInfo();
 				if (newText.trim().length() == 0) {
 					status.setError(UIMessages.getString("ErrorParsTab.error.NonEmptyName")); //$NON-NLS-1$
-				} else if (newText.indexOf(LanguageSettingsManager.CONTRIBUTOR_DELIMITER)>=0) {
+				} else if (newText.indexOf(LanguageSettingsManager.PROVIDER_DELIMITER)>=0) {
 					String message = MessageFormat.format( UIMessages.getString("ErrorParsTab.error.IllegalCharacter"), //$NON-NLS-1$
-							new Object[] { LanguageSettingsManager.CONTRIBUTOR_DELIMITER });
+							new Object[] { LanguageSettingsManager.PROVIDER_DELIMITER });
 					status.setError(message);
 				}
 				return status;
@@ -484,17 +484,17 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		InputStatusDialog addDialog = new InputStatusDialog(usercomp.getShell(),
 				UIMessages.getString("ErrorParsTab.title.Edit"), //$NON-NLS-1$
 				UIMessages.getString("ErrorParsTab.label.EnterName"), //$NON-NLS-1$
-				contributor.getName(),
+				provider.getName(),
 				inputValidator);
 		addDialog.setHelpAvailable(false);
 
 		if (addDialog.open() == Window.OK) {
-//			contributor.setName(addDialog.getValue());
+//			provider.setName(addDialog.getValue());
 			fTableViewer.refresh(id);
 		}
 	}
 
-	private void deleteContributor() {
+	private void deleteProvider() {
 		int n = fTable.getSelectionIndex();
 		if (n < 0)
 			return;
@@ -525,7 +525,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	}
 
 	private static boolean isExtensionId(String id) {
-		for (String extId : LanguageSettingsManager.getContributorExtensionIds()) {
+		for (String extId : LanguageSettingsManager.getProviderExtensionIds()) {
 			if (extId.equals(id)) {
 				return true;
 			}
@@ -544,15 +544,15 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		boolean selected = pos >= 0 && pos <= last;
 		String id = (String)fTableViewer.getElementAt(pos);
 
-		buttonSetEnabled(BUTTON_ADD, isContributorsEditable());
-		buttonSetEnabled(BUTTON_EDIT, isContributorsEditable() && selected);
-		buttonSetEnabled(BUTTON_DELETE, isContributorsEditable() && selected && !isExtensionId(id));
+		buttonSetEnabled(BUTTON_ADD, isProvidersEditable());
+		buttonSetEnabled(BUTTON_EDIT, isProvidersEditable() && selected);
+		buttonSetEnabled(BUTTON_DELETE, isProvidersEditable() && selected && !isExtensionId(id));
 		buttonSetEnabled(BUTTON_MOVEUP, selected && pos != 0);
 		buttonSetEnabled(BUTTON_MOVEDOWN, selected && pos != last);
 	}
 
 
-	private List<String> getContributorIds(ICConfigurationDescription cfgDescription) {
+	private List<String> getProviderIds(ICConfigurationDescription cfgDescription) {
 //		org.eclipse.cdt.managedbuilder.core.ManagedBuildManager.getConfigurationForDescription(cfgDescription);
 		return null;
 	}
@@ -570,19 +570,19 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			String[] s = null;
 			if (sd instanceof ICMultiConfigDescription) {
 				// FIXME
-//				String[][] ss = ((ICMultiConfigDescription)sd).getContributorIDs();
+//				String[][] ss = ((ICMultiConfigDescription)sd).getProviderIDs();
 //				s = CDTPrefUtil.getStrListForDisplay(ss);
 				s = new String[0];
 			} else {
-//				s = sd.getBuildSetting().getContributorIDs();
-				s = LanguageSettingsManager.getContributorIds(fCfgDesc).toArray(new String[0]);
+//				s = sd.getBuildSetting().getProviderIDs();
+				s = LanguageSettingsManager.getProviderIds(fCfgDesc).toArray(new String[0]);
 			}
 			if (dd instanceof ICMultiConfigDescription) {
 				// FIXME
-//				((ICMultiConfigDescription)dd).setContributorIDs(s);
+//				((ICMultiConfigDescription)dd).setProviderIDs(s);
 			} else {
-//				dd.getBuildSetting().setContributorIDs(s);
-				LanguageSettingsManager.setContributorIds(dd, Arrays.asList(s));
+//				dd.getBuildSetting().setProviderIDs(s);
+				LanguageSettingsManager.setProviderIds(dd, Arrays.asList(s));
 			}
 			initMapParsers();
 		}
@@ -599,22 +599,22 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			if (fCfgDesc==null) {
 				// Build Settings page
 				try {
-					ICLanguageSettingsContributor[] contributors = new ICLanguageSettingsContributor[fTable.getItemCount()];
+					ICLanguageSettingsProvider[] providers = new ICLanguageSettingsProvider[fTable.getItemCount()];
 					int i=0;
 					for (TableItem item : fTable.getItems()) {
 						if (item.getData() instanceof String) {
 							String id = (String) item.getData();
-							contributors[i] = fAvailableContributors.get(id);
+							providers[i] = fAvailableProviders.get(id);
 							i++;
 						}
 					}
 	
 					Object[] checkedElements = fTableViewer.getCheckedElements();
-					String[] checkedContributorIds = new String[checkedElements.length];
-					System.arraycopy(checkedElements, 0, checkedContributorIds, 0, checkedElements.length);
+					String[] checkedProviderIds = new String[checkedElements.length];
+					System.arraycopy(checkedElements, 0, checkedProviderIds, 0, checkedElements.length);
 	
-					LanguageSettingsManager.setUserDefinedContributors(contributors);
-					LanguageSettingsManager.setDefaultContributorIds(checkedContributorIds);
+					LanguageSettingsManager.setUserDefinedProviders(providers);
+					LanguageSettingsManager.setDefaultProviderIds(checkedProviderIds);
 				} catch (BackingStoreException e) {
 					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnApplyingSettings"), e); //$NON-NLS-1$
 				} catch (CoreException e) {
@@ -633,10 +633,10 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 			if (fCfgDesc instanceof ICMultiConfigDescription) {
 				// FIXME
-//				((ICMultiConfigDescription)fCfgDesc).setContributorIDs(ids);
+//				((ICMultiConfigDescription)fCfgDesc).setProviderIDs(ids);
 			} else {
-//				fCfgDesc.getBuildSetting().setContributorIDs(ids);
-				LanguageSettingsManager.setContributorIds(fCfgDesc, Arrays.asList(ids));
+//				fCfgDesc.getBuildSetting().setProviderIDs(ids);
+				LanguageSettingsManager.setProviderIds(fCfgDesc, Arrays.asList(ids));
 			}
 		}
 	}
@@ -655,7 +655,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	 *     This will evaluate to {@code true} for Preference Build Settings page but
 	 *     not for Preference New CDT Project Wizard/Makefile Project.
 	 */
-	private boolean isContributorsEditable() {
+	private boolean isProvidersEditable() {
 		return fCfgDesc==null;
 	}
 
@@ -664,15 +664,15 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	 */
 	@Override
 	protected void performDefaults() {
-		if (isContributorsEditable()) {
+		if (isProvidersEditable()) {
 			// Must be Build Settings Preference Page
 			if (MessageDialog.openQuestion(usercomp.getShell(),
 					UIMessages.getString(UIMessages.getString("ErrorParsTab.title.ConfirmReset")), //$NON-NLS-1$
 					UIMessages.getString(UIMessages.getString("ErrorParsTab.message.ConfirmReset")))) { //$NON-NLS-1$
 
 				try {
-					LanguageSettingsManager.setUserDefinedContributors(null);
-					LanguageSettingsManager.setDefaultContributorIds(null);
+					LanguageSettingsManager.setUserDefinedProviders(null);
+					LanguageSettingsManager.setDefaultProviderIds(null);
 				} catch (BackingStoreException e) {
 					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnRestoring"), e); //$NON-NLS-1$
 				} catch (CoreException e) {
@@ -682,10 +682,10 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		} else {
 			if (fCfgDesc instanceof ICMultiConfigDescription) {
 				// FIXME
-//				((ICMultiConfigDescription) fCfgDesc).setContributorIDs(null);
+//				((ICMultiConfigDescription) fCfgDesc).setProviderIDs(null);
 			} else {
-//				fCfgDesc.getBuildSetting().setContributorIDs(null);
-				LanguageSettingsManager.setContributorIds(fCfgDesc, null);
+//				fCfgDesc.getBuildSetting().setProviderIDs(null);
+				LanguageSettingsManager.setProviderIds(fCfgDesc, null);
 			}
 		}
 		initMapParsers();

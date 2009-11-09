@@ -26,7 +26,7 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsBaseContributor;
+import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -36,30 +36,30 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
 
 /**
- * Test cases testing RegexContributor functionality
+ * Test cases testing LanguageSettingsProvider functionality
  */
 public class LanguageSettingsManagerTests extends TestCase {
 	// These should match id and name of extension point defined in plugin.xml
-	private static final String DEFAULT_CONTRIBUTOR_ID_EXT = "org.eclipse.cdt.core.tests.default.language.settings.contributor";
-	private static final String DEFAULT_CONTRIBUTOR_NAME_EXT = "Test Plugin Default Language Settings Contributor";
-	private static final String CONTRIBUTOR_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.contributor";
-	private static final String CONTRIBUTOR_NAME_EXT = "Test Plugin Language Settings Contributor";
+	private static final String DEFAULT_PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.default.language.settings.provider";
+	private static final String DEFAULT_PROVIDER_NAME_EXT = "Test Plugin Default Language Settings Provider";
+	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.provider";
+	private static final String PROVIDER_NAME_EXT = "Test Plugin Language Settings Provider";
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 
 	private static final String CONFIGURATION_ID = "cfg.id";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
-	private static final String CONTRIBUTOR_0 = "test.contributor.0.id";
-	private static final String CONTRIBUTOR_1 = "test.contributor.1.id";
-	private static final String CONTRIBUTOR_2 = "test.contributor.2.id";
-	private static final String CONTRIBUTOR_NAME_0 = "test.contributor.0.name";
-	private static final String CONTRIBUTOR_NAME_1 = "test.contributor.1.name";
-	private static final String CONTRIBUTOR_NAME_2 = "test.contributor.2.name";
+	private static final String PROVIDER_0 = "test.provider.0.id";
+	private static final String PROVIDER_1 = "test.provider.1.id";
+	private static final String PROVIDER_2 = "test.provider.2.id";
+	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
+	private static final String PROVIDER_NAME_1 = "test.provider.1.name";
+	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
 
-	private class MockContributor extends AbstractExecutableExtensionBase implements ICLanguageSettingsContributor {
+	private class MockProvider extends AbstractExecutableExtensionBase implements ICLanguageSettingsProvider {
 		private final List<ICLanguageSettingEntry> entries;
 
-		public MockContributor(String id, String name, List<ICLanguageSettingEntry> entries) {
+		public MockProvider(String id, String name, List<ICLanguageSettingEntry> entries) {
 			super(id, name);
 			this.entries = entries;
 		}
@@ -91,7 +91,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 //		ResourceHelper.cleanUp();
 //		fProject = null;
 
-		LanguageSettingsManager.setUserDefinedContributors(null);
+		LanguageSettingsManager.setUserDefinedProviders(null);
 	}
 
 	/**
@@ -140,31 +140,31 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
-	 * Check that regular ICLanguageSettingsContributor extension defined in plugin.xml is accessible.
+	 * Check that regular ICLanguageSettingsProvider extension defined in plugin.xml is accessible.
 	 *
 	 * @throws Exception...
 	 */
 	public void testExtension() throws Exception {
 		{
-			int pos = Arrays.binarySearch(LanguageSettingsManager.getContributorExtensionIds(), DEFAULT_CONTRIBUTOR_ID_EXT);
-			assertTrue("extension " + DEFAULT_CONTRIBUTOR_ID_EXT + " not found", pos>=0);
+			int pos = Arrays.binarySearch(LanguageSettingsManager.getProviderExtensionIds(), DEFAULT_PROVIDER_ID_EXT);
+			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", pos>=0);
 		}
 		{
-			int pos = Arrays.binarySearch(LanguageSettingsManager.getContributorAvailableIds(), DEFAULT_CONTRIBUTOR_ID_EXT);
-			assertTrue("extension " + DEFAULT_CONTRIBUTOR_ID_EXT + " not found", pos>=0);
+			int pos = Arrays.binarySearch(LanguageSettingsManager.getProviderAvailableIds(), DEFAULT_PROVIDER_ID_EXT);
+			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", pos>=0);
 		}
 
-		// get test plugin extension contributor
-		ICLanguageSettingsContributor contributorExt = LanguageSettingsManager.getContributor(DEFAULT_CONTRIBUTOR_ID_EXT);
-		assertNotNull(contributorExt);
+		// get test plugin extension provider
+		ICLanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(DEFAULT_PROVIDER_ID_EXT);
+		assertNotNull(providerExt);
 
-		assertTrue(contributorExt instanceof LanguageSettingsBaseContributor);
-		LanguageSettingsBaseContributor contributor = (LanguageSettingsBaseContributor)contributorExt;
-		assertEquals(DEFAULT_CONTRIBUTOR_ID_EXT, contributor.getId());
-		assertEquals(DEFAULT_CONTRIBUTOR_NAME_EXT, contributor.getName());
+		assertTrue(providerExt instanceof LanguageSettingsBaseProvider);
+		LanguageSettingsBaseProvider provider = (LanguageSettingsBaseProvider)providerExt;
+		assertEquals(DEFAULT_PROVIDER_ID_EXT, provider.getId());
+		assertEquals(DEFAULT_PROVIDER_NAME_EXT, provider.getName());
 
 		// retrieve wrong language
-		assertEquals(0, contributor.getSettingEntries(null, FILE_0, LANG_ID).size());
+		assertEquals(0, provider.getSettingEntries(null, FILE_0, LANG_ID).size());
 
 		// benchmarks matching extension point definition
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>() {
@@ -186,7 +186,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		};
 
 		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(null, FILE_0, LANG_ID_EXT);
+		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
 		for (int i=0;i<entriesExt.size();i++) {
 			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
 		}
@@ -200,11 +200,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testExtensionsSorting() throws Exception {
 		{
-			String[] ids = LanguageSettingsManager.getContributorExtensionIds();
+			String[] ids = LanguageSettingsManager.getProviderExtensionIds();
 			String lastName="";
-			// contributors created from extensions are to be sorted by names
+			// providers created from extensions are to be sorted by names
 			for (String id : ids) {
-				String name = LanguageSettingsManager.getContributor(id).getName();
+				String name = LanguageSettingsManager.getProvider(id).getName();
 				assertTrue(lastName.compareTo(name)<=0);
 				lastName = name;
 			}
@@ -217,238 +217,238 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 * @throws Exception...
 	 */
 	public void testExtensionsNameId() throws Exception {
-		// get test plugin extension non-default contributor
-		ICLanguageSettingsContributor contributorExt = LanguageSettingsManager.getContributor(CONTRIBUTOR_ID_EXT);
-		assertNotNull(contributorExt);
-		assertTrue(contributorExt instanceof TestLanguageSettingsContributor);
+		// get test plugin extension non-default provider
+		ICLanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(PROVIDER_ID_EXT);
+		assertNotNull(providerExt);
+		assertTrue(providerExt instanceof TestLanguageSettingsProvider);
 
-		assertEquals(CONTRIBUTOR_ID_EXT, contributorExt.getId());
-		assertEquals(CONTRIBUTOR_NAME_EXT, contributorExt.getName());
+		assertEquals(PROVIDER_ID_EXT, providerExt.getId());
+		assertEquals(PROVIDER_NAME_EXT, providerExt.getName());
 	}
 	
 	/**
-	 * Test setting/retrieval of contributors and their IDs.
+	 * Test setting/retrieval of providers and their IDs.
 	 *
 	 * @throws Exception...
 	 */
-	public void testAvailableContributors() throws Exception {
+	public void testAvailableProviders() throws Exception {
 
-		final String[] availableContributorIds = LanguageSettingsManager.getContributorAvailableIds();
-		assertNotNull(availableContributorIds);
-		assertTrue(availableContributorIds.length>0);
-		final String firstId = LanguageSettingsManager.getContributorAvailableIds()[0];
-		final ICLanguageSettingsContributor firstContributor = LanguageSettingsManager.getContributor(firstId);
-		assertNotNull(firstContributor);
-		assertEquals(firstId, firstContributor.getId());
-		final String firstName = firstContributor.getName();
+		final String[] availableProviderIds = LanguageSettingsManager.getProviderAvailableIds();
+		assertNotNull(availableProviderIds);
+		assertTrue(availableProviderIds.length>0);
+		final String firstId = LanguageSettingsManager.getProviderAvailableIds()[0];
+		final ICLanguageSettingsProvider firstProvider = LanguageSettingsManager.getProvider(firstId);
+		assertNotNull(firstProvider);
+		assertEquals(firstId, firstProvider.getId());
+		final String firstName = firstProvider.getName();
 		// Preconditions
 		{
-			List<String> all = Arrays.asList(LanguageSettingsManager.getContributorAvailableIds());
-			assertEquals(false, all.contains(CONTRIBUTOR_0));
+			List<String> all = Arrays.asList(LanguageSettingsManager.getProviderAvailableIds());
+			assertEquals(false, all.contains(PROVIDER_0));
 			assertEquals(true, all.contains(firstId));
 
-			assertNull(LanguageSettingsManager.getContributor(CONTRIBUTOR_0));
+			assertNull(LanguageSettingsManager.getProvider(PROVIDER_0));
 
-			ICLanguageSettingsContributor retrieved2 = LanguageSettingsManager.getContributor(firstId);
+			ICLanguageSettingsProvider retrieved2 = LanguageSettingsManager.getProvider(firstId);
 			assertNotNull(retrieved2);
-			assertEquals(firstContributor, retrieved2);
+			assertEquals(firstProvider, retrieved2);
 		}
 
-		// set available contributors
+		// set available providers
 		{
-			ICLanguageSettingsContributor dummy1 = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null);
+			ICLanguageSettingsProvider dummy1 = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null);
 			final String firstNewName = firstName + " new";
-			ICLanguageSettingsContributor dummy2 = new MockContributor(firstId, firstNewName, null);
-			LanguageSettingsManager.setUserDefinedContributors(new ICLanguageSettingsContributor[] {
+			ICLanguageSettingsProvider dummy2 = new MockProvider(firstId, firstNewName, null);
+			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {
 					// add brand new one
 					dummy1,
 					// override extension with another one
 					dummy2,
 			});
-			List<String> all = Arrays.asList(LanguageSettingsManager.getContributorAvailableIds());
-			assertEquals(true, all.contains(CONTRIBUTOR_1));
+			List<String> all = Arrays.asList(LanguageSettingsManager.getProviderAvailableIds());
+			assertEquals(true, all.contains(PROVIDER_1));
 			assertEquals(true, all.contains(firstId));
 
-			ICLanguageSettingsContributor retrieved1 = LanguageSettingsManager.getContributor(CONTRIBUTOR_1);
+			ICLanguageSettingsProvider retrieved1 = LanguageSettingsManager.getProvider(PROVIDER_1);
 			assertNotNull(retrieved1);
-			assertEquals(CONTRIBUTOR_NAME_1, retrieved1.getName());
+			assertEquals(PROVIDER_NAME_1, retrieved1.getName());
 			assertEquals(dummy1, retrieved1);
 
-			ICLanguageSettingsContributor retrieved2 = LanguageSettingsManager.getContributor(firstId);
+			ICLanguageSettingsProvider retrieved2 = LanguageSettingsManager.getProvider(firstId);
 			assertNotNull(retrieved2);
 			assertEquals(firstNewName, retrieved2.getName());
 			assertEquals(dummy2, retrieved2);
 		}
-		// reset available contributors
+		// reset available providers
 		{
-			LanguageSettingsManager.setUserDefinedContributors(null);
+			LanguageSettingsManager.setUserDefinedProviders(null);
 
-			List<String> all = Arrays.asList(LanguageSettingsManager.getContributorAvailableIds());
-			assertEquals(false, all.contains(CONTRIBUTOR_1));
+			List<String> all = Arrays.asList(LanguageSettingsManager.getProviderAvailableIds());
+			assertEquals(false, all.contains(PROVIDER_1));
 			assertEquals(true, all.contains(firstId));
 
-			assertNull(LanguageSettingsManager.getContributor(CONTRIBUTOR_1));
+			assertNull(LanguageSettingsManager.getProvider(PROVIDER_1));
 
-			ICLanguageSettingsContributor retrieved2 = LanguageSettingsManager.getContributor(firstId);
+			ICLanguageSettingsProvider retrieved2 = LanguageSettingsManager.getProvider(firstId);
 			assertNotNull(retrieved2);
-			assertEquals(firstContributor, retrieved2);
+			assertEquals(firstProvider, retrieved2);
 		}
 	}
 
 	/**
-	 * Test setting/retrieval of user defined contributors.
+	 * Test setting/retrieval of user defined providers.
 	 *
 	 * @throws Exception...
 	 */
-	public void testUserDefinedContributors() throws Exception {
-		// reset contributors
+	public void testUserDefinedProviders() throws Exception {
+		// reset providers
 		{
-			LanguageSettingsManager.setUserDefinedContributors(null);
-			String all = toDelimitedString(LanguageSettingsManager.getContributorAvailableIds());
-			String extensions = toDelimitedString(LanguageSettingsManager.getContributorExtensionIds());
+			LanguageSettingsManager.setUserDefinedProviders(null);
+			String all = toDelimitedString(LanguageSettingsManager.getProviderAvailableIds());
+			String extensions = toDelimitedString(LanguageSettingsManager.getProviderExtensionIds());
 			assertEquals(all, extensions);
 		}
 		{
-			LanguageSettingsManager.setUserDefinedContributors(new ICLanguageSettingsContributor[] {
-					new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, null),
+			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {
+					new MockProvider(PROVIDER_0, PROVIDER_NAME_0, null),
 			});
-			String all = toDelimitedString(LanguageSettingsManager.getContributorAvailableIds());
-			String extensions = toDelimitedString(LanguageSettingsManager.getContributorExtensionIds());
+			String all = toDelimitedString(LanguageSettingsManager.getProviderAvailableIds());
+			String extensions = toDelimitedString(LanguageSettingsManager.getProviderExtensionIds());
 			assertFalse(all.equals(extensions));
 		}
 	}
 
 	/**
-	 * Test setting/retrieval of default contributor IDs preferences.
+	 * Test setting/retrieval of default provider IDs preferences.
 	 *
 	 * @throws Exception...
 	 */
-	public void testDefaultContributorIds() throws Exception {
-		final String[] availableContributorIds = LanguageSettingsManager.getContributorAvailableIds();
-		assertNotNull(availableContributorIds);
-		final String[] initialDefaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
+	public void testDefaultProviderIds() throws Exception {
+		final String[] availableProviderIds = LanguageSettingsManager.getProviderAvailableIds();
+		assertNotNull(availableProviderIds);
+		final String[] initialDefaultProviderIds = LanguageSettingsManager.getDefaultProviderIds();
 
 		// preconditions
 		{
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(toDelimitedString(availableContributorIds), toDelimitedString(defaultContributorIds));
+			String[] defaultProviderIds = LanguageSettingsManager.getDefaultProviderIds();
+			assertNotNull(defaultProviderIds);
+			assertEquals(toDelimitedString(availableProviderIds), toDelimitedString(defaultProviderIds));
 		}
-		// setDefaultContributorIds
+		// setDefaultProviderIds
 		{
-			String[] newDefaultContributorIds = {
-					"org.eclipse.cdt.core.test.language.settings.contributor0",
-					"org.eclipse.cdt.core.test.language.settings.contributor1",
-					"org.eclipse.cdt.core.test.language.settings.contributor2",
+			String[] newDefaultProviderIds = {
+					"org.eclipse.cdt.core.test.language.settings.provider0",
+					"org.eclipse.cdt.core.test.language.settings.provider1",
+					"org.eclipse.cdt.core.test.language.settings.provider2",
 			};
-			LanguageSettingsManager.setDefaultContributorIds(newDefaultContributorIds);
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(toDelimitedString(newDefaultContributorIds), toDelimitedString(defaultContributorIds));
+			LanguageSettingsManager.setDefaultProviderIds(newDefaultProviderIds);
+			String[] defaultProviderIds = LanguageSettingsManager.getDefaultProviderIds();
+			assertNotNull(defaultProviderIds);
+			assertEquals(toDelimitedString(newDefaultProviderIds), toDelimitedString(defaultProviderIds));
 		}
 
 		// reset
 		{
-			LanguageSettingsManager.setDefaultContributorIds(null);
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(toDelimitedString(availableContributorIds), toDelimitedString(defaultContributorIds));
+			LanguageSettingsManager.setDefaultProviderIds(null);
+			String[] defaultProviderIds = LanguageSettingsManager.getDefaultProviderIds();
+			assertNotNull(defaultProviderIds);
+			assertEquals(toDelimitedString(availableProviderIds), toDelimitedString(defaultProviderIds));
 		}
 	}
 
 	/**
-	 * Check that default contributor IDs are stored properly.
+	 * Check that default provider IDs are stored properly.
 	 *
 	 * @throws Exception...
 	 */
-	public void testSerializeDefaultContributorIds() throws Exception {
-		final String[] testingDefaultContributorIds = {
-				"org.eclipse.cdt.core.test.language.settings.contributor0",
-				"org.eclipse.cdt.core.test.language.settings.contributor1",
-				"org.eclipse.cdt.core.test.language.settings.contributor2",
+	public void testSerializeDefaultProviderIds() throws Exception {
+		final String[] testingDefaultProviderIds = {
+				"org.eclipse.cdt.core.test.language.settings.provider0",
+				"org.eclipse.cdt.core.test.language.settings.provider1",
+				"org.eclipse.cdt.core.test.language.settings.provider2",
 		};
-		final String TESTING_IDS = toDelimitedString(testingDefaultContributorIds);
-		final String DEFAULT_IDS = toDelimitedString(LanguageSettingsManager.getDefaultContributorIds());
+		final String TESTING_IDS = toDelimitedString(testingDefaultProviderIds);
+		final String DEFAULT_IDS = toDelimitedString(LanguageSettingsManager.getDefaultProviderIds());
 
 		{
-			// setDefaultContributorIds
-			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(testingDefaultContributorIds);
+			// setDefaultProviderIds
+			LanguageSettingsExtensionManager.setDefaultProviderIdsInternal(testingDefaultProviderIds);
 
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(TESTING_IDS, toDelimitedString(defaultContributorIds));
+			String[] defaultProviderIds = LanguageSettingsManager.getDefaultProviderIds();
+			assertNotNull(defaultProviderIds);
+			assertEquals(TESTING_IDS, toDelimitedString(defaultProviderIds));
 
 			// serialize them
-			LanguageSettingsExtensionManager.serializeDefaultContributorIds();
+			LanguageSettingsExtensionManager.serializeDefaultProviderIds();
 		}
 
 		{
 			// Remove from internal list
-			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(null);
-			assertEquals(DEFAULT_IDS, toDelimitedString(LanguageSettingsManager.getDefaultContributorIds()));
+			LanguageSettingsExtensionManager.setDefaultProviderIdsInternal(null);
+			assertEquals(DEFAULT_IDS, toDelimitedString(LanguageSettingsManager.getDefaultProviderIds()));
 		}
 
 		{
 			// Re-load from persistent storage and check it out
-			LanguageSettingsExtensionManager.loadDefaultContributorIds();
+			LanguageSettingsExtensionManager.loadDefaultProviderIds();
 
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(TESTING_IDS, toDelimitedString(defaultContributorIds));
+			String[] defaultProviderIds = LanguageSettingsManager.getDefaultProviderIds();
+			assertNotNull(defaultProviderIds);
+			assertEquals(TESTING_IDS, toDelimitedString(defaultProviderIds));
 		}
 
 		{
 			// Reset IDs and serialize
-			LanguageSettingsExtensionManager.setDefaultContributorIdsInternal(null);
-			LanguageSettingsExtensionManager.serializeDefaultContributorIds();
+			LanguageSettingsExtensionManager.setDefaultProviderIdsInternal(null);
+			LanguageSettingsExtensionManager.serializeDefaultProviderIds();
 
 			// Check that default IDs are loaded
-			LanguageSettingsExtensionManager.loadDefaultContributorIds();
-			String[] defaultContributorIds = LanguageSettingsManager.getDefaultContributorIds();
-			assertNotNull(defaultContributorIds);
-			assertEquals(DEFAULT_IDS, toDelimitedString(defaultContributorIds));
+			LanguageSettingsExtensionManager.loadDefaultProviderIds();
+			String[] defaultProviderIds = LanguageSettingsManager.getDefaultProviderIds();
+			assertNotNull(defaultProviderIds);
+			assertEquals(DEFAULT_IDS, toDelimitedString(defaultProviderIds));
 		}
 	}
 
 	/**
-	 * Test serialization of user defined contributors.
+	 * Test serialization of user defined providers.
 	 *
 	 * @throws Exception...
 	 */
-	public void testSerializeWorkspaceContributor() throws Exception {
-//		final String TESTING_ID = "org.eclipse.cdt.core.test.language.settings.contributor";
-//		final String TESTING_NAME = "A contributor";
+	public void testSerializeWorkspaceProvider() throws Exception {
+//		final String TESTING_ID = "org.eclipse.cdt.core.test.language.settings.provider";
+//		final String TESTING_NAME = "A provider";
 //
 //		{
-//			// Create contributor
-//			ICLanguageSettingsContributor contributor = new GCCContributor();
-//			// Add to available contributors
-//			LanguageSettingsExtensionManager.setUserDefinedContributorsInternal(
-//					new ICLanguageSettingsContributor[] {contributor});
-//			assertNotNull(LanguageSettingsManager.getContributor(TESTING_ID));
-//			assertEquals(TESTING_NAME, LanguageSettingsManager.getContributor(TESTING_ID).getName());
+//			// Create provider
+//			ICLanguageSettingsProvider provider = new GCCProvider();
+//			// Add to available providers
+//			LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(
+//					new ICLanguageSettingsProvider[] {provider});
+//			assertNotNull(LanguageSettingsManager.getProvider(TESTING_ID));
+//			assertEquals(TESTING_NAME, LanguageSettingsManager.getProvider(TESTING_ID).getName());
 //			// Serialize in persistent storage
-//			LanguageSettingsExtensionManager.serializeUserDefinedContributors();
+//			LanguageSettingsExtensionManager.serializeUserDefinedProviders();
 //		}
 //		{
-//			// Remove from available contributors
-//			LanguageSettingsExtensionManager.setUserDefinedContributorsInternal(null);
-//			assertNull(LanguageSettingsManager.getContributorCopy(TESTING_ID));
+//			// Remove from available providers
+//			LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(null);
+//			assertNull(LanguageSettingsManager.getProviderCopy(TESTING_ID));
 //		}
 //
 //		{
 //			// Re-load from persistent storage and check it out
-//			LanguageSettingsExtensionManager.loadUserDefinedContributors();
-//			ICLanguageSettingsContributor contributor = LanguageSettingsManager.getContributorCopy(TESTING_ID);
-//			assertNotNull(contributor);
-//			assertEquals(TESTING_NAME, contributor.getName());
-//			assertTrue(contributor instanceof ContributorNamedWrapper);
-//			assertTrue(((ContributorNamedWrapper)contributor).getContributor() instanceof GCCContributor);
+//			LanguageSettingsExtensionManager.loadUserDefinedProviders();
+//			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProviderCopy(TESTING_ID);
+//			assertNotNull(provider);
+//			assertEquals(TESTING_NAME, provider.getName());
+//			assertTrue(provider instanceof ProviderNamedWrapper);
+//			assertTrue(((ProviderNamedWrapper)provider).getProvider() instanceof GCCProvider);
 //		}
 //		{
-//			// Remove from available contributors as clean-up
-//			LanguageSettingsExtensionManager.setUserDefinedContributorsInternal(null);
-//			assertNull(LanguageSettingsManager.getContributorCopy(TESTING_ID));
+//			// Remove from available providers as clean-up
+//			LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(null);
+//			assertNull(LanguageSettingsManager.getProviderCopy(TESTING_ID));
 //		}
 		fail("UNDER CONSTRUCTION");
 	}
@@ -458,39 +458,39 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 *
 	 * @throws Exception...
 	 */
-	public void testSerializeRegexContributorSpecialCharacters() throws Exception {
+	public void testSerializeRegexProviderSpecialCharacters() throws Exception {
 //
-//		final String TESTING_ID = "org.eclipse.cdt.core.test.regexlanguage.settings.contributor";
+//		final String TESTING_ID = "org.eclipse.cdt.core.test.regexlanguage.settings.provider";
 //		final String TESTING_NAME = "<>\"'\\& Error Parser";
 //		final String TESTING_REGEX = "Pattern-<>\"'\\&";
-//		final String ALL_IDS = toDelimitedString(LanguageSettingsManager.getContributorAvailableIds());
+//		final String ALL_IDS = toDelimitedString(LanguageSettingsManager.getProviderAvailableIds());
 //		{
-//			// Create contributor with the same id as in eclipse registry
-//			RegexContributor regexContributor = new RegexContributor(TESTING_ID, TESTING_NAME);
-//			regexContributor.addPattern(new RegexErrorPattern(TESTING_REGEX,
+//			// Create provider with the same id as in eclipse registry
+//			RegexProvider regexProvider = new RegexProvider(TESTING_ID, TESTING_NAME);
+//			regexProvider.addPattern(new RegexErrorPattern(TESTING_REGEX,
 //					"line-<>\"'\\&", "file-<>\"'\\&", "description-<>\"'\\&", null, IMarkerGenerator.SEVERITY_WARNING, false));
 //
-//			// Add to available contributors
-//			LanguageSettingsExtensionManager.setUserDefinedContributorsInternal(new ICLanguageSettingsContributor[] {regexContributor});
-//			assertNotNull(LanguageSettingsManager.getContributorCopy(TESTING_ID));
+//			// Add to available providers
+//			LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(new ICLanguageSettingsProvider[] {regexProvider});
+//			assertNotNull(LanguageSettingsManager.getProviderCopy(TESTING_ID));
 //			// And serialize in persistent storage
-//			LanguageSettingsExtensionManager.serializeUserDefinedContributors();
+//			LanguageSettingsExtensionManager.serializeUserDefinedProviders();
 //		}
 //
 //		{
 //			// Re-load from persistent storage and check it out
-//			LanguageSettingsExtensionManager.loadUserDefinedContributors();
-//			String all = toDelimitedString(LanguageSettingsManager.getContributorAvailableIds());
+//			LanguageSettingsExtensionManager.loadUserDefinedProviders();
+//			String all = toDelimitedString(LanguageSettingsManager.getProviderAvailableIds());
 //			assertTrue(all.contains(TESTING_ID));
 //
-//			ICLanguageSettingsContributor contributor = LanguageSettingsManager.getContributorCopy(TESTING_ID);
-//			assertNotNull(contributor);
-//			assertTrue(contributor instanceof RegexContributor);
-//			RegexContributor regexContributor = (RegexContributor)contributor;
-//			assertEquals(TESTING_ID, regexContributor.getId());
-//			assertEquals(TESTING_NAME, regexContributor.getName());
+//			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProviderCopy(TESTING_ID);
+//			assertNotNull(provider);
+//			assertTrue(provider instanceof RegexProvider);
+//			RegexProvider regexProvider = (RegexProvider)provider;
+//			assertEquals(TESTING_ID, regexProvider.getId());
+//			assertEquals(TESTING_NAME, regexProvider.getName());
 //
-//			RegexErrorPattern[] errorPatterns = regexContributor.getPatterns();
+//			RegexErrorPattern[] errorPatterns = regexProvider.getPatterns();
 //			assertEquals(1, errorPatterns.length);
 //			assertEquals(TESTING_REGEX, errorPatterns[0].getPattern());
 //		}
@@ -498,27 +498,27 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
-	 * Test retrieval of contributor, clone() and equals().
+	 * Test retrieval of provider, clone() and equals().
 	 *
 	 * @throws Exception...
 	 */
-	public void testGetContributorCopy() throws Exception {
+	public void testGetProviderCopy() throws Exception {
 //		{
-//			ICLanguageSettingsContributor clone1 = LanguageSettingsManager.getContributorCopy(REGEX_ERRORPARSER_ID);
-//			ICLanguageSettingsContributor clone2 = LanguageSettingsManager.getContributorCopy(REGEX_ERRORPARSER_ID);
+//			ICLanguageSettingsProvider clone1 = LanguageSettingsManager.getProviderCopy(REGEX_ERRORPARSER_ID);
+//			ICLanguageSettingsProvider clone2 = LanguageSettingsManager.getProviderCopy(REGEX_ERRORPARSER_ID);
 //			assertEquals(clone1, clone2);
 //			assertNotSame(clone1, clone2);
 //		}
 //		{
-//			ICLanguageSettingsContributor clone1 = LanguageSettingsManager.getContributorCopy(GCC_ERRORPARSER_ID);
-//			ICLanguageSettingsContributor clone2 = LanguageSettingsManager.getContributorCopy(GCC_ERRORPARSER_ID);
+//			ICLanguageSettingsProvider clone1 = LanguageSettingsManager.getProviderCopy(GCC_ERRORPARSER_ID);
+//			ICLanguageSettingsProvider clone2 = LanguageSettingsManager.getProviderCopy(GCC_ERRORPARSER_ID);
 //			assertEquals(clone1, clone2);
 //			assertNotSame(clone1, clone2);
 //
-//			assertTrue(clone1 instanceof ContributorNamedWrapper);
-//			assertTrue(clone2 instanceof ContributorNamedWrapper);
-//			ICLanguageSettingsContributor gccClone1 = ((ContributorNamedWrapper)clone1).getContributor();
-//			ICLanguageSettingsContributor gccClone2 = ((ContributorNamedWrapper)clone2).getContributor();
+//			assertTrue(clone1 instanceof ProviderNamedWrapper);
+//			assertTrue(clone2 instanceof ProviderNamedWrapper);
+//			ICLanguageSettingsProvider gccClone1 = ((ProviderNamedWrapper)clone1).getProvider();
+//			ICLanguageSettingsProvider gccClone2 = ((ProviderNamedWrapper)clone2).getProvider();
 //			assertNotSame(clone1, clone2);
 //		}
 		fail("UNDER CONSTRUCTION");
@@ -526,7 +526,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testConfigurationDescription_NullContributor() throws Exception {
+	public void testConfigurationDescription_NullProvider() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -536,51 +536,51 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 		{
-			// set rough contributor returning null with getSettingEntries()
-			ICLanguageSettingsContributor contributorNull = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null);
-			List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-			contributors.add(contributorNull);
-			LanguageSettingsManager.setContributors(cfgDescription, contributors);
+			// set rough provider returning null with getSettingEntries()
+			ICLanguageSettingsProvider providerNull = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null);
+			List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+			providers.add(providerNull);
+			LanguageSettingsManager.setProviders(cfgDescription, providers);
 		}
 
-		// use contributor returning null
+		// use provider returning null
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_1);
+					cfgDescription, FILE_0, LANG_ID, PROVIDER_1);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_1, 0);
+					cfgDescription, FILE_0, LANG_ID, PROVIDER_1, 0);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
 		
 		{
-			// set rough contributor returning null in getSettingEntries() array
-			ICLanguageSettingsContributor contributorNull = new MockContributor(CONTRIBUTOR_2, CONTRIBUTOR_NAME_2, 
+			// set rough provider returning null in getSettingEntries() array
+			ICLanguageSettingsProvider providerNull = new MockProvider(PROVIDER_2, PROVIDER_NAME_2, 
 					new ArrayList<ICLanguageSettingEntry>() {
 						{
 							add(null);
 						}
 					}
 			);
-			List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-			contributors.add(contributorNull);
-			LanguageSettingsManager.setContributors(cfgDescription, contributors);
+			List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+			providers.add(providerNull);
+			LanguageSettingsManager.setProviders(cfgDescription, providers);
 		}
 		
-		// use contributor returning null as item in array
+		// use provider returning null as item in array
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_2);
+					cfgDescription, FILE_0, LANG_ID, PROVIDER_2);
 			assertNotNull(retrieved);
 			assertEquals(1, retrieved.size());
 		}
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_2, 0);
+					cfgDescription, FILE_0, LANG_ID, PROVIDER_2, 0);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
@@ -603,8 +603,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		ICLanguageSettingsContributor contributorYes = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, null)  {
+		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+		ICLanguageSettingsProvider providerYes = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, null)  {
 			@Override
 			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 				if (cfgDescription.getId().equals(modelCfgDescription.getId())) {
@@ -614,8 +614,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 			}
 
 		};
-		contributors.add(contributorYes);
-		ICLanguageSettingsContributor contributorNo = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null)  {
+		providers.add(providerYes);
+		ICLanguageSettingsProvider providerNo = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null)  {
 			@Override
 			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 				if (cfgDescription.getId().equals(modelCfgDescription.getId())) {
@@ -625,19 +625,19 @@ public class LanguageSettingsManagerTests extends TestCase {
 			}
 			
 		};
-		contributors.add(contributorNo);
-		LanguageSettingsManager.setContributors(modelCfgDescription, contributors);
+		providers.add(providerNo);
+		LanguageSettingsManager.setProviders(modelCfgDescription, providers);
 
 		{
 			// retrieve the entries for model configuration description
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(modelCfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(modelCfgDescription, FILE_0, LANG_ID, PROVIDER_0);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
 		
 		{
 			// retrieve the entries for different configuration description
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(modelCfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_1);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(modelCfgDescription, FILE_0, LANG_ID, PROVIDER_1);
 			assertEquals(0, retrieved.size());
 		}
 	}
@@ -647,7 +647,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 *
 	 * @throws Exception...
 	 */
-	public void testConfigurationDescription_Contributors() throws Exception {
+	public void testConfigurationDescription_Providers() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -656,20 +656,20 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
-		// set contributors
-		ICLanguageSettingsContributor contributor1 = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, null);
-		ICLanguageSettingsContributor contributor2 = new MockContributor(CONTRIBUTOR_2, CONTRIBUTOR_NAME_2, null);
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		contributors.add(contributor1);
-		contributors.add(contributor2);
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		// set providers
+		ICLanguageSettingsProvider provider1 = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null);
+		ICLanguageSettingsProvider provider2 = new MockProvider(PROVIDER_2, PROVIDER_NAME_2, null);
+		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+		providers.add(provider1);
+		providers.add(provider2);
+		LanguageSettingsManager.setProviders(cfgDescription, providers);
 
 		{
-			// get contributors
-			List<ICLanguageSettingsContributor> retrieved = LanguageSettingsManager.getContributors(cfgDescription);
-			assertEquals(contributor1, retrieved.get(0));
-			assertEquals(contributor2, retrieved.get(1));
-			assertEquals(contributors.size(), retrieved.size());
+			// get providers
+			List<ICLanguageSettingsProvider> retrieved = LanguageSettingsManager.getProviders(cfgDescription);
+			assertEquals(provider1, retrieved.get(0));
+			assertEquals(provider2, retrieved.get(1));
+			assertEquals(providers.size(), retrieved.size());
 		}
 	}
 
@@ -684,7 +684,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
-		// create couple of contributors
+		// create couple of providers
 		final List<ICLanguageSettingEntry> original1 = new ArrayList<ICLanguageSettingEntry>();
 		original1.add(new CIncludePathEntry("value1", 1));
 		original1.add(new CIncludePathEntry("value2", 2));
@@ -694,24 +694,24 @@ public class LanguageSettingsManagerTests extends TestCase {
 		original2.add(new CIncludePathEntry("value2", 2));
 		original2.add(new CIncludePathEntry("value3", 2));
 
-		ICLanguageSettingsContributor contributor1 = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, original1);
-		ICLanguageSettingsContributor contributor2 = new MockContributor(CONTRIBUTOR_2, CONTRIBUTOR_NAME_2, original2);
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		contributors.add(contributor1);
-		contributors.add(contributor2);
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		ICLanguageSettingsProvider provider1 = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, original1);
+		ICLanguageSettingsProvider provider2 = new MockProvider(PROVIDER_2, PROVIDER_NAME_2, original2);
+		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+		providers.add(provider1);
+		providers.add(provider2);
+		LanguageSettingsManager.setProviders(cfgDescription, providers);
 
 		{
-			// get list of contributors
-			List<ICLanguageSettingsContributor> all = LanguageSettingsManager.getContributors(cfgDescription);
-			assertTrue(all.contains(contributor1));
-			assertTrue(all.contains(contributor2));
+			// get list of providers
+			List<ICLanguageSettingsProvider> all = LanguageSettingsManager.getProviders(cfgDescription);
+			assertTrue(all.contains(provider1));
+			assertTrue(all.contains(provider2));
 			assertTrue(all.size()>=2);
 		}
 
 		{
-			// retrieve the entries for contributor-1
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_1);
+			// retrieve the entries for provider-1
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_1);
 
 			assertNotSame(original1, retrieved);
 			assertEquals(original1.size(), retrieved.size());
@@ -723,8 +723,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 		}
 
 		{
-			// retrieve the entries for contributor-2
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_2);
+			// retrieve the entries for provider-2
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_2);
 
 			assertNotSame(original2, retrieved);
 			assertEquals(original2.size(), retrieved.size());
@@ -735,7 +735,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			}
 		}
 
-		// TODO: for some other contributor?
+		// TODO: for some other provider?
 //		// reset the entries for provider-1
 //		{
 //			original1.clear();
@@ -760,7 +760,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 //			List<ICLanguageSettingEntry> retrieved_1 = manager.getSettingEntries(RC_DESCRIPTOR, PROVIDER_1);
 //			assertEquals(0, retrieved_1.size());
 //
-//			List<ICLanguageSettingEntry> retrieved_2 = manager.getSettingEntries(RC_DESCRIPTOR, CONTRIBUTOR_2);
+//			List<ICLanguageSettingEntry> retrieved_2 = manager.getSettingEntries(RC_DESCRIPTOR, PROVIDER_2);
 //			assertEquals(original2.size(), retrieved_2.size());
 //		}
 //
@@ -770,8 +770,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 //			original2a.add(new CIncludePathEntry("value4a", 1));
 //			original2a.add(new CIncludePathEntry("value5a", 2));
 //
-//			manager.addSettingEntries(RC_DESCRIPTOR, CONTRIBUTOR_2, original2a);
-//			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(RC_DESCRIPTOR, CONTRIBUTOR_2);
+//			manager.addSettingEntries(RC_DESCRIPTOR, PROVIDER_2, original2a);
+//			List<ICLanguageSettingEntry> retrieved = manager.getSettingEntries(RC_DESCRIPTOR, PROVIDER_2);
 //
 //			assertEquals(original2.size()+original2a.size(), retrieved.size());
 //
@@ -806,22 +806,22 @@ public class LanguageSettingsManagerTests extends TestCase {
 		original.add(new CMacroEntry("MACRO1", "value1",0));
 		original.add(new CIncludePathEntry("path2", 0));
 
-		ICLanguageSettingsContributor contributor0 = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, original);
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		contributors.add(contributor0);
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		ICLanguageSettingsProvider provider0 = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, original);
+		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+		providers.add(provider0);
+		LanguageSettingsManager.setProviders(cfgDescription, providers);
 
 		{
 			// retrieve entries by kind
 			List<ICLanguageSettingEntry> includes = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0, ICSettingEntry.INCLUDE_PATH);
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0, ICSettingEntry.INCLUDE_PATH);
 			assertEquals(3, includes.size());
 			assertEquals(new CIncludePathEntry("path0", 0),includes.get(0));
 			assertEquals(new CIncludePathEntry("path1", 0),includes.get(1));
 			assertEquals(new CIncludePathEntry("path2", 0),includes.get(2));
 
 			List<ICLanguageSettingEntry> macros = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0, ICSettingEntry.MACRO);
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0, ICSettingEntry.MACRO);
 			assertEquals(2, macros.size());
 			assertEquals(new CMacroEntry("MACRO0", "value0",0), macros.get(0));
 			assertEquals(new CMacroEntry("MACRO1", "value1",0), macros.get(1));
@@ -846,15 +846,15 @@ public class LanguageSettingsManagerTests extends TestCase {
 		original.add(new CIncludePathEntry("path", ICSettingEntry.UNDEFINED));
 		original.add(new CIncludePathEntry("path", 0));
 
-		ICLanguageSettingsContributor contributor0 = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, original);
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		contributors.add(contributor0);
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		ICLanguageSettingsProvider provider0 = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, original);
+		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+		providers.add(provider0);
+		LanguageSettingsManager.setProviders(cfgDescription, providers);
 
 		{
 			// retrieve entries by kind, only first entry is returned
 			List<ICLanguageSettingEntry> includes = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0, ICSettingEntry.INCLUDE_PATH);
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0, ICSettingEntry.INCLUDE_PATH);
 			assertEquals(1, includes.size());
 			assertEquals(original.get(0),includes.get(0));
 		}
@@ -863,7 +863,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testConfigurationDescription_ReconciledContributors() throws Exception {
+	public void testConfigurationDescription_ReconciledProviders() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -873,15 +873,15 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 		// contribute the entries
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
+		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
 
 		// contribute the higher ranked entries
 		List<ICLanguageSettingEntry> originalHigh = new ArrayList<ICLanguageSettingEntry>();
 		originalHigh.add(new CIncludePathEntry("path0", ICSettingEntry.RESOLVED));
 		originalHigh.add(new CIncludePathEntry("path1", 0));
 		originalHigh.add(new CIncludePathEntry("path2", ICSettingEntry.UNDEFINED));
-		ICLanguageSettingsContributor highRankContributor = new MockContributor(CONTRIBUTOR_2, CONTRIBUTOR_NAME_2, originalHigh);
-		contributors.add(highRankContributor);
+		ICLanguageSettingsProvider highRankProvider = new MockProvider(PROVIDER_2, PROVIDER_NAME_2, originalHigh);
+		providers.add(highRankProvider);
 
 		// contribute the lower ranked entries
 		List<ICLanguageSettingEntry> originalLow = new ArrayList<ICLanguageSettingEntry>();
@@ -889,10 +889,10 @@ public class LanguageSettingsManagerTests extends TestCase {
 		originalLow.add(new CIncludePathEntry("path1", ICSettingEntry.UNDEFINED));
 		originalLow.add(new CIncludePathEntry("path2", 0));
 		originalLow.add(new CIncludePathEntry("path3", 0));
-		ICLanguageSettingsContributor lowRankContributor = new MockContributor(CONTRIBUTOR_1, CONTRIBUTOR_NAME_1, originalLow);
-		contributors.add(lowRankContributor);
+		ICLanguageSettingsProvider lowRankProvider = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, originalLow);
+		providers.add(lowRankProvider);
 
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		LanguageSettingsManager.setProviders(cfgDescription, providers);
 
 		// retrieve entries by kind
 		{
@@ -929,8 +929,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// store the entries in parent folder
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		ICLanguageSettingsContributor contributor = new MockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, null)  {
+		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+		ICLanguageSettingsProvider provider = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, null)  {
 			@Override
 			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 				IFolder pf = parentFolder;
@@ -944,13 +944,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 			}
 
 		};
-		contributors.add(contributor);
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		providers.add(provider);
+		LanguageSettingsManager.setProviders(cfgDescription, providers);
 
 		{
 			// retrieve entries for a derived resource (in a subfolder)
 			IFile derived = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/resource");
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, derived, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, derived, LANG_ID, PROVIDER_0);
 			// taken from parent folder
 			assertEquals(original.get(0),retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
@@ -959,13 +959,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries for not related resource
 			IFile notRelated = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/AnotherFolder/Subfolder/resource"));
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, notRelated, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, notRelated, LANG_ID, PROVIDER_0);
 			assertEquals(0, retrieved.size());
 		}
 
 		{
 			// test distinction between no settings and empty settings
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, emptySettingsPath, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, emptySettingsPath, LANG_ID, PROVIDER_0);
 			// NOT taken from parent folder
 			assertEquals(0, retrieved.size());
 		}
@@ -973,7 +973,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testConfigurationDescription_ContributorIds() throws Exception {
+	public void testConfigurationDescription_ProviderIds() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -983,28 +983,28 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 		{
-			// ensure no test contributor is set yet
-			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
-			assertFalse(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
+			// ensure no test provider is set yet
+			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);
+			assertFalse(ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 
 		{
-			// set test contributor
+			// set test provider
 			List<String> ids = new ArrayList<String>();
-			ids.add(DEFAULT_CONTRIBUTOR_ID_EXT);
-			LanguageSettingsManager.setContributorIds(cfgDescription, ids);
+			ids.add(DEFAULT_PROVIDER_ID_EXT);
+			LanguageSettingsManager.setProviderIds(cfgDescription, ids);
 		}
 
 		{
-			// check that test contributor got there
-			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
-			assertTrue(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
+			// check that test provider got there
+			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);
+			assertTrue(ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 	}
 
 	/**
 	 */
-	public void testConfigurationDescription_SerializeContributors() throws Exception {
+	public void testConfigurationDescription_SerializeProviders() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -1017,20 +1017,20 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 		{
-			// ensure no test contributor is set yet
-			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
-			assertFalse(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
+			// ensure no test provider is set yet
+			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);
+			assertFalse(ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 		{
-			// set test contributor
+			// set test provider
 			List<String> ids = new ArrayList<String>();
-			ids.add(DEFAULT_CONTRIBUTOR_ID_EXT);
-			LanguageSettingsManager.setContributorIds(cfgDescription, ids);
+			ids.add(DEFAULT_PROVIDER_ID_EXT);
+			LanguageSettingsManager.setProviderIds(cfgDescription, ids);
 		}
 		{
-			// check that test contributor got there
-			List<String> ids = LanguageSettingsManager.getContributorIds(cfgDescription);
-			assertTrue(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
+			// check that test provider got there
+			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);
+			assertTrue(ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 
 		{
@@ -1042,20 +1042,20 @@ public class LanguageSettingsManagerTests extends TestCase {
 		}
 
 		{
-			// check that test contributor got loaded
+			// check that test provider got loaded
 			ICConfigurationDescription[] loadedCfgDescriptions = getConfigurationDescriptions(cproject.getProject());
 			ICConfigurationDescription loadedCfgDescription = loadedCfgDescriptions[0];
 			assertTrue(cfgDescription instanceof CConfigurationDescription);
 
-			List<String> ids = LanguageSettingsManager.getContributorIds(loadedCfgDescription);
-			assertTrue(ids.contains(DEFAULT_CONTRIBUTOR_ID_EXT));
+			List<String> ids = LanguageSettingsManager.getProviderIds(loadedCfgDescription);
+			assertTrue(ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 
 	}
 
 	/**
 	 */
-	public void testConfigurationDescription_SerializeContributorData_Basic() throws Exception {
+	public void testConfigurationDescription_SerializeProviderData_Basic() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
@@ -1067,9 +1067,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 
-		class ClearableMockContributor extends ACLanguageSettingsSerializableContributor {
+		class ClearableMockProvider extends ACLanguageSettingsSerializableProvider {
 			private List<ICLanguageSettingEntry> entries;
-			public ClearableMockContributor(String id, String name, List<ICLanguageSettingEntry> entries) {
+			public ClearableMockProvider(String id, String name, List<ICLanguageSettingEntry> entries) {
 				super(id, name);
 				this.entries = entries;
 			}
@@ -1080,16 +1080,16 @@ public class LanguageSettingsManagerTests extends TestCase {
 				entries = null;
 			}
 		}
-		ClearableMockContributor contributor = new ClearableMockContributor(CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, original);
+		ClearableMockProvider provider = new ClearableMockProvider(PROVIDER_0, PROVIDER_NAME_0, original);
 
-		// add mock serializable contributor
-		List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>();
-		contributors.add(contributor);
-		LanguageSettingsManager.setContributors(cfgDescription, contributors);
+		// add mock serializable provider
+		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+		providers.add(provider);
+		LanguageSettingsManager.setProviders(cfgDescription, providers);
 
 		{
-			// double-check that contributor returns proper data
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0);
+			// double-check that provider returns proper data
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
@@ -1097,17 +1097,17 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// serialize
 		LanguageSettingsManager.serialize();
 
-		// clear contributor
-		contributor.clear();
+		// clear provider
+		provider.clear();
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
 			assertEquals(0, retrieved.size());
 		}
 
 		// re-load
 		LanguageSettingsManager.load();
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
@@ -1115,7 +1115,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testDefaultContributor() throws Exception {
+	public void testDefaultProvider() throws Exception {
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		List<String> languages = new ArrayList<String>(2) {
@@ -1125,19 +1125,19 @@ public class LanguageSettingsManagerTests extends TestCase {
 			}
 		};
 
-		// add default contributor
-		LanguageSettingsBaseContributor contributor = new LanguageSettingsBaseContributor(
-				CONTRIBUTOR_0, CONTRIBUTOR_NAME_0, languages, original);
+		// add default provider
+		LanguageSettingsBaseProvider provider = new LanguageSettingsBaseProvider(
+				PROVIDER_0, PROVIDER_NAME_0, languages, original);
 
 		{
 			// attempt to get entries for wrong language
-			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(null, FILE_0, "wrong.lang.id");
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, "wrong.lang.id");
 			assertEquals(0, retrieved.size());
 		}
 
 		{
 			// retrieve the entries
-			List<ICLanguageSettingEntry> retrieved = contributor.getSettingEntries(null, FILE_0, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
 

@@ -17,10 +17,10 @@ import java.util.List;
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
 import org.eclipse.core.resources.IResource;
 
-public class LanguageSettingsBaseContributor extends AbstractExecutableExtensionBase implements ICLanguageSettingsContributor {
+public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBase implements ICLanguageSettingsProvider {
 	private List<String> languages;
 	private List<ICLanguageSettingEntry> entries;
 
@@ -29,7 +29,7 @@ public class LanguageSettingsBaseContributor extends AbstractExecutableExtension
 	 * languages can be null: in that case all languages qualify.
 	 * entries cannot be null
 	 */
-	public LanguageSettingsBaseContributor(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
+	public LanguageSettingsBaseProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
 		super(id, name);
 		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
 		this.entries = new ArrayList<ICLanguageSettingEntry>(entries);

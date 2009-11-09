@@ -22,7 +22,7 @@ import java.util.TreeSet;
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.core.runtime.CoreException;
@@ -36,14 +36,14 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
 
 public class LanguageSettingsExtensionManager {
-	private static final String PREFERENCE_CONTRIBUTOR_DEFAULT_IDS = "lang.settings.contributor.default.ids"; //$NON-NLS-1$
+	private static final String PREFERENCE_PROVIDER_DEFAULT_IDS = "lang.settings.provider.default.ids"; //$NON-NLS-1$
 	private static final String NONE = ""; //$NON-NLS-1$
-	public static final char CONTRIBUTOR_DELIMITER = ';';
+	public static final char PROVIDER_DELIMITER = ';';
 	/**
 	 * Name of the extension point for contributing language settings
 	 */
-	public final static String CONTRIBUTOR_EXTENSION_ID = "LanguageSettingsContributor"; //$NON-NLS-1$
-	private static final String ELEM_CONTRIBUTOR = "contributor"; //$NON-NLS-1$
+	public final static String PROVIDER_EXTENSION_ID = "LanguageSettingsProvider"; //$NON-NLS-1$
+	private static final String ELEM_PROVIDER = "provider"; //$NON-NLS-1$
 	private static final String ATTR_CLASS = "class"; //$NON-NLS-1$
 	private static final String ATTR_ID = "id"; //$NON-NLS-1$
 	private static final String ATTR_NAME = "name"; //$NON-NLS-1$
@@ -55,73 +55,73 @@ public class LanguageSettingsExtensionManager {
 	private static final String ATTR_KIND = "kind"; //$NON-NLS-1$
 	private static final String ATTR_VALUE = "value"; //$NON-NLS-1$
 
-	private static final LinkedHashMap<String, ICLanguageSettingsContributor> fExtensionContributors = new LinkedHashMap<String, ICLanguageSettingsContributor>();
-	private static final LinkedHashMap<String, ICLanguageSettingsContributor> fAvailableContributors = new LinkedHashMap<String, ICLanguageSettingsContributor>();
-	private static LinkedHashMap<String, ICLanguageSettingsContributor> fUserDefinedContributors = null;
-	private static List<String> fDefaultContributorIds = null;
+	private static final LinkedHashMap<String, ICLanguageSettingsProvider> fExtensionProviders = new LinkedHashMap<String, ICLanguageSettingsProvider>();
+	private static final LinkedHashMap<String, ICLanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ICLanguageSettingsProvider>();
+	private static LinkedHashMap<String, ICLanguageSettingsProvider> fUserDefinedProviders = null;
+	private static List<String> fDefaultProviderIds = null;
 
 	static {
-//		loadUserDefinedContributors();
-		loadDefaultContributorIds();
-		loadContributorExtensions();
+//		loadUserDefinedProviders();
+		loadDefaultProviderIds();
+		loadProviderExtensions();
 	}
 
 
 	/**
-	 * Load workspace default contributor IDs to be used if no contributors specified.
+	 * Load workspace default provider IDs to be used if no providers specified.
 	 *
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	synchronized public static void loadDefaultContributorIds() {
-		fDefaultContributorIds = null;
+	synchronized public static void loadDefaultProviderIds() {
+		fDefaultProviderIds = null;
 		IEclipsePreferences preferences = new InstanceScope().getNode(CCorePlugin.PLUGIN_ID);
-		String ids = preferences.get(PREFERENCE_CONTRIBUTOR_DEFAULT_IDS, NONE);
+		String ids = preferences.get(PREFERENCE_PROVIDER_DEFAULT_IDS, NONE);
 		if (ids.equals(NONE)) {
 			return;
 		}
 
-		fDefaultContributorIds = Arrays.asList(ids.split(String.valueOf(CONTRIBUTOR_DELIMITER)));
+		fDefaultProviderIds = Arrays.asList(ids.split(String.valueOf(PROVIDER_DELIMITER)));
 	}
 
 
 	/**
-	 * Load contributor contributed extensions.
+	 * Load provider contributed extensions.
 	 *
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	synchronized public static void loadContributorExtensions() {
-		// sort by name - for the contributors taken from platform extensions
-		Set<ICLanguageSettingsContributor> sortedContributors = new TreeSet<ICLanguageSettingsContributor>(
-				new Comparator<ICLanguageSettingsContributor>() {
-					public int compare(ICLanguageSettingsContributor contr1, ICLanguageSettingsContributor contr2) {
+	synchronized public static void loadProviderExtensions() {
+		// sort by name - for the providers taken from platform extensions
+		Set<ICLanguageSettingsProvider> sortedProviders = new TreeSet<ICLanguageSettingsProvider>(
+				new Comparator<ICLanguageSettingsProvider>() {
+					public int compare(ICLanguageSettingsProvider contr1, ICLanguageSettingsProvider contr2) {
 						return contr1.getName().compareTo(contr2.getName());
 					}
 				}
 		);
 
-		loadContributorExtensions(Platform.getExtensionRegistry(), sortedContributors);
+		loadProviderExtensions(Platform.getExtensionRegistry(), sortedProviders);
 
-		fExtensionContributors.clear();
-		for (ICLanguageSettingsContributor contributor : sortedContributors) {
-			fExtensionContributors.put(contributor.getId(), contributor);
+		fExtensionProviders.clear();
+		for (ICLanguageSettingsProvider provider : sortedProviders) {
+			fExtensionProviders.put(provider.getId(), provider);
 		}
 
-		recalculateAvailableContributors();
+		recalculateAvailableProviders();
 	}
 
 	/**
-	 * Populate the list of available contributors where workspace level user defined parsers
-	 * overwrite contributed through contributor extension point.
+	 * Populate the list of available providers where workspace level user defined parsers
+	 * overwrite contributed through provider extension point.
 	 */
-	private static void recalculateAvailableContributors() {
-		fAvailableContributors.clear();
-		if (fUserDefinedContributors!=null) {
-			fAvailableContributors.putAll(fUserDefinedContributors);
+	private static void recalculateAvailableProviders() {
+		fAvailableProviders.clear();
+		if (fUserDefinedProviders!=null) {
+			fAvailableProviders.putAll(fUserDefinedProviders);
 		}
-		for (ICLanguageSettingsContributor contributor : fExtensionContributors.values()) {
-			String id = contributor.getId();
-			if (!fAvailableContributors.containsKey(id)) {
-				fAvailableContributors.put(id, contributor);
+		for (ICLanguageSettingsProvider provider : fExtensionProviders.values()) {
+			String id = provider.getId();
+			if (!fAvailableProviders.containsKey(id)) {
+				fAvailableProviders.put(id, provider);
 			}
 		}
 	}
@@ -131,26 +131,26 @@ public class LanguageSettingsExtensionManager {
 	 * Load contributed extensions from extension registry.
 	 *
 	 * @param registry - extension registry
-	 * @param contributors - resulting set of contributors
+	 * @param providers - resulting set of providers
 	 */
-	private static void loadContributorExtensions(IExtensionRegistry registry, Set<ICLanguageSettingsContributor> contributors) {
-		contributors.clear();
-		IExtensionPoint extension = registry.getExtensionPoint(CCorePlugin.PLUGIN_ID, CONTRIBUTOR_EXTENSION_ID);
+	private static void loadProviderExtensions(IExtensionRegistry registry, Set<ICLanguageSettingsProvider> providers) {
+		providers.clear();
+		IExtensionPoint extension = registry.getExtensionPoint(CCorePlugin.PLUGIN_ID, PROVIDER_EXTENSION_ID);
 		if (extension != null) {
 			IExtension[] extensions = extension.getExtensions();
 			for (IExtension ext : extensions) {
 				try {
 					String extensionID = ext.getUniqueIdentifier();
 					String extensionName = ext.getLabel();
-					ICLanguageSettingsContributor contributor = null;
+					ICLanguageSettingsProvider provider = null;
 					for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
-						if (cfgEl.getName().equals(ELEM_CONTRIBUTOR)) {
-							contributor = createExecutableContributor(cfgEl);
-							contributors.add(contributor);
+						if (cfgEl.getName().equals(ELEM_PROVIDER)) {
+							provider = createExecutableProvider(cfgEl);
+							providers.add(provider);
 						}
 					}
 				} catch (Exception e) {
-					CCorePlugin.log("Cannot load LanguageSettingsContributor extension " + ext.getUniqueIdentifier(), e); //$NON-NLS-1$
+					CCorePlugin.log("Cannot load LanguageSettingsProvider extension " + ext.getUniqueIdentifier(), e); //$NON-NLS-1$
 				}
 			}
 		}
@@ -162,16 +162,16 @@ public class LanguageSettingsExtensionManager {
 	}
 
 	/**
-	 * Creates empty non-configured contributor as executable extension from extension point definition.
+	 * Creates empty non-configured provider as executable extension from extension point definition.
 	 * If "class" attribute is empty TODO is created.
 	 *
-	 * @param initialId - nominal ID of contributor
-	 * @param initialName - nominal name of contributor
-	 * @param ce - configuration element with contributor definition
-	 * @return new non-configured contributor
+	 * @param initialId - nominal ID of provider
+	 * @param initialName - nominal name of provider
+	 * @param ce - configuration element with provider definition
+	 * @return new non-configured provider
 	 * @throws CoreException in case of failure
 	 */
-	private static ICLanguageSettingsContributor createExecutableContributor(IConfigurationElement ce) throws CoreException {
+	private static ICLanguageSettingsProvider createExecutableProvider(IConfigurationElement ce) throws CoreException {
 		String ceClass = ce.getAttribute(ATTR_CLASS);
 		String ceId = determineAttributeValue(ce, ATTR_ID);
 		String ceName = determineAttributeValue(ce, ATTR_NAME);
@@ -209,32 +209,32 @@ public class LanguageSettingsExtensionManager {
 			}
 		}
 
-		ICLanguageSettingsContributor contributor = null;
-		if (ceClass!=null && !ceClass.equals(LanguageSettingsBaseContributor.class.getCanonicalName())) {
+		ICLanguageSettingsProvider provider = null;
+		if (ceClass!=null && !ceClass.equals(LanguageSettingsBaseProvider.class.getCanonicalName())) {
 			Object base = ce.createExecutableExtension(ATTR_CLASS);
 			if (base instanceof AbstractExecutableExtensionBase) {
 				((AbstractExecutableExtensionBase) base).setId(ceId);
 				((AbstractExecutableExtensionBase) base).setName(ceName);
 			}
-			contributor = (ICLanguageSettingsContributor)base;
+			provider = (ICLanguageSettingsProvider)base;
 		}
-		if (contributor==null) {
-			contributor = new LanguageSettingsBaseContributor(ceId, ceName, languages, entries);
+		if (provider==null) {
+			provider = new LanguageSettingsBaseProvider(ceId, ceName, languages, entries);
 		}
-		return contributor;
+		return provider;
 	}
 
 	/**
-	 * Creates empty non-configured contributor from extension point definition looking at "class" attribute.
-	 * ID and name of contributor are assigned from first extension point encountered.
+	 * Creates empty non-configured provider from extension point definition looking at "class" attribute.
+	 * ID and name of provider are assigned from first extension point encountered.
 	 *
-	 * @param className - full qualified class name of contributor.
+	 * @param className - full qualified class name of provider.
 	 * @param registry - extension registry
-	 * @return new non-configured contributor
+	 * @return new non-configured provider
 	 */
-	private static ICLanguageSettingsContributor createContributorCarcass(String className, IExtensionRegistry registry) {
-		if (className==null || className.length()==0 /*|| className.equals(RegexContributor.class.getName())*/) {
-//			return new LanguageSettingsCoreContributor();
+	private static ICLanguageSettingsProvider createProviderCarcass(String className, IExtensionRegistry registry) {
+		if (className==null || className.length()==0 /*|| className.equals(RegexProvider.class.getName())*/) {
+//			return new LanguageSettingsCoreProvider();
 			return null;
 		}
 
@@ -247,14 +247,14 @@ public class LanguageSettingsExtensionManager {
 					String oldStyleId = extensionID;
 					String oldStyleName = ext.getLabel();
 					for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
-						if (cfgEl.getName().equals(ELEM_CONTRIBUTOR) && className.equals(cfgEl.getAttribute(ATTR_CLASS))) {
-							return createExecutableContributor(cfgEl);
+						if (cfgEl.getName().equals(ELEM_PROVIDER) && className.equals(cfgEl.getAttribute(ATTR_CLASS))) {
+							return createExecutableProvider(cfgEl);
 						}
 					}
 				}
 			}
 		} catch (Exception e) {
-			CCorePlugin.log("Error creating language settings contributor.", e); //$NON-NLS-1$
+			CCorePlugin.log("Error creating language settings provider.", e); //$NON-NLS-1$
 		}
 		return null;
 	}
@@ -262,28 +262,28 @@ public class LanguageSettingsExtensionManager {
 
 	/**
 	 * FIXME - to clone
-	 * @param id - ID of contributor
-	 * @return cloned copy of contributor. Note that {@link ContributorNamedWrapper} returns
-	 * shallow copy with the same instance of underlying contributor.
+	 * @param id - ID of provider
+	 * @return cloned copy of provider. Note that {@link ProviderNamedWrapper} returns
+	 * shallow copy with the same instance of underlying provider.
 	 */
-	public static ICLanguageSettingsContributor getContributor(String id) {
-		ICLanguageSettingsContributor contributor = fAvailableContributors.get(id);
+	public static ICLanguageSettingsProvider getProvider(String id) {
+		ICLanguageSettingsProvider provider = fAvailableProviders.get(id);
 
 //		try {
-//			if (contributor instanceof RegexContributor) {
-//				return (RegexContributor) ((RegexContributor)contributor).clone();
-//			} else if (contributor instanceof ContributorNamedWrapper) {
-//				return (ContributorNamedWrapper) ((ContributorNamedWrapper)contributor).clone();
+//			if (provider instanceof RegexProvider) {
+//				return (RegexProvider) ((RegexProvider)provider).clone();
+//			} else if (provider instanceof ProviderNamedWrapper) {
+//				return (ProviderNamedWrapper) ((ProviderNamedWrapper)provider).clone();
 //			}
 //		} catch (CloneNotSupportedException e) {
 //			CCorePlugin.log(e);
 //		}
-		return contributor;
+		return provider;
 	}
 
 	/**
-	 * @param ids - array of contributor IDs
-	 * @return contributor IDs delimited with contributor delimiter ";"
+	 * @param ids - array of provider IDs
+	 * @return provider IDs delimited with provider delimiter ";"
 	 * @since 5.2
 	 */
 	public static String toDelimitedString(String[] ids) {
@@ -292,111 +292,111 @@ public class LanguageSettingsExtensionManager {
 			if (result.length()==0) {
 				result = id;
 			} else {
-				result += CONTRIBUTOR_DELIMITER + id;
+				result += PROVIDER_DELIMITER + id;
 			}
 		}
 		return result;
 	}
 
 	/**
-	 * Save the list of default contributors in preferences.
+	 * Save the list of default providers in preferences.
 	 *
 	 * @throws BackingStoreException in case of problem storing
 	 */
-	public static void serializeDefaultContributorIds() throws BackingStoreException {
+	public static void serializeDefaultProviderIds() throws BackingStoreException {
 		IEclipsePreferences preferences = new InstanceScope().getNode(CCorePlugin.PLUGIN_ID);
 		String ids = NONE;
-		if (fDefaultContributorIds!=null) {
-			ids = toDelimitedString(fDefaultContributorIds.toArray(new String[0]));
+		if (fDefaultProviderIds!=null) {
+			ids = toDelimitedString(fDefaultProviderIds.toArray(new String[0]));
 		}
 
-		preferences.put(PREFERENCE_CONTRIBUTOR_DEFAULT_IDS, ids);
+		preferences.put(PREFERENCE_PROVIDER_DEFAULT_IDS, ids);
 		preferences.flush();
 	}
 
 	/**
-	 * Set and store in workspace area user defined contributors.
+	 * Set and store in workspace area user defined providers.
 	 *
-	 * @param contributors - array of user defined contributors
+	 * @param providers - array of user defined providers
 	 * @throws CoreException in case of problems
 	 */
-	public static void setUserDefinedContributors(ICLanguageSettingsContributor[] contributors) throws CoreException {
-		setUserDefinedContributorsInternal(contributors);
-//		serializeUserDefinedContributors();
+	public static void setUserDefinedProviders(ICLanguageSettingsProvider[] providers) throws CoreException {
+		setUserDefinedProvidersInternal(providers);
+//		serializeUserDefinedProviders();
 	}
 
 	/**
-	 * Internal method to set user defined contributors in memory.
+	 * Internal method to set user defined providers in memory.
 	 *
 	 * @noreference This method is not intended to be referenced by clients.
-	 * Use {@link #setUserDefinedContributors(ICLanguageSettingsContributor[])}.
+	 * Use {@link #setUserDefinedProviders(ICLanguageSettingsProvider[])}.
 	 *
-	 * @param contributors - array of user defined contributors
+	 * @param providers - array of user defined providers
 	 */
-	public static void setUserDefinedContributorsInternal(ICLanguageSettingsContributor[] contributors) {
-		if (contributors==null) {
-			fUserDefinedContributors = null;
+	public static void setUserDefinedProvidersInternal(ICLanguageSettingsProvider[] providers) {
+		if (providers==null) {
+			fUserDefinedProviders = null;
 		} else {
-			fUserDefinedContributors= new LinkedHashMap<String, ICLanguageSettingsContributor>();
+			fUserDefinedProviders= new LinkedHashMap<String, ICLanguageSettingsProvider>();
 			// set customized list
-			for (ICLanguageSettingsContributor contributor : contributors) {
-				fUserDefinedContributors.put(contributor.getId(), contributor);
+			for (ICLanguageSettingsProvider provider : providers) {
+				fUserDefinedProviders.put(provider.getId(), provider);
 			}
 		}
-		recalculateAvailableContributors();
+		recalculateAvailableProviders();
 	}
 
 	/**
-	 * @return available contributors IDs which include contributed through extension + user defined ones
+	 * @return available providers IDs which include contributed through extension + user defined ones
 	 * from workspace
 	 */
-	public static String[] getContributorAvailableIds() {
-		return fAvailableContributors.keySet().toArray(new String[0]);
+	public static String[] getProviderAvailableIds() {
+		return fAvailableProviders.keySet().toArray(new String[0]);
 	}
 
 	/**
-	 * @return IDs of language settings contributors of LanguageSettingContributor extension point.
+	 * @return IDs of language settings providers of LanguageSettingProvider extension point.
 	 */
-	public static String[] getContributorExtensionIds() {
-		return fExtensionContributors.keySet().toArray(new String[0]);
+	public static String[] getProviderExtensionIds() {
+		return fExtensionProviders.keySet().toArray(new String[0]);
 	}
 
 
 	/**
-	 * Set and store default contributors IDs to be used if contributor list is empty.
+	 * Set and store default providers IDs to be used if provider list is empty.
 	 *
-	 * @param ids - default contributors IDs
+	 * @param ids - default providers IDs
 	 * @throws BackingStoreException in case of problem with storing
 	 */
-	public static void setDefaultContributorIds(String[] ids) throws BackingStoreException {
-		setDefaultContributorIdsInternal(ids);
-//		serializeDefaultContributorIds();
+	public static void setDefaultProviderIds(String[] ids) throws BackingStoreException {
+		setDefaultProviderIdsInternal(ids);
+//		serializeDefaultProviderIds();
 	}
 
 	/**
-	 * Set default contributors IDs in internal list.
+	 * Set default providers IDs in internal list.
 	 *
 	 * @noreference This method is not intended to be referenced by clients.
-	 * Use {@link #setDefaultContributorIds(String[])}.
+	 * Use {@link #setDefaultProviderIds(String[])}.
 	 *
-	 * @param ids - default contributors IDs
+	 * @param ids - default providers IDs
 	 */
-	public static void setDefaultContributorIdsInternal(String[] ids) {
+	public static void setDefaultProviderIdsInternal(String[] ids) {
 		if (ids==null) {
-			fDefaultContributorIds = null;
+			fDefaultProviderIds = null;
 		} else {
-			fDefaultContributorIds = new ArrayList<String>(Arrays.asList(ids));
+			fDefaultProviderIds = new ArrayList<String>(Arrays.asList(ids));
 		}
 	}
 
 	/**
-	 * @return default contributors IDs to be used if contributor list is empty.
+	 * @return default providers IDs to be used if provider list is empty.
 	 */
-	public static String[] getDefaultContributorIds() {
-		if (fDefaultContributorIds==null) {
-			return fAvailableContributors.keySet().toArray(new String[0]);
+	public static String[] getDefaultProviderIds() {
+		if (fDefaultProviderIds==null) {
+			return fAvailableProviders.keySet().toArray(new String[0]);
 		}
-		return fDefaultContributorIds.toArray(new String[0]);
+		return fDefaultProviderIds.toArray(new String[0]);
 	}
 
 

@@ -11,19 +11,15 @@
 
 package org.eclipse.cdt.core.settings.model;
 
+import java.util.List;
+
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
+import org.eclipse.core.resources.IResource;
 
+public class TestLanguageSettingsProvider extends AbstractExecutableExtensionBase
+		implements ICLanguageSettingsProvider {
 
-public abstract class ACLanguageSettingsSerializableContributor extends AbstractExecutableExtensionBase implements ICLanguageSettingsContributor {
-
-	public ACLanguageSettingsSerializableContributor(String id, String name) {
-		super(id, name);
+	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+		return null;
 	}
-
-	public void toXML() {
-	}
-
-	public void fromXML() {
-	}
-
 }

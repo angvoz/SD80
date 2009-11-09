@@ -13,13 +13,10 @@ package org.eclipse.cdt.core.settings.model;
 
 import java.util.List;
 
-import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.core.resources.IResource;
 
-public class TestLanguageSettingsContributor extends AbstractExecutableExtensionBase
-		implements ICLanguageSettingsContributor {
-
-	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-		return null;
-	}
+public interface ICLanguageSettingsProvider {
+	public String getId();
+	public String getName();
+	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId);
 }

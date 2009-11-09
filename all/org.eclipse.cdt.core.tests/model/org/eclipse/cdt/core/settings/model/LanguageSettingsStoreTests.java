@@ -30,12 +30,12 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 //	private static final IFile projectResource0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
 	/* as defined in test extension point */
-	private static final String CONTRIBUTOR_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.contributor";
+	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.provider";
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
-	private static final String CONTRIBUTOR_0 = "test.contributor.0.id";
-	private static final String CONTRIBUTOR_1 = "test.contributor.1.id";
-	private static final String CONTRIBUTOR_2 = "test.contributor.2.id";
-	private static final String CONTRIBUTOR_NAME = "test.contributor.name";
+	private static final String PROVIDER_0 = "test.provider.0.id";
+	private static final String PROVIDER_1 = "test.provider.1.id";
+	private static final String PROVIDER_2 = "test.provider.2.id";
+	private static final String PROVIDER_NAME = "test.provider.name";
 
 //	private static final LanguageSettingsResourceDescriptor rcDescriptor = new LanguageSettingsResourceDescriptor(projectResource0, LANG_ID);
 //	private static final LanguageSettingsResourceDescriptor rcDescriptorExt = new LanguageSettingsResourceDescriptor(projectResource0, LANG_ID_EXT);
@@ -67,8 +67,8 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		original.add(new CIncludePathEntry("value2", 2));
 
 		// store and retrieve the entries
-		store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0, original);
-		List<ICLanguageSettingEntry> retrieved = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0);
+		store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_0, original);
+		List<ICLanguageSettingEntry> retrieved = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_0);
 
 		assertNotSame(original, retrieved);
 		assertEquals(original.size(), retrieved.size());
@@ -80,7 +80,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 
 		// check providers
 		List<String> providers = store.getProviders();
-		assertEquals(CONTRIBUTOR_0, providers.get(0));
+		assertEquals(PROVIDER_0, providers.get(0));
 		assertEquals(1, providers.size());
 	}
 
@@ -114,7 +114,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		{
 			// serialize
 			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
-			store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0, original);
+			store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_0, original);
 			store.serialize();
 			assertTrue(settingsFile.exists());
 		}
@@ -124,10 +124,10 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			store.load();
 
 			List<String> providers = store.getProviders();
-			assertEquals(CONTRIBUTOR_0, providers.get(0));
+			assertEquals(PROVIDER_0, providers.get(0));
 			assertEquals(1, providers.size());
 
-			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_0);
 			ICLanguageSettingEntry entry = entries.get(0);
 			assertTrue(entry instanceof CIncludePathEntry);
 			CIncludePathEntry includePathEntry = (CIncludePathEntry)entry;
@@ -151,7 +151,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		{
 			// serialize
 			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
-			store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0, original);
+			store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_0, original);
 			store.serialize();
 			assertTrue(settingsFile.exists());
 		}
@@ -161,10 +161,10 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			store.load();
 
 			List<String> providers = store.getProviders();
-			assertEquals(CONTRIBUTOR_0, providers.get(0));
+			assertEquals(PROVIDER_0, providers.get(0));
 			assertEquals(1, providers.size());
 
-			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_0);
 			ICLanguageSettingEntry entry = entries.get(0);
 			assertTrue(entry instanceof CIncludeFileEntry);
 			CIncludeFileEntry includeFileEntry = (CIncludeFileEntry)entry;
@@ -188,7 +188,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		{
 			// serialize
 			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
-			store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0, original);
+			store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_0, original);
 			store.serialize();
 			assertTrue(settingsFile.exists());
 		}
@@ -198,10 +198,10 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			store.load();
 
 			List<String> providers = store.getProviders();
-			assertEquals(CONTRIBUTOR_0, providers.get(0));
+			assertEquals(PROVIDER_0, providers.get(0));
 			assertEquals(1, providers.size());
 
-			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_0);
 			ICLanguageSettingEntry entry = entries.get(0);
 			assertTrue(entry instanceof CMacroEntry);
 			CMacroEntry macroEntry = (CMacroEntry)entry;
@@ -225,7 +225,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		{
 			// serialize
 			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
-			store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0, original);
+			store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_0, original);
 			store.serialize();
 			assertTrue(settingsFile.exists());
 		}
@@ -235,10 +235,10 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			store.load();
 
 			List<String> providers = store.getProviders();
-			assertEquals(CONTRIBUTOR_0, providers.get(0));
+			assertEquals(PROVIDER_0, providers.get(0));
 			assertEquals(1, providers.size());
 
-			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_0);
 			ICLanguageSettingEntry entry = entries.get(0);
 			assertTrue(entry instanceof CMacroFileEntry);
 			CMacroFileEntry macroFileEntry = (CMacroFileEntry)entry;
@@ -262,7 +262,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		{
 			// serialize
 			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
-			store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0, original);
+			store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_0, original);
 			store.serialize();
 			assertTrue(settingsFile.exists());
 		}
@@ -272,10 +272,10 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			store.load();
 
 			List<String> providers = store.getProviders();
-			assertEquals(CONTRIBUTOR_0, providers.get(0));
+			assertEquals(PROVIDER_0, providers.get(0));
 			assertEquals(1, providers.size());
 
-			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_0);
 			ICLanguageSettingEntry entry = entries.get(0);
 			assertTrue(entry instanceof CLibraryPathEntry);
 			CLibraryPathEntry libraryPathEntry = (CLibraryPathEntry)entry;
@@ -306,7 +306,7 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		{
 			// serialize
 			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
-			store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0, original);
+			store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_0, original);
 			store.serialize();
 			assertTrue(settingsFile.exists());
 		}
@@ -316,10 +316,10 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			store.load();
 
 			List<String> providers = store.getProviders();
-			assertEquals(CONTRIBUTOR_0, providers.get(0));
+			assertEquals(PROVIDER_0, providers.get(0));
 			assertEquals(1, providers.size());
 
-			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_0);
+			List<ICLanguageSettingEntry> entries = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_0);
 			ICLanguageSettingEntry entry = entries.get(0);
 			assertTrue(entry instanceof CLibraryFileEntry);
 			CLibraryFileEntry libraryFileEntry = (CLibraryFileEntry)entry;
@@ -352,8 +352,8 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 		{
 			// Serialize settings
 			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
-			store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_1, original_1);
-			store.setSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_2, original_2);
+			store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_1, original_1);
+			store.setSettingEntries(projectResource0, LANG_ID, PROVIDER_2, original_2);
 			store.serialize();
 			assertTrue(settingsFile.exists());
 		}
@@ -363,12 +363,12 @@ public class LanguageSettingsStoreTests extends BaseTestCase {
 			LanguageSettingsStore store = new LanguageSettingsStore(settingsFile);
 			store.load();
 
-			List<ICLanguageSettingEntry> entries_1 = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_1);
+			List<ICLanguageSettingEntry> entries_1 = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_1);
 			assertEquals(original_1.get(0), entries_1.get(0));
 			assertEquals(original_1.get(1), entries_1.get(1));
 			assertEquals(original_1.size(), entries_1.size());
 
-			List<ICLanguageSettingEntry> entries_2 = store.getSettingEntries(projectResource0, LANG_ID, CONTRIBUTOR_2);
+			List<ICLanguageSettingEntry> entries_2 = store.getSettingEntries(projectResource0, LANG_ID, PROVIDER_2);
 			assertEquals(original_2.get(0), entries_2.get(0));
 			assertEquals(original_2.get(1), entries_2.get(1));
 			assertEquals(original_2.size(), entries_2.size());

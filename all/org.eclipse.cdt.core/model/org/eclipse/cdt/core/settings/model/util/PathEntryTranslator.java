@@ -873,8 +873,7 @@ public class PathEntryTranslator {
 			}
 
 			PathSettingsContainer newContainer = fStorage.getChildContainer(path, true, true);
-			KindBasedStore<LinkedHashMap<ICSettingEntry, PathEntryComposer>> cloneStore =
-				(KindBasedStore<LinkedHashMap<ICSettingEntry, PathEntryComposer>>)fStore.clone();
+			KindBasedStore<LinkedHashMap<ICSettingEntry, PathEntryComposer>> cloneStore = fStore.clone();
 			IKindBasedInfo<LinkedHashMap<ICSettingEntry, PathEntryComposer>> info[] = cloneStore.getContents();
 			for (IKindBasedInfo<LinkedHashMap<ICSettingEntry, PathEntryComposer>> kindInfo : info) {
 				LinkedHashMap<ICSettingEntry, PathEntryComposer> map = kindInfo.getInfo();
@@ -2002,7 +2001,7 @@ public class PathEntryTranslator {
 		}
 	}
 
-	public static PathEntryCollector collectEntries(IProject project, ICConfigurationDescription des){
+	public static PathEntryCollector collectEntries(IProject project, final ICConfigurationDescription des){
 		CConfigurationData data = getCfgData(des);
 
 		ReferenceSettingsInfo refInfo = new ReferenceSettingsInfo(des);
@@ -2040,7 +2039,7 @@ public class PathEntryTranslator {
 					PathEntryCollector child = cr.createChild(container.getPath());
 					for (int kind : kinds) {
 						List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
-						if(collectEntries(kind, data, list)){
+						if(collectEntries(des, kind, data, list)){
 							ICLanguageSettingEntry[] entries = list.toArray(new ICLanguageSettingEntry[list.size()]);
 							child.setEntries(kind, entries, exportedSettings);
 						}
@@ -2053,47 +2052,27 @@ public class PathEntryTranslator {
 		return cr;
 	}
 
-	private static boolean collectEntries(int kind, CResourceData data, List<ICLanguageSettingEntry> list){
-		if(data.getType() == ICSettingBase.SETTING_FOLDER){
-			return collectEntries(kind, (CFolderData)data, list);
+	private static boolean collectEntries(ICConfigurationDescription des, int kind, CResourceData data, List<ICLanguageSettingEntry> list){
+		CLanguageData lDatas[] = null;
+		if(data instanceof CFolderData){
+			lDatas = ((CFolderData)data).getLanguageDatas();
+		} else if(data instanceof CFileData){
+			lDatas = new CLanguageData[] {((CFileData)data).getLanguageData()};
+		} else {
+			CCorePlugin.log("Unexpected type " + data.getClass().getName());
 		}
-		return collectEntries(kind, (CFileData)data, list);
-	}
-
-	private static boolean collectEntries(int kind, CFolderData data, List<ICLanguageSettingEntry> list){
-
-		CLanguageData lDatas[] = data.getLanguageDatas();
-		boolean supported = false;
-		if(lDatas != null && lDatas.length != 0){
-			for (CLanguageData lData : lDatas) {
-				if(collectEntries(kind, lData, list))
-					supported = true;
-			}
+		if (lDatas==null || lDatas.length==0) {
+			return false;
 		}
-		return supported;
-	}
-
-	private static boolean collectEntries(int kind, CFileData data, List<ICLanguageSettingEntry> list){
-
-		CLanguageData lData = data.getLanguageData();
-		if(lData != null){
-			return collectEntries(kind, lData, list);
+		
+		IPath workspacePath = data.getPath();
+		IResource rc = ResourcesPlugin.getWorkspace().getRoot().findMember(workspacePath);
+		for (CLanguageData lData : lDatas) {
+			list.addAll(LanguageSettingsManager.getSettingEntriesReconciled(des, rc, lData.getLanguageId(), kind));
 		}
-		return false;
+		return list.size()>0;
 	}
-
-	private static boolean collectEntries(int kind, CLanguageData lData, List<ICLanguageSettingEntry> list){
-		if((kind & lData.getSupportedEntryKinds()) != 0){
-			ICLanguageSettingEntry[] entries = lData.getEntries(kind);
-			if(entries != null && entries.length != 0){
-				list.addAll(Arrays.asList(entries));
-			}
-			return true;
-		}
-
-		return false;
-	}
-
+	
 	public static IPathEntry[] getPathEntries(IProject project, ICConfigurationDescription cfg, int flags){
 		PathEntryCollector cr = collectEntries(project, cfg);
 		return cr.getEntries(flags, cfg);

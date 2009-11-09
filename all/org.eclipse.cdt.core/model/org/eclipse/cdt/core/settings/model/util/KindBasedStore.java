@@ -210,7 +210,7 @@ public class KindBasedStore<TypeStored> implements Cloneable {
 	}
 
 	@Override
-	public Object clone() {
+	public KindBasedStore<TypeStored> clone() {
 		try {
 			@SuppressWarnings("unchecked")
 			KindBasedStore<TypeStored> clone = (KindBasedStore<TypeStored>)super.clone();

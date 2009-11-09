@@ -14,9 +14,9 @@ package org.eclipse.cdt.core.settings.model;
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 
 
-public abstract class ACLanguageSettingsSerializableContributor extends AbstractExecutableExtensionBase implements ICLanguageSettingsContributor {
+public abstract class ACLanguageSettingsSerializableProvider extends AbstractExecutableExtensionBase implements ICLanguageSettingsProvider {
 
-	public ACLanguageSettingsSerializableContributor(String id, String name) {
+	public ACLanguageSettingsSerializableProvider(String id, String name) {
 		super(id, name);
 	}
 

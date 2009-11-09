@@ -18,7 +18,7 @@ import java.util.List;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
@@ -36,16 +36,16 @@ import org.osgi.service.prefs.BackingStoreException;
  *
  */
 public class LanguageSettingsManager {
-	public static final String CONTRIBUTOR_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
-	public static final String CONTRIBUTOR_UI_USER = "org.eclipse.cdt.ui.user";
-	public static final char CONTRIBUTOR_DELIMITER = LanguageSettingsExtensionManager.CONTRIBUTOR_DELIMITER;
+	public static final String PROVIDER_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
+	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user";
+	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager.PROVIDER_DELIMITER;
 	
-	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, String contributorId) {
+	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, String providerId) {
 		Assert.isNotNull(cfgDescription);
 
-		ICLanguageSettingsContributor contributor = getContributor(cfgDescription, contributorId);
-		if (contributor!=null) {
-			List<ICLanguageSettingEntry> list = contributor.getSettingEntries(cfgDescription, rc, languageId);
+		ICLanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
+		if (provider!=null) {
+			List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
 			if (list!=null) {
 				return new ArrayList<ICLanguageSettingEntry>(list);
 			}
@@ -53,7 +53,7 @@ public class LanguageSettingsManager {
 
 		IResource parentFolder = rc.getParent();
 		if (parentFolder!=null) {
-			return getSettingEntries(cfgDescription, parentFolder, languageId, contributorId);
+			return getSettingEntries(cfgDescription, parentFolder, languageId, providerId);
 		}
 		return new ArrayList<ICLanguageSettingEntry>(0);
 	}
@@ -69,12 +69,12 @@ public class LanguageSettingsManager {
 	}
 
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
-			IResource rc, String languageId, String contributorId, int kind) {
-		ICLanguageSettingsContributor contributor = getContributor(cfgDescription, contributorId);
-		if (contributor==null) {
+			IResource rc, String languageId, String providerId, int kind) {
+		ICLanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
+		if (provider==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
-		List<ICLanguageSettingEntry> list = contributor.getSettingEntries(cfgDescription, rc, languageId);
+		List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
 		if (list==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
@@ -90,8 +90,8 @@ public class LanguageSettingsManager {
 
 	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
-		for (ICLanguageSettingsContributor contributor: getContributors(cfgDescription)) {
-			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, rc, languageId, contributor.getId(), kind)) {
+		for (ICLanguageSettingsProvider provider: getProviders(cfgDescription)) {
+			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, rc, languageId, provider.getId(), kind)) {
 				if (!containsEntry(list, entry.getName())) {
 					list.add(entry);
 				}
@@ -109,83 +109,82 @@ public class LanguageSettingsManager {
 	}
 
 	public static void load() {
-//		for (ICLanguageSettingsContributor contributor : contributors) {
-//			if (contributor instanceof ACLanguageSettingsSerializableContributor) {
-//				((ACLanguageSettingsSerializableContributor) contributor).fromXML();
+//		for (ICLanguageSettingsProvider provider : providers) {
+//			if (provider instanceof ACLanguageSettingsSerializableProvider) {
+//				((ACLanguageSettingsSerializableProvider) provider).fromXML();
 //			}
 //		}
 	}
 
 	public static void serialize() {
-//		for (ICLanguageSettingsContributor contributor : contributors) {
-//			if (contributor instanceof ACLanguageSettingsSerializableContributor) {
-//				((ACLanguageSettingsSerializableContributor) contributor).toXML();
+//		for (ICLanguageSettingsProvider provider : providers) {
+//			if (provider instanceof ACLanguageSettingsSerializableProvider) {
+//				((ACLanguageSettingsSerializableProvider) provider).toXML();
 //			}
 //		}
 	}
 
 	/**
-	 * Set and store in workspace area user defined contributors.
+	 * Set and store in workspace area user defined providers.
 	 *
-	 * @param contributors - array of user defined contributors
+	 * @param providers - array of user defined providers
 	 * @throws CoreException in case of problems
 	 */
-	public static void setUserDefinedContributors(ICLanguageSettingsContributor[] contributors) throws CoreException {
-		LanguageSettingsExtensionManager.setUserDefinedContributors(contributors);
+	public static void setUserDefinedProviders(ICLanguageSettingsProvider[] providers) throws CoreException {
+		LanguageSettingsExtensionManager.setUserDefinedProviders(providers);
 	}
 
 	/**
-	 * @return available contributors IDs which include contributed through extension + user defined ones
+	 * @return available providers IDs which include contributed through extension + user defined ones
 	 * from workspace
 	 */
-	public static String[] getContributorAvailableIds() {
-		return LanguageSettingsExtensionManager.getContributorAvailableIds();
+	public static String[] getProviderAvailableIds() {
+		return LanguageSettingsExtensionManager.getProviderAvailableIds();
 	}
 
 	/**
-	 * @return IDs of language settings contributors of LanguageSettingContributor extension point.
+	 * @return IDs of language settings providers of LanguageSettingProvider extension point.
 	 */
-	public static String[] getContributorExtensionIds() {
-		return LanguageSettingsExtensionManager.getContributorExtensionIds();
+	public static String[] getProviderExtensionIds() {
+		return LanguageSettingsExtensionManager.getProviderExtensionIds();
 	}
 
 	/**
 	 * TODO
 	 */
-	public static ICLanguageSettingsContributor getContributor(String id) {
-		return LanguageSettingsExtensionManager.getContributor(id);
+	public static ICLanguageSettingsProvider getProvider(String id) {
+		return LanguageSettingsExtensionManager.getProvider(id);
 	}
 
 	/**
-	 * Set and store default contributors IDs to be used if contributor list is empty.
+	 * Set and store default providers IDs to be used if provider list is empty.
 	 *
-	 * @param ids - default contributors IDs
+	 * @param ids - default providers IDs
 	 * @throws BackingStoreException in case of problem with storing
 	 */
-	public static void setDefaultContributorIds(String[] ids) throws BackingStoreException {
-		LanguageSettingsExtensionManager.setDefaultContributorIds(ids);
+	public static void setDefaultProviderIds(String[] ids) throws BackingStoreException {
+		LanguageSettingsExtensionManager.setDefaultProviderIds(ids);
 	}
 
 	/**
-	 * @return default contributors IDs to be used if contributor list is empty.
+	 * @return default providers IDs to be used if provider list is empty.
 	 */
-	public static String[] getDefaultContributorIds() {
-		return LanguageSettingsExtensionManager.getDefaultContributorIds();
+	public static String[] getDefaultProviderIds() {
+		return LanguageSettingsExtensionManager.getDefaultProviderIds();
 	}
 
 	/**
 	 * This usage is discouraged TODO .
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static void setContributors(ICConfigurationDescription cfgDescription,
-			List<ICLanguageSettingsContributor> contributors) {
+	public static void setProviders(ICConfigurationDescription cfgDescription, List<ICLanguageSettingsProvider> providers) {
 		if (cfgDescription instanceof CConfigurationDescription) {
-			((CConfigurationDescription)cfgDescription).setLanguageSettingContributors(contributors);
+			((CConfigurationDescription)cfgDescription).setLanguageSettingProviders(providers);
 		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-				((CConfigurationDescriptionCache)cfgDescription).setLanguageSettingContributors(contributors);
+				((CConfigurationDescriptionCache)cfgDescription).setLanguageSettingProviders(providers);
 		} else if (cfgDescription!=null) {
 			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error setting ICLanguageSettingsContributor for unsupported configuration description type " + className); //$NON-NLS-1$
+			CCorePlugin.log("Error setting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
 		}
 	}
 
@@ -193,60 +192,60 @@ public class LanguageSettingsManager {
 	 * This usage is discouraged TODO .
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static List<ICLanguageSettingsContributor> getContributors(ICConfigurationDescription cfgDescription) {
+	public static List<ICLanguageSettingsProvider> getProviders(ICConfigurationDescription cfgDescription) {
 		if (cfgDescription instanceof CConfigurationDescription) {
-			return ((CConfigurationDescription)cfgDescription).getLanguageSettingContributors();
+			return ((CConfigurationDescription)cfgDescription).getLanguageSettingProviders();
 		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-			return ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingContributors();
+			return ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingProviders();
 		} else if (cfgDescription!=null) {
 			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error getting ICLanguageSettingsContributor for unsupported configuration description type " + className); //$NON-NLS-1$
+			CCorePlugin.log("Error getting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
 		}
-		return new ArrayList<ICLanguageSettingsContributor>();
+		return new ArrayList<ICLanguageSettingsProvider>();
 	}
 
 	/**
 	 */
-	public static void setContributorIds(ICConfigurationDescription cfgDescription, List<String> ids) {
+	public static void setProviderIds(ICConfigurationDescription cfgDescription, List<String> ids) {
 		if (cfgDescription instanceof CConfigurationDescription) {
-			List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>(ids.size());
+			List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>(ids.size());
 			for (String id : ids) {
-				ICLanguageSettingsContributor contributor = getContributor(id);
-				if (contributor!=null) {
-					contributors.add(contributor);
+				ICLanguageSettingsProvider provider = getProvider(id);
+				if (provider!=null) {
+					providers.add(provider);
 				}
 			}
-			((CConfigurationDescription)cfgDescription).setLanguageSettingContributors(contributors);
+			((CConfigurationDescription)cfgDescription).setLanguageSettingProviders(providers);
 		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-			List<ICLanguageSettingsContributor> contributors = new ArrayList<ICLanguageSettingsContributor>(ids.size());
+			List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>(ids.size());
 			for (String id : ids) {
-				ICLanguageSettingsContributor contributor = getContributor(id);
-				if (contributor!=null) {
-					contributors.add(contributor);
+				ICLanguageSettingsProvider provider = getProvider(id);
+				if (provider!=null) {
+					providers.add(provider);
 				}
 			}
-			((CConfigurationDescriptionCache)cfgDescription).setLanguageSettingContributors(contributors);
+			((CConfigurationDescriptionCache)cfgDescription).setLanguageSettingProviders(providers);
 		} else if (cfgDescription!=null) {
 			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error setting ICLanguageSettingsContributor for unsupported configuration description type " + className); //$NON-NLS-1$
+			CCorePlugin.log("Error setting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
 		}
 	}
 	
 	/**
 	 */
-	public static List<String> getContributorIds(ICConfigurationDescription cfgDescription) {
+	public static List<String> getProviderIds(ICConfigurationDescription cfgDescription) {
 		List<String> ids = new ArrayList<String>();
 		if (cfgDescription instanceof CConfigurationDescription) {
-			for (ICLanguageSettingsContributor contributor : ((CConfigurationDescription)cfgDescription).getLanguageSettingContributors()) {
-				ids.add(contributor.getId());
+			for (ICLanguageSettingsProvider provider : ((CConfigurationDescription)cfgDescription).getLanguageSettingProviders()) {
+				ids.add(provider.getId());
 			}
 		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-			for (ICLanguageSettingsContributor contributor : ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingContributors()) {
-				ids.add(contributor.getId());
+			for (ICLanguageSettingsProvider provider : ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingProviders()) {
+				ids.add(provider.getId());
 			}
 		} else if (cfgDescription!=null) {
 			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error getting ICLanguageSettingsContributor for unsupported configuration description type " + className); //$NON-NLS-1$
+			CCorePlugin.log("Error getting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
 		}
 		return ids;
 	}
@@ -254,10 +253,10 @@ public class LanguageSettingsManager {
 	/**
 	 * TODO
 	 */
-	private static ICLanguageSettingsContributor getContributor(ICConfigurationDescription cfgDescription, String id) {
-		for (ICLanguageSettingsContributor contributor : getContributors(cfgDescription)) {
-			if (contributor.getId().equals(id)) {
-				return contributor;
+	private static ICLanguageSettingsProvider getProvider(ICConfigurationDescription cfgDescription, String id) {
+		for (ICLanguageSettingsProvider provider : getProviders(cfgDescription)) {
+			if (provider.getId().equals(id)) {
+				return provider;
 			}
 		}
 		return null;

@@ -2008,7 +2008,7 @@ public class PathEntryTranslator {
 		}
 	}
 
-	public static PathEntryCollector collectEntries(IProject project, ICConfigurationDescription des){
+	public static PathEntryCollector collectEntries(IProject project, final ICConfigurationDescription des){
 		CConfigurationData data = getCfgData(des);
 
 		ReferenceSettingsInfo refInfo = new ReferenceSettingsInfo(des);
@@ -2046,7 +2046,7 @@ public class PathEntryTranslator {
 					PathEntryCollector child = cr.createChild(container.getPath());
 					for (int kind : kinds) {
 						List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
-						if(collectResourceDataEntries(kind, data, list)){
+						if(collectResourceDataEntries(des, kind, data, list)){
 							ICLanguageSettingEntry[] entries = list.toArray(new ICLanguageSettingEntry[list.size()]);
 							child.setEntries(kind, entries, exportedSettings);
 						}
@@ -2059,43 +2059,27 @@ public class PathEntryTranslator {
 		return cr;
 	}
 
-	private static boolean collectResourceDataEntries(int kind, CResourceData data, List<ICLanguageSettingEntry> list){
+	private static boolean collectResourceDataEntries(ICConfigurationDescription des, int kind, CResourceData data, List<ICLanguageSettingEntry> list){
 		CLanguageData[] lDatas = null;
-		if(data instanceof CFolderData) {
+		if(data instanceof CFolderData){
 			lDatas = ((CFolderData)data).getLanguageDatas();
-		} else if(data instanceof CFileData) {
-			CLanguageData lData = ((CFileData)data).getLanguageData();
-			if (lData!=null)
-				lDatas = new CLanguageData[] {lData};
+		} else if(data instanceof CFileData){
+			lDatas = new CLanguageData[] {((CFileData)data).getLanguageData()};
 		} else {
-			Exception e = new Exception(UtilMessages.getString("PathEntryTranslator.1") + data.getClass().getName()); //$NON-NLS-1$
-			IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, e.getMessage(), e);
-			CCorePlugin.log(status);
+			CCorePlugin.log("Unexpected type " + data.getClass().getName());
 		}
 		if (lDatas==null || lDatas.length==0) {
 			return false;
 		}
-
-		boolean supported = false;
+		
+		IPath workspacePath = data.getPath();
+		IResource rc = ResourcesPlugin.getWorkspace().getRoot().findMember(workspacePath);
 		for (CLanguageData lData : lDatas) {
-			if(collectLanguageDataEntries(kind, lData, list))
-				supported = true;
+			list.addAll(LanguageSettingsManager.getSettingEntriesReconciled(des, rc, lData.getLanguageId(), kind));
 		}
-		return supported;
+		return list.size()>0;
 	}
-
-	private static boolean collectLanguageDataEntries(int kind, CLanguageData lData, List<ICLanguageSettingEntry> list){
-		if((kind & lData.getSupportedEntryKinds()) != 0){
-			ICLanguageSettingEntry[] entries = lData.getEntries(kind);
-			if(entries != null && entries.length != 0){
-				list.addAll(Arrays.asList(entries));
-			}
-			return true;
-		}
-
-		return false;
-	}
-
+	
 	public static IPathEntry[] getPathEntries(IProject project, ICConfigurationDescription cfg, int flags){
 		PathEntryCollector cr = collectEntries(project, cfg);
 		return cr.getEntries(flags, cfg);

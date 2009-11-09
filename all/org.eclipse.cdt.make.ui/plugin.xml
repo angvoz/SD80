@@ -471,6 +471,14 @@
            tooltip="%ErrorParsersTab.tooltip"
            weight="020">
      </tab>
+     <tab
+           class="org.eclipse.cdt.ui.newui.LanguageSettingsProvidersTab"
+           icon="icons/obj16/hfolder_obj.gif"
+           name="%LanguageSettingsProvidersTab.name"
+           parent="org.eclipse.cdt.make.internal.ui.preferences.BuildSettingsPreferencePage"
+           tooltip="%LanguageSettingsProvidersTab.tooltip"
+           weight="040">
+     </tab>
    </extension>
 
      <extension

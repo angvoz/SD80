@@ -10,10 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.settings.model;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
@@ -34,6 +34,7 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescriptionListener;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -99,10 +100,10 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 				}
 			}
 		}
-		return getScannerInfo(rcDes, setting);
+		return getScannerInfo(resource, rcDes, setting);
 	}
 
-	private IScannerInfo getScannerInfo(ICResourceDescription rcDes, ICLanguageSetting ls){
+	private IScannerInfo getScannerInfo(IResource rc, ICResourceDescription rcDes, ICLanguageSetting ls){
 		String mapKey = ls != null ? ls.getId() : null;
 //		if(ls == null)
 //			return INEXISTENT_SCANNER_INFO;
@@ -125,7 +126,7 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 			}
 		}
 		if(info == null){
-			info = createScannerInfo(ls);
+			info = createScannerInfo(rc, ls);
 			if(useMap)
 				fIdToLanguageSettingsMap.put(mapKey, info);
 			else if (rcDes != null){
@@ -136,88 +137,44 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 		return info;
 	}
 
-	private static ICLanguageSettingPathEntry[] getPathEntries(ICLanguageSetting ls, int kind){
-		ICLanguageSettingEntry entries[] = ls.getResolvedSettingEntries(kind);
-		ICLanguageSettingPathEntry pathEntries[] = new ICLanguageSettingPathEntry[entries.length];
-		System.arraycopy(entries, 0, pathEntries, 0, entries.length);
-
-		return pathEntries;
-	}
-
-	private static ICMacroEntry[] getMacroEntries(ICLanguageSetting ls){
-		ICLanguageSettingEntry entries[] = ls.getResolvedSettingEntries(ICSettingEntry.MACRO);
-		ICMacroEntry macroEntries[] = new ICMacroEntry[entries.length];
-		System.arraycopy(entries, 0, macroEntries, 0, entries.length);
-
-		return macroEntries;
-	}
-
-	private IScannerInfo createProjectScannerInfo(){
-		ICFolderDescription foDes = fCfgDes.getRootFolderDescription();
-		ICLanguageSetting[] lSettings = foDes.getLanguageSettings();
-		ICLanguageSettingPathEntry pathEntries[] = getPathEntries(lSettings, ICSettingEntry.INCLUDE_PATH);
-		String incs[] = getValues(pathEntries);
-
-		pathEntries = getPathEntries(lSettings, ICSettingEntry.INCLUDE_FILE);
-		String incFiles[] = getValues(pathEntries);
-
-		pathEntries = getPathEntries(lSettings, ICSettingEntry.MACRO_FILE);
-		String macroFiles[] = getValues(pathEntries);
-
-		ICMacroEntry macroEntries[] = getMacroEntries(lSettings);
-		Map<String, String> macrosMap = getValues(macroEntries);
-
-		return new ExtendedScannerInfo(macrosMap, incs, macroFiles, incFiles);
-	}
-
-
-	private ICMacroEntry[] getMacroEntries(ICLanguageSetting[] settings){
-		LinkedHashSet<ICLanguageSettingEntry> set = getEntriesSet(ICSettingEntry.MACRO, settings);
-		return set.toArray(new ICMacroEntry[set.size()]);
-	}
-
-	private ICLanguageSettingPathEntry[] getPathEntries(ICLanguageSetting[] settings, int kind){
-		LinkedHashSet<ICLanguageSettingEntry> set = getEntriesSet(kind, settings);
-		return set.toArray(new ICLanguageSettingPathEntry[set.size()]);
-	}
-
-	private LinkedHashSet<ICLanguageSettingEntry> getEntriesSet(int kind, ICLanguageSetting[] settings){
-		LinkedHashSet<ICLanguageSettingEntry> set = new LinkedHashSet<ICLanguageSettingEntry>();
-		ICLanguageSettingEntry[] langEntries;
-		for (ICLanguageSetting setting : settings) {
-			langEntries = setting.getResolvedSettingEntries(kind);
-			if(langEntries.length != 0){
-				set.addAll(Arrays.asList(langEntries));
-			}
+	private IScannerInfo createScannerInfo(IResource rc, ICLanguageSetting ls){
+		List<ICLanguageSettingEntry> incsList = new ArrayList<ICLanguageSettingEntry>();
+		List<ICLanguageSettingEntry> incFilesList = new ArrayList<ICLanguageSettingEntry>();
+		List<ICLanguageSettingEntry> macroFilesList = new ArrayList<ICLanguageSettingEntry>();
+		List<ICLanguageSettingEntry> macroList = new ArrayList<ICLanguageSettingEntry>();
+		
+		ICLanguageSetting[] languageSettings = null;
+		if(ls == null) {
+			ICFolderDescription foDes = fCfgDes.getRootFolderDescription();
+			languageSettings = foDes.getLanguageSettings();
+		} else {
+			languageSettings = new ICLanguageSetting[] {ls};
 		}
-		return set;
-	}
 
-	private IScannerInfo createScannerInfo(ICLanguageSetting ls){
-		if(ls == null)
-			return createProjectScannerInfo();
-
-		ICLanguageSettingPathEntry pathEntries[] = getPathEntries(ls, ICSettingEntry.INCLUDE_PATH);
-		String incs[] = getValues(pathEntries);
-
-		pathEntries = getPathEntries(ls, ICSettingEntry.INCLUDE_FILE);
-		String incFiles[] = getValues(pathEntries);
-
-		pathEntries = getPathEntries(ls, ICSettingEntry.MACRO_FILE);
-		String macroFiles[] = getValues(pathEntries);
-
-		ICMacroEntry macroEntries[] = getMacroEntries(ls);
-		Map<String, String> macrosMap = getValues(macroEntries);
-
+		for (ICLanguageSetting languageSetting : languageSettings) {
+			String languageId = languageSetting.getLanguageId();
+			ICConfigurationDescription cfgDescription = languageSetting.getConfiguration();
+			incsList.addAll(LanguageSettingsManager.getSettingEntriesReconciled(cfgDescription, rc, languageId, ICSettingEntry.INCLUDE_PATH));
+			incFilesList.addAll(LanguageSettingsManager.getSettingEntriesReconciled(cfgDescription, rc, languageId, ICSettingEntry.INCLUDE_FILE));
+			macroFilesList.addAll(LanguageSettingsManager.getSettingEntriesReconciled(cfgDescription, rc, languageId, ICSettingEntry.MACRO_FILE));
+			macroList.addAll(LanguageSettingsManager.getSettingEntriesReconciled(cfgDescription, rc, languageId, ICSettingEntry.MACRO));
+		}
+		
+		String incs[] = getValues(incsList);
+		String incFiles[] = getValues(incFilesList);
+		String macroFiles[] = getValues(macroFilesList);
+		Map<String, String> macrosMap = getMacroValues(macroList);
+		
 		return new ExtendedScannerInfo(macrosMap, incs, macroFiles, incFiles);
 	}
 
-	private Map<String, String> getValues(ICMacroEntry macroEntries[]){
-		Map<String, String> macrosMap = new HashMap<String, String>(macroEntries.length);
+	private Map<String, String> getMacroValues(List<ICLanguageSettingEntry> macroEntries){
+		Map<String, String> macrosMap = new HashMap<String, String>(macroEntries.size());
 		String name;
 		String value;
 
-		for (ICMacroEntry macroEntry : macroEntries) {
+		for (ICLanguageSettingEntry entry : macroEntries) {
+			ICMacroEntry macroEntry = (ICMacroEntry)entry;
 			name = macroEntry.getName();
 			value = macroEntry.getValue();
 			macrosMap.put(name, value);
@@ -225,11 +182,12 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 		return macrosMap;
 	}
 
-	private String[] getValues(ICLanguageSettingPathEntry pathEntries[]){
-		String values[] = new String[pathEntries.length];
+	private String[] getValues(List<ICLanguageSettingEntry> pathEntries){
+		String values[] = new String[pathEntries.size()];
 		IPath path;
 		int num = 0;
-		for (ICLanguageSettingPathEntry pathEntry : pathEntries) {
+		for (ICLanguageSettingEntry entry : pathEntries) {
+			ICLanguageSettingPathEntry pathEntry = (ICLanguageSettingPathEntry)entry;
 			String p = pathEntry.getValue();
 			if(p == null)
 				continue;
@@ -250,7 +208,7 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 				values[num++] = path.toOSString();
 		}
 
-		if(num < pathEntries.length){
+		if(num < pathEntries.size()){
 			String tmp[] = new String[num];
 			System.arraycopy(values, 0, tmp, 0, num);
 			values = tmp;

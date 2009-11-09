@@ -18,6 +18,8 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.IFontProvider;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
@@ -68,6 +70,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
 import org.eclipse.cdt.internal.ui.newui.Messages;
@@ -363,17 +366,20 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 
 	protected LinkedList<ICLanguageSettingEntry> getIncs() {
 		LinkedList<ICLanguageSettingEntry> l = new LinkedList<ICLanguageSettingEntry>();
-		List<ICLanguageSettingEntry> lst = getSettingEntriesList(getKind());
-		if (lst != null) {
-			for (ICLanguageSettingEntry ent : lst) {
-				if (!ent.isBuiltIn()) 
-					l.add(ent);
-			}
-			if (showBIButton.getSelection()) {
-				for (ICLanguageSettingEntry ent : lst)
-					if (ent.isBuiltIn()) 
-						l.add(ent);
-			}
+
+		String id = lang.getLanguageId();
+		ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(id);
+		if (ld == null) {
+			id = null;
+		} else {
+			id = ld.getId();
+		}
+		if (id==null) {
+			System.err.println("id=null: languageSetting=" +lang.getName());
+		}
+		IResource rc = ResourcesPlugin.getWorkspace().getRoot().findMember(getResDesc().getPath());
+		if (rc!=null) {
+			l.addAll(LanguageSettingsManager.getSettingEntriesReconciled(getResDesc().getConfiguration(), rc, id, getKind()));
 		}
 		return l;
 	}

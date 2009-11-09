@@ -1,0 +1,710 @@
+/*******************************************************************************
+ * Copyright (c) 2009, 2009 Intel Corporation and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ * Andrew Gvozdev (Quoin Inc.) - Regular expression error parsers
+ *******************************************************************************/
+package org.eclipse.cdt.ui.newui;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.Assert;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.viewers.CheckStateChangedEvent;
+import org.eclipse.jface.viewers.CheckboxTableViewer;
+import org.eclipse.jface.viewers.ICheckStateListener;
+import org.eclipse.jface.viewers.IStructuredContentProvider;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.window.Window;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableItem;
+import org.osgi.service.prefs.BackingStoreException;
+
+import com.ibm.icu.text.MessageFormat;
+
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingsContributor;
+import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
+import org.eclipse.cdt.core.settings.model.ICResourceDescription;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
+import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.dialogs.ICOptionContainer;
+import org.eclipse.cdt.ui.dialogs.ICOptionPage;
+import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
+
+import org.eclipse.cdt.internal.ui.dialogs.IInputStatusValidator;
+import org.eclipse.cdt.internal.ui.dialogs.InputStatusDialog;
+import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
+import org.eclipse.cdt.internal.ui.util.PixelConverter;
+
+
+/**
+ * FIXME: all references to error parsers
+ * 
+ * This class represents Error Parser Tab in Project Properties or workspace Preferences
+ *
+ * @noextend This class is not intended to be subclassed by clients.
+ */
+public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
+	private static final int DEFAULT_HEIGHT = 130;
+	private static final int BUTTON_ADD = 0;
+	private static final int BUTTON_EDIT = 1;
+	private static final int BUTTON_DELETE = 2;
+	// there is a separator instead of button = 3
+	private static final int BUTTON_MOVEUP = 4;
+	private static final int BUTTON_MOVEDOWN = 5;
+
+	private static final String[] BUTTONS = new String[] {
+		ADD_STR,
+		EDIT_STR,
+		DEL_STR,
+		null,
+		MOVEUP_STR,
+		MOVEDOWN_STR,
+	};
+
+	private static final String OOPS = "OOPS"; //$NON-NLS-1$
+
+	private Table fTable;
+	private CheckboxTableViewer fTableViewer;
+	private ICConfigurationDescription fCfgDesc;
+
+	private final Map<String, ICLanguageSettingsContributor> fAvailableContributors = new LinkedHashMap<String, ICLanguageSettingsContributor>();
+	private final Map<String, ICOptionPage> fOptionsPageMap = new HashMap<String, ICOptionPage>();
+	private ICOptionPage fCurrentOptionsPage = null;
+
+	private Composite fCompositeForOptionsPage;
+	
+	// FIXME dummy
+	private class RegexContributor implements ICLanguageSettingsContributor {
+		public RegexContributor(String id, String name) {
+			// TODO Auto-generated constructor stub
+		}
+		public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+		public String getId() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+		public String getName() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+	}
+
+	// FIXME dummy
+	private class RegexContributorOptionPage implements ICOptionPage {
+		public RegexContributorOptionPage(RegexContributor contributor, boolean isContributorsEditable) {
+			// TODO Auto-generated method stub
+		}
+
+		public boolean isValid() {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		public void performApply(IProgressMonitor monitor) throws CoreException {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void performDefaults() {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void setContainer(ICOptionContainer container) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void createControl(Composite parent) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void dispose() {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public Control getControl() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public String getDescription() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public String getErrorMessage() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public Image getImage() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public String getMessage() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public String getTitle() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public void performHelp() {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void setDescription(String description) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void setImageDescriptor(ImageDescriptor image) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void setTitle(String title) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void setVisible(boolean visible) {
+			// TODO Auto-generated method stub
+			
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#createControls(org.eclipse.swt.widgets.Composite)
+	 */
+	@Override
+	public void createControls(Composite parent) {
+
+		super.createControls(parent);
+//		PlatformUI.getWorkbench().getHelpSystem().setHelp(usercomp, ICHelpContextIds.CONTRIBUTORS_PAGE);
+
+		usercomp.setLayout(new GridLayout(1, false));
+
+		// SashForm
+		SashForm sashForm = new SashForm(usercomp, SWT.NONE);
+		sashForm.setBackground(sashForm.getDisplay().getSystemColor(SWT.COLOR_GRAY));
+		sashForm.setOrientation(SWT.VERTICAL);
+		sashForm.setLayoutData(new GridData(GridData.FILL_BOTH));
+
+		GridLayout layout = new GridLayout(2, false);
+		layout.marginHeight = 5;
+		sashForm.setLayout(layout);
+
+		// table
+		Composite compositeSashForm = new Composite(sashForm, SWT.NONE);
+		compositeSashForm.setLayout(new GridLayout(2, false));
+		fTable = new Table(compositeSashForm, SWT.BORDER | SWT.CHECK | SWT.SINGLE);
+		fTable.setLayoutData(new GridData(GridData.FILL_BOTH));
+		fTable.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				displaySelectedOptionPage();
+				updateButtons();
+		}});
+		fTableViewer = new CheckboxTableViewer(fTable);
+		fTableViewer.setContentProvider(new IStructuredContentProvider() {
+			public Object[] getElements(Object inputElement) {
+				return (Object[])inputElement;
+			}
+			public void dispose() {}
+			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
+		});
+		fTableViewer.setLabelProvider(new LabelProvider() {
+			@Override
+			public String getText(Object element) {
+				if (element instanceof String) {
+					String id = (String)element;
+					ICLanguageSettingsContributor contributor = fAvailableContributors.get(id);
+					if (contributor!=null) {
+						String name = contributor.getName();
+						if (name!=null && name.length()>0) {
+							return name;
+						}
+					}
+					return UIMessages.getFormattedString("ErrorParsTab.error.NonAccessibleID", id); //$NON-NLS-1$
+				}
+				return OOPS;
+			}
+		});
+
+		fTableViewer.addCheckStateListener(new ICheckStateListener() {
+			public void checkStateChanged(CheckStateChangedEvent e) {
+				saveChecked();
+			}});
+
+		// Buttons
+		Composite compositeButtons = new Composite(compositeSashForm, SWT.NONE);
+		compositeButtons.setLayoutData(new GridData(GridData.END));
+		initButtons(compositeButtons, BUTTONS);
+
+		fCompositeForOptionsPage = new Composite(sashForm, SWT.NULL);
+		GridData gd = new GridData();
+		fCompositeForOptionsPage.setLayout(new TabFolderLayout());
+
+		PixelConverter converter = new PixelConverter(parent);
+		gd.heightHint = converter.convertHorizontalDLUsToPixels(DEFAULT_HEIGHT);
+
+		gd.horizontalAlignment = GridData.FILL;
+		gd.grabExcessHorizontalSpace = true;
+		gd.grabExcessVerticalSpace = true;
+		gd.horizontalSpan = 2;
+		fCompositeForOptionsPage.setLayoutData(gd);
+
+		sashForm.setWeights(new int[] {50, 50});
+
+		// init data
+		ICResourceDescription resDecs = getResDesc();
+		fCfgDesc = resDecs!=null ? resDecs.getConfiguration() : null;
+		initMapParsers();
+		updateData(getResDesc());
+	}
+
+	private void initMapParsers() {
+		fAvailableContributors.clear();
+		fOptionsPageMap.clear();
+		for (String id : LanguageSettingsManager.getContributorAvailableIds()) {
+			ICLanguageSettingsContributor contributor = LanguageSettingsManager.getContributor(id);
+			fAvailableContributors.put(id, contributor);
+			initializeOptionsPage(id);
+		}
+
+		String ids[];
+		if (fCfgDesc!=null) {
+			ICConfigurationDescription srcCfgDesc = fCfgDesc.getConfiguration();
+			if (srcCfgDesc instanceof ICMultiConfigDescription) {
+				// FIXME
+//				String[][] ss = ((ICMultiConfigDescription)srcCfgDesc).getContributorIDs();
+//				ids = CDTPrefUtil.getStrListForDisplay(ss);
+				ids = new String[0];
+			} else {
+//				ids = srcCfgDesc.getBuildSetting().getContributorIDs();
+				ids = LanguageSettingsManager.getContributorIds(fCfgDesc).toArray(new String[0]);
+			}
+			Set<String> setIds = new LinkedHashSet<String>(Arrays.asList(ids));
+			setIds.addAll(fAvailableContributors.keySet());
+			fTableViewer.setInput(setIds.toArray(new String[0]));
+		} else {
+			fTableViewer.setInput(fAvailableContributors.keySet().toArray(new String[0]));
+			ids = LanguageSettingsManager.getDefaultContributorIds();
+		}
+		fTableViewer.setCheckedElements(ids);
+
+		displaySelectedOptionPage();
+	}
+
+	private void initializeOptionsPage(String id) {
+		ICLanguageSettingsContributor contributor = fAvailableContributors.get(id);
+		if (contributor!=null) {
+			String name = contributor.getName();
+			if (name!=null && name.length()>0) {
+				// RegexContributor has an Options page
+				if (contributor instanceof RegexContributor) {
+					// allow to edit only for Build Settings Preference Page (where cfgd==null)
+					RegexContributorOptionPage optionsPage = new RegexContributorOptionPage((RegexContributor) contributor, isContributorsEditable());
+					fOptionsPageMap.put(id, optionsPage);
+					optionsPage.setContainer(page);
+					optionsPage.createControl(fCompositeForOptionsPage);
+					optionsPage.setVisible(false);
+					fCompositeForOptionsPage.layout(true);
+				}
+			}
+		}
+	}
+
+	private void displaySelectedOptionPage() {
+		if (fCurrentOptionsPage != null)
+			fCurrentOptionsPage.setVisible(false);
+
+		int pos = fTable.getSelectionIndex();
+		if (pos<0)
+			return;
+
+		String parserId = (String)fTable.getItem(pos).getData();
+		ICOptionPage optionsPage = fOptionsPageMap.get(parserId);
+		if (optionsPage != null) {
+			optionsPage.setVisible(true);
+		}
+		fCurrentOptionsPage = optionsPage;
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#buttonPressed(int)
+	 */
+	@Override
+	public void buttonPressed (int n) {
+		switch (n) {
+		case BUTTON_ADD:
+			addContributor();
+			break;
+		case BUTTON_EDIT:
+			editContributor();
+			break;
+		case BUTTON_DELETE:
+			deleteContributor();
+			break;
+		case BUTTON_MOVEUP:
+			moveItem(true);
+			break;
+		case BUTTON_MOVEDOWN:
+			moveItem(false);
+			break;
+		default:
+			break;
+		}
+		updateButtons();
+	}
+
+	// Move item up / down
+	private void moveItem(boolean up) {
+		int n = fTable.getSelectionIndex();
+		if (n < 0 || (up && n == 0) || (!up && n+1 == fTable.getItemCount()))
+			return;
+
+		String id = (String)fTableViewer.getElementAt(n);
+		boolean checked = fTableViewer.getChecked(id);
+		fTableViewer.remove(id);
+		n = up ? n-1 : n+1;
+		fTableViewer.insert(id, n);
+		fTableViewer.setChecked(id, checked);
+		fTable.setSelection(n);
+
+		saveChecked();
+	}
+
+	private String makeId(String name) {
+		return CUIPlugin.PLUGIN_ID+'.'+name;
+	}
+
+	private void addContributor() {
+		IInputStatusValidator inputValidator = new IInputStatusValidator() {
+			public IStatus isValid(String newText) {
+				StatusInfo status = new StatusInfo();
+				if (newText.trim().length() == 0) {
+					status.setError(UIMessages.getString("ErrorParsTab.error.NonEmptyName")); //$NON-NLS-1$
+				} else if (newText.indexOf(LanguageSettingsManager.CONTRIBUTOR_DELIMITER)>=0) {
+					String message = MessageFormat.format( UIMessages.getString("ErrorParsTab.error.IllegalCharacter"), //$NON-NLS-1$
+							new Object[] { LanguageSettingsManager.CONTRIBUTOR_DELIMITER });
+					status.setError(message);
+				} else if (fAvailableContributors.containsKey(makeId(newText))) {
+					status.setError(UIMessages.getString("ErrorParsTab.error.NonUniqueID")); //$NON-NLS-1$
+				}
+				return status;
+			}
+
+		};
+		InputStatusDialog addDialog = new InputStatusDialog(usercomp.getShell(),
+				UIMessages.getString("ErrorParsTab.title.Add"), //$NON-NLS-1$
+				UIMessages.getString("ErrorParsTab.label.EnterName"), //$NON-NLS-1$
+				UIMessages.getString("ErrorParsTab.label.DefaultRegexContributorName"), //$NON-NLS-1$
+				inputValidator);
+		addDialog.setHelpAvailable(false);
+
+		if (addDialog.open() == Window.OK) {
+			String newName = addDialog.getValue();
+			String newId = makeId(newName);
+			ICLanguageSettingsContributor contributor = new RegexContributor(newId, newName);
+			fAvailableContributors.put(newId, contributor);
+
+			fTableViewer.add(newId);
+			fTableViewer.setChecked(newId, true);
+			fTable.setSelection(fTable.getItemCount()-1);
+
+			initializeOptionsPage(newId);
+			displaySelectedOptionPage();
+			updateButtons();
+		}
+	}
+
+	private void editContributor() {
+		int n = fTable.getSelectionIndex();
+		Assert.isTrue(n>=0);
+
+		String id = (String)fTableViewer.getElementAt(n);
+		ICLanguageSettingsContributor contributor = fAvailableContributors.get(id);
+
+		IInputStatusValidator inputValidator = new IInputStatusValidator() {
+			public IStatus isValid(String newText) {
+				StatusInfo status = new StatusInfo();
+				if (newText.trim().length() == 0) {
+					status.setError(UIMessages.getString("ErrorParsTab.error.NonEmptyName")); //$NON-NLS-1$
+				} else if (newText.indexOf(LanguageSettingsManager.CONTRIBUTOR_DELIMITER)>=0) {
+					String message = MessageFormat.format( UIMessages.getString("ErrorParsTab.error.IllegalCharacter"), //$NON-NLS-1$
+							new Object[] { LanguageSettingsManager.CONTRIBUTOR_DELIMITER });
+					status.setError(message);
+				}
+				return status;
+			}
+
+		};
+		InputStatusDialog addDialog = new InputStatusDialog(usercomp.getShell(),
+				UIMessages.getString("ErrorParsTab.title.Edit"), //$NON-NLS-1$
+				UIMessages.getString("ErrorParsTab.label.EnterName"), //$NON-NLS-1$
+				contributor.getName(),
+				inputValidator);
+		addDialog.setHelpAvailable(false);
+
+		if (addDialog.open() == Window.OK) {
+//			contributor.setName(addDialog.getValue());
+			fTableViewer.refresh(id);
+		}
+	}
+
+	private void deleteContributor() {
+		int n = fTable.getSelectionIndex();
+		if (n < 0)
+			return;
+
+		fTableViewer.remove(fTableViewer.getElementAt(n));
+
+		int last = fTable.getItemCount() - 1;
+		if (n>last)
+			n = last;
+		if (n>=0)
+			fTable.setSelection(n);
+
+		saveChecked();
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#updateData(org.eclipse.cdt.core.settings.model.ICResourceDescription)
+	 */
+	@Override
+	public void updateData(ICResourceDescription resDecs) {
+		ICConfigurationDescription oldCfgDesc = fCfgDesc;
+		fCfgDesc = resDecs!=null ? resDecs.getConfiguration() : null;
+		if (oldCfgDesc!=fCfgDesc) {
+			initMapParsers();
+		}
+		displaySelectedOptionPage();
+		updateButtons();
+	}
+
+	private static boolean isExtensionId(String id) {
+		for (String extId : LanguageSettingsManager.getContributorExtensionIds()) {
+			if (extId.equals(id)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#updateButtons()
+	 */
+	@Override
+	public void updateButtons() {
+		int pos = fTable.getSelectionIndex();
+		int count = fTable.getItemCount();
+		int last = count - 1;
+		boolean selected = pos >= 0 && pos <= last;
+		String id = (String)fTableViewer.getElementAt(pos);
+
+		buttonSetEnabled(BUTTON_ADD, isContributorsEditable());
+		buttonSetEnabled(BUTTON_EDIT, isContributorsEditable() && selected);
+		buttonSetEnabled(BUTTON_DELETE, isContributorsEditable() && selected && !isExtensionId(id));
+		buttonSetEnabled(BUTTON_MOVEUP, selected && pos != 0);
+		buttonSetEnabled(BUTTON_MOVEDOWN, selected && pos != last);
+	}
+
+
+	private List<String> getContributorIds(ICConfigurationDescription cfgDescription) {
+//		org.eclipse.cdt.managedbuilder.core.ManagedBuildManager.getConfigurationForDescription(cfgDescription);
+		return null;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#performApply(org.eclipse.cdt.core.settings.model.ICResourceDescription, org.eclipse.cdt.core.settings.model.ICResourceDescription)
+	 */
+	@Override
+	protected void performApply(ICResourceDescription src, ICResourceDescription dst) {
+		performOK();
+
+		if (!page.isForPrefs()) {
+			ICConfigurationDescription sd = src.getConfiguration();
+			ICConfigurationDescription dd = dst.getConfiguration();
+			String[] s = null;
+			if (sd instanceof ICMultiConfigDescription) {
+				// FIXME
+//				String[][] ss = ((ICMultiConfigDescription)sd).getContributorIDs();
+//				s = CDTPrefUtil.getStrListForDisplay(ss);
+				s = new String[0];
+			} else {
+//				s = sd.getBuildSetting().getContributorIDs();
+				s = LanguageSettingsManager.getContributorIds(fCfgDesc).toArray(new String[0]);
+			}
+			if (dd instanceof ICMultiConfigDescription) {
+				// FIXME
+//				((ICMultiConfigDescription)dd).setContributorIDs(s);
+			} else {
+//				dd.getBuildSetting().setContributorIDs(s);
+				LanguageSettingsManager.setContributorIds(dd, Arrays.asList(s));
+			}
+			initMapParsers();
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#performOK()
+	 */
+	@Override
+	protected void performOK() {
+		informPages(true);
+
+		if (page.isForPrefs()) {
+			if (fCfgDesc==null) {
+				// Build Settings page
+				try {
+					ICLanguageSettingsContributor[] contributors = new ICLanguageSettingsContributor[fTable.getItemCount()];
+					int i=0;
+					for (TableItem item : fTable.getItems()) {
+						if (item.getData() instanceof String) {
+							String id = (String) item.getData();
+							contributors[i] = fAvailableContributors.get(id);
+							i++;
+						}
+					}
+	
+					Object[] checkedElements = fTableViewer.getCheckedElements();
+					String[] checkedContributorIds = new String[checkedElements.length];
+					System.arraycopy(checkedElements, 0, checkedContributorIds, 0, checkedElements.length);
+	
+					LanguageSettingsManager.setUserDefinedContributors(contributors);
+					LanguageSettingsManager.setDefaultContributorIds(checkedContributorIds);
+				} catch (BackingStoreException e) {
+					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnApplyingSettings"), e); //$NON-NLS-1$
+				} catch (CoreException e) {
+					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnApplyingSettings"), e); //$NON-NLS-1$
+				}
+			}
+			initMapParsers();
+		}
+	}
+
+	private void saveChecked() {
+		if (fCfgDesc!=null) {
+			Object[] objs = fTableViewer.getCheckedElements();
+			String[] ids = new String[objs.length];
+			System.arraycopy(objs, 0, ids, 0, objs.length);
+
+			if (fCfgDesc instanceof ICMultiConfigDescription) {
+				// FIXME
+//				((ICMultiConfigDescription)fCfgDesc).setContributorIDs(ids);
+			} else {
+//				fCfgDesc.getBuildSetting().setContributorIDs(ids);
+				LanguageSettingsManager.setContributorIds(fCfgDesc, Arrays.asList(ids));
+			}
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#canBeVisible()
+	 */
+	@Override
+	public boolean canBeVisible() {
+		return page.isForProject() || page.isForPrefs();
+	}
+
+	/**
+	 * @return {@code true} if the error parsers are allowed to be editable,
+	 *     i.e. Add/Edit/Delete buttons are enabled and Options page edits enabled.
+	 *     This will evaluate to {@code true} for Preference Build Settings page but
+	 *     not for Preference New CDT Project Wizard/Makefile Project.
+	 */
+	private boolean isContributorsEditable() {
+		return fCfgDesc==null;
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#performDefaults()
+	 */
+	@Override
+	protected void performDefaults() {
+		if (isContributorsEditable()) {
+			// Must be Build Settings Preference Page
+			if (MessageDialog.openQuestion(usercomp.getShell(),
+					UIMessages.getString(UIMessages.getString("ErrorParsTab.title.ConfirmReset")), //$NON-NLS-1$
+					UIMessages.getString(UIMessages.getString("ErrorParsTab.message.ConfirmReset")))) { //$NON-NLS-1$
+
+				try {
+					LanguageSettingsManager.setUserDefinedContributors(null);
+					LanguageSettingsManager.setDefaultContributorIds(null);
+				} catch (BackingStoreException e) {
+					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnRestoring"), e); //$NON-NLS-1$
+				} catch (CoreException e) {
+					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnRestoring"), e); //$NON-NLS-1$
+				}
+			}
+		} else {
+			if (fCfgDesc instanceof ICMultiConfigDescription) {
+				// FIXME
+//				((ICMultiConfigDescription) fCfgDesc).setContributorIDs(null);
+			} else {
+//				fCfgDesc.getBuildSetting().setContributorIDs(null);
+				LanguageSettingsManager.setContributorIds(fCfgDesc, null);
+			}
+		}
+		initMapParsers();
+		updateButtons();
+	}
+
+	private void informPages(boolean apply) {
+		Collection<ICOptionPage> pages = fOptionsPageMap.values();
+		for (ICOptionPage dynamicPage : pages) {
+			if (dynamicPage!=null && dynamicPage.isValid() && dynamicPage.getControl() != null) {
+				try {
+					if (apply)
+						dynamicPage.performApply(new NullProgressMonitor());
+					else
+						dynamicPage.performDefaults();
+				} catch (CoreException e) {
+					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnApplyingSettings"), e); //$NON-NLS-1$
+				}
+			}
+		}
+	}
+}

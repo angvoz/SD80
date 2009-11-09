@@ -143,8 +143,8 @@
       </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
-               arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}"
-               command="gcc"
+               arguments="-c &apos;gcc -E -P -v -dD &quot;${plugin_state_location}/${specs_file}&quot;&apos;"
+               command="sh"
                class="org.eclipse.cdt.make.internal.core.scannerconfig2.GCCSpecsRunSIProvider"/>
          <scannerInfoConsoleParser class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCSpecsConsoleParser"/>
       </scannerInfoProvider>
@@ -162,8 +162,8 @@
       </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
-               arguments="-E -P -v -dD ${plugin_state_location}/specs.cpp"
-               command="g++"
+               arguments="-c &apos;g++ -E -P -v -dD &quot;${plugin_state_location}/specs.cpp&quot;&apos;"
+               command="sh"
                class="org.eclipse.cdt.make.internal.core.scannerconfig2.GCCSpecsRunSIProvider"/>
          <scannerInfoConsoleParser class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCSpecsConsoleParser"/>
       </scannerInfoProvider>
@@ -181,8 +181,8 @@
       </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
-               arguments="-E -P -v -dD ${plugin_state_location}/specs.c"
-               command="gcc"
+               arguments="-c &apos;gcc -E -P -v -dD &quot;${plugin_state_location}/specs.c&quot;&apos;"
+               command="sh"
                class="org.eclipse.cdt.make.internal.core.scannerconfig2.GCCSpecsRunSIProvider"/>
          <scannerInfoConsoleParser class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCSpecsConsoleParser"/>
       </scannerInfoProvider>
@@ -581,6 +581,27 @@
             processRunner="org.eclipse.cdt.managedbuilder.templateengine.processes.GenerateMakefileWithBuildDescription">
          <simple name="projectName"/>
       </processType>
+   </extension>
+   <extension
+         id="headlessbuild"
+         name="CDT Headless Build"
+         point="org.eclipse.core.runtime.applications">
+      <application
+            cardinality="singleton-global"
+            thread="main"
+            visible="true">
+         <run
+               class="org.eclipse.cdt.managedbuilder.internal.core.HeadlessBuilder">
+         </run>
+      </application>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.core.LanguageSettingsContributor">
+      <contributor
+            class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.MBSLanguageSettingsProvider"
+            id="org.eclipse.cdt.managedbuilder.core.LanguageSettingsContributor"
+            name="Managed Build Provider">
+      </contributor>
    </extension>
 
 </plugin>

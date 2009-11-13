@@ -67,6 +67,39 @@ public class CfgDiscoveredPathManager implements IResourceChangeListener {
 
 	private IDiscoveredPathManager fBaseMngr;
 	
+	
+	private class GetDiscoveredInfoRunnable implements IWorkspaceRunnable {
+
+		private PathInfo fPathInfo;
+		private ContextInfo fContextInfo;
+		private IProject fProject;
+		private CfgInfoContext fContext;
+		
+		public GetDiscoveredInfoRunnable(ContextInfo cInfo, IProject project, CfgInfoContext context) {
+			fContextInfo = cInfo;
+			fProject = project;
+			fContext = context;
+		}
+
+		public void run(IProgressMonitor monitor) throws CoreException {
+						
+			fPathInfo = getCachedPathInfo(fContextInfo);
+
+			if(fPathInfo == null){
+				IDiscoveredPathManager.IDiscoveredPathInfo baseInfo = loadPathInfo(fProject, fContext.getConfiguration(), fContextInfo);
+				
+				fPathInfo = resolveCacheBaseDiscoveredInfo(fContextInfo, baseInfo);
+			}
+			
+		}
+		
+		public PathInfo getPathInfo() {
+			return fPathInfo;
+		}
+		
+	};
+
+	
 	private static class ContextInfo {
 		
 		public ContextInfo() {
@@ -76,7 +109,7 @@ public class CfgDiscoveredPathManager implements IResourceChangeListener {
 		CfgInfoContext fLoadContext;
 		ICfgScannerConfigBuilderInfo2Set fCfgInfo;
 		IScannerConfigBuilderInfo2 fInfo;
-		boolean fIsFerFileCache;
+		boolean fIsPerFileCache;
 	}
 	
 	public static class PathInfoCache{
@@ -143,7 +176,7 @@ public class CfgDiscoveredPathManager implements IResourceChangeListener {
         try {
         	IWorkspaceRunnable runnable = new IWorkspaceRunnable() {
         		public void run(IProgressMonitor monitor) throws CoreException {
-       				ManagedBuildManager.updateCoreSettings(project, cfgs);
+       				ManagedBuildManager.updateCoreSettings(project, cfgs, true);
         		}
         	};
         	CoreModel.run(runnable, null);
@@ -161,14 +194,15 @@ public class CfgDiscoveredPathManager implements IResourceChangeListener {
 
         PathInfo info = getCachedPathInfo(cInfo);
 		if (info == null) {
-			IDiscoveredPathManager.IDiscoveredPathInfo baseInfo = loadPathInfo(project, context.getConfiguration(), cInfo);
+			// Change synchronization to be a workspace lock on the project.  Otherwise
+			// if the project description is queried from a project change listener, it will deadlock
+		
+			GetDiscoveredInfoRunnable runnable = new GetDiscoveredInfoRunnable(cInfo, project, context); 
+
+			ResourcesPlugin.getWorkspace().run(runnable, project, IWorkspace.AVOID_UPDATE, null);
 			
-			info = resolveCacheBaseDiscoveredInfo(cInfo, baseInfo);
-//			setCachedPathInfo(context, info);
-//			if(info instanceof DiscoveredPathInfo && !((DiscoveredPathInfo)info).isLoadded()){
-//				info = createPathInfo(project, context);
-//				setCachedPathInfo(context, info);
-//			}
+			info = runnable.getPathInfo();
+
 		}
 		return info;
 	}
@@ -180,7 +214,7 @@ public class CfgDiscoveredPathManager implements IResourceChangeListener {
 //	}
 	
 	private PathInfo resolveCacheBaseDiscoveredInfo(ContextInfo cInfo, IDiscoveredPathManager.IDiscoveredPathInfo baseInfo){
-		if(cInfo.fIsFerFileCache){
+		if(cInfo.fIsPerFileCache){
 			if(baseInfo instanceof IDiscoveredPathManager.IPerFileDiscoveredPathInfo2){
 				resolveCachePerFileInfo(cInfo, (IDiscoveredPathManager.IPerFileDiscoveredPathInfo2)baseInfo);
 			}
@@ -278,7 +312,7 @@ public class CfgDiscoveredPathManager implements IResourceChangeListener {
 	}
 	
 	private IDiscoveredPathManager.IDiscoveredPathInfo loadPathInfo(IProject project, IConfiguration cfg, ContextInfo cInfo) throws CoreException{
-		IDiscoveredPathManager.IDiscoveredPathInfo info = fBaseMngr.getDiscoveredInfo(cfg.getOwner().getProject(), cInfo.fLoadContext.toInfoContext());
+		IDiscoveredPathManager.IDiscoveredPathInfo info = fBaseMngr.getDiscoveredInfo(cfg.getOwner().getProject(), cInfo.fLoadContext.toInfoContext(), false);
 		if(!DiscoveredScannerInfoStore.getInstance().hasInfo(project, cInfo.fLoadContext.toInfoContext(), info.getSerializable())){
 //			setCachedPathInfo(context, info);
 			ICfgScannerConfigBuilderInfo2Set container = cInfo.fCfgInfo;
@@ -306,7 +340,7 @@ public class CfgDiscoveredPathManager implements IResourceChangeListener {
 
 	private void removeCachedPathInfo(ContextInfo cInfo){
 //      ICfgScannerConfigBuilderInfo2Set cfgInfo = cInfo.fCfgInfo;
-		if(cInfo.fIsFerFileCache){
+		if(cInfo.fIsPerFileCache){
 			Configuration cfg = (Configuration)cInfo.fInitialContext.getConfiguration();
 			cfg.clearDiscoveredPathInfo();
 			
@@ -406,13 +440,13 @@ public class CfgDiscoveredPathManager implements IResourceChangeListener {
 		if(isPerRcType){
 			contextInfo.fLoadContext = CfgScannerConfigUtil.adjustPerRcTypeContext(contextInfo.fInitialContext);
 			contextInfo.fCacheContext = contextInfo.fLoadContext;
-			contextInfo.fIsFerFileCache = false;
+			contextInfo.fIsPerFileCache = false;
 			contextInfo.fInfo = cfgInfo.getInfo(contextInfo.fLoadContext);
 		} else {
 			contextInfo.fLoadContext = new CfgInfoContext(context.getConfiguration());
 			contextInfo.fInfo = cfgInfo.getInfo(contextInfo.fLoadContext);
-			contextInfo.fIsFerFileCache = CfgScannerConfigProfileManager.isPerFileProfile(contextInfo.fInfo.getSelectedProfileId());
-			contextInfo.fCacheContext = contextInfo.fIsFerFileCache ? contextInfo.fInitialContext : contextInfo.fLoadContext;
+			contextInfo.fIsPerFileCache = CfgScannerConfigProfileManager.isPerFileProfile(contextInfo.fInfo.getSelectedProfileId());
+			contextInfo.fCacheContext = contextInfo.fIsPerFileCache ? contextInfo.fInitialContext : contextInfo.fLoadContext;
 		}
         
         return contextInfo;

@@ -15,7 +15,6 @@ import java.util.Hashtable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Plugin;
@@ -120,7 +119,7 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 	}
 
 	private void readExtensions() {
-		IConfigurationElement[] elements = 
+//		IConfigurationElement[] elements = 
 			Platform.getExtensionRegistry().getConfigurationElementsFor(PLUGIN_ID + ".scriptableFeature");
 //		for (IConfigurationElement element : elements) {
 //			RPCBridge.instance().addExtension(element);

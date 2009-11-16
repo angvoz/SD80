@@ -11,22 +11,41 @@
 
 package org.eclipse.cdt.core.settings.model.util;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
+import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.osgi.service.prefs.BackingStoreException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 /**
  * TODO
@@ -39,7 +58,11 @@ public class LanguageSettingsManager {
 	public static final String PROVIDER_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
 	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user";
 	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager.PROVIDER_DELIMITER;
-	
+
+	private static final String ROOT_ELEM = "languageSettings";
+	private static final String ATTR_PROJECT_NAME = "project";
+
+
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, String providerId) {
 		Assert.isNotNull(cfgDescription);
 
@@ -108,20 +131,82 @@ public class LanguageSettingsManager {
 		return list;
 	}
 
-	public static void load() {
-//		for (ICLanguageSettingsProvider provider : providers) {
-//			if (provider instanceof ACLanguageSettingsSerializableProvider) {
-//				((ACLanguageSettingsSerializableProvider) provider).fromXML();
-//			}
-//		}
+	private static Document loadXML(IFile xmlFile) throws CoreException {
+		try {
+			InputStream xmlStream = xmlFile.getContents();
+			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+			return builder.parse(xmlStream);
+		} catch (Exception e) {
+			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to load language settings"), e);
+			throw new CoreException(s);
+		}
 	}
 
-	public static void serialize() {
-//		for (ICLanguageSettingsProvider provider : providers) {
-//			if (provider instanceof ACLanguageSettingsSerializableProvider) {
-//				((ACLanguageSettingsSerializableProvider) provider).toXML();
-//			}
-//		}
+	public static void load(ICConfigurationDescription cfgDescription) {
+		IProject project = cfgDescription.getProjectDescription().getProject();
+		IFile file = project.getFile("language.settings.xml");
+		Document doc = null;
+		try {
+			doc = loadXML(file);
+		} catch (Exception e) {
+			CCorePlugin.log("Can't load preferences from file "+file.getLocation(), e); //$NON-NLS-1$
+		}
+		
+		if (doc!=null) {
+			Element rootElement = doc.getDocumentElement();
+			
+			for (ICLanguageSettingsProvider provider : LanguageSettingsManager.getProviders(cfgDescription)) {
+				if (provider instanceof LanguageSettingsPersistentProvider) {
+					((LanguageSettingsPersistentProvider) provider).load(rootElement);
+				}
+			}
+		}
+	}
+
+	private static byte[] toByteArray(Document doc) throws CoreException {
+		XmlUtil.prettyFormat(doc);
+
+		try {
+			ByteArrayOutputStream stream = new ByteArrayOutputStream();
+			Transformer transformer = TransformerFactory.newInstance().newTransformer();
+			transformer.setOutputProperty(OutputKeys.METHOD, "xml"); //$NON-NLS-1$
+			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8"); //$NON-NLS-1$
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes"); //$NON-NLS-1$
+			DOMSource source = new DOMSource(doc);
+			StreamResult result = new StreamResult(stream);
+			transformer.transform(source, result);
+
+			return stream.toByteArray();
+		} catch (Exception e) {
+			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);
+			throw new CoreException(s);
+		}
+	}
+
+	public static void serialize(ICConfigurationDescription cfgDescription) throws CoreException {
+		try {
+			IProject project = cfgDescription.getProjectDescription().getProject();
+			
+			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+			Document doc = builder.newDocument();
+			Element rootElement = doc.createElement(ROOT_ELEM);
+			rootElement.setAttribute(ATTR_PROJECT_NAME, project.getName());
+			doc.appendChild(rootElement);
+
+			for (ICLanguageSettingsProvider provider : getProviders(cfgDescription)) {
+				if (provider instanceof LanguageSettingsPersistentProvider) {
+					((LanguageSettingsPersistentProvider) provider).serialize(rootElement);
+				}
+			}
+			InputStream input = new ByteArrayInputStream(toByteArray(doc));
+			
+			IFile file = project.getFile("language.settings.xml");
+			file.create(input, IResource.FORCE, null);
+
+		} catch (Exception e) {
+			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);
+			throw new CoreException(s);
+		}
 	}
 
 	/**
@@ -260,6 +345,10 @@ public class LanguageSettingsManager {
 			}
 		}
 		return null;
+	}
+
+	public static void serializeWorkspaceProviders() throws CoreException {
+		LanguageSettingsExtensionManager.serializeLanguageSettings();
 	}
 
 

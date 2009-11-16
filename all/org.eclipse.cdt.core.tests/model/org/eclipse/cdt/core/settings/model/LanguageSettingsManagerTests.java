@@ -49,9 +49,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String CONFIGURATION_ID = "cfg.id";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
+	private static final String PROVIDER_NULL = "test.provider.null.id";
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_1 = "test.provider.1.id";
 	private static final String PROVIDER_2 = "test.provider.2.id";
+	private static final String PROVIDER_NAME_NULL = "test.provider.null.name";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
 	private static final String PROVIDER_NAME_1 = "test.provider.1.name";
 	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
@@ -220,7 +222,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// get test plugin extension non-default provider
 		ICLanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
-		assertTrue(providerExt instanceof TestLanguageSettingsProvider);
+		assertTrue(providerExt instanceof TestClassLanguageSettingsProvider);
 
 		assertEquals(PROVIDER_ID_EXT, providerExt.getId());
 		assertEquals(PROVIDER_NAME_EXT, providerExt.getName());
@@ -415,7 +417,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 *
 	 * @throws Exception...
 	 */
-	public void testSerializeWorkspaceProvider() throws Exception {
+	public void testSerializeUserDefinedproviderWorkspace() throws Exception {
 //		final String TESTING_ID = "org.eclipse.cdt.core.test.language.settings.provider";
 //		final String TESTING_NAME = "A provider";
 //
@@ -1051,66 +1053,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertTrue(ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 
-	}
-
-	/**
-	 */
-	public void testConfigurationDescription_SerializeProviderData_Basic() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
-
-		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
-		original.add(new CIncludePathEntry("path0", 0));
-
-		class ClearableMockProvider extends ACLanguageSettingsSerializableProvider {
-			private List<ICLanguageSettingEntry> entries;
-			public ClearableMockProvider(String id, String name, List<ICLanguageSettingEntry> entries) {
-				super(id, name);
-				this.entries = entries;
-			}
-			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-				return entries;
-			}
-			public void clear() {
-				entries = null;
-			}
-		}
-		ClearableMockProvider provider = new ClearableMockProvider(PROVIDER_0, PROVIDER_NAME_0, original);
-
-		// add mock serializable provider
-		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
-		providers.add(provider);
-		LanguageSettingsManager.setProviders(cfgDescription, providers);
-
-		{
-			// double-check that provider returns proper data
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
-			assertEquals(original.get(0), retrieved.get(0));
-			assertEquals(original.size(), retrieved.size());
-		}
-
-		// serialize
-		LanguageSettingsManager.serialize();
-
-		// clear provider
-		provider.clear();
-		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
-			assertEquals(0, retrieved.size());
-		}
-
-		// re-load
-		LanguageSettingsManager.load();
-		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
-			assertEquals(original.get(0), retrieved.get(0));
-			assertEquals(original.size(), retrieved.size());
-		}
 	}
 
 	/**

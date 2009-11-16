@@ -81,29 +81,22 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 	 */
 	public void parseLongOrBigInteger(String value) throws NumberFormatException {
 		boolean suffixUnsigned = false;
-		boolean suffixLong = false;
-		boolean suffixLongLong = false;
-		boolean isOctalOrHex = false;
 
 		String val = value.toLowerCase();
 		int length = value.length();
 
 		if (val.endsWith("ull") || val.endsWith("llu")) { //$NON-NLS-1$ //$NON-NLS-2$
 			suffixUnsigned = true;
-			suffixLongLong = true;
 			val = val.substring(0, val.length() - 3);
 			length -= 3;
 		} else if (val.endsWith("ll")) { //$NON-NLS-1$
-			suffixLongLong = true;
 			val = val.substring(0, val.length() - 2);
 			length -= 2;
 		} else if (val.endsWith("ul") || val.endsWith("lu")) { //$NON-NLS-1$ //$NON-NLS-2$
 			suffixUnsigned = true;
-			suffixLong = true;
 			val = val.substring(0, val.length() - 2);
 			length -= 2;
 		} else if (val.endsWith("l")) { //$NON-NLS-1$
-			suffixLong = true;
 			val = val.substring(0, val.length() - 1);
 			length -= 1;
 		} else if (val.endsWith("u")) { //$NON-NLS-1$
@@ -116,7 +109,6 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 		// if after BigInteger conversion, Long conversion fails, the value is
 		// too large or small
 		if (val.startsWith("0x")) { //$NON-NLS-1$
-			isOctalOrHex = true;
 			fBigInteger = new BigInteger(val.substring(2), 16);
 
 			try {
@@ -127,7 +119,6 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 			}
 			length -= 2;
 		} else if (length > 1 && val.startsWith("0")) { //$NON-NLS-1$
-			isOctalOrHex = true;
 			fBigInteger = new BigInteger(val.substring(1), 8);
 
 			try {

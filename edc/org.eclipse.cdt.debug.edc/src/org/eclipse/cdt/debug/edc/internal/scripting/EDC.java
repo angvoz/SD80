@@ -50,7 +50,6 @@ public class EDC {
 		return DOMUtils.getDMContextProperties(DOMUtils.getSuspendedThreads(sessionId));
 	}
 
-	@SuppressWarnings("restriction")
 	public static IBreakpoint createAddressBreakpoint(long address, String condition) throws Exception {
 		Map<String, Object> attributes = new HashMap<String, Object>(10);
 		attributes.put(IBreakpoint.ID, EDCDebugger.PLUGIN_ID);
@@ -66,7 +65,6 @@ public class EDC {
 		return new CAddressBreakpoint(rootResource, attributes, true);
 	}
 
-	@SuppressWarnings("restriction")
 	public static IBreakpoint createFunctionBreakpoint(String sourceFilePath, String functionName, String condition)
 			throws Exception {
 		Map<String, Object> attributes = new HashMap<String, Object>(10);
@@ -84,7 +82,6 @@ public class EDC {
 		return new CFunctionBreakpoint(rootResource, attributes, true);
 	}
 
-	@SuppressWarnings("restriction")
 	public static IBreakpoint createLineBreakpoint(String sourceFilePath, int lineNumber, String condition)
 			throws Exception {
 		Map<String, Object> attributes = new HashMap<String, Object>(10);

@@ -339,7 +339,6 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 		return album != null;
 	}
 
-	@SuppressWarnings("restriction")
 	public ISourceLocator getExecutableLocator() {
 		CSourceLookupDirector director = new CSourceLookupDirector();
 		director.initializeParticipants();

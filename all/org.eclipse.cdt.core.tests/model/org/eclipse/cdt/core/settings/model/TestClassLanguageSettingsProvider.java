@@ -16,7 +16,7 @@ import java.util.List;
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.core.resources.IResource;
 
-public class TestLanguageSettingsProvider extends AbstractExecutableExtensionBase
+public class TestClassLanguageSettingsProvider extends AbstractExecutableExtensionBase
 		implements ICLanguageSettingsProvider {
 
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {

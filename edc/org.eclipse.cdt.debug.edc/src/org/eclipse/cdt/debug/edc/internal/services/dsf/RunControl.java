@@ -150,7 +150,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 	}
 
 	@Immutable
-	private static class ExecutionData implements IExecutionDMData {
+	private static class ExecutionData implements IExecutionDMData2 {
 		private final StateChangeReason reason;
 		private final String details;
 

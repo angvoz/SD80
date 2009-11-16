@@ -12,9 +12,6 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 import java.util.EmptyStackException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Stack;
 
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
@@ -97,16 +94,6 @@ public class Interpreter {
 		this.valueType = valueType;
 	}
 
-	/**
-	 * The list of internal variables
-	 */
-	private final Map fInternalVariables;
-
-	/**
-	 * List of objects for which GC has been disabled
-	 */
-	private final List fPermStorage = null;
-
 	private boolean fStopped = false;
 
 	/**
@@ -121,7 +108,6 @@ public class Interpreter {
 		this.instructions = instructionSequence.getInstructions();
 		this.context = context;
 		setValueType(ASTEvaluationEngine.UNKNOWN_TYPE);
-		fInternalVariables = new HashMap();
 	}
 
 	/**
@@ -150,7 +136,7 @@ public class Interpreter {
 	 * Reset the interpreter
 	 */
 	private void reset() {
-		stack = new Stack();
+		stack = new Stack<Object>();
 		instructionCounter = 0;
 	}
 

@@ -106,6 +106,7 @@ public class WindowsDebugger extends Plugin {
 		};
 	}
 
+	@SuppressWarnings("unchecked")
 	public void launchProcess(final ILaunch launch, final IProcesses ps, final RequestMonitor requestMonitor) {
 		try {
 			ILaunchConfiguration cfg = launch.getLaunchConfiguration();

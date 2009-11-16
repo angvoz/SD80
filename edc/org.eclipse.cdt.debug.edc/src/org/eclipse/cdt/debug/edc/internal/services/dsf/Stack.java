@@ -399,6 +399,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		rm.done();
 	}
 
+	@SuppressWarnings("unchecked")
 	public void getModelData(IDMContext dmc, DataRequestMonitor<?> rm) {
 		if (dmc instanceof IFrameDMContext) {
 			getFrameData((IFrameDMContext) dmc, (DataRequestMonitor<IFrameDMData>) rm);

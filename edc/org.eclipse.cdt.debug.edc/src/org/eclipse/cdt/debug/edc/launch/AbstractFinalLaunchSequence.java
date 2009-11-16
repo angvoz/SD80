@@ -296,6 +296,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		return steps.toArray(new Step[steps.size()]);
 	}
 
+	@SuppressWarnings("unchecked")
 	protected void launchProcess(final ILaunch launch, final IProcesses ps, final RequestMonitor requestMonitor) {
 		try {
 			ILaunchConfiguration cfg = launch.getLaunchConfiguration();

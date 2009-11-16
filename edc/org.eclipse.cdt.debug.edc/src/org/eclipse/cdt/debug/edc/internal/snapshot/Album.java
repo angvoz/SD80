@@ -80,6 +80,7 @@ import org.xml.sax.helpers.DefaultHandler;
  * file in a default location. When reopened the contents are expanded into a
  * temporary directory and used to recreate the debug session.
  */
+@SuppressWarnings("restriction")
 public class Album extends PlatformObject {
 
 	// XML element names
@@ -365,7 +366,6 @@ public class Album extends PlatformObject {
 		return snapshotsProject;
 	}
 
-	@SuppressWarnings("restriction")
 	private void saveAlbum(IProgressMonitor monitor) {
 
 		IPath zipPath = getSnapshotsProject().getLocation();
@@ -512,8 +512,7 @@ public class Album extends PlatformObject {
 	}
 
 	private void loadAlbumInfo() {
-		Element infoElement = (Element) document.getElementsByTagName(INFO).item(0);
-
+		document.getElementsByTagName(INFO).item(0);
 	}
 
 	private void loadResourceList() {
@@ -547,6 +546,7 @@ public class Album extends PlatformObject {
 		return getAlbumRootDirectory().append(ALBUM_DATA);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Object getAdapter(Class adapter) {
 		if (adapter.equals(Document.class))
@@ -615,7 +615,6 @@ public class Album extends PlatformObject {
 		return location;
 	}
 
-	@SuppressWarnings("restriction")
 	public void configureMappingSourceContainer(MappingSourceContainer mappingContainer) {
 		IPath albumRoot = getAlbumRootDirectory();
 		String device = "";

@@ -73,7 +73,7 @@ public class GdbserverAgentDescriptor implements ITCFAgentDescriptor {
 		final CommandLauncher launcher = new CommandLauncher();
 		String[] cmdarray = new String[] { "-jar", path.toOSString() };
 
-		Process agentProcess = launcher.execute(new Path("java"), cmdarray, null, null, new NullProgressMonitor());
+		launcher.execute(new Path("java"), cmdarray, null, null, new NullProgressMonitor());
 	}
 
 }

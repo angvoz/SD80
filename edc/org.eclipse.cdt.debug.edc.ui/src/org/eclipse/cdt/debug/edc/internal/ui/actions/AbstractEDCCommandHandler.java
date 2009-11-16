@@ -25,7 +25,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
-@SuppressWarnings("restriction")
 abstract public class AbstractEDCCommandHandler extends AbstractHandler implements IDebugContextListener {
 
 	private final IDebugContextService contextService;

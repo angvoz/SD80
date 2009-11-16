@@ -59,6 +59,7 @@ public class SettingsProxy implements ISettings {
 
 	public IToken getSupportedSettings(final DoneGetSettingValues done) {
 		return new Command(channel, SettingsProxy.this, "get", new Object[] {}) {
+			@SuppressWarnings("unchecked")
 			@Override
 			public void done(Exception error, Object[] args) {
 

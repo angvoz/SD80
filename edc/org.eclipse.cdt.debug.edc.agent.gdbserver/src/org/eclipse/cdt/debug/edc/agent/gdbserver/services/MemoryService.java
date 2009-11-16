@@ -86,11 +86,11 @@ public class MemoryService implements IMemory {
 					return;
 				}
 
-				String contextid = (String) args[0];
+				//String contextid = (String) args[0];
 				final Number addr = (Number) args[1];
-				Integer word_size = (Integer) args[2]; // what's this for ?
+				//Integer word_size = (Integer) args[2]; // what's this for ?
 				Integer size = (Integer) args[3]; // number of bytes to read
-				Integer mode = (Integer) args[4]; // what's this ?
+				//Integer mode = (Integer) args[4]; // what's this ?
 
 				try {
 					GdbserverAgent.getInstance().getGdbRemoteProtocol().readMemory(addr.longValue(), size,
@@ -144,11 +144,11 @@ public class MemoryService implements IMemory {
 					return;
 				}
 
-				String contextid = (String) args[0];
+				//String contextid = (String) args[0];
 				final Number addr = (Number) args[1];
-				Integer word_size = (Integer) args[2]; // what's this for ?
+				//Integer word_size = (Integer) args[2]; // what's this for ?
 				Integer size = (Integer) args[3]; // number of bytes to write
-				Integer mode = (Integer) args[4]; // what's this ?
+				//Integer mode = (Integer) args[4]; // what's this ?
 				byte[] bytes = (byte[]) args[5];
 
 				/*

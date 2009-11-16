@@ -99,7 +99,6 @@ public abstract class AbstractDebuggerTab extends AbstractLaunchConfigurationTab
 	}
 
 	@Override
-	@SuppressWarnings("restriction")
 	public Image getImage() {
 		return LaunchImages.get(LaunchImages.IMG_VIEW_DEBUGGER_TAB);
 	}

@@ -24,7 +24,6 @@ import org.eclipse.debug.ui.contexts.IDebugContextListener;
 import org.eclipse.debug.ui.contexts.IDebugContextService;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.commands.ICommandService;
@@ -72,7 +71,8 @@ abstract public class RetargetDebugContextCommand extends AbstractHandler implem
 			try {
 				performCommand(fTargetAdapter, fDebugContext);
 			} catch (ExecutionException e) {
-				Shell shell = HandlerUtil.getActiveWorkbenchWindowChecked(event).getShell();
+				//Shell shell = 
+				HandlerUtil.getActiveWorkbenchWindowChecked(event).getShell();
 				// ErrorDialog.openError(shell,
 				// MessagesForVMActions.RetargetDebugContextAction_ErrorDialog_title,
 				// MessagesForVMActions.RetargetDebugContextAction_ErrorDialog_message,

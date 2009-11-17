@@ -132,6 +132,7 @@ public class ASTInstructionCompiler extends ASTVisitor {
 		return super.leave(arrayModifier);
 	}
 
+	@SuppressWarnings("deprecation")	// we're simply wrapping a deprecated method
 	@Override
 	public int leave(IASTComment comment) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.EXPRESSION_PARSE_TRACE, comment);
@@ -225,6 +226,7 @@ public class ASTInstructionCompiler extends ASTVisitor {
 		return super.visit(arrayModifier);
 	}
 
+	@SuppressWarnings("deprecation")	// we're simply wrapping a deprecated method
 	@Override
 	public int visit(IASTComment comment) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.EXPRESSION_PARSE_TRACE, comment);

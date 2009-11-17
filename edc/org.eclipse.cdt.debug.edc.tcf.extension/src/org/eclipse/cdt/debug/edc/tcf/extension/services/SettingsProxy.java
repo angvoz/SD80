@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.tcf.extension.services;
 
-import java.util.ArrayList;
 import java.util.Collection;
 
 import org.eclipse.tm.tcf.core.Command;
@@ -78,17 +77,18 @@ public class SettingsProxy implements ISettings {
 		}.token;
 	}
 
-	@SuppressWarnings("unchecked")
-	private String[] toStringArray(Object o) {
-		if (o != null && o instanceof Collection) {
-			Collection<Object> objs = (Collection<Object>) o;
-			Collection<String> strings = new ArrayList<String>();
-			for (Object object : objs) {
-				strings.add(object.toString());
-			}
-			return strings.toArray(new String[strings.size()]);
-		}
-		return null;
-	}
+	// Unused. Remove? [11-17-09]
+//	@SuppressWarnings("unchecked")
+//	private String[] toStringArray(Object o) {
+//		if (o != null && o instanceof Collection) {
+//			Collection<Object> objs = (Collection<Object>) o;
+//			Collection<String> strings = new ArrayList<String>();
+//			for (Object object : objs) {
+//				strings.add(object.toString());
+//			}
+//			return strings.toArray(new String[strings.size()]);
+//		}
+//		return null;
+//	}
 
 }

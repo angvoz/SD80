@@ -9,6 +9,6 @@ Export-Package: org.eclipse.cdt.debug.edc.tcf.extension,
  org.eclipse.cdt.debug.edc.tcf.extension.agent,
  org.eclipse.cdt.debug.edc.tcf.extension.services,
  org.eclipse.cdt.debug.edc.tcf.extension.transport
-Require-Bundle: org.eclipse.tm.tcf;bundle-version="0.2.0",
+Require-Bundle: org.eclipse.tm.tcf;bundle-version="0.3.0",
  org.eclipse.tm.tcf.core
 Import-Package: org.eclipse.tm.tcf.core

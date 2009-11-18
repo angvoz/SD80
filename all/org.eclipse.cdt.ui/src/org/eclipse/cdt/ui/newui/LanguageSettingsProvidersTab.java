@@ -51,7 +51,7 @@ import com.ibm.icu.text.MessageFormat;
 
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
@@ -97,14 +97,14 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	private CheckboxTableViewer fTableViewer;
 	private ICConfigurationDescription fCfgDesc;
 
-	private final Map<String, ICLanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ICLanguageSettingsProvider>();
+	private final Map<String, ILanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
 	private final Map<String, ICOptionPage> fOptionsPageMap = new HashMap<String, ICOptionPage>();
 	private ICOptionPage fCurrentOptionsPage = null;
 
 	private Composite fCompositeForOptionsPage;
 	
 	// FIXME dummy
-	private class RegexProvider implements ICLanguageSettingsProvider {
+	private class RegexProvider implements ILanguageSettingsProvider {
 		public RegexProvider(String id, String name) {
 			// TODO Auto-generated constructor stub
 		}
@@ -259,7 +259,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			public String getText(Object element) {
 				if (element instanceof String) {
 					String id = (String)element;
-					ICLanguageSettingsProvider provider = fAvailableProviders.get(id);
+					ILanguageSettingsProvider provider = fAvailableProviders.get(id);
 					if (provider!=null) {
 						String name = provider.getName();
 						if (name!=null && name.length()>0) {
@@ -308,7 +308,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		fAvailableProviders.clear();
 		fOptionsPageMap.clear();
 		for (String id : LanguageSettingsManager.getProviderAvailableIds()) {
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
 			fAvailableProviders.put(id, provider);
 			initializeOptionsPage(id);
 		}
@@ -338,7 +338,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	}
 
 	private void initializeOptionsPage(String id) {
-		ICLanguageSettingsProvider provider = fAvailableProviders.get(id);
+		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
 		if (provider!=null) {
 			String name = provider.getName();
 			if (name!=null && name.length()>0) {
@@ -447,7 +447,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (addDialog.open() == Window.OK) {
 			String newName = addDialog.getValue();
 			String newId = makeId(newName);
-			ICLanguageSettingsProvider provider = new RegexProvider(newId, newName);
+			ILanguageSettingsProvider provider = new RegexProvider(newId, newName);
 			fAvailableProviders.put(newId, provider);
 
 			fTableViewer.add(newId);
@@ -465,7 +465,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		Assert.isTrue(n>=0);
 
 		String id = (String)fTableViewer.getElementAt(n);
-		ICLanguageSettingsProvider provider = fAvailableProviders.get(id);
+		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
 
 		IInputStatusValidator inputValidator = new IInputStatusValidator() {
 			public IStatus isValid(String newText) {
@@ -599,7 +599,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			if (fCfgDesc==null) {
 				// Build Settings page
 				try {
-					ICLanguageSettingsProvider[] providers = new ICLanguageSettingsProvider[fTable.getItemCount()];
+					ILanguageSettingsProvider[] providers = new ILanguageSettingsProvider[fTable.getItemCount()];
 					int i=0;
 					for (TableItem item : fTable.getItems()) {
 						if (item.getData() instanceof String) {

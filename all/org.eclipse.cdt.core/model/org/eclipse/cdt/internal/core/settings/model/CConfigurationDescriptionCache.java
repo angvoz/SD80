@@ -24,7 +24,7 @@ import org.eclipse.cdt.core.settings.model.ICExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
@@ -558,11 +558,11 @@ public class CConfigurationDescriptionCache extends CDefaultConfigurationData
 		return status != null ? status : CConfigurationStatus.CFG_STATUS_OK;
 	}
 
-	public void setLanguageSettingProviders(List<ICLanguageSettingsProvider> providers) {
+	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
 		fSpecSettings.setLanguageSettingProviders(providers);
 	}
 
-	public List<ICLanguageSettingsProvider> getLanguageSettingProviders() {
+	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
 		return fSpecSettings.getLanguageSettingProviders();
 	}
 }

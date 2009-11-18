@@ -503,6 +503,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 
 		LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+		provider.setSettingEntries(cfgDescription, null, null, original);
 		provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, original);
 
 		// add mock serializable provider
@@ -511,27 +512,52 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		LanguageSettingsManager.setProviders(cfgDescription, providers);
 
 		{
-			// double-check that provider returns proper data
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
+			// 1st double-check that provider returns proper data
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
+				.getSettingEntries(cfgDescription, null, null, PROVIDER_0);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
 
+		{
+			// 2nd double-check that provider returns proper data
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
+			assertEquals(original.get(0), retrieved.get(0));
+			assertEquals(original.size(), retrieved.size());
+		}
+		
 		// serialize
 		LanguageSettingsManager.serialize(cfgDescription);
 
 		// clear provider
+		provider.setSettingEntries(cfgDescription, null, null, null);
 		provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, null);
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
+				.getSettingEntries(cfgDescription, null, null, PROVIDER_0);
+			assertEquals(0, retrieved.size());
+		}
+		{
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
 			assertEquals(0, retrieved.size());
 		}
 
 		// re-load
 		LanguageSettingsManager.load(cfgDescription);
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
-//			assertEquals(original.get(0), retrieved.get(0));
+			// 1st
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
+				.getSettingEntries(cfgDescription, null, null, PROVIDER_0);
+			assertEquals(original.get(0), retrieved.get(0));
+			assertEquals(original.size(), retrieved.size());
+		}
+		{
+			// 2nd
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
+				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
+			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
 	}

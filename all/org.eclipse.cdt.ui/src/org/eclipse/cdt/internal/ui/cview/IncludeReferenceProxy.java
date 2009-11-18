@@ -41,6 +41,7 @@ public class IncludeReferenceProxy extends CElementGrouping {
 	/* (non-Javadoc)
 	 * @see org.eclipse.ui.model.IWorkbenchAdapter#getChildren(java.lang.Object)
 	 */
+	@Override
 	public Object[] getChildren(Object object) {
 		try {
 			return reference.getChildren();
@@ -53,6 +54,7 @@ public class IncludeReferenceProxy extends CElementGrouping {
 	/* (non-Javadoc)
 	 * @see org.eclipse.ui.model.IWorkbenchAdapter#getImageDescriptor(java.lang.Object)
 	 */
+	@Override
 	public ImageDescriptor getImageDescriptor(Object object) {
 		return CPluginImages.DESC_OBJS_INCLUDES_FOLDER;
 	}
@@ -60,6 +62,7 @@ public class IncludeReferenceProxy extends CElementGrouping {
 	/* (non-Javadoc)
 	 * @see org.eclipse.ui.model.IWorkbenchAdapter#getParent(java.lang.Object)
 	 */
+	@Override
 	public Object getParent(Object object) {
 		return getIncludeRefContainer();
 	}
@@ -71,13 +74,30 @@ public class IncludeReferenceProxy extends CElementGrouping {
 	/* (non-Javadoc)
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
+	@Override
 	public boolean equals(Object obj) {
-		return reference.equals(obj);
+		if (this == obj) {
+			return true;
+		}
+		if (!(obj instanceof IncludeReferenceProxy)) {
+			return false;
+		}
+		IncludeReferenceProxy other = (IncludeReferenceProxy) obj;
+		return reference.equals(other.reference);
 	}
 
+	/*
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		return reference.hashCode();
+	}
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#toString()
 	 */
+	@Override
 	public String toString() {
 		return reference.toString();
 	}

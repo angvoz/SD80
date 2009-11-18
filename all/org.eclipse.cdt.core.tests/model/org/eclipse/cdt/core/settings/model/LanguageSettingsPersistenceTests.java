@@ -54,7 +54,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	private static final String PROVIDER_NAME_1 = "test.provider.1.name";
 	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
 
-	private class MockProvider extends AbstractExecutableExtensionBase implements ICLanguageSettingsProvider {
+	private class MockProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 		private final List<ICLanguageSettingEntry> entries;
 
 		public MockProvider(String id, String name, List<ICLanguageSettingEntry> entries) {
@@ -159,7 +159,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			LanguageSettingsPersistentProvider providerNull = new LanguageSettingsPersistentProvider(PROVIDER_NULL, PROVIDER_NAME_NULL);
 			
 			// assign provider to workspace
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {providerNull});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {providerNull});
 			String[] retrievedIds = LanguageSettingsManager.getProviderAvailableIds();
 			// user defined providers are always before extension providers
 			assertEquals(PROVIDER_NULL, retrievedIds[0]);
@@ -172,7 +172,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		
 		{
 			// read language settings of the provider
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_NULL);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_NULL);
 			assertEquals(PROVIDER_NULL, provider.getId());
 			assertEquals(0, provider.getSettingEntries(null, null, null).size());
 		}
@@ -191,7 +191,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			mockProvider.setSettingEntries(null, null, null, original);
 
 			// assign provider to workspace
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {mockProvider});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {mockProvider});
 			String[] retrievedIds = LanguageSettingsManager.getProviderAvailableIds();
 			// user defined providers are always before extension providers
 			assertEquals(PROVIDER_0, retrievedIds[0]);
@@ -201,7 +201,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
 			mockProvider.setSettingEntries(null, null, null, null);
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(0, retrieved.size());
 		}
@@ -209,7 +209,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
@@ -226,7 +226,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {provider});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
@@ -234,7 +234,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		}
 		{
 			// doublecheck that provider is unloaded
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(0, retrieved.size());
 		}
@@ -242,7 +242,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -265,7 +265,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {provider});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
@@ -273,7 +273,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		}
 		{
 			// doublecheck that provider is unloaded
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(0, retrieved.size());
 		}
@@ -281,7 +281,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -304,7 +304,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {provider});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
@@ -312,7 +312,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		}
 		{
 			// doublecheck that provider is unloaded
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(0, retrieved.size());
 		}
@@ -320,7 +320,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -343,7 +343,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {provider});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
@@ -351,7 +351,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		}
 		{
 			// doublecheck that provider is unloaded
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(0, retrieved.size());
 		}
@@ -359,7 +359,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -382,7 +382,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {provider});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
@@ -390,7 +390,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		}
 		{
 			// doublecheck that provider is unloaded
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(0, retrieved.size());
 		}
@@ -398,7 +398,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -421,7 +421,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {provider});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
@@ -429,7 +429,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		}
 		{
 			// doublecheck that provider is unloaded
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(0, retrieved.size());
 		}
@@ -437,7 +437,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -462,7 +462,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ICLanguageSettingsProvider[] {provider});
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
@@ -470,7 +470,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		}
 		{
 			// doublecheck that provider is unloaded
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(0, retrieved.size());
 		}
@@ -478,7 +478,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
@@ -507,7 +507,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, original);
 
 		// add mock serializable provider
-		List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>();
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 		providers.add(provider);
 		LanguageSettingsManager.setProviders(cfgDescription, providers);
 

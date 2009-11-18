@@ -20,13 +20,13 @@ import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
 
-public class MBSLanguageSettingsProvider extends AbstractExecutableExtensionBase implements ICLanguageSettingsProvider {
+public class MBSLanguageSettingsProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		

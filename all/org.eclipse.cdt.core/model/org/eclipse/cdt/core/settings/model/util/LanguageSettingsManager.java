@@ -29,7 +29,7 @@ import javax.xml.transform.stream.StreamResult;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
 import org.eclipse.cdt.internal.core.XmlUtil;
@@ -66,7 +66,7 @@ public class LanguageSettingsManager {
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, String providerId) {
 		Assert.isNotNull(cfgDescription);
 
-		ICLanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
+		ILanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
 		if (provider!=null) {
 			List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
 			if (list!=null) {
@@ -93,7 +93,7 @@ public class LanguageSettingsManager {
 
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
 			IResource rc, String languageId, String providerId, int kind) {
-		ICLanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
+		ILanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
 		if (provider==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
@@ -113,7 +113,7 @@ public class LanguageSettingsManager {
 
 	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
-		for (ICLanguageSettingsProvider provider: getProviders(cfgDescription)) {
+		for (ILanguageSettingsProvider provider: getProviders(cfgDescription)) {
 			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, rc, languageId, provider.getId(), kind)) {
 				if (!containsEntry(list, entry.getName())) {
 					list.add(entry);
@@ -155,7 +155,7 @@ public class LanguageSettingsManager {
 		if (doc!=null) {
 			Element rootElement = doc.getDocumentElement();
 			
-			for (ICLanguageSettingsProvider provider : LanguageSettingsManager.getProviders(cfgDescription)) {
+			for (ILanguageSettingsProvider provider : LanguageSettingsManager.getProviders(cfgDescription)) {
 				if (provider instanceof LanguageSettingsPersistentProvider) {
 					((LanguageSettingsPersistentProvider) provider).load(rootElement);
 				}
@@ -193,7 +193,7 @@ public class LanguageSettingsManager {
 			rootElement.setAttribute(ATTR_PROJECT_NAME, project.getName());
 			doc.appendChild(rootElement);
 
-			for (ICLanguageSettingsProvider provider : getProviders(cfgDescription)) {
+			for (ILanguageSettingsProvider provider : getProviders(cfgDescription)) {
 				if (provider instanceof LanguageSettingsPersistentProvider) {
 					((LanguageSettingsPersistentProvider) provider).serialize(rootElement);
 				}
@@ -215,7 +215,7 @@ public class LanguageSettingsManager {
 	 * @param providers - array of user defined providers
 	 * @throws CoreException in case of problems
 	 */
-	public static void setUserDefinedProviders(ICLanguageSettingsProvider[] providers) throws CoreException {
+	public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
 		LanguageSettingsExtensionManager.setUserDefinedProviders(providers);
 	}
 
@@ -237,7 +237,7 @@ public class LanguageSettingsManager {
 	/**
 	 * TODO
 	 */
-	public static ICLanguageSettingsProvider getProvider(String id) {
+	public static ILanguageSettingsProvider getProvider(String id) {
 		return LanguageSettingsExtensionManager.getProvider(id);
 	}
 
@@ -262,7 +262,7 @@ public class LanguageSettingsManager {
 	 * This usage is discouraged TODO .
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static void setProviders(ICConfigurationDescription cfgDescription, List<ICLanguageSettingsProvider> providers) {
+	public static void setProviders(ICConfigurationDescription cfgDescription, List<ILanguageSettingsProvider> providers) {
 		if (cfgDescription instanceof CConfigurationDescription) {
 			((CConfigurationDescription)cfgDescription).setLanguageSettingProviders(providers);
 		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
@@ -277,7 +277,7 @@ public class LanguageSettingsManager {
 	 * This usage is discouraged TODO .
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static List<ICLanguageSettingsProvider> getProviders(ICConfigurationDescription cfgDescription) {
+	public static List<ILanguageSettingsProvider> getProviders(ICConfigurationDescription cfgDescription) {
 		if (cfgDescription instanceof CConfigurationDescription) {
 			return ((CConfigurationDescription)cfgDescription).getLanguageSettingProviders();
 		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
@@ -286,25 +286,25 @@ public class LanguageSettingsManager {
 			String className = cfgDescription.getClass().getName();
 			CCorePlugin.log("Error getting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
 		}
-		return new ArrayList<ICLanguageSettingsProvider>();
+		return new ArrayList<ILanguageSettingsProvider>();
 	}
 
 	/**
 	 */
 	public static void setProviderIds(ICConfigurationDescription cfgDescription, List<String> ids) {
 		if (cfgDescription instanceof CConfigurationDescription) {
-			List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>(ids.size());
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());
 			for (String id : ids) {
-				ICLanguageSettingsProvider provider = getProvider(id);
+				ILanguageSettingsProvider provider = getProvider(id);
 				if (provider!=null) {
 					providers.add(provider);
 				}
 			}
 			((CConfigurationDescription)cfgDescription).setLanguageSettingProviders(providers);
 		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-			List<ICLanguageSettingsProvider> providers = new ArrayList<ICLanguageSettingsProvider>(ids.size());
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());
 			for (String id : ids) {
-				ICLanguageSettingsProvider provider = getProvider(id);
+				ILanguageSettingsProvider provider = getProvider(id);
 				if (provider!=null) {
 					providers.add(provider);
 				}
@@ -321,11 +321,11 @@ public class LanguageSettingsManager {
 	public static List<String> getProviderIds(ICConfigurationDescription cfgDescription) {
 		List<String> ids = new ArrayList<String>();
 		if (cfgDescription instanceof CConfigurationDescription) {
-			for (ICLanguageSettingsProvider provider : ((CConfigurationDescription)cfgDescription).getLanguageSettingProviders()) {
+			for (ILanguageSettingsProvider provider : ((CConfigurationDescription)cfgDescription).getLanguageSettingProviders()) {
 				ids.add(provider.getId());
 			}
 		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-			for (ICLanguageSettingsProvider provider : ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingProviders()) {
+			for (ILanguageSettingsProvider provider : ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingProviders()) {
 				ids.add(provider.getId());
 			}
 		} else if (cfgDescription!=null) {
@@ -338,8 +338,8 @@ public class LanguageSettingsManager {
 	/**
 	 * TODO
 	 */
-	private static ICLanguageSettingsProvider getProvider(ICConfigurationDescription cfgDescription, String id) {
-		for (ICLanguageSettingsProvider provider : getProviders(cfgDescription)) {
+	private static ILanguageSettingsProvider getProvider(ICConfigurationDescription cfgDescription, String id) {
+		for (ILanguageSettingsProvider provider : getProviders(cfgDescription)) {
 			if (provider.getId().equals(id)) {
 				return provider;
 			}

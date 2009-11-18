@@ -15,7 +15,7 @@ import java.util.List;
 
 import org.eclipse.core.resources.IResource;
 
-public interface ICLanguageSettingsProvider {
+public interface ILanguageSettingsProvider {
 	public String getId();
 	public String getName();
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId);

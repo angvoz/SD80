@@ -3727,7 +3727,7 @@
       <provider
             class="org.eclipse.cdt.internal.ui.language.UserLanguageSettingsProvider"
             id="org.eclipse.cdt.ui.user.LanguageSettingsProvider"
-            name="User Interface Provider">
+            name="CDT User Settings Provider">
       </provider>
    </extension>
  <extension

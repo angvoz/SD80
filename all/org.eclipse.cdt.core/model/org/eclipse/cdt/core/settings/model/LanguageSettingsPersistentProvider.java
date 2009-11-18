@@ -29,7 +29,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 
-public class LanguageSettingsPersistentProvider extends AbstractExecutableExtensionBase implements ICLanguageSettingsProvider {
+public class LanguageSettingsPersistentProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 	private static final String ELEM_PROVIDER = "provider";
 	private static final String ATTR_ID = "id";
 
@@ -49,6 +49,10 @@ public class LanguageSettingsPersistentProvider extends AbstractExecutableExtens
 				Map<String, // languageId
 					Map<URI, // resource URI
 						List<ICLanguageSettingEntry>>>> fStorage = new HashMap<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>>();
+	
+	public LanguageSettingsPersistentProvider() {
+		super();
+	}
 	
 	public LanguageSettingsPersistentProvider(String id, String name) {
 		super(id, name);

@@ -17,10 +17,10 @@ import java.util.List;
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.core.resources.IResource;
 
-public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBase implements ICLanguageSettingsProvider {
+public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 	private List<String> languages;
 	private List<ICLanguageSettingEntry> entries;
 

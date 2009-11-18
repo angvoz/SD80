@@ -36,7 +36,7 @@ import javax.xml.transform.stream.StreamResult;
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
@@ -80,9 +80,9 @@ public class LanguageSettingsExtensionManager {
 	private static final String ELEM_LANGUAGE_SETTINGS = "languageSettings";
 
 
-	private static final LinkedHashMap<String, ICLanguageSettingsProvider> fExtensionProviders = new LinkedHashMap<String, ICLanguageSettingsProvider>();
-	private static final LinkedHashMap<String, ICLanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ICLanguageSettingsProvider>();
-	private static LinkedHashMap<String, ICLanguageSettingsProvider> fUserDefinedProviders = null;
+	private static final LinkedHashMap<String, ILanguageSettingsProvider> fExtensionProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
+	private static final LinkedHashMap<String, ILanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
+	private static LinkedHashMap<String, ILanguageSettingsProvider> fUserDefinedProviders = null;
 	private static List<String> fDefaultProviderIds = null;
 
 	static {
@@ -116,9 +116,9 @@ public class LanguageSettingsExtensionManager {
 	 */
 	synchronized public static void loadProviderExtensions() {
 		// sort by name - for the providers taken from platform extensions
-		Set<ICLanguageSettingsProvider> sortedProviders = new TreeSet<ICLanguageSettingsProvider>(
-				new Comparator<ICLanguageSettingsProvider>() {
-					public int compare(ICLanguageSettingsProvider contr1, ICLanguageSettingsProvider contr2) {
+		Set<ILanguageSettingsProvider> sortedProviders = new TreeSet<ILanguageSettingsProvider>(
+				new Comparator<ILanguageSettingsProvider>() {
+					public int compare(ILanguageSettingsProvider contr1, ILanguageSettingsProvider contr2) {
 						return contr1.getName().compareTo(contr2.getName());
 					}
 				}
@@ -127,7 +127,7 @@ public class LanguageSettingsExtensionManager {
 		loadProviderExtensions(Platform.getExtensionRegistry(), sortedProviders);
 
 		fExtensionProviders.clear();
-		for (ICLanguageSettingsProvider provider : sortedProviders) {
+		for (ILanguageSettingsProvider provider : sortedProviders) {
 			fExtensionProviders.put(provider.getId(), provider);
 		}
 
@@ -143,7 +143,7 @@ public class LanguageSettingsExtensionManager {
 		if (fUserDefinedProviders!=null) {
 			fAvailableProviders.putAll(fUserDefinedProviders);
 		}
-		for (ICLanguageSettingsProvider provider : fExtensionProviders.values()) {
+		for (ILanguageSettingsProvider provider : fExtensionProviders.values()) {
 			String id = provider.getId();
 			if (!fAvailableProviders.containsKey(id)) {
 				fAvailableProviders.put(id, provider);
@@ -158,7 +158,7 @@ public class LanguageSettingsExtensionManager {
 	 * @param registry - extension registry
 	 * @param providers - resulting set of providers
 	 */
-	private static void loadProviderExtensions(IExtensionRegistry registry, Set<ICLanguageSettingsProvider> providers) {
+	private static void loadProviderExtensions(IExtensionRegistry registry, Set<ILanguageSettingsProvider> providers) {
 		providers.clear();
 		IExtensionPoint extension = registry.getExtensionPoint(CCorePlugin.PLUGIN_ID, PROVIDER_EXTENSION_ID);
 		if (extension != null) {
@@ -167,7 +167,7 @@ public class LanguageSettingsExtensionManager {
 				try {
 					String extensionID = ext.getUniqueIdentifier();
 					String extensionName = ext.getLabel();
-					ICLanguageSettingsProvider provider = null;
+					ILanguageSettingsProvider provider = null;
 					for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
 						if (cfgEl.getName().equals(ELEM_PROVIDER)) {
 							provider = createExecutableProvider(cfgEl);
@@ -196,7 +196,7 @@ public class LanguageSettingsExtensionManager {
 	 * @return new non-configured provider
 	 * @throws CoreException in case of failure
 	 */
-	private static ICLanguageSettingsProvider createExecutableProvider(IConfigurationElement ce) throws CoreException {
+	private static ILanguageSettingsProvider createExecutableProvider(IConfigurationElement ce) throws CoreException {
 		String ceClass = ce.getAttribute(ATTR_CLASS);
 		String ceId = determineAttributeValue(ce, ATTR_ID);
 		String ceName = determineAttributeValue(ce, ATTR_NAME);
@@ -234,14 +234,14 @@ public class LanguageSettingsExtensionManager {
 			}
 		}
 
-		ICLanguageSettingsProvider provider = null;
+		ILanguageSettingsProvider provider = null;
 		if (ceClass!=null && !ceClass.equals(LanguageSettingsBaseProvider.class.getCanonicalName())) {
 			Object base = ce.createExecutableExtension(ATTR_CLASS);
 			if (base instanceof AbstractExecutableExtensionBase) {
 				((AbstractExecutableExtensionBase) base).setId(ceId);
 				((AbstractExecutableExtensionBase) base).setName(ceName);
 			}
-			provider = (ICLanguageSettingsProvider)base;
+			provider = (ILanguageSettingsProvider)base;
 		}
 		if (provider==null) {
 			provider = new LanguageSettingsBaseProvider(ceId, ceName, languages, entries);
@@ -257,7 +257,7 @@ public class LanguageSettingsExtensionManager {
 	 * @param registry - extension registry
 	 * @return new non-configured provider
 	 */
-	private static ICLanguageSettingsProvider createProviderCarcass(String className, IExtensionRegistry registry) {
+	private static ILanguageSettingsProvider createProviderCarcass(String className, IExtensionRegistry registry) {
 		if (className==null || className.length()==0 /*|| className.equals(RegexProvider.class.getName())*/) {
 //			return new LanguageSettingsCoreProvider();
 			return null;
@@ -291,8 +291,8 @@ public class LanguageSettingsExtensionManager {
 	 * @return cloned copy of provider. Note that {@link ProviderNamedWrapper} returns
 	 * shallow copy with the same instance of underlying provider.
 	 */
-	public static ICLanguageSettingsProvider getProvider(String id) {
-		ICLanguageSettingsProvider provider = fAvailableProviders.get(id);
+	public static ILanguageSettingsProvider getProvider(String id) {
+		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
 
 //		try {
 //			if (provider instanceof RegexProvider) {
@@ -345,7 +345,7 @@ public class LanguageSettingsExtensionManager {
 	 * @param providers - array of user defined providers
 	 * @throws CoreException in case of problems
 	 */
-	public static void setUserDefinedProviders(ICLanguageSettingsProvider[] providers) throws CoreException {
+	public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
 		setUserDefinedProvidersInternal(providers);
 //		serializeUserDefinedProviders();
 	}
@@ -354,18 +354,18 @@ public class LanguageSettingsExtensionManager {
 	 * Internal method to set user defined providers in memory.
 	 *
 	 * @noreference This method is not intended to be referenced by clients.
-	 * Use {@link #setUserDefinedProviders(ICLanguageSettingsProvider[])}.
+	 * Use {@link #setUserDefinedProviders(ILanguageSettingsProvider[])}.
 	 *
 	 * @param providers - array of user defined providers. If {@code null}
 	 * is passed user defined providers are cleared.
 	 */
-	public static void setUserDefinedProvidersInternal(ICLanguageSettingsProvider[] providers) {
+	public static void setUserDefinedProvidersInternal(ILanguageSettingsProvider[] providers) {
 		if (providers==null) {
 			fUserDefinedProviders = null;
 		} else {
-			fUserDefinedProviders= new LinkedHashMap<String, ICLanguageSettingsProvider>();
+			fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
 			// set customized list
-			for (ICLanguageSettingsProvider provider : providers) {
+			for (ILanguageSettingsProvider provider : providers) {
 				fUserDefinedProviders.put(provider.getId(), provider);
 			}
 		}
@@ -482,7 +482,7 @@ public class LanguageSettingsExtensionManager {
 			Element rootElement = doc.createElement(ELEM_LANGUAGE_SETTINGS);
 			doc.appendChild(rootElement);
 
-			for (ICLanguageSettingsProvider provider : fUserDefinedProviders.values()) {
+			for (ILanguageSettingsProvider provider : fUserDefinedProviders.values()) {
 				if (provider instanceof LanguageSettingsPersistentProvider) {
 					((LanguageSettingsPersistentProvider) provider).serialize(rootElement);
 				}
@@ -523,7 +523,7 @@ public class LanguageSettingsExtensionManager {
 
 		if (doc!=null) {
 			Element rootElement = doc.getDocumentElement();
-			for (ICLanguageSettingsProvider provider : fUserDefinedProviders.values()) {
+			for (ILanguageSettingsProvider provider : fUserDefinedProviders.values()) {
 				if (provider instanceof LanguageSettingsPersistentProvider) {
 					((LanguageSettingsPersistentProvider) provider).load(rootElement);
 				}

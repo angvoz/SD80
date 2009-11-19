@@ -302,11 +302,6 @@
             id="org.eclipse.cdt.debug.edc.ui.snapshotCatagory">
       </category>
   
-       <categoryActivityBinding
-            activityId="org.eclipse.cdt.debug.edc.ui.snapshotActivity"
-            categoryId="com.nokia.carbide.cpp.debug.nokiacategory">
-      </categoryActivityBinding>
-  
       <activity
             name="Snapshot Actions"
             description="These actions control snapshot albums"

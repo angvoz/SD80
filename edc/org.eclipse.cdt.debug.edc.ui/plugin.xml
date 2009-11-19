@@ -355,7 +355,7 @@
          point="org.eclipse.cdt.ui.textHovers">
       <hover
             activate="true"
-            class="org.eclipse.cdt.dsf.debug.ui.DebugTextHover"
+            class="org.eclipse.cdt.debug.internal.ui.editors.DebugTextHover"
             description="Shows formatted value in debugger hover"
             id="org.eclipse.cdt.debug.edc.DebugTextHover"
             label="Debug Text Hover">

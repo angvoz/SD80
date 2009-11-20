@@ -162,31 +162,26 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate {
 					"Error in final launch sequence.\n" + e1.getLocalizedMessage(), e1.getCause())); //$NON-NLS-1$
 		} finally {
 			if (!succeed) {
-
-				final EDCLaunch finalLaunch = launch;
-
 				Query<Object> launchShutdownQuery = new Query<Object>() {
 					@Override
 					protected void execute(DataRequestMonitor<Object> rm) {
-						finalLaunch.shutdownSession(rm);
+						launch.shutdownSession(rm);
 					}
 				};
 
-				finalLaunch.getSession().getExecutor().execute(launchShutdownQuery);
+				launch.getSession().getExecutor().execute(launchShutdownQuery);
 
-				// wait for the shutdown to finish.
-				// The Query.get() method is a synchronous call which blocks
-				// until the
-				// query completes.
+				// Wait for the shutdown to finish. The Query.get() method is a
+				// synchronous call which blocks until the query completes.
 				try {
 					launchShutdownQuery.get();
 				} catch (InterruptedException e) {
 					throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
 							DebugException.INTERNAL_ERROR,
-							"InterruptedException while shutting down debugger launch " + finalLaunch, e)); //$NON-NLS-1$ 
+							"InterruptedException while shutting down debugger launch " + launch, e)); //$NON-NLS-1$ 
 				} catch (ExecutionException e) {
 					throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
-							DebugException.REQUEST_FAILED, "Error in shutting down debugger launch " + finalLaunch, e)); //$NON-NLS-1$
+							DebugException.REQUEST_FAILED, "Error in shutting down debugger launch " + launch, e)); //$NON-NLS-1$
 				}
 			}
 		}

@@ -514,7 +514,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		{
 			// 1st double-check that provider returns proper data
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, null, null, PROVIDER_0);
+				.getSettingEntries(cfgDescription, PROVIDER_0, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
@@ -522,7 +522,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		{
 			// 2nd double-check that provider returns proper data
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
+				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
@@ -535,12 +535,12 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, null);
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, null, null, PROVIDER_0);
+				.getSettingEntries(cfgDescription, PROVIDER_0, null, null);
 			assertEquals(0, retrieved.size());
 		}
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
+				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID);
 			assertEquals(0, retrieved.size());
 		}
 
@@ -549,14 +549,14 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		{
 			// 1st
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, null, null, PROVIDER_0);
+				.getSettingEntries(cfgDescription, PROVIDER_0, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
 		{
 			// 2nd
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0);
+				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}

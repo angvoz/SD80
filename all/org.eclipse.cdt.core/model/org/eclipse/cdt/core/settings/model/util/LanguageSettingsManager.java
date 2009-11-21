@@ -29,8 +29,8 @@ import javax.xml.transform.stream.StreamResult;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
@@ -63,7 +63,7 @@ public class LanguageSettingsManager {
 	private static final String ATTR_PROJECT_NAME = "project";
 
 
-	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, String providerId) {
+	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, String providerId, IResource rc, String languageId) {
 		Assert.isNotNull(cfgDescription);
 
 		ILanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
@@ -76,7 +76,7 @@ public class LanguageSettingsManager {
 
 		IResource parentFolder = rc.getParent();
 		if (parentFolder!=null) {
-			return getSettingEntries(cfgDescription, parentFolder, languageId, providerId);
+			return getSettingEntries(cfgDescription, providerId, parentFolder, languageId);
 		}
 		return new ArrayList<ICLanguageSettingEntry>(0);
 	}
@@ -91,6 +91,8 @@ public class LanguageSettingsManager {
 		return false;
 	}
 
+	// FIXME: consider removing, semantics are not well defined
+	@Deprecated
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
 			IResource rc, String languageId, String providerId, int kind) {
 		ILanguageSettingsProvider provider = getProvider(cfgDescription, providerId);

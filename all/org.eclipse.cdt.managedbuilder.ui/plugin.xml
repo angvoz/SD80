@@ -333,7 +333,7 @@
            parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_BuildSettings"/>
      <tab
            class="org.eclipse.cdt.ui.newui.LanguageSettingsProvidersTab"
-           icon="icons/elcl16/discovery.gif"
+           icon="icons/obj16/search.gif"
            name="%Language.settings.providers"
            weight="080"
            parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_BuildSettings"/>

@@ -473,7 +473,7 @@
      </tab>
      <tab
            class="org.eclipse.cdt.ui.newui.LanguageSettingsProvidersTab"
-           icon="icons/obj16/hfolder_obj.gif"
+           icon="icons/obj16/search.gif"
            name="%LanguageSettingsProvidersTab.name"
            parent="org.eclipse.cdt.make.internal.ui.preferences.BuildSettingsPreferencePage"
            tooltip="%LanguageSettingsProvidersTab.tooltip"

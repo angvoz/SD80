@@ -29,6 +29,13 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 
 	/**
 	 * TODO
+	 */
+	public LanguageSettingsBaseProvider(String id, String name) {
+		super(id, name);
+	}
+
+	/**
+	 * TODO
 	 * languages can be null: in that case all languages qualify.
 	 */
 	public LanguageSettingsBaseProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
@@ -38,7 +45,7 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 			this.entries = new ArrayList<ICLanguageSettingEntry>(entries);
 		}
 	}
-
+	
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
 		setId(id);
 		setName(name);

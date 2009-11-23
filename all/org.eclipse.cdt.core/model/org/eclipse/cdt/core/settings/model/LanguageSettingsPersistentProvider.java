@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
+import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.core.resources.IResource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -29,7 +29,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 
-public class LanguageSettingsPersistentProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
+public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProvider {
 	private static final String ELEM_PROVIDER = "provider";
 	private static final String ATTR_ID = "id";
 
@@ -82,21 +82,22 @@ public class LanguageSettingsPersistentProvider extends AbstractExecutableExtens
 		setSettingEntries(cfgId, rcUri, languageId, entries);
 	}
 	
+	@Override
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
 			IResource rc, String languageId) {
+		
+		List<ICLanguageSettingEntry> entries = super.getSettingEntries(cfgDescription, rc, languageId);
+			
 		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
 		Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
 		if (cfgMap!=null) {
 			Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
 			if (langMap!=null) {
 				URI rcUri = rc!=null ? rc.getLocationURI() : null;
-				List<ICLanguageSettingEntry> entries = langMap.get(rcUri);
-				if (entries!=null) {
-					return entries;
-				}
+				entries.addAll(langMap.get(rcUri));
 			}
 		}
-		return new ArrayList<ICLanguageSettingEntry>();
+		return entries;
 	}
 
 	private void serializeSettingEntries(Element parentElement, List<ICLanguageSettingEntry> settingEntries) {

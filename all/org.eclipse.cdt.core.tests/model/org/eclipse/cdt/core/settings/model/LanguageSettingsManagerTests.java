@@ -45,6 +45,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.provider";
 	private static final String PROVIDER_NAME_EXT = "Test Plugin Language Settings Provider";
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
+	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.default.language.settings.provider.subclass";
 
 	private static final String CONFIGURATION_ID = "cfg.id";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
@@ -169,23 +170,20 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertEquals(0, provider.getSettingEntries(null, FILE_0, LANG_ID).size());
 
 		// benchmarks matching extension point definition
-		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>() {
-			{
-				add(new CIncludePathEntry("/usr/include/",
-						ICSettingEntry.BUILTIN
-						| ICSettingEntry.READONLY
-						| ICSettingEntry.LOCAL
-						| ICSettingEntry.VALUE_WORKSPACE_PATH
-						| ICSettingEntry.RESOLVED
-						| ICSettingEntry.UNDEFINED
-				));
-				add(new CMacroEntry("TEST_DEFINE", "100", 0));
-				add(new CIncludeFileEntry("/include/file.inc", 0));
-				add(new CLibraryPathEntry("/usr/lib/", 0));
-				add(new CLibraryFileEntry("libdomain.a", 0));
-				add(new CMacroFileEntry("/macro/file.mac", 0));
-			}
-		};
+		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
+		entriesExt.add(new CIncludePathEntry("/usr/include/",
+				ICSettingEntry.BUILTIN
+				| ICSettingEntry.READONLY
+				| ICSettingEntry.LOCAL
+				| ICSettingEntry.VALUE_WORKSPACE_PATH
+				| ICSettingEntry.RESOLVED
+				| ICSettingEntry.UNDEFINED
+		));
+		entriesExt.add(new CMacroEntry("TEST_DEFINE", "100", 0));
+		entriesExt.add(new CIncludeFileEntry("/include/file.inc", 0));
+		entriesExt.add(new CLibraryPathEntry("/usr/lib/", 0));
+		entriesExt.add(new CLibraryFileEntry("libdomain.a", 0));
+		entriesExt.add(new CMacroFileEntry("/macro/file.mac", 0));
 
 		// retrieve entries from extension point
 		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
@@ -195,6 +193,32 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertEquals(entriesExt.size(), retrieved.size());
 	}
 
+	/**
+	 * Check that subclassed LanguageSettingsBaseProvider extension defined in plugin.xml is accessible.
+	 *
+	 * @throws Exception...
+	 */
+	public void testExtensionLanguageSettingsBaseProviderSubclass() throws Exception {
+		// get test plugin extension provider
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
+		assertNotNull(providerExt);
+		
+		assertTrue(providerExt instanceof TestClassLanguageSettingsBaseProviderSubclass);
+		TestClassLanguageSettingsBaseProviderSubclass provider = (TestClassLanguageSettingsBaseProviderSubclass)providerExt;
+		assertEquals(BASE_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
+		
+		// benchmarks matching extension point definition
+		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
+		entriesExt.add(new CIncludePathEntry("/usr/include/", ICSettingEntry.BUILTIN));
+		
+		// retrieve entries from extension point
+		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
+		for (int i=0;i<entriesExt.size();i++) {
+			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
+		}
+		assertEquals(entriesExt.size(), retrieved.size());
+	}
+	
 	/**
 	 * Make sure extensions contributed through extension point are sorted by name.
 	 *

@@ -237,7 +237,9 @@ public class LanguageSettingsExtensionManager {
 		ILanguageSettingsProvider provider = null;
 		if (ceClass!=null && !ceClass.equals(LanguageSettingsBaseProvider.class.getCanonicalName())) {
 			Object base = ce.createExecutableExtension(ATTR_CLASS);
-			if (base instanceof AbstractExecutableExtensionBase) {
+			if (base instanceof LanguageSettingsBaseProvider) {
+				((LanguageSettingsBaseProvider) base).configureProvider(ceId, ceName, languages, entries);
+			} else if (base instanceof AbstractExecutableExtensionBase) {
 				((AbstractExecutableExtensionBase) base).setId(ceId);
 				((AbstractExecutableExtensionBase) base).setName(ceName);
 			}

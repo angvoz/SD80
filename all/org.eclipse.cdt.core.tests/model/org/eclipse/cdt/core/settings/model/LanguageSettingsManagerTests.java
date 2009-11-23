@@ -46,6 +46,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String PROVIDER_NAME_EXT = "Test Plugin Language Settings Provider";
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.default.language.settings.provider.subclass";
+	private static final String PERSISTENT_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.persistent.language.settings.provider.subclass";
 
 	private static final String CONFIGURATION_ID = "cfg.id";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
@@ -198,7 +199,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 *
 	 * @throws Exception...
 	 */
-	public void testExtensionLanguageSettingsBaseProviderSubclass() throws Exception {
+	public void testExtensionBaseProviderSubclass() throws Exception {
 		// get test plugin extension provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
 		assertNotNull(providerExt);
@@ -206,6 +207,32 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertTrue(providerExt instanceof TestClassLanguageSettingsBaseProviderSubclass);
 		TestClassLanguageSettingsBaseProviderSubclass provider = (TestClassLanguageSettingsBaseProviderSubclass)providerExt;
 		assertEquals(BASE_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
+		
+		// benchmarks matching extension point definition
+		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
+		entriesExt.add(new CIncludePathEntry("/usr/include/", ICSettingEntry.BUILTIN));
+		
+		// retrieve entries from extension point
+		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
+		for (int i=0;i<entriesExt.size();i++) {
+			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
+		}
+		assertEquals(entriesExt.size(), retrieved.size());
+	}
+	
+	/**
+	 * Check that subclassed LanguageSettingsBaseProvider extension defined in plugin.xml is accessible.
+	 *
+	 * @throws Exception...
+	 */
+	public void testExtensionPersistentProviderSubclass() throws Exception {
+		// get test plugin extension provider
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(PERSISTENT_PROVIDER_SUBCLASS_ID_EXT);
+		assertNotNull(providerExt);
+		
+		assertTrue(providerExt instanceof TestClassLSPersistentProvider);
+		TestClassLSPersistentProvider provider = (TestClassLSPersistentProvider)providerExt;
+		assertEquals(PERSISTENT_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
 		
 		// benchmarks matching extension point definition
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();

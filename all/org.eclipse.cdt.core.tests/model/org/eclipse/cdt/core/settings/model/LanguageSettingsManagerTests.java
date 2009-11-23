@@ -26,7 +26,6 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -204,8 +203,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
 		assertNotNull(providerExt);
 		
-		assertTrue(providerExt instanceof TestClassLanguageSettingsBaseProviderSubclass);
-		TestClassLanguageSettingsBaseProviderSubclass provider = (TestClassLanguageSettingsBaseProviderSubclass)providerExt;
+		assertTrue(providerExt instanceof TestClassLSBaseProvider);
+		TestClassLSBaseProvider provider = (TestClassLSBaseProvider)providerExt;
 		assertEquals(BASE_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
 		
 		// benchmarks matching extension point definition

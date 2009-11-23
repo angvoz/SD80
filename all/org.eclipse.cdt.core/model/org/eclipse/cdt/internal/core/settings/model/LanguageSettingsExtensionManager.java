@@ -37,6 +37,7 @@ import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;

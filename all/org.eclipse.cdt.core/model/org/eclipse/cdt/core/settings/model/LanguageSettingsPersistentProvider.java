@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.core.resources.IResource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;

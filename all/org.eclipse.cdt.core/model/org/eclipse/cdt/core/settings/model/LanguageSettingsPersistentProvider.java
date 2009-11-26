@@ -93,7 +93,10 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 			Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
 			if (langMap!=null) {
 				URI rcUri = rc!=null ? rc.getLocationURI() : null;
-				entries.addAll(langMap.get(rcUri));
+				List<ICLanguageSettingEntry> mapEntries = langMap.get(rcUri);
+				if (mapEntries!=null) {
+					entries.addAll(langMap.get(rcUri));
+				}
 			}
 		}
 		return entries;

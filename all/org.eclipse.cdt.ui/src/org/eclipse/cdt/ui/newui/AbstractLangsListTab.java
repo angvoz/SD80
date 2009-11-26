@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jface.resource.JFaceResources;
@@ -369,7 +370,13 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 
 		String langId = lang.getLanguageId();
 		if (langId!=null) {
-			IResource rc = ResourcesPlugin.getWorkspace().getRoot().findMember(getResDesc().getPath());
+			IResource rc;
+			IProject project = getResDesc().getConfiguration().getProjectDescription().getProject();
+			if (project!=null) {
+				rc = project.findMember(getResDesc().getPath());
+			} else {
+				rc = ResourcesPlugin.getWorkspace().getRoot().findMember(getResDesc().getPath());
+			}
 			if (rc!=null) {
 				l.addAll(LanguageSettingsManager.getSettingEntriesReconciled(getResDesc().getConfiguration(), rc, langId, getKind()));
 			}

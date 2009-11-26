@@ -2073,7 +2073,13 @@ public class PathEntryTranslator {
 		}
 		
 		IPath workspacePath = data.getPath();
-		IResource rc = ResourcesPlugin.getWorkspace().getRoot().findMember(workspacePath);
+		IProject project = des.getProjectDescription().getProject();
+		IResource rc;
+		if (project!=null) {
+			rc = project.findMember(workspacePath);
+		} else {
+			rc = ResourcesPlugin.getWorkspace().getRoot().findMember(workspacePath);
+		}
 		for (CLanguageData lData : lDatas) {
 			list.addAll(LanguageSettingsManager.getSettingEntriesReconciled(des, rc, lData.getLanguageId(), kind));
 		}

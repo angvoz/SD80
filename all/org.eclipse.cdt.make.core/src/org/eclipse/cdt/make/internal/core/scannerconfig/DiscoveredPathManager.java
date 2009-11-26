@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 QNX Software Systems and others.
+ * Copyright (c) 2004, 2009 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,13 +7,13 @@
  *
  * Contributors:
  *     QNX Software Systems - initial API and implementation
+ *     IBM Corporation
  *******************************************************************************/
 package org.eclipse.cdt.make.internal.core.scannerconfig;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -44,20 +44,19 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.ISafeRunnable;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.SafeRunner;
 import org.eclipse.core.runtime.Status;
-
 
 public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceChangeListener {
 
-	private Map fDiscoveredInfoHolderMap = new HashMap();
-	private List listeners = Collections.synchronizedList(new ArrayList());
+	private Map<IProject, DiscoveredInfoHolder> fDiscoveredInfoHolderMap = new HashMap<IProject, DiscoveredInfoHolder>();
+	private List<IDiscoveredInfoListener> listeners = Collections.synchronizedList(new ArrayList<IDiscoveredInfoListener>());
 
 	private static final int INFO_CHANGED = 1;
 	private static final int INFO_REMOVED = 2;
 
 	private static class DiscoveredInfoHolder {
-		Map fInfoMap = new HashMap();
+		Map<InfoContext, IDiscoveredPathInfo> fInfoMap = new HashMap<InfoContext, IDiscoveredPathInfo>();
 //		PathSettingsContainer fContainer = PathSettingsContainer.createRootContainer();
 
 		public IDiscoveredPathInfo getInfo(InfoContext context){
@@ -126,6 +125,7 @@ public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceC
 					if (resource.getType() == IResource.PROJECT) {
 						//TODO: better handlind of resource remove/rename
 						fDiscoveredInfoHolderMap.remove(resource);
+						ScannerConfigProfileManager.getInstance().handleProjectRemoved(resource.getProject());
 					}
 					break;
 			}
@@ -139,11 +139,15 @@ public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceC
 	}
 
 	public IDiscoveredPathInfo getDiscoveredInfo(IProject project, InfoContext context) throws CoreException{
+		return getDiscoveredInfo(project, context, true);
+	}
+
+	public IDiscoveredPathInfo getDiscoveredInfo(IProject project, InfoContext context, boolean defaultToProjectSettings) throws CoreException{
 		DiscoveredInfoHolder holder = getHolder(project, true);
 		IDiscoveredPathInfo info = holder.getInfo(context);
 		
 		if(info == null){
-			info = loadPathInfo(project, context);
+			info = loadPathInfo(project, context, defaultToProjectSettings);
 			holder.setInfo(context, info);
 		}
 		
@@ -159,12 +163,12 @@ public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceC
 		return holder;
 	}
 
-	private IDiscoveredPathInfo loadPathInfo(IProject project, InfoContext context) throws CoreException {
+	private IDiscoveredPathInfo loadPathInfo(IProject project, InfoContext context, boolean defaultToProjectSettings) throws CoreException {
         IDiscoveredPathInfo pathInfo = null;
         
         IScannerConfigBuilderInfo2Set container = ScannerConfigProfileManager.createScannerConfigBuildInfo2Set(project);
         IScannerConfigBuilderInfo2 buildInfo = container.getInfo(context);
-        if(buildInfo == null)
+        if(buildInfo == null && defaultToProjectSettings)
         	buildInfo = container.getInfo(new InfoContext(project));
 
         if(buildInfo != null){
@@ -225,14 +229,14 @@ public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceC
     /* (non-Javadoc)
      * @see org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager#updateDiscoveredInfo(org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager.IDiscoveredPathInfo, java.util.List)
      */
-    public void updateDiscoveredInfo(IDiscoveredPathInfo info, List changedResources) throws CoreException {
+    public void updateDiscoveredInfo(IDiscoveredPathInfo info, List<IResource> changedResources) throws CoreException {
     	updateDiscoveredInfo(new InfoContext(info.getProject()), info, true, changedResources);
     }
 
     /* (non-Javadoc)
      * @see org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager#updateDiscoveredInfo(org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager.IDiscoveredPathInfo, java.util.List)
      */
-    public void updateDiscoveredInfo(InfoContext context, IDiscoveredPathInfo info, boolean updateContainer, List changedResources) throws CoreException {
+    public void updateDiscoveredInfo(InfoContext context, IDiscoveredPathInfo info, boolean updateContainer, List<IResource> changedResources) throws CoreException {
     	DiscoveredInfoHolder holder = getHolder(info.getProject(), true);
     	IDiscoveredPathInfo oldInfo = holder.getInfo(context); 
 		if (oldInfo != null) {
@@ -244,13 +248,47 @@ public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceC
 				fireUpdate(INFO_CHANGED, info);
                 
 				if(updateContainer){
-//				ICProject cProject = CoreModel.getDefault().create(info.getProject());
-//				if (cProject != null) {
-//					CoreModel.setPathEntryContainer(new ICProject[]{cProject},
-//							new DiscoveredPathContainer(info.getProject()), null);
-//				}
+
 	                IScannerConfigBuilderInfo2 buildInfo = ScannerConfigProfileManager.createScannerConfigBuildInfo2(project);
 	                String profileId = buildInfo.getSelectedProfileId();
+	                ScannerConfigScope profileScope = ScannerConfigProfileManager.getInstance().
+	                        getSCProfileConfiguration(profileId).getProfileScope();
+	                changeDiscoveredContainer(project, profileScope, changedResources);
+				}
+			}
+			else {
+		        throw new CoreException(new Status(IStatus.ERROR, MakeCorePlugin.getUniqueIdentifier(), -1,
+		                MakeMessages.getString("DiscoveredPathManager.Info_Not_Serializable"), null)); //$NON-NLS-1$
+			}
+		}
+	}
+    
+    /**
+     * Allows one to update the discovered information for a particular scanner discovery profile ID.
+     * TODO:  This should be made API in IDiscoveredPathManager, or in an interface derived there from.
+     * 
+     * @param context
+     * @param info
+     * @param updateContainer
+     * @param changedResources
+     * @param profileId
+     * @throws CoreException
+     */
+    public void updateDiscoveredInfo(InfoContext context, IDiscoveredPathInfo info, boolean updateContainer, List<IResource> changedResources, String profileId) throws CoreException {
+    	DiscoveredInfoHolder holder = getHolder(info.getProject(), true);
+    	IDiscoveredPathInfo oldInfo = holder.getInfo(context); 
+		if (oldInfo != null) {
+            IDiscoveredScannerInfoSerializable serializable = info.getSerializable();
+			if (serializable != null) {
+				holder.setInfo(context, info);
+                IProject project = info.getProject();
+				DiscoveredScannerInfoStore.getInstance().saveDiscoveredScannerInfoToState(project, context, serializable);
+				fireUpdate(INFO_CHANGED, info);
+                
+				if(updateContainer){
+
+	                IScannerConfigBuilderInfo2 buildInfo = ScannerConfigProfileManager.createScannerConfigBuildInfo2(project);
+	                
 	                ScannerConfigScope profileScope = ScannerConfigProfileManager.getInstance().
 	                        getSCProfileConfiguration(profileId).getProfileScope();
 	                changeDiscoveredContainer(project, profileScope, changedResources);
@@ -266,7 +304,7 @@ public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceC
     /* (non-Javadoc)
      * @see org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager#changeDiscoveredContainer(org.eclipse.core.resources.IProject, java.lang.String)
      */
-    public void changeDiscoveredContainer(final IProject project, final ScannerConfigScope profileScope, final List changedResources) {
+    public void changeDiscoveredContainer(final IProject project, final ScannerConfigScope profileScope, final List<IResource> changedResources) {
         // order here is of essence
         // 1. clear DiscoveredPathManager's path info cache
     	DiscoveredInfoHolder holder = getHolder(project, false);
@@ -287,16 +325,15 @@ public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceC
         				CoreModel.setPathEntryContainer(new ICProject[]{cProject},
         						container, null);
         				if (changedResources != null) {
-        					List changeDelta = new ArrayList(changedResources.size());
-        					for (Iterator i = changedResources.iterator(); i.hasNext(); ) {
-        						IResource resource = (IResource) i.next();
+        					List<PathEntryContainerChanged> changeDelta = new ArrayList<PathEntryContainerChanged>(changedResources.size());
+        					for (IResource resource : changedResources) {
         						IPath path = resource.getFullPath();
         						changeDelta.add(new PathEntryContainerChanged(path, 
         								PathEntryContainerChanged.INCLUDE_CHANGED | 
         								PathEntryContainerChanged.MACRO_CHANGED)); // both include paths and symbols changed
         					}
         					CoreModel.pathEntryContainerUpdates(container, 
-        							(PathEntryContainerChanged[]) changeDelta.toArray(new PathEntryContainerChanged[changeDelta.size()]), 
+        							changeDelta.toArray(new PathEntryContainerChanged[changeDelta.size()]), 
         							null);
         				}
         			}
@@ -324,7 +361,7 @@ public class DiscoveredPathManager implements IDiscoveredPathManager, IResourceC
 		for (int i = 0; i < list.length; i++) {
 			final IDiscoveredInfoListener listener = (IDiscoveredInfoListener)list[i];
 			if (listener != null) {
-				Platform.run(new ISafeRunnable() {
+				SafeRunner.run(new ISafeRunnable() {
 		
 					public void handleException(Throwable exception) {
 						IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, -1,

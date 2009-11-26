@@ -94,12 +94,12 @@ public class LanguageSettingsManager {
 	// FIXME: consider removing, semantics are not well defined
 	@Deprecated
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
-			IResource rc, String languageId, String providerId, int kind) {
+			String providerId, IResource rc, String languageId, int kind) {
 		ILanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
 		if (provider==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
-		List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
+		List<ICLanguageSettingEntry> list = getSettingEntries(cfgDescription, providerId, rc, languageId);
 		if (list==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
@@ -116,7 +116,7 @@ public class LanguageSettingsManager {
 	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
 		for (ILanguageSettingsProvider provider: getProviders(cfgDescription)) {
-			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, rc, languageId, provider.getId(), kind)) {
+			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, provider.getId(), rc, languageId, kind)) {
 				if (!containsEntry(list, entry.getName())) {
 					list.add(entry);
 				}
@@ -277,7 +277,7 @@ public class LanguageSettingsManager {
 
 	/**
 	 * This usage is discouraged TODO .
-	 * @noreference This method is not intended to be referenced by clients.
+	 * @ ??? noreference This method is not intended to be referenced by clients.
 	 */
 	public static List<ILanguageSettingsProvider> getProviders(ICConfigurationDescription cfgDescription) {
 		if (cfgDescription instanceof CConfigurationDescription) {

@@ -24,9 +24,14 @@ import org.eclipse.cdt.make.internal.core.scannerconfig.util.TraceUtil;
 public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 	private static final Pattern MACRO_PATTERN = Pattern.compile("#define (\\S*) *(.*)"); //$NON-NLS-1$
 	private static final Pattern MACRO_WITH_ARGS_PATTERN = Pattern.compile("#define (\\S*\\(.*?\\)) *(.*)"); //$NON-NLS-1$
+	private static final String GCC_SCANNER_INFO_COMMAND = "gcc -E -P -v -dD specs.cpp"; //$NON-NLS-1$
 
 	private boolean expectingIncludes = false;
 	private int includeFlag = 0;
+	
+	public GCCBuiltinSpecsDetector() {
+		setCommand(GCC_SCANNER_INFO_COMMAND);
+	}
 	
 	@Override
 	public void startup(ICConfigurationDescription cfgDescription) {

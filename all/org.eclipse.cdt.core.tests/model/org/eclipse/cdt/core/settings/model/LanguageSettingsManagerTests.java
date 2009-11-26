@@ -604,7 +604,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		}
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, FILE_0, LANG_ID, PROVIDER_1, 0);
+					cfgDescription, PROVIDER_1, FILE_0, LANG_ID, 0);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
@@ -632,7 +632,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		}
 		{
 			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
-					cfgDescription, FILE_0, LANG_ID, PROVIDER_2, 0);
+					cfgDescription, PROVIDER_2, FILE_0, LANG_ID, 0);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
 		}
@@ -866,14 +866,14 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries by kind
 			List<ICLanguageSettingEntry> includes = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0, ICSettingEntry.INCLUDE_PATH);
+				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID, ICSettingEntry.INCLUDE_PATH);
 			assertEquals(3, includes.size());
 			assertEquals(new CIncludePathEntry("path0", 0),includes.get(0));
 			assertEquals(new CIncludePathEntry("path1", 0),includes.get(1));
 			assertEquals(new CIncludePathEntry("path2", 0),includes.get(2));
 
 			List<ICLanguageSettingEntry> macros = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0, ICSettingEntry.MACRO);
+				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID, ICSettingEntry.MACRO);
 			assertEquals(2, macros.size());
 			assertEquals(new CMacroEntry("MACRO0", "value0",0), macros.get(0));
 			assertEquals(new CMacroEntry("MACRO1", "value1",0), macros.get(1));
@@ -906,7 +906,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries by kind, only first entry is returned
 			List<ICLanguageSettingEntry> includes = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, FILE_0, LANG_ID, PROVIDER_0, ICSettingEntry.INCLUDE_PATH);
+				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID, ICSettingEntry.INCLUDE_PATH);
 			assertEquals(1, includes.size());
 			assertEquals(original.get(0),includes.get(0));
 		}

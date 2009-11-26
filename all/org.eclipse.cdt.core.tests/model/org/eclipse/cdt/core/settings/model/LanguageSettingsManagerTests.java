@@ -167,7 +167,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertEquals(DEFAULT_PROVIDER_NAME_EXT, provider.getName());
 
 		// retrieve wrong language
-		assertEquals(0, provider.getSettingEntries(null, FILE_0, LANG_ID).size());
+		assertNull(provider.getSettingEntries(null, FILE_0, LANG_ID));
 
 		// benchmarks matching extension point definition
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
@@ -1124,7 +1124,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// attempt to get entries for wrong language
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, "wrong.lang.id");
-			assertEquals(0, retrieved.size());
+			assertNull(retrieved);
 		}
 
 		{

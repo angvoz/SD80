@@ -61,7 +61,7 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 				return new ArrayList<ICLanguageSettingEntry>(entries);
 			}
 		}
-		return new ArrayList<ICLanguageSettingEntry>();
+		return null;
 	}
 
 }

@@ -95,7 +95,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		detector.shutdown();
 		
 		List<ICLanguageSettingEntry> noentries = detector.getSettingEntries(null, null, null);
-		assertEquals(0, noentries.size());
+		assertNull(noentries);
 		
 		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(cfgDescription, cproject.getProject(), LANGUAGE_ID);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN);

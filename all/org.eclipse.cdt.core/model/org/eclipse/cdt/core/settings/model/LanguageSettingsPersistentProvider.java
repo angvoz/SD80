@@ -57,27 +57,41 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 		super(id, name);
 	}
 
-
+	// TODO: look for refactoring this method
 	private void setSettingEntries(String cfgId, URI rcUri, String languageId, List<ICLanguageSettingEntry> entries) {
-		Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
-		if (cfgMap==null) {
-			cfgMap = new HashMap<String, Map<URI, List<ICLanguageSettingEntry>>>();
-			fStorage.put(cfgId, cfgMap);
+		if (entries!=null) {
+			Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
+			if (cfgMap==null) {
+				cfgMap = new HashMap<String, Map<URI, List<ICLanguageSettingEntry>>>();
+				fStorage.put(cfgId, cfgMap);
+			}
+			Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
+			if (langMap==null) {
+				langMap = new HashMap<URI, List<ICLanguageSettingEntry>>();
+				cfgMap.put(languageId, langMap);
+			}
+			langMap.put(rcUri, entries);
+		} else {
+			// do not keep nulls in the tables
+			Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
+			if (cfgMap!=null) {
+				Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
+				if (langMap!=null) {
+					langMap.remove(rcUri);
+					if (langMap.size()==0) {
+						cfgMap.remove(languageId);
+					}
+				}
+				if (cfgMap.size()==0) {
+					fStorage.remove(cfgId);
+				}
+			}
 		}
-		Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
-		if (langMap==null) {
-			langMap = new HashMap<URI, List<ICLanguageSettingEntry>>();
-			cfgMap.put(languageId, langMap);
-		}
-		langMap.put(rcUri, entries);
 	}
 	
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
 		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
 		URI rcUri = rc!=null ? rc.getLocationURI() : null;
-		if (entries==null) {
-			entries = new ArrayList<ICLanguageSettingEntry>(0);
-		}
 		setSettingEntries(cfgId, rcUri, languageId, entries);
 	}
 	
@@ -95,7 +109,11 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 				URI rcUri = rc!=null ? rc.getLocationURI() : null;
 				List<ICLanguageSettingEntry> mapEntries = langMap.get(rcUri);
 				if (mapEntries!=null) {
-					entries.addAll(langMap.get(rcUri));
+					if (entries!=null) {
+						entries.addAll(langMap.get(rcUri));
+					} else {
+						entries = cloneList(langMap.get(rcUri));
+					}
 				}
 			}
 		}

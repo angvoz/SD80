@@ -63,6 +63,10 @@ public class LanguageSettingsManager {
 	private static final String ATTR_PROJECT_NAME = "project";
 
 
+	/**
+	 * Never returns {@code null} although individual providers return {@code null} if
+	 * no settings defined.
+	 */
 	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, String providerId, IResource rc, String languageId) {
 		Assert.isNotNull(cfgDescription);
 
@@ -74,9 +78,11 @@ public class LanguageSettingsManager {
 			}
 		}
 
-		IResource parentFolder = rc.getParent();
-		if (parentFolder!=null) {
-			return getSettingEntries(cfgDescription, providerId, parentFolder, languageId);
+		if (rc!=null) {
+			IResource parentFolder = rc.getParent();
+			if (parentFolder!=null) {
+				return getSettingEntries(cfgDescription, providerId, parentFolder, languageId);
+			}
 		}
 		return new ArrayList<ICLanguageSettingEntry>(0);
 	}

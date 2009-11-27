@@ -237,12 +237,36 @@ public class LanguageSettingsManagerTests extends TestCase {
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
 		entriesExt.add(new CIncludePathEntry("/usr/include/", ICSettingEntry.BUILTIN));
 		
-		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
-		for (int i=0;i<entriesExt.size();i++) {
-			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
+		{
+			// retrieve entries from extension point
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
+			for (int i=0;i<entriesExt.size();i++) {
+				assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
+			}
+			assertEquals(entriesExt.size(), retrieved.size());
 		}
-		assertEquals(entriesExt.size(), retrieved.size());
+		
+		{
+			// set some settings to parent folder
+			final List<ICLanguageSettingEntry> entriesParent = new ArrayList<ICLanguageSettingEntry>();
+			entriesParent.add(new CIncludePathEntry("/parent/settings", ICSettingEntry.BUILTIN));
+			IFolder parentFolder = ResourcesPlugin.getWorkspace().getRoot().getFolder(new Path("/project/ParentFolder"));
+			provider.setSettingEntries(null, parentFolder, LANG_ID_EXT, entriesParent);
+		
+			// read settings for file in the parent folder
+			IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/ParentFolder/file.cpp"));
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
+			// check parent folder entries
+			for (int i=0;i<entriesParent.size();i++) {
+				assertTrue("i="+i, retrieved.contains(entriesParent.get(i)));
+			}
+			// check extension entries
+			for (int i=0;i<entriesExt.size();i++) {
+				assertTrue("i="+i, retrieved.contains(entriesExt.get(i)));
+			}
+			assertEquals(entriesExt.size()+entriesParent.size(), retrieved.size());
+		}
+		
 	}
 	
 	/**
@@ -460,120 +484,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertNotNull(defaultProviderIds);
 			assertEquals(DEFAULT_IDS, toDelimitedString(defaultProviderIds));
 		}
-	}
-
-	/**
-	 * Test serialization of user defined providers.
-	 *
-	 * @throws Exception...
-	 */
-	public void testSerializeUserDefinedproviderWorkspace() throws Exception {
-//		final String TESTING_ID = "org.eclipse.cdt.core.test.language.settings.provider";
-//		final String TESTING_NAME = "A provider";
-//
-//		{
-//			// Create provider
-//			ICLanguageSettingsProvider provider = new GCCProvider();
-//			// Add to available providers
-//			LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(
-//					new ICLanguageSettingsProvider[] {provider});
-//			assertNotNull(LanguageSettingsManager.getProvider(TESTING_ID));
-//			assertEquals(TESTING_NAME, LanguageSettingsManager.getProvider(TESTING_ID).getName());
-//			// Serialize in persistent storage
-//			LanguageSettingsExtensionManager.serializeUserDefinedProviders();
-//		}
-//		{
-//			// Remove from available providers
-//			LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(null);
-//			assertNull(LanguageSettingsManager.getProviderCopy(TESTING_ID));
-//		}
-//
-//		{
-//			// Re-load from persistent storage and check it out
-//			LanguageSettingsExtensionManager.loadUserDefinedProviders();
-//			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProviderCopy(TESTING_ID);
-//			assertNotNull(provider);
-//			assertEquals(TESTING_NAME, provider.getName());
-//			assertTrue(provider instanceof ProviderNamedWrapper);
-//			assertTrue(((ProviderNamedWrapper)provider).getProvider() instanceof GCCProvider);
-//		}
-//		{
-//			// Remove from available providers as clean-up
-//			LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(null);
-//			assertNull(LanguageSettingsManager.getProviderCopy(TESTING_ID));
-//		}
-		fail("UNDER CONSTRUCTION");
-	}
-
-	/**
-	 * Make sure special characters are serialized properly.
-	 *
-	 * @throws Exception...
-	 */
-	public void testSerializeRegexProviderSpecialCharacters() throws Exception {
-//
-//		final String TESTING_ID = "org.eclipse.cdt.core.test.regexlanguage.settings.provider";
-//		final String TESTING_NAME = "<>\"'\\& Error Parser";
-//		final String TESTING_REGEX = "Pattern-<>\"'\\&";
-//		final String ALL_IDS = toDelimitedString(LanguageSettingsManager.getProviderAvailableIds());
-//		{
-//			// Create provider with the same id as in eclipse registry
-//			RegexProvider regexProvider = new RegexProvider(TESTING_ID, TESTING_NAME);
-//			regexProvider.addPattern(new RegexErrorPattern(TESTING_REGEX,
-//					"line-<>\"'\\&", "file-<>\"'\\&", "description-<>\"'\\&", null, IMarkerGenerator.SEVERITY_WARNING, false));
-//
-//			// Add to available providers
-//			LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(new ICLanguageSettingsProvider[] {regexProvider});
-//			assertNotNull(LanguageSettingsManager.getProviderCopy(TESTING_ID));
-//			// And serialize in persistent storage
-//			LanguageSettingsExtensionManager.serializeUserDefinedProviders();
-//		}
-//
-//		{
-//			// Re-load from persistent storage and check it out
-//			LanguageSettingsExtensionManager.loadUserDefinedProviders();
-//			String all = toDelimitedString(LanguageSettingsManager.getProviderAvailableIds());
-//			assertTrue(all.contains(TESTING_ID));
-//
-//			ICLanguageSettingsProvider provider = LanguageSettingsManager.getProviderCopy(TESTING_ID);
-//			assertNotNull(provider);
-//			assertTrue(provider instanceof RegexProvider);
-//			RegexProvider regexProvider = (RegexProvider)provider;
-//			assertEquals(TESTING_ID, regexProvider.getId());
-//			assertEquals(TESTING_NAME, regexProvider.getName());
-//
-//			RegexErrorPattern[] errorPatterns = regexProvider.getPatterns();
-//			assertEquals(1, errorPatterns.length);
-//			assertEquals(TESTING_REGEX, errorPatterns[0].getPattern());
-//		}
-		fail("UNDER CONSTRUCTION");
-	}
-
-	/**
-	 * Test retrieval of provider, clone() and equals().
-	 *
-	 * @throws Exception...
-	 */
-	public void testGetProviderCopy() throws Exception {
-//		{
-//			ICLanguageSettingsProvider clone1 = LanguageSettingsManager.getProviderCopy(REGEX_ERRORPARSER_ID);
-//			ICLanguageSettingsProvider clone2 = LanguageSettingsManager.getProviderCopy(REGEX_ERRORPARSER_ID);
-//			assertEquals(clone1, clone2);
-//			assertNotSame(clone1, clone2);
-//		}
-//		{
-//			ICLanguageSettingsProvider clone1 = LanguageSettingsManager.getProviderCopy(GCC_ERRORPARSER_ID);
-//			ICLanguageSettingsProvider clone2 = LanguageSettingsManager.getProviderCopy(GCC_ERRORPARSER_ID);
-//			assertEquals(clone1, clone2);
-//			assertNotSame(clone1, clone2);
-//
-//			assertTrue(clone1 instanceof ProviderNamedWrapper);
-//			assertTrue(clone2 instanceof ProviderNamedWrapper);
-//			ICLanguageSettingsProvider gccClone1 = ((ProviderNamedWrapper)clone1).getProvider();
-//			ICLanguageSettingsProvider gccClone2 = ((ProviderNamedWrapper)clone2).getProvider();
-//			assertNotSame(clone1, clone2);
-//		}
-		fail("UNDER CONSTRUCTION");
 	}
 
 	/**

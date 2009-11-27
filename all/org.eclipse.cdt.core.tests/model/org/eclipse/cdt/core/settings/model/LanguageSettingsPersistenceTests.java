@@ -564,6 +564,9 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
+		
+		// serialize over existing file (no exception expected)
+		LanguageSettingsManager.serialize(cfgDescription);
 	}
 
 }

@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ConsoleOutputStream;
@@ -30,6 +31,8 @@ import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.resources.ACBuilder;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.util.ListComparator;
 import org.eclipse.cdt.managedbuilder.buildmodel.BuildDescriptionManager;
 import org.eclipse.cdt.managedbuilder.buildmodel.IBuildDescription;
@@ -85,6 +88,7 @@ public class CommonBuilder extends ACBuilder {
 	private static final String TYPE_CLEAN = "ManagedMakeBuilder.type.clean";	//$NON-NLS-1$
 	private static final String TYPE_INC = "ManagedMakeBuider.type.incremental";	//$NON-NLS-1$
 	public static boolean VERBOSE = false;
+	private static final String EOL = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
 
 	private static CfgBuildSet fBuildSet = new CfgBuildSet();
 
@@ -102,6 +106,33 @@ public class CommonBuilder extends ACBuilder {
 	public static void outputError(String resourceName, String message) {
 		if (VERBOSE) {
 			System.err.println(ERROR_HEADER + resourceName + TRACE_FOOTER + message + NEWLINE);
+		}
+	}
+
+	private static class NullConsole implements IConsole { // return a null console
+		private final ConsoleOutputStream nullStream = new ConsoleOutputStream() {
+			@Override
+			public void write(byte[] b) throws IOException {
+			}
+			@Override
+			public void write(byte[] b, int off, int len) throws IOException {
+			}
+			@Override
+			public void write(int c) throws IOException {
+			}
+		};
+
+		public void start(IProject project) {
+		}
+	    // this can be a null console....
+		public ConsoleOutputStream getOutputStream() {
+			return nullStream;
+		}
+		public ConsoleOutputStream getInfoStream() {
+			return nullStream;
+		}
+		public ConsoleOutputStream getErrorStream() {
+			return nullStream;
 		}
 	}
 
@@ -145,6 +176,7 @@ public class CommonBuilder extends ACBuilder {
 		private final IConfiguration fCfg;
 		private final IBuilder fBuilder;
 		private IConsole fConsole;
+
 		CfgBuildInfo(IBuilder builder, boolean isForegound){
 			this.fBuilder = builder;
 			this.fCfg = builder.getParent().getParent();

@@ -207,6 +207,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 		TestClassLSBaseProvider provider = (TestClassLSBaseProvider)providerExt;
 		assertEquals(BASE_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
 		
+		// Test for null languages
+		assertNull(provider.getLanguageIds());
+		
 		// benchmarks matching extension point definition
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
 		entriesExt.add(new CIncludePathEntry("/usr/include/", ICSettingEntry.BUILTIN));
@@ -1017,7 +1020,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testDefaultProvider() throws Exception {
+	public void testBaseProvider() throws Exception {
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		List<String> languages = new ArrayList<String>(2) {
@@ -1041,6 +1044,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 			// retrieve the entries
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
+			List<String> retrievedLanguageIds = provider.getLanguageIds();
+			for (String languageId: languages) {
+				assertTrue(retrievedLanguageIds.contains(languageId));
+			}
+			assertEquals(languages.size(), retrievedLanguageIds.size());
 		}
 
 	}

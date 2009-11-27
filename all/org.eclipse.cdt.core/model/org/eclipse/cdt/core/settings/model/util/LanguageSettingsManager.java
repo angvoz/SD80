@@ -209,7 +209,11 @@ public class LanguageSettingsManager {
 			InputStream input = new ByteArrayInputStream(toByteArray(doc));
 			
 			IFile file = project.getFile("language.settings.xml");
-			file.create(input, IResource.FORCE, null);
+			if (file.exists()) {
+				file.setContents(input, IResource.FORCE, null);
+			} else {
+				file.create(input, IResource.FORCE, null);
+			}
 
 		} catch (Exception e) {
 			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);

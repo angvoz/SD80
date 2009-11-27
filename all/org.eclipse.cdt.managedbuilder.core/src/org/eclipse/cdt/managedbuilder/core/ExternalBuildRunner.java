@@ -25,13 +25,18 @@ import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfil
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.ICommandLauncher;
+import org.eclipse.cdt.core.IConsoleParser;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariableManager;
 import org.eclipse.cdt.core.model.ICModelMarker;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICFolderDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerConfigBuilderInfo2;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoCollector;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoConsoleParser;
@@ -109,6 +114,18 @@ public class ExternalBuildRunner implements IBuildRunner {
 						break;
 				}
 
+				
+				IPath workingDirectory = ManagedBuildManager.getBuildLocation(configuration, builder);
+				URI workingDirectoryURI = ManagedBuildManager.getBuildLocationURI(configuration, builder);
+
+				// Set the environment
+				String[] env = calcEnvironment(builder);
+				
+				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
+				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
+					runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
+				}
+				
 				consoleHeader[1] = configuration.getName();
 				consoleHeader[2] = project.getName();
 				buf.append(NEWLINE);
@@ -170,9 +187,15 @@ public class ExternalBuildRunner implements IBuildRunner {
 				OutputStream stderr = streamMon;
 
 				// Sniff console output for scanner info
-				ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, project, configuration, workingDirectory, markerGenerator, null);
-				OutputStream consoleOut = (sniffer == null ? stdout : sniffer.getOutputStream());
-				OutputStream consoleErr = (sniffer == null ? stderr : sniffer.getErrorStream());
+				OutputStream consoleOut = stdout;
+				OutputStream consoleErr = stderr;
+				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
+					ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, project, configuration, workingDirectory, markerGenerator, null);
+					if (sniffer!=null) {
+						consoleOut = sniffer.getOutputStream();
+						consoleErr = sniffer.getErrorStream();
+					}
+				}
 				Process p = launcher.execute(buildCommand, buildArguments, env, workingDirectory, monitor);
 				if (p != null) {
 					try {
@@ -188,6 +211,14 @@ public class ExternalBuildRunner implements IBuildRunner {
 						errMsg = launcher.getErrorMessage();
 					monitor.subTask(ManagedMakeMessages.getResourceString("MakeBuilder.Updating_project")); //$NON-NLS-1$
 
+					// AG: FIXME
+//					try {
+//						LanguageSettingsManager.serialize(cfgDescription);
+//					} catch (CoreException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}
+					
 					try {
 						// Do not allow the cancel of the refresh, since the builder is external
 						// to Eclipse, files may have been created/modified and we will be out-of-sync.
@@ -330,7 +361,7 @@ public class ExternalBuildRunner implements IBuildRunner {
 			IScannerInfoCollector collector){
 		ICfgScannerConfigBuilderInfo2Set container = CfgScannerConfigProfileManager.getCfgScannerConfigBuildInfo(cfg);
 		Map<CfgInfoContext, IScannerConfigBuilderInfo2> map = container.getInfoMap();
-		List<IScannerInfoConsoleParser> clParserList = new ArrayList<IScannerInfoConsoleParser>();
+		List<IConsoleParser> clParserList = new ArrayList<IConsoleParser>();
 
 		if(container.isPerRcTypeDiscovery()){
 			for (IResourceInfo rcInfo : cfg.getResourceInfos()) {
@@ -359,6 +390,22 @@ public class ExternalBuildRunner implements IBuildRunner {
 		if(clParserList.size() == 0){
 			contributeToConsoleParserList(project, map, new CfgInfoContext(cfg), workingDirectory, markerGenerator, collector, clParserList);
 		}
+		
+		ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
+		List<ILanguageSettingsProvider> lsProviders = cfgDescription.getLanguageSettingProviders();
+		for (ILanguageSettingsProvider lsProvider : lsProviders) {
+			if (lsProvider instanceof IConsoleParser) {
+				try {
+					if (lsProvider instanceof AbstractBuildCommandParser) {
+						((AbstractBuildCommandParser)lsProvider).startup(cfgDescription);
+					}
+					clParserList.add((IConsoleParser)lsProvider);
+				} catch (CoreException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 
 		if(clParserList.size() != 0){
 			return new ConsoleOutputSniffer(outputStream, errorStream,
@@ -375,7 +422,7 @@ public class ExternalBuildRunner implements IBuildRunner {
 			IPath workingDirectory,
 			IMarkerGenerator markerGenerator,
 			IScannerInfoCollector collector,
-			List<IScannerInfoConsoleParser> parserList){
+			List<IConsoleParser> parserList){
 		IScannerConfigBuilderInfo2 info = map.get(context);
 		InfoContext ic = context.toInfoContext();
 		boolean added = false;
@@ -405,6 +452,61 @@ public class ExternalBuildRunner implements IBuildRunner {
 		}
 
 		return added;
+	}
+
+	// TODO: same copy as in InternalBuildRunner
+	private void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
+			String[] env, IConsole console, IProgressMonitor monitor) throws CoreException {
+		ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
+		List<String> languageIds = new ArrayList<String>();
+		for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
+			String id = languageSetting.getLanguageId();
+			if (id!=null) {
+				languageIds.add(id);
+			}
+		}
+
+		for (ILanguageSettingsProvider lsProvider : cfgDescription.getLanguageSettingProviders()) {
+			if (lsProvider instanceof AbstractBuiltinSpecsDetector) {
+				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
+					for (String languageId : languageIds) {
+					if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
+						try {
+							detector.startup(cfgDescription, languageId);
+							detector.run(workingDirectory, env, console, monitor);
+						} catch (Exception e) {
+							ManagedBuilderCorePlugin.log(e);
+						}
+					}
+				}
+			}
+		}
+		
+		// AG: FIXME
+//		LanguageSettingsManager.serialize(cfgDescription);
+	}
+	
+	protected String[] calcEnvironment(IBuilder builder) throws CoreException{
+		HashMap<String, String> envMap = new HashMap<String, String>();
+		if (builder.appendEnvironment()) {
+			ICConfigurationDescription cfgDes = ManagedBuildManager.getDescriptionForConfiguration(builder.getParent().getParent());
+			IEnvironmentVariableManager mngr = CCorePlugin.getDefault().getBuildEnvironmentManager();
+			IEnvironmentVariable[] vars = mngr.getVariables(cfgDes, true);
+			for (IEnvironmentVariable var : vars) {
+				envMap.put(var.getName(), var.getValue());
+			}
+		}
+		// Add variables from build info
+		Map<String, String> builderEnv = builder.getExpandedEnvironment();
+		if(builderEnv != null)
+			envMap.putAll(builderEnv);
+		List<String> strings= new ArrayList<String>(envMap.size());
+		for (Entry<String, String> entry : envMap.entrySet()) {
+			StringBuffer buffer= new StringBuffer(entry.getKey());
+			buffer.append('=').append(entry.getValue());
+			strings.add(buffer.toString());
+		}
+		return strings.toArray(new String[strings.size()]);
 	}
 
 }

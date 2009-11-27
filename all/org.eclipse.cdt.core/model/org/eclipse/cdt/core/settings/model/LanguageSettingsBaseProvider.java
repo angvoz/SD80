@@ -18,7 +18,7 @@ import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.core.resources.IResource;
 
 public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
-	private List<String> languages;
+	private List<String> languages = null;
 	private List<ICLanguageSettingEntry> entries = null;
 
 	public LanguageSettingsBaseProvider() {
@@ -42,6 +42,10 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 		super(id, name);
 		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
 		this.entries = cloneList(entries);
+	}
+	
+	public List<String> getLanguageIds() {
+		return languages!=null ? new ArrayList<String>(languages) : null;
 	}
 	
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {

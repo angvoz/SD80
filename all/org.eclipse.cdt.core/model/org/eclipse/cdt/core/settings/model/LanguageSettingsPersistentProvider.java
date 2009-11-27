@@ -99,8 +99,6 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
 			IResource rc, String languageId) {
 		
-		List<ICLanguageSettingEntry> entries = super.getSettingEntries(cfgDescription, rc, languageId);
-			
 		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
 		Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
 		if (cfgMap!=null) {
@@ -108,16 +106,26 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 			if (langMap!=null) {
 				URI rcUri = rc!=null ? rc.getLocationURI() : null;
 				List<ICLanguageSettingEntry> mapEntries = langMap.get(rcUri);
+				// Note that entries defined in extension are not added if mapEntries==null
+				// which leads to pulling the settings from parent folder.
 				if (mapEntries!=null) {
+					List<ICLanguageSettingEntry> entries = super.getSettingEntries(cfgDescription, rc, languageId);
 					if (entries!=null) {
-						entries.addAll(langMap.get(rcUri));
+						entries.addAll(mapEntries);
 					} else {
-						entries = cloneList(langMap.get(rcUri));
+						entries = cloneList(mapEntries);
 					}
+					return entries;
 				}
 			}
 		}
-		return entries;
+		
+		if (rc!=null) {
+			IResource parentFolder = rc.getParent();
+			return getSettingEntries(cfgDescription, parentFolder, languageId);
+		}
+		// Root (null) returns extension settings if none defined.
+		return super.getSettingEntries(cfgDescription, rc, languageId);
 	}
 
 	private void serializeSettingEntries(Element parentElement, List<ICLanguageSettingEntry> settingEntries) {

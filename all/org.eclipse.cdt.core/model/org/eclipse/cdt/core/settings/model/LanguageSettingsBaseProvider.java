@@ -19,7 +19,7 @@ import org.eclipse.core.resources.IResource;
 
 public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 	private List<String> languages;
-	private List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+	private List<ICLanguageSettingEntry> entries = null;
 
 	public LanguageSettingsBaseProvider() {
 	}
@@ -31,6 +31,9 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 		super(id, name);
 	}
 
+	protected static List<ICLanguageSettingEntry> cloneList(List<ICLanguageSettingEntry> entries) {
+		return entries!=null ? new ArrayList<ICLanguageSettingEntry>(entries) : null;
+	}
 	/**
 	 * TODO
 	 * languages can be null: in that case all languages qualify.
@@ -38,27 +41,23 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 	public LanguageSettingsBaseProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
 		super(id, name);
 		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
-		if (entries!=null) {
-			this.entries = new ArrayList<ICLanguageSettingEntry>(entries);
-		}
+		this.entries = cloneList(entries);
 	}
 	
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
 		setId(id);
 		setName(name);
 		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
-		if (entries!=null) {
-			this.entries = new ArrayList<ICLanguageSettingEntry>(entries);
-		}
+		this.entries = cloneList(entries);
 	}
 	
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		if (languages==null) {
-			return new ArrayList<ICLanguageSettingEntry>(entries);
+			return cloneList(entries);
 		}
 		for (String lang : languages) {
 			if (lang.equals(languageId)) {
-				return new ArrayList<ICLanguageSettingEntry>(entries);
+				return cloneList(entries);
 			}
 		}
 		return null;

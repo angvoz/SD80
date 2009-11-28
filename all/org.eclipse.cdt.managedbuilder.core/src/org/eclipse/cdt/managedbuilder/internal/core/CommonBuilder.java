@@ -27,11 +27,9 @@ import org.eclipse.cdt.build.core.scannerconfig.CfgInfoContext;
 import org.eclipse.cdt.build.core.scannerconfig.ICfgScannerConfigBuilderInfo2Set;
 import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfileManager;
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.CommandLauncher;
 import org.eclipse.cdt.core.ConsoleOutputStream;
 import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.ICommandLauncher;
-import org.eclipse.cdt.core.IConsoleParser;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.ProblemMarkerInfo;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
@@ -135,7 +133,6 @@ public class CommonBuilder extends ACBuilder {
 	private static final String TYPE_REBUILD = "ManagedMakeBuider.type.rebuild";	//$NON-NLS-1$
 	private static final String INTERNAL_BUILDER = "ManagedMakeBuilder.message.internal.builder";	//$NON-NLS-1$
 	public static boolean VERBOSE = false;
-	private static final String EOL = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
 
 	private static CfgBuildSet fBuildSet = new CfgBuildSet();
 
@@ -1922,9 +1919,9 @@ public class CommonBuilder extends ACBuilder {
 						AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
 							for (String languageId : languageIds) {
 							if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
-								detector.setCurrentLanguage(languageId);
 								try {
-									runSpecsDetector(detector, cfgDescription, console, env, workingDirectory, monitor);
+									detector.startup(cfgDescription, languageId);
+									detector.run(workingDirectory, env, console, monitor);
 								} catch (Exception e) {
 									ManagedBuilderCorePlugin.log(e);
 								}
@@ -2058,58 +2055,6 @@ public class CommonBuilder extends ACBuilder {
 			monitor.done();
 		}
 		return (isClean);
-	}
-
-	private void runSpecsDetector(AbstractBuiltinSpecsDetector detector, ICConfigurationDescription cfgDescription, IConsole console,
-			String[] env, IPath workingDirectory, IProgressMonitor monitor)
-			throws CoreException, IOException {
-		
-		detector.startup(cfgDescription);
-		
-		if (detector.getCommand()==null) {
-			return;
-		}
-		
-		OutputStream stdout = console.getOutputStream();
-		OutputStream stderr = console.getErrorStream();
-
-		String msg = "Running scanner discovery: " + detector.getName();
-		monitor.subTask(msg);
-		stdout.write(("**** "+msg+" ****"+EOL+EOL).getBytes());
-		stdout.flush();
-		
-		ConsoleOutputSniffer sniffer = new ConsoleOutputSniffer(stdout, stderr, new IConsoleParser[] { detector });
-		OutputStream consoleOut = sniffer.getOutputStream();
-		OutputStream consoleErr = sniffer.getErrorStream();
-		
-		
-		String errMsg = null;
-		ICommandLauncher launcher = new CommandLauncher();
-		IProject project = cfgDescription.getProjectDescription().getProject();
-		launcher.setProject(project);
-		// Print the command for visual interaction.
-		launcher.showCommand(true);
-
-		String[] cmdArray = CommandLineUtil.argumentsToArray(detector.getCommand());
-		IPath command = new Path(cmdArray[0]);
-		String[] args = new String[cmdArray.length-1];
-		System.arraycopy(cmdArray, 1, args, 0, args.length);
-		Process p = launcher.execute(command, args, env, workingDirectory, monitor);
-
-		if (p != null) {
-			// Before launching give visual cues via the monitor
-			monitor.subTask("Invoking command "+command);
-			if (launcher.waitAndRead(consoleOut, consoleErr, new SubProgressMonitor(monitor, 0))
-				!= ICommandLauncher.OK) {
-				errMsg = launcher.getErrorMessage();
-			}
-		} else {
-			errMsg = launcher.getErrorMessage();
-		}
-		if (errMsg!=null) {
-			stdout.write((errMsg+EOL+EOL).getBytes());
-			stdout.flush();
-		}
 	}
 
 	/**

@@ -209,8 +209,8 @@ public class LanguageSettingsExtensionManager {
 			if (langId.trim().length()>0) {
 				if (languages==null) {
 					languages = new ArrayList<String>();
-					languages.add(langId);
 				}
+				languages.add(langId);
 			}
 		}
 

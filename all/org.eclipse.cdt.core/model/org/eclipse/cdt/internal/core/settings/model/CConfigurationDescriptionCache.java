@@ -24,7 +24,6 @@ import org.eclipse.cdt.core.settings.model.ICExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
-import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
@@ -34,6 +33,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingObject;
 import org.eclipse.cdt.core.settings.model.ICSourceEntry;
 import org.eclipse.cdt.core.settings.model.ICStorageElement;
 import org.eclipse.cdt.core.settings.model.ICTargetPlatformSetting;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.IModificationContext;
 import org.eclipse.cdt.core.settings.model.WriteAccessException;
 import org.eclipse.cdt.core.settings.model.extension.CBuildData;
@@ -46,6 +46,7 @@ import org.eclipse.cdt.core.settings.model.extension.CTargetPlatformData;
 import org.eclipse.cdt.core.settings.model.extension.impl.CDefaultConfigurationData;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.CSettingEntryFactory;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.util.PathSettingsContainer;
 import org.eclipse.cdt.internal.core.cdtvariables.CdtVariableManager;
 import org.eclipse.cdt.internal.core.cdtvariables.StorableCdtVariables;
@@ -127,6 +128,9 @@ public class CConfigurationDescriptionCache extends CDefaultConfigurationData
 		((CBuildSettingCache)fBuildData).initEnvironmentCache();
 		ICdtVariable vars[] = CdtVariableManager.getDefault().getVariables(this);
 		fMacros = new StorableCdtVariables(vars, true);
+		
+		LanguageSettingsManager.load(this);
+		
 //		fInitializing = false;
 	}
 

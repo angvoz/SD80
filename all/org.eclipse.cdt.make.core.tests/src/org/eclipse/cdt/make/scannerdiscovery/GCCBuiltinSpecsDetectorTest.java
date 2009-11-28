@@ -70,8 +70,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			}
 			
 		};
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine(null);
 		detector.shutdown();
 
@@ -95,8 +94,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			}
 			
 		};
-		detector.setCurrentLanguage(LANGUAGE_ID);
-		detector.startup(cfgDescription);
+		detector.startup(cfgDescription, LANGUAGE_ID);
 		detector.processLine("#define MACRO VALUE");
 		detector.shutdown();
 		
@@ -117,8 +115,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			}
 			
 		};
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		{
 			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
 			assertEquals(0, entries.size());
@@ -130,7 +127,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			assertEquals(1, entries.size());
 		}
 		
-		detector.startup(null);
+		detector.startup(null, null);
 		{
 			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
 			assertEquals(0, entries.size());
@@ -146,8 +143,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 
 	public void testGCCBuiltinSpecsDetector_NoValue() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine("#define MACRO");
 		detector.shutdown();
 		
@@ -158,8 +154,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	
 	public void testGCCBuiltinSpecsDetector_NoArgs() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine("#define MACRO VALUE");
 		detector.shutdown();
 		
@@ -170,8 +165,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 
 	public void testGCCBuiltinSpecsDetector_Const() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine("#define MACRO (3)");
 		detector.shutdown();
 		
@@ -182,8 +176,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	
 	public void testGCCBuiltinSpecsDetector_EmptyArgList() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine("#define MACRO() VALUE");
 		detector.shutdown();
 		
@@ -194,8 +187,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	
 	public void testGCCBuiltinSpecsDetector_ParamUnused() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine("#define MACRO(X) VALUE");
 		detector.shutdown();
 		
@@ -206,8 +198,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	
 	public void testGCCBuiltinSpecsDetector_ParamSpace() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine("#define MACRO(P1, P2) VALUE(P1, P2)");
 		detector.shutdown();
 		
@@ -218,8 +209,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	
 	public void testGCCBuiltinSpecsDetector_ArgsNoValue() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine("#define MACRO(P1, P2) ");
 		detector.shutdown();
 		
@@ -241,8 +231,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		String loc = project.getLocation().toString();
 
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.setCurrentLanguage(null);
-		detector.startup(null);
+		detector.startup(null, null);
 
 		detector.processLine(loc+"/incorrect/include1");
 		detector.processLine("#include \"...\" search starts here:");
@@ -272,7 +261,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		assertTrue(providerExt instanceof TestClassBuiltinSpecsDetector);
 		
 		AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)providerExt;
-		detector.startup(null);
+		detector.startup(null, null);
 		detector.processLine(null);
 		detector.shutdown();
 		

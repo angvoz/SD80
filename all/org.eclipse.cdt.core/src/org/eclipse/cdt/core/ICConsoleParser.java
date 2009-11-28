@@ -12,7 +12,8 @@
 package org.eclipse.cdt.core;
 
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.core.runtime.CoreException;
 
 public interface ICConsoleParser extends IConsoleParser {
-	public void startup(ICConfigurationDescription cfgDescription);
+	public void startup(ICConfigurationDescription cfgDescription) throws CoreException;
 }

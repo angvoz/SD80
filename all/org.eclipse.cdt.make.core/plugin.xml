@@ -189,6 +189,12 @@
             id="org.eclipse.cdt.make.core.gcc.specs.detector"
             name="GCC Builtin Settings Detector">
          <language
+               id="org.eclipse.cdt.core.assembly">
+         </language>
+         <language
+               id="org.eclipse.cdt.core.gcc">
+         </language>
+         <language
                id="org.eclipse.cdt.core.g++">
          </language>
       </provider>

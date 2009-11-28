@@ -18,16 +18,17 @@ import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.CoreException;
 
 public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersistentProvider implements
 		ILanguageSettingsOutputScanner {
 
 	private ICConfigurationDescription cfgDescription = null;
 	private IProject project;
-	private String languageId;
+	private String currentLanguageId;
 	private String command;
 
-	protected List<ICLanguageSettingEntry> settingEntries = null;
+	protected List<ICLanguageSettingEntry> detectedSettingEntries = null;
 
 	public void setCommand(String command) {
 		this.command = command;
@@ -37,19 +38,19 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersi
 		return command;
 	}
 	
-	public void setLanguage(String id) {
-		languageId = id;
+	public void setCurrentLanguage(String id) {
+		currentLanguageId = id;
 	}
 
-	public String getLanguage() {
-		return languageId;
+	public String getCurrentLanguage() {
+		return currentLanguageId;
 	}
 	
-	public void startup(ICConfigurationDescription cfgDescription) {
+	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
 		this.cfgDescription = cfgDescription;
 		this.project = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
-		this.settingEntries = new ArrayList<ICLanguageSettingEntry>();
-		setSettingEntries(cfgDescription, project, languageId, settingEntries);
+		this.detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
+		setSettingEntries(cfgDescription, project, currentLanguageId, detectedSettingEntries);
 	}
 
 	/**
@@ -59,7 +60,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersi
 	public abstract boolean processLine(String line);
 	
 	public void shutdown() {
-		setSettingEntries(cfgDescription, project, languageId, settingEntries);
+		setSettingEntries(cfgDescription, project, currentLanguageId, detectedSettingEntries);
 	}
 
 }

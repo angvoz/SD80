@@ -44,33 +44,26 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 	private static final String LANGUAGE_ID_CPLUSPLUS = "org.eclipse.cdt.core.g++";
 
 	private String specFileName;
-	private String command;
 	
 	private boolean expectingIncludes = false;
 	private int includeFlag = 0;
 	private java.io.File specFile;
 	
 	@Override
-	public String getCommand() {
-		
-		return command;
-	}
-
-	@Override
-	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
-		super.startup(cfgDescription);
+	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
+		super.startup(cfgDescription, languageId);
 		includeFlag = 0;
 		expectingIncludes = false;
 		specFileName = null;
-		command = null;
+		setCommand(null);
 
 		// TODO: figure out file extension from language id
 //		ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(getCurrentLanguage());
-		if (LANGUAGE_ID_CPLUSPLUS.equals(getCurrentLanguage())) {
+		if (LANGUAGE_ID_CPLUSPLUS.equals(getLanguage())) {
 			specFileName = SPEC_FILE_NAME + ".cpp";
-		} else if (LANGUAGE_ID_C.equals(getCurrentLanguage())) {
+		} else if (LANGUAGE_ID_C.equals(getLanguage())) {
 			specFileName = SPEC_FILE_NAME + ".c";
-		} else if (LANGUAGE_ID_ASSEMBLER.equals(getCurrentLanguage())) {
+		} else if (LANGUAGE_ID_ASSEMBLER.equals(getLanguage())) {
 			specFileName = SPEC_FILE_NAME + ".s";
 		}
 		if (specFileName!=null) {
@@ -85,7 +78,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 						"Error creating specs file ["+specFile+"]", e);
 				throw new CoreException(status);
 			}
-			command = GCC_SCANNER_INFO_COMMAND + specFile;
+			setCommand(GCC_SCANNER_INFO_COMMAND + specFile);
 		}
 		
 		
@@ -146,7 +139,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		includeFlag = 0;
 		expectingIncludes = false;
 		specFileName = null;
-		command = null;
+		setCommand(null);
 		
 		if (specFile!=null) {
 			specFile.delete();

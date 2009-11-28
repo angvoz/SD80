@@ -11,21 +11,35 @@
 
 package org.eclipse.cdt.make.core.scannerconfig;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.cdt.core.CommandLauncher;
+import org.eclipse.cdt.core.ICommandLauncher;
+import org.eclipse.cdt.core.IConsoleParser;
+import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
+import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
+import org.eclipse.cdt.utils.CommandLineUtil;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.SubProgressMonitor;
 
 public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersistentProvider implements
 		ILanguageSettingsOutputScanner {
+	private static final String EOL = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
 
-	private ICConfigurationDescription cfgDescription = null;
-	private IProject project;
+	private ICConfigurationDescription currentCfgDescription = null;
+	private IProject currentProject;
 	private String currentLanguageId;
+	
 	private String command;
 
 	protected List<ICLanguageSettingEntry> detectedSettingEntries = null;
@@ -38,21 +52,26 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersi
 		return command;
 	}
 	
-	public void setCurrentLanguage(String id) {
-		currentLanguageId = id;
+	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
+		this.currentCfgDescription = cfgDescription;
+		currentLanguageId = languageId;
+		this.currentProject = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
+		this.detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
+		setSettingEntries(cfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
 	}
 
-	public String getCurrentLanguage() {
+	public ICConfigurationDescription getConfigurationDescription() {
+		return currentCfgDescription;
+	}
+	
+	public IProject getProject() {
+		return currentProject;
+	}
+	
+	public String getLanguage() {
 		return currentLanguageId;
 	}
 	
-	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
-		this.cfgDescription = cfgDescription;
-		this.project = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
-		this.detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
-		setSettingEntries(cfgDescription, project, currentLanguageId, detectedSettingEntries);
-	}
-
 	/**
 	 * This method is expected to populate this.settingEntries with specific values
 	 * parsed from supplied lines.
@@ -60,7 +79,59 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersi
 	public abstract boolean processLine(String line);
 	
 	public void shutdown() {
-		setSettingEntries(cfgDescription, project, currentLanguageId, detectedSettingEntries);
+		setSettingEntries(currentCfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
 	}
+
+	public void run(IPath workingDirectory, String[] env, IConsole console, IProgressMonitor monitor)
+			throws CoreException, IOException {
+		
+		if (getCommand()==null) {
+			return;
+		}
+		
+		OutputStream stdout = console.getOutputStream();
+		OutputStream stderr = console.getErrorStream();
+
+		String msg = "Running scanner discovery: " + getName();
+		monitor.subTask(msg);
+		stdout.write(("**** "+msg+" ****"+EOL+EOL).getBytes());
+		stdout.flush();
+		
+		ConsoleOutputSniffer sniffer = new ConsoleOutputSniffer(stdout, stderr, new IConsoleParser[] { this });
+		OutputStream consoleOut = sniffer.getOutputStream();
+		OutputStream consoleErr = sniffer.getErrorStream();
+		
+		
+		String errMsg = null;
+		ICommandLauncher launcher = new CommandLauncher();
+		
+		launcher.setProject(currentProject);
+		
+		// Print the command for visual interaction.
+		launcher.showCommand(true);
+
+		String[] cmdArray = CommandLineUtil.argumentsToArray(getCommand());
+		IPath program = new Path(cmdArray[0]);
+		String[] args = new String[cmdArray.length-1];
+		System.arraycopy(cmdArray, 1, args, 0, args.length);
+
+		Process p = launcher.execute(program, args, env, workingDirectory, monitor);
+
+		if (p != null) {
+			// Before launching give visual cues via the monitor
+			monitor.subTask("Invoking command "+program);
+			if (launcher.waitAndRead(consoleOut, consoleErr, new SubProgressMonitor(monitor, 0))
+					!= ICommandLauncher.OK) {
+				errMsg = launcher.getErrorMessage();
+			}
+		} else {
+			errMsg = launcher.getErrorMessage();
+		}
+		if (errMsg!=null) {
+			stdout.write((errMsg+EOL+EOL).getBytes());
+			stdout.flush();
+		}
+	}
+
 
 }

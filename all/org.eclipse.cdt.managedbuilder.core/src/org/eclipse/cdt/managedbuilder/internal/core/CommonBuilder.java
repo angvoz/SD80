@@ -88,7 +88,6 @@ public class CommonBuilder extends ACBuilder {
 	private static final String TYPE_CLEAN = "ManagedMakeBuilder.type.clean";	//$NON-NLS-1$
 	private static final String TYPE_INC = "ManagedMakeBuider.type.incremental";	//$NON-NLS-1$
 	public static boolean VERBOSE = false;
-	private static final String EOL = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
 
 	private static CfgBuildSet fBuildSet = new CfgBuildSet();
 

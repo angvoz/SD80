@@ -18,13 +18,14 @@ import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
 
 
 // TODO: YAGNI?
 public interface ILanguageSettingsOutputScanner extends ILanguageSettingsProvider, ICConsoleParser {
 	
 	// Inherited from ICConsoleParser
-	public void startup(ICConfigurationDescription cfgDescription);
+	public void startup(ICConfigurationDescription cfgDescription) throws CoreException;
 	public boolean processLine(String line);
 	public void shutdown();
 	

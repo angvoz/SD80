@@ -44,6 +44,11 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	protected void setUp() throws Exception {
 	}
 
+	@Override
+	protected void tearDown() throws Exception {
+		ResourceHelper.cleanUp();
+	}
+	
 	private ICConfigurationDescription[] getConfigurationDescriptions(IProject project) {
 		CoreModel coreModel = CoreModel.getDefault();
 		ICProjectDescriptionManager mngr = coreModel.getProjectDescriptionManager();

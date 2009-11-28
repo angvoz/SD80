@@ -41,6 +41,8 @@ import org.eclipse.cdt.core.model.ICModelMarker;
 import org.eclipse.cdt.core.resources.ACBuilder;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICFolderDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
@@ -1906,13 +1908,26 @@ public class CommonBuilder extends ACBuilder {
 				
 				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
 
+				ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
+				List<String> languageIds = new ArrayList<String>();
+				for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
+					String id = languageSetting.getLanguageId();
+					if (id!=null) {
+						languageIds.add(id);
+					}
+				}
+
 				for (ILanguageSettingsProvider lsProvider : LanguageSettingsManager.getProviders(cfgDescription)) {
 					if (lsProvider instanceof AbstractBuiltinSpecsDetector) {
 						AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
-						if (detector.getCommand()!=null && detector.getLanguageIds()!=null) {
-							for (String languageId : detector.getLanguageIds()) {
-								detector.setLanguage(languageId);
-								runSpecsDetector(detector, cfgDescription, console, env, workingDirectory, monitor);
+							for (String languageId : languageIds) {
+							if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
+								detector.setCurrentLanguage(languageId);
+								try {
+									runSpecsDetector(detector, cfgDescription, console, env, workingDirectory, monitor);
+								} catch (Exception e) {
+									ManagedBuilderCorePlugin.log(e);
+								}
 							}
 						}
 					}
@@ -2050,6 +2065,10 @@ public class CommonBuilder extends ACBuilder {
 			throws CoreException, IOException {
 		
 		detector.startup(cfgDescription);
+		
+		if (detector.getCommand()==null) {
+			return;
+		}
 		
 		OutputStream stdout = console.getOutputStream();
 		OutputStream stderr = console.getErrorStream();

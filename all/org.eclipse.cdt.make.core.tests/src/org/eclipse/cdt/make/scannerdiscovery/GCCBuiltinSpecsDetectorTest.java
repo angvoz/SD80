@@ -75,7 +75,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		detector.shutdown();
 
 		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-		assertEquals(0, entries.size());
+		assertNull(entries);
 	}
 	
 	public void testAbstractBuiltinSpecsDetector_Basic() throws CoreException {
@@ -118,7 +118,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		detector.startup(null, null);
 		{
 			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertEquals(0, entries.size());
+			assertNull(entries);
 		}
 		detector.processLine("#define MACRO VALUE");
 		detector.shutdown();
@@ -130,7 +130,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		detector.startup(null, null);
 		{
 			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertEquals(0, entries.size());
+			assertNull(entries);
 		}
 		detector.processLine("#define MACRO VALUE");
 		detector.shutdown();

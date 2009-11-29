@@ -53,13 +53,17 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersi
 	}
 	
 	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
-		this.currentCfgDescription = cfgDescription;
+		currentCfgDescription = cfgDescription;
 		currentLanguageId = languageId;
-		this.currentProject = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
-		this.detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
-		setSettingEntries(cfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
+		currentProject = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
+		detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
+		setSettingEntries(cfgDescription, currentProject, currentLanguageId, null);
 	}
 
+	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
+		startup(cfgDescription, null);
+	}
+	
 	public ICConfigurationDescription getConfigurationDescription() {
 		return currentCfgDescription;
 	}
@@ -79,9 +83,14 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersi
 	public abstract boolean processLine(String line);
 	
 	public void shutdown() {
-		setSettingEntries(currentCfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
+		if (detectedSettingEntries.size()>0) {
+			setSettingEntries(currentCfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
+		}
 	}
 
+	/**
+	 * TODO: test case for this function
+	 */
 	public void run(IPath workingDirectory, String[] env, IConsole console, IProgressMonitor monitor)
 			throws CoreException, IOException {
 		

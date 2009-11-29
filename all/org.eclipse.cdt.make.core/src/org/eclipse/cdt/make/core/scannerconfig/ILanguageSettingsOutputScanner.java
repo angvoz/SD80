@@ -24,7 +24,7 @@ import org.eclipse.core.runtime.CoreException;
 // TODO: YAGNI?
 public interface ILanguageSettingsOutputScanner extends ILanguageSettingsProvider, IConsoleParser {
 	
-	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException;
+	public void startup(ICConfigurationDescription cfgDescription) throws CoreException;
 
 	// Inherited from ICConsoleParser
 	public boolean processLine(String line);

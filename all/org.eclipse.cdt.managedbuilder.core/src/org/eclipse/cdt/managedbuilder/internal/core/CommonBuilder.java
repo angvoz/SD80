@@ -924,6 +924,21 @@ public class CommonBuilder extends ACBuilder {
 //		console.start(project);
 //		return console;
 //	}
+	
+	// TODO: same function is present in CommandBuilder and BuildProcessManager
+	private String[] mapToStringArray(Map<String, String> map){
+		if(map == null)
+			return null;
+		
+		List<String> list = new ArrayList<String>();
+		
+		for (Entry<String, String> entry : map.entrySet()) {
+			list.add(entry.getKey() + '=' + entry.getValue());
+		}
+		
+		return list.toArray(new String[list.size()]);
+	}
+
 	/**
 	 * called to invoke the MBS Internal Builder for building the given configuration
 	 *
@@ -970,6 +985,22 @@ public class CommonBuilder extends ACBuilder {
 //			console = CCorePlugin.getDefault().getConsole();
 //			console.start(currentProject);
 			console = bInfo.getConsole();
+
+			IBuildDescription des = BuildDescriptionManager.createBuildDescription(cfg, cBS, delta, flags);
+			IPath workingDirectory = des.getDefaultBuildDirLocation();
+			String[] env = null;
+			if (des instanceof BuildDescription) {
+				Map<String, String> envMap = ((BuildDescription)des).getEnvironment();
+				env = mapToStringArray(envMap);
+			}
+
+			if (kind!=CLEAN_BUILD) {
+				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
+				runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
+			}
+
+			
+			
 			consoleOutStream = console.getOutputStream();
 			String[] consoleHeader = new String[3];
 			if(buildIncrementaly)
@@ -994,8 +1025,6 @@ public class CommonBuilder extends ACBuilder {
 			}
 			consoleOutStream.write(buf.toString().getBytes());
 			consoleOutStream.flush();
-
-			IBuildDescription des = BuildDescriptionManager.createBuildDescription(cfg, cBS, delta, flags);
 
 			DescriptionBuilder dBuilder = null;
 			if (!isParallel)
@@ -1876,6 +1905,7 @@ public class CommonBuilder extends ACBuilder {
 		try {
 			IPath buildCommand = builder.getBuildCommand();
 			if (buildCommand != null) {
+				IConfiguration cfg = bInfo.getConfiguration();
 //				IConsole console = CCorePlugin.getDefault().getConsole();
 //				console.start(currProject);
 				IConsole console = bInfo.getConsole();
@@ -1895,7 +1925,6 @@ public class CommonBuilder extends ACBuilder {
 						break;
 				}
 
-				IConfiguration cfg = bInfo.getConfiguration();
 				
 				IPath workingDirectory = ManagedBuildManager.getBuildLocation(cfg, builder);
 				URI workingDirectoryURI = ManagedBuildManager.getBuildLocationURI(cfg, builder);
@@ -1903,33 +1932,10 @@ public class CommonBuilder extends ACBuilder {
 				// Set the environment
 				String[] env = calcEnvironment(builder);
 				
-				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
-
-				ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
-				List<String> languageIds = new ArrayList<String>();
-				for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
-					String id = languageSetting.getLanguageId();
-					if (id!=null) {
-						languageIds.add(id);
-					}
+				if (kind!=CLEAN_BUILD) {
+					ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
+					runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
 				}
-
-				for (ILanguageSettingsProvider lsProvider : LanguageSettingsManager.getProviders(cfgDescription)) {
-					if (lsProvider instanceof AbstractBuiltinSpecsDetector) {
-						AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
-							for (String languageId : languageIds) {
-							if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
-								try {
-									detector.startup(cfgDescription, languageId);
-									detector.run(workingDirectory, env, console, monitor);
-								} catch (Exception e) {
-									ManagedBuilderCorePlugin.log(e);
-								}
-							}
-						}
-					}
-				}
-				LanguageSettingsManager.serialize(cfgDescription);
 				
 				consoleHeader[1] = cfg.getName();
 				consoleHeader[2] = currProject.getName();
@@ -2055,6 +2061,35 @@ public class CommonBuilder extends ACBuilder {
 			monitor.done();
 		}
 		return (isClean);
+	}
+
+	private void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
+			String[] env, IConsole console, IProgressMonitor monitor) throws CoreException {
+		ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
+		List<String> languageIds = new ArrayList<String>();
+		for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
+			String id = languageSetting.getLanguageId();
+			if (id!=null) {
+				languageIds.add(id);
+			}
+		}
+
+		for (ILanguageSettingsProvider lsProvider : LanguageSettingsManager.getProviders(cfgDescription)) {
+			if (lsProvider instanceof AbstractBuiltinSpecsDetector) {
+				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
+					for (String languageId : languageIds) {
+					if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
+						try {
+							detector.startup(cfgDescription, languageId);
+							detector.run(workingDirectory, env, console, monitor);
+						} catch (Exception e) {
+							ManagedBuilderCorePlugin.log(e);
+						}
+					}
+				}
+			}
+		}
+		LanguageSettingsManager.serialize(cfgDescription);
 	}
 
 	/**

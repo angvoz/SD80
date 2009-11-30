@@ -53,7 +53,14 @@ import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorListener {
 
 	private boolean initialized = false;
-	private List<String> hostIPAddresses;
+
+	/**
+	 * The stringified IP addresses of the local machine. Populated by
+	 * {@link #initialize()}. Typically "127.0.0.1" and the actual IP (plus
+	 * others if multiple NICs).
+	 */
+	private List<String> localIPAddresses;
+	
 	private List<ITCFAgentDescriptor> tcfAgentDescriptors;
 
 	// <name, peer> map.
@@ -105,7 +112,7 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 		});
 
 		// record local host IP addresses
-		hostIPAddresses = getLocalIPAddresses();
+		localIPAddresses = getLocalIPAddresses();
 
 		initialized = true;
 	}
@@ -508,7 +515,7 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 	protected boolean isLocalPeer(IPeer peer) {
 		assert Protocol.isDispatchThread();
 		String ipAddr = peer.getAttributes().get(IPeer.ATTR_IP_HOST);
-		return (hostIPAddresses.contains(ipAddr));
+		return (localIPAddresses.contains(ipAddr));
 	}
 
 	private IChannel getOpenChannel(final IPeer peer) throws CoreException {

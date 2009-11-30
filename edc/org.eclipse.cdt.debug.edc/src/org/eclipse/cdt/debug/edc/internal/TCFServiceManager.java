@@ -321,72 +321,69 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 
 		final boolean[] localAgentFound = { false };
 
-		// Now search the running candidates for the one that
-		// offers the required service.
+		// Now search the running candidates for the one that offers the
+		// required service.
 		//
-		if (runningCandidates1.size() > 0) {
-			for (IPeer p : runningCandidates1) {
-				final IPeer peer = p;
+		for (final IPeer peer : runningCandidates1) {
 
-				// wait up to 3 seconds for the asynchronous task.
-				TCFTask<Object> task = new TCFTask<Object>(3000) {
-					public void run() {
-						final String peerLabel = peer.getName() + " (" + peer.getID() + ") "
-								+ (isLocalPeer(peer) ? "(local running)" : "(remote running)");
+			// wait up to 3 seconds for the asynchronous task.
+			TCFTask<Object> task = new TCFTask<Object>(3000) {
+				public void run() {
+					final String peerLabel = peer.getName() + " (" + peer.getID() + ") "
+							+ (isLocalPeer(peer) ? "(local running)" : "(remote running)");
 
-						IChannel ch = getChannelForPeer(peer);
-						if (ch != null) {
-							assert (ch.getState() == IChannel.STATE_OPEN);
-							if (null != ch.getRemoteService(serviceName)) {
-								runningCandidates2.add(peer);
-								if (peerLabel.contains("local"))
-									localAgentFound[0] = true;
-								runningCandidateLabels.add(peerLabel);
+					IChannel ch = getChannelForPeer(peer);
+					if (ch != null) {
+						assert (ch.getState() == IChannel.STATE_OPEN);
+						if (null != ch.getRemoteService(serviceName)) {
+							runningCandidates2.add(peer);
+							if (peerLabel.contains("local"))
+								localAgentFound[0] = true;
+							runningCandidateLabels.add(peerLabel);
+						}
+						done(this);
+					} else {
+						final IChannel channel = peer.openChannel();
+
+						IChannel.IChannelListener listener = new IChannel.IChannelListener() {
+							public void onChannelOpened() {
+								channel.removeChannelListener(this);
+
+								if (null != channel.getRemoteService(serviceName)) {
+									runningCandidates2.add(peer);
+									if (peerLabel.contains("local"))
+										localAgentFound[0] = true;
+									runningCandidateLabels.add(peerLabel);
+								}
+								done(this); // argument is do-not-care
 							}
-							done(this);
-						} else {
-							final IChannel channel = peer.openChannel();
 
-							IChannel.IChannelListener listener = new IChannel.IChannelListener() {
-								public void onChannelOpened() {
-									channel.removeChannelListener(this);
+							public void onChannelClosed(Throwable error) {
+							}
 
-									if (null != channel.getRemoteService(serviceName)) {
-										runningCandidates2.add(peer);
-										if (peerLabel.contains("local"))
-											localAgentFound[0] = true;
-										runningCandidateLabels.add(peerLabel);
-									}
-									done(this); // argument is do-not-care
-								}
+							public void congestionLevel(int level) {
+							}
+						};
 
-								public void onChannelClosed(Throwable error) {
-								}
-
-								public void congestionLevel(int level) {
-								}
-							};
-
-							channel.addChannelListener(listener);
-						}
+						channel.addChannelListener(listener);
 					}
-				};
-
-				try {
-					task.get();
-				} catch (Exception e) {
-					// Failed to find nor open channel to the peer, it must be a
-					// stale peer (a peer that dies but not removed from the TCF
-					// framework. See
-					// rg.eclipse.tm.internal.tcf.services.local.LocatorService.refresh_timer()).
-					// Dispose it so that it won't get in the way
-					// when we try to auto-launch the agent again.
-					Protocol.invokeAndWait(new Runnable() {
-						public void run() {
-							((AbstractPeer) peer).dispose();
-						}
-					});
 				}
+			};
+
+			try {
+				task.get();
+			} catch (Exception e) {
+				// Failed to find nor open channel to the peer, it must be a
+				// stale peer (a peer that dies but not removed from the TCF
+				// framework. See
+				// rg.eclipse.tm.internal.tcf.services.local.LocatorService.refresh_timer()).
+				// Dispose it so that it won't get in the way
+				// when we try to auto-launch the agent again.
+				Protocol.invokeAndWait(new Runnable() {
+					public void run() {
+						((AbstractPeer) peer).dispose();
+					}
+				});
 			}
 		}
 

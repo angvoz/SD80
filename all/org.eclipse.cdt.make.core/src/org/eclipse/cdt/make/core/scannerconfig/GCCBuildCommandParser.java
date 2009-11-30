@@ -27,9 +27,11 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 
 public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 	// TODO better algorithm to figure out the file
-	private static final Pattern PATTERN_FILE = Pattern.compile("gcc.*\\s(\\S*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?");
+	private static final Pattern PATTERN_FILE = Pattern.compile("gcc.*\\s([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?");
+	private static final int PATTERN_FILE_GROUP = 1;
+	private static final Pattern PATTERN_FILE_QUOTED = Pattern.compile("gcc.*\\s(['\"])(.*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))\\1(\\s.*)?");
+	private static final int PATTERN_FILE_QUOTED_GROUP = 2;
 	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s]+)))?");
-	private static final Pattern PATTERN_QUOTED = Pattern.compile("(.*)(['\"])(.*)\\2(.*)");
 
 	private final OptionParser[] optionParsers = new OptionParser[] {
 			new IncludePathOptionParser("-I\\s*([\"'])(.*)\\1", "$2"),
@@ -177,11 +179,20 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 	
 	@Override
 	public boolean processLine(String line) {
+		String fileName = null;
 		Matcher fileMatcher = PATTERN_FILE.matcher(line);
-		if (!fileMatcher.matches()) {
+		
+		if (fileMatcher.matches()) {
+			fileName = fileMatcher.group(PATTERN_FILE_GROUP);
+		} else {
+			fileMatcher = PATTERN_FILE_QUOTED.matcher(line);
+			if (fileMatcher.matches()) {
+				fileName = fileMatcher.group(PATTERN_FILE_QUOTED_GROUP);
+			}
+		}
+		if (fileName==null) {
 			return false;
 		}
-		String fileName = fileMatcher.group(1);
 		
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 		Matcher optionMatcher = PATTERN_OPTIONS.matcher(line);

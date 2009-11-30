@@ -14,10 +14,8 @@ import java.util.List;
 
 import junit.framework.TestCase;
 
-import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.internal.errorparsers.tests.ResourceHelper;
 import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -27,11 +25,9 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
-import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCBuiltinSpecsDetector;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.runtime.CoreException;
 
 public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	private static final String LANGUAGE_ID = "language.id";
@@ -62,7 +58,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	}
 
 	
-	public void testAbstractBuiltinSpecsDetector_Nulls() throws CoreException {
+	public void testAbstractBuiltinSpecsDetector_Nulls() throws Exception {
 		AbstractBuiltinSpecsDetector detector = new AbstractBuiltinSpecsDetector() {
 			@Override
 			public boolean processLine(String line) {
@@ -78,17 +74,18 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		assertNull(entries);
 	}
 	
-	public void testAbstractBuiltinSpecsDetector_Basic() throws CoreException {
+	public void testAbstractBuiltinSpecsDetector_Basic() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
 		
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		
 		AbstractBuiltinSpecsDetector detector = new AbstractBuiltinSpecsDetector() {
 			@Override
 			public boolean processLine(String line) {
+				// pretending that we parsed the line
 				detectedSettingEntries.add(new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY));
 				return true;
 			}
@@ -101,12 +98,12 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		List<ICLanguageSettingEntry> noentries = detector.getSettingEntries(null, null, null);
 		assertNull(noentries);
 		
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(cfgDescription, cproject.getProject(), LANGUAGE_ID);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(cfgDescription, project, LANGUAGE_ID);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
 	
-	public void testAbstractBuiltinSpecsDetector_StartupShutdown() throws CoreException {
+	public void testAbstractBuiltinSpecsDetector_StartupShutdown() throws Exception {
 		AbstractBuiltinSpecsDetector detector = new AbstractBuiltinSpecsDetector() {
 			@Override
 			public boolean processLine(String line) {
@@ -221,7 +218,6 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	public void testGCCBuiltinSpecsDetector_Includes() throws Exception {
 		// Create model project and folders to test
 		String projectName = getName();
-//		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
 		IProject project = ResourceHelper.createCDTProject(projectName);
 		ResourceHelper.createFolder(project, "/incorrect/include1");
 		ResourceHelper.createFolder(project, "/local/include");

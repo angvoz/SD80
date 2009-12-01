@@ -30,6 +30,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ConsoleOutputStream;
 import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.ICommandLauncher;
+import org.eclipse.cdt.core.IConsoleParser;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.ProblemMarkerInfo;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
@@ -46,6 +47,7 @@ import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.util.ListComparator;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerConfigBuilderInfo2;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoCollector;
@@ -1815,7 +1817,7 @@ public class CommonBuilder extends ACBuilder {
 			IScannerInfoCollector collector){
 		ICfgScannerConfigBuilderInfo2Set container = CfgScannerConfigProfileManager.getCfgScannerConfigBuildInfo(cfg);
 		Map<CfgInfoContext, IScannerConfigBuilderInfo2> map = container.getInfoMap();
-		List<IScannerInfoConsoleParser> clParserList = new ArrayList<IScannerInfoConsoleParser>();
+		List<IConsoleParser> clParserList = new ArrayList<IConsoleParser>();
 
 		if(container.isPerRcTypeDiscovery()){
 			for (IResourceInfo rcInfo : cfg.getResourceInfos()) {
@@ -1844,10 +1846,26 @@ public class CommonBuilder extends ACBuilder {
 		if(clParserList.size() == 0){
 			contributeToConsoleParserList(project, map, new CfgInfoContext(cfg), workingDirectory, markerGenerator, collector, clParserList);
 		}
+		
+		ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
+		List<ILanguageSettingsProvider> lsProviders = LanguageSettingsManager.getProviders(cfgDescription);
+		for (ILanguageSettingsProvider lsProvider : lsProviders) {
+			if (lsProvider instanceof IConsoleParser) {
+				try {
+					if (lsProvider instanceof AbstractBuildCommandParser) {
+						((AbstractBuildCommandParser)lsProvider).startup(cfgDescription);
+					}
+					clParserList.add((IConsoleParser)lsProvider);
+				} catch (CoreException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
 
 		if(clParserList.size() != 0){
 			return new ConsoleOutputSniffer(outputStream, errorStream,
-					clParserList.toArray(new IScannerInfoConsoleParser[clParserList.size()]));
+					clParserList.toArray(new IConsoleParser[clParserList.size()]));
 		}
 
 		return null;
@@ -1860,7 +1878,7 @@ public class CommonBuilder extends ACBuilder {
 			IPath workingDirectory,
 			IMarkerGenerator markerGenerator,
 			IScannerInfoCollector collector,
-			List<IScannerInfoConsoleParser> parserList){
+			List<IConsoleParser> parserList){
 		IScannerConfigBuilderInfo2 info = map.get(context);
 		InfoContext ic = context.toInfoContext();
 		boolean added = false;
@@ -1932,8 +1950,8 @@ public class CommonBuilder extends ACBuilder {
 				// Set the environment
 				String[] env = calcEnvironment(builder);
 				
+				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
 				if (kind!=CLEAN_BUILD) {
-					ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
 					runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
 				}
 				
@@ -1997,9 +2015,16 @@ public class CommonBuilder extends ACBuilder {
 //				}
 //				ConsoleOutputSniffer sniffer = ScannerInfoConsoleParserFactory.getMakeBuilderOutputSniffer(
 //						stdout, stderr, currProject, baseContext, workingDirectory, info, this, null);
-				ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, currProject, cfg, workingDirectory, this, null);
-				OutputStream consoleOut = (sniffer == null ? stdout : sniffer.getOutputStream());
-				OutputStream consoleErr = (sniffer == null ? stderr : sniffer.getErrorStream());
+				
+				OutputStream consoleOut = stdout;
+				OutputStream consoleErr = stderr;
+				if (kind!=CLEAN_BUILD) {
+					ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, currProject, cfg, workingDirectory, this, null);
+					if (sniffer!=null) {
+						consoleOut = sniffer.getOutputStream();
+						consoleErr = sniffer.getErrorStream();
+					}
+				}
 				Process p = launcher.execute(buildCommand, buildArguments, env, workingDirectory, monitor);
 				if (p != null) {
 					try {
@@ -2015,6 +2040,13 @@ public class CommonBuilder extends ACBuilder {
 						errMsg = launcher.getErrorMessage();
 					monitor.subTask(ManagedMakeMessages.getResourceString("MakeBuilder.Updating_project")); //$NON-NLS-1$
 
+					try {
+						LanguageSettingsManager.serialize(cfgDescription);
+					} catch (CoreException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
 					try {
 						// Do not allow the cancel of the refresh, since the builder is external
 						// to Eclipse, files may have been created/modified and we will be out-of-sync.

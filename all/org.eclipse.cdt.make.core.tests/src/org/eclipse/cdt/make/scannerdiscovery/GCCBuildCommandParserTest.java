@@ -552,6 +552,52 @@ public class GCCBuildCommandParserTest extends TestCase {
 	
 	/**
 	 */
+	public void testEndOfLine() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		IFile file0=ResourceHelper.createFile(project, "file0.cpp");
+		IFile file1=ResourceHelper.createFile(project, "file1.cpp");
+		IFile file2=ResourceHelper.createFile(project, "file2.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file0.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc -I/path0 file0.cpp");
+		parser.processLine("gcc -I/path0 file1.cpp\n");
+		parser.processLine("gcc -I/path0 file2.cpp\r\n");
+		parser.shutdown();
+		
+		// check populated entries
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file0, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry("/path0", ICSettingEntry.READONLY);
+			CIncludePathEntry entry = (CIncludePathEntry)entries.get(0);
+			assertEquals(expected, entry);
+		}
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file1, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry("/path0", ICSettingEntry.READONLY);
+			CIncludePathEntry entry = (CIncludePathEntry)entries.get(0);
+			assertEquals(expected, entry);
+		}
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file2, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry("/path0", ICSettingEntry.READONLY);
+			CIncludePathEntry entry = (CIncludePathEntry)entries.get(0);
+			assertEquals(expected, entry);
+		}
+	}
+
+	/**
+	 */
 	public void testFileWithSpaces() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
@@ -560,12 +606,11 @@ public class GCCBuildCommandParserTest extends TestCase {
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		
 		IFile file1=ResourceHelper.createFile(project, "file with spaces 1.cpp");
-		ICLanguageSetting ls1 = cfgDescription.getLanguageSettingForFile(file1.getProjectRelativePath(), true);
-		String languageId1 = ls1.getLanguageId();
-		
 		IFile file2=ResourceHelper.createFile(project, "file with spaces 2.cpp");
-		ICLanguageSetting ls2 = cfgDescription.getLanguageSettingForFile(file2.getProjectRelativePath(), true);
-		String languageId2 = ls2.getLanguageId();
+		IFile file3=ResourceHelper.createFile(project, "file with spaces 3.cpp");
+		IFile file4=ResourceHelper.createFile(project, "file with spaces 4.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file1.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
 		
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
@@ -574,18 +619,32 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -I/path0 'file with spaces 1.cpp'");
 		parser.processLine("gcc -I/path0 \"file with spaces 2.cpp\"");
+		parser.processLine("gcc -I/path0 'file with spaces 3.cpp'\n");
+		parser.processLine("gcc -I/path0 'file with spaces 4.cpp'\r\n");
 		parser.shutdown();
 		
 		// check populated entries
 		{
 			// in single quotes
-			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file1, languageId1);
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file1, languageId);
 			CIncludePathEntry expected = new CIncludePathEntry("/path0", ICSettingEntry.READONLY);
 			assertEquals(expected, entries.get(0));
 		}
 		{
 			// in double quotes
-			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file2, languageId2);
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file2, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry("/path0", ICSettingEntry.READONLY);
+			assertEquals(expected, entries.get(0));
+		}
+		{
+			// Unix EOL
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file3, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry("/path0", ICSettingEntry.READONLY);
+			assertEquals(expected, entries.get(0));
+		}
+		{
+			// Windows EOL
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file4, languageId);
 			CIncludePathEntry expected = new CIncludePathEntry("/path0", ICSettingEntry.READONLY);
 			assertEquals(expected, entries.get(0));
 		}

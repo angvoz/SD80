@@ -27,10 +27,10 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 
 public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 	// TODO better algorithm to figure out the file
-	private static final Pattern PATTERN_FILE = Pattern.compile("gcc.*\\s([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?[\r\n]*");
-	private static final int PATTERN_FILE_GROUP = 1;
-	private static final Pattern PATTERN_FILE_QUOTED = Pattern.compile("gcc.*\\s(['\"])(.*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))\\1(\\s.*)?[\r\n]*");
-	private static final int PATTERN_FILE_QUOTED_GROUP = 2;
+	private static final Pattern PATTERN_FILE = Pattern.compile("((gcc)|(g\\+\\+)).*\\s([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?[\r\n]*");
+	private static final int PATTERN_FILE_GROUP = 4;
+	private static final Pattern PATTERN_FILE_QUOTED = Pattern.compile("((gcc)|(g\\+\\+)).*\\s(['\"])(.*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))\\4(\\s.*)?[\r\n]*");
+	private static final int PATTERN_FILE_QUOTED_GROUP = 5;
 	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s]+)))?");
 
 	private final OptionParser[] optionParsers = new OptionParser[] {

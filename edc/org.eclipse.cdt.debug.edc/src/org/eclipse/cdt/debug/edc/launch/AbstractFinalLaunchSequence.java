@@ -243,8 +243,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	}
 
 	/**
-	 * Find the TCF service that is to serve the given DSF service. Note caller
-	 * must call the "rm.done".
+	 * Find the given TCF service and link it to the given DSF service. The TCF
+	 * service will be used to carry out the DSF one.
+	 * 
+	 * <p>
+	 * Note caller must call the "rm.done".
 	 * 
 	 * @param dsfService
 	 * @param tcfServiceName

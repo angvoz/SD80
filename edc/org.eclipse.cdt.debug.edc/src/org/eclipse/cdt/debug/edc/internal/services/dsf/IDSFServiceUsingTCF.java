@@ -11,10 +11,12 @@
 
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
+import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.tm.tcf.protocol.IService;
 
 /**
- * This is to link a TCF service to the DSF service that needs it.
+ * This is used to link a TCF service to the DSF service that needs it. Objects
+ * that implement {@link IDsfService} using TCF should implement this as well.
  * 
  * @author LWang
  * 

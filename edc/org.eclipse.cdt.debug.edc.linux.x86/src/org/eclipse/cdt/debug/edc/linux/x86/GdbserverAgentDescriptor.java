@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CommandLauncher;
-import org.eclipse.cdt.debug.edc.ITCFAgentDescriptor;
+import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
@@ -29,18 +29,18 @@ import org.eclipse.tm.tcf.services.IMemory;
 import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IRunControl;
 
-public class GdbserverAgentDescriptor implements ITCFAgentDescriptor {
+public class GdbserverAgentDescriptor implements ITCFAgentLauncher {
 
 	private static final String NAME = "Gdbserver TCF Agent";
 
-	public Map<String, String> getAttributes() {
+	public Map<String, String> getPeerAttributes() {
 		Map<String, String> attrs = new HashMap<String, String>();
 		attrs.put(IPeer.ATTR_NAME, NAME);
 		attrs.put(DEBUG_SUPPORT, "GDB Remote Protocol");
 		return attrs;
 	}
 
-	public String getName() {
+	public String getPeerName() {
 		return NAME;
 	}
 

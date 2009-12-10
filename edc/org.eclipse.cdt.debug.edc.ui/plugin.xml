@@ -356,5 +356,17 @@
             label="Debug Text Hover">
       </hover>
    </extension>
+   <extension
+         point="org.eclipse.cdt.launch.launchConfigAffinity">
+      <launchConfigTypeId
+            id="com.freescale.type1">
+      </launchConfigTypeId>
+      <launchConfigTypeId
+            id="com.freescale.type2">
+      </launchConfigTypeId>
+      <launchConfigTypeId
+            id="org.eclipse.ant.AntBuilderLaunchConfigurationType">
+      </launchConfigTypeId>
+   </extension>
    
 </plugin>

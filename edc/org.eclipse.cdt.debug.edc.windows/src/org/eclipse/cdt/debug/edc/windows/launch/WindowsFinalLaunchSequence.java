@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.windows.launch;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.core.model.IRestart;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence;
 import org.eclipse.cdt.debug.edc.launch.ChooseProcessItem;
@@ -117,6 +118,6 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 	@Override
 	protected void specifyRequiredAgent() {
-		agentAttributes.put("DebugSupport", "Win32 Debug API");
+		agentAttributes.put(ITCFAgentLauncher.DEBUG_SUPPORT, "Win32 Debug API");
 	}
 }

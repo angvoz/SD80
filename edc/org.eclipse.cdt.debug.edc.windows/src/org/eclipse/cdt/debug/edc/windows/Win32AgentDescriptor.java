@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.cdt.debug.edc.ITCFAgentDescriptor;
+import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.cdt.utils.spawner.ProcessFactory;
 import org.eclipse.core.runtime.FileLocator;
@@ -27,18 +27,18 @@ import org.eclipse.tm.tcf.services.IMemory;
 import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IRunControl;
 
-public class Win32AgentDescriptor implements ITCFAgentDescriptor {
+public class Win32AgentDescriptor implements ITCFAgentLauncher {
 
 	private static final String NAME = "Win32 Debug Agent";
 
-	public Map<String, String> getAttributes() {
+	public Map<String, String> getPeerAttributes() {
 		Map<String, String> attrs = new HashMap<String, String>();
 		attrs.put(IPeer.ATTR_NAME, NAME);
 		attrs.put(DEBUG_SUPPORT, "Win32 Debug API");
 		return attrs;
 	}
 
-	public String getName() {
+	public String getPeerName() {
 		return NAME;
 	}
 

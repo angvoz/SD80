@@ -40,7 +40,6 @@ import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
-import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -156,7 +155,6 @@ public class LanguageSettingsManager {
 		return null;
 	}
 	
-	// FIXME: this is very inefficient and not quite correct
 	public static boolean isCustomizedResource(ICConfigurationDescription cfgDescription, IResource rc) {
 		for (ILanguageSettingsProvider provider: getProviders(cfgDescription)) {
 			ICResourceDescription rcDescription = cfgDescription.getResourceDescription(rc.getProjectRelativePath(), false);
@@ -164,19 +162,9 @@ public class LanguageSettingsManager {
 				String languageId = languageSetting.getLanguageId();
 				List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
 				if (list!=null) {
-					IContainer rcParent = rc!=null ? rc.getParent() : null;
-					List<ICLanguageSettingEntry> listParent = provider.getSettingEntries(cfgDescription, rcParent, languageId);
-					if (listParent==null) {
-						return true;
-					}
-					for (ICLanguageSettingEntry entry : list) {
-						if (!listParent.contains(entry)) {
-							return true;
-						}
-					}
+					return true;
 				}
 			}
-
 		}
 		
 		return false;

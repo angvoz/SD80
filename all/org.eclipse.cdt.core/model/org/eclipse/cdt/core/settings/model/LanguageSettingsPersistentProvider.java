@@ -105,27 +105,12 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 			Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
 			if (langMap!=null) {
 				URI rcUri = rc!=null ? rc.getLocationURI() : null;
-				List<ICLanguageSettingEntry> mapEntries = langMap.get(rcUri);
-				// Note that entries defined in extension are not added if mapEntries==null
-				// which leads to pulling the settings from parent folder.
-				if (mapEntries!=null) {
-					List<ICLanguageSettingEntry> entries = super.getSettingEntries(cfgDescription, rc, languageId);
-					if (entries!=null) {
-						entries.addAll(mapEntries);
-					} else {
-						entries = cloneList(mapEntries);
-					}
-					return entries;
-				}
+				List<ICLanguageSettingEntry> entries = langMap.get(rcUri);
+				return entries;
 			}
 		}
 		
-		if (rc!=null) {
-			IResource parentFolder = rc.getParent();
-			return getSettingEntries(cfgDescription, parentFolder, languageId);
-		}
-		// Root (null) returns extension settings if none defined.
-		return super.getSettingEntries(cfgDescription, rc, languageId);
+		return null;
 	}
 
 	private void serializeSettingEntries(Element parentElement, List<ICLanguageSettingEntry> settingEntries) {

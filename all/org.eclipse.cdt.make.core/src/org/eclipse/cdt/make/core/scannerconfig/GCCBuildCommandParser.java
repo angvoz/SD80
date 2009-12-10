@@ -209,9 +209,10 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 		}
 		if (entries.size()>0) {
 			setSettingEntries(entries, fileName);
-			return true;
+		} else {
+			setSettingEntries(null, fileName);
 		}
-		return false;
+		return true;
 	}
 
 }

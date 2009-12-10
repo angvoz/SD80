@@ -38,6 +38,7 @@ import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.CElementImageDescriptor;
 import org.eclipse.cdt.ui.CUIPlugin;
 
@@ -387,7 +388,8 @@ public class ProblemsLabelDecorator implements ILabelDecorator, ILightweightLabe
 			if (cfgDescription != null) {
 				IPath path = rc.getProjectRelativePath();
 				ICResourceDescription rcDescription = cfgDescription.getResourceDescription(path, true);
-				if (rcDescription != null)
+				boolean isLSCustomized = LanguageSettingsManager.isCustomizedResource(cfgDescription, rc);
+				if (rcDescription != null || isLSCustomized)
 					result |= TICK_CONFIGURATION;
 			}
 		}

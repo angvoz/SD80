@@ -17,8 +17,8 @@ import java.util.List;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.dom.IPDOMManager;
+import org.eclipse.cdt.core.internal.errorparsers.tests.ResourceHelper;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
@@ -26,8 +26,8 @@ import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
 
@@ -35,38 +35,12 @@ import org.eclipse.core.runtime.Path;
  * Test cases testing LanguageSettingsProvider functionality
  */
 public class LanguageSettingsPersistenceTests extends TestCase {
-	// These should match id and name of extension point defined in plugin.xml
-	private static final String DEFAULT_PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.default.language.settings.provider";
-	private static final String DEFAULT_PROVIDER_NAME_EXT = "Test Plugin Default Language Settings Provider";
-	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.provider";
-	private static final String PROVIDER_NAME_EXT = "Test Plugin Language Settings Provider";
-	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
-
-	private static final String CONFIGURATION_ID = "cfg.id";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
 	private static final String PROVIDER_NULL = "test.provider.null.id";
 	private static final String PROVIDER_0 = "test.provider.0.id";
-	private static final String PROVIDER_1 = "test.provider.1.id";
-	private static final String PROVIDER_2 = "test.provider.2.id";
 	private static final String PROVIDER_NAME_NULL = "test.provider.null.name";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
-	private static final String PROVIDER_NAME_1 = "test.provider.1.name";
-	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
-
-	private class MockProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
-		private final List<ICLanguageSettingEntry> entries;
-
-		public MockProvider(String id, String name, List<ICLanguageSettingEntry> entries) {
-			super(id, name);
-			this.entries = entries;
-		}
-
-		public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-			return entries;
-		}
-	}
-
 
 	/**
 	 * Constructor.
@@ -79,16 +53,11 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 
 	@Override
 	protected void setUp() throws Exception {
-//		fProject = ResourceHelper.createCDTProject(TEST_PROJECT_NAME);
-//		assertNotNull(fProject);
-//		errorList = new ArrayList<ProblemMarkerInfo>();
 	}
 
 	@Override
 	protected void tearDown() throws Exception {
-//		ResourceHelper.cleanUp();
-//		fProject = null;
-
+		ResourceHelper.cleanUp();
 		LanguageSettingsManager.setUserDefinedProviders(null);
 	}
 
@@ -567,6 +536,62 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		
 		// serialize over existing file (no exception expected)
 		LanguageSettingsManager.serialize(cfgDescription);
+	}
+
+	/**
+	 */
+	public void testParentFolder() throws Exception {
+		// Create model project and accompanied descriptions
+		ICProject cproject = CProjectHelper.createNewStileCProject(getName(), IPDOMManager.ID_NO_INDEXER);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		assertTrue(cfgDescription instanceof CConfigurationDescription);
+
+		// Create resources
+		IProject project = cproject.getProject();
+		final IFolder parentFolder = ResourceHelper.createFolder(project, "/ParentFolder/");
+		assertNotNull(parentFolder);
+		final IFile emptySettingsPath = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/empty");
+		assertNotNull(emptySettingsPath);
+
+		// Create provider
+		LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+
+		// store the entries in parent folder
+		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		provider.setSettingEntries(cfgDescription, parentFolder, LANG_ID, original);
+		provider.setSettingEntries(cfgDescription, emptySettingsPath, LANG_ID, new ArrayList<ICLanguageSettingEntry>());
+
+		{
+			// retrieve entries for a parent folder itself
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(cfgDescription, parentFolder, LANG_ID);
+			assertEquals(original,retrieved);
+			assertEquals(original.size(), retrieved.size());
+		}
+
+		{
+			// retrieve entries for a derived resource (in a subfolder)
+			IFile derived = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/resource");
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(cfgDescription, derived, LANG_ID);
+			// NOT taken from parent folder
+			assertEquals(null,retrieved);
+		}
+		
+		{
+			// retrieve entries for not related resource
+			IFile notRelated = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/AnotherFolder/Subfolder/resource"));
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(cfgDescription, notRelated, LANG_ID);
+			assertEquals(null,retrieved);
+		}
+
+		{
+			// test distinction between no settings and empty settings
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(cfgDescription, emptySettingsPath, LANG_ID);
+			// NOT taken from parent folder and not null
+			assertEquals(0, retrieved.size());
+		}
 	}
 
 }

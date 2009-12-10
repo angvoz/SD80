@@ -23,18 +23,12 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCBuiltinSpecsDetector;
 import org.eclipse.core.resources.IProject;
 
 public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	private static final String LANGUAGE_ID = "language.id";
-	
-	// These should match id and name of extension point defined in plugin.xml
-	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.make.core.tests.TestClassBuiltinSpecsDetector";
-	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 
 	@Override
 	protected void setUp() throws Exception {
@@ -248,24 +242,6 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		assertEquals(expected1, entries.get(1));
 		assertEquals(expected2, entries.get(2));
 		assertEquals(3, entries.size());
-	}
-	
-	public void testExtension() throws Exception {
-		// get test plugin extension non-default provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(PROVIDER_ID_EXT);
-		assertNotNull(providerExt);
-		assertTrue(providerExt instanceof TestClassBuiltinSpecsDetector);
-		
-		AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)providerExt;
-		detector.startup(null, null);
-		detector.processLine(null);
-		detector.shutdown();
-		
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-		ICLanguageSettingEntry expected = new CIncludePathEntry("/test/path/", ICSettingEntry.BUILTIN);
-		assertEquals(expected, entries.get(0));
-		assertEquals(1, entries.size());
-
 	}
 
 }

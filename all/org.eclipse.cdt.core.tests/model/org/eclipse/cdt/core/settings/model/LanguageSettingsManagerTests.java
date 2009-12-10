@@ -39,13 +39,12 @@ import org.eclipse.core.runtime.Path;
  */
 public class LanguageSettingsManagerTests extends TestCase {
 	// These should match id and name of extension point defined in plugin.xml
-	private static final String DEFAULT_PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.default.language.settings.provider";
-	private static final String DEFAULT_PROVIDER_NAME_EXT = "Test Plugin Default Language Settings Provider";
+	private static final String DEFAULT_PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider";
+	private static final String DEFAULT_PROVIDER_NAME_EXT = "Test Plugin Language Settings Base Provider";
 	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.provider";
 	private static final String PROVIDER_NAME_EXT = "Test Plugin Language Settings Provider";
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
-	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.default.language.settings.provider.subclass";
-	private static final String PERSISTENT_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.persistent.language.settings.provider.subclass";
+	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
 
 	private static final String CONFIGURATION_ID = "cfg.id";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
@@ -149,12 +148,12 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testExtension() throws Exception {
 		{
-			int pos = Arrays.binarySearch(LanguageSettingsManager.getProviderExtensionIds(), DEFAULT_PROVIDER_ID_EXT);
-			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", pos>=0);
+			List<String> ids = Arrays.asList(LanguageSettingsManager.getProviderExtensionIds());
+			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 		{
-			int pos = Arrays.binarySearch(LanguageSettingsManager.getProviderAvailableIds(), DEFAULT_PROVIDER_ID_EXT);
-			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", pos>=0);
+			List<String> ids = Arrays.asList(LanguageSettingsManager.getProviderAvailableIds());
+			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 
 		// get test plugin extension provider
@@ -220,56 +219,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
 		}
 		assertEquals(entriesExt.size(), retrieved.size());
-	}
-	
-	/**
-	 * Check that subclassed LanguageSettingsBaseProvider extension defined in plugin.xml is accessible.
-	 *
-	 * @throws Exception...
-	 */
-	public void testExtensionPersistentProviderSubclass() throws Exception {
-		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(PERSISTENT_PROVIDER_SUBCLASS_ID_EXT);
-		assertNotNull(providerExt);
-		
-		assertTrue(providerExt instanceof TestClassLSPersistentProvider);
-		TestClassLSPersistentProvider provider = (TestClassLSPersistentProvider)providerExt;
-		assertEquals(PERSISTENT_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
-		
-		// benchmarks matching extension point definition
-		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
-		entriesExt.add(new CIncludePathEntry("/usr/include/", ICSettingEntry.BUILTIN));
-		
-		{
-			// retrieve entries from extension point
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
-			for (int i=0;i<entriesExt.size();i++) {
-				assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
-			}
-			assertEquals(entriesExt.size(), retrieved.size());
-		}
-		
-		{
-			// set some settings to parent folder
-			final List<ICLanguageSettingEntry> entriesParent = new ArrayList<ICLanguageSettingEntry>();
-			entriesParent.add(new CIncludePathEntry("/parent/settings", ICSettingEntry.BUILTIN));
-			IFolder parentFolder = ResourcesPlugin.getWorkspace().getRoot().getFolder(new Path("/project/ParentFolder"));
-			provider.setSettingEntries(null, parentFolder, LANG_ID_EXT, entriesParent);
-		
-			// read settings for file in the parent folder
-			IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/ParentFolder/file.cpp"));
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
-			// check parent folder entries
-			for (int i=0;i<entriesParent.size();i++) {
-				assertTrue("i="+i, retrieved.contains(entriesParent.get(i)));
-			}
-			// check extension entries
-			for (int i=0;i<entriesExt.size();i++) {
-				assertTrue("i="+i, retrieved.contains(entriesExt.get(i)));
-			}
-			assertEquals(entriesExt.size()+entriesParent.size(), retrieved.size());
-		}
-		
 	}
 	
 	/**

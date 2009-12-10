@@ -23,47 +23,45 @@ import org.eclipse.tm.tcf.protocol.IService;
 public interface ITCFServiceManager {
 
 	/**
-	 * Gets the agents that implement the given service and also match desired
-	 * set of attributes
+	 * Returns the human readable names of peers that implement the given service
+	 * and also match a desired set of attributes
 	 * 
 	 * @param serviceName
 	 *            the name of the service
 	 * @param attributesToMatch
 	 *            the desired attributes of the service
-	 * @return the list of agent identifiers (which may be empty). If there was
+	 * @return the list of peer names (which may be empty). If there was
 	 *         more than one match, the client should decide which one it wants
 	 *         to use, and get the actual service by calling
 	 *         {@link ITCFServiceManager#useService(String, String, IServiceCallback)}
 	 * @throws Exception
 	 */
-	Collection<String> getAgents(String serviceName, Map<String, String> attributesToMatch) throws Exception;
+	Collection<String> getPeers(String serviceName, Map<String, String> attributesToMatch) throws Exception;
 
 	/**
 	 * Gets the service from the unique service name (asynchronous)
 	 * 
-	 * @param agentId
-	 *            the id of the agent implementing the service which can be
-	 *            obtained from
-	 *            {@link ITCFServiceManager#getAgents(String, Map)}
+	 * @param peerName
+	 *            the human readable name of the peer implementing the service,
+	 *            which can be obtained from
+	 *            {@link ITCFServiceManager#getPeers(String, Map)}
 	 * @param serviceName
 	 *            the name of the service
 	 * @param callback
 	 *            this will be called when the service is ready for use
-	 * @throws throws a core exception if the agent cannot be found, or does not
+	 * @throws throws a core exception if the peer cannot be found, or does not
 	 *         implement the given service
 	 * @throws Exception
 	 */
-	IService getAgentService(String agentId, String serviceName) throws Exception;
+	IService getPeerService(String peerName, String serviceName) throws Exception;
 
 	/**
-	 * Gets the channel used to talk to an agent. If no channel is open yet it
+	 * Gets the channel used to talk to a peer. If no channel is open yet it
 	 * will return null.
 	 * 
-	 * @param agentID
-	 *            ID for the Agent
-	 * @return the channel used by that service
+	 * @param peerName
+	 *            the human readable name of the peer
+	 * @return the channel used to communicate to the specified peer
 	 */
-
-	IChannel getAgentChannel(String agentID);
-
+	IChannel getPeerChannel(String peerName);
 }

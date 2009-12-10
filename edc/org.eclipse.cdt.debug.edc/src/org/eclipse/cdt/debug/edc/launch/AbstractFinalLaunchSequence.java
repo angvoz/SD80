@@ -60,7 +60,8 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	private IPeer tcfAgent = null;
 
 	/**
-	 * Attributes that the debugger requires the TCF agent to match.
+	 * Attributes that the debugger requires the TCF agent to match. Derivatives
+	 * populate this when we call {@link #specifyRequiredAgent()}
 	 */
 	protected final Map<String, String> agentAttributes = new HashMap<String, String>();
 
@@ -227,7 +228,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected IPeer getTCFAgent(String tcfServiceName, Map<String, String> tcfAgentAttrs) throws CoreException {
 		if (tcfAgent == null) {
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-			tcfAgent = tcfServiceManager.findAgent(tcfServiceName, tcfAgentAttrs);
+			tcfAgent = tcfServiceManager.findPeer(tcfServiceName, tcfAgentAttrs);
 		} else {
 			// should we check if the previously found agent meets our need ?
 			// No. Currently and in foreseeable future we only need to support
@@ -239,7 +240,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected IService getTCFService(String tcfServiceName, Map<String, String> tcfAgentAttrs) throws CoreException {
 		IPeer agent = getTCFAgent(tcfServiceName, tcfAgentAttrs);
 		TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-		return tcfServiceManager.getAgentService(agent, tcfServiceName);
+		return tcfServiceManager.getPeerService(agent, tcfServiceName);
 	}
 
 	/**
@@ -569,8 +570,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	}
 
 	/**
-	 * Specify the attributes the debuggers requires from the underlying TCF
-	 * agent. Only agents with those attributes will be chosen for the debugger.
+	 * Specify attributes the debugger requires from the underlying TCF peer.
+	 * Only agents with those attributes will be considered for this debug
+	 * session. This method is called by the abstract class during construction
+	 * of the object. The implementation should add the required attributes to
+	 * {@link #agentAttributes}
 	 */
 	abstract protected void specifyRequiredAgent();
 }

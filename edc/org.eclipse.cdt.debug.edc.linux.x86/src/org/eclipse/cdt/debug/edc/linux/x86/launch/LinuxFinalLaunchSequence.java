@@ -64,7 +64,7 @@ public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 	@Override
 	protected void specifyRequiredAgent() {
-		agentAttributes.put(ITCFAgentLauncher.DEBUG_SUPPORT, "GDB Remote Protocol");
+		peerAttributes.put(ITCFAgentLauncher.DEBUG_SUPPORT, "GDB Remote Protocol");
 	}
 
 	/*

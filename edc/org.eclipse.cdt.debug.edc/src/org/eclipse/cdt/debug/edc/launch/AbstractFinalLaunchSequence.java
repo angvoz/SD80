@@ -57,13 +57,13 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected EDCLaunch launch;
 	protected DsfServicesTracker tracker;
 	protected List<Step> steps = new ArrayList<Step>();
-	private IPeer tcfAgent = null;
+	private IPeer tcfPeer;
 
 	/**
 	 * Attributes that the debugger requires the TCF agent to match. Derivatives
 	 * populate this when we call {@link #specifyRequiredAgent()}
 	 */
-	protected final Map<String, String> agentAttributes = new HashMap<String, String>();
+	protected final Map<String, String> peerAttributes = new HashMap<String, String>();
 
 	/**********************************************
 	 * Common steps
@@ -106,7 +106,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 			RunControl runcontrol = tracker.getService(RunControl.class);
 
-			findTCFServiceForDSFService(runcontrol, IRunControl.NAME, agentAttributes, requestMonitor);
+			findTCFServiceForDSFService(runcontrol, IRunControl.NAME, peerAttributes, requestMonitor);
 
 			requestMonitor.done();
 		}
@@ -122,10 +122,10 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 			final Registers registers = tracker.getService(Registers.class);
 			try {
-				IPeer agent = getTCFAgent(ISimpleRegisters.NAME, agentAttributes);
+				IPeer peer = getTCFPeer(ISimpleRegisters.NAME, peerAttributes);
 
 				TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-				final IChannel channel = tcfServiceManager.getChannelForPeer(agent);
+				final IChannel channel = tcfServiceManager.getChannelForPeer(peer);
 				launch.usingTCFChannel(channel);
 
 				Protocol.invokeLater(new Runnable() {
@@ -156,7 +156,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 			Memory memory = tracker.getService(Memory.class);
 
-			findTCFServiceForDSFService(memory, IMemory.NAME, agentAttributes, requestMonitor);
+			findTCFServiceForDSFService(memory, IMemory.NAME, peerAttributes, requestMonitor);
 
 			requestMonitor.done();
 		}
@@ -171,7 +171,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		public void execute(RequestMonitor requestMonitor) {
 			Breakpoints breakpoints = tracker.getService(Breakpoints.class);
 
-			findTCFServiceForDSFService(breakpoints, org.eclipse.tm.tcf.services.IBreakpoints.NAME, agentAttributes,
+			findTCFServiceForDSFService(breakpoints, org.eclipse.tm.tcf.services.IBreakpoints.NAME, peerAttributes,
 					requestMonitor);
 
 			requestMonitor.done();
@@ -189,7 +189,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 			IService service;
 			try {
-				service = getTCFService(IProcesses.NAME, agentAttributes);
+				service = getTCFService(IProcesses.NAME, peerAttributes);
 			} catch (CoreException e1) {
 				requestMonitor.setStatus(e1.getStatus());
 				requestMonitor.done();
@@ -212,7 +212,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 			IService service;
 			try {
-				service = getTCFService(IProcesses.NAME, agentAttributes);
+				service = getTCFService(IProcesses.NAME, peerAttributes);
 			} catch (CoreException e1) {
 				requestMonitor.setStatus(e1.getStatus());
 				requestMonitor.done();
@@ -225,20 +225,20 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		}
 	};
 
-	protected IPeer getTCFAgent(String tcfServiceName, Map<String, String> tcfAgentAttrs) throws CoreException {
-		if (tcfAgent == null) {
+	protected IPeer getTCFPeer(String tcfServiceName, Map<String, String> tcfPeerAttrs) throws CoreException {
+		if (tcfPeer == null) {
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-			tcfAgent = tcfServiceManager.findPeer(tcfServiceName, tcfAgentAttrs);
+			tcfPeer = tcfServiceManager.findPeer(tcfServiceName, tcfPeerAttrs);
 		} else {
 			// should we check if the previously found agent meets our need ?
 			// No. Currently and in foreseeable future we only need to support
 			// the case that one agent provides all required debug services.
 		}
-		return tcfAgent;
+		return tcfPeer;
 	}
 
-	protected IService getTCFService(String tcfServiceName, Map<String, String> tcfAgentAttrs) throws CoreException {
-		IPeer agent = getTCFAgent(tcfServiceName, tcfAgentAttrs);
+	protected IService getTCFService(String tcfServiceName, Map<String, String> tcfPeerAttrs) throws CoreException {
+		IPeer agent = getTCFPeer(tcfServiceName, tcfPeerAttrs);
 		TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
 		return tcfServiceManager.getPeerService(agent, tcfServiceName);
 	}
@@ -574,7 +574,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * Only agents with those attributes will be considered for this debug
 	 * session. This method is called by the abstract class during construction
 	 * of the object. The implementation should add the required attributes to
-	 * {@link #agentAttributes}
+	 * {@link #peerAttributes}
 	 */
 	abstract protected void specifyRequiredAgent();
 }

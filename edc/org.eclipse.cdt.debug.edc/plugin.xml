@@ -2,7 +2,7 @@
 <?eclipse version="3.4"?>
 <plugin>
 
-   <extension-point id="tcfAgentDescriptor" name="TCF Agent Descriptor" schema="schema/tcfAgentDescriptor.exsd"/>
+   <extension-point id="tcfAgentLauncher" name="TCF Agent Descriptor" schema="schema/tcfAgentLauncher.exsd"/>
 
    <extension
          id="EDCApplication"

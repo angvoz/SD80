@@ -13,42 +13,47 @@ package org.eclipse.cdt.debug.edc;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Provides information about a TCF agent and provides a way to launch it if
- * necessary.
- */
-public interface ITCFAgentDescriptor {
+import org.eclipse.tm.tcf.protocol.IPeer;
 
-	// Some agent attributes
+/**
+ * Provides information about a TCF agent and a way to launch it if it's not
+ * already running. This interface assumes the agent hosts a single peer. An
+ * agent that hosts multiple peers can be described using multiple launchers
+ * with common launch logic.
+ */
+public interface ITCFAgentLauncher {
+
+	// Some additional attributes used for peers described via this mechanism 
 	public static final String DEBUG_SUPPORT = "DebugSupport";
 
 	/**
-	 * Gets the user friendly name of this agent
+	 * Gets the user friendly name of the peer this agent hosts. Same as calling
+	 * getAttributes().get(IPeer#ATTR_NAME)
 	 * 
-	 * @return the name of this agent
+	 * @return the name of the peer
 	 */
-	String getName();
+	String getPeerName();
 
 	/**
-	 * Get the list of service names this agent implements
+	 * Get the names of the services the peer implements.
 	 * 
 	 * @return list of service names, may be empty
 	 */
 	List<String> getServiceNames();
 
 	/**
-	 * Get the attributes of this agent
+	 * Get the attributes of the peer this agent hosts.
 	 * 
-	 * @return the agent attributes, which may be empty
+	 * @return the peer's attributes; at least the {@link IPeer#ATTR_NAME} will
+	 *         be present
 	 */
-	Map<String, String> getAttributes();
+	Map<String, String> getPeerAttributes();
 
 	/**
-	 * Launches the agent if it's not already running
+	 * Launches the agent, if it's not already running
 	 * 
 	 * @throws Exception
 	 *             on any error.
 	 */
 	void launch() throws Exception;
-
 }

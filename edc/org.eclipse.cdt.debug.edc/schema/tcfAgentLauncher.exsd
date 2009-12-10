@@ -3,10 +3,12 @@
 <schema targetNamespace="org.eclipse.cdt.debug.edc" xmlns="http://www.w3.org/2001/XMLSchema">
 <annotation>
       <appinfo>
-         <meta.schema plugin="org.eclipse.cdt.debug.edc" id="tcfAgentDescriptor" name="TCF Agent Descriptor"/>
+         <meta.schema plugin="org.eclipse.cdt.debug.edc" id="tcfAgentLauncher" name="TCF Agent Launcher"/>
       </appinfo>
       <documentation>
-         This extension points allows you to declare a TCF agent that may or may not be already running.  It describes the agent, the services it provides, and a method for lauching it if necessary.  Agents that have no way of being launched programatically do not need to use this extension point.
+         This extension points allows you to declare a TCF agent that may or may not be already running.  It describes the peer the agent hosts, the services that peer provides, and a method for lauching the agent if necessary.  Agents that have no way of being launched programatically do not need to use this extension point.
+
+This interface assumes the agent hosts a single peer. An agent that hosts multiple peers can be described using multiple launchers with common launch logic.
       </documentation>
    </annotation>
 

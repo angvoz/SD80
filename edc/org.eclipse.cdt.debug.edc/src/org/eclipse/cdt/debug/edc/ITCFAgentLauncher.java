@@ -16,10 +16,13 @@ import java.util.Map;
 import org.eclipse.tm.tcf.protocol.IPeer;
 
 /**
- * Provides information about a TCF agent and a way to launch it if it's not
- * already running. This interface assumes the agent hosts a single peer. An
- * agent that hosts multiple peers can be described using multiple launchers
- * with common launch logic.
+ * An implementation of this interface is provided by a tcgAgentLauncher
+ * extension. It's a way to advertise a TCF agent that may not yet be running.
+ * Agents can advertise themselves once they are running via TCF UDP Discovery,
+ * but we need a way for a debugger to discover and launch agents that are not
+ * yet running. This interface assumes the agent hosts a single peer. An agent
+ * that hosts multiple peers can be described using multiple launchers with
+ * common launch logic.
  */
 public interface ITCFAgentLauncher {
 

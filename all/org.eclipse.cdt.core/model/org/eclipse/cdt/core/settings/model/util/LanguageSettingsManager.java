@@ -28,7 +28,11 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICFileDescription;
+import org.eclipse.cdt.core.settings.model.ICFolderDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
@@ -36,6 +40,7 @@ import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -139,6 +144,44 @@ public class LanguageSettingsManager {
 		return list;
 	}
 
+	private static ICLanguageSetting[] getLanguageIds(ICResourceDescription rcDescription) {
+		if (rcDescription instanceof ICFileDescription) {
+			ICFileDescription fileDescription = (ICFileDescription)rcDescription;
+			return new ICLanguageSetting[] {fileDescription.getLanguageSetting()};
+		} else if (rcDescription instanceof ICFolderDescription) {
+			ICFolderDescription folderDescription = (ICFolderDescription)rcDescription;
+			return folderDescription.getLanguageSettings();
+		}
+
+		return null;
+	}
+	
+	// FIXME: this is very inefficient and not quite correct
+	public static boolean isCustomizedResource(ICConfigurationDescription cfgDescription, IResource rc) {
+		for (ILanguageSettingsProvider provider: getProviders(cfgDescription)) {
+			ICResourceDescription rcDescription = cfgDescription.getResourceDescription(rc.getProjectRelativePath(), false);
+			for (ICLanguageSetting languageSetting : getLanguageIds(rcDescription)) {
+				String languageId = languageSetting.getLanguageId();
+				List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
+				if (list!=null) {
+					IContainer rcParent = rc!=null ? rc.getParent() : null;
+					List<ICLanguageSettingEntry> listParent = provider.getSettingEntries(cfgDescription, rcParent, languageId);
+					if (listParent==null) {
+						return true;
+					}
+					for (ICLanguageSettingEntry entry : list) {
+						if (!listParent.contains(entry)) {
+							return true;
+						}
+					}
+				}
+			}
+
+		}
+		
+		return false;
+	}
+	
 	private static Document loadXML(IFile xmlFile) throws CoreException {
 		try {
 			InputStream xmlStream = xmlFile.getContents();
@@ -153,19 +196,21 @@ public class LanguageSettingsManager {
 	public static void load(ICConfigurationDescription cfgDescription) {
 		IProject project = cfgDescription.getProjectDescription().getProject();
 		IFile file = project.getFile("language.settings.xml");
-		Document doc = null;
-		try {
-			doc = loadXML(file);
-		} catch (Exception e) {
-			CCorePlugin.log("Can't load preferences from file "+file.getLocation(), e); //$NON-NLS-1$
-		}
-		
-		if (doc!=null) {
-			Element rootElement = doc.getDocumentElement();
+		if (file.exists() && file.isAccessible()) {
+			Document doc = null;
+			try {
+				doc = loadXML(file);
+			} catch (Exception e) {
+				CCorePlugin.log("Can't load preferences from file "+file.getLocation(), e); //$NON-NLS-1$
+			}
 			
-			for (ILanguageSettingsProvider provider : LanguageSettingsManager.getProviders(cfgDescription)) {
-				if (provider instanceof LanguageSettingsPersistentProvider) {
-					((LanguageSettingsPersistentProvider) provider).load(rootElement);
+			if (doc!=null) {
+				Element rootElement = doc.getDocumentElement();
+				
+				for (ILanguageSettingsProvider provider : LanguageSettingsManager.getProviders(cfgDescription)) {
+					if (provider instanceof LanguageSettingsPersistentProvider) {
+						((LanguageSettingsPersistentProvider) provider).load(rootElement);
+					}
 				}
 			}
 		}

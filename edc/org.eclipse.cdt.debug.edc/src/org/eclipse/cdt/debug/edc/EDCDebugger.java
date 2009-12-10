@@ -107,7 +107,6 @@ public class EDCDebugger extends Plugin {
 		return getDefault().getBundle().getBundleContext();
 	}
 
-	@SuppressWarnings("restriction")
 	public DebugTrace getTrace() {
 		if (trace == null)
 			trace = FrameworkDebugOptions.getDefault().newDebugTrace(getBundle().getSymbolicName());

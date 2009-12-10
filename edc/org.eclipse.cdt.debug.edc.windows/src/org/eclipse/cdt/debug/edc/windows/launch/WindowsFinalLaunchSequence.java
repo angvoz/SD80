@@ -41,9 +41,9 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 			try {
-				IPeer agent = getTCFAgent(ILogging.NAME, agentAttributes);
+				IPeer peer = getTCFPeer(ILogging.NAME, peerAttributes);
 				TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-				final IChannel channel = tcfServiceManager.getChannelForPeer(agent);
+				final IChannel channel = tcfServiceManager.getChannelForPeer(peer);
 				AbstractLoggingConsoleFactory.openConsole(WindowsProgramOutputConsoleFactory.CONSOLE_TYPE,
 						WindowsProgramOutputConsoleFactory.CONSOLE_TITLE, WindowsProgramOutputConsoleFactory.LOG_ID,
 						channel, true);
@@ -65,9 +65,9 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 
-			IPeer agent;
+			IPeer peer;
 			try {
-				agent = getTCFAgent(IRunControl.NAME, agentAttributes);
+				peer = getTCFPeer(IRunControl.NAME, peerAttributes);
 			} catch (CoreException e1) {
 				requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
 						"Fail to initialize for Restart support. Reason: " + e1.getLocalizedMessage()));
@@ -76,7 +76,7 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 			}
 
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-			IChannel channel = tcfServiceManager.getChannelForPeer(agent);
+			IChannel channel = tcfServiceManager.getChannelForPeer(peer);
 
 			launch.getSession().registerModelAdapter(IRestart.class,
 					new RestartCommand(launch.getSession(), launch, channel));
@@ -118,6 +118,6 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 	@Override
 	protected void specifyRequiredAgent() {
-		agentAttributes.put(ITCFAgentLauncher.DEBUG_SUPPORT, "Win32 Debug API");
+		peerAttributes.put(ITCFAgentLauncher.DEBUG_SUPPORT, "Win32 Debug API");
 	}
 }

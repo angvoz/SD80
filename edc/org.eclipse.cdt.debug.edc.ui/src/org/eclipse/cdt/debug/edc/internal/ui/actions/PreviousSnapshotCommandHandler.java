@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.commands.ExecutionEvent;
@@ -44,7 +45,10 @@ public class PreviousSnapshotCommandHandler extends AbstractSnapshotCommandHandl
 	@Override
 	public void debugContextChanged(DebugContextEvent event) {
 		super.debugContextChanged(event);
-		setBaseEnabled(isEnabled() && isSnapshotSession());
+		Album album = getAlbumContext();
+		int snapshotIndex = album.getCurrentSnapshotIndex();
+		// TODO: Rather than disable should we wrap when at the start?
+		setBaseEnabled(isEnabled() && isSnapshotSession() && snapshotIndex > 0);
 	}
 
 }

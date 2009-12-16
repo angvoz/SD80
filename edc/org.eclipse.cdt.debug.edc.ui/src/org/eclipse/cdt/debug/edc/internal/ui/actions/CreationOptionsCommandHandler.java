@@ -11,20 +11,17 @@
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.debug.ui.contexts.DebugContextEvent;
+import org.eclipse.ui.handlers.HandlerUtil;
 
-public class CreateSnapshotCommandHandler extends AbstractSnapshotCommandHandler {
-
-	public CreateSnapshotCommandHandler() {
-		super();
-	}
+public class CreationOptionsCommandHandler extends AbstractSnapshotCommandHandler {
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		DsfSession session = DsfSession.getSession(getSelectionExecutionDMC().getSessionId());
-		Album.createSnapshotForSession(session);
+		String newSetting = event.getParameter("org.eclipse.ui.commands.radioStateParameter");
+		Album.setSnapshotCreationControl(newSetting);
+		HandlerUtil.updateRadioState(event.getCommand(), newSetting);
 		return null;
 	}
 

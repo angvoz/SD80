@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.windows.launch;
 
-import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotLaunchSequence;
 import org.eclipse.cdt.debug.edc.internal.x86.DebugServicesFactoryX86;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunchDelegate;
@@ -30,11 +29,8 @@ public class WindowsLaunchDelegate extends EDCLaunchDelegate {
 	}
 
 	@Override
-	protected Sequence getFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		if (launch.isSnapshotLaunch())
-			return new SnapshotLaunchSequence(executor, launch, pm);
-		else
-			return new WindowsFinalLaunchSequence(executor, launch, pm);
+	protected Sequence getLiveLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
+		return new WindowsFinalLaunchSequence(executor, launch, pm);
 	}
 
 	@Override

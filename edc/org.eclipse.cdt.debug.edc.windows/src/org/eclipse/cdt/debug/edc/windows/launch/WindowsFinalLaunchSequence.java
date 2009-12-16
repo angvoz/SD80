@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.edc.launch.ChooseProcessItem;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging;
 import org.eclipse.cdt.debug.edc.ui.console.AbstractLoggingConsoleFactory;
+import org.eclipse.cdt.debug.edc.ui.console.DebugProgramOutputConsoleFactory;
 import org.eclipse.cdt.debug.edc.windows.RestartCommand;
 import org.eclipse.cdt.debug.edc.windows.WindowsDebugger;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
@@ -44,8 +45,8 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 				IPeer peer = getTCFPeer(ILogging.NAME, peerAttributes);
 				TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
 				final IChannel channel = tcfServiceManager.getChannelForPeer(peer);
-				AbstractLoggingConsoleFactory.openConsole(WindowsProgramOutputConsoleFactory.CONSOLE_TYPE,
-						WindowsProgramOutputConsoleFactory.CONSOLE_TITLE, WindowsProgramOutputConsoleFactory.LOG_ID,
+				AbstractLoggingConsoleFactory.openConsole(DebugProgramOutputConsoleFactory.CONSOLE_TYPE,
+						DebugProgramOutputConsoleFactory.CONSOLE_TITLE, DebugProgramOutputConsoleFactory.LOG_ID,
 						channel, true);
 			} catch (CoreException e) {
 				WindowsDebugger.getMessageLogger().log(e.getStatus()); // log

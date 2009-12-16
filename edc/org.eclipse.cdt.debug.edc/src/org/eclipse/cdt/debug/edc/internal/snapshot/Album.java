@@ -33,33 +33,25 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
-import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.ZipFileUtil;
+import org.eclipse.cdt.debug.edc.internal.ZipFileUtils;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.MapEntrySourceContainer;
+import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.cdt.dsf.service.DsfSession.SessionEndedListener;
-import org.eclipse.core.filesystem.EFS;
-import org.eclipse.core.filesystem.IFileStore;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
-import org.eclipse.core.resources.IWorkspace;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.PlatformObject;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.internal.core.LaunchManager;
-import org.osgi.framework.InvalidSyntaxException;
-import org.osgi.framework.ServiceReference;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -91,14 +83,22 @@ public class Album extends PlatformObject {
 	private static final String FILE = "file";
 	private static final String INFO = "info";
 
+	private static final String METADATA = "snapshotMetaData";
+	private static final String SNAPSHOT_LIST = "snapshots";
+
 	private static final String ALBUM_DATA = "album.xml";
 
 	private static final String ALBUM_VERSION = "100";
 
+	private static String[] DSA_FILE_EXTENSIONS = new String[] {"dsa"};
+	
+	// Preferences
+	private static final String CREATION_CONTROL = "creation_control";
+
 	private Document document;
 	private Element albumRootElement;
 
-	private final List<Snapshot> snapshots = new ArrayList<Snapshot>();
+	private final List<Snapshot> snapshotList = new ArrayList<Snapshot>();
 	private String sessionID = "";
 	private IPath albumRootDirectory;
 	private boolean launchConfigSaved;
@@ -107,15 +107,19 @@ public class Album extends PlatformObject {
 	private String launchName;
 	private String name;
 	private boolean loaded;
+	private boolean metaDataLoaded;
 	private final Set<IPath> files = new HashSet<IPath>();
 
 	private int currentSnapshotIndex;
 	private IPath location;
 	private boolean resourceListSaved;
+	private boolean metadataSaved;
 	private boolean albumInfoSaved;
+	private String displayName;
 
 	private static Map<String, Album> albumsBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());
 	private static Map<IPath, Album> albumsByLocation = Collections.synchronizedMap(new HashMap<IPath, Album>());
+	private static String snapshotCreationControl;
 
 	private static boolean sessionEndedListenerAdded;
 	private static SessionEndedListener sessionEndedListener = new SessionEndedListener() {
@@ -163,6 +167,17 @@ public class Album extends PlatformObject {
 		this.name = name;
 	}
 
+	public void setDisplayName(String displayName) {
+		this.displayName = displayName;
+	}
+
+	public String getDisplayName() {
+		if (displayName == null || displayName.length() == 0) {
+			displayName = getName();
+		}
+		return displayName;
+	}
+
 	public String getSessionID() {
 		return sessionID;
 	}
@@ -185,30 +200,11 @@ public class Album extends PlatformObject {
 	public Snapshot createSnapshot(DsfSession session) {
 
 		configureAlbum();
+		Snapshot snapshot = new Snapshot(this, session);
+		snapshot.writeSnapshotData();
 
-		Snapshot result = null;
-		try {
-			Element snapshotRoot = document.createElement(SNAPSHOT);
-			albumRootElement.appendChild(snapshotRoot);
-
-			ServiceReference[] references = EDCDebugger.getBundleContext().getServiceReferences(
-					ISnapshotContributor.class.getName(), getServiceFilter(session.getId()));
-			for (ServiceReference serviceReference : references) {
-				ISnapshotContributor sc = (ISnapshotContributor) EDCDebugger.getBundleContext().getService(
-						serviceReference);
-				Element serviceElement = sc.takeShapshot(this, document, new NullProgressMonitor());
-				if (serviceElement != null)
-					snapshotRoot.appendChild(serviceElement);
-			}
-			result = new Snapshot(snapshotRoot);
-			snapshots.add(result);
-		} catch (InvalidSyntaxException e) {
-			EDCDebugger.getMessageLogger().logError("Invalid session ID syntax", e); //$NON-NLS-1$
-		} catch (IllegalStateException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
-		}
-
-		return result;
+		snapshotList.add(snapshot);
+		return snapshot;
 	}
 
 	private void configureAlbum() {
@@ -254,6 +250,40 @@ public class Album extends PlatformObject {
 			}
 			albumRootElement.appendChild(resourcesElement);
 			resourceListSaved = true;
+		}
+	}
+
+	private void saveSnapshotMetadata() {
+		if (!metadataSaved) {
+			Element metadataElement = document.createElement(METADATA);
+
+			Element albumElement = document.createElement(ALBUM);
+			albumElement.setAttribute("albumName", this.getDisplayName());
+			metadataElement.appendChild(albumElement);
+
+			Element snapshotsElement = document.createElement(SNAPSHOT_LIST);
+			metadataElement.appendChild(snapshotsElement);
+
+			for (Snapshot snap : snapshotList) {
+				Element snapshotMetadataElement = document.createElement(SNAPSHOT);
+				if (snap.getSnapshotDisplayName().length() == 0) {
+					snapshotMetadataElement.setAttribute("displayName", snap.getSnapshotFileName());
+				} else {
+					snapshotMetadataElement.setAttribute("displayName", snap.getSnapshotDisplayName());
+				}
+				if (snap.getCreationDate() != null) {
+					snapshotMetadataElement.setAttribute("date", snap.getCreationDate().toString());
+				} else {
+					snapshotMetadataElement.setAttribute("date", "unknown");
+				}
+
+				snapshotMetadataElement.setAttribute("description", snap.getSnapshotDescription());
+
+				snapshotMetadataElement.setAttribute("fileName", snap.getSnapshotFileName());
+				snapshotsElement.appendChild(snapshotMetadataElement);
+			}
+			albumRootElement.appendChild(metadataElement);
+			metadataSaved = true;
 		}
 	}
 
@@ -315,65 +345,18 @@ public class Album extends PlatformObject {
 		}
 	}
 
-	public IProject getSnapshotsProject() {
-
-		final String SNAPSHOT_PROJECT_ID = "org.eclipse.cdt.debug.edc.snapshot"; //$NON-NLS-1$
-
-		IProject snapshotsProject = null;
-		// See if the default project exists
-		String defaultProjectName = "Snapshots";
-		ICProject cProject = CoreModel.getDefault().getCModel().getCProject(defaultProjectName);
-		if (cProject.exists()) {
-			snapshotsProject = cProject.getProject();
-		} else {
-			final String[] ignoreList = { ".project", //$NON-NLS-1$
-					".cdtproject", //$NON-NLS-1$
-					".cproject", //$NON-NLS-1$
-					".cdtbuild", //$NON-NLS-1$
-					".settings", //$NON-NLS-1$
-			};
-
-			IWorkspace workspace = ResourcesPlugin.getWorkspace();
-			IProject newProjectHandle = workspace.getRoot().getProject(defaultProjectName);
-
-			int projectSuffix = 2;
-			while (newProjectHandle.exists()) {
-				newProjectHandle = workspace.getRoot().getProject(defaultProjectName + projectSuffix);
-				projectSuffix++;
-			}
-
-			IProjectDescription description = workspace.newProjectDescription(newProjectHandle.getName());
-			description.setLocation(null);
-			IFileStore store;
-			try {
-				store = EFS.getStore(workspace.getRoot().getLocationURI());
-				store = store.getChild(newProjectHandle.getName());
-				for (String deleteName : ignoreList) {
-					IFileStore projFile = store.getChild(deleteName);
-					projFile.delete(EFS.NONE, new NullProgressMonitor());
-				}
-				IFileStore[] children = store.childStores(EFS.NONE, new NullProgressMonitor());
-				for (IFileStore fileStore : children) {
-					if (fileStore.fetchInfo().isDirectory())
-						fileStore.delete(EFS.NONE, new NullProgressMonitor());
-				}
-				snapshotsProject = CCorePlugin.getDefault().createCProject(description, newProjectHandle, null,
-						SNAPSHOT_PROJECT_ID);
-			} catch (Exception e) {
-				EDCDebugger.getMessageLogger().logError(null, e);
-			}
-		}
-		return snapshotsProject;
-	}
-
+	@SuppressWarnings("restriction")
+	/**
+	 * Create and write a full snapshot album from scratch
+	 */
 	private void saveAlbum(IProgressMonitor monitor) {
 
-		IPath zipPath = getSnapshotsProject().getLocation();
+		IPath zipPath = SnapshotUtils.getSnapshotsProject().getLocation();
 		zipPath = zipPath.append(getDefaultAlbumName());
 		zipPath = zipPath.addFileExtension("dsa");
-
+		ZipOutputStream zipOut = null;
 		try {
-			ZipOutputStream zipOut = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
+			zipOut = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
 
 			for (IPath path : files) {
 
@@ -410,15 +393,25 @@ public class Album extends PlatformObject {
 			zipOut.putNextEntry(new ZipEntry(ALBUM_DATA));
 
 			saveResourceList();
+			saveSnapshotMetadata();
 
 			String xml = LaunchManager.serializeDocument(document);
 			zipOut.write(xml.getBytes("UTF8")); //$NON-NLS-1$
 			zipOut.closeEntry();
 
-			zipOut.close();
+			for (Snapshot snap : snapshotList) {
+				zipOut.putNextEntry(new ZipEntry(snap.getSnapshotFileName()));
+				snap.saveSnapshot(zipOut);
+			}
 
 		} catch (Exception e) {
 			EDCDebugger.getMessageLogger().logError(null, e);
+		} finally {
+			try {
+				zipOut.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -455,21 +448,26 @@ public class Album extends PlatformObject {
 
 	public void openSnapshot(int index) throws Exception {
 		currentSnapshotIndex = index;
-		loadAlbum();
+		loadAlbum(false);
 		DsfSession session = DsfSession.getSession(sessionID);
-		if (session != null && snapshots.size() >= index) {
-			Snapshot snapshot = snapshots.get(index);
+		if (session != null && snapshotList.size() >= index) {
+			Snapshot snapshot = snapshotList.get(index);
 			snapshot.open(session);
 		}
 	}
 
+	/**
+	 * Zero based index
+	 * 
+	 * @return current index of snapshot being played
+	 */
 	public int getCurrentSnapshotIndex() {
 		return currentSnapshotIndex;
 	}
 
 	public void openNextSnapshot() throws Exception {
 		int nextIndex = currentSnapshotIndex + 1;
-		if (nextIndex >= snapshots.size())
+		if (nextIndex >= snapshotList.size())
 			nextIndex = 0;
 		openSnapshot(nextIndex);
 	}
@@ -477,21 +475,24 @@ public class Album extends PlatformObject {
 	public void openPreviousSnapshot() throws Exception {
 		int previousIndex = currentSnapshotIndex - 1;
 		if (previousIndex < 0)
-			previousIndex = snapshots.size() - 1;
+			previousIndex = snapshotList.size() - 1;
 		openSnapshot(previousIndex);
 	}
 
-	public void loadAlbum() throws ParserConfigurationException, SAXException, IOException {
+	public void loadAlbum(boolean force) throws ParserConfigurationException, SAXException, IOException {
+		if (force)
+			loaded = false;
 		if (!loaded) {
 			File albumFile = location.toFile();
 			setName(albumFile.getName());
+
 			try {
-				ZipFileUtil.unzipFiles(albumFile, getAlbumRootDirectory().toOSString(), new NullProgressMonitor());
+				ZipFileUtils.unzipFiles(albumFile, getAlbumRootDirectory().toOSString(), new NullProgressMonitor());
 			} catch (Exception e) {
 				EDCDebugger.getMessageLogger().logError(null, e);
 			}
-			FileInputStream fileStream = new FileInputStream(getAlbumCatalog().toOSString());
-			BufferedInputStream stream = new BufferedInputStream(fileStream);
+			
+			BufferedInputStream stream = ZipFileUtils.openFile(albumFile, ALBUM_DATA, DSA_FILE_EXTENSIONS);
 			DocumentBuilder parser = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 			parser.setErrorHandler(new DefaultHandler());
 			document = parser.parse(new InputSource(stream));
@@ -499,15 +500,46 @@ public class Album extends PlatformObject {
 			loadAlbumInfo();
 			loadLaunchConfiguration();
 			loadResourceList();
-
-			NodeList snapshotElements = document.getElementsByTagName(SNAPSHOT);
-			int numSnapshots = snapshotElements.getLength();
-			for (int i = 0; i < numSnapshots; i++) {
-				Element snapshotRoot = (Element) snapshotElements.item(i);
-				snapshots.add(new Snapshot(snapshotRoot));
+			try {
+				loadSnapshotMetadata();
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				loaded = true;
+				ZipFileUtils.unmount();
 			}
+		}
+	}
 
-			loaded = true;
+	/**
+	 * A lightwieght parse to get basic album info and what snapshots are
+	 * available.
+	 * 
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 * @throws IOException
+	 */
+	public void loadAlbumMetada(boolean force) throws Exception {
+		if (force)
+			metaDataLoaded = false;
+		if (!metaDataLoaded) {
+			File albumFile = location.toFile();
+			setDisplayName(albumFile.getName());
+
+			BufferedInputStream stream = null;
+			try {
+				stream = ZipFileUtils.openFile(albumFile, ALBUM_DATA, DSA_FILE_EXTENSIONS);
+				DocumentBuilder parser = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+				parser.setErrorHandler(new DefaultHandler());
+				document = parser.parse(new InputSource(stream));
+				loadSnapshotMetadata();
+
+			} catch (Exception e) {
+				EDCDebugger.getMessageLogger().logError("Failed to load album: " + getName(), e);
+			} finally {
+				metaDataLoaded = true;
+				ZipFileUtils.unmount();
+			}
 		}
 	}
 
@@ -523,6 +555,37 @@ public class Album extends PlatformObject {
 			Element fileElement = (Element) elementFiles.item(i);
 			String elementPath = fileElement.getAttribute("path");
 			files.add(new Path(elementPath));
+		}
+	}
+
+	private void loadSnapshotMetadata() throws Exception {
+		snapshotList.clear();
+		NodeList snapMetaDataNode = document.getElementsByTagName(METADATA);
+
+		if (snapMetaDataNode.getLength() == 0) {
+			throw new Exception("Invalid or corrupted Album : " + getName());
+		}
+		NodeList albumNameElement = ((Element) snapMetaDataNode.item(0)).getElementsByTagName(ALBUM);
+		Element albumElement = (Element) albumNameElement.item(0);
+		String albumDisplayName = albumElement.getAttribute("albumName");
+
+		setDisplayName(albumDisplayName);
+
+		NodeList elementSnapshots = ((Element) snapMetaDataNode.item(0)).getElementsByTagName(SNAPSHOT);
+		int numSnapshots = elementSnapshots.getLength();
+		for (int i = 0; i < numSnapshots; i++) {
+			Element snapshotElement = (Element) elementSnapshots.item(i);
+			String elementDescription = snapshotElement.getAttribute("description");
+			String elementDate = snapshotElement.getAttribute("date");
+			String elementDispalyName = snapshotElement.getAttribute("displayName");
+			String elementFileName = snapshotElement.getAttribute("fileName");
+
+			Snapshot s = new Snapshot(this);
+			s.setCreationDate(elementDate);
+			s.setSnapshotFileName(elementFileName);
+			s.setSnapshotDisplayName(elementDispalyName);
+			s.setSnapshotDescription(elementDescription);
+			snapshotList.add(s);
 		}
 	}
 
@@ -615,6 +678,7 @@ public class Album extends PlatformObject {
 		return location;
 	}
 
+	@SuppressWarnings("restriction")
 	public void configureMappingSourceContainer(MappingSourceContainer mappingContainer) {
 		IPath albumRoot = getAlbumRootDirectory();
 		String device = "";
@@ -622,8 +686,179 @@ public class Album extends PlatformObject {
 		for (IPath iPath : files) {
 			device = iPath.getDevice();
 		}
+		String deviceName = device;
+		if (deviceName.endsWith(":"))
+			deviceName = deviceName.substring(0, deviceName.length() - 1);
+		albumRoot = albumRoot.append(deviceName);
 		MapEntrySourceContainer[] entries = new MapEntrySourceContainer[] { new MapEntrySourceContainer(
 				new Path(device), albumRoot) };
 		mappingContainer.addMapEntries(entries);
 	}
+
+	public static void setSnapshotCreationControl(String newSetting) {
+		snapshotCreationControl = newSetting;
+		new InstanceScope().getNode(EDCDebugger.PLUGIN_ID).put(CREATION_CONTROL, snapshotCreationControl);
+	}
+
+	public static String getSnapshotCreationControl() {
+		if (snapshotCreationControl == null) {
+			snapshotCreationControl = Platform.getPreferencesService().getString(EDCDebugger.PLUGIN_ID,
+					CREATION_CONTROL, "manual", null);
+		}
+		return snapshotCreationControl;
+	}
+
+	public static void createSnapshotForSession(final DsfSession session) {
+		session.getExecutor().execute(new DsfRunnable() {
+			public void run() {
+				String sessionId = session.getId();
+				Album album = Album.getAlbumBySession(sessionId);
+				if (album == null) {
+					album = new Album();
+					album.setSessionID(sessionId);
+				}
+				album.createSnapshot(session);
+			}
+		});
+	}
+
+	public List<Snapshot> getSnapshots() {
+		if (snapshotList == null || snapshotList.size() == 0) {
+			try {
+				loadAlbumMetada(false);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+
+		return snapshotList;
+	}
+
+	public boolean isLoaded() {
+		return loaded;
+	}
+
+	public int getIndexOfSnapshot(Snapshot snap) {
+		return snapshotList.indexOf(snap);
+	}
+
+	public void setCurrentSnapshotIndex(int index) {
+		if (currentSnapshotIndex >= 0 && currentSnapshotIndex < snapshotList.size()) {
+			currentSnapshotIndex = index;
+		}
+	}
+
+	/**
+	 * Update album.xml within the Album's .dsa file with new Snapshot data
+	 * 
+	 * @param albumName
+	 *            - Name of album to display. Use null if value should not be
+	 *            updated.
+	 * @param snap
+	 *            - Specific snapshot to update. Use null is snapshot should not
+	 *            be updated.
+	 */
+	public void updateSnapshotMetaData(String albumName, Snapshot snap) {
+		NodeList snapMetaDataNode = document.getElementsByTagName(METADATA);
+
+		// try to update album display name
+		if (albumName != null) {
+			NodeList albumNameNode = ((Element) snapMetaDataNode.item(0)).getElementsByTagName(ALBUM);
+			((Element) albumNameNode.item(0)).setAttribute("albumName", albumName);
+		}
+
+		// try to update snapshot data
+		if (snap != null) {
+
+			NodeList elementSnapshots = ((Element) snapMetaDataNode.item(0)).getElementsByTagName(SNAPSHOT);
+
+			int numSnapshots = elementSnapshots.getLength();
+			for (int i = 0; i < numSnapshots; i++) {
+				Element currentSnapshotNode = (Element) elementSnapshots.item(i);
+				String fileName = currentSnapshotNode.getAttribute("fileName");
+				if (fileName.equals(snap.getSnapshotFileName())) {
+
+					currentSnapshotNode.setAttribute("description", snap.getSnapshotDescription());
+					currentSnapshotNode.setAttribute("displayName", snap.getSnapshotDisplayName());
+
+					break;
+				}
+			}
+		}
+
+		saveAlbumData();
+
+		// refresh all data
+		try {
+			loadAlbumMetada(true);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	private void saveAlbumData() {
+		try {
+			File tempFile = File.createTempFile("album", ".xml");
+			File tempFile2 = new File(tempFile.getParent() + File.separator + ALBUM_DATA);
+			tempFile.delete();
+			if (!tempFile2.exists()) {
+				tempFile2.delete();
+			}
+			tempFile2.createNewFile();
+			saveAlbum(new Path(tempFile2.toString()));
+			File[] fileList = { tempFile2 };
+			ZipFileUtils.addFilesToZip(fileList, getLocation().toFile(), DSA_FILE_EXTENSIONS);
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (TransformerException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Delete a given snapshot from an album. On delete, the album data will be
+	 * reloaded.
+	 * 
+	 * @param snap
+	 *            Snapshot to delete
+	 */
+	public void deleteSnapshot(Snapshot snap) {
+
+		NodeList snapMetaDataNode = document.getElementsByTagName(METADATA);
+
+		NodeList elementSnapshotList = ((Element) snapMetaDataNode.item(0)).getElementsByTagName(SNAPSHOT_LIST);
+		NodeList elementSnapshots = ((Element) snapMetaDataNode.item(0)).getElementsByTagName(SNAPSHOT);
+
+		int numSnapshots = elementSnapshots.getLength();
+		for (int i = 0; i < numSnapshots; i++) {
+			Element currentSnapshotNode = (Element) elementSnapshots.item(i);
+			String fileName = currentSnapshotNode.getAttribute("fileName");
+			if (fileName.equals(snap.getSnapshotFileName())) {
+				elementSnapshotList.item(0).removeChild(currentSnapshotNode);
+				break;
+			}
+		}
+
+		snapshotList.remove(snap);
+
+		saveAlbumData();
+
+		// refresh all data
+		try {
+			loadAlbum(true);
+			loadAlbumMetada(true);
+		} catch (Exception e) {
+
+		}
+
+		ZipFileUtils.deleteFileFromZip(snap.getSnapshotFileName(), getLocation().toFile(), DSA_FILE_EXTENSIONS);
+	}
+
+	@Override
+	public String toString() {
+		return "Album [name=" + name + ", launchName=" + launchName + ", sessionID=" + sessionID + "]";
+	}
+
 }

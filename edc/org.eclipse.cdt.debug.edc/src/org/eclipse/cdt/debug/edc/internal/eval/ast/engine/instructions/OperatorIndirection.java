@@ -17,9 +17,9 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
+import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
-import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
 import org.eclipse.cdt.utils.Addr64;
@@ -71,11 +71,16 @@ public class OperatorIndirection extends CompoundInstruction {
 
 		VariableWithValue variableWithValue = (VariableWithValue) operand;
 
-		Object opType = TypeUtils.getUnqualifiedType(variableWithValue.getVariable().getType());
+		Object opType = TypeUtils.getStrippedType(variableWithValue.getVariable().getType());
 
 		if (!TypeUtils.isPointerType(opType) || !(variableWithValue.getValue() instanceof BigInteger)) {
-			InvalidExpression invalidExpression = new InvalidExpression(
+			IInvalidExpression invalidExpression = null;
+			if (variableWithValue.getValue() instanceof IInvalidExpression)
+				invalidExpression = (IInvalidExpression) variableWithValue.getValue();
+			else
+				invalidExpression = new InvalidExpression(
 					ASTEvalMessages.OperatorIndirection_RequiresPointer);
+
 			push(invalidExpression);
 			setLastValue(invalidExpression);
 			setValueLocation(""); //$NON-NLS-1$
@@ -83,10 +88,10 @@ public class OperatorIndirection extends CompoundInstruction {
 			return;
 		}
 
-		PointerType pointer = (PointerType) opType;
+		IPointerType pointer = (IPointerType) opType;
 
 		IType pointedTo = pointer.getType();
-		IType unqualifiedPointedTo = TypeUtils.getUnqualifiedType(pointedTo);
+		IType unqualifiedPointedTo = TypeUtils.getStrippedType(pointedTo);
 
 		// do not allow a pointer to a bit-field
 		if ((unqualifiedPointedTo instanceof IField) && (((IField) unqualifiedPointedTo).getBitSize() != 0)) {
@@ -107,12 +112,12 @@ public class OperatorIndirection extends CompoundInstruction {
 				.getFrame(), variable);
 
 		if (unqualifiedPointedTo instanceof ITypedef)
-			unqualifiedPointedTo = TypeUtils.getUnqualifiedType(unqualifiedPointedTo.getType());
+			unqualifiedPointedTo = TypeUtils.getStrippedType(unqualifiedPointedTo.getType());
 
 		// for a lvalues (base arithmetic types, enums, and pointers), read the
 		// value and cast it to the right type
-		if (unqualifiedPointedTo instanceof ICPPBasicType || unqualifiedPointedTo instanceof IEnumeration
-				|| unqualifiedPointedTo instanceof PointerType) {
+		if (unqualifiedPointedTo instanceof ICPPBasicType || unqualifiedPointedTo instanceof IPointerType
+				|| unqualifiedPointedTo instanceof IEnumeration) {
 			int byteSize = unqualifiedPointedTo.getByteSize();
 
 			if (byteSize != 1 && byteSize != 2 && byteSize != 4 && byteSize != 8) {
@@ -157,7 +162,7 @@ public class OperatorIndirection extends CompoundInstruction {
 			VariableWithValue variableWithValue = (VariableWithValue) operand;
 			IType nextType = null;
 			for (nextType = variableWithValue.getVariable().getType(); nextType != null; nextType = nextType.getType()) {
-				if (nextType instanceof PointerType)
+				if (nextType instanceof IPointerType)
 					return nextType;
 			}
 

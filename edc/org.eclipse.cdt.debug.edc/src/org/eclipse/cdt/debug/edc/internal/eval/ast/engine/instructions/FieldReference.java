@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
@@ -70,14 +71,34 @@ public class FieldReference extends CompoundInstruction {
 		}
 
 		VariableWithValue variableWithValue = (VariableWithValue) operand;
-		IType variableType = TypeUtils.getUnqualifiedType(variableWithValue.getVariable().getType());
+		IType variableType = TypeUtils.getStrippedType(variableWithValue.getVariable().getType());
 
 		Object location = null;
 
+		boolean referenceType = variableType instanceof IReferenceType;
+
 		if (refExpression.isPointerDereference()) {
-			// '->' operator
-			if (!TypeUtils.isPointerType(variableType) || !(variableWithValue.getValue() instanceof BigInteger)) {
-				InvalidExpression invalidExpression = new InvalidExpression(
+			// '->' operator requires a pointer type
+			boolean validPointerType = variableType instanceof IPointerType;
+			
+			if (validPointerType) {
+				Object value = variableWithValue.getValue();
+				
+				if (value instanceof Long)
+					variableWithValue.setValue(new BigInteger(((Long) value).toString()));
+				else if (value instanceof Integer)
+					variableWithValue.setValue(new BigInteger(((Integer) value).toString()));
+			
+				validPointerType = variableWithValue.getValue() instanceof BigInteger ||
+								variableWithValue.getValue() instanceof Addr64;
+			}
+			
+			if (!validPointerType) {
+				IInvalidExpression invalidExpression = null;
+				if (variableWithValue.getValue() instanceof IInvalidExpression)
+					invalidExpression = (IInvalidExpression) variableWithValue.getValue();
+				else
+					invalidExpression = new InvalidExpression(
 						ASTEvalMessages.FieldReference_InvalidPointerDeref);
 				push(invalidExpression);
 				setLastValue(invalidExpression);
@@ -89,12 +110,40 @@ public class FieldReference extends CompoundInstruction {
 			IPointerType pointer = (IPointerType) variableType;
 
 			IType pointedTo = pointer.getType();
-			variableType = TypeUtils.getUnqualifiedType(pointedTo);
+			variableType = TypeUtils.getStrippedType(pointedTo);
+		} else if (referenceType) {
+			// '.' may be used with a reference "&" type
+			Object value = variableWithValue.getValue();
+			
+			if (value instanceof Long)
+				variableWithValue.setValue(new BigInteger(((Long) value).toString()));
+			else if (value instanceof Integer)
+				variableWithValue.setValue(new BigInteger(((Integer) value).toString()));
+			
+			if (   !(variableWithValue.getValue() instanceof BigInteger)
+				&& !(variableWithValue.getValue() instanceof Addr64)) {
+				IInvalidExpression invalidExpression = null;
+				if (variableWithValue.getValue() instanceof IInvalidExpression)
+					invalidExpression = (IInvalidExpression) variableWithValue.getValue();
+				else
+					invalidExpression = new InvalidExpression(
+						ASTEvalMessages.FieldReference_InvalidDotDeref);
+				push(invalidExpression);
+				setLastValue(invalidExpression);
+				setValueLocation(""); //$NON-NLS-1$
+				setValueType(""); //$NON-NLS-1$
+				return;
+			}
+
+			IReferenceType pointer = (IReferenceType) variableType;
+
+			IType pointedTo = pointer.getType();
+			variableType = TypeUtils.getStrippedType(pointedTo);
 		}
 
 		if (!TypeUtils.isCompositeType(variableType)) {
 			InvalidExpression invalidExpression = new InvalidExpression(
-					ASTEvalMessages.FieldReference_InvalidCompositeName);
+					ASTEvalMessages.FieldReference_InvalidDotDeref);
 			push(invalidExpression);
 			setLastValue(invalidExpression);
 			setValueLocation(""); //$NON-NLS-1$
@@ -118,9 +167,14 @@ public class FieldReference extends CompoundInstruction {
 		// type and address of the field
 		IType typeOfField = field.getType();
 
-		if (refExpression.isPointerDereference()) {
-			// '->' operator
-			location = new Addr64((BigInteger) variableWithValue.getValue());
+		if (   refExpression.isPointerDereference()
+			|| (!refExpression.isPointerDereference() && referenceType)) {
+			// pointer with '->' operator, or reference with '.' 
+			if (variableWithValue.getValue() instanceof BigInteger) {
+				location = new Addr64((BigInteger) variableWithValue.getValue());
+			} else {
+				location = variableWithValue.getValue();
+			}
 		} else {
 			// '.' operator
 			location = variableWithValue.getValueLocation();
@@ -137,17 +191,17 @@ public class FieldReference extends CompoundInstruction {
 		VariableWithValue varValue = new VariableWithValue(variableWithValue.getServicesTracker(), variableWithValue
 				.getFrame(), variable, field.getBitSize() > 0);
 
-		if (typeOfField.getType() != null && !(typeOfField instanceof IAggregate))
-			typeOfField = TypeUtils.getUnqualifiedType(typeOfField.getType());
+		typeOfField = TypeUtils.getStrippedType(typeOfField);
 
 		// for lvalues (base arithmetic types, enums, and pointers), read the
 		// value and cast it to the right type
-		if (typeOfField instanceof ICPPBasicType || typeOfField instanceof IEnumeration
-				|| typeOfField instanceof IPointerType) {
+		if (typeOfField instanceof ICPPBasicType || typeOfField instanceof IPointerType
+				|| typeOfField instanceof IEnumeration) {
 			int byteSize = typeOfField.getByteSize();
 
 			// TODO support 12-byte long double
-			if (byteSize != 1 && byteSize != 2 && byteSize != 4 && byteSize != 8) {
+			if (byteSize != 1 && byteSize != 2 && byteSize != 4 && byteSize != 8 &&
+				!(typeOfField instanceof IPointerType && byteSize == 0)) {
 				pushNewValue(new Long(0));
 				return;
 			}
@@ -169,8 +223,6 @@ public class FieldReference extends CompoundInstruction {
 				else if (typeOfField instanceof IEnumeration)
 					isSignedInt = true;
 
-				// shift, mask, extend
-				// NOTE: this may need to be endianness aware
 				newValue = TypeUtils.extractBitField(newValue, byteSize, bitSize, bitOffset, isSignedInt);
 			}
 			varValue.setValue(newValue);

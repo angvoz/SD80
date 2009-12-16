@@ -13,10 +13,14 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
+import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
@@ -25,6 +29,7 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Instructi
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Interpreter;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.VariableWithValue;
+import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayBoundType;
@@ -38,6 +43,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IRegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
@@ -58,9 +64,8 @@ import org.eclipse.core.runtime.Status;
 public class Expressions extends AbstractEDCService implements IExpressions {
 
 	// we need a property to hold the expression string when it differs from the
-	// string we display
-	// in the Variables view Name column or the Expressions view Expression
-	// column
+	// string we display in the Variables view Name column or the Expressions
+	// view Expression column
 	public final static String EXPRESSION_PROP = "Expression"; //$NON-NLS-1$
 
 	private static int nextExpressionID = 100;
@@ -135,6 +140,15 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 						hasChildren = true;
 				} else {
 					value = variableValue.getValue();
+
+					// for a reference to a plain type, use the location in the variable with value
+					if (TypeUtils.getStrippedType(valueType) instanceof IReferenceType) {
+						IType pointedTo = TypeUtils.getStrippedType(valueType).getType();
+						if (pointedTo instanceof ICPPBasicType || pointedTo instanceof IPointerType ||
+							pointedTo instanceof IEnumeration) {
+							valueLocation = variableValue.getValueLocation();
+						}
+					}
 				}
 
 				// if the location evaluates to NotLive, the types and values do
@@ -147,7 +161,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 				// for a structured type, array, or pointer return the value in
 				// hex
-				IType unqualifiedType = TypeUtils.getUnqualifiedType(valueType);
+				IType unqualifiedType = TypeUtils.getStrippedType(valueType);
 				if (unqualifiedType instanceof IAggregate || unqualifiedType instanceof IPointerType) {
 					if (value instanceof Addr64)
 						value = "0x" + ((Addr64) value).toString(16); //$NON-NLS-1$
@@ -225,6 +239,10 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		public Object getEvaluatedValue() {
 			return value;
 		}
+		
+		public void setEvaluatedValue(Object value) {
+			this.value = value;
+		}
 
 		public Object getEvaluatedLocation() {
 			return valueLocation;
@@ -242,6 +260,8 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		}
 
 		private String recursiveGetType(Object typeValue) {
+			if (typeValue instanceof IReferenceType)
+				return recursiveGetType(((IReferenceType) typeValue).getType()) + " &"; //$NON-NLS-1$
 			if (typeValue instanceof IPointerType)
 				return recursiveGetType(((IPointerType) typeValue).getType()) + " *"; //$NON-NLS-1$
 			if (typeValue instanceof IArrayType) {
@@ -281,6 +301,10 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 		public boolean hasChildren() {
 			return this.hasChildren;
+		}
+		
+		public IExpressions getService() {
+			return Expressions.this;
 		}
 	}
 
@@ -441,29 +465,64 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		}
 
 		ExpressionDMC expr = (ExpressionDMC) exprContext;
-		StackFrameDMC frame = expr.getFrame();
-		IType exprType = TypeUtils.getUnqualifiedType(expr.getEvaluatedType());
 
-		// to expand it, it must either be a pointer or have children
-		if (!(exprType instanceof IAggregate) && !(exprType instanceof IPointerType)) {
+		// if expression has no evaluated value, then it has not yet been evaluated
+		// NOTE: this should never happen
+		if (expr.getEvaluatedValue() == null) {
+			expr.evaluateExpression();
+		}
+
+		StackFrameDMC frame = expr.getFrame();
+		IType exprType = TypeUtils.getStrippedType(expr.getEvaluatedType());
+
+		// to expand it, it must either be a pointer, a reference to an aggregate,
+		// or an aggregate
+		boolean pointerType = exprType instanceof IPointerType;
+		boolean referenceType = exprType instanceof IReferenceType;
+		IType pointedTo = null;
+		if (referenceType)
+			pointedTo = TypeUtils.getStrippedType(((IReferenceType) exprType).getType());
+		
+		if (!(exprType instanceof IAggregate) && !pointerType &&
+			!(referenceType && (pointedTo instanceof IAggregate))) {
 			rm.setData(new ExpressionDMC[0]);
 			rm.done();
 			return;
 		}
+		
+		ITypeContentProvider customProvider = 
+			FormatExtensionManager.instance().getTypeContentProvider(exprType);
+		if (customProvider != null) {
+			try {
+				getSubExpressions(expr, frame, customProvider, rm);
+			} catch (Throwable e) {
+				// default to normal formatting
+				getSubExpressions(expr, frame, exprType, rm);
+			}
+		}
+		else
+			getSubExpressions(expr, frame, exprType, rm);
+	}
 
+	private void getSubExpressions(ExpressionDMC expr, StackFrameDMC frame, 
+					IType exprType,	DataRequestMonitor<IExpressionDMContext[]> rm) {
+		ExpressionDMC[] children = getsubExpressions(expr, frame, exprType);
+		rm.setData(children);
+		rm.done();
+	}
+	
+	public ExpressionDMC[] getsubExpressions(ExpressionDMC expr, StackFrameDMC frame, IType exprType) {
 		ArrayList<ExpressionDMC> exprList = new ArrayList<ExpressionDMC>();
 		ExpressionDMC exprChild;
 
-		// the expression string we need may be different from the name
-		// displayed in the
-		// Variables view Name column or the Expressions view Expression column
+		// the expression string we need may be different from the name displayed in
+		// the Variables view Name column or the Expressions view Expression column
 		String exprName = expr.getExpression();
 
-		if (exprType instanceof ITypedef)
-			exprType = TypeUtils.getUnqualifiedType(((ITypedef) exprType).getType());
+		exprType = TypeUtils.getStrippedType(exprType);
 
 		// should be a pointer, structure, or array
-		if (exprType instanceof IPointerType) {
+		if (exprType instanceof IPointerType || exprType instanceof IReferenceType) {
 			expandPointedTo(frame, exprType, exprName, exprList);
 		} else if (exprType instanceof ICompositeType) {
 			// an artifact of following a pointer to a structure is that the
@@ -528,8 +587,17 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 				child.setName(childName);
 			}
 		}
+		return children;
+	}
 
-		rm.setData(children);
+	private void getSubExpressions(ExpressionDMC expr, StackFrameDMC frame, 
+		ITypeContentProvider customProvider, DataRequestMonitor<IExpressionDMContext[]> rm) throws Throwable {
+		List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
+		Iterator<IExpressionDMContext> childIterator = customProvider.getChildIterator(expr);
+		while (childIterator.hasNext() && !rm.isCanceled()) {
+			children.add(childIterator.next());
+		}
+		rm.setData((IExpressionDMContext[]) children.toArray(new IExpressionDMContext[children.size()]));
 		rm.done();
 	}
 
@@ -537,49 +605,54 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		ExpressionDMC exprChild;
 
 		// a pointer type has one child
-		IType typePointedTo = TypeUtils.getUnqualifiedType(exprType.getType());
-		if (typePointedTo instanceof ITypedef)
-			typePointedTo = TypeUtils.getUnqualifiedType(((ITypedef) typePointedTo).getType());
+		IType typePointedTo = TypeUtils.getStrippedType(exprType.getType());
 
 		// if expression name already starts with "&", just remove it
-		if (exprName.startsWith("&")) { //$NON-NLS-1$
+		if ((exprType instanceof IPointerType) && exprName.startsWith("&")) { //$NON-NLS-1$
 			exprName = exprName.substring(1);
 			exprChild = new ExpressionDMC(frame, exprName);
-		} else {
+			return;
+		}
+		
+		if (exprType instanceof IReferenceType)
+			exprChild = new ExpressionDMC(frame, exprName); //$NON-NLS-1$
+		else
 			exprChild = new ExpressionDMC(frame, "*" + exprName); //$NON-NLS-1$
 
-			// ALTERNATIVE EXPANSION: for struct s *p, show separate
-			// "struct s *" line expanding to "struct s" line
-			// if (exprChild != null) {
-			// exprList.add(exprChild);
-			// }
+		// ALTERNATIVE EXPANSION: for struct s *p, show additional "struct s *"
+		// line that then gets expanded to to a "struct s" line
+		// if (exprChild != null) {
+		// 		exprList.add(exprChild);
+		// }
 
-			if (typePointedTo instanceof ICPPBasicType || typePointedTo instanceof IEnumeration
-					|| typePointedTo instanceof IPointerType) {
-				// for types without enumerators/elements
-				if (exprChild != null) {
-					exprList.add(exprChild);
-				}
-			} else if (typePointedTo instanceof ICompositeType) {
-				// for composites, go directly to showing the fields
+		if (typePointedTo instanceof ICPPBasicType || typePointedTo instanceof IPointerType
+				|| typePointedTo instanceof IEnumeration) {
+			// for types without members/elements
+			if (exprChild != null && exprType instanceof IPointerType) {
+				exprList.add(exprChild);
+			}
+		} else if (typePointedTo instanceof ICompositeType) {
+			// for composites, go directly to showing the fields
+			if (exprType instanceof IReferenceType)
+				exprName = exprName + "."; //$NON-NLS-1$
+			else
 				exprName = exprName + "->"; //$NON-NLS-1$
 
-				// for each field, evaluate an expression, then shorten the name
-				ICompositeType compositeType = (ICompositeType) typePointedTo;
+			// for each field, evaluate an expression, then shorten the name
+			ICompositeType compositeType = (ICompositeType) typePointedTo;
 
-				IField[] fields = compositeType.getFields();
+			IField[] fields = compositeType.getFields();
 
-				for (IField field : fields) {
-					exprChild = new ExpressionDMC(frame, exprName + (field).getName());
-					if (exprChild != null) {
-						exprList.add(exprChild);
-					}
-				}
-			} else {
-				// for arrays
+			for (IField field : fields) {
+				exprChild = new ExpressionDMC(frame, exprName + (field).getName());
 				if (exprChild != null) {
 					exprList.add(exprChild);
 				}
+			}
+		} else {
+			// for arrays
+			if (exprChild != null) {
+				exprList.add(exprChild);
 			}
 		}
 	}
@@ -608,7 +681,21 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 		if (idmContext instanceof ExpressionDMC) {
 			exprDMC = (ExpressionDMC) formattedDataContext.getParents()[0];
-			formattedValue = exprDMC.getFormattedValue(formattedDataContext);
+
+			formattedValue = exprDMC.getFormattedValue(formattedDataContext); // must call this to get type
+			IType exprType = TypeUtils.getStrippedType(exprDMC.getEvaluatedType());
+			IVariableValueConverter customValue = 
+				FormatExtensionManager.instance().getVariableValueConverter(exprType);
+			if (customValue != null) {
+				FormattedValueDMData customFormattedValue = null;
+				try {
+					customFormattedValue = new FormattedValueDMData(customValue.getValue(exprDMC));
+					formattedValue = customFormattedValue;
+				}
+				catch (Throwable t) {
+					// default to normal formatting
+				}
+			}
 		} else
 			formattedValue = new FormattedValueDMData(""); //$NON-NLS-1$
 

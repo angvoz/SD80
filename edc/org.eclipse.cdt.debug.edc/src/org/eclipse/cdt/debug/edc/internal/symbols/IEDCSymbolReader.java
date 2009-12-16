@@ -17,9 +17,18 @@ import org.eclipse.cdt.core.ISymbolReader;
 import org.eclipse.core.runtime.IPath;
 
 /**
- * Interface for getting symbolics information from a symbol file
+ * Interface for getting symbolics information from a symbol file. The symbolics
+ * information includes debug information (e.g. DWARF, CODEVIEW) and symbol
+ * table data. A binary file may only have symbol table without debug
+ * information.
  */
 public interface IEDCSymbolReader extends IModuleScope, ISymbolReader {
+	
+	enum DebugInformationType {
+		DWARF,
+		CODEVIEW,
+		STABS
+	}
 
 	/**
 	 * Get the absolute path to the symbol file
@@ -88,4 +97,23 @@ public interface IEDCSymbolReader extends IModuleScope, ISymbolReader {
 	 * The reader is no longer needed and should free up any resources
 	 */
 	void shutDown();
+
+	/**
+	 * Check whether the symbol file has debug information recognized by this
+	 * reader. The debug information here means data in the binary file that's
+	 * specially for debugger, such as DWARF and CODEVIEW. The symbol table
+	 * section data in many types of binary files is not considered debug
+	 * information here.
+	 * 
+	 * @return
+	 */
+	boolean hasRecognizedDebugInformation();
+
+	/**
+	 * Get the type of debug information that this reader can parse. It's assumed
+	 * one reader handles only one type of debug information.
+	 * 
+	 * @return a {@link DebugInformationType} value.
+	 */
+	DebugInformationType getRecognizedDebugInformationType();
 }

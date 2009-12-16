@@ -18,12 +18,14 @@ import java.util.Map;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.ITCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.IDSFServiceUsingTCF;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
+import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.SimpleRegistersProxy;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
@@ -124,9 +126,8 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			try {
 				IPeer peer = getTCFPeer(ISimpleRegisters.NAME, peerAttributes);
 
-				TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
+				ITCFServiceManager tcfServiceManager = EDCDebugger.getDefault().getServiceManager();
 				final IChannel channel = tcfServiceManager.getChannelForPeer(peer);
-				launch.usingTCFChannel(channel);
 
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
@@ -228,7 +229,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected IPeer getTCFPeer(String tcfServiceName, Map<String, String> tcfPeerAttrs) throws CoreException {
 		if (tcfPeer == null) {
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-			tcfPeer = tcfServiceManager.findPeer(tcfServiceName, tcfPeerAttrs);
+			tcfPeer = tcfServiceManager.getPeer(tcfServiceName, tcfPeerAttrs);
 		} else {
 			// should we check if the previously found agent meets our need ?
 			// No. Currently and in foreseeable future we only need to support
@@ -308,11 +309,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			// Get absolute program path.
 			ICProject cproject = LaunchUtils.getCProject(cfg);
 			IPath program = LaunchUtils.verifyProgramPath(cfg, cproject); // works
-																			// even
-																			// if
-																			// cproject
-																			// is
-																			// null.
+			// even if cproject is null.
 			final String file = program.toOSString();
 
 			final String workingDirectory = cfg.getAttribute(ICDTLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY,
@@ -417,7 +414,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 			for (int i = 0; i < numProcesses; i++) {
 				contexts[i] = getProcessContext(processes[i], service);
-				String procID = (String) contexts[i].getProperties().get(IRunControl.PROP_PROCESS_ID);
+				String procID = (String) contexts[i].getProperties().get(ProtocolConstants.PROP_OS_ID);
 				if (procID == null)
 					procID = "unknown";
 				ChooseProcessItem item = new ChooseProcessItem(procID, contexts[i].getName());

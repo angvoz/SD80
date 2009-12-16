@@ -4,6 +4,8 @@
 
    <extension-point id="tcfAgentLauncher" name="TCF Agent Descriptor" schema="schema/tcfAgentLauncher.exsd"/>
 
+   <extension-point id="variableFormatProvider" name="Variable Format Provider" schema="schema/variableFormatProvider.exsd"/>
+
    <extension
          id="EDCApplication"
          name="EDC Application"
@@ -63,6 +65,26 @@
             class="org.eclipse.cdt.debug.edc.internal.scripting.LaunchConfiguration"
             name="launchConfiguration">
       </scriptableClass>
+      <scriptableClass
+            class="org.eclipse.cdt.debug.edc.internal.scripting.StackFrame"
+            name="stackFrame">
+      </scriptableClass>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.formatter.DefaultCompositeFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.default.composite"
+            label="Default Composite Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.formatter.DefaultArrayFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.default.array"
+            label="Default Array Formatter">
+      </variableFormatProvider>
    </extension>
 
 </plugin>

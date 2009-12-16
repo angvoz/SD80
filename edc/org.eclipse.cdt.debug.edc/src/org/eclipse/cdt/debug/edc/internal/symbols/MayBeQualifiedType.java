@@ -35,26 +35,20 @@ public class MayBeQualifiedType extends Type implements IMayBeQualifedType {
 
 	@Override
 	public IType getType() {
-		if (!qualifiersChecked)
-			checkQualifiers();
 		return type;
 	}
 
 	/**
-	 * Check whether the type is qualified. If so, set the proper booleans and
-	 * have getType() return the unqualified type.
+	 * Check whether the type is qualified. If so, set the proper booleans.
 	 */
 	private void checkQualifiers() {
-		IType typeChecked = this.type;
-		while (typeChecked != null && (typeChecked instanceof IQualifierType)) {
-			if (typeChecked instanceof ConstType)
-				this.isConst = true;
-			else
-				this.isVolatile = true; // assumes the only qualifiers are const
-										// and volatile
+		IType checkedType = this.type;
+		while (checkedType != null && (checkedType instanceof IQualifierType)) {
+			isConst    |= checkedType instanceof ConstType;
+			isVolatile |= checkedType instanceof VolatileType;
+			checkedType = checkedType.getType();
 		}
-		this.type = typeChecked;
-		this.qualifiersChecked = true;
+		qualifiersChecked = true;
 	}
 
 }

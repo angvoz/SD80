@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
@@ -23,7 +24,6 @@ import org.eclipse.cdt.dsf.debug.service.command.IEventListener;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.tm.tcf.services.IRunControl;
 
 public class Processes extends AbstractEDCService implements IProcesses, IEventListener {
 
@@ -32,11 +32,11 @@ public class Processes extends AbstractEDCService implements IProcesses, IEventL
 	 */
 	@Immutable
 	protected static class ExecutionDMData implements IThreadDMData {
-		String name;
-		String id;
+		String name = "unknown";
+		String id = "unknown";
 
 		public ExecutionDMData(ExecutionDMC dmc) {
-			id = (String) dmc.getProperty(IRunControl.PROP_PROCESS_ID);
+			id = (String) dmc.getProperty(ProtocolConstants.PROP_OS_ID);
 			name = (String) dmc.getProperty(DMContext.PROP_NAME);
 		}
 

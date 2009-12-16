@@ -23,14 +23,4 @@ public class PointerType extends MayBeQualifiedType implements IPointerType {
 		super("", null, 0, null); //$NON-NLS-1$
 	}
 
-	@Override
-	public void setType(IType type) {
-		this.type = type;
-	}
-
-	@Override
-	public IType getType() {
-		return type;
-	}
-
 }

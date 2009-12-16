@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.edc.internal.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.service.IDsfService;
+import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.tm.tcf.services.IRegisters;
 
@@ -63,7 +64,7 @@ public interface ITargetEnvironment extends IDsfService {
 	 * 
 	 * @return list of sizes, in bytes, of C/C++ data types
 	 */
-	public HashMap<String, Integer> getBasicTypeSizes();
+	public HashMap<Integer, Integer> getBasicTypeSizes();
 
 	/**
 	 * Get size of pointer data type
@@ -163,6 +164,13 @@ public interface ITargetEnvironment extends IDsfService {
 	 */
 	public IAddressExpressionEvaluator getAddressExpressionEvaluator();
 
+	/**
+	 * Get the {@link ILaunch} object for the debug session.
+	 * 
+	 * @return ILaunch object
+	 */
+	public ILaunch getLaunch();
+	
 	/**
 	 * Get launch configuration for the debug session this service is linked to.
 	 * 

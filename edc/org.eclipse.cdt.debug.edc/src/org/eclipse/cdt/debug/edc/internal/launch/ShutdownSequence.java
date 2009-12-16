@@ -11,13 +11,13 @@
 package org.eclipse.cdt.debug.edc.internal.launch;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointsMediator2;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
-import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
@@ -70,17 +70,17 @@ public class ShutdownSequence extends Sequence {
 			requestMonitor.done();
 		}
 	}, new Step() {
+		@Override
+		public void execute(RequestMonitor requestMonitor) {
+			shutdownService(IDisassembly.class, requestMonitor);
+		}
+	}, new Step() {
 		// Call this to make sure breakpoints are removed.
 		// Do this before we shutdown other services to ensure
 		// breakpoints can be removed.
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
-			shutdownService(BreakpointsMediator.class, requestMonitor);
-		}
-	}, new Step() {
-		@Override
-		public void execute(RequestMonitor requestMonitor) {
-			shutdownService(IDisassembly.class, requestMonitor);
+			shutdownService(BreakpointsMediator2.class, requestMonitor);
 		}
 	}, new Step() {
 		@Override

@@ -50,8 +50,10 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISymbol;
 import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
+import org.eclipse.cdt.debug.edc.internal.symbols.InheritanceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.LexicalBlockScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.Scope;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
 import org.eclipse.cdt.debug.edc.internal.symbols.StructType;
@@ -91,8 +93,8 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 	final static String DWARF_DEBUG_MACINFO = ".debug_macinfo"; //$NON-NLS-1$
 
 	// only map the sections we need to save space - add here as needed. note
-	// that DWARF_DEBUG_INFO is handled as a special
-	// case since it can be very large and we don't want to map it into memory
+	// that DWARF_DEBUG_INFO is handled as a special case since it can be very
+	// large and we don't want to map it into memory
 	final static String[] MINIMAL_DWARF_SCNNAMES = { DWARF_DEBUG_ABBREV, DWARF_DEBUG_LINE, DWARF_DEBUG_LOC,
 			DWARF_DEBUG_STR };
 
@@ -430,12 +432,9 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 	private Map<Long, List<LocationEntry>> locationEntriesByOffset = new HashMap<Long, List<LocationEntry>>();
 
 	// function and type declarations can be referenced by offsets relative to
-	// the compile unit
-	// or to the entire .debug_info section. therefore we keep maps by
-	// .debug_info offset, and
-	// for compile unit relative offsets, we just add the compile unit offset
-	// into the .debug_info
-	// section.
+	// the compile unit or to the entire .debug_info section. therefore we keep
+	// maps by .debug_info offset, and for compile unit relative offsets, we
+	// just add the compile unit offset into the .debug_info section.
 	protected Map<Long, AttributeList> functionsByOffset = new HashMap<Long, AttributeList>();
 	protected Map<Long, Type> typesByOffset = new HashMap<Long, Type>();
 
@@ -484,8 +483,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		recordSections();
 
 		// TODO should we start parsing in a background job? ensure parsed would
-		// then block
-		// until the job has completed
+		// then block until the job has completed
 	}
 
 	protected ByteBuffer getDwarfSection(String sectionName) {
@@ -564,8 +562,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 						name = ISection.NAME_TEXT;
 					else if (sectionName.equals(SectionHeader._DATA))
 						name = ISection.NAME_DATA;
-					else if (sectionName.equals(".rdata")) // add this name in
-						// SectionHeader ?
+					else if (sectionName.equals(".rdata")) // add this name in SectionHeader ?
 						name = ISection.NAME_RODATA;
 					else if (sectionName.equals(SectionHeader._BSS))
 						name = ISection.NAME_BSS;
@@ -574,9 +571,8 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 					}
 
 					// Well, PE is a _modified_ version of COFF, where
-					// section.s_paddr of COFF
-					// becomes "VirtualSize" (memory size of the section) in PE,
-					// while s_size
+					// section.s_paddr of COFF becomes "VirtualSize"
+					// (memory size of the section) in PE, while s_size
 					// is raw data size (file size of the section).
 					long size = s.s_paddr; // not s_size !
 
@@ -604,9 +600,10 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 			}
 		}
 
-		// make sure it's Dwarf
 		if (debugInfoSectionInfo == null) {
-			throw new IOException(symbolFilePath.toOSString() + " is not a Dwarf file");
+			// No, we need to keep the section data and symbol table data for the module
+			// even if there is no dwarf data.
+//			throw new IOException(symbolFilePath.toOSString() + " is not a Dwarf file");
 		}
 	}
 
@@ -627,11 +624,9 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 						dwarfSections.put(element, ByteBuffer.wrap(section.loadSectionData()));
 					} catch (Throwable e) {
 						// if that fails then try to map it into memory. this is
-						// a little slower
-						// but should work unless the section is really large.
-						// note even for huge
-						// (500MB) sym files, the only section that's ever too
-						// big for memory mapping
+						// a little slower  but should work unless the section
+						// is really large. note even for huge (500MB) sym files,
+						// the only section that's ever too big for memory mapping
 						// is the .debug_info section which we handle
 						// differently anyway
 						try {
@@ -813,13 +808,17 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 	private void parseDebugInfo() {
 
 		// this does a full parse of the dwarf data. if we haven't built the
-		// referenced files list
-		// from a quick parse yet, flag it here so we can build the file list as
-		// we parse.
+		// referenced files list from a quick parse yet, flag it here so we
+		// can build the file list as we parse.
 		if (referencedFiles.isEmpty()) {
 			buildReferencedFilesList = true;
 		}
 
+		if (debugInfoSectionInfo == null) {	// no dwarf data.
+			isParsed = true;
+			return;
+		}
+		
 		ERandomAccessFile symFile = null;
 
 		try {
@@ -840,12 +839,10 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 				currentCUHeader.length = read_4_bytes(ByteBuffer.wrap(lengthBytes));
 
 				// now read the whole compile unit into memory. note that we're
-				// reading
-				// the whole section including the size that we already read
-				// because other
-				// code will use the offset of the buffer as the offset of the
-				// section to
-				// store things by offset (types, function declarations, etc).
+				// reading the whole section including the size that we already
+				// read because other code will use the offset of the buffer as
+				// the offset of the section to store things by offset (types,
+				// function declarations, etc).
 				byte[] bytes = new byte[currentCUHeader.length + 4];
 				symFile.seek(fileIndex);
 				symFile.read(bytes);
@@ -896,6 +893,10 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		ERandomAccessFile symFile = null;
 
+		if (debugInfoSectionInfo == null) {	// no dwarf data.
+			return;
+		}
+		
 		try {
 			// get the compile units out of the .debug_info section
 			symFile = new ERandomAccessFile(symbolFilePath.toOSString(), "r"); //$NON-NLS-1$
@@ -941,8 +942,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 				quickParseLineInfo(stmtList, compDir);
 
 				// skip past the compile unit. note that the unit_length does
-				// not include
-				// the size of the unit length itself
+				// not include the size of the unit length itself
 				fileIndex += unit_length + 4;
 				symFile.seek(fileIndex);
 			}
@@ -1109,7 +1109,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 			processPointerType(offset, attributeList);
 			break;
 		case DwarfConstants.DW_TAG_reference_type:
-			// TODO
+			processReferenceType(offset, attributeList);
 			break;
 		case DwarfConstants.DW_TAG_compile_unit:
 			processCompileUnit(attributeList);
@@ -1128,6 +1128,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		case DwarfConstants.DW_TAG_unspecified_parameters:
 			break;
 		case DwarfConstants.DW_TAG_inheritance:
+			processInheritance(offset, attributeList, header, compositeNesting);
 			break;
 		case DwarfConstants.DW_TAG_ptr_to_member_type:
 			break;
@@ -1239,14 +1240,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		IPath filePath = DwarfHelper.normalizeFilePath(compDir, name, getSymbolFile());
 
 		// some compilers (RVCT) may generate multiple compile units for the
-		// same file.
-		// in such cases they typically have one main compile unit that has
-		// address range,
-		// while the others just have other type declarations, etc. since
-		// keeping multiple
-		// compile units for the same file makes lookup by filename/path
-		// difficult, we'll
-		// merge the contents of each duplicate compile entry into one
+		// same file. in such cases, they typically have one main compile unit
+		// that has address range, while the others just have other type
+		// declarations, etc. since keeping multiple compile units for the
+		// same file makes lookup by filename/path difficult, we'll merge the
+		// contents of each duplicate compile entry into one
 		currentCompileUnitScope = (DwarfCompileUnit) compileUnits.get(filePath);
 		if (currentCompileUnitScope == null) {
 			// first one. create it now.
@@ -1259,10 +1257,9 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		if (currentCompileUnitScope.getLowAddress().isZero() && currentCompileUnitScope.getLowAddress().isZero()) {
 			// the existing entry does not yet have an address range. set the
-			// range of this compile unit
-			// and also the attributes since those will be used to fetch the
-			// line table data. we want the
-			// line table from the same compile unit that has address ranges.
+			// range of this compile unit and also the attributes since those
+			// will be used to fetch the line table data. we want the line
+			// table from the same compile unit that has address ranges.
 			currentCompileUnitScope.setLowAddress(low);
 			currentCompileUnitScope.setHighAddress(high);
 			currentCompileUnitScope.setAttributes(attributeList);
@@ -1272,10 +1269,8 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 			referencedFiles.add(currentCompileUnitScope.getFilePath().toOSString());
 
 			// do a quick parse of the line table to get any other referenced
-			// files
-			// note that even the full parse doesn't parse the line table
-			// information.
-			// that is calculated (and then cached) on demand
+			// files note that even the full parse doesn't parse the line table
+			// information. that is calculated (and then cached) on demand
 			int stmtList = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_stmt_list);
 			quickParseLineInfo(stmtList, compDir);
 		}
@@ -1311,8 +1306,8 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		IAddress high = new Addr32(attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_high_pc));
 
 		// functions with no high/low pc aren't real functions. just treat them
-		// as declarations as they
-		// will be pointed to by abstract_origin from another sub program tag
+		// as declarations as they will be pointed to by abstract_origin from
+		// another sub program tag
 		if (low.isZero() && high.isZero()) {
 			functionsByOffset.put(offset, attributeList);
 			return;
@@ -1379,9 +1374,8 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		if (name.length() == 0) {
 			// the name should either be an attribute of the compile unit, or be
-			// in the declaration
-			// which according to the spec will always be before its definition
-			// in the Dwarf.
+			// in the declaration which according to the spec will always be
+			// before its definition in the Dwarf.
 			return;
 		}
 
@@ -1455,14 +1449,72 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
+	private void processInheritance(long offset, AttributeList attributeList, CompilationUnitHeader header,
+			ArrayList<CompositeNest> compositeNesting) {
+		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+
+		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
+		properties.putAll(attributeList.attributeMap);
+		properties.put(CU_DEBUG_INFO_OFFSET, currentCUHeader.debugInfoOffset);
+		
+		// if needed, remove structures whose definitions are finished
+		while ((compositeNesting.size() > 0)
+				&& (compositeNesting.get(0).getSiblingOffset() + header.debugInfoOffset <= offset))
+			compositeNesting.remove(0);
+
+		ICompositeType compositeType = null;
+
+		// find the deepest nested (last added) compositeNesting member
+		if (compositeNesting.size() > 0) {
+			compositeType = (compositeNesting.get(0).getType());
+		}
+
+		// The allowed attributes are DW_AT_type, DW_AT_data_member_location,
+		// and DW_AT_accessibility
+		long fieldsOffset = 0;
+		byte[] offsetBlock = attributeList.getAttributeValueAsBytes(DwarfConstants.DW_AT_data_member_location);
+		// unsigned LEB128 encoding
+		if (offsetBlock.length > 0 && offsetBlock[0] == DwarfConstants.DW_OP_plus_uconst) {
+			for (int i = 1, shift = 0; i < offsetBlock.length; i++) {
+				fieldsOffset += (offsetBlock[i] & 0x7f) << shift;
+				shift += 7;
+			}
+		}
+
+		// default accessibility is private
+		int accessibility = ICompositeType.ACCESS_PRIVATE;
+		if (attributeList.getAttribute(DwarfConstants.DW_AT_accessibility) != null) {
+			accessibility = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_accessibility);
+			
+			if (accessibility == DwarfConstants.DW_ACCESS_public)
+				accessibility = ICompositeType.ACCESS_PUBLIC;
+			else if (accessibility == DwarfConstants.DW_ACCESS_private)
+				accessibility = ICompositeType.ACCESS_PRIVATE;
+			else
+				accessibility = ICompositeType.ACCESS_PROTECTED;
+		}
+		
+		InheritanceType type = new InheritanceType(currentParentScope, accessibility, fieldsOffset, properties);
+
+		// add the member to the deepest nested (last added) compositeNesting
+		// member
+		if (compositeType != null)
+			compositeType.addInheritance(type);
+		typesByOffset.put(offset, type);
+		
+		
+		typesByOffset.put(offset, type);
+		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+	}
+
 	// remove composites that are out of scope and add a composite that is now
 	// is scope
 	private void adjustCompositeNesting(long offset, long siblingOffset, ICompositeType type,
 			CompilationUnitHeader header, ArrayList<CompositeNest> compositeNesting) {
 
 		// siblingOffset will be 0 when the composite is being used, but not
-		// being defined. E.g., when we are
-		// getting the type of a pointer such as "class foo *pFoo"
+		// being defined. E.g., when we are getting the type of a pointer such
+		// as "class foo *pFoo"
 		if (siblingOffset != 0) {
 			// if needed, remove composites whose definitions are finished
 			while ((compositeNesting.size() > 0)
@@ -1487,12 +1539,12 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		int bitSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_bit_size);
 		int bitOffset = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_bit_offset);
 
-		long memberOffset = 0;
+		long fieldOffset = 0;
 		byte[] offsetBlock = attributeList.getAttributeValueAsBytes(DwarfConstants.DW_AT_data_member_location);
 		// unsigned LEB128 encoding
 		if (offsetBlock.length > 0 && offsetBlock[0] == DwarfConstants.DW_OP_plus_uconst) {
 			for (int i = 1, shift = 0; i < offsetBlock.length; i++) {
-				memberOffset += (offsetBlock[i] & 0x7f) << shift;
+				fieldOffset += (offsetBlock[i] & 0x7f) << shift;
 				shift += 7;
 			}
 		}
@@ -1509,8 +1561,23 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 			compositeType = (compositeNesting.get(0).getType());
 		}
 
-		FieldType type = new FieldType(name, currentParentScope, compositeType, memberOffset, bitSize, bitOffset,
-				byteSize, properties);
+		// default accessibility depends on the composite type -
+		// public for a struct or union, private for a class
+		int accessibility = ICompositeType.ACCESS_PUBLIC;
+		if (attributeList.getAttribute(DwarfConstants.DW_AT_accessibility) != null) {
+			accessibility = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_accessibility);
+			
+			if (accessibility == DwarfConstants.DW_ACCESS_public)
+				accessibility = ICompositeType.ACCESS_PUBLIC;
+			else if (accessibility == DwarfConstants.DW_ACCESS_private)
+				accessibility = ICompositeType.ACCESS_PRIVATE;
+			else
+				accessibility = ICompositeType.ACCESS_PROTECTED;
+		} else if (compositeType != null && compositeType instanceof ClassType)
+			accessibility = ICompositeType.ACCESS_PRIVATE;
+
+		FieldType type = new FieldType(name, currentParentScope, compositeType, fieldOffset, bitSize, bitOffset,
+				byteSize, accessibility, properties);
 
 		// add the member to the deepest nested (last added) compositeNesting
 		// member
@@ -1546,6 +1613,20 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		ArrayBoundType type = new ArrayBoundType(currentParentScope, arrayBound);
 		typesByOffset.put(offset, type);
 		arrayParent.addBound(type);
+		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+	}
+
+	private void processReferenceType(long offset, AttributeList attributeList) {
+		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+
+		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
+		properties.putAll(attributeList.attributeMap);
+		properties.put(CU_DEBUG_INFO_OFFSET, currentCUHeader.debugInfoOffset);
+
+		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+
+		ReferenceType type = new ReferenceType(name, currentParentScope, properties);
+		typesByOffset.put(offset, type);
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
@@ -1669,9 +1750,9 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 			if (name.contains("short")) {
 				qualifierBits |= ICPPBasicType.IS_SHORT;
 			} else if (name.contains("long long")) {
-				qualifierBits |= ICPPBasicType.IS_LONG;
-			} else if (this.name.contains("long")) {
 				qualifierBits |= ICPPBasicType.IS_LONG_LONG;
+			} else if (this.name.contains("long")) {
+				qualifierBits |= ICPPBasicType.IS_LONG;
 			}
 			break;
 		case DwarfConstants.DW_ATE_signed_char:
@@ -1684,9 +1765,9 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 			if (name.contains("short")) {
 				qualifierBits |= ICPPBasicType.IS_SHORT;
 			} else if (name.contains("long long")) {
-				qualifierBits |= ICPPBasicType.IS_LONG;
-			} else if (this.name.contains("long")) {
 				qualifierBits |= ICPPBasicType.IS_LONG_LONG;
+			} else if (this.name.contains("long")) {
+				qualifierBits |= ICPPBasicType.IS_LONG;
 			}
 			break;
 		case DwarfConstants.DW_ATE_unsigned_char:
@@ -1743,13 +1824,10 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		ILocationProvider locationProvider = getLocationProvider(locationAttribute);
 		if (locationProvider == null) {
 			// TODO no location - I believe this means it was in the source but
-			// did not
-			// make it into the object code (optimized out?). see section 2.6 of
-			// the
-			// dwarf3 spec. for now we're ignoring it but we may be able to show
-			// it in
-			// the view with some special decoration to indicate that it's been
-			// optimized out
+			// did not make it into the object code (optimized out?). see section
+			// 2.6 of the dwarf3 spec. for now we're ignoring it but we may be able
+			// to show it in the view with some special decoration to indicate that
+			// it's been optimized out
 			return;
 		}
 
@@ -1964,12 +2042,18 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 	public Collection<IFunctionScope> getFunctionsByName(String name) {
 		ensureParsed();
-		return Collections.unmodifiableCollection(functionsByName.get(name));
+		List<IFunctionScope> result = functionsByName.get(name);
+		if (result == null)
+			return new ArrayList<IFunctionScope>(0);
+		return Collections.unmodifiableCollection(result);
 	}
 
 	public Collection<IVariable> getVariablesByName(String name) {
 		ensureParsed();
-		return Collections.unmodifiableCollection(variablesByName.get(name));
+		List<IVariable> result = variablesByName.get(name);
+		if (result == null)
+			return new ArrayList<IVariable>(0);
+		return Collections.unmodifiableCollection(result);
 	}
 
 	public void shutDown() {
@@ -2028,5 +2112,14 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		ensureParsed();
 
 		return super.getScopeAtAddress(linkAddress);
+	}
+
+	public DebugInformationType getRecognizedDebugInformationType() {
+		return DebugInformationType.DWARF;
+	}
+
+	public boolean hasRecognizedDebugInformation() {
+		ensureParsed();
+		return debugInfoSectionInfo != null;
 	}
 }

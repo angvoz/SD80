@@ -17,73 +17,51 @@ import java.math.BigInteger;
  */
 public class TypeUtils {
 
-	// names to display and type IDs for basic C and C++ types
-	static public final String DATA_NAME_CHAR = "char"; //$NON-NLS-1$
-	static public final String DATA_NAME_CHAR_UNSIGNED = "unsigned char"; //$NON-NLS-1$
-	static public final String DATA_NAME_CHAR_SIGNED = "signed char"; //$NON-NLS-1$
-	static public final String DATA_NAME_SHORT = "short"; //$NON-NLS-1$
-	static public final String DATA_NAME_SHORT_UNSIGNED = "unsigned short"; //$NON-NLS-1$
-	static public final String DATA_NAME_INT = "int"; //$NON-NLS-1$
-	static public final String DATA_NAME_INT_UNSIGNED = "unsigned int"; //$NON-NLS-1$
-	static public final String DATA_NAME_LONG = "long"; //$NON-NLS-1$
-	static public final String DATA_NAME_LONG_UNSIGNED = "unsigned long"; //$NON-NLS-1$
-	static public final String DATA_NAME_LONG_LONG = "long long"; //$NON-NLS-1$
-	static public final String DATA_NAME_LONG_LONG_UNSIGNED = "unsigned long long"; //$NON-NLS-1$
-	static public final String DATA_NAME_FLOAT = "float"; //$NON-NLS-1$
-	static public final String DATA_NAME_FLOAT_COMPLEX = "float _Complex"; //$NON-NLS-1$
-	static public final String DATA_NAME_DOUBLE = "double"; //$NON-NLS-1$
-	static public final String DATA_NAME_DOUBLE_COMPLEX = "double _Complex"; //$NON-NLS-1$
-	static public final String DATA_NAME_LONG_DOUBLE = "long double"; //$NON-NLS-1$
-	static public final String DATA_NAME_LONG_DOUBLE_COMPLEX = "long double _Complex"; //$NON-NLS-1$
-	static public final String DATA_NAME_BOOL = "bool"; //$NON-NLS-1$
-	static public final String DATA_NAME_BOOL_C9X = "_Bool"; //$NON-NLS-1$
+	// type IDs for basic C and C++ types
+	static public final int BASIC_TYPE_CHAR				 = 1;
+	static public final int BASIC_TYPE_CHAR_UNSIGNED	 = 2;
+	static public final int BASIC_TYPE_CHAR_SIGNED		 = 3;
+	static public final int BASIC_TYPE_SHORT			 = 4;
+	static public final int BASIC_TYPE_SHORT_UNSIGNED	 = 5;
+	static public final int BASIC_TYPE_INT				 = 6;
+	static public final int BASIC_TYPE_INT_UNSIGNED		 = 7;
+	static public final int BASIC_TYPE_LONG				 = 8;
+	static public final int BASIC_TYPE_LONG_UNSIGNED	 = 9;
+	static public final int BASIC_TYPE_LONG_LONG		 = 10;
+	static public final int BASIC_TYPE_LONG_LONG_UNSIGNED = 11;
+	static public final int BASIC_TYPE_FLOAT			 = 12;
+	static public final int BASIC_TYPE_FLOAT_COMPLEX	 = 13;
+	static public final int BASIC_TYPE_DOUBLE			 = 14;
+	static public final int BASIC_TYPE_DOUBLE_COMPLEX	 = 15;
+	static public final int BASIC_TYPE_LONG_DOUBLE		 = 16;
+	static public final int BASIC_TYPE_LONG_DOUBLE_COMPLEX = 17;
+	static public final int BASIC_TYPE_BOOL				 = 18;
+	static public final int BASIC_TYPE_BOOL_C9X		 	 = 19;
+	static public final int BASIC_TYPE_WCHAR_T			 = 20;
+	static public final int BASIC_TYPE_POINTER			 = 21; // not technically a basic type
 
-	// is a type a pointer type?
+	// is a type a pointer "*" type?
 	public static boolean isPointerType(Object type) {
-		if (!(type instanceof IType))
-			return false;
-
-		while (type instanceof ITypedef || type instanceof IQualifierType)
-			type = ((Type) type).getType();
-
-		return type instanceof IPointerType;
+		return getStrippedType(type) instanceof IPointerType;
 	}
 
-	// is a type an aggregate type?
+	// is a type a reference "&" type?
+	public static boolean isReferenceType(Object type) {
+		return getStrippedType(type) instanceof IReferenceType;
+	}
+
+	// is a type an aggregate (composite or array) type?
 	public static boolean isAggregateType(Object type) {
-		if (!(type instanceof IType))
-			return false;
-
-		while (type instanceof ITypedef || type instanceof IQualifierType)
-			type = ((Type) type).getType();
-
-		return type instanceof IAggregate;
+		return getStrippedType(type) instanceof IAggregate;
 	}
 
-	// is a type a structured type?
+	// is a type a composite (class, struct, or union) type?
 	public static boolean isCompositeType(Object type) {
-		if (!(type instanceof IType))
-			return false;
-
-		while (type instanceof ITypedef || type instanceof IQualifierType)
-			type = ((Type) type).getType();
-
-		return type instanceof ICompositeType;
+		return getStrippedType(type) instanceof ICompositeType;
 	}
 
-	// is a type a base type?
-	public static boolean isBaseType(Object type) {
-		if (!(type instanceof IType))
-			return false;
-
-		while (type instanceof ITypedef || type instanceof IQualifierType)
-			type = ((IType) type).getType();
-
-		return type instanceof ICPPBasicType;
-	}
-
-	// return the unqualified, untypedef'ed type
-	public static IType getUnqualifiedType(Object type) {
+	// return the type with no typedefs, consts, or volatiles
+	public static IType getStrippedType(Object type) {
 		if (!(type instanceof IType))
 			return null;
 
@@ -92,14 +70,40 @@ public class TypeUtils {
 
 		return (IType) type;
 	}
+	
+	// return base type with no typedefs, consts, volatiles, pointer types, or array types
+	public static IType getBaseType(Object type) {
+		if (!(type instanceof IType))
+			return null;
 
+		while (type instanceof ITypedef || type instanceof IQualifierType 
+				|| type instanceof IPointerType || type instanceof IArrayType)
+			type = ((IType) type).getType();
+
+		return (IType) type;
+	}
+
+	// return base type with no consts, volatiles, pointer types, or array types - but preserving typedefs
+	public static IType getBaseTypePreservingTypedef(Object type) {
+		if (!(type instanceof IType))
+			return null;
+
+		while (type instanceof IQualifierType 
+				|| type instanceof IPointerType || type instanceof IArrayType)
+			type = ((IType) type).getType();
+
+		return (IType) type;
+	}
+
+	// shift, mask, and extend an extracted bit-field
+	// NOTE: this may need to be endianness aware
 	public static Object extractBitField(Object value, int byteSize, int bitSize, int bitOffset, boolean isSignedInt) {
 		if (bitSize <= 0 || value == null
 				|| (!(value instanceof Long) && !(value instanceof Integer) && !(value instanceof BigInteger))) {
 			return value;
 		}
 
-		// TODO: Need to get actual sizes from the target environment
+		// TODO: Need to get default type sizes from the ITargetEnvironment
 		// This assumes long and long long are 64 bits, and int is 32 bits
 		if (value instanceof Long) {
 			long longValue = (Long) value;
@@ -133,7 +137,7 @@ public class TypeUtils {
 			BigInteger bigValue = (BigInteger) value;
 			bigValue = bigValue.shiftRight((byteSize * 8) - (bitOffset + bitSize));
 			byte[] bytes = new byte[8];
-			long mask;
+			int mask;
 			BigInteger bigMask;
 
 			mask = ((-1) >>> (32 - bitSize));

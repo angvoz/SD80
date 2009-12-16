@@ -67,18 +67,26 @@ public class EvaluateID extends SimpleInstruction {
 		String id = new String(lookupName.getLookupKey());
 
 		StackFrameDMC frame = (StackFrameDMC) context;
+		DsfServicesTracker servicesTracker = frame.getDsfServicesTracker();
+		Modules modules = servicesTracker.getService(Modules.class);
+
 		VariableDMC variable = frame.findLocalVariable(id);
-		if (variable != null) {
+		// This may be called on debugger shutdown, in which case the "modules" 
+		// service may have been shutdown.
+		if (variable != null && modules != null) {
 			Object valueLocation = new Object();
-			DsfServicesTracker servicesTracker = frame.getDsfServicesTracker();
-			Modules modules = servicesTracker.getService(Modules.class);
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getVariable().getLocationProvider();
 			IAddress pcValue = frame.getIPAddress();
 			ModuleDMC module = modules.getModuleByAddress(symContext, pcValue);
 			IVariableLocation location = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
 			if (location instanceof IMemoryVariableLocation) {
-				valueLocation = ((IMemoryVariableLocation) location).getAddress();
+				IMemoryVariableLocation memoryLocation = (IMemoryVariableLocation) location;
+				if (memoryLocation.isRuntimeAddress()) {
+					valueLocation = memoryLocation.getAddress();
+				} else {
+					valueLocation = module.toRuntimeAddress(memoryLocation.getAddress());
+				}
 			} else {
 				// either in a register or not live at the given address
 				valueLocation = location;

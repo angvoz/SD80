@@ -63,11 +63,8 @@ public abstract class UnaryLogicalOperator extends CompoundInstruction {
 
 		operand = convertForPromotion(operand);
 
-		int promotedType = getBinaryPromotionType(operand, operand); // change
-																		// chars/shorts
-																		// to
-																		// int,
-																		// etc.
+		// change chars/shorts to int, etc.
+		int promotedType = getBinaryPromotionType(operand, operand);
 
 		// let others convert the type to the string "bool", "_Bool", etc.
 		this.setValueType(ASTEvaluationEngine.UNKNOWN_TYPE);

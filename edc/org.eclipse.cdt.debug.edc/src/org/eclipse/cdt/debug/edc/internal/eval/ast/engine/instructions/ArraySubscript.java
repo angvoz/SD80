@@ -39,6 +39,7 @@ public class ArraySubscript extends CompoundInstruction {
 	 * @param expression
 	 *            - array subscript expression
 	 * @param start
+	 *            - instruction start
 	 */
 	public ArraySubscript(int start) {
 		super(start);
@@ -108,7 +109,7 @@ public class ArraySubscript extends CompoundInstruction {
 		}
 
 		VariableWithValue variableWithValue = (VariableWithValue) variableOperand;
-		IType variableType = TypeUtils.getUnqualifiedType(variableWithValue.getVariable().getType());
+		IType variableType = TypeUtils.getStrippedType(variableWithValue.getVariable().getType());
 
 		IArrayType arrayType;
 		Addr64 location = null;
@@ -116,8 +117,8 @@ public class ArraySubscript extends CompoundInstruction {
 		int byteSize;
 
 		// if the variable is an IArrayType, there are two cases:
-		// we're accessing a single element of a one dimensional array
-		// we're accessing an entire dimension of a multidimensional array
+		//   we're accessing a single element of a one dimensional array
+		//   we're accessing an entire dimension of a multidimensional array
 		if (variableType instanceof IArrayType) {
 
 			arrayType = (IArrayType) variableType;
@@ -129,11 +130,11 @@ public class ArraySubscript extends CompoundInstruction {
 
 			// find the location of indexed 1st dimension element, or of entire
 			// dimension
-			arrayElementType = TypeUtils.getUnqualifiedType(arrayType.getType());
+			arrayElementType = TypeUtils.getStrippedType(arrayType.getType());
 
 			byteSize = arrayElementType.getByteSize();
 			if (arrayElementType instanceof ITypedef) {
-				byteSize = TypeUtils.getUnqualifiedType(arrayElementType.getType()).getByteSize();
+				byteSize = TypeUtils.getStrippedType(arrayElementType.getType()).getByteSize();
 			}
 
 			if (variableWithValue.getValueLocation() instanceof IAddress) {
@@ -184,15 +185,15 @@ public class ArraySubscript extends CompoundInstruction {
 		}
 
 		// if the variable is an ArrayDimensionType, there are two cases:
-		// we're accessing a single element of a multidimensional array
-		// we're accessing another entire dimension of a multidimensional array
+		//   we're accessing a single element of a multidimensional array
+		//   we're accessing another entire dimension of a multidimensional array
 		ArrayDimensionType arrayDimension = (ArrayDimensionType) variableType;
 		arrayType = arrayDimension.getArrayType();
-		arrayElementType = TypeUtils.getUnqualifiedType(arrayType.getType());
+		arrayElementType = TypeUtils.getStrippedType(arrayType.getType());
 
 		byteSize = arrayElementType.getByteSize();
 		if (arrayElementType instanceof ITypedef) {
-			byteSize = TypeUtils.getUnqualifiedType(arrayElementType.getType()).getByteSize();
+			byteSize = TypeUtils.getStrippedType(arrayElementType.getType()).getByteSize();
 		}
 
 		arrayDimension.addDimension(subscript, arrayType.getBound(arrayDimension.getDimensionCount()).getElementCount()
@@ -223,7 +224,7 @@ public class ArraySubscript extends CompoundInstruction {
 		setValueType(arrayElementType);
 
 		if (arrayElementType instanceof ITypedef)
-			arrayElementType = TypeUtils.getUnqualifiedType(arrayElementType.getType());
+			arrayElementType = TypeUtils.getStrippedType(arrayElementType.getType());
 
 		// for a lvalues (base arithmetic types, enums, and pointers), read the
 		// value and cast it to the right type

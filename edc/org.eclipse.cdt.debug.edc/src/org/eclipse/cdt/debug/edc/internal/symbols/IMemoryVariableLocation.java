@@ -23,5 +23,11 @@ public interface IMemoryVariableLocation extends IVariableLocation {
 	 * @return the link address
 	 */
 	IAddress getAddress();
+	
+	/**
+	 * Is this address a runtime address or a link address?
+	 * @return true if runtime address, false if link address
+	 */
+	boolean isRuntimeAddress();
 
 }

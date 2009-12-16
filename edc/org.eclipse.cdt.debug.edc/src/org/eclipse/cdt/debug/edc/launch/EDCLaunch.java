@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.launch;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,11 +22,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
+import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.launch.ShutdownSequence;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ProcessExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.debug.edc.internal.snapshot.AlbumSourceContainer;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DefaultDsfExecutor;
@@ -40,6 +41,7 @@ import org.eclipse.cdt.dsf.debug.model.DsfMemoryBlockRetrieval;
 import org.eclipse.cdt.dsf.debug.service.IDsfDebugServicesFactory;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlShutdownDMEvent;
+import org.eclipse.cdt.dsf.debug.sourcelookup.DsfSourceLookupDirector;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -344,7 +346,8 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 		director.initializeParticipants();
 		try {
 			if (isSnapshotLaunch()) {
-				AlbumSourceContainer sourceContainer = new AlbumSourceContainer(getAlbum());
+				MappingSourceContainer sourceContainer = new MappingSourceContainer(getAlbum().getName());
+				getAlbum().configureMappingSourceContainer(sourceContainer);
 				ISourceContainer[] containers = new ISourceContainer[] { sourceContainer };
 				director.setSourceContainers(containers);
 			} else {
@@ -373,9 +376,21 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 				if (album == null) {
 					album = new Album();
 					album.setLocation(albumPath);
-					album.loadAlbum();
+					album.loadAlbum(false);
 				}
 				album.setSessionID(session.getId());
+
+				Album album = Album.getAlbumBySession(session.getId());
+				MappingSourceContainer sourceContainer = new MappingSourceContainer(album.getName());
+				album.configureMappingSourceContainer(sourceContainer);
+				DsfSourceLookupDirector locator = (DsfSourceLookupDirector) getSourceLocator();
+				ArrayList<ISourceContainer> containerList = new ArrayList<ISourceContainer>(Arrays.asList(locator
+						.getSourceContainers()));
+				containerList.add(sourceContainer);
+				locator.setSourceContainers(containerList.toArray(new ISourceContainer[containerList.size()]));
+
+			} else {
+
 			}
 			snapshotSupportInitialized = true;
 		} catch (Exception e) {

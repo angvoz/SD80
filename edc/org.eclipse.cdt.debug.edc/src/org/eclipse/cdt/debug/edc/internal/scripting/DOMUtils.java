@@ -26,6 +26,7 @@ import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.tm.tcf.services.IRunControl;
 
 public class DOMUtils {
 
@@ -81,8 +82,12 @@ public class DOMUtils {
 		List<ExecutionDMC> threadList = new ArrayList<ExecutionDMC>();
 		for (ExecutionDMC context : getSuspendedContexts(sessionId)) {
 			String parentId = (String) context.getProperties().get(RunControl.PROP_PARENT_ID);
-			if (parentId != null && !"root".equals(parentId))
-				threadList.add(context);
+			if (parentId != null && !"root".equals(parentId)) {
+				// filter out internal reasons for suspension
+				String message = (String) context.getProperties().get(RunControl.PROP_MESSAGE);
+				if (message != null && !IRunControl.REASON_SHAREDLIB.equals(message))
+					threadList.add(context);
+			}
 		}
 
 		return threadList;

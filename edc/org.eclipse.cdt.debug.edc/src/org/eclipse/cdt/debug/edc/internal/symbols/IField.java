@@ -23,6 +23,8 @@ public interface IField extends IType {
 	public int getBitSize();
 
 	public int getBitOffset();
+	
+	public int getAccessibility();
 
 	/**
 	 * Returns the composite type that owns the field.

@@ -26,6 +26,7 @@ import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICWatchpoint;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleLoadedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleUnloadedEvent;
@@ -33,7 +34,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ProcessExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
+import org.eclipse.cdt.debug.internal.core.breakpoints.BreakpointProblems;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
@@ -42,22 +43,28 @@ import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator;
+import org.eclipse.cdt.dsf.debug.service.IBreakpointAttributeTranslator;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
-import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
-import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ModuleLoadedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IModules.ModuleUnloadedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr32;
+import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.debug.core.model.IBreakpoint;
 import org.eclipse.debug.core.model.ISourceLocator;
 import org.eclipse.debug.core.model.MemoryByte;
@@ -71,17 +78,37 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	/**
 	 * Breakpoint attributes markers used in the map parameters of
 	 * insert/updateBreakpoint(). All are optional with the possible exception
-	 * of TYPE. It is the responsibility of the service to ensure that the set
-	 * of attributes provided is sufficient to create/update a valid breakpoint
-	 * on the back-end.
+	 * of TYPE. It is the responsibility of the
+	 * {@link IBreakpointAttributeTranslator} to ensure that the set of
+	 * attributes provided is sufficient to create/update a valid breakpoint on
+	 * the back-end.
 	 */
 	public static final String PREFIX = "org.eclipse.cdt.debug.edc.breakpoint"; //$NON-NLS-1$
 
-	// General markers
+	// Our own attribute keys.
+	//
+	/**
+	 * Breakpoint type: value is string.
+	 */
 	public static final String BREAKPOINT_TYPE = PREFIX + ".type"; //$NON-NLS-1$
-	public static final String BREAKPOINT = "breakpoint"; //$NON-NLS-1$
-	public static final String WATCHPOINT = "watchpoint"; //$NON-NLS-1$
-	public static final String CATCHPOINT = "catchpoint"; //$NON-NLS-1$
+		// type values:
+		public static final String BREAKPOINT = "breakpoint"; //$NON-NLS-1$
+		public static final String WATCHPOINT = "watchpoint"; //$NON-NLS-1$
+		public static final String CATCHPOINT = "catchpoint"; //$NON-NLS-1$
+
+	/**
+	 * breakponint sub-type: value is string.
+	 */
+	public static final String BREAKPOINT_SUBTYPE = PREFIX + ".subtype"; //$NON-NLS-1$
+		// sub-type values:
+		public static final String LINE_BREAKPOINT = "line_bp"; //$NON-NLS-1$
+		public static final String FUNCTION_BREAKPOINT = "function_bp"; //$NON-NLS-1$
+		public static final String ADDRESS_BREAKPOINT = "address_bp"; //$NON-NLS-1$
+	
+	/**
+	 * breakpoint runtime address: value is hex string with no preceding "0x". 
+	 */
+	public static final String RUNTIME_ADDRESS = PREFIX + ".runtime_addr";
 
 	// Error messages
 	final String NULL_STRING = ""; //$NON-NLS-1$
@@ -107,6 +134,8 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	private boolean startupBreakpointResolved = false;
 
 	private ISourceLocator sourceLocator;
+
+    private Map<ICBreakpoint, IMarker> fBreakpointMarkers = new HashMap<ICBreakpoint, IMarker>();
 
 	static private long nextBreakpointID = 1;
 
@@ -234,6 +263,9 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			return originalInstruction;
 		}
 
+		/**
+		 * @return reference to properties map of the bp.
+		 */
 		public Map<String, Object> getProperties() {
 			return properties;
 		}
@@ -461,115 +493,46 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	}
 
 	/**
-	 * Set a breakpoint.
+	 * Set one target breakpoint.
 	 * 
 	 * @param context
 	 * @param attributes
+	 *            attributes for the target breakpoint. For EDC, it must contain
+	 *            the RUNTIME_ADDRESS attribute.
 	 * @param drm
 	 */
 	private void addBreakpoint(final IBreakpointsTargetDMContext context, final Map<String, Object> attributes,
 			final DataRequestMonitor<IBreakpointDMContext> drm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE, new Object[] { attributes });
 
-		String file = (String) attributes.get(ICBreakpoint.SOURCE_HANDLE);
-		String function = (String) attributes.get(ICLineBreakpoint.FUNCTION);
-		Integer line = (Integer) attributes.get(IMarker.LINE_NUMBER);
-
-		final IExecutionDMContext exe_dmc = DMContexts.getAncestorOfType(context, IExecutionDMContext.class);
-
+		IExecutionDMContext exe_dmc = DMContexts.getAncestorOfType(context, IExecutionDMContext.class);
+		String bpAddr = (String)attributes.get(RUNTIME_ADDRESS);
+		
 		assert exe_dmc != null : "ExecutionDMContext is unknown in addBreakpoint().";
+		assert bpAddr != null;
+		
+		createBreakpoint(exe_dmc, new Addr64(bpAddr, 16), attributes, new DataRequestMonitor<BreakpointDMData>(
+				getExecutor(), drm) {
 
-		if (function != null && function.length() > 0) {
-			ModuleDMC module = (ModuleDMC) context;
-			IEDCSymbolReader symReader = module.getSymbolReader();
-			if (symReader != null) {
-				int parenIndex = function.indexOf('(');
-				if (parenIndex >= 0)
-					function = function.substring(0, parenIndex);
-				Collection<IFunctionScope> functions = symReader.getFunctionsByName(function);
-				if (functions.size() > 0) {
-					// TODO what if there's more than one function with the same
-					// name?
-					IAddress breakAddr = functions.iterator().next().getLowAddress();
+			@Override
+			protected void handleSuccess() {
+				final BreakpointDMData bpd = getData();
 
-					// convert from link to runtime address
-					breakAddr = module.toRuntimeAddress(breakAddr);
+				enableBreakpoint(bpd, new RequestMonitor(getExecutor(), drm) {
 
-					createBreakpoint(exe_dmc, breakAddr, attributes, new DataRequestMonitor<BreakpointDMData>(
-							getExecutor(), drm) {
+					@Override
+					protected void handleSuccess() {
+						IBreakpointDMContext bp_dmc = bpd.getContext();
+						drm.setData(bp_dmc);
 
-						@Override
-						protected void handleSuccess() {
-							final BreakpointDMData bpd = getData();
+						// Remember this in our global list.
+						userBreakpoints.put(bp_dmc, bpd);
 
-							enableBreakpoint(bpd, new RequestMonitor(getExecutor(), drm) {
-
-								@Override
-								protected void handleSuccess() {
-									IBreakpointDMContext bp_dmc = bpd.getContext();
-									drm.setData(bp_dmc);
-
-									// Remember this in our global list.
-									userBreakpoints.put(bp_dmc, bpd);
-
-									drm.done();
-								}
-							});
-						}
-					});
-				} else {
-					drm.done();
-				}
-			} else {
-				drm.done();
-			}
-		} else {
-			Modules modulesService = getServicesTracker().getService(Modules.class);
-			ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
-
-			file = convertPath(file);
-
-			modulesService.calcAddressInfo(sym_dmc, file, line, 0, new DataRequestMonitor<AddressRange[]>(
-					getExecutor(), drm) {
-
-				@Override
-				protected void handleSuccess() {
-					AddressRange[] addr_ranges = getData();
-
-					// there could be multiple address ranges for the same
-					// source
-					// line.
-					// e.g. for templates or inlined functions. if so we need to
-					// set
-					// breakpoints on all locations
-					for (AddressRange range : addr_ranges) {
-						createBreakpoint(exe_dmc, range.getStartAddress(), attributes,
-								new DataRequestMonitor<BreakpointDMData>(getExecutor(), drm) {
-
-									@Override
-									protected void handleSuccess() {
-										final BreakpointDMData bpd = getData();
-
-										enableBreakpoint(bpd, new RequestMonitor(getExecutor(), drm) {
-
-											@Override
-											protected void handleSuccess() {
-												IBreakpointDMContext bp_dmc = bpd.getContext();
-												drm.setData(bp_dmc);
-
-												// Remember this in our global
-												// list.
-												userBreakpoints.put(bp_dmc, bpd);
-
-												drm.done();
-											}
-										});
-									}
-								});
+						drm.done();
 					}
-				}
-			});
-		}
+				});
+			}
+		});
 
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
 	}
@@ -580,20 +543,6 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 
 	public void setSourceLocator(ISourceLocator sourceLocator) {
 		this.sourceLocator = sourceLocator;
-	}
-
-	private String convertPath(String sourceHandle) {
-		IPath path = null;
-		if (Path.EMPTY.isValidPath(sourceHandle)) {
-			ISourceLocator sl = getSourceLocator();
-			if (sl instanceof CSourceLookupDirector) {
-				path = ((CSourceLookupDirector) sl).getCompilationPath(sourceHandle);
-			}
-			if (path == null) {
-				path = new Path(sourceHandle);
-			}
-		}
-		return path.toOSString();
 	}
 
 	/**
@@ -734,15 +683,15 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 
 						public void doneCommand(IToken token, Exception error) {
 							if (error != null) {
-								getSession().dispatchEvent(new BreakpointAddedEvent(bp.getContext()),
-										new Hashtable<String, Object>(bp.getProperties()));
-
 								// Make sure "done()" is called for the rm.
 								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
 										"TCF agent fails to install " + bp + " because:\n"
 												+ error.getLocalizedMessage(), error));
 								rm.done();
 							} else {
+								getSession().dispatchEvent(new BreakpointAddedEvent(bp.getContext()),
+										new Hashtable<String, Object>(bp.getProperties()));
+
 								rm.done();
 							}
 						}
@@ -833,19 +782,22 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
 	}
 
-	public void updateBreakpoint(IBreakpointDMContext dmc, Map<String, Object> delta, RequestMonitor drm) {
-		// For EDC, we don't need to do any update on non-significant attribute
-		// change,
-		// e.g. change of Install_count, ignore_count. For significant change,
-		// the breakpoint
-		// will just be re-installed.
-		// Refer to : BreakpointAttributeTranslator.canUpdateAttributes().
-		// 
+	public void updateBreakpoint(IBreakpointDMContext dmc, Map<String, Object> delta, RequestMonitor rm) {
+		/*
+		 * For EDC, we don't need to do any update on non-significant attribute
+		 * change, e.g. change of Install_count, ignore_count. For significant
+		 * change, the breakpoint will just be re-installed. 
+		 * See canUpdateAttributes().
+		 */
 		BreakpointDMData bp = userBreakpoints.get(dmc);
-		if (bp != null)
-			bp.setProperties(delta);
-
-		drm.done();
+		if (bp == null)
+			assert false : "Fail to find BreakpointDMData linked with the IBreakpointDMContext:" + dmc;
+		else {
+			Map<String, Object> existingProps = bp.getProperties();
+			for (String key : delta.keySet())
+				existingProps.put(key, delta.get(key));
+		}
+		rm.done();
 	}
 
 	public boolean usesTCFBreakpointService() {
@@ -865,8 +817,13 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		ModuleLoadedEvent event = (ModuleLoadedEvent) e;
 		final ExecutionDMC executionDMC = event.getExecutionDMC();
 		final ModuleDMC module = (ModuleDMC) e.getLoadedModuleContext();
-		BreakpointsMediator bm = getServicesTracker().getService(BreakpointsMediator.class);
-
+		BreakpointsMediator2 bm = getServicesTracker().getService(BreakpointsMediator2.class);
+		if (bm == null) {
+			EDCDebugger.getMessageLogger().logError("Fail to get BreakpointsMediator service to install breakpoints for loaded module "+module, null);
+			assert false;
+			return;
+		}
+		
 		IBreakpointsTargetDMContext bt_dmc = DMContexts.getAncestorOfType(module, IBreakpointsTargetDMContext.class);
 		bm.startTrackingBreakpoints(bt_dmc, new RequestMonitor(getExecutor(), null) {
 
@@ -1001,7 +958,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		// breakpoints for it.
 		ModuleUnloadedEvent event = (ModuleUnloadedEvent) e;
 		final ExecutionDMC executionDMC = event.getExecutionDMC();
-		BreakpointsMediator bm = getServicesTracker().getService(BreakpointsMediator.class);
+		BreakpointsMediator2 bm = getServicesTracker().getService(BreakpointsMediator2.class);
 		IBreakpointsTargetDMContext bt_dmc = DMContexts.getAncestorOfType(e.getUnloadedModuleContext(),
 				IBreakpointsTargetDMContext.class);
 		bm.stopTrackingBreakpoints(bt_dmc, new RequestMonitor(getExecutor(), null) {
@@ -1024,5 +981,147 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		});
 
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+	}
+
+	protected void addBreakpointProblemMarker(final ICBreakpoint breakpoint, final String description, final int severity) {
+        if (! (breakpoint instanceof ICLineBreakpoint))
+        	return;
+
+        new Job("Add Breakpoint Problem Marker") { //$NON-NLS-1$
+            @SuppressWarnings("restriction")
+			@Override
+            protected IStatus run(IProgressMonitor monitor) {
+            	// If we have already have a problem marker on this breakpoint
+            	// we should remove it first.
+                IMarker marker = fBreakpointMarkers.remove(breakpoint);
+                if (marker != null) {
+                    try {
+                        marker.delete();
+                    } catch (CoreException e) {
+                    }
+            	}
+
+                ICLineBreakpoint lineBreakpoint = (ICLineBreakpoint) breakpoint;
+                try {
+                    // Locate the workspace resource via the breakpoint marker
+                    IMarker breakpoint_marker = lineBreakpoint.getMarker();
+                    IResource resource = breakpoint_marker.getResource();
+
+                    // Add a problem marker to the resource
+                    IMarker problem_marker = resource.createMarker(BreakpointProblems.BREAKPOINT_PROBLEM_MARKER_ID);
+                    int line_number = lineBreakpoint.getLineNumber();
+                    problem_marker.setAttribute(IMarker.LOCATION,    String.valueOf(line_number));
+                    problem_marker.setAttribute(IMarker.MESSAGE,     description);
+                    problem_marker.setAttribute(IMarker.SEVERITY,    severity);
+                    problem_marker.setAttribute(IMarker.LINE_NUMBER, line_number);
+
+                    // And save the baby
+                    fBreakpointMarkers.put(breakpoint, problem_marker);
+                } catch (CoreException e) {
+                }
+                
+                return Status.OK_STATUS;
+            }
+        }.schedule();
+    }
+
+    protected void removeBreakpointProblemMarker(final ICBreakpoint breakpoint) {
+
+        final IMarker marker = fBreakpointMarkers.remove(breakpoint);
+        if (marker == null)
+        	return;
+        
+        new Job("Remove Breakpoint Problem Marker") { //$NON-NLS-1$
+            @Override
+            protected IStatus run(IProgressMonitor monitor) {
+                try {
+                    marker.delete();
+                } catch (CoreException e) {
+                }
+
+                return Status.OK_STATUS;
+            }
+        }.schedule();
+    }
+
+	/**
+	 * Evaluate condition of given breakpoint, if any.
+	 * 
+	 * @param context 
+	 *			  execution context in which to evaluate the condition.
+	 * @param bp
+	 *            the breakpoint.
+	 * @param drm
+	 *            DataRequestMonitor that contains result indicating whether
+	 *            to stop execution of debugged program. The result value is
+	 *            true if <br>
+	 *            1. the breakpoint has no condition, or <br>
+	 *            2. the breakpoint condition is invalid in syntax, or <br>
+	 *            3. the breakpoint condition cannot be resolved, or <br>
+	 *            4. the breakpoint condition is true.<br>
+	 *            Otherwise the result in the drm is false.
+	 * 
+	 */
+	public void evaluateBreakpointCondition(IExecutionDMContext context, final BreakpointDMData bp, final DataRequestMonitor<Boolean> drm) {
+		final String expr = bp.getCondition();
+		if (expr == null || expr.length() == 0) {
+			drm.setData(true);
+			drm.done();
+			return;
+		}
+
+		Stack stackService = getServicesTracker().getService(Stack.class);
+
+		stackService.getTopFrame(context, new DataRequestMonitor<IFrameDMContext>(getExecutor(), drm) {
+
+			@Override
+			protected void handleCompleted() {
+				if (!isSuccess()) { // fail to get frame, namely cannot
+									// evaluate the condition
+					drm.setData(true);
+					drm.done();
+				} else {
+					Expressions exprService = getServicesTracker().getService(Expressions.class);
+					ExpressionDMC expression = (ExpressionDMC) exprService.createExpression(getData(), expr);
+					FormattedValueDMContext fvc = exprService.getFormattedValueContext(expression,
+							IFormattedValues.NATURAL_FORMAT);
+					FormattedValueDMData value = expression.getFormattedValue(fvc);
+					/*
+					 * honor the breakpoint if the condition is true or
+					 * invalid.
+					 */
+					String vstr = value.getFormattedValue();
+					if (! vstr.equals("true") && ! vstr.equals("false")) //$NON-NLS-1$ //$NON-NLS-2$
+						reportBreakpointProblem(bp.getContext(), "Breakpoint condition failed to resolve to boolean: " + vstr);
+					else // remove any problem marker
+						reportBreakpointProblem(bp.getContext(), "");
+						
+					drm.setData(!vstr.equals("false")); //$NON-NLS-1$
+					drm.done();
+				}
+			}
+		});
+	}
+
+	/**
+	 * Report breakpoint problem in breakpoint marker.
+	 * 
+	 * @param targetBP
+	 * @param description - empty string indicates removing problem marker. 
+	 */
+	protected void reportBreakpointProblem(IBreakpointDMContext targetBP, String description) {
+		BreakpointsMediator2 bmService = getServicesTracker().getService(BreakpointsMediator2.class);
+		if (bmService == null) {
+			assert false;
+			return;
+		}
+		IBreakpoint platformBP = bmService.getPlatformBreakpoint(null, targetBP);
+		if (platformBP == null)
+			return;
+		
+		if (description.length() > 0)
+			addBreakpointProblemMarker((ICBreakpoint)platformBP, description, IMarker.SEVERITY_WARNING);
+		else
+			removeBreakpointProblemMarker((ICBreakpoint)platformBP);
 	}
 }

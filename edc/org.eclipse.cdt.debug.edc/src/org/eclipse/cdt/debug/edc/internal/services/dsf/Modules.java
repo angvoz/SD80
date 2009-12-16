@@ -105,9 +105,9 @@ public class Modules extends AbstractEDCService implements IModules {
 			ISymbolDMContext {
 		private final ISymbolDMContext symbolContext;
 
-		private final IPath hostFilePath;
+		private IPath hostFilePath;
 		private IEDCSymbolReader symReader;
-		private final List<ISection> runtimeSections = new ArrayList<ISection>();
+		private List<ISection> runtimeSections = new ArrayList<ISection>();
 
 		public ModuleDMC(ISymbolDMContext symbolContext, Map<String, Object> props) {
 			super(Modules.this, symbolContext == null ? new IDMContext[0] : new IDMContext[] { symbolContext }, Integer
@@ -306,9 +306,15 @@ public class Modules extends AbstractEDCService implements IModules {
 			if (hostFilePath.toFile().exists()) {
 				symReader = Symbols.getSymbolReader(hostFilePath);
 				if (symReader == null)
-					EDCDebugger.getMessageLogger().logError(
-							MessageFormat.format("The binary file {0} is not in recognized format (PE or ELF).",
+					EDCDebugger.getMessageLogger().log(IStatus.WARNING,
+							MessageFormat.format("''{0}'' is not in recognized format (PE or ELF).",
 									hostFilePath), null);
+				else if (! symReader.hasRecognizedDebugInformation()) {
+					// Log as INFO, not ERROR.
+					EDCDebugger.getMessageLogger().log(IStatus.INFO,
+							MessageFormat.format("''{0}'' does not have such type of debug data: {1}",
+									hostFilePath, symReader.getRecognizedDebugInformationType()), null);
+				}
 			} else {
 				// Binary file not on host. Do we want to prompt user for one ?
 			}
@@ -606,18 +612,17 @@ public class Modules extends AbstractEDCService implements IModules {
 			IEDCSymbolReader reader = mdmc.getSymbolReader();
 
 			if (reader != null) {
-				// when there is more than one line mapping for the source line,
-				// see if it makes sense to merge the line entries into the same
-				// address range, or keep different address ranges. examples of
-				// when this might happen are when there are multiple logical
-				// code segments for the same source line, but in different
-				// columns.
-				// in this case it makes sense to merge these into one address
-				// range. for templates and inline functions however, the column
-				// will
-				// be the same. for these cases it makes sense to keep the
-				// address
-				// ranges separate.
+				/*
+				 * when there is more than one line mapping for the source line,
+				 * see if it makes sense to merge the line entries into the same
+				 * address range, or keep different address ranges. examples of
+				 * when this might happen are when there are multiple logical
+				 * code segments for the same source line, but in different
+				 * columns. in this case it makes sense to merge these into one
+				 * address range. for templates and inline functions however,
+				 * the column will be the same. for these cases it makes sense
+				 * to keep the address ranges separate.
+				 */
 				long column = -1;
 				ICompileUnitScope cu = reader.getCompileUnitForFile(new Path(file));
 				if (cu != null) {
@@ -647,13 +652,11 @@ public class Modules extends AbstractEDCService implements IModules {
 			AddressRange[] ar = addrRanges.toArray(new AddressRange[addrRanges.size()]);
 			rm.setData(ar);
 		} else {
-			// TODO we try to set the breakpoint for every module since we don't
-			// know which one the file
-			// is in. we don't want to report this error though if the file
-			// isn't in the module. we
-			// should move this under the cu != null block above. but I guess we
-			// need to set the data
-			// anyway. maybe just set it to empty array?
+			/*
+			 * we try to set the breakpoint for every module since we don't know
+			 * which one the file is in. we report this error though if the file
+			 * isn't in the module, and let the caller handle the error.
+			 */
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, MessageFormat.format(
 					"Fail to find address for source line {0}: line# {1}", file, line), null));
 		}

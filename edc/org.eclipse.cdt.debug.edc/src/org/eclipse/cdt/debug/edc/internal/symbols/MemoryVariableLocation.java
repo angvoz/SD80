@@ -15,13 +15,19 @@ import org.eclipse.cdt.core.IAddress;
 public class MemoryVariableLocation implements IMemoryVariableLocation {
 
 	protected IAddress address;
+	protected boolean isRuntimeAddress;
 
-	public MemoryVariableLocation(IAddress address) {
+	public MemoryVariableLocation(IAddress address, boolean isRuntimeAddress) {
 		this.address = address;
+		this.isRuntimeAddress = isRuntimeAddress;
 	}
 
 	public IAddress getAddress() {
 		return address;
+	}
+
+	public boolean isRuntimeAddress() {
+		return isRuntimeAddress;
 	}
 
 }

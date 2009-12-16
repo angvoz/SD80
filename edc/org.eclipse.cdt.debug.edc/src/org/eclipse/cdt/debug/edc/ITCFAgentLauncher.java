@@ -61,4 +61,14 @@ public interface ITCFAgentLauncher {
 	 *             on any error.
 	 */
 	void launch() throws Exception;
+	
+	
+	/**
+	 * Shuts down the agent if it was launched
+	 * 
+	 * @throws Exception
+	 * 				on any error
+	 */
+	void shutdown() throws Exception;
+
 }

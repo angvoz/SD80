@@ -12,15 +12,16 @@ package org.eclipse.cdt.debug.edc.internal.launch;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointAttributeTranslator;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointsMediator2;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Snapshots;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
-import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
@@ -135,18 +136,9 @@ public class ServicesLaunchSequence extends Sequence {
 	new Step() {
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			final BreakpointsMediator bpmService = new BreakpointsMediator(session, new BreakpointAttributeTranslator());
+			final BreakpointsMediator2 bpmService = new BreakpointsMediator2(session, new BreakpointAttributeTranslator(
+					session));
 			bpmService.initialize(requestMonitor);
-			/*
-			 * We will track/install breakpoints for each loaded module.
-			 * 
-			 * bpmService.initialize(new RequestMonitor(getExecutor(),
-			 * requestMonitor) {
-			 * 
-			 * @Override protected void handleSuccess() {
-			 * bpmService.startTrackingBreakpoints((RootExecutionDMC)
-			 * runControlService.getRootDMC(), requestMonitor); } });
-			 */
 		}
 	},
 
@@ -162,7 +154,15 @@ public class ServicesLaunchSequence extends Sequence {
 		public void execute(RequestMonitor requestMonitor) {
 			launch.getServiceFactory().createService(IDisassembly.class, session).initialize(requestMonitor);
 		}
-	}, };
+	},
+
+	new Step() {
+		@Override
+		public void execute(RequestMonitor requestMonitor) {
+			Snapshots snapshots = new Snapshots(session);
+			snapshots.initialize(requestMonitor);
+		}
+	} };
 
 	DsfSession session;
 	EDCLaunch launch;

@@ -20,7 +20,7 @@ import org.eclipse.core.runtime.CoreException;
  */
 public abstract class BinaryLogicalOperator extends CompoundInstruction {
 
-/**
+	/**
 	 * Constructor for a binary logical operator, such as "<"
 	 * 
 	 * @param resultId - for assignment, variable ID of the result 
@@ -31,7 +31,7 @@ public abstract class BinaryLogicalOperator extends CompoundInstruction {
 		super(start);
 	}
 
-/**
+	/**
 	 * Resolve a binary logical operator, such as "<"
 	 * 
 	 * @throws CoreException

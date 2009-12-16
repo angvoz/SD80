@@ -93,6 +93,8 @@ public class ARMDisassembly extends Disassembly {
 
 				if (thumbMode)
 					options.put("DisassemblerMode", 2);
+				else
+					options.put("DisassemblerMode", 1);
 
 				if (getTargetEnvironmentService().isLittleEndian(null))
 					options.put("EndianMode", 2);
@@ -200,7 +202,7 @@ public class ARMDisassembly extends Disassembly {
 
 									while (k < instsCnt
 											&& module.toLinkAddress(new Addr64(instructions[k].getAdress())).compareTo(
-													line.getLowAddress()) < 0) {
+													line.getHighAddress()) < 0) {
 										instsForLine.add(instructions[k]);
 										k++;
 									}

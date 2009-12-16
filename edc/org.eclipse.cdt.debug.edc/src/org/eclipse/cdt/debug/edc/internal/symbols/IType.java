@@ -53,4 +53,12 @@ public interface IType {
 	 */
 	public IType getType();
 
+	/**
+	 * Set type pointed to, accessed, qualified, etc. by this type
+	 * 
+	 * @param type
+	 *           type pointed to, accessed, qualified, etc.
+	 */
+	public void setType(IType type);
+
 }

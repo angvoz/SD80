@@ -26,7 +26,6 @@ import org.eclipse.cdt.debug.edc.internal.JumpToAddress;
 import org.eclipse.cdt.debug.edc.internal.disassembler.DisassembledInstruction;
 import org.eclipse.cdt.debug.edc.internal.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints.BreakpointDMData;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers.RegisterGroupDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
@@ -45,12 +44,10 @@ import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
-import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IStack;
+import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
-import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
-import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.IModuleDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
@@ -364,7 +361,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 							bpService.removeAllTempBreakpoints(new RequestMonitor(getExecutor(), null));
 						} else { // no suspend, say, due to breakpoint condition
-									// not met.
+							// not met.
 							RunControl.this.resume(dmc, new RequestMonitor(getExecutor(), null));
 						}
 					}
@@ -438,11 +435,10 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 
 					// This check is to speed up handling of suspend due to
 					// other reasons such as "step".
-					// Is it safe to assume the TCF agents always report the
-					// "stateChangeReason" as BREAKPOINT when a breakpoint is
-					// hit ?
-					// Cross our fingers.
-					//
+					// The TCF agents should always report the
+					// "stateChangeReason" as BREAKPOINT when a breakpoint
+					// is hit.
+
 					if (stateChangeReason != StateChangeReason.BREAKPOINT) {
 						drm.setData(true);
 						drm.done();
@@ -477,65 +473,9 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 					BreakpointDMData bp = bpService.findUserBreakpoint(new Addr64(latestPC, 16));
 					if (bp != null) {
 						// evaluate the condition
-						evaluateBreakpointCondition(bp, drm);
+						bpService.evaluateBreakpointCondition(dmc, bp, drm);
 					} else {
 						drm.setData(true);
-						drm.done();
-					}
-				}
-			});
-		}
-
-		/**
-		 * Evaluate condition of given breakpoint, if any.
-		 * 
-		 * @param bp
-		 *            the breakpoint.
-		 * @param drm
-		 *            DataRequestMonitor that contains result indicating whether
-		 *            to stop execution of debugged program. The result value is
-		 *            true if <br>
-		 *            1. the breakpoint has no condition, or <br>
-		 *            2. the breakpoint condition is invalid in syntax, or <br>
-		 *            3. the breakpoint condition cannot be resolved, or <br>
-		 *            4. the breakpoint condition is true.<br>
-		 *            Otherwise the result in the drm is false.
-		 * 
-		 */
-		protected void evaluateBreakpointCondition(final BreakpointDMData bp, final DataRequestMonitor<Boolean> drm) {
-			final String expr = bp.getCondition();
-			if (expr == null || expr.length() == 0) {
-				drm.setData(true);
-				drm.done();
-				return;
-			}
-
-			Stack stackService = getServicesTracker().getService(Stack.class);
-
-			stackService.getTopFrame(this, new DataRequestMonitor<IFrameDMContext>(getExecutor(), drm) {
-
-				@Override
-				protected void handleCompleted() {
-					if (!isSuccess()) { // fail to get frame, namely cannot
-										// evaluate the condiiton
-						drm.setData(true);
-						drm.done();
-					} else {
-						Expressions exprService = getServicesTracker().getService(Expressions.class);
-						ExpressionDMC expression = (ExpressionDMC) exprService.createExpression(getData(), expr);
-						FormattedValueDMContext fvc = exprService.getFormattedValueContext(expression,
-								IFormattedValues.NATURAL_FORMAT);
-						FormattedValueDMData value = expression.getFormattedValue(fvc);
-						drm.setData(!value.getFormattedValue().equals("false")); // honor
-																					// the
-																					// breakpoint
-																					// if
-																					// the
-																					// condition
-																					// is
-																					// true
-																					// or
-																					// invalid.
 						drm.done();
 					}
 				}
@@ -700,12 +640,19 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 							public void doneCommand(IToken token, Exception error) {
 								EDCDebugger.getDefault().getTrace()
 										.traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+								if (error != null) {
+									requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, 
+											"terminate() failed.", error));
+								}
 								requestMonitor.done();
 								EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 							}
 						});
 					}
 				});
+			} else {	
+				// Snapshots, for e.g., don't have a TCF RunControlContext, so just remove all the contexts recursively
+				removeAllContexts(rootExecutionDMC);
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
@@ -730,7 +677,20 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			getSession().dispatchEvent(new ExitedEvent(dmc), RunControl.this.getProperties());
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
-
+		
+		/**
+		 * Recursively removes all execution contexts
+		 * @param dmc
+		 */
+		public void removeAllContexts(ExecutionDMC dmc){
+			getSession().dispatchEvent(new ExitedEvent(dmc), RunControl.this.getProperties());
+			
+			for (ExecutionDMC e : dmc.getChildren()){
+				removeAllContexts(e);
+			}
+			removeChild(dmc);
+		}
+		
 		public void contextResumed(boolean sendEvent) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
 					new Object[] { this, sendEvent });
@@ -887,9 +847,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 	}
 
 	public class ProcessExecutionDMC extends ExecutionDMC implements IContainerDMContext, IProcessDMContext,
-			ISymbolDMContext,
-			// IBreakpointsTargetDMContext,
-			IDisassemblyDMContext {
+			ISymbolDMContext, IBreakpointsTargetDMContext, IDisassemblyDMContext {
 
 		public ProcessExecutionDMC(ExecutionDMC parent, Map<String, Object> properties, RunControlContext tcfContext) {
 			super(parent, properties, tcfContext);

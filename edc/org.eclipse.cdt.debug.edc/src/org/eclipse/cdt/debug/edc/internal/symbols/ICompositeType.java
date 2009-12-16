@@ -14,10 +14,15 @@ import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 
 public interface ICompositeType extends IType, IAggregate {
+	
+	// accessibility of an inherited class or of a composite's field
+	public static int ACCESS_PUBLIC    = 0;
+	public static int ACCESS_PROTECTED = 1;
+	public static int ACCESS_PRIVATE   = 2;
 
-	public static final int k_class = ICPPASTCompositeTypeSpecifier.k_class;
+	public static final int k_class  = ICPPASTCompositeTypeSpecifier.k_class;
 	public static final int k_struct = IASTCompositeTypeSpecifier.k_struct;
-	public static final int k_union = IASTCompositeTypeSpecifier.k_union;
+	public static final int k_union  = IASTCompositeTypeSpecifier.k_union;
 
 	/**
 	 * Kind of composite (class, struct, union)
@@ -38,7 +43,7 @@ public interface ICompositeType extends IType, IAggregate {
 	 * Intended for use by a debug information parser.
 	 * 
 	 * @param field
-	 *            to add
+	 *            field to add
 	 */
 	public void addField(IField field);
 
@@ -57,5 +62,24 @@ public interface ICompositeType extends IType, IAggregate {
 	 * @return field if it exists, or null otherwise
 	 */
 	public IField findField(String name);
+
+	/**
+	 * Add an inherited-from class to the end of the list
+	 * of inherited-from classes
+	 * Intended for use by a debug information parser.
+	 * 
+	 * @param inheritance
+	 *            information about class from which this composite
+	 *            inherits
+	 */
+	public void addInheritance(IInheritance inheritance);
+	
+	/**
+	 * Get an array of inherited-from classes for composite
+	 * 
+	 * @return array of information about classes from which
+	 * this composite inherits
+	 */
+	public IInheritance[] getInheritances();
 
 }

@@ -15,11 +15,4 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
  */
 public interface IPointerType extends IType {
 
-	/**
-	 * Get the type pointed to
-	 * 
-	 * @return type pointed to
-	 */
-	public IType getType();
-
 }

@@ -17,7 +17,6 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
@@ -123,15 +122,15 @@ public class OperatorPlus extends BinaryOperator {
 		boolean isLeftPointer = false;
 		if (left instanceof VariableWithValue) {
 			leftVar = (VariableWithValue) left;
-			leftType = TypeUtils.getUnqualifiedType(leftVar.getVariable().getType());
-			isLeftPointer = leftType instanceof PointerType || leftType instanceof IAggregate;
+			leftType = TypeUtils.getStrippedType(leftVar.getVariable().getType());
+			isLeftPointer = leftType instanceof IPointerType || leftType instanceof IAggregate;
 		}
 
 		boolean isRightPointer = false;
 		if (right instanceof VariableWithValue) {
 			rightVar = (VariableWithValue) right;
-			rightType = TypeUtils.getUnqualifiedType(rightVar.getVariable().getType());
-			isRightPointer = rightType instanceof PointerType || rightType instanceof IAggregate;
+			rightType = TypeUtils.getStrippedType(rightVar.getVariable().getType());
+			isRightPointer = rightType instanceof IPointerType || rightType instanceof IAggregate;
 		}
 
 		// zero pointer operands
@@ -189,7 +188,7 @@ public class OperatorPlus extends BinaryOperator {
 		if (leftType instanceof IPointerType)
 			aggregateSize = new BigInteger(Integer.toString(leftType.getByteSize()));
 		else
-			aggregateSize = new BigInteger(Integer.toString(TypeUtils.getUnqualifiedType(leftType.getType())
+			aggregateSize = new BigInteger(Integer.toString(TypeUtils.getStrippedType(leftType.getType())
 					.getByteSize()));
 		BigInteger addAmount = aggregateSize;
 

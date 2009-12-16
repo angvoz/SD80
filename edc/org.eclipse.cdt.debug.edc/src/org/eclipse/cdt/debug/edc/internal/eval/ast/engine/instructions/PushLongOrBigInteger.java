@@ -30,8 +30,8 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 	 *            - long value
 	 */
 	public PushLongOrBigInteger(long value) {
-		fLong = value;
 		isLong = true;
+		fLong = value;
 	}
 
 	/**
@@ -42,6 +42,7 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 	 * @throws NumberFormatException
 	 */
 	public PushLongOrBigInteger(String value) throws NumberFormatException {
+		isLong = true;
 		parseLongOrBigInteger(value);
 	}
 
@@ -87,9 +88,11 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 
 		if (val.endsWith("ull") || val.endsWith("llu")) { //$NON-NLS-1$ //$NON-NLS-2$
 			suffixUnsigned = true;
+			isLong = false;
 			val = val.substring(0, val.length() - 3);
 			length -= 3;
 		} else if (val.endsWith("ll")) { //$NON-NLS-1$
+			isLong = false;
 			val = val.substring(0, val.length() - 2);
 			length -= 2;
 		} else if (val.endsWith("ul") || val.endsWith("lu")) { //$NON-NLS-1$ //$NON-NLS-2$
@@ -115,6 +118,7 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 				fLong = Long.valueOf(val.substring(2), 16);
 			} catch (NumberFormatException nfe) {
 				fBigInteger.and(Instruction.Mask8Bytes);
+				isLong = false;
 				return;
 			}
 			length -= 2;
@@ -125,6 +129,7 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 				fLong = Long.valueOf(val.substring(1), 8);
 			} catch (NumberFormatException nfe) {
 				fBigInteger.and(Instruction.Mask8Bytes);
+				isLong = false;
 				return;
 			}
 			length -= 1;
@@ -135,6 +140,7 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 				fLong = Long.valueOf(val);
 			} catch (NumberFormatException nfe) {
 				fBigInteger.and(Instruction.Mask8Bytes);
+				isLong = false;
 				return;
 			}
 		}
@@ -154,6 +160,7 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 			// keep it a BigInteger
 			// TODO: Allow bigger than 8 bytes
 			fBigInteger.and(Instruction.Mask8Bytes);
+			isLong = false;
 			return;
 		}
 	}

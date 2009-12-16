@@ -176,19 +176,20 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 		}
 
 		try {
-			// if this throws then it's either not a Dwarf file or not PE or ELF
+			// if this throws then it's not PE or ELF
 			reader = new EDCDwarfReader(modulePath);
-			readerCache.put(modulePath, reader);
-			return reader;
-
 		} catch (IOException e) {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}
 
-		// TODO try other symbol readers here as they get added
+		if (reader == null || ! reader.hasRecognizedDebugInformation()) {
+			// TODO try other symbol readers here as they get added
+		}
 
-		return null;
-
+		if (reader != null)
+			readerCache.put(modulePath, reader);
+		
+		return reader;
 	}
 
 	@Override

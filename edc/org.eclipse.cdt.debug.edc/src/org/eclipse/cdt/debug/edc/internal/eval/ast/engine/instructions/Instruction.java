@@ -339,61 +339,62 @@ public abstract class Instruction {
 	static public final int T_BigInt = 13;
 
 	private static final int[][] fTypeTable = {
-	// undefined object char byte short boolean void
-			/* undefined */{ T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined },
-			// undefined object char byte short boolean void
-			/* object */{ T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_undefined, T_undefined, T_undefined, T_undefined, T_String, T_undefined, T_undefined },
-			// undefined object char byte short boolean void
-			/* char */{ T_undefined, T_undefined, T_int, T_int, T_int, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_long, T_double, T_float, T_int, T_String, T_undefined, T_BigInt },
-			// undefined object char byte short boolean void
-			/* byte */{ T_undefined, T_undefined, T_int, T_int, T_int, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_long, T_double, T_float, T_int, T_String, T_undefined, T_BigInt },
-			// undefined object char byte short boolean void
-			/* short */{ T_undefined, T_undefined, T_int, T_int, T_int, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_long, T_double, T_float, T_int, T_String, T_undefined, T_BigInt },
-			// undefined object char byte short boolean void
-			/* boolean */{ T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_boolean, T_undefined,
-			// long double float int String null BigInteger
-					T_undefined, T_undefined, T_undefined, T_undefined, T_String, T_undefined, T_undefined },
-			// undefined object char byte short boolean void
-			/* void */{ T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined },
-			// undefined object char byte short boolean void
-			/* long */{ T_undefined, T_undefined, T_long, T_long, T_long, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_long, T_double, T_float, T_long, T_String, T_undefined, T_BigInt },
-			// undefined object char byte short boolean void
-			/* double */{ T_undefined, T_undefined, T_double, T_double, T_double, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_double, T_double, T_double, T_double, T_String, T_undefined, T_double },
-			// undefined object char byte short boolean void
-			/* float */{ T_undefined, T_undefined, T_float, T_float, T_float, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_float, T_double, T_float, T_float, T_String, T_undefined, T_float },
-			// undefined object char byte short boolean void
-			/* int */{ T_undefined, T_undefined, T_int, T_int, T_int, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_long, T_double, T_float, T_int, T_String, T_undefined, T_BigInt },
-			// undefined object char byte short boolean void
-			/* String */{ T_undefined, T_String, T_String, T_String, T_String, T_String, T_undefined,
-			// long double float int String null BigInteger
-					T_String, T_String, T_String, T_String, T_String, T_String, T_undefined },
-			// undefined object char byte short boolean void
-			/* null */{ T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_undefined, T_undefined, T_undefined, T_undefined, T_String, T_undefined, T_undefined },
-			// undefined object char byte short boolean void
-			/* BigInteger */{ T_undefined, T_undefined, T_BigInt, T_BigInt, T_BigInt, T_undefined, T_undefined,
-			// long double float int String null BigInteger
-					T_BigInt, T_double, T_float, T_BigInt, T_undefined, T_undefined, T_BigInt }, };
+						//	undefined		object			char			byte			short			boolean			void
+		/* undefined */	{	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined, 	T_undefined},
+						//	undefined		object			char			byte			short			boolean			void
+		/* object */	{	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_String,		T_undefined,	T_undefined },
+						//	undefined		object			char			byte			short			boolean			void
+		/* char */		{	T_undefined,	T_undefined,	T_int,			T_int,			T_int,			T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_long,			T_double,		T_float,		T_int,			T_String,		T_undefined,	T_BigInt },
+						//	undefined		object			char			byte			short			boolean			void
+		/* byte */		{	T_undefined,	T_undefined,	T_int,			T_int,			T_int,			T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_long,			T_double,		T_float,		T_int,			T_String,		T_undefined,	T_BigInt },
+						//	undefined		object			char			byte			short			boolean			void
+		/* short */		{	T_undefined,	T_undefined,	T_int,			T_int,			T_int,			T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_long,			T_double,		T_float,		T_int,			T_String,		T_undefined,	T_BigInt },
+						//	undefined		object			char			byte			short			boolean			void
+		/* boolean */	{	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_boolean,		T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_String,		T_undefined,	T_undefined },
+						//	undefined		object			char			byte			short			boolean			void
+		/* void */		{	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined },
+						//	undefined		object			char			byte			short			boolean			void
+		/* long */		{	T_undefined,	T_undefined,	T_long,			T_long,			T_long,			T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_long,			T_double,		T_float,		T_long,			T_String,		T_undefined,	T_BigInt },
+						//	undefined		object			char			byte			short			boolean			void
+		/* double */	{	T_undefined,	T_undefined,	T_double,		T_double,		T_double,		T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_double,		T_double,		T_double,		T_double,		T_String,		T_undefined,	T_double },
+						//	undefined		object			char			byte			short			boolean			void
+		/* float */		{	T_undefined,	T_undefined,	T_float,		T_float,		T_float,		T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_float,		T_double,		T_float,		T_float,		T_String,		T_undefined,	T_float },
+						//	undefined		object			char			byte			short			boolean			void
+		/* int */		{	T_undefined,	T_undefined,	T_int,			T_int,			T_int,			T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_long,			T_double,		T_float,		T_int,			T_String,		T_undefined,	T_BigInt },
+						//	undefined		object			char			byte			short			boolean			void
+		/* String */	{	T_undefined,	T_String,		T_String,		T_String,		T_String,		T_String,		T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_String,		T_String,		T_String,		T_String,		T_String,		T_String,		T_undefined },
+						//	undefined		object			char			byte			short			boolean			void
+		/* null */		{	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_undefined,	T_undefined,	T_undefined,	T_undefined,	T_String,		T_undefined,	T_undefined },
+						//	undefined		object			char			byte			short			boolean			void
+		/* BigInteger */{	T_undefined,	T_undefined,	T_BigInt,		T_BigInt,		T_BigInt,		T_undefined,	T_undefined,
+						//	long			double			float			int				String			null			BigInteger
+							T_BigInt,		T_double,		T_float,		T_BigInt,		T_undefined,	T_undefined,	T_BigInt },		
+		};
 
 }

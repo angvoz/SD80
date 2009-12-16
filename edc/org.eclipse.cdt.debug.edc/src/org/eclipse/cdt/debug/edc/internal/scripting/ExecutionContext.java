@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.scripting;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -54,41 +53,26 @@ public class ExecutionContext {
 	public final static String STEP_INTO = "StepInto";
 	public final static String STEP_RETURN = "StepReturn";
 
-	private final Map<String, Object> properties;
 	private static Object suspendedListener;
 
-	public ExecutionContext() {
-		properties = new HashMap<String, Object>();
-	}
-
-	public ExecutionContext(ExecutionDMC executionDMC) {
-		this.properties = executionDMC.getProperties();
-	}
-
-	public Map<String, Object> getProperties() {
-		return properties;
-	}
-
-	public static Map<String, Object>[] getStackFrames(Map<String, Object> contextData) throws Exception {
-		final String contextId = (String) contextData.get(DMContext.PROP_ID);
+	public static Map<String, Object>[] getStackFrames(String contextId) throws Exception {
 		return DOMUtils.getDMContextProperties(DOMUtils.getStackFrames(contextId));
 	}
 
-	public static int resume(Map<String, Object> contextData) throws InterruptedException, ExecutionException {
-		final String contextID = (String) contextData.get(DMContext.PROP_ID);
-		final DsfSession session = DsfSession.getSession(DOMUtils.getSessionForContext(contextID));
+	public static int resume(final String contextId) throws InterruptedException, ExecutionException {
+		final DsfSession session = DsfSession.getSession(DOMUtils.getSessionForContext(contextId));
 		final int activity = ScriptingPlugin.newPendingActivityId();
 		session.getExecutor().submit(new DsfRunnable() {
 			public void run() {
 				DsfServicesTracker servicesTracker = DOMUtils.getDsfServicesTracker(session);
 				final RunControl runControlService = servicesTracker.getService(RunControl.class);
 				if (runControlService != null) {
-					runControlService.canResume(runControlService.getContext(contextID),
+					runControlService.canResume(runControlService.getContext(contextId),
 							new DataRequestMonitor<Boolean>(session.getExecutor(), null) {
 								@Override
 								protected void handleCompleted() {
 									if (getData()) {
-										runControlService.resume(runControlService.getContext(contextID),
+										runControlService.resume(runControlService.getContext(contextId),
 												new RequestMonitor(session.getExecutor(), null) {
 													@Override
 													protected void handleCompleted() {
@@ -116,8 +100,7 @@ public class ExecutionContext {
 		return StepType.STEP_OVER; // default
 	}
 
-	public static int step(Map<String, Object> contextData, final String stepTypeName) {
-		final String contextId = (String) contextData.get(DMContext.PROP_ID);
+	public static int step(final String contextId, final String stepTypeName) {
 		final DsfSession session = DsfSession.getSession(DOMUtils.getSessionForContext(contextId));
 		final int activity = ScriptingPlugin.newPendingActivityId();
 		suspendedListener = new SuspendedEventAdapter(session, activity, contextId);
@@ -134,19 +117,8 @@ public class ExecutionContext {
 								protected void handleCompleted() {
 									if (getData()) {
 										ExecutionDMC context = runControlService.getContext(contextId);
-										runControlService.step(context, stepType, new RequestMonitor(session
-												.getExecutor(), null) {
-											@Override
-											protected void handleCompleted() {
-												// TODO this is currently set
-												// done when request is handled
-												// should really set up an event
-												// listener and use that to
-												// determine that stepping is
-												// complete
-												// ScriptingPlugin.setActivityDone(activity);
-											};
-										});
+										runControlService.step(context, stepType, 
+												new RequestMonitor(session.getExecutor(), null));
 									}
 								}
 							});
@@ -156,4 +128,7 @@ public class ExecutionContext {
 		return activity;
 	}
 
+	public static String getContextId(Map<String, Object> properties) {
+		return (String) properties.get(DMContext.PROP_ID);
+	}
 }

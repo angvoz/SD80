@@ -38,7 +38,7 @@ public class TargetEnvironmentX86 extends AbstractTargetEnvironment implements I
 
 	private IAddressExpressionEvaluator aeEvaluator = null;
 
-	private HashMap<String, Integer> basicTypeSizes = null;
+	private HashMap<Integer, Integer> basicTypeSizes = null;
 
 	public TargetEnvironmentX86(DsfSession session, ILaunch launch) {
 		super(session, new String[] { ITargetEnvironment.class.getName(), TargetEnvironmentX86.class.getName() },
@@ -92,24 +92,24 @@ public class TargetEnvironmentX86 extends AbstractTargetEnvironment implements I
 		return aeEvaluator;
 	}
 
-	public HashMap<String, Integer> getBasicTypeSizes() {
+	public HashMap<Integer, Integer> getBasicTypeSizes() {
 		if (this.basicTypeSizes == null) {
-			this.basicTypeSizes = new HashMap<String, Integer>();
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_CHAR, 1);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_CHAR_UNSIGNED, 1);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_CHAR_SIGNED, 1);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_SHORT, 2);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_SHORT_UNSIGNED, 2);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_INT, 4);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_INT_UNSIGNED, 4);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_LONG, 4);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_LONG_UNSIGNED, 4);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_LONG_LONG, 8);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_LONG_LONG_UNSIGNED, 8);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_FLOAT, 4);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_DOUBLE, 8);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_LONG_DOUBLE, 12);
-			this.basicTypeSizes.put(TypeUtils.DATA_NAME_BOOL, 1);
+			this.basicTypeSizes = new HashMap<Integer, Integer>();
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_CHAR, 1);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_SHORT, 2);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_INT, 4);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_LONG, 4);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_LONG_LONG, 8);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_FLOAT, 4);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_FLOAT_COMPLEX, 8);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_DOUBLE, 8);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_DOUBLE_COMPLEX, 16);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_LONG_DOUBLE, 8);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_LONG_DOUBLE_COMPLEX, 16);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_BOOL, 1);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_BOOL_C9X, 1);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_WCHAR_T, 2);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_POINTER, 4);
 		}
 
 		return this.basicTypeSizes;

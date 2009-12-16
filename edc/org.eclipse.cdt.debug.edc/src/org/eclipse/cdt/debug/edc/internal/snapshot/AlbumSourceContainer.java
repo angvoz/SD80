@@ -30,11 +30,11 @@ public class AlbumSourceContainer extends AbstractSourceContainer {
 
 	public Object[] findSourceElements(String name) throws CoreException {
 		// TODO Auto-generated method stub
-		return null;
+		return new Object[0];
 	}
 
 	public String getName() {
-		return album.getName();
+		return album.getDisplayName();
 	}
 
 	public ISourceContainerType getType() {

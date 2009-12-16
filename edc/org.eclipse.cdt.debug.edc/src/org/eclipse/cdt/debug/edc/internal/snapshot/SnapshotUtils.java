@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.snapshot;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,12 +19,37 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.launch.IEDCLaunchConfigurationConstants;
+import org.eclipse.core.filesystem.EFS;
+import org.eclipse.core.filesystem.IFileStore;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IProjectDescription;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.PlatformObject;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.ILaunchConfigurationType;
+import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
+import org.eclipse.debug.core.ILaunchManager;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 public class SnapshotUtils extends PlatformObject {
 
@@ -338,5 +364,138 @@ public class SnapshotUtils extends PlatformObject {
 		}
 		properties.put(mapKey, map);
 	}
+	
+	static public IProject getSnapshotsProject() {
+
+		final String SNAPSHOT_PROJECT_ID = "org.eclipse.cdt.debug.edc.snapshot"; //$NON-NLS-1$
+
+		IProject snapshotsProject = null;
+		// See if the default project exists
+		String defaultProjectName = "Snapshots";
+		ICProject cProject = CoreModel.getDefault().getCModel().getCProject(defaultProjectName);
+		if (cProject.exists()) {
+			snapshotsProject = cProject.getProject();
+		} else {
+			final String[] ignoreList = { ".project", //$NON-NLS-1$
+					".cdtproject", //$NON-NLS-1$
+					".cproject", //$NON-NLS-1$
+					".cdtbuild", //$NON-NLS-1$
+					".settings", //$NON-NLS-1$
+			};
+
+			IWorkspace workspace = ResourcesPlugin.getWorkspace();
+			IProject newProjectHandle = workspace.getRoot().getProject(defaultProjectName);
+
+			int projectSuffix = 2;
+			while (newProjectHandle.exists()) {
+				newProjectHandle = workspace.getRoot().getProject(defaultProjectName + projectSuffix);
+				projectSuffix++;
+			}
+
+			IProjectDescription description = workspace.newProjectDescription(newProjectHandle.getName());
+			description.setLocation(null);
+			IFileStore store;
+			try {
+				store = EFS.getStore(workspace.getRoot().getLocationURI());
+				store = store.getChild(newProjectHandle.getName());
+				for (String deleteName : ignoreList) {
+					IFileStore projFile = store.getChild(deleteName);
+					projFile.delete(EFS.NONE, new NullProgressMonitor());
+				}
+				IFileStore[] children = store.childStores(EFS.NONE, new NullProgressMonitor());
+				for (IFileStore fileStore : children) {
+					if (fileStore.fetchInfo().isDirectory())
+						fileStore.delete(EFS.NONE, new NullProgressMonitor());
+				}
+				snapshotsProject = CCorePlugin.getDefault().createCProject(description, newProjectHandle, null,
+						SNAPSHOT_PROJECT_ID);
+			} catch (Exception e) {
+				EDCDebugger.getMessageLogger().logError(null, e);
+			}
+		}
+		return snapshotsProject;
+	}
+	
+	// TODO: This was taken from SnapshotLaunchDelegate. Need to refactor properly to make this common....
+	/**
+	 * Load an album and launch the session without creating a Snapshot launch configuration. 
+	 * Only creates the launch configuration type specified in the album data.
+	 */
+	static public boolean launchAlbumSession(Album album){
+		IPath albumPath = album.getLocation();
+
+		try {
+			if (!album.isLoaded()){
+				album.loadAlbum(false);
+			}
+		} catch (ParserConfigurationException e1) {
+			e1.printStackTrace();
+			return false;
+		} catch (SAXException e1) {
+			e1.printStackTrace();
+			return false;
+		} catch (IOException e1) {
+			e1.printStackTrace();
+			return false;
+		}
+		
+		ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
+		ILaunchConfigurationType launchType = lm.getLaunchConfigurationType(album.getLaunchTypeID());
+		if (launchType == null) {
+			// Can't launch TODO: Need error or exception
+			return false;
+		}
+		ILaunchConfiguration proxyLaunchConfig = findExistingLaunchForAlbum(album);
+		if (proxyLaunchConfig == null) {
+			String lcName = lm.generateUniqueLaunchConfigurationNameFrom(album.getDisplayName());
+			ILaunchConfigurationWorkingCopy proxyLaunchConfigWC = null;
+			try {
+				proxyLaunchConfigWC = launchType.newInstance(null, lcName);
+				proxyLaunchConfigWC.setAttributes(album.getLaunchProperties());
+				proxyLaunchConfigWC.setAttribute(IEDCLaunchConfigurationConstants.ATTR_ALBUM_FILE, albumPath.toOSString());
+				proxyLaunchConfig = proxyLaunchConfigWC.doSave();
+				
+			} catch (CoreException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+		
+		final ILaunchConfiguration finalProxyLC = proxyLaunchConfig;
+		Job launchJob = new Job("Launching " + albumPath.toFile().getName()) {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				try {
+					finalProxyLC.launch(ILaunchManager.DEBUG_MODE, new NullProgressMonitor(), false, true);
+				} catch (CoreException e) {
+					EDCDebugger.getMessageLogger().logError(null, e);
+					return Status.CANCEL_STATUS;
+				}
+				return Status.OK_STATUS;
+			}
+		};
+		launchJob.schedule();
+		return false;
+	}
+	
+	static private ILaunchConfiguration findExistingLaunchForAlbum(Album album) {
+		ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
+		ILaunchConfigurationType launchType = lm.getLaunchConfigurationType(album.getLaunchTypeID());
+
+		try {
+			ILaunchConfiguration[] configurations = lm.getLaunchConfigurations(launchType);
+			for (ILaunchConfiguration configuration : configurations) {
+				if (album.getLocation().toOSString().equals(configuration.getAttribute(
+						IEDCLaunchConfigurationConstants.ATTR_ALBUM_FILE, "")))
+					return configuration;
+			}
+		} catch (CoreException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
+		return null;
+	}
+
 
 }

@@ -21,7 +21,7 @@ public class ASTEvalMessages extends NLS {
 	public static String ArraySubscript_SubscriptMustBeInteger;
 	public static String EvaluateID_VariableNotFound;
 	public static String FieldReference_InvalidPointerDeref;
-	public static String FieldReference_InvalidCompositeName;
+	public static String FieldReference_InvalidDotDeref;
 	public static String FieldReference_InvalidMember;
 	public static String OperatorAddrOf_RequiresVariable;
 	public static String OperatorAddrOf_NoRegister;
@@ -30,6 +30,9 @@ public class ASTEvalMessages extends NLS {
 	public static String OperatorIndirection_NoBitField;
 	public static String OperatorMinus_NonPtrMinusPtr;
 	public static String OperatorPlus_PtrPlusPtr;
+	public static String VariableWithValue_ErrorReadingMemory; 
+	public static String VariableWithValue_InvalidRegisterID; 
+	public static String VariableWithValue_UnknownLocation;
 
 	static {
 		// initialize resource bundle

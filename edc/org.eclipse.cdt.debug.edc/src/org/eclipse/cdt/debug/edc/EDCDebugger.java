@@ -91,6 +91,8 @@ public class EDCDebugger extends Plugin {
 	@Override
 	public void stop(BundleContext context) throws Exception {
 		plugin = null;
+		if (tcfServiceManager != null)
+			((TCFServiceManager) tcfServiceManager).shutdown();
 		super.stop(context);
 	}
 

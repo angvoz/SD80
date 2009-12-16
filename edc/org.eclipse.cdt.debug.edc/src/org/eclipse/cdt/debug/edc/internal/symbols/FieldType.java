@@ -18,15 +18,17 @@ public class FieldType extends Type implements IField {
 	private final long fieldOffset;
 	private final int bitSize;
 	private final int bitOffset;
+	private final int accessibility;
 
 	public FieldType(String name, IScope scope, ICompositeType compositeType, long fieldOffset, int bitSize,
-			int bitOffset, int byteSize, Map<Object, Object> properties) {
+			int bitOffset, int byteSize, int accessibility, Map<Object, Object> properties) {
 		super(name, scope, byteSize, properties);
 
 		this.compositeType = compositeType;
 		this.fieldOffset = fieldOffset;
 		this.bitSize = bitSize;
 		this.bitOffset = bitOffset;
+		this.accessibility = accessibility;
 	}
 
 	public long getFieldOffset() {
@@ -39,6 +41,10 @@ public class FieldType extends Type implements IField {
 
 	public int getBitOffset() {
 		return this.bitOffset;
+	}
+	
+	public int getAccessibility() {
+		return this.accessibility;
 	}
 
 	public ICompositeType getCompositeTypeOwner() {

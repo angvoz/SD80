@@ -41,8 +41,10 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.tm.tcf.protocol.IErrorReport;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.IToken;
+import org.eclipse.tm.tcf.protocol.Protocol;
 import org.eclipse.tm.tcf.util.TCFTask;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -56,6 +58,12 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	private Map<String, Map<String, String>> registerValueCache = Collections
 			.synchronizedMap(new HashMap<String, Map<String, String>>());
 
+	/**
+	 * A hex string indicating error in register read.
+	 * See where this is used for more.
+	 */
+	protected static final String REGISTER_VALUE_ERROR = "badbadba";
+	
 	public static final String PROP_CONTEXT_ID = "Context_ID";
 
 	private static final String REGISTER = "register";
@@ -459,10 +467,23 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		}
 	}
 
+	/**
+	 * Read register with given ID, usually a name that's recognizable by TCF agent.
+	 * This API is not good in error handling.  
+	 * 
+	 * @param context
+	 * @param id
+	 * @return a hex string on success, and {@link #REGISTER_VALUE_ERROR} on error.
+	 */
 	public String getRegisterValue(ExecutionDMC context, String id) {
 		return getRegisterValue(new RegisterDMC(context, id, id, id));
 	}
 
+	/**
+	 * See {@link #getRegisterValue(ExecutionDMC, String)}.
+	 * @param registerDMC
+	 * @return
+	 */
 	public String getRegisterValue(RegisterDMC registerDMC) {
 		final StringBuffer regValue = new StringBuffer();
 		getRegisterValue(registerDMC, new DataRequestMonitor<String>(ImmediateExecutor.getInstance(), null) {
@@ -470,6 +491,13 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			@Override
 			protected void handleSuccess() {
 				regValue.append(getData());
+			}
+
+			@Override
+			protected void handleError() {
+				// We pass this hex string instead of "unknown"
+				// so that callers won't run into exception.
+				regValue.append(REGISTER_VALUE_ERROR);
 			}
 		});
 
@@ -499,11 +527,14 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			}
 
 			if (tcfRegisterService == null) {
-				rm.setData("unknown");
+				rm.setData(REGISTER_VALUE_ERROR);
 				rm.done();
 				return;
 			}
 
+			// ??? This has to be synchronous at present, see caller of this 
+			// method for reason. But it should be asynchronous.
+			//   
 			TCFTask<String[]> tcfTask = new TCFTask<String[]>() {
 
 				public void run() {
@@ -513,28 +544,38 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 						public void doneGet(IToken token, Exception error, String[] values) {
 
-							for (int i = 0; i < values.length; i++) {
+							if (error != null) {
+								String errMsg = error.getLocalizedMessage(); 
+								if (error instanceof IErrorReport)
+									errMsg = (String)((IErrorReport)error).getAttributes().get(IErrorReport.ERROR_FORMAT);
+								
+								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+										errMsg, null));
+							}
+							else {
+								assert values.length == 1;
 								synchronized (registerValueCache) {
 									Map<String, String> exeDMCRegisters = registerValueCache.get(exeDMCID);
 									if (exeDMCRegisters == null) {
 										exeDMCRegisters = new HashMap<String, String>();
 										registerValueCache.put(exeDMCID, exeDMCRegisters);
 									}
-									exeDMCRegisters.put(registerIDs[i], values[i]);
+									exeDMCRegisters.put(registerDMCID, values[0]);
 								}
+
+								rm.setData(values[0]);
 							}
 							task.done(values);
 						}
 					});
 				}
 			};
-			String[] resultValues;
+			
 			try {
-				resultValues = tcfTask.getIO();
-				rm.setData(resultValues[0]);
+				tcfTask.getIO();	// ignore the return
 				rm.done();
 			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError(null, e);
+				EDCDebugger.getMessageLogger().logError("IOExceptoin reading register " + registerDMC.getName(), e);
 			}
 		}
 

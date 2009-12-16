@@ -10,11 +10,13 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.launch;
 
+import java.text.MessageFormat;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.launch.ServicesLaunchSequence;
+import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotLaunchSequence;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.Query;
@@ -45,6 +47,9 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate {
 		}
 		if (mode.equals(ILaunchManager.DEBUG_MODE)) {
 			launchDebugger(configuration, launch, monitor);
+		} else {
+			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.INTERNAL_ERROR,
+					MessageFormat.format("Launch mode ''{0}'' is not (yet) implemented", mode), null));
 		}
 	}
 
@@ -89,7 +94,18 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate {
 
 	abstract public String getDebugModelID();
 
-	abstract protected Sequence getFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm);
+	abstract protected Sequence getLiveLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm);
+
+	protected Sequence getSnapshotLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
+		return new SnapshotLaunchSequence(executor, launch, pm);
+	};
+
+	protected Sequence getFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
+		if (launch.isSnapshotLaunch())
+			return getSnapshotLaunchSequence(executor, launch, pm);
+		else
+			return getLiveLaunchSequence(executor, launch, pm);
+	};
 
 	private void launchDebugSession(final ILaunchConfiguration config, ILaunch l, IProgressMonitor monitor)
 			throws CoreException {

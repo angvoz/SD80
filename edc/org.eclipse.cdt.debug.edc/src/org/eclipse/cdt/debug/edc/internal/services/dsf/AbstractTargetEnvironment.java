@@ -40,12 +40,7 @@ public abstract class AbstractTargetEnvironment extends AbstractEDCService imple
 		return launch.getLaunchConfiguration();
 	}
 
-	/**
-	 * Get the {@link ILaunch} object for the debug session.
-	 * 
-	 * @return ILaunch object
-	 */
-	protected ILaunch getLaunch() {
+	public ILaunch getLaunch() {
 		return launch;
 	}
 

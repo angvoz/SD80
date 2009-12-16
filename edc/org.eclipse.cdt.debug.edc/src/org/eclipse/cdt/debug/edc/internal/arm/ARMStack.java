@@ -150,9 +150,8 @@ public class ARMStack extends Stack {
 			boolean thumbMode = ((TargetEnvironmentARM) getTargetEnvironmentService()).isThumbMode(context, pcValue,
 					frameCount == 1);
 
-			pcValue = new Addr64(pcValue.getValue().clearBit(0)); // mask off
-			// the thumb
-			// bit
+			// mask off the thumb bit
+			pcValue = new Addr64(pcValue.getValue().clearBit(0)); 
 
 			// add this frame
 			long baseAddress = functionStartAddress == null ? pcValue.getValue().longValue() : functionStartAddress
@@ -168,8 +167,8 @@ public class ARMStack extends Stack {
 
 			if (functionStartAddress == null) {
 				// either module at address not known or we don't have symbols
-				// for it, so
-				// try to find the prolog by parsing the preceding instructions
+				// for it, so try to find the prolog by parsing the preceding
+				// instructions
 				functionStartAddress = findProlog(context, pcValue, thumbMode);
 			}
 
@@ -203,13 +202,13 @@ public class ARMStack extends Stack {
 		Memory memoryService = getServicesTracker().getService(Memory.class);
 
 		long bytesToRead = 128 * 4; // max 128 ARM instructions
-
+		
 		// for cases where the PC is small, only read back to 0x0
 		if (bytesToRead > pcValue.getValue().longValue()) {
 			bytesToRead = pcValue.getValue().longValue();
 		}
 		ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>();
-		IStatus status = memoryService.getMemory(context, pcValue.add(-bytesToRead), byteArray, (int) bytesToRead, 1);
+		IStatus status = memoryService.getMemory(context, pcValue.add(-bytesToRead), byteArray, (int)bytesToRead, 1);
 		if (!status.isOK()) {
 			return null;
 		}
@@ -294,8 +293,7 @@ public class ARMStack extends Stack {
 		int bytesToRead = prologAddress.distanceTo(pcValue).min(BigInteger.valueOf(16)).intValue();
 		if (bytesToRead > 0) {
 			// the PC is not at the start of the prolog, so parse from the start
-			// of the prolog to the PC,
-			// or 16 bytes, whichever is less.
+			// of the prolog to the PC, or 16 bytes, whichever is less.
 			IStatus status = memoryService.getMemory(context, prologAddress, byteArray, bytesToRead, 1);
 			if (!status.isOK()) {
 				return null;
@@ -317,7 +315,7 @@ public class ARMStack extends Stack {
 
 			// look for prolog instructions. if found, figure out the LR and SP
 			// values and return
-			SpilledRegisters spilledRegs = thumbMode ? parseThumbProlog(context, instructions, spValue)
+			SpilledRegisters spilledRegs = thumbMode ? parseThumbProlog(context, instructions, spValue, prologAddress)
 					: parseArmProlog(context, instructions, spValue);
 
 			if (spilledRegs != null) {
@@ -326,8 +324,7 @@ public class ARMStack extends Stack {
 		}
 
 		// we're either at the start of the prolog, or there is no prolog for
-		// this function (leaf function), so
-		// just use the real LR and SP
+		// this function (leaf function), so just use the real LR and SP
 		SpilledRegisters spilledRegs = new SpilledRegisters();
 		spilledRegs.SP = spValue;
 		spilledRegs.LR = lrValue;
@@ -350,7 +347,7 @@ public class ARMStack extends Stack {
 				// figure out how many registers are being stored
 				BigInteger regBits = instruction.and(BigInteger.valueOf(0x0000FFFFL));
 				int regCount = 0;
-				for (int i = 0; i <= 14; i++) {
+				for (int i = 0; i <= 15; i++) {
 					if (regBits.testBit(i)) {
 						regCount++;
 					}
@@ -398,8 +395,7 @@ public class ARMStack extends Stack {
 						spilledRegs.SP = spilledRegs.SP.add(4 * regCount);
 					} else {
 						// the previous SP is 4 times the number of saved
-						// registers away
-						// from the current SP
+						// registers away from the current SP
 						spilledRegs.SP = currentSP.add(4 * regCount);
 					}
 				}
@@ -415,8 +411,7 @@ public class ARMStack extends Stack {
 						BigInteger immed_8 = instruction.and(BigInteger.valueOf(0x000000FFL));
 						BigInteger rotate_imm = instruction.and(BigInteger.valueOf(0x00000F00L)).shiftRight(8);
 
-						// shifter_operand = immed_8 Rotate_Right (rotate_imm *
-						// 2)
+						// shifter_operand = immed_8 Rotate_Right (rotate_imm * 2)
 						shifter_operand = immed_8.shiftRight(rotate_imm.multiply(BigInteger.valueOf(2)).intValue());
 					} else {
 						// TODO register operand, but doesn't seem to be used by
@@ -446,8 +441,7 @@ public class ARMStack extends Stack {
 				}
 			} else if (isSWIInstruction(instruction)) {
 				// get the user mode LR and SP. note that the ones we've already
-				// read
-				// are in supervisor mode since we're in an exception
+				// read are in supervisor mode since we're in an exception
 				Registers registersService = getServicesTracker().getService(Registers.class);
 				spilledRegs.SP = new Addr64(registersService.getRegisterValue(context, ARMRegisters.SP), 16);
 				spilledRegs.LR = new Addr64(registersService.getRegisterValue(context, ARMRegisters.LR), 16);
@@ -474,7 +468,8 @@ public class ARMStack extends Stack {
 		return null;
 	}
 
-	private SpilledRegisters parseThumbProlog(ExecutionDMC context, List<BigInteger> instructions, IAddress spValue) {
+	private SpilledRegisters parseThumbProlog(ExecutionDMC context, List<BigInteger> instructions, IAddress spValue,
+			IAddress prologAddress) {
 
 		SpilledRegisters spilledRegs = new SpilledRegisters();
 
@@ -522,8 +517,7 @@ public class ARMStack extends Stack {
 					spilledRegs.SP = spilledRegs.SP.add(4 * regCount);
 				} else {
 					// the previous SP is 4 times the number of saved registers
-					// away
-					// from the current SP
+					// away from the current SP
 					spilledRegs.SP = currentSP.add(4 * regCount);
 				}
 
@@ -564,6 +558,77 @@ public class ARMStack extends Stack {
 
 				if (spilledRegs.SP != null) {
 					spilledRegs.SP = spilledRegs.SP.add(immed_7);
+				}
+			} else if ((instruction.intValue() & 0xFF87L) == 0x4485L) {
+				// add (4) with the SP as the destination register
+				// get the source register number
+				int sourceReg = instruction.shiftRight(3).and(BigInteger.valueOf(0x000F)).intValue();
+
+				/*
+				 	Here's an example of a prolog that uses an add to the SP with another register
+				 	
+					push {r4,r7,lr}
+					cpy  r7,sp
+					ldr  r4,[pc,#320]
+					add  sp,r4
+					
+					Note that is could technically use any instruction(s) to fill the value
+					of r4 before doing the add, but then we'd have to support all Thumb instructions.
+					This is the only known signature of this case, so we'll only look for an LDR (3)
+					instruction with the source of the add as the destination.  Other instructions
+					can be added on a case by case basis as needed.
+				 */
+
+				IAddress instAddr = prologAddress;
+				
+				for (BigInteger inst : instructions) {
+					// look for an LDR (3)
+					if ((inst.intValue() & 0xF800L) == 0x4800L) {
+						// is the destination register the right one?
+						if (inst.and(BigInteger.valueOf(0x0700L)).shiftRight(8).intValue() == sourceReg) {
+							int immed_8 = inst.and(BigInteger.valueOf(0x00FF)).intValue();
+							
+							// calculate the address - (PC & 0xFFFFFFFC) + (immed_8 * 4)
+							IAddress dataAddr = new Addr64(instAddr.getValue().and(BigInteger.valueOf(0xFFFFFFFCL)));
+							dataAddr = dataAddr.add(immed_8 * 4);
+							
+							// not sure why as the docs don't say anything about it, but in practice the
+							// data is really in (PC & 0xFFFFFFFC) + (immed_8 * 4) + 4.  I validated this
+							// by stepping over the ldr instruction and checking the value of the destination
+							// register.
+							dataAddr = dataAddr.add(4);
+							
+							Memory memoryService = getServicesTracker().getService(Memory.class);
+							ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>(4);
+							IStatus status = memoryService.getMemory(context, dataAddr, byteArray, 4, 1);
+							if (status.isOK()) {
+								// note that we must treat this as a signed int
+								int sourceRegValue = MemoryUtils.convertByteArrayToInt(byteArray.toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN);
+
+								// update the spilled registers
+								for (int i = 0; i < spilledRegs.registers.length; i++) {
+									IAddress address = spilledRegs.registers[i];
+									if (address != null) {
+										// register was spilled so update its location
+										spilledRegs.registers[i] = address.add(-sourceRegValue);
+									}
+								}
+
+								// update the LR and SP as well
+								if (spilledRegs.LRAddress != null) {
+									spilledRegs.LRAddress = spilledRegs.LRAddress.add(-sourceRegValue);
+								}
+
+								if (spilledRegs.SP != null) {
+									spilledRegs.SP = spilledRegs.SP.add(-sourceRegValue);
+								}
+							}
+
+							break;
+						}
+					}
+					
+					instAddr = instAddr.add(2);
 				}
 			}
 		}

@@ -277,15 +277,17 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		public IEnumerator[] getEnumerators() {
 			if (enumerators == null) {
 				enumerators = new ArrayList<IEnumerator>();
-				Symbols symbolsService = getServicesTracker().getService(Symbols.class);
-				if (executionDMC != null) {
-					IFunctionScope scope = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
-							ipAddress);
-					if (scope != null) {
-						Collection<IEnumerator> localEnumerators = scope.getEnumerators();
-						for (IEnumerator enumerator : localEnumerators) {
-							enumerators.add(enumerator);
-							enumeratorsByName.put(enumerator.getName(), enumerator);
+				if (getServicesTracker() != null) {
+					Symbols symbolsService = getServicesTracker().getService(Symbols.class);
+					if (executionDMC != null && symbolsService != null) {
+						IFunctionScope scope = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
+								ipAddress);
+						if (scope != null) {
+							Collection<IEnumerator> localEnumerators = scope.getEnumerators();
+							for (IEnumerator enumerator : localEnumerators) {
+								enumerators.add(enumerator);
+								enumeratorsByName.put(enumerator.getName(), enumerator);
+							}
 						}
 					}
 				}

@@ -11,8 +11,8 @@
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
 /**
- * Interface representing an enumerator (what's inside enum {}, e.g. enum { Red,
- * Green, Blue}, the enumerators are Red, Green, Blue
+ * Interface representing an enumerator (what's inside enum {}). E.g.,
+*  enum {Red, Green, Blue} has enumerators Red, Green, Blue
  */
 public interface IEnumerator {
 

@@ -17,13 +17,9 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
@@ -33,8 +29,6 @@ import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IExtensionRegistry;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -50,9 +44,12 @@ import org.eclipse.tm.tcf.services.ILocator;
 import org.eclipse.tm.tcf.util.TCFTask;
 import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 
-public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorListener {
-
-	private boolean initialized = false;
+/**
+ * Utility class that provides access to TCF agents and services. It abstracts
+ * out the details of which agent provides the services, launching the agent if
+ * necessary, etc.
+ */
+public class TCFServiceManager implements ITCFServiceManager  {
 
 	/**
 	 * The stringified IP addresses of the local machine. Populated by
@@ -65,15 +62,17 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 
 	private static final String EXTENSION_POINT_NAME = "tcfAgentLauncher";
 
-	// <peer name, peer> map.
-	private final Map<String, IPeer> knownPeers = Collections.synchronizedMap(new HashMap<String, IPeer>());
+	private boolean initialized = false;
+	private List<String> hostIPAddresses;
+	private List<ITCFAgentLauncher> launchedtcfAgentLaunchers;
 
 	public TCFServiceManager() {
 	}
 
 	private void initialize() throws CoreException {
-		// load extensions
+		// load TCFAgentDescriptor extensions
 		tcfAgentLaunchers = new ArrayList<ITCFAgentLauncher>();
+		launchedtcfAgentLaunchers = new ArrayList<ITCFAgentLauncher>();
 
 		IExtensionRegistry extensionRegistry = Platform.getExtensionRegistry();
 		IExtensionPoint extensionPoint = extensionRegistry.getExtensionPoint(EDCDebugger.PLUGIN_ID, EXTENSION_POINT_NAME);
@@ -100,17 +99,6 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 						"Unable to load " + EXTENSION_POINT_NAME + " extension from " + extension.getContributor().getName(), null);
 			}
 		}
-
-		Protocol.invokeAndWait(new Runnable() {
-			public void run() {
-
-				// get the known peers from the locator service
-				for (IPeer peer : Protocol.getLocator().getPeers().values()) {
-					peerAdded(peer);
-				}
-				Protocol.getLocator().addListener(TCFServiceManager.this);
-			}
-		});
 
 		// record local host IP addresses
 		localIPAddresses = getLocalIPAddresses();
@@ -144,133 +132,6 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 		return p.getID().equals("TCFLocal");
 	}
 
-	public Collection<String> getPeers(final String serviceName, final Map<String, String> attributesToMatch)
-			throws Exception {
-		if (!initialized) {
-			initialize();
-		}
-
-		List<IStatus> statuses = new ArrayList<IStatus>();
-
-		// First find known peers with matching attributes
-		//
-		final List<IPeer> runningCandidates = new ArrayList<IPeer>();
-		new TCFTask<Object>() {
-			public void run() {
-				synchronized (knownPeers) {
-					for (IPeer peer : knownPeers.values()) {
-						// Don't bother with internal local peer.
-						if (isInternalLocalPeer(peer))
-							continue;
-
-						Map<String, String> peerAttributes = peer.getAttributes();
-						String host = peerAttributes.get(IPeer.ATTR_IP_HOST);
-
-						if (host.equals("127.0.0.1") && matchesAllAttributes(peer.getAttributes(), attributesToMatch))
-							runningCandidates.add(peer);
-					}
-				}
-
-				done(this);
-			}
-		}.getE();
-
-		final Set<String> peerNames = new HashSet<String>();
-
-		// Now find the ones that offer the required service.
-		//
-		for (final IPeer peer : runningCandidates) {
-			String peerName = new TCFTask<String>() {
-				public void run() {
-					done(peer.getName());
-				}
-			}.get();
-
-			// wait up to 3 seconds for the asynchronous task.
-			TCFTask<Object> task = new TCFTask<Object>(3000) {
-				public void run() {
-					IChannel ch = getChannelForPeer(peer);
-					if (ch != null) {
-						assert (ch.getState() == IChannel.STATE_OPEN);
-						if (null != ch.getRemoteService(serviceName)) {
-							peerNames.add(peer.getName());
-							done(this);
-						} else
-							error(new Exception(MessageFormat.format(
-									"Service [{0}] is not offered by the running peer [{1}].", serviceName, peer
-											.getName())));
-					} else {
-						final IChannel channel = peer.openChannel();
-
-						IChannel.IChannelListener listener = new IChannel.IChannelListener() {
-							public void onChannelOpened() {
-								if (null != channel.getRemoteService(serviceName))
-									peerNames.add(peer.getName());
-
-								channel.removeChannelListener(this);
-								done(this); // the argument is do-not-care
-							}
-
-							public void onChannelClosed(Throwable error) {
-							}
-
-							public void congestionLevel(int level) {
-							}
-						};
-
-						channel.addChannelListener(listener);
-					}
-				}
-			};
-
-			try {
-				task.getE();
-			} catch (Error er) {
-				if (task.isCancelled()) {
-					statuses.add(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, MessageFormat.format(
-							"Timeout opening channel to running peer [{0}].", peerName)));
-				} else
-					statuses.add(new Status(IStatus.WARNING, EDCDebugger.PLUGIN_ID, MessageFormat.format(
-							"Fail to find service [{0}] from running peer [{1}].", serviceName, peerName)));
-			}
-		}
-
-		// If we failed to get service from matched running agents, report
-		// the error.
-		// In theory we should go on looking at those non-started agents,
-		// but currently it's most likely a problem.
-		// TODO: remove this when there are two agents with the same
-		// attributes but offering different services........... 06/25/09
-		if (statuses.size() == runningCandidates.size()) {
-			assert peerNames.size() == 0;
-			MultiStatus ms = new MultiStatus(EDCDebugger.PLUGIN_ID, 0, statuses
-					.toArray(new IStatus[statuses.size()]), "Failed to get required service from running agents.",
-					null);
-
-			throw new Exception(ms.toString());
-		}
-
-		// now check agent descriptors
-		// only if there is no running agent meeting our needs.
-		// TODO: get rid of the check after we have better way of selecting
-		// agents...05/13/09
-		if (peerNames.size() == 0)
-			new TCFTask<Object>() {
-				public void run() {
-					for (ITCFAgentLauncher descriptor : tcfAgentLaunchers) {
-						if (descriptor.getServiceNames().contains(serviceName)) {
-							if (matchesAllAttributes(descriptor.getPeerAttributes(), attributesToMatch)) {
-								peerNames.add(descriptor.getPeerName());
-							}
-						}
-					}
-					done(this);
-				}
-			}.get();
-
-		return peerNames;
-	}
-
 	/**
 	 * Find a TCF peer that matches the given attributes and offers the given
 	 * service. Running agents on LAN will be searched. If no running agent
@@ -286,7 +147,7 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 	 * @throws CoreException
 	 *             on any error.
 	 */
-	public IPeer findPeer(final String serviceName, final Map<String, String> attributesToMatch) throws CoreException {
+	public IPeer getPeer(final String serviceName, final Map<String, String> attributesToMatch) throws CoreException {
 
 		if (!initialized) {
 			initialize();
@@ -323,7 +184,8 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 
 		final List<IPeer> runningCandidates2 = new ArrayList<IPeer>();
 		final List<String> runningCandidateLabels = new ArrayList<String>();
-
+		final List<String> runningLocalAgentPorts = new ArrayList<String>();
+		
 		final boolean[] localAgentFound = { false };
 
 		// Now search the running candidates for the one that offers the
@@ -334,15 +196,41 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 			// wait up to 3 seconds for the asynchronous task.
 			TCFTask<Object> task = new TCFTask<Object>(3000) {
 				public void run() {
+					final boolean isLocalAgent = isLocalPeer(peer);
+
+					/*
+					 * If host has multiple IP addresses (e.g. 127.0.0.1 &
+					 * 192.168.0.5), a local agent instance may be running on
+					 * each of the addresses (see AgentServerTCP for more) but
+					 * listening on the same port. In such case, we don't want
+					 * to ask user to choose between those for local debug (it's
+					 * annoying). So we'll just use first of them for local
+					 * debug. Also note that different types of agents should
+					 * not listen to the same port.
+					 */
+					if (isLocalAgent) {
+						String port = peer.getAttributes().get(IPeer.ATTR_IP_PORT);
+						if (port != null) { // TCP/IP peer
+							if (runningLocalAgentPorts.contains(port)) {
+								// a local agent on the same port already exists (it 
+								// must be of the same agent type), skip this one.
+								done(this);
+								return;
+							}
+							else
+								runningLocalAgentPorts.add(port);
+						}
+					}
+					
 					final String peerLabel = peer.getName() + " (" + peer.getID() + ") "
-							+ (isLocalPeer(peer) ? "(local running)" : "(remote running)");
+							+ (isLocalAgent ? "(local running)" : "(remote running)");
 
 					IChannel ch = getChannelForPeer(peer);
 					if (ch != null) {
 						assert (ch.getState() == IChannel.STATE_OPEN);
 						if (null != ch.getRemoteService(serviceName)) {
 							runningCandidates2.add(peer);
-							if (peerLabel.contains("local"))
+							if (isLocalAgent)
 								localAgentFound[0] = true;
 							runningCandidateLabels.add(peerLabel);
 						}
@@ -356,7 +244,7 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 
 								if (null != channel.getRemoteService(serviceName)) {
 									runningCandidates2.add(peer);
-									if (peerLabel.contains("local"))
+									if (isLocalAgent)
 										localAgentFound[0] = true;
 									runningCandidateLabels.add(peerLabel);
 								}
@@ -594,131 +482,17 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 		return ret[0];
 	}
 
-	public void peerAdded(IPeer peer) {
-		synchronized (knownPeers) {
-			Map<String, String> peerAttributes = peer.getAttributes();
-			String host = peerAttributes.get(IPeer.ATTR_IP_HOST);
-			if (host != null && host.equals("127.0.0.1"))
-				knownPeers.put(peer.getName(), peer);
-		}
-	}
-
-	public void peerChanged(IPeer peer) {
-	}
-
-	public void peerHeartBeat(String id) {
-	}
-
-	// Note this method is ensured to be called in TCF dispatch thread.
-	//
-	public void peerRemoved(String id) {
-		// "knownPeers" is keyed on the human readable name of the peer rather than its ID
-		synchronized (knownPeers) {
-			for (IPeer p : knownPeers.values())
-				if (p.getID().equals(id)) {
-					knownPeers.remove(p.getName());
-					break;
-				}
-		}
-	}
-
-	public IService getPeerService(final String peerName, final String serviceName) throws Exception {
-		// first check running agents the Locator service had discovered 
-		final IPeer peer = knownPeers.get(peerName);
-		if (peer != null) {
-
-			final WaitForResult<IService> waitForService = new WaitForResult<IService>();
-			Protocol.invokeAndWait(new Runnable() {
-				public void run() {
-					try {
-						IChannel channel = getOpenChannel(peer);
-						IService service = channel.getRemoteService(serviceName);
-						waitForService.setData(service);
-					} catch (Exception e) {
-						waitForService.handleException(e);
-					}
-				}
-			});
-			return waitForService.get();
-		} else {
-			// agent isn't running. see if there's an agent descriptor
-			// by that name
-			for (final ITCFAgentLauncher descriptor : tcfAgentLaunchers) {
-				if (descriptor.getPeerName().equals(peerName)) {
-					// double check that it implements the desired
-					// service
-					if (!descriptor.getServiceNames().contains(serviceName)) {
-						return null;
-					}
-
-					final WaitForResult<IPeer> waitForPeer = new WaitForResult<IPeer>() {
-					};
-
-					final ILocator.LocatorListener locationListener = new ILocator.LocatorListener() {
-
-						public void peerRemoved(String id) {
-						}
-
-						public void peerHeartBeat(String id) {
-						}
-
-						public void peerChanged(IPeer peer) {
-						}
-
-						public void peerAdded(IPeer peer) {
-
-							if (peer.getName().equals(descriptor.getPeerName())) {
-								waitForPeer.setData(peer);
-							}
-						}
-					};
-
-					Protocol.invokeAndWait(new Runnable() {
-						public void run() {
-							// register ourselves as a listener
-							Protocol.getLocator().addListener(locationListener);
-						}
-					});
-
-					// launch the agent
-					descriptor.launch();
-					final IPeer launchedPeer = waitForPeer.get();
-
-					final WaitForResult<IService> waitForService = new WaitForResult<IService>();
-
-					Protocol.invokeAndWait(new Runnable() {
-						public void run() {
-							// unregister our listener
-							Protocol.getLocator().removeListener(locationListener);
-						}
-					});
-
-					if (launchedPeer != null) {
-						try {
-							final IChannel channel = getOpenChannel(launchedPeer);
-
-							Protocol.invokeAndWait(new Runnable() {
-								public void run() {
-									// unregister our listener
-									Protocol.getLocator().removeListener(locationListener);
-
-									IService service = channel.getRemoteService(serviceName);
-									waitForService.setData(service);
-								}
-							});
-						} catch (Exception e) {
-							waitForService.handleException(e);
-						}
-					}
-
-					return waitForService.get();
-				}
-			}
-		}
-		return null;
-	}
-
+	/**
+	 * Gets the service from the given TCF agent.
+	 * 
+	 * @param peer
+	 *            TCF agent.
+	 * @param serviceName
+	 *            the name of the service
+	 * @throws CoreException on error
+	 */
 	public IService getPeerService(final IPeer peer, final String serviceName) throws CoreException {
+
 		final WaitForResult<IService> waitForService = new WaitForResult<IService>();
 
 		final IChannel channel = getOpenChannel(peer);
@@ -741,14 +515,7 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 		}
 	}
 
-	public IChannel getPeerChannel(String peerName) {
-		IPeer peer = knownPeers.get(peerName);
-		if (peer == null)
-			return null;
-		return getChannelForPeer(peer);
-	}
-
-	private IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreException {
+private IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreException {
 		final WaitForResult<IPeer> waitForPeer = new WaitForResult<IPeer>() {
 		};
 
@@ -784,6 +551,7 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 		try {
 			descriptor.launch();
 			launchedPeer = waitForPeer.get();
+			launchedtcfAgentLaunchers.add(descriptor);
 		} catch (Exception e) {
 			throw EDCDebugger.newCoreException(MessageFormat.format("Fail to launch the agent that hosts peer {0}. Cause: {1}", descriptor
 					.getPeerName(), e.getLocalizedMessage()), e);
@@ -819,5 +587,19 @@ public class TCFServiceManager implements ITCFServiceManager, ILocator.LocatorLi
 		}
 
 		return ret;
+	}
+
+	/**
+	 * Shutdown.
+	 */
+	public void shutdown() {
+		// shutdown all agents that were launched by this manager
+		for (ITCFAgentLauncher desc : launchedtcfAgentLaunchers) {
+			try {
+				desc.shutdown();
+			} catch (Exception e) {
+			}
+		}
+		launchedtcfAgentLaunchers.clear();
 	}
 }

@@ -45,11 +45,13 @@ public class SnapshotLaunchDelegate extends EDCLaunchDelegate {
 		String albumLocation = configuration.getAttribute(IEDCLaunchConfigurationConstants.ATTR_ALBUM_FILE, "");
 		IPath albumPath = new Path(albumLocation);
 		album = Album.getAlbumByLocation(albumPath);
-		if (album == null) {
-			album = new Album();
+		if (album == null || !album.isLoaded()) {
+			if (album == null) {
+				album = new Album();
+			}
 			album.setLocation(albumPath);
 			try {
-				album.loadAlbum();
+				album.loadAlbum(false);
 			} catch (Exception e) {
 				EDCDebugger.getMessageLogger().logError(null, e);
 				return false;
@@ -58,11 +60,12 @@ public class SnapshotLaunchDelegate extends EDCLaunchDelegate {
 		ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
 		ILaunchConfigurationType launchType = lm.getLaunchConfigurationType(album.getLaunchTypeID());
 		if (launchType == null) {
+			// Can't launch TODO: Need error or exception
 			return false;
 		}
 		proxyLaunchConfig = findExistingLaunchForAlbum(albumLocation);
 		if (proxyLaunchConfig == null) {
-			String lcName = lm.generateUniqueLaunchConfigurationNameFrom(album.getName());
+			String lcName = lm.generateUniqueLaunchConfigurationNameFrom(album.getDisplayName());
 			ILaunchConfigurationWorkingCopy proxyLaunchConfigWC = launchType.newInstance(null, lcName);
 
 			proxyLaunchConfigWC.setAttributes(album.getLaunchProperties());
@@ -95,8 +98,8 @@ public class SnapshotLaunchDelegate extends EDCLaunchDelegate {
 		try {
 			ILaunchConfiguration[] configurations = lm.getLaunchConfigurations(launchType);
 			for (ILaunchConfiguration configuration : configurations) {
-				if (albumLocation.equals(configuration.getAttribute(
-						IEDCLaunchConfigurationConstants.ATTR_ALBUM_FILE, "")))
+				if (albumLocation.equals(configuration.getAttribute(IEDCLaunchConfigurationConstants.ATTR_ALBUM_FILE,
+						"")))
 					return configuration;
 			}
 		} catch (CoreException e) {
@@ -117,7 +120,7 @@ public class SnapshotLaunchDelegate extends EDCLaunchDelegate {
 	}
 
 	@Override
-	protected Sequence getFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
+	protected Sequence getLiveLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
 		return null;
 	}
 

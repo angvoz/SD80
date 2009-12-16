@@ -16,8 +16,6 @@ import org.eclipse.cdt.utils.Addr64;
 
 public interface IArrayDimensionType extends IAggregate {
 
-	/* public VariableWithValue getVariableValue(); */
-
 	public IArrayType getArrayType();
 
 	public Addr64 getLocation();

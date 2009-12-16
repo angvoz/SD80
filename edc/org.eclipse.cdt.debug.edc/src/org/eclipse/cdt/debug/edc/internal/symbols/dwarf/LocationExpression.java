@@ -69,14 +69,15 @@ public class LocationExpression implements ILocationProvider {
 							.getExecutionDMC(), opcode - DwarfConstants.DW_OP_breg0), 16);
 					IAddress regAddress = new Addr64(BigInteger.valueOf(regValue));
 					long offset = reader.read_signed_leb128(location);
-					return new MemoryVariableLocation(regAddress.add(offset));
+					return new MemoryVariableLocation(regAddress.add(offset), true);
 				} else {
 
 					switch (opcode) {
 
 					case DwarfConstants.DW_OP_addr: /* Constant address. */
+						// this is not a runtime address
 						long addrValue = reader.readAddress(location, addressSize);
-						return new MemoryVariableLocation(new Addr64(BigInteger.valueOf(addrValue)));
+						return new MemoryVariableLocation(new Addr64(BigInteger.valueOf(addrValue)), false);
 
 					case DwarfConstants.DW_OP_deref:
 					case DwarfConstants.DW_OP_const1u: /*
@@ -194,11 +195,11 @@ public class LocationExpression implements ILocationProvider {
 									// we have a bogus register value
 									return new InvalidVariableLocation(DwarfMessages.UnknownVariableAddress);
 								}
-								return new MemoryVariableLocation(regAddress);
+								return new MemoryVariableLocation(regAddress, true);
 							} else if (framePtrLoc instanceof IMemoryVariableLocation) {
 								IAddress address = ((IMemoryVariableLocation) framePtrLoc).getAddress();
 								long offset = reader.read_signed_leb128(location);
-								return new MemoryVariableLocation(address.add(offset));
+								return new MemoryVariableLocation(address.add(offset), true);
 							} else
 								assert (false);
 						}

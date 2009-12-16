@@ -62,10 +62,8 @@ public abstract class UnaryOperator extends CompoundInstruction {
 
 		operand = convertForPromotion(operand);
 
-		int resultType = getBinaryPromotionType(operand, operand); // change
-																	// chars/shorts
-																	// to int,
-																	// etc.
+		// change chars/shorts to int, etc.
+		int resultType = getBinaryPromotionType(operand, operand);
 
 		switch (resultType) {
 		case T_String:

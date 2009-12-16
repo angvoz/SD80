@@ -14,7 +14,10 @@ import org.eclipse.jface.viewers.ISelection;
 
 /**
  * @since 2.0
+ * @deprecated This interface was synchronous.  I has been replaced with the asynchronous
+ *             interface @{link org.eclipse.cdt.debug.core.model.IUncallHandler}
  */
+@Deprecated
 public interface IUncallHandler {
 	public boolean canUncall(ISelection debugContext);
 	public void uncall(ISelection debugContext);

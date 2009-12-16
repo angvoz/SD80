@@ -17,6 +17,8 @@
 
 TCFBroadcastGroup * EventClientNotifier::broadcastGroup = NULL;
 
+#define PROP_OS_ID		"OSID" // See org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.PROP_OS_ID
+
 static const char RUN_CONTROL[] = "RunControl";
 
 SendExeEventParams::SendExeEventParams(Context* context, bool isLoaded,
@@ -172,9 +174,6 @@ void EventClientNotifier::SendContextSuspendedCallback(void* params) {
 	out.writeZero();
 
 	out.writeCharacter('{');
-	out.writeString("Indy");
-	out.writeCharacter(':');
-	out.writeLong(43);
 	out.writeCharacter('}');
 	out.writeZero();
 
@@ -233,7 +232,7 @@ void EventClientNotifier::WriteContext(Context& context, TCFOutputStream& out) {
 		out.writeCharacter(',');
 	}
 
-	out.writeString(PROP_PROCESS_ID);
+	out.writeString(PROP_OS_ID);
 	out.writeCharacter(':');
 	out.writeString(AgentUtils::IntToString(context.GetOSID()));
 	out.writeCharacter(',');

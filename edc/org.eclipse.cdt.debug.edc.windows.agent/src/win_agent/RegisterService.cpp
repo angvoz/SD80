@@ -75,33 +75,45 @@ void RegisterService::command_get(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	write_stringz(&c->out, "R");
-	write_stringz(&c->out, token);
-	write_errno(&c->out, 0);
-
-	write_stream(&c->out, '[');
-
 	Context* context = ContextManager::FindDebuggedContext(exeContextID);
 
-	if (context != NULL) {
+	channel.writeReplyHeader(token);
+
+	if (context == NULL) {
+		// Return invalid-context-ID error.
+		channel.writeError(ERR_INV_CONTEXT);
+		channel.writeZero();	// this puts a null object in the reply
+	}
+	else {
 		std::vector<std::string> registerValues = context->GetRegisterValues(
 				registerIDs);
 
-		std::vector<std::string>::iterator itVectorData;
-		for (itVectorData = registerValues.begin(); itVectorData
-				!= registerValues.end(); itVectorData++) {
-			if (itVectorData != registerValues.begin())
-				write_stream(&c->out, ',');
-			std::string contextID = *itVectorData;
-			json_write_string(&c->out, contextID.c_str());
+		if (registerValues.size() == 0) { 
+			// no values got. Assuming target is running.
+			// TODO: it's better the above context->GetRegisterValues() API return error code.
+			channel.writeError(ERR_IS_RUNNING);
+			channel.writeZero();	// this puts a null object in the reply
+		}
+		else {
+			channel.writeError(0);
+			channel.writeCharacter('[');
+
+			std::vector<std::string>::iterator itVectorData;
+			for (itVectorData = registerValues.begin(); itVectorData
+					!= registerValues.end(); itVectorData++) 
+			{
+				if (itVectorData != registerValues.begin())
+					write_stream(&c->out, ',');
+				std::string value = *itVectorData;
+				channel.writeString(value);
+			}
+
+			channel.writeCharacter(']');
+			channel.writeZero();
 		}
 	}
 
-	write_stream(&c->out, ']');
-	write_stream(&c->out, 0);
-
-	write_stream(&c->out, MARKER_EOM);
-
+	channel.writeComplete();
 }
 
 /*

@@ -45,6 +45,7 @@ WinThread::WinThread(WinProcess& process, DEBUG_EVENT& debugEvent) :
 	}
 	isSuspended_ = false;
 	isTerminating_ = false;
+	isUserSuspended_ = false;
 }
 
 int WinThread::GetThreadID() {
@@ -80,7 +81,7 @@ std::string WinThread::GetSuspendReason() {
 	std::string reason = "Exception";
 
 	switch (exceptionInfo_.ExceptionRecord.ExceptionCode) {
-	case 0:
+	case USER_SUSPEND_THREAD:
 		return "Suspended";
 	case EXCEPTION_SINGLE_STEP:
 		return "Step";
@@ -273,16 +274,30 @@ void WinThread::Terminate() throw (AgentException) {
 
 void WinThread::Suspend() throw (AgentException) {
 	DWORD suspendCount = SuspendThread(handle_);
+	MarkSuspended();
+	EnsureValidContextInfo();
+	exceptionInfo_.ExceptionRecord.ExceptionCode = USER_SUSPEND_THREAD; // "Suspended"
+	isUserSuspended_ = true;
+	EventClientNotifier::SendContextSuspended(this);
 	Logger::getLogger().Log(Logger::LOG_NORMAL, "WinThread::Suspend",
 			"suspendCount: %d", suspendCount);
 }
 
 void WinThread::Resume() throw (AgentException) {
-	parentProcess_.GetMonitor()->PostAction(new ResumeContextAction(
+	if (isUserSuspended_){
+		ResumeThread(handle_);
+		isUserSuspended_ = false;
+	}
+	else {
+		parentProcess_.GetMonitor()->PostAction(new ResumeContextAction(
 			parentProcess_.GetOSID(), GetOSID()));
+	}
 }
 
 void WinThread::SingleStep() throw (AgentException) {
+	//if (exceptionInfo_.ExceptionRecord.ExceptionCode == USER_SUSPEND_THREAD){
+	//	ResumeThread(handle_);
+	//}
 #define FLAG_TRACE_BIT 0x100
 	threadContextInfo_.EFlags |= FLAG_TRACE_BIT;
 	SetThreadContext(handle_, &threadContextInfo_);

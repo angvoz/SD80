@@ -33,6 +33,8 @@ public class GdbserverAgentDescriptor implements ITCFAgentLauncher {
 
 	private static final String NAME = "Gdbserver TCF Agent";
 
+	private Process agentProcess;
+	
 	public Map<String, String> getPeerAttributes() {
 		Map<String, String> attrs = new HashMap<String, String>();
 		attrs.put(IPeer.ATTR_NAME, NAME);
@@ -73,7 +75,11 @@ public class GdbserverAgentDescriptor implements ITCFAgentLauncher {
 		final CommandLauncher launcher = new CommandLauncher();
 		String[] cmdarray = new String[] { "-jar", path.toOSString() };
 
-		launcher.execute(new Path("java"), cmdarray, null, null, new NullProgressMonitor());
+		agentProcess = launcher.execute(new Path("java"), cmdarray, null, null, new NullProgressMonitor());
 	}
 
+	public void shutdown() throws Exception {
+		if (agentProcess != null)
+			agentProcess.destroy();
+	}
 }

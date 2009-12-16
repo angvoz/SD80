@@ -30,6 +30,7 @@ import org.eclipse.tm.tcf.services.IRunControl;
 public class Win32AgentDescriptor implements ITCFAgentLauncher {
 
 	private static final String NAME = "Win32 Debug Agent";
+	private static Process agentProcess;
 
 	public Map<String, String> getPeerAttributes() {
 		Map<String, String> attrs = new HashMap<String, String>();
@@ -57,10 +58,16 @@ public class Win32AgentDescriptor implements ITCFAgentLauncher {
 					"$os$/EDCWindowsDebugAgent.exe"), null); //$NON-NLS-1$
 			if (url != null) {
 				url = FileLocator.resolve(url);
-				ProcessFactory.getFactory().exec(new String[] { new Path(url.getFile()).toOSString() });
+				agentProcess = ProcessFactory.getFactory().exec(new String[] { new Path(url.getFile()).toOSString() });
 			}
 		} catch (IOException e) {
 			throw e;
+		}
+	}
+
+	public void shutdown() throws Exception {
+		if (agentProcess != null) {
+			agentProcess.destroy();
 		}
 	}
 

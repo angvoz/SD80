@@ -52,7 +52,8 @@ void RunControlService::command_get_context(char * token, Channel * c) {
 	if (context == NULL) {
 		// Return an invalid context ID error.
 		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeString("null");
+		// channel.writeString("null");
+		channel.writeZero();	// this puts a null object in the reply
 	}
 	else {
 		channel.writeError(0);
@@ -129,6 +130,19 @@ void RunControlService::command_resume(char * token, Channel * c) {
 
 void RunControlService::command_suspend(char * token, Channel * c) {
 	LogTrace("RunControl::command_suspend", "token: %s", token);
+	TCFChannel channel(c);
+
+	std::string id = channel.readString();
+	channel.readZero();
+	channel.readComplete();
+
+	Context* context = ContextManager::FindDebuggedContext(id);
+	context->Suspend();
+
+	channel.writeReplyHeader(token);
+	channel.writeStringZ("null");
+	channel.writeComplete();
+
 }
 
 void RunControlService::command_terminate(char * token, Channel * c) {

@@ -13,6 +13,8 @@
 #include "stdafx.h"
 #include "Context.h"
 
+#define USER_SUSPEND_THREAD 0
+
 class WinProcess;
 
 class WinThread: public Context {
@@ -73,6 +75,7 @@ private:
 	bool threadContextValid_;
 	bool isSuspended_;
 	bool isTerminating_;
+	bool isUserSuspended_;
 	CONTEXT threadContextInfo_;
 	EXCEPTION_DEBUG_INFO exceptionInfo_;
 	std::map<std::string, std::string> registerValueCache_;

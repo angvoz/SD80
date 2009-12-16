@@ -41,7 +41,7 @@ abstract public class AbstractSnapshotCommandHandler extends AbstractEDCCommandH
 		IWorkbenchActivitySupport workbenchActivitySupport = PlatformUI.getWorkbench().getActivitySupport();
 		IActivityManager activityManager = workbenchActivitySupport.getActivityManager();
 		Set<String> enabledActivityIds = new HashSet<String>(activityManager.getEnabledActivityIds());
-		if (enabledActivityIds.remove("org.eclipse.cdt.debug.edc.ui.snapshotActivity"))
+		if (enabledActivityIds.remove("org.eclipse.cdt.debug.edc.ui.platformDebugActivity"))
 			workbenchActivitySupport.setEnabledActivityIds(enabledActivityIds);
 	}
 
@@ -50,7 +50,7 @@ abstract public class AbstractSnapshotCommandHandler extends AbstractEDCCommandH
 		IWorkbenchActivitySupport workbenchActivitySupport = PlatformUI.getWorkbench().getActivitySupport();
 		IActivityManager activityManager = workbenchActivitySupport.getActivityManager();
 		Set<String> enabledActivityIds = new HashSet<String>(activityManager.getEnabledActivityIds());
-		if (enabledActivityIds.add("org.eclipse.cdt.debug.edc.ui.snapshotActivity"))
+		if (enabledActivityIds.add("org.eclipse.cdt.debug.edc.ui.platformDebugActivity"))
 			workbenchActivitySupport.setEnabledActivityIds(enabledActivityIds);
 	}
 

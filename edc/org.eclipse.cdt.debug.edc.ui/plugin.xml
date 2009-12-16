@@ -61,6 +61,31 @@
             id="org.eclipse.cdt.debug.edc.ui.playSnapshots"
             name="Play Snapshots">
       </command>
+	 <command
+            categoryId="org.eclipse.cdt.debug.edc.ui.debugSnapshotCategory"
+            description="Control snapshot creation"
+            id="org.eclipse.cdt.debug.edc.ui.snapshotCreation"
+            name="Snapshot Creation">
+ 	   <commandParameter
+	         id="org.eclipse.ui.commands.radioStateParameter"
+	         name="State"
+	         optional="false">
+	   </commandParameter>
+	   <state
+	         class="org.eclipse.ui.handlers.RadioState:manual"
+	         id="org.eclipse.ui.commands.radioState">
+	   </state>
+	</command>
+  <command
+        description="Turn custom variable formatting on and off"
+        id="org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting"
+        name="Toggle Custom Variable Formatting">
+     <state
+           class="org.eclipse.ui.handlers.RegistryToggleState:true"
+           id="org.eclipse.ui.commands.toggleState">
+     </state>
+  </command>
+
    </extension>
 
   <extension
@@ -72,15 +97,17 @@
                   icon="icons/etool16/create_snapshot.png"
                   id="org.eclipse.cdt.debug.edc.ui.button.createSnapshot"
                   label="Create Snapshot"
-                  style="push">
+                  style="pulldown">
             <visibleWhen
                   checkEnabled="false">
                <reference
                      definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotCreationAvailable">
                </reference>
             </visibleWhen>
+            
+            
             </command>
-
+ 
            <command
                   commandId="org.eclipse.cdt.debug.edc.ui.playSnapshots"
                   icon="icons/etool16/play_snapshots.gif"
@@ -122,7 +149,57 @@
                </reference>
             </visibleWhen>
             </command>
+       </menuContribution>
+      <menuContribution
+            locationURI="menu:org.eclipse.cdt.debug.edc.ui.button.createSnapshot">
+ 
+     <command
+            commandId="org.eclipse.cdt.debug.edc.ui.snapshotCreation"
+            label="Manual"
+            style="radio">
+         <parameter
+               name="org.eclipse.ui.commands.radioStateParameter"
+               value="manual">
+         </parameter>
+      </command>
+      <command
+            commandId="org.eclipse.cdt.debug.edc.ui.snapshotCreation"
+            label="Suspend"
+            style="radio">
+         <parameter
+               name="org.eclipse.ui.commands.radioStateParameter"
+               value="suspend">
+         </parameter>
+      </command>
+      <command
+            commandId="org.eclipse.cdt.debug.edc.ui.snapshotCreation"
+            label="Breakpoints"
+            style="radio">
+         <parameter
+               name="org.eclipse.ui.commands.radioStateParameter"
+               value="breakpoints">
+         </parameter>
+      </command>
+
+</menuContribution>
+      <menuContribution
+            locationURI="toolbar:org.eclipse.debug.ui.VariableView">
+         <command
+               commandId="org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting"
+               icon="icons/obj16/tcf.gif"
+               label="Toggle Custom Variable Formatting"
+               style="toggle">
+         </command>
       </menuContribution>
+      <menuContribution
+            locationURI="toolbar:org.eclipse.debug.ui.ExpressionView">
+         <command
+               commandId="org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting"
+               icon="icons/obj16/tcf.gif"
+               label="Toggle Custom Variable Formatting"
+               style="toggle">
+         </command>
+      </menuContribution>  
        </extension>
 
     <extension
@@ -200,6 +277,17 @@
             </or>
            </and>
       </definition>
+      <definition id="org.eclipse.cdt.debug.edc.ui.testIsEDCRunning">
+         <with
+               variable="org.eclipse.core.runtime.Platform">
+            <test
+                  args="org.eclipse.cdt.debug.edc"
+                  forcePluginActivation="true"
+                  property="org.eclipse.core.runtime.bundleState"
+                  value="ACTIVE">
+            </test>
+         </with>
+      </definition>
   </extension>
   
    <extension
@@ -239,6 +327,19 @@
                   definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
             </reference>
          </enabledWhen>
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.CreationOptionsCommandHandler"
+             commandId="org.eclipse.cdt.debug.edc.ui.snapshotCreation">
+         <enabledWhen>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotCreationAvailable">
+            </reference>
+         </enabledWhen>
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.ToggleCustomFormattingCommandHandler"
+            commandId="org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting">
       </handler>
   </extension>
  
@@ -297,22 +398,47 @@
          point="org.eclipse.ui.activities">
  
       <category
-            name="EDC Snapshot Debugging"
-            description="Elements associated with snapshot albums"
-            id="org.eclipse.cdt.debug.edc.ui.snapshotCatagory">
+            name="Standard Debug Commands"
+            description="Standard Debug Commands"
+            id="org.eclipse.cdt.debug.edc.ui.platformDebugCatagory">
       </category>
   
+       <categoryActivityBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.platformDebugActivity"
+            categoryId="org.eclipse.cdt.debug.edc.ui.platformDebugCatagory">
+      </categoryActivityBinding>
+  
       <activity
-            name="Snapshot Actions"
-            description="These actions control snapshot albums"
-            id="org.eclipse.cdt.debug.edc.ui.snapshotActivity">
+            name="Standard Debug Actions"
+            description="These are the standard platform debug commands"
+            id="org.eclipse.cdt.debug.edc.ui.platformDebugActivity">
        </activity>
    
       <activityPatternBinding
-            activityId="org.eclipse.cdt.debug.edc.ui.snapshotActivity"
+            activityId="org.eclipse.cdt.debug.edc.ui.platformDebugActivity"
             isEqualityPattern="true" 
             pattern="org.eclipse.debug.ui.commands.Resume">
       </activityPatternBinding>
+ 
+       <activityPatternBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.platformDebugActivity"
+            isEqualityPattern="true" 
+            pattern="org.eclipse.debug.ui.commands.StepInto">
+      </activityPatternBinding>
+ 
+       <activityPatternBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.platformDebugActivity"
+            isEqualityPattern="true" 
+            pattern="org.eclipse.debug.ui.commands.StepOver">
+      </activityPatternBinding>
+ 
+       <activityPatternBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.platformDebugActivity"
+            isEqualityPattern="true" 
+            pattern="org.eclipse.debug.ui.commands.StepReturn">
+      </activityPatternBinding>
+ 
+ 		<defaultEnablement id="org.eclipse.cdt.debug.edc.ui.platformDebugActivity" /> 
       
      </extension>
    
@@ -350,23 +476,52 @@
          point="org.eclipse.cdt.ui.textHovers">
       <hover
             activate="true"
-            class="org.eclipse.cdt.debug.internal.ui.editors.DebugTextHover"
+            class="org.eclipse.cdt.debug.edc.internal.ui.EDCDebugTextHover"
             description="Shows formatted value in debugger hover"
-            id="org.eclipse.cdt.debug.edc.DebugTextHover"
+            id="org.eclipse.cdt.debug.edc.internal.ui.EDCDebugTextHover"
             label="Debug Text Hover">
       </hover>
    </extension>
    <extension
-         point="org.eclipse.cdt.launch.launchConfigAffinity">
-      <launchConfigTypeId
-            id="com.freescale.type1">
-      </launchConfigTypeId>
-      <launchConfigTypeId
-            id="com.freescale.type2">
-      </launchConfigTypeId>
-      <launchConfigTypeId
-            id="org.eclipse.ant.AntBuilderLaunchConfigurationType">
-      </launchConfigTypeId>
+         point="org.eclipse.ui.console.consoleFactories">
+      <consoleFactory
+            class="org.eclipse.cdt.debug.edc.ui.console.DebugProgramOutputConsoleFactory"
+            label="Program Output Console">
+      </consoleFactory>
    </extension>
-   
+   <extension
+         point="org.eclipse.ui.console.consolePageParticipants">
+      <consolePageParticipant
+            class="org.eclipse.cdt.debug.edc.ui.console.LoggingConsolePageParticipant"
+            id="org.eclipse.cdt.debug.edc.ui.DebugConsolePageParticipant">
+         <enablement>
+            <test property="org.eclipse.ui.console.consoleTypeTest" value="DebugProgramOutputConsoleFactory"/>
+         </enablement>
+      </consolePageParticipant>
+   </extension>
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            name="Snapshot Albums"
+            icon="icons/etool16/create_snapshot.png"
+            category="com.nokia.carbide.cpp"
+            class="org.eclipse.cdt.debug.edc.ui.views.SnapshotView"
+            id="org.eclipse.cdt.debug.edc.ui.views.SnapshotView">
+      </view>
+   </extension>
+
+	<extension 
+	    point="org.eclipse.debug.ui.detailPaneFactories">
+        <detailFactories
+             class="org.eclipse.cdt.debug.edc.internal.ui.EDCDetailPaneFactory"
+             id="org.eclipse.cdt.debug.edc.internal.ui.detailPane">
+			<enablement>
+		        <with variable="selection">
+	        		<iterate>
+					    <instanceof value="org.eclipse.cdt.dsf.debug.ui.viewmodel.numberformat.IFormattedValueVMContext"/>
+	        		</iterate>
+	      		</with>
+	      	</enablement>      
+        </detailFactories>
+    </extension>
 </plugin>

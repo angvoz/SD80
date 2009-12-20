@@ -11,11 +11,11 @@
 package org.eclipse.cdt.internal.core.settings.model;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfoChangeListener;
@@ -23,16 +23,11 @@ import org.eclipse.cdt.core.parser.IScannerInfoProvider;
 import org.eclipse.cdt.core.parser.ScannerInfo;
 import org.eclipse.cdt.core.settings.model.CProjectDescriptionEvent;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
-import org.eclipse.cdt.core.settings.model.ICFileDescription;
-import org.eclipse.cdt.core.settings.model.ICFolderDescription;
-import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingPathEntry;
 import org.eclipse.cdt.core.settings.model.ICMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionListener;
-import org.eclipse.cdt.core.settings.model.ICResourceDescription;
-import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.core.resources.IProject;
@@ -44,11 +39,7 @@ import org.eclipse.core.runtime.Path;
 
 public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICProjectDescriptionListener {
 	private IProject fProject;
-	private ICProjectDescription fProjDes;
 	private ICConfigurationDescription fCfgDes;
-	private Map<String, IScannerInfo> fIdToLanguageSettingsMap = Collections.synchronizedMap(new HashMap<String, IScannerInfo>());
-	private String fCurrentFileDescriptionId;
-	private IScannerInfo fCurrentFileScannerInfo;
 	private static final ScannerInfo INEXISTENT_SCANNER_INFO = new ScannerInfo();
 	private boolean fInited;
 
@@ -59,15 +50,13 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 	}
 
 	private void updateProjCfgInfo(ICProjectDescription des){
-		fInited = true;
-		fProjDes = des;
-		if(fProjDes != null){
+		if(des != null){
 			fCfgDes = des.getDefaultSettingConfiguration();
+			fInited = true;
+		} else {
+			fCfgDes = null;
+			fInited = false;
 		}
-
-		fIdToLanguageSettingsMap.clear();
-		fCurrentFileDescriptionId = null;
-		fCurrentFileScannerInfo = null;
 	}
 
 	public IProject getProject(){
@@ -75,97 +64,52 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 	}
 
 	public IScannerInfo getScannerInformation(IResource resource) {
+
 		if(!fInited)
 			updateProjCfgInfo(CProjectDescriptionManager.getInstance().getProjectDescription(fProject, false));
 
-		if(fCfgDes == null)
+		if (fCfgDes==null) {
+			CCorePlugin.log("Error getting scanner info: fCfgDes==null");
 			return INEXISTENT_SCANNER_INFO;
+		}
+		
+		String[] languageIds = LanguageSettingsManager.getLanguageIds(fCfgDes, resource);
+		if (languageIds==null || languageIds.length==0) {
+			CCorePlugin.log("Error getting ScannerInfo: Not able to retrieve language id for resource " + resource);
+			return INEXISTENT_SCANNER_INFO;
+		}
+		
+		// TODO: is there really a use case for resource being not IFile?
+		String languageId = languageIds[0]; // Legacy logic
 
-		ICLanguageSetting setting = null;
-		ICResourceDescription rcDes = null;
-		if(resource.getType() != IResource.PROJECT){
-			IPath rcPath = resource.getProjectRelativePath();
-			rcDes = fCfgDes.getResourceDescription(rcPath, false);
-
-			if(rcDes.getType() == ICSettingBase.SETTING_FILE){
-				setting = ((ICFileDescription)rcDes).getLanguageSetting();
+		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_PATH);
+		List<ICLanguageSettingEntry> includePathSystemEntries = new ArrayList<ICLanguageSettingEntry>(includePathEntries.size());
+		List<ICLanguageSettingEntry> includePathLocalEntries = new ArrayList<ICLanguageSettingEntry>(includePathEntries.size());
+		for (ICLanguageSettingEntry entry : includePathEntries) {
+			if ((entry.getFlags()&ICSettingEntry.LOCAL) == ICSettingEntry.LOCAL) {
+				includePathLocalEntries.add(entry);
 			} else {
-				if(resource.getType() == IResource.FILE)
-					setting = ((ICFolderDescription)rcDes).getLanguageSettingForFile(rcPath.lastSegment());
-				else {
-					ICLanguageSetting settings[] = ((ICFolderDescription)rcDes).getLanguageSettings();
-					if(settings.length > 0){
-						setting = settings[0];
-					}
-				}
+				includePathSystemEntries.add(entry);
 			}
 		}
-		return getScannerInfo(resource, rcDes, setting);
-	}
-
-	private IScannerInfo getScannerInfo(IResource rc, ICResourceDescription rcDes, ICLanguageSetting ls){
-		String mapKey = ls != null ? ls.getId() : null;
-//		if(ls == null)
-//			return INEXISTENT_SCANNER_INFO;
-		boolean useMap = rcDes == null || rcDes.getType() == ICSettingBase.SETTING_FOLDER;
-
-		IScannerInfo info;
-		if(useMap)
-			info = fIdToLanguageSettingsMap.get(mapKey);
-		else {
-			if(fCurrentFileScannerInfo != null && rcDes != null){
-				if(rcDes.getId().equals(fCurrentFileDescriptionId))
-					info = fCurrentFileScannerInfo;
-				else {
-					info = null;
-					fCurrentFileScannerInfo = null;
-					fCurrentFileDescriptionId = null;
-				}
-			} else {
-				info = null;
-			}
-		}
-		if(info == null){
-			info = createScannerInfo(rc, ls);
-			if(useMap)
-				fIdToLanguageSettingsMap.put(mapKey, info);
-			else if (rcDes != null){
-				fCurrentFileScannerInfo = info;
-				fCurrentFileDescriptionId = rcDes.getId();
-			}
-		}
-		return info;
-	}
-
-	private IScannerInfo createScannerInfo(IResource rc, ICLanguageSetting ls){
-		List<ICLanguageSettingEntry> incsList = new ArrayList<ICLanguageSettingEntry>();
-		List<ICLanguageSettingEntry> incFilesList = new ArrayList<ICLanguageSettingEntry>();
-		List<ICLanguageSettingEntry> macroFilesList = new ArrayList<ICLanguageSettingEntry>();
-		List<ICLanguageSettingEntry> macroList = new ArrayList<ICLanguageSettingEntry>();
 		
-		ICLanguageSetting[] languageSettings = null;
-		if(ls == null) {
-			ICFolderDescription foDes = fCfgDes.getRootFolderDescription();
-			languageSettings = foDes.getLanguageSettings();
-		} else {
-			languageSettings = new ICLanguageSetting[] {ls};
-		}
+		String[] includePathsSystem = getValues(includePathSystemEntries);
 
-		for (ICLanguageSetting languageSetting : languageSettings) {
-			String languageId = languageSetting.getLanguageId();
-			ICConfigurationDescription cfgDescription = languageSetting.getConfiguration();
-			incsList.addAll(LanguageSettingsManager.getSettingEntriesReconciled(cfgDescription, rc, languageId, ICSettingEntry.INCLUDE_PATH));
-			incFilesList.addAll(LanguageSettingsManager.getSettingEntriesReconciled(cfgDescription, rc, languageId, ICSettingEntry.INCLUDE_FILE));
-			macroFilesList.addAll(LanguageSettingsManager.getSettingEntriesReconciled(cfgDescription, rc, languageId, ICSettingEntry.MACRO_FILE));
-			macroList.addAll(LanguageSettingsManager.getSettingEntriesReconciled(cfgDescription, rc, languageId, ICSettingEntry.MACRO));
+		String[] includePathsLocal = new String[includePathLocalEntries.size()];
+		for (int i=0; i<includePathLocalEntries.size();i++) {
+			includePathsLocal[i] = includePathLocalEntries.get(i).getName();
 		}
 		
-		String incs[] = getValues(incsList);
-		String incFiles[] = getValues(incFilesList);
-		String macroFiles[] = getValues(macroFilesList);
-		Map<String, String> macrosMap = getMacroValues(macroList);
+		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_FILE);
+		String[] includeFiles = getValues(includeFileEntries);
 		
-		return new ExtendedScannerInfo(macrosMap, incs, macroFiles, incFiles);
+		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO_FILE);
+		String[] macroFiles = getValues(macroFileEntries);
+		
+		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO);
+		Map<String, String> definedSymbols = getMacroValues(macroEntries);
+		
+		return new ExtendedScannerInfo(definedSymbols, includePathsSystem, macroFiles, includeFiles, includePathsLocal);
 	}
 
 	private Map<String, String> getMacroValues(List<ICLanguageSettingEntry> macroEntries){
@@ -236,7 +180,7 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 	public void handleEvent(CProjectDescriptionEvent event) {
 		if(!event.getProject().equals(fProject))
 			return;
-
+		
 		//TODO: check delta and notify listeners
 
 		updateProjCfgInfo(event.getNewCProjectDescription());

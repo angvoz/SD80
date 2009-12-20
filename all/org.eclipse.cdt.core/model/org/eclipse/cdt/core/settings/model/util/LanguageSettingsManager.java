@@ -33,6 +33,7 @@ import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
+import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
@@ -45,6 +46,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.osgi.service.prefs.BackingStoreException;
@@ -396,5 +398,39 @@ public class LanguageSettingsManager {
 		LanguageSettingsExtensionManager.serializeLanguageSettings();
 	}
 
+
+	// FIXME: is there more straight way to get language id?
+	public static String[] getLanguageIds(ICConfigurationDescription cfgDescription, IResource resource) {
+		ICResourceDescription rcDes = null;
+		if(resource.getType() != IResource.PROJECT){
+			IPath rcPath = resource.getProjectRelativePath();
+			rcDes = cfgDescription.getResourceDescription(rcPath, false);
+
+			if(rcDes.getType() == ICSettingBase.SETTING_FILE){
+				ICLanguageSetting setting = ((ICFileDescription)rcDes).getLanguageSetting();
+				return new String[] {setting.getLanguageId()};
+			} else {
+				if(resource.getType() == IResource.FILE) {
+					ICLanguageSetting setting = ((ICFolderDescription)rcDes).getLanguageSettingForFile(rcPath.lastSegment());
+					return new String[] {setting.getLanguageId()};
+				} else {
+					ICLanguageSetting settings[] = ((ICFolderDescription)rcDes).getLanguageSettings();
+					if(settings==null || settings.length==0){
+						ICFolderDescription foDes = cfgDescription.getRootFolderDescription();
+						settings = foDes.getLanguageSettings();
+					}
+					if(settings!=null){
+						String[] ids = new String[settings.length];
+						for (int i=0;i<settings.length;i++) {
+							ids[i] = settings[i].getLanguageId();
+						}
+						return ids;
+					}
+				}
+			}
+		}
+		
+		return null;
+	}
 
 }

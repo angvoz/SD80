@@ -149,7 +149,7 @@ public class BaseTestCase extends TestCase {
 				testThrowable=e;
 			}
 			
-			if (statusLog.size()!=fExpectedLoggedNonOK) {
+			if (statusLog.size() != fExpectedLoggedNonOK) {
 				StringBuffer msg= new StringBuffer("Expected number ("+fExpectedLoggedNonOK+") of ");
 				msg.append("non-OK status objects differs from actual ("+statusLog.size()+").\n");
 				Throwable cause= null;
@@ -197,7 +197,7 @@ public class BaseTestCase extends TestCase {
         TestResult r = new TestResult();
         super.run(r);
         if (r.failureCount() == 1) {
-        	TestFailure failure= (TestFailure) r.failures().nextElement();
+        	TestFailure failure= r.failures().nextElement();
         	String msg= failure.exceptionMessage();
         	if (msg != null && msg.startsWith("Method \"" + getName() + "\"")) {
         		result.addFailure(this, new AssertionFailedError(msg));

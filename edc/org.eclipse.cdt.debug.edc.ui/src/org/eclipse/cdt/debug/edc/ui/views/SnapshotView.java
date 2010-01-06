@@ -12,12 +12,9 @@
 package org.eclipse.cdt.debug.edc.ui.views;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import javax.xml.parsers.ParserConfigurationException;
 
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
@@ -73,7 +70,6 @@ import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
-import org.xml.sax.SAXException;
 
 public class SnapshotView extends ViewPart {
 
@@ -82,21 +78,26 @@ public class SnapshotView extends ViewPart {
 	 */
 	public static final String ID = "org.eclipse.cdt.debug.edc.ui.views.SnapshotView";
 
-	private static final ImageDescriptor CAMERA_IMGDESC = AbstractUIPlugin
+/*	private static final ImageDescriptor CAMERA_IMGDESC = AbstractUIPlugin
 			.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
 					"/icons/etool16/create_snapshot.png"); //$NON-NLS-1$
 	private static final ImageDescriptor INFO_IMGDESC = PlatformUI
 			.getWorkbench().getSharedImages().getImageDescriptor(
 					ISharedImages.IMG_OBJS_INFO_TSK); //$NON-NLS-1$
-	private static final ImageDescriptor SNAPSHOT_NODE_IMGDESC = AbstractUIPlugin
+*/	private static final ImageDescriptor SNAPSHOT_NODE_IMGDESC = AbstractUIPlugin
 			.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
 					"/icons/etool16/snapshot_node.gif"); //$NON-NLS-1$
 	private static final ImageDescriptor ALBUM_NODE_IMGDESC = AbstractUIPlugin
 			.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
 					"/icons/etool16/album_node.png"); //$NON-NLS-1$
+	private static final ImageDescriptor ALBUM_NODE_ERROR_IMGDESC = AbstractUIPlugin
+	.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/etool16/album_node_error.png"); //$NON-NLS-1$
 
 	private static final Image ALBUM_NODE_IMAGE = ALBUM_NODE_IMGDESC
 			.createImage();
+	private static final Image ALBUM_NODE_ERROR_IMAGE = ALBUM_NODE_ERROR_IMGDESC
+	.createImage();
 	private static final Image SNAPSHOT_NODE_IMAGE = SNAPSHOT_NODE_IMGDESC
 			.createImage();
 
@@ -131,7 +132,11 @@ public class SnapshotView extends ViewPart {
 			TreeNode node = (TreeNode) obj;
 			Object value = node.getValue();
 			if (value instanceof Album) {
-				return ALBUM_NODE_IMAGE;
+				if (((Album) value).getSnapshots().size() == 0){
+					return ALBUM_NODE_ERROR_IMAGE;
+				} else {
+					return ALBUM_NODE_IMAGE;
+				}
 			} else if (value instanceof Snapshot) {
 				return SNAPSHOT_NODE_IMAGE;
 			}
@@ -601,7 +606,6 @@ public class SnapshotView extends ViewPart {
 		}
 
 		// Get all .dsa files from Snapshots project
-		List<IPath> dsaPaths = new ArrayList<IPath>();
 		try {
 			IResource[] resources = cProject.getProject().members();
 			for (IResource resource : resources) {

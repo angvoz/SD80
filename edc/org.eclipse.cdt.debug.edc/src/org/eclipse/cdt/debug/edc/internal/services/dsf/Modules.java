@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
+import java.io.File;
 import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import org.eclipse.cdt.debug.core.executables.Executable;
 import org.eclipse.cdt.debug.core.executables.ExecutablesManager;
 import org.eclipse.cdt.debug.core.sourcelookup.ICSourceLocator;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
@@ -105,9 +107,9 @@ public class Modules extends AbstractEDCService implements IModules {
 			ISymbolDMContext {
 		private final ISymbolDMContext symbolContext;
 
-		private IPath hostFilePath;
+		private final IPath hostFilePath;
 		private IEDCSymbolReader symReader;
-		private List<ISection> runtimeSections = new ArrayList<ISection>();
+		private final List<ISection> runtimeSections = new ArrayList<ISection>();
 
 		public ModuleDMC(ISymbolDMContext symbolContext, Map<String, Object> props) {
 			super(Modules.this, symbolContext == null ? new IDMContext[0] : new IDMContext[] { symbolContext }, Integer
@@ -624,7 +626,7 @@ public class Modules extends AbstractEDCService implements IModules {
 				 * to keep the address ranges separate.
 				 */
 				long column = -1;
-				ICompileUnitScope cu = reader.getCompileUnitForFile(new Path(file));
+				ICompileUnitScope cu = reader.getCompileUnitForFile(PathUtils.createPath(file));
 				if (cu != null) {
 					for (ILineEntry entry : cu.getLineEntriesForLines(line, line)) {
 						boolean addNewRange = true;
@@ -751,20 +753,23 @@ public class Modules extends AbstractEDCService implements IModules {
 		if (originalPath == null || originalPath.length() == 0)
 			return Path.EMPTY;
 
-		IPath path = new Path(originalPath);
+		// Canonicalize path for the host OS, in hopes of finding a match directly on the host,
+		// and for searching sources and executables below.
+		//
+		IPath path = PathUtils.findExistingPathIfCaseSensitive(PathUtils.createPath(originalPath));
 		if (path.toFile().exists())
 			return path;
 
-		// Try source locator first.
+		// Try source locator first, using the host-correct path.
 		//
 		Object sourceElement = null;
 		ISourceLocator locator = getSourceLocator();
 		if (locator != null) {
 			if (locator instanceof ICSourceLocator || locator instanceof CSourceLookupDirector) {
 				if (locator instanceof ICSourceLocator)
-					sourceElement = ((ICSourceLocator) locator).findSourceElement(originalPath);
+					sourceElement = ((ICSourceLocator) locator).findSourceElement(path.toOSString());
 				else
-					sourceElement = ((CSourceLookupDirector) locator).getSourceElement(originalPath);
+					sourceElement = ((CSourceLookupDirector) locator).getSourceElement(path.toOSString());
 			}
 			if (sourceElement != null) {
 				if (sourceElement instanceof LocalFileStorage) {
@@ -775,13 +780,19 @@ public class Modules extends AbstractEDCService implements IModules {
 
 		// Now looking for the file in executable view.
 		//
-		String fileName = path.lastSegment();
-
+		// Between the SDK and target, the exact directory and file capitalization may differ.
+		//
+		// Inject required initial slash so we can confidently use String#endsWith() without
+		// matching, e.g. "/path/to/program.exe" with "ram.exe".
+		//
+		String slashAndLowerFileName = File.separator + path.lastSegment().toLowerCase();
+		String absoluteLowerPath = path.makeAbsolute().toOSString().toLowerCase();
+		
 		Executable[] executables = ExecutablesManager.getExecutablesManager().getExecutables();
 		for (Executable e : executables) {
-			String p = e.getPath().toOSString();
-			if (p.endsWith(path.toOSString()) || // stricter match first
-					p.endsWith(fileName)) // then only check by name
+			String p = e.getPath().makeAbsolute().toOSString().toLowerCase();
+			if (p.endsWith(absoluteLowerPath) || // stricter match first
+				p.endsWith(slashAndLowerFileName)) // then only check by name
 			{
 				return e.getPath();
 			}

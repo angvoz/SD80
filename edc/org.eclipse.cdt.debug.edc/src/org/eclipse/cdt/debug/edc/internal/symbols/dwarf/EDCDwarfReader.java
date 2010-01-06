@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.ArrayBoundType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.CPPBasicType;
@@ -70,7 +71,6 @@ import org.eclipse.cdt.utils.coff.Coff.SectionHeader;
 import org.eclipse.cdt.utils.elf.Elf;
 import org.eclipse.cdt.utils.elf.Elf.PHdr;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
 
 public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleScope {
 
@@ -469,11 +469,19 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		super("", null, null, null);
 
 		// Check to see if there is a sym file we should use for the symbols
+		//
+		// Note: there may be for "foo.exe" --> "foo.exe.sym" or "foo.sym"
+		//
 		IPath symFile = binaryFile.removeFileExtension().addFileExtension("sym");
 		if (symFile.toFile().exists()) {
 			symbolFilePath = symFile;
 		} else {
-			symbolFilePath = binaryFile;
+			symFile = binaryFile.addFileExtension("sym");
+			if (symFile.toFile().exists()) {
+				symbolFilePath = symFile;
+			} else {
+				symbolFilePath = binaryFile;
+			}
 		}
 
 		this.name = symbolFilePath.lastSegment();
@@ -965,6 +973,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 	 * referenced files from the line table.
 	 */
 	private void quickParseLineInfo(int lineTableOffset, String compileUnitDirectory) {
+		IPath compileUnitDirectoryPath = PathUtils.createPath(compileUnitDirectory);
 		try {
 			// do a quick parse of the line table just to get referenced files
 			ByteBuffer data = getDwarfSection(DWARF_DEBUG_LINE);
@@ -997,9 +1006,10 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 						break;
 
 					// if the directory is relative, append it to the CU dir
-					IPath dir = new Path(str);
-					if (!dir.isAbsolute())
-						dir = new Path(compileUnitDirectory).append(str);
+					IPath dir = PathUtils.createPath(str);
+					if (!dir.isAbsolute() && dir.getDevice() == null) {
+						dir = compileUnitDirectoryPath.append(str);
+					}
 					dirList.add(dir.toString());
 				}
 

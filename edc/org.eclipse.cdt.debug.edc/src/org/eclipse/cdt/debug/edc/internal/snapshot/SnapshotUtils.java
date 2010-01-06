@@ -447,7 +447,7 @@ public class SnapshotUtils extends PlatformObject {
 		}
 		ILaunchConfiguration proxyLaunchConfig = findExistingLaunchForAlbum(album);
 		if (proxyLaunchConfig == null) {
-			String lcName = lm.generateUniqueLaunchConfigurationNameFrom(album.getDisplayName());
+			String lcName = lm.generateLaunchConfigurationName(album.getDisplayName());
 			ILaunchConfigurationWorkingCopy proxyLaunchConfigWC = null;
 			try {
 				proxyLaunchConfigWC = launchType.newInstance(null, lcName);

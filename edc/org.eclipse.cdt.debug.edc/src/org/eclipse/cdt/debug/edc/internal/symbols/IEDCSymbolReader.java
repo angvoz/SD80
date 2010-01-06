@@ -33,7 +33,7 @@ public interface IEDCSymbolReader extends IModuleScope, ISymbolReader {
 	/**
 	 * Get the absolute path to the symbol file
 	 * 
-	 * @return
+	 * @return the path, which is canonical for the host
 	 */
 	IPath getSymbolFile();
 

@@ -504,7 +504,7 @@
       <view
             name="Snapshot Albums"
             icon="icons/etool16/create_snapshot.png"
-            category="com.nokia.carbide.cpp"
+            category="org.eclipse.debug.ui"
             class="org.eclipse.cdt.debug.edc.ui.views.SnapshotView"
             id="org.eclipse.cdt.debug.edc.ui.views.SnapshotView">
       </view>

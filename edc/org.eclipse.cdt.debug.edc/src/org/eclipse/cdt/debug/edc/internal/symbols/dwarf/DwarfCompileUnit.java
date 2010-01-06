@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.CompileUnitScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
@@ -28,7 +29,6 @@ import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCDwarfReader.Attribute
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
 
 public class DwarfCompileUnit extends CompileUnitScope {
 
@@ -87,6 +87,8 @@ public class DwarfCompileUnit extends CompileUnitScope {
 				String compDir = attributes.getAttributeValueAsString(DwarfConstants.DW_AT_comp_dir);
 				dirList.add(compDir);
 
+				IPath compDirPath = PathUtils.createPath(compDir);
+				
 				String str, fileName;
 
 				while (true) {
@@ -94,9 +96,9 @@ public class DwarfCompileUnit extends CompileUnitScope {
 					if (str.length() == 0)
 						break;
 					// If the directory is relative, append it to the CU dir
-					IPath dir = new Path(str);
+					IPath dir = PathUtils.createPath(str);
 					if (!dir.isAbsolute())
-						dir = new Path(compDir).append(str);
+						dir = compDirPath.append(str);
 					dirList.add(dir.toString());
 				}
 

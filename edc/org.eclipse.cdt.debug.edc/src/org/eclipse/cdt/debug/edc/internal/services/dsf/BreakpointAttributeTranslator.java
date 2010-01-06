@@ -21,6 +21,7 @@ import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICWatchpoint;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointsMediator2.BreakpointEventType;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointsMediator2.ITargetBreakpointInfo;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
@@ -46,7 +47,6 @@ import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.model.IBreakpoint;
 import org.eclipse.debug.core.model.ISourceLocator;
 
-@SuppressWarnings("restriction")
 public class BreakpointAttributeTranslator implements IBreakpointAttributeTranslator2 {
 
 	private DsfServicesTracker	dsfServicesTracker;
@@ -364,14 +364,15 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 	}
 
 	private String getCompilationPath(String sourceHandle) {
-		IPath path = null;
+		IPath path = Path.EMPTY;
 		if (Path.EMPTY.isValidPath(sourceHandle)) {
+			sourceHandle = PathUtils.convertPathToNative(sourceHandle);
 			ISourceLocator sl = targetEnvService.getLaunch().getSourceLocator();
 			if (sl instanceof CSourceLookupDirector) {
 				path = ((CSourceLookupDirector) sl).getCompilationPath(sourceHandle);
 			}
 			if (path == null) {
-				path = new Path(sourceHandle);
+				path = PathUtils.findExistingPathIfCaseSensitive(new Path(sourceHandle));
 			}
 		}
 		return path.toOSString();

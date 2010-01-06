@@ -22,7 +22,6 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ThreadExecutio
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.service.DsfSession;
 
-@SuppressWarnings("unused")
 public class ARMRegisters extends Registers {
 
 	/**
@@ -256,7 +255,7 @@ public class ARMRegisters extends Registers {
 		return registerNames;
 	}
 
-	private List<String> getFIQModeRegisterNames() {
+/*	private List<String> getFIQModeRegisterNames() {
 		List<String> registerNames = new ArrayList<String>();
 
 		registerNames.add(R8_fiq);
@@ -270,8 +269,8 @@ public class ARMRegisters extends Registers {
 
 		return registerNames;
 	}
-
-	private List<String> getIRQModeRegisterNames() {
+*/
+/*	private List<String> getIRQModeRegisterNames() {
 		List<String> registerNames = new ArrayList<String>();
 
 		registerNames.add(SP_irq);
@@ -280,8 +279,8 @@ public class ARMRegisters extends Registers {
 
 		return registerNames;
 	}
-
-	private List<String> getSupervisorModeRegisterNames() {
+*/
+/*	private List<String> getSupervisorModeRegisterNames() {
 		List<String> registerNames = new ArrayList<String>();
 
 		registerNames.add(SP_svc);
@@ -290,8 +289,8 @@ public class ARMRegisters extends Registers {
 
 		return registerNames;
 	}
-
-	private List<String> getAbortModeRegisterNames() {
+*/
+/*	private List<String> getAbortModeRegisterNames() {
 		List<String> registerNames = new ArrayList<String>();
 
 		registerNames.add(SP_abt);
@@ -300,8 +299,8 @@ public class ARMRegisters extends Registers {
 
 		return registerNames;
 	}
-
-	private List<String> getUndefinedModeRegisterNames() {
+*/
+/*	private List<String> getUndefinedModeRegisterNames() {
 		List<String> registerNames = new ArrayList<String>();
 
 		registerNames.add(SP_und);
@@ -310,8 +309,8 @@ public class ARMRegisters extends Registers {
 
 		return registerNames;
 	}
-
-	private List<String> getSystemModeRegisterNames() {
+*/
+/*	private List<String> getSystemModeRegisterNames() {
 		List<String> registerNames = new ArrayList<String>();
 
 		registerNames.add(SP_sys);
@@ -320,8 +319,8 @@ public class ARMRegisters extends Registers {
 
 		return registerNames;
 	}
-
-	private List<String> getSPFPRegisterNames() {
+*/
+/*	private List<String> getSPFPRegisterNames() {
 		List<String> registerNames = new ArrayList<String>();
 
 		registerNames.add(S0);
@@ -362,8 +361,8 @@ public class ARMRegisters extends Registers {
 
 		return registerNames;
 	}
-
-	private List<String> getDPFPRegisterNames() {
+*/
+/*	private List<String> getDPFPRegisterNames() {
 		List<String> registerNames = new ArrayList<String>();
 
 		registerNames.add(D0);
@@ -389,7 +388,7 @@ public class ARMRegisters extends Registers {
 		return registerNames;
 	}
 
-	@Override
+*/	@Override
 	protected String getRegisterNameFromCommonID(int id) {
 		if (id < 16) {
 			return registerGroups.get(USER_MODE_REGISTERS).get(id);

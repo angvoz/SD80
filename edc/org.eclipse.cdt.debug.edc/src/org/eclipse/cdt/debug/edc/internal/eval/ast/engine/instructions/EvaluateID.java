@@ -17,9 +17,10 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.EnumeratorDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.IVariableEnumeratorContext;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.VariableDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IVariableLocation;
@@ -64,13 +65,19 @@ public class EvaluateID extends SimpleInstruction {
 			lookupName = idExpression.getName();
 		}
 
-		String id = new String(lookupName.getLookupKey());
+		String name = new String(lookupName.getLookupKey());
 
 		StackFrameDMC frame = (StackFrameDMC) context;
 		DsfServicesTracker servicesTracker = frame.getDsfServicesTracker();
 		Modules modules = servicesTracker.getService(Modules.class);
 
-		VariableDMC variable = frame.findLocalVariable(id);
+		// check by name for a variable or enumerator
+		IVariableEnumeratorContext variableOrEnumerator = frame.findVariableOrEnumeratorByName(name, false);
+		VariableDMC variable = variableOrEnumerator instanceof VariableDMC ?
+									(VariableDMC)variableOrEnumerator : null;
+		EnumeratorDMC enumerator = variableOrEnumerator instanceof EnumeratorDMC ?
+									(EnumeratorDMC)variableOrEnumerator : null;
+
 		// This may be called on debugger shutdown, in which case the "modules" 
 		// service may have been shutdown.
 		if (variable != null && modules != null) {
@@ -100,11 +107,10 @@ public class EvaluateID extends SimpleInstruction {
 			return;
 		}
 
-		IEnumerator enumerator = frame.findEnumerator(id);
 		if (enumerator != null) {
 			setValueLocation(""); //$NON-NLS-1$
 			setValueType("long"); //$NON-NLS-1$
-			push(new Long(enumerator.getValue()));
+			push(new Long(enumerator.getEnumerator().getValue()));
 			return;
 		}
 

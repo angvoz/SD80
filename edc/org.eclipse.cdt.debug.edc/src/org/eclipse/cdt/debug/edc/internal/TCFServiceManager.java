@@ -63,7 +63,6 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	private static final String EXTENSION_POINT_NAME = "tcfAgentLauncher";
 
 	private boolean initialized = false;
-	private List<String> hostIPAddresses;
 	private List<ITCFAgentLauncher> launchedtcfAgentLaunchers;
 
 	public TCFServiceManager() {

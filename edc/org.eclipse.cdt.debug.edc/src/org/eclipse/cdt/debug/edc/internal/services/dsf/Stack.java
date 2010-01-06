@@ -24,10 +24,10 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
-import org.eclipse.cdt.debug.edc.internal.symbols.Enumerator;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
@@ -69,7 +69,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			level = dmc.getLevel();
 			address = dmc.getIPAddress();
 			module = dmc.getModuleName();
-			file = dmc.getSourceFile();
+			file = dmc.getSourceFile().length() > 0 ? dmc.getSourceFile() : null;
 			lineNumber = dmc.getLineNumber();
 			function = dmc.getFunctionName();
 		}
@@ -103,6 +103,17 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 	}
 
+    /**
+     * Variable or enumerator context.  This interface provides a wrapper
+     * for treating variables and enumerators the same when needed.
+     **/
+    public interface IVariableEnumeratorContext {}
+
+    /**
+     * Enumerator context.
+     **/
+    public interface IEnumeratorDMContext {}
+
 	public class StackFrameDMC extends DMContext implements IFrameDMContext, Comparable<StackFrameDMC>,
 			ISnapshotContributor {
 
@@ -124,12 +135,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private String sourceFile = "";
 		private String functionName = "";
 		private int lineNumber;
+		private IScope variableScope = null;
 		private List<VariableDMC> locals;
-		private List<IEnumerator> enumerators;
+		private List<EnumeratorDMC> enumerators;
 		private final Map<String, VariableDMC> localsByName = Collections
 				.synchronizedMap(new HashMap<String, VariableDMC>());
-		private final Map<String, IEnumerator> enumeratorsByName = Collections
-				.synchronizedMap(new HashMap<String, IEnumerator>());
+		private final Map<String, EnumeratorDMC> enumeratorsByName = Collections
+				.synchronizedMap(new HashMap<String, EnumeratorDMC>());
 
 		public StackFrameDMC(final ExecutionDMC executionDMC, Map<String, Object> frameProperties) {
 			super(Stack.this, new IDMContext[] { executionDMC }, frameProperties);
@@ -252,6 +264,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				IFunctionScope scope = symbolsService
 						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), ipAddress);
 				if (scope != null) {
+					this.variableScope = scope;
+					
 					for (IVariable variable : scope.getVariables()) {
 						VariableDMC var = new VariableDMC(Stack.this, this, variable);
 						locals.add(var);
@@ -268,15 +282,78 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return locals.toArray(new VariableDMC[locals.size()]);
 		}
 
-		public VariableDMC findLocalVariable(String id) {
+		/**
+		 * Find a variable or enumerator by name
+		 * 
+		 * @param name name of the variable or enumerator
+		 * @param localsOnly whether to restrict search to local variables and enumerators only
+		 * @return variable or enumerator, if found; otherwise, null
+		 */
+		public IVariableEnumeratorContext findVariableOrEnumeratorByName(String name, boolean localsOnly) {
 			if (locals == null)
 				getLocals();
-			return localsByName.get(id);
+
+			// quickly check for a local variable or enumerator
+			IVariableEnumeratorContext variableOrEnumerator;
+
+			variableOrEnumerator = localsByName.get(name);
+			if (variableOrEnumerator != null)
+				return variableOrEnumerator;
+
+			if (enumerators == null)
+				getEnumerators();
+			
+			variableOrEnumerator = enumeratorsByName.get(name);
+			if (variableOrEnumerator != null)
+				return variableOrEnumerator;
+
+			if (localsOnly || this.getVariableScope() == null)
+				return null;
+
+			// if there is no local variable or enumerator with this name, not very
+			// efficiently check enclosing scopes for a variable or enumerator
+			IScope variableScope = this.getVariableScope().getParent();
+
+			while (variableOrEnumerator == null && variableScope != null) {
+				for (IVariable scopeVariable : variableScope.getVariables()) {
+					if (scopeVariable.getName().equals(name)) {
+						variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
+						break;
+					}
+				}
+
+				if (variableOrEnumerator == null && variableScope instanceof IFunctionScope) {
+					IFunctionScope functionScope = (IFunctionScope)variableScope;
+					for (IVariable scopeVariable : functionScope.getParameters()) {
+						if (scopeVariable.getName().equals(name)) {
+							variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
+							break;
+						}
+					}
+				}
+
+				if (variableOrEnumerator == null) {
+					for (IEnumerator scopeEnumerator : variableScope.getEnumerators()) {
+						if (scopeEnumerator.getName().equals(name)) {
+							variableOrEnumerator = new EnumeratorDMC(this, scopeEnumerator);
+							break;
+						}
+					}
+				}
+
+				variableScope = variableScope.getParent();
+			}
+				
+			return variableOrEnumerator;
+		}
+		
+		public IScope getVariableScope() {
+			return variableScope;
 		}
 
-		public IEnumerator[] getEnumerators() {
+		public EnumeratorDMC[] getEnumerators() {
 			if (enumerators == null) {
-				enumerators = new ArrayList<IEnumerator>();
+				enumerators = new ArrayList<EnumeratorDMC>();
 				if (getServicesTracker() != null) {
 					Symbols symbolsService = getServicesTracker().getService(Symbols.class);
 					if (executionDMC != null && symbolsService != null) {
@@ -285,20 +362,21 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						if (scope != null) {
 							Collection<IEnumerator> localEnumerators = scope.getEnumerators();
 							for (IEnumerator enumerator : localEnumerators) {
-								enumerators.add(enumerator);
-								enumeratorsByName.put(enumerator.getName(), enumerator);
+								EnumeratorDMC enumeratorDMC = new EnumeratorDMC(this, enumerator);
+								enumerators.add(enumeratorDMC);
+								enumeratorsByName.put(enumerator.getName(), enumeratorDMC);
 							}
 						}
 					}
 				}
 			}
-			return enumerators.toArray(new Enumerator[enumerators.size()]);
+			return enumerators.toArray(new EnumeratorDMC[enumerators.size()]);
 		}
 
-		public IEnumerator findEnumerator(String id) {
+		public EnumeratorDMC findEnumeratorbyName(String name) {
 			if (enumerators == null)
 				getEnumerators();
-			return enumeratorsByName.get(id);
+			return enumeratorsByName.get(name);
 		}
 	}
 
@@ -320,7 +398,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	}
 
-	public class VariableDMC extends DMContext implements IVariableDMContext {
+	public class VariableDMC extends DMContext implements IVariableDMContext, IVariableEnumeratorContext {
 
 		public static final String PROP_LOCATION = "Location";
 		private final IVariable variable;
@@ -332,6 +410,20 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 		public IVariable getVariable() {
 			return variable;
+		}
+	}
+
+	public class EnumeratorDMC extends DMContext implements IEnumeratorDMContext, IVariableEnumeratorContext {
+
+		private final IEnumerator enumerator;
+
+		public EnumeratorDMC(StackFrameDMC frame, IEnumerator enumerator) {
+			super(Stack.this, new IDMContext[] { frame }, enumerator.getName(), enumerator.getName());
+			this.enumerator = enumerator;
+		}
+
+		public IEnumerator getEnumerator() {
+			return enumerator;
 		}
 	}
 

@@ -286,14 +286,14 @@ public class ARMStack extends Stack {
 
 	private SpilledRegisters parseProlog(ExecutionDMC context, IAddress prologAddress, IAddress pcValue,
 			IAddress spValue, IAddress lrValue, boolean thumbMode) {
-		// read memory from the prolog address to the pc, or 16 bytes, whichever
+		// read memory from the prolog address to the pc, or 20 bytes, whichever
 		// is less
 		Memory memoryService = getServicesTracker().getService(Memory.class);
 		ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>();
-		int bytesToRead = prologAddress.distanceTo(pcValue).min(BigInteger.valueOf(16)).intValue();
+		int bytesToRead = prologAddress.distanceTo(pcValue).min(BigInteger.valueOf(20)).intValue();
 		if (bytesToRead > 0) {
 			// the PC is not at the start of the prolog, so parse from the start
-			// of the prolog to the PC, or 16 bytes, whichever is less.
+			// of the prolog to the PC, or 20 bytes, whichever is less.
 			IStatus status = memoryService.getMemory(context, prologAddress, byteArray, bytesToRead, 1);
 			if (!status.isOK()) {
 				return null;
@@ -388,7 +388,7 @@ public class ARMStack extends Stack {
 				}
 
 				if (instruction.testBit(21)) {
-					// write back enables (STM(1) only) - update the SP
+					// write back enabled (STM(1) only) - update the SP
 					// if the stack pointer has already been updated, just
 					// adjust it here
 					if (spilledRegs.SP != null) {
@@ -404,15 +404,15 @@ public class ARMStack extends Stack {
 					&& (instruction.longValue() & 0x0C000000L) == 0x00000000L) {
 				// sub instruction - does it modify the SP?
 				if ((instruction.longValue() & 0x0000F000L) == 0x0000D000L) {
-					BigInteger shifter_operand = null;
+					Integer shifter_operand = null;
 
 					// bit 25 is the I bit for immediate shift
 					if (instruction.testBit(25)) {
-						BigInteger immed_8 = instruction.and(BigInteger.valueOf(0x000000FFL));
-						BigInteger rotate_imm = instruction.and(BigInteger.valueOf(0x00000F00L)).shiftRight(8);
+						int immed_8 = instruction.and(BigInteger.valueOf(0x000000FFL)).intValue();
+						int rotate_imm = instruction.and(BigInteger.valueOf(0x00000F00L)).shiftRight(7).intValue(); // rotate_imm * 2
 
 						// shifter_operand = immed_8 Rotate_Right (rotate_imm * 2)
-						shifter_operand = immed_8.shiftRight(rotate_imm.multiply(BigInteger.valueOf(2)).intValue());
+						shifter_operand = immed_8 >> rotate_imm | immed_8 << (32 - rotate_imm);
 					} else {
 						// TODO register operand, but doesn't seem to be used by
 						// any compilers for prologs

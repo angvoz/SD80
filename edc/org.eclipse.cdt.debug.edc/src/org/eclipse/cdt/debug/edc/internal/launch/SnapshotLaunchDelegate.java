@@ -65,7 +65,7 @@ public class SnapshotLaunchDelegate extends EDCLaunchDelegate {
 		}
 		proxyLaunchConfig = findExistingLaunchForAlbum(albumLocation);
 		if (proxyLaunchConfig == null) {
-			String lcName = lm.generateUniqueLaunchConfigurationNameFrom(album.getDisplayName());
+			String lcName = lm.generateLaunchConfigurationName(album.getDisplayName());
 			ILaunchConfigurationWorkingCopy proxyLaunchConfigWC = launchType.newInstance(null, lcName);
 
 			proxyLaunchConfigWC.setAttributes(album.getLaunchProperties());

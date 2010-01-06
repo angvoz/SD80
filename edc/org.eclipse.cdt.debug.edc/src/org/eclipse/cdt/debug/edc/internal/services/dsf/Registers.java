@@ -44,7 +44,6 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.tm.tcf.protocol.IErrorReport;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.IToken;
-import org.eclipse.tm.tcf.protocol.Protocol;
 import org.eclipse.tm.tcf.util.TCFTask;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;

@@ -35,6 +35,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.helpers.DefaultHandler;
 
+@SuppressWarnings("restriction")
 public class Snapshot {
 	
 	// XML elements

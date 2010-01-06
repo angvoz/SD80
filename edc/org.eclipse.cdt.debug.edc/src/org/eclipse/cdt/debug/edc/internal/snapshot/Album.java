@@ -35,12 +35,12 @@ import javax.xml.transform.TransformerException;
 
 import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.ZipFileUtils;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.MapEntrySourceContainer;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.cdt.dsf.service.DsfSession.SessionEndedListener;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -116,6 +116,7 @@ public class Album extends PlatformObject {
 	private boolean metadataSaved;
 	private boolean albumInfoSaved;
 	private String displayName;
+	private boolean isCreatingSnapshot;
 
 	private static Map<String, Album> albumsBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());
 	private static Map<IPath, Album> albumsByLocation = Collections.synchronizedMap(new HashMap<IPath, Album>());
@@ -127,8 +128,9 @@ public class Album extends PlatformObject {
 		public void sessionEnded(DsfSession session) {
 			synchronized (albumsBySessionID) {
 				Album album = albumsBySessionID.get(session.getId());
-				if (album != null) {
+				if (album != null && album.getCreatingSnapshot()) {
 					album.saveAlbum(new NullProgressMonitor());
+					album.setCreatingSnapshot(false);
 					albumsBySessionID.remove(album);
 				}
 			}
@@ -193,12 +195,8 @@ public class Album extends PlatformObject {
 		return launch != null && launch.isSnapshotLaunch();
 	}
 
-	private static String getServiceFilter(String sessionId) {
-		return ("(" + IDsfService.PROP_SESSION_ID + "=" + sessionId + ")").intern(); //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
-	}
-
 	public Snapshot createSnapshot(DsfSession session) {
-
+		setCreatingSnapshot(true);
 		configureAlbum();
 		Snapshot snapshot = new Snapshot(this, session);
 		snapshot.writeSnapshotData();
@@ -345,10 +343,6 @@ public class Album extends PlatformObject {
 		}
 	}
 
-	@SuppressWarnings("restriction")
-	/**
-	 * Create and write a full snapshot album from scratch
-	 */
 	private void saveAlbum(IProgressMonitor monitor) {
 
 		IPath zipPath = SnapshotUtils.getSnapshotsProject().getLocation();
@@ -370,10 +364,12 @@ public class Album extends PlatformObject {
 						IPath filepath = new Path(file.getAbsolutePath());
 
 						String deviceName = filepath.getDevice();
-						// Remove the : from the end
-						entryPath.append(deviceName.substring(0, deviceName.length() - 1));
-						entryPath.append("/");
-
+						if (deviceName != null) {
+							// Remove the : from the end
+							entryPath.append(deviceName.substring(0, deviceName.length() - 1));
+							entryPath.append("/");
+						}
+						
 						String[] segments = filepath.segments();
 						int numSegments = segments.length - 1;
 
@@ -554,7 +550,7 @@ public class Album extends PlatformObject {
 		for (int i = 0; i < numFiles; i++) {
 			Element fileElement = (Element) elementFiles.item(i);
 			String elementPath = fileElement.getAttribute("path");
-			files.add(new Path(elementPath));
+			files.add(PathUtils.createPath(elementPath));		// for cross-created snapshot
 		}
 	}
 
@@ -603,10 +599,6 @@ public class Album extends PlatformObject {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}
 
-	}
-
-	private IPath getAlbumCatalog() {
-		return getAlbumRootDirectory().append(ALBUM_DATA);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -678,20 +670,21 @@ public class Album extends PlatformObject {
 		return location;
 	}
 
-	@SuppressWarnings("restriction")
 	public void configureMappingSourceContainer(MappingSourceContainer mappingContainer) {
 		IPath albumRoot = getAlbumRootDirectory();
-		String device = "";
+		String device = null;
 		albumRoot = albumRoot.append("Resources");
 		for (IPath iPath : files) {
 			device = iPath.getDevice();
 		}
 		String deviceName = device;
-		if (deviceName.endsWith(":"))
-			deviceName = deviceName.substring(0, deviceName.length() - 1);
-		albumRoot = albumRoot.append(deviceName);
+		if (deviceName != null) {
+			if (deviceName.endsWith(":"))
+				deviceName = deviceName.substring(0, deviceName.length() - 1);
+			albumRoot = albumRoot.append(deviceName);
+		}
 		MapEntrySourceContainer[] entries = new MapEntrySourceContainer[] { new MapEntrySourceContainer(
-				new Path(device), albumRoot) };
+				device != null ? new Path(device) : Path.ROOT, albumRoot) };
 		mappingContainer.addMapEntries(entries);
 	}
 
@@ -859,6 +852,14 @@ public class Album extends PlatformObject {
 	@Override
 	public String toString() {
 		return "Album [name=" + name + ", launchName=" + launchName + ", sessionID=" + sessionID + "]";
+	}
+
+	public void setCreatingSnapshot(boolean isCreatingSnapshot) {
+		this.isCreatingSnapshot = isCreatingSnapshot;
+	}
+	
+	public boolean getCreatingSnapshot(){
+		return isCreatingSnapshot;
 	}
 
 }

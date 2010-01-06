@@ -42,7 +42,6 @@ import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator;
 import org.eclipse.cdt.dsf.debug.service.IBreakpointAttributeTranslator;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
@@ -988,8 +987,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
         	return;
 
         new Job("Add Breakpoint Problem Marker") { //$NON-NLS-1$
-            @SuppressWarnings("restriction")
-			@Override
+            @Override
             protected IStatus run(IProgressMonitor monitor) {
             	// If we have already have a problem marker on this breakpoint
             	// we should remove it first.

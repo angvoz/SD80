@@ -27,11 +27,14 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.debug.core.model.MemoryByte;
 
 /**
  * Utilities for generating formatters
+ * 
+ * Use of non-api IType in this class is provisional. IType will later move to a public package.
  */
 public class FormatUtils {
 	
@@ -49,9 +52,9 @@ public class FormatUtils {
 	public static boolean checkName(String typeName, String baseName) {
 		String checkName = typeName;
 		if (typeName.startsWith(STRUCT))
-			checkName = typeName.substring(STRUCT.length() + 1);
+			checkName = typeName.substring(STRUCT.length()).trim();
 		if (typeName.startsWith(CLASS))
-			checkName = typeName.substring(CLASS.length() + 1);
+			checkName = typeName.substring(CLASS.length()).trim();
 		return checkName.matches(baseName);
 	}
 	
@@ -142,6 +145,19 @@ public class FormatUtils {
 		return "."; //$NON-NLS-1$
 	}
 	
+	public static String getMemberValue(IExpressionDMContext variable, IType type, String memberName) {
+		return getMemberValue(variable, type, memberName, IExpressions.NATURAL_FORMAT);
+	}
+
+	public static String getMemberValue(IExpressionDMContext variable, IType type, String memberName, String format) {
+		IExpressions expressions = ((ExpressionDMC)variable).getService();
+		ExpressionDMC expression = 
+			(ExpressionDMC) expressions.createExpression(variable, variable.getExpression()
+					+ FormatUtils.getFieldAccessor(type) + memberName);
+		FormattedValueDMContext fvc = expressions.getFormattedValueContext(expression, format);
+		return expression.getFormattedValue(fvc).getFormattedValue();
+	}
+
 	public static IType getUnqualifiedTypeRemovePointers(Object type) {
 		IType unqualifiedType = TypeUtils.getStrippedType(type);
 		while (unqualifiedType instanceof IPointerType)

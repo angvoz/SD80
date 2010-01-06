@@ -14,12 +14,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.eclipse.cdt.debug.edc.internal.HostOS;
+import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
 public class DwarfHelper {
-
-	private static final boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("win"); //$NON-NLS-1$
 
 	/**
 	 * This is to combine the given compDir and file name from Dwarf to form a
@@ -51,7 +51,7 @@ public class DwarfHelper {
 
 		String fullName = name;
 
-		IPath path = new Path(name);
+		IPath path = PathUtils.createPath(name);
 
 		// Combine dir & name if needed.
 		if (!path.isAbsolute() && compDir.length() > 0) {
@@ -67,8 +67,10 @@ public class DwarfHelper {
 		// For win32 only.
 		// On Windows, there are cases where the source file itself has the full
 		// path except the drive letter.
-		if (isWindows && path.isAbsolute() && path.getDevice() == null) {
-			IPath dirPa = new Path(compDir);
+		
+		// TODO: we need to put the EPOCROOT as a prefix, really, in this case.
+		if (HostOS.IS_WIN32 && path.isAbsolute() && path.getDevice() == null) {
+			IPath dirPa = new Path(compDir);   // on Win32, don't need PathUtils#createPath
 			// Try to get drive letter from comp_dir.
 			if (dirPa.getDevice() != null)
 				path = path.setDevice(dirPa.getDevice());
@@ -81,13 +83,15 @@ public class DwarfHelper {
 				// user still
 				// has the option to locate the file manually...03/15/07
 				String exeWinVolume = symbolFile.getDevice();
-				if (exeWinVolume.length() > 0) {
+				if (exeWinVolume != null && exeWinVolume.length() > 0) {
 					path = path.setDevice(exeWinVolume);
 				}
 			}
 		}
 
-		if (path.isAbsolute()) {
+		// Don't canonicalize a path with a device on a system without devices
+		//
+		if (path.isAbsolute() && (HostOS.IS_WIN32 || path.getDevice() == null)) {
 			try {
 				path = new Path(path.toFile().getCanonicalPath());
 			} catch (IOException e) {
@@ -131,12 +135,7 @@ public class DwarfHelper {
 
 		// convert to path on runtime platform
 		//
-		if (isWindows)
-			path = path.replaceAll("/", "\\\\"); //$NON-NLS-1$//$NON-NLS-2$
-		else
-			path = path.replaceAll("\\\\", "/");
-
-		return new Path(path);
+		return PathUtils.createPath(path);
 	}
 
 	/**

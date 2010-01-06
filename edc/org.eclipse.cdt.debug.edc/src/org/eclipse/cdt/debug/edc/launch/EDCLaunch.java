@@ -24,6 +24,7 @@ import java.util.concurrent.RejectedExecutionException;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.launch.ShutdownSequence;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ProcessExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
@@ -370,7 +371,7 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 		try {
 			String albumFile = getLaunchConfiguration().getAttribute(IEDCLaunchConfigurationConstants.ATTR_ALBUM_FILE,
 					"");
-			Path albumPath = new Path(albumFile);
+			IPath albumPath = PathUtils.createPath(albumFile);
 			if (albumPath.toFile().exists()) {
 				album = Album.getAlbumByLocation(albumPath);
 				if (album == null) {

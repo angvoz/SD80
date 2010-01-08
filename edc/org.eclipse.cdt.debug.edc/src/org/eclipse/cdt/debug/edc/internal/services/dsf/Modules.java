@@ -14,6 +14,7 @@ import java.io.File;
 import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -788,7 +789,7 @@ public class Modules extends AbstractEDCService implements IModules {
 		String slashAndLowerFileName = File.separator + path.lastSegment().toLowerCase();
 		String absoluteLowerPath = path.makeAbsolute().toOSString().toLowerCase();
 		
-		Executable[] executables = ExecutablesManager.getExecutablesManager().getExecutables();
+		Collection<Executable> executables = ExecutablesManager.getExecutablesManager().getExecutables();
 		for (Executable e : executables) {
 			String p = e.getPath().makeAbsolute().toOSString().toLowerCase();
 			if (p.endsWith(absoluteLowerPath) || // stricter match first

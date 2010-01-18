@@ -19,6 +19,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.CommandLauncher;
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
+import org.eclipse.cdt.debug.edc.internal.IEDCConstants;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
@@ -38,7 +39,7 @@ public class GdbserverAgentDescriptor implements ITCFAgentLauncher {
 	public Map<String, String> getPeerAttributes() {
 		Map<String, String> attrs = new HashMap<String, String>();
 		attrs.put(IPeer.ATTR_NAME, NAME);
-		attrs.put(DEBUG_SUPPORT, "GDB Remote Protocol");
+		attrs.put(IEDCConstants.PEER_ATTR_DEBUG_SUPPORT, "GDB Remote Protocol");
 		return attrs;
 	}
 

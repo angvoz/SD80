@@ -63,7 +63,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 	/**
 	 * Attributes that the debugger requires the TCF agent to match. Derivatives
-	 * populate this when we call {@link #specifyRequiredAgent()}
+	 * populate this when we call {@link #specifyRequiredPeer()}
 	 */
 	protected final Map<String, String> peerAttributes = new HashMap<String, String>();
 
@@ -291,7 +291,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			String sequenceName, String abortName) {
 		super(executor, pm, sequenceName, abortName);
 
-		specifyRequiredAgent();
+		specifyRequiredPeer();
 
 		this.launch = launch;
 	}
@@ -568,10 +568,10 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 	/**
 	 * Specify attributes the debugger requires from the underlying TCF peer.
-	 * Only agents with those attributes will be considered for this debug
+	 * Only peers with those attributes will be considered for this debug
 	 * session. This method is called by the abstract class during construction
 	 * of the object. The implementation should add the required attributes to
 	 * {@link #peerAttributes}
 	 */
-	abstract protected void specifyRequiredAgent();
+	abstract protected void specifyRequiredPeer();
 }

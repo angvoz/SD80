@@ -19,7 +19,7 @@ Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Export-Package: org.eclipse.cdt.debug.edc,
  org.eclipse.cdt.debug.edc.formatter,
- org.eclipse.cdt.debug.edc.internal;x-friends:="org.eclipse.cdt.debug.edc.windows",
+ org.eclipse.cdt.debug.edc.internal;x-friends:="org.eclipse.cdt.debug.edc.windows,org.eclipse.cdt.debug.edc.linux.x86",
  org.eclipse.cdt.debug.edc.internal.arm;x-internal:=true,
  org.eclipse.cdt.debug.edc.internal.disassembler;x-internal:=true,
  org.eclipse.cdt.debug.edc.internal.disassembler.arm;x-internal:=true,

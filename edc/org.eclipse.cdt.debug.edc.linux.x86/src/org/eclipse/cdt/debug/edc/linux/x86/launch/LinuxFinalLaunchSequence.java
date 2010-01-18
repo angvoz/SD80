@@ -15,6 +15,7 @@ import org.eclipse.cdt.core.IProcessInfo;
 import org.eclipse.cdt.core.IProcessList;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
+import org.eclipse.cdt.debug.edc.internal.IEDCConstants;
 import org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence;
 import org.eclipse.cdt.debug.edc.launch.ChooseProcessItem;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
@@ -63,8 +64,8 @@ public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 	}
 
 	@Override
-	protected void specifyRequiredAgent() {
-		peerAttributes.put(ITCFAgentLauncher.DEBUG_SUPPORT, "GDB Remote Protocol");
+	protected void specifyRequiredPeer() {
+		peerAttributes.put(IEDCConstants.PEER_ATTR_DEBUG_SUPPORT, "GDB Remote Protocol");
 	}
 
 	/*

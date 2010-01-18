@@ -11,7 +11,6 @@
 
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
@@ -60,11 +59,13 @@ public interface ITargetEnvironment extends IDsfService {
 	public String getOS();
 
 	/**
-	 * Get sizes of all basic C/C++ data types
+	 * Get sizes of all basic C/C++ data types.
 	 * 
-	 * @return list of sizes, in bytes, of C/C++ data types
+	 * @return list of sizes, in bytes, of C/C++ data types. The returned map
+	 *         should have TypeUtils#BASIC_TYPE_XXX constants for its keys, and
+	 *         type sizes for their values
 	 */
-	public HashMap<Integer, Integer> getBasicTypeSizes();
+	public Map<Integer, Integer> getBasicTypeSizes();
 
 	/**
 	 * Get size of pointer data type

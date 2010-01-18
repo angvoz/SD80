@@ -213,7 +213,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 		return false;
 	}
 
-	public HashMap<Integer, Integer> getBasicTypeSizes() {
+	public Map<Integer, Integer> getBasicTypeSizes() {
 		if (this.basicTypeSizes == null) {
 			this.basicTypeSizes = new HashMap<Integer, Integer>();
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_CHAR, 1);

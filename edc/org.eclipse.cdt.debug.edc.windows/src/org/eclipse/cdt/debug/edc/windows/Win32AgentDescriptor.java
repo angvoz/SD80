@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
+import org.eclipse.cdt.debug.edc.internal.IEDCConstants;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.cdt.utils.spawner.ProcessFactory;
 import org.eclipse.core.runtime.FileLocator;
@@ -35,7 +36,7 @@ public class Win32AgentDescriptor implements ITCFAgentLauncher {
 	public Map<String, String> getPeerAttributes() {
 		Map<String, String> attrs = new HashMap<String, String>();
 		attrs.put(IPeer.ATTR_NAME, NAME);
-		attrs.put(DEBUG_SUPPORT, "Win32 Debug API");
+		attrs.put(IEDCConstants.PEER_ATTR_DEBUG_SUPPORT, "Win32 Debug API");
 		return attrs;
 	}
 

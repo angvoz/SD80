@@ -53,7 +53,7 @@ public abstract class DebugServicesFactory extends AbstractDsfDebugServicesFacto
 		return super.createService(clazz, session, optionalArguments);
 	}
 
-	abstract protected ITargetEnvironment createTargetEnvironment(DsfSession session, ILaunch arg);
+	abstract protected ITargetEnvironment createTargetEnvironment(DsfSession session, ILaunch launch);
 
 	@Override
 	protected ISourceLookup createSourceLookupService(DsfSession session) {

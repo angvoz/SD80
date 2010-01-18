@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
@@ -391,7 +392,7 @@ public class VariableWithValue {
 		
 		ITargetEnvironment targetEnvironmentService = servicesTracker.getService(ITargetEnvironment.class);
 		if (targetEnvironmentService != null) {
-			HashMap<Integer, Integer> sizes = targetEnvironmentService.getBasicTypeSizes();
+			Map<Integer, Integer> sizes = targetEnvironmentService.getBasicTypeSizes();
 			
 			switch(basicType) {
 		case IBasicType.t_char:

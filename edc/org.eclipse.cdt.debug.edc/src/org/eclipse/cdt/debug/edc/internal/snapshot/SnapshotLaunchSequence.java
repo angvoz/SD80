@@ -53,7 +53,7 @@ public class SnapshotLaunchSequence extends AbstractFinalLaunchSequence {
 	}
 
 	@Override
-	protected void specifyRequiredAgent() {
+	protected void specifyRequiredPeer() {
 		// No TCF agent needed.
 	}
 

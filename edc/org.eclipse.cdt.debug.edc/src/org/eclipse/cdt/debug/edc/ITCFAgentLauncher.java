@@ -28,9 +28,6 @@ import org.eclipse.tm.tcf.protocol.IPeer;
  */
 public interface ITCFAgentLauncher {
 
-	// Some additional attributes used for peers described via this mechanism 
-	public static final String DEBUG_SUPPORT = "DebugSupport";
-
 	/**
 	 * Gets the user friendly name of the peer this agent hosts. Same as calling
 	 * getAttributes().get(IPeer#ATTR_NAME)

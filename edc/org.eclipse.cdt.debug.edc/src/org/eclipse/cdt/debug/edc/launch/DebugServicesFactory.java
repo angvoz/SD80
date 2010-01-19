@@ -28,9 +28,11 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IMemory;
 import org.eclipse.cdt.dsf.debug.service.IModules;
 import org.eclipse.cdt.dsf.debug.service.IProcesses;
+import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.ISignals;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup;
+import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.ISymbols;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.debug.core.ILaunch;
@@ -47,13 +49,42 @@ public abstract class DebugServicesFactory extends AbstractDsfDebugServicesFacto
 		if (ITargetEnvironment.class.isAssignableFrom(clazz)) {
 			for (Object arg : optionalArguments)
 				if (arg instanceof ILaunch)
-					return (V) createTargetEnvironment(session, ((ILaunch) arg));
+					return (V) createTargetEnvironmentService(session, ((ILaunch) arg));
 		}
 
 		return super.createService(clazz, session, optionalArguments);
 	}
 
-	abstract protected ITargetEnvironment createTargetEnvironment(DsfSession session, ILaunch launch);
+	/**
+	 * EDC requires adopters to provide an {@link ITargetEnvironment} service.
+	 * 
+	 * @param session
+	 *            the DSF session the service will be used in
+	 * @param launch
+	 *            the launch object which spawned the DSF session. It's likely
+	 *            the launch's configuration will be needed to service some of
+	 *            the ITargetEnvironment methods.
+	 * @return the DSF service
+	 */
+	abstract protected ITargetEnvironment createTargetEnvironmentService(DsfSession session, ILaunch launch);
+
+	/**
+	 * EDC requires adopters to provide an {@link IStack} service.
+	 * 
+	 * @param session
+	 *            the DSF session the service will be used in
+	 * @return the DSF service
+	 */
+	abstract protected IStack createStackService(DsfSession session);
+
+	/**
+	 * EDC requires adopters to provide an {@link IRegisters} service.
+	 * 
+	 * @param session
+	 *            the DSF session the service will be used in
+	 * @return the DSF service
+	 */
+	abstract protected IRegisters createRegistersService(DsfSession session);
 
 	@Override
 	protected ISourceLookup createSourceLookupService(DsfSession session) {

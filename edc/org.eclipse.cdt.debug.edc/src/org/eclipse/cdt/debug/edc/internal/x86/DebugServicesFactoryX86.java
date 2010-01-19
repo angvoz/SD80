@@ -31,7 +31,7 @@ public class DebugServicesFactoryX86 extends DebugServicesFactory implements IDs
 	}
 
 	@Override
-	protected ITargetEnvironment createTargetEnvironment(DsfSession session, ILaunch launch) {
+	protected ITargetEnvironment createTargetEnvironmentService(DsfSession session, ILaunch launch) {
 		return new TargetEnvironmentX86(session, launch);
 	}
 }

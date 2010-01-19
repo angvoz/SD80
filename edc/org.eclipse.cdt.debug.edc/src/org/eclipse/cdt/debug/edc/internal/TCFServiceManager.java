@@ -552,7 +552,7 @@ private IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreExcepti
 			launchedPeer = waitForPeer.get();
 			launchedtcfAgentLaunchers.add(descriptor);
 		} catch (Exception e) {
-			throw EDCDebugger.newCoreException(MessageFormat.format("Failed to launch the TCF agent that hosts peer {0}. Cause: {1}", descriptor
+			throw EDCDebugger.newCoreException(MessageFormat.format("Failed to launch the TCF agent that hosts peer \"{0}\". Cause: {1}", descriptor
 					.getPeerName(), e.getLocalizedMessage()), e);
 		} finally {
 			Protocol.invokeAndWait(new Runnable() {

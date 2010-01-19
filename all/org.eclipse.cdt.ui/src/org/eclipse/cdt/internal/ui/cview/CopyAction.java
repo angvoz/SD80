@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2005 IBM Corporation and others.
+ * Copyright (c) 2000, 2010 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,18 +7,18 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Anton Leherbauer (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.cview;
 
 import java.util.Iterator;
 import java.util.List;
 
-import org.eclipse.cdt.internal.ui.ICHelpContextIds;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWTError;
 import org.eclipse.swt.dnd.Clipboard;
@@ -30,6 +30,8 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.SelectionListenerAction;
 import org.eclipse.ui.part.ResourceTransfer;
+
+import org.eclipse.cdt.internal.ui.ICHelpContextIds;
 
 /**
  * Standard action for copying the currently selected resources to the clipboard.
@@ -96,9 +98,10 @@ public class CopyAction extends SelectionListenerAction {
 	 * on <code>IAction</code> copies the selected resources to the 
 	 * clipboard.
 	 */
+	@Override
 	public void run() {
-		List selectedResources = getSelectedResources();
-		IResource[] resources = (IResource[]) selectedResources.toArray(new IResource[selectedResources.size()]);
+		List<?> selectedResources = getSelectedResources();
+		IResource[] resources = selectedResources.toArray(new IResource[selectedResources.size()]);
 
 		// Get the file names and a string representation
 		final int length = resources.length;
@@ -150,7 +153,7 @@ public class CopyAction extends SelectionListenerAction {
 		} catch (SWTError e) {
 			if (e.code != DND.ERROR_CANNOT_SET_CLIPBOARD)
 				throw e;
-			if (MessageDialog.openQuestion(shell, CViewMessages.getString("CopyToClipboardProblemDialog.title"), CViewMessages.getString("CopyToClipboardProblemDialog.message"))) //$NON-NLS-1$ //$NON-NLS-2$
+			if (MessageDialog.openQuestion(shell, CViewMessages.getString("CopyToClipboardProblemDialog_title"), CViewMessages.getString("CopyToClipboardProblemDialog_message"))) //$NON-NLS-1$ //$NON-NLS-2$
 				setClipboard(resources, fileNames, names);
 		}
 	}
@@ -159,6 +162,7 @@ public class CopyAction extends SelectionListenerAction {
 	 * <code>SelectionListenerAction</code> method enables this action if 
 	 * one or more resources of compatible types are selected.
 	 */
+	@Override
 	protected boolean updateSelection(IStructuredSelection selection) {
 		if (!super.updateSelection(selection))
 			return false;
@@ -166,7 +170,7 @@ public class CopyAction extends SelectionListenerAction {
 		if (getSelectedNonResources().size() > 0)
 			return false;
 
-		List selectedResources = getSelectedResources();
+		List<?> selectedResources = getSelectedResources();
 		if (selectedResources.size() == 0)
 			return false;
 
@@ -184,13 +188,13 @@ public class CopyAction extends SelectionListenerAction {
 		if (firstParent == null)
 			return false;
 
-		Iterator resourcesEnum = selectedResources.iterator();
+		Iterator<?> resourcesEnum = selectedResources.iterator();
 		while (resourcesEnum.hasNext()) {
 			IResource currentResource = (IResource) resourcesEnum.next();
 			if (!currentResource.getParent().equals(firstParent))
 				return false;
 			// resource location must exist
-			if (currentResource.getLocation() == null)
+			if (currentResource.getLocationURI() == null)
 				return false;
 		}
 

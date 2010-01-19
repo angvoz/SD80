@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
@@ -546,15 +547,33 @@ private IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreExcepti
 
 		// launch the agent
 
-		IPeer launchedPeer;
+		IPeer launchedPeer = null;
 		try {
-			descriptor.launch();
-			launchedPeer = waitForPeer.get();
+			// Launch the agent (if it's not already running)
+			try {
+				descriptor.launch();
+			} catch (Exception e) {
+				throw EDCDebugger.newCoreException(MessageFormat.format("Failed to launch the TCF agent that hosts peer \"{0}\". Cause: {1}", 
+						descriptor.getPeerName(), e.getLocalizedMessage()), e);
+			}
+			
+			// Wait for the Locator listener we registered above to be notified
+			// of the existence of the peer we're interested in
+			try {
+				launchedPeer = waitForPeer.get();
+			} catch (Exception e) {
+				if (e.getCause() instanceof TimeoutException) {
+					throw EDCDebugger.newCoreException(MessageFormat.format("Timed out waiting for the launched TCF agent to make peer \"{0}\" available.", 
+							descriptor.getPeerName()), null);
+				}
+				else {
+					throw EDCDebugger.newCoreException(MessageFormat.format("Error waiting for the launched TCF agent to make peer \"{0}\" available. Cause: {1}", 
+							descriptor.getPeerName(), e.getLocalizedMessage()), e);
+				}
+			}
 			launchedtcfAgentLaunchers.add(descriptor);
-		} catch (Exception e) {
-			throw EDCDebugger.newCoreException(MessageFormat.format("Failed to launch the TCF agent that hosts peer \"{0}\". Cause: {1}", descriptor
-					.getPeerName(), e.getLocalizedMessage()), e);
-		} finally {
+		}
+		finally {
 			Protocol.invokeAndWait(new Runnable() {
 				public void run() {
 					// unregister our listener
@@ -562,6 +581,7 @@ private IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreExcepti
 				}
 			});
 		}
+		
 
 		return launchedPeer;
 	}

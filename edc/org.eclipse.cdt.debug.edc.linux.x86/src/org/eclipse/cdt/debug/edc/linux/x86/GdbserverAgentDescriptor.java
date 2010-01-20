@@ -56,6 +56,11 @@ public class GdbserverAgentDescriptor implements ITCFAgentLauncher {
 		return serviceNames;
 	}
 
+	public boolean isLaunchable() {
+		// this runs on a remote device only, so we can support it on any host
+		return true;
+	}
+	
 	public void launch() throws Exception {
 		IPath path = null;
 

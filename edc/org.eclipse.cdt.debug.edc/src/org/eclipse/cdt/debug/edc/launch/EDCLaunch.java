@@ -303,7 +303,7 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	@Override
 	public Object getAdapter(Class adapter) {
 		// Must force adapters to be loaded.

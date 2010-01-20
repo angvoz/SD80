@@ -719,7 +719,7 @@ public class Album extends PlatformObject {
 
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	@Override
 	public Object getAdapter(Class adapter) {
 		if (adapter.equals(Document.class))

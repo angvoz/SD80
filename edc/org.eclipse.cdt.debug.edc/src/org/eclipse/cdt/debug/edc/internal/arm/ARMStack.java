@@ -126,7 +126,7 @@ public class ARMStack extends Stack {
 		IAddress spValue = new Addr64(registersService.getRegisterValue(context, spName), 16);
 		IAddress lrValue = new Addr64(registersService.getRegisterValue(context, lrName), 16);
 
-		int frameCount = 1;
+		int frameCount = 0;
 
 		// keep going until we reach the maximum number of frames
 		while (frameCount < MAX_FRAMES) {
@@ -148,7 +148,7 @@ public class ARMStack extends Stack {
 			}
 
 			boolean thumbMode = ((TargetEnvironmentARM) getTargetEnvironmentService()).isThumbMode(context, pcValue,
-					frameCount == 1);
+					frameCount == 0);
 
 			// mask off the thumb bit
 			pcValue = new Addr64(pcValue.getValue().clearBit(0)); 
@@ -159,7 +159,7 @@ public class ARMStack extends Stack {
 
 			HashMap<String, Object> properties = new HashMap<String, Object>();
 			properties.put(DMContext.PROP_ID, Integer.toString(nextStackFrameID++));
-			properties.put(StackFrameDMC.PROP_LEVEL, frameCount++);
+			properties.put(StackFrameDMC.LEVEL_INDEX, frameCount++);
 			properties.put(StackFrameDMC.BASE_ADDR, baseAddress);
 			properties.put(StackFrameDMC.IP_ADDR, pcValue.getValue().longValue());
 			properties.put(StackFrameDMC.MODULE_NAME, moduleName);

@@ -652,7 +652,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 				});
 			} else {	
 				// Snapshots, for e.g., don't have a TCF RunControlContext, so just remove all the contexts recursively
-				removeAllContexts(rootExecutionDMC);
+				rootExecutionDMC.exitAllContexts();
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
@@ -682,15 +682,25 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		 * Recursively removes all execution contexts
 		 * @param dmc
 		 */
-		public void removeAllContexts(ExecutionDMC dmc){
-			getSession().dispatchEvent(new ExitedEvent(dmc), RunControl.this.getProperties());
+		public void exitAllContexts(){
+			getSession().dispatchEvent(new ExitedEvent(this), RunControl.this.getProperties());
 			
-			for (ExecutionDMC e : dmc.getChildren()){
-				removeAllContexts(e);
+			for (ExecutionDMC e : getChildren()){
+				e.exitAllContexts();
 			}
-			removeChild(dmc);
 		}
-		
+
+		/**
+		 * Recursively marks all execution contexts as resumed
+		 * @param dmc
+		 */
+		public void resumeAll(){
+			contextResumed(true);			
+			for (ExecutionDMC e : getChildren()){
+				e.resumeAll();
+			}
+		}
+
 		public void contextResumed(boolean sendEvent) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
 					new Object[] { this, sendEvent });
@@ -982,7 +992,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 	private static final String EXECUTION_CONTEXTS = "execution_contexts";
 
 	private org.eclipse.tm.tcf.services.IRunControl tcfRunService;
-	private ExecutionDMC rootExecutionDMC;
+	private RootExecutionDMC rootExecutionDMC;
 	private final Map<String, ExecutionDMC> dmcsByID = new HashMap<String, ExecutionDMC>();
 
 	public RunControl(DsfSession session) {
@@ -1771,7 +1781,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		super.shutdown(monitor);
 	}
 
-	public ExecutionDMC getRootDMC() {
+	public RootExecutionDMC getRootDMC() {
 		return rootExecutionDMC;
 	}
 
@@ -1866,6 +1876,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 
 	public void loadSnapshot(Element snapshotRoot) throws Exception {
 		NodeList ecElements = snapshotRoot.getElementsByTagName(EXECUTION_CONTEXTS);
+		rootExecutionDMC.resumeAll();
 		initializeRootExecutionDMC();
 		rootExecutionDMC.loadSnapshot((Element) ecElements.item(0));
 	}

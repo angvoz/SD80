@@ -29,6 +29,7 @@ import org.osgi.framework.BundleContext;
 /**
  * The activator class controls the plug-in life cycle
  */
+
 @SuppressWarnings("restriction")
 public class EDCDebugger extends Plugin {
 
@@ -40,8 +41,8 @@ public class EDCDebugger extends Plugin {
 
 	private DebugTrace trace;
 
-	private ITCFServiceManager tcfServiceManager;
-
+    private ITCFServiceManager tcfServiceManager;
+	
 	/**
 	 * The constructor
 	 */

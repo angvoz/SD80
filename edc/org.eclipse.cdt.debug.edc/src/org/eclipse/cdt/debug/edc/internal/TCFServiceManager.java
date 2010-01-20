@@ -70,7 +70,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	}
 
 	private void initialize() throws CoreException {
-		// load TCFAgentDescriptor extensions
+		// load TCFAgentLauncher extensions
 		tcfAgentLaunchers = new ArrayList<ITCFAgentLauncher>();
 		launchedtcfAgentLaunchers = new ArrayList<ITCFAgentLauncher>();
 
@@ -83,6 +83,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 			IConfigurationElement element = elements[0];
 
 			boolean failed = false;
+			CoreException exc = null;
 			try {
 				Object extObject = element.createExecutableExtension("class"); //$NON-NLS-1$
 				if (extObject instanceof ITCFAgentLauncher) {
@@ -92,11 +93,12 @@ public class TCFServiceManager implements ITCFServiceManager  {
 				}
 			} catch (CoreException e) {
 				failed = true;
+				exc = e;
 			}
 
 			if (failed) {
 				EDCDebugger.getMessageLogger().logError(
-						"Unable to load " + EXTENSION_POINT_NAME + " extension from " + extension.getContributor().getName(), null);
+						"Unable to load " + EXTENSION_POINT_NAME + " extension from " + extension.getContributor().getName(), exc);
 			}
 		}
 
@@ -325,12 +327,13 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		List<String> registeredPeerLabels = new ArrayList<String>();
 		List<ITCFAgentLauncher> registeredAgents = new ArrayList<ITCFAgentLauncher>();
 
-		// find registered agents that meets our need.
+		// Find registered agents that meets our need and which can be launched.
 		//
 		if (useRegisteredAgents) {
 			for (ITCFAgentLauncher descriptor : tcfAgentLaunchers) {
 				if (descriptor.getServiceNames().contains(serviceName)
-						&& matchesAllAttributes(descriptor.getPeerAttributes(), attributesToMatch)) {
+						&& matchesAllAttributes(descriptor.getPeerAttributes(), attributesToMatch)
+						&& descriptor.isLaunchable()) {
 					registeredPeerLabels.add(descriptor.getPeerName() + " (local registered non-started)");
 					registeredAgents.add(descriptor);
 
@@ -341,6 +344,17 @@ public class TCFServiceManager implements ITCFServiceManager  {
 			}
 
 			options.addAll(registeredPeerLabels);
+			
+			// We wanted to prompt the user because nothing was running
+			// locally and a registered agent might have provided more agents.
+			// But even if only one is found, still prompt the user, otherwise
+			// there's a chance of running a remote agent from the wrong place.
+			//
+			/*
+			if (options.size() == 1) {
+				promptUser = false;
+			}
+			*/
 		}
 
 		final String selection[] = { null };

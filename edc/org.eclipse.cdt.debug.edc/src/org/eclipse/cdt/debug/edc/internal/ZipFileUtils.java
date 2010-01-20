@@ -10,12 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal;
 
-import de.schlichtherle.io.ArchiveDetector;
-import de.schlichtherle.io.ArchiveException;
-import de.schlichtherle.io.DefaultArchiveDetector;
-import de.schlichtherle.io.File;
-import de.schlichtherle.io.FileInputStream;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,8 +18,13 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+
+import de.schlichtherle.io.ArchiveDetector;
+import de.schlichtherle.io.ArchiveException;
+import de.schlichtherle.io.DefaultArchiveDetector;
+import de.schlichtherle.io.File;
+import de.schlichtherle.io.FileInputStream;
 
 
 /**
@@ -249,19 +248,27 @@ public class ZipFileUtils {
 		}
 	}
 
-	public static org.eclipse.core.runtime.Path createNewZip(IPath zipPath) {
-		File f = new File(zipPath.toOSString());
+	public static boolean createNewZip(java.io.File zipFileToCreate) {
+		boolean success = false;	
+		if (zipFileToCreate.exists()){
+			return true;
+		}
+		
+		if (!zipFileToCreate.getParentFile().exists()){
+			zipFileToCreate.mkdirs();
+		}
+		
+		File f = new File(zipFileToCreate);
+
 		try {
-			f.createNewFile();
+			success = f.createNewFile();
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
-		if (f.exists()){
-			return new org.eclipse.core.runtime.Path(f.toString());
+		} finally {
+			unmount();
 		}
 		
-		return null;
-		
+		return success;
 	}
 	
 	/**

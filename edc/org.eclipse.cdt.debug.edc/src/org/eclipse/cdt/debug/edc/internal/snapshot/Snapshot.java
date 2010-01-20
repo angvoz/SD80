@@ -25,6 +25,7 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.PlatformObject;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.internal.core.LaunchManager;
 import org.osgi.framework.InvalidSyntaxException;
@@ -36,7 +37,7 @@ import org.xml.sax.InputSource;
 import org.xml.sax.helpers.DefaultHandler;
 
 @SuppressWarnings("restriction")
-public class Snapshot {
+public class Snapshot extends PlatformObject {
 	
 	// XML elements
 	public static final String SNAPSHOT = "snapshot";
@@ -72,7 +73,7 @@ public class Snapshot {
 	 * @param album
 	 * @param session
 	 */
-	public Snapshot(Album album, DsfSession session){
+	public Snapshot(Album album, DsfSession session, String displayName){
 		try {
 			this.album = album;
 			this.session = session;
@@ -80,6 +81,7 @@ public class Snapshot {
 			snapshotRootElement = document.createElement(SNAPSHOT);
 			document.appendChild(snapshotRootElement);
 			
+			snapshotDisplayName = displayName;
 			snapshotFileName = SNAPSHOT_FILENAME_PREFIX + System.currentTimeMillis() + ".xml";
 			creationDate = new Date(System.currentTimeMillis()).toString();
 		} catch (CoreException e) {
@@ -88,6 +90,15 @@ public class Snapshot {
 		
 	}
 
+	@SuppressWarnings("unchecked")
+	@Override
+	public Object getAdapter(Class adapter) {
+		if (adapter.equals(Document.class))
+			return document;
+
+		return super.getAdapter(adapter);
+	}
+	
 	private static String getServiceFilter(String sessionId) {
 		return ("(" + IDsfService.PROP_SESSION_ID + "=" + sessionId + ")").intern(); //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 	}

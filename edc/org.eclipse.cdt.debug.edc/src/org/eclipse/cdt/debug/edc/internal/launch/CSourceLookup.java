@@ -51,6 +51,10 @@ public class CSourceLookup extends AbstractDsfService implements ISourceLookup {
 		directors.put(ctx, director);
 	}
 
+	public CSourceLookupDirector getSourceLookupDirector(ISourceLookupDMContext ctx) {
+		return directors.get(ctx);
+	}
+
 	public void setSourceLookupPath(ISourceLookupDMContext ctx, ISourceContainer[] containers, RequestMonitor rm) {
 	}
 

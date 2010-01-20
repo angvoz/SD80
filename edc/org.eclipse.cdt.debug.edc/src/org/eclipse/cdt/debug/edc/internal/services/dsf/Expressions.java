@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -70,10 +69,15 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 	private static int nextExpressionID = 100;
 
-	private HashMap<String, ICPPBasicType> basicTypes = null;
+	private Map<String, ICPPBasicType> basicTypes;
 
 	public class ExpressionDMC extends DMContext implements IExpressionDMContext {
 
+		private static final String HEX_PREFIX = "0x"; //$NON-NLS-1$
+		private static final String OCTAL_PREFIX = "0"; //$NON-NLS-1$
+		private static final String BINARY_PREFIX = "0b"; //$NON-NLS-1$
+		private static final String SINGLE_QUOTE = "'"; //$NON-NLS-1$
+		private static final String DECIMAL_SUFFIX = " (Decimal)";
 		private InstructionSequence parsedExpression;
 		private final ASTEvaluationEngine engine = new ASTEvaluationEngine();
 		private final StackFrameDMC frame;
@@ -164,22 +168,13 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 				IType unqualifiedType = TypeUtils.getStrippedType(valueType);
 				if (unqualifiedType instanceof IAggregate || unqualifiedType instanceof IPointerType) {
 					if (value instanceof Addr64)
-						value = "0x" + ((Addr64) value).toString(16); //$NON-NLS-1$
+						value = HEX_PREFIX + ((Addr64) value).toString(16);
 					else if (value instanceof Integer)
-						value = "0x" + Integer.toHexString((Integer) value); //$NON-NLS-1$
+						value = HEX_PREFIX + Integer.toHexString((Integer) value);
 					else if (value instanceof BigInteger)
-						value = "0x" + ((BigInteger) value).toString(16); //$NON-NLS-1$
+						value = HEX_PREFIX + ((BigInteger) value).toString(16);
 					else if (value instanceof Long)
-						value = "0x" + Long.toHexString((Long) value); //$NON-NLS-1$
-				} else if (unqualifiedType instanceof ICPPBasicType
-						&& ((ICPPBasicType) unqualifiedType).getBaseType() == IBasicType.t_char) {
-					if (value instanceof Integer) {
-						Integer intValue = ((Integer) value);
-						if (intValue == 0)
-							value = "'\\0'"; //$NON-NLS-1$
-						else
-							value = "'" + (char) ((Integer) value).byteValue() + "'"; //$NON-NLS-1$ //$NON-NLS-2$
-					}
+						value = HEX_PREFIX + Long.toHexString((Long) value);
 				} else if (unqualifiedType instanceof IEnumeration) {
 					// for an enumerator, return the name, if any
 					if ((value instanceof Integer) || (value instanceof Long) || (value instanceof BigInteger)) {
@@ -211,24 +206,111 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 				result = value.toString();
 			}
 
-			if (dmc.getFormatID().equals(IFormattedValues.HEX_FORMAT)) {
-				if (value instanceof Integer)
-					result = Integer.toHexString((Integer) value);
-				else if (value instanceof Long)
-					result = Long.toHexString((Long) value);
-				else if (value instanceof BigInteger)
-					result = ((BigInteger) value).toString(16);
-				else if (value instanceof Float)
-					result = Float.toHexString((Float) value);
-				else if (value instanceof Double)
-					result = Double.toHexString((Double) value);
-			} else if (dmc.getFormatID().equals(IFormattedValues.DECIMAL_FORMAT)) {
-
-			} else if (dmc.getFormatID().equals(IFormattedValues.STRING_FORMAT)) {
-
+			if (value instanceof Number) {
+				String temp = null;
+				String formatID = dmc.getFormatID();
+				if (formatID.equals(IFormattedValues.HEX_FORMAT)) {
+					temp = toHexString((Number) value);
+				} else if (formatID.equals(IFormattedValues.OCTAL_FORMAT)) {
+					temp = toOctalString((Number) value);
+				} else if (formatID.equals(IFormattedValues.BINARY_FORMAT)) {
+					temp = asBinary((Number) value);
+				} else if (formatID.equals(IFormattedValues.NATURAL_FORMAT)) {
+					// for chars, do something special
+					IType unqualifiedType = TypeUtils.getStrippedType(valueType);
+					if (unqualifiedType instanceof ICPPBasicType
+							&& ((ICPPBasicType) unqualifiedType).getBaseType() == IBasicType.t_char) {
+						temp = toCharString((Number) value);
+					}
+				}
+				if (temp != null)
+					result = temp; 
+				// otherwise, leave value as is
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.VARIABLE_VALUE_TRACE, result);
 			return new FormattedValueDMData(result);
+		}
+
+		private String toHexString(Number number) {
+			String str = null;
+			if (number instanceof Integer)
+				str = Integer.toHexString((Integer) number);
+			else if (number instanceof Long)
+				str = Long.toHexString((Long) number);
+			else if (number instanceof BigInteger)
+				str = ((BigInteger) number).toString(16);
+			else if (number instanceof Float)
+				str = Float.toHexString((Float) number);
+			else if (number instanceof Double)
+				str = Double.toHexString((Double) number);
+			if (str != null && !str.startsWith(HEX_PREFIX))
+				return HEX_PREFIX + str;
+			return str;
+		}
+
+		private String toOctalString(Number number) {
+			String str = null;
+			if (number instanceof Integer)
+				str = Integer.toOctalString((Integer) number);
+			else if (number instanceof Long)
+				str = Long.toOctalString((Long) number);
+			else if (number instanceof BigInteger)
+				str = ((BigInteger) number).toString(8);
+			if (str != null && !str.startsWith(OCTAL_PREFIX))
+				str = OCTAL_PREFIX + str;
+			if (str == null && (number instanceof Float || number instanceof Double))
+				str = number.toString() + DECIMAL_SUFFIX;
+			return str;
+		}
+
+		private String asBinary(Number number) {
+			String str = null;
+			if (number instanceof Integer)
+				str = Integer.toBinaryString((Integer) number);
+			else if (number instanceof Long)
+				str = Long.toBinaryString((Long) number);
+			else if (number instanceof BigInteger)
+				str = ((BigInteger) number).toString(2);
+			if (str != null && !str.startsWith(BINARY_PREFIX))
+				str = BINARY_PREFIX + str;
+			if (str == null && (number instanceof Float || number instanceof Double))
+				str = number.toString() + DECIMAL_SUFFIX;
+			return str;
+		}
+
+		private String toCharString(Number number) {
+			int intValue = number.intValue();
+			switch ((char) intValue) {
+				case 0:
+					return asStringQuoted("\\0"); //$NON-NLS-1$
+				case '\b':
+					return asStringQuoted("\\b"); //$NON-NLS-1$
+				case '\f':
+					return asStringQuoted("\\f"); //$NON-NLS-1$
+				case '\n':
+					return asStringQuoted("\\n"); //$NON-NLS-1$
+				case '\r':
+					return asStringQuoted("\\r"); //$NON-NLS-1$
+				case '\t':
+					return asStringQuoted("\\t"); //$NON-NLS-1$
+				case '\'':
+					return asStringQuoted("\\'"); //$NON-NLS-1$
+				case '\"':
+					return asStringQuoted("\\\""); //$NON-NLS-1$
+				case '\\':
+					return asStringQuoted("\\\\"); //$NON-NLS-1$
+				case 0xb:
+					return asStringQuoted("\\v"); //$NON-NLS-1$
+			}
+		
+			return asStringQuoted(Character.toString((char) ((Number) value).byteValue()));
+		}
+
+		private String asStringQuoted(String val) {
+			StringBuilder sb = new StringBuilder(SINGLE_QUOTE);
+			sb.append(val);
+			sb.append(SINGLE_QUOTE);
+			return sb.toString();
 		}
 
 		public Object getValueLocation() {
@@ -381,7 +463,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		}
 	}
 
-	public class ExpressionDMAddress implements IExpressionDMAddress {
+	public class ExpressionDMAddress implements IExpressionDMLocation {
 
 		private final Object valueLocation;
 
@@ -395,17 +477,18 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		public IAddress getAddress() {
 			if (valueLocation instanceof IAddress)
 				return (IAddress) valueLocation;
-//			if (valueLocation instanceof IAddress || valueLocation instanceof String)
-//				return valueLocation;
-//			else if (valueLocation instanceof IInvalidVariableLocation) {
-//				return ((IInvalidVariableLocation)valueLocation).getMessage();
-//			}
-
 			return new Addr64("0"); //$NON-NLS-1$
 		}
 
 		public int getSize() {
 			return 4;
+		}
+
+		public String getLocation() {
+			if (valueLocation instanceof IInvalidVariableLocation) {
+				return ((IInvalidVariableLocation)valueLocation).getMessage();
+			}
+			return valueLocation.toString();
 		}
 
 	}
@@ -422,7 +505,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 	public IExpressionDMContext createExpression(IDMContext context, String expression) {
 		StackFrameDMC frameDmc = DMContexts.getAncestorOfType(context, StackFrameDMC.class);
 
-		if (this.basicTypes == null && getTargetEnvironmentService() != null)
+		if (basicTypes == null && getTargetEnvironmentService() != null)
 			createBasicTypes();
 
 		if (frameDmc != null) {
@@ -597,7 +680,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		while (childIterator.hasNext() && !rm.isCanceled()) {
 			children.add(childIterator.next());
 		}
-		rm.setData((IExpressionDMContext[]) children.toArray(new IExpressionDMContext[children.size()]));
+		rm.setData(children.toArray(new IExpressionDMContext[children.size()]));
 		rm.done();
 	}
 

@@ -174,6 +174,10 @@ public class Modules extends AbstractEDCService implements IModules {
 
 			if (!hostFilePath.isEmpty()) {
 				album.addFile(hostFilePath);
+				IPath possibleSymFile = hostFilePath.removeFileExtension().addFileExtension("sym");
+				if (possibleSymFile.toFile().exists()) {
+					album.addFile(possibleSymFile);
+				}
 			}
 
 			return contextElement;
@@ -789,7 +793,7 @@ public class Modules extends AbstractEDCService implements IModules {
 		String slashAndLowerFileName = File.separator + path.lastSegment().toLowerCase();
 		String absoluteLowerPath = path.makeAbsolute().toOSString().toLowerCase();
 		
-		Collection<Executable> executables = ExecutablesManager.getExecutablesManager().getExecutables();
+		Collection<Executable> executables = ExecutablesManager.getExecutablesManager().getExecutables(false);
 		for (Executable e : executables) {
 			String p = e.getPath().makeAbsolute().toOSString().toLowerCase();
 			if (p.endsWith(absoluteLowerPath) || // stricter match first

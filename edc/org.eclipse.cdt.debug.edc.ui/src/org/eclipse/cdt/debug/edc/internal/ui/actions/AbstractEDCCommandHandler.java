@@ -70,6 +70,8 @@ abstract public class AbstractEDCCommandHandler extends AbstractHandler implemen
 		this.selectionExecutionDMC = getContext(getDebugSelectionContext());
 		if (selectionExecutionDMC != null) {
 			this.albumContext = Album.getAlbumBySession(selectionExecutionDMC.getSessionId());
+			if (albumContext == null)
+				albumContext = Album.getRecordingForSession(selectionExecutionDMC.getSessionId());
 			this.snapshotSession = Album.isSnapshotSession(selectionExecutionDMC.getSessionId());
 		}
 	}

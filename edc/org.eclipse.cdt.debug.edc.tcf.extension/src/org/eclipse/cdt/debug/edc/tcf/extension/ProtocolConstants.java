@@ -50,7 +50,8 @@ public interface ProtocolConstants {
 				// PROP_IMAGE_BASE_ADDRESS.
 				PROP_CODE_ADDRESS = "CodeAddress", // value type: Number.
 				PROP_DATA_ADDRESS = "DataAddress", // value type: Number.
-				PROP_BSS_ADDRESS = "BssAddress"; // value type: Number.
+				PROP_BSS_ADDRESS = "BssAddress", // value type: Number.
+				PROP_RESUME = "RequireResume"; // value type: Boolean
 	};
 
 }

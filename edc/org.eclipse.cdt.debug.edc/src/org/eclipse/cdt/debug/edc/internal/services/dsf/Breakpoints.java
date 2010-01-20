@@ -823,6 +823,17 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			return;
 		}
 		
+		final boolean requireResume;
+		Object requireResumeValue = module.getProperties().get("RequireResume");
+		if (requireResumeValue != null) {
+			if (requireResumeValue instanceof Boolean)
+				requireResume = (Boolean) requireResumeValue;
+			else
+				requireResume = true;
+		}
+		else
+			requireResume = true;
+	
 		IBreakpointsTargetDMContext bt_dmc = DMContexts.getAncestorOfType(module, IBreakpointsTargetDMContext.class);
 		bm.startTrackingBreakpoints(bt_dmc, new RequestMonitor(getExecutor(), null) {
 
@@ -859,7 +870,8 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 						//
 						EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
 								"resume process after module load event ...");
-						executionDMC.resume(new RequestMonitor(getExecutor(), null));
+						if (requireResume)
+							executionDMC.resume(new RequestMonitor(getExecutor(), null));
 					}
 				});
 			}

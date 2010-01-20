@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.snapshot;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +20,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.SourceDataLine;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.eclipse.cdt.core.CCorePlugin;
@@ -67,6 +75,7 @@ public class SnapshotUtils extends PlatformObject {
 	private static final String LIST_ATTRIBUTE = "listAttribute"; //$NON-NLS-1$
 	private static final String BOOLEAN_ATTRIBUTE = "booleanAttribute"; //$NON-NLS-1$
 	private static final String INT_ATTRIBUTE = "intAttribute"; //$NON-NLS-1$
+	private static final String LONG_ATTRIBUTE = "longAttribute"; //$NON-NLS-1$
 	private static final String STRING_ATTRIBUTE = "stringAttribute"; //$NON-NLS-1$
 
 	@SuppressWarnings("unchecked")
@@ -91,7 +100,7 @@ public class SnapshotUtils extends PlatformObject {
 					element = createKeyValueElement(doc, INT_ATTRIBUTE, key, valueString);
 				} else if (value instanceof Long) {
 					valueString = ((Long) value).toString();
-					element = createKeyValueElement(doc, INT_ATTRIBUTE, key, valueString);
+					element = createKeyValueElement(doc, LONG_ATTRIBUTE, key, valueString);
 				} else if (value instanceof Boolean) {
 					valueString = ((Boolean) value).toString();
 					element = createKeyValueElement(doc, BOOLEAN_ATTRIBUTE, key, valueString);
@@ -223,18 +232,30 @@ public class SnapshotUtils extends PlatformObject {
 				if (nodeType == Node.ELEMENT_NODE) {
 					element = (Element) node;
 					nodeName = element.getNodeName();
-					if (nodeName.equalsIgnoreCase(STRING_ATTRIBUTE)) {
-						setStringAttribute(element, properties);
-					} else if (nodeName.equalsIgnoreCase(INT_ATTRIBUTE)) {
-						setIntegerAttribute(element, properties);
-					} else if (nodeName.equalsIgnoreCase(BOOLEAN_ATTRIBUTE)) {
-						setBooleanAttribute(element, properties);
-					} else if (nodeName.equalsIgnoreCase(LIST_ATTRIBUTE)) {
-						setListAttribute(element, properties);
-					} else if (nodeName.equalsIgnoreCase(MAP_ATTRIBUTE)) {
-						setMapAttribute(element, properties);
-					} else if (nodeName.equalsIgnoreCase(SET_ATTRIBUTE)) {
-						setSetAttribute(element, properties);
+					try {
+						if (nodeName.equalsIgnoreCase(STRING_ATTRIBUTE)) {
+							setStringAttribute(element, properties);
+						} else if (nodeName.equalsIgnoreCase(INT_ATTRIBUTE)) {
+							setIntegerAttribute(element, properties);
+						} else if (nodeName.equalsIgnoreCase(LONG_ATTRIBUTE)) {
+							setLongAttribute(element, properties);
+						} else if (nodeName.equalsIgnoreCase(BOOLEAN_ATTRIBUTE)) {
+							setBooleanAttribute(element, properties);
+						} else if (nodeName.equalsIgnoreCase(LIST_ATTRIBUTE)) {
+							setListAttribute(element, properties);
+						} else if (nodeName.equalsIgnoreCase(MAP_ATTRIBUTE)) {
+							setMapAttribute(element, properties);
+						} else if (nodeName.equalsIgnoreCase(SET_ATTRIBUTE)) {
+							setSetAttribute(element, properties);
+						}
+					} catch (Exception e) {
+						// Some integers are longs and so will fail when adding 
+						// their properties to the launch configuration. LaunchConfigurationInfo 
+						// does not support any number but Integer (no BigInteger or Long)
+						// See org.eclipse.debug.internal.core.LaunchConfigurationInfo#getAsXML().
+						EDCDebugger.getMessageLogger().logError("Skipping snapshot element.",  e);
+					} finally {
+						// continue on to the next element
 					}
 				}
 			}
@@ -264,6 +285,18 @@ public class SnapshotUtils extends PlatformObject {
 	 */
 	static protected void setIntegerAttribute(Element element, Map<String, Object> properties) throws CoreException {
 		properties.put(element.getAttribute(KEY), new Integer(element.getAttribute(VALUE)));
+	}
+
+	/**
+	 * Loads an <code>Integer</code> from the specified element into the local
+	 * attribute mapping
+	 * 
+	 * @param element
+	 *            the element to load from
+	 * @throws CoreException
+	 */
+	static protected void setLongAttribute(Element element, Map<String, Object> properties) throws CoreException {
+		properties.put(element.getAttribute(KEY), new Long(element.getAttribute(VALUE)));
 	}
 
 	/**
@@ -480,10 +513,13 @@ public class SnapshotUtils extends PlatformObject {
 		return false;
 	}
 	
-	static private ILaunchConfiguration findExistingLaunchForAlbum(Album album) {
+	static public ILaunchConfiguration findExistingLaunchForAlbum(Album album) {
 		ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
 		ILaunchConfigurationType launchType = lm.getLaunchConfigurationType(album.getLaunchTypeID());
-
+		if (launchType == null){
+			return null;
+		}
+		
 		try {
 			ILaunchConfiguration[] configurations = lm.getLaunchConfigurations(launchType);
 			for (ILaunchConfiguration configuration : configurations) {
@@ -495,6 +531,53 @@ public class SnapshotUtils extends PlatformObject {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}
 		return null;
+	}
+	
+	/**
+	 * Taken from org.eclipse.cdt.debug.ui.breakpointactions#SoundAction
+	 * @param soundFile
+	 */
+	static public void playSoundFile(final File soundFile) {
+
+		class SoundPlayer extends Thread {
+
+			public void run() {
+				AudioInputStream soundStream;
+				try {
+					soundStream = AudioSystem.getAudioInputStream(soundFile);
+					AudioFormat audioFormat = soundStream.getFormat();
+					DataLine.Info dataLineInfo = new DataLine.Info(SourceDataLine.class, audioFormat);
+					SourceDataLine sourceDataLine = (SourceDataLine) AudioSystem.getLine(dataLineInfo);
+					byte[] soundBuffer = new byte[5000];
+					sourceDataLine.open(audioFormat);
+					sourceDataLine.start();
+					int dataCount = 0;
+
+					while ((dataCount = soundStream.read(soundBuffer, 0, soundBuffer.length)) != -1) {
+						if (dataCount > 0) {
+							sourceDataLine.write(soundBuffer, 0, dataCount);
+						}
+					}
+					sourceDataLine.drain();
+					sourceDataLine.close();
+
+				} 
+				// Don't report any exceptions, some VMs may not play the sound
+				catch (UnsupportedAudioFileException e) {
+				} catch (IOException e) {
+				} catch (IllegalArgumentException e) {
+				} catch (LineUnavailableException e) {
+				} finally {
+					
+				}
+
+			}
+
+		}
+		
+		if (soundFile.exists()) {
+			new SoundPlayer().start();
+		}
 	}
 
 

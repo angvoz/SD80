@@ -1407,7 +1407,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 	private void processClassType(long offset, AttributeList attributeList, CompilationUnitHeader header,
 			ArrayList<CompositeNest> compositeNesting) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1420,12 +1420,12 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		ClassType type = new ClassType(name, currentParentScope, byteSize, properties);
 		adjustCompositeNesting(offset, siblingOffset, type, header, compositeNesting);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processStructType(long offset, AttributeList attributeList, CompilationUnitHeader header,
 			ArrayList<CompositeNest> compositeNesting) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1438,12 +1438,12 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		StructType type = new StructType(name, currentParentScope, byteSize, properties);
 		adjustCompositeNesting(offset, siblingOffset, type, header, compositeNesting);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processUnionType(long offset, AttributeList attributeList, CompilationUnitHeader header,
 			ArrayList<CompositeNest> compositeNesting) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1456,12 +1456,12 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		UnionType type = new UnionType(name, currentParentScope, byteSize, properties);
 		adjustCompositeNesting(offset, siblingOffset, type, header, compositeNesting);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processInheritance(long offset, AttributeList attributeList, CompilationUnitHeader header,
 			ArrayList<CompositeNest> compositeNesting) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1514,7 +1514,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		
 		
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	// remove composites that are out of scope and add a composite that is now
@@ -1538,7 +1538,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 	private void processField(long offset, AttributeList attributeList, CompilationUnitHeader header,
 			ArrayList<CompositeNest> compositeNesting) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1594,11 +1594,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		if (compositeType != null)
 			compositeType.addField(type);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processArrayType(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1610,11 +1610,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		ArrayType type = new ArrayType(name, currentParentScope, byteSize, properties);
 		typesByOffset.put(offset, type);
 		currentArrayType = type;
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processArrayBoundType(long offset, AttributeList attributeList, ArrayType arrayParent) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		long arrayBound = 0;
 		if (attributeList.getAttribute(DwarfConstants.DW_AT_upper_bound) != null)
@@ -1623,11 +1623,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		ArrayBoundType type = new ArrayBoundType(currentParentScope, arrayBound);
 		typesByOffset.put(offset, type);
 		arrayParent.addBound(type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processReferenceType(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1637,11 +1637,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		ReferenceType type = new ReferenceType(name, currentParentScope, properties);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processPointerType(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1652,11 +1652,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		PointerType type = new PointerType(name, currentParentScope, byteSize, properties);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processConstType(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1664,11 +1664,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		ConstType type = new ConstType(currentParentScope, properties);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processVolatileType(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1676,11 +1676,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		VolatileType type = new VolatileType(currentParentScope, properties);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processEnumType(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1692,11 +1692,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		Enumeration type = new Enumeration(name, currentParentScope, byteSize, properties);
 		typesByOffset.put(offset, type);
 		currentEnumType = type;
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processEnumerator(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1709,11 +1709,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 		currentParentScope.addEnumerator(enumerator);
 		currentEnumType.addEnumerator(enumerator);
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, enumerator);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, enumerator);
 	}
 
 	private void processTypeDef(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1723,11 +1723,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		TypedefType type = new TypedefType(name, currentParentScope, properties);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processBasicType(long offset, AttributeList attributeList) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, offset);
 
 		HashMap<Object, Object> properties = new HashMap<Object, Object>(attributeList.attributeMap.size());
 		properties.putAll(attributeList.attributeMap);
@@ -1822,11 +1822,11 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 
 		CPPBasicType type = new CPPBasicType(name, currentParentScope, baseType, qualifierBits, byteSize, properties);
 		typesByOffset.put(offset, type);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, type);
 	}
 
 	private void processVariable(AttributeList attributeList, boolean isParameter) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, attributeList);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, attributeList);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 
@@ -1881,7 +1881,7 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 				variablesByName.put(name, variables);
 			}
 
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, variable);
+			traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, variable);
 		}
 	}
 
@@ -1990,6 +1990,18 @@ public class EDCDwarfReader extends Scope implements IEDCSymbolReader, IModuleSc
 					}
 				}
 			}
+		}
+	}
+
+	private void traceEntry(final String option, final Object methodArgument) {
+		if (EDCDebugger.getDefault() != null) {
+			EDCDebugger.getDefault().getTrace().traceEntry(option, methodArgument);
+		}
+	}
+
+	private void traceExit(final String option, final Object methodArgument) {
+		if (EDCDebugger.getDefault() != null) {
+			EDCDebugger.getDefault().getTrace().traceExit(option, methodArgument);
 		}
 	}
 

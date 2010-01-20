@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.windows;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -51,6 +52,14 @@ public class Win32AgentDescriptor implements ITCFAgentLauncher {
 		serviceNames.add(ISimpleRegisters.NAME);
 		serviceNames.add(IMemory.NAME);
 		return serviceNames;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.ITCFAgentLauncher#isLaunchable()
+	 */
+	public boolean isLaunchable() {
+		// TODO: expose and use HostOS from org.eclipse.cdt.debug.edc
+		return File.separatorChar == '\\';
 	}
 
 	public void launch() throws Exception {

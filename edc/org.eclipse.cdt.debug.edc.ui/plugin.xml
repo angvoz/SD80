@@ -131,7 +131,7 @@
             <visibleWhen
                   checkEnabled="false">
                <reference
-                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsPreviousSnapshotAvailable">
                </reference>
             </visibleWhen>
             </command>
@@ -155,7 +155,7 @@
  
      <command
             commandId="org.eclipse.cdt.debug.edc.ui.snapshotCreation"
-            label="Manual"
+            label="Create Manually"
             style="radio">
          <parameter
                name="org.eclipse.ui.commands.radioStateParameter"
@@ -164,7 +164,7 @@
       </command>
       <command
             commandId="org.eclipse.cdt.debug.edc.ui.snapshotCreation"
-            label="Suspend"
+            label="Create when Stopped"
             style="radio">
          <parameter
                name="org.eclipse.ui.commands.radioStateParameter"
@@ -173,7 +173,7 @@
       </command>
       <command
             commandId="org.eclipse.cdt.debug.edc.ui.snapshotCreation"
-            label="Breakpoints"
+            label="Create at Breakpoints"
             style="radio">
          <parameter
                name="org.eclipse.ui.commands.radioStateParameter"
@@ -186,7 +186,7 @@
             locationURI="toolbar:org.eclipse.debug.ui.VariableView">
          <command
                commandId="org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting"
-               icon="icons/obj16/tcf.gif"
+               icon="icons/obj16/var_format.png"
                label="Toggle Custom Variable Formatting"
                style="toggle">
          </command>
@@ -226,6 +226,31 @@
                   value="ACTIVE">
             </test>
          </with>
+      </definition>
+     <definition
+            id="org.eclipse.cdt.debug.edc.ui.testIsPreviousSnapshotAvailable">
+        <and>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCUIPluginActive">
+            </reference>
+             <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotDebuggingActionSetActive">
+            </reference>
+             <or>
+               <with
+                     variable="activePart">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isPreviousSnapshotAvailable">
+                  </test>
+               </with>
+               <with
+                     variable="selection">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isPreviousSnapshotAvailable">
+                  </test>
+               </with>
+            </or>
+           </and>
       </definition>
       <definition
             id="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
@@ -315,7 +340,7 @@
             commandId="org.eclipse.cdt.debug.edc.ui.previousSnapshot">
          <enabledWhen>
             <reference
-                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsPreviousSnapshotAvailable">
             </reference>
          </enabledWhen>
       </handler>
@@ -357,6 +382,20 @@
             id="org.eclipse.cdt.debug.edc.ui.partSnapshotPropertyTester"
             namespace="org.eclipse.cdt.debug.edc.ui"
             properties="isSnapshotCreationAvailable"
+            type="org.eclipse.ui.IWorkbenchPart">
+      </propertyTester>
+     <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.selectionSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isPreviousSnapshotAvailable"
+            type="org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext">
+      </propertyTester>
+      <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.partSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isPreviousSnapshotAvailable"
             type="org.eclipse.ui.IWorkbenchPart">
       </propertyTester>
      <propertyTester

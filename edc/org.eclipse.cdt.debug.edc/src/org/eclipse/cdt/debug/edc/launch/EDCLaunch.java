@@ -11,7 +11,6 @@
 package org.eclipse.cdt.debug.edc.launch;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,7 +21,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
-import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.launch.ShutdownSequence;
@@ -347,10 +345,7 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 		director.initializeParticipants();
 		try {
 			if (isSnapshotLaunch()) {
-				MappingSourceContainer sourceContainer = new MappingSourceContainer(getAlbum().getName());
-				getAlbum().configureMappingSourceContainer(sourceContainer);
-				ISourceContainer[] containers = new ISourceContainer[] { sourceContainer };
-				director.setSourceContainers(containers);
+				getAlbum().configureSourceLookupDirector(director);
 			} else {
 				String exePath = getLaunchConfiguration().getAttribute(
 						ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, "");
@@ -382,14 +377,8 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 				album.setSessionID(session.getId());
 
 				Album album = Album.getAlbumBySession(session.getId());
-				MappingSourceContainer sourceContainer = new MappingSourceContainer(album.getName());
-				album.configureMappingSourceContainer(sourceContainer);
-				DsfSourceLookupDirector locator = (DsfSourceLookupDirector) getSourceLocator();
-				ArrayList<ISourceContainer> containerList = new ArrayList<ISourceContainer>(Arrays.asList(locator
-						.getSourceContainers()));
-				containerList.add(sourceContainer);
-				locator.setSourceContainers(containerList.toArray(new ISourceContainer[containerList.size()]));
-
+				DsfSourceLookupDirector director = (DsfSourceLookupDirector) getSourceLocator();
+				album.configureSourceLookupDirector(director);
 			} else {
 
 			}

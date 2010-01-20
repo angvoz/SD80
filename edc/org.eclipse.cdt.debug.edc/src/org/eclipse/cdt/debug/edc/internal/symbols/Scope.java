@@ -73,10 +73,16 @@ public abstract class Scope implements IScope {
 		if (linkAddress.compareTo(lowAddress) >= 0 && linkAddress.compareTo(highAddress) < 0) {
 			int insertion = Collections.binarySearch(children, linkAddress);
 			if (insertion >= 0) {
-				return children.get(insertion).getScopeAtAddress(linkAddress);
+				IScope s = children.get(insertion).getScopeAtAddress(linkAddress);
+				if (s != null)	// found in subscopes
+					return s;
+				// Not found in subscope.
+				// One case I've seen: with RVCT 2.2 compiled Symbian GUI template project,
+				// some lexical blocks has highAddress smaller than lowAddress, resulting in
+				// no lexical block found for the address.
+				// In such case, we just go on return this scope.
 			}
-
-			if (insertion != -1) {
+			else if (insertion != -1) {
 				insertion = -insertion - 1;
 
 				IScope child = children.get(insertion - 1);

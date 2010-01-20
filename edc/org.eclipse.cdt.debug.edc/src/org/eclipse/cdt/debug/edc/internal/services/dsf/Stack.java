@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -18,8 +20,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.launch.CSourceLookup;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
@@ -29,6 +33,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
+import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -41,6 +46,9 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IStorage;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
@@ -117,7 +125,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	public class StackFrameDMC extends DMContext implements IFrameDMContext, Comparable<StackFrameDMC>,
 			ISnapshotContributor {
 
-		public static final String PROP_LEVEL = "Level";
+		public static final String LEVEL_INDEX = "Level"; // The first frame is level zero
 		public static final String BASE_ADDR = "Base_address";
 		public static final String IP_ADDR = "Instruction_address";
 		public static final String MODULE_NAME = "module_name";
@@ -126,8 +134,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		public static final String LINE_NUMBER = "line_number";
 
 		private final DsfServicesTracker dsfServicesTracker = getServicesTracker();
-		private ExecutionDMC executionDMC;
-		private int level;
+		private final ExecutionDMC executionDMC;
+		private final int level;
 		private IAddress baseAddress;
 		private IAddress ipAddress;
 
@@ -142,11 +150,12 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				.synchronizedMap(new HashMap<String, VariableDMC>());
 		private final Map<String, EnumeratorDMC> enumeratorsByName = Collections
 				.synchronizedMap(new HashMap<String, EnumeratorDMC>());
+		private IFunctionScope functionScope;
 
 		public StackFrameDMC(final ExecutionDMC executionDMC, Map<String, Object> frameProperties) {
 			super(Stack.this, new IDMContext[] { executionDMC }, frameProperties);
 			this.executionDMC = executionDMC;
-			this.level = (Integer) frameProperties.get(PROP_LEVEL);
+			this.level = (Integer) frameProperties.get(LEVEL_INDEX);
 			this.moduleName = (String) frameProperties.get(MODULE_NAME);
 
 			Object base = frameProperties.get(BASE_ADDR);
@@ -181,14 +190,18 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					frameProperties.put(LINE_NUMBER, lineNumber);
 				}
 
-				IFunctionScope scope = symbolsService
+				functionScope = symbolsService
 						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), ipAddress);
-				if (scope != null) {
-					functionName = scope.getName();
+				if (functionScope != null) {
+					functionName = functionScope.getName();
 					frameProperties.put(FUNCTION_NAME, functionName);
 				}
 			}
 			properties.putAll(frameProperties);
+		}
+
+		public IFunctionScope getFunctionScope() {
+			return functionScope;
 		}
 
 		public String getModuleName() {
@@ -240,15 +253,52 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return 0;
 		}
 
+		/**
+		 * Finds a source file using the source lookup director.
+		 * 
+		 * @param sourceFile the raw source file location, usually from the symbol data
+		 * 
+		 * @return location of the source file
+		 */
+		private String findSourceFile(String sourceFile) {
+			String result = "";
+			CSourceLookup lookup = getServicesTracker().getService(CSourceLookup.class);
+			RunControl runControl = getServicesTracker().getService(RunControl.class);
+			CSourceLookupDirector director = lookup.getSourceLookupDirector(runControl.getRootDMC());
+			try {
+				Object[] elements = director.findSourceElements(sourceFile);
+				if (elements != null && elements.length > 0)
+				{
+					Object element = elements[0];
+					if (element instanceof File) {
+						try {
+							result = (((File) element).getCanonicalPath());
+						} catch (IOException e) {
+							EDCDebugger.getMessageLogger().logError(null, e);
+						}
+					} else if (element instanceof IFile) {
+						result = (((IFile) element).getLocation().toOSString());
+					} else if (element instanceof IStorage) {
+						result = (((IStorage) element).getFullPath().toOSString());
+					} else if (element instanceof ITranslationUnit) {
+						result =(((ITranslationUnit) element).getLocation().toOSString());
+					}
+				}
+			} catch (CoreException e1) {
+				EDCDebugger.getMessageLogger().logError(sourceFile, e1);
+			}
+			return result;
+		}
+
 		public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
 			Element contextElement = document.createElement(STACK_FRAME);
 			contextElement.setAttribute(PROP_ID, this.getID());
 
 			Element propsElement = SnapshotUtils.makeXMLFromProperties(document, getProperties());
 			contextElement.appendChild(propsElement);
-
-			album.addFile(new Path(sourceFile));
-
+			// Locate the actual source file to be included in the album.
+			if (sourceFile.length() > 0) // No source file for this frame (just module/address)
+				album.addFile(new Path(findSourceFile(sourceFile)));
 			return contextElement;
 		}
 

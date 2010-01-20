@@ -19,8 +19,10 @@ import java.util.List;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumStateListener;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -29,7 +31,9 @@ import org.eclipse.core.resources.IResourceProxy;
 import org.eclipse.core.resources.IResourceProxyVisitor;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
@@ -48,7 +52,6 @@ import org.eclipse.jface.viewers.EditingSupport;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TextCellEditor;
 import org.eclipse.jface.viewers.TreeColumnViewerLabelProvider;
@@ -62,6 +65,7 @@ import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.TreeColumn;
@@ -71,46 +75,62 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
-public class SnapshotView extends ViewPart {
+public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListener {
 
 	/**
 	 * The ID of the view as specified by the extension.
 	 */
 	public static final String ID = "org.eclipse.cdt.debug.edc.ui.views.SnapshotView";
 
-/*	private static final ImageDescriptor CAMERA_IMGDESC = AbstractUIPlugin
+	private static final ImageDescriptor SNAPSHOT_NODE_IMGDESC = AbstractUIPlugin
 			.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
-					"/icons/etool16/create_snapshot.png"); //$NON-NLS-1$
-	private static final ImageDescriptor INFO_IMGDESC = PlatformUI
-			.getWorkbench().getSharedImages().getImageDescriptor(
-					ISharedImages.IMG_OBJS_INFO_TSK); //$NON-NLS-1$
-*/	private static final ImageDescriptor SNAPSHOT_NODE_IMGDESC = AbstractUIPlugin
-			.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
-					"/icons/etool16/snapshot_node.gif"); //$NON-NLS-1$
+					"/icons/obj16/snapshot_node.png"); //$NON-NLS-1$
+	private static final ImageDescriptor SNAPSHOT_CURRENT_NODE_IMGDESC = AbstractUIPlugin
+	.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/obj16/snapshot_current_node.png"); //$NON-NLS-1$
 	private static final ImageDescriptor ALBUM_NODE_IMGDESC = AbstractUIPlugin
 			.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
-					"/icons/etool16/album_node.png"); //$NON-NLS-1$
+					"/icons/obj16/album_node.png"); //$NON-NLS-1$
+	private static final ImageDescriptor ALBUM_NODE_RECORDING_IMGDESC = AbstractUIPlugin
+	.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/obj16/album_node_recording.png"); //$NON-NLS-1$
+	private static final ImageDescriptor ALBUM_NODE_PLAYBACK_IMGDESC = AbstractUIPlugin
+	.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/obj16/album_node_playback.png"); //$NON-NLS-1$
+	private static final ImageDescriptor ALBUM_NODE_LIVE_RECORDING_IMGDESC = AbstractUIPlugin
+	.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/obj16/album_node_live_recording.png"); //$NON-NLS-1$
 	private static final ImageDescriptor ALBUM_NODE_ERROR_IMGDESC = AbstractUIPlugin
 	.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
-			"/icons/etool16/album_node_error.png"); //$NON-NLS-1$
+			"/icons/obj16/album_node_error.png"); //$NON-NLS-1$
+	private static final ImageDescriptor PLAY_SNAPSHOT_IMGDESC = AbstractUIPlugin
+	.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/etool16/play_snapshots.gif"); //$NON-NLS-1$
 
 	private static final Image ALBUM_NODE_IMAGE = ALBUM_NODE_IMGDESC
 			.createImage();
+	private static final Image ALBUM_NODE_RECORDING_IMAGE = ALBUM_NODE_RECORDING_IMGDESC
+	.createImage();
+	private static final Image ALBUM_NODE_PLAYBACK_IMAGE = ALBUM_NODE_PLAYBACK_IMGDESC
+	.createImage();
+	private static final Image ALBUM_NODE_LIVE_RECORDING_IMAGE = ALBUM_NODE_LIVE_RECORDING_IMGDESC
+	.createImage();
 	private static final Image ALBUM_NODE_ERROR_IMAGE = ALBUM_NODE_ERROR_IMGDESC
 	.createImage();
 	private static final Image SNAPSHOT_NODE_IMAGE = SNAPSHOT_NODE_IMGDESC
 			.createImage();
+	private static final Image SNAPSHOT_CURRENT_NODE_IMAGE = SNAPSHOT_CURRENT_NODE_IMGDESC
+	.createImage();
 
 	private TreeViewer viewer;
 	private Action refreshAction;
 	private Action launchAction;
-	// private Action compareAction;
 	private Action importAction;
 	private Action deleteAction; // delete a snapshot or album
 
 	// private Action propertiesAction;
 
-	class ViewLabelProvider extends LabelProvider {
+	class ViewLabelProvider extends ColumnLabelProvider {
 
 		public String getText(Object obj) {
 			TreeNode node = (TreeNode) obj;
@@ -132,20 +152,43 @@ public class SnapshotView extends ViewPart {
 			TreeNode node = (TreeNode) obj;
 			Object value = node.getValue();
 			if (value instanceof Album) {
-				if (((Album) value).getSnapshots().size() == 0){
+				Album album = (Album)value;
+				if (album.getSnapshots().size() == 0){
 					return ALBUM_NODE_ERROR_IMAGE;
 				} else {
-					return ALBUM_NODE_IMAGE;
+					if (album.isRecording() && Album.isSnapshotSession(album.getSessionID())){
+						return ALBUM_NODE_LIVE_RECORDING_IMAGE;
+					} else if (album.isRecording()){
+						return ALBUM_NODE_RECORDING_IMAGE;
+					} else if (Album.isSnapshotSession(album.getSessionID())){
+						return ALBUM_NODE_PLAYBACK_IMAGE;
+					} else {
+						return ALBUM_NODE_IMAGE; 
+					}
 				}
 			} else if (value instanceof Snapshot) {
-				return SNAPSHOT_NODE_IMAGE;
+				Snapshot snap = (Snapshot)value;
+				Album album = snap.getAlbum();
+				if (Album.isSnapshotSession(album.getSessionID())){
+					EDCLaunch launch = EDCLaunch.getLaunchForSession(album.getSessionID());
+					int currIndex = launch.getAlbum().getCurrentSnapshotIndex();
+					if (snap.equals(album.getSnapshots().get(currIndex))){
+						return SNAPSHOT_CURRENT_NODE_IMAGE;
+					} else {
+						return SNAPSHOT_NODE_IMAGE;
+					}
+				} else {
+					return SNAPSHOT_NODE_IMAGE;
+				}
 			}
 			return null;
 		}
 	}
 
-	@Override
 	public void createPartControl(Composite parent) {
+		
+		Album.addSnapshotAlbumStateChangedListener(this);
+		
 		viewer = new TreeViewer(parent, SWT.H_SCROLL | SWT.V_SCROLL);
 
 		TreeViewerColumn albumColumn = new TreeViewerColumn(viewer, SWT.LEFT);
@@ -159,6 +202,11 @@ public class SnapshotView extends ViewPart {
 			@Override
 			protected boolean isEditorActivationEvent(
 					ColumnViewerEditorActivationEvent event) {
+				if (event.eventType == ColumnViewerEditorActivationEvent.MOUSE_DOUBLE_CLICK_SELECTION &&
+						getAlbumsFromSnapshotProject().size() == 0){
+					importAction.run();
+				}
+				
 				return event.eventType == ColumnViewerEditorActivationEvent.MOUSE_DOUBLE_CLICK_SELECTION;
 			}
 		};
@@ -176,7 +224,6 @@ public class SnapshotView extends ViewPart {
 
 		viewer.setContentProvider(new TreeNodeContentProvider());
 		viewer.setInput(loadAlbums());
-		viewer.expandAll();
 		viewer.getTree().setHeaderVisible(true);
 
 		viewer.setSorter(new ViewerSorter() {
@@ -202,7 +249,19 @@ public class SnapshotView extends ViewPart {
 				boolean enabled = false;
 				if (!selection.isEmpty()) {
 					enabled = true;
+					TreeNode node = (TreeNode) ((IStructuredSelection) selection)
+							.getFirstElement();
+					Object value = node.getValue();
+
+					if (value instanceof Album) {
+						Album album = (Album)value;
+						enabled = !album.isRecording() && !Album.isSnapshotSession(album.getSessionID());
+					} else if (value instanceof Snapshot) {
+						Snapshot snapshot = (Snapshot)value;
+						enabled = !snapshot.getAlbum().isRecording() && !Album.isSnapshotSession(snapshot.getAlbum().getSessionID());
+					}
 				}
+
 				launchAction.setEnabled(enabled);
 				deleteAction.setEnabled(enabled);
 
@@ -324,28 +383,49 @@ public class SnapshotView extends ViewPart {
 			public void run() {
 				try {
 					Object[] expanded = viewer.getExpandedElements();
-					// TODO: This is too heavy. We need to make sure we only load albums
+					// TODO: loadAlbums is too heavy. We need to make sure we only load albums
 					// that have changed. For now we are loading everything again on a refresh
 					// which will get to be slow.
 					TreeNode[] newTree = loadAlbums();
 					viewer.setInput(newTree);
 					packColumns();
-					
-					for (Object expandedNode : expanded){
+					if (viewer.getTree().getItems().length == 1){
+						viewer.expandAll();
+					} else
+					{
+						// Expand any albums recording or in playback mode...
 						for (Object newNode : newTree){
 							if (newNode instanceof TreeNode){
 								if (((TreeNode) newNode).getValue() instanceof Album){
-									Object t1 = ((TreeNode) newNode).getValue();
-									Object t2 = ((TreeNode) expandedNode).getValue();
-									String newAlbumName =  ((Album)t1).getDisplayName();
-									String oldAlbumName =  ((Album)t2).getDisplayName();
-									if ( newAlbumName.equals(oldAlbumName) ){
+									Album album = (Album)((TreeNode) newNode).getValue();
+									if (album.isRecording() || Album.isSnapshotSession(album.getSessionID())){
 										viewer.setExpandedState(((TreeNode) newNode), true);
-										break;
 									}
 								}
-							}	
-							
+							}
+						}
+						// ...then expand any nodes that were already expanded
+						for (Object expandedNode : expanded){
+							for (Object newNode : newTree){
+								if (newNode instanceof TreeNode){
+									if (((TreeNode) newNode).getValue() instanceof Album){
+										Album album = (Album)((TreeNode) newNode).getValue();
+										if (album.isRecording()){
+											viewer.setExpandedState(((TreeNode) newNode), true);
+											break;
+										}
+										Object t1 = ((TreeNode) newNode).getValue();
+										Object t2 = ((TreeNode) expandedNode).getValue();
+										String newAlbumName =  ((Album)t1).getDisplayName();
+										String oldAlbumName =  ((Album)t2).getDisplayName();
+										if ( newAlbumName.equals(oldAlbumName) ){
+											viewer.setExpandedState(((TreeNode) newNode), true);
+											break;
+										}
+									}
+								}	
+								
+							}
 						}
 					}
 					viewer.refresh();
@@ -365,20 +445,18 @@ public class SnapshotView extends ViewPart {
 		launchAction = new Action() {
 			public void run() {
 				try {
-					// TODO:
 					TreeNode node = (TreeNode) ((IStructuredSelection) viewer
 							.getSelection()).getFirstElement();
 					Object value = node.getValue();
 					if (value instanceof Album) {
 						SnapshotUtils.launchAlbumSession((Album) value);
 					} else if (value instanceof Snapshot) {
-						// launch selected snapshot, set proper index in album
-						// first
+						// launch selected snapshot, set proper index in album 						// first
 						Album album = ((Snapshot) value).getAlbum();
 						int index = album.getIndexOfSnapshot((Snapshot) value);
-						album.setCurrentSnapshotIndex(index);
 						SnapshotUtils.launchAlbumSession(((Snapshot) value)
 								.getAlbum());
+						album.setCurrentSnapshotIndex(index);
 					}
 				} catch (Exception x) {
 					x.printStackTrace();
@@ -387,9 +465,7 @@ public class SnapshotView extends ViewPart {
 		};
 		launchAction.setText("Luanch Snapshot");
 		launchAction.setToolTipText("Launches the selected snapshot");
-		launchAction.setImageDescriptor(AbstractUIPlugin
-				.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
-						"/icons/etool16/play_snapshots.gif")); //$NON-NLS-1$
+		launchAction.setImageDescriptor(PLAY_SNAPSHOT_IMGDESC); //$NON-NLS-1$
 
 		// properties of a snapshot
 		// propertiesAction = new Action() {
@@ -434,12 +510,10 @@ public class SnapshotView extends ViewPart {
 							.getSelection()).getFirstElement();
 					Object value = node.getValue();
 					if (value instanceof Album) {
-						IPath albumToDelte = ((Album) value).getLocation();
-						if (albumToDelte != null) {
-							if (deleteSnapshotFile(SnapshotUtils
-									.getSnapshotsProject(), albumToDelte)) {
-								refreshAction.run();
-							}
+						Album album = (Album) value; 
+						if (deleteAlbum(SnapshotUtils
+								.getSnapshotsProject(), album)) {
+							refreshAction.run();
 						}
 					} else if (value instanceof Snapshot) {
 						Snapshot snap = (Snapshot)value;
@@ -503,8 +577,6 @@ public class SnapshotView extends ViewPart {
 		manager.add(refreshAction);
 		manager.add(launchAction);
 		manager.add(deleteAction);
-		// manager.add(compareAction);
-		// manager.add(propertiesAction);
 		manager.add(importAction);
 
 		launchAction.setEnabled(false);
@@ -535,13 +607,21 @@ public class SnapshotView extends ViewPart {
 		TreeNode node = (TreeNode) ((IStructuredSelection) selection)
 				.getFirstElement();
 		Object value = node.getValue();
+		boolean enabled = false;
 		if (value instanceof Album) {
 			launchAction.setText("Launch Album");
 			deleteAction.setText("Delete Album");
+			Album album = (Album)value;
+			enabled = !Album.isSnapshotSession(album.getSessionID());
 		} else if (value instanceof Snapshot) {
 			launchAction.setText("Launch Snapshot");
 			deleteAction.setText("Delete Snapshot");
+			Snapshot snapshot = (Snapshot)value;
+			enabled = !Album.isSnapshotSession(snapshot.getAlbum().getSessionID());
 		}
+		
+		launchAction.setEnabled(enabled);
+		deleteAction.setEnabled(enabled);
 	}
 
 	private void contributeToActionBars() {
@@ -567,7 +647,7 @@ public class SnapshotView extends ViewPart {
 
 		if (albumList.size() == 0) {
 			TreeNode emptyAlbum = new TreeNode(
-					"No snapshot albums (.dsa) found. Double-click to import an album.");
+					"Click the “Camera” button in the Debug View to create a new Album or double-click here to import an existing one.");
 			albumNodes.add(emptyAlbum);
 			return (TreeNode[]) albumNodes.toArray(new TreeNode[albumNodes
 					.size()]);
@@ -598,8 +678,7 @@ public class SnapshotView extends ViewPart {
 
 		// See if the default project exists
 		String defaultProjectName = "Snapshots";
-		ICProject cProject = CoreModel.getDefault().getCModel().getCProject(
-				defaultProjectName);
+		ICProject cProject = CoreModel.getDefault().getCModel().getCProject(defaultProjectName);
 
 		if (cProject == null || !cProject.exists()) {
 			return albumList;
@@ -611,20 +690,19 @@ public class SnapshotView extends ViewPart {
 			for (IResource resource : resources) {
 
 				try {
-
-					if (resource.getType() != IResource.FOLDER
-							&& resource.getFullPath().getFileExtension()
-									.equalsIgnoreCase("dsa")
-							&& resource.exists()) {
-						Album album = new Album();
-						album.setLocation(resource.getRawLocation());
-						album.loadAlbumMetada(true);
+					if (resource.getType() != IResource.FOLDER && resource.getFullPath().getFileExtension().equalsIgnoreCase("dsa") && resource.exists()) {
+						Album album = Album.getAlbumByLocation(resource.getRawLocation());// ??????
+						if (album == null) {
+							album = new Album();
+							album.setLocation(resource.getRawLocation());
+							album.loadAlbumMetada(true);
+						}
 						albumList.add(album);
 					}
 
 				} catch (Exception e) {
 					// ignored
-				} 
+				}
 			}
 		} catch (CoreException e) {
 			e.printStackTrace();
@@ -634,18 +712,34 @@ public class SnapshotView extends ViewPart {
 	}
 
 	/**
-	 * Delete a file from a given project. User will be prompted before delete
+	 * Delete an album from a project. User will be prompted before delete
 	 * is called. Works for either linked resources or workspace resources in a
 	 * project. Linked resources are not deleted from disk.
 	 * 
 	 * @param project
-	 * @param path
+	 * @param album - Album to delete
 	 * @return
 	 * @throws CoreException
 	 */
-	private boolean deleteSnapshotFile(final IProject project, final IPath path)
+	private boolean deleteAlbum(final IProject project, final Album album)
 			throws CoreException {
-
+		
+		if (album == null){
+			return false;
+		}
+		
+		// delete any unzipped archive
+		IPath extractedAlbum = album.getAlbumRootDirectory();
+		if (extractedAlbum.toFile().exists()){
+			deleteDir(extractedAlbum.toFile());
+		}
+		
+		// delete launch configuration
+		ILaunchConfiguration lc = SnapshotUtils.findExistingLaunchForAlbum(album);
+		if (lc != null){
+			lc.delete();
+		}
+		
 		final boolean[] success = { false };
 		project.accept(new IResourceProxyVisitor() {
 			public boolean visit(IResourceProxy proxy) throws CoreException {
@@ -654,7 +748,7 @@ public class SnapshotView extends ViewPart {
 					IPath currentFile = proxy.requestResource()
 							.getRawLocation();
 
-					if (path.toFile().getAbsolutePath().equals(
+					if (album.getLocation().toFile().getAbsolutePath().equals(
 							currentFile.toFile().getAbsolutePath())) {
 
 						boolean okToDelete = false;
@@ -691,6 +785,51 @@ public class SnapshotView extends ViewPart {
 		}, IResource.NONE);
 
 		return success[0];
+
+	}
+	
+	/**
+	 * Recursively delete a directory and it's contents
+	 * @param dir
+	 * @return
+	 */
+    public static boolean deleteDir(File dir) {
+        if (dir.isDirectory()) {
+            String[] children = dir.list();
+            for (int i=0; i<children.length; i++) {
+                boolean success = deleteDir(new File(dir, children[i]));
+                if (!success) {
+                    return false;
+                }
+            }
+        }
+    
+        // The directory is now empty so delete it
+        return dir.delete();
+    }
+
+	public void albumChanged(final Album album) {
+		
+		Display.getDefault().asyncExec(new Runnable() {
+			public void run() {
+				
+				if (album.getSnapshots().size() == 1 && album.isRecording()){
+					// Album just created, refresh the Snapshot project
+					String defaultProjectName = "Snapshots";
+					ICProject cProject = CoreModel.getDefault().getCModel().getCProject(
+							defaultProjectName);
+					if (cProject != null && cProject.exists()){
+						try {
+							cProject.getProject().refreshLocal(IProject.DEPTH_INFINITE, new NullProgressMonitor());
+						} catch (CoreException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+				
+				refreshAction.run();
+			}
+		});
 
 	}
 

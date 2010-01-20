@@ -52,6 +52,15 @@ public interface ITCFAgentLauncher {
 	Map<String, String> getPeerAttributes();
 
 	/**
+	 * Tell whether the agent can be launched.  This is mainly used to
+	 * avoid considering the launcher for situations where it will never
+	 * work (e.g., wrong OS host).  {@link #launch()} can, of course,
+	 * fail for other reasons.
+	 * @return true if launching is possible.
+	 */
+	boolean isLaunchable();
+	
+	/**
 	 * Launches the agent, if it's not already running
 	 * 
 	 * @throws Exception

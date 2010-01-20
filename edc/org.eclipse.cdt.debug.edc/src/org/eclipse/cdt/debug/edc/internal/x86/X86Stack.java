@@ -72,13 +72,13 @@ public class X86Stack extends Stack {
 				if (baseAddress == 0) {
 					properties = new HashMap<String, Object>();
 					properties.put(DMContext.PROP_ID, Integer.toString(nextStackFrameID++));
-					properties.put(StackFrameDMC.PROP_LEVEL, 1);
+					properties.put(StackFrameDMC.LEVEL_INDEX, 0);
 					properties.put(StackFrameDMC.BASE_ADDR, Long.valueOf(instructionAddress));
 					properties.put(StackFrameDMC.IP_ADDR, Long.valueOf(instructionAddress));
 					frames.add(properties);
 				} else {
 					while (baseAddress != 0) {
-						int level = frames.size() + 1;
+						int level = frames.size();
 
 						memBuffer = new ArrayList<MemoryByte>();
 						memGetStatus = memoryService.getMemory(context, new Addr64(Long.toString(instructionAddress)),
@@ -92,7 +92,7 @@ public class X86Stack extends Stack {
 							if (frames.size() == 0) {
 								properties = new HashMap<String, Object>();
 								properties.put(DMContext.PROP_ID, Integer.toString(nextStackFrameID++));
-								properties.put(StackFrameDMC.PROP_LEVEL, level);
+								properties.put(StackFrameDMC.LEVEL_INDEX, level);
 								properties.put(StackFrameDMC.BASE_ADDR, Long.valueOf(instructionAddress));
 								properties.put(StackFrameDMC.IP_ADDR, Long.valueOf(instructionAddress));
 								frames.add(properties);
@@ -107,7 +107,7 @@ public class X86Stack extends Stack {
 
 						properties = new HashMap<String, Object>();
 						properties.put(DMContext.PROP_ID, Integer.toString(nextStackFrameID++));
-						properties.put(StackFrameDMC.PROP_LEVEL, level);
+						properties.put(StackFrameDMC.LEVEL_INDEX, level);
 						properties.put(StackFrameDMC.BASE_ADDR, Long.valueOf(baseAddress));
 						properties.put(StackFrameDMC.IP_ADDR, Long.valueOf(instructionAddress));
 						if (module == null)

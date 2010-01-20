@@ -48,6 +48,8 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 
 				} else if (property.equals("isSnapshotSession")) {
 					return isSnapshotSession;
+				} else if (property.equals("isPreviousSnapshotAvailable")) {
+					return true; // Album.getRecordingForSession(sessionID) != null;
 				}
 			}
 

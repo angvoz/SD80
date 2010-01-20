@@ -46,6 +46,8 @@ public class FormatUtils {
 			return false;
 		// we want to preserve typedefs to determine whether this is a type we support with a formatter
 		IType baseType = TypeUtils.getBaseTypePreservingTypedef(type);
+		if (baseType == null)
+			return false;
 		return checkName(baseType.getName(), baseName);
 	}
 	

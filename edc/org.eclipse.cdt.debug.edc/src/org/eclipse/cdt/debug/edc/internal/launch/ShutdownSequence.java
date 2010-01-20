@@ -146,8 +146,7 @@ public class ShutdownSequence extends Sequence {
 		}
 	} };
 
-	@SuppressWarnings("unchecked")
-	private void shutdownService(Class clazz, final RequestMonitor requestMonitor) {
+	private <V> void shutdownService(Class<V> clazz, final RequestMonitor requestMonitor) {
 		IDsfService service = (IDsfService) tracker.getService(clazz);
 		if (service != null) {
 			service.shutdown(new RequestMonitor(getExecutor(), requestMonitor) {

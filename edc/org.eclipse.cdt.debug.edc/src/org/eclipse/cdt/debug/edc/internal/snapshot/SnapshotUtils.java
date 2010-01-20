@@ -104,11 +104,11 @@ public class SnapshotUtils extends PlatformObject {
 				} else if (value instanceof Boolean) {
 					valueString = ((Boolean) value).toString();
 					element = createKeyValueElement(doc, BOOLEAN_ATTRIBUTE, key, valueString);
-				} else if (value instanceof List) {
+				} else if (value instanceof List<?>) {
 					element = createListElement(doc, LIST_ATTRIBUTE, key, (List<Object>) value);
-				} else if (value instanceof Map) {
+				} else if (value instanceof Map<?,?>) {
 					element = createMapElement(doc, MAP_ATTRIBUTE, key, (Map<Object, Object>) value);
-				} else if (value instanceof Set) {
+				} else if (value instanceof Set<?>) {
 					element = createSetElement(doc, SET_ATTRIBUTE, key, (Set<Object>) value);
 				}
 				rootElement.appendChild(element);

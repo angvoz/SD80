@@ -18,7 +18,6 @@ import java.util.WeakHashMap;
 import org.eclipse.cdt.debug.core.model.IRestart;
 import org.eclipse.cdt.debug.core.model.ISteppingModeTarget;
 import org.eclipse.cdt.debug.edc.internal.ui.DsfTerminateCommand;
-import org.eclipse.cdt.debug.edc.internal.ui.EDCSuspendTrigger;
 import org.eclipse.cdt.debug.edc.internal.ui.EDCViewModelAdapter;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
@@ -29,6 +28,7 @@ import org.eclipse.cdt.dsf.debug.ui.actions.DsfStepOverCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfStepReturnCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfSteppingModeTarget;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfSuspendCommand;
+import org.eclipse.cdt.dsf.debug.ui.contexts.DsfSuspendTrigger;
 import org.eclipse.cdt.dsf.debug.ui.sourcelookup.DsfSourceDisplayAdapter;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.SteppingController;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.actions.DefaultRefreshAllTarget;
@@ -78,7 +78,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 		final DsfSuspendCommand fSuspendCommand;
 		final DsfResumeCommand fResumeCommand;
 		final IDebugModelProvider fDebugModelProvider;
-		final EDCSuspendTrigger fSuspendTrigger;
+		final DsfSuspendTrigger fSuspendTrigger;
 		final DsfSteppingModeTarget fSteppingModeTarget;
 		final IModelSelectionPolicyFactory fModelSelectionPolicyFactory;
 		final SteppingController fSteppingController;
@@ -109,7 +109,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 			fSuspendCommand = new DsfSuspendCommand(session);
 			fResumeCommand = new DsfResumeCommand(session);
 			fTerminateCommand = new DsfTerminateCommand(session);
-			fSuspendTrigger = new EDCSuspendTrigger(session, fLaunch);
+			fSuspendTrigger = new DsfSuspendTrigger(session, fLaunch);
 			fModelSelectionPolicyFactory = new DefaultDsfModelSelectionPolicyFactory();
 			fRefreshAllTarget = new DefaultRefreshAllTarget();
 

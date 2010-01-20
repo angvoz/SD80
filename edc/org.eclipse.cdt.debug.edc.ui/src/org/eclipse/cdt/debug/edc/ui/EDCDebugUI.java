@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.ui;
 
+import org.eclipse.cdt.debug.edc.MessageLogger;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
@@ -63,6 +64,20 @@ public class EDCDebugUI extends Plugin {
 	 */
 	public static EDCDebugUI getDefault() {
 		return plugin;
+	}
+
+	public static MessageLogger getMessageLogger() {
+		return new MessageLogger() {
+			@Override
+			public String getPluginID() {
+				return PLUGIN_ID;
+			}
+
+			@Override
+			public Plugin getPlugin() {
+				return plugin;
+			}
+		};
 	}
 
 	public static BundleContext getBundleContext() {

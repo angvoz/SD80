@@ -11,12 +11,35 @@
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
+import org.eclipse.core.commands.Command;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.debug.ui.contexts.DebugContextEvent;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.commands.ICommandService;
 import org.eclipse.ui.handlers.HandlerUtil;
 
 public class CreationOptionsCommandHandler extends AbstractSnapshotCommandHandler {
+
+	public CreationOptionsCommandHandler() {
+		super();
+		IWorkbench workbench = PlatformUI.getWorkbench();
+		ICommandService commandSupport = (ICommandService)workbench.getAdapter(ICommandService.class);
+		if (commandSupport != null)
+		{
+			Command command = commandSupport.getCommand("org.eclipse.cdt.debug.edc.ui.snapshotCreation");
+			if (command != null)
+			{
+				try {
+					HandlerUtil.updateRadioState(command, Album.getSnapshotCreationControl());
+				} catch (ExecutionException e) {
+					EDCDebugUI.getMessageLogger().logError(null, e);
+				}
+			}
+		}
+	}
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		String newSetting = event.getParameter("org.eclipse.ui.commands.radioStateParameter");

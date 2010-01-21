@@ -479,14 +479,11 @@ public class TCFServiceManager implements ITCFServiceManager  {
 				String peerName = peer.getName();
 				String peerID = peer.getID();
 
-				ArrayList<IChannel> allChannels = new ArrayList<IChannel>();
-
-				allChannels.addAll(Arrays.asList(Protocol.getOpenChannels()));
-
-				for (IChannel iChannel : allChannels) {
-					IPeer remotePeer = iChannel.getRemotePeer();
+				IChannel[] channels = Protocol.getOpenChannels();
+				for (IChannel channel : channels) {
+					IPeer remotePeer = channel.getRemotePeer();
 					if (remotePeer.getName().equals(peerName) && remotePeer.getID().equals(peerID)) {
-						ret[0] = iChannel;
+						ret[0] = channel;
 						return;
 					}
 				}

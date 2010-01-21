@@ -124,7 +124,7 @@ public class WindowsDebugger extends Plugin {
 			final String workingDirectory = cfg.getAttribute(ICDTLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY,
 					"");
 			final String args = cfg.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_ARGUMENTS, "");
-			final Map<String, String> env = cfg.getAttribute(ILaunchManager.ATTR_ENVIRONMENT_VARIABLES, (Map) null);
+			final Map<String, String> env = cfg.getAttribute(ILaunchManager.ATTR_ENVIRONMENT_VARIABLES, (Map<?,?>) null);
 			final boolean append = cfg.getAttribute(ILaunchManager.ATTR_APPEND_ENVIRONMENT_VARIABLES, true);
 			final boolean attach = true;
 

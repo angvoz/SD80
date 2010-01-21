@@ -85,7 +85,7 @@ public class SimpleRegistersProxy implements ISimpleRegisters {
 
 	@SuppressWarnings("unchecked")
 	private String[] toStringArray(Object o) {
-		if (o != null && o instanceof Collection) {
+		if (o != null && o instanceof Collection<?>) {
 			Collection<Object> objs = (Collection<Object>) o;
 			Collection<String> strings = new ArrayList<String>();
 			for (Object object : objs) {

@@ -211,7 +211,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 	/**
 	 * This method only actually returns adapters for the launch object.
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	public Object getAdapter(Object adaptableObject, Class adapterType) {
 		if (!(adaptableObject instanceof EDCLaunch))
 			return null;
@@ -259,7 +259,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 			return null;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	public Class[] getAdapterList() {
 		return new Class[] { IElementContentProvider.class, IModelProxyFactory.class, ISuspendTrigger.class,
 				IColumnPresentationFactory.class };

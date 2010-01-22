@@ -94,7 +94,7 @@ public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 			ChooseProcessItem selected = chooseProcess(items, "");
 			int selectedIndex = 0;
 			for (selectedIndex = 0; selectedIndex < numProcesses; selectedIndex++) {
-				if (selected.getProcessID().equals(items[selectedIndex].getProcessID()))
+				if (selected.processID.equals(items[selectedIndex].processID))
 					break;
 			}
 

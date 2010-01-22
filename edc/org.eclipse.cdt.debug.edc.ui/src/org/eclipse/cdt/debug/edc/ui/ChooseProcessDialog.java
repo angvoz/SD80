@@ -80,7 +80,7 @@ public class ChooseProcessDialog extends TrayDialog {
 
 		@Override
 		public boolean select(Viewer viewer, Object parentElement, Object element) {
-			return match(((ChooseProcessItem) element).getProcessName());
+			return match(((ChooseProcessItem) element).processName);
 		}
 
 		public void setPattern(String pattern) {
@@ -102,9 +102,9 @@ public class ChooseProcessDialog extends TrayDialog {
 			if (element instanceof ChooseProcessItem) {
 				ChooseProcessItem process = (ChooseProcessItem) element;
 				if (columnIndex == PROCESS_NAME_COLUMN)
-					return process.getProcessName();
+					return process.processName;
 				else if (columnIndex == PROCESS_ID_COLUMN)
-					return process.getProcessID();
+					return process.processID;
 			}
 			return null;
 		}
@@ -329,7 +329,7 @@ public class ChooseProcessDialog extends TrayDialog {
 	 */
 	private ChooseProcessItem findProcessByName(String processName) {
 		for (ChooseProcessItem process : processesOnTarget) {
-			if (processName.startsWith(process.getProcessName()))
+			if (processName.startsWith(process.processName))
 				return process;
 		}
 		return null;
@@ -354,8 +354,8 @@ public class ChooseProcessDialog extends TrayDialog {
 			return new ViewerComparator() {
 				@Override
 				public int compare(Viewer viewer, Object e1, Object e2) {
-					String p1 = ((ChooseProcessItem) e1).getProcessName();
-					String p2 = ((ChooseProcessItem) e2).getProcessName();
+					String p1 = ((ChooseProcessItem) e1).processName;
+					String p2 = ((ChooseProcessItem) e2).processName;
 					if (p1 == null || p2 == null)
 						return 0;
 					return p1.compareToIgnoreCase(p2) * sortDirection;
@@ -365,8 +365,8 @@ public class ChooseProcessDialog extends TrayDialog {
 			return new ViewerComparator() {
 				@Override
 				public int compare(Viewer viewer, Object e1, Object e2) {
-					String p1 = ((ChooseProcessItem) e1).getProcessID();
-					String p2 = ((ChooseProcessItem) e2).getProcessID();
+					String p1 = ((ChooseProcessItem) e1).processID;
+					String p2 = ((ChooseProcessItem) e2).processID;
 					int i1 = 0;
 					int i2 = 0;
 					try {

@@ -14,26 +14,14 @@ import java.util.Arrays;
 
 public class LocationEntry {
 
-	private final long highPC;
-	private final long lowPC;
-	private final byte[] bytes;
+	public final long highPC;
+	public final long lowPC;
+	public final byte[] bytes;
 
 	public LocationEntry(long lowPC, long highPC, byte[] bytes) {
 		this.lowPC = lowPC;
 		this.highPC = highPC;
 		this.bytes = bytes;
-	}
-
-	public long getHighPC() {
-		return highPC;
-	}
-
-	public long getLowPC() {
-		return lowPC;
-	}
-
-	public byte[] getBytes() {
-		return bytes;
 	}
 
 	@Override
@@ -52,5 +40,4 @@ public class LocationEntry {
 		builder.append("]"); //$NON-NLS-1$
 		return builder.toString();
 	}
-
 }

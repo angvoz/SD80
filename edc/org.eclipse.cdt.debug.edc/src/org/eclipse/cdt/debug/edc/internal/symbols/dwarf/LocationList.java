@@ -46,8 +46,8 @@ public class LocationList implements ILocationProvider {
 		long address = compileUnitScope.getLowAddress().distanceTo(forLinkAddress).longValue();
 		// find the location entry for the given address
 		for (LocationEntry entry : locationList) {
-			if (address >= entry.getLowPC() && address < entry.getHighPC()) {
-				LocationExpression expression = new LocationExpression(reader, entry.getBytes(), addressSize, scope);
+			if (address >= entry.lowPC && address < entry.highPC) {
+				LocationExpression expression = new LocationExpression(reader, entry.bytes, addressSize, scope);
 				return expression.getLocation(tracker, context, forLinkAddress);
 			}
 		}

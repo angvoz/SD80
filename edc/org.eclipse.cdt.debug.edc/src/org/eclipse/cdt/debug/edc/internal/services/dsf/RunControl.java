@@ -643,6 +643,8 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 								if (error != null) {
 									requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, 
 											"terminate() failed.", error));
+									// do this manually, because we will not get any event from the agent
+									rootExecutionDMC.exitAllContexts();
 								}
 								requestMonitor.done();
 								EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);

@@ -14,7 +14,7 @@ public class DebugProgramOutputConsoleFactory extends
 		AbstractLoggingConsoleFactory {
 
 	public static final String CONSOLE_TYPE = "DebugProgramOutputConsoleFactory";
-	public static final String LOG_ID = "org.eclipse.cdt.debug.edc.ui.ProgramOutputConsoleLogger";
+	public static final String LOG_ID = "ProgramOutputConsoleLogger";
 	public static final String CONSOLE_TITLE = "Program Output Console";
 
 	@Override

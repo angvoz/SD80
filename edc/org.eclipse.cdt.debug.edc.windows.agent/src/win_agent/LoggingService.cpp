@@ -20,7 +20,7 @@
 static const char * sServiceName = "Logging";
 
 // ID of the console to write debug process output to
-static const char * sWindowsConsoleID = "org.eclipse.cdt.debug.edc.ui.ProgramOutputConsoleLogger";
+static const char * sWindowsConsoleID = "ProgramOutputConsoleLogger";
 // Number of listeners to the service utilizing 'sWindowsConsoleID'.
 int LoggingService::numConsoleListeners = 0;
 

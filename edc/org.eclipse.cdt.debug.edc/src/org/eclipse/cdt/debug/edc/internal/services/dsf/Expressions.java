@@ -488,7 +488,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			if (valueLocation instanceof IInvalidVariableLocation) {
 				return ((IInvalidVariableLocation)valueLocation).getMessage();
 			}
-			return valueLocation.toString();
+			return valueLocation == null ? "" : valueLocation.toString();
 		}
 
 	}

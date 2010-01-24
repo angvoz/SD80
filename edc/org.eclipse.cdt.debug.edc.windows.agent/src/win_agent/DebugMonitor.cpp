@@ -19,7 +19,7 @@ using namespace std;
 list<IContextEventListener *> DebugMonitor::gEventListeners;
 
 DebugMonitor::DebugMonitor(string& executable, string& directory, string& args,
-		string& environment, bool debug_children, std::string& token,
+		std::vector<std::string>& environment, bool debug_children, std::string& token,
 		Channel *c) {
 	this->executable = executable;
 	this->directory = directory;
@@ -34,7 +34,6 @@ DebugMonitor::DebugMonitor(bool debug_children, std::string& token,	Channel *c) 
 	this->executable = "";
 	this->directory = "";
 	this->args = "";
-	this->environment = "";
 	this->debug_children = debug_children;
 	this->channel = c;
 	this->token = token;

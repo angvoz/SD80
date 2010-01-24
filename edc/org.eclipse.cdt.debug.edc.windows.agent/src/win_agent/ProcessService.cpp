@@ -214,8 +214,6 @@ void ProcessService::command_start(char * token, Channel * c) {
 	channel.readZero();
 	std::string executable = channel.readString();
 	channel.readZero();
-	std::string wargs;
-	std::string wenv;
 
 	char ** args = NULL;
 	char ** envp = NULL;
@@ -229,7 +227,13 @@ void ProcessService::command_start(char * token, Channel * c) {
 	if (c->inp.read(&c->inp) != 0)
 		exception(ERR_JSON_SYNTAX);
 
-	bool attach = json_read_boolean(&c->inp);
+	std::vector<std::string> environment;
+	for (int i = 0; i < envp_len; i++)
+	{
+		environment.push_back(envp[i]);
+	}
+
+	json_read_boolean(&c->inp); // attach
 
 	loc_free(args);
 	loc_free(envp);
@@ -238,7 +242,9 @@ void ProcessService::command_start(char * token, Channel * c) {
 		exception(ERR_JSON_SYNTAX);
 	channel.readComplete();
 
-	WinDebugMonitor::LaunchProcess(executable, directory, wargs, wenv, true,
+	std::string wargs;
+
+	WinDebugMonitor::LaunchProcess(executable, directory, wargs, environment, true,
 			tokenStr, c);
 
 }

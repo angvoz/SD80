@@ -12,7 +12,7 @@
 #pragma once
 
 #include <string>
-
+#include <vector>
 #include "stdafx.h"
 #include "DebugMonitor.h"
 #include <queue>
@@ -27,7 +27,7 @@ class WinProcess;
 class WinDebugMonitor: public DebugMonitor {
 public:
 	WinDebugMonitor(std::string& executable, std::string& directory,
-			std::string& args, std::string& environment, bool debug_children,
+			std::string& args, std::vector<std::string>& environment, bool debug_children,
 			std::string& token, Channel *c);
 
 	WinDebugMonitor(DWORD processID, bool debug_children, std::string& token, Channel *c);
@@ -55,7 +55,7 @@ public:
 	 * Launch a process and monitor it.
 	 */
 	static void LaunchProcess(std::string& executable, std::string& directory,
-			std::string& args, std::string& environment, bool debug_children,
+			std::string& args, std::vector<std::string>& environment, bool debug_children,
 			std::string& token, Channel *c) throw (AgentException);
 
 	/*

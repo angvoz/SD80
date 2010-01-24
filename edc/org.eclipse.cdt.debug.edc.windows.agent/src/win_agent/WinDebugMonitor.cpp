@@ -143,7 +143,7 @@ std::string GetExecutableInfo(HANDLE hFile, unsigned long& baseOfCode, unsigned 
 	return AgentUtils::makeString(pszFilename);
 }
 
-WinDebugMonitor::WinDebugMonitor(std::string& executable, std::string& directory, std::string& args, std::string& environment, bool debug_children, std::string& token, Channel *c) :
+WinDebugMonitor::WinDebugMonitor(std::string& executable, std::string& directory, std::string& args, std::vector<std::string>& environment, bool debug_children, std::string& token, Channel *c) :
 DebugMonitor(executable, directory, args, environment, debug_children, token, c)
 {
 	memset(&processInfo, 0, sizeof(processInfo));
@@ -173,7 +173,7 @@ WinDebugMonitor::~WinDebugMonitor(void)
 
 }
 
-void WinDebugMonitor::LaunchProcess(std::string& executable, std::string& directory, std::string& args, std::string& environment, bool debug_children, std::string& token, Channel *c) throw (AgentException)
+void WinDebugMonitor::LaunchProcess(std::string& executable, std::string& directory, std::string& args, std::vector<std::string>& environment, bool debug_children, std::string& token, Channel *c) throw (AgentException)
 {
 	(new WinDebugMonitor(executable, directory, args, environment, debug_children, token, c))->StartMonitor();
 }
@@ -242,12 +242,29 @@ void WinDebugMonitor::StartProcessForDebug()
 		workingDirectory = (LPTSTR)directory.c_str();
 	}
 
+	char* envBuffer = NULL;
+	std::string envString;
+	if (environment.size() > 0)
+	{
+		std::vector<std::string>::iterator itEnvData;
+		for (itEnvData = environment.begin(); itEnvData
+				!= environment.end(); itEnvData++)
+		{
+			std::string value = *itEnvData;
+			envString += value;
+			envString += char(0);
+		}
+		envString += char(0);
+		envBuffer = new char[envString.length()];
+		memcpy(envBuffer, envString.c_str(), envString.length());
+	}
+
 	if (!CreateProcess(exeName.c_str(), argsBuffer,
 		(LPSECURITY_ATTRIBUTES)NULL,
 		(LPSECURITY_ATTRIBUTES)NULL,
 		FALSE,
 		(GetDebugChildren() ? DEBUG_PROCESS : DEBUG_ONLY_THIS_PROCESS)  | CREATE_NEW_CONSOLE,
-		NULL,
+		envBuffer,
 		workingDirectory,				//NULL,
 		(LPSTARTUPINFO)&si,
 		(LPPROCESS_INFORMATION)&processInfo))
@@ -270,6 +287,7 @@ void WinDebugMonitor::StartProcessForDebug()
 		tcf.writeComplete();
 	}
 
+	delete[] envBuffer;
 	delete[] argsBuffer;
 }
 

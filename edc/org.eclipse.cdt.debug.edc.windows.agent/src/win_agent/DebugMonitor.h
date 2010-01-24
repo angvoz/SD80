@@ -13,7 +13,7 @@
 
 #include <string>
 #include <list>
-
+#include <vector>
 #include "Context.h"
 #include "AgentException.h"
 #include "IContextEventListener.h"
@@ -35,7 +35,7 @@ public:
 	 *  debugChildren -- whether to monitor/debug child processes
 	 */
 	DebugMonitor(std::string& executable, std::string& directory,
-			std::string& args, std::string& environment, bool debug_children,
+			std::string& args, std::vector<std::string>& environment, bool debug_children,
 			std::string& token, Channel *c);
 
 	DebugMonitor(bool debug_children, std::string& token, Channel *c);
@@ -89,7 +89,7 @@ protected:
 	std::string executable;
 	std::string directory;
 	std::string args;
-	std::string environment;
+	std::vector<std::string> environment;
 	bool debug_children;
 	Channel *channel;
 	std::string token;

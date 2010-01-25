@@ -45,9 +45,7 @@ public class CreateSnapshotCommandHandler extends AbstractSnapshotCommandHandler
 					@Override
 					protected void handleCompleted() {
 						StackFrameDMC topFrame = (StackFrameDMC) getData();
-						final Snapshots snapshotsService = tracker.getService(Snapshots.class);
-						Album.createSnapshotForSession(session, snapshotsService
-								.createSnapshotNameFromStackFrameDMC(topFrame));
+						Album.createSnapshotForSession(session, topFrame);
 					}
 				}
 

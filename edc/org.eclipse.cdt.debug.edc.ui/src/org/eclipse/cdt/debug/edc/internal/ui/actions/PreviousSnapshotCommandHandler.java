@@ -14,6 +14,7 @@ import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -53,7 +54,14 @@ public class PreviousSnapshotCommandHandler extends AbstractSnapshotCommandHandl
 		super.debugContextChanged(event);
 		Album album = getAlbumContext();
 		// TODO: Rather than disable should we wrap when at the start?
-		boolean enableit = (album != null) && ((isSnapshotSession() && album.getCurrentSnapshotIndex() > 0) || (Album.getRecordingForSession(getSelectionExecutionDMC().getSessionId()) != null));	
+		boolean enableit = false;
+		if (album != null) {
+			enableit = (isSnapshotSession() && album.getCurrentSnapshotIndex() > 0);
+			if (!enableit) {
+				IExecutionDMContext selectionDMC = getSelectionExecutionDMC();
+				enableit = selectionDMC != null && ((Album.getRecordingForSession(getSelectionExecutionDMC().getSessionId()) != null));
+			}
+		}
 		setBaseEnabled(isEnabled() && enableit);
 	}
 

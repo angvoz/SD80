@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.snapshot;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.Date;
 import java.util.zip.ZipOutputStream;
@@ -21,6 +22,7 @@ import javax.xml.transform.TransformerException;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.ZipFileUtils;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.core.runtime.CoreException;
@@ -55,6 +57,16 @@ public class Snapshot extends PlatformObject {
 
 	private String snapshotDescription;
 	
+	// Reference location information: when a snapshot is created
+	// we record the location in the most recently suspended stack frame.
+	// This is then used to create a default name for the snapshot and
+	// is displayed in the snapshot view.
+	// Of course, when debugging multiple contexts this does not
+	// provide a complete description of the snapshot.
+	
+	private String referenceLocationSourceFile = "";
+	private long referenceLocationLineNumber;
+	
 	/*
 	 * Create a snapshot for reading
 	 */
@@ -71,19 +83,34 @@ public class Snapshot extends PlatformObject {
 	/**
 	 * Create a snapshot with prep for writing to file.
 	 * @param album
-	 * @param session
+	 * @param recentStackFrame - 
 	 */
-	public Snapshot(Album album, DsfSession session, String displayName){
+	public Snapshot(Album album, DsfSession session, StackFrameDMC recentStackFrame){
 		try {
+			assert session != null;
+			
 			this.album = album;
 			this.session = session;
 			document = DebugPlugin.newDocument();
 			snapshotRootElement = document.createElement(SNAPSHOT);
 			document.appendChild(snapshotRootElement);
 			
-			snapshotDisplayName = displayName;
+			if (recentStackFrame == null){
+				snapshotDisplayName = snapshotFileName;
+			} else {
+				snapshotDisplayName = createSnapshotNameFromStackFrameDMC(recentStackFrame);
+			}
 			snapshotFileName = SNAPSHOT_FILENAME_PREFIX + System.currentTimeMillis() + ".xml";
 			creationDate = new Date(System.currentTimeMillis()).toString();
+			
+			if (recentStackFrame != null){
+				File f = new File(recentStackFrame.getSourceFile());
+				if (f != null){
+					setReferenceLocationSourceFile(f.getName());
+				} 
+				setReferenceLocationLineNumber(recentStackFrame.getLineNumber());
+			}
+			
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
@@ -217,4 +244,47 @@ public class Snapshot extends PlatformObject {
 	public Album getAlbum(){
 		return album;
 	}
+	
+	/**
+	 * Creates the snapshot name from a stack frame dmc.
+	 * 
+	 * @param frameDMC the frame dmc
+	 * 
+	 * @return the snapshot name
+	 */
+	public String createSnapshotNameFromStackFrameDMC(StackFrameDMC stackFrame)
+	{
+		assert stackFrame != null;
+		StringBuilder name = new StringBuilder();
+		if (stackFrame.getFunctionName() != null && stackFrame.getFunctionName().length() != 0) {
+			name.append(stackFrame.getFunctionName());
+			name.append("() : "); //$NON-NLS-1$
+			name.append(stackFrame.getLineNumber());
+		} else if (stackFrame.getModuleName() != null && stackFrame.getModuleName().length() != 0) {
+			name.append(stackFrame.getModuleName());
+		} else if (stackFrame.getIPAddress() != null) {
+			name.append(stackFrame.getIPAddress().toHexAddressString());
+		}
+
+		return name.toString();	
+	}
+
+	public void setReferenceLocationSourceFile(String referenceLocationSourceFile) {
+		assert referenceLocationSourceFile != null;
+		this.referenceLocationSourceFile = referenceLocationSourceFile;
+	}
+
+	public String getReferenceLocationSourceFile() {
+		assert referenceLocationSourceFile != null;
+		return referenceLocationSourceFile;
+	}
+
+	public void setReferenceLocationLineNumber(long referenceLocationLineNumber) {
+		this.referenceLocationLineNumber = referenceLocationLineNumber;
+	}
+
+	public long getReferenceLocationLineNumber() {
+		return referenceLocationLineNumber;
+	}
+	
 }

@@ -316,6 +316,11 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 			Object value = node.getValue();
 			if (value instanceof Album) {
 				return ((Album) value).getLocation().toOSString();
+			} else if (value instanceof Snapshot){
+				Snapshot snap = ((Snapshot) value);
+				if (snap.getReferenceLocationSourceFile().length() > 0 && snap.getReferenceLocationLineNumber() > 0){
+					return snap.getReferenceLocationSourceFile() + ":" + snap.getReferenceLocationLineNumber();
+				}
 			}
 
 			return "";

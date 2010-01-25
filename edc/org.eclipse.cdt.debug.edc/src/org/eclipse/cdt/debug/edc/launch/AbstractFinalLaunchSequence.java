@@ -62,7 +62,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	private IPeer tcfPeer;
 
 	/**
-	 * Attributes that the debugger requires the TCF agent to match. Derivatives
+	 * Attributes that the debugger requires the TCF peer to match. Derivatives
 	 * populate this when we call {@link #specifyRequiredPeer()}
 	 */
 	protected final Map<String, String> peerAttributes = new HashMap<String, String>();
@@ -239,9 +239,9 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	}
 
 	protected IService getTCFService(String tcfServiceName, Map<String, String> tcfPeerAttrs) throws CoreException {
-		IPeer agent = getTCFPeer(tcfServiceName, tcfPeerAttrs);
+		IPeer peer = getTCFPeer(tcfServiceName, tcfPeerAttrs);
 		TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-		return tcfServiceManager.getPeerService(agent, tcfServiceName);
+		return tcfServiceManager.getPeerService(peer, tcfServiceName);
 	}
 
 	/**
@@ -254,15 +254,15 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * @param dsfService
 	 * @param tcfServiceName
 	 *            TCF service required
-	 * @param tcfAgentAttrs
-	 *            TCF agent attributes required to match.
+	 * @param tcfPeerAttrs
+	 *            TCF peer attributes required to match.
 	 * @param rm
 	 */
 	protected void findTCFServiceForDSFService(IDSFServiceUsingTCF dsfService, String tcfServiceName,
-			Map<String, String> tcfAgentAttrs, RequestMonitor rm) {
+			Map<String, String> tcfPeerAttrs, RequestMonitor rm) {
 
 		try {
-			IService service = getTCFService(tcfServiceName, tcfAgentAttrs);
+			IService service = getTCFService(tcfServiceName, tcfPeerAttrs);
 			dsfService.tcfServiceReady(service);
 		} catch (CoreException e1) {
 			if (e1.getStatus().matches(IStatus.CANCEL))

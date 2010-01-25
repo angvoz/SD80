@@ -135,7 +135,7 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 
 		public synchronized void onMessageReceived(char type, String token, String service, String name, byte[] data) {
 			try {
-				bf.append("Inp: ");
+				bf.append("Time(ms): " + System.currentTimeMillis() + " Inp: " );
 				bf.append(type);
 				if (token != null) {
 					bf.append(' ');
@@ -171,7 +171,7 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 
 		public synchronized void onMessageSent(char type, String token, String service, String name, byte[] data) {
 			try {
-				bf.append("Out: ");
+				bf.append("Time(ms): " + System.currentTimeMillis() + " Out: ");
 				bf.append(type);
 				if (token != null) {
 					bf.append(' ');

@@ -39,6 +39,7 @@ import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.ZipFileUtils;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.MapEntrySourceContainer;
@@ -251,14 +252,14 @@ public class Album extends PlatformObject {
 		return launch != null && launch.isSnapshotLaunch();
 	}
 	
-	public Snapshot createSnapshot(DsfSession session, String displayName) {
+	public Snapshot createSnapshot(DsfSession session, StackFrameDMC stackFrame) {
 		configureAlbum();
 		
 		if (getLocation() == null || !getLocation().toFile().exists()){
 				createEmptyAlbum(); 
 		}
 		
-		Snapshot snapshot = new Snapshot(this, session, displayName);
+		Snapshot snapshot = new Snapshot(this, session, stackFrame);
 		snapshot.writeSnapshotData();
 
 		snapshotList.add(snapshot);
@@ -346,8 +347,10 @@ public class Album extends PlatformObject {
 				}
 
 				snapshotMetadataElement.setAttribute("description", snap.getSnapshotDescription());
-
-				snapshotMetadataElement.setAttribute("fileName", snap.getSnapshotFileName());
+				snapshotMetadataElement.setAttribute("fileName", snap.getSnapshotFileName());				
+				snapshotMetadataElement.setAttribute("referenceLocationSourceFile", snap.getReferenceLocationSourceFile());
+				snapshotMetadataElement.setAttribute("referenceLocationLineNumber", String.valueOf(snap.getReferenceLocationLineNumber()));
+				
 				snapshotsElement.appendChild(snapshotMetadataElement);
 			}
 			albumRootElement.appendChild(metadataElement);
@@ -690,12 +693,18 @@ public class Album extends PlatformObject {
 			String elementDate = snapshotElement.getAttribute("date");
 			String elementDispalyName = snapshotElement.getAttribute("displayName");
 			String elementFileName = snapshotElement.getAttribute("fileName");
-
+			String referenceLocationSourceFile = snapshotElement.getAttribute("referenceLocationSourceFile");
+			String referenceLocationLineNumber = snapshotElement.getAttribute("referenceLocationLineNumber");
+			
 			Snapshot s = new Snapshot(this);
 			s.setCreationDate(elementDate);
 			s.setSnapshotFileName(elementFileName);
 			s.setSnapshotDisplayName(elementDispalyName);
 			s.setSnapshotDescription(elementDescription);
+			if (referenceLocationLineNumber.length() > 0){
+				s.setReferenceLocationLineNumber(Long.parseLong(referenceLocationLineNumber));
+			}
+			s.setReferenceLocationSourceFile(referenceLocationSourceFile);
 			snapshotList.add(s);
 		}
 	}
@@ -844,7 +853,7 @@ public class Album extends PlatformObject {
 		return snapshotCreationControl;
 	}
 
-	public static DsfExecutor createSnapshotForSession(final DsfSession session, final String displayName) {
+	public static DsfExecutor createSnapshotForSession(final DsfSession session, final StackFrameDMC stackFrame) {
 		
 		DsfRunnable runner = new DsfRunnable() {
 			public void run() {
@@ -855,7 +864,7 @@ public class Album extends PlatformObject {
 						album.setRecordingSessionID(sessionId);
 					}
 					playSnapshotSound();
-					album.createSnapshot(session, displayName);
+					album.createSnapshot(session, stackFrame);
 					fireAlbumStateChanged(album);
 					showSnapshotView();
 				}

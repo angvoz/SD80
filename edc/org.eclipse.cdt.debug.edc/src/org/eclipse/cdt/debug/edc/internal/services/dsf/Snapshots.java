@@ -34,30 +34,6 @@ public class Snapshots extends AbstractEDCService {
 		getSession().removeServiceEventListener(this);
 		super.shutdown(rm);
 	}
-
-	/**
-	 * Creates the snapshot name from a stack frame dmc.
-	 * 
-	 * @param frameDMC the frame dmc
-	 * 
-	 * @return the snapshot name
-	 */
-	public String createSnapshotNameFromStackFrameDMC(StackFrameDMC frameDMC)
-	{
-		assert frameDMC != null;
-		StringBuilder name = new StringBuilder();
-		if (frameDMC.getFunctionName() != null && frameDMC.getFunctionName().length() != 0) {
-			name.append(frameDMC.getFunctionName());
-			name.append("() : "); //$NON-NLS-1$
-			name.append(frameDMC.getLineNumber());
-		} else if (frameDMC.getModuleName() != null && frameDMC.getModuleName().length() != 0) {
-			name.append(frameDMC.getModuleName());
-		} else if (frameDMC.getIPAddress() != null) {
-			name.append(frameDMC.getIPAddress().toHexAddressString());
-		}
-
-		return name.toString();	
-	}
 	
 	@DsfServiceEventHandler
 	public void eventDispatched(final ISuspendedDMEvent e) {
@@ -76,7 +52,7 @@ public class Snapshots extends AbstractEDCService {
 										&& (controlSetting.equals("suspend") || controlSetting.equals("breakpoints"))) {
 									if (controlSetting.equals("suspend") || 
 											e.getReason() == StateChangeReason.BREAKPOINT) {
-										Album.createSnapshotForSession(getSession(), createSnapshotNameFromStackFrameDMC(topFrame));
+										Album.createSnapshotForSession(getSession(), topFrame);
 									}
 								}
 							}

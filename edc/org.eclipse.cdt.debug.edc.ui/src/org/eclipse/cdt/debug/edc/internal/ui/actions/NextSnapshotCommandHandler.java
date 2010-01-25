@@ -47,10 +47,15 @@ public class NextSnapshotCommandHandler extends AbstractSnapshotCommandHandler {
 		super.debugContextChanged(event);
 		
 		Album album = getAlbumContext();
-		int snapshotIndex = album.getCurrentSnapshotIndex();
-		int numSnapshots = album.getSnapshots().size();
-		// TODO: Rather than disable should we wrap when at the end?
-		setBaseEnabled(isEnabled() && isSnapshotSession() && snapshotIndex < numSnapshots-1);
+		if (album != null)
+		{
+			int snapshotIndex = album.getCurrentSnapshotIndex();
+			int numSnapshots = album.getSnapshots().size();
+			// TODO: Rather than disable should we wrap when at the end?
+			setBaseEnabled(isEnabled() && isSnapshotSession() && snapshotIndex < numSnapshots-1);
+		}
+		else
+			setBaseEnabled(false);
 	}
 
 }

@@ -59,6 +59,10 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected EDCLaunch launch;
 	protected DsfServicesTracker tracker;
 	protected List<Step> steps = new ArrayList<Step>();
+	
+	/**
+	 * The single TCF peer associated with this session.
+	 */
 	private IPeer tcfPeer;
 
 	/**
@@ -101,15 +105,37 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		}
 	};
 
+	/**
+	 * EDC currently only supports the scenario where a single TCF peer provides
+	 * all the services needed by a debug session (ILaunch). It must provide the
+	 * run-control service at a minimum (although other services are probably
+	 * required, too). This step should be executed immediately after
+	 * trackerStep.
+	 */
+	protected Step initFindPeer = new Step() {
+		@Override
+		public void execute(final RequestMonitor requestMonitor) {
+			try {
+				TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
+				tcfPeer = tcfServiceManager.getPeer(IRunControl.NAME, peerAttributes);
+				if (tcfPeer == null) {
+					requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Could not find a suitable TCF peer", null));
+				}
+			} catch (CoreException e) {
+				requestMonitor.setStatus(e.getStatus());				
+			}
+			
+			requestMonitor.done();
+		}
+	};
+	
 	protected Step initRunControlStep = new Step() {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-
+			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
 			RunControl runcontrol = tracker.getService(RunControl.class);
-
-			findTCFServiceForDSFService(runcontrol, IRunControl.NAME, peerAttributes, requestMonitor);
-
+			findTCFServiceForDSFService(runcontrol, IRunControl.NAME, requestMonitor);
 			requestMonitor.done();
 		}
 	};
@@ -121,27 +147,22 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
+			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
 
 			final Registers registers = tracker.getService(Registers.class);
-			try {
-				IPeer peer = getTCFPeer(ISimpleRegisters.NAME, peerAttributes);
+			ITCFServiceManager tcfServiceManager = EDCDebugger.getDefault().getServiceManager();
+			final IChannel channel = tcfServiceManager.getChannelForPeer(tcfPeer);
 
-				ITCFServiceManager tcfServiceManager = EDCDebugger.getDefault().getServiceManager();
-				final IChannel channel = tcfServiceManager.getChannelForPeer(peer);
-
-				Protocol.invokeLater(new Runnable() {
-					public void run() {
-						ISimpleRegisters simpleRegProxy = channel.getRemoteService(ISimpleRegisters.class);
-						if (simpleRegProxy == null) {
-							simpleRegProxy = new SimpleRegistersProxy(channel);
-							channel.setServiceProxy(ISimpleRegisters.class, simpleRegProxy);
-						}
-						registers.tcfServiceReady(simpleRegProxy);
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+					ISimpleRegisters simpleRegProxy = channel.getRemoteService(ISimpleRegisters.class);
+					if (simpleRegProxy == null) {
+						simpleRegProxy = new SimpleRegistersProxy(channel);
+						channel.setServiceProxy(ISimpleRegisters.class, simpleRegProxy);
 					}
-				});
-			} catch (CoreException e) {
-				requestMonitor.setStatus(e.getStatus());
-			}
+					registers.tcfServiceReady(simpleRegProxy);
+				}
+			});
 
 			requestMonitor.done();
 		}
@@ -154,11 +175,9 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-
+			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
 			Memory memory = tracker.getService(Memory.class);
-
-			findTCFServiceForDSFService(memory, IMemory.NAME, peerAttributes, requestMonitor);
-
+			findTCFServiceForDSFService(memory, IMemory.NAME, requestMonitor);
 			requestMonitor.done();
 		}
 	};
@@ -170,11 +189,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
+			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
 			Breakpoints breakpoints = tracker.getService(Breakpoints.class);
-
-			findTCFServiceForDSFService(breakpoints, org.eclipse.tm.tcf.services.IBreakpoints.NAME, peerAttributes,
+			findTCFServiceForDSFService(breakpoints,
+					org.eclipse.tm.tcf.services.IBreakpoints.NAME,
 					requestMonitor);
-
 			requestMonitor.done();
 		}
 
@@ -187,10 +206,10 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-
+			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
 			IService service;
 			try {
-				service = getTCFService(IProcesses.NAME, peerAttributes);
+				service = getTCFService(IProcesses.NAME);
 			} catch (CoreException e1) {
 				requestMonitor.setStatus(e1.getStatus());
 				requestMonitor.done();
@@ -210,10 +229,10 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-
+			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
 			IService service;
 			try {
-				service = getTCFService(IProcesses.NAME, peerAttributes);
+				service = getTCFService(IProcesses.NAME);
 			} catch (CoreException e1) {
 				requestMonitor.setStatus(e1.getStatus());
 				requestMonitor.done();
@@ -226,22 +245,17 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		}
 	};
 
-	protected IPeer getTCFPeer(String tcfServiceName, Map<String, String> tcfPeerAttrs) throws CoreException {
-		if (tcfPeer == null) {
-			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-			tcfPeer = tcfServiceManager.getPeer(tcfServiceName, tcfPeerAttrs);
-		} else {
-			// should we check if the previously found agent meets our need ?
-			// No. Currently and in foreseeable future we only need to support
-			// the case that one agent provides all required debug services.
-		}
-		return tcfPeer;
-	}
-
-	protected IService getTCFService(String tcfServiceName, Map<String, String> tcfPeerAttrs) throws CoreException {
-		IPeer peer = getTCFPeer(tcfServiceName, tcfPeerAttrs);
+	/**
+	 * Get a particular service from the TCF peer associated with this launch
+	 * 
+	 * @param tcfServiceName
+	 *            the name of the service
+	 * @return the service or null if not available
+	 * @throws CoreException
+	 */
+	protected IService getTCFService(String tcfServiceName) throws CoreException {
 		TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-		return tcfServiceManager.getPeerService(peer, tcfServiceName);
+		return tcfServiceManager.getPeerService(tcfPeer, tcfServiceName);
 	}
 
 	/**
@@ -259,10 +273,10 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * @param rm
 	 */
 	protected void findTCFServiceForDSFService(IDSFServiceUsingTCF dsfService, String tcfServiceName,
-			Map<String, String> tcfPeerAttrs, RequestMonitor rm) {
+			RequestMonitor rm) {
 
 		try {
-			IService service = getTCFService(tcfServiceName, tcfPeerAttrs);
+			IService service = getTCFService(tcfServiceName);
 			dsfService.tcfServiceReady(service);
 		} catch (CoreException e1) {
 			if (e1.getStatus().matches(IStatus.CANCEL))
@@ -574,4 +588,16 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * {@link #peerAttributes}
 	 */
 	abstract protected void specifyRequiredPeer();
+
+	/**
+	 * Return the single TCF peer associated with this debug session (ILaunch).
+	 * EDC currently only supports the scenario where a single TCF peer provides
+	 * all the services needed by a session.
+	 * 
+	 * @return the peer. Will return null if called before the
+	 *         {@link #initFindPeer} step has executed.
+	 */
+	protected IPeer getTCFPeer() {
+		return tcfPeer;
+	}
 }

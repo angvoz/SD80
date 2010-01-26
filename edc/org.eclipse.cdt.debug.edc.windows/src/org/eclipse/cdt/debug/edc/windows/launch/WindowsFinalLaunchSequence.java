@@ -18,7 +18,6 @@ import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence;
 import org.eclipse.cdt.debug.edc.launch.ChooseProcessItem;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
-import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging;
 import org.eclipse.cdt.debug.edc.ui.console.AbstractLoggingConsoleFactory;
 import org.eclipse.cdt.debug.edc.ui.console.DebugProgramOutputConsoleFactory;
 import org.eclipse.cdt.debug.edc.windows.RestartCommand;
@@ -27,12 +26,8 @@ import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.tm.tcf.protocol.IChannel;
-import org.eclipse.tm.tcf.protocol.IPeer;
-import org.eclipse.tm.tcf.services.IRunControl;
 
 public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
@@ -41,21 +36,12 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			try {
-				IPeer peer = getTCFPeer(ILogging.NAME, peerAttributes);
-				TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-				final IChannel channel = tcfServiceManager.getChannelForPeer(peer);
-				AbstractLoggingConsoleFactory.openConsole(DebugProgramOutputConsoleFactory.CONSOLE_TYPE,
-						DebugProgramOutputConsoleFactory.CONSOLE_TITLE, DebugProgramOutputConsoleFactory.LOG_ID,
-						channel, true);
-			} catch (CoreException e) {
-				WindowsDebugger.getMessageLogger().log(e.getStatus()); // log
-																		// and
-																		// move
-																		// on
-			} finally {
-				requestMonitor.done();
-			}
+			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
+			final IChannel channel = tcfServiceManager.getChannelForPeer(getTCFPeer());
+			AbstractLoggingConsoleFactory.openConsole(DebugProgramOutputConsoleFactory.CONSOLE_TYPE,
+					DebugProgramOutputConsoleFactory.CONSOLE_TITLE, DebugProgramOutputConsoleFactory.LOG_ID,
+					channel, true);
+			requestMonitor.done();
 		}
 	};
 
@@ -66,18 +52,8 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 
-			IPeer peer;
-			try {
-				peer = getTCFPeer(IRunControl.NAME, peerAttributes);
-			} catch (CoreException e1) {
-				requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
-						"Fail to initialize for Restart support. Reason: " + e1.getLocalizedMessage()));
-				requestMonitor.done();
-				return;
-			}
-
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-			IChannel channel = tcfServiceManager.getChannelForPeer(peer);
+			IChannel channel = tcfServiceManager.getChannelForPeer(getTCFPeer());
 
 			launch.getSession().registerModelAdapter(IRestart.class,
 					new RestartCommand(launch.getSession(), launch, channel));
@@ -102,6 +78,7 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		}
 
 		steps.add(trackerStep);
+		steps.add(initFindPeer);
 		steps.add(initRunControlStep);
 		steps.add(initLoggingStep);
 		steps.add(initRestartStep);

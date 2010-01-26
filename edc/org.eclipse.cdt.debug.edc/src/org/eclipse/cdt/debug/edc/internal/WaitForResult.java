@@ -17,15 +17,18 @@ import java.util.concurrent.TimeoutException;
 
 public class WaitForResult<V> implements Future<V> {
 
-	public static final long DEFAULT_WAIT_TIMEOUT = 10; // seconds
-	public static final long DEFAULT_WAIT_INTERVAL = 2; // seconds
+	public static final long DEFAULT_WAIT_TIMEOUT_SECONDS = 10;
+	public static final long WAIT_INTERVAL_MILLIS = 50;
 	private boolean running;
 	private boolean canceled;
 	private boolean done;
 	private V data;
 	private Throwable exception;
 
-	public boolean cancel(boolean arg0) {
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.Future#cancel(boolean)
+	 */
+	public boolean cancel(boolean mayInterruptIfRunning) {
 		if (!running)
 			return false;
 		else {
@@ -34,21 +37,27 @@ public class WaitForResult<V> implements Future<V> {
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.Future#get()
+	 */
 	public V get() throws InterruptedException, ExecutionException {
 		try {
-			return get(DEFAULT_WAIT_TIMEOUT, TimeUnit.SECONDS);
+			return get(DEFAULT_WAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 		} catch (TimeoutException e) {
 			throw new ExecutionException(e);
 		}
 	}
 
-	public V get(long arg0, TimeUnit arg1) throws InterruptedException, ExecutionException, TimeoutException {
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.Future#get(long, java.util.concurrent.TimeUnit)
+	 */
+	public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
 
-		long limit = System.currentTimeMillis() + arg1.toMillis(arg0);
+		long limitMillis = System.currentTimeMillis() + unit.toMillis(timeout);
 		running = true;
 		while (!canceled && (exception == null) && !hasResult()) {
-			Thread.sleep(DEFAULT_WAIT_INTERVAL * 1000);
-			if (System.currentTimeMillis() > limit)
+			Thread.sleep(WAIT_INTERVAL_MILLIS);
+			if (System.currentTimeMillis() > limitMillis)
 				throw new TimeoutException();
 		}
 		done = true;
@@ -72,10 +81,16 @@ public class WaitForResult<V> implements Future<V> {
 		return getData() != null;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.Future#isCancelled()
+	 */
 	public boolean isCancelled() {
 		return canceled;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.Future#isDone()
+	 */
 	public boolean isDone() {
 		return done;
 	}
@@ -83,5 +98,4 @@ public class WaitForResult<V> implements Future<V> {
 	public void handleException(Throwable e) {
 		this.exception = e;
 	}
-
 }

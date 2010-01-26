@@ -49,6 +49,7 @@ public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		}
 
 		steps.add(trackerStep);
+		steps.add(initFindPeer);
 		steps.add(initRunControlStep);
 		steps.add(initRegistersServiceStep);
 		steps.add(initMemoryServiceStep);

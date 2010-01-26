@@ -112,7 +112,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * required, too). This step should be executed immediately after
 	 * trackerStep.
 	 */
-	protected Step initFindPeer = new Step() {
+	protected Step initFindPeerStep = new Step() {
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 			try {
@@ -133,7 +133,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
+			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
 			RunControl runcontrol = tracker.getService(RunControl.class);
 			findTCFServiceForDSFService(runcontrol, IRunControl.NAME, requestMonitor);
 			requestMonitor.done();
@@ -147,7 +147,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
+			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
 
 			final Registers registers = tracker.getService(Registers.class);
 			ITCFServiceManager tcfServiceManager = EDCDebugger.getDefault().getServiceManager();
@@ -175,7 +175,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
+			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
 			Memory memory = tracker.getService(Memory.class);
 			findTCFServiceForDSFService(memory, IMemory.NAME, requestMonitor);
 			requestMonitor.done();
@@ -189,7 +189,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
+			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
 			Breakpoints breakpoints = tracker.getService(Breakpoints.class);
 			findTCFServiceForDSFService(breakpoints,
 					org.eclipse.tm.tcf.services.IBreakpoints.NAME,
@@ -206,7 +206,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
+			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
 			IService service;
 			try {
 				service = getTCFService(IProcesses.NAME);
@@ -229,7 +229,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeer step must be run prior to this one";
+			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
 			IService service;
 			try {
 				service = getTCFService(IProcesses.NAME);
@@ -595,7 +595,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * all the services needed by a session.
 	 * 
 	 * @return the peer. Will return null if called before the
-	 *         {@link #initFindPeer} step has executed.
+	 *         {@link #initFindPeerStep} step has executed.
 	 */
 	protected IPeer getTCFPeer() {
 		return tcfPeer;

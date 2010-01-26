@@ -597,7 +597,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * @return the peer. Will return null if called before the
 	 *         {@link #initFindPeerStep} step has executed.
 	 */
-	protected IPeer getTCFPeer() {
+	final protected IPeer getTCFPeer() {
 		return tcfPeer;
 	}
 }

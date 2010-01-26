@@ -438,19 +438,24 @@ public class TCFServiceManager implements ITCFServiceManager  {
 
 		Protocol.invokeAndWait(new Runnable() {
 			public void run() {
-				final IChannel newChannel = peer.openChannel();
-				newChannel.addChannelListener(new IChannelListener() {
-
-					public void onChannelOpened() {
-						waitForChannel.setData(newChannel);
-					}
-
-					public void onChannelClosed(Throwable error) {
-					}
-
-					public void congestionLevel(int level) {
-					}
-				});
+				try {
+					final IChannel newChannel = peer.openChannel();
+					newChannel.addChannelListener(new IChannelListener() {
+	
+						public void onChannelOpened() {
+							waitForChannel.setData(newChannel);
+						}
+	
+						public void onChannelClosed(Throwable error) {
+						}
+	
+						public void congestionLevel(int level) {
+						}
+					});
+				}
+				catch (Throwable exc) {
+					waitForChannel.handleException(exc);
+				}
 			}
 		});
 

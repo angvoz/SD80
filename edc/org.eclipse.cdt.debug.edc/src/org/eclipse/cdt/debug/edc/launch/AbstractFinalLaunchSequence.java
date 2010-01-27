@@ -59,9 +59,10 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected EDCLaunch launch;
 	protected DsfServicesTracker tracker;
 	protected List<Step> steps = new ArrayList<Step>();
-	
+
 	/**
-	 * The single TCF peer associated with this session.
+	 * The single TCF peer associated with this session. Do not reference this
+	 * field explicitly except to set it. Use {@link #getTCFPeer()}
 	 */
 	private IPeer tcfPeer;
 
@@ -133,7 +134,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
+			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
 			RunControl runcontrol = tracker.getService(RunControl.class);
 			findTCFServiceForDSFService(runcontrol, IRunControl.NAME, requestMonitor);
 			requestMonitor.done();
@@ -147,11 +148,12 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
+			IPeer peer = getTCFPeer();
+			assert peer != null : "initFindPeerStep must be run prior to this one";
 
 			final Registers registers = tracker.getService(Registers.class);
 			ITCFServiceManager tcfServiceManager = EDCDebugger.getDefault().getServiceManager();
-			final IChannel channel = tcfServiceManager.getChannelForPeer(tcfPeer);
+			final IChannel channel = tcfServiceManager.getChannelForPeer(peer);
 
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
@@ -175,7 +177,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
+			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
 			Memory memory = tracker.getService(Memory.class);
 			findTCFServiceForDSFService(memory, IMemory.NAME, requestMonitor);
 			requestMonitor.done();
@@ -189,7 +191,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
+			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
 			Breakpoints breakpoints = tracker.getService(Breakpoints.class);
 			findTCFServiceForDSFService(breakpoints,
 					org.eclipse.tm.tcf.services.IBreakpoints.NAME,
@@ -206,7 +208,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
+			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
 			IService service;
 			try {
 				service = getTCFService(IProcesses.NAME);
@@ -229,7 +231,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			assert tcfPeer != null : "initFindPeerStep must be run prior to this one";
+			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
 			IService service;
 			try {
 				service = getTCFService(IProcesses.NAME);
@@ -255,7 +257,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 */
 	protected IService getTCFService(String tcfServiceName) throws CoreException {
 		TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-		return tcfServiceManager.getPeerService(tcfPeer, tcfServiceName);
+		return tcfServiceManager.getPeerService(getTCFPeer(), tcfServiceName);
 	}
 
 	/**
@@ -592,12 +594,17 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	/**
 	 * Return the single TCF peer associated with this debug session (ILaunch).
 	 * EDC currently only supports the scenario where a single TCF peer provides
-	 * all the services needed by a session.
+	 * all the services needed by a session. The peer is chosen based on
+	 * {@link #specifyRequiredPeer()}
+	 * 
+	 * <p>
+	 * A subclass can override this method if it wants to explicitly provide the
+	 * peer. In that case it has no need to invoke {@link #initFindPeerStep}
 	 * 
 	 * @return the peer. Will return null if called before the
 	 *         {@link #initFindPeerStep} step has executed.
 	 */
-	final protected IPeer getTCFPeer() {
+	protected IPeer getTCFPeer() {
 		return tcfPeer;
 	}
 }

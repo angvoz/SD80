@@ -507,7 +507,6 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	 * @throws CoreException on error
 	 */
 	public IService getPeerService(final IPeer peer, final String serviceName) throws CoreException {
-
 		final WaitForResult<IService> waitForService = new WaitForResult<IService>();
 
 		final IChannel channel = getOpenChannel(peer);
@@ -516,6 +515,16 @@ public class TCFServiceManager implements ITCFServiceManager  {
 			public void run() {
 				try {
 					IService service = channel.getRemoteService(serviceName);
+					if (service == null) {
+						// If the service is unavailable, set a dummy service
+						// object so the spawning thread doesn't end up
+						// pointlessly waiting
+						service = new IService() {
+							public String getName() {
+								return null;
+							}
+						};
+					}
 					waitForService.setData(service);
 				} catch (Exception e) {
 					waitForService.handleException(e);
@@ -524,7 +533,13 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		});
 
 		try {
-			return waitForService.get();
+			IService service = waitForService.get();
+			if (service.getName() == null) {
+			    // check for the dummy service object 
+			    return null;
+			}
+			return service;
+			
 		} catch (Exception e) {
 			throw EDCDebugger.newCoreException("Fail to get TCF service [" + serviceName + "] from peer.", e);
 		}

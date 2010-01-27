@@ -517,7 +517,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 					IService service = channel.getRemoteService(serviceName);
 					if (service == null) {
 						// If the service is unavailable, set a dummy service
-						// object so the spawning thread doesn't end up
+						// object so the delegating thread doesn't end up
 						// pointlessly waiting
 						service = new IService() {
 							public String getName() {

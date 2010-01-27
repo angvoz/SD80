@@ -534,11 +534,8 @@ public class TCFServiceManager implements ITCFServiceManager  {
 
 		try {
 			IService service = waitForService.get();
-			if (service.getName() == null) {
-			    // check for the dummy service object 
-			    return null;
-			}
-			return service;
+			// check for the dummy service object
+			return (service.getName() == null) ? null : service;
 			
 		} catch (Exception e) {
 			throw EDCDebugger.newCoreException("Fail to get TCF service [" + serviceName + "] from peer.", e);

@@ -1,19 +1,28 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2005 IBM Corporation and others.
+ * Copyright (c) 2004, 2010 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * IBM - Initial API and implementation
+ *     IBM - Initial API and implementation
+ *     Markus Schorn (Wind River Systems)
+ *     Gerhard Schaber (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.make.internal.core.scannerconfig.util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -24,29 +33,34 @@ import org.w3c.dom.NodeList;
  * @author vhirsl
  */
 public class CCommandDSC {
-    private final static String SINGLE_SPACE = " "; //$NON-NLS-1$
-    private final static String CMD_DESCRIPTION_ELEM = "commandDescription"; //$NON-NLS-1$
-    private final static String CMD_SI_ELEM = "commandScannerInfo"; //$NON-NLS-1$
-    private final static String OPTION_ELEM = "option"; //$NON-NLS-1$
-    private final static String SI_ITEM_ELEM = "siItem"; //$NON-NLS-1$
-    private final static String KEY_ATTR = "key"; //$NON-NLS-1$
-    private final static String VALUE_ATTR = "value"; //$NON-NLS-1$
-    private final static String QUOTE_INCLUDE_ATTR = "quote"; //$NON-NLS-1$
-    private final static String KIND_ATTR = "kind"; //$NON-NLS-1$
+    protected final static String SINGLE_SPACE = " "; //$NON-NLS-1$
+    protected final static String CMD_DESCRIPTION_ELEM = "commandDescription"; //$NON-NLS-1$
+    protected final static String CMD_SI_ELEM = "commandScannerInfo"; //$NON-NLS-1$
+    protected final static String OPTION_ELEM = "option"; //$NON-NLS-1$
+    protected final static String SI_ITEM_ELEM = "siItem"; //$NON-NLS-1$
+    protected final static String KEY_ATTR = "key"; //$NON-NLS-1$
+    protected final static String VALUE_ATTR = "value"; //$NON-NLS-1$
+    protected final static String QUOTE_INCLUDE_ATTR = "quote"; //$NON-NLS-1$
+    protected final static String KIND_ATTR = "kind"; //$NON-NLS-1$
     
-	private int commandId;
-	private List compilerCommand;	// members are KVStringPair objects
-	private boolean discovered;
-	private boolean cppFileType;	// C or C++ file type
+	protected int commandId;
+	protected List compilerCommand;	// members are KVStringPair objects
+	protected boolean discovered;
+	protected boolean cppFileType;	// C or C++ file type
+	protected IProject project;
 
-    private List symbols;
-    private List includes;
-    private List quoteIncludes;
+    protected List symbols;
+    protected List includes;
+    protected List quoteIncludes;
     
     /**
 	 * @param cppFileType2 
 	 */
 	public CCommandDSC(boolean cppFileType) {
+		this(cppFileType, null);
+	}
+	
+	public CCommandDSC(boolean cppFileType, IProject project) {
 		compilerCommand = new ArrayList();
 		discovered = false;
 		this.cppFileType = cppFileType;
@@ -54,6 +68,7 @@ public class CCommandDSC {
         symbols = new ArrayList();
         includes = new ArrayList();
         quoteIncludes = new ArrayList();
+        this.project = project;
 	}
 
     public boolean appliesToCPPFileType() {
@@ -61,6 +76,18 @@ public class CCommandDSC {
     }
     
 	public void addSCOption(KVStringPair option) {
+		if (project != null &&
+			(option.getKey().equals(SCDOptionsEnum.INCLUDE_FILE.toString()) ||
+			 option.getKey().equals(SCDOptionsEnum.INCLUDE.toString()) ||
+			 option.getKey().equals(SCDOptionsEnum.ISYSTEM.toString()) ||
+			 option.getKey().equals(SCDOptionsEnum.IMACROS_FILE.toString()) ||
+			 option.getKey().equals(SCDOptionsEnum.IQUOTE.toString())))
+		{
+			String value = option.getValue();
+			value = (String)CygpathTranslator.translateIncludePaths(project, Collections.singletonList(value)).get(0);
+			value = makeRelative(project, new Path(value)).toOSString();
+			option = new KVStringPair(option.getKey(), value);
+		}
 		compilerCommand.add(option);
 	}
 	
@@ -87,8 +114,9 @@ public class CCommandDSC {
 		String commandAsString = new String();
 		for (Iterator i = compilerCommand.iterator(); i.hasNext(); ) {
 			KVStringPair optionPair = (KVStringPair)i.next();
+			String value = optionPair.getValue();
 			commandAsString += optionPair.getKey() + SINGLE_SPACE + 
-                               optionPair.getValue() + SINGLE_SPACE;
+                               value + SINGLE_SPACE;
 		}
 		return commandAsString.trim();
 	}
@@ -99,9 +127,10 @@ public class CCommandDSC {
 	
 	/**
 	 * Returns a command where -imacros and -include options have been removed
-	 * @return
+	 * @param quoteIncludePaths whether or not paths for includes must be put inside double quotes.
+	 * @return the command line to run the scanner discovery.
 	 */
-	public String getSCDRunnableCommand(boolean quoteIncludePaths) {
+	public String getSCDRunnableCommand(boolean quoteIncludePaths, boolean quoteDefines) {
 		String commandAsString = new String();
 		for (Iterator i = compilerCommand.iterator(); i.hasNext(); ) {
 			KVStringPair optionPair = (KVStringPair)i.next();
@@ -113,19 +142,44 @@ public class CCommandDSC {
     			if (optionPair.getKey().equals(SCDOptionsEnum.IMACROS_FILE.toString()) ||
     					optionPair.getKey().equals(SCDOptionsEnum.INCLUDE_FILE.toString()))
     				continue;
-    			if (quoteIncludePaths) {
-    				if (optionPair.getKey().equals(SCDOptionsEnum.INCLUDE.toString())) {
-    					commandAsString += optionPair.getKey() + SINGLE_SPACE + 
-    							"\"" + optionPair.getValue() + "\"" + SINGLE_SPACE;  //$NON-NLS-1$//$NON-NLS-2$
+    			String value = optionPair.getValue();
+    			if (optionPair.getKey().equals(SCDOptionsEnum.INCLUDE.toString()) ||
+    				optionPair.getKey().equals(SCDOptionsEnum.ISYSTEM.toString()) || 
+    				optionPair.getKey().equals(SCDOptionsEnum.IQUOTE.toString())) {
+    				value = makeAbsolute(project, value);
+    				if (quoteIncludePaths) {
+    					value= "\"" + value + "\""; //$NON-NLS-1$ //$NON-NLS-2$
     				}
     			}
-    			else {
-	    			commandAsString += optionPair.getKey() + SINGLE_SPACE + 
-	                                   optionPair.getValue() + SINGLE_SPACE;
+    			else if (quoteDefines && optionPair.getKey().equals(SCDOptionsEnum.DEFINE.toString())) {
+    				if (value.indexOf('\'') == -1) {
+    					value= "'" + value + "'";  //$NON-NLS-1$//$NON-NLS-2$
+    				}
+    				else {
+    					value= value.replaceAll("\"", "\\\\\"");  //$NON-NLS-1$//$NON-NLS-2$
+    					value= "\"" + value + "\""; //$NON-NLS-1$ //$NON-NLS-2$
+    				}
     			}
+    			commandAsString += optionPair.getKey() + SINGLE_SPACE + value + SINGLE_SPACE;
             }
 		}
 		return commandAsString.trim();
+	}
+	
+	/**
+	 * Returns the compiler command
+	 * @return
+	 */
+	public String getCompilerName() {
+		String compiler = new String();
+		for (Iterator i = compilerCommand.iterator(); i.hasNext(); ) {
+			KVStringPair optionPair = (KVStringPair)i.next();
+            if (optionPair.getKey().equals(SCDOptionsEnum.COMMAND.toString())) {
+            	compiler = optionPair.getValue();
+            	break;
+            }
+		}
+		return compiler.trim();
 	}
 	
 	/**
@@ -136,7 +190,7 @@ public class CCommandDSC {
 		for (Iterator i = compilerCommand.iterator(); i.hasNext(); ) {
 			KVStringPair optionPair = (KVStringPair)i.next();
 			if (optionPair.getKey().equals(SCDOptionsEnum.IMACROS_FILE.toString())) {
-				imacrosFiles.add(optionPair.getValue());
+				imacrosFiles.add(makeAbsolute(project,optionPair.getValue()));
 			}
 		}
 		return imacrosFiles;
@@ -150,7 +204,7 @@ public class CCommandDSC {
 		for (Iterator i = compilerCommand.iterator(); i.hasNext(); ) {
 			KVStringPair optionPair = (KVStringPair)i.next();
 			if (optionPair.getKey().equals(SCDOptionsEnum.INCLUDE_FILE.toString())) {
-				includeFiles.add(optionPair.getValue());
+				includeFiles.add(makeAbsolute(project,optionPair.getValue()));
 			}
 		}
 		return includeFiles;
@@ -182,7 +236,7 @@ public class CCommandDSC {
      * @return Returns the includes as strings.
      */
     public List getIncludes() {
-        return includes;
+        return makeAbsolute(project, includes);
     }
     /**
      * @param includes The includes to set.
@@ -194,7 +248,7 @@ public class CCommandDSC {
      * @return Returns the quote include paths as strings (for #include "...")
      */
     public List getQuoteIncludes() {
-        return quoteIncludes;
+        return makeAbsolute(project, quoteIncludes);
     }
     /**
      * @param includes. Quote include paths (for #include "...")
@@ -308,5 +362,106 @@ public class CCommandDSC {
             setDiscovered(true);
         }
     }
+    
+    public void resolveOptions(IProject project) {
+    	if (!isDiscovered()) {
+    		// that's wrong for sure, options cannot be resolved fron the optionPairs??
+    		ArrayList symbols = new ArrayList();
+    		ArrayList includes = new ArrayList();
+    		ArrayList quoteincludes = new ArrayList();
+    		for (Iterator options = compilerCommand.iterator(); options.hasNext(); ) {
+    			KVStringPair optionPair = (KVStringPair)options.next();
+    			String key = optionPair.getKey();
+    			String value = optionPair.getValue();
+    			if (key.equals(SCDOptionsEnum.INCLUDE.toString()) || key.equals(SCDOptionsEnum.ISYSTEM.toString())) {
+    				includes.add(value);
+    			}
+    			else if (key.equals(SCDOptionsEnum.IQUOTE.toString())) {
+    				quoteincludes.add(value);
+    			}
+    			else if (key.equals(SCDOptionsEnum.DEFINE.toString())) {
+    				symbols.add(value);
+    			}
+    		}
+    		setIncludes(includes);
+    		setQuoteIncludes(quoteincludes);		                
+    		setSymbols(symbols);
+    	}
+		setDiscovered(true);    	
+    }
+    
+	public static IPath makeRelative(IProject project, IPath path) {
+		IResource resource = findResource(project, path);
+		if (resource != null) {
+			if (resource.getProject() == project) {
+				path = resource.getProjectRelativePath();
+			}
+//			else {
+//				path = resource.getFullPath();
+//			}
+		}
+		return path;
+	}
 
+	protected static IResource findResource(IProject project, IPath path) {
+		IResource resource = project.findMember(path, false);
+		if (resource == null) {
+			IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+			resource = root.findMember(path, false);
+			if (resource == null) {
+				IResource[] resources = root.findFilesForLocation(path);
+				if (project != null) {
+					for (int i = 0; i < resources.length; i++) {
+						final IProject myProject = resources[i].getProject();
+						// resource could be root, then myProject is null.
+						if (myProject != null && myProject.equals(project)) {
+							resource = resources[i];
+							break;
+						}
+					}
+				}
+				// make a relative path to another project (better than an absolute path)
+				if (resource == null && resources.length > 0) {
+					resource = resources[0];
+				}
+			}
+		}
+		return resource;
+	}
+
+	public static List makeRelative(IProject project, List paths) {
+		List list = new ArrayList(paths.size());
+		for (Iterator iter=paths.iterator(); iter.hasNext(); ) {
+			String path = (String)iter.next();
+			path = makeRelative(project, new Path(path)).toOSString();
+			list.add(path);
+		}
+		return list;
+	}
+
+
+	public static final String makeAbsolute(IProject project, String path) {
+		IPath ppath = new Path(path);
+		if (project != null && !ppath.isAbsolute()) {
+			IResource res = project.findMember(ppath);
+			if (res != null) {
+				ppath = res.getLocation();
+				if (ppath != null) {
+					path = ppath.toOSString();
+				}
+			}
+//			path = new File(project.getLocation().toOSString(), path).getAbsolutePath();
+		}
+		return path;
+	}
+
+	public static List makeAbsolute(IProject project, List paths) {
+		List list = new ArrayList(paths.size());
+		for (Iterator iter=paths.iterator(); iter.hasNext(); ) {
+			String path = (String)iter.next();
+			path = makeAbsolute(project, path);
+			list.add(path);
+		}
+		return list;
+	}
 }

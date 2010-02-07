@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2007 Intel Corporation and others.
+ * Copyright (c) 2004, 2010 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,8 +11,6 @@
 package org.eclipse.cdt.managedbuilder.core;
 
 import org.eclipse.core.resources.IResource;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 /**
  * This class represents a project instance in the managed build system.
@@ -37,6 +35,8 @@ import org.w3c.dom.Element;
  * This prepares the new project/configurations for modification by the user. 
  * 
  * @since 2.1
+ * @noextend This class is not intended to be subclassed by clients.
+ * @noinstantiate This class is not intended to be instantiated by clients.
  */
 public interface IManagedProject extends IBuildObject, IBuildObjectPropertiesContainer {
 	public static final String MANAGED_PROJECT_ELEMENT_NAME = "project";	//$NON-NLS-1$

@@ -102,6 +102,8 @@ public class Disassembly extends AbstractEDCService implements IDisassembly {
 	public void getInstructions(final IDisassemblyDMContext context, String filename, int linenum, final int lines,
 			final DataRequestMonitor<IInstruction[]> drm) {
 
+		// FIXME: ignoring "lines" semantics
+		
 		IModules modulesService = getServicesTracker().getService(IModules.class);
 
 		ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
@@ -201,6 +203,8 @@ public class Disassembly extends AbstractEDCService implements IDisassembly {
 	public void getMixedInstructions(final IDisassemblyDMContext context, final String filename, final int linenum,
 			final int lines, final DataRequestMonitor<IMixedInstruction[]> drm) {
 
+		// FIXME: ignoring "lines" semantics
+		
 		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
 		if (disassembler == null) {
 			drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,

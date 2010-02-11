@@ -12,13 +12,17 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.util.Map;
 
+
 public class Type implements IType {
 
+	/** This property key maps to an {@link IForwardTypeReference} object */
+	public static final String TYPE_REFERENCE = "type_reference";
+	
 	protected String name;
-	protected final IScope scope;
+	protected IScope scope;
 	protected int byteSize;
-	protected IType type; // subtype, if any
-	protected Map<Object, Object> properties;
+	protected IType type; // subtype, if any, maybe IForwardTypeReference
+	protected Map<Object, Object> properties;	// may be null
 
 	public Type(String name, IScope scope, int byteSize, Map<Object, Object> properties) {
 		this.name = name;
@@ -44,10 +48,20 @@ public class Type implements IType {
 	}
 
 	public IType getType() {
+		if (type == null && properties != null) {
+			type = (IType) properties.get(TYPE_REFERENCE);
+		}
+		if (type instanceof IForwardTypeReference) {
+			type = ((IForwardTypeReference) type).getReferencedType();
+		}
 		return type;
 	}
 
 	public void setType(IType type) {
 		this.type = type;
+	}
+
+	public void setScope(IScope scope) {
+		this.scope = scope;
 	}
 }

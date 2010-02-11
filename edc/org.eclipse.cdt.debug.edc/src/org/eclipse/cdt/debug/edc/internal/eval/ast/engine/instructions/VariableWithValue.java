@@ -95,6 +95,10 @@ public class VariableWithValue {
 			Modules modules = servicesTracker.getService(Modules.class);
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getLocationProvider();
+			if (provider == null) {
+				// ERROR
+				return valueLocation;
+			}
 			IAddress pcValue = frame.getIPAddress();
 			ModuleDMC module = modules.getModuleByAddress(symContext, pcValue);
 			IVariableLocation location = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));

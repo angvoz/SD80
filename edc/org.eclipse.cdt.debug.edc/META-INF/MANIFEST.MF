@@ -19,7 +19,11 @@ Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Export-Package: org.eclipse.cdt.debug.edc,
  org.eclipse.cdt.debug.edc.formatter,
- org.eclipse.cdt.debug.edc.internal;x-friends:="org.eclipse.cdt.debug.edc.windows,org.eclipse.cdt.debug.edc.tests,org.eclipse.cdt.debug.edc.windows,org.eclipse.cdt.debug.edc.linux.x86",
+ org.eclipse.cdt.debug.edc.internal;
+  x-friends:="org.eclipse.cdt.debug.edc.windows,
+   org.eclipse.cdt.debug.edc.tests,
+   org.eclipse.cdt.debug.edc.windows,
+   org.eclipse.cdt.debug.edc.linux.x86",
  org.eclipse.cdt.debug.edc.internal.arm;x-internal:=true,
  org.eclipse.cdt.debug.edc.internal.disassembler;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.disassembler.arm;x-friends:="org.eclipse.cdt.debug.edc.tests",
@@ -37,6 +41,8 @@ Export-Package: org.eclipse.cdt.debug.edc,
    org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.symbols;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.symbols.dwarf;x-friends:="org.eclipse.cdt.debug.edc.tests",
+ org.eclipse.cdt.debug.edc.internal.symbols.files;x-friends:="org.eclipse.cdt.debug.edc.tests",
+ org.eclipse.cdt.debug.edc.internal.symbols.newdwarf;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.x86;x-friends:="org.eclipse.cdt.debug.edc.linux.x86,org.eclipse.cdt.debug.edc.windows",
  org.eclipse.cdt.debug.edc.launch
 Import-Package: org.eclipse.core.filesystem,

@@ -25,6 +25,7 @@ public interface IEDCTraceOptions {
 	public static final String STACK_TRACE = "/debug/stack";
 	public static final String EXPRESSION_PARSE_TRACE = "/debug/expressionParse";
 	public static final String SYMBOL_READER_TRACE = "/debug/symbolReader";
+	public static final String SYMBOL_READER_VERBOSE_TRACE = "/debug/symbolReader/verbose";
 	public static final String VARIABLE_VALUE_TRACE = "/debug/variableValue";
 	public static final String BREAKPOINTS_TRACE = "/debug/breakpoints";
 	public static final String MEMORY_TRACE = "/debug/memory";

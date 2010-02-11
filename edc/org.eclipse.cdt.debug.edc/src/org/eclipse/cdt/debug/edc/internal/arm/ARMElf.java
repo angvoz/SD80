@@ -11,6 +11,8 @@
 package org.eclipse.cdt.debug.edc.internal.arm;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.utils.Addr32;
@@ -25,14 +27,17 @@ import org.eclipse.cdt.utils.elf.Elf;
  */
 public class ARMElf extends Elf {
 
+	private Map<IAddress, Symbol> zeroSymbols = new HashMap<IAddress, Symbol>();
+	
 	public ARMElf(String filename) throws IOException {
 		super(filename);
+		readSymbols();
 	}
 
-	public String getMappingSymbolAtAddress(IAddress address) throws IOException {
-
-		// now use the start address of the symbol and try to find
-		// the matching mapping entry
+	/**
+	 * Record the interesting symbols once
+	 */
+	private void readSymbols() throws IOException {
 		Elf.Section symtab = getSectionByName(".symtab"); //$NON-NLS-1$
 
 		int numSyms = 1;
@@ -73,13 +78,22 @@ public class ARMElf extends Elf {
 				throw new IOException("Unknown ELF class " + ehdr.e_ident[ELFhdr.EI_CLASS]); //$NON-NLS-1$
 			}
 
-			if (symbol.st_info == 0) {
-				if (symbol.st_value.equals(address)) {
-					return symbol.toString();
+			if (symbol.st_size == 0) {
+				if (!zeroSymbols.containsKey(symbol.st_value)) {
+					zeroSymbols.put(symbol.st_value, symbol);
+				}
 				}
 			}
 		}
 
+	public String getMappingSymbolAtAddress(IAddress address) {
+		// use the start address of the symbol and try to find
+		// the matching mapping entry
+
+		Symbol symbol = zeroSymbols.get(address);
+		if (symbol == null)
 		return null;
+		
+		return symbol.toString();
 	}
 }

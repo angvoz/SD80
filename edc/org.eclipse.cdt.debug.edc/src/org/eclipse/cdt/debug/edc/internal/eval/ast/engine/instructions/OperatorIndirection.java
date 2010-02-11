@@ -73,10 +73,16 @@ public class OperatorIndirection extends CompoundInstruction {
 
 		Object opType = TypeUtils.getStrippedType(variableWithValue.getVariable().getType());
 
-		if (!TypeUtils.isPointerType(opType) || !(variableWithValue.getValue() instanceof BigInteger)) {
+		Object opValue = variableWithValue.getValue();
+		
+		// change a Short, Integer, Long, etc. to BigInteger for consistency
+		if (opValue instanceof Number)
+			opValue = new BigInteger(Long.toString(((Number)opValue).longValue()));
+
+		if (!TypeUtils.isPointerType(opType) || !(opValue instanceof BigInteger)) {
 			IInvalidExpression invalidExpression = null;
-			if (variableWithValue.getValue() instanceof IInvalidExpression)
-				invalidExpression = (IInvalidExpression) variableWithValue.getValue();
+			if (opValue instanceof IInvalidExpression)
+				invalidExpression = (IInvalidExpression) opValue;
 			else
 				invalidExpression = new InvalidExpression(
 					ASTEvalMessages.OperatorIndirection_RequiresPointer);
@@ -120,13 +126,17 @@ public class OperatorIndirection extends CompoundInstruction {
 				|| unqualifiedPointedTo instanceof IEnumeration) {
 			int byteSize = unqualifiedPointedTo.getByteSize();
 
+			// treat ICPPBasicType of byte size 0 as a void pointer (size 4)
+			if (unqualifiedPointedTo instanceof ICPPBasicType && byteSize == 0)
+				byteSize = 4;
+
 			if (byteSize != 1 && byteSize != 2 && byteSize != 4 && byteSize != 8) {
 				pushNewValue(new Long(0));
 				return;
 			}
 
 			// read the value pointed to
-			Addr64 location = new Addr64((BigInteger) variableWithValue.getValue());
+			Addr64 location = new Addr64((BigInteger) opValue);
 			Object newValue = variableWithValue.getValueByType(unqualifiedPointedTo, location);
 			varValue.setValue(newValue);
 			varValue.setValueLocation(location);

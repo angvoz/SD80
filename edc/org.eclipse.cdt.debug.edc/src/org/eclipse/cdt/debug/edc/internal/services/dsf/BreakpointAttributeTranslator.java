@@ -223,7 +223,7 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 				if (parenIndex >= 0)
 					function = function.substring(0, parenIndex);
 
-				Collection<IFunctionScope> functions = symReader.getFunctionsByName(function);
+				Collection<IFunctionScope> functions = symReader.getModuleScope().getFunctionsByName(function);
 				for (IFunctionScope f : functions) {
 					IAddress breakAddr = f.getLowAddress();
 					// convert from link to runtime address

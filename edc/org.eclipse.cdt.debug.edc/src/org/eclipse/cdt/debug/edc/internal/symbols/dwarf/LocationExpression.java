@@ -244,4 +244,11 @@ public class LocationExpression implements ILocationProvider {
 		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider#isLocationKnown(org.eclipse.cdt.core.IAddress)
+	 */
+	public boolean isLocationKnown(IAddress forLinkAddress) {
+		// no-op for old reader
+		return true;
+	}
 }

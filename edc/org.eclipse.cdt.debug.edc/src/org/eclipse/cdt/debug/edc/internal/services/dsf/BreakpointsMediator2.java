@@ -52,7 +52,7 @@ import org.eclipse.debug.core.model.IBreakpoint;
 import org.osgi.framework.BundleContext;
 
 /**
- * see these bugs for design of this service.<br>
+ * see these bugs for design & idea about this service.<br>
  * - https://bugs.eclipse.org/bugs/show_bug.cgi?id=218557
  * - https://bugs.eclipse.org/bugs/show_bug.cgi?id=292468
  */
@@ -92,7 +92,7 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
     	public Map<String, Object> getAttributes();
 
     	/**
-    	 * Returns the target breakpoint context.  May be <code>null</code> if the 
+    	 * Returns the target breakpoint context.  Returns <code>null</code> if the 
     	 * breakpoint failed to install on target. 
     	 */
     	public IBreakpointDMContext getTargetBreakpoint();
@@ -165,16 +165,20 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
 		new HashMap<IBreakpointsTargetDMContext, Map<IBreakpoint, List<TargetBP>>>();
 
 	/**
-	 * Holds platform breakpoints with all their attributes (standard ones and
+	 * Mapping of platform breakpoints to all their attributes (standard ones and
 	 * extended ones) from UI. This will be used to check what attributes have
 	 * changed for a breakpoint when the breakpoint is changed. The map is <br>
-	 * 1. augmented in doBreakpointsAdded(); <br>
+	 * 1. augmented in breakpointsAdded(); <br>
 	 * 2. updated in breakpointsChanged(); <br>
 	 * 3. diminished in breakpointsRemoved();
 	 */
 	private Map<IBreakpoint, Map<String, Object>> fBreakpointAttributes = 
 		new HashMap<IBreakpoint, Map<String, Object>>();
 	
+	/**
+	 * Hold info about a breakpoint events (added, removed, changed) for later
+	 * handling.
+	 */
 	private static class PendingEventInfo {
 		PendingEventInfo(BreakpointEventType eventType, PlatformBreakpointInfo bpInfo,
 				Collection<IBreakpointsTargetDMContext> bpsTargetDmc, RequestMonitor rm) {
@@ -185,7 +189,7 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
 			fAttributeDelta = null;
 		}
 		
-		public PendingEventInfo(BreakpointEventType eventType, Collection<IBreakpointsTargetDMContext> updateContexts,
+		PendingEventInfo(BreakpointEventType eventType, Collection<IBreakpointsTargetDMContext> updateContexts,
 				Map<String, Object> attrDelta) {
 			fEventType = eventType;
 			fBPTargetContexts = updateContexts;
@@ -656,7 +660,7 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
                 	if (rm != null)
                 		// don't call this if "rm" is null as this will 
                 		// log errors if any and pack Eclipse error 
-                		// log view with errors useless to user. 
+                		// log view with errors meaningless to user. 
                 		super.handleCompleted();
                 }
             };	            	
@@ -773,6 +777,9 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
 						// remember the new attributes.
 						fBreakpointAttributes.put(bpinfo.breakpoint, newAttrs);
 						
+						if (oldAttrs == null)
+							continue;
+						
 						final Map<String, Object> attrDelta = getAttributesDelta(oldAttrs, newAttrs);
 						if (attrDelta.size() == 0) 
 							continue;
@@ -787,7 +794,7 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
 							
 							if (! fAttributeTranslator2.canUpdateAttributes(bpinfo.breakpoint, btContext, attrDelta)) {
 								// backend cannot handle at least one of the platform BP attribute change,
-								// we'll handle the re-installation.
+								// we'll re-install the bp.
 								reinstallContexts.add(btContext);
 							}
 							else {
@@ -949,7 +956,7 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
             	if (rm != null)
             		// don't call this if "rm" is null as this will 
             		// log errors if any and pack Eclipse error 
-            		// log view with errors useless to user. 
+            		// log view with errors meaningless to user. 
             		super.handleCompleted();
 			}
 		};
@@ -1085,29 +1092,36 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
 
         Map<String, Object> delta = new HashMap<String,Object>();
 
-        Set<String> oldKeySet = oldAttributes.keySet();
-        Set<String> newKeySet = newAttributes.keySet();
+        if (oldAttributes == null)
+        {
+        	delta.putAll(newAttributes);
+        }
+        else
+        {
+            Set<String> oldKeySet = oldAttributes.keySet();
+            Set<String> newKeySet = newAttributes.keySet();
 
-        Set<String> commonKeys  = new HashSet<String>(newKeySet); commonKeys.retainAll(oldKeySet);
-        Set<String> addedKeys   = new HashSet<String>(newKeySet); addedKeys.removeAll(oldKeySet);
-        Set<String> removedKeys = new HashSet<String>(oldKeySet); removedKeys.removeAll(newKeySet);
+            Set<String> commonKeys  = new HashSet<String>(newKeySet); commonKeys.retainAll(oldKeySet);
+            Set<String> addedKeys   = new HashSet<String>(newKeySet); addedKeys.removeAll(oldKeySet);
+            Set<String> removedKeys = new HashSet<String>(oldKeySet); removedKeys.removeAll(newKeySet);
 
-        // Add the modified attributes
-        for (String key : commonKeys) {
-            if (!(oldAttributes.get(key).equals(newAttributes.get(key))))
+            // Add the modified attributes
+            for (String key : commonKeys) {
+                if (!(oldAttributes.get(key).equals(newAttributes.get(key))))
+                    delta.put(key, newAttributes.get(key));
+            }
+
+            // Add the new attributes
+            for (String key : addedKeys) {
                 delta.put(key, newAttributes.get(key));
-        }
+            }
 
-        // Add the new attributes
-        for (String key : addedKeys) {
-            delta.put(key, newAttributes.get(key));
+            // Remove the deleted attributes
+            for (String key : removedKeys) {
+                delta.put(key, null);
+            }       	
         }
-
-        // Remove the deleted attributes
-        for (String key : removedKeys) {
-            delta.put(key, null);
-        }
-
+ 
         return delta;
     }
 }

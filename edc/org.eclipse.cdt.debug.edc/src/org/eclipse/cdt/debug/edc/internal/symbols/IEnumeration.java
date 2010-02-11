@@ -10,7 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
-public interface IEnumeration {
+public interface IEnumeration extends IType {
 
 	public int enumeratorCount();
 

@@ -13,18 +13,12 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 import java.util.Collection;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.core.runtime.IPath;
 
 /**
- * Provides line table information
+ * Provides line table lookup support.
  */
 public interface ILineEntryProvider {
-
-	/**
-	 * Get the list of line table entries for the entire compile unit
-	 * 
-	 * @return unmodifiable list of line entries, which may be empty
-	 */
-	Collection<ILineEntry> getLineEntries();
 
 	/**
 	 * Get the line table entry for the given link address
@@ -36,11 +30,16 @@ public interface ILineEntryProvider {
 	ILineEntry getLineEntryAtAddress(IAddress linkAddress);
 
 	/**
-	 * Get the list of line table entries that for the given sequence of line
+	 * Get the list of line table entries for the given sequence of line
 	 * numbers. startLineNumber and endLineNumber can be the same if you're only
-	 * interesting in one source line. Note that there can be multiple line
-	 * entries for a single source line.
+	 * interested in one source line. 
+	 * <p>
+	 * Note that there can be multiple line entries for a single source line,
+	 * due to multiple statements per line, template expansion, static functions
+	 * in headers, etc. 
 	 * 
+	 * @param file
+	 *            the file to examine (source or header); as a full path.
 	 * @param startLineNumber
 	 *            the first line number
 	 * @param endLineNumber
@@ -48,7 +47,7 @@ public interface ILineEntryProvider {
 	 *            remainder of the file will be returned
 	 * @return unmodifiable list of line entries, which may be empty
 	 */
-	Collection<ILineEntry> getLineEntriesForLines(int startLineNumber, int endLineNumber);
+	Collection<ILineEntry> getLineEntriesForLines(IPath file, int startLineNumber, int endLineNumber);
 
 	/**
 	 * Gets the next line table entry in the same scope by line number that also

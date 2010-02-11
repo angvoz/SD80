@@ -20,12 +20,18 @@ import java.util.Map;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.internal.symbols.IModuleLineEntryProvider;
+import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCDwarfReader;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.DebugInfoProviderFactory;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.EDCSymbolReader;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -37,9 +43,16 @@ import org.eclipse.debug.core.model.ISourceLocator;
 
 public class Symbols extends AbstractEDCService implements ISymbols {
 
+	/** TEMPORARY system property (value "true") for selecting the new on-demand DWARF reader */
+	public static final String DWARF_USE_NEW_READER = "dwarf.use_new_reader";
+	
+	public static boolean useNewReader() {
+		return "true".equals(System.getProperty(DWARF_USE_NEW_READER));
+	}
+
 	private static Map<IPath, IEDCSymbolReader> readerCache = new HashMap<IPath, IEDCSymbolReader>();
 	private ISourceLocator sourceLocator;
-
+	
 	public ISourceLocator getSourceLocator() {
 		return sourceLocator;
 	}
@@ -77,7 +90,7 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 		if (module != null) {
 			IEDCSymbolReader reader = module.getSymbolReader();
 			if (reader != null) {
-				IScope scope = reader.getScopeAtAddress(module.toLinkAddress(runtimeAddress));
+				IScope scope = reader.getModuleScope().getScopeAtAddress(module.toLinkAddress(runtimeAddress));
 				while (scope != null && !(scope instanceof IFunctionScope)) {
 					scope = scope.getParent();
 				}
@@ -103,10 +116,8 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 			IEDCSymbolReader reader = module.getSymbolReader();
 			if (reader != null) {
 				IAddress linkAddress = module.toLinkAddress(runtimeAddress);
-				ICompileUnitScope scope = reader.getCompileUnitForAddress(linkAddress);
-				if (scope != null) {
-					return scope.getLineEntryAtAddress(linkAddress);
-				}
+				IModuleLineEntryProvider lineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();
+				return lineEntryProvider.getLineEntryAtAddress(linkAddress);
 			}
 		}
 		return null;
@@ -142,20 +153,30 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 
 		IEDCSymbolReader reader = module.getSymbolReader();
 		if (reader != null) {
-			ICompileUnitScope scope = reader.getCompileUnitForAddress(linkStartAddress);
-			if (scope != null) {
-				if (linkEndAddress.compareTo(reader.getHighAddress()) > 0) {
-					// end address is out of the module sections.
-					// we'll keep getting source lines until we reach an address
-					// point where no source line is available.
-					linkEndAddress = reader.getHighAddress();
-				}
+			if (linkStartAddress == null)
+				linkStartAddress = module.getSymbolReader().getModuleScope().getLowAddress();
+			if (linkEndAddress == null)
+				linkEndAddress = module.getSymbolReader().getModuleScope().getHighAddress();
 
-				ILineEntry entry = scope.getLineEntryAtAddress(linkStartAddress);
-				while (entry != null && entry.getLowAddress().compareTo(linkEndAddress) < 0) {
-					lineEntries.add(entry);
-					entry = scope.getLineEntryAtAddress(entry.getHighAddress());
-				}
+			IModuleScope moduleScope = reader.getModuleScope();
+			
+			if (linkEndAddress.compareTo(moduleScope.getHighAddress()) > 0) {
+				// end address is out of the module sections.
+				// we'll keep getting source lines until we reach an address
+				// point where no source line is available.
+				linkEndAddress = moduleScope.getHighAddress();
+			}
+
+			IModuleLineEntryProvider lineEntryProvider = moduleScope.getModuleLineEntryProvider();
+
+			ILineEntry entry = lineEntryProvider.getLineEntryAtAddress(linkStartAddress);
+			while (entry != null && entry.getLowAddress().compareTo(linkEndAddress) < 0) {
+				lineEntries.add(entry);
+				// FIXME: this shouldn't happen
+				if (entry.getLowAddress().compareTo(entry.getHighAddress()) >= 0)
+					entry = lineEntryProvider.getLineEntryAtAddress(entry.getHighAddress().add(1));
+				else
+					entry = lineEntryProvider.getLineEntryAtAddress(entry.getHighAddress());
 			}
 		}
 
@@ -167,9 +188,11 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 		IEDCSymbolReader reader = readerCache.get(modulePath);
 
 		if (reader != null) {
-			if (reader.getSymbolFile().toFile().exists()
-					&& reader.getSymbolFile().toFile().lastModified() == reader.getModificationDate())
+			if (reader.getSymbolFile() != null
+					&& reader.getSymbolFile().toFile().exists()
+					&& reader.getSymbolFile().toFile().lastModified() == reader.getModificationDate()) {
 				return reader;
+			}
 
 			// it's been deleted or modified. remove it from the cache
 			readerCache.remove(reader);
@@ -177,17 +200,24 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 
 		try {
 			// if this throws then it's not PE or ELF
-			reader = new EDCDwarfReader(modulePath);
+			
+			// TODO: this system property is for temporary side-by-side testing
+			if (useNewReader()) {
+				IExecutableSymbolicsReader exeReader = ExecutableSymbolicsReaderFactory.createFor(modulePath);
+				if (exeReader != null) {
+					IDebugInfoProvider debugProvider = DebugInfoProviderFactory.createFor(exeReader); // may be null
+					reader = new EDCSymbolReader(exeReader, debugProvider);
+				}
+			} else {
+				reader = new EDCDwarfReader(modulePath);
+			}
 		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
+			EDCDebugger.getMessageLogger().logError("Failed to read symbols from " + modulePath, e);
 		}
 
-		if (reader == null || ! reader.hasRecognizedDebugInformation()) {
-			// TODO try other symbol readers here as they get added
-		}
-
-		if (reader != null)
+		if (reader != null) {
 			readerCache.put(modulePath, reader);
+		}
 		
 		return reader;
 	}
@@ -198,12 +228,19 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 		// and will cause problems when more then one debug sessions is running,
 		// but is an temporary measure until we do some more work on the
 		// readers.
-		Collection<IEDCSymbolReader> readers = readerCache.values();
-		for (IEDCSymbolReader reader : readers) {
-			reader.shutDown();
-		}
+		shutdown();
 
 		super.shutdown(rm);
 	}
 
+	/**
+	 * This is exposed only for testing.
+	 */
+	public static void shutdown() {
+		Collection<IEDCSymbolReader> readers = readerCache.values();
+		for (IEDCSymbolReader reader : readers) {
+			reader.shutDown();
+		}
+		readerCache.clear();
+	}
 }

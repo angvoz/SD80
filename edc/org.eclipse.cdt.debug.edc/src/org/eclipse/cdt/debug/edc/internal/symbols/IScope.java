@@ -27,19 +27,30 @@ public interface IScope extends Comparable<Object> {
 	String getName();
 
 	/**
-	 * Get the low link address of this scope
+	 * Tell whether the scope has an empty address range (either unset or unspecified)
+	 */
+	boolean hasEmptyRange();
+
+	/**
+	 * Get the low link address of this scope (absolute or synthesized from a range list)
 	 * 
 	 * @return low address, or null if unknown
 	 */
 	IAddress getLowAddress();
 
 	/**
-	 * Get the high link address of this scope
+	 * Get the high link address of this scope (absolute or synthesized from a range list)
 	 * 
 	 * @return high address, or null if unknown
 	 */
 	IAddress getHighAddress();
 
+	/**
+	 * Get the list of non-consecutive ranges for the scope.
+	 * @return list or <code>null</code> if the low and high addresses specify a contiguous range
+	 */
+	IRangeList getRangeList();
+	
 	/**
 	 * Get the parent of this scope
 	 * 
@@ -55,7 +66,7 @@ public interface IScope extends Comparable<Object> {
 	Collection<IScope> getChildren();
 
 	/**
-	 * Gets the list of variables in this scope (if any)
+	 * Gets the list of variables in this scope only 
 	 * 
 	 * @return unmodifiable list of variables which may be empty
 	 */

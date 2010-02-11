@@ -24,8 +24,10 @@ import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.launch.ShutdownSequence;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ProcessExecutionDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.RootExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DefaultDsfExecutor;
@@ -54,10 +56,8 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.Launch;
-import org.eclipse.debug.core.model.IDisconnect;
 import org.eclipse.debug.core.model.IMemoryBlockRetrieval;
 import org.eclipse.debug.core.model.ISourceLocator;
-import org.eclipse.debug.core.model.ITerminate;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
 import org.eclipse.debug.core.sourcelookup.containers.DirectorySourceContainer;
 import org.eclipse.tm.tcf.protocol.IChannel;
@@ -67,7 +67,7 @@ import org.eclipse.tm.tcf.protocol.Protocol;
  * The only object in the model that implements the traditional interfaces.
  */
 @ThreadSafe
-public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
+public class EDCLaunch extends Launch {
 	private DefaultDsfExecutor executor;
 	private final DsfSession session;
 	private DsfServicesTracker tracker;
@@ -170,7 +170,9 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 	// Event handler when a thread or a threadGroup exits
 	@DsfServiceEventHandler
 	public void eventDispatched(IExitedDMEvent e) {
-		if (e.getDMContext() instanceof ProcessExecutionDMC)
+		// Only shutdown the session if the RootDMC is exited, namely all processDMCs 
+		// are terminated.
+		if (e.getDMContext() instanceof RootExecutionDMC)
 			shutdownSession(new RequestMonitor(ImmediateExecutor.getInstance(), null));
 	}
 
@@ -185,19 +187,23 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 	// ITerminate
 	@Override
 	public boolean canTerminate() {
-		return super.canTerminate() && initialized && !shutDown;
+		return initialized && !shutDown;
 	}
 
 	@Override
 	public boolean isTerminated() {
-		return super.isTerminated() || shutDown;
+		return shutDown;
 	}
 
 	@Override
 	public void terminate() throws DebugException {
-		if (shutDown)
-			return;
-		super.terminate();
+        getDsfExecutor().execute(new Runnable() {
+            public void run() {
+                RunControl runControlService = tracker.getService(RunControl.class);
+                if (runControlService != null)
+                	runControlService.terminateAllContexts(null);
+            }
+        });
 	}
 
 	// ITerminate
@@ -280,6 +286,17 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 			}
 		});
 		executor.execute(shutdownSeq);
+		if (isSnapshotLaunch()) {
+			try {
+				// delete launch configuration
+				ILaunchConfiguration lc = SnapshotUtils.findExistingLaunchForAlbum(album);
+				if (lc != null){
+					lc.delete();
+				}
+			} catch (Throwable e) {
+				EDCDebugger.getMessageLogger().logError(null, e);
+			}
+		}
 	}
 
 	protected void closeUnusedChannels() {
@@ -383,6 +400,7 @@ public class EDCLaunch extends Launch implements ITerminate, IDisconnect {
 
 			}
 			snapshotSupportInitialized = true;
+
 		} catch (Exception e) {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}

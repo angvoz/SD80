@@ -10,15 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
-import java.util.concurrent.TimeUnit;
-
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.StateChangeReason;
-import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
 
@@ -40,25 +35,13 @@ public class Snapshots extends AbstractEDCService {
 		if (!this.isSnapshot()) {
 			final String controlSetting = Album.getSnapshotCreationControl();
 			if (!controlSetting.equals("manual")){
-				getSession().getExecutor().schedule(new Runnable() {
-					public void run() {
-						final Stack stackService = getServicesTracker().getService(Stack.class);
-						stackService.getTopFrame(e.getDMContext(), new DataRequestMonitor<IFrameDMContext>(getExecutor(), null){
-
-							@Override
-							protected void handleCompleted() {
-								final StackFrameDMC topFrame = (StackFrameDMC) getData();
-								if (e.getReason() != StateChangeReason.SHAREDLIB
-										&& (controlSetting.equals("suspend") || controlSetting.equals("breakpoints"))) {
-									if (controlSetting.equals("suspend") || 
-											e.getReason() == StateChangeReason.BREAKPOINT) {
-										Album.createSnapshotForSession(getSession(), topFrame);
-									}
-								}
-							}
-						});
-
-					}}, 500L, TimeUnit.MILLISECONDS);							
+				if (e.getReason() != StateChangeReason.SHAREDLIB
+						&& (controlSetting.equals("suspend") || controlSetting.equals("breakpoints"))) {
+					if (controlSetting.equals("suspend") || 
+							e.getReason() == StateChangeReason.BREAKPOINT) {
+						Album.captureSnapshotForSession(getSession(), e.getDMContext());
+					}
+				}
 			}
 		}
 	}

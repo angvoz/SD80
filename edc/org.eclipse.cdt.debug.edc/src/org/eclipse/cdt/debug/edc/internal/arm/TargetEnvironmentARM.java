@@ -11,6 +11,7 @@
 
 package org.eclipse.cdt.debug.edc.internal.arm;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +36,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.ILaunch;
 
 /**
@@ -62,10 +64,12 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 	private IAddressExpressionEvaluator aeEvaluator = null;
 
 	private HashMap<Integer, Integer> basicTypeSizes;
+	private HashMap<IPath, ARMElf> readerToArmElfMap;
 
 	public TargetEnvironmentARM(DsfSession session, ILaunch launch) {
 		super(session, new String[] { ITargetEnvironment.class.getName(), TargetEnvironmentARM.class.getName() },
 				launch);
+		readerToArmElfMap = new HashMap<IPath, ARMElf>();
 	}
 
 	/*
@@ -191,8 +195,8 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 						return true;
 					}
 
-					try {
-						ARMElf armElf = new ARMElf(reader.getSymbolFile().toOSString());
+					ARMElf armElf = findOrLoadARMElf(reader.getSymbolFile());
+					if (armElf != null) {
 						String mappingSymbol = armElf.getMappingSymbolAtAddress(symbol.getAddress());
 						if (mappingSymbol != null) {
 							if (mappingSymbol.startsWith("$t")) { //$NON-NLS-1$
@@ -201,8 +205,6 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 								return false;
 							}
 						}
-					} catch (Exception e) {
-						EDCDebugger.getMessageLogger().logError(null, e);
 					}
 				}
 			}
@@ -211,6 +213,26 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 		// TODO we have no other way of finding the mode, so check the pref
 
 		return false;
+	}
+
+	/**
+	 * Cache the ARM/Thumb symbol table information for a given sym file, instead of
+	 * re-reading it on every step.
+	 * @param symbolFile
+	 * @return ARMElf instance or null
+	 */
+	private ARMElf findOrLoadARMElf(IPath symbolFile) {
+		
+		ARMElf armElf = readerToArmElfMap.get(symbolFile);
+		if (armElf == null) {
+			try {
+				armElf = new ARMElf(symbolFile.toOSString());
+			} catch (IOException e) {
+				EDCDebugger.getMessageLogger().logError("Failed to load ARM/Thumb symbol mapping", e);
+			}
+			readerToArmElfMap.put(symbolFile, armElf);
+		}
+		return armElf;
 	}
 
 	public Map<Integer, Integer> getBasicTypeSizes() {
@@ -246,5 +268,10 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 
 	public boolean isCharSigned() {
 		return false;
+	}
+
+	public int getMemoryCacheMinimumBlockSize() {
+		// this looks the optimal after some trials.
+		return 64;
 	}
 }

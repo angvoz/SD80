@@ -34,6 +34,7 @@ public class DwarfCompileUnit extends CompileUnitScope {
 
 	protected EDCDwarfReader reader;
 	protected AttributeList attributes;
+	protected List<IPath> fileList;
 
 	public DwarfCompileUnit(EDCDwarfReader reader, IPath filePath, IAddress lowAddress, IAddress highAddress,
 			AttributeList attributes) {
@@ -43,10 +44,50 @@ public class DwarfCompileUnit extends CompileUnitScope {
 		this.attributes = attributes;
 	}
 
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((reader == null) ? 0 : reader.getSymbolFile().hashCode());
+		result = prime * result + filePath.hashCode();
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		DwarfCompileUnit other = (DwarfCompileUnit) obj;
+		if (filePath == null) {
+			if (other.filePath != null)
+				return false;
+		} else if (!filePath.equals(other.filePath))
+			return false;
+		if (reader == null) {
+			if (other.reader != null)
+				return false;
+		} else if (!reader.getSymbolFile().equals(other.reader.getSymbolFile()))
+			return false;
+		return true;
+	}
+
 	@Override
 	protected Collection<ILineEntry> parseLineTable() {
 		List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
 
+		fileList = new ArrayList<IPath>();
+		
 		try {
 			ByteBuffer data = reader.getDwarfSection(EDCDwarfReader.DWARF_DEBUG_LINE);
 			int stmtList = attributes.getAttributeValueAsInt(DwarfConstants.DW_AT_stmt_list);
@@ -104,7 +145,7 @@ public class DwarfCompileUnit extends CompileUnitScope {
 
 				// Read file names
 				//
-				ArrayList<IPath> fileList = new ArrayList<IPath>();
+				fileList = new ArrayList<IPath>();
 
 				long leb128;
 				while (true) {
@@ -294,7 +335,6 @@ public class DwarfCompileUnit extends CompileUnitScope {
 			// figure it out from the functions
 			IAddress newLowAddress = new Addr64(BigInteger.valueOf(0xFFFFFFFFL));
 			IAddress newHighAddress = new Addr64(BigInteger.valueOf(0));
-			;
 
 			for (IScope func : getChildren()) {
 				// the compiler may generate (bad) low/high pc's which are not
@@ -312,9 +352,20 @@ public class DwarfCompileUnit extends CompileUnitScope {
 					}
 				}
 			}
-
+			
 			lowAddress = newLowAddress;
 			highAddress = newHighAddress;
 		}
+	}
+	
+	public IPath getFileEntry(int declFileNum) {
+		if (fileList == null) {
+			getLineEntries();
+			if (fileList == null)
+				return null;
+		}
+		if (declFileNum <= 0 || declFileNum > fileList.size())
+			return null;
+		return fileList.get(declFileNum - 1);
 	}
 }

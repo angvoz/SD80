@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+import java.util.Collection;
+
 /**
  * Interface representing a lexical block scope. A lexical block is a block of
  * code inside of a function. A lexical block may contain other lexical blocks
@@ -17,4 +19,11 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
  */
 public interface ILexicalBlockScope extends IScope {
 
+	/**
+	 * Gets the list of variables in this scope and any child scopes
+	 * 
+	 * @return unmodifiable list of variables which may be empty
+	 */
+	Collection<IVariable> getVariablesInTree();
+	
 }

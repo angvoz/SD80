@@ -24,5 +24,7 @@ public interface IVariableFormatManager extends IVariableFormatProvider {
 	String getFormatProviderLabel(String id);
 	
 	void setEnabled(boolean enabled);
+
+	boolean isEnabled();
 	
 }

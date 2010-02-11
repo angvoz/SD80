@@ -55,7 +55,13 @@ public class LineEntry implements ILineEntry {
 
 	public int compareTo(Object o) {
 		if (o instanceof ILineEntry) {
-			return lowAddress.compareTo(((ILineEntry) o).getLowAddress());
+			// some entries have low==high
+			int diff = lowAddress.compareTo(((ILineEntry) o).getLowAddress());
+			if (diff != 0)
+				return diff;
+			if (highAddress != null && ((ILineEntry) o).getHighAddress() != null)
+				return highAddress.compareTo(((ILineEntry) o).getHighAddress());
+			return 0;
 		} else if (o instanceof IAddress) {
 			return lowAddress.compareTo(o);
 		}

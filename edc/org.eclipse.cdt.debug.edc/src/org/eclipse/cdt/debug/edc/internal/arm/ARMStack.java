@@ -143,6 +143,9 @@ public class ARMStack extends Stack {
 				Symbols symbols = getServicesTracker().getService(Symbols.class);
 				IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
 				if (scope != null) {
+					// ignore inlined functions
+					while (scope.getParent() instanceof IFunctionScope)
+						scope = (IFunctionScope) scope.getParent();
 					functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
 				}
 			}

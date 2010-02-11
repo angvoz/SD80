@@ -25,16 +25,18 @@ import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
 import org.eclipse.cdt.debug.edc.internal.JumpToAddress;
 import org.eclipse.cdt.debug.edc.internal.disassembler.DisassembledInstruction;
 import org.eclipse.cdt.debug.edc.internal.disassembler.IDisassembler;
+import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints.BreakpointDMData;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers.RegisterGroupDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.VariableDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.internal.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -48,6 +50,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
+import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.IModuleDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
@@ -56,6 +59,7 @@ import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterGroupDMContext;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack.IVariableDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
@@ -643,9 +647,8 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 								if (error != null) {
 									requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, 
 											"terminate() failed.", error));
-									// do this manually, because we will not get any event from the agent
-									rootExecutionDMC.exitAllContexts();
 								}
+								
 								requestMonitor.done();
 								EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 							}
@@ -654,7 +657,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 				});
 			} else {	
 				// Snapshots, for e.g., don't have a TCF RunControlContext, so just remove all the contexts recursively
-				rootExecutionDMC.exitAllContexts();
+				stopDebugAllContexts();
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
@@ -672,23 +675,32 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			return latestPC;
 		}
 
-		public void contextRemoved(String contextId) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, contextId);
-			ExecutionDMC dmc = getContext(contextId);
+		public void contextRemoved(String childContextId) {
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, childContextId);
+			ExecutionDMC dmc = getContext(childContextId);
 			removeChild(dmc);
 			getSession().dispatchEvent(new ExitedEvent(dmc), RunControl.this.getProperties());
+			
+			if (getRootDMC().getChildren().length == 0) 
+				// no more contexts under debug, fire exitedEvent for the rootDMC which
+				// will trigger shutdown of the debug session.
+				// See EDCLaunch.eventDispatched(IExitedDMEvent e).
+				getSession().dispatchEvent(new ExitedEvent(getRootDMC()), RunControl.this.getProperties());
+			
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
 		
 		/**
-		 * Recursively removes all execution contexts
+		 * Stop debug all children & grand-children under this context.
+		 * This does not kill the actual process or thread.
+		 * 
 		 * @param dmc
 		 */
-		public void exitAllContexts(){
-			getSession().dispatchEvent(new ExitedEvent(this), RunControl.this.getProperties());
-			
+		protected void stopDebugChildren(){
 			for (ExecutionDMC e : getChildren()){
-				e.exitAllContexts();
+				e.stopDebugChildren();
+			
+				contextRemoved(e.getID());
 			}
 		}
 
@@ -704,6 +716,9 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		}
 
 		public void contextResumed(boolean sendEvent) {
+			for (ExecutionDMC e : getChildren()){
+				e.contextResumed(sendEvent);
+			}
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
 					new Object[] { this, sendEvent });
 			setIsSuspended(false);
@@ -904,7 +919,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 
 	}
 
-	public class ThreadExecutionDMC extends ExecutionDMC implements IThreadDMContext {
+	public class ThreadExecutionDMC extends ExecutionDMC implements IThreadDMContext, IDisassemblyDMContext {
 
 		public ThreadExecutionDMC(ExecutionDMC parent, Map<String, Object> properties, RunControlContext tcfContext) {
 			super(parent, properties, tcfContext);
@@ -952,10 +967,23 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 
 			Element framesElement = document.createElement(EXECUTION_CONTEXT_FRAMES);
 			Stack stackService = getServicesTracker().getService(Stack.class);
+			Expressions expressionsService = getServicesTracker().getService(Expressions.class);
 
 			IFrameDMContext[] frames = stackService.getFramesForDMC(this, 0, IStack.ALL_FRAMES);
 			for (IFrameDMContext frameDMContext : frames) {
 				StackFrameDMC frameDMC = (StackFrameDMC) frameDMContext;
+				
+				// Get the local variables for each frame
+				IVariableDMContext[] variables = frameDMC.getLocals();
+				for (IVariableDMContext iVariableDMContext : variables) {
+					VariableDMC varDMC = (VariableDMC) iVariableDMContext;
+					IExpressionDMContext expression = expressionsService.createExpression(frameDMContext, varDMC.getName());
+					boolean wasEnabled = FormatExtensionManager.instance().isEnabled();
+					FormatExtensionManager.instance().setEnabled(true);
+					expressionsService.loadExpressionValues(expression, Album.getVariableCaptureDepth());
+					FormatExtensionManager.instance().setEnabled(wasEnabled);
+				}
+				
 				framesElement.appendChild(frameDMC.takeShapshot(album, document, monitor));
 			}
 
@@ -1189,9 +1217,8 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 				IEDCSymbolReader reader = module.getSymbolReader();
 				if (reader != null) {
 					IAddress linkAddress = module.toLinkAddress(pcAddress);
-					ICompileUnitScope cu = reader.getCompileUnitForAddress(linkAddress);
-					if (cu != null) {
-						ILineEntry line = cu.getLineEntryAtAddress(linkAddress);
+					IModuleLineEntryProvider lineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();
+					ILineEntry line = lineEntryProvider.getLineEntryAtAddress(linkAddress);
 						if (line != null) {
 							// get runtime addresses of the line boundaries.
 							IAddress endAddr = module.toRuntimeAddress(line.getHighAddress());
@@ -1203,7 +1230,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 							// not outside of the function address range
 							// if found, the start addr of that entry is our end
 							// address, otherwise use the existing end address
-							ILineEntry nextLine = cu.getNextLineEntry(line);
+						ILineEntry nextLine = lineEntryProvider.getNextLineEntry(line);
 							if (nextLine != null) {
 								endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
 							}
@@ -1238,7 +1265,6 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 						}
 					}
 				}
-			}
 
 			// No source found, fall back to instruction level step.
 			if (stepType == StepType.STEP_INTO)
@@ -1893,5 +1919,48 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			});
 		} else
 			assert false;
+	}
+
+	/**
+	 * Stop debugging all execution contexts. This does not kill/terminate
+	 * the actual process or thread.
+	 * See: {@link #terminateAllContexts(RequestMonitor)}
+	 */
+	public void stopDebugAllContexts(){
+		getRootDMC().stopDebugChildren();
+	}
+
+	/**
+	 * Terminate all contexts so as to terminate the debug session.
+	 * 
+	 * @param rm can be null.
+	 */
+	public void terminateAllContexts(final RequestMonitor rm){
+
+		CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm) {
+			@Override
+			protected void handleError() {
+				// failed to terminate at least one process, usually
+				// because connection to target is lost, or some processes
+				// cannot be killed (e.g. OS does not permit that).
+				// Just untarget the contexts.
+				stopDebugAllContexts();
+		
+				if (rm != null)
+					rm.done();
+			}
+			
+		};
+		
+		// It's assumed 
+		// 1. First level of children under rootDMC are processes.
+		// 2. Killing them would kill all contexts (processes and threads) being debugged.
+		//
+		ExecutionDMC[] processes = getRootDMC().getChildren();
+		crm.setDoneCount(processes.length);
+		
+		for (ExecutionDMC e : processes) {
+			e.terminate(crm);
+		}
 	}
 }

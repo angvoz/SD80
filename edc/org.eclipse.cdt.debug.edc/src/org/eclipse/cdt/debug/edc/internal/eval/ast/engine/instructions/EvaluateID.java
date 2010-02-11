@@ -31,15 +31,35 @@ import org.eclipse.core.runtime.CoreException;
 
 public class EvaluateID extends SimpleInstruction {
 
-	private final IASTIdExpression idExpression;
+	private final String name;
 
 	/**
 	 * Constructor for ID (number + variable name) evaluate instruction
 	 * 
-	 * @param ID
+	 * @param idExpression
 	 */
-	public EvaluateID(IASTIdExpression expression) {
-		idExpression = expression;
+	public EvaluateID(IASTIdExpression idExpression) {
+		IASTName lookupName;
+
+		if (idExpression.getName() instanceof ICPPASTQualifiedName) {
+			// the name has the form namespace::...::variable
+			final ICPPASTQualifiedName qualifiedName = (ICPPASTQualifiedName) idExpression.getName();
+			lookupName = qualifiedName.getLastName();
+		} else {
+			lookupName = idExpression.getName();
+		}
+
+		name = new String(lookupName.getLookupKey());
+	}
+	
+	/**
+	 * Constructor for lookup of a specific literal name
+     * (presumably a local, like "this")
+     *
+     * @param name the literal name
+	 */
+	public EvaluateID(String name) {
+		this.name = name;
 	}
 
 	/**
@@ -54,18 +74,6 @@ public class EvaluateID extends SimpleInstruction {
 
 		if (!(context instanceof StackFrameDMC))
 			return;
-
-		IASTName lookupName;
-
-		if (idExpression.getName() instanceof ICPPASTQualifiedName) {
-			// the name has the form namespace::...::variable
-			final ICPPASTQualifiedName qualifiedName = (ICPPASTQualifiedName) idExpression.getName();
-			lookupName = qualifiedName.getLastName();
-		} else {
-			lookupName = idExpression.getName();
-		}
-
-		String name = new String(lookupName.getLookupKey());
 
 		StackFrameDMC frame = (StackFrameDMC) context;
 		DsfServicesTracker servicesTracker = frame.getDsfServicesTracker();

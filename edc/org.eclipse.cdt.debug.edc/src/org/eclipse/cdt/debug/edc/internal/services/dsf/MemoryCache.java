@@ -12,8 +12,10 @@
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.IAddressFactory;
@@ -44,11 +46,27 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+/**
+ * This is adapted from 
+ * org.eclipse.cdt.dsf.mi.service.MIMemory.MIMemoryCache 
+ * 
+ */
 public class MemoryCache implements ISnapshotContributor {
 
-	public MemoryCache() {
+	// Timeout waiting for TCF agent reply.
+	final private int TIMEOUT = 6000; // milliseconds
+	private int minimumBlockSize = 0;
+
+	/**
+	 * @param minimumBlockSize minimum size of memory block to cache.
+	 */
+	public MemoryCache(int minimumBlockSize) {
+		this.minimumBlockSize = minimumBlockSize;
+		
 		// create the memory block cache
 		memoryBlockList = new SortedMemoryBlockList();
+		
+		tcfMemoryContexts = new HashMap<String, MemoryContext>();
 	}
 
 	public void reset() {
@@ -57,59 +75,61 @@ public class MemoryCache implements ISnapshotContributor {
 	}
 
 	/**
-	 * This function walks the address-sorted memory block list to identify the
-	 * 'missing' blocks (i.e. the holes) that need to be fetched on the target.
+	 *  This function walks the address-sorted memory block list to identify
+     *  the 'missing' blocks (i.e. the holes) that need to be fetched on the target.
 	 * 
-	 * The idea is fairly simple but an illustration could perhaps help. Assume
-	 * the cache holds a number of cached memory blocks with gaps i.e. there is
-	 * un-cached memory areas between blocks A, B and C:
-	 * 
-	 * +---------+ +---------+ +---------+ + A + + B + + C + +---------+
-	 * +---------+ +---------+ : : : : : : [a] : : [b] : : [c] : : [d] : : : : :
-	 * : [e---+--] : [f--+---------+--] : :
-	 * [g---+---------+------+---------+------+---------+----] : : : : : : : [h]
-	 * : : [i----+--] : :
+     *  The idea is fairly simple but an illustration could perhaps help.
+     *  Assume the cache holds a number of cached memory blocks with gaps i.e.
+     *  there is un-cached memory areas between blocks A, B and C:
+     * 
+     *        +---------+      +---------+      +---------+
+     *        +    A    +      +    B    +      +    C    +
+     *        +---------+      +---------+      +---------+
+     *        :         :      :         :      :         :
+     *   [a]  :         :  [b] :         :  [c] :         :  [d]
+     *        :         :      :         :      :         :
+     *   [e---+--]      :  [f--+---------+--]   :         :
+     *   [g---+---------+------+---------+------+---------+----]
+     *        :         :      :         :      :         :
+     *        :   [h]   :      :   [i----+--]   :         :
 	 * 
 	 * 
 	 * We have the following cases to consider.The requested block [a-i] either:
 	 * 
-	 * [1] Fits entirely before A, in one of the gaps, or after C with no
-	 * overlap and no contiguousness (e.g. [a], [b], [c] and [d]) -> Add the
-	 * requested block to the list of blocks to fetch
+     *  [1] Fits entirely before A, in one of the gaps, or after C
+     *      with no overlap and no contiguousness (e.g. [a], [b], [c] and [d])
+     *      -> Add the requested block to the list of blocks to fetch
 	 * 
 	 * [2] Starts before an existing block but overlaps part of it, possibly
-	 * spilling in the gap following the cached block (e.g. [e], [f] and [g]) ->
-	 * Determine the length of the missing part (< count) -> Add a request to
-	 * fill the gap before the existing block -> Update the requested block for
-	 * the next iteration: - Start address to point just after the end of the
-	 * cached block - Count reduced by cached block length (possibly becoming
-	 * negative, e.g. [e]) At this point, the updated requested block starts
-	 * just beyond the cached block for the next iteration.
-	 * 
-	 * [3] Starts at or into an existing block and overlaps part of it ([h] and
-	 * [i]) -> Update the requested block for the next iteration: - Start
-	 * address to point just after the end of the cached block - Count reduced
-	 * by length to end of cached block (possibly becoming negative, e.g. [h])
-	 * At this point, the updated requested block starts just beyond the cached
-	 * block for the next iteration.
-	 * 
-	 * We iterate over the cached blocks list until there is no entry left or
-	 * until the remaining requested block count is <= 0, meaning the result
-	 * list contains only the sub-blocks needed to fill the gap(s), if any.
-	 * 
-	 * (As is often the case, it takes much more typing to explain it than to
-	 * just do it :-)
-	 * 
-	 * What is missing is a parameter that indicates the minimal block size that
-	 * is worth fetching. This is target-specific and straight in the realm of
-	 * the coalescing function...
-	 * 
-	 * @param reqBlockStart
-	 *            The address of the requested block
-	 * @param count
-	 *            Its length
-	 * @return A list of the sub-blocks to fetch in order to fill enough gaps in
-	 *         the memory cache to service the request
+     *      spilling in the gap following the cached block (e.g. [e], [f] and [g])
+     *      -> Determine the length of the missing part (< count)
+     *      -> Add a request to fill the gap before the existing block
+     *      -> Update the requested block for the next iteration:
+     *         - Start address to point just after the end of the cached block
+     *         - Count reduced by cached block length (possibly becoming negative, e.g. [e])
+     *      At this point, the updated requested block starts just beyond the cached block
+     *      for the next iteration.
+     * 
+     *  [3] Starts at or into an existing block and overlaps part of it ([h] and [i])
+     *      -> Update the requested block for the next iteration:
+     *         - Start address to point just after the end of the cached block
+     *         - Count reduced by length to end of cached block (possibly becoming negative, e.g. [h])
+     *      At this point, the updated requested block starts just beyond the cached block
+     *      for the next iteration.
+     * 
+     *  We iterate over the cached blocks list until there is no entry left or until
+     *  the remaining requested block count is <= 0, meaning the result list contains
+     *  only the sub-blocks needed to fill the gap(s), if any.
+     * 
+     *  (As is often the case, it takes much more typing to explain it than to just do it :-)
+     *
+     *  What is missing is a parameter that indicates the minimal block size that is worth fetching.
+     *  This is target-specific and straight in the realm of the coalescing function... 
+     *  
+     * @param reqBlockStart The address of the requested block
+     * @param count Its length
+     * @return A list of the sub-blocks to fetch in order to fill enough gaps in the memory cache
+     * to service the request
 	 */
 	private LinkedList<MemoryBlock> getListOfMissingBlocks(IAddress reqBlockStart, int count) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
@@ -331,6 +351,9 @@ public class MemoryCache implements ISnapshotContributor {
 			MemoryBlock block = missingBlocks.get(i);
 			IAddress blockAddress = block.fAddress;
 			int blockLength = (int) block.fLength;
+			if (blockLength < minimumBlockSize)
+				blockLength = minimumBlockSize;
+			
 			MemoryByte[] result;
 			try {
 				result = readBlock(tcfMemoryService, context, blockAddress, word_size, blockLength);
@@ -346,6 +369,40 @@ public class MemoryCache implements ISnapshotContributor {
 		drm.setData(getMemoryBlockFromCache(address, count));
 		drm.done();
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+	}
+
+	private MemoryContext getTCFMemoryContext(final IMemory tcfMemoryService, final String contextID) throws IOException {
+
+		MemoryContext ret = tcfMemoryContexts.get(contextID);
+		if (ret != null)
+			return ret;
+		
+		final TCFTask<MemoryContext> tcfTask = new TCFTask<MemoryContext>(TIMEOUT) {
+
+			public void run() {
+				tcfMemoryService.getContext(contextID, new DoneGetContext() {
+
+					public void doneGetContext(IToken token, Exception error, MemoryContext context) {
+						if (error == null) {
+							done(context);
+						} else {
+							error(error);
+						}
+					}
+				});
+			}
+		};
+
+		try {
+			ret = tcfTask.getIO();
+		} catch (IOException e) {
+			throw e;
+		}
+
+		if (ret != null)
+			tcfMemoryContexts.put(contextID, ret);
+		
+		return ret;
 	}
 
 	/**
@@ -365,20 +422,16 @@ public class MemoryCache implements ISnapshotContributor {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
 				new Object[] { context, address.toHexAddressString(), word_size, count });
 
+		final MemoryContext tcfMC = getTCFMemoryContext(tcfMemoryService, ((DMContext)context).getID());
+		
 		MemoryByte[] result = null;
 
-		final TCFTask<MemoryByte[]> tcfTask = new TCFTask<MemoryByte[]>() {
+		final TCFTask<MemoryByte[]> tcfTask = new TCFTask<MemoryByte[]>(TIMEOUT) {
 
 			public void run() {
-				final TCFTask<MemoryByte[]> task = this;
-				String memoryContextID = ((DMContext) context).getID();
-				tcfMemoryService.getContext(memoryContextID, new DoneGetContext() {
-
-					public void doneGetContext(IToken token, Exception error, MemoryContext context) {
-						if (error == null) {
 							Number tcfAddress = address.getValue();
 							final byte[] buffer = new byte[word_size * count];
-							context.get(tcfAddress, word_size, buffer, 0, count * word_size, 0, new DoneMemory() {
+				tcfMC.get(tcfAddress, word_size, buffer, 0, count * word_size, 0, new DoneMemory() {
 
 								public void doneMemory(IToken token, MemoryError error) {
 									if (error == null) {
@@ -386,14 +439,9 @@ public class MemoryCache implements ISnapshotContributor {
 										for (int i = 0; i < buffer.length; i++) {
 											res[i] = new MemoryByte(buffer[i]);
 										}
-										task.done(res);
+							done(res);
 									} else {
-										task.error(error);
-									}
-								}
-							});
-						} else {
-							task.error(error);
+							error(error);
 						}
 					}
 				});
@@ -514,7 +562,7 @@ public class MemoryCache implements ISnapshotContributor {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
 				new Object[] { context, address.toHexAddressString(), offset, word_size, count });
 
-		final TCFTask<MemoryByte[]> tcfTask = new TCFTask<MemoryByte[]>() {
+		final TCFTask<MemoryByte[]> tcfTask = new TCFTask<MemoryByte[]>(TIMEOUT) {
 
 			public void run() {
 				final TCFTask<MemoryByte[]> task = this;
@@ -551,6 +599,7 @@ public class MemoryCache implements ISnapshotContributor {
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
 	}
 
+	private final Map<String, MemoryContext>	tcfMemoryContexts;
 	private final SortedMemoryBlockList memoryBlockList;
 
 	private class MemoryBlock {

@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.formatter;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -28,6 +29,8 @@ import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
+import org.eclipse.cdt.utils.Addr32;
+import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.debug.core.model.MemoryByte;
 
@@ -75,7 +78,7 @@ public class FormatUtils {
 		StackFrameDMC frame = expression.getFrame();
 		Memory memory = frame.getDsfServicesTracker().getService(Memory.class);
 		
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>();
 		IStatus status = memory.getMemory(frame.getExecutionDMC(), address, buffer, length * charSize, 1);
 		if (status.isOK()) {
@@ -91,13 +94,15 @@ public class FormatUtils {
 		return sb.toString();
 	}
 	
-	public static String getFormattedNullTermString(IExpressionDMContext variable, IAddress address, int charSize) {
+	public static String getFormattedNullTermString(IExpressionDMContext variable, 
+			IAddress address, int charSize,
+			int maximumLength) {
 		ExpressionDMC expression = (ExpressionDMC) variable;
 		StackFrameDMC frame = expression.getFrame();
 		Memory memory = frame.getDsfServicesTracker().getService(Memory.class);
 		
-		StringBuffer sb = new StringBuffer();
-		while (true) {
+		StringBuilder sb = new StringBuilder();
+		while (maximumLength-- > 0) {
 			ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>();
 			IStatus status = memory.getMemory(frame.getExecutionDMC(), address, buffer, charSize, 1);
 			if (status.isOK()) {
@@ -111,7 +116,15 @@ public class FormatUtils {
 				sb.append(c);
 				address = address.add(charSize);
 			}
+			else {
+				// error in reading memory, bail out.
+				sb.append("Error reading memory at address 0x" + address.getValue().toString(16));
+				break;
+			}
 		}
+		if (maximumLength == 0)
+			sb.append("...");
+		
 		return sb.toString();
 	}
 
@@ -172,5 +185,26 @@ public class FormatUtils {
 		variableDMC.evaluateExpression();
 		IType type = TypeUtils.getStrippedType(variableDMC.getEvaluatedType());
 		return FormatExtensionManager.instance().getVariableValueConverter(type);
+	}
+	
+	/**
+	 * Get an address from an expression representing a pointer.
+	 * @param value the evaluated value of an ExpressionDMC
+	 * @return the pointer address or <code>null</code>
+	 */
+	public static IAddress getPointerValue(Object value) {
+		IAddress address = null;
+		
+		if (value instanceof String) { // is address string
+			String valueStr = value.toString();
+			if (valueStr.startsWith("0x"))
+				valueStr = valueStr.substring(2);
+			address = new Addr64(new BigInteger(valueStr, 16));
+		} else if (value instanceof Number) {
+			address = new Addr32(((Number) value).longValue());
+		} else {
+			return null;
+		}
+		return address;
 	}
 }

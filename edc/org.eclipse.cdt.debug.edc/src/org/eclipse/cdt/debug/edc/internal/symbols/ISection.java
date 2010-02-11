@@ -27,11 +27,15 @@ public interface ISection {
 	static final String PROPERTY_SIZE = "size";
 	static final String PROPERTY_LINK_ADDRESS = "link_address";
 	static final String PROPERTY_RUNTIME_ADDRESS = "runtime_address";
+	/** Canonical section name: one of NAME_TEXT, NAME_DATA, NAME_RODATA, or NAME_BSS */
 	static final String PROPERTY_NAME = "name";
+	
+	/* TODO: not used
 	static final String PROPERTY_READABLE = "readable";
 	static final String PROPERTY_WRITABLE = "writable";
 	static final String PROPERTY_EXECUTABLE = "executable";
-
+	 */
+	
 	static final String NAME_TEXT = ".text";
 	static final String NAME_DATA = ".data";
 	static final String NAME_RODATA = ".rodata"; // read only data

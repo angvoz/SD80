@@ -126,4 +126,13 @@ public class TargetEnvironmentX86 extends AbstractTargetEnvironment implements I
 	public int getPointerSize() {
 		return 4;
 	}
+
+	public int getMemoryCacheMinimumBlockSize() {
+		/*
+		 * Currently for x86 Windows debugger, a non-zero minimum size may crash
+		 * the TCF Windows agent. Before that's fixed, we just return 0. See
+		 * Javadoc of the API for more.......02/09/10
+		 */
+		return 0;
+	}
 }

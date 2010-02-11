@@ -44,10 +44,12 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IRegisterVariableLocation;
+import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
@@ -342,6 +344,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		}
 
 		private String recursiveGetType(Object typeValue) {
+			// FIXME: move this into an IType method
 			if (typeValue instanceof IReferenceType)
 				return recursiveGetType(((IReferenceType) typeValue).getType()) + " &"; //$NON-NLS-1$
 			if (typeValue instanceof IPointerType)
@@ -374,6 +377,11 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			if (typeValue instanceof IQualifierType)
 				return ((IQualifierType) typeValue).getName()
 						+ " " + recursiveGetType(((IQualifierType) typeValue).getType()); //$NON-NLS-1$
+			if (typeValue instanceof ISubroutineType) {
+				// TODO: real stuff once we parse parameters
+				// TODO: the '*' for a function pointer (e.g. in a vtable) is in the wrong place
+				return recursiveGetType(((ISubroutineType) typeValue).getType()) + "(...)"; //$NON-NLS-1$
+			}
 			if (typeValue instanceof IType)
 				return ((IType) typeValue).getName() + recursiveGetType(((IType) typeValue).getType());
 			if (typeValue == null)
@@ -801,5 +809,46 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 	private void createBasicTypes() {
 		// TODO: create basic types for standard C/C++ base types, for casting
 		// to types
+	}
+
+	public String getExpressionValue(IExpressionDMContext expression)
+	{
+		return getExpressionValue(expression, IFormattedValues.NATURAL_FORMAT);
+	}
+
+	public String getExpressionValue(IExpressionDMContext expression, String format)
+	{
+		final StringBuffer holder = new StringBuffer();
+		FormattedValueDMContext formattedValueContext = getFormattedValueContext(expression, format);					
+		getFormattedExpressionValue(formattedValueContext, new DataRequestMonitor<FormattedValueDMData>(ImmediateExecutor.getInstance(), null) {
+			@Override
+			protected void handleSuccess() {
+				holder.append(this.getData().getFormattedValue());
+			}
+		});
+		return holder.toString();
+	}
+
+	public void loadExpressionValues(IExpressionDMContext expression, int depth)
+	{
+		loadExpressionValues(expression, new Integer[] {depth});
+	}
+
+	private void loadExpressionValues(IExpressionDMContext expression, final Integer[] depth)
+	{
+		getExpressionValue(expression);
+		if (depth[0] > 0)
+		{
+			getSubExpressions(expression, new DataRequestMonitor<IExpressions.IExpressionDMContext[]>(ImmediateExecutor.getInstance(), null) {
+
+				@Override
+				protected void handleSuccess() {
+					depth[0] = depth[0] - 1;
+					IExpressions.IExpressionDMContext[] subExpressions = getData();
+					for (IExpressionDMContext iExpressionDMContext : subExpressions) {
+						loadExpressionValues(iExpressionDMContext, depth);
+					}
+				}});
+		}
 	}
 }

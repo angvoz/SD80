@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -56,7 +56,7 @@ extern void json_write_string(OutputStream * out, const char * str);
 extern void json_write_string_len(OutputStream * out, const char * str, size_t len);
 extern void json_write_boolean(OutputStream * out, int b);
 
-extern int read_errno(InputStream * out);
+extern int read_errno(InputStream * inp);
 extern void write_error_object(OutputStream * out, int err);
 extern void write_errno(OutputStream * out, int err);
 extern void write_service_error(OutputStream * out, int err, const char * service_name, int service_error);
@@ -72,7 +72,7 @@ extern void write_service_error(OutputStream * out, int err, const char * servic
  */
 
 extern char * json_read_alloc_binary(InputStream * inp, int * size);
-extern void json_write_binary(OutputStream * out, const char * data, size_t size);
+extern void json_write_binary(OutputStream * out, const void * data, size_t size);
 extern void json_splice_binary(OutputStream * out, int fd, size_t size);
 extern void json_splice_binary_offset(OutputStream * out, int fd, size_t size, off_t * offset);
 
@@ -87,7 +87,7 @@ typedef struct JsonReadBinaryState {
 } JsonReadBinaryState;
 
 extern void json_read_binary_start(JsonReadBinaryState * state, InputStream * inp);
-extern size_t json_read_binary_data(JsonReadBinaryState * state, char * buf, size_t buf_size);
+extern size_t json_read_binary_data(JsonReadBinaryState * state, void * buf, size_t buf_size);
 extern void json_read_binary_end(JsonReadBinaryState * state);
 
 typedef struct JsonWriteBinaryState {
@@ -102,7 +102,7 @@ typedef struct JsonWriteBinaryState {
 
 /* json_write_binary_start() argument 'size' can be 0 if client does not know the size upfront */
 extern void json_write_binary_start(JsonWriteBinaryState * state, OutputStream * out, int size);
-extern void json_write_binary_data(JsonWriteBinaryState * state, const char * data, size_t size);
+extern void json_write_binary_data(JsonWriteBinaryState * state, const void * data, size_t size);
 extern void json_write_binary_end(JsonWriteBinaryState * state);
 
 #endif /* D_json */

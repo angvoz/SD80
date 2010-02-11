@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -49,18 +49,77 @@
 #define ERR_INV_DATA_TYPE       (STD_ERR_BASE + 24)
 #define ERR_INV_COMMAND         (STD_ERR_BASE + 25)
 #define ERR_INV_TRANSPORT       (STD_ERR_BASE + 26)
+#define ERR_CACHE_MISS          (STD_ERR_BASE + 27)
 
-#define ERR_EXCEPTION           (STD_ERR_BASE + 100)
+typedef struct ErrorReportItem {
+    char * name;
+    char * value;
+    struct ErrorReportItem * next;
+} ErrorReportItem;
+
+typedef struct ErrorReport {
+    uint64_t time_stamp;
+    int code;
+    int refs;
+    ErrorReportItem * props;
+} ErrorReport;
 
 /*
  * Convert error code to human readable string
  */
 extern const char * errno_to_str(int no);
 
-extern void set_exception_errno(int no, char * msg);
-extern int get_exception_errno(int no);
+/*
+ * Set errno to indicate given error code and additional error message.
+ * The message will be concatenated with normal error text by errno_to_str().
+ * The function creates a copy of the message and puts it into a queue of limited size.
+ * Clients should not rely on messages being kept in the queue longer then one dispatch cycle.
+ * Persistent error report can be obtained by calling get_error_report().
+ * Return new error code that designates both original code and the message.
+ */
+extern int set_errno(int no, char * msg);
 
+/*
+ * Set errno to indicate getaddrinfo() error code.
+ * Return new value of errno.
+ */
 extern int set_gai_errno(int gai_error_code);
+
+#ifdef WIN32
+/*
+ * Set errno to indicate WIN32 error code.
+ * Return new value of errno.
+ */
+extern int set_win32_errno(DWORD win32_error_code);
+#endif
+
+/*
+ * Set errno to indicate TCF standard error report.
+ * Report objects are kept in a queue of limited size, and old reports are
+ * disposed by calling release_error_report().
+ * Clients should not rely on reports being kept in the queue longer then one dispatch cycle.
+ * Persistent error report can be obtained by calling get_error_report().
+ * Return new value of errno.
+ */
+extern int set_error_report_errno(ErrorReport * report);
+
+/*
+ * Return POSIX error code or one of ERR_* values for given errno value.
+ */
+extern int get_error_code(int no);
+
+/*
+ * Return TCF error report that describes given error code 'no'.
+ * Clients should call release_error_report() when done using it.
+ * Return NULL if 'no' = 0, or if 'no' was not creted by
+ * set_error_report_errno() and 'create' = 0.
+ */
+extern ErrorReport * get_error_report(int no);
+
+/*
+ * Release error report that was obtained by get_error_report().
+ */
+extern void release_error_report(ErrorReport * report);
 
 /*
  * check_error(): Check error code.
@@ -72,14 +131,5 @@ extern void check_error(int error);
 extern void check_error_debug(char * file, int line, int error);
 #define check_error(error) check_error_debug(__FILE__, __LINE__, error)
 #endif
-
-#ifdef WIN32
-/*
- * Set errno to WIN32 error code.
- */
-extern int set_win32_errno(DWORD win32_error_code);
-extern DWORD get_win32_errno(int no);
-#endif
-
 
 #endif /* D_errors */

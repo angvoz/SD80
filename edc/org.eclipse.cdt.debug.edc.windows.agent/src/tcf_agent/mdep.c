@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 #include "myalloc.h"
 #include "errors.h"
 
@@ -271,27 +272,19 @@ int pthread_create(pthread_t * thread, const pthread_attr_t * attr,
     a = (ThreadArgs *)loc_alloc(sizeof(ThreadArgs));
     a->start = start;
     a->args = args;
-#ifdef __CYGWIN__
     r = CreateThread (0, 0, (LPTHREAD_START_ROUTINE)start_thread, a, 0, 0);
     if (r == NULL) {
+        int err = set_win32_errno(GetLastError());
         loc_free(a);
-        return errno = EINVAL;
+        return errno = err;
     }
-#else
-    r = (HANDLE)_beginthread(start_thread, 0, a);
-    if (r == (HANDLE)-1) {
-        int error = errno;
-        loc_free(a);
-        return errno = error;
-    }
-#endif
     *thread = r;
     return 0;
 }
 
 int pthread_join(pthread_t thread, void ** value_ptr) {
     if (WaitForSingleObject(thread, INFINITE) == WAIT_FAILED) return set_win32_errno(GetLastError());
-    if (value_ptr != NULL && !GetExitCodeThread(thread, (LPDWORD)value_ptr)) return EINVAL;
+    if (value_ptr != NULL && !GetExitCodeThread(thread, (LPDWORD)value_ptr)) return set_win32_errno(GetLastError());
     if (!CloseHandle(thread)) return set_win32_errno(GetLastError());
     return 0;
 }
@@ -423,6 +416,32 @@ int wsa_sendto(int socket, const void * buf, size_t size, int flags,
     return res;
 }
 
+#undef setsockopt
+int wsa_setsockopt(int socket, int level, int opt, const char * value, int size) {
+    int res = 0;
+    SetLastError(0);
+    WSASetLastError(0);
+    res = setsockopt(socket, level, opt, value, size);
+    if (res != 0) {
+        set_win32_errno(WSAGetLastError());
+        return -1;
+    }
+    return 0;
+}
+
+#undef getsockname
+int wsa_getsockname(int socket, struct sockaddr * name, int * size) {
+    int res = 0;
+    SetLastError(0);
+    WSASetLastError(0);
+    res = getsockname(socket, name, size);
+    if (res != 0) {
+        set_win32_errno(WSAGetLastError());
+        return -1;
+    }
+    return 0;
+}
+
 /* inet_ntop()/inet_pton() are not available before Windows Vista */
 const char * inet_ntop(int af, const void * src, char * dst, socklen_t size) {
     char * str = NULL;
@@ -545,6 +564,7 @@ int utf8_stat(const char * name, struct utf8_stat * buf) {
         set_win32_errno(GetLastError());
         return -1;
     }
+    memset(&tmp, 0, sizeof(tmp));
     if (_wstati64(path, &tmp)) return -1;
     buf->st_dev = tmp.st_dev;
     buf->st_ino = tmp.st_ino;
@@ -562,6 +582,7 @@ int utf8_stat(const char * name, struct utf8_stat * buf) {
 
 int utf8_fstat(int fd, struct utf8_stat * buf) {
     struct _stati64 tmp;
+    memset(&tmp, 0, sizeof(tmp));
     if (_fstati64(fd, &tmp)) return -1;
     buf->st_dev = tmp.st_dev;
     buf->st_ino = tmp.st_ino;
@@ -719,8 +740,6 @@ ssize_t pwrite(int fd, const void * buf, size_t size, off_t offset) {
 
 #include <shlobj.h>
 
-unsigned char BREAK_INST[] = { 0xcc };
-
 char * get_os_name(void) {
     static char str[256];
     OSVERSIONINFOEX info;
@@ -745,17 +764,26 @@ char * get_os_name(void) {
 }
 
 char * get_user_home(void) {
-    static char buf[MAX_PATH];
-    if (buf[0] != 0) return buf;
-    if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, buf))) return buf;
+    WCHAR w_buf[MAX_PATH];
+    static char a_buf[MAX_PATH];
+    if (a_buf[0] != 0) return a_buf;
+    if (!SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, w_buf))) {
+        errno = ERR_OTHER;
     return NULL;
+}
+    if (!WideCharToMultiByte(CP_UTF8, 0, w_buf, -1, a_buf, sizeof(a_buf), NULL, NULL)) {
+        set_win32_errno(GetLastError());
+        return 0;
+    }
+    return a_buf;
 }
 
 void ini_mdep(void) {
-    WORD wVersionRequested;
+    WORD wVersionRequested = MAKEWORD(1, 1);
     WSADATA wsaData;
     int err;
-    wVersionRequested = MAKEWORD( 1, 1 );
+
+    SetErrorMode(SEM_FAILCRITICALERRORS);
     err = WSAStartup( wVersionRequested, &wsaData );
     if ( err != 0 ) {
         fprintf(stderr, "Couldn't access winsock.dll.\n");
@@ -772,6 +800,9 @@ void ini_mdep(void) {
         exit(1);
     }
     pthread_attr_init(&pthread_create_attr);
+#if defined(_DEBUG) && defined(_MSC_VER)
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
 }
 
 #elif defined(_WRS_KERNEL)
@@ -827,12 +858,15 @@ void ini_mdep(void) {
     pthread_attr_setname(&pthread_create_attr, "tTcf");
 }
 
-#elif defined(__APPLE__)
+#else
+
 #include <pwd.h>
 #include <sys/utsname.h>
+#if defined(__linux__)
+#  include <asm/unistd.h>
+#endif
 
-unsigned char BREAK_INST[] = { 0xcc };
-
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 int clock_gettime(clockid_t clock_id, struct timespec * tp) {
     struct timeval tv;
 
@@ -848,46 +882,7 @@ int clock_gettime(clockid_t clock_id, struct timespec * tp) {
     tp->tv_nsec = tv.tv_usec * 1000;
     return 0;
 }
-
-char * get_os_name(void) {
-    static char str[256];
-    struct utsname info;
-    memset(&info, 0, sizeof(info));
-    uname(&info);
-    assert(strlen(info.sysname) + strlen(info.release) < sizeof(str));
-    snprintf(str, sizeof(str), "%s %s", info.sysname, info.release);
-    return str;
-}
-
-char * get_user_home(void) {
-    static char buf[PATH_MAX];
-    if (buf[0] == 0) {
-        struct passwd * pwd = getpwuid(getuid());
-        if (pwd == NULL) return NULL;
-        strcpy(buf, pwd->pw_dir);
-    }
-    return buf;
-}
-
-void ini_mdep(void) {
-    pthread_attr_init(&pthread_create_attr);
-    pthread_attr_setstacksize(&pthread_create_attr, 0x8000);
-}
-#else
-
-#include <pwd.h>
-#include <sys/utsname.h>
-#include <asm/unistd.h>
-
-#if defined(__i386__) || defined(__x86_64__)
-unsigned char BREAK_INST[] = { 0xcc };
-#else
-#error "Unknown CPU"
 #endif
-
-size_t get_break_size(void) {
-    return sizeof(BREAK_INST);
-}
 
 char * get_os_name(void) {
     static char str[256];
@@ -910,10 +905,15 @@ char * get_user_home(void) {
 }
 
 int tkill(pid_t pid, int signal) {
+#if defined(__linux__)
     return syscall(__NR_tkill, pid, signal);
+#else
+    return kill(pid, signal);
+#endif
 }
 
 void ini_mdep(void) {
+    signal(SIGPIPE, SIG_IGN);
     pthread_attr_init(&pthread_create_attr);
     pthread_attr_setstacksize(&pthread_create_attr, 0x8000);
 }
@@ -1188,22 +1188,27 @@ const char * loc_gai_strerror(int ecode) {
     return buf;
 }
 
-#elif defined(WIN32) && defined(__CYGWIN__)
+#elif defined(WIN32)
 
 const char * loc_gai_strerror(int ecode) {
-    static char buf[128];
+    WCHAR * buf = NULL;
+    static char msg[512];
     if (ecode == 0) return "Success";
-    FormatMessage(
+    if (!FormatMessageW(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
         FORMAT_MESSAGE_IGNORE_INSERTS |
         FORMAT_MESSAGE_MAX_WIDTH_MASK,
         NULL,
         ecode,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        buf,
-        sizeof(buf),
-        NULL);
-    return buf;
+        (LPWSTR)&buf, 0, NULL) ||
+        !WideCharToMultiByte(CP_UTF8, 0, buf, -1, msg, sizeof(msg), NULL, NULL))
+    {
+        snprintf(msg, sizeof(msg), "GAI Error Code %d", ecode);
+    }
+    if (buf != NULL) LocalFree(buf);
+    return msg;
 }
 
 #endif

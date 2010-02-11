@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <assert.h>
+#include <sys/stat.h>
 #if ENABLE_SSL
 #  include <openssl/ssl.h>
 #  include <openssl/rand.h>
@@ -48,6 +49,10 @@
 #include "ip_ifc.h"
 #include "asyncreq.h"
 #include "inputbuf.h"
+
+#ifndef MSG_MORE
+#define MSG_MORE 0
+#endif
 
 #define BUF_SIZE 0x1000
 #define CHANNEL_MAGIC 0x87208956
@@ -295,9 +300,10 @@ static void tcp_write_stream(OutputStream * out, int byte) {
 
 static void tcp_write_block_stream(OutputStream * out, const char * bytes, size_t size) {
     size_t cnt = 0;
-    ChannelTCP * c = channel2tcp(out2channel(out));
 
 #if ENABLE_ZeroCopy
+    ChannelTCP * c = channel2tcp(out2channel(out));
+
     if (!c->ssl && out->supports_zero_copy && size > 32) {
         /* Send the binary data escape seq */
         size_t n = size;
@@ -474,7 +480,14 @@ static void send_eof_and_close(Channel * channel, int err) {
     c->chan.state = ChannelStateDisconnected;
     tcp_post_read(&c->ibuf, c->read_buf, c->read_buf_size);
     notify_channel_closed(channel);
-    if (channel->disconnected) channel->disconnected(channel);
+    if (channel->disconnected) {
+        channel->disconnected(channel);
+    }
+    else {
+        trace(LOG_PROTOCOL, "channel %#lx disconnected", c);
+        protocol_release(channel->protocol);
+    }
+    channel->protocol = NULL;
 }
 
 static void handle_channel_msg(void * x) {
@@ -501,7 +514,12 @@ static void handle_channel_msg(void * x) {
         return;
     }
     if (set_trap(&trap)) {
+        if (c->chan.receive) {
         c->chan.receive(&c->chan);
+        }
+        else {
+            handle_protocol_message(&c->chan);
+        }
         clear_trap(&trap);
     }
     else {
@@ -588,7 +606,9 @@ static void tcp_channel_read_done(void * x) {
         assert((size_t)c->read_buf_size == c->rdreq.u.sio.bufsz);
         len = c->rdreq.u.sio.rval;
         if (req->error) {
+            if (c->chan.state != ChannelStateDisconnected) {
             trace(LOG_ALWAYS, "Can't read from socket: %s", errno_to_str(req->error));
+            }
             len = 0; /* Treat error as eof */
         }
     }
@@ -611,21 +631,12 @@ static void start_channel(Channel * channel) {
     assert(is_dispatch_thread());
     assert(c->magic == CHANNEL_MAGIC);
     assert(c->socket >= 0);
+    if (c->chan.connecting) {
     c->chan.connecting(&c->chan);
-    c->rdreq.done = tcp_channel_read_done;
-    c->rdreq.client_data = c;
-    if (c->ssl) {
-#if ENABLE_SSL
-        c->rdreq.type = AsyncReqSelect;
-        c->rdreq.u.select.nfds = c->socket + 1;
-#else
-        assert(0);
-#endif
     }
     else {
-        c->rdreq.type = AsyncReqRecv;
-        c->rdreq.u.sio.sock = c->socket;
-        c->rdreq.u.sio.flags = 0;
+        trace(LOG_PROTOCOL, "channel server connecting");
+        send_hello_message(&c->chan);
     }
     ibuf_trigger_read(&c->ibuf);
 }
@@ -725,6 +736,21 @@ static ChannelTCP * create_channel(int sock, int en_ssl, int server) {
     c->ibuf.trigger_message = tcp_trigger_message;
     c->socket = sock;
     c->lock_cnt = 1;
+    c->rdreq.done = tcp_channel_read_done;
+    c->rdreq.client_data = c;
+    if (c->ssl) {
+#if ENABLE_SSL
+        c->rdreq.type = AsyncReqSelect;
+        c->rdreq.u.select.nfds = c->socket + 1;
+#else
+        assert(0);
+#endif
+    }
+    else {
+        c->rdreq.type = AsyncReqRecv;
+        c->rdreq.u.sio.sock = c->socket;
+        c->rdreq.u.sio.flags = 0;
+    }
     return c;
 }
 
@@ -778,9 +804,7 @@ static void refresh_peer_server(int sock, PeerServer * ps) {
 static void refresh_all_peer_server(void * x) {
     LINK * l;
 
-    if (list_is_empty(&server_list)) {
-        return;
-    }
+    if (list_is_empty(&server_list)) return;
     l = server_list.next;
     while (l != &server_list) {
         ServerTCP * si = servlink2tcp(l);
@@ -856,11 +880,18 @@ ChannelServer * channel_tcp_server(PeerServer * ps) {
     struct addrinfo * res = NULL;
     ServerTCP * si;
     char * host = peer_server_getprop(ps, "Host", NULL);
-    char * port = peer_server_getprop(ps, "Port", "");
+    char * port = peer_server_getprop(ps, "Port", NULL);
+    int def_port = 0;
+    char port_str[16];
 
     assert(is_dispatch_thread());
+    if (port == NULL) {
+        sprintf(port_str, "%d", DISCOVERY_TCF_PORT);
+        port = port_str;
+        def_port = 1;
+    }
     memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;
+    hints.ai_family = PF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = AI_PASSIVE;
@@ -873,14 +904,13 @@ ChannelServer * channel_tcp_server(PeerServer * ps) {
     sock = -1;
     reason = NULL;
     for (res = reslist; res != NULL; res = res->ai_next) {
-        int def_port = 0;
         sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
         if (sock < 0) {
             error = errno;
             reason = "create";
             continue;
         }
-#ifdef __linux
+#ifdef __linux__
         {
             const int i = 1;
             if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (char *)&i, sizeof(i)) < 0) {
@@ -893,28 +923,27 @@ ChannelServer * channel_tcp_server(PeerServer * ps) {
         }
 #endif
         set_socket_buffer_sizes(sock);
-        if (res->ai_addr->sa_family == AF_INET) {
+        if (bind(sock, res->ai_addr, res->ai_addrlen)) {
+            error = errno;
+            if (def_port && res->ai_addr->sa_family == AF_INET) {
             struct sockaddr_in addr;
+                trace(LOG_ALWAYS, "Cannot bind to default TCP port %d: %s",
+                    DISCOVERY_TCF_PORT, errno_to_str(error));
             assert(sizeof(addr) >= res->ai_addrlen);
             memset(&addr, 0, sizeof(addr));
             memcpy(&addr, res->ai_addr, res->ai_addrlen);
-            if (addr.sin_port == 0) {
-                addr.sin_port = htons(DISCOVERY_TCF_PORT);
-                if (!bind(sock, (struct sockaddr *)&addr, sizeof(addr))) {
-                    def_port = 1;
-                }
-                else {
-                    trace(LOG_ALWAYS, "Cannot bind to default TCP port %d: %s",
-                        DISCOVERY_TCF_PORT, errno_to_str(errno));
+                addr.sin_port = 0;
+                error = 0;
+                if (bind(sock, (struct sockaddr *)&addr, sizeof(addr))) {
+                    error = errno;
                 }
             }
-        }
-        if (!def_port && bind(sock, res->ai_addr, res->ai_addrlen)) {
-            error = errno;
+            if (error) {
             reason = "bind";
             closesocket(sock);
             sock = -1;
             continue;
+        }
         }
         if (listen(sock, 16)) {
             error = errno;
@@ -993,10 +1022,14 @@ void channel_tcp_connect(PeerServer * ps, ChannelConnectCallBack callback, void 
     struct addrinfo * reslist = NULL;
     struct addrinfo * res = NULL;
     ChannelConnectInfo * info = NULL;
+    char port_str[16];
 
-    if (port == NULL) port = "1534";
+    if (port == NULL) {
+        sprintf(port_str, "%d", DISCOVERY_TCF_PORT);
+        port = port_str;
+    }
     memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;
+    hints.ai_family = PF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
     error = loc_getaddrinfo(host, port, &hints, &reslist);

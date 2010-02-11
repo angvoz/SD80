@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -69,22 +69,12 @@ void exception(int error) {
             error, errno_to_str(error));
         exit(error);
     }
-    set_exception_errno(error, NULL);
+    error = set_errno(error, NULL);
     longjmp(chain->env, error);
 }
 
 void str_exception(int error, char * msg) {
-    assert(is_dispatch_thread());
-    assert(error != 0);
-    if (chain == NULL) {
-        trace(LOG_ALWAYS, "Unhandled exception %d: %s:\n  %s",
-            error, errno_to_str(error), msg);
-        exit(error);
-    }
-    strncpy(chain->msg, msg, sizeof(chain->msg) - 1);
-    chain->msg[sizeof(chain->msg) - 1] = 0;
-    set_exception_errno(error, msg);
-    longjmp(chain->env, error);
+    exception(set_errno(error, msg));
 }
 
 

@@ -27,7 +27,10 @@
 #include "asyncreq.h"
 #include "errors.h"
 
+#define MAX_WORKER_THREADS 32
+
 static LINK wtlist;
+static int wtlist_size = 0;
 static pthread_mutex_t wtlock;
 
 typedef struct WorkerThread {
@@ -170,17 +173,25 @@ static void * worker_thread_handler(void * x) {
          * not created unnecessarily */
         post_event(req->done, req);
         wt->req = NULL;
+        if (wtlist_size >= MAX_WORKER_THREADS) {
+            check_error(pthread_cond_destroy(&wt->cond));
+            loc_free(wt);
+            check_error(pthread_mutex_unlock(&wtlock));
+            break;
+        }
         list_add_last(&wt->wtlink, &wtlist);
+        wtlist_size++;
         for (;;) {
             check_error(pthread_cond_wait(&wt->cond, &wtlock));
             if (wt->req != NULL) break;
         }
         check_error(pthread_mutex_unlock(&wtlock));
     }
+    return NULL;
 }
 
 #if ENABLE_AIO
-static void aio_done(sigval_t arg) {
+static void aio_done(union sigval arg) {
     AsyncReqInfo * req = arg.sival_ptr;
     req->u.fio.rval = aio_return(&req->u.fio.aio);
     if (req->u.fio.rval < 0) req->error = aio_error(&req->u.fio.aio);
@@ -192,6 +203,7 @@ void async_req_post(AsyncReqInfo * req) {
     WorkerThread * wt;
 
     trace(LOG_ASYNCREQ, "async_req_post: req %p, type %d", req, req->type);
+    assert(req->done != NULL);
 
 #if ENABLE_AIO
     {
@@ -221,22 +233,16 @@ void async_req_post(AsyncReqInfo * req) {
 #endif
     check_error(pthread_mutex_lock(&wtlock));
     if (list_is_empty(&wtlist)) {
-        int error;
-
+        assert(wtlist_size == 0);
         wt = loc_alloc_zero(sizeof *wt);
-        check_error(pthread_cond_init(&wt->cond, NULL));
         wt->req = req;
-        error = pthread_create(&wt->thread, &pthread_create_attr, worker_thread_handler, wt);
-        if (error) {
-            trace(LOG_ALWAYS, "Can't create a worker thread: %d %s", error, errno_to_str(error));
-            loc_free(wt);
-            req->error = error;
-            post_event(req->done, req);
-        }
+        check_error(pthread_cond_init(&wt->cond, NULL));
+        check_error(pthread_create(&wt->thread, &pthread_create_attr, worker_thread_handler, wt));
     }
     else {
         wt = wtlink2wt(wtlist.next);
         list_remove(&wt->wtlink);
+        wtlist_size--;
         assert(wt->req == NULL);
         wt->req = req;
         check_error(pthread_cond_signal(&wt->cond));
@@ -246,5 +252,6 @@ void async_req_post(AsyncReqInfo * req) {
 
 void ini_asyncreq(void) {
     list_init(&wtlist);
+    wtlist_size = 0;
     check_error(pthread_mutex_init(&wtlock, NULL));
 }

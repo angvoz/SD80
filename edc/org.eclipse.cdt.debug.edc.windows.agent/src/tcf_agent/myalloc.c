@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -18,11 +18,14 @@
 
 #include "config.h"
 #include <string.h>
+#include <assert.h>
 #include "trace.h"
 #include "myalloc.h"
 
 void * loc_alloc(size_t size) {
     void * p;
+
+    assert((size & ~0x3ffffff) == 0);
 
     if (size == 0) {
         size = 1;
@@ -38,6 +41,8 @@ void * loc_alloc(size_t size) {
 void * loc_alloc_zero(size_t size) {
     void * p;
 
+    assert((size & ~0x3ffffff) == 0);
+
     if (size == 0) {
         size = 1;
     }
@@ -52,6 +57,8 @@ void * loc_alloc_zero(size_t size) {
 
 void * loc_realloc(void * ptr, size_t size) {
     void * p;
+
+    assert((size & ~0x3ffffff) == 0);
 
     if (size == 0) {
         size = 1;

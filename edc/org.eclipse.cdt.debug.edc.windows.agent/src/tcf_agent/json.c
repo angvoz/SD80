@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -39,14 +39,11 @@ static unsigned buf_size = 0;
 static void realloc_buf(void) {
     if (buf == NULL) {
         buf_size = 0x1000;
-        buf = (char *)loc_alloc(buf_size);
+        buf = loc_alloc(buf_size);
     }
     else {
-        char * tmp = (char *)loc_alloc(buf_size * 2);
-        memcpy(tmp, buf, buf_pos);
-        loc_free(buf);
-        buf = tmp;
         buf_size *= 2;
+        buf = loc_realloc(buf, buf_size);
     }
 }
 
@@ -389,13 +386,13 @@ int json_read_struct(InputStream * inp, JsonStructCallBack * call_back, void * a
     return 0;
 }
 
-char ** json_read_alloc_string_array(InputStream * inp, int * pos) {
+char ** json_read_alloc_string_array(InputStream * inp, int * cnt) {
     int ch = read_stream(inp);
-    *pos = 0;
     if (ch == 'n') {
         if (read_stream(inp) != 'u') exception(ERR_JSON_SYNTAX);
         if (read_stream(inp) != 'l') exception(ERR_JSON_SYNTAX);
         if (read_stream(inp) != 'l') exception(ERR_JSON_SYNTAX);
+        if (cnt) *cnt = 0;
         return NULL;
     }
     else if (ch != '[') {
@@ -457,7 +454,7 @@ char ** json_read_alloc_string_array(InputStream * inp, int * pos) {
             j += len_buf[i] + 1;
         }
         arr[len_pos] = NULL;
-        *pos = len_pos;
+        if (cnt) *cnt = len_pos;
         return arr;
     }
 }
@@ -514,17 +511,18 @@ void json_read_binary_start(JsonReadBinaryState * state, InputStream * inp) {
     }
 }
 
-size_t json_read_binary_data(JsonReadBinaryState * state, char * buf, size_t len) {
+size_t json_read_binary_data(JsonReadBinaryState * state, void * buf, size_t len) {
     size_t res = 0;
+    uint8_t * ptr = buf;
     if (state->encoding == ENCODING_BINARY) {
         if (len > (size_t)(state->size_start - state->size_done)) len = state->size_start - state->size_done;
-        while (res < len) buf[res++] = (char)read_stream(state->inp);
+        while (res < len) ptr[res++] = (uint8_t)read_stream(state->inp);
     }
     else {
         while (len > 0) {
             if (state->rem > 0) {
                 unsigned i = 0;
-                while (i < state->rem && i < len) *buf++ = state->buf[i++];
+                while (i < state->rem && i < len) *ptr++ = state->buf[i++];
                 len -= i;
                 res += i;
                 if (i < state->rem) {
@@ -536,9 +534,9 @@ size_t json_read_binary_data(JsonReadBinaryState * state, char * buf, size_t len
                 state->rem = 0;
             }
             if (len >= 3) {
-                int i = read_base64(state->inp, buf, len);
+                int i = read_base64(state->inp, (char *)ptr, len);
                 if (i == 0) break;
-                buf += i;
+                ptr += i;
                 len -= i;
                 res += i;
             }
@@ -614,17 +612,18 @@ void json_write_binary_start(JsonWriteBinaryState * state, OutputStream * out, i
     }
 }
 
-void json_write_binary_data(JsonWriteBinaryState * state, const char * data, size_t len) {
+void json_write_binary_data(JsonWriteBinaryState * state, const void * data, size_t len) {
     if (len <= 0) return;
     if (state->encoding == ENCODING_BINARY) {
         write_block_stream(state->out, data, len);
     }
     else {
+        const uint8_t * ptr = data;
         size_t rem = state->rem;
 
         if (rem > 0) {
             while (rem < 3 && len > 0) {
-                state->buf[rem++] = *data++;
+                state->buf[rem++] = *ptr++;
                 len--;
             }
             assert(rem <= 3);
@@ -637,8 +636,8 @@ void json_write_binary_data(JsonWriteBinaryState * state, const char * data, siz
             assert(rem == 0);
             rem = len % 3;
             len -= rem;
-            write_base64(state->out, data, len);
-            if (rem > 0) memcpy(state->buf, data + len, rem);
+            write_base64(state->out, (char *)ptr, len);
+            if (rem > 0) memcpy(state->buf, ptr + len, rem);
         }
         state->rem = rem;
     }
@@ -659,7 +658,7 @@ void json_write_binary_end(JsonWriteBinaryState * state) {
     }
 }
 
-void json_write_binary(OutputStream * out, const char * data, size_t size) {
+void json_write_binary(OutputStream * out, const void * data, size_t size) {
     if (data == NULL) {
         write_string(out, "null");
     }
@@ -722,6 +721,19 @@ static void skip_object(InputStream * inp) {
         if (skip_char(inp) != 'u') exception(ERR_JSON_SYNTAX);
         if (skip_char(inp) != 'l') exception(ERR_JSON_SYNTAX);
         if (skip_char(inp) != 'l') exception(ERR_JSON_SYNTAX);
+        return;
+    }
+    if (ch == 'f') {
+        if (skip_char(inp) != 'a') exception(ERR_JSON_SYNTAX);
+        if (skip_char(inp) != 'l') exception(ERR_JSON_SYNTAX);
+        if (skip_char(inp) != 's') exception(ERR_JSON_SYNTAX);
+        if (skip_char(inp) != 'e') exception(ERR_JSON_SYNTAX);
+        return;
+    }
+    if (ch == 't') {
+        if (skip_char(inp) != 'r') exception(ERR_JSON_SYNTAX);
+        if (skip_char(inp) != 'u') exception(ERR_JSON_SYNTAX);
+        if (skip_char(inp) != 'e') exception(ERR_JSON_SYNTAX);
         return;
     }
     if (ch == '"') {
@@ -788,7 +800,7 @@ char * json_skip_object(InputStream * inp) {
 }
 
 int read_errno(InputStream * inp) {
-    int err = 0;
+    ErrorReport * err = NULL;
     int ch = read_stream(inp);
     if (ch == 0) return 0;
     if (ch != '{') exception(ERR_JSON_SYNTAX);
@@ -800,12 +812,19 @@ int read_errno(InputStream * inp) {
             char name[256];
             json_read_string(inp, name, sizeof(name));
             if (read_stream(inp) != ':') exception(ERR_JSON_SYNTAX);
+            if (err == NULL) err = loc_alloc_zero(sizeof(ErrorReport));
             if (strcmp(name, "Code") == 0) {
-                err = json_read_long(inp) + STD_ERR_BASE;
+                err->code = json_read_long(inp);
+            }
+            else if (strcmp(name, "Time") == 0) {
+                err->time_stamp = json_read_int64(inp);
             }
             else {
-                buf_pos = 0;
-                skip_object(inp);
+                ErrorReportItem * i = loc_alloc_zero(sizeof(ErrorReportItem));
+                i->name = loc_strdup(name);
+                i->value = json_skip_object(inp);
+                i->next = err->props;
+                err->props = i;
             }
             ch = read_stream(inp);
             if (ch == ',') continue;
@@ -814,96 +833,54 @@ int read_errno(InputStream * inp) {
         }
     }
     if (read_stream(inp) != 0) exception(ERR_JSON_SYNTAX);
-    return err;
+    if (err == NULL) return 0;
+    if (err->code == 0) {
+        while (err->props != NULL) {
+            ErrorReportItem * i = err->props;
+            err->props = i->next;
+            loc_free(i->name);
+            loc_free(i->value);
+            loc_free(i);
+        }
+        loc_free(err);
+        return 0;
+    }
+    return set_error_report_errno(err);
 }
 
-static void write_error_code(OutputStream * out, int err, int code) {
-    /* code - TCF error code */
-    /* err - errno value*/
-    struct timespec timenow;
+static void write_error_props(OutputStream * out, ErrorReport * rep) {
+    ErrorReportItem * i = rep->props;
 
-    if (clock_gettime(CLOCK_REALTIME, &timenow) == 0) {
+    if (rep->time_stamp != 0) {
+        write_stream(out, ',');
         json_write_string(out, "Time");
         write_stream(out, ':');
-        json_write_ulong(out, (unsigned long)timenow.tv_sec);
-        write_stream(out, timenow.tv_nsec / 100000000 % 10 + '0');
-        write_stream(out, timenow.tv_nsec / 10000000 % 10 + '0');
-        write_stream(out, timenow.tv_nsec / 1000000 % 10 + '0');
-
-        write_stream(out, ',');
+        json_write_int64(out, rep->time_stamp);
     }
 
-#ifdef WIN32
-    if (get_win32_errno(err)) {
-        json_write_string(out, "Code");
-        write_stream(out, ':');
-        json_write_long(out, ERR_OTHER - STD_ERR_BASE);
-
+    while (i != NULL) {
         write_stream(out, ',');
-
-        json_write_string(out, "AltCode");
+        json_write_string(out, i->name);
         write_stream(out, ':');
-        json_write_long(out, get_win32_errno(err));
-
-        write_stream(out, ',');
-
-        json_write_string(out, "AltOrg");
-        write_stream(out, ':');
-        json_write_string(out, "WIN32");
-
-        write_stream(out, ',');
-        return;
+        write_string(out, i->value);
+        i = i->next;
     }
-#endif
-
-    json_write_string(out, "Code");
-    write_stream(out, ':');
-    json_write_long(out, code);
-
-    write_stream(out, ',');
-
-    if (err >= STD_ERR_BASE) return;
-
-    json_write_string(out, "AltCode");
-    write_stream(out, ':');
-    json_write_long(out, err);
-
-    write_stream(out, ',');
-
-    json_write_string(out, "AltOrg");
-    write_stream(out, ':');
-#if defined(_MSC_VER)
-    json_write_string(out, "MSC");
-#elif defined(_WRS_KERNEL)
-    json_write_string(out, "VxWorks");
-#elif defined(__CYGWIN__)
-    json_write_string(out, "CygWin");
-#elif defined(__linux)
-    json_write_string(out, "Linux");
-#else
-    json_write_string(out, "POSIX");
-#endif
-
-    write_stream(out, ',');
 }
 
 void write_error_object(OutputStream * out, int err) {
-    if (err == 0) {
+    ErrorReport * rep = get_error_report(err);
+    if (rep == NULL) {
         write_string(out, "null");
     }
     else {
-        int code = ERR_OTHER - STD_ERR_BASE;
-        const char * msg = errno_to_str(err);
-
         write_stream(out, '{');
 
-        err = get_exception_errno(err);
-        if (err > STD_ERR_BASE) code = err - STD_ERR_BASE;
-        write_error_code(out, err, code);
-
-        json_write_string(out, "Format");
+        json_write_string(out, "Code");
         write_stream(out, ':');
-        json_write_string(out, msg);
+        json_write_long(out, rep->code);
+
+        write_error_props(out, rep);
+        release_error_report(rep);
 
         write_stream(out, '}');
     }
@@ -915,13 +892,9 @@ void write_errno(OutputStream * out, int err) {
 }
 
 void write_service_error(OutputStream * out, int err, const char * service_name, int service_error) {
-    if (err != 0) {
-        const char * msg = errno_to_str(err);
-
+    ErrorReport * rep = get_error_report(err);
+    if (rep != NULL) {
         write_stream(out, '{');
-
-        err = get_exception_errno(err);
-        write_error_code(out, err, service_error);
 
         json_write_string(out, "Service");
         write_stream(out, ':');
@@ -929,9 +902,12 @@ void write_service_error(OutputStream * out, int err, const char * service_name,
 
         write_stream(out, ',');
 
-        json_write_string(out, "Format");
+        json_write_string(out, "Code");
         write_stream(out, ':');
-        json_write_string(out, msg);
+        json_write_long(out, service_error);
+
+        write_error_props(out, rep);
+        release_error_report(rep);
 
         write_stream(out, '}');
     }

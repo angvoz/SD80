@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -22,67 +22,96 @@
 #include <assert.h>
 #include "errors.h"
 #include "events.h"
+#include "streams.h"
+#include "myalloc.h"
+#include "json.h"
 #include "trace.h"
 
-#define ERR_SYSTEM  (ERR_EXCEPTION + 1)
-#define ERR_GAI     (ERR_EXCEPTION + 2)
+#define ERR_MESSAGE_MIN         (STD_ERR_BASE + 100)
+#define ERR_MESSAGE_MAX         (STD_ERR_BASE + 149)
 
-static char * exception_msg;
-static int exception_no;
+#define MESSAGE_CNT             (ERR_MESSAGE_MAX - ERR_MESSAGE_MIN + 1)
 
-static int errno_gai;
+#define SRC_SYSTEM  1
+#define SRC_GAI     2
+#define SRC_MESSAGE 3
+#define SRC_REPORT  4
+
+typedef struct ErrorMessage {
+    int source;
+    int error;
+    char * text;
+    ErrorReport * report;
+} ErrorMessage;
+
+static ErrorMessage msgs[MESSAGE_CNT];
+static int msgs_pos = 0;
+
+void release_error_report(ErrorReport * report) {
+    if (report == NULL) return;
+    assert(report->refs > 0);
+    report->refs--;
+    if (report->refs == 0) {
+        while (report->props != NULL) {
+            ErrorReportItem * i = report->props;
+            report->props = i->next;
+            loc_free(i->name);
+            loc_free(i->value);
+            loc_free(i);
+        }
+        loc_free(report);
+    }
+}
+
+static ErrorMessage * alloc_msg(int source) {
+    ErrorMessage * m = msgs + msgs_pos;
+    assert(is_dispatch_thread());
+    errno = ERR_MESSAGE_MIN + msgs_pos++;
+    if (msgs_pos >= MESSAGE_CNT) msgs_pos = 0;
+    m->source = source;
+    if (m->report != NULL) {
+        release_error_report(m->report);
+        m->report = NULL;
+    }
+    if (m->text != NULL) {
+        loc_free(m->text);
+        m->text = NULL;
+    }
+    return m;
+}
 
 #ifdef WIN32
 
-static DWORD errno_win32 = 0;
-
-static char * system_strerror(void) {
-    static char msg[256];
-    LPVOID msg_buf;
+static char * system_strerror(DWORD errno_win32) {
+    static char msg[512];
+    WCHAR * buf = NULL;
     assert(is_dispatch_thread());
-    if (!FormatMessage(
+    if (!FormatMessageW(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
-        FORMAT_MESSAGE_IGNORE_INSERTS,
+        FORMAT_MESSAGE_IGNORE_INSERTS |
+        FORMAT_MESSAGE_MAX_WIDTH_MASK,
         NULL,
         errno_win32,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* Default language */
-        (LPTSTR) &msg_buf,
-        0,
-        NULL))
+        (LPWSTR)&buf, 0, NULL) ||
+        !WideCharToMultiByte(CP_UTF8, 0, buf, -1, msg, sizeof(msg), NULL, NULL))
     {
         snprintf(msg, sizeof(msg), "System Error Code %lu", (unsigned long)errno_win32);
     }
-    else {
-        int l;
-        strncpy(msg, msg_buf, sizeof(msg) - 1);
-        msg[sizeof(msg) - 1] = 0;
-        LocalFree(msg_buf);
-        l = strlen(msg);
-        while (l > 0 && (msg[l - 1] == '\n' || msg[l - 1] == '\r')) l--;
-        msg[l] = 0;
-    }
+    if (buf != NULL) LocalFree(buf);
     return msg;
 }
 
 int set_win32_errno(DWORD win32_error_code) {
-    assert(is_dispatch_thread());
-    /* For WIN32 errors we always set errno to ERR_SYSTEM and
-     * store actual error code in errno_win32, which is used later
-     * when anyone calls errno_to_str() to get actual error message string.
-     */
     if (win32_error_code) {
-        errno = ERR_SYSTEM;
-        errno_win32 = win32_error_code;
+        ErrorMessage * m = alloc_msg(SRC_SYSTEM);
+        m->error = win32_error_code;
     }
     else {
         errno = 0;
     }
     return errno;
-}
-
-DWORD get_win32_errno(int no) {
-    return no == ERR_SYSTEM ? errno_win32 : 0;
 }
 
 #endif
@@ -140,41 +169,167 @@ const char * errno_to_str(int err) {
         return "Command is not recognized";
     case ERR_INV_TRANSPORT:
         return "Invalid transport name";
-    case ERR_EXCEPTION:
-        snprintf(buf, sizeof(buf), "%s: %s", exception_msg, errno_to_str(exception_no));
-        return buf;
-#ifdef WIN32
-    case ERR_SYSTEM:
-        return system_strerror();
-#endif
-    case ERR_GAI:
-        return loc_gai_strerror(errno_gai);
+    case ERR_CACHE_MISS:
+        return "Invalid data cache state";
     default:
+        if (err >= ERR_MESSAGE_MIN && err <= ERR_MESSAGE_MAX) {
+            ErrorMessage * m = msgs + (err - ERR_MESSAGE_MIN);
+            switch (m->source) {
+#ifdef WIN32
+            case SRC_SYSTEM:
+                return system_strerror(m->error);
+#endif
+            case SRC_GAI:
+                return loc_gai_strerror(m->error);
+            case SRC_MESSAGE:
+                snprintf(buf, sizeof(buf), "%s: %s", m->text, errno_to_str(m->error));
+                return buf;
+            case SRC_REPORT:
+                return errno_to_str(m->error);
+            }
+        }
         return strerror(err);
     }
 }
 
-void set_exception_errno(int no, char * msg) {
-    assert(is_dispatch_thread());
-    if (msg == NULL) {
-        errno = no;
+int set_errno(int no, char * msg) {
+    errno = no;
+    if (no != 0 && msg != NULL) {
+        ErrorMessage * m = alloc_msg(SRC_MESSAGE);
+        if (no >= ERR_MESSAGE_MIN && no <= ERR_MESSAGE_MAX) {
+            ErrorMessage * m = msgs + (no - ERR_MESSAGE_MIN);
+            if (m->source == SRC_MESSAGE) no = m->error;
+            else if (m->source == SRC_REPORT) no = m->error;
+            else no = ERR_OTHER;
+        }
+        m->error = no;
+        m->text = loc_strdup(msg);
     }
-    else {
-        errno = ERR_EXCEPTION;
-        exception_no = no;
-        exception_msg = msg;
-    }
-}
-
-int get_exception_errno(int no) {
-    return no == ERR_EXCEPTION ? exception_no : no;
-}
-
-int set_gai_errno(int n) {
-    assert(is_dispatch_thread());
-    errno = ERR_GAI;
-    errno_gai = n;
     return errno;
+}
+
+int set_gai_errno(int no) {
+        errno = no;
+    if (no != 0) {
+        ErrorMessage * m = alloc_msg(SRC_GAI);
+        m->error = no;
+    }
+    return errno;
+}
+
+int set_error_report_errno(ErrorReport * report) {
+    errno = 0;
+    if (report != NULL) {
+        ErrorMessage * m = alloc_msg(SRC_REPORT);
+        m->error = report->code + STD_ERR_BASE;
+        m->report = report;
+        report->refs++;
+    }
+    return errno;
+}
+
+int get_error_code(int no) {
+    while (no >= ERR_MESSAGE_MIN && no <= ERR_MESSAGE_MAX) {
+        ErrorMessage * m = msgs + (no - ERR_MESSAGE_MIN);
+        switch (m->source) {
+        case SRC_REPORT:
+        case SRC_MESSAGE:
+            no = m->error;
+            continue;
+        }
+        return ERR_OTHER;
+    }
+    return no;
+}
+
+static void add_report_prop(ErrorReport * report, const char * name, ByteArrayOutputStream * buf) {
+    ErrorReportItem * i = loc_alloc(sizeof(ErrorReportItem));
+    i->name = loc_strdup(name);
+    get_byte_array_output_stream_data(buf, &i->value, NULL);
+    i->next = report->props;
+    report->props = i;
+}
+
+static void add_report_prop_int(ErrorReport * report, const char * name, uint64_t n) {
+    ByteArrayOutputStream buf;
+    OutputStream * out = create_byte_array_output_stream(&buf);
+    json_write_int64(out, n);
+    write_stream(out, 0);
+    add_report_prop(report, name, &buf);
+}
+
+static void add_report_prop_str(ErrorReport * report, const char * name, const char * str) {
+    ByteArrayOutputStream buf;
+    OutputStream * out = create_byte_array_output_stream(&buf);
+    json_write_string(out, str);
+    write_stream(out, 0);
+    add_report_prop(report, name, &buf);
+}
+
+ErrorReport * get_error_report(int err) {
+    ErrorMessage * m = NULL;
+    if (err >= ERR_MESSAGE_MIN && err <= ERR_MESSAGE_MAX) {
+        m = msgs + (err - ERR_MESSAGE_MIN);
+        if (m->report != NULL) {
+            m->report->refs++;
+            return m->report;
+        }
+    }
+    if (err != 0) {
+        ErrorReport * report = loc_alloc_zero(sizeof(ErrorReport));
+        struct timespec timenow;
+
+        if (clock_gettime(CLOCK_REALTIME, &timenow) == 0) {
+            report->time_stamp = (uint64_t)timenow.tv_sec * 1000 + timenow.tv_nsec / 1000000;
+        }
+
+        add_report_prop_str(report, "Format", errno_to_str(err));
+
+        if (m != NULL) {
+            if (m->source == SRC_MESSAGE) {
+                err = m->error;
+            }
+#ifdef WIN32
+            else if (m->source == SRC_SYSTEM) {
+                add_report_prop_int(report, "AltCode", m->error);
+                add_report_prop_str(report, "AltOrg", "WIN32");
+                err = ERR_OTHER;
+            }
+#endif
+    else {
+                err = ERR_OTHER;
+    }
+}
+
+        if (err < STD_ERR_BASE) {
+            add_report_prop_int(report, "AltCode", err);
+#if defined(_MSC_VER)
+            add_report_prop_str(report, "AltOrg", "MSC");
+#elif defined(_WRS_KERNEL)
+            add_report_prop_str(report, "AltOrg", "VxWorks");
+#elif defined(__CYGWIN__)
+            add_report_prop_str(report, "AltOrg", "CygWin");
+#elif defined(__linux__)
+            add_report_prop_str(report, "AltOrg", "Linux");
+#else
+            add_report_prop_str(report, "AltOrg", "POSIX");
+#endif
+            err = ERR_OTHER;
+}
+
+        assert(err >= STD_ERR_BASE);
+        assert(err < ERR_MESSAGE_MIN);
+
+        report->code = err - STD_ERR_BASE;
+        report->refs = 1;
+        if (m != NULL) {
+            assert(m->report == NULL);
+            m->report = report;
+            report->refs++;
+        }
+        return report;
+    }
+    return NULL;
 }
 
 #ifdef NDEBUG

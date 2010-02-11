@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2009 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -70,9 +70,6 @@ typedef int ssize_t;
 
 typedef int socklen_t;
 
-extern unsigned char BREAK_INST[];  /* breakpoint instruction */
-#define BREAK_SIZE 1                /* breakpoint instruction size */
-
 #if defined(__CYGWIN__)
 
 #ifndef _LARGEFILE_SOURCE
@@ -88,7 +85,6 @@ extern unsigned char BREAK_INST[];  /* breakpoint instruction */
 extern void __stdcall freeaddrinfo(struct addrinfo *);
 extern int __stdcall getaddrinfo(const char *, const char *,
                 const struct addrinfo *, struct addrinfo **);
-extern const char * loc_gai_strerror(int ecode);
 
 #else /* not __CYGWIN__ */
 
@@ -107,6 +103,7 @@ struct timespec {
 typedef unsigned int useconds_t;
 #elif defined(_MSC_VER)
 #define __i386__
+#define strcasecmp(x,y) stricmp(x,y)
 typedef unsigned long pid_t;
 typedef unsigned long useconds_t;
 #endif
@@ -126,9 +123,6 @@ extern int ftruncate(int f, int64_t size);
 #if !defined(__MINGW32__)
 #define snprintf _snprintf
 #endif
-
-
-#define loc_gai_strerror gai_strerror
 
 extern int getuid(void);
 extern int geteuid(void);
@@ -201,6 +195,8 @@ extern struct utf8_dirent * readdir(DIR * dir);
 
 #endif /* __CYGWIN__ */
 
+extern const char * loc_gai_strerror(int ecode);
+
 #define MSG_MORE 0
 
 extern const char * inet_ntop(int af, const void * src, char * dst, socklen_t size);
@@ -244,12 +240,14 @@ extern int pthread_join(pthread_t thread, void **value_ptr);
  */
 #define socket(af, type, protocol) wsa_socket(af, type, protocol)
 #define connect(socket, addr, addr_size) wsa_connect(socket, addr, addr_size)
-// #define bind(socket, addr, addr_size) wsa_bind(socket, addr, addr_size)
+#define bind(socket, addr, addr_size) wsa_bind(socket, addr, addr_size)
 #define listen(socket, size) wsa_listen(socket, size)
 #define recv(socket, buf, size, flags) wsa_recv(socket, buf, size, flags)
 #define recvfrom(socket, buf, size, flags, addr, addr_size) wsa_recvfrom(socket, buf, size, flags, addr, addr_size)
 #define send(socket, buf, size, flags) wsa_send(socket, buf, size, flags)
 #define sendto(socket, buf, size, flags, dest_addr, dest_size) wsa_sendto(socket, buf, size, flags, dest_addr, dest_size)
+#define setsockopt(socket, level, opt, value, size) wsa_setsockopt(socket, level, opt, value, size)
+#define getsockname(socket, name, size) wsa_getsockname(socket, name, size)
 
 extern int wsa_socket(int af, int type, int protocol);
 extern int wsa_connect(int socket, const struct sockaddr * addr, int addr_size);
@@ -261,6 +259,8 @@ extern int wsa_recvfrom(int socket, void * buf, size_t size, int flags,
 extern int wsa_send(int socket, const void * buf, size_t size, int flags);
 extern int wsa_sendto(int socket, const void * buf, size_t size, int flags,
                   const struct sockaddr * dest_addr, socklen_t dest_size);
+extern int wsa_setsockopt(int socket, int level, int opt, const char * value, int size);
+extern int wsa_getsockname(int socket, struct sockaddr * name, int * size);
 
 #ifndef SHUT_WR
 #define SHUT_WR SD_SEND
@@ -281,6 +281,7 @@ extern char * canonicalize_file_name(const char * path);
 #include <vxWorks.h>
 #include <inetLib.h>
 #include <pthread.h>
+#include <strings.h>
 #include <sys/ioctl.h>
 #include <netinet/tcp.h>
 #include <net/if.h>
@@ -293,9 +294,6 @@ extern char * canonicalize_file_name(const char * path);
 #endif
 
 #define environ taskIdCurrent->ppEnviron
-
-#define get_regs_PC(x) (*(int *)((int)&(x) + PC_OFFSET))
-#define set_regs_PC(x,y) *(int *)((int)&(x) + PC_OFFSET) = (int)(y)
 
 #define closesocket close
 
@@ -327,7 +325,9 @@ extern int loc_getaddrinfo(const char * nodename, const char * servname,
        const struct addrinfo * hints, struct addrinfo ** res);
 extern const char * loc_gai_strerror(int ecode);
 
-#elif defined(__APPLE__)
+#else
+/* Linux, BSD, MacOS, UNIX */
+
 #ifndef _LARGEFILE_SOURCE
 #error "Need CC command line option: -D_LARGEFILE_SOURCE"
 #endif
@@ -344,7 +344,6 @@ extern const char * loc_gai_strerror(int ecode);
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -357,117 +356,25 @@ extern const char * loc_gai_strerror(int ecode);
 #define loc_gai_strerror gai_strerror
 
 #define O_BINARY 0
+
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+
 #define O_LARGEFILE 0
-#define FILE_PATH_SIZE PATH_MAX
-#define closesocket close
-#define ifr_netmask ifr_addr
 #define canonicalize_file_name(path)    realpath(path, NULL)
-
-#ifndef SA_LEN
-# ifdef HAVE_SOCKADDR_SA_LEN
 #  define SA_LEN(addr) ((addr)->sa_len)
-# else /* HAVE_SOCKADDR_SA_LEN */
-#  ifdef HAVE_STRUCT_SOCKADDR_STORAGE
-static size_t get_sa_len(const struct sockaddr *addr) {
-    switch (addr->sa_family) {
-#   ifdef AF_UNIX
-        case AF_UNIX: return sizeof(struct sockaddr_un);
-#   endif
-#   ifdef AF_INET
-        case AF_INET: return (sizeof (struct sockaddr_in));
-#   endif
-#   ifdef AF_INET6
-        case AF_INET6: return (sizeof (struct sockaddr_in6));
-#   endif
-        default: return (sizeof (struct sockaddr));
-    }
-}
-#   define SA_LEN(addr)   (get_sa_len(addr))
-#  else /* HAVE_SOCKADDR_STORAGE */
-#   define SA_LEN(addr)   (sizeof (struct sockaddr))
-#  endif /* HAVE_SOCKADDR_STORAGE */
-# endif /* HAVE_SOCKADDR_SA_LEN */
-#endif /* SA_LEN */
-
-extern unsigned char BREAK_INST[];  /* breakpoint instruction */
-#define BREAK_SIZE 1                /* breakpoint instruction size */
-
-#define CLOCK_REALTIME 1
-typedef int clockid_t;
-extern int clock_gettime(clockid_t clock_id, struct timespec * tp);
-
 extern char **environ;
 
-#define MSG_MORE 0
+#else /* not BSD */
 
-/* Mac OS X */
-#else
-/* Linux, UNIX */
+#  define SA_LEN(addr) (sizeof(struct sockaddr))
 
-#ifndef _LARGEFILE_SOURCE
-#error "Need CC command line option: -D_LARGEFILE_SOURCE"
-#endif
-
-#ifndef _GNU_SOURCE
-#error "Need CC command line option: -D_GNU_SOURCE"
-#endif
-
-#include <unistd.h>
-#include <memory.h>
-#include <pthread.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <limits.h>
-#include <stdint.h>
-
-#define loc_freeaddrinfo freeaddrinfo
-#define loc_getaddrinfo getaddrinfo
-#define loc_gai_strerror gai_strerror
-
-#define O_BINARY 0
+#endif /* BSD */
 
 extern int tkill(pid_t pid, int signal);
 
 #define FILE_PATH_SIZE PATH_MAX
 
 #define closesocket close
-
-extern unsigned char BREAK_INST[];  /* breakpoint instruction */
-#define BREAK_SIZE get_break_size() /* breakpoint instruction size */
-extern size_t get_break_size(void);
-
-#ifndef SA_LEN
-# ifdef HAVE_SOCKADDR_SA_LEN
-#  define SA_LEN(addr) ((addr)->sa_len)
-# else /* HAVE_SOCKADDR_SA_LEN */
-#  ifdef HAVE_STRUCT_SOCKADDR_STORAGE
-static size_t get_sa_len(const struct sockaddr * addr) {
-    switch (addr->sa_family) {
-#   ifdef AF_UNIX
-        case AF_UNIX: return sizeof(struct sockaddr_un);
-#   endif
-#   ifdef AF_INET
-        case AF_INET: return (sizeof (struct sockaddr_in));
-#   endif
-#   ifdef AF_INET6
-        case AF_INET6: return (sizeof (struct sockaddr_in6));
-#   endif
-        default: return (sizeof (struct sockaddr));
-    }
-}
-#   define SA_LEN(addr)   (get_sa_len(addr))
-#  else /* HAVE_SOCKADDR_STORAGE */
-#   define SA_LEN(addr)   (sizeof (struct sockaddr))
-#  endif /* HAVE_SOCKADDR_STORAGE */
-# endif /* HAVE_SOCKADDR_SA_LEN */
-#endif /* SA_LEN */
 
 #endif
 

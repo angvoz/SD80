@@ -36,6 +36,9 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 	}
 
 	public int fieldCount() {
+		if (!addedInherited) {
+			addInheritedFields();
+		}
 		return fields.size();
 	}
 

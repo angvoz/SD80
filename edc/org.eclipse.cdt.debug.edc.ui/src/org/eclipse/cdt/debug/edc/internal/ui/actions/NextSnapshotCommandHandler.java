@@ -12,8 +12,6 @@ package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
-import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.debug.ui.contexts.DebugContextEvent;
@@ -25,20 +23,15 @@ public class NextSnapshotCommandHandler extends AbstractSnapshotCommandHandler {
 	}
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		final DsfSession session = DsfSession.getSession(getSelectionExecutionDMC().getSessionId());
 
-		session.getExecutor().execute(new DsfRunnable() {
-			public void run() {
-				if (isSnapshotSession()) {
-					try {
-						getAlbumContext().openNextSnapshot();
-					} catch (Exception e) {
-						EDCDebugger.getMessageLogger().logError(null, e);
-					}
-				}
+		if (isSnapshotSession()) {
+			try {
+				getAlbumContext().openNextSnapshot();
+			} catch (Exception e) {
+				EDCDebugger.getMessageLogger().logError(null, e);
 			}
-		});
-
+		}
+	
 		return null;
 	}
 

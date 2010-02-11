@@ -77,7 +77,7 @@ public class Memory extends AbstractEDCService implements IMemory, ICachingServi
 		assert memoryDMC instanceof DMContext;
 		MemoryCache cache = memoryCaches.get(((DMContext) memoryDMC).getID());
 		if (cache == null) {
-			cache = new MemoryCache();
+			cache = new MemoryCache(getTargetEnvironmentService().getMemoryCacheMinimumBlockSize());
 			memoryCaches.put(((DMContext) memoryDMC).getID(), cache);
 		}
 		return cache;
@@ -153,8 +153,7 @@ public class Memory extends AbstractEDCService implements IMemory, ICachingServi
 
 		// Validate the context
 		if (context == null) {
-			drm
-					.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
+			drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
 							"Unknown context type", null)); //$NON-NLS-1$);
 			drm.done();
 			return;
@@ -380,7 +379,7 @@ public class Memory extends AbstractEDCService implements IMemory, ICachingServi
 		for (int i = 0; i < numContexts; i++) {
 			Element contextElement = (Element) contextElements.item(i);
 			String contextID = contextElement.getAttribute(CONTEXT_ID);
-			MemoryCache cache = new MemoryCache();
+			MemoryCache cache = new MemoryCache(getTargetEnvironmentService().getMemoryCacheMinimumBlockSize());
 			cache.loadSnapshot(contextElement);
 			memoryCaches.put(contextID, cache);
 		}

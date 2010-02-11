@@ -71,7 +71,7 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 						childPrefixSB.append(childExpression.getName());
 						childPrefixSB.append(FormatUtils.getFieldAccessor(unqualifiedType));
 						if (curDepth < MAX_DEPTH)
-							addVariableFields(childPrefixSB.toString(), sb, child, curDepth++);
+							addVariableFields(childPrefixSB.toString(), sb, child, ++curDepth);
 						else {
 							addSimpleChild(prefix, sb, childExpression);
 						}

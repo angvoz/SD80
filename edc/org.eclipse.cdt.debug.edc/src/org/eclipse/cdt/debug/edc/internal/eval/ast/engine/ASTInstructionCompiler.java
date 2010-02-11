@@ -75,7 +75,6 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushDoubl
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushFloat;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushLongOrBigInteger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushString;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushThis;
 import org.eclipse.cdt.internal.core.dom.parser.ASTAmbiguousNode;
 
 @SuppressWarnings("restriction")
@@ -393,7 +392,7 @@ public class ASTInstructionCompiler extends ASTVisitor {
 			push(new PushBoolean(true));
 			break;
 		case IASTLiteralExpression.lk_this:
-			push(new PushThis());
+			push(new EvaluateID("this")); //$NON-NLS-1$
 			break;
 		default:
 			push(new NoOp(counter));

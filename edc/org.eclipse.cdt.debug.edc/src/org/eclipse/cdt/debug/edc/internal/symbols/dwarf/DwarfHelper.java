@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.eclipse.cdt.debug.edc.internal.HostOS;
+import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
@@ -60,7 +61,7 @@ public class DwarfHelper {
 				fullName += File.separatorChar;
 			fullName += name;
 		}
-
+		
 		// some fix-up like cygwin style path conversion.
 		path = fixUpPath(fullName);
 
@@ -116,16 +117,32 @@ public class DwarfHelper {
 		 */
 		boolean isCygwin = false;
 		int deleteTill = 0;
+		
+		// These paths may appear in Cygwin-compiled code, so check on any host
 		if (path.length() > 12 && path.startsWith("/cygdrive/") && ('/' == path.charAt(11))) { //$NON-NLS-1$
 			isCygwin = true;
 			deleteTill = 10;
 		}
 
+		// These paths may appear in Cygwin-compiled code, so check on any host
 		if (path.length() > 4 && path.startsWith("//") && ('/' == path.charAt(3))) { //$NON-NLS-1$
 			isCygwin = true;
 			deleteTill = 2;
 		}
 
+		// New-style Cygwin is different and has neither prefix.  
+		// But this check only makes sense on a Windows host, since
+		// it may be a valid Unix-host path.
+		//
+		//	/C/sources/foo.c --> c:\sources\foo.c
+		if (HostOS.IS_WIN32 && path.length() > 3 
+				&& path.charAt(0) == '/'
+				&& Character.isLetter(path.charAt(1))
+				&& path.charAt(2) == '/') {
+			isCygwin = true;
+			deleteTill = 1;
+		}
+		
 		if (isCygwin) {
 			StringBuffer buf = new StringBuffer(path);
 			buf.delete(0, deleteTill);
@@ -143,10 +160,28 @@ public class DwarfHelper {
 	 * buffer
 	 */
 	public static String readString(ByteBuffer data) {
-		// TODO make this faster
 		String str;
 
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
+		while (data.hasRemaining()) {
+			byte c = data.get();
+			if (c == 0) {
+				break;
+			}
+			sb.append((char) c);
+		}
+
+		str = sb.toString();
+		return str;
+	}
+	/**
+	 * Read a null-ended string from the given "data" stream. data : IN, byte
+	 * buffer
+	 */
+	public static String readString(IStreamBuffer data) {
+		String str;
+
+		StringBuilder sb = new StringBuilder();
 		while (data.hasRemaining()) {
 			byte c = data.get();
 			if (c == 0) {

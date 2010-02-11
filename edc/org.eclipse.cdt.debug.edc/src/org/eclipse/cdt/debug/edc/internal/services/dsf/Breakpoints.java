@@ -930,7 +930,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			// the point is a symbol
 			IEDCSymbolReader symReader = module.getSymbolReader();
 			if (symReader != null) {
-				Collection<IFunctionScope> functions = symReader.getFunctionsByName(startupStopAt);
+				Collection<IFunctionScope> functions = symReader.getModuleScope().getFunctionsByName(startupStopAt);
 				if (!functions.isEmpty()) {
 					// TODO what if there are multiple functions with this name?
 					iaddr = module.toRuntimeAddress(functions.iterator().next().getLowAddress());
@@ -969,6 +969,19 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		// breakpoints for it.
 		ModuleUnloadedEvent event = (ModuleUnloadedEvent) e;
 		final ExecutionDMC executionDMC = event.getExecutionDMC();
+		final ModuleDMC module = (ModuleDMC) e.getUnloadedModuleContext();
+		
+		final boolean requireResume;
+		Object requireResumeValue = module.getProperties().get("RequireResume");
+		if (requireResumeValue != null) {
+			if (requireResumeValue instanceof Boolean)
+				requireResume = (Boolean) requireResumeValue;
+			else
+				requireResume = true;
+		}
+		else
+			requireResume = true;
+		
 		BreakpointsMediator2 bm = getServicesTracker().getService(BreakpointsMediator2.class);
 		IBreakpointsTargetDMContext bt_dmc = DMContexts.getAncestorOfType(e.getUnloadedModuleContext(),
 				IBreakpointsTargetDMContext.class);
@@ -987,6 +1000,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 				super.handleSuccess();
 				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
 						"breakpoints uninstalled and resume process...");
+				if (requireResume)
 				executionDMC.resume(new RequestMonitor(getExecutor(), null));
 			}
 		});

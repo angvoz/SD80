@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.math.BigInteger;
 
+
 /*
  * Various utility routines for Type objects
  */
@@ -65,8 +66,15 @@ public class TypeUtils {
 		if (!(type instanceof IType))
 			return null;
 
-		while (type instanceof ITypedef || type instanceof IQualifierType)
+		if (type instanceof IForwardTypeReference)
+			type = ((IForwardTypeReference) type).getReferencedType();
+		
+		while (type instanceof ITypedef || type instanceof IQualifierType) {
 			type = ((IType) type).getType();
+			
+			if (type instanceof IForwardTypeReference)
+				type = ((IForwardTypeReference) type).getReferencedType();
+		}
 
 		return (IType) type;
 	}
@@ -76,9 +84,16 @@ public class TypeUtils {
 		if (!(type instanceof IType))
 			return null;
 
+		if (type instanceof IForwardTypeReference)
+			type = ((IForwardTypeReference) type).getReferencedType();
+		
 		while (type instanceof ITypedef || type instanceof IQualifierType 
-				|| type instanceof IPointerType || type instanceof IArrayType)
+				|| type instanceof IPointerType || type instanceof IArrayType) {
 			type = ((IType) type).getType();
+			
+			if (type instanceof IForwardTypeReference)
+				type = ((IForwardTypeReference) type).getReferencedType();
+		}
 
 		return (IType) type;
 	}
@@ -88,10 +103,17 @@ public class TypeUtils {
 		if (!(type instanceof IType))
 			return null;
 
+		if (type instanceof IForwardTypeReference)
+			type = ((IForwardTypeReference) type).getReferencedType();
+		
 		while (type instanceof IQualifierType 
-				|| type instanceof IPointerType || type instanceof IArrayType)
+				|| type instanceof IPointerType || type instanceof IArrayType) {
 			type = ((IType) type).getType();
-
+			
+			if (type instanceof IForwardTypeReference)
+				type = ((IForwardTypeReference) type).getReferencedType();
+		}
+		
 		return (IType) type;
 	}
 

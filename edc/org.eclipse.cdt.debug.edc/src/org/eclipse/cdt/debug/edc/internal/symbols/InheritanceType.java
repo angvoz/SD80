@@ -24,7 +24,6 @@ public class InheritanceType extends Type implements IInheritance {
 		super("", scope, 0, properties);
 		this.accessibility = accessibility;
 		this.fieldsOffset = inheritanceOffset;
-		this.properties = properties;
 	}
 	
 	public int getAccessibility() {
@@ -33,17 +32,5 @@ public class InheritanceType extends Type implements IInheritance {
 	
 	public long getFieldsOffset() {
 		return this.fieldsOffset;
-	}
-
-	public Map<Object, Object> getProperties() {
-		return properties;
-	}
-
-	public IType getType() {
-		return type;
-	}
-
-	public void setType(IType type) {
-		this.type = type;
 	}
 }

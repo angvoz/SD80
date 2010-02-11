@@ -39,22 +39,31 @@ import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.ZipFileUtils;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.MapEntrySourceContainer;
-import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
+import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
+import org.eclipse.cdt.dsf.concurrent.Query;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.DsfSession.SessionEndedListener;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.PlatformObject;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
@@ -67,6 +76,7 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.osgi.framework.Bundle;
+import org.osgi.service.prefs.BackingStoreException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -107,8 +117,11 @@ public class Album extends PlatformObject {
 
 	private static String[] DSA_FILE_EXTENSIONS = new String[] {"dsa"};
 
+	private static boolean snapshotViewInited;
+	
 	// Preferences
 	private static final String CREATION_CONTROL = "creation_control";
+	private static final String VARIABLE_CAPTURE_DEPTH = "variable_capture_depth";
 
 	private static final String CAMERA_CLICK_WAV = "/sounds/camera_click.wav";
 	private static final String SNAPSHOT_VIEW_ID = "org.eclipse.cdt.debug.edc.ui.views.SnapshotView";
@@ -145,7 +158,8 @@ public class Album extends PlatformObject {
 	private static Map<String, Album> albumsRecordingBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());	
 	private static Map<IPath, Album> albumsByLocation = Collections.synchronizedMap(new HashMap<IPath, Album>());
 	private static String snapshotCreationControl;
-
+	private static int variableCaptureDepth;
+	
 	private static boolean sessionEndedListenerAdded;
 	private static SessionEndedListener sessionEndedListener = new SessionEndedListener() {
 
@@ -180,9 +194,7 @@ public class Album extends PlatformObject {
 	public Album() {
 		super();
 		try {
-			document = DebugPlugin.newDocument();
-			albumRootElement = document.createElement(ALBUM);
-			document.appendChild(albumRootElement);
+			setDocument(DebugPlugin.newDocument());
 			if (!sessionEndedListenerAdded)
 				DsfSession.addSessionEndedListener(sessionEndedListener);
 			sessionEndedListenerAdded = true;
@@ -252,7 +264,7 @@ public class Album extends PlatformObject {
 		return launch != null && launch.isSnapshotLaunch();
 	}
 	
-	public Snapshot createSnapshot(DsfSession session, StackFrameDMC stackFrame) {
+	public Snapshot createSnapshot(DsfSession session, StackFrameDMC stackFrame, IProgressMonitor monitor) {
 		configureAlbum();
 		
 		if (getLocation() == null || !getLocation().toFile().exists()){
@@ -260,10 +272,10 @@ public class Album extends PlatformObject {
 		}
 		
 		Snapshot snapshot = new Snapshot(this, session, stackFrame);
-		snapshot.writeSnapshotData();
+		snapshot.writeSnapshotData(monitor);
 
 		snapshotList.add(snapshot);
-		saveAlbum(new NullProgressMonitor());
+		saveAlbum(monitor);
 		
 		return snapshot;
 	}
@@ -296,7 +308,7 @@ public class Album extends PlatformObject {
 			Element propsElement = SnapshotUtils.makeXMLFromProperties(document, infoProps);
 			infoElement.appendChild(propsElement);
 
-			albumRootElement.appendChild(infoElement);
+			getAlbumRootElement().appendChild(infoElement);
 			albumInfoSaved = true;
 		}
 	}
@@ -309,7 +321,7 @@ public class Album extends PlatformObject {
 				fileElement.setAttribute("path", filePath.toOSString());
 				resourcesElement.appendChild(fileElement);
 			}
-			albumRootElement.appendChild(resourcesElement);
+			getAlbumRootElement().appendChild(resourcesElement);
 			resourceListSaved = true;
 		}
 	}
@@ -321,6 +333,7 @@ public class Album extends PlatformObject {
 				// If metatdata is saved, it must be a live debug session so
 				// we need to add a new snapshot to the snapshot list
 				NodeList snapMetaDataNode = document.getElementsByTagName(METADATA);
+				assert snapMetaDataNode.item(0) != null;
 				document.getDocumentElement().removeChild(snapMetaDataNode.item(0));
 			}
 			
@@ -353,7 +366,7 @@ public class Album extends PlatformObject {
 				
 				snapshotsElement.appendChild(snapshotMetadataElement);
 			}
-			albumRootElement.appendChild(metadataElement);
+			getAlbumRootElement().appendChild(metadataElement);
 			metadataSaved = true;
 		}
 	}
@@ -371,7 +384,7 @@ public class Album extends PlatformObject {
 				launchElement.setAttribute("name", launchName);
 				Element propsElement = SnapshotUtils.makeXMLFromProperties(document, map);
 				launchElement.appendChild(propsElement);
-				albumRootElement.appendChild(launchElement);
+				getAlbumRootElement().appendChild(launchElement);
 			} catch (CoreException e) {
 				EDCDebugger.getMessageLogger().logError(null, e);
 			}
@@ -553,16 +566,33 @@ public class Album extends PlatformObject {
 		stream.close();
 	}
 
-	public void openSnapshot(int index) throws Exception {
-		currentSnapshotIndex = index;
-		loadAlbum(false);
-		DsfSession session = DsfSession.getSession(sessionID);
-		if (session != null && snapshotList.size() >= index) {
-			Snapshot snapshot = snapshotList.get(index);
-			snapshot.open(session);
-		}
-		fireAlbumStateChanged(this);
-		showSnapshotView();
+	public void openSnapshot(final int index) {
+
+		final Album album = this;
+		final DsfSession session = DsfSession.getSession(sessionID);
+
+		DsfRunnable openIt = new DsfRunnable() {
+			public void run() {
+				currentSnapshotIndex = index;
+				try {
+					loadAlbum(false);
+				} catch (Exception e) {
+					EDCDebugger.getMessageLogger().logError(null, e);
+				}
+				if (session != null && snapshotList.size() >= index) {
+					Snapshot snapshot = snapshotList.get(index);
+					snapshot.open(session);
+				}
+				fireAlbumStateChanged(album);
+				showSnapshotView();
+			}
+		};
+
+		if (session.getExecutor().isInExecutorThread())
+			openIt.run();
+		else
+			session.getExecutor().execute(openIt);
+
 	}
 
 	/**
@@ -607,7 +637,7 @@ public class Album extends PlatformObject {
 			BufferedInputStream stream = ZipFileUtils.openFile(albumFile, ALBUM_DATA, DSA_FILE_EXTENSIONS);
 			DocumentBuilder parser = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 			parser.setErrorHandler(new DefaultHandler());
-			document = parser.parse(new InputSource(stream));
+			setDocument(parser.parse(new InputSource(stream)));
 
 			loadAlbumInfo();
 			loadLaunchConfiguration();
@@ -644,7 +674,7 @@ public class Album extends PlatformObject {
 				stream = ZipFileUtils.openFile(albumFile, ALBUM_DATA, DSA_FILE_EXTENSIONS);
 				DocumentBuilder parser = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 				parser.setErrorHandler(new DefaultHandler());
-				document = parser.parse(new InputSource(stream));
+				setDocument(parser.parse(new InputSource(stream)));
 				loadSnapshotMetadata();
 				loadLaunchConfiguration(); // need to load launch config in case we need to delete it
 
@@ -661,6 +691,30 @@ public class Album extends PlatformObject {
 		document.getElementsByTagName(INFO).item(0);
 	}
 
+	private void setDocument(Document newDoc)
+	{
+		document = newDoc;
+		albumRootElement = null;
+	}
+	
+	private Element getAlbumRootElement()
+	{
+		if (albumRootElement == null)
+		{
+			NodeList albumRootElements = document.getElementsByTagName(ALBUM);
+			if (albumRootElements.getLength() == 0)
+			{
+				albumRootElement = document.createElement(ALBUM);
+				document.appendChild(albumRootElement);
+			}
+			else
+			{
+				albumRootElement = (Element) albumRootElements.item(0);
+			}
+		}
+		return albumRootElement;
+	}
+	
 	private void loadResourceList() {
 		NodeList resources = document.getElementsByTagName(RESOURCES);
 		NodeList elementFiles = ((Element) resources.item(0)).getElementsByTagName(FILE);
@@ -839,10 +893,35 @@ public class Album extends PlatformObject {
 				device != null ? new Path(device) : Path.ROOT, albumRoot) };
 		mappingContainer.addMapEntries(entries);
 	}
+	
+	public static void setVariableCaptureDepth(int newSetting) {
+		variableCaptureDepth = newSetting;
+		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		scope.putInt(VARIABLE_CAPTURE_DEPTH, variableCaptureDepth);
+		try {
+			scope.flush();
+		} catch (BackingStoreException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
+	}
+
+	public static int getVariableCaptureDepth() {
+		if (variableCaptureDepth == 0) {
+			variableCaptureDepth = Platform.getPreferencesService().getInt(EDCDebugger.PLUGIN_ID,
+					VARIABLE_CAPTURE_DEPTH, 5, null);
+		}
+		return variableCaptureDepth;
+	}
 
 	public static void setSnapshotCreationControl(String newSetting) {
 		snapshotCreationControl = newSetting;
-		new InstanceScope().getNode(EDCDebugger.PLUGIN_ID).put(CREATION_CONTROL, snapshotCreationControl);
+		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		scope.put(CREATION_CONTROL, snapshotCreationControl);
+		try {
+			scope.flush();
+		} catch (BackingStoreException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
 	}
 
 	public static String getSnapshotCreationControl() {
@@ -853,27 +932,49 @@ public class Album extends PlatformObject {
 		return snapshotCreationControl;
 	}
 
-	public static DsfExecutor createSnapshotForSession(final DsfSession session, final StackFrameDMC stackFrame) {
+	public static void createSnapshotForSession(final DsfSession session, final StackFrameDMC stackFrame, final IProgressMonitor monitor) {
+
+		String sessionId = session.getId();
+		Album album = Album.getRecordingForSession(sessionId);
+		if (album == null) {
+			album = new Album();
+			album.setRecordingSessionID(sessionId);
+		}
+		final Album finalAlbum = album;
+		playSnapshotSound();
 		
-		DsfRunnable runner = new DsfRunnable() {
-			public void run() {
-					String sessionId = session.getId();
-					Album album = Album.getRecordingForSession(sessionId);
-					if (album == null) {
-						album = new Album();
-						album.setRecordingSessionID(sessionId);
-					}
-					playSnapshotSound();
-					album.createSnapshot(session, stackFrame);
-					fireAlbumStateChanged(album);
-					showSnapshotView();
+		Query<Boolean> query = new Query<Boolean>() {
+
+			@Override
+			protected void execute(DataRequestMonitor<Boolean> rm) {
+				finalAlbum.createSnapshot(session, stackFrame, monitor);
+				rm.setData(true);
+				rm.done();
+			}};
+
+			session.getExecutor().execute(query);
+
+			try {
+				boolean result = query.get();
+			} catch (InterruptedException exc) {
+				Thread.currentThread().interrupt();
+			} catch (java.util.concurrent.ExecutionException e) {
+				EDCDebugger.getMessageLogger().logError(null, e);
+			}
+			
+			showSnapshotView();
+			int numViewChecks = 0;
+			while (!snapshotViewInited){
+				// Make sure the snapshot view has been opened so it
+				// is listening for album change events
+				try {
+					Thread.sleep(2000);
+					if (++numViewChecks == 2) break;//try 4 secs
+				} catch (InterruptedException e) {
 				}
-		};
-		
-		session.getExecutor().execute(runner);
-		
-		return session.getExecutor();
-	}
+			}
+			fireAlbumStateChanged(album);
+}
 	
 	protected static void playSnapshotSound() {
 		Bundle bundle = Platform.getBundle(EDCDebugger.getUniqueIdentifier());
@@ -1105,12 +1206,60 @@ public class Album extends PlatformObject {
 					if (page.findView(SNAPSHOT_VIEW_ID) == null){
 						page.showView(SNAPSHOT_VIEW_ID);
 					}
+					snapshotViewInited = true;
 				} catch (PartInitException e) {
 					return;
 				}
 			}
 		});
 
+	}
+
+	public static void captureSnapshotForSession(final DsfSession session,
+			final IExecutionDMContext dmContext) {
+		Job createSnapshotJob = new Job("Creating Debug Snapshot") {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+
+				Query<IFrameDMContext> query = new Query<IFrameDMContext>() {
+					@Override
+					protected void execute(
+							DataRequestMonitor<IFrameDMContext> rm) {
+						DsfServicesTracker servicesTracker = new DsfServicesTracker(
+								EDCDebugger.getBundleContext(),
+								dmContext.getSessionId());
+						try {
+							Stack stackService = servicesTracker
+									.getService(Stack.class);
+							if (stackService != null) {
+								stackService.getTopFrame(
+										dmContext, rm);
+							}
+						} finally {
+							servicesTracker.dispose();
+						}
+					}
+				};
+
+				session.getExecutor().execute(query);
+
+				try {
+					IFrameDMContext result = query.get();
+					StackFrameDMC topFrame = (StackFrameDMC) result;
+					Album.createSnapshotForSession(session, topFrame, monitor);
+
+				} catch (InterruptedException exc) {
+					Thread.currentThread().interrupt();
+				} catch (java.util.concurrent.ExecutionException e) {
+					EDCDebugger.getMessageLogger().logError(null, e);
+				}
+
+				return Status.OK_STATUS;
+			}
+		};
+
+		createSnapshotJob.schedule();
 	}
 
 }

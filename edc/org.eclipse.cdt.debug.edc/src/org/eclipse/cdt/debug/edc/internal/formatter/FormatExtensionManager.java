@@ -206,4 +206,8 @@ public class FormatExtensionManager implements IVariableFormatManager {
 		this.enabled = enabled;
 	}
 
+	public boolean isEnabled() {
+		return enabled;
+	}
+
 }

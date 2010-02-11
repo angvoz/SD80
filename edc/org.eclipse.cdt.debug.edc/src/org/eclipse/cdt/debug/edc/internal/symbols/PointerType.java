@@ -14,8 +14,8 @@ import java.util.Map;
 
 public class PointerType extends MayBeQualifiedType implements IPointerType {
 
-	public PointerType(String name, IScope scope, int byteSize, Map<Object, Object> properties) {
-		super(name, scope, byteSize, properties);
+	public PointerType(String name, IScope scope, Map<Object, Object> properties) {
+		super(name, scope, 0, properties);
 	}
 
 	// create an internal pointer for expression evaluation

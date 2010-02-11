@@ -26,7 +26,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.PlatformObject;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.internal.core.LaunchManager;
@@ -158,14 +158,16 @@ public class Snapshot extends PlatformObject {
 		}
 	}
 	
-	public void writeSnapshotData(){
+	public void writeSnapshotData(IProgressMonitor monitor){
 		try {
 			ServiceReference[] references = EDCDebugger.getBundleContext().getServiceReferences(
 					ISnapshotContributor.class.getName(), getServiceFilter(session.getId()));
 			for (ServiceReference serviceReference : references) {
+				if (monitor.isCanceled())
+					break;
 				ISnapshotContributor sc = (ISnapshotContributor) EDCDebugger.getBundleContext().getService(
 						serviceReference);
-				Element serviceElement = sc.takeShapshot(album, document, new NullProgressMonitor());
+				Element serviceElement = sc.takeShapshot(album, document, monitor);
 				if (serviceElement != null)
 					snapshotRootElement.appendChild(serviceElement);
 			}

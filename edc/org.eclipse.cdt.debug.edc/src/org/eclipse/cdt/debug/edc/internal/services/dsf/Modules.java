@@ -30,11 +30,10 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -174,8 +173,8 @@ public class Modules extends AbstractEDCService implements IModules {
 
 			if (!hostFilePath.isEmpty()) {
 				album.addFile(hostFilePath);
-				IPath possibleSymFile = hostFilePath.removeFileExtension().addFileExtension("sym");
-				if (possibleSymFile.toFile().exists()) {
+				IPath possibleSymFile = ExecutableSymbolicsReaderFactory.findSymbolicsFile(hostFilePath);
+				if (possibleSymFile != null) {
 					album.addFile(possibleSymFile);
 				}
 			}
@@ -314,13 +313,13 @@ public class Modules extends AbstractEDCService implements IModules {
 				symReader = Symbols.getSymbolReader(hostFilePath);
 				if (symReader == null)
 					EDCDebugger.getMessageLogger().log(IStatus.WARNING,
-							MessageFormat.format("''{0}'' is not in recognized format (PE or ELF).",
+							MessageFormat.format("''{0}'' has no recognized file format.",
 									hostFilePath), null);
 				else if (! symReader.hasRecognizedDebugInformation()) {
 					// Log as INFO, not ERROR.
 					EDCDebugger.getMessageLogger().log(IStatus.INFO,
-							MessageFormat.format("''{0}'' does not have such type of debug data: {1}",
-									hostFilePath, symReader.getRecognizedDebugInformationType()), null);
+							MessageFormat.format("''{0}'' has no recognized symbolics.",
+									hostFilePath), null);
 				}
 			} else {
 				// Binary file not on host. Do we want to prompt user for one ?
@@ -612,45 +611,27 @@ public class Modules extends AbstractEDCService implements IModules {
 			return;
 		}
 
-		List<EDCAddressRange> addrRanges = new ArrayList<EDCAddressRange>();
+		List<EDCAddressRange> addrRanges = Collections.emptyList();
 
 		for (IModuleDMContext module : moduleList) {
 			ModuleDMC mdmc = (ModuleDMC) module;
 			IEDCSymbolReader reader = mdmc.getSymbolReader();
 
 			if (reader != null) {
-				/*
-				 * when there is more than one line mapping for the source line,
-				 * see if it makes sense to merge the line entries into the same
-				 * address range, or keep different address ranges. examples of
-				 * when this might happen are when there are multiple logical
-				 * code segments for the same source line, but in different
-				 * columns. in this case it makes sense to merge these into one
-				 * address range. for templates and inline functions however,
-				 * the column will be the same. for these cases it makes sense
-				 * to keep the address ranges separate.
-				 */
-				long column = -1;
-				ICompileUnitScope cu = reader.getCompileUnitForFile(PathUtils.createPath(file));
-				if (cu != null) {
-					for (ILineEntry entry : cu.getLineEntriesForLines(line, line)) {
-						boolean addNewRange = true;
-						if (addrRanges.size() > 0 && column != entry.getColumnNumber()) {
-							addNewRange = false;
-						}
 
-						if (addNewRange) {
-							IAddress start = mdmc.toRuntimeAddress(entry.getLowAddress());
-							IAddress end = mdmc.toRuntimeAddress(entry.getHighAddress());
-							addrRanges.add(new EDCAddressRange(start, end));
-						} else {
-							EDCAddressRange range = addrRanges.remove(addrRanges.size() - 1);
-							range.setEndAddress(mdmc.toRuntimeAddress(entry.getHighAddress()));
-							addrRanges.add(range);
-						}
-
-						column = entry.getColumnNumber();
-					}
+				Collection<AddressRange> linkAddressRanges = LineEntryMapper.getAddressRangesAtSource(  
+						reader.getModuleScope().getModuleLineEntryProvider(),
+						PathUtils.createPath(file),
+						line);
+								
+				addrRanges = new ArrayList<EDCAddressRange>(linkAddressRanges.size());
+								
+				// map addresses
+				for (AddressRange linkAddressRange : linkAddressRanges) {
+					EDCAddressRange addrRange = new EDCAddressRange(
+							mdmc.toRuntimeAddress(linkAddressRange.getStartAddress()),
+							mdmc.toRuntimeAddress(linkAddressRange.getEndAddress()));
+					addrRanges.add(addrRange);
 				}
 			}
 		}
@@ -712,7 +693,10 @@ public class Modules extends AbstractEDCService implements IModules {
 
 	public void moduleUnloaded(ISymbolDMContext symbolContext, ExecutionDMC executionDMC,
 			Map<String, Object> moduleProps) {
-		ModuleDMC module = new ModuleDMC(symbolContext, moduleProps);
+		ModuleDMC module = getModuleByName(symbolContext, moduleProps.get(DMContext.PROP_NAME));
+		Object requireResumeValue = moduleProps.get("RequireResume");
+		if (requireResumeValue != null && requireResumeValue instanceof Boolean)
+			module.setProperty("RequireResume", requireResumeValue);
 		removeModule(module);
 		getSession().dispatchEvent(new ModuleUnloadedEvent(symbolContext, executionDMC, module),
 				Modules.this.getProperties());
@@ -827,4 +811,29 @@ public class Modules extends AbstractEDCService implements IModules {
 		modules.put(((DMContext) context).getID(), contextModules);
 
 	}
+	
+	/**
+	 * get module with given file name
+	 * 
+	 * @param symCtx
+	 * @param fileName
+	 *            executable name for module
+	 * @return null if not found.
+	 */
+	public ModuleDMC getModuleByName(ISymbolDMContext symCtx, Object fileName) {
+		ModuleDMC module = null;
+		synchronized (modules) {
+			List<ModuleDMC> moduleList = modules.get(((DMContext) symCtx).getID());
+			if (moduleList != null) {
+				for (ModuleDMC moduleDMC : moduleList) {
+					if ((moduleDMC.getName().compareToIgnoreCase((String) fileName)) == 0 ) {
+						module = moduleDMC;
+						break;
+					}
+				}
+			}
+		}
+		return module;
+	}
+
 }

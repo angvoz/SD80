@@ -43,4 +43,16 @@ public interface IVariable {
 	 */
 	ILocationProvider getLocationProvider();
 
+	/**
+	 * A variable's lifetime may start somewhere inside its parent scope (without being
+	 * inside an {@link ILexicalBlockScope}).  This provides the offset from the
+	 * start address of the parent scope at which time the variable is considered
+	 * live.
+	 * <p>
+	 * This scope may be narrower than the scope implied by {@link ILocationProvider#isLocationKnown(org.eclipse.cdt.core.IAddress)}.
+	 * <p>
+	 * Note: a variable is always considered to be live until the end of the parent scope.
+	 * @return offset in bytes (0 means the lifetime is the same as the parent scope)
+	 */
+	long getStartScope();
 }

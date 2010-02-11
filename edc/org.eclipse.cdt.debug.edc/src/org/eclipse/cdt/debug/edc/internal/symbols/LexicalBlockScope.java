@@ -22,17 +22,20 @@ public class LexicalBlockScope extends Scope implements ILexicalBlockScope {
 		super(name, lowAddress, highAddress, parent);
 	}
 
-	@Override
-	public Collection<IVariable> getVariables() {
+	public Collection<IVariable> getVariablesInTree() {
 		List<IVariable> variables = new ArrayList<IVariable>();
 		variables.addAll(super.getVariables());
 
-		// check for variables in child lexical blocks as well
+		// check for variables in children as well
 		for (IScope child : children) {
-			variables.addAll(child.getVariables());
+			if (child instanceof IFunctionScope)
+				variables.addAll(((IFunctionScope) child).getVariablesInTree());
+			else if (child instanceof ILexicalBlockScope)
+				variables.addAll(((ILexicalBlockScope) child).getVariablesInTree());
+			else
+				variables.addAll(child.getVariables());
 		}
 
 		return variables;
 	}
-
 }

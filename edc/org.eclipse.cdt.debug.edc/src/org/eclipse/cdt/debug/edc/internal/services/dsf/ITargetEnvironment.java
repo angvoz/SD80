@@ -191,6 +191,17 @@ public interface ITargetEnvironment extends IDsfService {
 	public String getStartupStopAtPoint();
 
 	/**
+	 * Get minimum size of a memory block that is read and stored in memory
+	 * cache. For instance, if the size is 64 bytes, then for a memory read
+	 * request that requests 4 bytes, the debugger will read and cache 64 bytes.
+	 * Different targets may prefer different size.
+	 * 
+	 * @return size in bytes. zero (0) means to just cache the number of bytes
+	 *         actually requested.
+	 */
+	public int getMemoryCacheMinimumBlockSize();
+	
+	/**
 	 * Get value of any given property.<br>
 	 * <br>
 	 * This generic API allows getting any new target property without adding

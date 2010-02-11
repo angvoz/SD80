@@ -28,10 +28,18 @@ public interface ILocationProvider {
 	 * @param stack
 	 *            frame context to use for register based operations
 	 * @param forLinkAddress
-	 *            the links address for use if the variable can live at
+	 *            the link-time address for use if the variable can live at
 	 *            different location depending on the execution context
 	 * @return the variable location
 	 */
 	IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress);
 
+	/**
+	 * Tell if the variable has a known location at this address.
+	 * @param forLinkAddress
+	 *            the link-time address for use if the variable 
+	 * @return true if a location is known for the variable at this address, or false if not.
+	 * Note: if a variable has a static address, always return true. 
+	 */
+	boolean isLocationKnown(IAddress forLinkAddress);
 }

@@ -10,13 +10,15 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+
 public class Variable implements IVariable {
 
 	protected String name;
 	protected IScope scope;
 	protected IType type;
 	protected ILocationProvider locationProvider;
-
+	protected long startScope;
+	
 	public Variable(String name, IScope scope, IType type, ILocationProvider locationProvider) {
 		this.name = name;
 		this.scope = scope;
@@ -33,6 +35,9 @@ public class Variable implements IVariable {
 	}
 
 	public IType getType() {
+		if (type instanceof IForwardTypeReference)
+			type = ((IForwardTypeReference) type).getReferencedType();
+		
 		return type;
 	}
 
@@ -40,6 +45,16 @@ public class Variable implements IVariable {
 		return locationProvider;
 	}
 
+	public void setStartScope(long start) {
+		this.startScope = start;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IVariable#getStartScope()
+	 */
+	public long getStartScope() {
+		return startScope;
+	}
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

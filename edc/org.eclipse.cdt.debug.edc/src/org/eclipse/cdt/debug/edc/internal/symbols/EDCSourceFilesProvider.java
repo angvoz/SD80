@@ -12,7 +12,7 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import org.eclipse.cdt.debug.core.executables.Executable;
 import org.eclipse.cdt.debug.core.executables.ISourceFilesProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCDwarfReader;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.core.runtime.IProgressMonitor;
 
 public class EDCSourceFilesProvider implements ISourceFilesProvider {
@@ -20,8 +20,10 @@ public class EDCSourceFilesProvider implements ISourceFilesProvider {
 	public String[] getSourceFiles(Executable executable, IProgressMonitor monitor) {
 
 		try {
-			EDCDwarfReader reader = new EDCDwarfReader(executable.getPath());
+			// get cached reader
+			IEDCSymbolReader reader = Symbols.getSymbolReader(executable.getPath());
 			if (reader != null) {
+				// note: don't dispose reader here
 				return reader.getSourceFiles();
 			}
 		} catch (Exception e) {

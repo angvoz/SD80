@@ -16,13 +16,17 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.core.runtime.IPath;
 
 public class FunctionScope extends Scope implements IFunctionScope {
 
 	protected ILocationProvider frameBaseLocationProvider;
 	protected List<IVariable> parameters = new ArrayList<IVariable>();
+	private int declLine;
+	private int declColumn;
+	private IPath declFile;
 
-	public FunctionScope(String name, ICompileUnitScope parent, IAddress lowAddress, IAddress highAddress,
+	public FunctionScope(String name, IScope parent, IAddress lowAddress, IAddress highAddress,
 			ILocationProvider frameBaseLocationProvider) {
 		super(name, lowAddress, highAddress, parent);
 
@@ -37,21 +41,110 @@ public class FunctionScope extends Scope implements IFunctionScope {
 		return frameBaseLocationProvider;
 	}
 
-	@Override
-	public Collection<IVariable> getVariables() {
+	public Collection<IVariable> getVariablesInTree() {
 		List<IVariable> variables = new ArrayList<IVariable>();
 		variables.addAll(super.getVariables());
 
-		// check for variables in child lexical blocks as well
+		// check for variables in children as well
 		for (IScope child : children) {
+			if (child instanceof IFunctionScope)
+				variables.addAll(((IFunctionScope) child).getVariablesInTree());
+			else if (child instanceof ILexicalBlockScope)
+				variables.addAll(((ILexicalBlockScope) child).getVariablesInTree());
+			else
 			variables.addAll(child.getVariables());
 		}
 
 		return variables;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope#getScopedVariables(org.eclipse.cdt.core.IAddress)
+	 */
+	public Collection<IVariable> getScopedVariables(IAddress linkAddress) {
+		// Unfortunately, lexical blocks and inlined functions may span several scopes or use ranges;
+		// don't #getScopeAtAddress() and go up the parent chain, but iterate them top-down.
+		
+		List<IVariable> scoped = new ArrayList<IVariable>();
+		
+		recurseGetScopedVariables(this, scoped, linkAddress);
+
+		return scoped;
+	}
+		
+	protected static void recurseGetScopedVariables(IScope scope, List<IVariable> scoped, IAddress linkAddress) {
+		if (!(scope.getLowAddress().compareTo(linkAddress) <= 0 && scope.getHighAddress().compareTo(linkAddress) > 0))
+			return;
+		
+		long scopeOffset = linkAddress.add(scope.getLowAddress().getValue().negate()).getValue().longValue();
+
+		for (IVariable var : scope.getVariables()) {
+			if (scopeOffset >= var.getStartScope() && var.getLocationProvider().isLocationKnown(linkAddress)) {
+				scoped.add(var);
+			}
+		}
+
+		if (scope instanceof IFunctionScope) {
+			for (IVariable var : ((FunctionScope) scope).getParameters()) {
+				if (scopeOffset >= var.getStartScope() && var.getLocationProvider().isLocationKnown(linkAddress)) {
+					scoped.add(var);
+				}
+			}
+		}
+		
+		for (IScope kid : scope.getChildren()) {
+			recurseGetScopedVariables(kid, scoped, linkAddress);
+		}
+	}
+
 	public void addParameter(IVariable parameter) {
 		parameters.add(parameter);
+	}
+
+	public IPath getDeclFile() {
+		return declFile;
+	}
+	
+	public void setDeclFile(IPath declFile) {
+		this.declFile = declFile;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope#getDeclLine()
+	 */
+	public int getDeclLine() {
+		return declLine;
+	}
+	
+	public void setDeclLine(int declLine) {
+		this.declLine = declLine;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope#getDeclColumn()
+	 */
+	public int getDeclColumn() {
+		return declColumn;
+	}
+	
+	public void setDeclColumn(int declColumn) {
+		this.declColumn = declColumn;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.Scope#addChild(org.eclipse.cdt.debug.edc.internal.symbols.IScope)
+	 */
+	@Override
+	public void addChild(IScope scope) {
+		super.addChild(scope);
+		
+		if (scope instanceof IFunctionScope)
+			addLineInfoToParent(scope);
+	}
+	
+
+	public void setLocationProvider(ILocationProvider locationProvider) {
+		this.frameBaseLocationProvider = locationProvider;
 	}
 
 }

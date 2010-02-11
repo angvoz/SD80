@@ -99,13 +99,16 @@ public class MemoryService implements IMemory {
 								@Override
 								public void handle(Packet response) {
 
+									/*
+									 * Note, when returning error packets, pass an empty string for the
+									 * BASE64-encoded memory.  This is accepted by Base64#toByteArray
+									 * and is never decoded to be longer than the request size.
+									 */
+									
 									// Got error from gdbserver
 									if (response.getData().startsWith("E")) {
 										sendResult(new Object[] {
-												"123=" /*
-														 * ignore but must be
-														 * Base64 string
-														 */,
+												"" /* ignore */,
 												AgentUtils.makeErrorReport(1, MessageFormat.format(
 														"gdbserver returns error on reading memory at address {0}",
 														Long.toHexString(addr.longValue() & 0xffffffffL))), null });
@@ -122,7 +125,7 @@ public class MemoryService implements IMemory {
 										char[] ca = Base64.toBase64(ba, 0, ba.length);
 										tcf_ret = new String(ca);
 									} catch (Exception e) {
-										sendResult(new Object[] { "123=" /* ignore */,
+										sendResult(new Object[] { "" /* ignore */,
 												AgentUtils.makeErrorReport(1, e.getLocalizedMessage()), null });
 										return;
 									}

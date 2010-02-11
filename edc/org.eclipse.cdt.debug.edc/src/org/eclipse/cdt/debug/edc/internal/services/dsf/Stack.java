@@ -24,13 +24,16 @@ import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
 import org.eclipse.cdt.debug.edc.internal.launch.CSourceLookup;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
@@ -193,6 +196,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				functionScope = symbolsService
 						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), ipAddress);
 				if (functionScope != null) {
+					// ignore inlined functions
+					while (functionScope.getParent() instanceof IFunctionScope) {
+						functionScope = (IFunctionScope) functionScope.getParent();
+					}
 					functionName = functionScope.getName();
 					frameProperties.put(FUNCTION_NAME, functionName);
 				}
@@ -315,18 +322,51 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), ipAddress);
 				if (scope != null) {
 					this.variableScope = scope;
+				}
+				
+				// TODO: we fetch ModuleDMC a whole lot; it could be saved in a StackFrameDMC
+				Modules modulesService = getServicesTracker().getService(Modules.class);
+				ModuleDMC module = modulesService.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+				
+				IAddress linkAddress = null;
+				if (module != null) {
+					linkAddress = module.toLinkAddress(ipAddress);
+				}
+				while (scope != null) {
+					Collection<IVariable> scopedVariables = scope.getScopedVariables(linkAddress);
+					for (IVariable variable : scopedVariables) {
+						VariableDMC var = new VariableDMC(Stack.this, this, variable);
+						locals.add(var);
+						localsByName.put(var.getName(), var);
+					}
 					
-					for (IVariable variable : scope.getVariables()) {
-						VariableDMC var = new VariableDMC(Stack.this, this, variable);
-						locals.add(var);
-						localsByName.put(var.getName(), var);
+					if (Symbols.useNewReader()) {
+						// add file-scope globals too
+						// (this isn't nearly sufficient since globals can show up
+						// in a header while all code is in the source file)
+						IScope parentScope = scope.getParent();
+						while (parentScope != null) {
+							Collection<IVariable> globals = null;
+							if (parentScope instanceof ICompileUnitScope) {
+								globals = ((ICompileUnitScope) parentScope).getVariables();
+							} else if (parentScope instanceof IModuleScope) {
+								// waaaay too many
+								//globals = ((IModuleScope) parentScope).getVariables();
+							}
+							if (globals != null) {
+								for (IVariable variable : globals) {
+									VariableDMC var = new VariableDMC(Stack.this, this, variable);
+									locals.add(var);
+									localsByName.put(var.getName(), var);
+								}
+							}
+							parentScope = parentScope.getParent();
+						}
 					}
-
-					for (IVariable variable : scope.getParameters()) {
-						VariableDMC var = new VariableDMC(Stack.this, this, variable);
-						locals.add(var);
-						localsByName.put(var.getName(), var);
-					}
+					
+					if (!(scope.getParent() instanceof IFunctionScope))
+						break;
+					scope = (IFunctionScope) scope.getParent();
 				}
 			}
 			return locals.toArray(new VariableDMC[locals.size()]);
@@ -392,6 +432,14 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				}
 
 				variableScope = variableScope.getParent();
+				
+				// TODO: we often get to the point of the module scope when a text hover
+				// is asking for a variable.  We probably don't want to fish out all the globals across the entire
+				// sym file, especially not for big sym files.  So, for the new reader, 
+				// bail here.  We need to address this issue later along with other global variable fixes.
+				if (Symbols.useNewReader() && variableScope instanceof IModuleScope) {
+					break;
+				}
 			}
 				
 			return variableOrEnumerator;
@@ -409,13 +457,16 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					if (executionDMC != null && symbolsService != null) {
 						IFunctionScope scope = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
 								ipAddress);
-						if (scope != null) {
+						while (scope != null) {
 							Collection<IEnumerator> localEnumerators = scope.getEnumerators();
 							for (IEnumerator enumerator : localEnumerators) {
 								EnumeratorDMC enumeratorDMC = new EnumeratorDMC(this, enumerator);
 								enumerators.add(enumeratorDMC);
 								enumeratorsByName.put(enumerator.getName(), enumeratorDMC);
 							}
+							if (!(scope.getParent() instanceof IFunctionScope))
+								break;
+							scope = (IFunctionScope) scope.getParent();
 						}
 					}
 				}

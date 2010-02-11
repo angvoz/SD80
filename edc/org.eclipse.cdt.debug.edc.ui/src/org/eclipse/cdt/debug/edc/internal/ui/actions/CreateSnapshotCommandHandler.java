@@ -10,15 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Snapshots;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
-import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
-import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -32,29 +24,9 @@ public class CreateSnapshotCommandHandler extends AbstractSnapshotCommandHandler
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 
-		final DsfSession session = DsfSession.getSession(getSelectionExecutionDMC().getSessionId());
-
-		DsfRunnable runner = new DsfRunnable() {
-			public void run() {
-				final DsfServicesTracker tracker = new DsfServicesTracker(EDCDebugger.getBundleContext(),
-						getSelectionExecutionDMC().getSessionId());
-				final Stack stackService = tracker.getService(Stack.class);
-				stackService.getTopFrame(getSelectionExecutionDMC(), new DataRequestMonitor<IFrameDMContext>(
-						stackService.getExecutor(), null) {
-
-					@Override
-					protected void handleCompleted() {
-						StackFrameDMC topFrame = (StackFrameDMC) getData();
-						Album.createSnapshotForSession(session, topFrame);
-					}
-				}
-
-				);
-			}
-		};
-
-		session.getExecutor().execute(runner);
-
+		final DsfSession session = DsfSession
+				.getSession(getSelectionExecutionDMC().getSessionId());
+		Album.captureSnapshotForSession(session, getSelectionExecutionDMC());
 		return null;
 	}
 

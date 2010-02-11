@@ -35,7 +35,19 @@ public class ContextManager {
 		gDebuggedContexts.put(c.getID(), c);
 	}
 	
-	static public void removeDebuggedContext(String id) {
+	/**
+	 * Remove given context from the debugged context cache.
+	 * 
+	 * @param id internal context ID of the context to remove.
+	 * @param removeChildren whether to remove children of the context from the cache.
+	 */
+	static public void removeDebuggedContext(String id, boolean removeChildren) {
+		if (removeChildren) {
+			for (String c : findDebuggedContext(id).getChildren()) {
+				removeDebuggedContext(c, true);
+			}
+		}
+		
 		gDebuggedContexts.remove(id);
 	}
 	
@@ -50,6 +62,15 @@ public class ContextManager {
 			ret.add(c.getID());
 		
 		return ret;
+	}
+	
+	/**
+	 * Whether there are still context in the cache of debugged contexts.
+	 * 
+	 * @return
+	 */
+	static public boolean hasDebuggedContext() {
+		return gDebuggedContexts.size() > 0;
 	}
 	
 	/**

@@ -19,11 +19,14 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.osgi.framework.debug.FrameworkDebugOptions;
 import org.eclipse.osgi.service.debug.DebugTrace;
 import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.Protocol;
 import org.eclipse.tm.tcf.protocol.Protocol.ChannelOpenListener;
+import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -42,6 +45,8 @@ public class EDCDebugger extends Plugin {
 	private DebugTrace trace;
 
     private ITCFServiceManager tcfServiceManager;
+
+	private IPreferenceStore preferenceStore;
 	
 	/**
 	 * The constructor
@@ -175,4 +180,12 @@ public class EDCDebugger extends Plugin {
 		}
 		return getDefault().getBundle().getSymbolicName();
 	}
+
+	   public IPreferenceStore getPreferenceStore() {
+	        if (preferenceStore == null) {
+	            preferenceStore = new ScopedPreferenceStore(new InstanceScope(),getBundle().getSymbolicName());
+
+	        }
+	        return preferenceStore;
+	    }
 }

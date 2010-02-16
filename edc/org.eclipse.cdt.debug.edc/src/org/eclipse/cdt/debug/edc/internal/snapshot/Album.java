@@ -69,6 +69,7 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
 import org.eclipse.debug.core.sourcelookup.containers.DirectorySourceContainer;
 import org.eclipse.debug.internal.core.LaunchManager;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
@@ -120,8 +121,12 @@ public class Album extends PlatformObject {
 	private static boolean snapshotViewInited;
 	
 	// Preferences
-	private static final String CREATION_CONTROL = "creation_control";
-	private static final String VARIABLE_CAPTURE_DEPTH = "variable_capture_depth";
+	public static final String PREF_CREATION_CONTROL = "creation_control";
+	public static final String CREATE_MANUAL = "manual";
+	public static final String CREATE_WHEN_STOPPED = "suspend";
+	public static final String CREATE_AT_BEAKPOINTS = "breakpoints";	
+	
+	public static final String PREF_VARIABLE_CAPTURE_DEPTH = "variable_capture_depth";
 
 	private static final String CAMERA_CLICK_WAV = "/sounds/camera_click.wav";
 	private static final String SNAPSHOT_VIEW_ID = "org.eclipse.cdt.debug.edc.ui.views.SnapshotView";
@@ -157,8 +162,6 @@ public class Album extends PlatformObject {
 	private static Map<String, Album> albumsBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());
 	private static Map<String, Album> albumsRecordingBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());	
 	private static Map<IPath, Album> albumsByLocation = Collections.synchronizedMap(new HashMap<IPath, Album>());
-	private static String snapshotCreationControl;
-	private static int variableCaptureDepth;
 	
 	private static boolean sessionEndedListenerAdded;
 	private static SessionEndedListener sessionEndedListener = new SessionEndedListener() {
@@ -895,9 +898,8 @@ public class Album extends PlatformObject {
 	}
 	
 	public static void setVariableCaptureDepth(int newSetting) {
-		variableCaptureDepth = newSetting;
 		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
-		scope.putInt(VARIABLE_CAPTURE_DEPTH, variableCaptureDepth);
+		scope.putInt(PREF_VARIABLE_CAPTURE_DEPTH, newSetting);
 		try {
 			scope.flush();
 		} catch (BackingStoreException e) {
@@ -906,17 +908,13 @@ public class Album extends PlatformObject {
 	}
 
 	public static int getVariableCaptureDepth() {
-		if (variableCaptureDepth == 0) {
-			variableCaptureDepth = Platform.getPreferencesService().getInt(EDCDebugger.PLUGIN_ID,
-					VARIABLE_CAPTURE_DEPTH, 5, null);
-		}
-		return variableCaptureDepth;
+		return Platform.getPreferencesService().getInt(EDCDebugger.PLUGIN_ID,
+				PREF_VARIABLE_CAPTURE_DEPTH, 5, null);
 	}
 
 	public static void setSnapshotCreationControl(String newSetting) {
-		snapshotCreationControl = newSetting;
 		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
-		scope.put(CREATION_CONTROL, snapshotCreationControl);
+		scope.put(PREF_CREATION_CONTROL, newSetting);
 		try {
 			scope.flush();
 		} catch (BackingStoreException e) {
@@ -925,11 +923,8 @@ public class Album extends PlatformObject {
 	}
 
 	public static String getSnapshotCreationControl() {
-		if (snapshotCreationControl == null) {
-			snapshotCreationControl = Platform.getPreferencesService().getString(EDCDebugger.PLUGIN_ID,
-					CREATION_CONTROL, "manual", null);
-		}
-		return snapshotCreationControl;
+		return Platform.getPreferencesService().getString(EDCDebugger.PLUGIN_ID,
+				PREF_CREATION_CONTROL, CREATE_MANUAL, null);
 	}
 
 	public static void createSnapshotForSession(final DsfSession session, final StackFrameDMC stackFrame, final IProgressMonitor monitor) {

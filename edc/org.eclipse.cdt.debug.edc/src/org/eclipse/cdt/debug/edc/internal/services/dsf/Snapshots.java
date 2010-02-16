@@ -34,10 +34,10 @@ public class Snapshots extends AbstractEDCService {
 	public void eventDispatched(final ISuspendedDMEvent e) {
 		if (!this.isSnapshot()) {
 			final String controlSetting = Album.getSnapshotCreationControl();
-			if (!controlSetting.equals("manual")){
+			if (!controlSetting.equals(Album.CREATE_MANUAL)){
 				if (e.getReason() != StateChangeReason.SHAREDLIB
-						&& (controlSetting.equals("suspend") || controlSetting.equals("breakpoints"))) {
-					if (controlSetting.equals("suspend") || 
+						&& (controlSetting.equals(Album.CREATE_WHEN_STOPPED) || controlSetting.equals(Album.CREATE_AT_BEAKPOINTS))) {
+					if (controlSetting.equals(Album.CREATE_WHEN_STOPPED) || 
 							e.getReason() == StateChangeReason.BREAKPOINT) {
 						Album.captureSnapshotForSession(getSession(), e.getDMContext());
 					}

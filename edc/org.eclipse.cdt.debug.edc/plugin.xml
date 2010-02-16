@@ -86,5 +86,17 @@
             label="Default Array Formatter">
       </variableFormatProvider>
    </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.formatter.DefaultCStringFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.default.composite"
+            label="Default C String Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer class="org.eclipse.cdt.debug.edc.internal.EDCDebugPreferenceInitializer"/>
+   </extension>
 
 </plugin>

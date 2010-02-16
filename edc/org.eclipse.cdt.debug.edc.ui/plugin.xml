@@ -480,6 +480,40 @@
  		<defaultEnablement id="org.eclipse.cdt.debug.edc.ui.platformDebugActivity" /> 
       
      </extension>
+ 
+     <extension
+         point="org.eclipse.ui.activities">
+ 
+      <category
+            name="EDC - Eclipse Debugger for C/C++"
+            description="Commands for the EDC Debugger"
+            id="org.eclipse.cdt.debug.edc.ui.edcCatagory">
+      </category>
+  
+       <categoryActivityBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.edcActivity"
+            categoryId="org.eclipse.cdt.debug.edc.ui.edcCatagory">
+      </categoryActivityBinding>
+  
+      <activity
+            name="EDC - Eclipse Debugger for C/C++"
+            description="Commands for the EDC Debugger"
+            id="org.eclipse.cdt.debug.edc.ui.edcActivity">
+       </activity>
+   
+      <activityPatternBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.edcActivity"
+           	isEqualityPattern="true" 
+            pattern="org.eclipse.cdt.debug.edc.ui/org.eclipse.cdt.debug.edc.ui.SnapshotPreferencePage">
+      </activityPatternBinding>
+ 
+       <activityPatternBinding
+            activityId="org.eclipse.cdt.debug.edc.ui.edcActivity"
+           	isEqualityPattern="true" 
+            pattern="org.eclipse.cdt.debug.edc.ui/org.eclipse.cdt.debug.edc.ui.views.SnapshotView">
+      </activityPatternBinding>
+      
+     </extension>
    
    <extension
          point="org.eclipse.ui.views">
@@ -563,4 +597,15 @@
 	      	</enablement>      
         </detailFactories>
     </extension>
+    
+   	<extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            name="Debug Snapshots"
+            category="org.eclipse.cdt.debug.ui.CDebugPreferencePage"
+            class="org.eclipse.cdt.debug.edc.internal.ui.SnapshotPreferencePage"
+            id="org.eclipse.cdt.debug.edc.ui.SnapshotPreferencePage">
+      </page>
+   </extension>
+    
 </plugin>

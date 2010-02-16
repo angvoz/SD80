@@ -15,6 +15,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.FunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfCompileUnit;
 import org.eclipse.core.runtime.IPath;
 
 public class DwarfFunctionScope extends FunctionScope implements IFunctionScope {

@@ -513,6 +513,8 @@
             pattern="org.eclipse.cdt.debug.edc.ui/org.eclipse.cdt.debug.edc.ui.views.SnapshotView">
       </activityPatternBinding>
       
+		<defaultEnablement id="org.eclipse.cdt.debug.edc.ui.edcActivity" /> 
+       
      </extension>
    
    <extension

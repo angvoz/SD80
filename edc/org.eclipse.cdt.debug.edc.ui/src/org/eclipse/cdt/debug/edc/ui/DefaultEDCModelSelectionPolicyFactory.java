@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.ui;
 
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.launch.DefaultDsfModelSelectionPolicyFactory;
-import org.eclipse.cdt.dsf.debug.ui.viewmodel.launch.DefaultDsfSelectionPolicy;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelSelectionPolicy;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IPresentationContext;

@@ -6,15 +6,21 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.eclipse.cdt.scripting.ScriptingPlugin
 Require-Bundle: org.eclipse.core.runtime,
  javax.servlet;bundle-version="2.5.0",
- org.eclipse.equinox.http.jetty;bundle-version="2.0.0",
- org.eclipse.debug.core;bundle-version="3.5.0",
- org.eclipse.debug.ui;bundle-version="3.5.0",
- org.eclipse.cdt.debug.core;bundle-version="6.0.0",
- org.eclipse.cdt.dsf;bundle-version="2.1.0",
- org.eclipse.cdt.launch;bundle-version="6.0.0"
+ org.eclipse.equinox.http.jetty;bundle-version="2.0.0"
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Import-Package: org.eclipse.equinox.http.jetty,
  org.eclipse.ui
  
-Export-Package: org.eclipse.cdt.scripting
+Export-Package: org.eclipse.cdt.internal.scripting;
+  uses:="org.eclipse.core.runtime,
+   org.jabsorb,
+   org.json,
+   javax.servlet.http",
+ org.eclipse.cdt.scripting;uses:="org.eclipse.core.runtime,org.eclipse.ui,org.osgi.framework"
+Bundle-ClassPath: .,
+ libraries/jabsorb-1.3.1.jar,
+ libraries/jcl104-over-slf4j-1.4.3.jar,
+ libraries/log4j-1.2.15.jar,
+ libraries/slf4j-api-1.5.6.jar,
+ libraries/slf4j-log4j12-1.5.6.jar

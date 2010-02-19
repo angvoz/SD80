@@ -20,17 +20,6 @@
       </httpcontext>
    </extension>
    <extension
-         point="org.eclipse.equinox.http.registry.resources">
-      <resource
-            alias="/"
-            base-name="/"
-            httpcontextId="web_files">
-      </resource>
-      <serviceSelector
-            filter="(other.info=org.eclipse.help)">
-      </serviceSelector>
-   </extension>
-  <extension
          point="org.eclipse.equinox.http.registry.servlets">
       <servlet
             alias="/jsonrpc"

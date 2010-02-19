@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,6 +15,8 @@ import java.util.Hashtable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.cdt.internal.scripting.RPCBridge;
+import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Plugin;
@@ -49,7 +51,6 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 	 * @see
 	 * org.eclipse.core.runtime.Plugins#start(org.osgi.framework.BundleContext)
 	 */
-	@Override
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
 		plugin = this;
@@ -64,7 +65,6 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 	 * @see
 	 * org.eclipse.core.runtime.Plugin#stop(org.osgi.framework.BundleContext)
 	 */
-	@Override
 	public void stop(BundleContext context) throws Exception {
 		plugin = null;
 		super.stop(context);
@@ -119,11 +119,11 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 	}
 
 	private void readExtensions() {
-//		IConfigurationElement[] elements = 
+		IConfigurationElement[] elements = 
 			Platform.getExtensionRegistry().getConfigurationElementsFor(PLUGIN_ID + ".scriptableFeature");
-//		for (IConfigurationElement element : elements) {
-//			RPCBridge.instance().addExtension(element);
-//		}
+		for (IConfigurationElement element : elements) {
+			RPCBridge.instance().addExtension(element);
+		}
 		
 	}
 

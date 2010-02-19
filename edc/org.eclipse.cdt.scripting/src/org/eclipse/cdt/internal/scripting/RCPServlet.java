@@ -8,24 +8,20 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.scripting;
+package org.eclipse.cdt.internal.scripting;
 
-import java.util.HashSet;
-import java.util.Set;
+import javax.servlet.http.HttpServletRequest;
 
-/**
- * 
- */
-public class Activities {
-	
-	static int nextActivityId;
+import org.jabsorb.JSONRPCBridge;
+import org.jabsorb.JSONRPCServlet;
 
-	static Set<Integer> pendingActivityIds = new HashSet<Integer>();
+public class RCPServlet extends JSONRPCServlet {
 
-	public static boolean isActivityDone(int id) {
-		synchronized (pendingActivityIds) {
-			return !pendingActivityIds.contains(id);
-		}
+	private static final long serialVersionUID = -6497658838954960846L;
+
+	@Override
+	protected JSONRPCBridge findBridge(HttpServletRequest request) {
+		return RPCBridge.instance();
 	}
-	
+
 }

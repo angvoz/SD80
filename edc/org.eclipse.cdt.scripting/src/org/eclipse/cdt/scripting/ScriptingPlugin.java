@@ -55,7 +55,7 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 		super.start(context);
 		plugin = this;
 		bundleContext = context;
-		startServelet();
+		// disabled for now   startServelet();
 		readExtensions();
 	}
 

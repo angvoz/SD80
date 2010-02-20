@@ -20,6 +20,7 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
+import org.eclipse.core.runtime.CoreException;
 
 /**
  * An abstract class for formatting composite types
@@ -52,12 +53,12 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 			(NameToFieldPath[]) nameToFieldPaths.toArray(new NameToFieldPath[nameToFieldPaths.size()]);
 	}
 
-	public Iterator<IExpressionDMContext> getChildIterator(IExpressionDMContext variable) {
+	public Iterator<IExpressionDMContext> getChildIterator(IExpressionDMContext variable) throws CoreException {
 		List<IExpressionDMContext> childExpressions = getChildren(variable);
 		return childExpressions.iterator();
 	}
 
-	protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) {
+	protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
 		List<IExpressionDMContext> childExpressions = new ArrayList<IExpressionDMContext>();
 		for (NameToFieldPath nameToFieldPath : nameToFieldPaths) {
 			IExpressionDMContext createSubExpression = 
@@ -83,15 +84,15 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 		return false;
 	}
 
-	protected String getDetailsValue(IExpressionDMContext variable) {
+	protected String getDetailsValue(IExpressionDMContext variable) throws CoreException {
 		return getValueString(variable);
 	}
 
-	protected String getSummaryValue(IExpressionDMContext variable) {
+	protected String getSummaryValue(IExpressionDMContext variable) throws CoreException {
 		return getValueString(variable);
 	}
 
-	protected String getValueString(IExpressionDMContext variable) {
+	protected String getValueString(IExpressionDMContext variable) throws CoreException {
 		StringBuilder sb = new StringBuilder();
 		IExpressions expressions = ((ExpressionDMC) variable).getService();
 		List<IExpressionDMContext> children = getChildren(variable);

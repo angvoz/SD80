@@ -618,7 +618,7 @@ public class Modules extends AbstractEDCService implements IModules {
 			IEDCSymbolReader reader = mdmc.getSymbolReader();
 
 			if (reader != null) {
-
+				
 				Collection<AddressRange> linkAddressRanges = LineEntryMapper.getAddressRangesAtSource(  
 						reader.getModuleScope().getModuleLineEntryProvider(),
 						PathUtils.createPath(file),

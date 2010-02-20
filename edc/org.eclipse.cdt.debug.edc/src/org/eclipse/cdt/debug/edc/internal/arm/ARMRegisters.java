@@ -21,6 +21,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ThreadExecutionDMC;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.tm.tcf.services.IRegisters.RegistersContext;
 
 public class ARMRegisters extends Registers {
 
@@ -202,13 +203,22 @@ public class ARMRegisters extends Registers {
 	}
 
 	@Override
-	protected List<RegisterGroupDMC> createGroupsForContext(ExecutionDMC ctx) {
+	protected List<RegisterGroupDMC> createGroupsForContext(final ExecutionDMC ctx) {
 
 		List<RegisterGroupDMC> groups = Collections.synchronizedList(new ArrayList<RegisterGroupDMC>());
 
 		if (ctx instanceof ThreadExecutionDMC) {
-			for (String groupName : registerGroups.keySet()) {
-				groups.add(new RegisterGroupDMC(this, ctx, groupName, groupName, groupName));
+			if (tcfRegistersService != null) {
+				List<RegistersContext> tcfRegGroups = getTCFRegistersContexts(ctx.getID());
+				
+				for (RegistersContext rg: tcfRegGroups) {
+					groups.add(new RegisterGroupDMC(this, (ThreadExecutionDMC)ctx, rg.getProperties()));
+				}
+			}
+			else {	// old way 
+				for (String groupName : registerGroups.keySet()) {
+					groups.add(new RegisterGroupDMC(this, ctx, groupName, groupName, groupName));
+				}
 			}
 		}
 
@@ -220,14 +230,23 @@ public class ARMRegisters extends Registers {
 
 		ArrayList<RegisterDMC> registers = new ArrayList<RegisterDMC>();
 
-		List<String> registerNames = registerGroups.get(registerGroupDMC.getID());
-		if (registerNames != null) {
-			for (String registerName : registerNames) {
-				registers.add(new RegisterDMC(registerGroupDMC.getExecutionDMC(), registerName, registerName,
-						registerName));
+		if (tcfRegistersService != null) {
+			List<RegistersContext> tcfRegs = getTCFRegistersContexts(registerGroupDMC.getID());
+			
+			for (RegistersContext rg: tcfRegs) {
+				registers.add(new RegisterDMC(registerGroupDMC, registerGroupDMC.getExecutionDMC(), rg));
 			}
 		}
-
+		else {	// old way 
+			List<String> registerNames = registerGroups.get(registerGroupDMC.getID());
+			if (registerNames != null) {
+				for (String registerName : registerNames) {
+					registers.add(new RegisterDMC(registerGroupDMC.getExecutionDMC(), registerName, registerName,
+							registerName));
+				}
+			}
+		}
+		
 		return registers;
 	}
 

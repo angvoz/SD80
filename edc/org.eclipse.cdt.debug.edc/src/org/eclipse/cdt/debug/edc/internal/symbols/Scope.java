@@ -13,11 +13,13 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.RangeList;
+import org.eclipse.cdt.debug.edc.internal.symbols.IRangeList.Entry;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.RangeList;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
 
@@ -30,7 +32,8 @@ public abstract class Scope implements IScope {
 	protected List<IScope> children = new ArrayList<IScope>();
 	protected List<IVariable> variables = new ArrayList<IVariable>();
 	protected List<IEnumerator> enumerators = new ArrayList<IEnumerator>();
-	protected boolean childrenSorted = false;
+	private TreeMap<IRangeList.Entry, IScope> addressToScopeMap;
+	
 	protected IRangeList rangeList;
 
 	public Scope(String name, IAddress lowAddress, IAddress highAddress, IScope parent) {
@@ -100,74 +103,60 @@ public abstract class Scope implements IScope {
 		return Collections.unmodifiableCollection(enumerators);
 	}
 
-	static final Comparator<IScope> sortByAddress = new Comparator<IScope>() {
-
-		public int compare(IScope o1, IScope o2) {
-			return o1.getLowAddress().compareTo(o2.getLowAddress());
-		}
-	};
-	
 	public IScope getScopeAtAddress(IAddress linkAddress) {
-		if (!childrenSorted) {
-			// Comparable<> is not defined to work the way we want; be explicit with the sorter
-			Collections.sort(children, sortByAddress);
-			childrenSorted = true;
-		}
-
 		// see if it's in this scope
 		if (linkAddress.compareTo(lowAddress) >= 0 && linkAddress.compareTo(highAddress) < 0) {
-			int insertion = Collections.binarySearch(children, linkAddress);
-			if (insertion >= 0) {
-				IScope s = children.get(insertion).getScopeAtAddress(linkAddress);
-				if (s != null)	// found in subscopes
-					return s;
-				// Not found in subscope.
-				// One case I've seen: with RVCT 2.2 compiled Symbian GUI template project,
-				// some lexical blocks has highAddress smaller than lowAddress, resulting in
-				// no lexical block found for the address.
-				// In such case, we just go on return this scope.
-			}
-			else if (insertion != -1) {
-				insertion = -insertion - 1;
-
-				IScope child = children.get(insertion - 1);
-				if (linkAddress.compareTo(child.getHighAddress()) < 0) {
-					return child.getScopeAtAddress(linkAddress);
-				}
+			
+			ensureScopeRangeLookup();
+			
+			long addr = linkAddress.getValue().longValue();
+			IRangeList.Entry addressEntry = new IRangeList.Entry(addr, addr);
+			SortedMap<Entry,IScope> tailMap = addressToScopeMap.tailMap(addressEntry);
+			
+			if (tailMap.isEmpty())
+				return this;
+			
+			IScope child = tailMap.values().iterator().next();
+			if (linkAddress.compareTo(child.getLowAddress()) >= 0 
+					&& linkAddress.compareTo(child.getHighAddress()) < 0) {
+				return child.getScopeAtAddress(linkAddress);
 			}
 			
-			// No matches? This could be due to the fact that ranges are not
-			// guaranteed to be strictly non-overlapping (as far as low and high
-			// ranges go) -- especially if a child uses a range list.
-			// Our binary search above may have found a candidate which happens
-			// to contain the range, but other children may *also* contain the
-			// range.
-			// Try harder.
-			// TODO: make a unified TreeMap<Long, IScope> to avoid fallback behavior
-			for (IScope child : children) {
-				if (linkAddress.compareTo(child.getLowAddress()) >= 0 
-						&& linkAddress.compareTo(child.getHighAddress()) < 0) {
-					IRangeList childRange = child.getRangeList();
-					if (childRange != null) {
-						if (childRange.isInRange(linkAddress.getValue().longValue())) {
-							IScope candidate = child.getScopeAtAddress(linkAddress);
-							if (candidate != null)
-								return candidate;
-						}
-					} else {
-						// may yet be between the low and high addresses
-						IScope candidate = child.getScopeAtAddress(linkAddress);
-						if (candidate != null)
-							return candidate;
-					}
-				}
-			}
-			
-			// not found in a sub scope so return this scope
 			return this;
 		}
 
 		return null;
+	}
+
+	/**
+	 * Make sure our mapping of address range to scope is valid. 
+	 */
+	private void ensureScopeRangeLookup() {
+		if (addressToScopeMap == null) {
+			addressToScopeMap = new TreeMap<Entry, IScope>();
+			
+			for (IScope scope : children) {
+				addScopeRange(scope);
+			}
+			//System.out.println("Mapping for " + getName()+ ": "+ addressToScopeMap.size() + " entries");
+		}
+	}
+
+	/**
+	 * @param scope
+	 */
+	private void addScopeRange(IScope scope) {
+		IRangeList ranges = scope.getRangeList();
+		if (ranges != null) {
+			for (IRangeList.Entry entry : ranges) {
+				addressToScopeMap.put(entry, scope);
+			}
+		} else {
+			addressToScopeMap.put(new IRangeList.Entry(
+						scope.getLowAddress().getValue().longValue(), 
+						scope.getHighAddress().getValue().longValue()),
+					scope);
+		}
 	}
 
 	/**
@@ -177,7 +166,9 @@ public abstract class Scope implements IScope {
 	 */
 	public void addChild(IScope scope) {
 		children.add(scope);
-		childrenSorted = false;
+		if (addressToScopeMap != null) {
+			addScopeRange(scope);
+		}
 	}
 
 	/**
@@ -323,5 +314,21 @@ public abstract class Scope implements IScope {
 			}
 			cu = cu.getParent();
 		}
+	}
+
+	/**
+	 * 
+	 */
+	public void dispose() {
+		for (IScope scope : children)
+			scope.dispose();
+		children.clear();
+		for (IVariable var : variables)
+			var.dispose();
+		variables.clear();
+		enumerators.clear();
+		if (addressToScopeMap != null)
+			addressToScopeMap.clear();
+		rangeList = null;
 	}
 }

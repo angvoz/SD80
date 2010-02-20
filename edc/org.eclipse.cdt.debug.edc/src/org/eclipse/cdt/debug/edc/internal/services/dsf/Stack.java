@@ -188,7 +188,6 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				if (line != null) {
 					sourceFile = line.getFilePath().toOSString();
 					frameProperties.put(SOURCE_FILE, sourceFile);
-
 					lineNumber = line.getLineNumber();
 					frameProperties.put(LINE_NUMBER, lineNumber);
 				}
@@ -339,29 +338,27 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						locals.add(var);
 						localsByName.put(var.getName(), var);
 					}
-					
-					if (Symbols.useNewReader()) {
-						// add file-scope globals too
-						// (this isn't nearly sufficient since globals can show up
-						// in a header while all code is in the source file)
-						IScope parentScope = scope.getParent();
-						while (parentScope != null) {
-							Collection<IVariable> globals = null;
-							if (parentScope instanceof ICompileUnitScope) {
-								globals = ((ICompileUnitScope) parentScope).getVariables();
-							} else if (parentScope instanceof IModuleScope) {
-								// waaaay too many
-								//globals = ((IModuleScope) parentScope).getVariables();
-							}
-							if (globals != null) {
-								for (IVariable variable : globals) {
-									VariableDMC var = new VariableDMC(Stack.this, this, variable);
-									locals.add(var);
-									localsByName.put(var.getName(), var);
-								}
-							}
-							parentScope = parentScope.getParent();
+
+					// add file-scope globals too
+					// (this isn't nearly sufficient since globals can show up
+					// in a header while all code is in the source file)
+					IScope parentScope = scope.getParent();
+					while (parentScope != null) {
+						Collection<IVariable> globals = null;
+						if (parentScope instanceof ICompileUnitScope) {
+							globals = ((ICompileUnitScope) parentScope).getVariables();
+						} else if (parentScope instanceof IModuleScope) {
+							// waaaay too many
+							//globals = ((IModuleScope) parentScope).getVariables();
 						}
+						if (globals != null) {
+							for (IVariable variable : globals) {
+								VariableDMC var = new VariableDMC(Stack.this, this, variable);
+								locals.add(var);
+								localsByName.put(var.getName(), var);
+							}
+						}
+						parentScope = parentScope.getParent();
 					}
 					
 					if (!(scope.getParent() instanceof IFunctionScope))
@@ -437,7 +434,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				// is asking for a variable.  We probably don't want to fish out all the globals across the entire
 				// sym file, especially not for big sym files.  So, for the new reader, 
 				// bail here.  We need to address this issue later along with other global variable fixes.
-				if (Symbols.useNewReader() && variableScope instanceof IModuleScope) {
+				if (variableScope instanceof IModuleScope) {
 					break;
 				}
 			}
@@ -673,6 +670,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	}
 
 	public void flushCache(IDMContext context) {
+		if (isSnapshot())
+			return;
 		if (context != null && context instanceof DMContext) {
 			stackFrames.remove(((DMContext) context).getID());
 		} else {

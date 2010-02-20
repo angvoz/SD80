@@ -24,15 +24,26 @@ import java.util.Iterator;
  * 
  * Note: this uses long instead of IAddress for efficiency.
  */
-public interface IRangeList {
+public interface IRangeList extends Iterable<IRangeList.Entry> {
 
-	static class Entry {
+	static class Entry implements Comparable<Entry> {
 		public Entry(long low, long high) {
 			this.low = low;
 			this.high = high;
 		}
 
 		final public long low, high;
+		
+		/* (non-Javadoc)
+		 * @see java.lang.Comparable#compareTo(java.lang.Object)
+		 */
+		public int compareTo(Entry o) {
+			if (low < o.low)
+				return -1;
+			if (high >= o.high)
+				return 1;
+			return 0;
+		}
 	}
 	
 	/** Get absolute low address for the range */

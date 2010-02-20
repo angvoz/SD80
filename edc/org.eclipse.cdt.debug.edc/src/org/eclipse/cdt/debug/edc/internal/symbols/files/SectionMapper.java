@@ -121,13 +121,13 @@ public class SectionMapper implements ISectionMapper {
 		// into the heap and choking the memory.
 		// Just read it on-demand from disk.
 		try {
-		if (section.sectionSize > 4 * 1024 * 1024) {
+			if (section.sectionSize > 4 * 1024 * 1024) {
 				buffer = loadSectionIntoFileStreamBuffer(section);
 			} else {
 				buffer = loadSectionIntoHeap(section);
 			}
-			} catch (IOException e) {
-				buffer = loadSectionIntoHeap(section);
+		} catch (IOException e) {
+			buffer = loadSectionIntoHeap(section);
 		}
 		
 		return buffer;

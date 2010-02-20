@@ -15,7 +15,7 @@
 *
 */
 
-package org.eclipse.cdt.debug.edc.internal.symbols.newdwarf;
+package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
@@ -66,15 +66,15 @@ import org.eclipse.cdt.debug.edc.internal.symbols.SubroutineType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
 import org.eclipse.cdt.debug.edc.internal.symbols.UnionType;
 import org.eclipse.cdt.debug.edc.internal.symbols.VolatileType;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.AbbreviationEntry;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.Attribute;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.AttributeList;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.AttributeValue;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.CompilationUnitHeader;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.ForwardTypeReference;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.PublicNameInfo;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSection;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.DwarfDebugInfoProvider.AbbreviationEntry;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.DwarfDebugInfoProvider.Attribute;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.DwarfDebugInfoProvider.AttributeList;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.DwarfDebugInfoProvider.AttributeValue;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.DwarfDebugInfoProvider.CompilationUnitHeader;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.DwarfDebugInfoProvider.ForwardTypeReference;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.DwarfDebugInfoProvider.PublicNameInfo;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IPath;
 
@@ -433,7 +433,7 @@ public class DwarfInfoReader {
 			// get stored abbrev table, or read and parse an abbrev table
 			Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(header.abbreviationOffset);
 
-			parseForAddresses(data, abbrevs, header, new Stack<Long>());
+			parseForAddresses(data, abbrevs, header, new Stack<Scope>());
 		} catch (IOException e) {
 			EDCDebugger.getMessageLogger().logError("Failed to parse debug info from section " 
 					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
@@ -478,7 +478,7 @@ public class DwarfInfoReader {
 			Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(header.abbreviationOffset);
 
 			parseForTypes(data, abbrevs, header,
-						new Stack<Long>());
+						new Stack<Scope>());
 		} catch (IOException e) {
 			EDCDebugger.getMessageLogger().logError("Failed to parse type debug info from section " 
 					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
@@ -858,17 +858,25 @@ public class DwarfInfoReader {
 	}
 
 	private void parseForAddresses(IStreamBuffer in, Map<Long, AbbreviationEntry> abbrevs, CompilationUnitHeader header,
-			Stack<Long> nestingStack)
+			Stack<Scope> nestingStack)
 			throws IOException {
 
 		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse of " + header.scope.getName() + " @ " + Long.toHexString(header.debugInfoOffset));
-		
+
 		while (in.remaining() > 0) {
 			long offset = in.position() + currentCUHeader.debugInfoOffset;
 			long code = read_unsigned_leb128(in);
-			AbbreviationEntry entry = abbrevs.get(new Long(code));
 
-			if (entry != null) {
+			if (code != 0) {
+				AbbreviationEntry entry = abbrevs.get(new Long(code));
+				if (entry == null) {
+					assert false;
+					continue;
+				}
+				if (entry.hasChildren) {
+					nestingStack.push(currentParentScope);
+				}
+				
 				if (isDebugInfoEntryWithAddressRange(entry.tag)) {
 					processDebugInfoEntry(offset, entry, 
 							new AttributeList(entry, in, header.addressSize, getDebugStrings()), 
@@ -878,19 +886,13 @@ public class DwarfInfoReader {
 					AttributeList.skipAttributes(entry, in, header.addressSize);
 				}
 				
-				if (entry.hasChildren) {
-					nestingStack.push(offset);
-				}
 			} else {
 				if (code == 0) {
 					if (nestingStack.isEmpty()) {
 						// FIXME
 						currentParentScope = null;
 					} else {
-						long nesting = nestingStack.pop();
-						Scope parent = provider.scopesByOffset.get(nesting);
-						if (parent != null)
-							currentParentScope = (Scope) parent.getParent();
+						currentParentScope = nestingStack.pop();
 					}
 				}
 			}
@@ -899,7 +901,7 @@ public class DwarfInfoReader {
 
 
 	private void parseForTypes(IStreamBuffer in, Map<Long, AbbreviationEntry> abbrevs, CompilationUnitHeader header,
-			Stack<Long> nestingStack)
+			Stack<Scope> nestingStack)
 			throws IOException {
 
 		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Parsing types for " + header.scope.getName() + " @ " + Long.toHexString(header.debugInfoOffset));
@@ -912,9 +914,18 @@ public class DwarfInfoReader {
 		while (in.remaining() > 0) {
 			long offset = in.position() + currentCUHeader.debugInfoOffset;
 			long code = read_unsigned_leb128(in);
-			AbbreviationEntry entry = abbrevs.get(new Long(code));
 
-			if (entry != null) {
+			if (code != 0) {
+				AbbreviationEntry entry = abbrevs.get(new Long(code));
+				if (entry == null) {
+					assert false;
+					continue;
+				}
+				if (entry.hasChildren) {
+					nestingStack.push(currentParentScope);
+					typeStack.push(currentParentType);
+				}
+				
 				if (isForwardTypeTag(entry.tag) || isForwardTypeChildTag(entry.tag)) {
 					
 					processDebugInfoEntry(offset, entry, 
@@ -938,25 +949,15 @@ public class DwarfInfoReader {
 					AttributeList.skipAttributes(entry, in, header.addressSize);
 					
 				}
-				
-				if (entry.hasChildren) {
-					nestingStack.push(offset);
-					typeStack.push(currentParentType);
-					//typeMap.put(currentParentType, (int) offset);
-				}
 			} else {
 				if (code == 0) {
 					if (nestingStack.isEmpty()) {
 						// FIXME
-						typeStack.clear();
 						currentParentType = null;
 						currentParentScope = null;
 					} else {
-						long nesting = nestingStack.pop();
+						currentParentScope = nestingStack.pop();
 						currentParentType = typeStack.pop();
-						Scope defScope = provider.scopesByOffset.get(nesting);
-						if (defScope != null)
-							currentParentScope = (Scope) defScope.getParent();
 					}
 				}
 			}
@@ -1087,7 +1088,7 @@ public class DwarfInfoReader {
 				if (typeAttribute != null) {
 					// get the offset into the .debug_info section
 					long debugInfoOffset = ((Number) typeAttribute.value).longValue();
-					if (typeAttribute.actualForm == DwarfConstants.DW_FORM_ref_addr) {
+					if (typeAttribute.getActualForm() == DwarfConstants.DW_FORM_ref_addr) {
 						// this is already relative to the .debug_info section
 					} else {
 						CompilationUnitHeader typeHeader = (CompilationUnitHeader) type.getProperties().get(DwarfInfoReader.CU_HEADER);
@@ -1240,7 +1241,7 @@ public class DwarfInfoReader {
 		case DwarfConstants.DW_TAG_try_block:
 		case DwarfConstants.DW_TAG_with_stmt:
 			return true;
-		// TODO: take this out of here?
+		// TODO: take DW_TAG_variable out of here?
 		case DwarfConstants.DW_TAG_variable:
 		case DwarfConstants.DW_TAG_formal_parameter:
 			return true;
@@ -1343,8 +1344,11 @@ public class DwarfInfoReader {
 			try {
 				IStreamBuffer data = getDwarfSection(DWARF_DEBUG_LOC);
 				if (data != null) {
-					long base = currentCUHeader.scope.getLowAddress().getValue().longValue();
 					data.position(offset);
+					
+					boolean first = true;
+					long base = 0;
+					
 					while (data.hasRemaining()) {
 
 						long lowPC = readAddress(data, currentCUHeader.addressSize);
@@ -1353,14 +1357,25 @@ public class DwarfInfoReader {
 						if (lowPC == 0 && highPC == 0) {
 							// end of list entry
 							break;
-						} else {
-							// location list entry
-							int numOpCodes = data.getShort();
-							byte[] bytes = new byte[numOpCodes];
-							data.get(bytes);
-							LocationEntry entry = new LocationEntry(lowPC + base, highPC + base, bytes);
-							entries.add(entry);
+						} else if (first) {
+							first = false;
+							long maxaddress = currentCUHeader.addressSize == 4 ? Integer.MAX_VALUE : Long.MAX_VALUE;
+							if (lowPC == maxaddress) {
+								// base address selection entry
+								base = highPC;
+								continue;
+							} else if (currentCompileUnitScope.getRangeList() == null) {
+								// if the compilation unit has a contiguous range, no implicit base is needed
+								base = currentCompileUnitScope.getLowAddress().getValue().longValue();
+							}
 						}
+						
+						// location list entry
+						int numOpCodes = data.getShort();
+						byte[] bytes = new byte[numOpCodes];
+						data.get(bytes);
+						LocationEntry entry = new LocationEntry(lowPC + base, highPC + base, bytes);
+						entries.add(entry);
 					}
 
 					locationEntriesByOffset.put(offset, entries);
@@ -1477,8 +1492,8 @@ public class DwarfInfoReader {
 				start = data.getInt();
 				end = data.getInt();
 			} else if (baseValue != null) {
-				base = ((Number) baseValue.value).longValue();
-			} else if (currentCompileUnitScope != null && !currentCompileUnitScope.hasEmptyRange()) {
+				base = baseValue.getValueAsLong();
+			} else if (currentCompileUnitScope != null && currentCompileUnitScope.getRangeList() == null) {
 				base = currentCompileUnitScope.getLowAddress().getValue().longValue();
 			}
 			do {
@@ -1541,7 +1556,7 @@ public class DwarfInfoReader {
 		value = attributeList.getAttribute(DwarfConstants.DW_AT_ranges);
 		if (value != null) {
 			AttributeValue baseValue = attributeList.getAttribute(DwarfConstants.DW_AT_low_pc);
-			RangeList ranges = readRangeList(((Number)value.value).intValue(), baseValue);
+			RangeList ranges = readRangeList(value.getValueAsInt(), baseValue);
 			if (ranges != null) {
 				scope.setRangeList(ranges);
 				return;
@@ -1665,8 +1680,8 @@ public class DwarfInfoReader {
 			return null;
 		
 		// get the offset into the .debug_info section
-		long debugInfoOffset = ((Number) derefLocation.value).longValue();
-		if (derefLocation.actualForm == DwarfConstants.DW_FORM_ref_addr) {
+		long debugInfoOffset =  derefLocation.getValueAsLong();
+		if (derefLocation.getActualForm() == DwarfConstants.DW_FORM_ref_addr) {
 			// this is already relative to the .debug_info section
 		} else {
 			// relative to the CU 
@@ -1811,8 +1826,8 @@ public class DwarfInfoReader {
 			return null;
 		
 		// get the offset into the .debug_info section
-		long debugInfoOffset = ((Number) typeAttribute.value).longValue();
-		if (typeAttribute.actualForm == DwarfConstants.DW_FORM_ref_addr) {
+		long debugInfoOffset = typeAttribute.getValueAsLong();
+		if (typeAttribute.getActualForm() == DwarfConstants.DW_FORM_ref_addr) {
 			// this is already relative to the .debug_info section
 		} else {
 			debugInfoOffset += header.debugInfoOffset;
@@ -2014,7 +2029,7 @@ public class DwarfInfoReader {
 		// GCC-E has fields like "_vptr.BaseClass" which will be a problem for us 
 		// (since '.' is an operator); rename these here
 		name = name.replace('.', '$');
-		
+	
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
 		int bitSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_bit_size);
 		int bitOffset = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_bit_offset);
@@ -2047,6 +2062,15 @@ public class DwarfInfoReader {
 				accessibility = ICompositeType.ACCESS_PROTECTED;
 		} else if (compositeType != null && compositeType instanceof ClassType)
 			accessibility = ICompositeType.ACCESS_PRIVATE;
+
+		// Empty fields confuse the expressions service (#10369)
+		if (name.length() == 0) {
+			if (compositeType != null) {
+				name = "$unnamed$" + (compositeType.fieldCount() + 1);
+			} else {
+				name = "$unnamed$";
+			}
+		}
 
 		FieldType type = new FieldType(name, currentParentScope, compositeType, fieldOffset, bitSize, bitOffset,
 				byteSize, accessibility, null);
@@ -2191,7 +2215,7 @@ public class DwarfInfoReader {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
-		long value = attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_const_value);
+		long value = attributeList.getAttributeValueAsSignedLong(DwarfConstants.DW_AT_const_value);
 
 		Enumerator enumerator = new Enumerator(name, value);
 		
@@ -2401,7 +2425,7 @@ public class DwarfInfoReader {
 		if (typeAttribute != null) {
 			// get the offset into the .debug_info section
 			long debugInfoOffset = ((Number) typeAttribute.value).longValue();
-			if (typeAttribute.actualForm == DwarfConstants.DW_FORM_ref_addr) {
+			if (typeAttribute.getActualForm() == DwarfConstants.DW_FORM_ref_addr) {
 				// this is already relative to the .debug_info section
 			} else {
 				if (header == null) {
@@ -2418,18 +2442,19 @@ public class DwarfInfoReader {
 	 */
 	private ILocationProvider getLocationProvider(AttributeValue locationValue) {
 		if (locationValue != null) {
-			if (locationValue.actualForm == DwarfConstants.DW_FORM_data4) {
+			byte actualForm = locationValue.getActualForm();
+			if (actualForm == DwarfConstants.DW_FORM_data4) {
 				// location list
-				List<LocationEntry> entryList = getLocationRecord(((Integer) locationValue.value).longValue());
+				List<LocationEntry> entryList = getLocationRecord(locationValue.getValueAsLong());
 				return new LocationList(entryList.toArray(new LocationEntry[entryList.size()]),
 						exeReader.getByteOrder(),
 						currentCUHeader.addressSize, currentParentScope);
-			} else if (locationValue.actualForm == DwarfConstants.DW_FORM_block
-					|| locationValue.actualForm == DwarfConstants.DW_FORM_block1
-					|| locationValue.actualForm == DwarfConstants.DW_FORM_block2
-					|| locationValue.actualForm == DwarfConstants.DW_FORM_block4) {
+			} else if (actualForm == DwarfConstants.DW_FORM_block
+					|| actualForm == DwarfConstants.DW_FORM_block1
+					|| actualForm == DwarfConstants.DW_FORM_block2
+					|| actualForm == DwarfConstants.DW_FORM_block4) {
 				// location expression
-				IStreamBuffer locationData = new MemoryStreamBuffer((byte[]) locationValue.value, exeReader.getByteOrder());
+				IStreamBuffer locationData = new MemoryStreamBuffer(locationValue.getValueAsBytes(), exeReader.getByteOrder());
 				return new LocationExpression(locationData, 
 						currentCUHeader.addressSize,
 						currentParentScope);

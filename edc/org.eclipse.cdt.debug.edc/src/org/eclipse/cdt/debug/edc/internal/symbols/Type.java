@@ -31,6 +31,15 @@ public class Type implements IType {
 		this.properties = properties;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IType#dispose()
+	 */
+	public void dispose() {
+		properties = null;
+		scope = null;
+		type = null;
+	}
+	
 	public String getName() {
 		return name;
 	}

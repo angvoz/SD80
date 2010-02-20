@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.formatter;
 
 import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.core.runtime.CoreException;
 
 /**
  * Abstract class implementing IVariableValueConverter with summary and detail variants
@@ -26,11 +27,11 @@ public abstract class AbstractVariableConverter implements IVariableValueConvert
 		this.type = type;
 	}
 	
-	protected abstract String getDetailsValue(IExpressionDMContext variable);
+	protected abstract String getDetailsValue(IExpressionDMContext variable) throws CoreException;
 
-	protected abstract String getSummaryValue(IExpressionDMContext variable);
+	protected abstract String getSummaryValue(IExpressionDMContext variable) throws CoreException;
 	
-	public String getValue(IExpressionDMContext variable) {
+	public String getValue(IExpressionDMContext variable) throws CoreException {
 		if (forDetails)
 			return getDetailsValue(variable);
 		return getSummaryValue(variable);

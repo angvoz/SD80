@@ -179,17 +179,21 @@ public class Memory extends AbstractEDCService implements IMemory, ICachingServi
 		// everything ok
 		getMemoryCache(context).getMemory(tcfMemoryService, context, address.add(offset), word_size, count,
 				new DataRequestMonitor<MemoryByte[]>(ImmediateExecutor.getInstance(), drm) {
-					@Override
-					protected void handleSuccess() {
-						// hide breakpoints inserted in the memory by debugger
-						MemoryByte[] data = getData();
-						Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
-						bpService.removeBreakpointFromMemoryBuffer(address.add(offset), data);
+			@Override
+			protected void handleSuccess() {
+				// hide breakpoints inserted in the memory by debugger
+				MemoryByte[] data = getData();
+				Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+				bpService.removeBreakpointFromMemoryBuffer(address.add(offset), data);
 
-						drm.setData(data);
-						drm.done();
-					}
-				});
+				drm.setData(data);
+				drm.done();
+			}
+		});
+
+		if (RunControl.timeStepping())
+			System.out.println("Time since stepping start: " + 
+				((System.currentTimeMillis() - RunControl.getSteppingStartTime()) / 1000.0));
 
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
 	}

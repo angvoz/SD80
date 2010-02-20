@@ -165,7 +165,9 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	private Map<IPath, List<FileLineEntryProvider>> pathToLineEntryMap = new HashMap<IPath, List<FileLineEntryProvider>>();
 	// all known providers
 	private List<FileLineEntryProvider> fileProviders = new ArrayList<FileLineEntryProvider>();
-
+	// cached array of providers
+	private FileLineEntryProvider[] fileProviderArray;
+	
 	public ModuleLineEntryProvider() {
 
 
@@ -270,6 +272,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		}
 		fileEntries.add(provider);
 		fileProviders.add(provider);
+		fileProviderArray = null;
 	}
 	
 	/**
@@ -325,10 +328,20 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILineEntryProvider#getLineEntryAtAddress(org.eclipse.cdt.core.IAddress)
 	 */
 	public ILineEntry getLineEntryAtAddress(IAddress linkAddress) {
-		for (FileLineEntryProvider provider : fileProviders) {
-			ILineEntry entry = provider.getLineEntryAtAddress(linkAddress);
-			if (entry != null)
-				return entry;
+		// scanning files can introduce new file providers; avoid ConcurrentModificationException
+		if (fileProviderArray == null) {
+			fileProviderArray = (FileLineEntryProvider[]) fileProviders.toArray(new FileLineEntryProvider[fileProviders.size()]);
+		}
+		for (FileLineEntryProvider provider : fileProviderArray) {
+			// Narrow down the search to avoid iterating potentially hundreds of duplicates of the same file 
+			// (e.g. for stl_vector.h, expanded N times for N std::vector<T> uses).
+			// (Don't use #getScopeAtAddress() since this preparses too much.)
+			if (provider.compileUnitScope.getLowAddress().compareTo(linkAddress) <= 0
+					&& provider.compileUnitScope.getHighAddress().compareTo(linkAddress) > 0) {
+				ILineEntry entry = provider.getLineEntryAtAddress(linkAddress);
+				if (entry != null)
+					return entry;
+			}
 		}
 		return null;
 	}
@@ -343,10 +356,20 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		if (matches == null)
 			return null;
 		
-		for (FileLineEntryProvider provider : matches) {
-			ILineEntry next = provider.getNextLineEntry(entry);
-			if (next != null)
-				return next;
+		// possible concurrent access if we read new files while searching
+		FileLineEntryProvider[] matchArray = (FileLineEntryProvider[]) matches
+				.toArray(new FileLineEntryProvider[matches.size()]);
+		
+		for (FileLineEntryProvider provider : matchArray) {
+			// Narrow down the search to avoid iterating potentially hundreds of duplicates of the same file 
+			// (e.g. for stl_vector.h, expanded N times for N std::vector<T> uses).
+			// (Don't use #getScopeAtAddress() since this preparses too much.).
+			if (provider.compileUnitScope.getLowAddress().compareTo(entry.getLowAddress()) <= 0
+					&& provider.compileUnitScope.getHighAddress().compareTo(entry.getHighAddress()) > 0) {
+				ILineEntry next = provider.getNextLineEntry(entry);
+				if (next != null)
+					return next;
+			}
 		}
 		return null;
 	}

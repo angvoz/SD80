@@ -8,7 +8,7 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.internal.symbols.newdwarf;
+package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.nio.ByteOrder;
 import java.util.Collection;
@@ -45,16 +45,21 @@ public class EDCSymbolReader implements IEDCSymbolReader {
 		
 		this.exeSymReader = exeSymReader;
 		this.debugInfoProvider = debugInfoProvider;
+		
+		// we expect these two files to be the same
+		if (debugInfoProvider != null)
+			if (!debugInfoProvider.getSymbolFile().equals(exeSymReader.getSymbolFile()))
+				throw new IllegalArgumentException();
 	}
 
 	public void shutDown() {
 		if (exeSymReader != null) {
-		exeSymReader.dispose();
-		exeSymReader = null;
+			exeSymReader.dispose();
+			exeSymReader = null;
 		}
 		if (debugInfoProvider != null) {
-		debugInfoProvider.dispose();
-		debugInfoProvider = null;
+			debugInfoProvider.dispose();
+			debugInfoProvider = null;
 		}
 	}
 
@@ -94,7 +99,8 @@ public class EDCSymbolReader implements IEDCSymbolReader {
 	}
 
 	public IPath getSymbolFile() {
-		return exeSymReader.getSymbolFile();
+		return debugInfoProvider != null ? debugInfoProvider.getSymbolFile() :
+			(exeSymReader != null ? exeSymReader.getSymbolFile() : null);
 	}
 
 	public ByteOrder getByteOrder() {

@@ -5,6 +5,8 @@
    <extension-point id="tcfAgentLauncher" name="TCF Agent Descriptor" schema="schema/tcfAgentLauncher.exsd"/>
 
    <extension-point id="variableFormatProvider" name="Variable Format Provider" schema="schema/variableFormatProvider.exsd"/>
+   <extension-point id="executableSymbolicsReaderFactory" name="Executable Symbolics Reader" schema="schema/executableSymbolicsReaderFactory.exsd"/>
+   <extension-point id="debugInfoProviderFactory" name="Debug Information Provider" schema="schema/debugInfoProviderFactory.exsd"/>
 
    <extension
          id="EDCApplication"
@@ -40,12 +42,10 @@
             name="Album Mapping"/>
     </extension>
 
- <!--
-<extension
+   <extension
        point="org.eclipse.cdt.debug.core.SourceFilesProvider">
       <provider class="org.eclipse.cdt.debug.edc.internal.symbols.EDCSourceFilesProvider"/>
    </extension>
- -->
    
    <extension
          point="org.eclipse.cdt.scripting.scriptableFeature">
@@ -70,6 +70,26 @@
             name="stackFrame">
       </scriptableClass>
    </extension>
+   
+   <extension
+        point="org.eclipse.cdt.debug.edc.executableSymbolicsReaderFactory">
+     <executableSymbolicsReaderFactory
+           class="org.eclipse.cdt.debug.edc.internal.symbols.files.ElfExecutableSymbolicsReaderFactory"
+           name="ELF">
+     </executableSymbolicsReaderFactory>
+     <executableSymbolicsReaderFactory
+           class="org.eclipse.cdt.debug.edc.internal.symbols.files.PEFileExecutableSymbolicsReaderFactory"
+           name="PE-COFF">
+     </executableSymbolicsReaderFactory>
+   </extension>
+   <extension
+        point="org.eclipse.cdt.debug.edc.debugInfoProviderFactory">
+     <debugInfoProviderFactory
+           class="org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProviderFactory"
+            name="DWARF">
+     </debugInfoProviderFactory>
+   </extension>
+    
    <extension
          point="org.eclipse.cdt.debug.edc.variableFormatProvider">
       <variableFormatProvider
@@ -86,7 +106,7 @@
             label="Default Array Formatter">
       </variableFormatProvider>
    </extension>
-   <extension
+  <extension
          point="org.eclipse.cdt.debug.edc.variableFormatProvider">
       <variableFormatProvider
             class="org.eclipse.cdt.debug.edc.formatter.DefaultCStringFormatter"
@@ -98,5 +118,4 @@
          point="org.eclipse.core.runtime.preferences">
       <initializer class="org.eclipse.cdt.debug.edc.internal.EDCDebugPreferenceInitializer"/>
    </extension>
-
 </plugin>

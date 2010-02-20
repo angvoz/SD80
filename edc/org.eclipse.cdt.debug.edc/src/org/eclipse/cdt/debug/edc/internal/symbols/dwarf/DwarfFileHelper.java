@@ -8,7 +8,7 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.internal.symbols.newdwarf;
+package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.io.File;
 import java.io.IOException;
@@ -196,6 +196,13 @@ public class DwarfFileHelper {
 		// convert to path on runtime platform
 		//
 		return PathUtils.createPath(path);
+	}
+
+	/**
+	 * 
+	 */
+	public void dispose() {
+		compDirAndNameMap.clear();
 	}
 
 }

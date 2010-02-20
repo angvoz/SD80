@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -18,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
@@ -26,12 +24,11 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCDwarfReader;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.DebugInfoProviderFactory;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.EDCSymbolReader;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -43,13 +40,11 @@ import org.eclipse.debug.core.model.ISourceLocator;
 
 public class Symbols extends AbstractEDCService implements ISymbols {
 
-	/** TEMPORARY system property (value "true") for selecting the new on-demand DWARF reader */
+	/** TEMPORARY system property (value "true", default "true") for selecting the new on-demand DWARF reader */
 	public static final String DWARF_USE_NEW_READER = "dwarf.use_new_reader";
+	/** TEMPORARY system property (value "true", default "false") for selecting the old DWARF reader */
+	public static final String DWARF_USE_OLD_READER = "dwarf.use_old_reader";
 	
-	public static boolean useNewReader() {
-		return "true".equals(System.getProperty(DWARF_USE_NEW_READER));
-	}
-
 	private static Map<IPath, IEDCSymbolReader> readerCache = new HashMap<IPath, IEDCSymbolReader>();
 	private ISourceLocator sourceLocator;
 	
@@ -198,21 +193,17 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 			readerCache.remove(reader);
 		}
 
-		try {
-			// if this throws then it's not PE or ELF
-			
-			// TODO: this system property is for temporary side-by-side testing
-			if (useNewReader()) {
-				IExecutableSymbolicsReader exeReader = ExecutableSymbolicsReaderFactory.createFor(modulePath);
-				if (exeReader != null) {
-					IDebugInfoProvider debugProvider = DebugInfoProviderFactory.createFor(exeReader); // may be null
-					reader = new EDCSymbolReader(exeReader, debugProvider);
+		IExecutableSymbolicsReader exeReader = ExecutableSymbolicsReaderFactory.createFor(modulePath);
+		if (exeReader != null) {
+			IDebugInfoProvider debugProvider = DebugInfoProviderFactory.createFor(modulePath, exeReader); // may be null
+			if (debugProvider != null) {
+				// if debug info came from a different file, the "executable" may be that symbol file too 
+				if (!exeReader.getSymbolFile().equals(debugProvider.getExecutableSymbolicsReader().getSymbolFile())) {
+					exeReader.dispose();
+					exeReader = debugProvider.getExecutableSymbolicsReader();
 				}
-			} else {
-				reader = new EDCDwarfReader(modulePath);
 			}
-		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError("Failed to read symbols from " + modulePath, e);
+			reader = new EDCSymbolReader(exeReader, debugProvider);
 		}
 
 		if (reader != null) {

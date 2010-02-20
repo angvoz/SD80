@@ -72,7 +72,7 @@ public class OperatorIndirection extends CompoundInstruction {
 		VariableWithValue variableWithValue = (VariableWithValue) operand;
 
 		Object opType = TypeUtils.getStrippedType(variableWithValue.getVariable().getType());
-
+		
 		Object opValue = variableWithValue.getValue();
 		
 		// change a Short, Integer, Long, etc. to BigInteger for consistency
@@ -125,7 +125,7 @@ public class OperatorIndirection extends CompoundInstruction {
 		if (unqualifiedPointedTo instanceof ICPPBasicType || unqualifiedPointedTo instanceof IPointerType
 				|| unqualifiedPointedTo instanceof IEnumeration) {
 			int byteSize = unqualifiedPointedTo.getByteSize();
-
+			
 			// treat ICPPBasicType of byte size 0 as a void pointer (size 4)
 			if (unqualifiedPointedTo instanceof ICPPBasicType && byteSize == 0)
 				byteSize = 4;

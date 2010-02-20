@@ -56,30 +56,44 @@ public interface ICompositeType extends IType, IAggregate {
 	public IField[] getFields();
 
 	/**
-	 * Find the composite field/member with the given name
+	 * Find the composite fields/members with the given name
 	 * 
-	 * @param name
-	 * @return field if it exists, or null otherwise
+	 * @param name field name, which may contain "::" separators
+	 * @return array of matching fields if any exist, or null otherwise
 	 */
-	public IField findField(String name);
+	public IField[] findFields(String name);
 
 	/**
-	 * Add an inherited-from class to the end of the list
-	 * of inherited-from classes
+	 * Number of classes and structs from which the composite inherits
+	 * 
+	 * @return count
+	 */
+	public int inheritanceCount();
+
+	/**
+	 * Add an inherited-from class or struct to the end of the list
+	 * of inherited-from classes and structs
 	 * Intended for use by a debug information parser.
 	 * 
 	 * @param inheritance
-	 *            information about class from which this composite
-	 *            inherits
+	 *            information about class/struct from which this
+	 *            composite inherits
 	 */
 	public void addInheritance(IInheritance inheritance);
 	
 	/**
 	 * Get an array of inherited-from classes for composite
 	 * 
-	 * @return array of information about classes from which
-	 * this composite inherits
+	 * @return array of information about classes from which this
+	 * composite inherits, or an empty array if nothing is inherited
 	 */
 	public IInheritance[] getInheritances();
+	
+	/**
+	 * Get the name without a type prefix (e.g., "foo" instead of "class foo")
+	 * 
+	 * @return composite name without a type 
+	 */
+	public String getBaseName();
 
 }

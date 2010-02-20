@@ -23,6 +23,7 @@ public class ASTEvalMessages extends NLS {
 	public static String FieldReference_InvalidPointerDeref;
 	public static String FieldReference_InvalidDotDeref;
 	public static String FieldReference_InvalidMember;
+	public static String FieldReference_AmbiguousMember;
 	public static String OperatorAddrOf_RequiresVariable;
 	public static String OperatorAddrOf_NoRegister;
 	public static String OperatorAddrOf_NoBitField;

@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
+import java.text.MessageFormat;
 
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
@@ -153,18 +154,33 @@ public class FieldReference extends CompoundInstruction {
 
 		// get the field/member
 		ICompositeType compositeType = (ICompositeType) variableType;
-		IField field = compositeType.findField(refExpression.getFieldName().toString());
+		String fieldName  = refExpression.getFieldName().toString();
+		IField[] fields = compositeType.findFields(fieldName);
 
-		if (field == null) {
-			InvalidExpression invalidExpression = new InvalidExpression(ASTEvalMessages.FieldReference_InvalidMember);
+		if (fields == null) {
+			InvalidExpression invalidExpression =
+				new InvalidExpression(MessageFormat.format(ASTEvalMessages.FieldReference_InvalidMember, fieldName));
 			push(invalidExpression);
 			setLastValue(invalidExpression);
 			setValueLocation(""); //$NON-NLS-1$
 			setValueType(""); //$NON-NLS-1$
 			return;
 		}
-
+		
+		if (fields.length > 1) {
+			InvalidExpression invalidExpression =
+				new InvalidExpression(MessageFormat.format(
+						ASTEvalMessages.FieldReference_AmbiguousMember, fieldName,
+						variableWithValue.getVariable().getName()));
+			push(invalidExpression);
+			setLastValue(invalidExpression);
+			setValueLocation(""); //$NON-NLS-1$
+			setValueType(""); //$NON-NLS-1$
+			return;
+		}
+		
 		// type and address of the field
+		IField field = fields[0];
 		IType typeOfField = field.getType();
 
 		if (   refExpression.isPointerDereference()

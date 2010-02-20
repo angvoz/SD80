@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
@@ -31,6 +32,7 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.debug.core.model.MemoryByte;
 
@@ -96,7 +98,7 @@ public class FormatUtils {
 	
 	public static String getFormattedNullTermString(IExpressionDMContext variable, 
 			IAddress address, int charSize,
-			int maximumLength) {
+			int maximumLength) throws CoreException {
 		ExpressionDMC expression = (ExpressionDMC) variable;
 		StackFrameDMC frame = expression.getFrame();
 		Memory memory = frame.getDsfServicesTracker().getService(Memory.class);
@@ -118,8 +120,7 @@ public class FormatUtils {
 			}
 			else {
 				// error in reading memory, bail out.
-				sb.append("Error reading memory at address 0x" + address.getValue().toString(16));
-				break;
+				throw EDCDebugger.newCoreException("Cannot read memory at 0x" + address.getValue().toString(16));
 			}
 		}
 		if (maximumLength == 0)

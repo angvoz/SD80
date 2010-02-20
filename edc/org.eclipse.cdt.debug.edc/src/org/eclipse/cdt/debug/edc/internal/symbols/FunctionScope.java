@@ -52,12 +52,12 @@ public class FunctionScope extends Scope implements IFunctionScope {
 			else if (child instanceof ILexicalBlockScope)
 				variables.addAll(((ILexicalBlockScope) child).getVariablesInTree());
 			else
-			variables.addAll(child.getVariables());
+				variables.addAll(child.getVariables());
 		}
 
 		return variables;
 	}
-
+	
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope#getScopedVariables(org.eclipse.cdt.core.IAddress)
 	 */

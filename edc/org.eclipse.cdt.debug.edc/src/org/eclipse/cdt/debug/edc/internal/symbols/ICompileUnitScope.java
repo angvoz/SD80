@@ -36,7 +36,7 @@ public interface ICompileUnitScope extends IScope {
 	 * @return the function, or null if none found
 	 */
 	IFunctionScope getFunctionAtAddress(IAddress linkAddress);
-
+	
 
 	/**
 	 * Get all the top-level functions in the compilation unit.

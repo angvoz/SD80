@@ -43,8 +43,7 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 		sectionMapper = new SectionMapper(binaryFile, isLE);
 		
 		recordSections(elf);
-		
-		debugReader = DebugInfoProviderFactory.createFor(this);
+		readSymbols(elf);
 	}
 	
 	/* (non-Javadoc)
@@ -100,7 +99,9 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 				executableSections.put(name, exeSection);
 			}
 		}
-
+	}
+	
+	private void readSymbols(Elf elfFile) throws IOException {
 		// load the symbol table
 		elfFile.loadSymbols();
 		Set<IAddress> symbolAddressSet = new TreeSet<IAddress>();
@@ -121,7 +122,7 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 		// now sort it by address for faster lookups
 		Collections.sort(symbols);
 	}
-
+	
 	/**
 	 * Find the executable (text) segment of the elf file, assuming there is
 	 * only one that segment.

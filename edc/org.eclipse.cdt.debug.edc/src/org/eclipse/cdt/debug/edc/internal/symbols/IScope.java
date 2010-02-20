@@ -89,4 +89,9 @@ public interface IScope extends Comparable<Object> {
 	 */
 	IScope getScopeAtAddress(IAddress linkAddress);
 
+	/**
+	 * 
+	 */
+	void dispose();
+
 }

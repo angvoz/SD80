@@ -40,9 +40,6 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 		sectionMapper = new SectionMapper(binaryFile, isLE);
 		
 		recordSections(peFile);
-		
-		// may be null
-		debugReader = DebugInfoProviderFactory.createFor(this);
 	}
 	
 	/**

@@ -35,13 +35,13 @@ public class Snapshots extends AbstractEDCService {
 		if (!this.isSnapshot()) {
 			final String controlSetting = Album.getSnapshotCreationControl();
 			if (!controlSetting.equals(Album.CREATE_MANUAL)){
-				if (e.getReason() != StateChangeReason.SHAREDLIB
+								if (e.getReason() != StateChangeReason.SHAREDLIB
 						&& (controlSetting.equals(Album.CREATE_WHEN_STOPPED) || controlSetting.equals(Album.CREATE_AT_BEAKPOINTS))) {
 					if (controlSetting.equals(Album.CREATE_WHEN_STOPPED) || 
-							e.getReason() == StateChangeReason.BREAKPOINT) {
+											e.getReason() == StateChangeReason.BREAKPOINT) {
 						Album.captureSnapshotForSession(getSession(), e.getDMContext());
-					}
-				}
+									}
+								}
 			}
 		}
 	}

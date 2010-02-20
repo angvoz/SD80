@@ -12,22 +12,26 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 public class CompositeType extends MayBeQualifiedType implements ICompositeType {
-
+	
 	// kind of composite (class, struct, union)
 	private final int key;
+	
+	// composite name without "class ", "struct " or "union " prefix
+	private final String baseName;
 
 	// fields in the composite 
 	protected ArrayList<IField> fields = new ArrayList<IField>();
 	
 	// classes inherited from
-	protected ArrayList<IInheritance> inheritances = new ArrayList<IInheritance>();
-	private boolean addedInherited = false;
+	protected ArrayList<IInheritance> inheritances = null;
 
 	public CompositeType(String name, IScope scope, int key, int byteSize, Map<Object, Object> properties, String prefix) {
 		super(name, scope, byteSize, properties);
-		this.name = prefix + " " + this.name; //$NON-NLS-1$
+		this.baseName = name;
+		this.name = prefix + " " + name; //$NON-NLS-1$
 		this.key = key;
 	}
 
@@ -36,9 +40,6 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 	}
 
 	public int fieldCount() {
-		if (!addedInherited) {
-			addInheritedFields();
-		}
 		return fields.size();
 	}
 
@@ -47,70 +48,218 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 	}
 
 	public IField[] getFields() {
-		if (!addedInherited) {
-			addInheritedFields();
-		}
+		ArrayList<IField> fieldList = new ArrayList<IField>(fields);
 		
-		IField[] fieldArray = new IField[fields.size()];
-		for (int i = 0; i < fields.size(); i++) {
-			fieldArray[i] = fields.get(i);
-		}
-		return fieldArray;
-	}
-
-	public IField findField(String name) {
-		if (!addedInherited) {
-			addInheritedFields();
-		}
-		
-		for (int i = 0; i < fields.size(); i++) {
-			if (((FieldType) fields.get(i)).getName().equals(name))
-				return fields.get(i);
-		}
-		return null;
+		return fieldList.toArray(new IField[fields.size()]);
 	}
 
 	@Override
 	public String getName() {
 		return name;
 	}
+	
+	public String getBaseName() {
+		return baseName;
+	}
+
+	public int inheritanceCount() {
+		return inheritances == null ? 0 : inheritances.size();
+	}
 
 	public void addInheritance(IInheritance inheritance) {
+		if (inheritances == null)
+			inheritances = new ArrayList<IInheritance>();
 		inheritances.add(inheritance);
 	}
 
 	public IInheritance[] getInheritances() {
-		IInheritance[] inheritanceArray = new IInheritance[inheritances.size()];
-		for (int i = 0; i < inheritances.size(); i++) {
-			inheritanceArray[i] = inheritances.get(i);
+		if (inheritances == null)
+			return new IInheritance[0];
+
+		return inheritances.toArray(new IInheritance[inheritances.size()]);
+	}	
+
+	public IField[] findFields(String name) {
+		// For a qualified name containing "::", save the qualifiers to match against
+		String baseFieldName = name;
+		ArrayList<String> nameQualifiers = new ArrayList<String>();
+		
+		if (name.contains("::")) {
+			StringTokenizer st = new StringTokenizer(name, "::", false);
+			while (st.hasMoreTokens()) {
+				baseFieldName = st.nextToken();
+				nameQualifiers.add(baseFieldName);
+			}
+			
+			// last token in the array is the base field name
+			nameQualifiers.remove(nameQualifiers.size() - 1);
+
+			// if the first nameQualifier is the composite's name, remove it
+			// E.g., if we're in class foo, change "foo::x" to "x".
+			if ((nameQualifiers.size() >= 0) && nameQualifiers.get(0).equals(this.baseName))
+				nameQualifiers.remove(0);
 		}
-		return inheritanceArray;
-	}
-	
-	/**
-	 * Add the inherited fields to the list of fields
-	 */
-	private void addInheritedFields() {
-		for (IInheritance inheritance : inheritances) {
-			if (!(inheritance.getType() instanceof ICompositeType))
-				continue;
+
+		// try for a fast exit: match against the non-inherited fields and names of
+		// composites we're inheriting from
+		if (nameQualifiers.size() == 0) {
+			for (int i = 0; i < fields.size(); i++) {
+				if (((FieldType) fields.get(i)).getName().equals(baseFieldName)) {
+					IField[] foundFields = new IField[1];
+					foundFields[0] = fields.get(i);
+					return foundFields;
+				}
+			}
 			
-			ICompositeType inheritanceType = (ICompositeType) inheritance.getType();
-			
-			// add the fields of the inherited type
-			IField[] inheritanceFields = inheritanceType.getFields();
-			long fieldsOffset = inheritance.getFieldsOffset();
-			
-			for (IField field : inheritanceFields) {
-				FieldType newField = new FieldType(field.getName(), scope, field.getCompositeTypeOwner(),
-						fieldsOffset + field.getFieldOffset(), field.getBitSize(), field.getBitSize(),
-						field.getByteSize(), field.getAccessibility(), field.getProperties());
-				newField.setType(field.getType());
-				fields.add(newField);
+			if (inheritances != null) {
+				for (IInheritance inheritance : inheritances) {
+					if (inheritance.getName().equals(baseFieldName)) {
+						IField[] foundFields = new IField[1];
+						
+						// treat the inherited type as a field
+						FieldType newField = new FieldType(inheritance.getName(), scope, this,
+								inheritance.getFieldsOffset(), 0 /* bitSize */, 0 /* bitOffset */,
+								inheritance.getType().getByteSize(), inheritance.getAccessibility(),
+								inheritance.getProperties());
+						newField.setType(inheritance.getType());
+
+						foundFields[0] = newField;
+						return foundFields;
+					}
+				}
 			}
 		}
 		
-		addedInherited = true;
+		// check the inherited types
+		if (inheritances == null)
+			return null;
+
+		ArrayList<IField> matches = new ArrayList<IField>();
+		
+		for (IInheritance inheritance : inheritances) {
+			if (inheritance.getType() instanceof ICompositeType) {
+				ICompositeType inheritComposite = (ICompositeType)inheritance.getType();
+				matches = findInheritedByName(baseFieldName, inheritComposite, inheritComposite.getBaseName(), inheritance.getFieldsOffset(), matches);
+			}
+		}
+		
+		// eliminate partial matches
+		matches = pruneMatches(nameQualifiers, matches);
+
+		// create the list of all inherited fields
+		IField[] foundFields = null;
+		
+		// gather the names and offsets of the inherited fields
+		if (matches.size() > 0) {
+			foundFields = new IField[matches.size()];
+			for (int i = 0; i < matches.size(); i++) {
+				foundFields[i] = matches.get(i);
+			}
+		}
+		
+		return foundFields;
+	}
+	
+	/**
+	 * From a list of fields whose name matches the one we're looking for, remove those
+	 * whose "::" qualifiers do not match. E.g., "foo::x" would match "bar::foo::x", but
+	 * it would not match "bar::x" - so "bar::x" would be pruned.
+	 *  
+	 * @param nameQualifiers qualifiers of the field we're matching against
+	 * @param matches list of fields whose base name matches, but whose qualifiers may not match
+	 * @return list of fields whose base name and qualifiers match the field we're looking for
+	 */
+	private ArrayList<IField> pruneMatches(ArrayList<String> nameQualifiers, ArrayList<IField> matches) {
+		if (nameQualifiers.size() == 0)
+			return matches;
+
+		for (int i = 0; i < matches.size(); i++) {
+			ArrayList<String> matchQualifiers = new ArrayList<String>();
+			String matchName = matches.get(i).getName();
+			
+			if (!matchName.contains("::"))
+				continue;
+			
+			// tokenize the match's name
+			StringTokenizer st = new StringTokenizer(matchName, "::", false);
+			while (st.hasMoreTokens()) {
+				matchQualifiers.add(st.nextToken());
+			}
+			
+			// last token in the array is the base name, which we already know matches
+			matchQualifiers.remove(matchQualifiers.size() - 1);
+
+			for (int nameIndex = 0, matchIndex = 0;
+					nameIndex < nameQualifiers.size() && matchIndex < matchQualifiers.size();
+					nameIndex++) {
+				// match against each name qualifier, in order
+				boolean found = false;
+				while (!found && matchIndex < matchQualifiers.size()) {
+					found = nameQualifiers.get(nameIndex).equals(matchQualifiers.get(matchIndex));
+					matchIndex++;
+				}
+				
+				// if did not find a qualifier, remove the match
+				if (!found) {
+					matches.remove(i);
+					break;
+				}
+			}
+		}
+		
+		return matches;
 	}
 
+	/**
+	 * Find all inherited fields whose base name, ignoring "::" qualifiers, match the search name
+	 * 
+	 * @param name name to match
+	 * @param composite composite type whose fields or inherited fields may match 
+	 * @param prefix string of "::" qualifiers so far
+	 * @param offset byte offset of the composite from the composite that inherits from it
+	 * @param matches list of matches found so far
+	 * @return list of matches 
+	 */
+	private ArrayList<IField> findInheritedByName(String name, ICompositeType composite, String prefix, long offset, ArrayList<IField> matches) {
+		IField[] fields = composite.getFields();
+		if (fields != null) {
+			for (IField field : fields) {
+				String fieldName = field.getName();
+				
+				if (fieldName.equals(name)) {
+					// create a field with the prefixed name
+					FieldType newField = new FieldType(prefix + "::" + field.getName(), scope,
+							composite, offset + field.getFieldOffset(), 0 /* bitSize */, 0 /* bitOffset */,
+							field.getType().getByteSize(), field.getAccessibility(),
+							field.getProperties());
+					newField.setType(field.getType());
+					matches.add(newField);
+					break;
+				}
+			}
+		}
+
+		IInheritance[] compositeInheritances = composite.getInheritances(); 
+		if (compositeInheritances.length == 0)
+			return matches;
+
+		for (IInheritance inheritance : compositeInheritances) {
+			if (inheritance.getName().equals(name)) {
+				// treat the inherited type as a field
+				FieldType newField = new FieldType(inheritance.getName(), scope, this,
+						offset + inheritance.getFieldsOffset(), 0 /* bitSize */, 0 /* bitOffset */,
+						inheritance.getType().getByteSize(), inheritance.getAccessibility(),
+						inheritance.getProperties());
+				newField.setType(inheritance.getType());
+			}
+
+			if (inheritance.getType() instanceof ICompositeType) {
+				ICompositeType inheritComposite = (ICompositeType)inheritance.getType();
+				matches = findInheritedByName(name, inheritComposite, prefix + "::" + inheritComposite.getBaseName(),
+								offset + inheritance.getFieldsOffset(), matches);
+			}
+		}
+
+		return matches;
+	}
 }

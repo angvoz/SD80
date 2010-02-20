@@ -699,7 +699,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		protected void stopDebugChildren(){
 			for (ExecutionDMC e : getChildren()){
 				e.stopDebugChildren();
-			
+				
 				contextRemoved(e.getID());
 			}
 		}
@@ -945,6 +945,13 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			Registers regService = getServicesTracker().getService(Registers.class);
 			regService.loadGroupsForContext(this, element);
 
+			Stack stackService = getServicesTracker().getService(Stack.class);
+			NodeList frameElements = element.getElementsByTagName(EXECUTION_CONTEXT_FRAMES);
+			for (int i = 0; i < frameElements.getLength(); i++) {
+				Element frameElement = (Element) frameElements.item(i);
+				stackService.loadFramesForContext(this, frameElement);
+			}
+			
 			getSession().dispatchEvent(
 					new SuspendedEvent(this, StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
 					RunControl.this.getProperties());
@@ -1174,6 +1181,18 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		}
 	}
 
+	// This is a coarse timer on stepping for internal use.
+	// When needed, turn it on and watch output in console.
+	//
+	private static long steppingStartTime = 0;
+	public static boolean timeStepping() {
+		return false;
+	}
+	
+	public static long getSteppingStartTime() {
+		return steppingStartTime;
+	}
+	
 	public void step(IExecutionDMContext context, StepType stepType, final RequestMonitor rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
 				MessageFormat.format("{0} context {1}", stepType, context));
@@ -1184,6 +1203,9 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			rm.done();
 		}
 
+		if (timeStepping())
+			steppingStartTime = System.currentTimeMillis();
+		
 		final ExecutionDMC dmc = (ExecutionDMC) context;
 
 		dmc.setStepping(true);
@@ -1219,52 +1241,52 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 					IAddress linkAddress = module.toLinkAddress(pcAddress);
 					IModuleLineEntryProvider lineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();
 					ILineEntry line = lineEntryProvider.getLineEntryAtAddress(linkAddress);
-						if (line != null) {
-							// get runtime addresses of the line boundaries.
-							IAddress endAddr = module.toRuntimeAddress(line.getHighAddress());
+					if (line != null) {
+						// get runtime addresses of the line boundaries.
+						IAddress endAddr = module.toRuntimeAddress(line.getHighAddress());
 
-							// get the next source line entry that has a line #
-							// greater
-							// than the current line # (and in the same file),
-							// but is
-							// not outside of the function address range
-							// if found, the start addr of that entry is our end
-							// address, otherwise use the existing end address
+						// get the next source line entry that has a line #
+						// greater
+						// than the current line # (and in the same file),
+						// but is
+						// not outside of the function address range
+						// if found, the start addr of that entry is our end
+						// address, otherwise use the existing end address
 						ILineEntry nextLine = lineEntryProvider.getNextLineEntry(line);
-							if (nextLine != null) {
-								endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
-							}
-
-							/*
-							 * It's possible that PC is larger than startAddr
-							 * (e.g. user does a few instruction level stepping
-							 * then switch to source level stepping; or when we
-							 * just step out a function). We just parse and
-							 * stepping instructions within [pcAddr, endAddr)
-							 * instead of all those within [startAddr, endAddr).
-							 * One possible problem with the solution is when
-							 * control jumps from within [pcAddress, endAddr) to
-							 * somewhere within [startAddr, pcAddress), the
-							 * stepping would stop at somewhere within
-							 * [startAddr, pcAddress) instead of outside of the
-							 * [startAddr, endAddr). But that case is rare (e.g.
-							 * a source line contains a bunch of statements) and
-							 * that "problem" is not unacceptable as user could
-							 * just keep stepping or set a breakpoint and run.
-							 * 
-							 * We can overcome the problem but that would incur
-							 * much more complexity in the stepping code and
-							 * brings down the stepping speed.
-							 * ........................ 08/30/2009
-							 */
-							stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
-
-							EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
-									"source level stepping.");
-							return;
+						if (nextLine != null) {
+							endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
 						}
+
+						/*
+						 * It's possible that PC is larger than startAddr
+						 * (e.g. user does a few instruction level stepping
+						 * then switch to source level stepping; or when we
+						 * just step out a function). We just parse and
+						 * stepping instructions within [pcAddr, endAddr)
+						 * instead of all those within [startAddr, endAddr).
+						 * One possible problem with the solution is when
+						 * control jumps from within [pcAddress, endAddr) to
+						 * somewhere within [startAddr, pcAddress), the
+						 * stepping would stop at somewhere within
+						 * [startAddr, pcAddress) instead of outside of the
+						 * [startAddr, endAddr). But that case is rare (e.g.
+						 * a source line contains a bunch of statements) and
+						 * that "problem" is not unacceptable as user could
+						 * just keep stepping or set a breakpoint and run.
+						 * 
+						 * We can overcome the problem but that would incur
+						 * much more complexity in the stepping code and
+						 * brings down the stepping speed.
+						 * ........................ 08/30/2009
+						 */
+						stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
+
+						EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
+								"source level stepping.");
+						return;
 					}
 				}
+			}
 
 			// No source found, fall back to instruction level step.
 			if (stepType == StepType.STEP_INTO)

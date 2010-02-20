@@ -74,10 +74,10 @@ public class MemoryCache implements ISnapshotContributor {
 		memoryBlockList.clear();
 	}
 
-	/**
+    /**
 	 *  This function walks the address-sorted memory block list to identify
      *  the 'missing' blocks (i.e. the holes) that need to be fetched on the target.
-	 * 
+     * 
      *  The idea is fairly simple but an illustration could perhaps help.
      *  Assume the cache holds a number of cached memory blocks with gaps i.e.
      *  there is un-cached memory areas between blocks A, B and C:
@@ -92,15 +92,15 @@ public class MemoryCache implements ISnapshotContributor {
      *   [g---+---------+------+---------+------+---------+----]
      *        :         :      :         :      :         :
      *        :   [h]   :      :   [i----+--]   :         :
-	 * 
-	 * 
-	 * We have the following cases to consider.The requested block [a-i] either:
-	 * 
+     * 
+     * 
+     *  We have the following cases to consider.The requested block [a-i] either:
+     * 
      *  [1] Fits entirely before A, in one of the gaps, or after C
      *      with no overlap and no contiguousness (e.g. [a], [b], [c] and [d])
      *      -> Add the requested block to the list of blocks to fetch
-	 * 
-	 * [2] Starts before an existing block but overlaps part of it, possibly
+     * 
+     *  [2] Starts before an existing block but overlaps part of it, possibly
      *      spilling in the gap following the cached block (e.g. [e], [f] and [g])
      *      -> Determine the length of the missing part (< count)
      *      -> Add a request to fill the gap before the existing block
@@ -130,7 +130,7 @@ public class MemoryCache implements ISnapshotContributor {
      * @param count Its length
      * @return A list of the sub-blocks to fetch in order to fill enough gaps in the memory cache
      * to service the request
-	 */
+     */
 	private LinkedList<MemoryBlock> getListOfMissingBlocks(IAddress reqBlockStart, int count) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
 				new Object[] { reqBlockStart.toHexAddressString(), count });
@@ -429,18 +429,18 @@ public class MemoryCache implements ISnapshotContributor {
 		final TCFTask<MemoryByte[]> tcfTask = new TCFTask<MemoryByte[]>(TIMEOUT) {
 
 			public void run() {
-							Number tcfAddress = address.getValue();
-							final byte[] buffer = new byte[word_size * count];
+				Number tcfAddress = address.getValue();
+				final byte[] buffer = new byte[word_size * count];
 				tcfMC.get(tcfAddress, word_size, buffer, 0, count * word_size, 0, new DoneMemory() {
 
-								public void doneMemory(IToken token, MemoryError error) {
-									if (error == null) {
-										MemoryByte[] res = new MemoryByte[buffer.length];
-										for (int i = 0; i < buffer.length; i++) {
-											res[i] = new MemoryByte(buffer[i]);
-										}
+					public void doneMemory(IToken token, MemoryError error) {
+						if (error == null) {
+							MemoryByte[] res = new MemoryByte[buffer.length];
+							for (int i = 0; i < buffer.length; i++) {
+								res[i] = new MemoryByte(buffer[i]);
+							}
 							done(res);
-									} else {
+						} else {
 							error(error);
 						}
 					}

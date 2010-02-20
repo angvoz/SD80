@@ -26,7 +26,7 @@ import java.nio.ByteOrder;
  * This implementation of IStreamBuffer works on file content.
  */
 public class FileStreamBuffer extends StreamBufferBase {
-
+	private final boolean DEBUG = false;
 	private RandomAccessFile file;
 	
 	
@@ -50,8 +50,10 @@ public class FileStreamBuffer extends StreamBufferBase {
 	@Override
 	protected void fetchPage(byte[] buffer, long sourceOffset, int count) {
 		try {
+			if (DEBUG) System.out.print("Reading "+ sourceOffset + " x "+ count + "... ");
 			file.seek(sourceOffset);
 			file.read(buffer, 0, count);
+			if (DEBUG) System.out.println("done");
 		} catch (IOException e) {
 			BufferUnderflowException be = new BufferUnderflowException();
 			be.initCause(e);

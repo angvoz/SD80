@@ -17,24 +17,10 @@ import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
 
 public class DwarfVariable extends Variable {
 
-	private EDCDwarfReader reader;
-	private long debugInfoTypeOffset;
-
-	public DwarfVariable(String name, IScope scope, ILocationProvider locationProvider, EDCDwarfReader reader,
-			long debugInfoTypeOffset) {
+	public DwarfVariable(String name, IScope scope, ILocationProvider locationProvider, 
+			IType type) {
 		super(name, scope, null, locationProvider);
 
-		this.reader = reader;
-		this.debugInfoTypeOffset = debugInfoTypeOffset;
+		this.type = type;
 	}
-
-	@Override
-	public IType getType() {
-		if (type == null) {
-			type = reader.typesByOffset.get(debugInfoTypeOffset);
-		}
-
-		return type;
-	}
-
 }

@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.launch;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointsMediator2;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.ITargetEnvironment;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Snapshots;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
@@ -68,6 +69,11 @@ public class ShutdownSequence extends Sequence {
 			tracker.dispose();
 			tracker = null;
 			requestMonitor.done();
+		}
+	}, new Step() {
+		@Override
+		public void execute(RequestMonitor requestMonitor) {
+			shutdownService(Snapshots.class, requestMonitor);
 		}
 	}, new Step() {
 		@Override

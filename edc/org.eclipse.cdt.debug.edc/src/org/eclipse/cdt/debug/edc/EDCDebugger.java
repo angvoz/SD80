@@ -45,7 +45,7 @@ public class EDCDebugger extends Plugin {
 	private DebugTrace trace;
 
     private ITCFServiceManager tcfServiceManager;
-
+	
 	private IPreferenceStore preferenceStore;
 	
 	/**

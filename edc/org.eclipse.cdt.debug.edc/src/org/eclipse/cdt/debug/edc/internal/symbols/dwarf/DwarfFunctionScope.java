@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010 Nokia and others.
+ * Copyright (c) 2009 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,19 +15,16 @@ import org.eclipse.cdt.debug.edc.internal.symbols.FunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfCompileUnit;
 import org.eclipse.core.runtime.IPath;
 
 public class DwarfFunctionScope extends FunctionScope implements IFunctionScope {
-
 	protected int declFileNum;
-
+	
 	public DwarfFunctionScope(String name, IScope parent, IAddress lowAddress, IAddress highAddress,
 			ILocationProvider frameBaseLocationProvider) {
 		super(name, parent, lowAddress, highAddress, frameBaseLocationProvider);
 	}
 	
-
 	/**
 	 * Set the declaration file number entry from the line number table
 	 * @param declFileNum

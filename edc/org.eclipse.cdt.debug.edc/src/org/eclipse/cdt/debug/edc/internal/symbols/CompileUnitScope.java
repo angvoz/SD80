@@ -42,7 +42,7 @@ public abstract class CompileUnitScope extends Scope implements ICompileUnitScop
 
 		return (IFunctionScope) scope;
 	}
-
+	
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope#getFunctions()
 	 */
@@ -68,9 +68,9 @@ public abstract class CompileUnitScope extends Scope implements ICompileUnitScop
 	public Collection<ILineEntry> getLineEntries() {
 		if (lineEntries == null) {
 			lineEntries = parseLineTable();
-			}
-		return Collections.unmodifiableCollection(lineEntries);
 		}
+		return Collections.unmodifiableCollection(lineEntries);
+	}
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

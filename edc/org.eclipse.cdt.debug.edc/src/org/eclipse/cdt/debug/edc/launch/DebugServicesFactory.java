@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Processes;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Signals;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Snapshots;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.dsf.debug.service.AbstractDsfDebugServicesFactory;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints;
@@ -50,6 +51,9 @@ public abstract class DebugServicesFactory extends AbstractDsfDebugServicesFacto
 			for (Object arg : optionalArguments)
 				if (arg instanceof ILaunch)
 					return (V) createTargetEnvironmentService(session, ((ILaunch) arg));
+		}
+		if (Snapshots.class.isAssignableFrom(clazz)) {
+			return (V)createSnapshotsService(session);
 		}
 
 		return super.createService(clazz, session, optionalArguments);
@@ -136,4 +140,7 @@ public abstract class DebugServicesFactory extends AbstractDsfDebugServicesFacto
 		return new Symbols(session);
 	}
 
+	protected Snapshots createSnapshotsService(DsfSession session) {
+		return new Snapshots(session);
+	}
 }

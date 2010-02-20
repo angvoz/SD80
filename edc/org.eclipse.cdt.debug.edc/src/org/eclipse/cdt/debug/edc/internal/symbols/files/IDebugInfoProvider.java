@@ -36,6 +36,12 @@ public interface IDebugInfoProvider {
 	 * @return IPath, never <code>null</code>
 	 */
 	IPath getSymbolFile();
+	
+	/**
+	 * Get the corresponding executable used for symbolics.  This may be different from the
+	 * running executable.
+	 */
+	IExecutableSymbolicsReader getExecutableSymbolicsReader();
 
 	/**
 	 * Get the module scope, which contains the unified set of global code

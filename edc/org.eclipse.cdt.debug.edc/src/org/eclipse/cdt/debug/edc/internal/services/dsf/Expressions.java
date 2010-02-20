@@ -39,6 +39,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
+import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
@@ -59,6 +60,7 @@ import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 
@@ -317,7 +319,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 		public Object getValueLocation() {
 			evaluateExpression();
-			return valueLocation;
+			return getEvaluatedLocation();
 		}
 
 		public Object getEvaluatedValue() {
@@ -329,6 +331,14 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		}
 
 		public Object getEvaluatedLocation() {
+			if (valueLocation instanceof IAddress) {
+				// don't print these as decimal or as ridiculously long numbers
+				IAddress addr = (IAddress) valueLocation;
+				if (addr.compareTo(Addr64.MAX) < 0)
+					return HEX_PREFIX + Long.toHexString(addr.getValue().longValue());
+				else
+					return addr.toHexAddressString();
+			}
 			return valueLocation;
 		}
 
@@ -586,7 +596,17 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		if (customProvider != null) {
 			try {
 				getSubExpressions(expr, frame, customProvider, rm);
+			}
+			catch (CoreException e) {
+				// Checked exception. But we don't want to pass the error up as it
+				// would make the variable (say, a structure) not expandable on UI. 
+				// Just resort to the normal formatting.  
+				getSubExpressions(expr, frame, exprType, rm);
 			} catch (Throwable e) {
+				// unexpected error. log it.
+				EDCDebugger.getMessageLogger().logError(
+						"Error in variable formater: " + customProvider.getClass().getName(), e);
+				
 				// default to normal formatting
 				getSubExpressions(expr, frame, exprType, rm);
 			}
@@ -634,6 +654,15 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 					exprList.add(exprChild);
 				}
 			}
+			
+			IInheritance[] inheritedFrom = compositeType.getInheritances();
+			for (IInheritance inherited : inheritedFrom) {
+				exprChild = new ExpressionDMC(frame, exprName + (inherited).getName());
+				if (exprChild != null) {
+					exprList.add(exprChild);
+				}
+			}
+			
 		} else if (exprType instanceof IArrayType) {
 			IArrayType arrayType = (IArrayType) exprType;
 
@@ -682,7 +711,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 	}
 
 	private void getSubExpressions(ExpressionDMC expr, StackFrameDMC frame, 
-		ITypeContentProvider customProvider, DataRequestMonitor<IExpressionDMContext[]> rm) throws Throwable {
+		ITypeContentProvider customProvider, DataRequestMonitor<IExpressionDMContext[]> rm) throws CoreException {
 		List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
 		Iterator<IExpressionDMContext> childIterator = customProvider.getChildIterator(expr);
 		while (childIterator.hasNext() && !rm.isCanceled()) {
@@ -783,8 +812,20 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 					customFormattedValue = new FormattedValueDMData(customValue.getValue(exprDMC));
 					formattedValue = customFormattedValue;
 				}
+				catch (CoreException e) {
+					// Checked exception like failure in reading memory.
+					// Pass the error to the RM so that it would show up in UI. 
+					rm.setStatus(e.getStatus());
+					rm.done();
+					return;
+				}
 				catch (Throwable t) {
-					// default to normal formatting
+					// Other unexpected errors, usually bug in the formatter. Log it 
+					// so that user will be able to see and report the bug. 
+					// Meanwhile default to normal formatting so that user won't see 
+					// such error in Variable UI.
+					EDCDebugger.getMessageLogger().logError(
+							"Error in variable formater: " + customValue.getClass().getName(), t);
 				}
 			}
 		} else
@@ -825,6 +866,17 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			protected void handleSuccess() {
 				holder.append(this.getData().getFormattedValue());
 			}
+
+			@Override
+			protected void handleFailure() {
+				// RequestMonitor would by default log any error if it's not explicitly 
+				// handled. But we don't want to log those expected errors (checked exceptions)
+				// in such case as creating snapshot. Hence this dummy handler...02/17/10
+				
+				// DO nothing.
+			}
+			
+			
 		});
 		return holder.toString();
 	}

@@ -36,7 +36,7 @@ public interface IEDCSymbolReader extends IExecutableSymbolicsReader, ISymbolRea
 	 * @return true if the symbol reader has dedicated debug information
 	 */
 	boolean hasRecognizedDebugInformation();
-
+	
 	/**
 	 * Get the module-level scope for the primary symbol file
 	 * @return scope, never <code>null</code>

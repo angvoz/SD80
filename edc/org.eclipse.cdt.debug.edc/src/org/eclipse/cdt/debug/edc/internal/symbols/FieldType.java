@@ -50,5 +50,19 @@ public class FieldType extends Type implements IField {
 	public ICompositeType getCompositeTypeOwner() {
 		return this.compositeType;
 	}
+	
+	@Override
+	public String toString() {
+		return name + " offset = " + fieldOffset
+				+ ", byteSize = " +	getByteSize()
+				+ (bitOffset != 0 ? ", bitOffset = " + bitOffset : "")
+				+ (bitSize != 0 ? ", bitSize = " + bitSize : "")
+				+ ", accessibility = " +
+					(accessibility == ICompositeType.ACCESS_PRIVATE ?
+							"private"
+					: (accessibility == ICompositeType.ACCESS_PROTECTED ?
+							"protected"
+							: "public"));
+	}
 
 }

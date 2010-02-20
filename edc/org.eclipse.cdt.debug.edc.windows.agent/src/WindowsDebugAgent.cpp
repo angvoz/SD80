@@ -57,16 +57,15 @@ static void channel_server_disconnected(Channel * c) {
 }
 
 static void channel_new_connection(ChannelServer * serv, Channel * c) {
-    protocol_reference(proto);
+	protocol_reference(proto);
     c->protocol = proto;
 	c->connecting = channel_server_connecting;
 	c->connected = channel_server_connected;
 	c->receive = channel_server_receive;
 	c->disconnected = channel_server_disconnected;
-
-    channel_set_suspend_group(c, spg);
-    channel_set_broadcast_group(c, bcg);
-    channel_start(c);
+	channel_set_suspend_group(c, spg);
+	channel_set_broadcast_group(c, bcg);
+	channel_start(c);
 }
 
 static void check_for_shutdown(void *x) {
@@ -82,52 +81,52 @@ static void check_for_shutdown(void *x) {
 int main(int argc, char* argv[]) {
 
 	try {
-		char * url = "TCP:";
-		PeerServer * ps = NULL;
-		ini_mdep();
-		ini_trace();
-		ini_asyncreq();
+	char * url = "TCP:";
+	PeerServer * ps = NULL;
+	ini_mdep();
+	ini_trace();
+	ini_asyncreq();
 
-		ini_events_queue();
+	ini_events_queue();
 
-		bcg = broadcast_group_alloc();
-		spg = suspend_group_alloc();
-		proto = protocol_alloc();
+	bcg = broadcast_group_alloc();
+	spg = suspend_group_alloc();
+	proto = protocol_alloc();
 
-		LogTrace("Starting up");
-		EventClientNotifier::broadcastGroup = bcg;
+	LogTrace("Starting up");
+	EventClientNotifier::broadcastGroup = bcg;
+	
+	new ProcessService(proto);
+	new RunControlService(proto);
+	new RegisterService(proto);
+	new MemoryService(proto);
+	new LoggingService(proto);
+	
+	ps = channel_peer_from_url(url);
 
-		new ProcessService(proto);
-		new RunControlService(proto);
-		new RegisterService(proto);
-		new MemoryService(proto);
-		new LoggingService(proto);
+	peer_server_addprop(ps, loc_strdup("Name"), loc_strdup("Win32 Debug Agent"));
+	peer_server_addprop(ps, loc_strdup("DebugSupport"), loc_strdup(
+			"Win32 Debug API"));
 
-		ps = channel_peer_from_url(url);
-
-		peer_server_addprop(ps, loc_strdup("Name"), loc_strdup("Win32 Debug Agent"));
-		peer_server_addprop(ps, loc_strdup("DebugSupport"), loc_strdup(
-				"Win32 Debug API"));
-
-		if (ps == NULL) {
+	if (ps == NULL) {
 			LogTrace("invalid server URL");
-			exit(1);
-		}
-		serv = channel_server(ps);
-		if (serv == NULL) {
+		exit(1);
+	}
+	serv = channel_server(ps);
+	if (serv == NULL) {
 			LogTrace("cannot create TCF server\n");
-			exit(1);
-		}
-		serv->new_conn = channel_new_connection;
+		exit(1);
+	}
+	serv->new_conn = channel_new_connection;
 
-		discovery_start();
+	discovery_start();
 
-		#ifdef _DEBUG
-		#else
-		post_event_with_delay(check_for_shutdown, NULL, 30 * 1000000);
-		#endif
+#ifdef _DEBUG
+#else
+	post_event_with_delay(check_for_shutdown, NULL, 30 * 1000000);
+#endif
 
-		run_event_loop();
+	run_event_loop();
 	} catch (...) {
 		LogTrace("Exception thrown, caught at main");
 	}

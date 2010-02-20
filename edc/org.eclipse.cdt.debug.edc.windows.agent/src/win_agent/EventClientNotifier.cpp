@@ -185,6 +185,8 @@ void EventClientNotifier::SendContextSuspendedCallback(void* params) {
 			context.GetPCAddress());
 }
 
+
+
 void EventClientNotifier::SendContextException(Context* context,
 		std::string description) {
 	post_event(EventClientNotifier::SendContextExceptionCallback,

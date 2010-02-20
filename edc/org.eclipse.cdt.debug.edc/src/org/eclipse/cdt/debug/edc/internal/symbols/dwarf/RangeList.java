@@ -1,4 +1,4 @@
-package org.eclipse.cdt.debug.edc.internal.symbols.newdwarf;
+package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -10,7 +10,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IRangeList;
 /**
  * This is a range of non-contiguous addresses 
  */
-public class RangeList implements IRangeList, Iterable<IRangeList.Entry> {
+public class RangeList implements IRangeList {
 	/** consecutive start, end entries */
 	private List<Long> ranges = new ArrayList<Long>(); 
 	private long low = Long.MAX_VALUE, high = Long.MIN_VALUE;

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -23,6 +23,8 @@
 #include "Logger.h"
 
 static const char * sServiceName = "Processes";
+
+static std::string quoteIfNeeded(const char* source);
 
 ProcessService::ProcessService(Protocol * proto) :
 	TCFService(proto) {
@@ -235,17 +237,101 @@ void ProcessService::command_start(char * token, Channel * c) {
 
 	json_read_boolean(&c->inp); // attach
 
-	loc_free(args);
-	loc_free(envp);
-
 	if (read_stream(&c->inp) != 0)
 		exception(ERR_JSON_SYNTAX);
 	channel.readComplete();
 
 	std::string wargs;
 
+	wargs += quoteIfNeeded(executable.c_str());
+	for (int i = 0; i < args_len; i++) {
+		if (i > 0)
+			wargs += ' ';
+		wargs += quoteIfNeeded(args[i]);
+	}
+
+	loc_free(args);
+	loc_free(envp);
+
 	WinDebugMonitor::LaunchProcess(executable, directory, wargs, environment, true,
 			tokenStr, c);
 
 }
 
+
+/**
+ * Escape a string for the Win32 command line.
+ *
+ * Adapted from Win32ProcessEx.c in spawner:
+ *
+ * Copyright (c) 2002, 2010 QNX Software Systems and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     QNX Software Systems - initial API and implementation
+ *     Wind River Systems, Inc.
+ *******************************************************************************/
+
+static std::string quoteIfNeeded(const char* source) {
+	std::string target;
+	int cpyLength = strlen(source);
+
+	BOOL bSlash = FALSE;
+	int i = 0;
+
+#define QUOTATION_DO   0
+#define QUOTATION_DONE 1
+#define QUOTATION_NONE 2
+#undef _T
+#define _T(x) x
+
+	int nQuotationMode = 0;
+
+	if((_T('\"') == *source) && (_T('\"') == *(source + cpyLength - 1)))
+		{
+		nQuotationMode = QUOTATION_DONE;
+		}
+	else
+	if(strchr(source, _T(' ')) == NULL)
+		{
+		// No reason to quotate term becase it doesn't have embedded spaces
+		nQuotationMode = QUOTATION_NONE;
+		}
+	else
+		{
+		// Needs to be quotated
+		nQuotationMode = QUOTATION_DO;
+		target += _T('\"');
+		}
+
+
+	for(; i < cpyLength; ++i)
+		{
+		if(source[i] == _T('\\'))
+			bSlash = TRUE;
+		else
+			{
+			// Don't quote embracing quotation marks
+			if((source[i] == _T('\"')) && !((nQuotationMode == QUOTATION_DONE) && ((i == 0) || (i == (cpyLength - 1))) ) )
+				{
+				if(!bSlash) // If still not escaped
+					{
+					target += _T('\\');
+					}
+				}
+			bSlash = FALSE;
+			}
+
+		target += source[i];
+		}
+
+	if(nQuotationMode == QUOTATION_DO)
+		{
+		target += _T('\"');
+		}
+
+	return target;
+}

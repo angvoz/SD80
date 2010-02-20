@@ -11,10 +11,10 @@
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
@@ -32,14 +32,12 @@ import org.eclipse.cdt.utils.Addr64;
 
 public class LocationExpression implements ILocationProvider {
 
-	protected EDCDwarfReader reader;
-	protected ByteBuffer location;
+	protected IStreamBuffer location;
 	protected int addressSize;
 	protected IScope scope;
 
-	public LocationExpression(EDCDwarfReader reader, byte[] locationData, int addressSize, IScope scope) {
-		this.reader = reader;
-		location = ByteBuffer.wrap(locationData);
+	public LocationExpression(IStreamBuffer location, int addressSize, IScope scope) {
+		this.location = location;
 		this.addressSize = addressSize;
 		this.scope = scope;
 	}
@@ -68,7 +66,7 @@ public class LocationExpression implements ILocationProvider {
 					long regValue = Long.valueOf(registersService.getRegisterValue(((StackFrameDMC) context)
 							.getExecutionDMC(), opcode - DwarfConstants.DW_OP_breg0), 16);
 					IAddress regAddress = new Addr64(BigInteger.valueOf(regValue));
-					long offset = reader.read_signed_leb128(location);
+					long offset = DwarfInfoReader.read_signed_leb128(location);
 					return new MemoryVariableLocation(regAddress.add(offset), true);
 				} else {
 
@@ -76,7 +74,7 @@ public class LocationExpression implements ILocationProvider {
 
 					case DwarfConstants.DW_OP_addr: /* Constant address. */
 						// this is not a runtime address
-						long addrValue = reader.readAddress(location, addressSize);
+						long addrValue = DwarfInfoReader.readAddress(location, addressSize);
 						return new MemoryVariableLocation(new Addr64(BigInteger.valueOf(addrValue)), false);
 
 					case DwarfConstants.DW_OP_deref:
@@ -152,7 +150,7 @@ public class LocationExpression implements ILocationProvider {
 						break;
 
 					case DwarfConstants.DW_OP_regx: /* Unsigned LEB128 register. */
-						long regNum = reader.read_unsigned_leb128(location);
+						long regNum = DwarfInfoReader.read_unsigned_leb128(location);
 						return new RegisterVariableLocation(null, (int) regNum);
 
 					case DwarfConstants.DW_OP_fbreg: /* Signed LEB128 register. */
@@ -166,13 +164,24 @@ public class LocationExpression implements ILocationProvider {
 							}
 
 							if (parent == null) {
-								assert (false);
-								return null;
+								// TODO: hacky workaround.  We really need to fix why the stored scope is not
+								// always a function scope.
+								if (context instanceof StackFrameDMC) {
+									functionScope = ((StackFrameDMC) context).getFunctionScope();
+								} 
+								if (functionScope == null) {
+									assert (false);
+									return null;
+								}
 							} else {
 								functionScope = (IFunctionScope) parent;
 							}
 						}
-
+	
+						// inlined functions may be nested
+						while (functionScope.getParent() instanceof IFunctionScope)
+							functionScope = (IFunctionScope) functionScope.getParent();
+						
 						IVariableLocation framePtrLoc = functionScope.getFrameBaseLocation().getLocation(tracker,
 								context, forLinkAddress);
 						if (framePtrLoc != null) {
@@ -186,7 +195,7 @@ public class LocationExpression implements ILocationProvider {
 										((StackFrameDMC) context).getExecutionDMC(),
 										((IRegisterVariableLocation) framePtrLoc).getRegisterID()), 16);
 								IAddress regAddress = new Addr64(BigInteger.valueOf(regValue));
-								long offset = reader.read_signed_leb128(location);
+								long offset = DwarfInfoReader.read_signed_leb128(location);
 								try {
 									regAddress = regAddress.add(offset);
 								} catch (Exception e) {
@@ -198,7 +207,7 @@ public class LocationExpression implements ILocationProvider {
 								return new MemoryVariableLocation(regAddress, true);
 							} else if (framePtrLoc instanceof IMemoryVariableLocation) {
 								IAddress address = ((IMemoryVariableLocation) framePtrLoc).getAddress();
-								long offset = reader.read_signed_leb128(location);
+								long offset = DwarfInfoReader.read_signed_leb128(location);
 								return new MemoryVariableLocation(address.add(offset), true);
 							} else
 								assert (false);
@@ -244,11 +253,16 @@ public class LocationExpression implements ILocationProvider {
 		return null;
 	}
 
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider#isLocationKnown(org.eclipse.cdt.core.IAddress)
 	 */
 	public boolean isLocationKnown(IAddress forLinkAddress) {
-		// no-op for old reader
+		// an expression has a static lifetime
 		return true;
+	}
+	
+	public IScope getScope() {
+		return scope;
 	}
 }

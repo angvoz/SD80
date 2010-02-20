@@ -159,8 +159,8 @@ public class ServicesLaunchSequence extends Sequence {
 	new Step() {
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
-			Snapshots snapshots = new Snapshots(session);
-			snapshots.initialize(requestMonitor);
+			launch.getServiceFactory().createService(Snapshots.class, session).initialize(
+					requestMonitor);
 		}
 	} };
 

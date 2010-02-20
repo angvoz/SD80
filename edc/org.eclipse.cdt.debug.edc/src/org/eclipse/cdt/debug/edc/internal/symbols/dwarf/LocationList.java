@@ -10,9 +10,13 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
+import java.nio.ByteOrder;
+
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
+import org.eclipse.cdt.debug.edc.internal.MemoryStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
@@ -21,40 +25,52 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 
 public class LocationList implements ILocationProvider {
 
-	protected EDCDwarfReader reader;
 	protected LocationEntry[] locationList;
 	protected int addressSize;
 	protected IScope scope;
+	private ByteOrder byteOrder;
 
-	public LocationList(EDCDwarfReader reader, LocationEntry[] locationList, int addressSize, IScope scope) {
-		this.reader = reader;
+	public LocationList(LocationEntry[] locationList, ByteOrder byteOrder, int addressSize, IScope scope) {
 		this.locationList = locationList;
+		this.byteOrder = byteOrder;
 		this.addressSize = addressSize;
 		this.scope = scope;
 	}
 
 	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress) {
-		// the high/low addresses of a location list entry are relative to
-		// the base of the compile unit, so make the adjustment here.
-		IScope compileUnitScope = scope;
-		while (!(compileUnitScope instanceof ICompileUnitScope)) {
-			compileUnitScope = compileUnitScope.getParent();
+		
+		if (locationList != null) {
+			IScope searchScope = scope;
+			do {
+				// the scope may be an inlined function scope, whose frame base is only provided in a parent.
+				IVariableLocation location = searchForLocation(tracker, context, forLinkAddress, searchScope);
+				if (location != null) {
+					return location;
+				}
+				searchScope = searchScope.getParent();
+			} while (!(searchScope instanceof IModuleScope));
 		}
-
-		assert (compileUnitScope != null && compileUnitScope instanceof ICompileUnitScope);
-
-		long address = compileUnitScope.getLowAddress().distanceTo(forLinkAddress).longValue();
-		// find the location entry for the given address
-		for (LocationEntry entry : locationList) {
-			if (address >= entry.lowPC && address < entry.highPC) {
-				LocationExpression expression = new LocationExpression(reader, entry.bytes, addressSize, scope);
-				return expression.getLocation(tracker, context, forLinkAddress);
-			}
-		}
-
+		
 		// variable may exist in the current scope, but not be live at the given
 		// address
 		return locationList != null ? new InvalidVariableLocation(DwarfMessages.UnknownVariableAddress) : null;
+	}
+
+	private IVariableLocation searchForLocation(DsfServicesTracker tracker,
+			IFrameDMContext context, IAddress forLinkAddress,
+			IScope scope) {
+		long address = forLinkAddress.getValue().longValue();
+		
+		// find the location entry for the given address
+		for (LocationEntry entry : locationList) {
+			if (address >= entry.getLowPC() && address < entry.getHighPC()) {
+				IStreamBuffer locationData = new MemoryStreamBuffer(entry.getBytes(), byteOrder);
+				LocationExpression expression = new LocationExpression(locationData, addressSize, scope);
+				return expression.getLocation(tracker, context, forLinkAddress);
+			}
+		}
+		
+		return null;
 	}
 
 
@@ -62,7 +78,13 @@ public class LocationList implements ILocationProvider {
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider#isLocationKnown(org.eclipse.cdt.core.IAddress)
 	 */
 	public boolean isLocationKnown(IAddress forLinkAddress) {
-		// no-op for old reader
-		return true;
+		long address = forLinkAddress.getValue().longValue();
+		
+		for (LocationEntry entry : locationList) {
+			if (address >= entry.getLowPC() && address < entry.getHighPC()) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

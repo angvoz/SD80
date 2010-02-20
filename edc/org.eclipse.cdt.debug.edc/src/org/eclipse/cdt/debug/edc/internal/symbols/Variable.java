@@ -26,6 +26,15 @@ public class Variable implements IVariable {
 		this.locationProvider = locationProvider;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IVariable#dispose()
+	 */
+	public void dispose() {
+		type = null;
+		locationProvider = null;
+		scope = null;
+	}
+	
 	public String getName() {
 		return name;
 	}

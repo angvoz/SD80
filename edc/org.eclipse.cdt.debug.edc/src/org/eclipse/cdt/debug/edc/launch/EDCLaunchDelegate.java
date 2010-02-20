@@ -51,6 +51,7 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate {
 			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.INTERNAL_ERROR,
 					MessageFormat.format("Launch mode ''{0}'' is not (yet) implemented", mode), null));
 		}
+
 	}
 
 	private void launchDebugger(ILaunchConfiguration config, ILaunch launch, IProgressMonitor monitor)

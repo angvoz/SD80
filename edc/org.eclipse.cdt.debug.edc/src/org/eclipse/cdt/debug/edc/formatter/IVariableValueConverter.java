@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.formatter;
 
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.core.runtime.CoreException;
 
 
 /**
@@ -21,8 +22,9 @@ public interface IVariableValueConverter {
 	 * Return a value, null to indicate no change, or empty string for no value.
 	 * @param variable IExpressionDMContext
 	 * @return String
+	 * @throws CoreException any error on getting the value.
 	 */
-	String getValue(IExpressionDMContext variable);
+	String getValue(IExpressionDMContext variable) throws CoreException;
 	
 	/**
 	 * Whether the value is editable. 

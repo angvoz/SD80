@@ -8,7 +8,7 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.internal.symbols.newdwarf;
+package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -35,7 +35,6 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.internal.symbols.Scope;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSection;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
 import org.eclipse.core.runtime.IPath;
 
@@ -44,20 +43,6 @@ import org.eclipse.core.runtime.IPath;
  * There exists one provider per symbol file.
  */
 public class DwarfDebugInfoProvider implements IDebugInfoProvider {
-
-	/**
-	 * Tell if this executable appears to support DWARF.
-	 * @param reader
-	 * @return true if key DWARF sections are detected
-	 */
-	public static boolean isDebugInfoDetected(IExecutableSymbolicsReader reader) {
-		for (IExecutableSection section : reader.getExecutableSections()) {
-			if (section.getName().equals(DwarfInfoReader.DWARF_DEBUG_INFO)) {
-				return true;
-			}
-		}
-		return false;
-	}
 	
 	/**
 	 * This represents a forward type reference, which is a type
@@ -90,9 +75,12 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			public void setType(IType type) {
 				throw new IllegalStateException();
 			}
+			
+			public void dispose() {
+			}
 		};
 		
-		private final DwarfDebugInfoProvider provider;
+		private DwarfDebugInfoProvider provider;
 		private IType type = null;
 
 		private final long offset;
@@ -103,7 +91,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 
 		/* (non-Javadoc)
-		 * @see org.eclipse.cdt.debug.edc.internal.symbols.newdwarf.IForwardTypeReference#getReferencedType()
+		 * @see org.eclipse.cdt.debug.edc.internal.symbols.dwarf.IForwardTypeReference#getReferencedType()
 		 */
 		public IType getReferencedType() {
 			if (type == null) {
@@ -159,6 +147,14 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		public void setType(IType type_) {
 			getReferencedType().setType(type_);
 		}
+		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.symbols.IType#dispose()
+		 */
+		public void dispose() {
+			type = null;
+			provider = null;
+		}
 	}
 	
 	static public class CompilationUnitHeader {
@@ -212,10 +208,10 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	}
 
 	static class AttributeValue {
-		Object value;
+		private Object value;
 
 		// for indirect form, this is the actual form
-		byte actualForm;
+		private byte actualForm;
 
 		AttributeValue(byte form, IStreamBuffer in, byte addressSize, IStreamBuffer debugStrings) {
 			actualForm = form;
@@ -493,6 +489,81 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				break;
 			}
 		}
+
+
+		public byte getActualForm() {
+			return actualForm;
+		}
+
+		/**
+		 * Get the value as a 64-bit signed long, sign-extending any shorter attribute
+		 * @return value as signed long
+		 */
+		public long getValueAsSignedLong() {
+			if (value instanceof Number) {
+				return ((Number) value).longValue();
+			}
+			return 0;
+		}
+		
+		/**
+		 * Get the value as a 64-bit unsigned long, zero-extending any shorter attribute
+		 * @return value as unsigned long
+		 */
+		public long getValueAsLong() {
+			if (value instanceof Byte) {
+				return ((Byte) value).byteValue() & 0xff;
+			}
+			if (value instanceof Short) {
+				return ((Short) value).shortValue() & 0xffff;
+			}
+			if (value instanceof Integer) {
+				return ((Integer) value).intValue() & 0xffffffff;
+			}
+			// fallthrough
+			if (value instanceof Number) {
+				return ((Number) value).longValue();
+			}
+			return 0;
+		}
+		
+		/**
+		 * Get the value as a 32-bit unsigned int, zero-extending any shorter attribute
+		 * @return value as int
+		 */
+		public int getValueAsInt() {
+			if (value instanceof Byte) {
+				return ((Byte) value).byteValue() & 0xff;
+			}
+			if (value instanceof Short) {
+				return ((Short) value).shortValue() & 0xffff;
+			}
+			// fallthrough
+			if (value instanceof Number) {
+				return ((Number) value).intValue();
+			}
+			return 0;
+		}
+		
+		/**
+		 * Get the value as a string
+		 * @return String or "" if not a string
+		 */
+		public String getValueAsString() {
+			if (value != null)
+				return value.toString();
+			return null;
+		}
+
+		/**
+		 * Get the byte array value (which is empty if this is not a byte array)
+		 * @return array
+		 */
+		public byte[] getValueAsBytes() {
+			if (value instanceof byte[])
+				return (byte[]) value;
+			return new byte[0];
+		}
 	}
 
 	static class AttributeList {
@@ -528,9 +599,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		public long getAttributeValueAsLong(short attributeName) {
 			AttributeValue attr = attributeMap.get(Short.valueOf(attributeName));
 			if (attr != null) {
-				Number number = ((Number) attr.value);
-				if (number != null)
-					return number.longValue();
+				return attr.getValueAsLong();
 			}
 			return 0;
 		}
@@ -538,19 +607,24 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		public int getAttributeValueAsInt(short attributeName) {
 			AttributeValue attr = attributeMap.get(Short.valueOf(attributeName));
 			if (attr != null) {
-				Number number = ((Number) attr.value);
-				if (number != null)
-					return number.intValue();
+				return attr.getValueAsInt();
 			}
 			return 0;
 		}
 
+
+		public long getAttributeValueAsSignedLong(short attributeName) {
+			AttributeValue attr = attributeMap.get(Short.valueOf(attributeName));
+			if (attr != null) {
+				return attr.getValueAsSignedLong();
+			}
+			return 0;
+		}
+		
 		public String getAttributeValueAsString(short attributeName) {
 			AttributeValue attr = attributeMap.get(Short.valueOf(attributeName));
 			if (attr != null) {
-				String result = (String) attr.value;
-				if (result != null)
-					return result;
+				return attr.getValueAsString();
 			}
 			return "";
 		}
@@ -558,9 +632,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		public byte[] getAttributeValueAsBytes(short attributeName) {
 			AttributeValue attr = attributeMap.get(Short.valueOf(attributeName));
 			if (attr != null) {
-				byte[] result = (byte[]) attr.value;
-				if (result != null)
-					return result;
+				return attr.getValueAsBytes();
 			}
 			return new byte[0];
 		}
@@ -659,19 +731,31 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider#dispose()
 	 */
 	public void dispose() {
+		// several views in DSF hold onto all our debug info, 
+		// so go through and explicitly break links
+		if (moduleScope != null) {
+			moduleScope.dispose();
+		}
+		
 		// help GC
 		compileUnitsPerFile.clear();
 		compileUnits.clear();
+		functionsByOffset.clear();
 		typesByOffset.clear();
 		scopesByOffset.clear();
+		debugOffsetsToCompileUnits.clear();
 		functionsByName.clear();
 		variablesByName.clear();
+		publicFunctions.clear();
+		publicVariables.clear();
 		abbreviationMaps.clear();
 		referencedFiles.clear();
-		referencedFiles.clear();
+		moduleScope.dispose();
 		parsedInitially = false;
 		parsedForTypes = false;
 		parsedForVarsAndAddresses = false;
+		
+		fileHelper.dispose();
 	}
 
 	void ensureParsedInitially() {

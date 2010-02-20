@@ -15,7 +15,7 @@
 *
 */
 
-package org.eclipse.cdt.debug.edc.internal.symbols.newdwarf;
+package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -243,6 +243,14 @@ public class DwarfModuleScope extends Scope implements IModuleScope {
 		// be sure the decl entries for inlined functions are detected
 		if (lineEntryMapper != null)
 			lineEntryMapper.addCompileUnit(scope);
+	}
+
+	/**
+	 * Help garbage collection
+	 */
+	public void dispose() {
+		lineEntryMapper = null;
+		super.dispose();
 	}
 }
 

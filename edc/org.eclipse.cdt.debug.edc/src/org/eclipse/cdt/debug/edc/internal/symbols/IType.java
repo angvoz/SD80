@@ -61,4 +61,5 @@ public interface IType {
 	 */
 	public void setType(IType type);
 
+	public void dispose();
 }

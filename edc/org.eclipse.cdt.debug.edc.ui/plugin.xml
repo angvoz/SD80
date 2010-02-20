@@ -480,8 +480,8 @@
  		<defaultEnablement id="org.eclipse.cdt.debug.edc.ui.platformDebugActivity" /> 
       
      </extension>
- 
-     <extension
+   
+   <extension
          point="org.eclipse.ui.activities">
  
       <category
@@ -599,7 +599,6 @@
 	      	</enablement>      
         </detailFactories>
     </extension>
-    
    	<extension
          point="org.eclipse.ui.preferencePages">
       <page
@@ -609,5 +608,23 @@
             id="org.eclipse.cdt.debug.edc.ui.SnapshotPreferencePage">
       </page>
    </extension>
-    
+	<extension
+		point="org.eclipse.ui.contexts">
+		<context
+			description="Context for snapshot view"
+			id="org.eclipse.cdt.debug.edc.ui.context.SnapshotView"
+			name="SnapshotViewContext"
+			parentId="org.eclipse.ui.contexts.window">
+		</context>
+	</extension>
+	<extension
+		point="org.eclipse.ui.bindings">
+		<key
+        	commandId="org.eclipse.ui.edit.delete"
+        	contextId="org.eclipse.cdt.debug.edc.ui.context.SnapshotView"
+        	schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+        	sequence="DEL">
+		</key>
+	</extension>
+>>>>>>> 1.29
 </plugin>

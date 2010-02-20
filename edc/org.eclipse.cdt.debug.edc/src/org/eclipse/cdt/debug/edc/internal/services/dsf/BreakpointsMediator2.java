@@ -776,7 +776,7 @@ public class BreakpointsMediator2 extends AbstractDsfService implements IBreakpo
 						
 						// remember the new attributes.
 						fBreakpointAttributes.put(bpinfo.breakpoint, newAttrs);
-						
+		
 						if (oldAttrs == null)
 							continue;
 						

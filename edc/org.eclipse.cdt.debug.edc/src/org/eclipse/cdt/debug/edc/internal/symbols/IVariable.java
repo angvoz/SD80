@@ -55,4 +55,9 @@ public interface IVariable {
 	 * @return offset in bytes (0 means the lifetime is the same as the parent scope)
 	 */
 	long getStartScope();
+
+	/**
+	 * 
+	 */
+	void dispose();
 }

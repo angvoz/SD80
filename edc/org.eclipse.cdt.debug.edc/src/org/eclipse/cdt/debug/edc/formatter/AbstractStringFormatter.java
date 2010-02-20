@@ -16,6 +16,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC
 import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.core.runtime.CoreException;
 
 /**
  * Base class for string formatters.
@@ -32,16 +33,16 @@ public abstract class AbstractStringFormatter implements IVariableFormatProvider
 
 
 		@Override
-		protected String getDetailsValue(IExpressionDMContext variable) {
+		protected String getDetailsValue(IExpressionDMContext variable) throws CoreException {
 			return getValueString(variable);
 		}
 
 		@Override
-		protected String getSummaryValue(IExpressionDMContext variable) {
+		protected String getSummaryValue(IExpressionDMContext variable) throws CoreException {
 			return getValueString(variable);
 		}
 
-		private String getValueString(IExpressionDMContext variable) {
+		private String getValueString(IExpressionDMContext variable) throws CoreException {
 			ExpressionDMC expressionDMC = (ExpressionDMC) variable;
 			expressionDMC.evaluateExpression();
 			IType baseType = TypeUtils.getBaseType(expressionDMC.getEvaluatedType());

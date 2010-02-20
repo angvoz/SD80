@@ -33,4 +33,15 @@ public class InheritanceType extends Type implements IInheritance {
 	public long getFieldsOffset() {
 		return this.fieldsOffset;
 	}
+	
+	@Override
+	public String getName() {
+		if (getType() instanceof ICompositeType)
+			return ((ICompositeType) getType()).getBaseName();
+
+		if (getType() == null)
+			return "";
+		else
+			return getType().getName();
+	}
 }

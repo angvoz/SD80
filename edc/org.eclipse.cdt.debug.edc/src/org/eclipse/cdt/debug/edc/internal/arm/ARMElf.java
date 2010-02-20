@@ -82,9 +82,9 @@ public class ARMElf extends Elf {
 				if (!zeroSymbols.containsKey(symbol.st_value)) {
 					zeroSymbols.put(symbol.st_value, symbol);
 				}
-				}
 			}
-		}
+		}		
+	}
 
 	public String getMappingSymbolAtAddress(IAddress address) {
 		// use the start address of the symbol and try to find
@@ -92,7 +92,7 @@ public class ARMElf extends Elf {
 
 		Symbol symbol = zeroSymbols.get(address);
 		if (symbol == null)
-		return null;
+			return null;
 		
 		return symbol.toString();
 	}

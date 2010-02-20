@@ -69,7 +69,6 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
 import org.eclipse.debug.core.sourcelookup.containers.DirectorySourceContainer;
 import org.eclipse.debug.internal.core.LaunchManager;
-import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
@@ -113,11 +112,10 @@ public class Album extends PlatformObject {
 	public static final String SNAPSHOT_LIST = "snapshots";
 
 	private static final String ALBUM_DATA = "album.xml";
-
 	private static final String ALBUM_VERSION = "100";
 
 	private static String[] DSA_FILE_EXTENSIONS = new String[] {"dsa"};
-
+	
 	private static boolean snapshotViewInited;
 	
 	// Preferences
@@ -141,7 +139,7 @@ public class Album extends PlatformObject {
 	private boolean launchConfigSaved;
 	private String launchType;
 	private HashMap<String, Object> launchProperties;
-	private String launchName;
+	private String launchName = "";
 	private String name;
 	private boolean loaded;
 	private boolean metaDataLoaded;
@@ -162,7 +160,8 @@ public class Album extends PlatformObject {
 	private static Map<String, Album> albumsBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());
 	private static Map<String, Album> albumsRecordingBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());	
 	private static Map<IPath, Album> albumsByLocation = Collections.synchronizedMap(new HashMap<IPath, Album>());
-	
+	private static Map<String, Integer> launchNames = Collections.synchronizedMap(new HashMap<String, Integer>());
+
 	private static boolean sessionEndedListenerAdded;
 	private static SessionEndedListener sessionEndedListener = new SessionEndedListener() {
 
@@ -383,6 +382,15 @@ public class Album extends PlatformObject {
 				Element launchElement = document.createElement(LAUNCH);
 				launchType = launch.getLaunchConfiguration().getType().getIdentifier();
 				launchName = launch.getLaunchConfiguration().getName();
+				Integer count = launchNames.get(launchName);
+				if (count == null) {
+					launchNames.put(launchName, new Integer(0));
+				}
+				else {
+					count = new Integer(count.intValue() + 1);
+					launchNames.put(launchName, count);
+					launchName += " (" + count.toString() + ")";
+				}
 				launchElement.setAttribute("type", launchType);
 				launchElement.setAttribute("name", launchName);
 				Element propsElement = SnapshotUtils.makeXMLFromProperties(document, map);
@@ -539,23 +547,7 @@ public class Album extends PlatformObject {
 	}
 
 	private String getDefaultAlbumName() {
-		StringBuffer albumName = new StringBuffer();
-		Calendar calendar = Calendar.getInstance();
-		int hour = calendar.get(Calendar.HOUR_OF_DAY);
-		int minute = calendar.get(Calendar.MINUTE);
-		int second = calendar.get(Calendar.SECOND);
-		if (hour < 10)
-			albumName.append('0');
-		albumName.append(hour);
-		if (minute < 10)
-			albumName.append('0');
-		albumName.append(minute);
-		if (second < 10)
-			albumName.append('0');
-		albumName.append(second);
-		albumName.append('_');
-		albumName.append(getLaunchName());
-		return albumName.toString();
+		return getLaunchName();
 	}
 
 	public void saveAlbum(IPath path) throws TransformerException, IOException {
@@ -834,7 +826,6 @@ public class Album extends PlatformObject {
 
 	public void playSnapshots(DsfSession session) {
 		// TODO Auto-generated method stub
-
 	}
 
 	public void addFile(IPath path) {
@@ -896,7 +887,7 @@ public class Album extends PlatformObject {
 				device != null ? new Path(device) : Path.ROOT, albumRoot) };
 		mappingContainer.addMapEntries(entries);
 	}
-	
+
 	public static void setVariableCaptureDepth(int newSetting) {
 		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
 		scope.putInt(PREF_VARIABLE_CAPTURE_DEPTH, newSetting);
@@ -928,15 +919,15 @@ public class Album extends PlatformObject {
 	}
 
 	public static void createSnapshotForSession(final DsfSession session, final StackFrameDMC stackFrame, final IProgressMonitor monitor) {
-
-		String sessionId = session.getId();
-		Album album = Album.getRecordingForSession(sessionId);
-		if (album == null) {
-			album = new Album();
-			album.setRecordingSessionID(sessionId);
-		}
+		
+					String sessionId = session.getId();
+					Album album = Album.getRecordingForSession(sessionId);
+					if (album == null) {
+						album = new Album();
+						album.setRecordingSessionID(sessionId);
+					}
 		final Album finalAlbum = album;
-		playSnapshotSound();
+					playSnapshotSound();
 		
 		Query<Boolean> query = new Query<Boolean>() {
 
@@ -957,19 +948,19 @@ public class Album extends PlatformObject {
 				EDCDebugger.getMessageLogger().logError(null, e);
 			}
 			
-			showSnapshotView();
-			int numViewChecks = 0;
-			while (!snapshotViewInited){
-				// Make sure the snapshot view has been opened so it
-				// is listening for album change events
-				try {
-					Thread.sleep(2000);
-					if (++numViewChecks == 2) break;//try 4 secs
-				} catch (InterruptedException e) {
+					showSnapshotView();
+					int numViewChecks = 0;
+					while (!snapshotViewInited){
+						// Make sure the snapshot view has been opened so it
+						// is listening for album change events
+						try {
+							Thread.sleep(2000);
+							if (++numViewChecks == 2) break;//try 4 secs
+						} catch (InterruptedException e) {
+						}
+					}
+					fireAlbumStateChanged(album);
 				}
-			}
-			fireAlbumStateChanged(album);
-}
 	
 	protected static void playSnapshotSound() {
 		Bundle bundle = Platform.getBundle(EDCDebugger.getUniqueIdentifier());

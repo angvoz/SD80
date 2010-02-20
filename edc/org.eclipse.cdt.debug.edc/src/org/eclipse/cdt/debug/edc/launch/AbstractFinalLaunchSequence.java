@@ -47,6 +47,7 @@ import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.protocol.Protocol;
 import org.eclipse.tm.tcf.services.IMemory;
 import org.eclipse.tm.tcf.services.IProcesses;
+import org.eclipse.tm.tcf.services.IRegisters;
 import org.eclipse.tm.tcf.services.IRunControl;
 import org.eclipse.tm.tcf.services.IProcesses.DoneCommand;
 import org.eclipse.tm.tcf.services.IProcesses.DoneGetChildren;
@@ -125,11 +126,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			} catch (CoreException e) {
 				requestMonitor.setStatus(e.getStatus());				
 			}
-			
+
 			requestMonitor.done();
 		}
 	};
-	
+
 	protected Step initRunControlStep = new Step() {
 
 		@Override
@@ -142,7 +143,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	};
 
 	/*
-	 * Initialize SimpleRegisters service.
+	 * Initialize Registers service.
 	 */
 	protected Step initRegistersServiceStep = new Step() {
 
@@ -152,17 +153,34 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			assert peer != null : "initFindPeerStep must be run prior to this one";
 
 			final Registers registers = tracker.getService(Registers.class);
+			
 			ITCFServiceManager tcfServiceManager = EDCDebugger.getDefault().getServiceManager();
 			final IChannel channel = tcfServiceManager.getChannelForPeer(peer);
 
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
-					ISimpleRegisters simpleRegProxy = channel.getRemoteService(ISimpleRegisters.class);
-					if (simpleRegProxy == null) {
-						simpleRegProxy = new SimpleRegistersProxy(channel);
-						channel.setServiceProxy(ISimpleRegisters.class, simpleRegProxy);
+					// First check if IRegisters service is provided.
+					// If not, look for ISimpleRegisters service.
+					//
+					IService regSvc = null;
+					try {
+						regSvc = getTCFService(IRegisters.NAME);
+					} catch (CoreException e) {
+						// ignore, look for SimpleRegisters service. 
+						// Report error when SimpleRegisters service is discarded...02/16/10
 					}
-					registers.tcfServiceReady(simpleRegProxy);
+
+					if (regSvc != null) { // registers service ready
+						registers.tcfServiceReady(regSvc);
+					}
+					else {	// look for ISimpleRegisters service.
+						ISimpleRegisters simpleRegProxy = channel.getRemoteService(ISimpleRegisters.class);
+						if (simpleRegProxy == null) {
+							simpleRegProxy = new SimpleRegistersProxy(channel);
+							channel.setServiceProxy(ISimpleRegisters.class, simpleRegProxy);
+						}
+						registers.tcfServiceReady(simpleRegProxy);
+					}
 				}
 			});
 
@@ -196,6 +214,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			findTCFServiceForDSFService(breakpoints,
 					org.eclipse.tm.tcf.services.IBreakpoints.NAME,
 					requestMonitor);
+
 			requestMonitor.done();
 		}
 

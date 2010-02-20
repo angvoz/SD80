@@ -1001,7 +1001,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
 						"breakpoints uninstalled and resume process...");
 				if (requireResume)
-				executionDMC.resume(new RequestMonitor(getExecutor(), null));
+					executionDMC.resume(new RequestMonitor(getExecutor(), null));
 			}
 		});
 

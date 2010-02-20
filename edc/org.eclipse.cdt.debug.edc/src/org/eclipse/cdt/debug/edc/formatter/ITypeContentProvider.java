@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.formatter;
 import java.util.Iterator;
 
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.core.runtime.CoreException;
 
 
 
@@ -27,6 +28,7 @@ public interface ITypeContentProvider {
 	 * of the current object.
 	 * @param variable IExpressionDMContext
 	 * @return Iterator<IExpressionDMContext> 
+	 * @throws CoreException on errors
 	 */
-	Iterator<IExpressionDMContext> getChildIterator(IExpressionDMContext variable);
+	Iterator<IExpressionDMContext> getChildIterator(IExpressionDMContext variable) throws CoreException;
 }

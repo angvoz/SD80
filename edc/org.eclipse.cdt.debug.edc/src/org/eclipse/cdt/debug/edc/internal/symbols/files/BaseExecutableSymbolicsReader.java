@@ -35,7 +35,6 @@ public abstract class BaseExecutableSymbolicsReader implements IExecutableSymbol
 	protected List<ISymbol> symbols = new ArrayList<ISymbol>();
 	protected IAddress exeBaseAddress;
 	protected long modificationDate;
-	protected IDebugInfoProvider debugReader;
 	protected ISectionMapper sectionMapper;
 	
 	/**

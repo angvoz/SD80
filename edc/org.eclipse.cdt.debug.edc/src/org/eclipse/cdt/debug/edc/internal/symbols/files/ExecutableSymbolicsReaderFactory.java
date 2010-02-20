@@ -10,60 +10,43 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols.files;
 
-import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.eclipse.cdt.utils.coff.PE;
-import org.eclipse.cdt.utils.elf.Elf;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Platform;
 
 /**
  * Factory for creating readers of symbolics in executables.
- * 
- * TODO: make extensions for this.
  */
 public class ExecutableSymbolicsReaderFactory {
+	
 	private static final String SYM_EXTENSION = "sym";
 	private static final String DBG_EXTENSION = "dbg";
-
-	/**
-	 * Create a reader for the symbolics of the given executable.
-	 * @param binaryFile
-	 * @return reader or <code>null</code>
-	 */
-	public static IExecutableSymbolicsReader createFor(IPath binaryFile) {
-		IExecutableSymbolicsReader reader = null;
-		
-		IPath symbolFilePath = findSymbolicsFile(binaryFile);
-		if (symbolFilePath != null)
-			reader = detectExecutable(symbolFilePath);
-		else
-			reader = detectExecutable(binaryFile);
-		
-		return reader;
-	}
 	
-	private static IExecutableSymbolicsReader detectExecutable(IPath binaryFile) {
-		try {
-			// If this constructor succeeds, it's ELF
-			Elf elf = new Elf(binaryFile.toOSString());
-			return new ElfExecutableSymbolicsReader(binaryFile, elf);
-		} catch (IOException e) {
-			// this class elides actual I/O errors with format errors; ignore
-		}
-		
-		try {
-			// If this constructor succeeds, it's PE
-			PE peFile = new PE(binaryFile.toOSString());
-			return new PEFileExecutableSymbolicsReader(binaryFile, peFile);
-		} catch (IOException e) {
-			// this class elides actual I/O errors with format errors; ignore
-		}
+	private static Map<String, IExecutableSymbolicsReaderFactory> providerMap = new HashMap<String, IExecutableSymbolicsReaderFactory>();
+	
+	static {
+		initializeExtensions();
+	}
 
-		// add other ones here until we have extensions...
-		
+	public static IExecutableSymbolicsReader createFor(IPath binaryFile) {
+		for (Map.Entry<String, IExecutableSymbolicsReaderFactory> entry : providerMap.entrySet()) {
+			String name = entry.getKey();
+			IExecutableSymbolicsReaderFactory provider = entry.getValue();
+			try {
+				IExecutableSymbolicsReader reader = provider.createExecutableSymbolicsReader(binaryFile);
+				if (reader != null)
+					return reader;
+			} catch (Throwable t) {
+				EDCDebugger.getMessageLogger().logError("Executable reader " + name + " failed", t);
+			}
+		}
 		return null;
 	}
-
+	
 	/**
 	 * Get a symbolics file which is associated with the given executable.
 	 * @param binaryFile
@@ -91,5 +74,20 @@ public class ExecutableSymbolicsReaderFactory {
 			return symFile;
 		
 		return null;
+	}
+	
+	protected static void initializeExtensions() {
+		IConfigurationElement[] elements = 
+			Platform.getExtensionRegistry().getConfigurationElementsFor(IExecutableSymbolicsReaderFactory.EXTENSION_ID);
+		for (IConfigurationElement element : elements) {
+			try {
+				String name = element.getAttribute("name"); //$NON-NLS-1$
+				IExecutableSymbolicsReaderFactory formatProvider = 
+					(IExecutableSymbolicsReaderFactory) element.createExecutableExtension("class"); //$NON-NLS-1$
+				providerMap.put(name, formatProvider);
+			} catch (Exception e) {
+				EDCDebugger.getMessageLogger().logError("Could not create executable symbolics provider extension", e);
+			}
+		}
 	}
 }

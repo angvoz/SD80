@@ -19,6 +19,7 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
+import org.eclipse.core.runtime.CoreException;
 
 public class DefaultArrayFormatter implements IVariableFormatProvider {
 
@@ -31,7 +32,7 @@ public class DefaultArrayFormatter implements IVariableFormatProvider {
 		}
 
 		@Override
-		protected String getSummaryValue(IExpressionDMContext variable) {
+		protected String getSummaryValue(IExpressionDMContext variable) throws CoreException {
 			IExpressions expressions = ((ExpressionDMC) variable).getService();
 			StringBuilder sb = new StringBuilder("[");
 			List<IExpressionDMContext> children = FormatUtils.getAllChildExpressions(variable);
@@ -63,7 +64,7 @@ public class DefaultArrayFormatter implements IVariableFormatProvider {
 			return sb.append("]").toString();
 		}
 
-		private String getCustomValueString(IExpressionDMContext variable) {
+		private String getCustomValueString(IExpressionDMContext variable) throws CoreException {
 			IVariableValueConverter converter = FormatUtils.getCustomValueConverter(variable);
 			if (converter != null)
 				return converter.getValue(variable);
@@ -71,7 +72,7 @@ public class DefaultArrayFormatter implements IVariableFormatProvider {
 		}
 
 		@Override
-		protected String getDetailsValue(IExpressionDMContext variable) {
+		protected String getDetailsValue(IExpressionDMContext variable) throws CoreException {
 			return getSummaryValue(variable);
 		}
 		

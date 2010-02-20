@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
+import java.text.MessageFormat;
+
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
@@ -123,7 +125,7 @@ public class EvaluateID extends SimpleInstruction {
 		}
 
 		// did not find a variable or an enumerator to match the expression
-		InvalidExpression invalidExpression = new InvalidExpression(ASTEvalMessages.EvaluateID_VariableNotFound);
+		InvalidExpression invalidExpression = new InvalidExpression(MessageFormat.format(ASTEvalMessages.EvaluateID_VariableNotFound, name));
 		push(invalidExpression);
 		setLastValue(invalidExpression);
 		setValueLocation(""); //$NON-NLS-1$

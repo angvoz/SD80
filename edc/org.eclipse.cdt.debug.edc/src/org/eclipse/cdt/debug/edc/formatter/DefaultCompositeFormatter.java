@@ -20,6 +20,7 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
+import org.eclipse.core.runtime.CoreException;
 
 public class DefaultCompositeFormatter implements IVariableFormatProvider {
 
@@ -33,13 +34,13 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 		}
 
 		@Override
-		protected String getSummaryValue(IExpressionDMContext variable) {
+		protected String getSummaryValue(IExpressionDMContext variable) throws CoreException {
 			StringBuilder sb = new StringBuilder();
 			addVariableFields(null, sb, variable, 0);
 			return sb.toString();
 		}
 
-		private void addVariableFields(String prefix, StringBuilder sb, IExpressionDMContext variable, int curDepth) {
+		private void addVariableFields(String prefix, StringBuilder sb, IExpressionDMContext variable, int curDepth) throws CoreException {
 			if (prefix == null)
 				prefix = ""; //$NON-NLS-1$
 			List<IExpressionDMContext> childContexts = FormatUtils.getAllChildExpressions(variable);
@@ -101,7 +102,7 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 		}
 
 		@Override
-		protected String getDetailsValue(IExpressionDMContext variable) {
+		protected String getDetailsValue(IExpressionDMContext variable) throws CoreException {
 			return getSummaryValue(variable);
 		}
 	}

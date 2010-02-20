@@ -72,6 +72,9 @@ import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.actions.ActionFactory;
+import org.eclipse.ui.contexts.IContextActivation;
+import org.eclipse.ui.contexts.IContextService;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
@@ -81,6 +84,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	 * The ID of the view as specified by the extension.
 	 */
 	public static final String ID = "org.eclipse.cdt.debug.edc.ui.views.SnapshotView";
+
+	public static final String CONTEXT_ID = "org.eclipse.cdt.debug.edc.ui.context.SnapshotView";
 
 	private static final ImageDescriptor SNAPSHOT_NODE_IMGDESC = AbstractUIPlugin
 			.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
@@ -127,6 +132,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	private Action launchAction;
 	private Action importAction;
 	private Action deleteAction; // delete a snapshot or album
+	private IContextActivation contextActivation;
 
 	// private Action propertiesAction;
 
@@ -221,6 +227,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		TreeViewerColumn locationCol = new TreeViewerColumn(viewer, SWT.LEFT);
 		locationCol.setLabelProvider(new LocationLabelProvider());
 		locationCol.getColumn().setText("Location");
+		locationCol.setEditingSupport(new LocationEditingSupport(locationCol.getViewer()));
 
 		viewer.setContentProvider(new TreeNodeContentProvider());
 		viewer.setInput(loadAlbums());
@@ -275,6 +282,11 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		makeActions();
 		hookContextMenu();
 		contributeToActionBars();
+
+		IContextService ctxService = (IContextService) getSite().getService(IContextService.class);
+    	if (ctxService != null) {
+    		contextActivation= ctxService.activateContext(CONTEXT_ID);
+    	}
 	}
 
 	private void packColumns() {
@@ -324,6 +336,46 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 			}
 
 			return "";
+		}
+	}
+
+	private class LocationEditingSupport extends EditingSupport {
+		private CellEditor editor;
+
+		public LocationEditingSupport(ColumnViewer viewer) {
+			super(viewer);
+			editor = new TextCellEditor(((TreeViewer) viewer).getTree());
+		}
+
+		@Override
+		protected boolean canEdit(Object element) {
+			return true;
+		}
+
+		@Override
+		protected CellEditor getCellEditor(Object element) {
+			return editor;
+		}
+
+		@Override
+		protected Object getValue(Object element) {
+			TreeNode node = (TreeNode) element;
+			Object nodeValue = node.getValue();
+			if (nodeValue instanceof Album) {
+				return ((Album) nodeValue).getLocation().toOSString();
+			} else if (nodeValue instanceof Snapshot){
+				Snapshot snap = (Snapshot) nodeValue;
+				if (snap.getReferenceLocationSourceFile().length() > 0 && snap.getReferenceLocationLineNumber() > 0){
+					return snap.getReferenceLocationSourceFile() + ":" + snap.getReferenceLocationLineNumber();
+				}
+			}
+
+			return "";
+		}
+
+		@Override
+		protected void setValue(Object element, Object value) {
+			// does not allow changing album/snapshot location
 		}
 	}
 
@@ -540,6 +592,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		};
 		deleteAction.setText("Delete album");
 		deleteAction.setToolTipText("Delete album or snapshot");
+		deleteAction.setActionDefinitionId(ActionFactory.DELETE.getCommandId());
 		deleteAction.setImageDescriptor(PlatformUI.getWorkbench()
 				.getSharedImages().getImageDescriptor(
 						ISharedImages.IMG_TOOL_DELETE));
@@ -600,6 +653,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		Menu menu = menuMgr.createContextMenu(viewer.getControl());
 		viewer.getControl().setMenu(menu);
 		getSite().registerContextMenu(menuMgr, viewer);
+		getSite().getKeyBindingService().registerAction(deleteAction);
 	}
 
 	private void fillContextMenu(IMenuManager manager) {
@@ -835,6 +889,17 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 				refreshAction.run();
 			}
 		});
+
+	}
+
+	@Override
+	public void dispose() {
+		if (contextActivation != null) {
+			IContextService ctxService = (IContextService)getSite().getService(IContextService.class);
+	    	if (ctxService != null) {
+	    		ctxService.deactivateContext(contextActivation);
+	    	}
+		}
 
 	}
 

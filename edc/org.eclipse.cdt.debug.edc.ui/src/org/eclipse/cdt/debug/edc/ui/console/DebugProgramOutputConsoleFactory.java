@@ -8,6 +8,7 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
+
 package org.eclipse.cdt.debug.edc.ui.console;
 
 public class DebugProgramOutputConsoleFactory extends

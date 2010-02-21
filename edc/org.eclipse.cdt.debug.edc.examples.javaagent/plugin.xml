@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+<!--
+   <extension
+         point="org.eclipse.ui.actionSets">
+      <actionSet
+            label="EDC Action Set"
+            visible="true"
+            id="org.eclipse.cdt.debug.edc.agent.protoInPlugin.actionSet">
+         <menu
+               label="E&amp;DC"
+               id="org.eclipse.cdt.debug.edc.menu">
+            <separator
+                  name="AgentGroup">
+            </separator>
+         </menu>
+         <action
+               allowLabelUpdate="true"
+               class="org.eclipse.cdt.debug.edc.examples.javaagent.actions.StartTCFAgent"
+               icon="icons/sample.gif"
+               id="org.eclipse.cdt.debug.edc.agent.protoinplugin.actions.StartTCFAgent"
+               label="&amp;Start Agent"
+               menubarPath="org.eclipse.cdt.debug.edc.menu/AgentGroup"
+               toolbarPath="AgentGroup"
+               tooltip="Start/Stop TCF Agent">
+         </action>
+      </actionSet>
+   </extension>
+-->
+</plugin>

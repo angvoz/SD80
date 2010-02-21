@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<snapshot>
+<execution_contexts>
+<execution_context ID="p5232">
+<properties>
+<stringAttribute key="ParentID" value="root"/>
+<booleanAttribute key="State" value="true"/>
+<booleanAttribute key="CanTerminate" value="true"/>
+<booleanAttribute key="CanSuspend" value="true"/>
+<stringAttribute key="Name" value="blackflag_mingw.exe"/>
+<stringAttribute key="ProcessID" value="5232"/>
+<intAttribute key="CanResume" value="5"/>
+<stringAttribute key="ID" value="p5232"/>
+</properties>
+<execution_context ID="p5232.t5152">
+<properties>
+<stringAttribute key="ParentID" value="p5232"/>
+<booleanAttribute key="State" value="true"/>
+<booleanAttribute key="CanTerminate" value="true"/>
+<stringAttribute key="Message" value="Breakpoint"/>
+<booleanAttribute key="CanSuspend" value="true"/>
+<stringAttribute key="Name" value="0x00401280"/>
+<stringAttribute key="SuspendPC" value="40130a"/>
+<stringAttribute key="ProcessID" value="5152"/>
+<intAttribute key="CanResume" value="5"/>
+<stringAttribute key="ID" value="p5232.t5152"/>
+</properties>
+<execution_context_registers>
+<register_group ID="GPX">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Description" value="General x86 Registers"/>
+<stringAttribute key="Name" value="General"/>
+<stringAttribute key="ID" value="GPX"/>
+</properties>
+<register ID="EAX" Value="00000001">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="EAX"/>
+<stringAttribute key="ID" value="EAX"/>
+</properties>
+</register>
+<register ID="ECX" Value="00410bc0">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="ECX"/>
+<stringAttribute key="ID" value="ECX"/>
+</properties>
+</register>
+<register ID="EDX" Value="77c61ae8">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="EDX"/>
+<stringAttribute key="ID" value="EDX"/>
+</properties>
+</register>
+<register ID="EBX" Value="7ffdd000">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="EBX"/>
+<stringAttribute key="ID" value="EBX"/>
+</properties>
+</register>
+<register ID="ESP" Value="0022ff50">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="ESP"/>
+<stringAttribute key="ID" value="ESP"/>
+</properties>
+</register>
+<register ID="EBP" Value="0022ff78">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="EBP"/>
+<stringAttribute key="ID" value="EBP"/>
+</properties>
+</register>
+<register ID="ESI" Value="00000000">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="ESI"/>
+<stringAttribute key="ID" value="ESI"/>
+</properties>
+</register>
+<register ID="EDI" Value="00000000">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="EDI"/>
+<stringAttribute key="ID" value="EDI"/>
+</properties>
+</register>
+<register ID="GS" Value="00000000">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="GS"/>
+<stringAttribute key="ID" value="GS"/>
+</properties>
+</register>
+<register ID="FS" Value="0000003b">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="FS"/>
+<stringAttribute key="ID" value="FS"/>
+</properties>
+</register>
+<register ID="ES" Value="00000023">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="ES"/>
+<stringAttribute key="ID" value="ES"/>
+</properties>
+</register>
+<register ID="DS" Value="00000023">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="DS"/>
+<stringAttribute key="ID" value="DS"/>
+</properties>
+</register>
+<register ID="EIP" Value="401309">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="EIP"/>
+<stringAttribute key="ID" value="EIP"/>
+</properties>
+</register>
+<register ID="CS" Value="0000001b">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="CS"/>
+<stringAttribute key="ID" value="CS"/>
+</properties>
+</register>
+<register ID="EFL" Value="00000202">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="EFL"/>
+<stringAttribute key="ID" value="EFL"/>
+</properties>
+</register>
+<register ID="SS" Value="00000023">
+<properties>
+<stringAttribute key="Context_ID" value="p5232.t5152"/>
+<stringAttribute key="Name" value="SS"/>
+<stringAttribute key="ID" value="SS"/>
+</properties>
+</register>
+</register_group>
+</execution_context_registers>
+<execution_context_frames>
+<stack_frame ID="104">
+<properties>
+<stringAttribute key="source_file" value="C:\runtime-EclipseApplication\blackflag_mingw\blackflag_mingw.cpp"/>
+<intAttribute key="Instruction_address" value="4199177"/>
+<intAttribute key="Base_address" value="2293624"/>
+<stringAttribute key="module_name" value="blackflag_mingw.exe"/>
+<stringAttribute key="function_name" value="main"/>
+<intAttribute key="Level" value="1"/>
+<intAttribute key="line_number" value="20"/>
+<stringAttribute key="ID" value="104"/>
+</properties>
+</stack_frame>
+<stack_frame ID="105">
+<properties>
+<intAttribute key="Instruction_address" value="4198987"/>
+<intAttribute key="Base_address" value="2293680"/>
+<stringAttribute key="module_name" value="blackflag_mingw.exe"/>
+<intAttribute key="Level" value="2"/>
+<stringAttribute key="ID" value="105"/>
+</properties>
+</stack_frame>
+<stack_frame ID="106">
+<properties>
+<intAttribute key="Instruction_address" value="4199064"/>
+<intAttribute key="Base_address" value="2293696"/>
+<stringAttribute key="module_name" value="blackflag_mingw.exe"/>
+<intAttribute key="Level" value="3"/>
+<stringAttribute key="ID" value="106"/>
+</properties>
+</stack_frame>
+<stack_frame ID="107">
+<properties>
+<intAttribute key="Instruction_address" value="2088857719"/>
+<intAttribute key="Base_address" value="2293744"/>
+<stringAttribute key="module_name" value="kernel32.dll"/>
+<intAttribute key="Level" value="4"/>
+<stringAttribute key="ID" value="107"/>
+</properties>
+</stack_frame>
+</execution_context_frames>
+</execution_context>
+<execution_context_modules>
+<module ID="100">
+<properties>
+<intAttribute key="CodeSize" value="286208"/>
+<intAttribute key="ImageBaseAddress" value="4194304"/>
+<booleanAttribute key="Loaded" value="true"/>
+<stringAttribute key="Name" value="blackflag_mingw.exe"/>
+<stringAttribute key="File" value="C:\runtime-EclipseApplication\blackflag_mingw\blackflag_mingw.exe"/>
+<stringAttribute key="ID" value="100"/>
+</properties>
+<section id="0" link_address="0x0000000000401000" runtime_address="0x0000000000401000" size="281836">
+<properties>
+<stringAttribute key="name" value=".text"/>
+</properties>
+</section>
+<section id="1" link_address="0x0000000000446000" runtime_address="0x0000000000446000" size="600">
+<properties>
+<stringAttribute key="name" value=".data"/>
+</properties>
+</section>
+<section id="2" link_address="0x0000000000447000" runtime_address="0x0000000000447000" size="11624">
+<properties>
+<stringAttribute key="name" value=".rodata"/>
+</properties>
+</section>
+<section id="3" link_address="0x000000000044a000" runtime_address="0x000000000044a000" size="63016">
+<properties>
+<stringAttribute key="name" value=".bss"/>
+</properties>
+</section>
+</module>
+<module ID="101">
+<properties>
+<intAttribute key="CodeSize" value="508416"/>
+<intAttribute key="ImageBaseAddress" value="2089811968"/>
+<booleanAttribute key="Loaded" value="true"/>
+<stringAttribute key="Name" value="ntdll.dll"/>
+<stringAttribute key="File" value="C:\WINNT\system32\ntdll.dll"/>
+<stringAttribute key="ID" value="101"/>
+</properties>
+<section id="0" link_address="0x000000007c900000" runtime_address="0x000000007c900000" size="508416">
+<properties>
+<stringAttribute key="name" value=".text"/>
+</properties>
+</section>
+</module>
+<module ID="102">
+<properties>
+<intAttribute key="CodeSize" value="537088"/>
+<intAttribute key="ImageBaseAddress" value="2088763392"/>
+<booleanAttribute key="Loaded" value="true"/>
+<stringAttribute key="Name" value="kernel32.dll"/>
+<stringAttribute key="File" value="C:\WINNT\system32\kernel32.dll"/>
+<stringAttribute key="ID" value="102"/>
+</properties>
+<section id="0" link_address="0x000000007c800000" runtime_address="0x000000007c800000" size="537088">
+<properties>
+<stringAttribute key="name" value=".text"/>
+</properties>
+</section>
+</module>
+<module ID="103">
+<properties>
+<intAttribute key="CodeSize" value="310784"/>
+<intAttribute key="ImageBaseAddress" value="2009137152"/>
+<booleanAttribute key="Loaded" value="true"/>
+<stringAttribute key="Name" value="msvcrt.dll"/>
+<stringAttribute key="File" value="C:\WINNT\system32\msvcrt.dll"/>
+<stringAttribute key="ID" value="103"/>
+</properties>
+<section id="0" link_address="0x0000000077c10000" runtime_address="0x0000000077c10000" size="310784">
+<properties>
+<stringAttribute key="name" value=".text"/>
+</properties>
+</section>
+</module>
+</execution_context_modules>
+</execution_context>
+</execution_contexts>
+<memory>
+<memory_context context_id="p5232.t5152">
+<memory_cache>
+<memory_block address="0x000000000022ff78" length="8" value="b0ff22004b124000"/>
+<memory_block address="0x000000000022ffb0" length="8" value="c0ff220098124000"/>
+<memory_block address="0x000000000022ffc0" length="8" value="f0ff22007770817c"/>
+<memory_block address="0x000000000022fff0" length="8" value="0000000000000000"/>
+<memory_block address="0x000000000040124b" length="2" value="89c3"/>
+<memory_block address="0x0000000000401298" length="2" value="908d"/>
+<memory_block address="0x0000000000401309" length="4" value="c7042400"/>
+<memory_block address="0x000000007c817077" length="2" value="50e8"/>
+</memory_cache>
+</memory_context>
+<memory_context context_id="p5232">
+<memory_cache>
+<memory_block address="0x00000000004012f0" length="1" value="55"/>
+</memory_cache>
+</memory_context>
+</memory>
+</snapshot>

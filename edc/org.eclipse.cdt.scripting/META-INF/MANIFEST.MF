@@ -6,12 +6,15 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.eclipse.cdt.scripting.ScriptingPlugin
 Require-Bundle: org.eclipse.core.runtime,
  javax.servlet;bundle-version="2.5.0",
- org.eclipse.equinox.http.jetty;bundle-version="2.0.0"
+ org.eclipse.equinox.http.jetty;bundle-version="2.0.0",
+ org.eclipse.ui;bundle-version="3.6.0"
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Import-Package: org.eclipse.equinox.http.jetty,
- org.eclipse.ui
- 
+ org.eclipse.jface.preference,
+ org.eclipse.swt.widgets,
+ org.eclipse.ui,
+ org.eclipse.ui.preferences
 Export-Package: org.eclipse.cdt.internal.scripting;
   uses:="org.eclipse.core.runtime,
    org.jabsorb,

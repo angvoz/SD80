@@ -21,6 +21,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.equinox.http.jetty.JettyConfigurator;
 import org.eclipse.ui.IStartup;
 import org.osgi.framework.Bundle;
@@ -39,6 +40,11 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 
 	private static BundleContext bundleContext;
 
+	public final static String HELP_CONTEXT_ID = "scripting_help_context"; //$NON-NLS-1$
+
+	public final static String SCRIPTING_ENABLED = "Scripting.Scripting_Enabled"; //$NON-NLS-1$
+	public final static String PORT_NUMBER = "Scripting.Port_Number"; //$NON-NLS-1$
+
 	/**
 	 * The constructor
 	 */
@@ -55,7 +61,7 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 		super.start(context);
 		plugin = this;
 		bundleContext = context;
-		// disabled for now   startServelet();
+		startServelet();
 		readExtensions();
 	}
 
@@ -85,7 +91,7 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 	public static BundleContext getBundleContext() {
 		return bundleContext;
 	}
-	
+
 	public static void log(IStatus status) {
 		getDefault().getLog().log(status);
 	}
@@ -97,19 +103,23 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 	private void startServelet() {
 		new Thread("Server Sr") {
 			@Override
-			@SuppressWarnings("unchecked")
 			public void run() {
 				try {
-					Bundle bundle = Platform.getBundle("org.eclipse.equinox.http.registry");
+					boolean enabled = new InstanceScope().getNode(ScriptingPlugin.PLUGIN_ID).getBoolean(SCRIPTING_ENABLED, false);
 
-					if (bundle.getState() == Bundle.RESOLVED) {
-						bundle.start(Bundle.START_TRANSIENT);
+					if (enabled) {
+						int portNumber = new InstanceScope().getNode(ScriptingPlugin.PLUGIN_ID).getInt(PORT_NUMBER, 5660);
+						Bundle bundle = Platform.getBundle("org.eclipse.equinox.http.registry");
+
+						if (bundle.getState() == Bundle.RESOLVED) {
+							bundle.start(Bundle.START_TRANSIENT);
+						}
+						final Dictionary<String, Integer> d = new Hashtable<String, Integer>();
+						d.put("http.port", portNumber); //$NON-NLS-1$
+						Logger.getLogger("org.mortbay").setLevel(Level.WARNING); //$NON-NLS-1$	
+
+						JettyConfigurator.startServer("jsonrpc", d);
 					}
-					final Dictionary d = new Hashtable();
-					d.put("http.port", new Integer("5660")); //$NON-NLS-1$
-					Logger.getLogger("org.mortbay").setLevel(Level.WARNING); //$NON-NLS-1$	
-
-					JettyConfigurator.startServer("jsonrpc", d);
 				} catch (Throwable t) {
 					ScriptingPlugin.log(null, t);
 				}
@@ -119,12 +129,11 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 	}
 
 	private void readExtensions() {
-		IConfigurationElement[] elements = 
-			Platform.getExtensionRegistry().getConfigurationElementsFor(PLUGIN_ID + ".scriptableFeature");
+		IConfigurationElement[] elements = Platform.getExtensionRegistry().getConfigurationElementsFor(PLUGIN_ID + ".scriptableFeature");
 		for (IConfigurationElement element : elements) {
 			RPCBridge.instance().addExtension(element);
 		}
-		
+
 	}
 
 	public static int newPendingActivityId() {
@@ -134,7 +143,7 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 		}
 		return id;
 	}
-	
+
 	public static void setActivityDone(int id) {
 		synchronized (Activities.pendingActivityIds) {
 			Activities.pendingActivityIds.remove(id);

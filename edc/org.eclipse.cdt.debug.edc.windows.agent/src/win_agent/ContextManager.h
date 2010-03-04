@@ -24,9 +24,6 @@
 class ContextManager {
 public:
 
-	// Generate unique internal ID for a context object.
-	static ContextID GenerateInternalID();
-
 	static void AddDebuggedContext(Context* context);
 
 	static void AddRunningContext(Context* context);
@@ -37,9 +34,11 @@ public:
 
 	static void RemoveDebuggedContext(ContextID id);
 
-	static void ClearCachedContexts();
+	static void ClearContextCache();
 
-	static void FlushRunningContextCache();
+	static void ClearRunningContextCache();
+
+	static void ClearDebuggedContextCache();
 
 protected:
 	ContextManager() {

@@ -12,29 +12,27 @@ package org.eclipse.cdt.debug.edc.tests;
 
 import java.util.Collection;
 
-import junit.framework.Assert;
-import junit.framework.TestCase;
-
 import org.eclipse.cdt.debug.edc.internal.HostOS;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntryProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFileHelper;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.core.runtime.IPath;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
  * Fast check of symbol reader.
  */
-public class SymbolReader extends TestCase {
+public class SymbolReader {
 	
 
 	@Test
@@ -206,10 +204,10 @@ public class SymbolReader extends TestCase {
 				break;
 			}
 		}
-		assertNotNull(stackCrawlFilePath);
+		Assert.assertNotNull(stackCrawlFilePath);
 		Collection<ILineEntryProvider> lineEntryProviders = reader.getModuleScope().getModuleLineEntryProvider().getLineEntryProvidersForFile(
 				stackCrawlFilePath);
-		assertEquals(1, lineEntryProviders.size());
+		Assert.assertEquals(1, lineEntryProviders.size());
 		ILineEntryProvider lep = lineEntryProviders.iterator().next();
 		
 		Collection<ILineEntry> lineEntries = lep.getLineEntriesForLines(stackCrawlFilePath, 31, 31);

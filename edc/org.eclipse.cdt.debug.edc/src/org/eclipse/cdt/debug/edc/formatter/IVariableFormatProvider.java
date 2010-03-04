@@ -10,7 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.formatter;
 
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 
 /**
  * Interface for an extension providing custom formatting for variables

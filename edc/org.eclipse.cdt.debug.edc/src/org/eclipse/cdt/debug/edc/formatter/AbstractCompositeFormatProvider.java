@@ -15,7 +15,8 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
@@ -94,7 +95,7 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 
 	protected String getValueString(IExpressionDMContext variable) throws CoreException {
 		StringBuilder sb = new StringBuilder();
-		IExpressions expressions = ((ExpressionDMC) variable).getService();
+		IExpressions expressions = ((IEDCExpression) variable).getService();
 		List<IExpressionDMContext> children = getChildren(variable);
 		int i = 0;
 		for (IExpressionDMContext child : children) {

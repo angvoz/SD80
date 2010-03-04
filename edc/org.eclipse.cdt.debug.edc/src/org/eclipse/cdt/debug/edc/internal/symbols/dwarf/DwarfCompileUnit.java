@@ -16,13 +16,13 @@ import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.symbols.CompileUnitScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.AttributeList;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.CompilationUnitHeader;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.core.runtime.IPath;
 
 public class DwarfCompileUnit extends CompileUnitScope {
@@ -232,14 +232,6 @@ public class DwarfCompileUnit extends CompileUnitScope {
 		}
 	}
 	
-	private void ensureParsedForTypes() {
-		if (!parsedForTypes) {
-			parsedForTypes = true;
-			DwarfInfoReader reader = new DwarfInfoReader(provider);
-			reader.parseCompilationUnitForAddresses(this);
-		}
-	}
-
 	@Override
 	public IScope getScopeAtAddress(IAddress linkAddress) {
 		ensureParsedForAddresses();

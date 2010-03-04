@@ -16,6 +16,7 @@ import java.util.Random;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
+import org.eclipse.cdt.debug.edc.services.IEDCMemory;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
 import org.eclipse.cdt.debug.edc.tests.TestUtils.Condition;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -27,17 +28,11 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.debug.core.model.MemoryByte;
+import org.junit.Test;
 
 public class MemoryView extends BaseLaunchTest {
 
-	@Override
-	protected void setUp() throws Exception {
-	}
-
-	@Override
-	protected void tearDown() throws Exception {
-	}
-
+	@Test
 	public void testMemoryView() throws Exception {
 		final EDCLaunch launch = createLaunch();
 		assertNotNull(launch);
@@ -68,7 +63,7 @@ public class MemoryView extends BaseLaunchTest {
 		waitForMemoryValues(addr32, executionDMC, mem, data);
 	}
 
-	private void waitForMemoryValues(final Addr32 addr32, final ExecutionDMC executionDMC, final Memory mem,
+	private void waitForMemoryValues(final Addr32 addr32, final ExecutionDMC executionDMC, final IEDCMemory mem,
 			final byte[] data) throws InterruptedException {
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {

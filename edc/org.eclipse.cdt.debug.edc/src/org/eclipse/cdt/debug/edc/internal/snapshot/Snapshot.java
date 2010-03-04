@@ -22,7 +22,8 @@ import javax.xml.transform.TransformerException;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.ZipFileUtils;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.core.runtime.CoreException;

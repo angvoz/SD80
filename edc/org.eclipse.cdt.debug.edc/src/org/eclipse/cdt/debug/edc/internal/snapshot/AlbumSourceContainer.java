@@ -11,17 +11,18 @@
 package org.eclipse.cdt.debug.edc.internal.snapshot;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.sourcelookup.ISourceContainerType;
 import org.eclipse.debug.core.sourcelookup.containers.AbstractSourceContainer;
 
 public class AlbumSourceContainer extends AbstractSourceContainer {
 
-	private Album album;
+	private IAlbum album;
 
 	public static final String TYPE_ID = EDCDebugger.getUniqueIdentifier() + ".containerType.albumMapping"; //$NON-NLS-1$
 
-	public AlbumSourceContainer(Album album) {
+	public AlbumSourceContainer(IAlbum album) {
 		this.album = album;
 	}
 

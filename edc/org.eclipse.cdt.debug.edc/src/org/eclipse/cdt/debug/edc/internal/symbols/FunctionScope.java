@@ -16,6 +16,10 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.core.runtime.IPath;
 
 public class FunctionScope extends Scope implements IFunctionScope {

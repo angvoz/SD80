@@ -20,7 +20,7 @@ import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableFormatProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.core.commands.Command;
 import org.eclipse.core.commands.State;
 import org.eclipse.core.runtime.IConfigurationElement;

@@ -17,18 +17,21 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleLineEntryProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.DebugInfoProviderFactory;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCModules;
+import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
+import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -38,7 +41,7 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.model.ISourceLocator;
 
-public class Symbols extends AbstractEDCService implements ISymbols {
+public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols {
 
 	/** TEMPORARY system property (value "true", default "true") for selecting the new on-demand DWARF reader */
 	public static final String DWARF_USE_NEW_READER = "dwarf.use_new_reader";
@@ -57,7 +60,7 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 	}
 
 	public Symbols(DsfSession session) {
-		super(session, new String[] { ISymbols.class.getName(), Symbols.class.getName() });
+		super(session, new String[] { IEDCSymbols.class.getName(), ISymbols.class.getName(), Symbols.class.getName() });
 	}
 
 	public void getSymbols(ISymbolDMContext symCtx, DataRequestMonitor<Iterable<ISymbolObjectDMContext>> rm) {
@@ -70,18 +73,12 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 
 	}
 
-	/**
-	 * Get the function at the given runtime address
-	 * 
-	 * @param context
-	 *            the context
-	 * @param runtimeAddress
-	 *            the runtime address
-	 * @return the function containing the given address, or null if none found
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCSymbols#getFunctionAtAddress(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress)
 	 */
 	public IFunctionScope getFunctionAtAddress(ISymbolDMContext context, IAddress runtimeAddress) {
-		Modules modulesService = getServicesTracker().getService(Modules.class);
-		ModuleDMC module = modulesService.getModuleByAddress(context, runtimeAddress);
+		IEDCModules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, runtimeAddress);
 		if (module != null) {
 			IEDCSymbolReader reader = module.getSymbolReader();
 			if (reader != null) {
@@ -95,18 +92,12 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 		return null;
 	}
 
-	/**
-	 * Get the line entry at the given runtime address
-	 * 
-	 * @param context
-	 *            the context
-	 * @param runtimeAddress
-	 *            the runtime address
-	 * @return the line entry for the given address, or null if none found
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCSymbols#getLineEntryForAddress(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress)
 	 */
 	public ILineEntry getLineEntryForAddress(ISymbolDMContext context, IAddress runtimeAddress) {
-		Modules modulesService = getServicesTracker().getService(Modules.class);
-		ModuleDMC module = modulesService.getModuleByAddress(context, runtimeAddress);
+		IEDCModules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, runtimeAddress);
 		if (module != null) {
 			IEDCSymbolReader reader = module.getSymbolReader();
 			if (reader != null) {
@@ -118,28 +109,14 @@ public class Symbols extends AbstractEDCService implements ISymbols {
 		return null;
 	}
 
-	/**
-	 * <p>
-	 * Get source line entries with code that are between the given start and
-	 * end startAddress.
-	 * <p>
-	 * This method is created mainly for supporting disassembly service.
-	 * 
-	 * @param context
-	 * @param start
-	 *            start runtime address
-	 * @param end
-	 *            end runtime address (exclusive).
-	 * @return list of source line entries which may or may not be in the same
-	 *         source file (note that even one compile unit may have code from
-	 *         different source files). It's empty if the start address has no
-	 *         source line.
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCSymbols#getLineEntriesForAddressRange(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress, org.eclipse.cdt.core.IAddress)
 	 */
 	public List<ILineEntry> getLineEntriesForAddressRange(ISymbolDMContext context, IAddress start, IAddress end) {
 		List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
 
-		Modules modulesService = getServicesTracker().getService(Modules.class);
-		ModuleDMC module = modulesService.getModuleByAddress(context, start);
+		IEDCModules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, start);
 		if (module == null)
 			return lineEntries;
 

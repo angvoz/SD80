@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 import org.eclipse.cdt.debug.core.executables.Executable;
 import org.eclipse.cdt.debug.core.executables.ISourceFilesProvider;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.core.runtime.IProgressMonitor;
 
 public class EDCSourceFilesProvider implements ISourceFilesProvider {

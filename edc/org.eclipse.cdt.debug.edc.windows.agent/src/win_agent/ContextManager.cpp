@@ -12,13 +12,8 @@
 #include "AgentUtils.h"
 
 std::map<ContextID, Context*> ContextManager::gDebuggedContexts;
-std::map<std::string, Context*> ContextManager::gRunningContexts;
+std::map<ContextID, Context*> ContextManager::gRunningContexts;
 
-
-ContextID ContextManager::GenerateInternalID() {
-	static int baseID = 100;
-	return AgentUtils::IntToString(baseID++);
-}
 
 void ContextManager::AddDebuggedContext(Context* context) {
 	if (context != NULL)
@@ -30,19 +25,44 @@ void ContextManager::AddRunningContext(Context* context) {
 		gRunningContexts[context->GetID()] = context;
 }
 
+/*
+ * return NULL pointer if not found.
+ */
 Context* ContextManager::FindDebuggedContext(ContextID id) {
-	return gDebuggedContexts[id];
+	// NOTE that if "id" is not in the map a, a[id] does not return NULL !
+	// See STL Map document for more.
+	std::map<ContextID, Context*>::iterator iter = gDebuggedContexts.find(id);
+	if (iter != gDebuggedContexts.end())
+		return gDebuggedContexts[id];
+	else
+		return NULL;
 }
 
+/*
+ * return NULL pointer if not found.
+ */
 Context* ContextManager::FindRunningContext(ContextID id) {
-	return gRunningContexts[id];
+	// NOTE that if "id" is not in the map a, a[id] does not return NULL !
+	// See STL Map document for more.
+	std::map<ContextID, Context*>::iterator iter = gRunningContexts.find(id);
+	if (iter != gRunningContexts.end())
+		return gRunningContexts[id];
+	else
+		return NULL;
 }
 
+/*
+ * Remove given context from the cache.
+ * If the given context is not in the cache, this is a void operation.
+ */
 void ContextManager::RemoveDebuggedContext(ContextID id) {
 	gDebuggedContexts.erase(id);
 }
 
-void ContextManager::FlushRunningContextCache() {
+/**
+ * Delete all cached contexts and flush the cache.
+ */
+void ContextManager::ClearRunningContextCache() {
 	std::map<ContextID, Context*>::iterator iter = gRunningContexts.begin();
 	while (iter != gRunningContexts.end()) {
 		delete iter->second;
@@ -52,3 +72,23 @@ void ContextManager::FlushRunningContextCache() {
 	gRunningContexts.clear();
 }
 
+/**
+ * Delete all cached contexts and flush the cache.
+ */
+void ContextManager::ClearDebuggedContextCache() {
+	std::map<ContextID, Context*>::iterator iter = gDebuggedContexts.begin();
+	while (iter != gDebuggedContexts.end()) {
+		delete iter->second;
+		iter++;
+	}
+
+	gDebuggedContexts.clear();
+}
+
+/**
+ * Delete all cached contexts and flush the cache.
+ */
+void ContextManager::ClearContextCache() {
+	ClearRunningContextCache();
+	ClearDebuggedContextCache();
+}

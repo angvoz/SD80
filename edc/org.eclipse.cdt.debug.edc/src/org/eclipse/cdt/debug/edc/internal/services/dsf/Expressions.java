@@ -29,7 +29,6 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Interpret
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.VariableWithValue;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayBoundType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
@@ -37,7 +36,6 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInvalidVariableLocation;
@@ -46,9 +44,15 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IRegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
-import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.DMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.services.Registers;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
@@ -58,6 +62,7 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
@@ -66,22 +71,17 @@ import org.eclipse.core.runtime.Status;
 
 public class Expressions extends AbstractEDCService implements IExpressions {
 
-	// we need a property to hold the expression string when it differs from the
-	// string we display in the Variables view Name column or the Expressions
-	// view Expression column
-	public final static String EXPRESSION_PROP = "Expression"; //$NON-NLS-1$
-
 	private static int nextExpressionID = 100;
 
 	private Map<String, ICPPBasicType> basicTypes;
 
-	public class ExpressionDMC extends DMContext implements IExpressionDMContext {
+	public class ExpressionDMC extends DMContext implements IEDCExpression {
 
 		private static final String HEX_PREFIX = "0x"; //$NON-NLS-1$
 		private static final String OCTAL_PREFIX = "0"; //$NON-NLS-1$
 		private static final String BINARY_PREFIX = "0b"; //$NON-NLS-1$
 		private static final String SINGLE_QUOTE = "'"; //$NON-NLS-1$
-		private static final String DECIMAL_SUFFIX = " (Decimal)";
+		private static final String DECIMAL_SUFFIX = " (Decimal)"; //$NON-NLS-1$
 		private InstructionSequence parsedExpression;
 		private final ASTEvaluationEngine engine = new ASTEvaluationEngine();
 		private final StackFrameDMC frame;
@@ -95,17 +95,26 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			this.frame = frame;
 		}
 
-		public StackFrameDMC getFrame() {
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getFrame()
+		 */
+		public IFrameDMContext getFrame() {
 			return frame;
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getExpression()
+		 */
 		public String getExpression() {
-			Object expression = getProperty(Expressions.EXPRESSION_PROP);
+			Object expression = getProperty(IEDCExpression.EXPRESSION_PROP);
 			if (expression == null)
 				expression = getName();
 			return (String) expression;
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#evaluateExpression()
+		 */
 		public void evaluateExpression() {
 			if (value != null)
 				return;
@@ -163,7 +172,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 				// not matter
 				if (valueLocation instanceof IInvalidVariableLocation) {
 					value = new InvalidExpression(((IInvalidVariableLocation) valueLocation).getMessage());
-					valueLocation = "";
+					valueLocation = ""; //$NON-NLS-1$
 					return;
 				}
 
@@ -199,6 +208,9 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			}
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getFormattedValue(org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext)
+		 */
 		public FormattedValueDMData getFormattedValue(FormattedValueDMContext dmc) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.VARIABLE_VALUE_TRACE, dmc);
 			evaluateExpression();
@@ -317,19 +329,31 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			return sb.toString();
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getValueLocation()
+		 */
 		public Object getValueLocation() {
 			evaluateExpression();
 			return getEvaluatedLocation();
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getEvaluatedValue()
+		 */
 		public Object getEvaluatedValue() {
 			return value;
 		}
 		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#setEvaluatedValue(java.lang.Object)
+		 */
 		public void setEvaluatedValue(Object value) {
 			this.value = value;
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getEvaluatedLocation()
+		 */
 		public Object getEvaluatedLocation() {
 			if (valueLocation instanceof IAddress) {
 				// don't print these as decimal or as ridiculously long numbers
@@ -342,10 +366,16 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			return valueLocation;
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getEvaluatedType()
+		 */
 		public Object getEvaluatedType() {
 			return valueType;
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getTypeName()
+		 */
 		public String getTypeName() {
 			evaluateExpression();
 			if (valueType == null)
@@ -399,10 +429,16 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			return typeValue.toString();
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#hasChildren()
+		 */
 		public boolean hasChildren() {
 			return this.hasChildren;
 		}
 		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getService()
+		 */
 		public IExpressions getService() {
 			return Expressions.this;
 		}
@@ -487,7 +523,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 		public ExpressionDMAddress(IExpressionDMContext exprContext) {
 			if (exprContext instanceof ExpressionDMC)
-				valueLocation = ((ExpressionDMC) exprContext).getValueLocation();
+				valueLocation = ((IEDCExpression) exprContext).getValueLocation();
 			else
 				valueLocation = new Addr64("0"); //$NON-NLS-1$
 		}
@@ -506,7 +542,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			if (valueLocation instanceof IInvalidVariableLocation) {
 				return ((IInvalidVariableLocation)valueLocation).getMessage();
 			}
-			return valueLocation == null ? "" : valueLocation.toString();
+			return valueLocation == null ? "" : valueLocation.toString(); //$NON-NLS-1$
 		}
 
 	}
@@ -559,7 +595,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 	}
 
 	public void getSubExpressions(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMContext[]> rm) {
-		if (!(exprContext instanceof ExpressionDMC) || ((ExpressionDMC) exprContext).getFrame() == null) {
+		if (!(exprContext instanceof ExpressionDMC) || ((IEDCExpression) exprContext).getFrame() == null) {
 			rm.setData(new ExpressionDMC[0]);
 			rm.done();
 			return;
@@ -573,7 +609,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			expr.evaluateExpression();
 		}
 
-		StackFrameDMC frame = expr.getFrame();
+		StackFrameDMC frame = (StackFrameDMC) expr.getFrame();
 		IType exprType = TypeUtils.getStrippedType(expr.getEvaluatedType());
 
 		// to expand it, it must either be a pointer, a reference to an aggregate,
@@ -605,7 +641,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			} catch (Throwable e) {
 				// unexpected error. log it.
 				EDCDebugger.getMessageLogger().logError(
-						"Error in variable formater: " + customProvider.getClass().getName(), e);
+						EDCServicesMessages.Expressions_ErrorInVariableFormatter + customProvider.getClass().getName(), e);
 				
 				// default to normal formatting
 				getSubExpressions(expr, frame, exprType, rm);
@@ -699,7 +735,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			// with a child
 			String childName = child.getExpression();
 			if (childName.contains(".") || childName.contains("->")) { //$NON-NLS-1$ //$NON-NLS-2$
-				child.setProperty(Expressions.EXPRESSION_PROP, childName);
+				child.setProperty(IEDCExpression.EXPRESSION_PROP, childName);
 				if (childName.contains(".")) //$NON-NLS-1$
 					childName = childName.substring(childName.lastIndexOf(".") + 1); //$NON-NLS-1$
 				if (childName.contains("->")) //$NON-NLS-1$
@@ -825,7 +861,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 					// Meanwhile default to normal formatting so that user won't see 
 					// such error in Variable UI.
 					EDCDebugger.getMessageLogger().logError(
-							"Error in variable formater: " + customValue.getClass().getName(), t);
+							EDCServicesMessages.Expressions_ErrorInVariableFormatter + customValue.getClass().getName(), t);
 				}
 			}
 		} else

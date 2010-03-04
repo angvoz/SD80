@@ -10,8 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.tests;
 
-import junit.framework.TestCase;
-
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
@@ -22,8 +20,9 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.WorkbenchException;
+import org.junit.Assert;
 
-public abstract class AbstractLaunchTest extends TestCase {
+public abstract class AbstractLaunchTest extends Assert {
 
 	public static void showPerspective(String perspective) throws WorkbenchException {
 		IWorkbench workbench = PlatformUI.getWorkbench();

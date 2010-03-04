@@ -10,25 +10,12 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.tests;
 
-import junit.framework.Test;
-import junit.framework.TestSuite;
-
 import org.eclipse.cdt.debug.edc.debugger.tests.Launching;
 import org.eclipse.cdt.debug.edc.debugger.tests.Terminating;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
-@Suite.SuiteClasses( { Expressions.class })
+@Suite.SuiteClasses( { Launching.class, Terminating.class })
 public class AllEDCTestsNotWorking {
-	public static Test suite() {
-		TestSuite suite = new TestSuite(
-				"Broken Tests for org.eclipse.cdt.debug.edc.tests");
-		//$JUnit-BEGIN$
-		suite.addTestSuite(Launching.class);  // UI thread blocking issue, won't run from ANT
-		suite.addTestSuite(Terminating.class);  // UI thread blocking issue, won't run from ANT
-		//$JUnit-END$
-		return suite;
-	}
-
 }

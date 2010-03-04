@@ -14,16 +14,18 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.util.concurrent.ExecutionException;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
-
+import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
+import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.launch.IEDCLaunchConfigurationConstants;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -34,6 +36,7 @@ import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
@@ -47,6 +50,7 @@ import org.eclipse.debug.internal.ui.IInternalDebugUIConstants;
 import org.eclipse.jface.dialogs.MessageDialogWithToggle;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Display;
+import org.junit.Assert;
 
 @SuppressWarnings("restriction")
 public class TestUtils {
@@ -104,7 +108,7 @@ public class TestUtils {
 		while (!conditionValid) {
 			Thread.sleep(interval);
 			if (System.currentTimeMillis() > limit)
-				throw new AssertionFailedError();
+				throw new AssertionError();
 			conditionRunnable = new TestUtils.ConditionQuery(condition);
 			session.getExecutor().execute(conditionRunnable);
 			conditionValid = conditionRunnable.get();
@@ -120,7 +124,7 @@ public class TestUtils {
 				display.sleep();
 			Thread.sleep(interval);
 			if (System.currentTimeMillis() > limit)
-				throw new AssertionFailedError();
+				throw new AssertionError();
 		}
 	}
 
@@ -173,10 +177,14 @@ public class TestUtils {
 	}
 
 	public static EDCLaunch createLaunchForAlbum(String albumName) throws Exception {
+		String res_folder = EDCTestPlugin.projectRelativePath("resources/Snapshots");
+		return createLaunchForAlbum(albumName, res_folder);
+	}
+
+	public static EDCLaunch createLaunchForAlbum(String albumName, String res_folder) throws Exception {
 		ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
 		ILaunchConfigurationWorkingCopy configuration = lm.getLaunchConfigurationType(
 				"org.eclipse.cdt.debug.edc.snapshot").newInstance(null, "TestAlbumLaunch");
-		String res_folder = EDCTestPlugin.projectRelativePath("resources/Snapshots");
 		IPath dsaPath = new Path(res_folder);
 		dsaPath = dsaPath.append(albumName);
 
@@ -229,8 +237,8 @@ public class TestUtils {
 		return sessionHolder[0];
 	}
 
-	public static ExecutionDMC waitForExecutionDMC(final DsfSession session) throws Exception {
-		final ExecutionDMC contextHolder[] = { null };
+	public static IEDCExecutionDMC waitForExecutionDMC(final DsfSession session) throws Exception {
+		final IEDCExecutionDMC contextHolder[] = { null };
 		TestUtils.waitOnExecutorThread(session, new Condition() {
 			public boolean isConditionValid() {
 				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
@@ -240,7 +248,7 @@ public class TestUtils {
 				ExecutionDMC rootDMC = runControlService.getRootDMC();
 				if (rootDMC == null)
 					return false;
-				ExecutionDMC[] processes = rootDMC.getChildren();
+				IEDCExecutionDMC[] processes = rootDMC.getChildren();
 				if (processes.length == 0)
 					return false;
 
@@ -316,8 +324,28 @@ public class TestUtils {
 				ExpressionDMC expression = (ExpressionDMC) expressionsService.createExpression(frame, expr);
 				FormattedValueDMContext fvc = expressionsService.getFormattedValueContext(expression,
 						IFormattedValues.NATURAL_FORMAT);
-				FormattedValueDMData value = expression.getFormattedValue(fvc);
-				rm.setData(value.getFormattedValue());
+				FormattedValueDMData formattedValue = expression.getFormattedValue(fvc);
+				IType exprType = TypeUtils.getStrippedType(expression.getEvaluatedType());
+				IVariableValueConverter customValue = 
+					FormatExtensionManager.instance().getVariableValueConverter(exprType);
+				if (customValue != null) {
+					FormattedValueDMData customFormattedValue = null;
+					try {
+						customFormattedValue = new FormattedValueDMData(customValue.getValue(expression));
+						formattedValue = customFormattedValue;
+					}
+					catch (CoreException e) {
+						// Checked exception like failure in reading memory.
+						// Pass the error to the RM so that it would show up in UI. 
+						rm.setStatus(e.getStatus());
+						rm.done();
+						return;
+					}
+					catch (Throwable t) {
+					}
+				}
+				
+				rm.setData(formattedValue.getFormattedValue());
 				rm.done();
 			}
 		};

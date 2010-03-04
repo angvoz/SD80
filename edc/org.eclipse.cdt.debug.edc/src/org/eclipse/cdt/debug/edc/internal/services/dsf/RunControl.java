@@ -21,22 +21,33 @@ import java.util.Map;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
+import org.eclipse.cdt.debug.edc.IJumpToAddress;
+import org.eclipse.cdt.debug.edc.JumpToAddress;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
-import org.eclipse.cdt.debug.edc.internal.JumpToAddress;
-import org.eclipse.cdt.debug.edc.internal.disassembler.DisassembledInstruction;
-import org.eclipse.cdt.debug.edc.internal.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints.BreakpointDMData;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers.RegisterGroupDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.VariableDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleLineEntryProvider;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.DMContext;
+import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCModules;
+import org.eclipse.cdt.debug.edc.services.Registers;
+import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.services.Registers.RegisterGroupDMC;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.services.Stack.VariableDMC;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
+import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -169,8 +180,8 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		}
 	}
 
-	public abstract class ExecutionDMC extends DMContext implements IExecutionDMContext, IMemoryDMContext,
-			ISnapshotContributor {
+	public abstract class ExecutionDMC extends DMContext implements IExecutionDMContext,
+			ISnapshotContributor, IEDCExecutionDMC {
 
 		private final List<ExecutionDMC> children = Collections.synchronizedList(new ArrayList<ExecutionDMC>());
 		private StateChangeReason stateChangeReason = StateChangeReason.UNKNOWN;
@@ -201,7 +212,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			}
 		}
 
-		private void removeChild(ExecutionDMC executionDMC) {
+		private void removeChild(IEDCExecutionDMC executionDMC) {
 			synchronized (children) {
 				children.remove(executionDMC);
 			}
@@ -212,8 +223,6 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 				return children.toArray(new ExecutionDMC[children.size()]);
 			}
 		}
-
-		public abstract ISymbolDMContext getSymbolDMContext();
 
 		public abstract ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext);
 
@@ -240,7 +249,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
 
-		public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 			Element contextElement = document.createElement(EXECUTION_CONTEXT);
 			contextElement.setAttribute(PROP_ID, this.getID());
 
@@ -889,7 +898,6 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			return newDMC;
 		}
 
-		@Override
 		public ISymbolDMContext getSymbolDMContext() {
 			return this;
 		}
@@ -902,7 +910,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		}
 
 		@Override
-		public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 			Element contextElement = super.takeShapshot(album, document, monitor);
 			Element modulesElement = document.createElement(EXECUTION_CONTEXT_MODULES);
 			Modules modulesService = getServicesTracker().getService(Modules.class);
@@ -929,7 +937,6 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
 
-		@Override
 		public ISymbolDMContext getSymbolDMContext() {
 			IDMContext[] parents = getParents();
 			for (IDMContext context : parents) {
@@ -959,7 +966,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		}
 
 		@Override
-		public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 			Element contextElement = super.takeShapshot(album, document, monitor);
 			Element registersElement = document.createElement(EXECUTION_CONTEXT_REGISTERS);
 			Registers regService = getServicesTracker().getService(Registers.class);
@@ -1020,7 +1027,6 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			return newDMC;
 		}
 
-		@Override
 		public ISymbolDMContext getSymbolDMContext() {
 			return null;
 		}
@@ -1040,7 +1046,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 
 	private void initializeRootExecutionDMC() {
 		HashMap<String, Object> props = new HashMap<String, Object>();
-		props.put(DMContext.PROP_ID, "root");
+		props.put(IEDCDMContext.PROP_ID, "root");
 		rootExecutionDMC = new RootExecutionDMC(props);
 	}
 
@@ -1062,7 +1068,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 	public void getExecutionContexts(IContainerDMContext c, DataRequestMonitor<IExecutionDMContext[]> rm) {
 		if (c instanceof ProcessExecutionDMC) {
 			ProcessExecutionDMC edmc = (ProcessExecutionDMC) c;
-			ExecutionDMC[] threads = edmc.getChildren();
+			IEDCExecutionDMC[] threads = edmc.getChildren();
 			IExecutionDMContext[] threadArray = new IExecutionDMContext[threads.length];
 			System.arraycopy(threads, 0, threadArray, 0, threads.length);
 			rm.setData(threadArray);
@@ -1227,11 +1233,11 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		// Source level stepping request.
 		// 
 		if (stepType == StepType.STEP_OVER || stepType == StepType.STEP_INTO) {
-			Modules moduleService = getServicesTracker().getService(Modules.class);
+			IEDCModules moduleService = getServicesTracker().getService(Modules.class);
 
 			ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
 
-			ModuleDMC module = moduleService.getModuleByAddress(symCtx, pcAddress);
+			IEDCModuleDMContext module = moduleService.getModuleByAddress(symCtx, pcAddress);
 
 			// Check if there is source info for PC address.
 			//
@@ -1406,7 +1412,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 
 				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
 
-				DisassembledInstruction inst;
+				IDisassembledInstruction inst;
 
 				Map<String, Object> options = new HashMap<String, Object>();
 				try {
@@ -1501,7 +1507,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 
 				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
 
-				List<DisassembledInstruction> instList;
+				List<IDisassembledInstruction> instList;
 
 				Map<String, Object> options = new HashMap<String, Object>();
 				try {
@@ -1517,10 +1523,10 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 				final List<IAddress> stopPoints = new ArrayList<IAddress>();
 				final List<IAddress> runToAndCheckPoints = new ArrayList<IAddress>();
 
-				for (DisassembledInstruction inst : instList) {
+				for (IDisassembledInstruction inst : instList) {
 					final IAddress instAddr = inst.getAddress();
 
-					JumpToAddress jta = inst.getJumpToAddress();
+					IJumpToAddress jta = inst.getJumpToAddress();
 					if (jta == null)
 						continue;
 
@@ -1907,7 +1913,7 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		}
 	};
 
-	public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+	public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 		Element contextsElement = document.createElement(EXECUTION_CONTEXTS);
 
 		ExecutionDMC[] dmcs = rootExecutionDMC.getChildren();

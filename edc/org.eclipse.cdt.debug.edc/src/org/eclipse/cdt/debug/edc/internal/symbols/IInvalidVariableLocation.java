@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+
 /**
  * Interface representing that a variable location is invalid
  */

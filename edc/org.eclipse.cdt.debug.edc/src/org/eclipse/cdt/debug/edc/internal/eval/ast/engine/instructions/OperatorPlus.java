@@ -16,8 +16,8 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
 

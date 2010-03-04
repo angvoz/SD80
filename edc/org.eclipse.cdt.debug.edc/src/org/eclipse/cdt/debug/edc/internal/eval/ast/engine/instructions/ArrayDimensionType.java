@@ -11,8 +11,8 @@
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.Type;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.utils.Addr64;
 
 // Internal expression type to hold all dimensions of a multidimensional array except the smallest.

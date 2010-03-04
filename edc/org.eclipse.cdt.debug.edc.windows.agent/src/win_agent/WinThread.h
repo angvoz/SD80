@@ -11,13 +11,13 @@
 #pragma once
 
 #include "stdafx.h"
-#include "Context.h"
+#include "RunControlContext.h"
 
 #define USER_SUSPEND_THREAD 0
 
 class WinProcess;
 
-class WinThread: public Context {
+class WinThread: public RunControlContext {
 public:
 	WinThread(WinProcess& process, DEBUG_EVENT& debugEvent);
 	~WinThread(void);
@@ -25,8 +25,6 @@ public:
 	int GetThreadID();
 
 	static WinThread* GetThreadByID(int processID, int threadID);
-
-	virtual std::map<std::string, std::string> GetProperties();
 
 	virtual ContextAddress GetPCAddress();
 	virtual std::string GetSuspendReason();
@@ -42,10 +40,6 @@ public:
 	virtual int WriteMemory(unsigned long address, unsigned long size,
 			char* memBuffer, unsigned long bufferSize,
 			unsigned long& sizeWritten);
-
-	virtual void AttachSelf() throw (AgentException) {/* TODO */
-	}
-	;
 
 	virtual void Resume() throw (AgentException);
 
@@ -63,6 +57,9 @@ public:
 
 	static ContextID CreateInternalID(ContextOSID osID, ContextID parentID);
 
+
+protected:
+	virtual void initialize();
 
 private:
 	void EnsureValidContextInfo();

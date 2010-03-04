@@ -27,6 +27,12 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.core.runtime.IPath;
 
 /**

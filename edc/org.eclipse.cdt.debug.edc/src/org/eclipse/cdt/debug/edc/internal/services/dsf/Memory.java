@@ -18,9 +18,13 @@ import java.util.Map;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
-import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.IEDCMemory;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
+import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
@@ -49,8 +53,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-public class Memory extends AbstractEDCService implements IMemory, ICachingService, ISnapshotContributor,
-		IDSFServiceUsingTCF {
+public class Memory extends AbstractEDCService implements IEDCMemory, ICachingService, ISnapshotContributor,
+		IDSFServiceUsingTCF  {
 
 	private org.eclipse.tm.tcf.services.IMemory tcfMemoryService;
 	private Map<String, MemoryCache> memoryCaches;
@@ -69,16 +73,16 @@ public class Memory extends AbstractEDCService implements IMemory, ICachingServi
 	}
 
 	public Memory(DsfSession session) {
-		super(session, new String[] { IMemory.class.getName(), Memory.class.getName(),
+		super(session, new String[] { IEDCMemory.class.getName(), IMemory.class.getName(), Memory.class.getName(),
 				ISnapshotContributor.class.getName() });
 	}
 
 	private MemoryCache getMemoryCache(IMemoryDMContext memoryDMC) {
-		assert memoryDMC instanceof DMContext;
-		MemoryCache cache = memoryCaches.get(((DMContext) memoryDMC).getID());
+		assert memoryDMC instanceof IEDCDMContext;
+		MemoryCache cache = memoryCaches.get(((IEDCDMContext) memoryDMC).getID());
 		if (cache == null) {
 			cache = new MemoryCache(getTargetEnvironmentService().getMemoryCacheMinimumBlockSize());
-			memoryCaches.put(((DMContext) memoryDMC).getID(), cache);
+			memoryCaches.put(((IEDCDMContext) memoryDMC).getID(), cache);
 		}
 		return cache;
 	}
@@ -263,7 +267,7 @@ public class Memory extends AbstractEDCService implements IMemory, ICachingServi
 			}
 		} else {
 			IMemoryDMContext memoryDMC = DMContexts.getAncestorOfType(context, IMemoryDMContext.class);
-			if (memoryCaches.containsKey(((DMContext) memoryDMC).getID())) {
+			if (memoryCaches.containsKey(((IEDCDMContext) memoryDMC).getID())) {
 				// We do not want to use the call to getMemoryCache() here.
 				// This is because:
 				// 1- if there is not an entry already , we do not want to
@@ -271,14 +275,17 @@ public class Memory extends AbstractEDCService implements IMemory, ICachingServi
 				// create one, just to call reset() on it.
 				// 2- if memoryDMC == null, we do not want to create a cache
 				// entry for which the key is 'null'
-				memoryCaches.get(((DMContext) memoryDMC).getID()).reset();
+				memoryCaches.get(((IEDCDMContext) memoryDMC).getID()).reset();
 			}
 		}
 
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
 	}
 
-	public IStatus getMemory(ExecutionDMC context, IAddress address, final ArrayList<MemoryByte> memBuffer, int count,
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCMemory#getMemory(org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC, org.eclipse.cdt.core.IAddress, java.util.ArrayList, int, int)
+	 */
+	public IStatus getMemory(IEDCExecutionDMC context, IAddress address, final ArrayList<MemoryByte> memBuffer, int count,
 			int word_size) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
 				new Object[] { address.toHexAddressString(), count });
@@ -389,7 +396,7 @@ public class Memory extends AbstractEDCService implements IMemory, ICachingServi
 		}
 	}
 
-	public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+	public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 		Element memoryElement = document.createElement(MEMORY);
 		for (String key : memoryCaches.keySet()) {
 			MemoryCache cache = memoryCaches.get(key);

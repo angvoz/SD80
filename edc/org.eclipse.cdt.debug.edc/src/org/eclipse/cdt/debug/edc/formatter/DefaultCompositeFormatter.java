@@ -14,8 +14,9 @@ import java.util.List;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
@@ -91,7 +92,7 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 
 		private void addSimpleChild(String prefix, StringBuilder sb, ExpressionDMC childExpression) {
 			sb.append(prefix);
-			IExpressions expressions = ((ExpressionDMC) childExpression).getService();
+			IExpressions expressions = ((IEDCExpression) childExpression).getService();
 			FormattedValueDMContext fvc = 
 				expressions.getFormattedValueContext(childExpression, IExpressions.NATURAL_FORMAT);
 			FormattedValueDMData formattedValue = childExpression.getFormattedValue(fvc);

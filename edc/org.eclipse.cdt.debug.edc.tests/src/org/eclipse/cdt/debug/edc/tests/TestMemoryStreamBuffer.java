@@ -19,7 +19,7 @@ package org.eclipse.cdt.debug.edc.tests;
 
 import java.nio.ByteOrder;
 
-import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.MemoryStreamBuffer;
 import org.junit.Test;
 

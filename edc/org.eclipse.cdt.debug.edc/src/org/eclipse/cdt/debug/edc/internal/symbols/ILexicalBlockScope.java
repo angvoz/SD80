@@ -12,6 +12,9 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.util.Collection;
 
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
+
 /**
  * Interface representing a lexical block scope. A lexical block is a block of
  * code inside of a function. A lexical block may contain other lexical blocks

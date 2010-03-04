@@ -12,7 +12,7 @@ package org.eclipse.cdt.debug.edc.internal.formatter;
 
 import java.util.Collection;
 
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 
 /**
  * An object that allows choosing between format providers

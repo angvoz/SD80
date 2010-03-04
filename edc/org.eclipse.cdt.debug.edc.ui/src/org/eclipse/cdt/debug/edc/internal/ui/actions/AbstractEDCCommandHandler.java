@@ -10,8 +10,9 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
@@ -30,7 +31,7 @@ abstract public class AbstractEDCCommandHandler extends AbstractHandler implemen
 	private final IDebugContextService contextService;
 	private ISelection debugSelectionContext;
 	private IExecutionDMContext selectionExecutionDMC;
-	private Album albumContext;
+	private IAlbum albumContext;
 	private boolean snapshotSession;
 
 	public AbstractEDCCommandHandler() {
@@ -58,7 +59,7 @@ abstract public class AbstractEDCCommandHandler extends AbstractHandler implemen
 
 	public void debugContextChanged(DebugContextEvent event) {
 		setDebugSelectionContext(event.getContext());
-		setBaseEnabled(selectionExecutionDMC instanceof ExecutionDMC);
+		setBaseEnabled(selectionExecutionDMC instanceof IEDCExecutionDMC);
 	}
 
 	public IExecutionDMContext getSelectionExecutionDMC() {
@@ -76,7 +77,7 @@ abstract public class AbstractEDCCommandHandler extends AbstractHandler implemen
 		}
 	}
 
-	public Album getAlbumContext() {
+	public IAlbum getAlbumContext() {
 		return albumContext;
 	}
 

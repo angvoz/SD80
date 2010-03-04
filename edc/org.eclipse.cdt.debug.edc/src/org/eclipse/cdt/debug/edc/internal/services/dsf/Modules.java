@@ -27,13 +27,19 @@ import org.eclipse.cdt.debug.core.sourcelookup.ICSourceLocator;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
-import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.DMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCModules;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
+import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -41,6 +47,7 @@ import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.IPath;
@@ -54,7 +61,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-public class Modules extends AbstractEDCService implements IModules {
+public class Modules extends AbstractEDCService implements IModules, IEDCModules {
 
 	public static final String MODULE = "module";
 	public static final String SECTION = "section";
@@ -98,13 +105,13 @@ public class Modules extends AbstractEDCService implements IModules {
 		}
 	}
 
-	public class ModuleDMC extends DMContext implements IModuleDMContext, ISnapshotContributor,
+	public class ModuleDMC extends DMContext implements IEDCModuleDMContext, ISnapshotContributor,
 	// This means we'll install existing breakpoints
 			// for each newly loaded module
 			IBreakpointsTargetDMContext,
 			// This means calcAddressInfo() also applies to single module
 			// in addition to a process.
-			ISymbolDMContext {
+			ISymbolDMContext  {
 		private final ISymbolDMContext symbolContext;
 
 		private final IPath hostFilePath;
@@ -127,6 +134,9 @@ public class Modules extends AbstractEDCService implements IModules {
 			return symbolContext;
 		}
 
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext#getSymbolReader()
+		 */
 		public IEDCSymbolReader getSymbolReader() {
 			return symReader;
 		}
@@ -153,7 +163,7 @@ public class Modules extends AbstractEDCService implements IModules {
 			initializeSymbolReader();
 		}
 
-		public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 			Element contextElement = document.createElement(MODULE);
 			contextElement.setAttribute(PROP_ID, this.getID());
 			Element propsElement = SnapshotUtils.makeXMLFromProperties(document, getProperties());
@@ -343,11 +353,8 @@ public class Modules extends AbstractEDCService implements IModules {
 			return false;
 		}
 
-		/**
-		 * Convert runtime address to link address.
-		 * 
-		 * @param runtimeAddress
-		 * @return null if the given runtime address is not in the module.
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext#toLinkAddress(org.eclipse.cdt.core.IAddress)
 		 */
 		public IAddress toLinkAddress(IAddress runtimeAddress) {
 			IAddress ret = null;
@@ -362,11 +369,8 @@ public class Modules extends AbstractEDCService implements IModules {
 			return ret;
 		}
 
-		/**
-		 * Convert link address to runtime address.
-		 * 
-		 * @param linkAddress
-		 * @return null if the given link address is not in the module.
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCModuleDMContext#toRuntimeAddress(org.eclipse.cdt.core.IAddress)
 		 */
 		public IAddress toRuntimeAddress(IAddress linkAddress) {
 			IAddress ret = null;
@@ -440,7 +444,7 @@ public class Modules extends AbstractEDCService implements IModules {
 			return true;
 		}
 
-		private Modules getOuterType() {
+		private IEDCModules getOuterType() {
 			return Modules.this;
 		}
 	}
@@ -458,7 +462,7 @@ public class Modules extends AbstractEDCService implements IModules {
 		}
 
 		public String getName() {
-			return (String) properties.get(DMContext.PROP_NAME);
+			return (String) properties.get(IEDCDMContext.PROP_NAME);
 		}
 
 		public long getTimeStamp() {
@@ -501,15 +505,15 @@ public class Modules extends AbstractEDCService implements IModules {
 	public static class ModuleLoadedEvent extends AbstractDMEvent<ISymbolDMContext> implements ModuleLoadedDMEvent {
 
 		private final ModuleDMC module;
-		private final ExecutionDMC executionDMC;
+		private final IExecutionDMContext executionDMC;
 
-		public ModuleLoadedEvent(ISymbolDMContext symbolContext, ExecutionDMC executionDMC, ModuleDMC module) {
+		public ModuleLoadedEvent(ISymbolDMContext symbolContext, IExecutionDMContext executionDMC, ModuleDMC module) {
 			super(symbolContext);
 			this.module = module;
 			this.executionDMC = executionDMC;
 		}
 
-		public ExecutionDMC getExecutionDMC() {
+		public IExecutionDMContext getExecutionDMC() {
 			return executionDMC;
 		}
 
@@ -541,7 +545,7 @@ public class Modules extends AbstractEDCService implements IModules {
 	}
 
 	public Modules(DsfSession session) {
-		super(session, new String[] { IModules.class.getName(), Modules.class.getName() });
+		super(session, new String[] { IModules.class.getName(), IEDCModules.class.getName(), Modules.class.getName() });
 	}
 
 	public void setSourceLocator(ISourceLocator sourceLocator) {
@@ -554,8 +558,8 @@ public class Modules extends AbstractEDCService implements IModules {
 
 	private void addModule(ModuleDMC module) {
 		ISymbolDMContext symContext = module.getSymbolContext();
-		if (symContext instanceof DMContext) {
-			String symContextID = ((DMContext) symContext).getID();
+		if (symContext instanceof IEDCDMContext) {
+			String symContextID = ((IEDCDMContext) symContext).getID();
 			synchronized (modules) {
 				List<ModuleDMC> moduleList = modules.get(symContextID);
 				if (moduleList == null) {
@@ -569,8 +573,8 @@ public class Modules extends AbstractEDCService implements IModules {
 
 	private void removeModule(ModuleDMC module) {
 		ISymbolDMContext symContext = module.getSymbolContext();
-		if (symContext instanceof DMContext) {
-			String symContextID = ((DMContext) symContext).getID();
+		if (symContext instanceof IEDCDMContext) {
+			String symContextID = ((IEDCDMContext) symContext).getID();
 			synchronized (modules) {
 				List<ModuleDMC> moduleList = modules.get(symContextID);
 				if (moduleList != null) {
@@ -596,8 +600,8 @@ public class Modules extends AbstractEDCService implements IModules {
 			DataRequestMonitor<AddressRange[]> rm) {
 		IModuleDMContext[] moduleList = null;
 
-		if (symCtx instanceof ExecutionDMC) {
-			String symContextID = ((DMContext) symCtx).getID();
+		if (symCtx instanceof IEDCExecutionDMC) {
+			String symContextID = ((IEDCDMContext) symCtx).getID();
 			moduleList = getModulesForContext(symContextID);
 		} else if (symCtx instanceof IModuleDMContext) {
 			moduleList = new IModuleDMContext[1];
@@ -663,7 +667,7 @@ public class Modules extends AbstractEDCService implements IModules {
 	}
 
 	public void getModules(ISymbolDMContext symCtx, DataRequestMonitor<IModuleDMContext[]> rm) {
-		String symContextID = ((DMContext) symCtx).getID();
+		String symContextID = ((IEDCDMContext) symCtx).getID();
 		IModuleDMContext[] moduleList = getModulesForContext(symContextID);
 		rm.setData(moduleList);
 		rm.done();
@@ -693,7 +697,7 @@ public class Modules extends AbstractEDCService implements IModules {
 
 	public void moduleUnloaded(ISymbolDMContext symbolContext, ExecutionDMC executionDMC,
 			Map<String, Object> moduleProps) {
-		ModuleDMC module = getModuleByName(symbolContext, moduleProps.get(DMContext.PROP_NAME));
+		ModuleDMC module = getModuleByName(symbolContext, moduleProps.get(IEDCDMContext.PROP_NAME));
 		Object requireResumeValue = moduleProps.get("RequireResume");
 		if (requireResumeValue != null && requireResumeValue instanceof Boolean)
 			module.setProperty("RequireResume", requireResumeValue);
@@ -702,18 +706,13 @@ public class Modules extends AbstractEDCService implements IModules {
 				Modules.this.getProperties());
 	}
 
-	/**
-	 * get module that contains the given runtime address.
-	 * 
-	 * @param symCtx
-	 * @param instructionAddress
-	 *            runtime absolute address.
-	 * @return null if not found.
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCModules#getModuleByAddress(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress)
 	 */
 	public ModuleDMC getModuleByAddress(ISymbolDMContext symCtx, IAddress instructionAddress) {
 		ModuleDMC bestMatch = null;
 		synchronized (modules) {
-			List<ModuleDMC> moduleList = modules.get(((DMContext) symCtx).getID());
+			List<ModuleDMC> moduleList = modules.get(((IEDCDMContext) symCtx).getID());
 			if (moduleList != null) {
 				for (ModuleDMC moduleDMC : moduleList) {
 					if (moduleDMC.containsAddress(instructionAddress)) {
@@ -808,7 +807,7 @@ public class Modules extends AbstractEDCService implements IModules {
 			contextModules.add(module);
 
 		}
-		modules.put(((DMContext) context).getID(), contextModules);
+		modules.put(((IEDCDMContext) context).getID(), contextModules);
 
 	}
 	
@@ -823,7 +822,7 @@ public class Modules extends AbstractEDCService implements IModules {
 	public ModuleDMC getModuleByName(ISymbolDMContext symCtx, Object fileName) {
 		ModuleDMC module = null;
 		synchronized (modules) {
-			List<ModuleDMC> moduleList = modules.get(((DMContext) symCtx).getID());
+			List<ModuleDMC> moduleList = modules.get(((IEDCDMContext) symCtx).getID());
 			if (moduleList != null) {
 				for (ModuleDMC moduleDMC : moduleList) {
 					if ((moduleDMC.getName().compareToIgnoreCase((String) fileName)) == 0 ) {

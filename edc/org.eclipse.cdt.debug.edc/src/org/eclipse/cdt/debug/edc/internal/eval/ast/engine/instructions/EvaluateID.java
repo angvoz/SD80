@@ -18,14 +18,15 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.EnumeratorDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.IVariableEnumeratorContext;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.VariableDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariableLocation;
+import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCModules;
+import org.eclipse.cdt.debug.edc.services.Stack.EnumeratorDMC;
+import org.eclipse.cdt.debug.edc.services.Stack.IVariableEnumeratorContext;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.services.Stack.VariableDMC;
+import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -79,7 +80,7 @@ public class EvaluateID extends SimpleInstruction {
 
 		StackFrameDMC frame = (StackFrameDMC) context;
 		DsfServicesTracker servicesTracker = frame.getDsfServicesTracker();
-		Modules modules = servicesTracker.getService(Modules.class);
+		IEDCModules modules = servicesTracker.getService(Modules.class);
 
 		// check by name for a variable or enumerator
 		IVariableEnumeratorContext variableOrEnumerator = frame.findVariableOrEnumeratorByName(name, false);
@@ -95,7 +96,7 @@ public class EvaluateID extends SimpleInstruction {
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getVariable().getLocationProvider();
 			IAddress pcValue = frame.getIPAddress();
-			ModuleDMC module = modules.getModuleByAddress(symContext, pcValue);
+			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
 			IVariableLocation location = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
 			if (location instanceof IMemoryVariableLocation) {
 				IMemoryVariableLocation memoryLocation = (IMemoryVariableLocation) location;

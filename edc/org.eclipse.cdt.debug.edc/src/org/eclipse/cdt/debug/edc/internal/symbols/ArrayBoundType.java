@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+import org.eclipse.cdt.debug.edc.symbols.IType;
+
 public class ArrayBoundType extends Type implements IArrayBoundType {
 
 	// bound of this array dimension. E.g., for "int a[7][8]", this would be

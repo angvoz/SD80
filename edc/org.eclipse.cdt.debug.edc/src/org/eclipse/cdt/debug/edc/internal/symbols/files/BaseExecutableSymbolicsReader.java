@@ -19,7 +19,10 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
-import org.eclipse.cdt.debug.edc.internal.symbols.ISymbol;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.ISymbol;
+import org.eclipse.cdt.debug.edc.symbols.IUnmangler;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -37,6 +40,8 @@ public abstract class BaseExecutableSymbolicsReader implements IExecutableSymbol
 	protected long modificationDate;
 	protected ISectionMapper sectionMapper;
 	
+	protected IUnmangler unmangler;
+
 	/**
 	 * 
 	 */
@@ -109,5 +114,92 @@ public abstract class BaseExecutableSymbolicsReader implements IExecutableSymbol
 
 	public long getModificationDate() {
 		return modificationDate;
+	}
+	
+	public Collection<ISymbol> findSymbols(String name) {
+		List<ISymbol> matchSymbols = new ArrayList<ISymbol>();
+		
+		// look for exact symbols
+		for (ISymbol symbol : symbols) {
+			String symName = symbol.getName();
+			if (symName.equals(name)) {
+				matchSymbols.add(symbol);
+			}
+		}
+		if (!matchSymbols.isEmpty())
+			return matchSymbols;
+		
+		// try for a decorated symbol if no match
+		if (unmangler != null) {
+			for (ISymbol symbol : symbols) {
+				String symName = unmangler.undecorate(symbol.getName());
+				if (symName.equals(name)) {
+					matchSymbols.add(symbol);
+				}
+			}
+		}
+		
+		return matchSymbols;
+	}
+	
+	public Collection<ISymbol> findUnmangledSymbols(String name) {
+		List<ISymbol> matchSymbols = new ArrayList<ISymbol>();
+
+		if (unmangler != null) {
+			name = unmangler.undecorate(name);
+			
+			String nameNoSpaces = name.replaceAll("\\s", "");
+			
+			// remove full qualifier
+			if (nameNoSpaces.startsWith("::"))
+				nameNoSpaces = nameNoSpaces.substring(2);
+			
+			boolean nameNoArguments = !nameNoSpaces.endsWith(")");
+			
+			// avoid unmangling a lot of irrelevant symbols by filtering out symbols not containing the base name
+			String undecoratedBase = nameNoSpaces;
+			int idx = undecoratedBase.lastIndexOf(':');
+			if (idx >= 0)
+				undecoratedBase = undecoratedBase.substring(idx+1);
+			idx = undecoratedBase.indexOf('(');
+			if (idx >= 0)
+				undecoratedBase = undecoratedBase.substring(0, idx);
+			
+			for (ISymbol symbol : symbols) {
+				String symName = symbol.getName();
+				if (!symName.contains(undecoratedBase))
+					continue;
+				
+				try {
+					String unmangled = unmangler.unmangle(unmangler.undecorate(symName));
+					if (unmangled != null) {
+						String unmangledNoSpaces = unmangled.replaceAll("\\s", "");
+						
+						// remove full qualifier
+						if (unmangledNoSpaces.startsWith("::"))
+							unmangledNoSpaces = unmangledNoSpaces.substring(2);
+						
+						if (nameNoSpaces.equals(unmangledNoSpaces)) {
+							matchSymbols.add(symbol);
+						} else if (nameNoArguments) {
+							// try to match the name against a function
+							idx = unmangledNoSpaces.lastIndexOf('(');
+							if (idx >= 0) {
+								String unmangledNoArguments = unmangledNoSpaces.substring(0, idx);
+								if (unmangledNoArguments.equals(nameNoSpaces)) {
+									matchSymbols.add(symbol);
+								}
+							}
+						}
+					}
+				} catch (UnmanglingException e) {
+					// nope
+				}
+			}
+			if (!matchSymbols.isEmpty())
+				return matchSymbols;
+		}
+		
+		return matchSymbols;
 	}
 }

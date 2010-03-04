@@ -20,14 +20,6 @@ import org.junit.Test;
 
 public class Terminating extends BaseLaunchTest {
 
-	@Override
-	protected void setUp() throws Exception {
-	}
-
-	@Override
-	protected void tearDown() throws Exception {
-	}
-
 	protected void waitForLaunchTerminated(final EDCLaunch launch) throws InterruptedException {
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {

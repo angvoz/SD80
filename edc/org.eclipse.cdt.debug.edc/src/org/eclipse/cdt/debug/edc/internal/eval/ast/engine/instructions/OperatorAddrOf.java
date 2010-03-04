@@ -11,9 +11,9 @@
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.core.runtime.CoreException;
 
 /*

@@ -17,19 +17,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import junit.framework.Assert;
-import junit.framework.AssertionFailedError;
-import junit.framework.TestCase;
-
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.JumpToAddress;
-import org.eclipse.cdt.debug.edc.internal.disassembler.DisassembledInstruction;
-import org.eclipse.cdt.debug.edc.internal.disassembler.IDisassembler.IDisassemblerOptions;
-import org.eclipse.cdt.debug.edc.internal.disassembler.x86.DisassemblerX86;
-import org.eclipse.cdt.debug.edc.internal.disassembler.x86.InstructionParserX86;
-import org.eclipse.cdt.debug.edc.internal.disassembler.x86.OpcodeX86;
+import org.eclipse.cdt.debug.edc.IJumpToAddress;
+import org.eclipse.cdt.debug.edc.JumpToAddress;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
+import org.eclipse.cdt.debug.edc.x86.disassembler.DisassemblerX86;
+import org.eclipse.cdt.debug.edc.x86.disassembler.InstructionParserX86;
+import org.eclipse.cdt.debug.edc.x86.disassembler.OpcodeX86;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -37,7 +35,7 @@ import org.junit.Test;
  * @author LWang
  * 
  */
-public class TestDisassemblerX86 extends TestCase {
+public class TestDisassemblerX86 {
 
 	static Map<String, Object> sOptions = null;
 	static DisassemblerX86 sDisassembler;
@@ -65,8 +63,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testAdd() {
 		
-		beforeClass();
-		
 		/*
 		 * This test can essentially cover such similar instructions: adc, and,
 		 * xor, or, sbb, sub, cmp
@@ -84,8 +80,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testCall() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== call ========================\n");
 
@@ -113,8 +107,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testDebugBench() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== Debug bench ========================\n");
 
 		disassembleInst(0x100000, "66 90", null, // don't care
@@ -123,8 +115,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testErrorCase() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== Error Cases ========================\n");
 
@@ -136,7 +126,7 @@ public class TestDisassemblerX86 extends TestCase {
 													// jump-to-address.
 					null, null);
 			Assert.fail("Fail to detect error on disassembling: " + code);
-		} catch (AssertionFailedError e) {
+		} catch (AssertionError e) {
 			System.out.println("Error found: " + e.getMessage());
 		}
 
@@ -148,7 +138,7 @@ public class TestDisassemblerX86 extends TestCase {
 													// jump-to-address.
 					null, null);
 			Assert.fail("Wow, two-byte opcode already supported !" + code);
-		} catch (AssertionFailedError e) {
+		} catch (AssertionError e) {
 			System.out.println("Error found: " + e.getMessage());
 		}
 
@@ -161,15 +151,13 @@ public class TestDisassemblerX86 extends TestCase {
 													// jump-to-address.
 					null, null);
 			Assert.fail("Wow, three-byte opcode already supported !" + code);
-		} catch (AssertionFailedError e) {
+		} catch (AssertionError e) {
 			System.out.println("Error found: " + e.getMessage());
 		}
 	}
 
 	@Test
 	public void testFpu() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== fpu instructions ===========\n");
 
@@ -200,8 +188,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testInstructionBlock() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== instruction block ========================\n");
 
 		String code = " eb 20" + " e9 e0 ff ff ff" + " 74 05" + " 72 e7" + " ea 78 56 34 12 bc fe";
@@ -211,8 +197,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testInc() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== inc ========================\n");
 
@@ -225,8 +209,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testIn_out() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== in & out ========================\n");
 
 		String[] insts = { "e4 10", "in     $0x10,%al", "66 e5 10", "in     $0x10,%ax", "ec", "in     (%dx),%al",
@@ -238,8 +220,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testIns_outs() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== ins & outs ========================\n");
 
@@ -254,8 +234,6 @@ public class TestDisassemblerX86 extends TestCase {
 	 */
 	@Test
 	public void testInvalid() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== Invalid Opcode ========================\n");
 
@@ -272,8 +250,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testJcc() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== Jcc ========================\n");
 
@@ -293,8 +269,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testJump() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== Jump ========================\n");
 
@@ -317,8 +291,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testLoop() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== loop ========================\n");
 
 		disassembleInst(0x52, "e1 0f", new JumpToAddress(0x63, false, false),
@@ -327,8 +299,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testMisc() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== misc ========================\n");
 
@@ -362,8 +332,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testMov() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== mov ========================\n");
 
@@ -404,8 +372,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testOptions() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== Disassembler Options ========================\n");
 
 		// An imaginary case: jump instruction
@@ -417,7 +383,7 @@ public class TestDisassemblerX86 extends TestCase {
 
 		Map<String, Object> options = new HashMap<String, Object>();
 
-		DisassembledInstruction output = null;
+		IDisassembledInstruction output = null;
 		try {
 			output = disa.disassemble(options);
 		} catch (CoreException e) {
@@ -453,8 +419,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testRet() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== ret ========================\n");
 
 		disassembleInst(0x8124ffc, "c2 04 00", new JumpToAddress(JumpToAddress.EXPRESSION_RETURN_NEAR, true, false),
@@ -473,8 +437,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testShift() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== shift ========================\n");
 
 		String[] insts = { "c0 c0 02", "rol    $0x2,%al", "c0 e8 03", "shr    $0x3,%al", "c1 e2 04",
@@ -488,8 +450,6 @@ public class TestDisassemblerX86 extends TestCase {
 	@Test
 	public void testTest() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== test ========================\n");
 
 		String[] insts = { "84 c0", "test   %al,%al", "85 c0", "test   %eax,%eax", "a8 05", "test   $0x5,%al",
@@ -502,8 +462,6 @@ public class TestDisassemblerX86 extends TestCase {
 
 	@Test
 	public void testXchg() {
-		
-		beforeClass();
 		
 		System.out.println("\n===================== xchg ========================\n");
 
@@ -527,7 +485,7 @@ public class TestDisassemblerX86 extends TestCase {
 		return ret;
 	}
 
-	private void disassembleInst(long address, String code, JumpToAddress expectedJumpAddr, String expectedMnemonics,
+	private void disassembleInst(long address, String code, IJumpToAddress expectedJumpAddr, String expectedMnemonics,
 			Map<String, Object> options) {
 
 		// Use global option.
@@ -539,7 +497,7 @@ public class TestDisassemblerX86 extends TestCase {
 
 		InstructionParserX86 disa = new InstructionParserX86(addr, codeBuf);
 
-		DisassembledInstruction output = null;
+		IDisassembledInstruction output = null;
 		try {
 			output = disa.disassemble(options);
 		} catch (CoreException e) {
@@ -575,7 +533,7 @@ public class TestDisassemblerX86 extends TestCase {
 		IAddress addr = new Addr64(Long.toString(address));
 		ByteBuffer codeBuf = ByteBuffer.wrap(getByteArray(code));
 
-		List<DisassembledInstruction> output = null;
+		List<IDisassembledInstruction> output = null;
 		try {
 			output = sDisassembler.disassembleInstructions(addr, addr.add(codeBuf.capacity()), codeBuf, sOptions);
 		} catch (CoreException e) {
@@ -585,7 +543,7 @@ public class TestDisassemblerX86 extends TestCase {
 		int instSize = 0;
 		StringBuffer asm = new StringBuffer();
 
-		for (DisassembledInstruction inst : output) {
+		for (IDisassembledInstruction inst : output) {
 			instSize += inst.getSize();
 
 			if (expectedAsm != null)

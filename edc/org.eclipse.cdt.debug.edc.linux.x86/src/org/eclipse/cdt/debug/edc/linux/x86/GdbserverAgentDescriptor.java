@@ -18,8 +18,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CommandLauncher;
+import org.eclipse.cdt.debug.edc.IEDCConstants;
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
-import org.eclipse.cdt.debug.edc.internal.IEDCConstants;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;

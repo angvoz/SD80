@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+
 public class Enumeration extends MayBeQualifiedType implements IEnumeration {
 
 	ArrayList<IEnumerator> enumerators = new ArrayList<IEnumerator>();

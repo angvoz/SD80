@@ -22,11 +22,16 @@ import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
+import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
+import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.services.IEDCMemory;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
@@ -43,42 +48,91 @@ import org.eclipse.debug.core.model.MemoryByte;
  */
 public class FormatUtils {
 	
+	private final static String CLASS = "class " ; //$NON-NLS-1$
 	private final static String STRUCT = "struct "; //$NON-NLS-1$
-	private final static String CLASS = "class" ; //$NON-NLS-1$
 
 	public static boolean checkTypeByName(IType type, String baseName) {
 		if (type == null)
 			return false;
 		// we want to preserve typedefs to determine whether this is a type we support with a formatter
 		IType baseType = TypeUtils.getBaseTypePreservingTypedef(type);
+		
+		// check for someone making a typedef of what we're looking for
+		while (baseType != null && baseType instanceof ITypedef) {
+			if (baseType.getName().equals(baseName))
+				return true;
+			baseType = TypeUtils.getBaseTypePreservingTypedef(baseType.getType());
+		}
+
 		if (baseType == null)
 			return false;
+		
 		return checkName(baseType.getName(), baseName);
 	}
 	
 	public static boolean checkName(String typeName, String baseName) {
 		String checkName = typeName;
-		if (typeName.startsWith(STRUCT))
-			checkName = typeName.substring(STRUCT.length()).trim();
 		if (typeName.startsWith(CLASS))
 			checkName = typeName.substring(CLASS.length()).trim();
-		return checkName.matches(baseName);
+		else if (typeName.startsWith(STRUCT))
+			checkName = typeName.substring(STRUCT.length()).trim();
+		return checkName.equals(baseName);
 	}
+	
+	
+	/**
+	 * Check if the name of a class/struct, or one of the classes/structs it
+	 * derives from, matches a given name.
+	 * 
+	 * @param type type of class/struct
+	 * @param name type name to match against
+	 * @return true if class/struct or inherited class/struct matches name,
+	 * or null if no match
+	 */
+	public static boolean checkClassOrInheritanceByName(IType type, String name) {
+		// strip off typedefs and type qualifiers, to look for classes and structs
+		type = TypeUtils.getBaseType(type);
+		
+		if (!(type instanceof ICompositeType))
+			return false;
+		
+		ICompositeType composite = (ICompositeType)type;
+		
+		String baseName = composite.getBaseName();
+		
+		if (baseName.equals(name))
+			return true;
+		
+		// if base name ends with a template size (e.g., "<15>"),
+		// match ignoring the value in the braces
+		if (baseName.contains("<")) //$NON-NLS-1$
+			if (baseName.matches(name + "<.*>$")) //$NON-NLS-1$
+				return true;
+
+		// check classes and structs it derives from
+		for (IInheritance inheritance : composite.getInheritances()) {
+			if (checkClassOrInheritanceByName(inheritance.getType(), name))
+				return true;
+		}
+		
+		return false;
+	}
+
 	
 	public static IExpressionDMContext createSubExpression(IExpressionDMContext variable, String name, String subExpressionStr) {
 		ExpressionDMC parentExpr = (ExpressionDMC) variable;
 		IExpressions expressions = parentExpr.getService();
 		String expressionStr = parentExpr.getExpression() + subExpressionStr;
 		ExpressionDMC subExpression = (ExpressionDMC) expressions.createExpression(parentExpr, expressionStr);
-		subExpression.setProperty(Expressions.EXPRESSION_PROP, expressionStr);
+		subExpression.setProperty(IEDCExpression.EXPRESSION_PROP, expressionStr);
 		subExpression.setName(name);
 		return subExpression;
 	}
 	
 	public static String getFormattedString(IExpressionDMContext variable, IAddress address, int length, int charSize) {
-		ExpressionDMC expression = (ExpressionDMC) variable;
-		StackFrameDMC frame = expression.getFrame();
-		Memory memory = frame.getDsfServicesTracker().getService(Memory.class);
+		IEDCExpression expression = (IEDCExpression) variable;
+		StackFrameDMC frame = (StackFrameDMC) expression.getFrame();
+		IEDCMemory memory = frame.getDsfServicesTracker().getService(Memory.class);
 		
 		StringBuilder sb = new StringBuilder();
 		ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>();
@@ -99,9 +153,9 @@ public class FormatUtils {
 	public static String getFormattedNullTermString(IExpressionDMContext variable, 
 			IAddress address, int charSize,
 			int maximumLength) throws CoreException {
-		ExpressionDMC expression = (ExpressionDMC) variable;
-		StackFrameDMC frame = expression.getFrame();
-		Memory memory = frame.getDsfServicesTracker().getService(Memory.class);
+		IEDCExpression expression = (IEDCExpression) variable;
+		StackFrameDMC frame = (StackFrameDMC) expression.getFrame();
+		IEDCMemory memory = frame.getDsfServicesTracker().getService(Memory.class);
 		
 		StringBuilder sb = new StringBuilder();
 		while (maximumLength-- > 0) {
@@ -120,11 +174,11 @@ public class FormatUtils {
 			}
 			else {
 				// error in reading memory, bail out.
-				throw EDCDebugger.newCoreException("Cannot read memory at 0x" + address.getValue().toString(16));
+				throw EDCDebugger.newCoreException(EDCFormatterMessages.FormatUtils_CannotReadMemory + address.getValue().toString(16));
 			}
 		}
 		if (maximumLength == 0)
-			sb.append("...");
+			sb.append("..."); //$NON-NLS-1$
 		
 		return sb.toString();
 	}
@@ -141,7 +195,7 @@ public class FormatUtils {
 	public static List<IExpressionDMContext> getAllChildExpressions(IExpressionDMContext variable) {
 		ExpressionDMC variableDMC = (ExpressionDMC) variable;
 		Expressions expressions = (Expressions) variableDMC.getService();
-		StackFrameDMC frame = variableDMC.getFrame();
+		StackFrameDMC frame = (StackFrameDMC) variableDMC.getFrame();
 		IType type = TypeUtils.getStrippedType(variableDMC.getEvaluatedType());
 
 		if (!(type instanceof IAggregate) && !(type instanceof IPointerType)) {
@@ -166,7 +220,7 @@ public class FormatUtils {
 	}
 
 	public static String getMemberValue(IExpressionDMContext variable, IType type, String memberName, String format) {
-		IExpressions expressions = ((ExpressionDMC)variable).getService();
+		IExpressions expressions = ((IEDCExpression)variable).getService();
 		ExpressionDMC expression = 
 			(ExpressionDMC) expressions.createExpression(variable, variable.getExpression()
 					+ FormatUtils.getFieldAccessor(type) + memberName);
@@ -182,7 +236,7 @@ public class FormatUtils {
 	}
 
 	public static IVariableValueConverter getCustomValueConverter(IExpressionDMContext variable) {
-		ExpressionDMC variableDMC = (ExpressionDMC) variable;
+		IEDCExpression variableDMC = (IEDCExpression) variable;
 		variableDMC.evaluateExpression();
 		IType type = TypeUtils.getStrippedType(variableDMC.getEvaluatedType());
 		return FormatExtensionManager.instance().getVariableValueConverter(type);
@@ -198,9 +252,13 @@ public class FormatUtils {
 		
 		if (value instanceof String) { // is address string
 			String valueStr = value.toString();
-			if (valueStr.startsWith("0x"))
+			if (valueStr.startsWith("0x")) //$NON-NLS-1$
 				valueStr = valueStr.substring(2);
+			try {
 			address = new Addr64(new BigInteger(valueStr, 16));
+			} catch (NumberFormatException nfe) {
+				return null;
+			}
 		} else if (value instanceof Number) {
 			address = new Addr32(((Number) value).longValue());
 		} else {

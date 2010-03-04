@@ -10,26 +10,20 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.junit.Test;
 
 public class Launching extends BaseLaunchTest {
 
-	@Override
-	protected void setUp() throws Exception {
-	}
-
-	@Override
-	protected void tearDown() throws Exception {
-	}
-
+	@Test
 	public void testLaunching() throws Exception {
 		EDCLaunch launch = createLaunch();
 		assertNotNull(launch);
 		DsfSession session = waitForSession(launch);
 		assertNotNull(session);
-		ExecutionDMC executionDMC = waitForExecutionDMC(session);
+		IEDCExecutionDMC executionDMC = waitForExecutionDMC(session);
 		assertNotNull(executionDMC);
 	}
 

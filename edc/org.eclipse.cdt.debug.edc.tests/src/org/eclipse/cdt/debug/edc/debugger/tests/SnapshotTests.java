@@ -24,9 +24,14 @@ import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.tests.TestUtils;
+import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.junit.Assert;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -34,15 +39,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 public class SnapshotTests extends BaseLaunchTest {
-
-
-	@Override
-	protected void setUp() throws Exception {
-	}
-
-	@Override
-	protected void tearDown() throws Exception {
-	}
 
 	@Test
 	public void testSnapshot() throws Exception {
@@ -52,8 +48,11 @@ public class SnapshotTests extends BaseLaunchTest {
 		assertNotNull(launch);
 		final DsfSession session = waitForSession(launch);
 		assertNotNull(session);
-		ExecutionDMC executionDMC = waitForExecutionDMC(session);
+		IEDCExecutionDMC executionDMC = waitForExecutionDMC(session);
 		assertNotNull(executionDMC);
+		ExecutionDMC threadDMC = TestUtils.waitForSuspendedThread(session);
+		Assert.assertNotNull(threadDMC);
+
 		
 		Album.createSnapshotForSession(session, null, new NullProgressMonitor());
 		Album album = Album.getRecordingForSession(session.getId());
@@ -63,11 +62,17 @@ public class SnapshotTests extends BaseLaunchTest {
 		final Snapshot snap = album.getSnapshots().get(0);
 		assertNotNull(snap);
 
-		session.getExecutor().execute(new Runnable() {
-			public void run() {
+		Query<Boolean> query = new Query<Boolean>() {
+
+			@Override
+			protected void execute(DataRequestMonitor<Boolean> rm) {
 				snap.open(session); // parse snapshot data in album (.dsa)
-			}
-		});
+				rm.setData(true);
+				rm.done();
+			}};
+
+			session.getExecutor().execute(query);
+			query.get();
 
 		assertSnapshotStructureCorrect(snap);
 	}

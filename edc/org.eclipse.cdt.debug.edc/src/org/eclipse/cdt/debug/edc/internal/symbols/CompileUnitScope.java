@@ -16,6 +16,11 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.core.runtime.IPath;
 
 public abstract class CompileUnitScope extends Scope implements ICompileUnitScope {

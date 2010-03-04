@@ -16,32 +16,34 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
-import org.eclipse.cdt.debug.edc.internal.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInvalidVariableLocation;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IRegisterVariableLocation;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariableLocation;
-import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
+import org.eclipse.cdt.debug.edc.services.IEDCMemory;
+import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCModules;
+import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
+import org.eclipse.cdt.debug.edc.services.Registers;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -92,7 +94,7 @@ public class VariableWithValue {
 	public Object getValueLocation() {
 		if (valueLocation == null) {
 			valueLocation = new Object();
-			Modules modules = servicesTracker.getService(Modules.class);
+			IEDCModules modules = servicesTracker.getService(Modules.class);
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getLocationProvider();
 			if (provider == null) {
@@ -100,7 +102,7 @@ public class VariableWithValue {
 				return valueLocation;
 			}
 			IAddress pcValue = frame.getIPAddress();
-			ModuleDMC module = modules.getModuleByAddress(symContext, pcValue);
+			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
 			IVariableLocation location = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
 			if (location instanceof IMemoryVariableLocation) {
 				IMemoryVariableLocation memoryLocation = (IMemoryVariableLocation) location;
@@ -240,7 +242,7 @@ public class VariableWithValue {
 		}
 
 		// for variables in memory
-		Memory memoryService = null;
+		IEDCMemory memoryService = null;
 		ArrayList<MemoryByte> memBuffer = null;
 		IStatus memGetStatus = null;
 

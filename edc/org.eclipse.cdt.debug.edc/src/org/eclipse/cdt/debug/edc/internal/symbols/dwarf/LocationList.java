@@ -13,13 +13,13 @@ package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 import java.nio.ByteOrder;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.MemoryStreamBuffer;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
+import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 

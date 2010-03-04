@@ -12,15 +12,15 @@ package org.eclipse.cdt.debug.edc.debugger.tests;
 
 import java.text.MessageFormat;
 
-import junit.framework.Assert;
-
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.EDCServicesMessages;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class ExpressionsInvalidExpressions extends SimpleDebuggerTest {
 
+	@Test
 	public void testExpressionsInvalid() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(0);
 
 		// badly formed expressions
@@ -87,8 +87,8 @@ public class ExpressionsInvalidExpressions extends SimpleDebuggerTest {
 	 *	lstruct.afloat = 15.0;
 	 *	lstruct.adouble = 16.0;
 	 */
+	@Test
 	public void testExpressionsInvalidStructs() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(0);
 
 		// trying to use struct as composite pointer
@@ -112,8 +112,8 @@ public class ExpressionsInvalidExpressions extends SimpleDebuggerTest {
 	 * larray[38] = 2;
 	 * larray[39] = 1;
 	 */
+	@Test
 	public void testExpressionsInvalidArrays() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(1);
 
 		// trying to use array as struct/class
@@ -139,8 +139,8 @@ public class ExpressionsInvalidExpressions extends SimpleDebuggerTest {
 	 *	lunion.x = 2;
 	 *	lunion.y = 2;
 	 */
+	@Test
 	public void testExpressionsInvalidUnions() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(2);
 
 		// non-existent members
@@ -171,8 +171,8 @@ public class ExpressionsInvalidExpressions extends SimpleDebuggerTest {
 	 *	lbitfield.z = 3;
 	 *	lbitfield.w = 26;
 	 */
+	@Test
 	public void testExpressionsInvalidBitfields() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(3);
 
 		// non-existent members

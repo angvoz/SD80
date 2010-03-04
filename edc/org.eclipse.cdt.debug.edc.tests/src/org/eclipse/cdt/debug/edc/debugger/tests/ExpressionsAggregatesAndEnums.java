@@ -10,9 +10,9 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
-import junit.framework.Assert;
-
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 
@@ -56,8 +56,8 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	 *	lstruct.afloat = 15.0;
 	 *	lstruct.adouble = 16.0;
 	 */
+	@Test
 	public void testExpressionsWithStructs() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(0);
 
 		Assert.assertTrue(getExpressionValue("lstruct") != "");
@@ -320,8 +320,8 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	 * larray[38] = 2;
 	 * larray[39] = 1;
 	 */
+	@Test
 	public void testExpressionsWithArrays() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(1);
 
 		Assert.assertTrue(getExpressionValue("larray") != "");
@@ -448,8 +448,8 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	 *	lunion.x = 2;
 	 *	lunion.y = 2;
 	 */
+	@Test
 	public void testExpressionsWithUnions() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(2);
 
 		Assert.assertTrue(getExpressionValue("lunion") != "");
@@ -601,8 +601,8 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	 *	lbitfield.z = 3;
 	 *	lbitfield.w = 26;
 	 */
+	@Test
 	public void testExpressionsWithBitfields() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(3);
 
 		Assert.assertTrue(getExpressionValue("lbitfield") != "");
@@ -756,8 +756,8 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	 *
 	 *	lenum = three;
 	 */
+	@Test
 	public void testExpressionsWithEnums() throws Exception {
-		launchAndWaitForSuspendedContext();
 		openSnapshotAndWaitForSuspendedContext(4);
 
 		Assert.assertTrue(getExpressionValue("lenum") != "");

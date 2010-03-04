@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+import org.eclipse.cdt.debug.edc.symbols.IType;
+
 /**
  * @noextend This interface is not intended to be extended by clients.
  * @noimplement This interface is not intended to be implemented by clients.

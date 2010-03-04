@@ -14,7 +14,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IProcessInfo;
 import org.eclipse.cdt.core.IProcessList;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
-import org.eclipse.cdt.debug.edc.internal.IEDCConstants;
+import org.eclipse.cdt.debug.edc.IEDCConstants;
 import org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence;
 import org.eclipse.cdt.debug.edc.launch.ChooseProcessItem;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
@@ -33,7 +33,7 @@ import org.eclipse.tm.tcf.services.IProcesses;
 public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 	public LinuxFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		super(executor, launch, pm, "Configuring Windows Debugger", "Aborting configuring Windows debugger");
+		super(executor, launch, pm, "Configuring Linux Debugger", "Aborting configuring Linux debugger");
 
 		boolean doAttach;
 

@@ -23,7 +23,7 @@ import java.util.Random;
 
 import junit.framework.TestCase;
 
-import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.StreamBufferBase;
 
 /**

@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.dsf.debug.service.ISignals;
 import org.eclipse.cdt.dsf.service.DsfSession;
 

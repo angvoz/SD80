@@ -19,14 +19,16 @@
 #include "Logger.h"
 #include "WinDebugMonitor.h"
 #include "ResumeContextAction.h"
+#include "ProtocolConstants.h"
+// TODO: remove this
+#include "TCFHeaders.h"
 
 std::map<std::pair<int, int>, WinThread*> WinThread::threadIDMap_;
 
 WinThread::WinThread(WinProcess& process, DEBUG_EVENT& debugEvent) :
-	Context(debugEvent.dwThreadId, process.GetID(), CreateInternalID(debugEvent.dwThreadId, process.GetID())),
+	RunControlContext(debugEvent.dwThreadId, process.GetID(), CreateInternalID(debugEvent.dwThreadId, process.GetID())),
 	parentProcess_(process)
 {
-
 	process.AddChild(this);
 
 	std::pair<int, int> ptPair(debugEvent.dwProcessId, debugEvent.dwThreadId);
@@ -46,6 +48,25 @@ WinThread::WinThread(WinProcess& process, DEBUG_EVENT& debugEvent) :
 	isSuspended_ = false;
 	isTerminating_ = false;
 	isUserSuspended_ = false;
+
+	initialize();
+}
+
+void WinThread::initialize()
+{
+	RunControlContext::initialize();
+
+	SetProperty(PROP_OS_ID, new PropertyValue(AgentUtils::IntToString(GetOSID())) );
+
+	char buf[32];
+	_snprintf(buf, sizeof(buf), "0x%08x", startAddress_);
+	SetProperty(PROP_NAME, new PropertyValue(buf));
+
+	int supportedResumeModes = (1 << RM_RESUME) | (1 << RM_STEP_INTO);
+	SetProperty(PROP_CAN_RESUME, new PropertyValue(supportedResumeModes));
+
+	SetProperty(PROP_CAN_TERMINATE, new PropertyValue(true));
+	SetProperty(PROP_CAN_SUSPEND, new PropertyValue(true));
 }
 
 int WinThread::GetThreadID() {
@@ -209,17 +230,6 @@ void WinThread::SetContextInfo() {
 WinThread* WinThread::GetThreadByID(int processID, int threadID) {
 	std::pair<int, int> ptPair(processID, threadID);
 	return threadIDMap_[ptPair];
-}
-
-std::map<std::string, std::string> WinThread::GetProperties() {
-	std::map<std::string, std::string> props = Context::GetProperties();
-
-	char buf[32];
-	_snprintf(buf, sizeof(buf), "0x%08x", startAddress_);
-
-	props["Name"] = buf;
-
-	return props;
 }
 
 std::vector<std::string> WinThread::GetRegisterValues(

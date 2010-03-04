@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import junit.framework.AssertionFailedError;
-
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.HostOS;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
@@ -38,33 +36,33 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IArrayBoundType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IForwardTypeReference;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILexicalBlockScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.ISymbol;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
-import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfInfoReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.LocationExpression;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.PublicNameInfo;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.ISymbol;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IPath;
 import org.junit.Test;
@@ -907,7 +905,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				IEDCSymbolReader symbolReader = Symbols.getSymbolReader(info.symFile);
 			
 				List<ICompileUnitScope> cuList = symbolReader.getModuleScope().getCompileUnitsForFile(info.blackFlagMainFilePath);
-				assertNotNull(cuList);
+				assertFalse(cuList.isEmpty());
 				
 				for (ICompileUnitScope cu : cuList) {
 					for (IFunctionScope func : cu.getFunctions()) {
@@ -1382,7 +1380,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		while (tries-- > 0) {
 			IPath src = PathUtils.createPath(srcs[(random.nextInt() & 0xfffff) % srcs.length]);
 			scopes = symbolReader.getModuleScope().getCompileUnitsForFile(src);
-			if (scopes != null && !scopes.isEmpty())
+			if (!scopes.isEmpty())
 				break;
 		}
 		if (scopes == null)
@@ -1928,7 +1926,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		for (ScopeInfo scopeInfo : scopeInfos) {
 			try {
 				doTestScopeInfo(label, scope, scopeInfo);
-			} catch (AssertionFailedError e) {
+			} catch (AssertionError e) {
 				errors.append(e.getMessage());
 				errors.append('\n');
 			}

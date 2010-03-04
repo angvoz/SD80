@@ -12,9 +12,9 @@ package org.eclipse.cdt.debug.edc.formatter;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.core.runtime.CoreException;
 
@@ -43,7 +43,7 @@ public abstract class AbstractStringFormatter implements IVariableFormatProvider
 		}
 
 		private String getValueString(IExpressionDMContext variable) throws CoreException {
-			ExpressionDMC expressionDMC = (ExpressionDMC) variable;
+			IEDCExpression expressionDMC = (IEDCExpression) variable;
 			expressionDMC.evaluateExpression();
 			IType baseType = TypeUtils.getBaseType(expressionDMC.getEvaluatedType());
 			int size = baseType.getByteSize();

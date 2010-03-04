@@ -17,6 +17,8 @@
 
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+import org.eclipse.cdt.debug.edc.symbols.IType;
+
 
 /**
  *	This represents a type which is a proxy for an unparsed type. 

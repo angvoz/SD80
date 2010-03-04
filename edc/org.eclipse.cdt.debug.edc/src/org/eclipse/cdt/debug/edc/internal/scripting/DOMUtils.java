@@ -16,11 +16,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.DMContext;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.services.DMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
@@ -130,7 +131,7 @@ public class DOMUtils {
 	@SuppressWarnings("unchecked")
 	public static Map<String, Object>[] getDMContextProperties(List<? extends DMContext> contexts) {
 		List<Map<String, Object>> contextPropsList = new ArrayList<Map<String, Object>>();
-		for (DMContext context : contexts) {
+		for (IEDCDMContext context : contexts) {
 			contextPropsList.add(context.getProperties());
 		}
 		return contextPropsList.toArray(new Map[contextPropsList.size()]);

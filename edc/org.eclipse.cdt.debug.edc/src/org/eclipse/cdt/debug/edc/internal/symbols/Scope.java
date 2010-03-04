@@ -18,8 +18,14 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.symbols.IRangeList.Entry;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.RangeList;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IRangeList;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
+import org.eclipse.cdt.debug.edc.symbols.IRangeList.Entry;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
 

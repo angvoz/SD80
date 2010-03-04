@@ -13,9 +13,9 @@ package org.eclipse.cdt.debug.edc.internal.scripting;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.DMContext;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
@@ -40,8 +40,8 @@ public class ExecutionContext {
 
 		@DsfServiceEventHandler
 		public void eventDispatched(ISuspendedDMEvent e) {
-			DMContext dmContext = (DMContext) e.getDMContext();
-			String id = (String) dmContext.getProperty(DMContext.PROP_ID);
+			IEDCDMContext dmContext = (IEDCDMContext) e.getDMContext();
+			String id = (String) dmContext.getProperty(IEDCDMContext.PROP_ID);
 			if (contextId.equals(id)) {
 				ScriptingPlugin.setActivityDone(activity);
 				session.removeServiceEventListener(suspendedListener);
@@ -129,6 +129,6 @@ public class ExecutionContext {
 	}
 
 	public static String getContextId(Map<String, Object> properties) {
-		return (String) properties.get(DMContext.PROP_ID);
+		return (String) properties.get(IEDCDMContext.PROP_ID);
 	}
 }

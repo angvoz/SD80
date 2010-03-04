@@ -22,6 +22,8 @@ import java.io.RandomAccessFile;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteOrder;
 
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
+
 /**
  * This implementation of IStreamBuffer works on file content.
  */

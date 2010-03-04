@@ -23,6 +23,7 @@ import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumStateListener;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -141,8 +142,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		public String getText(Object obj) {
 			TreeNode node = (TreeNode) obj;
 			Object value = node.getValue();
-			if (value instanceof Album) {
-				return ((Album) value).getDisplayName();
+			if (value instanceof IAlbum) {
+				return ((IAlbum) value).getDisplayName();
 			} else if (value instanceof Snapshot) {
 				if (((Snapshot) value).getSnapshotDisplayName().length() == 0) {
 					return ((Snapshot) value).getSnapshotFileName();
@@ -157,8 +158,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		public Image getImage(Object obj) {
 			TreeNode node = (TreeNode) obj;
 			Object value = node.getValue();
-			if (value instanceof Album) {
-				Album album = (Album)value;
+			if (value instanceof IAlbum) {
+				IAlbum album = (IAlbum)value;
 				if (album.getSnapshots().size() == 0){
 					return ALBUM_NODE_ERROR_IMAGE;
 				} else {
@@ -174,7 +175,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 				}
 			} else if (value instanceof Snapshot) {
 				Snapshot snap = (Snapshot)value;
-				Album album = snap.getAlbum();
+				IAlbum album = snap.getAlbum();
 				if (Album.isSnapshotSession(album.getSessionID())){
 					EDCLaunch launch = EDCLaunch.getLaunchForSession(album.getSessionID());
 					int currIndex = launch.getAlbum().getCurrentSnapshotIndex();
@@ -238,9 +239,9 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 			public int compare(Viewer viewer, Object e1, Object e2) {
 				Object value1 = ((TreeNode) e1).getValue();
 				Object value2 = ((TreeNode) e2).getValue();
-				if (value1 instanceof Album)
-					return ((Album) value1).getDisplayName().compareToIgnoreCase(
-							((Album) value1).getDisplayName());
+				if (value1 instanceof IAlbum)
+					return ((IAlbum) value1).getDisplayName().compareToIgnoreCase(
+							((IAlbum) value1).getDisplayName());
 				else if (value1 instanceof Snapshot)
 					return ((Snapshot) value1).getSnapshotFileName()
 							.compareToIgnoreCase(
@@ -260,8 +261,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 							.getFirstElement();
 					Object value = node.getValue();
 
-					if (value instanceof Album) {
-						Album album = (Album)value;
+					if (value instanceof IAlbum) {
+						IAlbum album = (IAlbum)value;
 						enabled = !album.isRecording() && !Album.isSnapshotSession(album.getSessionID());
 					} else if (value instanceof Snapshot) {
 						Snapshot snapshot = (Snapshot)value;
@@ -308,8 +309,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 
 			TreeNode node = (TreeNode) obj;
 			Object value = node.getValue();
-			if (value instanceof Album) {
-				return new Date(((Album) value).getLocation().toFile()
+			if (value instanceof IAlbum) {
+				return new Date(((IAlbum) value).getLocation().toFile()
 						.lastModified()).toString();
 			} else if (value instanceof Snapshot) {
 				if (((Snapshot) value).getCreationDate() != null) {
@@ -326,8 +327,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		public String getText(Object obj) {
 			TreeNode node = (TreeNode) obj;
 			Object value = node.getValue();
-			if (value instanceof Album) {
-				return ((Album) value).getLocation().toOSString();
+			if (value instanceof IAlbum) {
+				return ((IAlbum) value).getLocation().toOSString();
 			} else if (value instanceof Snapshot){
 				Snapshot snap = ((Snapshot) value);
 				if (snap.getReferenceLocationSourceFile().length() > 0 && snap.getReferenceLocationLineNumber() > 0){
@@ -361,8 +362,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		protected Object getValue(Object element) {
 			TreeNode node = (TreeNode) element;
 			Object nodeValue = node.getValue();
-			if (nodeValue instanceof Album) {
-				return ((Album) nodeValue).getLocation().toOSString();
+			if (nodeValue instanceof IAlbum) {
+				return ((IAlbum) nodeValue).getLocation().toOSString();
 			} else if (nodeValue instanceof Snapshot){
 				Snapshot snap = (Snapshot) nodeValue;
 				if (snap.getReferenceLocationSourceFile().length() > 0 && snap.getReferenceLocationLineNumber() > 0){
@@ -390,7 +391,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 
 		@Override
 		protected boolean canEdit(Object element) {
-			if ((((TreeNode) element).getValue() instanceof Album)
+			if ((((TreeNode) element).getValue() instanceof IAlbum)
 					|| (((TreeNode) element).getValue() instanceof Snapshot))
 				return true;
 
@@ -406,8 +407,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		protected Object getValue(Object element) {
 			TreeNode node = (TreeNode) element;
 			Object value = node.getValue();
-			if (value instanceof Album) {
-				return ((Album) value).getDisplayName();
+			if (value instanceof IAlbum) {
+				return ((IAlbum) value).getDisplayName();
 			} else if (value instanceof Snapshot) {
 				return ((Snapshot) value).getSnapshotDisplayName();
 			}
@@ -419,7 +420,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		protected void setValue(Object element, Object newValue) {
 			TreeNode node = (TreeNode) element;
 			Object value = node.getValue();
-			if (value instanceof Album) {
+			if (value instanceof IAlbum) {
 				((Album)value).updateSnapshotMetaData(newValue.toString(), null);
 			} else if (value instanceof Snapshot) {
 				if (!((Snapshot) value).getSnapshotDisplayName().equals(
@@ -453,8 +454,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 						// Expand any albums recording or in playback mode...
 						for (Object newNode : newTree){
 							if (newNode instanceof TreeNode){
-								if (((TreeNode) newNode).getValue() instanceof Album){
-									Album album = (Album)((TreeNode) newNode).getValue();
+								if (((TreeNode) newNode).getValue() instanceof IAlbum){
+									IAlbum album = (IAlbum)((TreeNode) newNode).getValue();
 									if (album.isRecording() || Album.isSnapshotSession(album.getSessionID())){
 										viewer.setExpandedState(((TreeNode) newNode), true);
 									}
@@ -465,16 +466,16 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 						for (Object expandedNode : expanded){
 							for (Object newNode : newTree){
 								if (newNode instanceof TreeNode){
-									if (((TreeNode) newNode).getValue() instanceof Album){
-										Album album = (Album)((TreeNode) newNode).getValue();
+									if (((TreeNode) newNode).getValue() instanceof IAlbum){
+										IAlbum album = (IAlbum)((TreeNode) newNode).getValue();
 										if (album.isRecording()){
 											viewer.setExpandedState(((TreeNode) newNode), true);
 											break;
 										}
 										Object t1 = ((TreeNode) newNode).getValue();
 										Object t2 = ((TreeNode) expandedNode).getValue();
-										String newAlbumName =  ((Album)t1).getDisplayName();
-										String oldAlbumName =  ((Album)t2).getDisplayName();
+										String newAlbumName =  ((IAlbum)t1).getDisplayName();
+										String oldAlbumName =  ((IAlbum)t2).getDisplayName();
 										if ( newAlbumName.equals(oldAlbumName) ){
 											viewer.setExpandedState(((TreeNode) newNode), true);
 											break;
@@ -505,7 +506,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 					TreeNode node = (TreeNode) ((IStructuredSelection) viewer
 							.getSelection()).getFirstElement();
 					Object value = node.getValue();
-					if (value instanceof Album) {
+					if (value instanceof IAlbum) {
 						SnapshotUtils.launchAlbumSession((Album) value);
 					} else if (value instanceof Snapshot) {
 						// launch selected snapshot, set proper index in album 						// first
@@ -566,8 +567,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 					TreeNode node = (TreeNode) ((IStructuredSelection) viewer
 							.getSelection()).getFirstElement();
 					Object value = node.getValue();
-					if (value instanceof Album) {
-						Album album = (Album) value; 
+					if (value instanceof IAlbum) {
+						IAlbum album = (IAlbum) value; 
 						if (deleteAlbum(SnapshotUtils
 								.getSnapshotsProject(), album)) {
 							refreshAction.run();
@@ -667,10 +668,10 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 				.getFirstElement();
 		Object value = node.getValue();
 		boolean enabled = false;
-		if (value instanceof Album) {
+		if (value instanceof IAlbum) {
 			launchAction.setText("Launch Album");
 			deleteAction.setText("Delete Album");
-			Album album = (Album)value;
+			IAlbum album = (IAlbum)value;
 			enabled = !Album.isSnapshotSession(album.getSessionID());
 		} else if (value instanceof Snapshot) {
 			launchAction.setText("Launch Snapshot");
@@ -712,7 +713,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 					.size()]);
 		}
 
-		for (Album a : albumList) {
+		for (IAlbum a : albumList) {
 			TreeNode albumNode = new TreeNode(a);
 			List<Snapshot> snaps = a.getSnapshots();
 			List<TreeNode> snapshotNodes = new ArrayList<TreeNode>();
@@ -780,7 +781,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	 * @return
 	 * @throws CoreException
 	 */
-	private boolean deleteAlbum(final IProject project, final Album album)
+	private boolean deleteAlbum(final IProject project, final IAlbum album)
 			throws CoreException {
 		
 		if (album == null){
@@ -867,7 +868,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
         return dir.delete();
     }
 
-	public void albumChanged(final Album album) {
+	public void albumChanged(final IAlbum album) {
 		
 		Display.getDefault().asyncExec(new Runnable() {
 			public void run() {

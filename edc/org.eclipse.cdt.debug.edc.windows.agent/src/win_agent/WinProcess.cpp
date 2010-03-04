@@ -17,15 +17,18 @@
 #include "assert.h"
 #include "WinDebugMonitor.h"
 #include "TerminateProcessAction.h"
+#include "ProtocolConstants.h"
+
+// TODO: remove this
+#include "TCFHeaders.h"
 
 std::map<int, WinProcess*> WinProcess::processIDMap;
 
 WinProcess::WinProcess(WinDebugMonitor* monitor, DEBUG_EVENT& debugEvent) :
-	Context(debugEvent.dwProcessId, ROOT_CONTEXT_ID, CreateInternalID(debugEvent.dwProcessId)),
+	RunControlContext(debugEvent.dwProcessId, ROOT_CONTEXT_ID, CreateInternalID(debugEvent.dwProcessId)),
 	processHandle_(debugEvent.u.CreateProcessInfo.hProcess),
 	monitor_(monitor)
 {
-
 	isRoot_ = true;
 	processIDMap[debugEvent.dwProcessId] = this;
 	// Get the name for the new process
@@ -45,16 +48,31 @@ WinProcess::WinProcess(WinDebugMonitor* monitor, DEBUG_EVENT& debugEvent) :
 		moduleFileName = moduleFileName.substr(lastSlash + 1);
 	processName_ = moduleFileName;
 
-	SetProperty(PROP_NAME, processName_);
+	initialize();
 }
 
 WinProcess::WinProcess(DWORD procID, std::string procName) :
-	Context(procID, ROOT_CONTEXT_ID, CreateInternalID(procID)),
+	RunControlContext(procID, ROOT_CONTEXT_ID, CreateInternalID(procID)),
 	processHandle_(NULL),
 	monitor_(NULL),
 	processName_(procName)
 {
-	SetProperty(PROP_NAME, processName_);
+	initialize();
+}
+
+void WinProcess::initialize()
+{
+	RunControlContext::initialize();
+
+	SetProperty(PROP_OS_ID, new PropertyValue(AgentUtils::IntToString((int)GetOSID())) );
+	SetProperty(PROP_NAME, new PropertyValue(processName_));
+
+	// Not support process resume yet.
+	int supportedResumeModes = 0; // (1 << RM_RESUME) | (1 << RM_STEP_INTO);
+	SetProperty(PROP_CAN_RESUME, new PropertyValue(supportedResumeModes));
+
+	SetProperty(PROP_CAN_TERMINATE, new PropertyValue(true));
+	SetProperty(PROP_CAN_SUSPEND, new PropertyValue(true));
 }
 
 WinProcess::~WinProcess(void) {
@@ -77,37 +95,8 @@ HANDLE WinProcess::GetProcessHandle() {
 	return processHandle_;
 }
 
-ContextAddress WinProcess::GetPCAddress() {
-	// not needed for WinProcess
-	assert(false);
-	return 0;
-}
-
-std::string WinProcess::GetSuspendReason() {
-	// not needed.
-	assert(false);
-	return "";
-}
-
 WinProcess* WinProcess::GetProcessByID(int processID) {
 	return processIDMap[processID];
-}
-
-std::vector<std::string> WinProcess::GetRegisterValues(
-		std::vector<std::string> registerIDs) {
-	// not needed.
-	assert(false);
-	std::vector<std::string> empty;
-	return empty;
-}
-
-void WinProcess::AttachSelf() throw (AgentException) {
-}
-
-void WinProcess::SetRegisterValues(std::vector<std::string> registerIDs,
-		std::vector<std::string> registerValues) {
-	// not needed.
-	assert(false);
 }
 
 int WinProcess::ReadMemory(unsigned long address, unsigned long size,
@@ -151,3 +140,4 @@ int WinProcess::WriteMemory(unsigned long address, unsigned long size,
 WinDebugMonitor* WinProcess::GetMonitor() {
 	return monitor_;
 }
+

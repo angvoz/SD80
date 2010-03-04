@@ -16,8 +16,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import junit.framework.Assert;
-
 import org.eclipse.cdt.debug.edc.examples.javaagent.remote.CalculatorServiceProxy;
 import org.eclipse.cdt.debug.edc.examples.javaagent.remote.ICalculator;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
@@ -35,6 +33,7 @@ import org.eclipse.tm.tcf.services.IDiagnostics.DoneEcho;
 import org.eclipse.tm.tcf.services.ILocator.LocatorListener;
 import org.eclipse.tm.tcf.services.IProcesses.ProcessContext;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

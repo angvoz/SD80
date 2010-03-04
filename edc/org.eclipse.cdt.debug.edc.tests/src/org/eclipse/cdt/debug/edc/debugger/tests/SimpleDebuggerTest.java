@@ -10,19 +10,19 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
-import junit.framework.Assert;
-import junit.framework.TestCase;
-
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.debug.core.DebugException;
+import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
-public abstract class SimpleDebuggerTest extends TestCase {
+public abstract class SimpleDebuggerTest {
 
 	protected DsfSession session;
 	protected ExecutionDMC threadDMC;
@@ -33,33 +33,54 @@ public abstract class SimpleDebuggerTest extends TestCase {
 	@Before
 	public void launchAndWaitForSuspendedContext() throws Exception {
 		TestUtils.disableDebugPerspectiveSwitchPrompt();
-		if (launch != null) {
-			try {
-				launch.terminate();
-			} catch (DebugException de) {
-			}
-			launch = null;
-		}
-		if (session != null) {
-			DsfSession.endSession(session);
-			session = null;
-		}
 		launch = TestUtils.createLaunchForAlbum(getAlbumName());
 		Assert.assertNotNull(launch);
 		session = TestUtils.waitForSession(launch);
 		Assert.assertNotNull(session);
-		ExecutionDMC executionDMC = TestUtils.waitForExecutionDMC(session);
+		IEDCExecutionDMC executionDMC = TestUtils.waitForExecutionDMC(session);
 		Assert.assertNotNull(executionDMC);
 		threadDMC = TestUtils.waitForSuspendedThread(session);
 		Assert.assertNotNull(threadDMC);
 		frame = TestUtils.waitForStackFrame(session, threadDMC);
 	}
 	
+	@After
+	public void shutdown() {
+		
+		// shutdown the launch
+		if (launch != null) {
+			// terminating the launch will cause the session to end, but wait for
+			// it to end to prevent multiple launches from tests existing at the
+			// same time which can cause some weird behavior
+			DsfSession.addSessionEndedListener(new DsfSession.SessionEndedListener() {
+				
+				public void sessionEnded(DsfSession session) {
+					if (SimpleDebuggerTest.this.session == session) {
+						SimpleDebuggerTest.this.session = null;
+					}
+				}
+			});
+			
+			try {
+				launch.terminate();
+			} catch (DebugException de) {
+			}
+			launch = null;
+			
+			while (session != null) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+				}
+			}
+		}
+	}
+	
 	public void openSnapshotAndWaitForSuspendedContext(int index) throws Exception {
 		launch.getAlbum().openSnapshot(index);
 		session = TestUtils.waitForSession(launch);
 		Assert.assertNotNull(session);
-		ExecutionDMC executionDMC = TestUtils.waitForExecutionDMC(session);
+		IEDCExecutionDMC executionDMC = TestUtils.waitForExecutionDMC(session);
 		Assert.assertNotNull(executionDMC);
 		threadDMC = TestUtils.waitForSuspendedThread(session);
 		Assert.assertNotNull(threadDMC);

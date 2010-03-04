@@ -39,10 +39,10 @@ import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.ZipFileUtils;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
-import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
+import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.MapEntrySourceContainer;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
@@ -67,6 +67,7 @@ import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
+import org.eclipse.debug.core.sourcelookup.ISourceLookupDirector;
 import org.eclipse.debug.core.sourcelookup.containers.DirectorySourceContainer;
 import org.eclipse.debug.internal.core.LaunchManager;
 import org.eclipse.swt.widgets.Display;
@@ -98,7 +99,7 @@ import org.xml.sax.helpers.DefaultHandler;
  * temporary directory and used to recreate the debug session.
  */
 @SuppressWarnings("restriction")
-public class Album extends PlatformObject {
+public class Album extends PlatformObject implements IAlbum {
 
 	// XML element names
 	public static final String SNAPSHOT = "snapshot";
@@ -206,6 +207,9 @@ public class Album extends PlatformObject {
 
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getName()
+	 */
 	public String getName() {
 		if (name == null) {
 			name = getDefaultAlbumName();
@@ -221,6 +225,9 @@ public class Album extends PlatformObject {
 		this.displayName = displayName;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getDisplayName()
+	 */
 	public String getDisplayName() {
 		if (displayName == null || displayName.length() == 0) {
 			displayName = getName();
@@ -228,6 +235,9 @@ public class Album extends PlatformObject {
 		return displayName;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getSessionID()
+	 */
 	public String getSessionID() {
 		sessionID = "";
 		if (albumsBySessionID != null) {
@@ -240,6 +250,9 @@ public class Album extends PlatformObject {
 		return sessionID;
 	}
 	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getRecordingSessionID()
+	 */
 	public String getRecordingSessionID() {
 		return recordingSessionID;
 	}
@@ -266,6 +279,9 @@ public class Album extends PlatformObject {
 		return launch != null && launch.isSnapshotLaunch();
 	}
 	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#createSnapshot(org.eclipse.cdt.dsf.service.DsfSession, org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC, org.eclipse.core.runtime.IProgressMonitor)
+	 */
 	public Snapshot createSnapshot(DsfSession session, StackFrameDMC stackFrame, IProgressMonitor monitor) {
 		configureAlbum();
 		
@@ -561,9 +577,12 @@ public class Album extends PlatformObject {
 		stream.close();
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#openSnapshot(int)
+	 */
 	public void openSnapshot(final int index) {
 
-		final Album album = this;
+		final IAlbum album = this;
 		final DsfSession session = DsfSession.getSession(sessionID);
 
 		DsfRunnable openIt = new DsfRunnable() {
@@ -590,15 +609,16 @@ public class Album extends PlatformObject {
 
 	}
 
-	/**
-	 * Zero based index
-	 * 
-	 * @return current index of snapshot being played
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getCurrentSnapshotIndex()
 	 */
 	public int getCurrentSnapshotIndex() {
 		return currentSnapshotIndex;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#openNextSnapshot()
+	 */
 	public void openNextSnapshot() throws Exception {
 		int nextIndex = currentSnapshotIndex + 1;
 		if (nextIndex >= snapshotList.size())
@@ -606,6 +626,9 @@ public class Album extends PlatformObject {
 		openSnapshot(nextIndex);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#openPreviousSnapshot()
+	 */
 	public void openPreviousSnapshot() throws Exception {
 		int previousIndex = currentSnapshotIndex - 1;
 		if (previousIndex < 0)
@@ -786,9 +809,8 @@ public class Album extends PlatformObject {
 		return super.getAdapter(adapter);
 	}
 
-	/**
-	 * Get the location of the album contents, extracted to disk in the workspace.
-	 * @return path to the extracted files
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getAlbumRootDirectory()
 	 */
 	public IPath getAlbumRootDirectory() {
 		if (albumRootDirectory == null) {
@@ -808,10 +830,16 @@ public class Album extends PlatformObject {
 		return albumRootDirectory;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getLaunchTypeID()
+	 */
 	public String getLaunchTypeID() {
 		return launchType;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getLaunchProperties()
+	 */
 	public HashMap<String, Object> getLaunchProperties() {
 		return launchProperties;
 	}
@@ -820,14 +848,23 @@ public class Album extends PlatformObject {
 		this.launchProperties = launchProperties;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getLaunchName()
+	 */
 	public String getLaunchName() {
 		return launchName;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#playSnapshots(org.eclipse.cdt.dsf.service.DsfSession)
+	 */
 	public void playSnapshots(DsfSession session) {
 		// TODO Auto-generated method stub
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#addFile(org.eclipse.core.runtime.IPath)
+	 */
 	public void addFile(IPath path) {
 		files.add(path);
 	}
@@ -836,7 +873,7 @@ public class Album extends PlatformObject {
 		return albumsByLocation.get(path);
 	}
 
-	public static Album getAlbumBySession(String sessionId) {
+	public static IAlbum getAlbumBySession(String sessionId) {
 		return albumsBySessionID.get(sessionId);
 	}
 
@@ -849,11 +886,17 @@ public class Album extends PlatformObject {
 		albumsByLocation.put(albumPath, this);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getLocation()
+	 */
 	public IPath getLocation() {
 		return location;
 	}
 
-	public void configureSourceLookupDirector(CSourceLookupDirector director) {
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#configureSourceLookupDirector(org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector)
+	 */
+	public void configureSourceLookupDirector(ISourceLookupDirector director) {
 		MappingSourceContainer sourceContainer = new MappingSourceContainer(getName());
 		configureMappingSourceContainer(sourceContainer);
 		ArrayList<ISourceContainer> containers = new ArrayList<ISourceContainer>(Arrays.asList(director
@@ -871,6 +914,9 @@ public class Album extends PlatformObject {
 		return getAlbumRootDirectory().append("Resources");
 	}
 	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#configureMappingSourceContainer(org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer)
+	 */
 	public void configureMappingSourceContainer(MappingSourceContainer mappingContainer) {
 		IPath albumRoot = getResourcesDirectory();
 		String device = null;
@@ -926,14 +972,14 @@ public class Album extends PlatformObject {
 						album = new Album();
 						album.setRecordingSessionID(sessionId);
 					}
-		final Album finalAlbum = album;
+		final IAlbum finalAlbum = album;
 					playSnapshotSound();
 		
 		Query<Boolean> query = new Query<Boolean>() {
 
 			@Override
 			protected void execute(DataRequestMonitor<Boolean> rm) {
-				finalAlbum.createSnapshot(session, stackFrame, monitor);
+				((Album) finalAlbum).createSnapshot(session, stackFrame, monitor);
 				rm.setData(true);
 				rm.done();
 			}};
@@ -941,7 +987,7 @@ public class Album extends PlatformObject {
 			session.getExecutor().execute(query);
 
 			try {
-				boolean result = query.get();
+				query.get();
 			} catch (InterruptedException exc) {
 				Thread.currentThread().interrupt();
 			} catch (java.util.concurrent.ExecutionException e) {
@@ -982,6 +1028,9 @@ public class Album extends PlatformObject {
 		
 	}
 	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getSnapshots()
+	 */
 	public List<Snapshot> getSnapshots() {
 		if (snapshotList == null || snapshotList.size() == 0) {
 			try {
@@ -994,10 +1043,16 @@ public class Album extends PlatformObject {
 		return snapshotList;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#isLoaded()
+	 */
 	public boolean isLoaded() {
 		return loaded;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#getIndexOfSnapshot(org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot)
+	 */
 	public int getIndexOfSnapshot(Snapshot snap) {
 		return snapshotList.indexOf(snap);
 	}
@@ -1077,12 +1132,8 @@ public class Album extends PlatformObject {
 		}
 	}
 
-	/**
-	 * Delete a given snapshot from an album. On delete, the album data will be
-	 * reloaded.
-	 * 
-	 * @param snap
-	 *            Snapshot to delete
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#deleteSnapshot(org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot)
 	 */
 	public void deleteSnapshot(Snapshot snap) {
 
@@ -1136,6 +1187,9 @@ public class Album extends PlatformObject {
 		return zipPath;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#isRecording()
+	 */
 	public boolean isRecording() {
 		return recordingSessionID.length() > 0;
 	}
@@ -1162,7 +1216,7 @@ public class Album extends PlatformObject {
 	/**
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static void fireAlbumStateChanged(Album album) {
+	public static void fireAlbumStateChanged(IAlbum album) {
 		for (ISnapshotAlbumStateListener l : listeners) {
 			l.albumChanged(album);
 		}

@@ -15,6 +15,7 @@
 #include "EventClientNotifier.h"
 #include "Logger.h"
 #include "TCFChannel.h"
+#include "RunControlContext.h"
 
 #include "TCFHeaders.h"
 #include "DebugMonitor.h"
@@ -116,16 +117,23 @@ void RunControlService::command_resume(char * token, Channel * c) {
 
 	channel.readComplete();
 
-	Context* context = ContextManager::FindDebuggedContext(id);
-	if (mode == RM_STEP_INTO)
-		context->SingleStep();
-	else
-		context->Resume();
-
 	channel.writeReplyHeader(token);
-	channel.writeError(0);
-	channel.writeComplete();
 
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	if (context == NULL) {
+		// Return an invalid context ID error.
+		channel.writeError(ERR_INV_CONTEXT);
+	}
+	else {
+		if (mode == RM_STEP_INTO)
+			context->SingleStep();
+		else
+			context->Resume();
+
+		channel.writeError(0);
+	}
+
+	channel.writeComplete();
 }
 
 void RunControlService::command_suspend(char * token, Channel * c) {
@@ -136,13 +144,19 @@ void RunControlService::command_suspend(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::FindDebuggedContext(id);
-	context->Suspend();
-
 	channel.writeReplyHeader(token);
-	channel.writeStringZ("null");
-	channel.writeComplete();
 
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	if (context == NULL) {
+		// Return an invalid context ID error.
+		channel.writeError(ERR_INV_CONTEXT);
+	}
+	else {
+		context->Suspend();
+		channel.writeError(0);
+	}
+
+	channel.writeComplete();
 }
 
 void RunControlService::command_terminate(char * token, Channel * c) {
@@ -154,11 +168,17 @@ void RunControlService::command_terminate(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::FindDebuggedContext(id);
-	context->Terminate();
-
 	channel.writeReplyHeader(token);
-	channel.writeError(0);
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	if (context == NULL) {
+		// Return an invalid context ID error.
+		channel.writeError(ERR_INV_CONTEXT);
+	}
+	else {
+		context->Terminate();
+		channel.writeError(0);
+	}
+
 	channel.writeComplete();
 }
 

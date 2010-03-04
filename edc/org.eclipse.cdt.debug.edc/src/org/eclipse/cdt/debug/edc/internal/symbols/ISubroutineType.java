@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+import org.eclipse.cdt.debug.edc.symbols.IType;
+
 /**
  * 
  */

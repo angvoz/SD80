@@ -18,9 +18,9 @@
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProviderFactory;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProviderFactory;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.core.runtime.IPath;
 
 /**

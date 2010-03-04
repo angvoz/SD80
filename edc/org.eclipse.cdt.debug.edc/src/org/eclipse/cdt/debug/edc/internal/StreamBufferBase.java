@@ -20,6 +20,8 @@ package org.eclipse.cdt.debug.edc.internal;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteOrder;
 
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
+
 /**
  * 
  */

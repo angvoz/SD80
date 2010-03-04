@@ -10,10 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.windows.launch;
 
-import org.eclipse.cdt.debug.edc.internal.x86.DebugServicesFactoryX86;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunchDelegate;
 import org.eclipse.cdt.debug.edc.windows.WindowsDebugger;
+import org.eclipse.cdt.debug.edc.x86.DebugServicesFactoryX86;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
 import org.eclipse.cdt.dsf.debug.service.IDsfDebugServicesFactory;

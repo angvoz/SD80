@@ -12,10 +12,12 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.util.Map;
 
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+
 public class PointerType extends MayBeQualifiedType implements IPointerType {
 
-	public PointerType(String name, IScope scope, Map<Object, Object> properties) {
-		super(name, scope, 0, properties);
+	public PointerType(String name, IScope scope, int byteSize, Map<Object, Object> properties) {
+		super(name, scope, byteSize, properties);
 	}
 
 	// create an internal pointer for expression evaluation

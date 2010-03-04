@@ -10,8 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.DMContext;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.core.expressions.PropertyTester;
@@ -42,7 +42,7 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 			String sessionID = testContext.getDMContext().getSessionId();
 			boolean isSnapshotSession = Album.isSnapshotSession(sessionID);
 			IDMContext context = testContext.getDMContext();
-			if (context instanceof DMContext) {
+			if (context instanceof IEDCDMContext) {
 				if (property.equals("isSnapshotCreationAvailable")) {
 					return !isSnapshotSession;
 

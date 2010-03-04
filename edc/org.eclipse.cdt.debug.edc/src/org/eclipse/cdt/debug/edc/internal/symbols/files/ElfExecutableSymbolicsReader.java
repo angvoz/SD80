@@ -22,6 +22,7 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
 import org.eclipse.cdt.debug.edc.internal.symbols.Symbol;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
 import org.eclipse.cdt.utils.elf.Elf;
 import org.eclipse.cdt.utils.elf.Elf.PHdr;
 import org.eclipse.core.runtime.IPath;
@@ -44,6 +45,9 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 		
 		recordSections(elf);
 		readSymbols(elf);
+		
+		// TODO: better selection.  We assume for now that all ELF targets we know about (ARM, Linux) use the same mangling.
+		unmangler = new UnmanglerEABI();
 	}
 	
 	/* (non-Javadoc)
@@ -148,4 +152,5 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 	public ByteOrder getByteOrder() {
 		return isLE ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
 	}
+	
 }

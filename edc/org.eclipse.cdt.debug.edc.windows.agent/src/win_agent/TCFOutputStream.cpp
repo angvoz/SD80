@@ -8,6 +8,8 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
+
+#include "TCFHeaders.h"
 #include "TCFOutputStream.h"
 
 TCFOutputStream::TCFOutputStream(OutputStream* out) {

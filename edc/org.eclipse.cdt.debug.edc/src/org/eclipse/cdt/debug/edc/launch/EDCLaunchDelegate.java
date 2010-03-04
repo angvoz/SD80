@@ -39,6 +39,14 @@ import org.eclipse.debug.core.model.ISourceLocator;
 
 abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 
+	public EDCLaunchDelegate() {
+		super(false);
+	}
+
+	public EDCLaunchDelegate(boolean requireCProject) {
+		super(requireCProject);
+	}
+
 	public void launch(ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor)
 			throws CoreException {
 		if (monitor == null) {

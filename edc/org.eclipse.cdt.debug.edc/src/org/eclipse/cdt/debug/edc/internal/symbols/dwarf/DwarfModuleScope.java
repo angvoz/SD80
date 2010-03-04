@@ -22,17 +22,17 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEnumerator;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleLineEntryProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.internal.symbols.ModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.Scope;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IPath;
 
@@ -93,7 +93,7 @@ public class DwarfModuleScope extends Scope implements IModuleScope {
 		if (provider != null)
 			return provider.getCompileUnitsForFile(filePath);
 		else
-			return null;
+			return Collections.emptyList();
 	}
 
 	/* (non-Javadoc)

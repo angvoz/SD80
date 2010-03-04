@@ -11,17 +11,16 @@
 
 package org.eclipse.cdt.debug.edc.tests;
 
-import junit.framework.TestCase;
-
-import org.eclipse.cdt.debug.edc.internal.disassembler.arm.OpcodeARM;
+import org.eclipse.cdt.debug.edc.arm.disassembler.OpcodeARM;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Unit test for ARM disassembler opcode map.
  */
-public class TestOpcodeARM extends TestCase {
+public class TestOpcodeARM extends Assert {
 	
 	private class OpcodeTest {
 

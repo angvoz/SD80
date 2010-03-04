@@ -15,6 +15,8 @@
 #include "TCFOutputStream.h"
 #include "ProtocolConstants.h"
 
+#include "WinThread.h"
+
 TCFBroadcastGroup * EventClientNotifier::broadcastGroup = NULL;
 
 #define PROP_OS_ID		"OSID" // See org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.PROP_OS_ID
@@ -157,7 +159,7 @@ void EventClientNotifier::SendContextSuspended(Context* context) {
 }
 
 void EventClientNotifier::SendContextSuspendedCallback(void* params) {
-	Context& context = (*(Context*) params);
+	WinThread& context = (*(WinThread*) params);
 	TCFOutputStream out(&broadcastGroup->out);
 
 	out.writeStringZ("E");
@@ -222,47 +224,18 @@ void EventClientNotifier::SendContextExceptionCallback(void* params) {
 void EventClientNotifier::WriteContext(Context& context, TCFOutputStream& out) {
 	out.writeCharacter('{');
 
-	out.writeString(PROP_ID);
-	out.writeCharacter(':');
-	out.writeString(context.GetID());
-	out.writeCharacter(',');
+	std::map<std::string, PropertyValue*> properties = context.GetProperties();
 
-	if (context.GetParentID() != INVALID_CONTEXT_ID) {
-		out.writeString(PROP_PARENT_ID);
-		out.writeCharacter(':');
-		out.writeString(context.GetParentID());
-		out.writeCharacter(',');
-	}
+	for (std::map<std::string, PropertyValue*>::iterator iter = properties.begin();
+			iter != properties.end(); iter++)
+	{
+		if (iter != properties.begin())
+			out.writeCharacter(',');
 
-	out.writeString(PROP_OS_ID);
-	out.writeCharacter(':');
-	out.writeString(AgentUtils::IntToString(context.GetOSID()));
-	out.writeCharacter(',');
-
-	out.writeString(PROP_CAN_SUSPEND);
-	out.writeCharacter(':');
-	out.writeBoolean(context.CanSuspend());
-	out.writeCharacter(',');
-
-	out.writeString(PROP_CAN_RESUME);
-	out.writeCharacter(':');
-	long supportedResumeModes = (1 << RM_RESUME) | (1 << RM_STEP_INTO);
-	out.writeLong(supportedResumeModes);
-	out.writeCharacter(',');
-
-	out.writeString(PROP_CAN_TERMINATE);
-	out.writeCharacter(':');
-	out.writeBoolean(context.CanTerminate());
-
-	std::map<std::string, std::string> properties = context.GetProperties();
-
-	for (std::map<std::string, std::string>::iterator iter = properties.begin(); iter
-			!= properties.end(); iter++) {
-		out.writeCharacter(',');
 		out.writeString(iter->first);
 		out.writeCharacter(':');
-		out.writeString(iter->second);
+		iter->second->writeToTCFChannel(out);
 	}
-	out.writeCharacter('}');
 
+	out.writeCharacter('}');
 }

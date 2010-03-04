@@ -15,8 +15,9 @@ import java.text.MessageFormat;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.TypeUtils;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
@@ -342,14 +343,14 @@ public class CustomFormatDetailPane extends AbstractDetailPane implements IPrope
 		if (element instanceof IAdaptable) {
 			IExpressionDMContext expression = 
 				(IExpressionDMContext) ((IAdaptable) element).getAdapter(IExpressionDMContext.class);
-			if (expression instanceof ExpressionDMC) {
+			if (expression instanceof IEDCExpression) {
 				return (ExpressionDMC) expression;
 			}
 		}
 		return null;
 	}
 
-	public static IVariableValueConverter getCustomConverter(ExpressionDMC expressionDMC) {
+	public static IVariableValueConverter getCustomConverter(IEDCExpression expressionDMC) {
 		IType exprType = TypeUtils.getStrippedType(expressionDMC.getEvaluatedType());
 		IVariableValueConverter customConverter = 
 			FormatExtensionManager.instance().getDetailValueConverter(exprType);

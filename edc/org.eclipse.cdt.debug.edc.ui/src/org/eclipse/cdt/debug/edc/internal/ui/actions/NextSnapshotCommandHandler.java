@@ -11,7 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.debug.ui.contexts.DebugContextEvent;
@@ -39,7 +39,7 @@ public class NextSnapshotCommandHandler extends AbstractSnapshotCommandHandler {
 	public void debugContextChanged(DebugContextEvent event) {
 		super.debugContextChanged(event);
 		
-		Album album = getAlbumContext();
+		IAlbum album = getAlbumContext();
 		if (album != null)
 		{
 			int snapshotIndex = album.getCurrentSnapshotIndex();

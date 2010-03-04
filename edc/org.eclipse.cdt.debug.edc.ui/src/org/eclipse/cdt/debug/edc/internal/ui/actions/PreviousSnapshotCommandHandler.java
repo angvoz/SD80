@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.ui.actions;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -48,7 +49,7 @@ public class PreviousSnapshotCommandHandler extends AbstractSnapshotCommandHandl
 	@Override
 	public void debugContextChanged(DebugContextEvent event) {
 		super.debugContextChanged(event);
-		Album album = getAlbumContext();
+		IAlbum album = getAlbumContext();
 		boolean enableit = false;
 		if (album != null) {
 			enableit = (isSnapshotSession() && album.getCurrentSnapshotIndex() > 0);

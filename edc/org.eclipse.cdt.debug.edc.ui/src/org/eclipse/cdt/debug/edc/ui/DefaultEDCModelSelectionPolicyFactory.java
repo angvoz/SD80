@@ -17,6 +17,7 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelSelectionPo
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IPresentationContext;
 import org.eclipse.debug.ui.IDebugUIConstants;
 
+@SuppressWarnings("restriction")
 public class DefaultEDCModelSelectionPolicyFactory extends DefaultDsfModelSelectionPolicyFactory {
 
 	/*

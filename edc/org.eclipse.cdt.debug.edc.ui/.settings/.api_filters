@@ -7,6 +7,20 @@
                 <message_argument value="DefaultEDCModelSelectionPolicyFactory"/>
             </message_arguments>
         </filter>
+        <filter id="643842064">
+            <message_arguments>
+                <message_argument value="IModelSelectionPolicy"/>
+                <message_argument value="DefaultEDCModelSelectionPolicyFactory"/>
+                <message_argument value="createModelSelectionPolicyAdapter(Object, IPresentationContext)"/>
+            </message_arguments>
+        </filter>
+        <filter id="643846161">
+            <message_arguments>
+                <message_argument value="IPresentationContext"/>
+                <message_argument value="DefaultEDCModelSelectionPolicyFactory"/>
+                <message_argument value="createModelSelectionPolicyAdapter(Object, IPresentationContext)"/>
+            </message_arguments>
+        </filter>
     </resource>
     <resource path="src/org/eclipse/cdt/debug/edc/ui/DefaultEDCSelectionPolicy.java" type="org.eclipse.cdt.debug.edc.ui.DefaultEDCSelectionPolicy">
         <filter id="576725006">
@@ -19,14 +33,14 @@
             <message_arguments>
                 <message_argument value="IPresentationContext"/>
                 <message_argument value="DefaultEDCSelectionPolicy"/>
-                <message_argument value="overrides(ISelection, ISelection, IPresentationContext)"/>
+                <message_argument value="contains(ISelection, IPresentationContext)"/>
             </message_arguments>
         </filter>
         <filter id="643846161">
             <message_arguments>
                 <message_argument value="IPresentationContext"/>
                 <message_argument value="DefaultEDCSelectionPolicy"/>
-                <message_argument value="contains(ISelection, IPresentationContext)"/>
+                <message_argument value="overrides(ISelection, ISelection, IPresentationContext)"/>
             </message_arguments>
         </filter>
         <filter id="643846161">
@@ -72,16 +86,16 @@
         </filter>
         <filter id="643846161">
             <message_arguments>
-                <message_argument value="IPropertiesUpdate"/>
+                <message_argument value="IElementCompareRequest"/>
                 <message_argument value="ThreadVMNode"/>
-                <message_argument value="fillThreadDataProperties(IPropertiesUpdate, IProcessesIThreadDMData)"/>
+                <message_argument value="compareElements(IElementCompareRequest[])"/>
             </message_arguments>
         </filter>
         <filter id="643846161">
             <message_arguments>
-                <message_argument value="IElementCompareRequest"/>
+                <message_argument value="IPropertiesUpdate"/>
                 <message_argument value="ThreadVMNode"/>
-                <message_argument value="compareElements(IElementCompareRequest[])"/>
+                <message_argument value="fillThreadDataProperties(IPropertiesUpdate, IProcessesIThreadDMData)"/>
             </message_arguments>
         </filter>
         <filter id="643850349">

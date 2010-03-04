@@ -13,7 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.ui;
 import java.util.Collections;
 import java.util.Set;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.debug.ui.IDetailPane;
 import org.eclipse.debug.ui.IDetailPaneFactory;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -57,7 +57,7 @@ public class EDCDetailPaneFactory implements IDetailPaneFactory {
 		if (selection.size() != 1)
 			return false;
 		
-		ExpressionDMC expressionDMC = 
+		IEDCExpression expressionDMC = 
 			CustomFormatDetailPane.getExpressionFromSelectedElement(selection.getFirstElement());
 		if (expressionDMC != null) {
 			return CustomFormatDetailPane.getCustomConverter(expressionDMC) != null;

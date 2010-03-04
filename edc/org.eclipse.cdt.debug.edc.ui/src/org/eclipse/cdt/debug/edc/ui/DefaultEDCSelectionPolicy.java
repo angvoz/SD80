@@ -12,8 +12,8 @@ package org.eclipse.cdt.debug.edc.ui;
 
 import java.util.concurrent.ExecutionException;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.DMContext;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
@@ -59,7 +59,7 @@ public class DefaultEDCSelectionPolicy implements IModelSelectionPolicy {
 					IDMVMContext dmvmContext= (IDMVMContext) element;
 					IDMContext dmContext= dmvmContext.getDMContext();
 					if (dmContext != null) {
-						return fDMContext instanceof DMContext && dmContext instanceof DMContext;
+						return fDMContext instanceof IEDCDMContext && dmContext instanceof IEDCDMContext;
 					}
 				}
 			}

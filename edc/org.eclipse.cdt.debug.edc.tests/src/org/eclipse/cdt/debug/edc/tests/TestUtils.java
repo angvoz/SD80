@@ -305,7 +305,7 @@ public class TestUtils {
 						}
 					}
 				}
-				return true;
+				return contextHolder[0] != null;
 			}
 
 		});

@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 
 public interface ICompositeType extends IType, IAggregate {
 	
@@ -82,9 +83,9 @@ public interface ICompositeType extends IType, IAggregate {
 	public void addInheritance(IInheritance inheritance);
 	
 	/**
-	 * Get an array of inherited-from classes for composite
+	 * Get an array of inherited-from classes/structs for composite
 	 * 
-	 * @return array of information about classes from which this
+	 * @return array of information about classes and structs from which this
 	 * composite inherits, or an empty array if nothing is inherited
 	 */
 	public IInheritance[] getInheritances();

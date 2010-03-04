@@ -25,17 +25,17 @@ import java.util.TreeMap;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.symbols.IForwardTypeReference;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.internal.symbols.Scope;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -507,8 +507,11 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 		
 		/**
-		 * Get the value as a 64-bit unsigned long, zero-extending any shorter attribute
-		 * @return value as unsigned long
+		 * Get the value as a 64-bit long.
+		 * 
+		 * A Byte, Short, or Integer is zero-extended.
+		 * 
+		 * @return value as long
 		 */
 		public long getValueAsLong() {
 			if (value instanceof Byte) {
@@ -528,7 +531,10 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 		
 		/**
-		 * Get the value as a 32-bit unsigned int, zero-extending any shorter attribute
+		 * Get the value as a 32-bit int.
+		 * 
+		 * A Byte or Short is zero-extended.
+		 * 
 		 * @return value as int
 		 */
 		public int getValueAsInt() {
@@ -974,15 +980,16 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		if (cuList != null)
 			return cuList;
 		
-		// FIXME: we need a looser check here: we add drive letters to all paths in Windows
-		// even if there is not really a drive (see DwarfHelper).
+		// FIXME: we need a looser check here: on Windows, we added drive letters to all
+		// paths before populating compileUnitsPerFile, even if there is not really a
+		// drive (see DwarFileHelper).
 		for (Map.Entry<IPath, List<ICompileUnitScope>> entry : compileUnitsPerFile.entrySet()) {
 			if (entry.getKey().setDevice(null).equals(filePath.setDevice(null))) {
 				return entry.getValue();
 			}
 		}
 		
-		return null;
+		return Collections.emptyList();
 	}
 
 	public String[] getSourceFiles() {

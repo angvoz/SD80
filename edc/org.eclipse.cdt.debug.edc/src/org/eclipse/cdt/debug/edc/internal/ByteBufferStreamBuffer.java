@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
+
 /**
  * This implementation of IStreamBuffer works on an existing ByteBuffer.
  */

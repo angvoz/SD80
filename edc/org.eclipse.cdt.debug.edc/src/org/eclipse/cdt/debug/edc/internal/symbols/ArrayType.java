@@ -13,6 +13,8 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 import java.util.ArrayList;
 import java.util.Map;
 
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+
 public class ArrayType extends MayBeQualifiedType implements IArrayType {
 
 	protected ArrayList<IArrayBoundType> bounds = new ArrayList<IArrayBoundType>();

@@ -12,18 +12,15 @@ package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.nio.ByteOrder;
 import java.util.Collection;
-import java.util.Collections;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
-import org.eclipse.cdt.debug.edc.internal.symbols.ISymbol;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IDebugInfoProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSection;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -89,7 +86,15 @@ public class EDCSymbolReader implements IEDCSymbolReader {
 	public long getModificationDate() {
 		return exeSymReader.getModificationDate();
 	}
+	
+	public Collection<ISymbol> findSymbols(String name) {
+		return exeSymReader.findSymbols(name);
+	}
 
+	public Collection<ISymbol> findUnmangledSymbols(String name) {
+		return exeSymReader.findUnmangledSymbols(name);
+	}
+	
 	public Collection<ISymbol> getSymbols() {
 		return exeSymReader.getSymbols();
 	}
@@ -112,20 +117,6 @@ public class EDCSymbolReader implements IEDCSymbolReader {
 			return debugInfoProvider.getModuleScope();
 		else
 			return EMPTY_MODULE_SCOPE;
-	}
-
-	public Collection<IFunctionScope> getFunctionsByName(String name) {
-		if (debugInfoProvider != null)
-			return debugInfoProvider.getFunctionsByName(name);
-		else
-			return Collections.emptyList();
-	}
-
-	public Collection<IVariable> getVariablesByName(String name) {
-		if (debugInfoProvider != null)
-			return debugInfoProvider.getVariablesByName(name);
-		else
-			return Collections.emptyList();
 	}
 
 	public String[] getSourceFiles() {

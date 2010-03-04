@@ -13,9 +13,9 @@ package org.eclipse.cdt.debug.edc.formatter;
 import org.eclipse.cdt.debug.edc.internal.symbols.ConstType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.internal.symbols.VolatileType;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 
 /**
  * Handle char* and wchar_t* strings (ignoring const, volatile, and typedefs to char type).
@@ -29,7 +29,7 @@ public class DefaultCStringFormatter extends AbstractStringFormatter {
 			// We would like to explicitly ignore "unsigned char*", since that's normally a byte buffer -- 
 			// but RVCT incorrectly sets this flag for some instances of "char*" in source.
 			boolean isCharString = /*!basicType.isUnsigned() &&*/ basicType.getBaseType() == ICPPBasicType.t_char;
-			boolean isWcharTString = basicType.getBaseType() == ICPPBasicType.t_wchar_t;
+			boolean isWcharTString = basicType.getBaseType() == ICPPBasicType.t_wchar_t || basicType.getName().equals("wchar_t");
 			return isCharString || isWcharTString;
 		}
 		return false;

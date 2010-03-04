@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Tcf Debug Plug-in
+Bundle-Name: EDC Debug Plug-in
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.eclipse.cdt.debug.edc.EDCDebugger
@@ -18,17 +18,14 @@ Require-Bundle: org.eclipse.core.runtime,
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Export-Package: org.eclipse.cdt.debug.edc,
+ org.eclipse.cdt.debug.edc.disassembler,
  org.eclipse.cdt.debug.edc.formatter,
  org.eclipse.cdt.debug.edc.internal;
   x-friends:="org.eclipse.cdt.debug.edc.windows,
    org.eclipse.cdt.debug.edc.tests,
    org.eclipse.cdt.debug.edc.windows,
    org.eclipse.cdt.debug.edc.linux.x86",
- org.eclipse.cdt.debug.edc.internal.arm;x-internal:=true,
- org.eclipse.cdt.debug.edc.internal.disassembler;x-friends:="org.eclipse.cdt.debug.edc.tests",
- org.eclipse.cdt.debug.edc.internal.disassembler.arm;x-friends:="org.eclipse.cdt.debug.edc.tests",
- org.eclipse.cdt.debug.edc.internal.disassembler.x86;x-friends:="org.eclipse.cdt.debug.edc.tests",
- org.eclipse.cdt.debug.edc.internal.eval.ast.engine;x-friends:="org.eclipse.cdt.debug.edc.tests",
+    org.eclipse.cdt.debug.edc.internal.eval.ast.engine;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.formatter,
  org.eclipse.cdt.debug.edc.internal.launch;x-internal:=true,
@@ -42,8 +39,10 @@ Export-Package: org.eclipse.cdt.debug.edc,
  org.eclipse.cdt.debug.edc.internal.symbols;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.symbols.dwarf;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.symbols.files;x-friends:="org.eclipse.cdt.debug.edc.tests",
- org.eclipse.cdt.debug.edc.internal.x86;x-friends:="org.eclipse.cdt.debug.edc.linux.x86,org.eclipse.cdt.debug.edc.windows",
- org.eclipse.cdt.debug.edc.launch
+ org.eclipse.cdt.debug.edc.launch,
+ org.eclipse.cdt.debug.edc.services,
+ org.eclipse.cdt.debug.edc.snapshot,
+ org.eclipse.cdt.debug.edc.symbols
 Import-Package: org.eclipse.core.filesystem,
  org.eclipse.tm.tcf.core;version="0.2.0",
  org.eclipse.tm.tcf.protocol,

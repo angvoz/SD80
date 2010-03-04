@@ -20,10 +20,11 @@ import java.util.Map;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.IAddressFactory;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
-import org.eclipse.cdt.debug.edc.internal.MemoryUtils;
-import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotContributor;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
+import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
@@ -422,7 +423,7 @@ public class MemoryCache implements ISnapshotContributor {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
 				new Object[] { context, address.toHexAddressString(), word_size, count });
 
-		final MemoryContext tcfMC = getTCFMemoryContext(tcfMemoryService, ((DMContext)context).getID());
+		final MemoryContext tcfMC = getTCFMemoryContext(tcfMemoryService, ((IEDCDMContext)context).getID());
 		
 		MemoryByte[] result = null;
 
@@ -566,7 +567,7 @@ public class MemoryCache implements ISnapshotContributor {
 
 			public void run() {
 				final TCFTask<MemoryByte[]> task = this;
-				String memoryContextID = ((DMContext) context).getID();
+				String memoryContextID = ((IEDCDMContext) context).getID();
 				tcfMemoryService.getContext(memoryContextID, new DoneGetContext() {
 
 					public void doneGetContext(IToken token, Exception error, MemoryContext context) {
@@ -781,7 +782,7 @@ public class MemoryCache implements ISnapshotContributor {
 		}
 	}
 
-	public Element takeShapshot(Album album, Document document, IProgressMonitor monitor) {
+	public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 		Element memoryCacheElement = document.createElement(MEMORY_CACHE);
 		ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
 

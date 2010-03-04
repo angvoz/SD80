@@ -32,8 +32,12 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleLoadedEvent
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleUnloadedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ProcessExecutionDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.DMContext;
+import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
+import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.cdt.debug.internal.core.breakpoints.BreakpointProblems;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -814,7 +818,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		// A new module (including main exe) is loaded. Install breakpoints for
 		// it.
 		ModuleLoadedEvent event = (ModuleLoadedEvent) e;
-		final ExecutionDMC executionDMC = event.getExecutionDMC();
+		final IExecutionDMContext executionDMC = event.getExecutionDMC();
 		final ModuleDMC module = (ModuleDMC) e.getLoadedModuleContext();
 		BreakpointsMediator2 bm = getServicesTracker().getService(BreakpointsMediator2.class);
 		if (bm == null) {
@@ -871,7 +875,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 						EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
 								"resume process after module load event ...");
 						if (requireResume)
-							executionDMC.resume(new RequestMonitor(getExecutor(), null));
+							((ExecutionDMC) executionDMC).resume(new RequestMonitor(getExecutor(), null));
 					}
 				});
 			}
@@ -930,15 +934,31 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			// the point is a symbol
 			IEDCSymbolReader symReader = module.getSymbolReader();
 			if (symReader != null) {
-				Collection<IFunctionScope> functions = symReader.getModuleScope().getFunctionsByName(startupStopAt);
-				if (!functions.isEmpty()) {
-					// TODO what if there are multiple functions with this name?
-					iaddr = module.toRuntimeAddress(functions.iterator().next().getLowAddress());
+				// Only look at the symbol table, since we only need the
+				// address, and we want to avoid a full scan of debug info
+				// in case there is a mistyped (or missing) identifier.
+				// bug 303129
+				
+				// assume it's the human-readable name first
+				Collection<ISymbol> symbols = symReader.findUnmangledSymbols(startupStopAt);
+				if (symbols.isEmpty()) {
+					// else look for a raw symbol
+					symbols = symReader.findSymbols(startupStopAt);
+				}
+				for (ISymbol symbol : symbols) {
+					// only consider possible functions (TODO, ISymbol is not descriptive enough)
+					if (symbol.getSize() > 0) {
+						// TODO what if there are multiple symbols with this name?
+						iaddr = module.toRuntimeAddress(symbol.getAddress());
+						break;
+					}
 				}
 			}
 		}
 
 		if (iaddr == null) {
+			EDCDebugger.getMessageLogger().logError(
+					"Could not resolve startup breakpoint: "+ startupStopAt, null);
 			rm.done();
 		} else {
 			// The breakpoint is resolved in the module.

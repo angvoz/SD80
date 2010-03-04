@@ -30,8 +30,8 @@ import java.util.Stack;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
-import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.MemoryStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.ArrayBoundType;
@@ -46,15 +46,8 @@ import org.eclipse.cdt.debug.edc.internal.symbols.FunctionScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.internal.symbols.InheritanceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.LexicalBlockScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.LineEntry;
@@ -73,8 +66,15 @@ import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.A
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.CompilationUnitHeader;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.ForwardTypeReference;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.PublicNameInfo;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSection;
-import org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IPath;
 
@@ -2164,8 +2164,9 @@ public class DwarfInfoReader {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
-
-		PointerType type = new PointerType(name, currentParentScope, null);
+		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
+		
+		PointerType type = new PointerType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);

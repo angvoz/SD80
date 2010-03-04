@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.core.runtime.IPath;
 
 public class LineEntry implements ILineEntry {

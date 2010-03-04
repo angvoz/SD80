@@ -12,9 +12,9 @@
 package org.eclipse.cdt.debug.edc;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.dsf.debug.service.IMemory;
+import org.eclipse.cdt.dsf.debug.service.IRegisters;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -49,6 +49,6 @@ public interface IAddressExpressionEvaluator {
 	 * @throws CoreException
 	 *             on any error.
 	 */
-	IAddress evaluate(ExecutionDMC context, String expression, Registers regService, Memory memService)
+	IAddress evaluate(IExecutionDMContext context, String expression, IRegisters regService, IMemory memService)
 			throws CoreException;
 }

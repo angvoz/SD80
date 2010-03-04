@@ -12,6 +12,9 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.util.Map;
 
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+
 
 public class Type implements IType {
 

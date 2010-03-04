@@ -34,6 +34,7 @@ import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.launch.IEDCLaunchConfigurationConstants;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IProject;
@@ -480,7 +481,7 @@ public class SnapshotUtils extends PlatformObject {
 		}
 		ILaunchConfiguration proxyLaunchConfig = findExistingLaunchForAlbum(album);
 		if (proxyLaunchConfig == null) {
-			String lcName = lm.generateUniqueLaunchConfigurationNameFrom(album.getDisplayName());
+			String lcName = lm.generateLaunchConfigurationName(album.getDisplayName());
 			ILaunchConfigurationWorkingCopy proxyLaunchConfigWC = null;
 			try {
 				proxyLaunchConfigWC = launchType.newInstance(null, lcName);
@@ -513,7 +514,7 @@ public class SnapshotUtils extends PlatformObject {
 		return false;
 	}
 	
-	static public ILaunchConfiguration findExistingLaunchForAlbum(Album album) {
+	static public ILaunchConfiguration findExistingLaunchForAlbum(IAlbum album) {
 		ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
 		ILaunchConfigurationType launchType = lm.getLaunchConfigurationType(album.getLaunchTypeID());
 		if (launchType == null){

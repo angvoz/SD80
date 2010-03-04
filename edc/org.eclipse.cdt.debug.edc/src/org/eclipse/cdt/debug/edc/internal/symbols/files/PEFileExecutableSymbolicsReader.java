@@ -19,6 +19,8 @@ import java.util.Map;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
 import org.eclipse.cdt.debug.edc.internal.symbols.Symbol;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
+import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.cdt.utils.coff.PE;
@@ -40,6 +42,31 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 		sectionMapper = new SectionMapper(binaryFile, isLE);
 		
 		recordSections(peFile);
+		
+		// TODO: better selection.
+		boolean isWin32 = false, isEABI = false;
+		for (ISymbol symbol : symbols) {
+			String symname = symbol.getName();
+			if (symname.startsWith("__Z") && symname.endsWith("v")) {
+				isWin32 = true;
+				isEABI = true;
+				break;
+			} else if (symname.startsWith("_Z") && symname.endsWith("v")) {
+				isEABI = true;
+				break;
+			} else if (symname.contains("@") && symname.contains("?")) {
+				isWin32 = true;
+				break;
+			}
+		}
+		if (isWin32 && isEABI)
+			unmangler = new UnmanglerWin32EABI();
+		else if (isEABI)
+			unmangler = new UnmanglerEABI();
+		else
+			unmangler = new UnmanglerWin32();
+			
+		
 	}
 	
 	/**
@@ -102,7 +129,9 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 
 		// load the symbol table
 		for (org.eclipse.cdt.utils.coff.Coff.Symbol symbol : peFile.getSymbols()) {
-			symbols.add(new Symbol(symbol.toString(), new Addr32(symbol.n_value), 1));
+			String symName = symbol.getName(peFile.getStringTable());
+			//System.out.println(symbols.size() + ": " + symName);
+			symbols.add(new Symbol(symName, new Addr32(symbol.n_value), 1));
 		}
 
 		// now sort it by address for faster lookups

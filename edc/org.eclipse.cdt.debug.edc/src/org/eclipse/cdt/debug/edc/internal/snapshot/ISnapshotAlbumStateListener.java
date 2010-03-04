@@ -10,8 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.snapshot;
 
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
+
 public interface ISnapshotAlbumStateListener {
 
-	public void albumChanged(Album album);
+	public void albumChanged(IAlbum album);
 	
 }

@@ -13,6 +13,9 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
@@ -37,7 +40,7 @@ public class Processes extends AbstractEDCService implements IProcesses, IEventL
 
 		public ExecutionDMData(ExecutionDMC dmc) {
 			id = (String) dmc.getProperty(ProtocolConstants.PROP_OS_ID);
-			name = (String) dmc.getProperty(DMContext.PROP_NAME);
+			name = (String) dmc.getProperty(IEDCDMContext.PROP_NAME);
 		}
 
 		public String getId() {
@@ -91,7 +94,7 @@ public class Processes extends AbstractEDCService implements IProcesses, IEventL
 	}
 
 	public void getExecutionData(IThreadDMContext dmc, DataRequestMonitor<IThreadDMData> rm) {
-		if (dmc instanceof ExecutionDMC)
+		if (dmc instanceof IEDCExecutionDMC)
 			rm.setData(new ExecutionDMData((ExecutionDMC) dmc));
 		rm.done();
 	}

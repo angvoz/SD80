@@ -12,6 +12,8 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.util.Map;
 
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+
 public class ClassType extends CompositeType {
 
 	public ClassType(String name, IScope scope, int byteSize, Map<Object, Object> properties) {

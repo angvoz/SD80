@@ -12,6 +12,8 @@ package org.eclipse.cdt.debug.edc.internal.symbols.files;
 
 import java.io.IOException;
 
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReaderFactory;
 import org.eclipse.cdt.utils.coff.PE;
 import org.eclipse.core.runtime.IPath;
 

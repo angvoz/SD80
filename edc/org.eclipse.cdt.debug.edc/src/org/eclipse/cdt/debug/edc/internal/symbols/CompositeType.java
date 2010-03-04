@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+
 public class CompositeType extends MayBeQualifiedType implements ICompositeType {
 	
 	// kind of composite (class, struct, union)

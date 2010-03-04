@@ -15,6 +15,10 @@ import org.eclipse.osgi.util.NLS;
 public class EDCServicesMessages extends NLS {
 	private static final String BUNDLE_NAME = "org.eclipse.cdt.debug.edc.internal.services.dsf.EDCServicesMessages"; //$NON-NLS-1$
 
+	public static String Expressions_DecimalSuffix;
+
+	public static String Expressions_ErrorInVariableFormatter;
+
 	public static String Expressions_SyntaxError;
 
 	static {

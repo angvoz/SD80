@@ -11,13 +11,15 @@
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.ISnapshots;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.StateChangeReason;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
 
-public class Snapshots extends AbstractEDCService {
+public class Snapshots extends AbstractEDCService implements ISnapshots {
 
 	public Snapshots(DsfSession session) {
 		super(session, new String[] { Snapshots.class.getName() });

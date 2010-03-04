@@ -10,10 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
-import org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IType;
 import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
+import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 
 public class DwarfVariable extends Variable {
 

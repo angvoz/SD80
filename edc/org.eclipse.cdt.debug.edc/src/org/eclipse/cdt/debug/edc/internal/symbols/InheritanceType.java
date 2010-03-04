@@ -12,6 +12,8 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.util.Map;
 
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+
 public class InheritanceType extends Type implements IInheritance {
 
 	// access type of inheritance

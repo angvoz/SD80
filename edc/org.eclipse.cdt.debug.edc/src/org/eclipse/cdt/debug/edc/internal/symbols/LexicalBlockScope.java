@@ -15,6 +15,9 @@ import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IVariable;
 
 public class LexicalBlockScope extends Scope implements ILexicalBlockScope {
 

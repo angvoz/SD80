@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 
 /**
  * Interface for basic types.

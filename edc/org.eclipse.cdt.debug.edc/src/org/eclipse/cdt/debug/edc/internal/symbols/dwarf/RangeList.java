@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.eclipse.cdt.debug.edc.internal.symbols.IRangeList;
+import org.eclipse.cdt.debug.edc.symbols.IRangeList;
 
 /**
  * This is a range of non-contiguous addresses 

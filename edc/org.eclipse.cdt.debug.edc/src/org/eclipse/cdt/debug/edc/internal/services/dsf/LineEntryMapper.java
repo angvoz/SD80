@@ -23,9 +23,9 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.EDCAddressRange;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry;
-import org.eclipse.cdt.debug.edc.internal.symbols.ILineEntryProvider;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleLineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
 import org.eclipse.core.runtime.IPath;
 

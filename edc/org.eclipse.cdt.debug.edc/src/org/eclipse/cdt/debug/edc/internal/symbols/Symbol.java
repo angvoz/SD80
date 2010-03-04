@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 
 public class Symbol implements ISymbol {
 

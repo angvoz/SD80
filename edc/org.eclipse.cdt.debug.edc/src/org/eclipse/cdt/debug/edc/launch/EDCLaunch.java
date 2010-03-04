@@ -28,6 +28,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.RootExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DefaultDsfExecutor;
@@ -344,12 +345,12 @@ public class EDCLaunch extends Launch {
 		}
 	}
 
-	public Album getAlbum() {
+	public IAlbum getAlbum() {
 		return album;
 	}
 
-	public void setAlbum(Album album) {
-		this.album = album;
+	public void setAlbum(IAlbum album) {
+		this.album = (Album) album;
 	}
 
 	public boolean isSnapshotLaunch() {
@@ -393,7 +394,7 @@ public class EDCLaunch extends Launch {
 				}
 				album.setSessionID(session.getId());
 
-				Album album = Album.getAlbumBySession(session.getId());
+				IAlbum album = Album.getAlbumBySession(session.getId());
 				DsfSourceLookupDirector director = (DsfSourceLookupDirector) getSourceLocator();
 				album.configureSourceLookupDirector(director);
 			} else {

@@ -24,3 +24,5 @@ which in turns depends on
 	* org.eclipse.core.jobs
 	* org.eclipse.core.contenttype
 	
+Rebuild the agent by using File > Export > Runnable JAR File, selecting 
+"Package required libraries into Generated JAR".

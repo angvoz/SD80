@@ -12,6 +12,7 @@
 package org.eclipse.cdt.debug.edc.agent.gdbserver.services;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.cdt.debug.edc.agent.gdbserver.CommandLineArguments;
 import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbRemoteProtocol;
 import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbRemoteProtocolX86;
 import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbserverAgent;
@@ -52,9 +54,7 @@ public class ProcessesService implements IProcesses {
 	// These record parameters for launch-process debug.
 	private String file;
 
-	@SuppressWarnings("unused")
 	private String directory, commandLine[];
-	@SuppressWarnings("unused")
 	private Map<String, String> environment;
 
 	// These record parameters for attach debug.
@@ -368,16 +368,37 @@ public class ProcessesService implements IProcesses {
 		}
 
 		// start gdbserver
-		String cmd;
-		if (attach)
-			cmd = "gdbserver --attach :" + port + " " + processIDToAttach;
-		else
-			cmd = "gdbserver :" + port + " " + file;
+		List<String> cmdLine = new ArrayList<String>();
+		cmdLine.add("gdbserver");
+		if (attach) {
+			cmdLine.add("--attach");
+			cmdLine.add(":" + port);
+			cmdLine.add("" + processIDToAttach);
+		}
+		else {
+			cmdLine.add(":" + port);
+			cmdLine.add(file);
+			// entry 0 is the executable
+			for (int i = 1; i < commandLine.length; i++) {
+				cmdLine.add(commandLine[i]);
+			}
+			if (environment != null && !environment.isEmpty()) {
+				cmdLine = CommandLineArguments.createFromCommandLine(
+						CommandLineArguments.wrapStandardUnixShellCommandLine("/bin/sh", 
+								cmdLine, environment, 
+								(directory != null && directory.length() > 0 ? new File(directory) : null)));
+			}
+		}
 
 		try {
-			fGdbserverProcess = Runtime.getRuntime().exec(cmd);
+			fGdbserverProcess = Runtime.getRuntime().exec((String[]) cmdLine.toArray(new String[cmdLine.size()]));
 		} catch (IOException e1) {
-			throw new AgentException("Failed to launch gdbserver with command: " + cmd, e1);
+			StringBuilder fullCmdLine = new StringBuilder();
+			for (String arg : commandLine) {
+				fullCmdLine.append(arg);
+				fullCmdLine.append(' ');
+			}
+			throw new AgentException("Failed to launch gdbserver with command: " + fullCmdLine, e1);
 		}
 
 		// Wait some time for the process to start.

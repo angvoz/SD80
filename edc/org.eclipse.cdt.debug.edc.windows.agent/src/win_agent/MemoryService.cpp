@@ -14,6 +14,7 @@
 #include "TCFChannel.h"
 #include "TCFHeaders.h"
 #include "ContextManager.h"
+#include "RunControlContext.h"
 
 static const char * sServiceName = "Memory";
 
@@ -42,7 +43,9 @@ void MemoryService::command_set(char * token, Channel * c) {
 	TCFChannel channel(c);
 	std::string id = channel.readString();
 	channel.readZero();
-	Context* context = ContextManager::FindDebuggedContext(id);
+
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+
 	unsigned long address = channel.readULong();
 	channel.readZero();
 	long wordSize = channel.readLong();
@@ -91,7 +94,7 @@ void MemoryService::command_get(char * token, Channel * c) {
 	char* memBuffer = new char[size];
 	int memBufferSize = size;
 
-	Context* context = ContextManager::FindDebuggedContext(id);
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
 
 	if (context != NULL)
 	{
@@ -114,7 +117,9 @@ void MemoryService::command_fill(char * token, Channel * c) {
 	TCFChannel channel(c);
 	std::string id = channel.readString();
 	channel.readZero();
-	Context* context = ContextManager::FindDebuggedContext(id);
+
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+
 	unsigned long address = channel.readULong();
 	channel.readZero();
 	long wordSize = channel.readLong();

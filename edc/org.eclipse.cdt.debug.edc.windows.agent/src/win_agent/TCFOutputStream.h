@@ -9,8 +9,18 @@
  * Nokia - Initial API and implementation
  *******************************************************************************/
 #pragma once
-#include "TCFHeaders.h"
+
 #include <string>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "streams.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 class TCFOutputStream {
 public:

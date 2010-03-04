@@ -17,6 +17,11 @@
  * host debugger of EDC. 
  */
 
+// This is supplement to properties in IRunControl.
+// ID of a context in hosting OS (e.g. process id, thread id).
+// Supposed to replace IRunControl.PROCESS_ID
+#define PROP_OS_ID 	"OSID"  // value type: string
+
 /*
  * These are properties that a TCF agent should report with module-load or
  * module-unload events. They are all optional. But if relocation does
@@ -26,11 +31,11 @@
 #define PROP_FILE     "File" // module file name
 #define PROP_TIME     "Time"
 #define PROP_MODULE_LOADED     "Loaded"	// Boolean, whether loaded or unloaded.
-#define PROP_CODE_SIZE     "CodeSize" 		// value type: Number.
+#define PROP_CODE_SIZE     "CodeSize" 		// value type: Number (c++ int or long).
 #define PROP_DATA_SIZE     "DataSize" 		// value type: Number.
 #define PROP_BSS_SIZE     "BssSize"			// value type: Number.
 // image base address for modules (PE file) from Windows
-#define PROP_IMAGE_BASE_ADDRESS     "ImageBaseAddress" // value type: Number (c++ int or long). 
+#define PROP_IMAGE_BASE_ADDRESS     "ImageBaseAddress" // value type: Number.
 // following are for systems that can give us such info.
 // Note these are mutually exclusive with PROP_IMAGE_BASE_ADDRESS.
 #define PROP_CODE_ADDRESS     "CodeAddress" 	// value type: Number. 

@@ -12,23 +12,31 @@
 #include "ContextManager.h"
 #include "AgentUtils.h"
 
-Context::Context(ContextOSID osid, ContextID parentID, ContextID internalID) {
-	// No, we need to make sure the internalID remains the same for the same context
-	// (e.g. a process) in OS when we create "context" object.
-	// this->internalID = ContextManager::GenerateInternalID();
+/*
+ * Create a new context.
+ */
+Context::Context(ContextID parentID, ContextID internalID) {
 	this->internalID = internalID;
 	this->parentID = parentID;
 
-	pid = osid;
-	can_suspend = true;
-	can_resume = true;
-	can_terminate = true;
-
-//	ContextManager::AddContext(internalID, this);
+	// Don't add the context to any context cache here as there are different
+	// caches for different purposes.
+	// See ContextManager for more.
 }
 
 Context::~Context() {
-	ContextManager::RemoveDebuggedContext(internalID);
+	for (Properties::iterator iter = properties.begin(); iter != properties.end(); iter++)
+		delete iter->second;
+
+	// remove the context from any context cache.
+	// Note it does not hurt even if the context is not in the cache.
+	ContextManager::RemoveDebuggedContext(GetID());
+}
+
+void Context::initialize()
+{
+	SetProperty(PROP_ID, new PropertyValue(internalID));
+	SetProperty(PROP_PARENT_ID, new PropertyValue(parentID));
 }
 
 ContextID Context::GetID() {
@@ -39,11 +47,7 @@ ContextID Context::GetParentID() {
 	return parentID;
 }
 
-ContextOSID Context::GetOSID() {
-	return pid;
-}
-
-std::map<std::string, std::string> Context::GetProperties() {
+Properties Context::GetProperties() {
 	return properties;
 }
 
@@ -59,34 +63,10 @@ std::list<Context*> Context::GetChildren() {
 	return children_;
 }
 
-bool Context::CanSuspend() {
-	return can_suspend;
-}
-
-void Context::SetCanSuspend(bool yes) {
-	can_suspend = yes;
-}
-
-bool Context::CanResume() {
-	return can_resume;
-}
-
-void Context::SetCanResume(bool yes) {
-	can_resume = yes;
-}
-
-bool Context::CanTerminate() {
-	return can_terminate;
-}
-
-void Context::SetCanTerminate(bool yes) {
-	can_terminate = yes;
-}
-
-std::string Context::GetProperty(std::string key) {
+PropertyValue* Context::GetProperty(std::string key) {
 	return properties[key];
 }
 
-void Context::SetProperty(std::string key, std::string value) {
+void Context::SetProperty(std::string key, PropertyValue* value) {
 	properties[key] = value;
 }

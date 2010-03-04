@@ -25,6 +25,7 @@
 static const char * sServiceName = "Processes";
 
 static std::string quoteIfNeeded(const char* source);
+static void initializeDebugSession();
 
 ProcessService::ProcessService(Protocol * proto) :
 	TCFService(proto) {
@@ -107,7 +108,7 @@ void ProcessService::command_get_children(char * token, Channel * c) {
         }
         else {
         	// Get rid of stale cache.
-        	ContextManager::FlushRunningContextCache();
+        	ContextManager::ClearRunningContextCache();
 
             int cnt = 0;
             write_stream(&c->out, '[');
@@ -145,7 +146,7 @@ void ProcessService::command_attach(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::FindRunningContext(id);
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindRunningContext(id));
 
 	channel.writeReplyHeader(token);
 
@@ -216,6 +217,8 @@ void ProcessService::command_start(char * token, Channel * c) {
 	channel.readZero();
 	std::string executable = channel.readString();
 	channel.readZero();
+
+	initializeDebugSession();
 
 	char ** args = NULL;
 	char ** envp = NULL;
@@ -335,3 +338,11 @@ static std::string quoteIfNeeded(const char* source) {
 
 	return target;
 }
+
+static void initializeDebugSession() {
+	// Clear stale data (and free memory).
+	// It's not easy to know when the debug session ends in agent. So we
+	// do this at beginning of a debug session.
+	ContextManager::ClearContextCache();
+}
+

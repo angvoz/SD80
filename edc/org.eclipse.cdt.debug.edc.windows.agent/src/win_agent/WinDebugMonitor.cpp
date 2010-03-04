@@ -590,6 +590,7 @@ void WinDebugMonitor::HandleProcessExitedEvent(DEBUG_EVENT& debugEvent)
 	WinProcess* process = WinProcess::GetProcessByID(debugEvent.dwProcessId);
 	EventClientNotifier::SendContextRemoved(process);
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
+
 	delete process;
 }
 
@@ -598,6 +599,7 @@ void WinDebugMonitor::HandleThreadExitedEvent(DEBUG_EVENT& debugEvent)
 	WinThread* thread = WinThread::GetThreadByID(debugEvent.dwProcessId, debugEvent.dwThreadId);
 	EventClientNotifier::SendContextRemoved(thread);
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
+
 	delete thread;
 }
 

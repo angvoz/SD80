@@ -12,34 +12,23 @@
 
 #include <vector>
 #include "stdafx.h"
-#include "Context.h"
+#include "RunControlContext.h"
 
 class WinThread;
 class WinDebugMonitor;
 
-class WinProcess: public Context {
+class WinProcess: public RunControlContext {
 public:
 	WinProcess(WinDebugMonitor* monitor, DEBUG_EVENT& debugEvent);
 	WinProcess(DWORD procID, std::string procName);
 
 	~WinProcess(void);
 
-	virtual ContextAddress GetPCAddress();
-	virtual std::string GetSuspendReason();
-
-	virtual std::vector<std::string> GetRegisterValues(
-			std::vector<std::string> registerIDs);
-
-	virtual void SetRegisterValues(std::vector<std::string> registerIDs,
-			std::vector<std::string> registerValues);
-
 	virtual int ReadMemory(unsigned long address, unsigned long size,
 			char* memBuffer, unsigned long bufferSize, unsigned long& sizeRead);
 	virtual int WriteMemory(unsigned long address, unsigned long size,
 			char* memBuffer, unsigned long bufferSize,
 			unsigned long& sizeWritten);
-
-	virtual void AttachSelf() throw (AgentException);
 
 	virtual void Resume() throw (AgentException);
 
@@ -61,8 +50,10 @@ public:
 
 	static ContextID CreateInternalID(ContextOSID osID);
 
-private:
+protected:
+	virtual void initialize();
 
+private:
 	bool isRoot_;
 	HANDLE processHandle_;
 	std::string processName_;

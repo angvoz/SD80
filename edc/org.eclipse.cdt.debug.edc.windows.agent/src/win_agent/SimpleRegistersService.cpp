@@ -12,31 +12,32 @@
 #include <string>
 #include <vector>
 
-#include "RegisterService.h"
+#include "SimpleRegistersService.h"
 
 #include "DebugMonitor.h"
 #include "ContextManager.h"
 #include "TCFChannel.h"
+#include "WinThread.h"
 
 static const char * sServiceName = "SimpleRegisters";
 
-RegisterService::RegisterService(Protocol * proto) :
+SimpleRegistersService::SimpleRegistersService(Protocol * proto) :
 	TCFService(proto) {
 	AddCommand("get", command_get);
 	AddCommand("set", command_set);
 }
 
-RegisterService::~RegisterService(void) {
+SimpleRegistersService::~SimpleRegistersService(void) {
 }
 
-const char* RegisterService::GetName() {
+const char* SimpleRegistersService::GetName() {
 	return sServiceName;
 }
 
 /*
  * register values are passed as hex-string in big-endian
  */
-void RegisterService::command_get(char * token, Channel * c) {
+void SimpleRegistersService::command_get(char * token, Channel * c) {
 	TCFChannel channel(c);
 	std::vector<std::string> registerIDs;
 
@@ -75,7 +76,7 @@ void RegisterService::command_get(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::FindDebuggedContext(exeContextID);
+	WinThread* context = dynamic_cast<WinThread *>(ContextManager::FindDebuggedContext(exeContextID));
 
 	channel.writeReplyHeader(token);
 
@@ -119,7 +120,7 @@ void RegisterService::command_get(char * token, Channel * c) {
 /*
  * register values are passed as hex-string in big-endian
  */
-void RegisterService::command_set(char * token, Channel * c) {
+void SimpleRegistersService::command_set(char * token, Channel * c) {
 	TCFChannel channel(c);
 	std::vector<std::string> registerIDs;
 	std::vector<std::string> registerValues;
@@ -183,7 +184,7 @@ void RegisterService::command_set(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::FindDebuggedContext(exeContextID);
+	WinThread* context = dynamic_cast<WinThread *>(ContextManager::FindDebuggedContext(exeContextID));
 
 	if (context != NULL) {
 		context->SetRegisterValues(registerIDs, registerValues);

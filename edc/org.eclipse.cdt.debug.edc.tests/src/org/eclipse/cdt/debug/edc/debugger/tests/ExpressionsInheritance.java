@@ -10,14 +10,13 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
-import junit.framework.Assert;
-
-import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class ExpressionsInheritance extends SimpleDebuggerTest {
 
-	Album album;
+	IAlbum album;
 
 	/*
 	 * Note: This assumes you are at a breakpoint where the following are true:
@@ -32,7 +31,7 @@ h _salary =
 	 * 5000.0 and otherwise a default Person
 	 */
 	@Test
-	public void expressionsSimpleInheritance() throws Exception {
+	public void testExpressionsSimpleInheritance() throws Exception {
 		Assert.assertEquals("20", getExpressionValue("Jane._age"));
 		Assert.assertEquals("72", getExpressionValue("Jane._height"));
 		Assert.assertEquals("150", getExpressionValue("Jane._weight"));
@@ -51,6 +50,7 @@ h _salary =
 	}
 
 	// TODO
+	@Test
 	public void testExpressionsMultipleInheritance() {
 		// go to next snapshot in the album
 		if (album != null) {

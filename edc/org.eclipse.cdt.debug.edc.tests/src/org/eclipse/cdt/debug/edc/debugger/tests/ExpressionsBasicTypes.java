@@ -10,15 +10,13 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
-import junit.framework.Assert;
-
+import org.junit.Assert;
 import org.junit.Test;
 
 public class ExpressionsBasicTypes extends SimpleDebuggerTest {
 
 	@Test
 	public void testExpressionsWithoutVariables() throws Exception {
-		launchAndWaitForSuspendedContext();
 
 		// expressions without operators
 		// No booleans, which need logical operators (e.g. ==, !=, etc.)
@@ -307,7 +305,6 @@ public class ExpressionsBasicTypes extends SimpleDebuggerTest {
 	 */
 	@Test
 	public void testExpressionsWithVariables() throws Exception {
-		launchAndWaitForSuspendedContext();
 
 		// expressions with variables, but without operators
 
@@ -317,7 +314,9 @@ public class ExpressionsBasicTypes extends SimpleDebuggerTest {
 		Assert.assertEquals("55.55", getExpressionValue("lfloat"));
 		Assert.assertEquals("222.222", getExpressionValue("ldouble"));
 		Assert.assertEquals("123456789", getExpressionValue("llong"));
-		Assert.assertEquals("0x22ff00", getExpressionValue("larray"));
+		// custom formatting of character arrays is on by default
+//		Assert.assertEquals("0x22ff00", getExpressionValue("larray"));
+		Assert.assertEquals("['t', 'e', 's', 't', 'i', 'n', 'g', '\\0']", getExpressionValue("larray"));
 
 		// logical operations
 

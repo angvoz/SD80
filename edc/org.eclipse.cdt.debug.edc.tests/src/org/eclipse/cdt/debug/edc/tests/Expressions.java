@@ -10,8 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.tests;
 
-import junit.framework.Assert;
-
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.debugger.tests.SimpleDebuggerTest;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
@@ -22,6 +20,7 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Interpret
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.VariableWithValue;
 import org.eclipse.osgi.framework.debug.FrameworkDebugOptions;
+import org.junit.Assert;
 import org.junit.Test;
 
 @SuppressWarnings("restriction")

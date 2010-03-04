@@ -12,9 +12,9 @@
 package org.eclipse.cdt.debug.edc.tests;
 
 import static org.junit.Assert.fail;
-import junit.framework.Assert;
 
 import org.eclipse.cdt.debug.edc.tcf.extension.AgentUtils;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**

@@ -14,8 +14,6 @@ package org.eclipse.cdt.debug.edc.tests;
 import java.util.Collection;
 import java.util.Map;
 
-import junit.framework.Assert;
-
 import org.eclipse.tm.tcf.core.AbstractPeer;
 import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.IPeer;
@@ -30,6 +28,7 @@ import org.eclipse.tm.tcf.services.IDiagnostics.DoneEcho;
 import org.eclipse.tm.tcf.services.ILocator.LocatorListener;
 import org.eclipse.tm.tcf.services.IProcesses.ProcessContext;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 

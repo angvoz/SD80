@@ -16,19 +16,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import junit.framework.Assert;
-import junit.framework.TestCase;
-
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.JumpToAddress;
-import org.eclipse.cdt.debug.edc.internal.disassembler.DisassembledInstruction;
-import org.eclipse.cdt.debug.edc.internal.disassembler.IDisassembler.IDisassemblerOptions;
-import org.eclipse.cdt.debug.edc.internal.disassembler.arm.DisassemblerARM;
-import org.eclipse.cdt.debug.edc.internal.disassembler.arm.InstructionParserARM;
-import org.eclipse.cdt.debug.edc.internal.disassembler.arm.DisassemblerARM.IDisassemblerOptionsARM;
+import org.eclipse.cdt.debug.edc.IJumpToAddress;
+import org.eclipse.cdt.debug.edc.JumpToAddress;
+import org.eclipse.cdt.debug.edc.arm.disassembler.DisassemblerARM;
+import org.eclipse.cdt.debug.edc.arm.disassembler.InstructionParserARM;
+import org.eclipse.cdt.debug.edc.arm.disassembler.DisassemblerARM.IDisassemblerOptionsARM;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.CoreException;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -36,7 +35,7 @@ import org.junit.Test;
 /**
  * Unit test for ARM disassembler.
  */
-public class TestDisassemblerARM extends TestCase {
+public class TestDisassemblerARM {
 
 	static Map<String, Object> armOptions = null;
 	static Map<String, Object> thumbOptions = null;
@@ -77,8 +76,6 @@ public class TestDisassemblerARM extends TestCase {
 	@Test
 	public void testArmv5Instructions() {
 		
-		beforeClass();
-		
 		System.out.println("\n===================== ARMv5 ========================\n");
 		String[] insts = { "E0 A1 00 02", "adc	r0,r1,r2", "E2 81 00 01", "add	r0,r1,#0x1", "E0 01 00 02",
 				"and	r0,r1,r2", "EA FF FF FE", "b		0x0", "EB FF FF FE", "bl		0x0", "E1 C1 00 02", "bic	r0,r1,r2",
@@ -116,8 +113,6 @@ public class TestDisassemblerARM extends TestCase {
 	@Test
 	public void testArmVFPInstructions() {
 		
-		beforeClass();
-		
 		System.out.println("\n====================== ARM VFP ======================\n");
 		String[] insts = { "EE B0 0B C1", "fabsd	d0,d1", "EE B0 0A E0", "fabss	s0,s1", "EE 31 0B 02", "faddd	d0,d1,d2",
 				"EE 30 0A 81", "fadds	s0,s1,s2", "EE B4 0B 41", "fcmpd	d0,d1", "EE B4 0A 60", "fcmps	s0,s1",
@@ -152,8 +147,6 @@ public class TestDisassemblerARM extends TestCase {
 	@Test
 	public void testArmConditionCode() {
 		
-		beforeClass();
-		
 		System.out.println("\n================ ARM Condition Code ================\n");
 		String[] insts = { "00 A1 00 02", "adceq	r0,r1,r2", "10 A1 00 02", "adcne	r0,r1,r2", "20 A1 00 02",
 				"adccs	r0,r1,r2", "30 A1 00 02", "adccc	r0,r1,r2", "40 A1 00 02", "adcmi	r0,r1,r2", "50 A1 00 02",
@@ -171,8 +164,6 @@ public class TestDisassemblerARM extends TestCase {
 	@Test
 	public void testArmAddrMode1() {
 		
-		beforeClass();
-		
 		System.out.println("\n================== ARM Addr Mode 1 ==================\n");
 		String[] insts = { "E2 81 00 11", "add	r0,r1,#0x11", "E0 81 00 02", "add	r0,r1,r2", "E0 81 08 82",
 				"add	r0,r1,r2,lsl #0x11", "E0 81 03 12", "add	r0,r1,r2,lsl r3", "E0 81 08 A2",
@@ -188,8 +179,6 @@ public class TestDisassemblerARM extends TestCase {
 	 */
 	@Test
 	public void testArmAddrMode2() {
-		
-		beforeClass();
 		
 		System.out.println("\n================== ARM Addr Mode 2 ==================\n");
 		String[] insts = { "E5 91 00 11", "ldr	r0,[r1,#0x11]", "E5 11 00 11", "ldr	r0,[r1,#-0x11]", "E7 91 00 02",
@@ -222,8 +211,6 @@ public class TestDisassemblerARM extends TestCase {
 	@Test
 	public void testArmAddrMode3() {
 		
-		beforeClass();
-		
 		System.out.println("\n================== ARM Addr Mode 3 ==================\n");
 		String[] insts = { "E1 C1 01 B0", "strh	r0,[r1,#0x10]", "E1 41 01 B0", "strh	r0,[r1,#-0x10]", "E1 81 00 B2",
 				"strh	r0,[r1,r2]", "E1 01 00 B2", "strh	r0,[r1,-r2]", "E1 E1 01 B0", "strh	r0,[r1,#0x10]!",
@@ -240,8 +227,6 @@ public class TestDisassemblerARM extends TestCase {
 	@Test
 	public void testArmAddrMode4() {
 		
-		beforeClass();
-		
 		System.out.println("\n================== ARM Addr Mode 4 ==================\n");
 		String[] insts = { "E8 90 00 06", "ldmia	r0,{r1,r2}", "E9 90 00 06", "ldmib	r0,{r1,r2}", "E8 10 00 06",
 				"ldmda	r0,{r1,r2}", "E9 10 00 06", "ldmdb	r0,{r1,r2}", };
@@ -254,8 +239,6 @@ public class TestDisassemblerARM extends TestCase {
 	 */
 	@Test
 	public void testArmAddrMode5() {
-		
-		beforeClass();
 		
 		System.out.println("\n================== ARM Addr Mode 5 ==================\n");
 		String[] insts = { "ED 92 10 04", "ldc	p0,cr1,[r2,#0x10]", "ED 12 10 04", "ldc	p0,cr1,[r2,#-0x10]",
@@ -270,8 +253,6 @@ public class TestDisassemblerARM extends TestCase {
 	 */
 	@Test
 	public void testArmBranches() {
-		
-		beforeClass();
 		
 		armOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		armOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
@@ -295,8 +276,6 @@ public class TestDisassemblerARM extends TestCase {
 	 */
 	@Test
 	public void testThumbInstructions() {
-		
-		beforeClass();
 		
 		System.out.println("\n======================= Thumb =======================\n");
 		String[] insts = { "41 48", "adc	r0,r1", "1D 08", "add	r0,r1,#0x4", "30 04", "add	r0,#0x4", "18 88",
@@ -327,8 +306,6 @@ public class TestDisassemblerARM extends TestCase {
 	 */
 	@Test
 	public void testThumbBranches() {
-		
-		beforeClass();
 		
 		thumbOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		thumbOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
@@ -366,7 +343,7 @@ public class TestDisassemblerARM extends TestCase {
 	/**
 	 * Disassemble a single instruction and verify the output.
 	 */
-	private void disassembleInst(long address, String code, JumpToAddress expectedJumpAddr, String expectedMnemonics,
+	private void disassembleInst(long address, String code, IJumpToAddress expectedJumpAddr, String expectedMnemonics,
 			Map<String, Object> options) {
 		if (options == null)
 			options = armOptions;
@@ -377,7 +354,7 @@ public class TestDisassemblerARM extends TestCase {
 
 		InstructionParserARM disa = new InstructionParserARM(addr, codeBuf);
 
-		DisassembledInstruction output = null;
+		IDisassembledInstruction output = null;
 		try {
 			output = disa.disassemble(options);
 		} catch (CoreException e) {

@@ -10,11 +10,12 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Registers.RegisterDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ThreadExecutionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.Registers;
+import org.eclipse.cdt.debug.edc.services.Registers.RegisterDMC;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
 import org.eclipse.cdt.debug.edc.tests.TestUtils.Condition;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -24,17 +25,11 @@ import org.eclipse.cdt.dsf.debug.service.IRegisters.IBitFieldDMData;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterGroupDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.junit.Test;
 
 public class RegisterView extends BaseLaunchTest {
 
-	@Override
-	protected void setUp() throws Exception {
-	}
-
-	@Override
-	protected void tearDown() throws Exception {
-	}
-
+	@Test
 	public void testRegisterView() throws Exception {
 		final EDCLaunch launch = createLaunch();
 		assertNotNull(launch);
@@ -112,7 +107,7 @@ public class RegisterView extends BaseLaunchTest {
 		final ThreadExecutionDMC contextHolder[] = { null };
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
-				for (ExecutionDMC context : executionDMC.getChildren()) {
+				for (IEDCExecutionDMC context : executionDMC.getChildren()) {
 					if (context instanceof ThreadExecutionDMC) {
 						contextHolder[0] = (ThreadExecutionDMC) context;
 						return true;

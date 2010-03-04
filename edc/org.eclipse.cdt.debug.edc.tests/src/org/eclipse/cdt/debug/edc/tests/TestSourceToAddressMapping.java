@@ -24,15 +24,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import junit.framework.AssertionFailedError;
-
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.LineEntryMapper;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.IFunctionScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IModuleLineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
@@ -230,7 +228,7 @@ public class TestSourceToAddressMapping extends BaseDwarfTestCase {
 		for (Map.Entry<LineInfo, List<String>> entry : info.lineToFunctionMap.entrySet()) {
 			try {
 				checkLineMapping(info, reader, moduleLineEntryProvider, entry.getKey(), entry.getValue());
-			} catch (AssertionFailedError e) {
+			} catch (AssertionError e) {
 				errors.append(e.getMessage());
 				errors.append('\n');
 			}

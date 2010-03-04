@@ -24,8 +24,8 @@ import java.nio.ByteOrder;
 
 import junit.framework.TestCase;
 
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.FileStreamBuffer;
-import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
 import org.junit.After;
 import org.junit.Test;
 

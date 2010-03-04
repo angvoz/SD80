@@ -10,10 +10,9 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
-import junit.framework.Assert;
-
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,7 +54,6 @@ public class Variables extends SimpleDebuggerTest {
 	
 	@Test
 	public void testLocalVariables() throws Exception {
-		launchAndWaitForSuspendedContext();
 		
 		Assert.assertEquals("4", TestUtils.getExpressionValue(session, frame, "SizeOfInt"));
 		Assert.assertEquals("1024", TestUtils.getExpressionValue(session, frame, "lint"));

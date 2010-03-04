@@ -24,6 +24,7 @@ import org.eclipse.cdt.dsf.debug.service.IMixedInstruction;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.junit.Test;
 
 public class DisassemblyView extends BaseLaunchTest {
 
@@ -40,14 +41,7 @@ public class DisassemblyView extends BaseLaunchTest {
 	static final int sLineNumber = 82; // line in above source file.
 	static final int sStartAddress = 0x4024ac, sEndAddress = 0x4024d2;
 
-	@Override
-	protected void setUp() throws Exception {
-	}
-
-	@Override
-	protected void tearDown() throws Exception {
-	}
-
+	@Test
 	public void testDisassemblyView() throws Exception {
 		EDCLaunch launch = createLaunch();
 		assertNotNull(launch);

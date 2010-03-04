@@ -152,6 +152,7 @@ public class SnapshotMetaDataTests extends TestCase {
 	public void testReadSnapshotXML() throws Exception {
 		BufferedInputStream stream = ZipFileUtils.openFile(testDSA1, "snapshot_1258585222710.xml", DSA_FILE_EXT);
 		assertNotNull(stream);
+		stream.close();
 		ZipFileUtils.unmount();
 	}
 	

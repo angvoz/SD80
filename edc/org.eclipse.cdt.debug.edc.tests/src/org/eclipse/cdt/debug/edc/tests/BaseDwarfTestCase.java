@@ -21,19 +21,18 @@ package org.eclipse.cdt.debug.edc.tests;
 import java.util.ArrayList;
 import java.util.List;
 
-import junit.framework.TestCase;
-
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
-import org.eclipse.cdt.debug.edc.internal.symbols.ICompileUnitScope;
-import org.eclipse.cdt.debug.edc.internal.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.internal.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.core.runtime.IPath;
 import org.junit.After;
+import org.junit.Assert;
 
 /**
  * Base class for DWARF tests.
  */
-public abstract class BaseDwarfTestCase extends TestCase {
+public abstract class BaseDwarfTestCase extends Assert {
 
 	protected static final String prefix = "resources/SymbolFiles/";
 	

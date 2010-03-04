@@ -21,18 +21,15 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import junit.framework.Assert;
-import junit.framework.TestCase;
-
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.HostOS;
-import org.eclipse.cdt.debug.edc.internal.disassembler.DisassembledInstruction;
-import org.eclipse.cdt.debug.edc.internal.disassembler.IDisassembler.IDisassemblerOptions;
-import org.eclipse.cdt.debug.edc.internal.disassembler.x86.DisassemblerX86;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
+import org.eclipse.cdt.debug.edc.x86.disassembler.DisassemblerX86;
 import org.eclipse.cdt.utils.elf.Elf;
 import org.eclipse.cdt.utils.elf.Elf.Section;
 import org.eclipse.core.runtime.CoreException;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,7 +37,7 @@ import org.junit.Test;
 /**
  * Disassemble any specified x86 binary file.
  */
-public class DisassembleX86Binary extends TestCase {
+public class DisassembleX86Binary {
 
 	static Map<String, Object> sOptions = null;
 	static DisassemblerX86 sDisassembler;
@@ -48,7 +45,7 @@ public class DisassembleX86Binary extends TestCase {
 	static boolean sOutputOnlyAsm; // no address, raw bytes, nor extra text.
 	private static boolean sAddSectionTitle;
 
-	private String fOutputFileName = "DisassemblerOutput";
+	private String fOutputFileName = "DisassemblerOutput.txt";
 
 	private String[] fDataFileNames;
 
@@ -70,7 +67,7 @@ public class DisassembleX86Binary extends TestCase {
 		fDataFileNames = getDataFileNames();
 
 		if (fOutputFileStream == null) {
-			File outputFile = File.createTempFile(fOutputFileName, "txt");
+			File outputFile = File.createTempFile(fOutputFileName, null);
 			fOutputFileStream = new PrintStream(new FileOutputStream(outputFile, false /*
 																						 * append?
 																						 */));
@@ -84,8 +81,6 @@ public class DisassembleX86Binary extends TestCase {
 
 	@Test
 	public void testDisassembleFiles() throws IOException {
-		
-		beforeClass();
 		
 		/*
 		 * set up common disassembler options.
@@ -160,7 +155,7 @@ public class DisassembleX86Binary extends TestCase {
 
 	private void disassemble1by1(IAddress addr, ByteBuffer codeBuffer) {
 		IAddress address = addr;
-		DisassembledInstruction inst = null;
+		IDisassembledInstruction inst = null;
 		int instSize = 0;
 
 		while (codeBuffer.hasRemaining()) {

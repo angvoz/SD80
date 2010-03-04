@@ -21,8 +21,8 @@ import java.io.File;
 import java.io.RandomAccessFile;
 import java.nio.ByteOrder;
 
+import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.FileStreamBuffer;
-import org.eclipse.cdt.debug.edc.internal.IStreamBuffer;
 import org.junit.After;
 import org.junit.Test;
 

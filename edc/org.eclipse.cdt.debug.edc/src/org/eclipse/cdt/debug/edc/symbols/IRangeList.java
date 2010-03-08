@@ -34,6 +34,10 @@ public interface IRangeList extends Iterable<IRangeList.Entry> {
 
 		final public long low, high;
 		
+		@Override
+		public String toString() {
+			return "[" + Long.toHexString(low) + "-" + Long.toHexString(high) + ")";
+		}
 		/* (non-Javadoc)
 		 * @see java.lang.Comparable#compareTo(java.lang.Object)
 		 */

@@ -110,7 +110,7 @@
          point="org.eclipse.cdt.debug.edc.variableFormatProvider">
       <variableFormatProvider
             class="org.eclipse.cdt.debug.edc.formatter.DefaultCStringFormatter"
-            id="org.eclipse.cdt.debug.edc.formatter.default.composite"
+            id="org.eclipse.cdt.debug.edc.formatter.default.cstring"
             label="Default C String Formatter">
       </variableFormatProvider>
    </extension>

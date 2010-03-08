@@ -24,6 +24,8 @@ import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
+import org.eclipse.cdt.debug.edc.services.IFrameRegisterProvider;
+import org.eclipse.cdt.debug.edc.services.IFrameRegisters;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
@@ -153,6 +155,27 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 		}
 
 		return lineEntries;
+	}
+	
+	/**
+	 * Get an accessor for registers in stack frames other than the current one.
+	 * <p>
+	 * Note: this is not meaningful by itselfis typically used from {@link StackFrameDMC#getFrameRegisters()}.
+	 * @param context
+	 * @param runtimeAddress
+	 * @return {@link IFrameRegisters} or <code>null</code>
+	 */
+	public IFrameRegisterProvider getFrameRegisterProvider(ISymbolDMContext context, IAddress runtimeAddress) {
+		Modules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, runtimeAddress);
+		if (module != null) {
+			IEDCSymbolReader reader = module.getSymbolReader();
+			if (reader != null) {
+				IFrameRegisterProvider frameRegisterProvider = reader.getModuleScope().getFrameRegisterProvider();
+				return frameRegisterProvider;
+			}
+		}
+		return null;
 	}
 
 	public static IEDCSymbolReader getSymbolReader(IPath modulePath) {

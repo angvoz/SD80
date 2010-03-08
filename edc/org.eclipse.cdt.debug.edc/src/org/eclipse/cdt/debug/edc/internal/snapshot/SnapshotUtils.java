@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.internal.snapshot;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,6 +78,7 @@ public class SnapshotUtils extends PlatformObject {
 	private static final String BOOLEAN_ATTRIBUTE = "booleanAttribute"; //$NON-NLS-1$
 	private static final String INT_ATTRIBUTE = "intAttribute"; //$NON-NLS-1$
 	private static final String LONG_ATTRIBUTE = "longAttribute"; //$NON-NLS-1$
+	private static final String BIG_INTEGER_ATTRIBUTE = "bigIntegerAttribute"; //$NON-NLS-1$
 	private static final String STRING_ATTRIBUTE = "stringAttribute"; //$NON-NLS-1$
 
 	@SuppressWarnings("unchecked")
@@ -102,6 +104,9 @@ public class SnapshotUtils extends PlatformObject {
 				} else if (value instanceof Long) {
 					valueString = ((Long) value).toString();
 					element = createKeyValueElement(doc, LONG_ATTRIBUTE, key, valueString);
+				} else if (value instanceof BigInteger) {
+					valueString = ((BigInteger) value).toString();
+					element = createKeyValueElement(doc, BIG_INTEGER_ATTRIBUTE, key, valueString);
 				} else if (value instanceof Boolean) {
 					valueString = ((Boolean) value).toString();
 					element = createKeyValueElement(doc, BOOLEAN_ATTRIBUTE, key, valueString);
@@ -111,6 +116,9 @@ public class SnapshotUtils extends PlatformObject {
 					element = createMapElement(doc, MAP_ATTRIBUTE, key, (Map<Object, Object>) value);
 				} else if (value instanceof Set<?>) {
 					element = createSetElement(doc, SET_ATTRIBUTE, key, (Set<Object>) value);
+				} else {
+					EDCDebugger.getMessageLogger().logError("Unsupported data type " + value.getClass(), null);
+					continue;
 				}
 				rootElement.appendChild(element);
 			}
@@ -187,7 +195,9 @@ public class SnapshotUtils extends PlatformObject {
 	/**
 	 * Creates a new <code>Element</code> for the specified
 	 * <code>java.util.Map</code>
-	 * 
+	 * <p>
+	 * NOTE: this creates a <String, String> map from your map -- your ISnapshot#loadSnapshot() implementation
+	 * must recover the right types.
 	 * @param doc
 	 *            the doc to add the element to
 	 * @param elementType
@@ -202,10 +212,9 @@ public class SnapshotUtils extends PlatformObject {
 	static protected Element createMapElement(Document doc, String elementType, String mapKey, Map<Object, Object> map) {
 		Element mapElement = doc.createElement(elementType);
 		mapElement.setAttribute(KEY, mapKey);
-		Iterator<Object> iterator = map.keySet().iterator();
-		while (iterator.hasNext()) {
-			String key = (String) iterator.next();
-			String value = (String) map.get(key);
+		for (Map.Entry<Object, Object> entry : map.entrySet()) {
+			String key = entry.getKey().toString();
+			String value = entry.getValue() != null ? entry.getValue().toString() : null;
 			Element element = doc.createElement(MAP_ENTRY);
 			element.setAttribute(KEY, key);
 			element.setAttribute(VALUE, value);
@@ -240,6 +249,8 @@ public class SnapshotUtils extends PlatformObject {
 							setIntegerAttribute(element, properties);
 						} else if (nodeName.equalsIgnoreCase(LONG_ATTRIBUTE)) {
 							setLongAttribute(element, properties);
+						} else if (nodeName.equalsIgnoreCase(BIG_INTEGER_ATTRIBUTE)) {
+							setBigIntegerAttribute(element, properties);
 						} else if (nodeName.equalsIgnoreCase(BOOLEAN_ATTRIBUTE)) {
 							setBooleanAttribute(element, properties);
 						} else if (nodeName.equalsIgnoreCase(LIST_ATTRIBUTE)) {
@@ -248,6 +259,8 @@ public class SnapshotUtils extends PlatformObject {
 							setMapAttribute(element, properties);
 						} else if (nodeName.equalsIgnoreCase(SET_ATTRIBUTE)) {
 							setSetAttribute(element, properties);
+						} else {
+							EDCDebugger.getMessageLogger().logError("Unsupported element: " + nodeName, null);
 						}
 					} catch (Exception e) {
 						// Some integers are longs and so will fail when adding 
@@ -289,7 +302,7 @@ public class SnapshotUtils extends PlatformObject {
 	}
 
 	/**
-	 * Loads an <code>Integer</code> from the specified element into the local
+	 * Loads an <code>Long</code> from the specified element into the local
 	 * attribute mapping
 	 * 
 	 * @param element
@@ -300,6 +313,18 @@ public class SnapshotUtils extends PlatformObject {
 		properties.put(element.getAttribute(KEY), new Long(element.getAttribute(VALUE)));
 	}
 
+	/**
+	 * Loads an <code>BigInteger</code> from the specified element into the local
+	 * attribute mapping
+	 * 
+	 * @param element
+	 *            the element to load from
+	 * @throws CoreException
+	 */
+	static protected void setBigIntegerAttribute(Element element, Map<String, Object> properties) throws CoreException {
+		properties.put(element.getAttribute(KEY), new BigInteger(element.getAttribute(VALUE)));
+	}
+	
 	/**
 	 * Loads a <code>Boolean</code> from the specified element into the local
 	 * attribute mapping
@@ -374,6 +399,9 @@ public class SnapshotUtils extends PlatformObject {
 	/**
 	 * Reads a <code>Map</code> attribute from the specified XML node and loads
 	 * it into the mapping of attributes
+	 * <p>
+	 * NOTE: this creates a <String, String> map -- your ISnapshot#loadSnapshot() implementation
+	 * must recover the right types.
 	 * 
 	 * @param element
 	 *            the element to read the map attribute from

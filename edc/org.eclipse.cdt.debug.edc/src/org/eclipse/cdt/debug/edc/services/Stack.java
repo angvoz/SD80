@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.services;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,11 +28,12 @@ import org.eclipse.cdt.debug.edc.internal.launch.CSourceLookup;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
-import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
@@ -127,16 +129,100 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
      **/
     public interface IEnumeratorDMContext {}
 
+    public static final class CurrentFrameRegisters implements IFrameRegisters {
+    	private final Registers registers;
+		private final IEDCExecutionDMC executionDMC;
+    	
+    	public CurrentFrameRegisters(IEDCExecutionDMC executionDMC, Registers registers) {
+    		this.executionDMC = executionDMC;
+			this.registers = registers;
+    	}
+    	
+    	public BigInteger getRegister(int regnum, int bytes) throws CoreException {
+    		String value = registers.getRegisterValue(executionDMC, regnum);
+    		if (value.equals(Registers.REGISTER_VALUE_ERROR))
+    			throw EDCDebugger.newCoreException("failed to read register");
+    		return new BigInteger(value, 16);
+    	}
+    }
+    
+    /**
+	 * Frame registers read from preserved registers on the stack frame.
+	 */
+	public static class PreservedFrameRegisters implements IFrameRegisters {
+		private final Map<Integer, BigInteger> preservedRegisters;
+		private final DsfServicesTracker dsfServicesTracker;
+		private final StackFrameDMC context;
+
+		/**
+		 * @param preservedRegisters map of register number to the address
+		 * where the register is saved
+		 */
+		public PreservedFrameRegisters(DsfServicesTracker dsfServicesTracker,
+				StackFrameDMC context,
+				Map<Integer, BigInteger> preservedRegisters) {
+			this.dsfServicesTracker = dsfServicesTracker;
+			this.context = context;
+			this.preservedRegisters = preservedRegisters;
+		}
+
+		public BigInteger getRegister(int regnum, int bytes) throws CoreException {
+			BigInteger addrVal = preservedRegisters.get(regnum);
+			if (addrVal != null) {
+				MemoryVariableLocation location = new MemoryVariableLocation(
+						dsfServicesTracker, context, 
+						addrVal, true);
+				return location.readValue(bytes);
+			}
+			throw EDCDebugger.newCoreException("cannot read $R" + regnum + " from frame");
+		}
+	}
+
+	/**
+	 * Frame registers which always throws an exception.
+	 */
+	public static class AlwaysFailingFrameRegisters implements
+			IFrameRegisters {
+		private final CoreException e;
+
+		public AlwaysFailingFrameRegisters(CoreException e) {
+			this.e = e;
+		}
+
+		public BigInteger getRegister(int regnum, int bytes) throws CoreException {
+			throw e;
+		}
+	}
+
 	public class StackFrameDMC extends DMContext implements IFrameDMContext, Comparable<StackFrameDMC>,
 			ISnapshotContributor {
 
-		public static final String LEVEL_INDEX = "Level"; // The first frame is level zero
+		/** 
+		 * Stack frame level.  Zero is used for the first frame, where the PC is.
+		 */
+		public static final String LEVEL_INDEX = "Level";
+		/**
+		 * If set and True, tells that this frame is the topmost that we can fetch.
+		 */
+		public static final String ROOT_FRAME = "root_frame";
 		public static final String BASE_ADDR = "Base_address";
 		public static final String IP_ADDR = "Instruction_address";
 		public static final String MODULE_NAME = "module_name";
 		public static final String SOURCE_FILE = "source_file";
 		public static final String FUNCTION_NAME = "function_name";
 		public static final String LINE_NUMBER = "line_number";
+		/** 
+		 * For LEVEL_INDEX == 0, if set and True, this tells us that this frame
+		 * is not "authentic" yet, e.g., that the frame still represents the caller's
+		 * state.  This means we cannot trust the parameters and locals,
+		 * and must resolve variables from other frames differently.
+		 */
+		public static final String IN_PROLOGUE = "in_prologue"; // Boolean
+		/**
+		 * Provides a Map<Integer, BigInteger> instance which can yield addresses of
+		 * registers pushed into the stack frame if debug info does not provide it.
+		 */
+		public static final String PRESERVED_REGISTERS = "preserved_registers";
 
 		private final DsfServicesTracker dsfServicesTracker = getServicesTracker();
 		private final IEDCExecutionDMC executionDMC;
@@ -156,6 +242,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private final Map<String, EnumeratorDMC> enumeratorsByName = Collections
 				.synchronizedMap(new HashMap<String, EnumeratorDMC>());
 		private IFunctionScope functionScope;
+		private IFrameRegisters frameRegisters;
+		public StackFrameDMC calledFrame;
 
 		public StackFrameDMC(final IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
 			super(Stack.this, new IDMContext[] { executionDMC }, frameProperties);
@@ -310,9 +398,17 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return contextElement;
 		}
 
+		@SuppressWarnings("unchecked")
 		public void loadSnapshot(Element element) {
-			// TODO Auto-generated method stub
-
+			// fix up registers to use integers again
+			Map<String, String> preservedRegisters = (Map<String, String>) properties.get(PRESERVED_REGISTERS);
+			if (preservedRegisters != null) {
+				Map<Integer, BigInteger> newPreservedRegisters = new HashMap<Integer, BigInteger>();
+				for (Map.Entry<String, String> entry : preservedRegisters.entrySet()) {
+					newPreservedRegisters.put(Integer.valueOf(entry.getKey().toString()), new BigInteger(entry.getValue().toString()));
+				}
+				properties.put(PRESERVED_REGISTERS, newPreservedRegisters);
+			}
 		}
 
 		public IVariableDMContext[] getLocals() {
@@ -341,6 +437,9 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						localsByName.put(var.getName(), var);
 					}
 
+					/* turn this off until we have a real solution for globals.
+					 * GCC publishes way too many globals, while RVCT publishes none. 
+					 
 					// add file-scope globals too
 					// (this isn't nearly sufficient since globals can show up
 					// in a header while all code is in the source file)
@@ -362,6 +461,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						}
 						parentScope = parentScope.getParent();
 					}
+					*/
 					
 					if (!(scope.getParent() instanceof IFunctionScope))
 						break;
@@ -477,6 +577,64 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			if (enumerators == null)
 				getEnumerators();
 			return enumeratorsByName.get(name);
+		}
+		
+		/**
+		 * Get the view onto registers for this stack frame.  For the top stack frame, this
+		 * forwards to the {@link Registers} service.  Otherwise, this information
+		 * is synthesized from unwind information in the debug information.  
+		 * @return {@link IFrameRegisters}, never <code>null</code>
+		 */
+		@SuppressWarnings("unchecked")
+		public IFrameRegisters getFrameRegisters() {
+			if (frameRegisters == null) {
+				if (level == 0) {
+					// for top of stack, the registers service does the work
+					final Registers registers = getDsfServicesTracker().getService(Registers.class);
+					frameRegisters = new CurrentFrameRegisters(executionDMC, registers);
+				} else {
+					// see if symbolics can provide unwinding support
+					Modules modulesService = getServicesTracker().getService(Modules.class);
+					ModuleDMC module = modulesService.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+					if (module != null) {
+						Symbols symbolsService = getServicesTracker().getService(Symbols.class);
+						IFrameRegisterProvider frameRegisterProvider = symbolsService.getFrameRegisterProvider(
+								executionDMC.getSymbolDMContext(), ipAddress);
+						if (frameRegisterProvider != null) {
+							try {
+								frameRegisters = frameRegisterProvider.getFrameRegisters(
+										getSession(), getServicesTracker(), this);
+							} catch (CoreException e) {
+								// debug info failure; we should report this 
+								frameRegisters = new AlwaysFailingFrameRegisters(e);
+							}
+						}
+					}
+					
+					if (frameRegisters == null) {
+						// no information from symbolics; see if the stack unwinder found anything
+						final Map<Integer, BigInteger> preservedRegisters = (Map<Integer,BigInteger>) properties.get(
+								PRESERVED_REGISTERS);
+						if (preservedRegisters != null) {
+							frameRegisters = new PreservedFrameRegisters(dsfServicesTracker, StackFrameDMC.this, preservedRegisters);
+						}
+					}
+					
+					if (frameRegisters == null) {
+						frameRegisters = new AlwaysFailingFrameRegisters(
+								EDCDebugger.newCoreException("cannot read variables in this frame"));
+					}
+				}
+			}
+			return frameRegisters;
+		}
+
+		/**
+		 * Get the frame this one has called.
+		 * @return StackFrameDMC or <code>null</code> for top of stack
+		 */
+		public StackFrameDMC getCalledFrame() throws CoreException {
+			return calledFrame;
 		}
 	}
 
@@ -644,8 +802,15 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	private void updateFrames(IEDCExecutionDMC context) {
 		ArrayList<StackFrameDMC> frames = new ArrayList<StackFrameDMC>();
 		List<Map<String, Object>> frameProperties = computeStackFrames(context);
+		StackFrameDMC previous = null;
 		for (Map<String, Object> props : frameProperties) {
-			frames.add(new StackFrameDMC(context, props));
+			StackFrameDMC frame = new StackFrameDMC(context, props);
+			if (previous != null) {
+				frame.calledFrame = previous;
+				// note: don't store "callerFrame" since this is missing if only a partial stack was fetched
+			}
+			frames.add(frame);
+			previous = frame;
 		}
 		stackFrames.put(context.getID(), frames);
 	}
@@ -659,16 +824,26 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		NodeList frameElements = allFrames.getElementsByTagName(STACK_FRAME);
 
 		int numFrames = frameElements.getLength();
+		StackFrameDMC previousFrameDMC = null;
+		
 		for (int i = 0; i < numFrames; i++) {
 			Element groupElement = (Element) frameElements.item(i);
 			Element propElement = (Element) groupElement.getElementsByTagName(SnapshotUtils.PROPERTIES).item(0);
 			HashMap<String, Object> properties = new HashMap<String, Object>();
 			SnapshotUtils.initializeFromXML(propElement, properties);
 
+			// ensure that stack level numbering is canonical: 
+			// we expect level==0 to be the top, but it used to be 1
+			properties.put(StackFrameDMC.LEVEL_INDEX, i);
+			
 			StackFrameDMC frameDMC = new StackFrameDMC(exeDmc, properties);
 			frameDMC.loadSnapshot(groupElement);
+			if (previousFrameDMC != null) {
+				frameDMC.calledFrame = previousFrameDMC;
+			}
 			frames.add(frameDMC);
 
+			previousFrameDMC = frameDMC;
 		}
 		stackFrames.put(exeDmc.getID(), frames);
 

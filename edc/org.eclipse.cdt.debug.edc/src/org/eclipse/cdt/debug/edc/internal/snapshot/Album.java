@@ -593,7 +593,7 @@ public class Album extends PlatformObject implements IAlbum {
 				} catch (Exception e) {
 					EDCDebugger.getMessageLogger().logError(null, e);
 				}
-				if (session != null && snapshotList.size() >= index) {
+				if (session != null && snapshotList.size() > index) {
 					Snapshot snapshot = snapshotList.get(index);
 					snapshot.open(session);
 				}
@@ -1036,7 +1036,7 @@ public class Album extends PlatformObject implements IAlbum {
 			try {
 				loadAlbumMetada(false);
 			} catch (Exception e) {
-				e.printStackTrace();
+				EDCDebugger.getMessageLogger().logError("Failed to load snapshots", e);
 			}
 		}
 

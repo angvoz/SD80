@@ -22,16 +22,14 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
 import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
-import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
 
 /*
  * Array subscript instruction
  */
 public class ArraySubscript extends CompoundInstruction {
-
-	static final Addr64 Addr64Zero = new Addr64("0"); //$NON-NLS-1$
 
 	/**
 	 * Constructor for array subscript instruction
@@ -112,7 +110,7 @@ public class ArraySubscript extends CompoundInstruction {
 		IType variableType = TypeUtils.getStrippedType(variableWithValue.getVariable().getType());
 
 		IArrayType arrayType;
-		Addr64 location = null;
+		Object location = null;
 		IType arrayElementType;
 		int byteSize;
 
@@ -138,19 +136,15 @@ public class ArraySubscript extends CompoundInstruction {
 			}
 
 			if (variableWithValue.getValueLocation() instanceof IAddress) {
-				IAddress varLocation = (IAddress) variableWithValue.getValueLocation();
-
-				if (varLocation instanceof Addr64) {
-					location = (Addr64) variableWithValue.getValueLocation();
-
-					if (location instanceof Addr64)
-						location = (Addr64) location.add(arrayType.getBounds()[0].getElementCount() * byteSize
+				location = (IAddress) variableWithValue.getValueLocation();
+				location = ((IAddress)location).add(arrayType.getBounds()[0].getElementCount() * byteSize
+						* subscript);
+			} else if (variableWithValue.getValueLocation() instanceof IVariableLocation) {
+				IVariableLocation varLocation = (IVariableLocation) variableWithValue.getValueLocation();
+				location = varLocation.addOffset(arrayType.getBounds()[0].getElementCount() * byteSize
 								* subscript);
-					else
-						location = Addr64Zero;
-				} else {
-					location = Addr64Zero;
-				}
+			} else {
+				assert(false);
 			}
 
 			if (arrayType.getBoundsCount() == 1) {
@@ -213,7 +207,7 @@ public class ArraySubscript extends CompoundInstruction {
 		}
 	}
 
-	private void pushArrayElement(VariableWithValue originalVariableValue, Addr64 location, IType arrayElementType) {
+	private void pushArrayElement(VariableWithValue originalVariableValue, Object location, IType arrayElementType) {
 		// create a skeletal VariableWithValue for the result
 		Variable variable = new Variable("", originalVariableValue.getVariable().getScope(), arrayElementType, null); //$NON-NLS-1$
 		VariableWithValue varValue = new VariableWithValue(originalVariableValue.getServicesTracker(),

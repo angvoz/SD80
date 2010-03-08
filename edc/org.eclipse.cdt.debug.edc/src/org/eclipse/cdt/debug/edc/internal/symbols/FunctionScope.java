@@ -77,7 +77,7 @@ public class FunctionScope extends Scope implements IFunctionScope {
 	}
 		
 	protected static void recurseGetScopedVariables(IScope scope, List<IVariable> scoped, IAddress linkAddress) {
-		if (!(scope.getLowAddress().compareTo(linkAddress) <= 0 && scope.getHighAddress().compareTo(linkAddress) > 0))
+		if (!(scope.getLowAddress().compareTo(linkAddress) <= 0 && scope.getHighAddress().compareTo(linkAddress) >= 0))
 			return;
 		
 		long scopeOffset = linkAddress.add(scope.getLowAddress().getValue().negate()).getValue().longValue();

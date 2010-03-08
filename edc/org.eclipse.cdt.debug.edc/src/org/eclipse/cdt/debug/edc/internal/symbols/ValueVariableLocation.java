@@ -13,65 +13,47 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 import java.math.BigInteger;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
-import org.eclipse.cdt.debug.edc.services.Registers;
-import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
-import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
-public class RegisterVariableLocation implements IRegisterVariableLocation {
+/**
+ * This is an actual value, calculated from somewhere, which does not have a location.
+ */
+public class ValueVariableLocation implements IVariableLocation {
 
-	protected String name;
-	protected int id;
-	protected final IDMContext context;
+	private BigInteger value;
 
-	public RegisterVariableLocation(IDMContext context, String name, int id) {
-		this.context = context;
-		this.name = name;
-		this.id = id;
+	public ValueVariableLocation(BigInteger value) {
+		this.value = value;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#toString()
 	 */
 	@Override
 	public String toString() {
-		return getRegisterName() != null ? getRegisterName() : "R" + id +
-				(context instanceof StackFrameDMC && ((StackFrameDMC) context).getLevel() > 0 ?
-						" (level " + ((StackFrameDMC) context).getLevel() + ")" : "");
+		return "0x" + Long.toHexString(value.longValue());
 	}
 	
-	public String getRegisterName() {
-		return name;
-	}
-
-	public int getRegisterID() {
-		return id;
-	}
-
+	
 	public BigInteger readValue(int bytes) throws CoreException {
-		if (context instanceof StackFrameDMC)
-			return ((StackFrameDMC)context).getFrameRegisters().getRegister(id, bytes);
-		else
-			throw EDCDebugger.newCoreException("cannot read register without frame");
+		if (value == null)
+			throw EDCDebugger.newCoreException("no value available");
+		return value;
 	}
 	
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#addOffset(long)
 	 */
 	public IVariableLocation addOffset(long offset) {
-		return new RegisterOffsetVariableLocation(context, name, id, offset);
+		return new ValueVariableLocation(value.add(BigInteger.valueOf(offset)));
 	}
 
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getLocationName(org.eclipse.cdt.dsf.service.DsfServicesTracker)
 	 */
 	public String getLocationName(DsfServicesTracker servicesTracker) {
-		if (getRegisterName() == null) {
-			Registers registerservice = servicesTracker.getService(Registers.class);
-			return "$" + registerservice.getRegisterNameFromCommonID(getRegisterID()); //$NON-NLS-1$
-		} else
-			return "$" + getRegisterName(); //$NON-NLS-1$
+		return "";
 	}
 }

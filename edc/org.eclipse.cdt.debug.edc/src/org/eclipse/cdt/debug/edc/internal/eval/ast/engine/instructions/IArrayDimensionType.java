@@ -12,13 +12,12 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
-import org.eclipse.cdt.utils.Addr64;
 
 public interface IArrayDimensionType extends IAggregate {
 
 	public IArrayType getArrayType();
 
-	public Addr64 getLocation();
+	public Object getLocation();
 
 	public int getDimensionCount();
 

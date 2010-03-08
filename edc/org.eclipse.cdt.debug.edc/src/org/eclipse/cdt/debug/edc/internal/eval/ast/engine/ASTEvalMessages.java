@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -31,9 +31,15 @@ public class ASTEvalMessages extends NLS {
 	public static String OperatorIndirection_NoBitField;
 	public static String OperatorMinus_NonPtrMinusPtr;
 	public static String OperatorPlus_PtrPlusPtr;
+	public static String VariableWithValue_CannotLocateVariable;
 	public static String VariableWithValue_ErrorReadingMemory; 
-	public static String VariableWithValue_InvalidRegisterID; 
+	public static String VariableWithValue_InvalidRegisterID;
+	public static String VariableWithValue_NoTwelveByteLongDouble; 
+	public static String VariableWithValue_UnexpectedLocation;
+	public static String VariableWithValue_UnhandledLocation;
+	public static String VariableWithValue_UnhandledType;
 	public static String VariableWithValue_UnknownLocation;
+	public static String VariableWithValue_VariableHasNoType;
 
 	static {
 		// initialize resource bundle

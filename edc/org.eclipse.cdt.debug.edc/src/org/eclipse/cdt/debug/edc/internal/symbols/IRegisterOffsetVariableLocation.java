@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,27 +10,19 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
-import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 
 /**
- * Interface representing a variable value located in a register.
+ * Interface representing a variable value located at an address specified
+ * as [register + offset].
  * <p>
  * This may refer to a register that is saved inside a caller's stack frame
  * and not necessarily to a current living register.
  */
-public interface IRegisterVariableLocation extends IVariableLocation {
-
+public interface IRegisterOffsetVariableLocation extends IRegisterVariableLocation {
 	/**
-	 * Get the name of the register containing the variable value
+	 * Get the offset from the register containing the variable value
 	 * 
-	 * @return the register name if known, null otherwise
+	 * @return the offset in bytes
 	 */
-	String getRegisterName();
-
-	/**
-	 * Get the id of the register containing the variable value
-	 * 
-	 * @return the register id if known, -1 otherwise
-	 */
-	int getRegisterID();
+	long getOffset();
 }

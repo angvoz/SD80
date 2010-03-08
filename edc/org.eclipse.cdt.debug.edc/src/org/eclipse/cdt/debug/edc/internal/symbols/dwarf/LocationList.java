@@ -28,7 +28,7 @@ public class LocationList implements ILocationProvider {
 	protected LocationEntry[] locationList;
 	protected int addressSize;
 	protected IScope scope;
-	private ByteOrder byteOrder;
+	protected ByteOrder byteOrder;
 
 	public LocationList(LocationEntry[] locationList, ByteOrder byteOrder, int addressSize, IScope scope) {
 		this.locationList = locationList;

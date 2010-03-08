@@ -16,6 +16,20 @@ public class DwarfMessages extends NLS {
 	private static final String BUNDLE_NAME = "org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfMessages"; //$NON-NLS-1$
 
 	public static String UnknownVariableAddress;
+	public static String NotImplementedFormat;
+	public static String InternalErrorFormat;
+
+	public static String LocationExpression_BadStackSize;
+
+	public static String LocationExpression_DW_OP;
+
+	public static String LocationExpression_ErrBadDeref;
+
+	public static String LocationExpression_MultiRegisterVariable;
+
+	public static String LocationExpression_NoEnclosingFunction;
+
+	public static String LocationExpression_UnexpectedOperand;
 
 	static {
 		// initialize resource bundle

@@ -83,10 +83,10 @@ public abstract class StreamBufferBase implements IStreamBuffer {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.IStreamBuffer#wrapSubsection(int)
 	 */
-	public IStreamBuffer wrapSubsection(int size) {
+	public IStreamBuffer wrapSubsection(long size) {
 		long availableSize = capacity() - position();
 		if (availableSize < size)
-			size = (int) availableSize;
+			size = availableSize;
 		return createSubBuffer(position() + baseOffset, size);
 	}
 	

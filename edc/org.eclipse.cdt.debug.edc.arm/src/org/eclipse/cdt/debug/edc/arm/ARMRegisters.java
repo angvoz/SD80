@@ -19,9 +19,7 @@ import java.util.Map;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
-import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.tm.tcf.services.IRegisters.RegistersContext;
 
 public class ARMRegisters extends Registers {
 
@@ -205,21 +203,15 @@ public class ARMRegisters extends Registers {
 	@Override
 	protected List<RegisterGroupDMC> createGroupsForContext(final IEDCExecutionDMC ctx) {
 
-		List<RegisterGroupDMC> groups = Collections.synchronizedList(new ArrayList<RegisterGroupDMC>());
+		List<RegisterGroupDMC> groups = super.createGroupsForContext(ctx);
+		if (groups.size() > 0)
+			return groups;
 
-		if (ctx instanceof IThreadDMContext) {
-			if (tcfRegistersService != null) {
-				List<RegistersContext> tcfRegGroups = getTCFRegistersContexts(ctx.getID());
-				
-				for (RegistersContext rg: tcfRegGroups) {
-					groups.add(new RegisterGroupDMC(this, (IThreadDMContext)ctx, rg.getProperties()));
-				}
-			}
-			else {	// old way 
-				for (String groupName : registerGroups.keySet()) {
-					groups.add(new RegisterGroupDMC(this, ctx, groupName, groupName, groupName));
-				}
-			}
+		// old way 
+		groups = Collections.synchronizedList(new ArrayList<RegisterGroupDMC>());
+
+		for (String groupName : registerGroups.keySet()) {
+			groups.add(new RegisterGroupDMC(this, ctx, groupName, groupName, groupName));
 		}
 
 		return groups;
@@ -228,22 +220,18 @@ public class ARMRegisters extends Registers {
 	@Override
 	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) {
 
-		ArrayList<RegisterDMC> registers = new ArrayList<RegisterDMC>();
+		List<RegisterDMC> registers = super.createRegistersForGroup(registerGroupDMC);
+		if (registers.size() > 0)
+			return registers;
 
-		if (tcfRegistersService != null) {
-			List<RegistersContext> tcfRegs = getTCFRegistersContexts(registerGroupDMC.getID());
-			
-			for (RegistersContext rg: tcfRegs) {
-				registers.add(new RegisterDMC(registerGroupDMC, registerGroupDMC.getExecutionDMC(), rg));
-			}
-		}
-		else {	// old way 
-			List<String> registerNames = registerGroups.get(registerGroupDMC.getID());
-			if (registerNames != null) {
-				for (String registerName : registerNames) {
-					registers.add(new RegisterDMC(registerGroupDMC.getExecutionDMC(), registerName, registerName,
-							registerName));
-				}
+		// old way 
+		registers = new ArrayList<RegisterDMC>();
+
+		List<String> registerNames = registerGroups.get(registerGroupDMC.getID());
+		if (registerNames != null) {
+			for (String registerName : registerNames) {
+				registers.add(new RegisterDMC(registerGroupDMC.getExecutionDMC(), registerName, registerName,
+						registerName));
 			}
 		}
 		

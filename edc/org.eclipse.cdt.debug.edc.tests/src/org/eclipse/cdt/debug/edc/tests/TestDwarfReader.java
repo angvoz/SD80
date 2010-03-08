@@ -1730,11 +1730,15 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj");
 		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x108b8+4,
 				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj", "j");
-		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x108f2,
+		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x108f2 + 2,
 				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj", "k");
 		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x10970+2,
 				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj", "m");
-		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x10a2a);
+		// show all variables at end of function
+		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x10a2a,
+				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj", "m");
+		// but not past
+		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x10a2a + 2);
 		
 		
 		
@@ -1837,9 +1841,13 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				"this", "item", "newmax", "copy");
 		addScopeVars("SimpleCpp_gcc_x86.exe", "Templates.cpp", "add", "List", 0x80487e9, 
 				"this", "item", "newmax", "copy", "i");
-		addScopeVars("SimpleCpp_gcc_x86.exe", "Templates.cpp", "add", "List", 0x804881e, 
+		addScopeVars("SimpleCpp_gcc_x86.exe", "Templates.cpp", "add", "List", 0x804881e + 1, 
 				"this", "item", "newmax", "copy");
+		// show all locals at end of function
 		addScopeVars("SimpleCpp_gcc_x86.exe", "Templates.cpp", "add", "List", 0x8048854, 
+				"this", "item", "newmax", "copy");
+		// but not past
+		addScopeVars("SimpleCpp_gcc_x86.exe", "Templates.cpp", "add", "List", 0x8048854 + 1, 
 				"this", "item");
 	}
 	

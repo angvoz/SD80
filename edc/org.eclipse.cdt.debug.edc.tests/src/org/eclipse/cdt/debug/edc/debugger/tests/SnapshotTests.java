@@ -149,15 +149,15 @@ public class SnapshotTests extends BaseLaunchTest {
 		Element regGroupElement = (Element) slElement.getElementsByTagName("register_group")
 		.item(0);
 		assertEquals("register_group", regGroupElement.getTagName());
-		assertEquals("GPX", regGroupElement.getAttribute("ID"));
+		String regGroupID = regGroupElement.getAttribute("ID");
+		assertTrue("Wrong register group ID: " + regGroupID, regGroupID.equals("GPX") || regGroupID.contains("Basic"));
 		
 		propElement = (Element) regGroupElement.getElementsByTagName(SnapshotUtils.PROPERTIES)
 		.item(0);
 		
 		properties = createPropertiesFromElement(propElement);
-		assertEquals("General", properties.get("Name"));
-		assertEquals("General x86 Registers", properties.get("Description"));
-		assertEquals("GPX", properties.get("ID"));
+		String name = (String)properties.get("Name");
+		assertTrue("Wrong register group name: " + name, name.equals("General") || name.contains("Basic"));
 		assertEquals(subExecContextID, properties.get("Context_ID"));
 		assertX86RegisterValuesOk(regGroupElement, subExecContextID);
 
@@ -179,7 +179,7 @@ public class SnapshotTests extends BaseLaunchTest {
 	private void assertX86RegisterValuesOk(Element regGroupElement, String execContextID) {
 		NodeList registerNodes = regGroupElement.getElementsByTagName("register");
 		assertEquals(16, registerNodes.getLength());
-		Set<String> registerIds = new HashSet<String>();
+		Set<String> registerNames = new HashSet<String>();
 		for (int i = 0; i < registerNodes.getLength(); i++) {
 			Element register = (Element) registerNodes.item(i);
 			String id = register.getAttribute("ID");
@@ -190,15 +190,15 @@ public class SnapshotTests extends BaseLaunchTest {
 			.item(i+1);
 			
 			Properties properties = createPropertiesFromElement(propElement);
-			assertEquals(id, properties.get("Name"));
+			String name = (String)properties.get("Name");
 			assertEquals(id, properties.get("ID"));
 			assertEquals(execContextID, properties.get("Context_ID"));
-			registerIds.add(id);
+			registerNames.add(name);
 		}
-		String[] registerIdVals = new String[] { "EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "GS", "FS",
+		String[] registerNameVals = new String[] { "EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "GS", "FS",
 				"ES", "DS", "EIP", "CS", "EFL", "SS" };
-		Set<String> expectedRegisterIds = new HashSet<String>(Arrays.asList(registerIdVals));
-		assertEquals(expectedRegisterIds, registerIds);
+		Set<String> expectedRegisterIds = new HashSet<String>(Arrays.asList(registerNameVals));
+		assertEquals(expectedRegisterIds, registerNames);
 	}
 
 	private Properties createPropertiesFromElement(Element propertyElement) {

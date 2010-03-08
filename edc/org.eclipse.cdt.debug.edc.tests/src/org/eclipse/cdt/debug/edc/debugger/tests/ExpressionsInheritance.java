@@ -51,15 +51,9 @@ h _salary =
 
 	// TODO
 	@Test
-	public void testExpressionsMultipleInheritance() {
+	public void testExpressionsMultipleInheritance() throws Exception {
 		// go to next snapshot in the album
-		if (album != null) {
-			try {
-				album.openNextSnapshot();
-			} catch (Exception e) {
-				Assert.assertTrue(false);
-			}
-		}
+		openSnapshotAndWaitForSuspendedContext(1);
 		Assert.assertTrue(true);
 	}
 

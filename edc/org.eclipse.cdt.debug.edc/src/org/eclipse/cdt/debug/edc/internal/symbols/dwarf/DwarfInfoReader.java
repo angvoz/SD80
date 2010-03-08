@@ -66,12 +66,15 @@ import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.A
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.CompilationUnitHeader;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.ForwardTypeReference;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.PublicNameInfo;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.CommonInformationEntry;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.FrameDescriptionEntry;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IRangeList;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
@@ -1249,7 +1252,7 @@ public class DwarfInfoReader {
 		return false;
 	}
 	
-	static Long readAddress(IStreamBuffer in, int addressSize) throws IOException {
+	static long readAddress(IStreamBuffer in, int addressSize) throws IOException {
 		long value = 0;
 
 		switch (addressSize) {
@@ -1265,7 +1268,7 @@ public class DwarfInfoReader {
 		default:
 			// ????
 		}
-		return new Long(value);
+		return value;
 	}
 
 
@@ -1277,9 +1280,9 @@ public class DwarfInfoReader {
 		byte b;
 
 		while (true) {
-			b = in.get();
 			if (!in.hasRemaining())
 				break; // throw new IOException("no more data");
+			b = in.get();
 			result |= ((long) (b & 0x7f) << shift);
 			if ((b & 0x80) == 0) {
 				break;
@@ -2517,4 +2520,88 @@ public class DwarfInfoReader {
 		}
 	}
 
+	public void parseForFrameIndices() {
+		if (!provider.frameDescEntries.isEmpty())
+			return;
+		
+		IExecutableSection frameSection = exeReader.findExecutableSection(DWARF_DEBUG_FRAME);
+		if (frameSection == null)
+			return;
+		
+		IStreamBuffer buffer = frameSection.getBuffer();
+		buffer.position(0);
+		
+		int addressSize = 4;	// TODO: 64-bit DWARF
+		long cie_id = addressSize == 4 ? 0xffffffff : ~0L;
+		
+		// in the first pass, just get a mapping of PC ranges to FDEs,
+		// so we can locate entries quickly (don't pre-parse CIEs or decompile FDE instructions yet)
+		while (buffer.position() < buffer.capacity()) {
+			try {
+				long fdePtr = buffer.position();
+				long headerLength = readAddress(buffer, addressSize);
+				long nextPosition = buffer.position() + headerLength;
+				
+				long ciePtr = readAddress(buffer, addressSize);
+				if (ciePtr != cie_id) {
+					long initialLocation = readAddress(buffer, addressSize);
+					long addressRange = readAddress(buffer, addressSize);
+					IStreamBuffer instructions = buffer.wrapSubsection(nextPosition - buffer.position());
+					IRangeList.Entry entry = new IRangeList.Entry(initialLocation, initialLocation + addressRange);
+					FrameDescriptionEntry fde = new FrameDescriptionEntry(fdePtr, ciePtr,
+							entry.low, entry.high,
+							instructions, addressSize);
+					provider.frameDescEntries.put(entry, fde);
+				}
+				
+				buffer.position(nextPosition);
+			} catch (IOException e) {
+				EDCDebugger.getMessageLogger().logError("Failed to read frame indices", e);
+				break;
+			}
+			
+		}
+	}
+
+	/**
+	 * Parse a CIE
+	 * @param ciePtr
+	 * @param addressSize 
+	 * @return the CIE or <code>null</code> in case of error
+	 */
+	public CommonInformationEntry parseCommonInfoEntry(Long ciePtr, int addressSize) throws IOException {
+		IExecutableSection frameSection = exeReader.findExecutableSection(DWARF_DEBUG_FRAME);
+		if (frameSection == null)
+			return null;
+		
+		IStreamBuffer buffer = frameSection.getBuffer();
+		buffer.position(ciePtr);
+		
+		long headerLength = readAddress(buffer, addressSize);
+		if (headerLength > buffer.capacity()) {
+			assert(false);
+			return null;
+		}
+		
+		long nextPosition = buffer.position() + headerLength;
+			
+		/* cie_id = */ readAddress(buffer, addressSize);
+		
+		byte version = buffer.get();
+		String augmentation = readString(buffer);
+		if (augmentation.length() > 0) {
+			// no idea how to handle
+			assert(false);
+			return null;
+		}
+		
+		long codeAlignmentFactor = read_unsigned_leb128(buffer);
+		long dataAlignmentFactor = read_signed_leb128(buffer);
+		int returnAddressRegister = version < 3 ? buffer.get() & 0xff : (int) read_unsigned_leb128(buffer);
+		
+		IStreamBuffer instructions = buffer.wrapSubsection(nextPosition - buffer.position());
+		
+		return new CommonInformationEntry(codeAlignmentFactor, dataAlignmentFactor, 
+				returnAddressRegister, version, instructions, addressSize);
+	}
 }

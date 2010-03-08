@@ -14,7 +14,8 @@ import org.eclipse.cdt.core.ISymbolReader;
 
 /**
  * Top-level interface for getting symbolics information.  The executable
- * symbolics reader and IDebugInfoProvider (behind the scenes)  The symbolics
+ * symbolics reader and IDebugInfoProvider (behind the scenes) work together
+ * to provide the full information.  The symbolics
  * information includes debug information (e.g. DWARF, CODEVIEW) and symbol
  * table data. A binary file may only have symbol table without debug
  * information.

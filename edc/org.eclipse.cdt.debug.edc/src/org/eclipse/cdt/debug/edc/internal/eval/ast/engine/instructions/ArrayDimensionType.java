@@ -10,10 +10,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.Type;
 import org.eclipse.cdt.debug.edc.symbols.IType;
-import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 
 // Internal expression type to hold all dimensions of a multidimensional array except the smallest.
 // E.g., for "int a[6][7][8];", this type might hold info about "a[2]" or "a[2][4]", but not "a[2][4][3]".
@@ -23,10 +24,10 @@ public class ArrayDimensionType extends Type implements IArrayDimensionType {
 														// frame, services
 														// tracker, etc.
 	private final IArrayType arrayType;
-	private Addr64 location;
+	private Object location;
 	private int dimensionCount; // number of dimensions processed so far
 
-	public ArrayDimensionType(String name, VariableWithValue variableWithValue, IArrayType arrayType, Addr64 location) {
+	public ArrayDimensionType(String name, VariableWithValue variableWithValue, IArrayType arrayType, Object location) {
 		super(name, null, 0, null);
 		this.variableWithValue = variableWithValue;
 		this.arrayType = arrayType;
@@ -42,7 +43,7 @@ public class ArrayDimensionType extends Type implements IArrayDimensionType {
 		return this.arrayType;
 	}
 
-	public Addr64 getLocation() {
+	public Object getLocation() {
 		return this.location;
 	}
 
@@ -52,7 +53,12 @@ public class ArrayDimensionType extends Type implements IArrayDimensionType {
 
 	public void addDimension(long subscript, long increase) {
 		this.name += "[" + subscript + "]"; //$NON-NLS-1$ //$NON-NLS-2$
-		this.location = (Addr64) this.location.add(increase);
+		if (location instanceof IAddress)
+			this.location = ((IAddress) this.location).add(increase);
+		else if (location instanceof IVariableLocation)
+			this.location = ((IVariableLocation) this.location).addOffset(increase);
+		else
+			assert(false);
 		this.dimensionCount++;
 	}
 

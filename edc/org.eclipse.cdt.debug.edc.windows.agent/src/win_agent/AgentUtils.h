@@ -40,4 +40,5 @@ public:
 	static std::wstring makeWideString(const char* stringbuffer);
 #endif
 
+	static void SwapBytes(char * buf, int size);
 };

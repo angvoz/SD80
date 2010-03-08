@@ -50,10 +50,9 @@ public:
 
 	static ContextID CreateInternalID(ContextOSID osID);
 
-protected:
-	virtual void initialize();
-
 private:
+	void initialize();
+
 	bool isRoot_;
 	HANDLE processHandle_;
 	std::string processName_;

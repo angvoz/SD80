@@ -99,8 +99,9 @@ public interface IStreamBuffer {
      * Wrap a portion of the buffer.  This is a cheap operation whose
      * returned buffer maintains references to the receiver but has an
      * independent position.
+     * @param size the size to wrap, starting from the current {@link #position()}
      */
-    IStreamBuffer wrapSubsection(int size);
+    IStreamBuffer wrapSubsection(long size);
 
 	
 }

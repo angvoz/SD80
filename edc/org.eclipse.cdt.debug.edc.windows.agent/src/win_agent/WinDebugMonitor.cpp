@@ -561,8 +561,8 @@ void WinDebugMonitor::HandleProcessCreatedEvent(DEBUG_EVENT& debugEvent)
 	WinThread* thread = new WinThread(*process, debugEvent);
 
 	// record in our cache
-	ContextManager::AddDebuggedContext(process);
-	ContextManager::AddDebuggedContext(thread);
+	ContextManager::addDebuggedContext(process);
+	ContextManager::addDebuggedContext(thread);
 
 	// Notify host
 	EventClientNotifier::SendContextAdded(process);
@@ -579,7 +579,7 @@ void WinDebugMonitor::HandleThreadCreatedEvent(DEBUG_EVENT& debugEvent)
 {
 	WinProcess* process = WinProcess::GetProcessByID(debugEvent.dwProcessId);
 	WinThread* thread = new WinThread(*process, debugEvent);
-	ContextManager::AddDebuggedContext(thread);
+	ContextManager::addDebuggedContext(thread);
 
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
 	EventClientNotifier::SendContextAdded(thread);

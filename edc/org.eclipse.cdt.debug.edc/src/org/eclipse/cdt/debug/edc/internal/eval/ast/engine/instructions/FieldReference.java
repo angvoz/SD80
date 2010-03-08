@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 import java.math.BigInteger;
 import java.text.MessageFormat;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
@@ -24,6 +25,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
 import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
@@ -91,7 +93,7 @@ public class FieldReference extends CompoundInstruction {
 					variableWithValue.setValue(new BigInteger(((Integer) value).toString()));
 			
 				validPointerType = variableWithValue.getValue() instanceof BigInteger ||
-								variableWithValue.getValue() instanceof Addr64;
+								variableWithValue.getValue() instanceof IAddress;
 			}
 			
 			if (!validPointerType) {
@@ -122,7 +124,7 @@ public class FieldReference extends CompoundInstruction {
 				variableWithValue.setValue(new BigInteger(((Integer) value).toString()));
 			
 			if (   !(variableWithValue.getValue() instanceof BigInteger)
-				&& !(variableWithValue.getValue() instanceof Addr64)) {
+				&& !(variableWithValue.getValue() instanceof IAddress)) {
 				IInvalidExpression invalidExpression = null;
 				if (variableWithValue.getValue() instanceof IInvalidExpression)
 					invalidExpression = (IInvalidExpression) variableWithValue.getValue();
@@ -196,9 +198,13 @@ public class FieldReference extends CompoundInstruction {
 			location = variableWithValue.getValueLocation();
 		}
 
-		if (location instanceof Addr64)
-			location = ((Addr64) location).add(field.getFieldOffset());
-
+		if (location instanceof IAddress)
+			location = ((IAddress) location).add(field.getFieldOffset());
+		else if (location instanceof IVariableLocation)
+			location = ((IVariableLocation) location).addOffset(field.getFieldOffset());
+		else
+			assert(false);
+		
 		setValueType(typeOfField);
 		setValueLocation(location);
 

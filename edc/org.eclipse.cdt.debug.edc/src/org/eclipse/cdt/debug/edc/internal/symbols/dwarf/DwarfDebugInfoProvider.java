@@ -28,14 +28,19 @@ import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.symbols.IForwardTypeReference;
 import org.eclipse.cdt.debug.edc.internal.symbols.Scope;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.CommonInformationEntry;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.FrameDescriptionEntry;
+import org.eclipse.cdt.debug.edc.services.IFrameRegisterProvider;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
+import org.eclipse.cdt.debug.edc.symbols.IRangeList;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
+import org.eclipse.cdt.debug.edc.symbols.IRangeList.Entry;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -256,7 +261,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			switch (actualForm) {
 			case DwarfConstants.DW_FORM_addr:
 			case DwarfConstants.DW_FORM_ref_addr:
-				obj = DwarfInfoReader.readAddress(in, addressSize);
+				obj = (Long) DwarfInfoReader.readAddress(in, addressSize);
 				break;
 
 			case DwarfConstants.DW_FORM_block: {
@@ -672,7 +677,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			this.tag = tag;
 		}
 	}
-
+	
 	// list of compilation units per source file 
 	protected HashMap<IPath, List<ICompileUnitScope>> compileUnitsPerFile = new HashMap<IPath, List<ICompileUnitScope>>();
 	
@@ -704,6 +709,11 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	// abbreviation tables (lists of abbrev entries), mapped by .debug_abbrev offset
 	protected Map<Integer, Map<Long, AbbreviationEntry>> abbreviationMaps = new HashMap<Integer, Map<Long, AbbreviationEntry>>();
 
+	// mapping of PC range to frame description entries
+	protected TreeMap<IRangeList.Entry, FrameDescriptionEntry> frameDescEntries = new TreeMap<IRangeList.Entry, FrameDescriptionEntry>();
+	// mapping of CIE offsets to parsed common info entries
+	protected Map<Long, CommonInformationEntry> commonInfoEntries = new HashMap<Long, CommonInformationEntry>();
+	
 	
 	protected Set<String> referencedFiles = new HashSet<String>();
 	protected boolean buildReferencedFilesList = true;
@@ -717,12 +727,15 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	private final DwarfModuleScope moduleScope;
 
 	final DwarfFileHelper fileHelper;
-	
+
+	private IFrameRegisterProvider frameRegisterProvider;
+
 	public DwarfDebugInfoProvider(IExecutableSymbolicsReader exeReader) {
 		this.exeReader = exeReader;
 		this.symbolFilePath = exeReader.getSymbolFile();
 		this.moduleScope = new DwarfModuleScope(this);
 		this.fileHelper = new DwarfFileHelper(symbolFilePath);
+		this.frameRegisterProvider = new DwarfFrameRegisterProvider(this);
 	}
 	
 	/* (non-Javadoc)
@@ -762,6 +775,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		parsedForVarsAndAddresses = false;
 		
 		fileHelper.dispose();
+		frameRegisterProvider.dispose();
 	}
 
 	void ensureParsedInitially() {
@@ -1104,6 +1118,48 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			match = header;
 		}
 		return match;
+	}
+
+	/**
+	 * Get the frame description entry for the given PC
+	 * @param framePC
+	 * @return FDE or <code>null</code>
+	 */
+	public FrameDescriptionEntry findFrameDescriptionEntry(IAddress framePC) {
+		DwarfInfoReader reader = new DwarfInfoReader(this);
+		if (frameDescEntries.isEmpty()) {
+			reader.parseForFrameIndices();
+		}
+		
+		long pc = framePC.getValue().longValue();
+		SortedMap<Entry, FrameDescriptionEntry> tailMap = frameDescEntries.tailMap(new IRangeList.Entry(pc, pc));
+		if (tailMap.isEmpty())
+			return null;
+		
+		FrameDescriptionEntry entry = tailMap.values().iterator().next();
+		if (entry.getCIE() == null) {
+			CommonInformationEntry cie = null;
+			if (!commonInfoEntries.containsKey(entry.ciePtr)) {
+				try {
+					cie = reader.parseCommonInfoEntry(entry.ciePtr, entry.addressSize);
+				} catch (IOException e) {
+					EDCDebugger.getMessageLogger().logError("Failed to read CIE at " + entry.ciePtr, e);
+				}
+				commonInfoEntries.put(entry.ciePtr, cie);
+			} else {
+				cie = commonInfoEntries.get(entry.ciePtr);
+			}
+			entry.setCIE(cie);
+		}
+		
+		return entry;
+	}
+
+	/**
+	 * @return
+	 */
+	public IFrameRegisterProvider getFrameRegisterProvider() {
+		return frameRegisterProvider;
 	}
 
 }

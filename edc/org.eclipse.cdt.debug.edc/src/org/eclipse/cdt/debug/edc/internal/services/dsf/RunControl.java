@@ -904,9 +904,10 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 
 		@Override
 		public void loadSnapshot(Element element) throws Exception {
-			super.loadSnapshot(element);
+			// load modules first, since this loads a stack which must consult modules and symbolics
 			Modules modulesService = getServicesTracker().getService(Modules.class);
 			modulesService.loadModulesForContext(this, element);
+			super.loadSnapshot(element);
 		}
 
 		@Override

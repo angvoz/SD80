@@ -44,7 +44,7 @@ public class ARMStack extends Stack {
 	/**
 	 * Container for spilled registers.
 	 */
-	private class SpilledRegisters {
+	private class ARMSpilledRegisters  {
 
 		/**
 		 * General purpose registers R0-R12. Note that the addresses are the
@@ -66,13 +66,28 @@ public class ARMStack extends Stack {
 		 * Address of the link register on the stack
 		 */
 		public IAddress LRAddress;
-
-		public SpilledRegisters() {
+		
+		/**
+		 * Address where prolog is finished
+		 */
+		public IAddress realStartOfFunctionAddress;
+		
+		public ARMSpilledRegisters() {
 		}
 
 		public boolean isValid() {
 			// as long as the LR and SP are set then we're OK
 			return LR != null && SP != null;
+		}
+		
+		public Map<Integer, BigInteger> getPreservedRegisters() {
+			Map<Integer, BigInteger> map = new HashMap<Integer, BigInteger>();
+			for (int i = 0; i < registers.length; i++) {
+				if (registers[i] != null) {
+					map.put(i, registers[i].getValue());
+				}
+			}
+			return map;
 		}
 	}
 
@@ -127,6 +142,7 @@ public class ARMStack extends Stack {
 		IAddress lrValue = new Addr64(registersService.getRegisterValue(context, lrName), 16);
 
 		int frameCount = 0;
+		HashMap<String, Object> properties = null;
 
 		// keep going until we reach the maximum number of frames
 		while (frameCount < MAX_FRAMES) {
@@ -160,9 +176,9 @@ public class ARMStack extends Stack {
 			long baseAddress = functionStartAddress == null ? pcValue.getValue().longValue() : functionStartAddress
 					.getValue().longValue();
 
-			HashMap<String, Object> properties = new HashMap<String, Object>();
+			properties = new HashMap<String, Object>();
 			properties.put(IEDCDMContext.PROP_ID, Integer.toString(nextStackFrameID++));
-			properties.put(StackFrameDMC.LEVEL_INDEX, frameCount++);
+			properties.put(StackFrameDMC.LEVEL_INDEX, frameCount);
 			properties.put(StackFrameDMC.BASE_ADDR, baseAddress);
 			properties.put(StackFrameDMC.IP_ADDR, pcValue.getValue().longValue());
 			properties.put(StackFrameDMC.MODULE_NAME, moduleName);
@@ -183,20 +199,34 @@ public class ARMStack extends Stack {
 
 			// we need to parse the prolog to figure out where the LR was stored
 			// on the stack
-			SpilledRegisters spilledRegs = parseProlog(context, functionStartAddress, pcValue, spValue, lrValue,
+			ARMSpilledRegisters spilledRegs = parseProlog(context, functionStartAddress, pcValue, spValue, lrValue,
 					thumbMode);
 			if (spilledRegs == null) {
 				break;
 			}
 
+			// remember spilled registers in case debug info is missing
+			properties.put(StackFrameDMC.PRESERVED_REGISTERS, spilledRegs.getPreservedRegisters());
+			
+			// identify whether we're not yet inside a new frame
+			if (frameCount == 0 && (spilledRegs.realStartOfFunctionAddress == null 
+					|| pcValue.compareTo(spilledRegs.realStartOfFunctionAddress) < 0)) {
+				properties.put(StackFrameDMC.IN_PROLOGUE, true);
+			}
+			
 			if (spilledRegs.LR.isZero()) {
 				break;
 			}
 
 			spValue = spilledRegs.SP;
 			pcValue = spilledRegs.LR;
+			frameCount++;
 		}
 
+		if (properties != null) {
+			properties.put(StackFrameDMC.ROOT_FRAME, true);
+		}
+		
 		return frames;
 	}
 
@@ -287,7 +317,7 @@ public class ARMStack extends Stack {
 		return null;
 	}
 
-	private SpilledRegisters parseProlog(IEDCExecutionDMC context, IAddress prologAddress, IAddress pcValue,
+	private ARMSpilledRegisters parseProlog(IEDCExecutionDMC context, IAddress prologAddress, IAddress pcValue,
 			IAddress spValue, IAddress lrValue, boolean thumbMode) {
 		// read memory from the prolog address to the pc, or 20 bytes, whichever
 		// is less
@@ -318,8 +348,8 @@ public class ARMStack extends Stack {
 
 			// look for prolog instructions. if found, figure out the LR and SP
 			// values and return
-			SpilledRegisters spilledRegs = thumbMode ? parseThumbProlog(context, instructions, spValue, prologAddress)
-					: parseArmProlog(context, instructions, spValue);
+			ARMSpilledRegisters spilledRegs = thumbMode ? parseThumbProlog(context, instructions, spValue, prologAddress)
+					: parseArmProlog(context, instructions, spValue, prologAddress);
 
 			if (spilledRegs != null) {
 				return spilledRegs;
@@ -328,7 +358,7 @@ public class ARMStack extends Stack {
 
 		// we're either at the start of the prolog, or there is no prolog for
 		// this function (leaf function), so just use the real LR and SP
-		SpilledRegisters spilledRegs = new SpilledRegisters();
+		ARMSpilledRegisters spilledRegs = new ARMSpilledRegisters();
 		spilledRegs.SP = spValue;
 		spilledRegs.LR = lrValue;
 
@@ -340,12 +370,16 @@ public class ARMStack extends Stack {
 		return spilledRegs;
 	}
 
-	private SpilledRegisters parseArmProlog(IEDCExecutionDMC context, List<BigInteger> instructions, IAddress spValue) {
-		SpilledRegisters spilledRegs = new SpilledRegisters();
+	private ARMSpilledRegisters parseArmProlog(IEDCExecutionDMC context, List<BigInteger> instructions, 
+			IAddress spValue, IAddress pcAddress) {
+		ARMSpilledRegisters spilledRegs = new ARMSpilledRegisters();
 
 		IAddress currentSP = spValue;
 
 		for (BigInteger instruction : instructions) {
+			// point to PC of next instruction
+			pcAddress = pcAddress.add(4);
+			
 			if (isStmfdInstruction(instruction)) {
 				// figure out how many registers are being stored
 				BigInteger regBits = instruction.and(BigInteger.valueOf(0x0000FFFFL));
@@ -403,6 +437,7 @@ public class ARMStack extends Stack {
 					}
 				}
 
+				spilledRegs.realStartOfFunctionAddress = pcAddress;
 			} else if ((instruction.longValue() & 0x01E00000L) == 0x00400000L
 					&& (instruction.longValue() & 0x0C000000L) == 0x00000000L) {
 				// sub instruction - does it modify the SP?
@@ -442,12 +477,17 @@ public class ARMStack extends Stack {
 						}
 					}
 				}
+				spilledRegs.realStartOfFunctionAddress = pcAddress;
+				
 			} else if (isSWIInstruction(instruction)) {
 				// get the user mode LR and SP. note that the ones we've already
 				// read are in supervisor mode since we're in an exception
 				Registers registersService = getServicesTracker().getService(Registers.class);
 				spilledRegs.SP = new Addr64(registersService.getRegisterValue(context, ARMRegisters.SP), 16);
 				spilledRegs.LR = new Addr64(registersService.getRegisterValue(context, ARMRegisters.LR), 16);
+				
+				spilledRegs.realStartOfFunctionAddress = pcAddress;
+				
 			}
 		}
 
@@ -471,14 +511,19 @@ public class ARMStack extends Stack {
 		return null;
 	}
 
-	private SpilledRegisters parseThumbProlog(IEDCExecutionDMC context, List<BigInteger> instructions, IAddress spValue,
+	private ARMSpilledRegisters parseThumbProlog(IEDCExecutionDMC context, List<BigInteger> instructions, IAddress spValue,
 			IAddress prologAddress) {
 
-		SpilledRegisters spilledRegs = new SpilledRegisters();
+		ARMSpilledRegisters spilledRegs = new ARMSpilledRegisters();
 
 		IAddress currentSP = spValue;
 
+		IAddress pcAddress = prologAddress;
+		
 		for (BigInteger instruction : instructions) {
+			// point to next instruction
+			pcAddress = pcAddress.add(2);
+			
 			if (isPushInstruction(instruction)) {
 				// push instruction. figure out how many registers are being
 				// stored
@@ -524,6 +569,8 @@ public class ARMStack extends Stack {
 					spilledRegs.SP = currentSP.add(4 * regCount);
 				}
 
+				spilledRegs.realStartOfFunctionAddress = pcAddress;
+
 			} else if ((instruction.intValue() & 0xFF80L) == 0xB080L) {
 				// sub (4) which changes the SP
 				BigInteger immed_7 = instruction.and(BigInteger.valueOf(0x007FL)).shiftLeft(2);
@@ -543,6 +590,9 @@ public class ARMStack extends Stack {
 				if (spilledRegs.SP != null) {
 					spilledRegs.SP = spilledRegs.SP.add(immed_7);
 				}
+				
+				spilledRegs.realStartOfFunctionAddress = pcAddress;
+
 			} else if ((instruction.intValue() & 0xFF80L) == 0xB000L) {
 				// add (7) which changes the SP
 				BigInteger immed_7 = instruction.and(BigInteger.valueOf(0x007FL)).shiftLeft(2).negate();
@@ -562,6 +612,9 @@ public class ARMStack extends Stack {
 				if (spilledRegs.SP != null) {
 					spilledRegs.SP = spilledRegs.SP.add(immed_7);
 				}
+				
+				spilledRegs.realStartOfFunctionAddress = pcAddress;
+
 			} else if ((instruction.intValue() & 0xFF87L) == 0x4485L) {
 				// add (4) with the SP as the destination register
 				// get the source register number
@@ -626,6 +679,8 @@ public class ARMStack extends Stack {
 									spilledRegs.SP = spilledRegs.SP.add(-sourceRegValue);
 								}
 							}
+
+							spilledRegs.realStartOfFunctionAddress = instAddr.add(2);
 
 							break;
 						}

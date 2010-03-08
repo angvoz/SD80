@@ -22,6 +22,12 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 
 public class X86Registers extends Registers {
 
+	public static final int EBX = 3;
+	public static final int ESP = 4;
+	public static final int EBP = 5;
+	public static final int ESI = 6;
+	public static final int EDI = 7;
+	
 	public static String[] generalRegisterNames = { "EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI", "GS", "FS",
 			"ES", "DS", "EIP", "CS", "EFL", "SS" };
 	public static String[] generalRegisterDescriptions = { "EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI",
@@ -35,18 +41,28 @@ public class X86Registers extends Registers {
 	@Override
 	protected List<RegisterGroupDMC> createGroupsForContext(IEDCExecutionDMC ctx) {
 
-		List<RegisterGroupDMC> winGroups = Collections.synchronizedList(new ArrayList<RegisterGroupDMC>());
+		List<RegisterGroupDMC> groups = super.createGroupsForContext(ctx);
+		if (groups.size() > 0)
+			return groups;
 
+		// old way
+		groups = Collections.synchronizedList(new ArrayList<RegisterGroupDMC>());
+		
 		if (ctx instanceof IThreadDMContext)
-			winGroups.add(new RegisterGroupDMC(this, ctx, "General", "General x86 Registers", "GPX"));
+			groups.add(new RegisterGroupDMC(this, ctx, "General", "General x86 Registers", "GPX"));
 
-		return winGroups;
+		return groups;
 	}
 
 	@Override
 	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) {
 
-		ArrayList<RegisterDMC> registers = new ArrayList<RegisterDMC>();
+		List<RegisterDMC> registers = super.createRegistersForGroup(registerGroupDMC);
+		if (registers.size() > 0)
+			return registers;
+
+		// old way.
+		registers = new ArrayList<RegisterDMC>();
 
 		String groupID = registerGroupDMC.getID();
 

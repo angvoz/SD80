@@ -19,9 +19,6 @@
 #include "TerminateProcessAction.h"
 #include "ProtocolConstants.h"
 
-// TODO: remove this
-#include "TCFHeaders.h"
-
 std::map<int, WinProcess*> WinProcess::processIDMap;
 
 WinProcess::WinProcess(WinDebugMonitor* monitor, DEBUG_EVENT& debugEvent) :
@@ -54,17 +51,16 @@ WinProcess::WinProcess(WinDebugMonitor* monitor, DEBUG_EVENT& debugEvent) :
 WinProcess::WinProcess(DWORD procID, std::string procName) :
 	RunControlContext(procID, ROOT_CONTEXT_ID, CreateInternalID(procID)),
 	processHandle_(NULL),
-	monitor_(NULL),
-	processName_(procName)
+	monitor_(NULL)
 {
+	processName_ = procName;
+
 	initialize();
 }
 
+// Initialize process specific properties.
 void WinProcess::initialize()
 {
-	RunControlContext::initialize();
-
-	SetProperty(PROP_OS_ID, new PropertyValue(AgentUtils::IntToString((int)GetOSID())) );
 	SetProperty(PROP_NAME, new PropertyValue(processName_));
 
 	// Not support process resume yet.
@@ -76,7 +72,9 @@ void WinProcess::initialize()
 }
 
 WinProcess::~WinProcess(void) {
+	// This makes a copy.
 	std::list<Context *> remainingKids = GetChildren();
+
 	for (std::list<Context *>::iterator iter = remainingKids.begin();
 		iter != remainingKids.end(); iter++)
 		delete *iter;

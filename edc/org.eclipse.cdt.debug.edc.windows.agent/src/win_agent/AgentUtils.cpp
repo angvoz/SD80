@@ -110,3 +110,14 @@ std::wstring AgentUtils::makeWideString(const char* stringbuffer) {
 }
 
 #endif
+
+void AgentUtils::SwapBytes(char * buf, int size) {
+    int i, j, n;
+    char * p = buf;
+    n = size >> 1;
+    for (i = 0, j = size - 1; i < n; i++, j--) {
+        char x = p[i];
+        p[i] = p[j];
+        p[j] = x;
+    }
+}

@@ -22,7 +22,7 @@ TerminateProcessAction::~TerminateProcessAction(void) {
 void TerminateProcessAction::Run() {
 	WinProcess* process = WinProcess::GetProcessByID(processID_);
 
-	std::list<Context*> threads = process->GetChildren();
+	std::list<Context*>& threads = process->GetChildren();
 
 	std::list<Context*>::iterator itr;
 	for (itr = threads.begin(); itr != threads.end(); itr++) {

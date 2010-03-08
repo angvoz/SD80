@@ -14,6 +14,7 @@
 #include "ProcessService.h"
 #include "RunControlService.h"
 #include "SimpleRegistersService.h"
+#include "RegistersService.h"
 #include "MemoryService.h"
 #include "LoggingService.h"
 
@@ -98,7 +99,8 @@ int main(int argc, char* argv[]) {
 	
 	new ProcessService(proto);
 	new RunControlService(proto);
-	new SimpleRegistersService(proto);
+//	new SimpleRegistersService(proto);
+	new RegistersService(proto);
 	new MemoryService(proto);
 	new LoggingService(proto);
 	

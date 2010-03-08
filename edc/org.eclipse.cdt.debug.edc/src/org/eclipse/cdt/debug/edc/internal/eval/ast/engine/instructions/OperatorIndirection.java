@@ -12,11 +12,13 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
+import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
@@ -136,7 +138,7 @@ public class OperatorIndirection extends CompoundInstruction {
 			}
 
 			// read the value pointed to
-			Addr64 location = new Addr64((BigInteger) opValue);
+			Addr64 location = new Addr64(((BigInteger) opValue).and(Mask8Bytes));
 			Object newValue = variableWithValue.getValueByType(unqualifiedPointedTo, location);
 			varValue.setValue(newValue);
 			varValue.setValueLocation(location);
@@ -178,8 +180,12 @@ public class OperatorIndirection extends CompoundInstruction {
 
 			if (TypeUtils.isAggregateType(variableWithValue.getVariable().getType())) {
 				operand = variableWithValue.getValueLocation();
-				if (operand instanceof Addr64)
-					operand = ((Addr64) operand).getValue().longValue();
+				if (operand instanceof IAddress)
+					operand = ((IAddress) operand).getValue().longValue();
+				else if (operand instanceof IMemoryVariableLocation)
+					operand = ((IMemoryVariableLocation) operand).getAddress().getValue();
+				else
+					assert(false);
 			} else
 				operand = variableWithValue.getValue();
 		}

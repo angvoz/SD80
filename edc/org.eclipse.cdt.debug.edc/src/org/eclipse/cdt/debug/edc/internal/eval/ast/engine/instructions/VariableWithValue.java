@@ -26,17 +26,14 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInvalidVariableLocation;
-import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IRegisterVariableLocation;
+import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
-import org.eclipse.cdt.debug.edc.services.IEDCMemory;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
-import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
@@ -48,6 +45,7 @@ import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.debug.core.model.MemoryByte;
 
@@ -93,27 +91,20 @@ public class VariableWithValue {
 
 	public Object getValueLocation() {
 		if (valueLocation == null) {
-			valueLocation = new Object();
 			IEDCModules modules = servicesTracker.getService(Modules.class);
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getLocationProvider();
 			if (provider == null) {
 				// ERROR
+				valueLocation = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_CannotLocateVariable);
 				return valueLocation;
 			}
 			IAddress pcValue = frame.getIPAddress();
 			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
-			IVariableLocation location = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
-			if (location instanceof IMemoryVariableLocation) {
-				IMemoryVariableLocation memoryLocation = (IMemoryVariableLocation) location;
-				if (memoryLocation.isRuntimeAddress()) {
-					valueLocation = memoryLocation.getAddress();
-				} else {
-					valueLocation = module.toRuntimeAddress(memoryLocation.getAddress());
-				}
-			} else {
-				// either in a register or not live at the given address
-				valueLocation = location;
+			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
+			if (valueLocation == null) {
+				// unhandled
+				valueLocation = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_CannotLocateVariable);
 			}
 		}
 		return valueLocation;
@@ -125,7 +116,7 @@ public class VariableWithValue {
 	}
 
 	public Object getValueByType(IType varType, Object location) {
-		Object result = new Object();
+		Object result;
 		
 		if (varType != null) {
 			if (varType instanceof ICPPBasicType)
@@ -142,7 +133,7 @@ public class VariableWithValue {
 					if (newLocation instanceof BigInteger) {
 						newLocation = new Addr64((BigInteger) newLocation);
 					} else if (result instanceof Long) {
-						newLocation = new Addr64(((Long) newLocation).toString());
+						newLocation = new Addr64(BigInteger.valueOf((Long) newLocation));
 					}
 					setValueLocation(newLocation);
 					result = getBasicTypeValue(pointedTo, newLocation);
@@ -153,24 +144,30 @@ public class VariableWithValue {
 				result = getValueByType(varType.getType(), location);
 			else if (varType instanceof IEnumeration)
 				result = getBasicTypeValue(varType, location);
-			else
+			else {
 				assert false;
+				result = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_UnhandledType + varType.getName());
+			}
+		} else {
+			result = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_VariableHasNoType);
 		}
 		return result;
 	}
 
 	public Object getValue() {
 		if (value == null) {
-			value = new Object();
 			Object location = getValueLocation();
-			if (location instanceof IAddress || location instanceof IRegisterVariableLocation) {
+			if (location instanceof IAddress || location instanceof IVariableLocation) {
 				IType varType = variable.getType();
 				if (varType != null) {
 					value = getValueByType(varType, location);
 				} else
 					assert false;
-			} else if (!(location instanceof IInvalidVariableLocation)) {
+			} else if (location instanceof IInvalidVariableLocation) {
+				value = location;
+			} else {
 				assert false;
+				value = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_UnhandledLocation + location);
 			}
 		}
 		return value;
@@ -199,10 +196,14 @@ public class VariableWithValue {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.VARIABLE_VALUE_TRACE,
 				new Object[] { varType, location });
 
-		Object result = new Object();
+		Object result = null;
 		int varSize = varType.getByteSize();
 		boolean isOK = true;
 		
+		ITargetEnvironment targetEnvironment = (ITargetEnvironment) servicesTracker.getService(ITargetEnvironment.class);
+		int endian = (targetEnvironment == null || targetEnvironment.isLittleEndian(frame)) ?
+				MemoryUtils.LITTLE_ENDIAN : MemoryUtils.BIG_ENDIAN;
+
 		// get characteristics of the type
 		int basicType = IBasicType.t_unspecified;
 		boolean isSigned = false;
@@ -242,17 +243,16 @@ public class VariableWithValue {
 		}
 
 		// for variables in memory
-		IEDCMemory memoryService = null;
+		Memory memoryService = null;
 		ArrayList<MemoryByte> memBuffer = null;
 		IStatus memGetStatus = null;
-
-		// for variables in registers
-		boolean inRegister = location instanceof IRegisterVariableLocation;
-		Registers registerService = null;
-		IRegisterVariableLocation registerLocation = null;
-		BigInteger registerValue = new BigInteger("0");
-
+		
+		// all other locations
+		IVariableLocation varLocation = null;
+		BigInteger varValue = null;
+		
 		if (location instanceof IAddress) {
+
 			memoryService = servicesTracker.getService(Memory.class);
 			memBuffer = new ArrayList<MemoryByte>();
 			memGetStatus = memoryService.getMemory(frame.getExecutionDMC(), (IAddress) location, memBuffer, varSize, 1);
@@ -261,17 +261,13 @@ public class VariableWithValue {
 				result = new InvalidExpression(ASTEvalMessages.VariableWithValue_ErrorReadingMemory +
 						((IAddress) location).toHexAddressString());
 			}
-		} else if (inRegister) {
-			registerService = servicesTracker.getService(Registers.class);
-			registerLocation = (IRegisterVariableLocation) location;
-			String registerValueString = registerService.getRegisterValue(frame.getExecutionDMC(), registerLocation
-					.getRegisterID());
-			isOK = registerValueString != null; 
-			if (!isOK) {
-				result = new InvalidExpression(ASTEvalMessages.VariableWithValue_InvalidRegisterID +
-						registerLocation.getRegisterID());
-			} else {
-				registerValue = new BigInteger(registerValueString, 16);
+		} else if (location instanceof IVariableLocation) {
+			varLocation = (IVariableLocation) location;
+			try {
+				varValue = varLocation.readValue(varSize);
+			} catch (CoreException e) {
+				isOK = false;
+				result = new InvalidExpression(e.getMessage());
 			}
 		} else {
 			isOK = false;
@@ -280,6 +276,9 @@ public class VariableWithValue {
 		
 		if (!isOK) {
 			// bad memory, register, or other location
+			if (result == null) {
+				result = new InvalidExpression(ASTEvalMessages.VariableWithValue_UnexpectedLocation + location);
+			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.VARIABLE_VALUE_TRACE, result);
 			return result;
 		}
@@ -287,25 +286,25 @@ public class VariableWithValue {
 		switch (basicType) {
 		case IBasicType.t_float:
 		case IBasicType.t_double:
-			if (inRegister) {
+			if (varLocation != null) {
 				if (varSize == 4) {
-					result = Float.intBitsToFloat(registerValue.intValue());
+					result = Float.intBitsToFloat(varValue.intValue());
 				} else if (varSize == 8) {
-					result = Double.longBitsToDouble(registerValue.longValue());
+					result = Double.longBitsToDouble(varValue.longValue());
 				} else {
 					// TODO: support 12-byte long double read from register
-					result = new Double(0);
+					result = new InvalidExpression(ASTEvalMessages.VariableWithValue_NoTwelveByteLongDouble);
 				}
 			} else {
 				if (varSize == 4) {
 					result = Float.intBitsToFloat(MemoryUtils.convertByteArrayToInt(memBuffer.subList(0, 4)
-							.toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN));
+							.toArray(new MemoryByte[4]), endian));
 				} else if (varSize == 8) {
 					result = Double.longBitsToDouble(MemoryUtils.convertByteArrayToLong(memBuffer.subList(0, 8)
-							.toArray(new MemoryByte[8]), MemoryUtils.LITTLE_ENDIAN));
+							.toArray(new MemoryByte[8]), endian));
 				} else {
 					// TODO: support 12-byte long double read from memory
-					result = new Double(0);
+					result = new InvalidExpression(ASTEvalMessages.VariableWithValue_NoTwelveByteLongDouble);
 				}
 			}
 			break;
@@ -315,56 +314,56 @@ public class VariableWithValue {
 		case IBasicType.t_char:
 		case IBasicType.t_int:
 		case IBasicType.t_void:
-			if (inRegister) {
+			if (varLocation != null) {
 				if (isSigned) {
 					// as needed, mask the value and sign-extend
 					if (varSize == 4) {
-						result = new Integer(registerValue.intValue());
+						result = new Integer(varValue.intValue());
 					} else if (varSize == 2) {
-						int intResult = registerValue.intValue() & 0xffff;
+						int intResult = varValue.intValue() & 0xffff;
 						if ((intResult & 0x00008000) != 0)
 							intResult |= 0xffff0000;
 						result = new Integer(intResult);
 					} else if (varSize == 1) {
-						int intResult = registerValue.intValue() & 0xff;
+						int intResult = varValue.intValue() & 0xff;
 						if ((intResult & 0x00000080) != 0)
 							intResult |= 0xffffff00;
 						result = new Integer(intResult);
 					} else {
 						// assume an 8-byte long is the default
-						result = new Long(registerValue.longValue());
+						result = new Long(varValue.longValue());
 					}
 				} else {
 					if (varSize == 4) {
-						result = new Integer(registerValue.intValue());
+						result = new Integer(varValue.intValue());
 					} else if (varSize == 2) {
-						result = new Integer(registerValue.intValue() & 0xffff);
+						result = new Integer(varValue.intValue() & 0xffff);
 					} else if (varSize == 1) {
-						result = new Integer(registerValue.intValue() & 0xff);
+						result = new Integer(varValue.intValue() & 0xff);
 					} else {
 						// assume an 8-byte long is the default
-						result = new Long(registerValue.longValue());
+						result = new Long(varValue.longValue());
 					}
 				}
 			} else {
 				if (isSigned) {
 					if (varSize == 4) {
 						result = new Integer(MemoryUtils.convertByteArrayToInt(memBuffer.subList(0, 4).toArray(
-								new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN));
+								new MemoryByte[4]), endian));
 					} else if (varSize == 2) {
 						result = new Integer(MemoryUtils.convertByteArrayToShort(memBuffer.subList(0, 2).toArray(
-								new MemoryByte[2]), MemoryUtils.LITTLE_ENDIAN));
+								new MemoryByte[2]), endian));
 					} else if (varSize == 1) {
 						result = new Integer(MemoryUtils.convertByteArrayToInt(memBuffer.subList(0, 1).toArray(
-								new MemoryByte[1]), MemoryUtils.LITTLE_ENDIAN));
+								new MemoryByte[1]), endian));
 					} else if (varSize == 8) {
 						result = new Long(MemoryUtils.convertByteArrayToLong(memBuffer.subList(0, 8).toArray(
-								new MemoryByte[8]), MemoryUtils.LITTLE_ENDIAN));
+								new MemoryByte[8]), endian));
 					}
 				} else {
 					if (varSize < 8) {
 						result = MemoryUtils.convertByteArrayToUnsignedLong(memBuffer.subList(0, varSize).toArray(
-								new MemoryByte[varSize]), MemoryUtils.LITTLE_ENDIAN);
+								new MemoryByte[varSize]), endian);
 					} else {
 						byte[] bytes = new byte[varSize];
 						int i = 0;
@@ -373,7 +372,7 @@ public class VariableWithValue {
 						for (; i < varSize; i++)
 							bytes[i] = 0;
 
-						result = MemoryUtils.convertByteArrayToUnsignedBigInt(bytes, MemoryUtils.LITTLE_ENDIAN,
+						result = MemoryUtils.convertByteArrayToUnsignedBigInt(bytes, endian,
 								varSize);
 					}
 				}

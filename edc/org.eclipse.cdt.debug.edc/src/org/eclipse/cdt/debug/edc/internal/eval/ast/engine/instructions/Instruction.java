@@ -12,8 +12,9 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
-import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
 
 public abstract class Instruction {
@@ -249,8 +250,13 @@ public abstract class Instruction {
 			VariableWithValue variableWithValue = (VariableWithValue) operand;
 			if (TypeUtils.isAggregateType(variableWithValue.getVariable().getType())) {
 				operand = variableWithValue.getValueLocation();
-				if (operand instanceof Addr64)
-					operand = ((Addr64) operand).getValue();
+				if (operand instanceof IAddress)
+					operand = ((IAddress) operand).getValue();
+				else if (operand instanceof IMemoryVariableLocation)
+					operand = ((IMemoryVariableLocation) operand).getAddress().getValue();
+				else
+					assert(false);
+					
 			} else {
 				operand = variableWithValue.getValue();
 			}

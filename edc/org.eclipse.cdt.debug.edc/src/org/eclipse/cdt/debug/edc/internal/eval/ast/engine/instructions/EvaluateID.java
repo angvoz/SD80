@@ -18,7 +18,7 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
-import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
+import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.Stack.EnumeratorDMC;
@@ -26,7 +26,6 @@ import org.eclipse.cdt.debug.edc.services.Stack.IVariableEnumeratorContext;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.services.Stack.VariableDMC;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
-import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -92,22 +91,15 @@ public class EvaluateID extends SimpleInstruction {
 		// This may be called on debugger shutdown, in which case the "modules" 
 		// service may have been shutdown.
 		if (variable != null && modules != null) {
-			Object valueLocation = new Object();
+			Object valueLocation;
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getVariable().getLocationProvider();
 			IAddress pcValue = frame.getIPAddress();
 			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
-			IVariableLocation location = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
-			if (location instanceof IMemoryVariableLocation) {
-				IMemoryVariableLocation memoryLocation = (IMemoryVariableLocation) location;
-				if (memoryLocation.isRuntimeAddress()) {
-					valueLocation = memoryLocation.getAddress();
-				} else {
-					valueLocation = module.toRuntimeAddress(memoryLocation.getAddress());
-				}
-			} else {
-				// either in a register or not live at the given address
-				valueLocation = location;
+			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
+			if (valueLocation == null) {
+				// unhandled
+				valueLocation = new InvalidVariableLocation("no location found for " + variable.getName());
 			}
 			setValueLocation(valueLocation);
 			setValueType(variable.getVariable().getType());

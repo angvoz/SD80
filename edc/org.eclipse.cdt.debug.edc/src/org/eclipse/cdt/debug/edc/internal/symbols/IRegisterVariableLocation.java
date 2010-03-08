@@ -14,6 +14,9 @@ import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 
 /**
  * Interface representing a variable value located in a register.
+ * <p>
+ * This may refer to a register that is saved inside a caller's stack frame
+ * and not necessarily to a current living register.
  */
 public interface IRegisterVariableLocation extends IVariableLocation {
 

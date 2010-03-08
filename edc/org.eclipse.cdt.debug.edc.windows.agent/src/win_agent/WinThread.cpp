@@ -20,8 +20,7 @@
 #include "WinDebugMonitor.h"
 #include "ResumeContextAction.h"
 #include "ProtocolConstants.h"
-// TODO: remove this
-#include "TCFHeaders.h"
+#include "RunControlService.h"
 
 std::map<std::pair<int, int>, WinThread*> WinThread::threadIDMap_;
 
@@ -52,12 +51,9 @@ WinThread::WinThread(WinProcess& process, DEBUG_EVENT& debugEvent) :
 	initialize();
 }
 
+// Initialize thread specific properties.
 void WinThread::initialize()
 {
-	RunControlContext::initialize();
-
-	SetProperty(PROP_OS_ID, new PropertyValue(AgentUtils::IntToString(GetOSID())) );
-
 	char buf[32];
 	_snprintf(buf, sizeof(buf), "0x%08x", startAddress_);
 	SetProperty(PROP_NAME, new PropertyValue(buf));
@@ -249,6 +245,86 @@ std::vector<std::string> WinThread::GetRegisterValues(
 	}
 
 	return registerValues;
+}
+
+/*
+ * Get pointer to register value cache for a given register.
+ * Return NULL if the register is not found.
+ */
+void* WinThread::getRegisterValueBuffer(const std::string& regName) {
+	void* v = NULL;
+
+	if (regName == "EAX")
+		v = (void*)&threadContextInfo_.Eax;
+	else if (regName == "EBX")
+		v = (void*)&threadContextInfo_.Ebx;
+	else if (regName == "ECX")
+		v = (void*)&threadContextInfo_.Ecx;
+	else if (regName == "EDX")
+		v = (void*)&threadContextInfo_.Edx;
+	else if (regName == "ESP")
+		v = (void*)&threadContextInfo_.Esp;
+	else if (regName == "EBP")
+		v = (void*)&threadContextInfo_.Ebp;
+	else if (regName == "ESI")
+		v = (void*)&threadContextInfo_.Esi;
+	else if (regName == "EDI")
+		v = (void*)&threadContextInfo_.Edi;
+	else if (regName == "EIP")
+		v = (void*)&threadContextInfo_.Eip;
+	else if (regName == "EFL")
+		v = (void*)&threadContextInfo_.EFlags;
+	else if (regName == "GS")
+		v = (void*)&threadContextInfo_.SegGs;
+	else if (regName == "FS")
+		v = (void*)&threadContextInfo_.SegFs;
+	else if (regName == "ES")
+		v = (void*)&threadContextInfo_.SegEs;
+	else if (regName == "DS")
+		v = (void*)&threadContextInfo_.SegDs;
+	else if (regName == "CS")
+		v = (void*)&threadContextInfo_.SegCs;
+	else if (regName == "SS")
+		v = (void*)&threadContextInfo_.SegSs;
+	else {
+		assert(false);
+	}
+
+	return v;
+}
+
+/*
+ * Read one register.
+ * Return binary data buffer, which caller should free by calling delete[].
+ */
+char* WinThread::GetRegisterValue(std::string regName, int regSize) {
+
+	char* ret = NULL;
+
+	if (isSuspended()) {
+		EnsureValidContextInfo();
+
+		ret = new char[regSize];
+
+		void* v = getRegisterValueBuffer(regName);
+		assert(v != NULL);
+
+		memcpy((void*)ret, v, regSize);
+	}
+
+	return ret;
+}
+
+bool WinThread::SetRegisterValue(std::string regName, int regSize, char* val) {
+
+	if (! isSuspended())
+		return false;
+
+	void* v = getRegisterValueBuffer(regName);
+	assert(v != NULL);
+
+	memcpy(v, (void*)val, regSize);
+	return SetThreadContext(handle_, &threadContextInfo_);
 }
 
 void WinThread::SetRegisterValues(std::vector<std::string> registerIDs,

@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.services.IFrameRegisterProvider;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -79,4 +80,11 @@ public interface IModuleScope extends IScope {
 	 * @return {@link IModuleLineEntryProvider}, never <code>null</code> 
 	 */
 	IModuleLineEntryProvider getModuleLineEntryProvider();
+	
+	/**
+	 * Get a provider that allows access to registers stored in other stack frames.
+	 * @return {@link IFrameRegisterProvider} or <code>null</code>
+	 */
+	IFrameRegisterProvider getFrameRegisterProvider();
+
 }

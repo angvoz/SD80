@@ -10,6 +10,13 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+import java.math.BigInteger;
+
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
+import org.eclipse.core.runtime.CoreException;
+
 public class InvalidVariableLocation implements IInvalidVariableLocation {
 
 	private String message;
@@ -21,6 +28,15 @@ public class InvalidVariableLocation implements IInvalidVariableLocation {
 			this.message = message;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
+	@Override
+	public String toString() {
+		return "Invalid: " + getMessage();
+	}
+	
+	
 	public String getMessage() {
 		return this.message;
 	}
@@ -30,5 +46,26 @@ public class InvalidVariableLocation implements IInvalidVariableLocation {
 			this.message = ""; //$NON-NLS-1$
 		else
 			this.message = message;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#readValue()
+	 */
+	public BigInteger readValue(int bytes) throws CoreException {
+		throw EDCDebugger.newCoreException(message);
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#addOffset(long)
+	 */
+	public IVariableLocation addOffset(long offset) {
+		return this;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getLocationName(org.eclipse.cdt.dsf.service.DsfServicesTracker)
+	 */
+	public String getLocationName(DsfServicesTracker servicesTracker) {
+		return "";
 	}
 }

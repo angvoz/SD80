@@ -326,7 +326,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		IRegisterGroupDMContext[] regGroups = getGroupsForContext(exeDMC);
 		
 		for (IRegisterGroupDMContext g : regGroups) {
-			// Not the getRegisters() will create registerDMCs for the group if not yet. 
+			// Note the getRegisters() will create registerDMCs for the group if not yet. 
 			for (RegisterDMC reg : ((RegisterGroupDMC)g).getRegisters()) {
 				String n = (String)reg.getProperties().get(org.eclipse.tm.tcf.services.IRegisters.PROP_NAME);
 				if (name.equals(n))
@@ -466,7 +466,14 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 *            big-endian hex string representation of the value to write.
 	 */
 	public void writeRegister(IEDCExecutionDMC context, String regID, String regValue) {
-		writeRegister(new RegisterDMC(context, regID, regID, regID), regValue, IFormattedValues.HEX_FORMAT,
+		RegisterDMC regDMC;
+		
+		regDMC = findRegisterDMCByName(context, regID);
+		assert regDMC != null;
+		
+//		writeRegister(new RegisterDMC(context, regID, regID, regID), regValue, IFormattedValues.HEX_FORMAT,
+//				new RequestMonitor(getExecutor(), null));
+		writeRegister(regDMC, regValue, IFormattedValues.HEX_FORMAT,
 				new RequestMonitor(getExecutor(), null));
 	}
 
@@ -889,9 +896,36 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		flushCache(null);
 	}
 
-	abstract protected List<RegisterGroupDMC> createGroupsForContext(IEDCExecutionDMC ctx);
+	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) {
+		ArrayList<RegisterDMC> registers = new ArrayList<RegisterDMC>();
+	
+		if (tcfRegistersService != null) {
+			List<RegistersContext> tcfRegs = getTCFRegistersContexts(registerGroupDMC.getID());
+			
+			for (RegistersContext rg: tcfRegs) {
+				registers.add(new RegisterDMC(registerGroupDMC, registerGroupDMC.getExecutionDMC(), rg));
+			}
+		}
+		
+		return registers;
+	}
+	
+	protected List<RegisterGroupDMC> createGroupsForContext(IEDCExecutionDMC ctx) {
 
-	abstract protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC);
+		List<RegisterGroupDMC> groups = Collections.synchronizedList(new ArrayList<RegisterGroupDMC>());
+
+		if (ctx instanceof ThreadExecutionDMC) {
+			if (tcfRegistersService != null) {
+				List<RegistersContext> tcfRegGroups = getTCFRegistersContexts(ctx.getID());
+				
+				for (RegistersContext rg: tcfRegGroups) {
+					groups.add(new RegisterGroupDMC(this, (ThreadExecutionDMC)ctx, rg.getProperties()));
+				}
+			}
+		}
+
+		return groups;
+	}
 
 	/**
 	 * Given a common general purpose register id (e.g. from symbolics), get the

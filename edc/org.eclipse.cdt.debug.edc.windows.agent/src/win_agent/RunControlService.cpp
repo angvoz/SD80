@@ -46,7 +46,7 @@ void RunControlService::command_get_context(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::FindDebuggedContext(id);
+	Context* context = ContextManager::findDebuggedContext(id);
 
 	channel.writeReplyHeader(token);
 
@@ -82,12 +82,12 @@ void RunControlService::command_get_children(char * token, Channel * c) {
 
 	channel.writeCharacter('[');
 
-	std::list<Context*> chidren =
-			ContextManager::FindDebuggedContext(parentID)->GetChildren();
+	std::list<Context*>& children =
+			ContextManager::findDebuggedContext(parentID)->GetChildren();
 
 	std::list<Context*>::iterator itr;
-	for (itr = chidren.begin(); itr != chidren.end(); itr++) {
-		if (itr != chidren.begin())
+	for (itr = children.begin(); itr != children.end(); itr++) {
+		if (itr != children.begin())
 			channel.writeCharacter(',');
 		std::string contextID = ((Context*) *itr)->GetID();
 		channel.writeString(contextID);
@@ -119,7 +119,7 @@ void RunControlService::command_resume(char * token, Channel * c) {
 
 	channel.writeReplyHeader(token);
 
-	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findDebuggedContext(id));
 	if (context == NULL) {
 		// Return an invalid context ID error.
 		channel.writeError(ERR_INV_CONTEXT);
@@ -146,7 +146,7 @@ void RunControlService::command_suspend(char * token, Channel * c) {
 
 	channel.writeReplyHeader(token);
 
-	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findDebuggedContext(id));
 	if (context == NULL) {
 		// Return an invalid context ID error.
 		channel.writeError(ERR_INV_CONTEXT);
@@ -169,7 +169,7 @@ void RunControlService::command_terminate(char * token, Channel * c) {
 	channel.readComplete();
 
 	channel.writeReplyHeader(token);
-	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findDebuggedContext(id));
 	if (context == NULL) {
 		// Return an invalid context ID error.
 		channel.writeError(ERR_INV_CONTEXT);

@@ -20,14 +20,15 @@ RunControlContext::RunControlContext(ContextOSID osid, ContextID parentID, Conte
 	Context(parentID, internalID)
 {
 	osID = osid;
+
+	initialize();
 }
 
 
 void RunControlContext::initialize()
 {
-	Context::initialize();
-
-	SetProperty(PROP_OS_ID, new PropertyValue(AgentUtils::IntToString(GetOSID())) );
+	const std::string& str = AgentUtils::IntToString(GetOSID());
+	SetProperty(PROP_OS_ID, new PropertyValue(str));
 }
 
 ContextOSID RunControlContext::GetOSID() {

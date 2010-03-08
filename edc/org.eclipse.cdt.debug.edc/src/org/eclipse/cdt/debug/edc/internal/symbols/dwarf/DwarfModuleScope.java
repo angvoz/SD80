@@ -25,6 +25,7 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.ModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.Scope;
+import org.eclipse.cdt.debug.edc.services.IFrameRegisterProvider;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
@@ -245,6 +246,16 @@ public class DwarfModuleScope extends Scope implements IModuleScope {
 			lineEntryMapper.addCompileUnit(scope);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.IModuleScope#getFrameRegisterProvider()
+	 */
+	public IFrameRegisterProvider getFrameRegisterProvider() {
+		if (provider != null)
+			return provider.getFrameRegisterProvider();
+		else
+			return null;
+	}
+	
 	/**
 	 * Help garbage collection
 	 */

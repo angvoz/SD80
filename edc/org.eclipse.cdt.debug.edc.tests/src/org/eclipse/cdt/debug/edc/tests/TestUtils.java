@@ -260,7 +260,12 @@ public class TestUtils {
 		return contextHolder[0];
 	}
 
-	public static IFrameDMContext waitForStackFrame(final DsfSession session, final ExecutionDMC threadDMC)
+	public static IFrameDMContext waitForStackFrame(final DsfSession session, final IEDCExecutionDMC threadDMC)
+			throws Exception {
+		return waitForStackFrame(session, threadDMC, 0);
+	}
+
+	public static IFrameDMContext waitForStackFrame(final DsfSession session, final IEDCExecutionDMC threadDMC, final int level)
 			throws Exception {
 		final IFrameDMContext frameHolder[] = { null };
 		TestUtils.waitOnExecutorThread(session, new Condition() {
@@ -270,17 +275,18 @@ public class TestUtils {
 				if (stackService == null)
 					return false;
 				IFrameDMContext[] frames = stackService.getFramesForDMC(threadDMC, 0, IStack.ALL_FRAMES);
-				if (frames.length > 0) {
-					frameHolder[0] = frames[0];
+				if (frames.length > level) {
+					frameHolder[0] = frames[level];
 					return true;
 				}
 				return false;
 			}
-
+			
 		});
 		return frameHolder[0];
 	}
-
+	
+	
 	public static ExecutionDMC waitForSuspendedThread(final DsfSession session) throws Exception {
 		final ExecutionDMC contextHolder[] = { null };
 		TestUtils.waitOnExecutorThread(session, new Condition() {

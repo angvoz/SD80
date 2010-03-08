@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.internal.launch;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointAttributeTranslator;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointsMediator2;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Snapshots;
@@ -22,6 +21,7 @@ import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
+import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator2;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;

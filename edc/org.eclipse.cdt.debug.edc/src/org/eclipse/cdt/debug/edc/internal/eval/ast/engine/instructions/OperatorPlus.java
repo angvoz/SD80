@@ -12,13 +12,13 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
-import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -162,8 +162,8 @@ public class OperatorPlus extends BinaryOperator {
 		}
 
 		Object address = leftVar.getValue();
-		if (address instanceof Addr64)
-			address = ((Addr64) address).getValue();
+		if (address instanceof IAddress)
+			address = ((IAddress) address).getValue();
 
 		// convert the left address to BigInteger
 		String bigIntString = "0"; //$NON-NLS-1$

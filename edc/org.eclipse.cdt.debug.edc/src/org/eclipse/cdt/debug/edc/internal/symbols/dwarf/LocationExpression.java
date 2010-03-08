@@ -11,30 +11,27 @@
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.math.BigInteger;
+import java.text.MessageFormat;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IStreamBuffer;
-import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
-import org.eclipse.cdt.debug.edc.internal.symbols.IRegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation;
-import org.eclipse.cdt.debug.edc.services.Registers;
-import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
-import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.CoreException;
 
 public class LocationExpression implements ILocationProvider {
 
-	protected IStreamBuffer location;
-	protected int addressSize;
-	protected IScope scope;
+	protected final IStreamBuffer location;
+	protected final int addressSize;
+	protected final IScope scope;
 
 	public LocationExpression(IStreamBuffer location, int addressSize, IScope scope) {
 		this.location = location;
@@ -44,40 +41,72 @@ public class LocationExpression implements ILocationProvider {
 
 	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress) {
 
-		if (location != null) {
-			location.position(0);
+		if (location == null) {
+			return null;
 		}
-
+		
+		// This is intentionally small.  No existing code that I've seen has more 
+		// than a sprinkling of operands, much less ones that push. 
+		IVariableLocation[] opStack = new IVariableLocation[8];
+		int opStackPtr = 0;
+				
+		location.position(0);
+		
 		try {
-			while (location != null && location.hasRemaining()) {
+			while (location.hasRemaining()) {
 				byte opcodeB = location.get();
 				int opcode = 0xFF & opcodeB;
 
 				if (opcode >= DwarfConstants.DW_OP_lit0 && opcode <= DwarfConstants.DW_OP_lit31) {
-					assert (false);
+					opStack[opStackPtr++] = new MemoryVariableLocation(tracker, 
+							context, 
+							BigInteger.valueOf(opcode - DwarfConstants.DW_OP_lit0), true);
 				}
-				if (opcode >= DwarfConstants.DW_OP_reg0 && opcode <= DwarfConstants.DW_OP_reg31) {
-					return new RegisterVariableLocation(null, opcode - DwarfConstants.DW_OP_reg0);
+				else if (opcode >= DwarfConstants.DW_OP_reg0 && opcode <= DwarfConstants.DW_OP_reg31) {
+					opStack[opStackPtr++] = new RegisterVariableLocation(context, null, (opcode - DwarfConstants.DW_OP_reg0));
 				}
-				if (opcode >= DwarfConstants.DW_OP_breg0 && opcode <= DwarfConstants.DW_OP_breg31) {
-					// TODO we need to get the register value from the stack
-					// frame
-					Registers registersService = tracker.getService(Registers.class);
-					long regValue = Long.valueOf(registersService.getRegisterValue(((StackFrameDMC) context)
-							.getExecutionDMC(), opcode - DwarfConstants.DW_OP_breg0), 16);
-					IAddress regAddress = new Addr64(BigInteger.valueOf(regValue));
-					long offset = DwarfInfoReader.read_signed_leb128(location);
-					return new MemoryVariableLocation(regAddress.add(offset), true);
+				else if (opcode >= DwarfConstants.DW_OP_breg0 && opcode <= DwarfConstants.DW_OP_breg31) {
+					RegisterVariableLocation loc = new RegisterVariableLocation(context, null, (opcode - DwarfConstants.DW_OP_breg0));
+					try {
+						BigInteger value = loc.readValue(addressSize);
+						
+						long offset = DwarfInfoReader.read_signed_leb128(location);
+						opStack[opStackPtr++] = new MemoryVariableLocation(tracker, context,
+								value.add(BigInteger.valueOf(offset)), true);
+					} catch (CoreException e) {
+						return new InvalidVariableLocation(e.getMessage());
+					}
 				} else {
 
 					switch (opcode) {
-
+					case DwarfConstants.DW_OP_nop:
+						// ignore
+						break;
+						
 					case DwarfConstants.DW_OP_addr: /* Constant address. */
 						// this is not a runtime address
 						long addrValue = DwarfInfoReader.readAddress(location, addressSize);
-						return new MemoryVariableLocation(new Addr64(BigInteger.valueOf(addrValue)), false);
+						opStack[opStackPtr++] = new MemoryVariableLocation(tracker, context, 
+								BigInteger.valueOf(addrValue), false);
+						break;
 
-					case DwarfConstants.DW_OP_deref:
+					case DwarfConstants.DW_OP_deref: {
+						if (opStackPtr == 0) {
+							return new InvalidVariableLocation(MessageFormat.format(
+								DwarfMessages.InternalErrorFormat,
+								DwarfMessages.LocationExpression_ErrBadDeref));
+						}
+						try {
+							BigInteger addr = opStack[opStackPtr - 1].readValue(addressSize);
+							IVariableLocation loc = new MemoryVariableLocation(tracker, context,
+									addr, true);
+							opStack[opStackPtr - 1] = loc;
+						} catch (CoreException e) {
+							return new InvalidVariableLocation(e.getMessage());
+						}
+						break;
+					}
+
 					case DwarfConstants.DW_OP_const1u: /*
 														 * Unsigned 1-byte
 														 * constant.
@@ -145,82 +174,47 @@ public class LocationExpression implements ILocationProvider {
 					case DwarfConstants.DW_OP_lt:
 					case DwarfConstants.DW_OP_ne:
 					case DwarfConstants.DW_OP_skip: /* Signed 2-byte constant. */
-						// TODO
-						assert (false);
-						break;
+						return new InvalidVariableLocation(MessageFormat.format(
+								DwarfMessages.NotImplementedFormat, DwarfMessages.LocationExpression_DW_OP + opcode));
 
 					case DwarfConstants.DW_OP_regx: /* Unsigned LEB128 register. */
 						long regNum = DwarfInfoReader.read_unsigned_leb128(location);
-						return new RegisterVariableLocation(null, (int) regNum);
-
-					case DwarfConstants.DW_OP_fbreg: /* Signed LEB128 register. */
+						opStack[opStackPtr++] = new RegisterVariableLocation(context, null, ((int) regNum));
+						break;
+						
+					case DwarfConstants.DW_OP_fbreg: /* Signed LEB128 offset. */
+						long offset = DwarfInfoReader.read_signed_leb128(location);
+						
 						IFunctionScope functionScope = null;
-						if (scope instanceof IFunctionScope) {
-							functionScope = (IFunctionScope) scope;
-						} else {
-							IScope parent = scope.getParent();
-							while (parent != null && !(parent instanceof IFunctionScope)) {
-								parent = parent.getParent();
-							}
-
-							if (parent == null) {
-								// TODO: hacky workaround.  We really need to fix why the stored scope is not
-								// always a function scope.
-								if (context instanceof StackFrameDMC) {
-									functionScope = ((StackFrameDMC) context).getFunctionScope();
-								} 
-								if (functionScope == null) {
-									assert (false);
-									return null;
-								}
-							} else {
-								functionScope = (IFunctionScope) parent;
-							}
-						}
-	
-						// inlined functions may be nested
-						while (functionScope.getParent() instanceof IFunctionScope)
-							functionScope = (IFunctionScope) functionScope.getParent();
+						functionScope = getFunctionScope(forLinkAddress);
 						
 						IVariableLocation framePtrLoc = functionScope.getFrameBaseLocation().getLocation(tracker,
 								context, forLinkAddress);
 						if (framePtrLoc != null) {
 							// first resolve the frame base value and then add
 							// the offset
-							if (framePtrLoc instanceof IRegisterVariableLocation) {
-								// TODO we need to get the register value from
-								// the stack frame
-								Registers registersService = tracker.getService(Registers.class);
-								long regValue = Long.valueOf(registersService.getRegisterValue(
-										((StackFrameDMC) context).getExecutionDMC(),
-										((IRegisterVariableLocation) framePtrLoc).getRegisterID()), 16);
-								IAddress regAddress = new Addr64(BigInteger.valueOf(regValue));
-								long offset = DwarfInfoReader.read_signed_leb128(location);
-								try {
-									regAddress = regAddress.add(offset);
-								} catch (Exception e) {
-									// probably at the opening bracket before
-									// the frame is created so
-									// we have a bogus register value
-									return new InvalidVariableLocation(DwarfMessages.UnknownVariableAddress);
-								}
-								return new MemoryVariableLocation(regAddress, true);
-							} else if (framePtrLoc instanceof IMemoryVariableLocation) {
-								IAddress address = ((IMemoryVariableLocation) framePtrLoc).getAddress();
-								long offset = DwarfInfoReader.read_signed_leb128(location);
-								return new MemoryVariableLocation(address.add(offset), true);
-							} else
-								assert (false);
+							BigInteger frame = framePtrLoc.readValue(addressSize);
+							
+							opStack[opStackPtr++] = new MemoryVariableLocation(tracker, context, 
+									frame.add(BigInteger.valueOf(offset)), true);
 						}
+						
 						break;
 
+					case DwarfConstants.DW_OP_piece: 
+						/*
+						* ULEB128 size of piece
+						* addressed.
+						* TODO: GCC emits this for long long (is a composition operator
+						* that combines values -- this may tax the IVariableLocation concept)
+						*/
+						assert (false);
+						return new InvalidVariableLocation(MessageFormat.format(DwarfMessages.NotImplementedFormat,
+								DwarfMessages.LocationExpression_MultiRegisterVariable));
+						
 					case DwarfConstants.DW_OP_bregx: /*
 													 * ULEB128 register followed
 													 * by SLEB128 off.
-													 */
-					case DwarfConstants.DW_OP_piece: /*
-													 * ULEB128 size of piece
-													 * addressed.
 													 */
 					case DwarfConstants.DW_OP_deref_size: /*
 														 * 1-byte size of data
@@ -230,27 +224,66 @@ public class LocationExpression implements ILocationProvider {
 															 * 1-byte size of
 															 * data retrieved.
 															 */
-					case DwarfConstants.DW_OP_nop:
 					case DwarfConstants.DW_OP_push_object_address:
 					case DwarfConstants.DW_OP_call2:
 					case DwarfConstants.DW_OP_call4:
 					case DwarfConstants.DW_OP_call_ref:
 						assert (false);
-						break;
+						return new InvalidVariableLocation(MessageFormat.format(DwarfMessages.NotImplementedFormat,
+								DwarfMessages.LocationExpression_DW_OP + opcode));
 
 					default:
 						assert (false);
-						break;
+						return new InvalidVariableLocation(MessageFormat.format(DwarfMessages.InternalErrorFormat,
+								DwarfMessages.LocationExpression_UnexpectedOperand + opcode));
 					}
 
 				}
 
 			}
+		} catch (CoreException e) {
+			return new InvalidVariableLocation(e.getMessage());
 		} catch (Exception e) {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}
 
-		return null;
+		if (opStackPtr != 1) {
+			assert(false);
+			return new InvalidVariableLocation(MessageFormat.format(DwarfMessages.InternalErrorFormat,
+			DwarfMessages.LocationExpression_BadStackSize));
+		}
+			
+		return opStack[0];
+	}
+
+	/**
+	 * @param forLinkAddress
+	 * @param functionScope
+	 * @return
+	 * @throws CoreException
+	 */
+	private IFunctionScope getFunctionScope(IAddress forLinkAddress) throws CoreException {
+		IFunctionScope functionScope = null;
+		
+		if (scope instanceof IFunctionScope) {
+			functionScope = (IFunctionScope) scope;
+		} else {
+			IScope parent = scope.getParent();
+			while (parent != null && !(parent instanceof IFunctionScope)) {
+				parent = parent.getParent();
+			}
+
+			if (parent == null) {
+				throw EDCDebugger.newCoreException("No function scope for " + scope + " at " + forLinkAddress.toHexAddressString());
+			} else {
+				functionScope = (IFunctionScope) parent;
+			}
+		}
+
+		// inlined functions may be nested
+		while (functionScope.getParent() instanceof IFunctionScope)
+			functionScope = (IFunctionScope) functionScope.getParent();
+		return functionScope;
 	}
 
 

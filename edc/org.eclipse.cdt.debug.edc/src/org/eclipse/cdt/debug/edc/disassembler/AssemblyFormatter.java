@@ -45,6 +45,13 @@ public class AssemblyFormatter {
 		return s;
 	}
 
+	public static String toHexString(long i, boolean show0x) {
+		String ret = Long.toHexString(i);
+		if (show0x)
+			ret = "0x" + ret;
+	
+		return ret;
+	}
 	public static String toHexString(int i, boolean show0x) {
 		String ret = Integer.toHexString(i);
 		if (show0x)
@@ -113,11 +120,16 @@ public class AssemblyFormatter {
 		return toHexString(addr, true);
 	}
 
-	public static String formatImmediate(int imm) {
+	public static String formatImmediate(long imm) {
 		/* Not signed. */
 		return PREFIX_IMMEDIATE + toHexString(imm, true);
 	}
 
+	public static String formatImmediate(int imm) {
+		/* Not signed. */
+		return PREFIX_IMMEDIATE + toHexString(imm, true);
+	}
+	
 	public static String formatDisplacement(int displacement) {
 		if (displacement < 0)
 			return "-" + toHexString(-displacement, true); // negative hex

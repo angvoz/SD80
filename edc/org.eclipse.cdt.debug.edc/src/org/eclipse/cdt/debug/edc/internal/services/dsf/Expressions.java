@@ -42,16 +42,15 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IInvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IRegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
-import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
@@ -139,14 +138,9 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			if (value instanceof VariableWithValue) {
 				VariableWithValue variableValue = (VariableWithValue) value;
 
-				// change register variable location to the register name
-				if (valueLocation instanceof IRegisterVariableLocation) {
-					IRegisterVariableLocation regVarLocation = (IRegisterVariableLocation) valueLocation;
-					if (regVarLocation.getRegisterName() == null) {
-						Registers registerservice = variableValue.getServicesTracker().getService(Registers.class);
-						valueLocation = "$" + registerservice.getRegisterNameFromCommonID(regVarLocation.getRegisterID()); //$NON-NLS-1$
-					} else
-						valueLocation = "$" + regVarLocation.getRegisterName(); //$NON-NLS-1$
+				if (valueLocation instanceof IVariableLocation) {
+					IVariableLocation varLocation = (IVariableLocation) valueLocation;
+					valueLocation = varLocation.getLocationName(variableValue.getServicesTracker());
 				}
 
 				// for a structured type or array, return the location and note
@@ -589,9 +583,19 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		rm.done();
 	}
 
-	public void getSubExpressionCount(IExpressionDMContext exprContext, DataRequestMonitor<Integer> rm) {
-		rm.setData(0);
-		rm.done();
+	public void getSubExpressionCount(IExpressionDMContext exprContext, final DataRequestMonitor<Integer> rm) {
+		// TODO: maybe cache these subexpressions; they are just requested again in #getSubExpressions()
+		getSubExpressions(exprContext, new DataRequestMonitor<IExpressions.IExpressionDMContext[]>(
+				getExecutor(), rm) {
+			/* (non-Javadoc)
+			 * @see org.eclipse.cdt.dsf.concurrent.RequestMonitor#handleSuccess()
+			 */
+			@Override
+			protected void handleSuccess() {
+				rm.setData(getData().length);
+				rm.done();
+			}
+		});
 	}
 
 	public void getSubExpressions(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMContext[]> rm) {
@@ -813,10 +817,33 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		}
 	}
 
-	public void getSubExpressions(IExpressionDMContext exprContext, int startIndex, int length,
-			DataRequestMonitor<IExpressionDMContext[]> rm) {
-		rm.setData(new ExpressionDMC[0]);
-		rm.done();
+	public void getSubExpressions(IExpressionDMContext exprContext, final int startIndex_, final int length_,
+			final DataRequestMonitor<IExpressionDMContext[]> rm) {
+		getSubExpressions(exprContext, new DataRequestMonitor<IExpressionDMContext[]>(getExecutor(), rm) {
+			@Override
+			protected void handleSuccess() {
+				IExpressionDMContext[] allExprs = getData();
+				if (startIndex_ == 0 && length_ >= allExprs.length) {
+					rm.setData(allExprs);
+					rm.done();
+				} else {
+					int startIndex = startIndex_, length = length_;
+					if (startIndex > allExprs.length) {
+						startIndex = allExprs.length;
+						length = 0;
+					} else if (startIndex + length > allExprs.length) {
+						length = allExprs.length - startIndex;
+						if (length < 0)
+							length = 0;
+					}
+						
+					IExpressionDMContext[] result = new IExpressionDMContext[length];
+					System.arraycopy(allExprs, startIndex, result, 0, length);
+					rm.setData(result);
+					rm.done();
+				}
+			}
+		});
 	}
 
 	public void writeExpression(IExpressionDMContext exprContext, String expressionValue, String formatId,

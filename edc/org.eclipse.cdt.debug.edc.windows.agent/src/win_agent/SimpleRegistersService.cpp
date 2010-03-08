@@ -76,7 +76,7 @@ void SimpleRegistersService::command_get(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	WinThread* context = dynamic_cast<WinThread *>(ContextManager::FindDebuggedContext(exeContextID));
+	WinThread* context = dynamic_cast<WinThread *>(ContextManager::findDebuggedContext(exeContextID));
 
 	channel.writeReplyHeader(token);
 
@@ -184,7 +184,7 @@ void SimpleRegistersService::command_set(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	WinThread* context = dynamic_cast<WinThread *>(ContextManager::FindDebuggedContext(exeContextID));
+	WinThread* context = dynamic_cast<WinThread *>(ContextManager::findDebuggedContext(exeContextID));
 
 	if (context != NULL) {
 		context->SetRegisterValues(registerIDs, registerValues);

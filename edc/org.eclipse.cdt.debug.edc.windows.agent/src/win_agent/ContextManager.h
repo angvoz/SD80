@@ -22,31 +22,27 @@
  * This should be a singleton.
  */
 class ContextManager {
+
 public:
+	static void addDebuggedContext(Context* context);
 
-	static void AddDebuggedContext(Context* context);
+	static void addRunningContext(Context* context);
 
-	static void AddRunningContext(Context* context);
+	static Context* findDebuggedContext(ContextID id);
 
-	static Context* FindDebuggedContext(ContextID id);
+	static Context* findRunningContext(ContextID id);
 
-	static Context* FindRunningContext(ContextID id);
+	static void removeDebuggedContext(ContextID id);
 
-	static void RemoveDebuggedContext(ContextID id);
+	static void clearContextCache();
 
-	static void ClearContextCache();
+	static void clearRunningContextCache();
 
-	static void ClearRunningContextCache();
-
-	static void ClearDebuggedContextCache();
+	static void clearDebuggedContextCache();
 
 protected:
-	ContextManager() {
-	}
-	;
-	virtual ~ContextManager() {
-	}
-	;
+	ContextManager() {};
+	virtual ~ContextManager() {};
 
 private:
 	// Contexts that are being debugged/attached.

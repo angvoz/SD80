@@ -42,10 +42,10 @@ public:
 	// Single-instruction step.
 	virtual void SingleStep() throw (AgentException) = 0;
 
-protected:
-	virtual void initialize();
-
 private:
+	// initialize specific properties.
+	void initialize();
+
 	ContextOSID osID; 	/* process or thread identifier */
 };
 

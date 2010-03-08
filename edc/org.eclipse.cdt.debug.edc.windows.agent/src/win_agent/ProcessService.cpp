@@ -54,7 +54,7 @@ void ProcessService::command_get_context(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::FindRunningContext(id);
+	Context* context = ContextManager::findRunningContext(id);
 
 	channel.writeReplyHeader(token);
 
@@ -108,7 +108,7 @@ void ProcessService::command_get_children(char * token, Channel * c) {
         }
         else {
         	// Get rid of stale cache.
-        	ContextManager::ClearRunningContextCache();
+        	ContextManager::clearRunningContextCache();
 
             int cnt = 0;
             write_stream(&c->out, '[');
@@ -120,7 +120,7 @@ void ProcessService::command_get_children(char * token, Channel * c) {
 
 					WinProcess* newProc = new WinProcess(pe32.th32ProcessID, pe32.szExeFile);
 
-					ContextManager::AddRunningContext(newProc);
+					ContextManager::addRunningContext(newProc);
 
 					// Tell host the unique internal ID.
 					json_write_string(&c->out, newProc->GetID().c_str());
@@ -146,7 +146,7 @@ void ProcessService::command_attach(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindRunningContext(id));
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findRunningContext(id));
 
 	channel.writeReplyHeader(token);
 
@@ -343,6 +343,6 @@ static void initializeDebugSession() {
 	// Clear stale data (and free memory).
 	// It's not easy to know when the debug session ends in agent. So we
 	// do this at beginning of a debug session.
-	ContextManager::ClearContextCache();
+	ContextManager::clearContextCache();
 }
 

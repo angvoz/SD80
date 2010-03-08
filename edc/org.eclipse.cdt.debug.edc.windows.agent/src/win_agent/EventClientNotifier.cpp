@@ -224,9 +224,9 @@ void EventClientNotifier::SendContextExceptionCallback(void* params) {
 void EventClientNotifier::WriteContext(Context& context, TCFOutputStream& out) {
 	out.writeCharacter('{');
 
-	std::map<std::string, PropertyValue*> properties = context.GetProperties();
+	Properties& properties = context.GetProperties();
 
-	for (std::map<std::string, PropertyValue*>::iterator iter = properties.begin();
+	for (Properties::iterator iter = properties.begin();
 			iter != properties.end(); iter++)
 	{
 		if (iter != properties.begin())

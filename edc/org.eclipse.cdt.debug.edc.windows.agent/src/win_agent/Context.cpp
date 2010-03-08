@@ -15,13 +15,28 @@
 /*
  * Create a new context.
  */
-Context::Context(ContextID parentID, ContextID internalID) {
+Context::Context(ContextID& parentID, ContextID& internalID) {
 	this->internalID = internalID;
 	this->parentID = parentID;
+
+	initialize();
 
 	// Don't add the context to any context cache here as there are different
 	// caches for different purposes.
 	// See ContextManager for more.
+}
+
+Context::Context(ContextID& parentID, ContextID& internalID, Properties& props) {
+	this->internalID = internalID;
+	this->parentID = parentID;
+
+	// Copy the "props" to internal member. We need deep copy.
+	//	properties.insert(props.begin(), props.end());
+	for (Properties::iterator it = props.begin(); it != props.end(); it++) {
+		properties[it->first] = new PropertyValue(*(it->second));
+	}
+
+	initialize();
 }
 
 Context::~Context() {
@@ -30,7 +45,7 @@ Context::~Context() {
 
 	// remove the context from any context cache.
 	// Note it does not hurt even if the context is not in the cache.
-	ContextManager::RemoveDebuggedContext(GetID());
+	ContextManager::removeDebuggedContext(GetID());
 }
 
 void Context::initialize()
@@ -47,7 +62,7 @@ ContextID Context::GetParentID() {
 	return parentID;
 }
 
-Properties Context::GetProperties() {
+Properties& Context::GetProperties() {
 	return properties;
 }
 
@@ -59,7 +74,7 @@ void Context::RemoveChild(Context* child) {
 	children_.remove(child);
 }
 
-std::list<Context*> Context::GetChildren() {
+std::list<Context*>& Context::GetChildren() {
 	return children_;
 }
 

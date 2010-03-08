@@ -14,6 +14,16 @@
 
 PropertyValue::PropertyValue() {}
 
+PropertyValue::PropertyValue(PropertyValue &src) {
+	type = src.type;
+	if (type == PVT_INT)
+		v.v_int = src.v.v_int;
+	else if (type == PVT_BOOL)
+		v.v_bool = src.v.v_bool;
+	else if (type == PVT_STRING)
+		v_string = src.v_string;	// copy !
+}
+
 PropertyValue::PropertyValue(int x) {
 	type = PVT_INT;
 	v.v_int = x;
@@ -24,37 +34,35 @@ PropertyValue::PropertyValue(bool x) {
 	v.v_bool = x;
 }
 
-PropertyValue::PropertyValue(char *x) {
+PropertyValue::PropertyValue(const char *x) {
 	type = PVT_STRING;
 	v_string = x;
 }
 
-PropertyValue::PropertyValue(std::string x) {
+PropertyValue::PropertyValue(const std::string& x) {
 	type = PVT_STRING;
 	v_string = x;
 }
 
 PropertyValue::~PropertyValue() {
-	type = PVT_UNKNOWN;
 }
 
 
 PropertyType PropertyValue::getType() {
 	return type;
 }
-/*
-	int getIntValue() {
-		return v.v_int;
-	}
 
-	bool getBoolValue() {
-		return v.v_bool;
-	}
+int PropertyValue::getIntValue() {
+	return v.v_int;
+}
 
-	std::string& getStringValue() {
-		return v_string;
-	}
-*/
+bool PropertyValue::getBoolValue() {
+	return v.v_bool;
+}
+
+const std::string& PropertyValue::getStringValue() {
+	return v_string;
+}
 
 void PropertyValue::writeToTCFChannel(TCFOutputStream& tcf_stream) {
 	switch (type) {

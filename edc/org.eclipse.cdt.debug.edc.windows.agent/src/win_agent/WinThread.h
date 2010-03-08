@@ -35,6 +35,9 @@ public:
 	virtual void SetRegisterValues(std::vector<std::string> registerIDs,
 			std::vector<std::string> registerValues);
 
+	char*	GetRegisterValue(std::string regName, int regSize);
+	bool 	SetRegisterValue(std::string regName, int regSize, char* val);
+
 	virtual int ReadMemory(unsigned long address, unsigned long size,
 			char* memBuffer, unsigned long bufferSize, unsigned long& sizeRead);
 	virtual int WriteMemory(unsigned long address, unsigned long size,
@@ -58,16 +61,16 @@ public:
 	static ContextID CreateInternalID(ContextOSID osID, ContextID parentID);
 
 
-protected:
-	virtual void initialize();
-
 private:
+	void initialize();
+
 	void EnsureValidContextInfo();
 	void SetContextInfo();
 	bool isSuspended();
 	void MarkSuspended();
 
 private:
+	void* getRegisterValueBuffer(const std::string& regName);
 
 	bool threadContextValid_;
 	bool isSuspended_;

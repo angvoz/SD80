@@ -28,31 +28,28 @@ class PropertyValue {
 public:
 	PropertyValue();
 
+	PropertyValue(PropertyValue &src);
+
 	PropertyValue(int x);
 
 	PropertyValue(bool x);
 
-	PropertyValue(char *x);
+	PropertyValue(const char *x);
 
-	PropertyValue(std::string x);
+	PropertyValue(const std::string& x);
 
 	~PropertyValue();
 
 
 	PropertyType getType();
-/*
-	int getIntValue() {
-		return v.v_int;
-	}
 
-	bool getBoolValue() {
-		return v.v_bool;
-	}
+	int getIntValue();
 
-	std::string& getStringValue() {
-		return v_string;
-	}
-*/
+	bool getBoolValue();
+
+	const std::string& getStringValue();
+
+
 	void writeToTCFChannel(TCFOutputStream& tcf_stream);
 
 private:

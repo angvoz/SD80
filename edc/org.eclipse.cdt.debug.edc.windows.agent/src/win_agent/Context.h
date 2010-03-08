@@ -54,9 +54,9 @@ typedef unsigned long ContextAddress; /* Type to represent byted address inside 
  */
 class Context {
 public:
-	Context(ContextID parentID, ContextID internalID);
+	Context(ContextID& parentID, ContextID& internalID);
 
-	Context(Properties props);
+	Context(ContextID& parentID, ContextID& internalID, Properties& props);
 
 	virtual ~Context();
 
@@ -71,18 +71,17 @@ public:
 	 */
 	ContextID GetParentID();
 
-	virtual std::list<Context*> GetChildren();
+	virtual std::list<Context*>& GetChildren();
 	void AddChild(Context *);
 	void RemoveChild(Context *);
 
-	Properties GetProperties();
+	Properties& GetProperties();
 	PropertyValue* GetProperty(std::string key);
 	void SetProperty(std::string key, PropertyValue* value);
 
-protected:
-	virtual void initialize();
-
 private:
+	void initialize();
+
 	ContextID internalID;
 	ContextID parentID;
 

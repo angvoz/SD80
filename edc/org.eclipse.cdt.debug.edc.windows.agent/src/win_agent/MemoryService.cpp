@@ -44,7 +44,7 @@ void MemoryService::command_set(char * token, Channel * c) {
 	std::string id = channel.readString();
 	channel.readZero();
 
-	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findDebuggedContext(id));
 
 	unsigned long address = channel.readULong();
 	channel.readZero();
@@ -61,6 +61,14 @@ void MemoryService::command_set(char * token, Channel * c) {
 	channel.readComplete();
 	unsigned long bytesWritten = 0;
 	int memBufferSize = size;
+
+	if (context == NULL) {
+		// Return invalid-context-ID error.
+		channel.writeError(ERR_INV_CONTEXT);
+		channel.writeZero();	// this puts a null object in the reply
+		channel.writeComplete();
+		return;
+	}
 
 	int error = context->WriteMemory(address, size, memBuffer, memBufferSize,
 			bytesWritten);
@@ -94,18 +102,23 @@ void MemoryService::command_get(char * token, Channel * c) {
 	char* memBuffer = new char[size];
 	int memBufferSize = size;
 
-	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findDebuggedContext(id));
 
-	if (context != NULL)
-	{
-		int error = context->ReadMemory(address, size, memBuffer, memBufferSize,
-				bytesRead);
+	if (context == NULL) {
+		// Return invalid-context-ID error.
+		channel.writeError(ERR_INV_CONTEXT);
+		channel.writeZero();	// this puts a null object in the reply
+		channel.writeComplete();
+		return;
 	}
+
+	int error = context->ReadMemory(address, size, memBuffer, memBufferSize,
+				bytesRead);
 
 	channel.writeReplyHeader(token);
 	channel.writeBinaryData(memBuffer, memBufferSize);
 	channel.writeError(0);
-	channel.writeString("null");
+//	channel.writeString("null");
 
 	channel.writeZero();
 	channel.writeComplete();
@@ -118,7 +131,7 @@ void MemoryService::command_fill(char * token, Channel * c) {
 	std::string id = channel.readString();
 	channel.readZero();
 
-	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::FindDebuggedContext(id));
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findDebuggedContext(id));
 
 	unsigned long address = channel.readULong();
 	channel.readZero();
@@ -133,6 +146,14 @@ void MemoryService::command_fill(char * token, Channel * c) {
 
 	channel.readZero();
 	channel.readComplete();
+
+	if (context == NULL) {
+		// Return invalid-context-ID error.
+		channel.writeError(ERR_INV_CONTEXT);
+		channel.writeZero();	// this puts a null object in the reply
+		channel.writeComplete();
+		return;
+	}
 
 	unsigned long bytesWritten = 0;
 	int memBufferSize = size;

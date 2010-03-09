@@ -181,7 +181,7 @@
          </parameter>
       </command>
 
-</menuContribution>
+	</menuContribution>
       <menuContribution
             locationURI="toolbar:org.eclipse.debug.ui.VariableView">
          <command
@@ -199,8 +199,24 @@
                label="Toggle Custom Variable Formatting"
                style="toggle">
          </command>
-      </menuContribution>  
-       </extension>
+      </menuContribution>
+
+      <!-- We retarget the standard Delete command in the Snapshot view and add it to the toolbar and context menu -->
+      <menuContribution
+            locationURI="popup:org.eclipse.cdt.debug.edc.ui.views.SnapshotView">
+         <command
+               commandId="org.eclipse.ui.edit.delete"
+               style="push">
+         </command>
+      </menuContribution>
+      <menuContribution
+            locationURI="toolbar:org.eclipse.cdt.debug.edc.ui.views.SnapshotView">
+         <command
+               commandId="org.eclipse.ui.edit.delete"
+               style="push">
+         </command>
+	</menuContribution>
+	</extension>
 
     <extension
          point="org.eclipse.core.expressions.definitions">
@@ -366,6 +382,22 @@
             class="org.eclipse.cdt.debug.edc.internal.ui.actions.ToggleCustomFormattingCommandHandler"
             commandId="org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting">
       </handler>
+      <!-- Provide the custom handler for the standard Delete commmand; we use it in the Snapshot view --> 
+      <handler
+            class="org.eclipse.cdt.debug.edc.ui.views.SnapshotDeleteHandler"
+            commandId="org.eclipse.ui.edit.delete">
+		<activeWhen>
+			<with variable="activePartId">
+				<equals value="org.eclipse.cdt.debug.edc.ui.views.SnapshotView"/>
+			</with>
+		</activeWhen>
+		<enabledWhen>
+			<with variable="selection">
+        		<count value="1"/>
+			</with>
+		</enabledWhen>
+      </handler>
+
   </extension>
  
   <extension
@@ -617,14 +649,4 @@
 			parentId="org.eclipse.ui.contexts.window">
 		</context>
 	</extension>
-	<extension
-		point="org.eclipse.ui.bindings">
-		<key
-        	commandId="org.eclipse.ui.edit.delete"
-        	contextId="org.eclipse.cdt.debug.edc.ui.context.SnapshotView"
-        	schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
-        	sequence="DEL">
-		</key>
-	</extension>
->>>>>>> 1.29
 </plugin>

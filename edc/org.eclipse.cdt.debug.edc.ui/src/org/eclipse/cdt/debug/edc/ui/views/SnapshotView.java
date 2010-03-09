@@ -28,20 +28,15 @@ import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IResourceProxy;
-import org.eclipse.core.resources.IResourceProxyVisitor;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.CellEditor;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
@@ -73,7 +68,6 @@ import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.contexts.IContextActivation;
 import org.eclipse.ui.contexts.IContextService;
 import org.eclipse.ui.part.ViewPart;
@@ -132,7 +126,6 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	private Action refreshAction;
 	private Action launchAction;
 	private Action importAction;
-	private Action deleteAction; // delete a snapshot or album
 	private IContextActivation contextActivation;
 
 	// private Action propertiesAction;
@@ -271,8 +264,6 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 				}
 
 				launchAction.setEnabled(enabled);
-				deleteAction.setEnabled(enabled);
-
 			}
 		});
 
@@ -288,6 +279,10 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
     	if (ctxService != null) {
     		contextActivation= ctxService.activateContext(CONTEXT_ID);
     	}
+    	
+		// This is needed to support the selection-based enablement expression
+		// we specify in the plugin xml for the Delete command
+    	getSite().setSelectionProvider(viewer);
 	}
 
 	private void packColumns() {
@@ -561,43 +556,6 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 
 		// delete album or snapshot
 
-		deleteAction = new Action() {
-			public void run() {
-				try {
-					TreeNode node = (TreeNode) ((IStructuredSelection) viewer
-							.getSelection()).getFirstElement();
-					Object value = node.getValue();
-					if (value instanceof IAlbum) {
-						IAlbum album = (IAlbum) value; 
-						if (deleteAlbum(SnapshotUtils
-								.getSnapshotsProject(), album)) {
-							refreshAction.run();
-						}
-					} else if (value instanceof Snapshot) {
-						Snapshot snap = (Snapshot)value;
-						String descr =  snap.getSnapshotDisplayName();
-						if (MessageDialog.openQuestion(viewer.getControl()
-								.getShell(), "Delete Snapshot",
-								"Are you sure you want to delete snapshot \""
-										+ descr + "\"?")) 
-						{
-							snap.getAlbum().deleteSnapshot(snap);
-							refreshAction.run();
-						}
-					}
-
-				} catch (Exception x) {
-					x.printStackTrace();
-				}
-			}
-		};
-		deleteAction.setText("Delete album");
-		deleteAction.setToolTipText("Delete album or snapshot");
-		deleteAction.setActionDefinitionId(ActionFactory.DELETE.getCommandId());
-		deleteAction.setImageDescriptor(PlatformUI.getWorkbench()
-				.getSharedImages().getImageDescriptor(
-						ISharedImages.IMG_TOOL_DELETE));
-
 		// import album
 		importAction = new Action() {
 			public void run() {
@@ -635,7 +593,6 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	private void fillLocalToolBar(IToolBarManager manager) {
 		manager.add(refreshAction);
 		manager.add(launchAction);
-		manager.add(deleteAction);
 		manager.add(importAction);
 
 		launchAction.setEnabled(false);
@@ -654,13 +611,11 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		Menu menu = menuMgr.createContextMenu(viewer.getControl());
 		viewer.getControl().setMenu(menu);
 		getSite().registerContextMenu(menuMgr, viewer);
-		getSite().getKeyBindingService().registerAction(deleteAction);
 	}
 
 	private void fillContextMenu(IMenuManager manager) {
 		manager.add(refreshAction);
 		manager.add(launchAction);
-		manager.add(deleteAction);
 		ISelection selection = viewer.getSelection();
 		if (selection.isEmpty())
 			return;
@@ -670,18 +625,15 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		boolean enabled = false;
 		if (value instanceof IAlbum) {
 			launchAction.setText("Launch Album");
-			deleteAction.setText("Delete Album");
 			IAlbum album = (IAlbum)value;
 			enabled = !Album.isSnapshotSession(album.getSessionID());
 		} else if (value instanceof Snapshot) {
 			launchAction.setText("Launch Snapshot");
-			deleteAction.setText("Delete Snapshot");
 			Snapshot snapshot = (Snapshot)value;
 			enabled = !Album.isSnapshotSession(snapshot.getAlbum().getSessionID());
 		}
 		
 		launchAction.setEnabled(enabled);
-		deleteAction.setEnabled(enabled);
 	}
 
 	private void contributeToActionBars() {
@@ -694,7 +646,6 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 		manager.add(refreshAction);
 		manager.add(importAction);
 		manager.add(launchAction);
-		manager.add(deleteAction);
 		// manager.add(compareAction);
 		// manager.add(propertiesAction);
 		manager.add(new Separator());
@@ -770,83 +721,6 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 
 		return albumList;
 	}
-
-	/**
-	 * Delete an album from a project. User will be prompted before delete
-	 * is called. Works for either linked resources or workspace resources in a
-	 * project. Linked resources are not deleted from disk.
-	 * 
-	 * @param project
-	 * @param album - Album to delete
-	 * @return
-	 * @throws CoreException
-	 */
-	private boolean deleteAlbum(final IProject project, final IAlbum album)
-			throws CoreException {
-		
-		if (album == null){
-			return false;
-		}
-		
-		// delete any unzipped archive
-		IPath extractedAlbum = album.getAlbumRootDirectory();
-		if (extractedAlbum.toFile().exists()){
-			deleteDir(extractedAlbum.toFile());
-		}
-		
-		// delete launch configuration
-		ILaunchConfiguration lc = SnapshotUtils.findExistingLaunchForAlbum(album);
-		if (lc != null){
-			lc.delete();
-		}
-		
-		final boolean[] success = { false };
-		project.accept(new IResourceProxyVisitor() {
-			public boolean visit(IResourceProxy proxy) throws CoreException {
-
-				if (proxy.getType() == IResource.FILE) {
-					IPath currentFile = proxy.requestResource()
-							.getRawLocation();
-
-					if (album.getLocation().toFile().getAbsolutePath().equals(
-							currentFile.toFile().getAbsolutePath())) {
-
-						boolean okToDelete = false;
-						// Behavior will be different if resource is linked, so
-						// alert the user and confirm.
-						if (proxy.requestResource().isLinked()) {
-							okToDelete = MessageDialog
-									.openQuestion(
-											viewer.getControl().getShell(),
-											"Delete Album",
-											"Are you sure you want to remove the linked file \""
-													+ currentFile.toOSString()
-													+ "\"?\n\nThis action will not delete the file from disk.");
-						} else {
-							okToDelete = MessageDialog
-									.openQuestion(
-											viewer.getControl().getShell(),
-											"Delete Album",
-											"Are you sure you want to delete album \""
-													+ currentFile.toOSString()
-													+ "\"from disk?\n\nThis action cannot be undone.");
-						}
-
-						if (okToDelete) {
-							proxy.requestResource().delete(true, null);
-						}
-						success[0] = true;
-						return false;
-					}
-				}
-
-				return true;
-			}
-		}, IResource.NONE);
-
-		return success[0];
-
-	}
 	
 	/**
 	 * Recursively delete a directory and it's contents
@@ -902,6 +776,13 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	    	}
 		}
 
+	}
+
+	/**
+	 * Called by our delete handler after it has removed an album or snapshot
+	 */
+	void refresh() {
+		refreshAction.run();
 	}
 
 }

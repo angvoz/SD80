@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.IRestart;
 import org.eclipse.cdt.debug.core.model.ISteppingModeTarget;
 import org.eclipse.cdt.debug.edc.internal.ui.DsfTerminateCommand;
@@ -126,7 +127,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 				// @see
 				// org.eclipse.debug.core.model.IDebugModelProvider#getModelIdentifiers()
 				public String[] getModelIdentifiers() {
-					return new String[] { launch.getDebugModelID() };
+					return new String[] { launch.getDebugModelID(), ICBreakpoint.C_BREAKPOINTS_DEBUG_MODEL_ID };
 				}
 			};
 			session.registerModelAdapter(IDebugModelProvider.class, fDebugModelProvider);

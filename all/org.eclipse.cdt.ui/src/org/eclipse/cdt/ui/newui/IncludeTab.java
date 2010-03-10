@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007 Intel Corporation and others.
+ * Copyright (c) 2007, 2010 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,10 +7,13 @@
  *
  * Contributors:
  *     Intel Corporation - initial API and implementation
+ *     IBM Corporation
  *******************************************************************************/
 package org.eclipse.cdt.ui.newui;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.accessibility.AccessibleAdapter;
+import org.eclipse.swt.accessibility.AccessibleEvent;
 import org.eclipse.swt.widgets.TableColumn;
 
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
@@ -19,13 +22,23 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 
 public class IncludeTab extends AbstractLangsListTab {
 	
-   public void additionalTableSet() {
-	   TableColumn c = new TableColumn(table, SWT.NONE);
-	   c.setWidth(210);
-	   c.setText(UIMessages.getString("IncludeTab.0")); //$NON-NLS-1$
+   @Override
+public void additionalTableSet() {
+	   columnToFit = new TableColumn(table, SWT.NONE);
+	   columnToFit.setText(UIMessages.getString("IncludeTab.0")); //$NON-NLS-1$
+	   columnToFit.setToolTipText(UIMessages.getString("IncludeTab.0")); //$NON-NLS-1$
 	   showBIButton.setSelection(true);
+	   table.getAccessible().addAccessibleListener(
+				new AccessibleAdapter() {                       
+                   @Override
+					public void getName(AccessibleEvent e) {
+                           e.result = UIMessages.getString("IncludeTab.0"); //$NON-NLS-1$
+                   }
+               }
+		  );
    }
 	
+	@Override
 	public ICLanguageSettingEntry doAdd() {
 		IncludeDialog dlg = new IncludeDialog(
 				usercomp.getShell(), IncludeDialog.NEW_DIR,
@@ -39,10 +52,11 @@ public class IncludeTab extends AbstractLangsListTab {
 				flags = ICSettingEntry.VALUE_WORKSPACE_PATH;
 			}
 			return new CIncludePathEntry(dlg.text1, flags);
-		} else 
-			return null;
+		}
+		return null;
 	}
 
+	@Override
 	public ICLanguageSettingEntry doEdit(ICLanguageSettingEntry ent) {
 		IncludeDialog dlg = new IncludeDialog(
 				usercomp.getShell(), IncludeDialog.OLD_DIR,
@@ -53,9 +67,10 @@ public class IncludeTab extends AbstractLangsListTab {
 			int flags = 0;
 			if (dlg.check2) flags = ICSettingEntry.VALUE_WORKSPACE_PATH;
 			return new CIncludePathEntry(dlg.text1, flags);
-		} else 
-			return null;
+		}
+		return null;
 	}
 	
+	@Override
 	public int getKind() { return ICSettingEntry.INCLUDE_PATH; }
 }

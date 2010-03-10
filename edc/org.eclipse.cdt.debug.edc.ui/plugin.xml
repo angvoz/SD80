@@ -384,7 +384,7 @@
       </handler>
       <!-- Provide the custom handler for the standard Delete commmand; we use it in the Snapshot view --> 
       <handler
-            class="org.eclipse.cdt.debug.edc.ui.views.SnapshotDeleteHandler"
+            class="org.eclipse.cdt.debug.edc.internal.ui.SnapshotDeleteHandler"
             commandId="org.eclipse.ui.edit.delete">
 		<activeWhen>
 			<with variable="activePartId">
@@ -393,7 +393,7 @@
 		</activeWhen>
 		<enabledWhen>
 			<with variable="selection">
-        		<count value="1"/>
+				<test property="org.eclipse.cdt.debug.edc.ui.isAlbumOrSnapshot"/>
 			</with>
 		</enabledWhen>
       </handler>
@@ -443,6 +443,13 @@
             namespace="org.eclipse.cdt.debug.edc.ui"
             properties="isSnapshotSession"
             type="org.eclipse.ui.IWorkbenchPart">
+      </propertyTester>
+      <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.SnapshotViewPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.selectionIsAlbumorSnapshot"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isAlbumOrSnapshot"
+            type="org.eclipse.jface.viewers.IStructuredSelection">
       </propertyTester>
     </extension>
    

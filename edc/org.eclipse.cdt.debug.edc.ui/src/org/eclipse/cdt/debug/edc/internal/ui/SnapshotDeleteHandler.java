@@ -1,9 +1,10 @@
-package org.eclipse.cdt.debug.edc.ui.views;
+package org.eclipse.cdt.debug.edc.internal.ui;
 
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
+import org.eclipse.cdt.debug.edc.ui.views.SnapshotView;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;

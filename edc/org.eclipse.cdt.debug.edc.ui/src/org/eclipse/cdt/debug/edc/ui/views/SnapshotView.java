@@ -779,9 +779,10 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	}
 
 	/**
-	 * Called by our delete handler after it has removed an album or snapshot
+	 * Called by the Delete command handler after it has removed an album or
+	 * snapshot
 	 */
-	void refresh() {
+	public void refresh() {
 		refreshAction.run();
 	}
 

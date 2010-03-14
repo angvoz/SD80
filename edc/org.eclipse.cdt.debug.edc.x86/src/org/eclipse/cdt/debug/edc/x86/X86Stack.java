@@ -18,6 +18,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.MemoryUtils;
+import org.eclipse.cdt.debug.edc.internal.HostOS;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCMemory;
@@ -166,8 +167,9 @@ public class X86Stack extends Stack {
 				baseAddress = previousBaseAddress;
 				instructionAddress = returnAddress;
 				
-				// Bail out when we hit the top of the stack frame, or if we don't recognize any executable
-				if (baseAddress == 0 || module == null) {
+				// Bail out when we hit the top of the stack frame 
+				// (but not always if a module is unrecognized; this can happen in Linux/gdbserver sometimes -- TODO)
+				if (baseAddress == 0 || (module == null && !HostOS.IS_UNIX)) {
 					properties.put(StackFrameDMC.ROOT_FRAME, true);
 					break;
 				}
@@ -181,7 +183,9 @@ public class X86Stack extends Stack {
 
 	private long readAddress(IEDCExecutionDMC context, IEDCMemory memoryService, long addr) {
 		ArrayList<MemoryByte> memBuffer = new ArrayList<MemoryByte>();
-		memoryService.getMemory(context, new Addr64(Long.toString(addr)), memBuffer, 4, 1);
+		IStatus status = memoryService.getMemory(context, new Addr64(Long.toString(addr)), memBuffer, 4, 1);
+		if (!status.isOK())
+			return 0;
 		return MemoryUtils.convertByteArrayToUnsignedLong(
 				memBuffer.subList(0, 4).toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN)
 				.longValue();

@@ -8,19 +8,16 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
+package org.eclipse.cdt.debug.edc.symbols;
 
-import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
-import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
-import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+/**
+ * Interface representing a variable value located in memory.
+ */
+public interface IMemoryVariableLocation extends IVariableLocation {
+	/**
+	 * Is this address a runtime address or a link address?
+	 * @return true if runtime address, false if link address
+	 */
+	boolean isRuntimeAddress();
 
-public interface IArrayDimensionType extends IAggregate {
-
-	public IArrayType getArrayType();
-
-	public IVariableLocation getLocation();
-
-	public int getDimensionCount();
-
-	public void addDimension(long subscript, long increase);
 }

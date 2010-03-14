@@ -23,4 +23,12 @@ public class ConstType extends Type implements IQualifierType {
 		super("const", scope, 0, properties); //$NON-NLS-1$
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.Type#getByteSize()
+	 */
+	@Override
+	public int getByteSize() {
+		return updateByteSizeFromSubType();
+	}
+
 }

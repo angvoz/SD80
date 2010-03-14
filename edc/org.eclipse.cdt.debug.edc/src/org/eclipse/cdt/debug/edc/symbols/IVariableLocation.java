@@ -12,7 +12,7 @@ package org.eclipse.cdt.debug.edc.symbols;
 
 import java.math.BigInteger;
 
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -27,6 +27,15 @@ public interface IVariableLocation {
 	 * @throws CoreException on error
 	 */
 	BigInteger readValue(int bytes) throws CoreException;
+	
+	
+	/**
+	 * Writes the item's value
+	 * @param bytes <code>int</code> number of bytes to write
+	 * @param value <code>BigInteger</code>
+	 * @throws CoreException
+	 */
+	void writeValue(int bytes, BigInteger value) throws CoreException;
 
 	/**
 	 * Create another location at the given offset from this location.
@@ -37,8 +46,13 @@ public interface IVariableLocation {
 
 	/**
 	 * Get the name for the location, to show in the UI
-	 * @param servicesTracker
 	 * @return name
 	 */
-	String getLocationName(DsfServicesTracker servicesTracker);
+	String getLocationName();
+	
+	/**
+	 * Get the address of the location, if the location has an address.
+	 * @return address or <code>null</code>
+	 */
+	IAddress getAddress();
 }

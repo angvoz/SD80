@@ -11,9 +11,10 @@
 package org.eclipse.cdt.debug.edc.formatter;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.core.runtime.CoreException;
@@ -48,11 +49,23 @@ public abstract class AbstractStringFormatter implements IVariableFormatProvider
 			IType baseType = TypeUtils.getBaseType(expressionDMC.getEvaluatedType());
 			int size = baseType.getByteSize();
 			
-			Object value = expressionDMC.getEvaluatedValue();
-			if (value == null)
+			if (expressionDMC.getEvaluationError() != null)
+				return expressionDMC.getEvaluationError().getMessage();
+			
+			// pointer living at null is not valid (e.g. inside a struct pointing to null)
+			IVariableLocation exprLoc = expressionDMC.getEvaluatedLocation();
+			if (exprLoc instanceof IMemoryVariableLocation && ((IMemoryVariableLocation) exprLoc).getAddress().isZero())
+				return "0";
+			
+			Number value = expressionDMC.getEvaluatedValue();
+			if (value == null) {
+				if (expressionDMC.getEvaluatedValueString() != null) {
+					// already a string
+					// TODO: proper formatting
+					return '"' + expressionDMC.getEvaluatedValueString() + '"';
+				}
 				return null;
-			if (value instanceof InvalidExpression)
-				return ((InvalidExpression) value).getMessage();
+			}
 
 			IAddress address = FormatUtils.getPointerValue(value);
 			if (address == null) {

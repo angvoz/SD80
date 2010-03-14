@@ -309,6 +309,25 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE, ret[0]);
 		return ret[0];
 	}
+	
+	public IStatus setMemory(IMemoryDMContext context, IAddress address, int word_size, int count, byte[] buffer) {
+		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
+				new Object[] { address.toHexAddressString(), count });
+
+		final IStatus[] ret = new IStatus[] { Status.OK_STATUS };
+
+		setMemory(context, address, 0, word_size, count, buffer, new RequestMonitor(ImmediateExecutor
+				.getInstance(), null) {
+
+			@Override
+			protected void handleFailure() {
+				ret[0] = getStatus();
+			}
+		});
+
+		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE, ret[0]);
+		return ret[0];
+	}
 
 	public void tcfServiceReady(IService service) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE, new Object[] { service });

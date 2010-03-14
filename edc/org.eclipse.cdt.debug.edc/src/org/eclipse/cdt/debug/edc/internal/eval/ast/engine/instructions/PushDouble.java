@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
+import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -18,7 +20,8 @@ import org.eclipse.core.runtime.CoreException;
 public class PushDouble extends SimpleInstruction {
 
 	private double fValue;
-
+	private boolean isLong;
+	
 	/**
 	 * Constructor for pushing a double value on the stack
 	 * 
@@ -37,6 +40,10 @@ public class PushDouble extends SimpleInstruction {
 	 * @throws NumberFormatException
 	 */
 	public PushDouble(String value) throws NumberFormatException {
+		if (value.toLowerCase().endsWith("l")) { //$NON-NLS-1$
+			isLong = true;
+			value = value.substring(0, value.length() - 1);
+		}
 		fValue = Double.valueOf(value).doubleValue();
 	}
 
@@ -47,7 +54,16 @@ public class PushDouble extends SimpleInstruction {
 	 */
 	@Override
 	public void execute() {
-		pushNewValue(fValue);
+		int size;
+		if (isLong) {
+			size = fInterpreter.getTypeEngine().getTypeSize(TypeUtils.BASIC_TYPE_LONG_DOUBLE);
+			pushNewValue(fInterpreter.getTypeEngine().getBasicType(ICPPBasicType.t_double, ICPPBasicType.IS_LONG, size), fValue);
+		}
+		else {
+			size = fInterpreter.getTypeEngine().getTypeSize(TypeUtils.BASIC_TYPE_DOUBLE);
+			pushNewValue(fInterpreter.getTypeEngine().getBasicType(ICPPBasicType.t_double, 0, size), fValue);
+		}
+			
 	}
 
 	/**

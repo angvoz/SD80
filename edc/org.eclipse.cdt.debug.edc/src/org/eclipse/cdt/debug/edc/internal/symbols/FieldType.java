@@ -52,7 +52,15 @@ public class FieldType extends Type implements IField {
 	public ICompositeType getCompositeTypeOwner() {
 		return this.compositeType;
 	}
-	
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.Type#getByteSize()
+	 */
+	@Override
+	public int getByteSize() {
+		return updateByteSizeFromSubType();
+	}
+
 	@Override
 	public String toString() {
 		return name + " offset = " + fieldOffset

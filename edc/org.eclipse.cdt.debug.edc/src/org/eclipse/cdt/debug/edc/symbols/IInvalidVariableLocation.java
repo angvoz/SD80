@@ -8,19 +8,27 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
+package org.eclipse.cdt.debug.edc.symbols;
 
-import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
-import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
-import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 
-public interface IArrayDimensionType extends IAggregate {
+/**
+ * Interface representing that a variable location is invalid
+ */
+public interface IInvalidVariableLocation extends IVariableLocation {
 
-	public IArrayType getArrayType();
+	/**
+	 * Set message
+	 * 
+	 * @param message
+	 *            description of why the location is not valid
+	 */
+	public void setMessage(String message);
 
-	public IVariableLocation getLocation();
+	/**
+	 * Get message
+	 * 
+	 * @return description of why the location is not valid
+	 */
+	public String getMessage();
 
-	public int getDimensionCount();
-
-	public void addDimension(long subscript, long increase);
 }

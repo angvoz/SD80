@@ -15,11 +15,19 @@ import org.eclipse.osgi.util.NLS;
 public class EDCServicesMessages extends NLS {
 	private static final String BUNDLE_NAME = "org.eclipse.cdt.debug.edc.internal.services.dsf.EDCServicesMessages"; //$NON-NLS-1$
 
-	public static String Expressions_DecimalSuffix;
+	public static String Expressions_CannotModifyCompositeValue;
+
+	public static String Expressions_CannotParseExpression;
 
 	public static String Expressions_ErrorInVariableFormatter;
 
+	public static String Expressions_InvalidType;
+
+	public static String Expressions_NoCurrentValue;
+
 	public static String Expressions_SyntaxError;
+
+	public static String Expressions_UnknownType;
 
 	static {
 		// initialize resource bundle

@@ -22,9 +22,12 @@ import org.eclipse.cdt.core.parser.NullLogService;
 import org.eclipse.cdt.core.parser.ParserLanguage;
 import org.eclipse.cdt.core.parser.ParserMode;
 import org.eclipse.cdt.core.parser.ScannerInfo;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InstructionSequence;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Interpreter;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
+import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
 import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
 import org.eclipse.core.runtime.CoreException;
@@ -33,10 +36,24 @@ import org.eclipse.core.runtime.CoreException;
 public class ASTEvaluationEngine {
 
 	public static final String UNKNOWN_TYPE = "<UNKNOWN>"; //$NON-NLS-1$
+	private final DsfServicesTracker tracker;
+	private final IDMContext context;
+	private final TypeEngine typeEngine;
 
-	public InstructionSequence getCompiledExpression(String expression) {
+	/**
+	 * @param context 
+	 * @param tracker 
+	 * 
+	 */
+	public ASTEvaluationEngine(DsfServicesTracker tracker, IDMContext context, TypeEngine typeEngine) {
+		this.tracker = tracker;
+		this.context = context;
+		this.typeEngine = typeEngine;
+	}
+	
+	public InstructionSequence getCompiledExpression(String expression) throws CoreException {
 
-		FileContent reader = FileContent.create("<edc-expression>", ("void dummy_func() { " + expression + " ; }").toCharArray());
+		FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { return " + expression + " ; }").toCharArray());
 		IScannerInfo scannerInfo = new ScannerInfo(); // creates an empty
 		// scanner info
 		IScanner scanner = new CPreprocessor(reader, scannerInfo, ParserLanguage.CPP, new NullLogService(), GCCScannerExtensionConfiguration.getInstance(), IncludeFileContentProvider.getEmptyFilesProvider());
@@ -45,21 +62,24 @@ public class ASTEvaluationEngine {
 
 		ASTInstructionCompiler visitor = new ASTInstructionCompiler(expression);
 		ast.accept(visitor);
+		if (visitor.hasErrors())
+			throw EDCDebugger.newCoreException(visitor.getErrorMessage());
 		return visitor.getInstructions();
 
 	}
 
-	public Interpreter evaluateCompiledExpression(InstructionSequence expression, Object context) {
-		Interpreter interpreter = new Interpreter(expression, context);
-		try {
-			interpreter.execute();
-		} catch (CoreException ce) {
-			// if an exception occurred, the exception message will be the
-			// result
-			interpreter.setLastValue(new InvalidExpression(ce.getMessage()));
-		}
-
+	public Interpreter evaluateCompiledExpression(InstructionSequence expression) throws CoreException {
+		Interpreter interpreter = new Interpreter(tracker, context, typeEngine, expression);
+		interpreter.execute();
 		return interpreter;
+	}
+
+	/**
+	 * Get the type engine
+	 * @return
+	 */
+	public TypeEngine getTypeEngine() {
+		return typeEngine;
 	}
 
 }

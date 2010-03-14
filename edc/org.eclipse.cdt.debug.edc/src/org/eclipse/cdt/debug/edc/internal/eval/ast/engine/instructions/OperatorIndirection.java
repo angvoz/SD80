@@ -10,21 +10,20 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
-import java.math.BigInteger;
+import java.text.MessageFormat;
 
-import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
-import org.eclipse.cdt.debug.edc.internal.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
-import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
+import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
-import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.cdt.debug.edc.symbols.VariableLocationFactory;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -49,81 +48,40 @@ public class OperatorIndirection extends CompoundInstruction {
 	 */
 	@Override
 	public void execute() throws CoreException {
-		Object operand = popValue();
+		OperandValue operand = popValue();
 
-		if (operand == null)
-			return;
-
-		if (operand instanceof InvalidExpression) {
-			push(operand);
+		IType opType = TypeUtils.getStrippedType(operand.getValueType());
+		
+		if (operand.getStringValue() != null) {
+			// read first char of a string constant
+			pushNewValue(opType.getType(), (int) operand.getStringValue().charAt(0));
 			return;
 		}
-
-		// only allow indirection of pointers to base types, pointers, and
-		// structured types
-		if (!(operand instanceof VariableWithValue) || ((VariableWithValue) operand).getVariable() == null) {
-			InvalidExpression invalidExpression = new InvalidExpression(
-					ASTEvalMessages.OperatorIndirection_RequiresPointer);
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
-		}
-
-		VariableWithValue variableWithValue = (VariableWithValue) operand;
-
-		Object opType = TypeUtils.getStrippedType(variableWithValue.getVariable().getType());
 		
-		Object opValue = variableWithValue.getValue();
-		
-		// change a Short, Integer, Long, etc. to BigInteger for consistency
-		if (opValue instanceof Number)
-			opValue = new BigInteger(Long.toString(((Number)opValue).longValue()));
-
-		if (!TypeUtils.isPointerType(opType) || !(opValue instanceof BigInteger)) {
-			IInvalidExpression invalidExpression = null;
-			if (opValue instanceof IInvalidExpression)
-				invalidExpression = (IInvalidExpression) opValue;
-			else
-				invalidExpression = new InvalidExpression(
-					ASTEvalMessages.OperatorIndirection_RequiresPointer);
-
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
+		if (!TypeUtils.isPointerType(opType)) {
+			throw EDCDebugger.newCoreException(ASTEvalMessages.OperatorIndirection_RequiresPointer);
 		}
 
 		IPointerType pointer = (IPointerType) opType;
-
 		IType pointedTo = pointer.getType();
 		IType unqualifiedPointedTo = TypeUtils.getStrippedType(pointedTo);
 
 		// do not allow a pointer to a bit-field
 		if ((unqualifiedPointedTo instanceof IField) && (((IField) unqualifiedPointedTo).getBitSize() != 0)) {
-			InvalidExpression invalidExpression = new InvalidExpression(ASTEvalMessages.OperatorIndirection_NoBitField);
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
+			throw EDCDebugger.newCoreException(ASTEvalMessages.OperatorIndirection_NoBitField);
 		}
 
-		setValueType(unqualifiedPointedTo);
-		setValueLocation(new Long(0));
-
-		// create a skeletal VariableWithValue for the result
-		Variable variable = new Variable("", variableWithValue.getVariable().getScope(), unqualifiedPointedTo, null); //$NON-NLS-1$
-		VariableWithValue varValue = new VariableWithValue(variableWithValue.getServicesTracker(), variableWithValue
-				.getFrame(), variable);
-
+		OperandValue opValue = new OperandValue(unqualifiedPointedTo);
+		
 		if (unqualifiedPointedTo instanceof ITypedef)
 			unqualifiedPointedTo = TypeUtils.getStrippedType(unqualifiedPointedTo.getType());
 
 		// for a lvalues (base arithmetic types, enums, and pointers), read the
 		// value and cast it to the right type
+		IMemoryVariableLocation location = VariableLocationFactory.createMemoryVariableLocation(
+				fInterpreter.getServicesTracker(), fInterpreter.getContext(),
+				operand.getValue());
+		
 		if (unqualifiedPointedTo instanceof ICPPBasicType || unqualifiedPointedTo instanceof IPointerType
 				|| unqualifiedPointedTo instanceof IEnumeration) {
 			int byteSize = unqualifiedPointedTo.getByteSize();
@@ -133,67 +91,24 @@ public class OperatorIndirection extends CompoundInstruction {
 				byteSize = 4;
 
 			if (byteSize != 1 && byteSize != 2 && byteSize != 4 && byteSize != 8) {
-				pushNewValue(new Long(0));
-				return;
+				throw EDCDebugger.newCoreException(MessageFormat.format(ASTEvalMessages.UnhandledSize, byteSize));
 			}
 
 			// read the value pointed to
-			Addr64 location = new Addr64(((BigInteger) opValue).and(Mask8Bytes));
-			Object newValue = variableWithValue.getValueByType(unqualifiedPointedTo, location);
-			varValue.setValue(newValue);
-			varValue.setValueLocation(location);
-			setValueLocation(location);
-			push(varValue);
+			Number newValue = operand.getValueByType(unqualifiedPointedTo, location);
+			opValue.setValue(newValue);
+			opValue.setValueLocation(location);
+			push(opValue);
 
 		} else if (unqualifiedPointedTo instanceof IAggregate) {
 			// for aggregates, the address of the aggregate is the value
 			// returned
-			Addr64 location = new Addr64((BigInteger) variableWithValue.getValue());
-			varValue.setValue(location);
-			varValue.setValueLocation(location);
-			setValueLocation(location);
-			push(varValue);
+			opValue.setAddressValue(location);
+			opValue.setValueLocation(location);
+			push(opValue);
 
 		} else {
-			pushNewValue(new Long(0));
+			throw EDCDebugger.newCoreException(MessageFormat.format(ASTEvalMessages.OperatorIndirection_UnhandledType, unqualifiedPointedTo.getName()));
 		}
 	}
-
-	/**
-	 * Convert certain operand types to expected types (e.g., BigInteger to
-	 * long)
-	 * 
-	 * @param operand
-	 *            - original operand
-	 * @return result operand type
-	 */
-
-	@Override
-	protected Object convertForPromotion(Object operand) {
-		if (operand instanceof VariableWithValue) {
-			VariableWithValue variableWithValue = (VariableWithValue) operand;
-			IType nextType = null;
-			for (nextType = variableWithValue.getVariable().getType(); nextType != null; nextType = nextType.getType()) {
-				if (nextType instanceof IPointerType)
-					return nextType;
-			}
-
-			if (TypeUtils.isAggregateType(variableWithValue.getVariable().getType())) {
-				operand = variableWithValue.getValueLocation();
-				if (operand instanceof IAddress)
-					operand = ((IAddress) operand).getValue().longValue();
-				else if (operand instanceof IMemoryVariableLocation)
-					operand = ((IMemoryVariableLocation) operand).getAddress().getValue();
-				else
-					assert(false);
-			} else
-				operand = variableWithValue.getValue();
-		}
-
-		if (operand instanceof BigInteger)
-			operand = ((BigInteger) operand).longValue();
-
-		return operand;
-	}
-
 }

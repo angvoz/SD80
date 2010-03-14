@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.formatter;
 
 import org.eclipse.cdt.debug.edc.internal.symbols.ConstType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
@@ -67,8 +68,10 @@ public class DefaultCStringFormatter extends AbstractStringFormatter {
 		while (type instanceof ConstType || type instanceof VolatileType || type instanceof ITypedef)
 			type = type.getType();
 		
-		// make sure it's a single pointer
+		// make sure it's a single pointer or a single-dimension array
 		if (type instanceof IPointerType)
+			type = type.getType();
+		else if (type instanceof IArrayType && ((IArrayType) type).getBoundsCount() == 1)
 			type = type.getType();
 		else
 			return null;

@@ -12,7 +12,7 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -38,51 +38,36 @@ public abstract class BinaryLogicalOperator extends CompoundInstruction {
 	 */
 	@Override
 	public void execute() throws CoreException {
-		Object right = popValue();
-		Object left = popValue();
-
-		if (right == null || left == null)
-			return;
-
-		if (right instanceof InvalidExpression) {
-			push(right);
-			return;
-		}
-
-		if (left instanceof InvalidExpression) {
-			push(left);
-			return;
-		}
+		OperandValue right = popValue();
+		OperandValue left = popValue();
 
 		right = convertForPromotion(right);
 		left = convertForPromotion(left);
 
-		int promotedType = getBinaryPromotionType(right, left);
-
-		// let others convert the type to the string "bool", "_Bool", etc.
-		this.setValueType(ASTEvaluationEngine.UNKNOWN_TYPE);
-
+		int promotedType = getJavaBinaryPromotionType(right, left);
+		IType type = fInterpreter.getTypeEngine().getBooleanType(1);
+		
 		switch (promotedType) {
 		case T_String:
-			pushNewValue(getStringResult(GetValue.getStringValue(left), GetValue.getStringValue(right)));
+			pushNewValue(type, getStringResult(GetValue.getStringValue(left), GetValue.getStringValue(right)));
 			break;
 		case T_double:
-			pushNewValue(getDoubleResult(GetValue.getDoubleValue(left), GetValue.getDoubleValue(right)));
+			pushNewValue(type, getDoubleResult(GetValue.getDoubleValue(left), GetValue.getDoubleValue(right)));
 			break;
 		case T_float:
-			pushNewValue(getFloatResult(GetValue.getFloatValue(left), GetValue.getFloatValue(right)));
+			pushNewValue(type, getFloatResult(GetValue.getFloatValue(left), GetValue.getFloatValue(right)));
 			break;
 		case T_long:
-			pushNewValue(getLongResult(GetValue.getLongValue(left), GetValue.getLongValue(right)));
+			pushNewValue(type, getLongResult(GetValue.getLongValue(left), GetValue.getLongValue(right)));
 			break;
 		case T_int:
-			pushNewValue(getIntResult(GetValue.getIntValue(left), GetValue.getIntValue(right)));
+			pushNewValue(type, getIntResult(GetValue.getIntValue(left), GetValue.getIntValue(right)));
 			break;
 		case T_boolean:
-			pushNewValue(getBooleanResult(GetValue.getBooleanValue(left), GetValue.getBooleanValue(right)));
+			pushNewValue(type, getBooleanResult(GetValue.getBooleanValue(left), GetValue.getBooleanValue(right)));
 			break;
 		case T_BigInt:
-			pushNewValue(getBigIntegerResult(GetValue.getBigIntegerValue(left), GetValue.getBigIntegerValue(right)));
+			pushNewValue(type, getBigIntegerResult(GetValue.getBigIntegerValue(left), GetValue.getBigIntegerValue(right)));
 			break;
 		}
 	}

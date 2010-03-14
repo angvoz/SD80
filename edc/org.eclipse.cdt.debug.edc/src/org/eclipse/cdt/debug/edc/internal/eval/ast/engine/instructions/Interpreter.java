@@ -10,104 +10,44 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
-import java.math.BigInteger;
 import java.util.EmptyStackException;
 import java.util.Stack;
 
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
+import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 public class Interpreter {
 	private final Instruction[] instructions;
 	private int instructionCounter;
-	private final Object context;
-	private Stack<Object> stack;
-	private Object lastValue;
-	private Object valueLocation;
-	private Object valueType;
-
-	/**
-	 * Get current instruction's result location
-	 * 
-	 * @return current instruction's result location
-	 */
-	public Object getValueLocation() {
-		return valueLocation;
-	}
-
-	/**
-	 * Set current instruction's result location
-	 * 
-	 * @param valueLocation
-	 *            - instruction result location
-	 */
-	public void setValueLocation(Object valueLocation) {
-		this.valueLocation = valueLocation;
-	}
-
-	/**
-	 * Get current instruction's result type
-	 * 
-	 * @return current instruction's result type
-	 */
-	public Object getValueType() {
-
-		// if possible, change an unknown result type to the type of the
-		// expression result
-		if (valueType instanceof String && ((String) valueType).equals(ASTEvaluationEngine.UNKNOWN_TYPE)) {
-			Object result = getResult();
-			if (result instanceof Long) {
-				// TODO: use architecture-specific limits to either set this to
-				// "long" or "long long"
-				valueType = "long"; //$NON-NLS-1$
-			} else if (result instanceof Double)
-				valueType = "double"; //$NON-NLS-1$
-			else if (result instanceof Boolean)
-				valueType = "bool"; //$NON-NLS-1$
-			else if (result instanceof String)
-				valueType = "char[]"; //$NON-NLS-1$
-			else if (result instanceof Character)
-				valueType = "char"; //$NON-NLS-1$
-			else if (result instanceof Integer)
-				valueType = "int"; //$NON-NLS-1$
-			else if (result instanceof Float)
-				valueType = "float"; //$NON-NLS-1$
-			else if (result instanceof BigInteger) {
-				// TODO: use architecture-specific limits to either set this to
-				// "long" or "long long"
-				valueType = "long long"; //$NON-NLS-1$
-			}
-
-			setValueType(valueType);
-		}
-
-		return this.valueType;
-	}
-
-	/**
-	 * Set current instruction's result type
-	 * 
-	 * @param valueLocation
-	 *            - instruction result type
-	 */
-	public void setValueType(Object valueType) {
-		this.valueType = valueType;
-	}
+	private final IDMContext context;
+	private Stack<OperandValue> stack;
+	private OperandValue lastValue;
 
 	private boolean fStopped = false;
+	private final DsfServicesTracker tracker;
+	private final TypeEngine typeEngine;
 
 	/**
-	 * Constructor for interpreter
-	 * 
+	 * Constructor for fInterpreter
+	 * @param context 
 	 * @param instructionSequence
 	 *            - instruction sequence to execute
 	 * @param context
 	 *            - instruction context
 	 */
-	public Interpreter(InstructionSequence instructionSequence, Object context) {
-		this.instructions = instructionSequence.getInstructions();
+	public Interpreter(DsfServicesTracker tracker, IDMContext context, 
+			TypeEngine typeEngine,
+			InstructionSequence instructionSequence) {
+		this.tracker = tracker;
 		this.context = context;
-		setValueType(ASTEvaluationEngine.UNKNOWN_TYPE);
+		this.typeEngine = typeEngine;
+		this.instructions = instructionSequence.getInstructions();
+	}
+
+	public DsfServicesTracker getServicesTracker() {
+		return tracker;
 	}
 
 	/**
@@ -126,17 +66,17 @@ public class Interpreter {
 	}
 
 	/**
-	 * Stop the interpreter
+	 * Stop the fInterpreter
 	 */
 	public void stop() {
 		fStopped = true;
 	}
 
 	/**
-	 * Reset the interpreter
+	 * Reset the fInterpreter
 	 */
 	private void reset() {
-		stack = new Stack<Object>();
+		stack = new Stack<OperandValue>();
 		instructionCounter = 0;
 	}
 
@@ -157,7 +97,7 @@ public class Interpreter {
 	 * 
 	 * @param object
 	 */
-	public void push(Object object) {
+	public void push(OperandValue object) {
 		stack.push(object);
 	}
 
@@ -175,7 +115,7 @@ public class Interpreter {
 	 * 
 	 * @return object on the top of the stack
 	 */
-	public Object peek() {
+	public OperandValue peek() {
 		return stack.peek();
 	}
 
@@ -184,16 +124,16 @@ public class Interpreter {
 	 * 
 	 * @return object on the top of the stack
 	 */
-	public Object pop() throws EmptyStackException {
+	public OperandValue pop() throws EmptyStackException {
 		return stack.pop();
 	}
 
 	/**
-	 * Get the context for the interpreter
+	 * Get the context for the fInterpreter
 	 * 
-	 * @return interpreter context
+	 * @return fInterpreter context
 	 */
-	public Object getContext() {
+	public IDMContext getContext() {
 		return context;
 	}
 
@@ -203,21 +143,15 @@ public class Interpreter {
 	 * @return current top of stack, or the last stack value if the stack is
 	 *         <code>null</code> or empty
 	 */
-	public Object getResult() {
+	public OperandValue getResult() {
 		if (stack == null || stack.isEmpty()) {
 			return lastValue;
 		}
-		Object top = stack.peek();
+		OperandValue top = stack.peek();
 		return top;
 	}
 
-	/**
-	 * Set the last stack value
-	 * 
-	 * @param value
-	 */
-	public void setLastValue(Object value) {
-		lastValue = value;
+	public TypeEngine getTypeEngine() {
+		return typeEngine;
 	}
-
 }

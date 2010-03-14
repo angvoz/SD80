@@ -43,7 +43,6 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.EvaluateI
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.FieldReference;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Instruction;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InstructionSequence;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.NoOp;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorAddrOf;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorBinaryAnd;
@@ -83,10 +82,10 @@ public class ASTInstructionCompiler extends ASTVisitor {
 	private final Stack<Instruction> stack;
 	private final InstructionSequence instructions;
 	private int counter;
-	private boolean hasErrors;
+	private String errorMessage;
 	private boolean active = true;
 
-	public ASTInstructionCompiler(String snippet) {
+	public ASTInstructionCompiler( String snippet) {
 		super(true);
 		stack = new Stack<Instruction>();
 		instructions = new InstructionSequence(snippet);
@@ -109,7 +108,11 @@ public class ASTInstructionCompiler extends ASTVisitor {
 	}
 
 	public boolean hasErrors() {
-		return hasErrors;
+		return errorMessage != null;
+	}
+
+	public String getErrorMessage() {
+		return errorMessage;
 	}
 
 	private boolean isActive() {
@@ -361,7 +364,7 @@ public class ASTInstructionCompiler extends ASTVisitor {
 			try {
 				push(new PushLongOrBigInteger(value));
 			} catch (NumberFormatException nfe) {
-				push(new InvalidExpression(ASTEvalMessages.ASTInstructionCompiler_InvalidNumber));
+				errorMessage = ASTEvalMessages.ASTInstructionCompiler_InvalidNumber;
 			}
 			break;
 		case IASTLiteralExpression.lk_float_constant:
@@ -372,14 +375,14 @@ public class ASTInstructionCompiler extends ASTVisitor {
 				else
 					push(new PushDouble(value));
 			} catch (NumberFormatException nfe) {
-				push(new InvalidExpression(ASTEvalMessages.ASTInstructionCompiler_InvalidNumber));
+				errorMessage = ASTEvalMessages.ASTInstructionCompiler_InvalidNumber;
 			}
 			break;
 		case IASTLiteralExpression.lk_char_constant:
 			try {
 				push(new PushChar(value));
 			} catch (NumberFormatException nfe) {
-				push(new InvalidExpression(ASTEvalMessages.ASTInstructionCompiler_InvalidNumber));
+				errorMessage = ASTEvalMessages.ASTInstructionCompiler_InvalidNumber;
 			}
 			break;
 		case IASTLiteralExpression.lk_string_literal:

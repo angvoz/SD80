@@ -76,4 +76,14 @@ public class Type implements IType {
 	public void setScope(IScope scope) {
 		this.scope = scope;
 	}
+	
+	protected int updateByteSizeFromSubType() {
+		if (byteSize == 0) {
+			IType theType = getType();
+			if (theType != null)
+				byteSize = theType.getByteSize();
+		}
+		return byteSize;
+	}
+
 }

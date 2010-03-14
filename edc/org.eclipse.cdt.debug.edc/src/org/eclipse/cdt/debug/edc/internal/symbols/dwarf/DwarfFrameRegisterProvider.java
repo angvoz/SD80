@@ -209,7 +209,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		}
 		@Override
 		public IVariableLocation evaluate(InstructionState state) throws CoreException {
-			return new RegisterVariableLocation(state.context, null, regnum);
+			return new RegisterVariableLocation(state.tracker, state.context, null, regnum);
 		}
 	}
 	
@@ -227,7 +227,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		}
 		@Override
 		public IVariableLocation evaluate(InstructionState state) throws CoreException {
-			return new RegisterOffsetVariableLocation(state.context, null, regnum, offset);
+			return new RegisterOffsetVariableLocation(state.tracker, state.context, null, regnum, offset);
 		}
 	}
 	private static ErrorRule UNIMPLEMENTED = new ErrorRule(

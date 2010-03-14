@@ -51,27 +51,27 @@ public class TypeUtils {
 	static public final int BASIC_TYPE_POINTER			 = 21; // not technically a basic type
 
 	// is a type a pointer "*" type?
-	public static boolean isPointerType(Object type) {
+	public static boolean isPointerType(IType type) {
 		return getStrippedType(type) instanceof IPointerType;
 	}
 
 	// is a type a reference "&" type?
-	public static boolean isReferenceType(Object type) {
+	public static boolean isReferenceType(IType type) {
 		return getStrippedType(type) instanceof IReferenceType;
 	}
 
 	// is a type an aggregate (composite or array) type?
-	public static boolean isAggregateType(Object type) {
+	public static boolean isAggregateType(IType type) {
 		return getStrippedType(type) instanceof IAggregate;
 	}
 
 	// is a type a composite (class, struct, or union) type?
-	public static boolean isCompositeType(Object type) {
+	public static boolean isCompositeType(IType type) {
 		return getStrippedType(type) instanceof ICompositeType;
 	}
 
 	// return the type with no typedefs, consts, or volatiles
-	public static IType getStrippedType(Object type) {
+	public static IType getStrippedType(IType type) {
 		if (!(type instanceof IType))
 			return null;
 
@@ -108,7 +108,7 @@ public class TypeUtils {
 	}
 
 	// return base type with no consts, volatiles, pointer types, or array types - but preserving typedefs
-	public static IType getBaseTypePreservingTypedef(Object type) {
+	public static IType getBaseTypePreservingTypedef(IType type) {
 		if (!(type instanceof IType))
 			return null;
 
@@ -128,7 +128,7 @@ public class TypeUtils {
 
 	// shift, mask, and extend an extracted bit-field
 	// NOTE: this may need to be endianness aware
-	public static Object extractBitField(Object value, int byteSize, int bitSize, int bitOffset, boolean isSignedInt) {
+	public static Number extractBitField(Number value, int byteSize, int bitSize, int bitOffset, boolean isSignedInt) {
 		if (bitSize <= 0 || value == null
 				|| (!(value instanceof Long) && !(value instanceof Integer) && !(value instanceof BigInteger))) {
 			return value;

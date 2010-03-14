@@ -85,6 +85,15 @@ public interface IDebugInfoProvider {
 	 * @return a list of the compile units for this file, or null if none
 	 */
 	List<ICompileUnitScope> getCompileUnitsForFile(IPath filePath);
+	
+	/**
+	 * Get the type with the given name
+	 * @param name
+	 * 		canonical base type name (trimmed, multiple	spaces replaced
+	 * 		by single spaces, no "*" chars)
+	 * @return unmodifiable list of types, which may be empty
+	 */
+	Collection<IType> getTypesByName(String name);
 
 	/**
 	 * Get all the types declared in the module (which may

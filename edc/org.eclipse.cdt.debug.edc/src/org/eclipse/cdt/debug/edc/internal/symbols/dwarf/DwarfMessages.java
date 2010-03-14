@@ -15,6 +15,18 @@ import org.eclipse.osgi.util.NLS;
 public class DwarfMessages extends NLS {
 	private static final String BUNDLE_NAME = "org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfMessages"; //$NON-NLS-1$
 
+	public static String DwarfDebugInfoProvider_FailedToReadCIE;
+
+	public static String DwarfDebugInfoProvider_DwarfProviderFor;
+
+	public static String DwarfDebugInfoProvider_NotParsingType1;
+	public static String DwarfDebugInfoProvider_NotParsingType2;
+
+	public static String DwarfDebugInfoProvider_CannotResolveCompUnit1;
+	public static String DwarfDebugInfoProvider_CannotResolveCompUnit2;
+
+	public static String DwarfDebugInfoProvider_UnhandledType;
+
 	public static String UnknownVariableAddress;
 	public static String NotImplementedFormat;
 	public static String InternalErrorFormat;
@@ -26,8 +38,6 @@ public class DwarfMessages extends NLS {
 	public static String LocationExpression_ErrBadDeref;
 
 	public static String LocationExpression_MultiRegisterVariable;
-
-	public static String LocationExpression_NoEnclosingFunction;
 
 	public static String LocationExpression_UnexpectedOperand;
 

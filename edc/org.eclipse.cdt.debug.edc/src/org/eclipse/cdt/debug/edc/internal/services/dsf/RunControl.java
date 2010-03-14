@@ -58,11 +58,13 @@ import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
+import org.eclipse.cdt.dsf.debug.service.IRunControl2;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
+import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
 import org.eclipse.cdt.dsf.debug.service.IModules.IModuleDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
@@ -87,7 +89,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-public class RunControl extends AbstractEDCService implements IRunControl, ICachingService, ISnapshotContributor,
+public class RunControl extends AbstractEDCService implements IRunControl2, ICachingService, ISnapshotContributor,
 		IDSFServiceUsingTCF {
 
 	public static final String EXECUTION_CONTEXT = "execution_context";
@@ -97,10 +99,17 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 	/**
 	 * Context property names.
 	 */
-	public static final String PROP_PARENT_ID = "ParentID", PROP_IS_CONTAINER = "IsContainer",
-			PROP_HAS_STATE = "HasState", PROP_CAN_RESUME = "CanResume", PROP_CAN_COUNT = "CanCount",
-			PROP_CAN_SUSPEND = "CanSuspend", PROP_CAN_TERMINATE = "CanTerminate", PROP_IS_SUSPENDED = "State",
-			PROP_MESSAGE = "Message", PROP_SUSPEND_PC = "SuspendPC";
+	public static final String 
+			PROP_PARENT_ID = "ParentID", 
+			PROP_IS_CONTAINER = "IsContainer",
+			PROP_HAS_STATE = "HasState", 
+			PROP_CAN_RESUME = "CanResume", 
+			PROP_CAN_COUNT = "CanCount",
+			PROP_CAN_SUSPEND = "CanSuspend", 
+			PROP_CAN_TERMINATE = "CanTerminate", 
+			PROP_IS_SUSPENDED = "State",
+			PROP_MESSAGE = "Message", 
+			PROP_SUSPEND_PC = "SuspendPC";
 
 	// Whether module is being loaded (if true) or unloaded (if false)
 
@@ -683,6 +692,16 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		public String getPC() {
 			return latestPC;
 		}
+		
+		/**
+		 * Change cached PC value.
+		 * This is only supposed to be used for move-to-line & resume-from-line commands.
+		 *  
+		 * @param pc
+		 */
+		private void setPC(String pc) {
+			latestPC = pc;
+		}
 
 		public void contextRemoved(String childContextId) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, childContextId);
@@ -1040,7 +1059,10 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 	private final Map<String, ExecutionDMC> dmcsByID = new HashMap<String, ExecutionDMC>();
 
 	public RunControl(DsfSession session) {
-		super(session, new String[] { IRunControl.class.getName(), RunControl.class.getName(),
+		super(session, new String[] { 
+				IRunControl.class.getName(), 
+				IRunControl2.class.getName(), 
+				RunControl.class.getName(),
 				ISnapshotContributor.class.getName() });
 		initializeRootExecutionDMC();
 	}
@@ -1259,9 +1281,14 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 						// not outside of the function address range
 						// if found, the start addr of that entry is our end
 						// address, otherwise use the existing end address
-						ILineEntry nextLine = lineEntryProvider.getNextLineEntry(line);
-						if (nextLine != null) {
-							endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
+						//   Note: Only do this if Step Over, if Step Into we use
+						//   the endAddr we already have, so if are stepping into inline
+						//   functions, this will work
+						if (stepType == StepType.STEP_OVER) {
+							ILineEntry nextLine = lineEntryProvider.getNextLineEntry(line);
+							if (nextLine != null) {
+								endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
+							}
 						}
 
 						/*
@@ -1860,14 +1887,10 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 	private final org.eclipse.tm.tcf.services.IRunControl.RunControlListener runListener = new org.eclipse.tm.tcf.services.IRunControl.RunControlListener() {
 
 		public void containerResumed(String[] context_ids) {
-			// TODO Auto-generated method stub
-
 		}
 
 		public void containerSuspended(String context, String pc, String reason, Map<String, Object> params,
 				String[] suspended_ids) {
-			// TODO Auto-generated method stub
-
 		}
 
 		public void contextAdded(RunControlContext[] contexts) {
@@ -1883,8 +1906,6 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 		}
 
 		public void contextChanged(RunControlContext[] contexts) {
-			// TODO Auto-generated method stub
-
 		}
 
 		public void contextException(String context, String msg) {
@@ -1927,7 +1948,6 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 	}
 
 	public ExecutionDMC getContext(String contextID) {
-		// TODO Handle missing DMCs
 		return dmcsByID.get(contextID);
 	}
 
@@ -1992,4 +2012,235 @@ public class RunControl extends AbstractEDCService implements IRunControl, ICach
 			e.terminate(crm);
 		}
 	}
+
+	public void canRunToLine(IExecutionDMContext context, String sourceFile,
+			int lineNumber, final DataRequestMonitor<Boolean> rm) {
+		// I tried to have better filtering as shown in commented code. But that 
+		// just make the command fail to be enabled as desired, not sure about the 
+		// exact cause yet, but one problem (from the upper framework) I've seen is 
+		// this API is not called whenever user selects a line in source editor (or
+		// disassembly view) and bring up context menu.
+		// Hence we blindly answer yes. The behavior is in par with DSF-GDB.
+		// ................. 03/11/10  
+		rm.setData(true);
+		rm.done();
+		
+//		// Return true if we can find address(es) for the line in the context.
+//		//
+//		getLineAddress(context, sourceFile, lineNumber, new DataRequestMonitor<List<IAddress>>(getExecutor(), rm){
+//			@Override
+//			protected void handleCompleted() {
+//				if (! isSuccess())
+//					rm.setData(false);
+//				else {
+//					rm.setData(getData().size() > 0);
+//				}
+//				rm.done();
+//			}});
+	}
+
+	public void runToLine(final IExecutionDMContext context, String sourceFile,
+			int lineNumber, boolean skipBreakpoints, final RequestMonitor rm) {
+		
+		getLineAddress(context, sourceFile, lineNumber, new DataRequestMonitor<List<IAddress>>(getExecutor(), rm){
+			@Override
+			protected void handleCompleted() {
+				if (! isSuccess()) {
+					rm.setStatus(getStatus());
+					rm.done();
+				}
+				else {
+					runToAddresses(context, getData(), rm);
+				}
+			}});
+	}
+
+	private void runToAddresses(IExecutionDMContext context,
+			final List<IAddress> addrs, final RequestMonitor rm) {
+		// 1. Single step over breakpoint, if PC is at a breakpoint.
+		// 2. Set temp breakpoint at the addresses.
+		// 3. Resume the context.
+		//
+		final ExecutionDMC dmc = (ExecutionDMC)context;
+		assert dmc != null;
+		
+		prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm){
+
+			@Override
+			protected void handleCompleted() {
+				if (! isSuccess()) {
+					rm.setStatus(getStatus());
+					rm.done();
+					return;
+				}
+				
+				CountingRequestMonitor settingBP_crm = new CountingRequestMonitor(getExecutor(), rm) {
+					@Override
+					protected void handleCompleted() {
+						if (! isSuccess()) {
+							// as long as we fail to set on temp breakpoint, we bail out.
+							rm.setStatus(getStatus());
+							rm.done();
+						}
+						else {
+							// all temp breakpoints are successfully set.
+							// Now resume the context.
+							dmc.resume(rm);
+						}
+					}};
+				
+				settingBP_crm.setDoneCount(addrs.size());
+				
+				Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+				
+				for (IAddress a : addrs)
+					bpService.setTempBreakpoint(dmc, a, settingBP_crm);
+			}}
+		);
+	}
+
+	public void canRunToAddress(IExecutionDMContext context, IAddress address,
+			DataRequestMonitor<Boolean> rm) {
+		// See comment in canRunToLine() for more.
+		rm.setData(true);
+		rm.done();
+
+//		// If the address is not in any module of the run context, return false. 
+//		Modules moduleService = getServicesTracker().getService(Modules.class);
+//
+//		ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+//
+//		ModuleDMC m = moduleService.getModuleByAddress(symCtx, address);
+//		rm.setData(m == null);
+//		rm.done();
+	}
+
+	public void runToAddress(IExecutionDMContext context, IAddress address,
+			boolean skipBreakpoints, RequestMonitor rm) {
+		List<IAddress> addrs = new ArrayList<IAddress>(1);
+		addrs.add(address);
+		runToAddresses(context, addrs, rm);
+	}
+
+	public void canMoveToLine(IExecutionDMContext context, String sourceFile,
+			int lineNumber, boolean resume, final DataRequestMonitor<Boolean> rm) {
+		// See comment in canRunToLine() for more.
+		rm.setData(true);
+		rm.done();
+		
+		// Return true if we can find one and only one address for the line in the context.
+		//
+//		getLineAddress(context, sourceFile, lineNumber, new DataRequestMonitor<List<IAddress>>(getExecutor(), rm){
+//			@Override
+//			protected void handleCompleted() {
+//				if (! isSuccess())
+//					rm.setData(false);
+//				else {
+//					rm.setData(getData().size() == 1);
+//				}
+//				rm.done();
+//			}});
+	}
+
+	public void moveToLine(final IExecutionDMContext context, String sourceFile,
+			int lineNumber, final boolean resume, final RequestMonitor rm) {
+		getLineAddress(context, sourceFile, lineNumber, new DataRequestMonitor<List<IAddress>>(getExecutor(), rm){
+			@Override
+			protected void handleCompleted() {
+				if (! isSuccess()) {
+					rm.setStatus(getStatus());
+					rm.done();
+				}
+				else {
+					List<IAddress> addrs = getData();
+					assert addrs.size() == 1;	// ensured by canMoveToLine().
+					moveToAddress(context, addrs.get(0), resume, rm);
+				}
+			}});
+	}
+
+	public void canMoveToAddress(IExecutionDMContext context, IAddress address,
+			boolean resume, DataRequestMonitor<Boolean> rm) {
+		// Allow moving to any address.
+		rm.setData(true);
+		rm.done();
+	}
+
+	public void moveToAddress(IExecutionDMContext context, IAddress address,
+			boolean resume, RequestMonitor rm) {
+
+		Registers regService = getServicesTracker().getService(Registers.class);
+		
+		assert(context instanceof ExecutionDMC);
+		ExecutionDMC dmc = (ExecutionDMC)context;
+		
+		String newPC = address.toString(16);
+		
+		if (! newPC.equals(dmc.getPC())) {
+			// Hmm, this interface should report status.
+			regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), newPC);
+
+			// udpate cached PC.
+			dmc.setPC(newPC);
+		}
+		
+		if (resume)
+			resume(context, rm);
+		else {
+			// fire a suspendEvent so that PC arrow can be updated in UI.
+			getSession().dispatchEvent(
+					new SuspendedEvent(context, StateChangeReason.USER_REQUEST, new HashMap<String, Object>()),
+					RunControl.this.getProperties());
+			
+			rm.done();
+		}
+	}
+
+	/**
+	 * Get runtime addresses mapped to given source line in given run context.
+	 *  
+	 * @param context
+	 * @param sourceFile
+	 * @param lineNumber
+	 * @param drm If no address found, or the run context is not suspended, holds an empty list.
+	 */
+	private void getLineAddress(IExecutionDMContext context,
+			String sourceFile, int lineNumber, final DataRequestMonitor<List<IAddress>> drm) {
+		final List<IAddress> addrs = new ArrayList<IAddress>(1);
+		
+		final ExecutionDMC dmc = (ExecutionDMC) context;
+		if (dmc == null || ! dmc.isSuspended()) {
+			drm.setData(addrs);
+			drm.done();
+			return;
+		}
+		
+		Modules moduleService = getServicesTracker().getService(Modules.class);
+
+		ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+
+		moduleService.calcAddressInfo(symCtx, sourceFile, lineNumber, 0, 
+				new DataRequestMonitor<AddressRange[]>(getExecutor(), drm) {
+
+			@Override
+			protected void handleCompleted() {
+				if (! isSuccess()) {
+					drm.setStatus(getStatus());
+					drm.done();
+					return;
+				}
+
+				AddressRange[] addr_ranges = getData();
+
+				for (AddressRange range : addr_ranges) {
+					IAddress a = range.getStartAddress();  // this is runtime address
+					addrs.add(a);
+				}
+
+				drm.setData(addrs);
+				drm.done();
+			}
+		});
+	}
+	
 }

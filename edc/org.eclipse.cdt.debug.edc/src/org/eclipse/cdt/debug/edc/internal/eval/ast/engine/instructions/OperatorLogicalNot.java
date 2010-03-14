@@ -39,7 +39,8 @@ public class OperatorLogicalNot extends UnaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getIntResult(int leftOperand) throws CoreException {
-		return false;
+		// as bool
+		return leftOperand == 0;
 	}
 
 	/**
@@ -52,7 +53,8 @@ public class OperatorLogicalNot extends UnaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getLongResult(long leftOperand) throws CoreException {
-		return false;
+		// as bool
+		return leftOperand == 0;
 	}
 
 	/**
@@ -65,7 +67,8 @@ public class OperatorLogicalNot extends UnaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getBigIntegerResult(BigInteger leftOperand) throws CoreException {
-		return false;
+		// as bool
+		return leftOperand.signum() == 0;
 	}
 
 	/**
@@ -77,7 +80,8 @@ public class OperatorLogicalNot extends UnaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getFloatResult(float leftOperand) {
-		return false;
+		// as bool
+		return leftOperand == 0;
 	}
 
 	/**
@@ -89,7 +93,8 @@ public class OperatorLogicalNot extends UnaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getDoubleResult(double leftOperand) {
-		return false;
+		// as bool
+		return leftOperand == 0;
 	}
 
 	/**
@@ -114,6 +119,7 @@ public class OperatorLogicalNot extends UnaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getStringResult(String leftOperand) throws CoreException {
+		// not of address
 		return false;
 	}
 

@@ -615,8 +615,8 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 			return;
 		}
 
-		List<EDCAddressRange> addrRanges = Collections.emptyList();
-
+		List<EDCAddressRange> addrRanges = new ArrayList<EDCAddressRange>(1);
+		
 		for (IModuleDMContext module : moduleList) {
 			ModuleDMC mdmc = (ModuleDMC) module;
 			IEDCSymbolReader reader = mdmc.getSymbolReader();
@@ -627,8 +627,6 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 						reader.getModuleScope().getModuleLineEntryProvider(),
 						PathUtils.createPath(file),
 						line);
-								
-				addrRanges = new ArrayList<EDCAddressRange>(linkAddressRanges.size());
 								
 				// map addresses
 				for (AddressRange linkAddressRange : linkAddressRanges) {

@@ -132,20 +132,4 @@ public class OperatorBinaryAnd extends BinaryOperator {
 	protected boolean getBooleanResult(boolean leftOperand, boolean rightOperand) {
 		return leftOperand & rightOperand;
 	}
-
-	/**
-	 * Get string result of applying binary AND "&" to two strings
-	 * 
-	 * @param leftOperand
-	 *            - left string operand
-	 * @param rightOperand
-	 *            - right string operand
-	 * @return <code>null</code>
-	 * @throws CoreException
-	 */
-	@Override
-	protected String getStringResult(String leftOperand, String rightOperand) throws CoreException {
-		return null;
-	}
-
 }

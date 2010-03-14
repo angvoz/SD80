@@ -21,6 +21,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IRegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
@@ -63,10 +64,10 @@ public class LocationExpression implements ILocationProvider {
 							BigInteger.valueOf(opcode - DwarfConstants.DW_OP_lit0), true);
 				}
 				else if (opcode >= DwarfConstants.DW_OP_reg0 && opcode <= DwarfConstants.DW_OP_reg31) {
-					opStack[opStackPtr++] = new RegisterVariableLocation(context, null, (opcode - DwarfConstants.DW_OP_reg0));
+					opStack[opStackPtr++] = new RegisterVariableLocation(tracker, context, null, (opcode - DwarfConstants.DW_OP_reg0));
 				}
 				else if (opcode >= DwarfConstants.DW_OP_breg0 && opcode <= DwarfConstants.DW_OP_breg31) {
-					RegisterVariableLocation loc = new RegisterVariableLocation(context, null, (opcode - DwarfConstants.DW_OP_breg0));
+					RegisterVariableLocation loc = new RegisterVariableLocation(tracker, context, null, (opcode - DwarfConstants.DW_OP_breg0));
 					try {
 						BigInteger value = loc.readValue(addressSize);
 						
@@ -91,11 +92,7 @@ public class LocationExpression implements ILocationProvider {
 						break;
 
 					case DwarfConstants.DW_OP_deref: {
-						if (opStackPtr == 0) {
-							return new InvalidVariableLocation(MessageFormat.format(
-								DwarfMessages.InternalErrorFormat,
-								DwarfMessages.LocationExpression_ErrBadDeref));
-						}
+						ensureStack(opStackPtr, 1);
 						try {
 							BigInteger addr = opStack[opStackPtr - 1].readValue(addressSize);
 							IVariableLocation loc = new MemoryVariableLocation(tracker, context,
@@ -107,6 +104,13 @@ public class LocationExpression implements ILocationProvider {
 						break;
 					}
 
+					case DwarfConstants.DW_OP_plus_uconst: {
+						ensureStack(opStackPtr, 1);
+						long offset = DwarfInfoReader.read_unsigned_leb128(location);
+						opStack[opStackPtr-1] = opStack[opStackPtr-1].addOffset(offset);
+						break;
+					}
+					
 					case DwarfConstants.DW_OP_const1u: /*
 														 * Unsigned 1-byte
 														 * constant.
@@ -158,10 +162,6 @@ public class LocationExpression implements ILocationProvider {
 					case DwarfConstants.DW_OP_not:
 					case DwarfConstants.DW_OP_or:
 					case DwarfConstants.DW_OP_plus:
-					case DwarfConstants.DW_OP_plus_uconst: /*
-															 * Unsigned LEB128
-															 * addend.
-															 */
 					case DwarfConstants.DW_OP_shl:
 					case DwarfConstants.DW_OP_shr:
 					case DwarfConstants.DW_OP_shra:
@@ -179,7 +179,7 @@ public class LocationExpression implements ILocationProvider {
 
 					case DwarfConstants.DW_OP_regx: /* Unsigned LEB128 register. */
 						long regNum = DwarfInfoReader.read_unsigned_leb128(location);
-						opStack[opStackPtr++] = new RegisterVariableLocation(context, null, ((int) regNum));
+						opStack[opStackPtr++] = new RegisterVariableLocation(tracker, context, null, ((int) regNum));
 						break;
 						
 					case DwarfConstants.DW_OP_fbreg: /* Signed LEB128 offset. */
@@ -193,10 +193,14 @@ public class LocationExpression implements ILocationProvider {
 						if (framePtrLoc != null) {
 							// first resolve the frame base value and then add
 							// the offset
-							BigInteger frame = framePtrLoc.readValue(addressSize);
-							
-							opStack[opStackPtr++] = new MemoryVariableLocation(tracker, context, 
-									frame.add(BigInteger.valueOf(offset)), true);
+							if (framePtrLoc instanceof IRegisterVariableLocation) {
+								BigInteger frame = framePtrLoc.readValue(addressSize);
+								
+								opStack[opStackPtr++] = new MemoryVariableLocation(tracker, context, 
+										frame.add(BigInteger.valueOf(offset)), true);
+							} else {
+								opStack[opStackPtr++] = framePtrLoc.addOffset(offset);
+							}
 						}
 						
 						break;
@@ -254,6 +258,16 @@ public class LocationExpression implements ILocationProvider {
 		}
 			
 		return opStack[0];
+	}
+
+	/**
+	 */
+	private void ensureStack(int opStackPtr, int needed) throws CoreException {
+		if (opStackPtr < needed) {
+			throw EDCDebugger.newCoreException(MessageFormat.format(
+					DwarfMessages.InternalErrorFormat,
+					MessageFormat.format("expected {0} stack operands but had {1}", needed, opStackPtr)));
+		}
 	}
 
 	/**

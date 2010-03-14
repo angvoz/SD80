@@ -23,6 +23,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -45,16 +46,12 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 			BigInteger addressValue, boolean isRuntimeAddress) {
 		this.tracker = tracker;
 		this.context = context;
-		if (addressValue.signum() >= 0) {
-			this.address = new Addr64(addressValue);
-		} else {
-			BigInteger MAXADDR = BigInteger.valueOf(0xffffffff);
-			ITargetEnvironment targetEnvironment = tracker.getService(ITargetEnvironment.class);
-			if (targetEnvironment != null && targetEnvironment.getPointerSize() == 8) {
-				MAXADDR = BigInteger.valueOf(0xffffffffffffffffL);
-			}
-			this.address = new Addr64(addressValue.and(MAXADDR));
+		BigInteger MAXADDR = BigInteger.valueOf(0xffffffffL);
+		ITargetEnvironment targetEnvironment = tracker.getService(ITargetEnvironment.class);
+		if (targetEnvironment != null && targetEnvironment.getPointerSize() == 8) {
+			MAXADDR = BigInteger.valueOf(0xffffffffffffffffL);
 		}
+		this.address = new Addr64(addressValue.and(MAXADDR));
 		this.isRuntimeAddress = isRuntimeAddress;
 	}
 
@@ -83,11 +80,6 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 			theAddress = getRealAddress();
 		}
 		
-		ITargetEnvironment targetEnvironment = tracker.getService(ITargetEnvironment.class);
-		int endian = MemoryUtils.LITTLE_ENDIAN;
-		if (targetEnvironment != null)
-			endian = targetEnvironment.isLittleEndian(context) ? MemoryUtils.LITTLE_ENDIAN : MemoryUtils.BIG_ENDIAN;
-		
 		ExecutionDMC exeDMC = DMContexts.getAncestorOfType(context, ExecutionDMC.class);
 		
 		Memory memoryService = tracker.getService(Memory.class);
@@ -99,7 +91,15 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 		}
 
 		return MemoryUtils.convertByteArrayToUnsignedLong(
-				memBuffer.toArray(new MemoryByte[varSize]), endian);
+				memBuffer.toArray(new MemoryByte[varSize]), getEndian());
+	}
+
+	private int getEndian() {
+		ITargetEnvironment targetEnvironment = tracker.getService(ITargetEnvironment.class);
+		int endian = MemoryUtils.LITTLE_ENDIAN;
+		if (targetEnvironment != null)
+			endian = targetEnvironment.isLittleEndian(context) ? MemoryUtils.LITTLE_ENDIAN : MemoryUtils.BIG_ENDIAN;
+		return endian;
 	}
 
 	/**
@@ -129,7 +129,7 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getLocationName(org.eclipse.cdt.dsf.service.DsfServicesTracker)
 	 */
-	public String getLocationName(DsfServicesTracker servicesTracker) {
+	public String getLocationName() {
 		if (!isRuntimeAddress) {
 			try {
 				return "0x" + Long.toHexString(getRealAddress().getValue().longValue());
@@ -138,6 +138,18 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 			}
 		} else {
 			return "0x" + Long.toHexString(address.getValue().longValue());
+		}
+	}
+
+	public void writeValue(final int bytes, BigInteger value) throws CoreException {
+		final byte[] buffer = MemoryUtils.convertSignedBigIntToByteArray(value, getEndian(), bytes);
+		final IAddress theAddress = !isRuntimeAddress ? getRealAddress() : address;
+		final ExecutionDMC exeDMC = DMContexts.getAncestorOfType(context, ExecutionDMC.class);
+	    final Memory memory = tracker.getService(Memory.class);
+		IStatus status = memory.setMemory(exeDMC, theAddress, 1, bytes, buffer);
+		if (!status.isOK()) {
+			throw EDCDebugger.newCoreException(MessageFormat.format(
+					"cannot write address {0}", theAddress.toHexAddressString()), status.getException());
 		}
 	}
 }

@@ -41,6 +41,10 @@ public abstract class AbstractVariableConverter implements IVariableValueConvert
 		return false; // read-only implementation
 	}
 	
+	public String getEditableValue(IExpressionDMContext variable) throws CoreException {
+		return getValue(variable); // default - use same value
+	}
+	
 	public void setValue(IExpressionDMContext variable, String newValue) {
 		// read-only implementation
 	}

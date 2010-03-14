@@ -38,7 +38,7 @@ public interface IType {
 	/**
 	 * Get size of data type in bytes
 	 * 
-	 * @return size in bytes, or 0 for types like typedefs
+	 * @return size in bytes of the effective type (e.g. skipping qualifiers, typedefs, etc.)
 	 */
 	public int getByteSize();
 

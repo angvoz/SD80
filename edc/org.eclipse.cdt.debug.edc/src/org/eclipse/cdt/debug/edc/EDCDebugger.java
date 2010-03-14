@@ -15,6 +15,7 @@ import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISettings;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.LoggingProxy;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.SettingsProxy;
+import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
@@ -37,7 +38,7 @@ import org.osgi.framework.BundleContext;
 public class EDCDebugger extends Plugin {
 
 	// The plug-in ID
-	public static final String PLUGIN_ID = "org.eclipse.cdt.debug.edc";
+	public static final String PLUGIN_ID = "org.eclipse.cdt.debug.edc"; //$NON-NLS-1$
 
 	// The shared instance
 	private static EDCDebugger plugin;
@@ -138,8 +139,8 @@ public class EDCDebugger extends Plugin {
 	 *            - cause exception, can be null.
 	 * @return a {@link CoreException} object.
 	 */
-	public static CoreException newCoreException(String msg, Exception e) {
-		return new CoreException(new Status(IStatus.ERROR, PLUGIN_ID, msg, e));
+	public static CoreException newCoreException(String msg, Throwable t) {
+		return new CoreException(new Status(IStatus.ERROR, PLUGIN_ID, msg, t));
 	}
 
 	/**
@@ -188,4 +189,8 @@ public class EDCDebugger extends Plugin {
 	        }
 	        return preferenceStore;
 	    }
+
+	public static IStatus dsfRequestFailedStatus(String message, Throwable exception) {
+		return new Status(IStatus.ERROR, PLUGIN_ID, IDsfStatusConstants.REQUEST_FAILED, message, exception);
+	}
 }

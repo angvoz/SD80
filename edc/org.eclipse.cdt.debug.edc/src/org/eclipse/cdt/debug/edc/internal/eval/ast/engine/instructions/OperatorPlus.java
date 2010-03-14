@@ -12,10 +12,9 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
-import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
-import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
+import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
@@ -49,89 +48,23 @@ public class OperatorPlus extends BinaryOperator {
 	protected OperatorPlus(int resultId, boolean isAssignmentOperator, int start) {
 		super(resultId, isAssignmentOperator, start);
 	}
-
-	/**
-	 * Resolve a binary add operator "+"
-	 * 
-	 * @throws CoreException
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.BinaryOperator#customHandleOperation(org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperandValue, org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperandValue)
 	 */
 	@Override
-	public void execute() throws CoreException {
-		Object right = popValue();
-		Object left = popValue();
-
-		if (right == null || left == null)
-			return;
-
-		if (right instanceof InvalidExpression) {
-			push(right);
-			return;
-		}
-
-		if (left instanceof InvalidExpression) {
-			push(left);
-			return;
-		}
-
-		// let others convert the type to the string "bool", "int", etc.
-		this.setValueType(ASTEvaluationEngine.UNKNOWN_TYPE);
-		if (doPointerArithmetic(right, left))
-			return;
-
-		right = convertForPromotion(right);
-		left = convertForPromotion(left);
-
-		// let others convert the type to the string "bool", "int", etc.
-		this.setValueType(ASTEvaluationEngine.UNKNOWN_TYPE);
-
-		int resultType = getBinaryPromotionType(right, left);
-
-		switch (resultType) {
-		case T_String:
-			pushNewValue(getStringResult(GetValue.getStringValue(left), GetValue.getStringValue(right)));
-			break;
-		case T_double:
-			pushNewValue(getDoubleResult(GetValue.getDoubleValue(left), GetValue.getDoubleValue(right)));
-			break;
-		case T_float:
-			pushNewValue(getFloatResult(GetValue.getFloatValue(left), GetValue.getFloatValue(right)));
-			break;
-		case T_long:
-			pushNewValue(getLongResult(GetValue.getLongValue(left), GetValue.getLongValue(right)));
-			break;
-		case T_int:
-			pushNewValue(getIntResult(GetValue.getIntValue(left), GetValue.getIntValue(right)));
-			break;
-		case T_boolean:
-			pushNewValue(getBooleanResult(GetValue.getBooleanValue(left), GetValue.getBooleanValue(right)));
-			break;
-		case T_BigInt:
-			// TODO: get the length of a long long rather than using hard-coded
-			// 8
-			pushNewValue(getBigIntegerResult(GetValue.getBigIntegerValue(left), GetValue.getBigIntegerValue(right), 8));
-			break;
-		}
-	}
-
-	private boolean doPointerArithmetic(Object right, Object left) {
-		VariableWithValue rightVar = null;
+	protected boolean customHandleOperation(Interpreter fInterpreter,
+			OperandValue left, OperandValue right) throws CoreException {
 		IType rightType = null;
-		VariableWithValue leftVar = null;
 		IType leftType = null;
 
 		boolean isLeftPointer = false;
-		if (left instanceof VariableWithValue) {
-			leftVar = (VariableWithValue) left;
-			leftType = TypeUtils.getStrippedType(leftVar.getVariable().getType());
-			isLeftPointer = leftType instanceof IPointerType || leftType instanceof IAggregate;
-		}
+		leftType = TypeUtils.getStrippedType(left.getValueType());
+		isLeftPointer = leftType instanceof IPointerType || leftType instanceof IArrayType;
 
 		boolean isRightPointer = false;
-		if (right instanceof VariableWithValue) {
-			rightVar = (VariableWithValue) right;
-			rightType = TypeUtils.getStrippedType(rightVar.getVariable().getType());
-			isRightPointer = rightType instanceof IPointerType || rightType instanceof IAggregate;
-		}
+		rightType = TypeUtils.getStrippedType(right.getValueType());
+		isRightPointer = rightType instanceof IPointerType || rightType instanceof IArrayType;
 
 		// zero pointer operands
 		if (!isLeftPointer && !isRightPointer) {
@@ -140,86 +73,44 @@ public class OperatorPlus extends BinaryOperator {
 
 		// two pointer operands
 		if (isLeftPointer && isRightPointer) {
-			InvalidExpression invalidExpression = new InvalidExpression(ASTEvalMessages.OperatorPlus_PtrPlusPtr);
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return true;
+			// allow for strings...
+			if (getValueType(left) == T_String && getValueType(right) == T_String)
+				return false;
+			throw EDCDebugger.newCoreException(ASTEvalMessages.OperatorPlus_PtrPlusPtr);
 		}
 
 		// get the non-pointer on the left
 		if (isRightPointer) {
-			Object temp = right;
+			OperandValue temp = right;
 			right = left;
 			left = temp;
-			temp = rightVar;
-			rightVar = leftVar;
-			leftVar = (VariableWithValue) temp;
-			temp = rightType;
+			temp = right;
+			right = left;
+			left = temp;
+			IType tempType = rightType;
 			rightType = leftType;
-			leftType = (IType) temp;
+			leftType = tempType;
 		}
-
-		Object address = leftVar.getValue();
-		if (address instanceof IAddress)
-			address = ((IAddress) address).getValue();
 
 		// convert the left address to BigInteger
-		String bigIntString = "0"; //$NON-NLS-1$
-		if (!(address instanceof BigInteger)) {
-			if (address instanceof Integer)
-				bigIntString = Long.toString(((Integer) address).longValue());
-			else if (address instanceof Short)
-				bigIntString = Long.toString(((Short) address).longValue());
-			else if (address instanceof Character)
-				bigIntString = Long.toString(((Character) address));
-			else if (address instanceof Byte)
-				bigIntString = Long.toString(((Byte) address).longValue());
-			else if (address instanceof Long)
-				bigIntString = Long.toString(((Long) address).longValue());
-			else
-				return false;
-			address = new BigInteger(bigIntString, 10);
-		}
+		BigInteger bigIntAddress = left.getBigIntValue();
 
-		BigInteger bigIntAddress = (BigInteger) address;
 		BigInteger aggregateSize = BigInteger.ZERO;
 		if (leftType instanceof IPointerType)
-			aggregateSize = new BigInteger(Integer.toString(leftType.getByteSize()));
+			aggregateSize = BigInteger.valueOf(leftType.getByteSize());
 		else
-			aggregateSize = new BigInteger(Integer.toString(TypeUtils.getStrippedType(leftType.getType())
-					.getByteSize()));
+			aggregateSize = BigInteger.valueOf(TypeUtils.getStrippedType(leftType.getType())
+					.getByteSize());
 		BigInteger addAmount = aggregateSize;
 
 		right = convertForPromotion(right);
-		bigIntString = "0"; //$NON-NLS-1$
-		if (!(right instanceof BigInteger)) {
-			if (right instanceof Integer)
-				bigIntString = Long.toString(((Integer) right).longValue());
-			else if (right instanceof Short)
-				bigIntString = Long.toString(((Short) right).longValue());
-			else if (right instanceof Character)
-				bigIntString = Long.toString(((Character) right));
-			else if (right instanceof Byte)
-				bigIntString = Long.toString(((Byte) right).longValue());
-			else if (right instanceof Long)
-				bigIntString = Long.toString(((Long) right).longValue());
-			else
-				return false;
-			addAmount = addAmount.multiply(new BigInteger(bigIntString, 10));
-		} else
-			addAmount = addAmount.multiply((BigInteger) right);
+		
+		addAmount = addAmount.multiply(right.getBigIntValue());		
 
 		bigIntAddress = bigIntAddress.add(addAmount);
 
-		if (bigIntAddress.bitCount() < 64) {
-			pushNewValue(bigIntAddress.longValue());
-		} else {
-			pushNewValue(bigIntAddress);
-		}
+		pushNewValue(left.getValueType(), bigIntAddress);
 
-		setValueLocation(new Long(0));
 		return true;
 	}
 
@@ -326,7 +217,7 @@ public class OperatorPlus extends BinaryOperator {
 	 */
 	@Override
 	protected String getStringResult(String leftOperand, String rightOperand) throws CoreException {
-		return leftOperand.substring(0, leftOperand.length() - 1) + rightOperand.substring(1);
+		return leftOperand + rightOperand;
 	}
 
 }

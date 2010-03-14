@@ -16,6 +16,7 @@ import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInheritance;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInvalidExpressions;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTests;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlag;
+import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsLinux;
 import org.eclipse.cdt.debug.edc.debugger.tests.SnapshotTests;
 import org.eclipse.cdt.debug.edc.debugger.tests.Variables;
 import org.junit.runner.RunWith;
@@ -41,6 +42,7 @@ import org.junit.runners.Suite;
 						TestOpcodeARM.class,
 						Variables.class,
 						RegisterFrameTests.class,
+						RegisterFrameTestsLinux.class,
 						RegisterFrameTestsBlackFlag.class,
 						SnapshotTests.class,
 						SnapshotMetaDataTests.class })

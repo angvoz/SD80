@@ -11,10 +11,9 @@
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
-import org.junit.Assert;
 import org.junit.Test;
 
-public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
+public class ExpressionsAggregatesAndEnums extends BaseExpressionTest {
 
 	/*
 	 *	Note: This assumes you are at a breakpoint where:
@@ -60,251 +59,252 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	public void testExpressionsWithStructs() throws Exception {
 		openSnapshotAndWaitForSuspendedContext(0);
 
-		Assert.assertTrue(getExpressionValue("lstruct") != "");
-		Assert.assertEquals("'1'", getExpressionValue("lstruct.achar"));
-		Assert.assertEquals("''", getExpressionValue("lstruct.auchar"));
-		Assert.assertEquals("'3'", getExpressionValue("lstruct.aschar"));
-		Assert.assertEquals("4", getExpressionValue("lstruct.ashort"));
-		Assert.assertEquals("5", getExpressionValue("lstruct.aushort"));
-		Assert.assertEquals("6", getExpressionValue("lstruct.asshort"));
-		Assert.assertEquals("7", getExpressionValue("lstruct.aint"));
-		Assert.assertEquals("8", getExpressionValue("lstruct.auint"));
-		Assert.assertEquals("9", getExpressionValue("lstruct.asint"));
-		Assert.assertEquals("10", getExpressionValue("lstruct.along"));
-		Assert.assertEquals("11", getExpressionValue("lstruct.aulong"));
-		Assert.assertEquals("12", getExpressionValue("lstruct.aslong"));
-		Assert.assertEquals("13", getExpressionValue("lstruct.aulonglong"));
-		Assert.assertEquals("14", getExpressionValue("lstruct.aslonglong"));
-		Assert.assertEquals("15.0", getExpressionValue("lstruct.afloat"));
-		Assert.assertEquals("16.0", getExpressionValue("lstruct.adouble"));
+		checkExprNoError("lstruct");
+		checkExpr("'1'", "lstruct.achar");
+		checkExpr("'\u0002'", "lstruct.auchar");
+		checkExpr("'3'", "lstruct.aschar");
+		checkExpr("4", "lstruct.ashort");
+		checkExpr("5", "lstruct.aushort");
+		checkExpr("6", "lstruct.asshort");
+		checkExpr("7", "lstruct.aint");
+		checkExpr("8", "lstruct.auint");
+		checkExpr("9", "lstruct.asint");
+		checkExpr("10", "lstruct.along");
+		checkExpr("11", "lstruct.aulong");
+		checkExpr("12", "lstruct.aslong");
+		checkExpr("13", "lstruct.aulonglong");
+		checkExpr("14", "lstruct.aslonglong");
+		checkExpr("15.0", "lstruct.afloat");
+		checkExpr("16.0", "lstruct.adouble");
 
 		// logical operations
 		// ==
-		Assert.assertEquals("true", getExpressionValue("lstruct.achar == 49"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.ashort == 4"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aint == 7"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.along == 10"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aslonglong == 14"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.afloat == 15.0F"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.adouble == 16.0"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar == lstruct.auchar"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort == lstruct.aushort"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint == lstruct.asint"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along == lstruct.aulong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aulonglong == lstruct.aslonglong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat == lstruct.adouble"));
+		checkExpr("true", "lstruct.achar == 49");
+		checkExpr("true", "lstruct.ashort == 4");
+		checkExpr("true", "lstruct.aint == 7");
+		checkExpr("true", "10 == lstruct.along");
+		checkExpr("true", "lstruct.aslonglong == 14");
+		checkExpr("true", "lstruct.afloat == lstruct.afloat"); // for precision
+		checkExpr("true", "lstruct.adouble == lstruct.adouble"); // for precision
+		checkExpr("false", "lstruct.achar == lstruct.auchar");
+		checkExpr("false", "lstruct.ashort == lstruct.aushort");
+		checkExpr("false", "lstruct.aint == lstruct.asint");
+		checkExpr("false", "lstruct.along == lstruct.aulong");
+		checkExpr("false", "lstruct.aulonglong == lstruct.aslonglong");
+		checkExpr("false", "lstruct.afloat == lstruct.adouble");
 		// !=
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar != 49"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort != 4"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint != 7"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along != 10"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aslonglong != 14"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat != 15.0F"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.adouble != 16.0"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.achar != lstruct.aschar"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.ashort != lstruct.aushort"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aint != lstruct.asint"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.along != lstruct.aulong"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aulonglong != lstruct.aslonglong"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.afloat != lstruct.adouble"));
+		checkExpr("false", "lstruct.achar != 49");
+		checkExpr("false", "lstruct.ashort != 4");
+		checkExpr("false", "7 != lstruct.aint");
+		checkExpr("false", "lstruct.along != 10");
+		checkExpr("false", "lstruct.aslonglong != 14");
+		checkExpr("false", "15.0F != lstruct.afloat");
+		checkExpr("false", "lstruct.adouble != 16.0");
+		checkExpr("true", "lstruct.achar != lstruct.aschar");
+		checkExpr("true", "lstruct.ashort != lstruct.aushort");
+		checkExpr("true", "lstruct.aint != lstruct.asint");
+		checkExpr("true", "lstruct.along != lstruct.aulong");
+		checkExpr("true", "lstruct.aulonglong != lstruct.aslonglong");
+		checkExpr("true", "lstruct.afloat != lstruct.adouble");
 		// >=
-		Assert.assertEquals("true", getExpressionValue("lstruct.achar >= 49"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.ashort >= 4"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aint >= 7"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.along >= 10"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aslonglong >= 14"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.afloat >= 15.0F"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.adouble >= 16.0"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar >= lstruct.aschar"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort >= lstruct.aushort"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint >= lstruct.asint"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along >= lstruct.aulong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aulonglong >= lstruct.aslonglong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat >= lstruct.adouble"));
+		checkExpr("true", "lstruct.achar >= 49");
+		checkExpr("true", "lstruct.ashort >= 4");
+		checkExpr("true", "lstruct.aint >= 7");
+		checkExpr("true", "lstruct.along >= 10");
+		checkExpr("true", "lstruct.aslonglong >= 14");
+		checkExpr("true", "lstruct.afloat >= 15.0F");
+		checkExpr("true", "lstruct.adouble >= 16.0");
+		checkExpr("false", "lstruct.achar >= lstruct.aschar");
+		checkExpr("false", "lstruct.ashort >= lstruct.aushort");
+		checkExpr("false", "lstruct.aint >= lstruct.asint");
+		checkExpr("false", "lstruct.along >= lstruct.aulong");
+		checkExpr("false", "lstruct.aulonglong >= lstruct.aslonglong");
+		checkExpr("false", "lstruct.afloat >= lstruct.adouble");
 		// >
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar > 49"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort > 4"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint > 7"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along > 10"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aslonglong > 14"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat > 15.0F"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.adouble > 16.0"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar > lstruct.aschar"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort > lstruct.aushort"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint > lstruct.asint"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along > lstruct.aulong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aulonglong > lstruct.aslonglong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat > lstruct.adouble"));
+		checkExpr("false", "lstruct.achar > 49");
+		checkExpr("false", "lstruct.ashort > 4");
+		checkExpr("false", "lstruct.aint > 7");
+		checkExpr("false", "lstruct.along > 10");
+		checkExpr("false", "lstruct.aslonglong > 14");
+		checkExpr("false", "lstruct.afloat > 15.0F");
+		checkExpr("false", "lstruct.adouble > 16.0");
+		checkExpr("false", "lstruct.achar > lstruct.aschar");
+		checkExpr("false", "lstruct.ashort > lstruct.aushort");
+		checkExpr("false", "lstruct.aint > lstruct.asint");
+		checkExpr("false", "lstruct.along > lstruct.aulong");
+		checkExpr("false", "lstruct.aulonglong > lstruct.aslonglong");
+		checkExpr("false", "lstruct.afloat > lstruct.adouble");
 		// <=
-		Assert.assertEquals("true", getExpressionValue("lstruct.achar <= 49"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.ashort <= 4"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aint <= 7"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.along <= 10"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aslonglong <= 14"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.afloat <= 15.0F"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.adouble <= 16.0"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.achar <= lstruct.aschar"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.ashort <= lstruct.aushort"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aint <= lstruct.asint"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.along <= lstruct.aulong"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aulonglong <= lstruct.aslonglong"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.afloat <= lstruct.adouble"));
+		checkExpr("true", "lstruct.achar <= 49");
+		checkExpr("true", "lstruct.ashort <= 4");
+		checkExpr("true", "lstruct.aint <= 7");
+		checkExpr("true", "lstruct.along <= 10");
+		checkExpr("true", "lstruct.aslonglong <= 14");
+		checkExpr("true", "lstruct.afloat <= 15.0F");
+		checkExpr("true", "lstruct.adouble <= 16.0");
+		checkExpr("true", "lstruct.achar <= lstruct.aschar");
+		checkExpr("true", "lstruct.ashort <= lstruct.aushort");
+		checkExpr("true", "lstruct.aint <= lstruct.asint");
+		checkExpr("true", "lstruct.along <= lstruct.aulong");
+		checkExpr("true", "lstruct.aulonglong <= lstruct.aslonglong");
+		checkExpr("true", "lstruct.afloat <= lstruct.adouble");
 		// <
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar < 49"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort < 4"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint < 7"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along < 10"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aslonglong < 14"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat < 15.0F"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.adouble < 16.0"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.achar < lstruct.aschar"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.ashort < lstruct.aushort"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aint < lstruct.asint"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.along < lstruct.aulong"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.aulonglong < lstruct.aslonglong"));
-		Assert.assertEquals("true", getExpressionValue("lstruct.afloat < lstruct.adouble"));
+		checkExpr("false", "lstruct.achar < 49");
+		checkExpr("false", "lstruct.ashort < 4");
+		checkExpr("false", "lstruct.aint < 7");
+		checkExpr("false", "lstruct.along < 10");
+		checkExpr("false", "lstruct.aslonglong < 14");
+		checkExpr("false", "lstruct.afloat < 15.0F");
+		checkExpr("false", "lstruct.adouble < 16.0");
+		checkExpr("true", "lstruct.achar < lstruct.aschar");
+		checkExpr("true", "lstruct.ashort < lstruct.aushort");
+		checkExpr("true", "lstruct.aint < lstruct.asint");
+		checkExpr("true", "lstruct.along < lstruct.aulong");
+		checkExpr("true", "lstruct.aulonglong < lstruct.aslonglong");
+		checkExpr("true", "lstruct.afloat < lstruct.adouble");
 		// &&
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar && 49"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort && 4"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint && 7"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along && 10"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aslonglong && 14"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat && 15.0F"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.adouble && 16.0"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar || lstruct.aschar"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort || lstruct.aushort"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint || lstruct.asint"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along || lstruct.aulong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aulonglong || lstruct.aslonglong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat || lstruct.adouble"));
+		checkExpr("true", "lstruct.achar && 49");
+		checkExpr("true", "lstruct.ashort && 4");
+		checkExpr("true", "lstruct.aint && 7");
+		checkExpr("true", "lstruct.along && 10");
+		checkExpr("true", "lstruct.aslonglong && 14");
+		checkExpr("true", "lstruct.afloat && 15.0F");
+		checkExpr("true", "lstruct.adouble && 16.0");
+		checkExpr("true", "lstruct.achar || lstruct.aschar");
+		checkExpr("true", "lstruct.ashort || lstruct.aushort");
+		checkExpr("true", "lstruct.aint || lstruct.asint");
+		checkExpr("true", "lstruct.along || lstruct.aulong");
+		checkExpr("true", "lstruct.aulonglong || lstruct.aslonglong");
+		checkExpr("true", "lstruct.afloat || lstruct.adouble");
 		// ||
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar || 49"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort || 4"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint || 7"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along || 10"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aslonglong || 14"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat || 15.0F"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.adouble || 16.0"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.achar || lstruct.aschar"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.ashort || lstruct.aushort"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aint || lstruct.asint"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.along || lstruct.aulong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.aulonglong || lstruct.aslonglong"));
-		Assert.assertEquals("false", getExpressionValue("lstruct.afloat || lstruct.adouble"));
+		checkExpr("true", "lstruct.achar || 49");
+		checkExpr("true", "lstruct.ashort || 4");
+		checkExpr("true", "lstruct.aint || 7");
+		checkExpr("true", "lstruct.along || 10");
+		checkExpr("true", "lstruct.aslonglong || 14");
+		checkExpr("true", "lstruct.afloat || 15.0F");
+		checkExpr("true", "lstruct.adouble || 16.0");
+		checkExpr("true", "lstruct.achar || lstruct.aschar");
+		checkExpr("true", "lstruct.ashort || lstruct.aushort");
+		checkExpr("true", "lstruct.aint || lstruct.asint");
+		checkExpr("true", "lstruct.along || lstruct.aulong");
+		checkExpr("true", "lstruct.aulonglong || lstruct.aslonglong");
+		checkExpr("true", "lstruct.afloat || lstruct.adouble");
 
 		// arithmetic operations
 		// &
-		Assert.assertEquals("49", getExpressionValue("lstruct.achar & 49"));
-		Assert.assertEquals("4", getExpressionValue("lstruct.ashort & 4"));
-		Assert.assertEquals("7", getExpressionValue("lstruct.aint & 7"));
-		Assert.assertEquals("10", getExpressionValue("lstruct.along & 10"));
-		Assert.assertEquals("14", getExpressionValue("lstruct.aslonglong & 14"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.afloat & 15.0F"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.adouble & 16.0"));
+		checkExpr("49", "lstruct.achar & 49");
+		checkExpr("4", "lstruct.ashort & 4");
+		checkExpr("7", "lstruct.aint & 7");
+		checkExpr("10", "lstruct.along & 10");
+		checkExpr("14", "lstruct.aslonglong & 14");
+		checkExpr("0.0", "lstruct.afloat & 15.0F");
+		checkExpr("0.0", "lstruct.adouble & 16.0");
 		// |
-		Assert.assertEquals("49", getExpressionValue("lstruct.achar | 0"));
-		Assert.assertEquals("4", getExpressionValue("lstruct.ashort | 0"));
-		Assert.assertEquals("7", getExpressionValue("lstruct.aint | 0"));
-		Assert.assertEquals("10", getExpressionValue("lstruct.along | 0"));
-		Assert.assertEquals("14", getExpressionValue("lstruct.aslonglong | 0"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.afloat | 0.0F"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.adouble | 0.0"));
+		checkExpr("49", "lstruct.achar | 0");
+		checkExpr("4", "lstruct.ashort | 0");
+		checkExpr("7", "lstruct.aint | 0");
+		checkExpr("10", "lstruct.along | 0");
+		checkExpr("14", "lstruct.aslonglong | 0");
+		checkExpr("0.0", "lstruct.afloat | 0.0F");
+		checkExpr("0.0", "lstruct.adouble | 0.0");
 		// ^
-		Assert.assertEquals("49", getExpressionValue("lstruct.achar ^ 0"));
-		Assert.assertEquals("4", getExpressionValue("lstruct.ashort ^ 0"));
-		Assert.assertEquals("7", getExpressionValue("lstruct.aint ^ 0"));
-		Assert.assertEquals("10", getExpressionValue("lstruct.along ^ 0"));
-		Assert.assertEquals("14", getExpressionValue("lstruct.aslonglong ^ 0"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.afloat ^ 0.0F"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.adouble ^ 0.0"));
+		checkExpr("49", "lstruct.achar ^ 0");
+		checkExpr("4", "lstruct.ashort ^ 0");
+		checkExpr("7", "lstruct.aint ^ 0");
+		checkExpr("10", "lstruct.along ^ 0");
+		checkExpr("14", "lstruct.aslonglong ^ 0");
+		checkExpr("0.0", "lstruct.afloat ^ 0.0F");
+		checkExpr("0.0", "lstruct.adouble ^ 0.0");
 		// +
-		Assert.assertEquals("50", getExpressionValue("lstruct.achar + 1"));
-		Assert.assertEquals("5", getExpressionValue("lstruct.ashort + 1"));
-		Assert.assertEquals("8", getExpressionValue("lstruct.aint + 1"));
-		Assert.assertEquals("11", getExpressionValue("lstruct.along + 1"));
-		Assert.assertEquals("15", getExpressionValue("lstruct.aslonglong + 1"));
-		Assert.assertEquals("16.0", getExpressionValue("lstruct.afloat + 1.0F"));
-		Assert.assertEquals("17.0", getExpressionValue("lstruct.adouble + 1.0"));
+		checkExpr("50", "lstruct.achar + 1");
+		checkExpr("5", "lstruct.ashort + 1");
+		checkExpr("8", "lstruct.aint + 1");
+		checkExpr("11", "lstruct.along + 1");
+		checkExpr("15", "lstruct.aslonglong + 1");
+		checkExpr("16.0", "lstruct.afloat + 1.0F");
+		checkExpr("17.0", "lstruct.adouble + 1.0");
 		// -
-		Assert.assertEquals("48", getExpressionValue("lstruct.achar - 1"));
-		Assert.assertEquals("3", getExpressionValue("lstruct.ashort - 1"));
-		Assert.assertEquals("6", getExpressionValue("lstruct.aint - 1"));
-		Assert.assertEquals("9", getExpressionValue("lstruct.along - 1"));
-		Assert.assertEquals("13", getExpressionValue("lstruct.aslonglong - 1"));
-		Assert.assertEquals("14.0", getExpressionValue("lstruct.afloat - 1.0F"));
-		Assert.assertEquals("15.0", getExpressionValue("lstruct.adouble - 1.0"));
+		checkExpr("48", "lstruct.achar - 1");
+		checkExpr("3", "lstruct.ashort - 1");
+		checkExpr("6", "lstruct.aint - 1");
+		checkExpr("9", "lstruct.along - 1");
+		checkExpr("13", "lstruct.aslonglong - 1");
+		checkExpr("14.0", "lstruct.afloat - 1.0F");
+		checkExpr("15.0", "lstruct.adouble - 1.0");
 		// *
-		Assert.assertEquals("98", getExpressionValue("lstruct.achar * 2"));
-		Assert.assertEquals("8", getExpressionValue("lstruct.ashort * 2"));
-		Assert.assertEquals("14", getExpressionValue("lstruct.aint * 2"));
-		Assert.assertEquals("20", getExpressionValue("lstruct.along * 2"));
-		Assert.assertEquals("28", getExpressionValue("lstruct.aslonglong * 2"));
-		Assert.assertEquals("30.0", getExpressionValue("lstruct.afloat * 2.0F"));
-		Assert.assertEquals("32.0", getExpressionValue("lstruct.adouble * 2.0"));
+		checkExpr("98", "lstruct.achar * 2");
+		checkExpr("8", "lstruct.ashort * 2");
+		checkExpr("14", "lstruct.aint * 2");
+		checkExpr("20", "lstruct.along * 2");
+		checkExpr("28", "lstruct.aslonglong * 2");
+		checkExpr("30.0", "lstruct.afloat * 2.0F");
+		checkExpr("32.0", "lstruct.adouble * 2.0");
 		// /
-		Assert.assertEquals("24", getExpressionValue("lstruct.achar / 2"));
-		Assert.assertEquals("2", getExpressionValue("lstruct.ashort / 2"));
-		Assert.assertEquals("3", getExpressionValue("lstruct.aint / 2"));
-		Assert.assertEquals("5", getExpressionValue("lstruct.along / 2"));
-		Assert.assertEquals("7", getExpressionValue("lstruct.aslonglong / 2"));
-		Assert.assertEquals("7.5", getExpressionValue("lstruct.afloat / 2.0F"));
-		Assert.assertEquals("8.0", getExpressionValue("lstruct.adouble / 2.0"));
+		checkExpr("24", "lstruct.achar / 2");
+		checkExpr("2", "lstruct.ashort / 2");
+		checkExpr("3", "lstruct.aint / 2");
+		checkExpr("5", "lstruct.along / 2");
+		checkExpr("7", "lstruct.aslonglong / 2");
+		checkExpr("7.5", "lstruct.afloat / 2.0F");
+		checkExpr("8.0", "lstruct.adouble / 2.0");
 		// %
-		Assert.assertEquals("1", getExpressionValue("lstruct.achar % 2"));
-		Assert.assertEquals("0", getExpressionValue("lstruct.ashort % 2"));
-		Assert.assertEquals("1", getExpressionValue("lstruct.aint % 2"));
-		Assert.assertEquals("0", getExpressionValue("lstruct.along % 2"));
-		Assert.assertEquals("0", getExpressionValue("lstruct.aslonglong % 2"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.afloat % 2.0F"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.adouble % 2.0"));
+		checkExpr("1", "lstruct.achar % 2");
+		checkExpr("0", "lstruct.ashort % 2");
+		checkExpr("1", "lstruct.aint % 2");
+		checkExpr("0", "lstruct.along % 2");
+		checkExpr("0", "lstruct.aslonglong % 2");
+		checkExpr("1.0", "lstruct.afloat % 2.0F");
+		checkExpr("0.0", "lstruct.adouble % 2.0");
 		// <<
-		Assert.assertEquals("98", getExpressionValue("lstruct.achar << 1"));
-		Assert.assertEquals("8", getExpressionValue("lstruct.ashort << 1"));
-		Assert.assertEquals("14", getExpressionValue("lstruct.aint << 1"));
-		Assert.assertEquals("20", getExpressionValue("lstruct.along << 1"));
-		Assert.assertEquals("28", getExpressionValue("lstruct.aslonglong << 1"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.afloat << 1"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.adouble << 1"));
+		checkExpr("98", "lstruct.achar << 1");
+		checkExpr("8", "lstruct.ashort << 1");
+		checkExpr("14", "lstruct.aint << 1");
+		checkExpr("20", "lstruct.along << 1");
+		checkExpr("28", "lstruct.aslonglong << 1");
+		checkExpr("0.0", "lstruct.afloat << 1");
+		checkExpr("0.0", "lstruct.adouble << 1");
 		// >>
-		Assert.assertEquals("24", getExpressionValue("lstruct.achar >> 1"));
-		Assert.assertEquals("2", getExpressionValue("lstruct.ashort >> 1"));
-		Assert.assertEquals("3", getExpressionValue("lstruct.aint >> 1"));
-		Assert.assertEquals("5", getExpressionValue("lstruct.along >> 1"));
-		Assert.assertEquals("7", getExpressionValue("lstruct.aslonglong >> 1"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.afloat >> 1"));
-		Assert.assertEquals("0.0", getExpressionValue("lstruct.adouble >> 1"));
+		checkExpr("24", "lstruct.achar >> 1");
+		checkExpr("2", "lstruct.ashort >> 1");
+		checkExpr("3", "lstruct.aint >> 1");
+		checkExpr("5", "lstruct.along >> 1");
+		checkExpr("7", "lstruct.aslonglong >> 1");
+		checkExpr("0.0", "lstruct.afloat >> 1");
+		checkExpr("0.0", "lstruct.adouble >> 1");
 
 		// unary operations
 		// +
-		Assert.assertEquals("'1'", getExpressionValue("+lstruct.achar"));
-		Assert.assertEquals("4", getExpressionValue("+lstruct.ashort"));
-		Assert.assertEquals("7", getExpressionValue("+lstruct.aint"));
-		Assert.assertEquals("10", getExpressionValue("+lstruct.along"));
-		Assert.assertEquals("14", getExpressionValue("+lstruct.aslonglong"));
-		Assert.assertEquals("15.0", getExpressionValue("+lstruct.afloat"));
-		Assert.assertEquals("16.0", getExpressionValue("+lstruct.adouble"));
+		checkExpr(intType, "49", "+lstruct.achar");
+		checkExpr(intType, "4", "+lstruct.ashort");
+		checkExpr(intType, "7", "+lstruct.aint");
+		checkExpr(longType, "10", "+lstruct.along");
+		checkExpr("14", "+lstruct.aslonglong");
+		checkExpr(floatType, "15.0", "+lstruct.afloat");
+		checkExpr(doubleType, "16.0", "+lstruct.adouble");
 		// -
-		Assert.assertEquals("-4", getExpressionValue("-lstruct.ashort"));
-		Assert.assertEquals("-7", getExpressionValue("-lstruct.aint"));
-		Assert.assertEquals("-10", getExpressionValue("-lstruct.along"));
-		Assert.assertEquals("-14", getExpressionValue("-lstruct.aslonglong"));
-		Assert.assertEquals("-15.0", getExpressionValue("-lstruct.afloat"));
-		Assert.assertEquals("-16.0", getExpressionValue("-lstruct.adouble"));
+		checkExpr(intType, "-49", "-lstruct.achar");
+		checkExpr("-4", "-lstruct.ashort");
+		checkExpr("-7", "-lstruct.aint");
+		checkExpr("-10", "-lstruct.along");
+		checkExpr("-14", "-lstruct.aslonglong");
+		checkExpr("-15.0", "-lstruct.afloat");
+		checkExpr("-16.0", "-lstruct.adouble");
 		// !
-		Assert.assertEquals("false", getExpressionValue("!lstruct.achar"));
-		Assert.assertEquals("false", getExpressionValue("!lstruct.ashort"));
-		Assert.assertEquals("false", getExpressionValue("!lstruct.aint"));
-		Assert.assertEquals("false", getExpressionValue("!lstruct.along"));
-		Assert.assertEquals("false", getExpressionValue("!lstruct.aslonglong"));
-		Assert.assertEquals("false", getExpressionValue("!lstruct.afloat"));
-		Assert.assertEquals("false", getExpressionValue("!lstruct.adouble"));
+		checkExpr("false", "!lstruct.achar");
+		checkExpr("false", "!lstruct.ashort");
+		checkExpr("false", "!lstruct.aint");
+		checkExpr("false", "!lstruct.along");
+		checkExpr("false", "!lstruct.aslonglong");
+		checkExpr("false", "!lstruct.afloat");
+		checkExpr("false", "!lstruct.adouble");
 		// ~
-		Assert.assertEquals("-5", getExpressionValue("~lstruct.ashort"));
-		Assert.assertEquals("-8", getExpressionValue("~lstruct.aint"));
-		Assert.assertEquals("-11", getExpressionValue("~lstruct.along"));
-		Assert.assertEquals("-15", getExpressionValue("~lstruct.aslonglong"));
-		Assert.assertEquals("0.0", getExpressionValue("~lstruct.afloat"));
-		Assert.assertEquals("0.0", getExpressionValue("~lstruct.adouble"));
+		checkExpr("-5", "~lstruct.ashort");
+		checkExpr("-8", "~lstruct.aint");
+		checkExpr("-11", "~lstruct.along");
+		checkExpr("-15", "~lstruct.aslonglong");
+		checkExpr("0.0", "~lstruct.afloat");
+		checkExpr("0.0", "~lstruct.adouble");
 	}
 
 	/*
@@ -324,115 +324,116 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	public void testExpressionsWithArrays() throws Exception {
 		openSnapshotAndWaitForSuspendedContext(1);
 
-		Assert.assertTrue(getExpressionValue("larray") != "");
-		Assert.assertTrue(getExpressionValue("&larray") != "");
-		Assert.assertEquals("0", getExpressionValue("larray[0]"));
-		Assert.assertEquals("1", getExpressionValue("larray[1]"));
-		Assert.assertEquals("2", getExpressionValue("larray[2]"));
-		Assert.assertEquals("37", getExpressionValue("larray[37]"));
-		Assert.assertEquals("38", getExpressionValue("larray[38]"));
-		Assert.assertEquals("39", getExpressionValue("larray[39]"));
+		checkExprNoError("larray");
+		checkExprNoError("&larray");
+		
+		checkExpr("0", "larray[0]");
+		checkExpr("1", "larray[1]");
+		checkExpr("2", "larray[2]");
+		checkExpr("37", "larray[37]");
+		checkExpr("38", "larray[38]");
+		checkExpr("39", "larray[39]");
 
 		// logical operations
 		// ==
-		Assert.assertEquals("true", getExpressionValue("larray[0] == 0"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] == 1"));
-		Assert.assertEquals("true", getExpressionValue("larray[39] == 39"));
-		Assert.assertEquals("false", getExpressionValue("larray[39] == 40"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] == larray[39]"));
+		checkExpr("true", "larray[0] == 0");
+		checkExpr("false", "larray[0] == 1");
+		checkExpr("true", "39 == larray[39]");
+		checkExpr("false", "larray[39] == 40");
+		checkExpr("false", "larray[0] == larray[39]");
 		// !=
-		Assert.assertEquals("true", getExpressionValue("larray[0] != 1"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] != 0"));
-		Assert.assertEquals("true", getExpressionValue("larray[39] != 40"));
-		Assert.assertEquals("false", getExpressionValue("larray[39] != 39"));
-		Assert.assertEquals("true", getExpressionValue("larray[0] != larray[39]"));
+		checkExpr("true", "larray[0] != 1");
+		checkExpr("false", "larray[0] != 0");
+		checkExpr("true", "40 != larray[39]");
+		checkExpr("false", "larray[39] != 39");
+		checkExpr("true", "larray[0] != larray[39]");
 		// >=
-		Assert.assertEquals("true", getExpressionValue("larray[0] >= 0"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] >= 41"));
-		Assert.assertEquals("true", getExpressionValue("larray[39] >= 1"));
-		Assert.assertEquals("false", getExpressionValue("larray[39] >= 41"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] >= larray[39]"));
+		checkExpr("true", "larray[0] >= 0");
+		checkExpr("false", "larray[0] >= 41");
+		checkExpr("true", "larray[39] >= 1");
+		checkExpr("false", "38 >= larray[39]");
+		checkExpr("false", "larray[0] >= larray[39]");
 		// >
-		Assert.assertEquals("true", getExpressionValue("larray[0] > -1"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] > 40"));
-		Assert.assertEquals("true", getExpressionValue("larray[39] > 0"));
-		Assert.assertEquals("false", getExpressionValue("larray[39] > 40"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] > larray[39]"));
+		checkExpr("true", "larray[0] > -1");
+		checkExpr("false", "larray[0] > 40");
+		checkExpr("true", "larray[39] > 0");
+		checkExpr("false", "38 > larray[39]");
+		checkExpr("false", "larray[0] > larray[39]");
 		// <=
-		Assert.assertEquals("true", getExpressionValue("larray[0] <= 40"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] <= -1"));
-		Assert.assertEquals("true", getExpressionValue("larray[39] <= 40"));
-		Assert.assertEquals("false", getExpressionValue("larray[39] <= 0"));
-		Assert.assertEquals("true", getExpressionValue("larray[0] <= larray[39]"));
+		checkExpr("true", "larray[0] <= 40");
+		checkExpr("false", "larray[0] <= -1");
+		checkExpr("true", "38 <= larray[39]");
+		checkExpr("false", "larray[39] <= 0");
+		checkExpr("true", "larray[0] <= larray[39]");
 		// <
-		Assert.assertEquals("true", getExpressionValue("larray[0] < 41"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] < -1"));
-		Assert.assertEquals("true", getExpressionValue("larray[39] < 40"));
-		Assert.assertEquals("false", getExpressionValue("larray[39] < 1"));
-		Assert.assertEquals("true", getExpressionValue("larray[0] < larray[39]"));
+		checkExpr("true", "larray[0] < 41");
+		checkExpr("false", "larray[0] < -1");
+		checkExpr("true", "larray[39] < 40");
+		checkExpr("false", "larray[39] < 1");
+		checkExpr("true", "larray[0] < larray[39]");
 		// &&
-		Assert.assertEquals("false", getExpressionValue("larray[0] && 40"));
-		Assert.assertEquals("false", getExpressionValue("larray[39] && 1"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] && larray[39]"));
+		checkExpr("false", "larray[0] && 40");
+		checkExpr("true", "1 && larray[39]");
+		checkExpr("false", "larray[0] && larray[39]");
 		// ||
-		Assert.assertEquals("false", getExpressionValue("larray[0] || 40"));
-		Assert.assertEquals("false", getExpressionValue("larray[39] || 1"));
-		Assert.assertEquals("false", getExpressionValue("larray[0] || larray[39]"));
+		checkExpr("true", "larray[0] || 40");
+		checkExpr("true", "larray[39] || 1");
+		checkExpr("true", "larray[0] || larray[39]");
 
 		// arithmetic operations
 		// &
-		Assert.assertEquals("1", getExpressionValue("larray[39] & 1"));
-		Assert.assertEquals("0", getExpressionValue("larray[0] & larray[39]"));
+		checkExpr("1", "larray[39] & 1");
+		checkExpr("0", "larray[0] & larray[39]");
 		// |
-		Assert.assertEquals("0", getExpressionValue("larray[0] | 0"));
-		Assert.assertEquals("39", getExpressionValue("larray[39] | 0"));
-		Assert.assertEquals("39", getExpressionValue("larray[1] | larray[38]"));
+		checkExpr("0", "larray[0] | 0");
+		checkExpr("39", "0 | larray[39]");
+		checkExpr("39", "larray[1] | larray[38]");
 		// ^
-		Assert.assertEquals("0", getExpressionValue("larray[0] ^ 0"));
-		Assert.assertEquals("39", getExpressionValue("larray[39] ^ 0"));
-		Assert.assertEquals("38", getExpressionValue("larray[1] ^ larray[39]"));
+		checkExpr("0", "larray[0] ^ 0");
+		checkExpr("39", "larray[39] ^ 0");
+		checkExpr("38", "larray[1] ^ larray[39]");
 		// +
-		Assert.assertEquals("1", getExpressionValue("larray[0] + 1"));
-		Assert.assertEquals("40", getExpressionValue("larray[39] + 1"));
-		Assert.assertEquals("39", getExpressionValue("larray[0] + larray[39]"));
+		checkExpr("1", "larray[0] + 1");
+		checkExpr("40", "1 + larray[39]");
+		checkExpr("39", "larray[0] + larray[39]");
 		// -
-		Assert.assertEquals("-1", getExpressionValue("larray[0] - 1"));
-		Assert.assertEquals("38", getExpressionValue("larray[39] - 1"));
-		Assert.assertEquals("-39", getExpressionValue("larray[0] - larray[39]"));
+		checkExpr("-1", "larray[0] - 1");
+		checkExpr("38", "larray[39] - 1");
+		checkExpr("-39", "larray[0] - larray[39]");
 		// *
-		Assert.assertEquals("2", getExpressionValue("larray[1] * 2"));
-		Assert.assertEquals("78", getExpressionValue("larray[39] * 2"));
-		Assert.assertEquals("39", getExpressionValue("larray[1] * larray[39]"));
+		checkExpr("2", "larray[1] * 2");
+		checkExpr("78", "2 * larray[39]");
+		checkExpr("39", "larray[1] * larray[39]");
 		// /
-		Assert.assertEquals("0", getExpressionValue("larray[0] / 2"));
-		Assert.assertEquals("19", getExpressionValue("larray[39] / 2"));
-		Assert.assertEquals("39", getExpressionValue("larray[39] / larray[1]"));
+		checkExpr("0", "larray[0] / 2");
+		checkExpr("19", "larray[39] / 2");
+		checkExpr("39", "larray[39] / larray[1]");
 		// %
-		Assert.assertEquals("0", getExpressionValue("larray[0] % 2"));
-		Assert.assertEquals("1", getExpressionValue("larray[39] % 2"));
-		Assert.assertEquals("1", getExpressionValue("larray[1] % larray[39]"));
+		checkExpr("0", "larray[0] % 2");
+		checkExpr("1", "larray[39] % 2");
+		checkExpr("1", "larray[1] % larray[39]");
 		// <<
-		Assert.assertEquals("0", getExpressionValue("larray[0] << 1"));
-		Assert.assertEquals("78", getExpressionValue("larray[39] << 1"));
-		Assert.assertEquals("16", getExpressionValue("larray[2] << larray[3]"));
+		checkExpr("0", "larray[0] << 1");
+		checkExpr("78", "larray[39] << 1");
+		checkExpr("16", "larray[2] << larray[3]");
 		// >>
-		Assert.assertEquals("0", getExpressionValue("larray[0] >> 1"));
-		Assert.assertEquals("19", getExpressionValue("larray[39] >> 1"));
-		Assert.assertEquals("4", getExpressionValue("larray[39] >> larray[3]"));
+		checkExpr("0", "larray[0] >> 1");
+		checkExpr("19", "larray[39] >> 1");
+		checkExpr("4", "larray[39] >> larray[3]");
 
 		// unary operations
 		// +
-		Assert.assertEquals("0", getExpressionValue("+larray[0]"));
-		Assert.assertEquals("39", getExpressionValue("+larray[39]"));
+		checkExpr("0", "+larray[0]");
+		checkExpr("39", "+larray[39]");
 		// -
-		Assert.assertEquals("0", getExpressionValue("-larray[0]"));
-		Assert.assertEquals("-39", getExpressionValue("-larray[39]"));
+		checkExpr("0", "-larray[0]");
+		checkExpr("-39", "-larray[39]");
 		// !
-		Assert.assertEquals("false", getExpressionValue("!larray[0]"));
-		Assert.assertEquals("false", getExpressionValue("!larray[39]"));
+		checkExpr("true", "!larray[0]");
+		checkExpr("false", "!larray[39]");
 		// ~
-		Assert.assertEquals("-2", getExpressionValue("~larray[1]"));
-		Assert.assertEquals("-40", getExpressionValue("~larray[39]"));
+		checkExpr("-2", "~larray[1]");
+		checkExpr("-40", "~larray[39]");
 	}
 
 	/*
@@ -452,136 +453,140 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	public void testExpressionsWithUnions() throws Exception {
 		openSnapshotAndWaitForSuspendedContext(2);
 
-		Assert.assertTrue(getExpressionValue("lunion") != "");
-		Assert.assertTrue(getExpressionValue("&lunion") != "");
-		Assert.assertEquals("2", getExpressionValue("lunion.x"));
-		Assert.assertEquals("2", getExpressionValue("lunion.y"));
+		checkExprNoError("lunion");
+		checkExprNoError("&lunion");
+		checkExpr("2", "lunion.x");
+		checkExpr("2", "lunion.y");
 
 		// logical operations
 		// ==
-		Assert.assertEquals("true", getExpressionValue("lunion.x == 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x == 1"));
-		Assert.assertEquals("true", getExpressionValue("lunion.y == 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y == 1"));
-		Assert.assertEquals("true", getExpressionValue("lunion.x == lunion.y"));
+		checkExpr("true", "lunion.x == 2");
+		checkExpr("false", "lunion.x == 1");
+		checkExpr("true", "lunion.y == 2");
+		checkExpr("false", "lunion.y == 1");
+		checkExpr("true", "lunion.x == lunion.y");
 		// !=
-		Assert.assertEquals("false", getExpressionValue("lunion.x != 2"));
-		Assert.assertEquals("true", getExpressionValue("lunion.x != 1"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y != 2"));
-		Assert.assertEquals("true", getExpressionValue("lunion.y != 1"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x != lunion.y"));
+		checkExpr("false", "lunion.x != 2");
+		checkExpr("true", "lunion.x != 1");
+		checkExpr("false", "lunion.y != 2");
+		checkExpr("true", "lunion.y != 1");
+		checkExpr("false", "lunion.x != lunion.y");
 		// >=
-		Assert.assertEquals("true", getExpressionValue("lunion.x >= 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x >= 3"));
-		Assert.assertEquals("true", getExpressionValue("lunion.y >= 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y >= 3"));
-		Assert.assertEquals("true", getExpressionValue("lunion.x >= lunion.y"));
+		checkExpr("true", "lunion.x >= 2");
+		checkExpr("false", "lunion.x >= 3");
+		checkExpr("true", "lunion.y >= 2");
+		checkExpr("true", "2 >= lunion.y");
+		checkExpr("false", "lunion.y >= 3");
+		checkExpr("true", "lunion.x >= lunion.y");
 		// >
-		Assert.assertEquals("false", getExpressionValue("lunion.x > 2"));
-		Assert.assertEquals("true", getExpressionValue("lunion.x > 1"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y > 2"));
-		Assert.assertEquals("true", getExpressionValue("lunion.y > 1"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x > lunion.y"));
+		checkExpr("false", "lunion.x > 2");
+		checkExpr("true", "lunion.x > 1");
+		checkExpr("false", "lunion.y > 2");
+		checkExpr("true", "lunion.y > 1");
+		checkExpr("false", "lunion.x > lunion.y");
 		// <=
-		Assert.assertEquals("true", getExpressionValue("lunion.x <= 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x <= 1"));
-		Assert.assertEquals("true", getExpressionValue("lunion.y <= 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y <= 1"));
-		Assert.assertEquals("true", getExpressionValue("lunion.x <= lunion.y"));
+		checkExpr("true", "lunion.x <= 2");
+		checkExpr("false", "lunion.x <= 1");
+		checkExpr("true", "lunion.y <= 2");
+		checkExpr("false", "lunion.y <= 1");
+		checkExpr("true", "lunion.x <= lunion.y");
 		// <
-		Assert.assertEquals("false", getExpressionValue("lunion.x < 2"));
-		Assert.assertEquals("true", getExpressionValue("lunion.x < 3"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y < 2"));
-		Assert.assertEquals("true", getExpressionValue("lunion.y < 3"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x < lunion.y"));
+		checkExpr("false", "lunion.x < 2");
+		checkExpr("true", "lunion.x < 3");
+		checkExpr("false", "lunion.y < 2");
+		checkExpr("true", "lunion.y < 3");
+		checkExpr("false", "lunion.x < lunion.y");
 		// &&
-		Assert.assertEquals("false", getExpressionValue("lunion.x && 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x && 1"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y && 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y && 1"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x && lunion.y"));
+		checkExpr("true", "lunion.x && 2");
+		checkExpr("true", "1 && lunion.x");
+		checkExpr("false", "lunion.x && 0");
+		checkExpr("false", "0 && lunion.x");
+		checkExpr("true", "lunion.y && 2");
+		checkExpr("true", "1 && lunion.y");
+		checkExpr("true", "lunion.x && lunion.y");
 		// ||
-		Assert.assertEquals("false", getExpressionValue("lunion.x || 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x || 1"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y || 2"));
-		Assert.assertEquals("false", getExpressionValue("lunion.y || 1"));
-		Assert.assertEquals("false", getExpressionValue("lunion.x || lunion.y"));
+		checkExpr("true", "lunion.x || 2");
+		checkExpr("true", "lunion.x || 1");
+		checkExpr("true", "lunion.y || 2");
+		checkExpr("true", "lunion.y || 1");
+		checkExpr("true", "lunion.x || lunion.y");
 
 		// arithmetic operations
 		// &
-		Assert.assertEquals("2", getExpressionValue("lunion.x & 2"));
-		Assert.assertEquals("0", getExpressionValue("lunion.x & 1"));
-		Assert.assertEquals("2", getExpressionValue("lunion.y & 2"));
-		Assert.assertEquals("0", getExpressionValue("lunion.y & 1"));
-		Assert.assertEquals("2", getExpressionValue("lunion.x & lunion.y"));
+		checkExpr("2", "lunion.x & 2");
+		checkExpr("0", "lunion.x & 1");
+		checkExpr("2", "lunion.y & 2");
+		checkExpr("0", "lunion.y & 1");
+		checkExpr("2", "lunion.x & lunion.y");
 		// |
-		Assert.assertEquals("2", getExpressionValue("lunion.x | 2"));
-		Assert.assertEquals("3", getExpressionValue("lunion.x | 1"));
-		Assert.assertEquals("2", getExpressionValue("lunion.y | 2"));
-		Assert.assertEquals("3", getExpressionValue("lunion.y | 1"));
-		Assert.assertEquals("2", getExpressionValue("lunion.x | lunion.y"));
+		checkExpr("2", "lunion.x | 2");
+		checkExpr("3", "lunion.x | 1");
+		checkExpr("2", "lunion.y | 2");
+		checkExpr("3", "lunion.y | 1");
+		checkExpr("2", "lunion.x | lunion.y");
 		// ^
-		Assert.assertEquals("0", getExpressionValue("lunion.x ^ 2"));
-		Assert.assertEquals("3", getExpressionValue("lunion.x ^ 1"));
-		Assert.assertEquals("0", getExpressionValue("lunion.y ^ 2"));
-		Assert.assertEquals("3", getExpressionValue("lunion.y ^ 1"));
-		Assert.assertEquals("0", getExpressionValue("lunion.x ^ lunion.y"));
+		checkExpr("0", "lunion.x ^ 2");
+		checkExpr("3", "lunion.x ^ 1");
+		checkExpr("0", "lunion.y ^ 2");
+		checkExpr("3", "lunion.y ^ 1");
+		checkExpr("0", "lunion.x ^ lunion.y");
 		// +
-		Assert.assertEquals("4", getExpressionValue("lunion.x + 2"));
-		Assert.assertEquals("3", getExpressionValue("lunion.x + 1"));
-		Assert.assertEquals("4", getExpressionValue("lunion.y + 2"));
-		Assert.assertEquals("3", getExpressionValue("lunion.y + 1"));
-		Assert.assertEquals("4", getExpressionValue("lunion.x + lunion.y"));
+		checkExpr("4", "lunion.x + 2");
+		checkExpr("3", "lunion.x + 1");
+		checkExpr("4", "lunion.y + 2");
+		checkExpr("3", "lunion.y + 1");
+		checkExpr("4", "lunion.x + lunion.y");
 		// -
-		Assert.assertEquals("0", getExpressionValue("lunion.x - 2"));
-		Assert.assertEquals("1", getExpressionValue("lunion.x - 1"));
-		Assert.assertEquals("0", getExpressionValue("lunion.y - 2"));
-		Assert.assertEquals("1", getExpressionValue("lunion.y - 1"));
-		Assert.assertEquals("0", getExpressionValue("lunion.x - lunion.y"));
+		checkExpr("0", "lunion.x - 2");
+		checkExpr("1", "lunion.x - 1");
+		checkExpr("0", "lunion.y - 2");
+		checkExpr("1", "lunion.y - 1");
+		checkExpr("0", "lunion.x - lunion.y");
 		// *
-		Assert.assertEquals("4", getExpressionValue("lunion.x * 2"));
-		Assert.assertEquals("2", getExpressionValue("lunion.x * 1"));
-		Assert.assertEquals("4", getExpressionValue("lunion.y * 2"));
-		Assert.assertEquals("2", getExpressionValue("lunion.y * 1"));
-		Assert.assertEquals("4", getExpressionValue("lunion.x * lunion.y"));
+		checkExpr("4", "lunion.x * 2");
+		checkExpr("2", "lunion.x * 1");
+		checkExpr("4", "lunion.y * 2");
+		checkExpr("2", "lunion.y * 1");
+		checkExpr("4", "lunion.x * lunion.y");
 		// /
-		Assert.assertEquals("1", getExpressionValue("lunion.x / 2"));
-		Assert.assertEquals("2", getExpressionValue("lunion.x / 1"));
-		Assert.assertEquals("1", getExpressionValue("lunion.y / 2"));
-		Assert.assertEquals("2", getExpressionValue("lunion.y / 1"));
-		Assert.assertEquals("1", getExpressionValue("lunion.x / lunion.y"));
+		checkExpr("1", "lunion.x / 2");
+		checkExpr("2", "lunion.x / 1");
+		checkExpr("1", "lunion.y / 2");
+		checkExpr("2", "lunion.y / 1");
+		checkExpr("1", "lunion.x / lunion.y");
 		// %
-		Assert.assertEquals("0", getExpressionValue("lunion.x % 2"));
-		Assert.assertEquals("0", getExpressionValue("lunion.x % 1"));
-		Assert.assertEquals("0", getExpressionValue("lunion.y % 2"));
-		Assert.assertEquals("0", getExpressionValue("lunion.y % 1"));
-		Assert.assertEquals("0", getExpressionValue("lunion.x % lunion.y"));
+		checkExpr("0", "lunion.x % 2");
+		checkExpr("0", "lunion.x % 1");
+		checkExpr("0", "lunion.y % 2");
+		checkExpr("0", "lunion.y % 1");
+		checkExpr("0", "lunion.x % lunion.y");
 		// <<
-		Assert.assertEquals("8", getExpressionValue("lunion.x << 2"));
-		Assert.assertEquals("4", getExpressionValue("lunion.x << 1"));
-		Assert.assertEquals("8", getExpressionValue("lunion.y << 2"));
-		Assert.assertEquals("4", getExpressionValue("lunion.y << 1"));
-		Assert.assertEquals("8", getExpressionValue("lunion.x << lunion.y"));
+		checkExpr("8", "lunion.x << 2");
+		checkExpr("4", "lunion.x << 1");
+		checkExpr("8", "lunion.y << 2");
+		checkExpr("4", "lunion.y << 1");
+		checkExpr("8", "lunion.x << lunion.y");
 		// >>
-		Assert.assertEquals("0", getExpressionValue("lunion.x >> 2"));
-		Assert.assertEquals("1", getExpressionValue("lunion.x >> 1"));
-		Assert.assertEquals("0", getExpressionValue("lunion.y >> 2"));
-		Assert.assertEquals("1", getExpressionValue("lunion.y >> 1"));
-		Assert.assertEquals("0", getExpressionValue("lunion.x >> lunion.y"));
+		checkExpr("0", "lunion.x >> 2");
+		checkExpr("1", "lunion.x >> 1");
+		checkExpr("0", "lunion.y >> 2");
+		checkExpr("1", "lunion.y >> 1");
+		checkExpr("0", "lunion.x >> lunion.y");
 
 		// unary operations
 		// +
-		Assert.assertEquals("2", getExpressionValue("+lunion.x"));
-		Assert.assertEquals("2", getExpressionValue("+lunion.y"));
+		checkExpr("2", "+lunion.x");
+		checkExpr("2", "+lunion.y");
 		// -
-		Assert.assertEquals("-2", getExpressionValue("-lunion.x"));
-		Assert.assertEquals("-2", getExpressionValue("-lunion.y"));
+		checkExpr("-2", "-lunion.x");
+		checkExpr("-2", "-lunion.y");
 		// !
-		Assert.assertEquals("false", getExpressionValue("!lunion.x"));
-		Assert.assertEquals("false", getExpressionValue("!lunion.y"));
+		checkExpr("false", "!lunion.x");
+		checkExpr("false", "!lunion.y");
+		checkExpr("true", "!!lunion.y");
 		// ~
-		Assert.assertEquals("-3", getExpressionValue("~lunion.x"));
-		Assert.assertEquals("-3", getExpressionValue("~lunion.y"));
+		checkExpr("-3", "~lunion.x");
+		checkExpr("-3", "~lunion.y");
 	}
 
 	/*
@@ -605,146 +610,146 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	public void testExpressionsWithBitfields() throws Exception {
 		openSnapshotAndWaitForSuspendedContext(3);
 
-		Assert.assertTrue(getExpressionValue("lbitfield") != "");
-		Assert.assertTrue(getExpressionValue("&lbitfield") != "");
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.y"));
-		Assert.assertEquals("3", getExpressionValue("lbitfield.z"));
-		Assert.assertEquals("26", getExpressionValue("lbitfield.w"));
+		checkExprNoError("lbitfield");
+		checkExpr("1", "lbitfield.x");
+		checkExpr("2", "lbitfield.y");
+		checkExpr("3", "lbitfield.z");
+		checkExpr("26", "lbitfield.w");
 
 		// logical operations
 		// ==
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x == 1"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x == 0"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.y == 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y == 0"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x == lbitfield.y"));
+		checkExpr("true", "lbitfield.x == 1");
+		checkExpr("false", "lbitfield.x == 0");
+		checkExpr("true", "lbitfield.y == 2");
+		checkExpr("false", "lbitfield.y == 0");
+		checkExpr("false", "lbitfield.x == lbitfield.y");
 		// !=
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x != 0"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x != 1"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.y != 0"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y != 2"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x != lbitfield.y"));
+		checkExpr("true", "lbitfield.x != 0");
+		checkExpr("false", "lbitfield.x != 1");
+		checkExpr("true", "lbitfield.y != 0");
+		checkExpr("false", "lbitfield.y != 2");
+		checkExpr("true", "lbitfield.x != lbitfield.y");
 		// >=
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x >= 1"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x >= 2"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.y >= 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y >= 3"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x >= lbitfield.y"));
+		checkExpr("true", "lbitfield.x >= 1");
+		checkExpr("false", "lbitfield.x >= 2");
+		checkExpr("true", "lbitfield.y >= 2");
+		checkExpr("false", "lbitfield.y >= 3");
+		checkExpr("false", "lbitfield.x >= lbitfield.y");
 		// >
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x > 0"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x > 1"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.y > 1"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y > 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x > lbitfield.y"));
+		checkExpr("true", "lbitfield.x > 0");
+		checkExpr("false", "lbitfield.x > 1");
+		checkExpr("true", "lbitfield.y > 1");
+		checkExpr("false", "lbitfield.y > 2");
+		checkExpr("false", "lbitfield.x > lbitfield.y");
 		// <=
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x <= 1"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x <= 0"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.y <= 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y <= 1"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x <= lbitfield.y"));
+		checkExpr("true", "lbitfield.x <= 1");
+		checkExpr("false", "lbitfield.x <= 0");
+		checkExpr("true", "lbitfield.y <= 2");
+		checkExpr("false", "lbitfield.y <= 1");
+		checkExpr("true", "lbitfield.x <= lbitfield.y");
 		// <
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x < 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x < 1"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.y < 3"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y < 2"));
-		Assert.assertEquals("true", getExpressionValue("lbitfield.x < lbitfield.y"));
+		checkExpr("true", "lbitfield.x < 2");
+		checkExpr("false", "lbitfield.x < 1");
+		checkExpr("true", "lbitfield.y < 3");
+		checkExpr("false", "lbitfield.y < 2");
+		checkExpr("true", "lbitfield.x < lbitfield.y");
 		// &&
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x && 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x && 1"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y && 3"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y && 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x && lbitfield.y"));
+		checkExpr("true", "lbitfield.x && 2");
+		checkExpr("true", "lbitfield.x && 1");
+		checkExpr("true", "lbitfield.y && 3");
+		checkExpr("true", "lbitfield.y && 2");
+		checkExpr("true", "lbitfield.x && lbitfield.y");
 		// ||
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x || 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x || 1"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y || 3"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.y || 2"));
-		Assert.assertEquals("false", getExpressionValue("lbitfield.x || lbitfield.y"));
+		checkExpr("true", "lbitfield.x || 2");
+		checkExpr("true", "lbitfield.x || 1");
+		checkExpr("true", "lbitfield.y || 3");
+		checkExpr("true", "lbitfield.y || 2");
+		checkExpr("true", "lbitfield.x || lbitfield.y");
 
 		// arithmetic operations
 		// &
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x & 0"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x & 1"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.y & 0"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.y & 2"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x & lbitfield.y"));
+		checkExpr("0", "lbitfield.x & 0");
+		checkExpr("1", "lbitfield.x & 1");
+		checkExpr("0", "lbitfield.y & 0");
+		checkExpr("2", "lbitfield.y & 2");
+		checkExpr("0", "lbitfield.x & lbitfield.y");
 		// |
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x | 0"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x | 1"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.y | 0"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.y | 2"));
-		Assert.assertEquals("3", getExpressionValue("lbitfield.x | lbitfield.y"));
+		checkExpr("1", "lbitfield.x | 0");
+		checkExpr("1", "lbitfield.x | 1");
+		checkExpr("2", "lbitfield.y | 0");
+		checkExpr("2", "lbitfield.y | 2");
+		checkExpr("3", "lbitfield.x | lbitfield.y");
 		// ^
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x ^ 0"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x ^ 1"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.y ^ 0"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.y ^ 2"));
-		Assert.assertEquals("3", getExpressionValue("lbitfield.x ^ lbitfield.y"));
+		checkExpr("1", "lbitfield.x ^ 0");
+		checkExpr("0", "lbitfield.x ^ 1");
+		checkExpr("2", "lbitfield.y ^ 0");
+		checkExpr("0", "lbitfield.y ^ 2");
+		checkExpr("3", "lbitfield.x ^ lbitfield.y");
 		// +
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x + (-1)"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.x + 1"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.y + (-1)"));
-		Assert.assertEquals("3", getExpressionValue("lbitfield.y + 1"));
-		Assert.assertEquals("3", getExpressionValue("lbitfield.x + lbitfield.y"));
+		checkExpr("0", "lbitfield.x + (-1)");
+		checkExpr("2", "lbitfield.x + 1");
+		checkExpr("1", "lbitfield.y + (-1)");
+		checkExpr("3", "lbitfield.y + 1");
+		checkExpr("3", "lbitfield.x + lbitfield.y");
 		// -
-		Assert.assertEquals("2", getExpressionValue("lbitfield.x - (-1)"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x - 1"));
-		Assert.assertEquals("3", getExpressionValue("lbitfield.y - (-1)"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.y - 1"));
-		Assert.assertEquals("-1", getExpressionValue("lbitfield.x - lbitfield.y"));
+		checkExpr("2", "lbitfield.x - (-1)");
+		checkExpr("0", "lbitfield.x - 1");
+		checkExpr("3", "lbitfield.y - (-1)");
+		checkExpr("1", "lbitfield.y - 1");
+		checkExpr("-1", "lbitfield.x - lbitfield.y");
 		// *
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x * 0"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x * 1"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.y * 0"));
-		Assert.assertEquals("4", getExpressionValue("lbitfield.y * 2"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.x * lbitfield.y"));
+		checkExpr("0", "lbitfield.x * 0");
+		checkExpr("1", "lbitfield.x * 1");
+		checkExpr("0", "lbitfield.y * 0");
+		checkExpr("4", "lbitfield.y * 2");
+		checkExpr("2", "lbitfield.x * lbitfield.y");
 		// /
-		Assert.assertEquals(ASTEvalMessages.DivideByZero, getExpressionValue("lbitfield.x / 0"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x / 1"));
-		Assert.assertEquals(ASTEvalMessages.DivideByZero, getExpressionValue("lbitfield.y / 0"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.y / 2"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x / lbitfield.y"));
+		checkExprError(ASTEvalMessages.DivideByZero, "lbitfield.x / 0");
+		checkExpr("1", "lbitfield.x / 1");
+		checkExprError(ASTEvalMessages.DivideByZero, "lbitfield.y / 0");
+		checkExpr("1", "lbitfield.y / 2");
+		checkExpr("0", "lbitfield.x / lbitfield.y");
 		// %
-		Assert.assertEquals(ASTEvalMessages.DivideByZero, getExpressionValue("lbitfield.x % 0"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x % 1"));
-		Assert.assertEquals(ASTEvalMessages.DivideByZero, getExpressionValue("lbitfield.y % 0"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.y % 2"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x % lbitfield.y"));
+		checkExprError(ASTEvalMessages.DivideByZero, "lbitfield.x % 0");
+		checkExpr("0", "lbitfield.x % 1");
+		checkExprError(ASTEvalMessages.DivideByZero, "lbitfield.y % 0");
+		checkExpr("0", "lbitfield.y % 2");
+		checkExpr("1", "lbitfield.x % lbitfield.y");
 		// <<
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x << 0"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.x << 1"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.y << 0"));
-		Assert.assertEquals("4", getExpressionValue("lbitfield.y << 1"));
-		Assert.assertEquals("4", getExpressionValue("lbitfield.x << lbitfield.y"));
+		checkExpr("1", "lbitfield.x << 0");
+		checkExpr("2", "lbitfield.x << 1");
+		checkExpr("2", "lbitfield.y << 0");
+		checkExpr("4", "lbitfield.y << 1");
+		checkExpr("4", "lbitfield.x << lbitfield.y");
 		// >>
-		Assert.assertEquals("1", getExpressionValue("lbitfield.x >> 0"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x >> 1"));
-		Assert.assertEquals("2", getExpressionValue("lbitfield.y >> 0"));
-		Assert.assertEquals("1", getExpressionValue("lbitfield.y >> 1"));
-		Assert.assertEquals("0", getExpressionValue("lbitfield.x >> lbitfield.y"));
+		checkExpr("1", "lbitfield.x >> 0");
+		checkExpr("0", "lbitfield.x >> 1");
+		checkExpr("2", "lbitfield.y >> 0");
+		checkExpr("1", "lbitfield.y >> 1");
+		checkExpr("0", "lbitfield.x >> lbitfield.y");
 
 		// unary operations
 		// +
-		Assert.assertEquals("1", getExpressionValue("+lbitfield.x"));
-		Assert.assertEquals("2", getExpressionValue("+lbitfield.y"));
-		Assert.assertEquals("3", getExpressionValue("+lbitfield.z"));
-		Assert.assertEquals("26", getExpressionValue("+lbitfield.w"));
+		checkExpr("1", "+lbitfield.x");
+		checkExpr("2", "+lbitfield.y");
+		checkExpr("3", "+lbitfield.z");
+		checkExpr("26", "+lbitfield.w");
 		// -
-		Assert.assertEquals("-1", getExpressionValue("-lbitfield.x"));
-		Assert.assertEquals("-2", getExpressionValue("-lbitfield.y"));
-		Assert.assertEquals("-3", getExpressionValue("-lbitfield.z"));
-		Assert.assertEquals("-26", getExpressionValue("-lbitfield.w"));
+		checkExpr("-1", "-lbitfield.x");
+		checkExpr("-2", "-lbitfield.y");
+		checkExpr("-3", "-lbitfield.z");
+		checkExpr("-26", "-lbitfield.w");
 		// !
-		Assert.assertEquals("false", getExpressionValue("!lbitfield.x"));
-		Assert.assertEquals("false", getExpressionValue("!lbitfield.y"));
-		Assert.assertEquals("false", getExpressionValue("!lbitfield.z"));
-		Assert.assertEquals("false", getExpressionValue("!lbitfield.w"));
+		checkExpr("false", "!lbitfield.x");
+		checkExpr("false", "!lbitfield.y");
+		checkExpr("false", "!lbitfield.z");
+		checkExpr("false", "!lbitfield.w");
+		checkExpr("true", "!!lbitfield.w");
 		// ~
-		Assert.assertEquals("-2", getExpressionValue("~lbitfield.x"));
-		Assert.assertEquals("-3", getExpressionValue("~lbitfield.y"));
-		Assert.assertEquals("-4", getExpressionValue("~lbitfield.z"));
-		Assert.assertEquals("-27", getExpressionValue("~lbitfield.w"));
+		checkExpr("-2", "~lbitfield.x");
+		checkExpr("-3", "~lbitfield.y");
+		checkExpr("-4", "~lbitfield.z");
+		checkExpr("-27", "~lbitfield.w");
 	}
 
 	/*
@@ -760,84 +765,85 @@ public class ExpressionsAggregatesAndEnums extends SimpleDebuggerTest {
 	public void testExpressionsWithEnums() throws Exception {
 		openSnapshotAndWaitForSuspendedContext(4);
 
-		Assert.assertTrue(getExpressionValue("lenum") != "");
-		Assert.assertEquals("three [3]", getExpressionValue("lenum"));
+		checkExprNoError("lenum");
+		checkExpr("three [3]", "lenum");
 
 		// logical operations
 		// ==
-		Assert.assertEquals("true", getExpressionValue("lenum == 3"));
-		Assert.assertEquals("true", getExpressionValue("lenum == three"));
-		Assert.assertEquals("false", getExpressionValue("lenum == 4"));
-		Assert.assertEquals("false", getExpressionValue("lenum == four"));
+		checkExpr("true", "lenum == 3");
+		checkExpr("true", "lenum == three");
+		checkExpr("false", "lenum == 4");
+		checkExpr("false", "lenum == four");
 		// !=
-		Assert.assertEquals("true", getExpressionValue("lenum != 4"));
-		Assert.assertEquals("true", getExpressionValue("lenum != four"));
-		Assert.assertEquals("false", getExpressionValue("lenum != 3"));
-		Assert.assertEquals("false", getExpressionValue("lenum != three"));
+		checkExpr("true", "lenum != 4");
+		checkExpr("true", "lenum != four");
+		checkExpr("false", "lenum != 3");
+		checkExpr("false", "lenum != three");
 		// >=
-		Assert.assertEquals("true", getExpressionValue("lenum >= 3"));
-		Assert.assertEquals("true", getExpressionValue("lenum >= three"));
-		Assert.assertEquals("false", getExpressionValue("lenum >= 5"));
+		checkExpr("true", "lenum >= 3");
+		checkExpr("true", "lenum >= three");
+		checkExpr("false", "lenum >= 5");
 		// >
-		Assert.assertEquals("true", getExpressionValue("lenum > 2"));
-		Assert.assertEquals("true", getExpressionValue("lenum > two"));
-		Assert.assertEquals("false", getExpressionValue("lenum > 4"));
-		Assert.assertEquals("false", getExpressionValue("lenum > four"));
+		checkExpr("true", "lenum > 2");
+		checkExpr("true", "lenum > two");
+		checkExpr("false", "lenum > 4");
+		checkExpr("false", "lenum > four");
 		// <=
-		Assert.assertEquals("true", getExpressionValue("lenum <= 3"));
-		Assert.assertEquals("false", getExpressionValue("lenum <= 2"));
+		checkExpr("true", "lenum <= 3");
+		checkExpr("false", "lenum <= 2");
 		// <
-		Assert.assertEquals("true", getExpressionValue("lenum < 5"));
-		Assert.assertEquals("false", getExpressionValue("lenum < 3"));
+		checkExpr("true", "lenum < 5");
+		checkExpr("false", "lenum < 3");
 		// &&
-		Assert.assertEquals("false", getExpressionValue("lenum && 4"));
-		Assert.assertEquals("false", getExpressionValue("lenum && 1"));
+		checkExpr("true", "lenum && 4");
+		checkExpr("true", "lenum && 1");
 		// ||
-		Assert.assertEquals("false", getExpressionValue("lenum || 4"));
-		Assert.assertEquals("false", getExpressionValue("lenum || 1"));
+		checkExpr("true", "lenum || 4");
+		checkExpr("true", "lenum || 1");
 
 		// arithmetic operations
 		// &
-		Assert.assertEquals("0", getExpressionValue("lenum & 4"));
-		Assert.assertEquals("3", getExpressionValue("lenum & 3"));
+		checkExpr("0", "lenum & 4");
+		checkExpr("3", "lenum & 3");
 		// |
-		Assert.assertEquals("7", getExpressionValue("lenum | 4"));
-		Assert.assertEquals("3", getExpressionValue("lenum | 3"));
+		checkExpr("7", "lenum | 4");
+		checkExpr("3", "lenum | 3");
 		// ^
-		Assert.assertEquals("7", getExpressionValue("lenum ^ 4"));
-		Assert.assertEquals("0", getExpressionValue("lenum ^ 3"));
+		checkExpr("7", "lenum ^ 4");
+		checkExpr("0", "lenum ^ 3");
 		// +
-		Assert.assertEquals("7", getExpressionValue("lenum + 4"));
-		Assert.assertEquals("6", getExpressionValue("lenum + 3"));
-		Assert.assertEquals("6", getExpressionValue("lenum + three"));
+		checkExpr("7", "lenum + 4");
+		checkExpr("6", "lenum + 3");
+		checkExpr("6", "lenum + three");
 		// -
-		Assert.assertEquals("-1", getExpressionValue("lenum - 4"));
-		Assert.assertEquals("0", getExpressionValue("lenum - 3"));
+		checkExpr("-1", "lenum - 4");
+		checkExpr("0", "lenum - 3");
 		// *
-		Assert.assertEquals("12", getExpressionValue("lenum * 4"));
-		Assert.assertEquals("9", getExpressionValue("lenum * 3"));
+		checkExpr("12", "lenum * 4");
+		checkExpr("9", "lenum * 3");
 		// /
-		Assert.assertEquals("0", getExpressionValue("lenum / 4"));
-		Assert.assertEquals("1", getExpressionValue("lenum / 3"));
+		checkExpr("0", "lenum / 4");
+		checkExpr("1", "lenum / 3");
 		// %
-		Assert.assertEquals("3", getExpressionValue("lenum % 4"));
-		Assert.assertEquals("0", getExpressionValue("lenum % 3"));
+		checkExpr("3", "lenum % 4");
+		checkExpr("0", "lenum % 3");
 		// <<
-		Assert.assertEquals("12", getExpressionValue("lenum << 2"));
-		Assert.assertEquals("24", getExpressionValue("lenum << three"));
+		checkExpr("12", "lenum << 2");
+		checkExpr("24", "lenum << three");
 		// >>
-		Assert.assertEquals("0", getExpressionValue("lenum >> 4"));
-		Assert.assertEquals("0", getExpressionValue("lenum >> 3"));
+		checkExpr("0", "lenum >> 4");
+		checkExpr("0", "lenum >> 3");
 
 		// unary operations
 		// +
-		Assert.assertEquals("3", getExpressionValue("+lenum"));
+		checkExpr("3", "+lenum");
 		// -
-		Assert.assertEquals("-3", getExpressionValue("-lenum"));
+		checkExpr("-3", "-lenum");
 		// !
-		Assert.assertEquals("false", getExpressionValue("!lenum"));
+		checkExpr("false", "!lenum");
+		checkExpr("true", "!!lenum");
 		// ~
-		Assert.assertEquals("-4", getExpressionValue("~lenum"));
+		checkExpr("-4", "~lenum");
 	}
 
 

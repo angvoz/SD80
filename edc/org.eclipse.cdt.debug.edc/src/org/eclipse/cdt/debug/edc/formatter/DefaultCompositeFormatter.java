@@ -15,7 +15,9 @@ import java.util.List;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
@@ -38,15 +40,47 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 		protected String getSummaryValue(IExpressionDMContext variable) throws CoreException {
 			StringBuilder sb = new StringBuilder();
 			addVariableFields(null, sb, variable, 0);
+			if (sb.length() == 0) {
+				// if debug information does not include child information,
+				// return the already evaluated value
+				if (variable instanceof ExpressionDMC) {
+					ExpressionDMC variableEDMC = (ExpressionDMC)variable;
+					return variableEDMC.getEvaluatedValueString();
+				}
+			}
 			return sb.toString();
 		}
 
+		private boolean hasNullLocation(IExpressionDMContext variable) {
+			if (variable instanceof IEDCExpression) {
+				((IEDCExpression) variable).evaluateExpression();
+				IVariableLocation loc = ((IEDCExpression) variable).getEvaluatedLocation();
+				if (loc instanceof IMemoryVariableLocation) {
+					if (((IMemoryVariableLocation) loc).getAddress().isZero()) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		private void addVariableFields(String prefix, StringBuilder sb, IExpressionDMContext variable, int curDepth) throws CoreException {
+			// if at null, don't try
+			if (hasNullLocation(variable))
+				return;
+			
 			if (prefix == null)
 				prefix = ""; //$NON-NLS-1$
 			List<IExpressionDMContext> childContexts = FormatUtils.getAllChildExpressions(variable);
 			for (IExpressionDMContext child : childContexts) {
 				ExpressionDMC childExpression = (ExpressionDMC) child;
+				
+				// if any child is at null, likely the struct is at null or crosses null, and is bad news
+				if (hasNullLocation(childExpression)) {
+					sb.setLength(0);
+					return;
+				}
+					
 				IVariableValueConverter customConverter = 
 					FormatUtils.getCustomValueConverter(child);
 				if (customConverter != null &&
@@ -65,7 +99,7 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 					sb.append(" ");
 				}
 				else {
-					Object evaluatedType = childExpression.getEvaluatedType();
+					IType evaluatedType = childExpression.getEvaluatedType();
 					IType unqualifiedType = FormatUtils.getUnqualifiedTypeRemovePointers(evaluatedType);
 					if (unqualifiedType instanceof ICompositeType) {
 						unqualifiedType = TypeUtils.getStrippedType(evaluatedType);
@@ -82,6 +116,7 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 						addSimpleChild(prefix, sb, childExpression);
 					}
 				}
+				
 				if (sb.length() > STOP_LENGTH) {
 					if (!childContexts.get(childContexts.size() - 1).equals(child))
 						sb.append("... ");

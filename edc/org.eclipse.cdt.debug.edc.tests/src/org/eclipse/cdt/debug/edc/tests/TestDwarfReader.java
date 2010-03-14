@@ -31,7 +31,9 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.HostOS;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
+import org.eclipse.cdt.debug.edc.internal.symbols.ArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ConstType;
+import org.eclipse.cdt.debug.edc.internal.symbols.FieldType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayBoundType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
@@ -43,7 +45,11 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IForwardTypeReference;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILexicalBlockScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
+import org.eclipse.cdt.debug.edc.internal.symbols.InheritanceType;
+import org.eclipse.cdt.debug.edc.internal.symbols.SubroutineType;
+import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfInfoReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
@@ -557,9 +563,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				// this should trigger expansion of subtypes
 				int idx = 0;
 				for (IType type : types) {
-					getTypeName(type);
-					idx++;
-					if (idx % 1000 == 0) System.out.print(".");
+					doTestType(idx, type);
 				}
 				
 				types = symbolReader.getModuleScope().getTypes();
@@ -571,6 +575,50 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				assertEquals(info.symFile.toString(), info.numberOfTypes, symbolReader.getModuleScope().getTypes().size());
 			}
 		}
+	}
+
+	/**
+	 * @param idx
+	 * @param type
+	 */
+	private void doTestType(int idx, IType type) {
+		String name = getTypeName(type);
+		idx++;
+		if (type.getByteSize() == 0) {
+			IType checkType = type;
+			while (checkType != null) {
+				if (checkType instanceof IQualifierType || checkType instanceof TypedefType)
+					checkType = checkType.getType();
+				else
+					break;
+			}
+			if (checkType == null)
+				return;
+			if (checkType instanceof ICompositeType) 
+				return; // this is allowed, even though the spec says it should be here.
+						// we can't fix it up, because even if we sum up the field sizes, we can't predict the extra space used by alignment
+			if (checkType instanceof SubroutineType || checkType instanceof InheritanceType)
+				return; // this is allowed
+			
+			//System.out.println(name);
+			
+			if (checkType instanceof FieldType)
+				checkType = ((FieldType) checkType).getType();
+			if (checkType instanceof ArrayType) {
+				for (IArrayBoundType bound : ((ArrayType) checkType).getBounds()) {
+					if (bound.getElementCount() == 0)
+						return;
+				}
+				// else, should have more
+			}
+				
+			if (checkType == DwarfDebugInfoProvider.ForwardTypeReference.NULL_TYPE_ENTRY)
+				return; // should not get here, but something else tests this
+			if (checkType instanceof ICPPBasicType && ((ICPPBasicType) checkType).getBaseType() == ICPPBasicType.t_void)
+				return; // yup
+			fail(name + " has zero size");
+		}
+		if (idx % 1000 == 0) System.out.print(".");
 	}
 
 	/**

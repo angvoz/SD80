@@ -12,48 +12,55 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.core.model.ICastToArray;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IInvalidExpression;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InstructionSequence;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Interpreter;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InvalidExpression;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperandValue;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.VariableWithValue;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
+import org.eclipse.cdt.debug.edc.internal.symbols.CPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
-import org.eclipse.cdt.debug.edc.internal.symbols.IArrayBoundType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
-import org.eclipse.cdt.debug.edc.internal.symbols.IInvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
-import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
-import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
+import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
+import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.symbols.IInvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
+import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
@@ -67,6 +74,7 @@ import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.debug.core.DebugException;
 
 public class Expressions extends AbstractEDCService implements IExpressions {
 
@@ -74,7 +82,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 	private Map<String, ICPPBasicType> basicTypes;
 
-	public class ExpressionDMC extends DMContext implements IEDCExpression {
+	public class ExpressionDMC extends DMContext implements IEDCExpression, ICastToArray {
 
 		private static final String HEX_PREFIX = "0x"; //$NON-NLS-1$
 		private static final String OCTAL_PREFIX = "0"; //$NON-NLS-1$
@@ -82,15 +90,20 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		private static final String SINGLE_QUOTE = "'"; //$NON-NLS-1$
 		private static final String DECIMAL_SUFFIX = " (Decimal)"; //$NON-NLS-1$
 		private InstructionSequence parsedExpression;
-		private final ASTEvaluationEngine engine = new ASTEvaluationEngine();
+		private final ASTEvaluationEngine engine;
 		private final StackFrameDMC frame;
-		private Object value;
-		private Object valueLocation;
-		private Object valueType;
+		private Number value;
+		private IStatus valueError;
+		private IVariableLocation valueLocation;
+		private IType valueType;
 		private boolean hasChildren = false;
+		private String valueString;
+		private IType valueTypeCastedTo = null;
+		private IType valueTypeOriginal = null;
 
 		public ExpressionDMC(StackFrameDMC frame, String name) {
 			super(Expressions.this, new IDMContext[] { frame }, name, nextExpressionID++ + name);
+			engine = new ASTEvaluationEngine(getServicesTracker(), frame, frame.getTypeEngine());
 			this.frame = frame;
 		}
 
@@ -115,91 +128,104 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#evaluateExpression()
 		 */
 		public void evaluateExpression() {
-			if (value != null)
+			if (value != null || valueError != null)
 				return;
 
 			String expression = getExpression();
 
-			if (parsedExpression == null)
-				parsedExpression = engine.getCompiledExpression(expression);
+			if (parsedExpression == null) {
+				try {
+					parsedExpression = engine.getCompiledExpression(expression);
+				} catch (CoreException e) {
+					value = null;
+					valueError = e.getStatus();
+					valueLocation = null;
+					valueType = null;
+					return;
+				}
+			}
 
 			if (parsedExpression.getInstructions().length == 0) {
-				value = new InvalidExpression(EDCServicesMessages.Expressions_SyntaxError);
-				valueLocation = ""; //$NON-NLS-1$
-				valueType = ""; //$NON-NLS-1$
+				value = null;
+				valueError = new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
+						EDCServicesMessages.Expressions_SyntaxError);
+				valueLocation = null;
+				valueType = null;
 				return;
 			}
 
-			Interpreter interpreter = engine.evaluateCompiledExpression(parsedExpression, frame);
-			value = interpreter.getResult();
-			valueLocation = interpreter.getValueLocation();
-			valueType = interpreter.getValueType();
+			Interpreter interpreter;
+			try {
+				interpreter = engine.evaluateCompiledExpression(parsedExpression);
+			} catch (CoreException e) {
+				value = null;
+				valueError = e.getStatus();
+				valueLocation = null;
+				valueType = null;
+				return;
+			}
+			
+			OperandValue variableValue = interpreter.getResult();
+			if (variableValue == null) {
+				value = null;
+				valueError = null;
+				valueLocation = null;
+				valueType = null;
+				return;
+			}
+			
+			// if we're casting to type, make sure a VariableWithValue returned now has the new type
+			if (valueTypeCastedTo != null && variableValue instanceof VariableWithValue)
+			{
+				((VariableWithValue)variableValue).setType(valueTypeCastedTo);
+			}
 
-			if (value instanceof VariableWithValue) {
-				VariableWithValue variableValue = (VariableWithValue) value;
+			try {
+				value = variableValue.getValue();
+				valueString = variableValue.getStringValue();
+			} catch (CoreException e1) {
+				value = null;
+				valueError = e1.getStatus();
+				valueLocation = null;
+				valueType = null;
+				return;
+			}
+			valueLocation = variableValue.getValueLocation();
+			valueType = variableValue.getValueType();
 
-				if (valueLocation instanceof IVariableLocation) {
-					IVariableLocation varLocation = (IVariableLocation) valueLocation;
-					valueLocation = varLocation.getLocationName(variableValue.getServicesTracker());
+			// for a structured type or array, return the location and note
+			// that it has children
+			if (valueType instanceof IAggregate && valueLocation != null) {
+				// TODO
+				try {
+					value = variableValue.getValueLocationAddress();
+				} catch (CoreException e) {
+					value = null;
+					valueError = e.getStatus();
 				}
-
-				// for a structured type or array, return the location and note
-				// that it has children
-				if (valueType instanceof IAggregate) {
-					value = variableValue.getValueLocation();
-					if (!(value instanceof IInvalidVariableLocation))
-						hasChildren = true;
-				} else {
-					value = variableValue.getValue();
-
-					// for a reference to a plain type, use the location in the variable with value
-					if (TypeUtils.getStrippedType(valueType) instanceof IReferenceType) {
-						IType pointedTo = TypeUtils.getStrippedType(valueType).getType();
-						if (pointedTo instanceof ICPPBasicType || pointedTo instanceof IPointerType ||
-							pointedTo instanceof IEnumeration) {
-							valueLocation = variableValue.getValueLocation();
-						}
-					}
-				}
-
-				// if the location evaluates to NotLive, the types and values do
-				// not matter
-				if (valueLocation instanceof IInvalidVariableLocation) {
-					value = new InvalidExpression(((IInvalidVariableLocation) valueLocation).getMessage());
-					valueLocation = ""; //$NON-NLS-1$
-					return;
-				}
-
-				// for a structured type, array, or pointer return the value in
-				// hex
-				IType unqualifiedType = TypeUtils.getStrippedType(valueType);
-				if (unqualifiedType instanceof IAggregate || unqualifiedType instanceof IPointerType) {
-					if (value instanceof Addr64)
-						value = HEX_PREFIX + ((Addr64) value).toString(16);
-					else if (value instanceof Integer)
-						value = HEX_PREFIX + Integer.toHexString((Integer) value);
-					else if (value instanceof BigInteger)
-						value = HEX_PREFIX + ((BigInteger) value).toString(16);
-					else if (value instanceof Long)
-						value = HEX_PREFIX + Long.toHexString((Long) value);
-				} else if (unqualifiedType instanceof IEnumeration) {
-					// for an enumerator, return the name, if any
-					if ((value instanceof Integer) || (value instanceof Long) || (value instanceof BigInteger)) {
-						long enumeratorValue = -1;
-						if (value instanceof Integer)
-							enumeratorValue = (Integer) value;
-						else if (value instanceof Long)
-							enumeratorValue = (Long) value;
-						else if (value instanceof BigInteger)
-							enumeratorValue = ((BigInteger) value).longValue();
-
-						IEnumerator enumerator = ((IEnumeration) unqualifiedType).getEnumeratorByValue(enumeratorValue);
-
-						if (enumerator != null)
-							value = enumerator.getName() + " [" + enumeratorValue + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+				if (!(value instanceof IInvalidVariableLocation))
+					hasChildren = true;
+			} else {
+				// for a reference to a plain type, use the location in the variable with value
+				if (TypeUtils.getStrippedType(valueType) instanceof IReferenceType) {
+					IType pointedTo = TypeUtils.getStrippedType(valueType).getType();
+					if (pointedTo instanceof ICPPBasicType || pointedTo instanceof IPointerType ||
+						pointedTo instanceof IEnumeration) {
+						valueLocation = variableValue.getValueLocation();
 					}
 				}
 			}
+
+			// if the location evaluates to NotLive, the types and values do
+			// not matter
+			if (valueLocation instanceof IInvalidVariableLocation) {
+				value = null;
+				valueError = new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
+						((IInvalidVariableLocation) valueLocation).getMessage());
+				valueLocation = null; //$NON-NLS-1$
+				return;
+			}
+
 		}
 
 		/* (non-Javadoc)
@@ -210,32 +236,83 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			evaluateExpression();
 			String result = ""; //$NON-NLS-1$
 
-			if (value instanceof IInvalidExpression) {
-				result = ((IInvalidExpression) value).getMessage();
+			if (valueError != null) {
+				result = valueError.getMessage();
 			} else if (value != null) {
 				result = value.toString();
-			}
-
-			if (value instanceof Number) {
+				
+				IType unqualifiedType = TypeUtils.getStrippedType(valueType);
+				
 				String temp = null;
 				String formatID = dmc.getFormatID();
+				
 				if (formatID.equals(IFormattedValues.HEX_FORMAT)) {
-					temp = toHexString((Number) value);
+					temp = toHexString(value);
 				} else if (formatID.equals(IFormattedValues.OCTAL_FORMAT)) {
-					temp = toOctalString((Number) value);
+					temp = toOctalString(value);
 				} else if (formatID.equals(IFormattedValues.BINARY_FORMAT)) {
-					temp = asBinary((Number) value);
+					temp = asBinary(value);
 				} else if (formatID.equals(IFormattedValues.NATURAL_FORMAT)) {
-					// for chars, do something special
-					IType unqualifiedType = TypeUtils.getStrippedType(valueType);
-					if (unqualifiedType instanceof ICPPBasicType
-							&& ((ICPPBasicType) unqualifiedType).getBaseType() == IBasicType.t_char) {
-						temp = toCharString((Number) value);
-					}
+					// convert non-integer types to original representation
+					if (unqualifiedType instanceof ICPPBasicType) {
+						ICPPBasicType basicType = (ICPPBasicType) unqualifiedType;
+						switch (basicType.getBaseType()) {
+						case ICPPBasicType.t_char:
+							temp = toCharString(value);
+							break;
+						case ICPPBasicType.t_wchar_t:
+							temp = toCharString(value);
+							break;
+						case ICPPBasicType.t_bool:
+							temp = Boolean.toString(value.longValue() != 0);
+							break;
+						}
+					} else if (valueType instanceof IAggregate || valueType instanceof IPointerType) {
+						// show addresses for aggregates and pointers as hex in natural format
+						temp = toHexString(value);
+					} 
 				}
 				if (temp != null)
 					result = temp; 
+				
 				// otherwise, leave value as is
+				
+				// TODO: add type suffix if the value cannot fit in
+				// the ordinary range of the base type.
+				// E.g., for an unsigned int, 0xFFFFFFFF should usually be 0xFFFFFFFFU,
+				// and for a long double, 1.E1000 should be 1.E1000L.
+				/*
+				// apply required integer and float suffixes
+				IType unqualifiedType = TypeUtils.getStrippedType(valueType);
+				if (unqualifiedType instanceof ICPPBasicType) {
+					ICPPBasicType basicType = (ICPPBasicType) unqualifiedType;
+					
+					if (basicType.getBaseType() == ICPPBasicType.t_float) {
+						//result += "F"; // no
+					} else if (basicType.getBaseType() == ICPPBasicType.t_double) {
+						if (basicType.isLong() AND actual value does not fit in a double)
+							result += "L";
+					} else if (basicType.getBaseType() == ICPPBasicType.t_int) {
+						if (basicType.isUnsigned() AND actual value does not fit in a signed int)
+							result += "U";
+						if (basicType.isLongLong() AND actual value does not fit in a signed int)
+							result += "LL";
+						else if (basicType.isLong() AND actual value does not fit in a signed int)
+							result += "L";
+					}
+				}
+				 */
+				
+				// for an enumerator, return the name, if any
+				if (unqualifiedType instanceof IEnumeration) {
+					long enumeratorValue = value.longValue();
+
+					IEnumerator enumerator = ((IEnumeration) unqualifiedType).getEnumeratorByValue(enumeratorValue);
+					if (enumerator != null) {
+						result = enumerator.getName() + " [" + result + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+					}
+				}
+				
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.VARIABLE_VALUE_TRACE, result);
 			return new FormattedValueDMData(result);
@@ -313,7 +390,10 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 					return asStringQuoted("\\v"); //$NON-NLS-1$
 			}
 		
-			return asStringQuoted(Character.toString((char) ((Number) value).byteValue()));
+			String prefix = ""; //$NON-NLS-1$
+			if (valueType instanceof ICPPBasicType && ((ICPPBasicType) valueType).getBaseType() == ICPPBasicType.t_wchar_t)
+				prefix = "L"; //$NON-NLS-1$
+			return prefix + asStringQuoted(Character.toString((char) value.shortValue()));
 		}
 
 		private String asStringQuoted(String val) {
@@ -326,44 +406,64 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		/* (non-Javadoc)
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getValueLocation()
 		 */
-		public Object getValueLocation() {
+		public IVariableLocation getValueLocation() {
 			evaluateExpression();
 			return getEvaluatedLocation();
 		}
 
 		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.services.IEDCExpression#getEvaluationError()
+		 */
+		public IStatus getEvaluationError() {
+			return valueError;
+		}
+		
+		/* (non-Javadoc)
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getEvaluatedValue()
 		 */
-		public Object getEvaluatedValue() {
+		public Number getEvaluatedValue() {
 			return value;
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.services.IEDCExpression#getEvaluatedValueString()
+		 */
+		public String getEvaluatedValueString() {
+			if (valueError != null)
+				return valueError.getMessage();
+			
+			if (valueString != null)
+				return valueString;
+			
+			valueString = value != null ? value.toString() : ""; //$NON-NLS-1$
+			return valueString;
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.edc.services.IEDCExpression#setEvaluatedValueString(java.lang.String)
+		 */
+		public void setEvaluatedValueString(String string) {
+			this.valueString = string;
 		}
 		
 		/* (non-Javadoc)
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#setEvaluatedValue(java.lang.Object)
 		 */
-		public void setEvaluatedValue(Object value) {
+		public void setEvaluatedValue(Number value) {
 			this.value = value;
 		}
 
 		/* (non-Javadoc)
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getEvaluatedLocation()
 		 */
-		public Object getEvaluatedLocation() {
-			if (valueLocation instanceof IAddress) {
-				// don't print these as decimal or as ridiculously long numbers
-				IAddress addr = (IAddress) valueLocation;
-				if (addr.compareTo(Addr64.MAX) < 0)
-					return HEX_PREFIX + Long.toHexString(addr.getValue().longValue());
-				else
-					return addr.toHexAddressString();
-			}
+		public IVariableLocation getEvaluatedLocation() {
 			return valueLocation;
 		}
 
 		/* (non-Javadoc)
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getEvaluatedType()
 		 */
-		public Object getEvaluatedType() {
+		public IType getEvaluatedType() {
 			return valueType;
 		}
 
@@ -373,54 +473,11 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		public String getTypeName() {
 			evaluateExpression();
 			if (valueType == null)
-				return ASTEvaluationEngine.UNKNOWN_TYPE;
-			return recursiveGetType(valueType);
-		}
-
-		private String recursiveGetType(Object typeValue) {
-			// FIXME: move this into an IType method
-			if (typeValue instanceof IReferenceType)
-				return recursiveGetType(((IReferenceType) typeValue).getType()) + " &"; //$NON-NLS-1$
-			if (typeValue instanceof IPointerType)
-				return recursiveGetType(((IPointerType) typeValue).getType()) + " *"; //$NON-NLS-1$
-			if (typeValue instanceof IArrayType) {
-				IArrayType arrayType = (IArrayType) typeValue;
-				String returnType = recursiveGetType(arrayType.getType());
-
-				IArrayBoundType[] bounds = arrayType.getBounds();
-				for (IArrayBoundType bound : bounds) {
-					returnType += "[" + bound.getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
-				}
-				return returnType;
-			}
-			if (typeValue instanceof IArrayDimensionType) {
-				IArrayDimensionType arrayDimensionType = (IArrayDimensionType) typeValue;
-				IArrayType arrayType = arrayDimensionType.getArrayType();
-				String returnType = recursiveGetType(arrayType.getType());
-
-				IArrayBoundType[] bounds = arrayType.getBounds();
-				for (int i = arrayDimensionType.getDimensionCount(); i < arrayType.getBoundsCount(); i++) {
-					returnType += "[" + bounds[i].getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
-				}
-				return returnType;
-			}
-			if (typeValue instanceof ITypedef)
-				return ((ITypedef) typeValue).getName();
-			if (typeValue instanceof ICompositeType)
-				return ((ICompositeType) typeValue).getName();
-			if (typeValue instanceof IQualifierType)
-				return ((IQualifierType) typeValue).getName()
-						+ " " + recursiveGetType(((IQualifierType) typeValue).getType()); //$NON-NLS-1$
-			if (typeValue instanceof ISubroutineType) {
-				// TODO: real stuff once we parse parameters
-				// TODO: the '*' for a function pointer (e.g. in a vtable) is in the wrong place
-				return recursiveGetType(((ISubroutineType) typeValue).getType()) + "(...)"; //$NON-NLS-1$
-			}
-			if (typeValue instanceof IType)
-				return ((IType) typeValue).getName() + recursiveGetType(((IType) typeValue).getType());
-			if (typeValue == null)
-				return ""; //$NON-NLS-1$
-			return typeValue.toString();
+				if (valueError != null)
+					return ""; //$NON-NLS-1$
+				else
+					return ASTEvaluationEngine.UNKNOWN_TYPE;
+			return engine.getTypeEngine().getTypeName(valueType);
 		}
 
 		/* (non-Javadoc)
@@ -435,6 +492,252 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		 */
 		public IExpressions getService() {
 			return Expressions.this;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.core.model.ICastToType#canCast()
+		 */
+		public boolean canCast() {
+			return valueType instanceof IType && valueError == null;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.core.model.ICastToType#getCurrentType()
+		 */
+		public String getCurrentType() {
+			if (valueType instanceof IType)
+				return ((IType)valueType).getName();
+			return ""; //$NON-NLS-1$
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.core.model.ICastToType#cast(java.lang.String)
+		 */
+		public void cast(String type) throws DebugException {
+			if (valueError != null)
+				throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, EDCServicesMessages.Expressions_NoCurrentValue));
+
+			type = type.trim();
+			StringBuilder sb = new StringBuilder(type.length());
+			
+			// replace multiple spaces with single spaces
+			char previous = '\0';
+			for (int i = 0; i < type.length(); i++) {
+				char next = type.charAt(i);
+				if (next == ' ' && previous == ' ')
+					continue;
+				sb.append(next);
+				previous = next;
+			}
+
+			// count the '*' indirections at the end, and strip them
+			int indirections = 0;
+			
+			int length = sb.length() - 1;
+			for ( ; length >= 0; length--) {
+				if (sb.charAt(length) == '*') {
+					indirections++;
+				} else if (sb.charAt(length) != ' ') {
+					break;
+				}
+			}
+			sb.setLength(length + 1);
+
+			if (sb.length() == 0)
+				throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, EDCServicesMessages.Expressions_InvalidType + type));
+
+			String canonicalType = sb.toString();
+
+			// create the linked type structure for indirections
+			IType indirectionType = null;
+			IType innermostIndirectionType =  null;
+			IType lastIndirectionType = null;
+			for (int i = indirections; i > 0; i--) {
+				innermostIndirectionType = new PointerType("", null, 4, null); //$NON-NLS-1$
+				if (indirectionType == null)
+					indirectionType = innermostIndirectionType;
+				else
+					lastIndirectionType.setType(innermostIndirectionType);
+				lastIndirectionType = innermostIndirectionType;
+			}
+			
+			// ask the debug info provider to match the type
+			Query<IDebugInfoProvider> runnableIDIP = new Query<IDebugInfoProvider>() {
+				@Override
+				protected void execute(DataRequestMonitor<IDebugInfoProvider> rm) {
+
+					IDebugInfoProvider debugInfoProvider = null;
+	
+					IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
+					if (modules != null) {
+						IEDCModuleDMContext module = modules.getModuleByAddress(frame.getExecutionDMC().getSymbolDMContext(),
+														frame.getIPAddress());
+						if (module != null) {
+							IEDCSymbolReader symbolReader = module.getSymbolReader();
+							if (symbolReader instanceof EDCSymbolReader) {
+								debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
+							}
+						}
+					}					
+					rm.setData(debugInfoProvider);
+					rm.done();
+				}
+			};
+
+			getExecutor().execute(runnableIDIP);
+
+			IDebugInfoProvider debugInfoProvider = null;
+			
+			try {
+				debugInfoProvider = runnableIDIP.get();
+			} catch (InterruptedException e) {
+			} catch (ExecutionException e) {
+			}
+
+//			IEDCSymbolReader symbolReader = Symbols.getSymbolReader(new Path(frame.getSourceFile()));
+//			if (symbolReader instanceof EDCSymbolReader) {
+//				debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
+//			}
+
+			IType typeCastedTo = null;
+			
+			if (debugInfoProvider != null) {
+				Collection<IType> list = debugInfoProvider.getTypesByName(type);
+				if (!list.isEmpty())
+					typeCastedTo = (IType)list.toArray()[0];
+			}
+
+			// if we haven't found the type, try the C++/C base types
+			if (typeCastedTo == null)
+				typeCastedTo = tryCastToBaseType(engine.getTypeEngine(), canonicalType); 
+			
+			if (typeCastedTo == null)
+				throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, EDCServicesMessages.Expressions_UnknownType + type));
+			
+			if (indirectionType != null) {
+				innermostIndirectionType.setType(typeCastedTo);
+				typeCastedTo = indirectionType;
+			}
+
+			valueTypeCastedTo = typeCastedTo;
+
+			if (valueTypeOriginal == null)
+				valueTypeOriginal = valueType;
+
+			value = null; // allow expression to be re-evaluated with new type
+			final ExpressionDMC expression = this;
+			
+			Query<ExpressionDMC> runnable = new Query<ExpressionDMC>() {
+				@Override
+				protected void execute(DataRequestMonitor<ExpressionDMC> rm) {
+					evaluateExpression();
+					rm.setData(expression);
+					rm.done();
+				}
+			};
+			
+			getExecutor().execute(runnable);
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.core.model.ICastToType#restoreOriginal()
+		 */
+		public void restoreOriginal() throws DebugException {
+			valueType = valueTypeOriginal;
+			valueTypeCastedTo = null;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.core.model.ICastToType#isCasted()
+		 */
+		public boolean isCasted() {
+			return valueTypeCastedTo != null;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.core.model.ICastToArray#canCastToArray()
+		 */
+		public boolean canCastToArray() {
+			return TypeUtils.getStrippedType(valueType) instanceof IPointerType && valueError == null;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * @see org.eclipse.cdt.debug.core.model.ICastToArray#castToArray(int, int)
+		 */
+		public void castToArray(int startIndex, int length)
+				throws DebugException {
+			// TODO Auto-generated method stub
+			
+		}
+		
+		private IType tryCastToBaseType(TypeEngine typeEngine, String type) {
+			IType castedToType = null;
+			
+			// if the type name is one of the many allowed alternative versions of a C/C++,
+			// synthesize a base type
+			if (type.equals("int") || type.equals("signed")|| type.equals("signed int")) { //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+				castedToType = new CPPBasicType("int", ICPPBasicType.t_int, ICPPBasicType.IS_SIGNED, //$NON-NLS-1$
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_INT));
+			} else if (type.equals("long") || type.equals("long int") || //$NON-NLS-1$ //$NON-NLS-2$
+						type.equals("signed long") || type.equals("signed long int")) { //$NON-NLS-1$ //$NON-NLS-2$
+				castedToType = new CPPBasicType("long", ICPPBasicType.t_int, ICPPBasicType.IS_LONG | ICPPBasicType.IS_SIGNED, //$NON-NLS-1$
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_LONG));
+			} else if (type.equals("short") || type.equals("short int") || //$NON-NLS-1$ //$NON-NLS-2$
+						type.equals("signed short") || type.equals("signed short int")) { //$NON-NLS-1$ //$NON-NLS-2$
+				castedToType = new CPPBasicType("short", ICPPBasicType.t_int, ICPPBasicType.IS_SHORT | ICPPBasicType.IS_SIGNED, //$NON-NLS-1$
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_SHORT));
+			} else if (type.equals("unsigned") || type.equals("unsigned int")) { //$NON-NLS-1$ //$NON-NLS-2$
+				castedToType = new CPPBasicType("unsigned int", ICPPBasicType.t_int, ICPPBasicType.IS_UNSIGNED, //$NON-NLS-1$
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_INT_UNSIGNED));
+			} else if (type.equals("unsigned long") || type.equals("unsigned long int")) { //$NON-NLS-1$ //$NON-NLS-2$
+				castedToType = new CPPBasicType("unsigned long", ICPPBasicType.t_int, ICPPBasicType.IS_LONG | ICPPBasicType.IS_UNSIGNED, //$NON-NLS-1$
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_LONG_UNSIGNED));
+			} else if (type.equals("unsigned short") || type.equals("unsigned short int")) { //$NON-NLS-1$ //$NON-NLS-2$
+				castedToType = new CPPBasicType("unsigned short", ICPPBasicType.t_int, ICPPBasicType.IS_SHORT | ICPPBasicType.IS_UNSIGNED, //$NON-NLS-1$
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_SHORT_UNSIGNED));
+			} else if (type.equals("char")) { //$NON-NLS-1$
+				castedToType = new CPPBasicType(type, ICPPBasicType.t_char, 0,
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_CHAR));
+			} else if (type.equals("unsigned char")) { //$NON-NLS-1$
+				castedToType = new CPPBasicType(type, ICPPBasicType.t_char, ICPPBasicType.IS_UNSIGNED,
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_CHAR_UNSIGNED));
+			} else if (type.equals("signed char")) { //$NON-NLS-1$
+				castedToType = new CPPBasicType(type, ICPPBasicType.t_char, ICPPBasicType.IS_SIGNED,
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_CHAR_SIGNED));
+			} else if (type.equals("bool")) { //$NON-NLS-1$
+				castedToType = new CPPBasicType(type, ICPPBasicType.t_bool, 0,
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_BOOL));
+			} else if (type.equals("_Bool")) { //$NON-NLS-1$
+				castedToType = new CPPBasicType(type, ICPPBasicType.t_bool, 0,
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_BOOL));
+			} else if (type.equals("float")) { //$NON-NLS-1$
+				castedToType = new CPPBasicType(type, ICPPBasicType.t_float, 0,
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_FLOAT));
+			} else if (type.equals("double")) { //$NON-NLS-1$
+				castedToType = new CPPBasicType(type, ICPPBasicType.t_float, ICPPBasicType.IS_LONG,
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_DOUBLE));
+//			} else if (type.equals("long double")) { //$NON-NLS-1$
+//				// TODO support long double
+			} else if (type.equals("wchar_t")) { //$NON-NLS-1$
+				castedToType = new CPPBasicType(type, ICPPBasicType.t_wchar_t, ICPPBasicType.IS_LONG,
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_WCHAR_T));
+			} else if (type.equals("long long") || type.equals("long long int") || //$NON-NLS-1$ //$NON-NLS-2$
+					type.equals("signed long long") || type.equals("signed long long int")) { //$NON-NLS-1$ //$NON-NLS-2$
+				castedToType = new CPPBasicType("long long", ICPPBasicType.t_int, ICPPBasicType.IS_LONG_LONG | ICPPBasicType.IS_SIGNED, //$NON-NLS-1$
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_LONG_LONG));
+			} else if (type.equals("unsigned long long") || type.equals("unsigned long long int")) { //$NON-NLS-1$ //$NON-NLS-2$
+				castedToType = new CPPBasicType("unsigned long long", ICPPBasicType.t_int, ICPPBasicType.IS_LONG_LONG | ICPPBasicType.IS_UNSIGNED, //$NON-NLS-1$
+						typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_LONG_LONG_UNSIGNED));
+			}
+			
+			return castedToType;
 		}
 	}
 
@@ -513,19 +816,22 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 	public class ExpressionDMAddress implements IExpressionDMLocation {
 
-		private final Object valueLocation;
+		private final IVariableLocation valueLocation;
 
 		public ExpressionDMAddress(IExpressionDMContext exprContext) {
 			if (exprContext instanceof ExpressionDMC)
 				valueLocation = ((IEDCExpression) exprContext).getValueLocation();
 			else
-				valueLocation = new Addr64("0"); //$NON-NLS-1$
+				valueLocation = null;
 		}
 
 		public IAddress getAddress() {
-			if (valueLocation instanceof IAddress)
-				return (IAddress) valueLocation;
-			return new Addr64("0"); //$NON-NLS-1$
+			if (valueLocation != null) {
+				IAddress address = valueLocation.getAddress();
+				if (address != null)
+					return address;
+			}
+			return new Addr64(BigInteger.ZERO);
 		}
 
 		public int getSize() {
@@ -536,7 +842,9 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			if (valueLocation instanceof IInvalidVariableLocation) {
 				return ((IInvalidVariableLocation)valueLocation).getMessage();
 			}
-			return valueLocation == null ? "" : valueLocation.toString(); //$NON-NLS-1$
+			if (valueLocation == null)
+				return ""; //$NON-NLS-1$
+			return valueLocation.getLocationName();
 		}
 
 	}
@@ -544,10 +852,27 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 	public Expressions(DsfSession session) {
 		super(session, new String[] { IExpressions.class.getName(), Expressions.class.getName() });
 	}
+	
+	public boolean canWriteExpression(ExpressionDMC expressionDMC) {
+		EDCLaunch launch = EDCLaunch.getLaunchForSession(getSession().getId());
+		if (launch.isSnapshotLaunch())
+			return false;
+		IVariableValueConverter converter = getCustomValueConverter(expressionDMC);
+		if (converter != null)
+			return converter.canEditValue();
+		
+		return !isComposite(expressionDMC);
+	}
 
 	public void canWriteExpression(IExpressionDMContext exprContext, DataRequestMonitor<Boolean> rm) {
-		rm.setData(false);
+		ExpressionDMC expressionDMC = (ExpressionDMC) exprContext;
+		rm.setData(canWriteExpression(expressionDMC));
 		rm.done();
+	}
+
+	private boolean isComposite(ExpressionDMC expressionDMC) {
+		IType exprType = TypeUtils.getStrippedType(expressionDMC.getEvaluatedType());
+		return exprType instanceof ICompositeType;
 	}
 
 	public IExpressionDMContext createExpression(IDMContext context, String expression) {
@@ -608,8 +933,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		ExpressionDMC expr = (ExpressionDMC) exprContext;
 
 		// if expression has no evaluated value, then it has not yet been evaluated
-		// NOTE: this should never happen
-		if (expr.getEvaluatedValue() == null) {
+		if (expr.getEvaluatedValue() == null && expr.getEvaluatedValueString() != null) {
 			expr.evaluateExpression();
 		}
 
@@ -689,7 +1013,13 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			IField[] fields = compositeType.getFields();
 
 			for (IField field : fields) {
-				exprChild = new ExpressionDMC(frame, exprName + (field).getName());
+				if (field.getName().length() == 0) {
+					// This makes an invalid expression
+					// The debug info provider should have filtered out or renamed such fields
+					assert false;
+					continue;
+				}
+				exprChild = new ExpressionDMC(frame, exprName + field.getName());
 				if (exprChild != null) {
 					exprList.add(exprChild);
 				}
@@ -697,7 +1027,13 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			
 			IInheritance[] inheritedFrom = compositeType.getInheritances();
 			for (IInheritance inherited : inheritedFrom) {
-				exprChild = new ExpressionDMC(frame, exprName + (inherited).getName());
+				if (inherited.getName().length() == 0) {
+					// This makes an invalid expression
+					// The debug info provider should have filtered out or renamed such fields
+					assert false;
+					continue;
+				}
+				exprChild = new ExpressionDMC(frame, exprName + inherited.getName());
 				if (exprChild != null) {
 					exprList.add(exprChild);
 				}
@@ -764,16 +1100,17 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 	private void expandPointedTo(StackFrameDMC frame, IType exprType, String exprName, ArrayList<ExpressionDMC> exprList) {
 		ExpressionDMC exprChild;
 
-		// a pointer type has one child
-		IType typePointedTo = TypeUtils.getStrippedType(exprType.getType());
-
-		// if expression name already starts with "&", just remove it
+		// If expression name already starts with "&" (e.g. "&struct"), indirect it first
+		boolean indirected = false;
 		if ((exprType instanceof IPointerType) && exprName.startsWith("&")) { //$NON-NLS-1$
 			exprName = exprName.substring(1);
 			exprChild = new ExpressionDMC(frame, exprName);
-			return;
+			indirected = true;
 		}
-		
+
+		// a pointer type has one child
+		IType typePointedTo = TypeUtils.getStrippedType(exprType.getType());
+
 		if (exprType instanceof IReferenceType)
 			exprChild = new ExpressionDMC(frame, exprName); //$NON-NLS-1$
 		else
@@ -793,7 +1130,7 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			}
 		} else if (typePointedTo instanceof ICompositeType) {
 			// for composites, go directly to showing the fields
-			if (exprType instanceof IReferenceType)
+			if (exprType instanceof IReferenceType || indirected)
 				exprName = exprName + "."; //$NON-NLS-1$
 			else
 				exprName = exprName + "->"; //$NON-NLS-1$
@@ -846,8 +1183,67 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		});
 	}
 
-	public void writeExpression(IExpressionDMContext exprContext, String expressionValue, String formatId,
-			RequestMonitor rm) {
+	public void writeExpression(IExpressionDMContext exprContext, String expressionValue, String formatId, RequestMonitor rm) {
+		ExpressionDMC expressionDMC = (ExpressionDMC) exprContext;
+		if (isComposite(expressionDMC)) {
+			rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_CannotModifyCompositeValue, null));
+			rm.done();
+			return;
+		}
+		// first try to get value by format as BigInteger
+		BigInteger value = parseIntegerByFormat(expressionValue, formatId);
+        if (value == null) {
+       		// TODO parse as expression
+        	rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_CannotParseExpression, null));
+			rm.done();
+			return;
+        }
+        
+        IVariableLocation variableLocation = expressionDMC.getValueLocation();
+		IType exprType = TypeUtils.getStrippedType(expressionDMC.getEvaluatedType());
+    	try {
+    		variableLocation.writeValue(exprType.getByteSize(), value);
+		} catch (CoreException e) {
+			rm.setStatus(e.getStatus());
+		}
+        
+		rm.done();
+	}
+
+	private BigInteger parseIntegerByFormat(String expressionValue, String formatId) {
+		int radix = 10;
+		if (HEX_FORMAT.equals(formatId)) {
+			if (expressionValue.startsWith(ExpressionDMC.HEX_PREFIX)) 
+				expressionValue = expressionValue.substring(ExpressionDMC.HEX_PREFIX.length());
+			radix = 16;
+		} else if (OCTAL_FORMAT.equals(formatId)) {
+			if (expressionValue.startsWith(ExpressionDMC.OCTAL_PREFIX)) 
+				expressionValue = expressionValue.substring(ExpressionDMC.OCTAL_PREFIX.length()); 
+			radix = 8;
+		} else if (BINARY_FORMAT.equals(formatId)) {
+			if (expressionValue.startsWith(ExpressionDMC.BINARY_PREFIX)) 
+				expressionValue = expressionValue.substring(ExpressionDMC.BINARY_PREFIX.length()); 
+			radix = 2;
+		} else if (NATURAL_FORMAT.equals(formatId)) {
+			if (expressionValue.startsWith(ExpressionDMC.BINARY_PREFIX)) {
+				expressionValue = expressionValue.substring(ExpressionDMC.BINARY_PREFIX.length());
+				radix = 2;
+			} else if (expressionValue.startsWith(ExpressionDMC.OCTAL_PREFIX)) { 
+				expressionValue = expressionValue.substring(ExpressionDMC.OCTAL_PREFIX.length());
+				radix = 8;
+			} else if (expressionValue.startsWith(ExpressionDMC.HEX_PREFIX)) { 
+				expressionValue = expressionValue.substring(ExpressionDMC.HEX_PREFIX.length());
+				radix = 16;
+			} 
+			// else, decimal
+		}
+        try {
+        	return new BigInteger(expressionValue, radix);
+        } catch (NumberFormatException e) {
+        	// just return null
+        }
+        
+        return null;
 	}
 
 	public void getAvailableFormats(IFormattedDataDMContext formattedDataContext, DataRequestMonitor<String[]> rm) {
@@ -865,14 +1261,18 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		if (idmContext instanceof ExpressionDMC) {
 			exprDMC = (ExpressionDMC) formattedDataContext.getParents()[0];
 
+			if (exprDMC != null && exprDMC.getEvaluationError() != null) {
+				rm.setStatus(exprDMC.getEvaluationError());
+				rm.done();
+				return;
+			}
+			
 			formattedValue = exprDMC.getFormattedValue(formattedDataContext); // must call this to get type
-			IType exprType = TypeUtils.getStrippedType(exprDMC.getEvaluatedType());
-			IVariableValueConverter customValue = 
-				FormatExtensionManager.instance().getVariableValueConverter(exprType);
-			if (customValue != null) {
+			IVariableValueConverter customConverter = getCustomValueConverter(exprDMC);
+			if (customConverter != null) {
 				FormattedValueDMData customFormattedValue = null;
 				try {
-					customFormattedValue = new FormattedValueDMData(customValue.getValue(exprDMC));
+					customFormattedValue = new FormattedValueDMData(customConverter.getValue(exprDMC));
 					formattedValue = customFormattedValue;
 				}
 				catch (CoreException e) {
@@ -888,18 +1288,19 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 					// Meanwhile default to normal formatting so that user won't see 
 					// such error in Variable UI.
 					EDCDebugger.getMessageLogger().logError(
-							EDCServicesMessages.Expressions_ErrorInVariableFormatter + customValue.getClass().getName(), t);
+							EDCServicesMessages.Expressions_ErrorInVariableFormatter + customConverter.getClass().getName(), t);
 				}
 			}
 		} else
 			formattedValue = new FormattedValueDMData(""); //$NON-NLS-1$
 
 		rm.setData(formattedValue);
-		String formattedValueStr = formattedValue.getFormattedValue();
-
-		if (exprDMC != null && exprDMC.getEvaluatedValue() instanceof IInvalidExpression)
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, formattedValueStr));
 		rm.done();
+	}
+
+	private IVariableValueConverter getCustomValueConverter(ExpressionDMC exprDMC) {
+		IType exprType = TypeUtils.getStrippedType(exprDMC.getEvaluatedType());
+		return FormatExtensionManager.instance().getVariableValueConverter(exprType);
 	}
 
 	public FormattedValueDMContext getFormattedValueContext(IFormattedDataDMContext formattedDataContext,

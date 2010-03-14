@@ -12,6 +12,9 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -19,9 +22,18 @@ import org.eclipse.core.runtime.CoreException;
  */
 public class PushLongOrBigInteger extends SimpleInstruction {
 
+	// if true, suffix had 'u'
+	private boolean isUnsigned;
+	// if true, suffix had 'l' (but not 'll')
 	private boolean isLong;
-	private long fLong;
+	// if true, suffix had 'll' (but not 'l')
+	private boolean isLongLong;
+	
+	// if not null, a big integer 
 	private BigInteger fBigInteger;
+	// otherwise, this is the value
+	private long fLong;
+	private IType type;
 
 	/**
 	 * Constructor for pushing a long on the stack
@@ -42,7 +54,6 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 	 * @throws NumberFormatException
 	 */
 	public PushLongOrBigInteger(String value) throws NumberFormatException {
-		isLong = true;
 		parseLongOrBigInteger(value);
 	}
 
@@ -53,10 +64,30 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 	 */
 	@Override
 	public void execute() {
-		if (isLong)
-			pushNewValue(fLong);
-		else
-			pushNewValue(fBigInteger);
+		Number number = fBigInteger;
+		if (number == null)
+			number = fLong;
+		
+		if (type == null) {
+			int flags = isLongLong ? ICPPBasicType.IS_LONG_LONG : isLong ?  ICPPBasicType.IS_LONG : 0;
+			
+			if (isUnsigned)
+				flags |= ICPPBasicType.IS_UNSIGNED;
+			else
+				flags |= ICPPBasicType.IS_SIGNED;
+	
+			int size;
+			if (isLongLong)
+				size = fInterpreter.getTypeEngine().getTypeSize(TypeUtils.BASIC_TYPE_LONG_LONG);
+			else if (isLong)
+				size = fInterpreter.getTypeEngine().getTypeSize(TypeUtils.BASIC_TYPE_LONG);
+			else
+				size = fInterpreter.getTypeEngine().getTypeSize(TypeUtils.BASIC_TYPE_INT);
+			
+			type = fInterpreter.getTypeEngine().getBasicType(ICPPBasicType.t_int, flags, size);
+		}
+		
+		pushNewValue(type, number);
 	}
 
 	/**
@@ -81,29 +112,33 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 	 * @throws NumberFormatException
 	 */
 	public void parseLongOrBigInteger(String value) throws NumberFormatException {
-		boolean suffixUnsigned = false;
+		isUnsigned = false;
 
 		String val = value.toLowerCase();
 		int length = value.length();
 
 		if (val.endsWith("ull") || val.endsWith("llu")) { //$NON-NLS-1$ //$NON-NLS-2$
-			suffixUnsigned = true;
+			isUnsigned = true;
+			isLongLong = true;
 			isLong = false;
 			val = val.substring(0, val.length() - 3);
 			length -= 3;
 		} else if (val.endsWith("ll")) { //$NON-NLS-1$
 			isLong = false;
+			isLongLong = true;
 			val = val.substring(0, val.length() - 2);
 			length -= 2;
 		} else if (val.endsWith("ul") || val.endsWith("lu")) { //$NON-NLS-1$ //$NON-NLS-2$
-			suffixUnsigned = true;
+			isUnsigned = true;
+			isLong = true;
 			val = val.substring(0, val.length() - 2);
 			length -= 2;
 		} else if (val.endsWith("l")) { //$NON-NLS-1$
+			isLong = true;
 			val = val.substring(0, val.length() - 1);
 			length -= 1;
 		} else if (val.endsWith("u")) { //$NON-NLS-1$
-			suffixUnsigned = true;
+			isUnsigned = true;
 			val = val.substring(0, val.length() - 1);
 			length -= 1;
 		}
@@ -112,35 +147,31 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 		// if after BigInteger conversion, Long conversion fails, the value is
 		// too large or small
 		if (val.startsWith("0x")) { //$NON-NLS-1$
-			fBigInteger = new BigInteger(val.substring(2), 16);
-
 			try {
 				fLong = Long.valueOf(val.substring(2), 16);
 			} catch (NumberFormatException nfe) {
+				fBigInteger = new BigInteger(val.substring(2), 16);
 				fBigInteger.and(Instruction.Mask8Bytes);
-				isLong = false;
 				return;
 			}
 			length -= 2;
 		} else if (length > 1 && val.startsWith("0")) { //$NON-NLS-1$
-			fBigInteger = new BigInteger(val.substring(1), 8);
 
 			try {
 				fLong = Long.valueOf(val.substring(1), 8);
 			} catch (NumberFormatException nfe) {
+				fBigInteger = new BigInteger(val.substring(1), 8);
 				fBigInteger.and(Instruction.Mask8Bytes);
-				isLong = false;
 				return;
 			}
 			length -= 1;
 		} else {
-			fBigInteger = new BigInteger(val);
 
 			try {
 				fLong = Long.valueOf(val);
 			} catch (NumberFormatException nfe) {
+				fBigInteger = new BigInteger(val);
 				fBigInteger.and(Instruction.Mask8Bytes);
-				isLong = false;
 				return;
 			}
 		}
@@ -150,18 +181,18 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 			return;
 		}
 
-		if (suffixUnsigned) {
-			if (fBigInteger.bitLength() < 64) {
-				// unsigned will fit in a Java long
-				fLong = fBigInteger.longValue();
-				return;
+		if (isUnsigned) {
+			if (fBigInteger != null) {
+				if (fBigInteger.bitLength() < 64) {
+					// unsigned will fit in a Java long
+					fLong = fBigInteger.longValue();
+					fBigInteger = null;
+					return;
+				}
+				// keep it a BigInteger
+				// TODO: Allow bigger than 8 bytes
+				fBigInteger.and(Instruction.Mask8Bytes);
 			}
-
-			// keep it a BigInteger
-			// TODO: Allow bigger than 8 bytes
-			fBigInteger.and(Instruction.Mask8Bytes);
-			isLong = false;
-			return;
 		}
 	}
 

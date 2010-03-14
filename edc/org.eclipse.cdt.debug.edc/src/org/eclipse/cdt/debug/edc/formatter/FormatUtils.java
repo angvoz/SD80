@@ -228,7 +228,7 @@ public class FormatUtils {
 		return expression.getFormattedValue(fvc).getFormattedValue();
 	}
 
-	public static IType getUnqualifiedTypeRemovePointers(Object type) {
+	public static IType getUnqualifiedTypeRemovePointers(IType type) {
 		IType unqualifiedType = TypeUtils.getStrippedType(type);
 		while (unqualifiedType instanceof IPointerType)
 			unqualifiedType = TypeUtils.getStrippedType(unqualifiedType.getType());
@@ -247,22 +247,13 @@ public class FormatUtils {
 	 * @param value the evaluated value of an ExpressionDMC
 	 * @return the pointer address or <code>null</code>
 	 */
-	public static IAddress getPointerValue(Object value) {
+	public static IAddress getPointerValue(Number value) {
 		IAddress address = null;
 		
-		if (value instanceof String) { // is address string
-			String valueStr = value.toString();
-			if (valueStr.startsWith("0x")) //$NON-NLS-1$
-				valueStr = valueStr.substring(2);
-			try {
-			address = new Addr64(new BigInteger(valueStr, 16));
-			} catch (NumberFormatException nfe) {
-				return null;
-			}
-		} else if (value instanceof Number) {
-			address = new Addr32(((Number) value).longValue());
+		if (value instanceof BigInteger) {
+			address = new Addr64((BigInteger) value);
 		} else {
-			return null;
+			address = new Addr32(value.longValue());
 		}
 		return address;
 	}

@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -21,9 +22,13 @@ public class PushChar extends SimpleInstruction {
 	static private final char BELL = '\u0007';
 	static private final char VERTICAL_TAB = '\u000B';
 
-	// Character or Long value
-	private Object fValue;
-
+	// character value
+	private long fValue;
+	// is wchar_t?
+	private boolean isWide;
+	// if true, the value is multiple characters (e.g. 'AB' or 'CWIE')
+	private boolean multiChar;
+	
 	/**
 	 * Constructor for pushing a char on the stack
 	 * 
@@ -31,7 +36,7 @@ public class PushChar extends SimpleInstruction {
 	 *            - char value
 	 */
 	public PushChar(char value) {
-		fValue = value;
+		fValue = (short) value;
 	}
 
 	/**
@@ -42,7 +47,7 @@ public class PushChar extends SimpleInstruction {
 	 * @throws NumberFormatException
 	 */
 	public PushChar(String value) throws NumberFormatException {
-		fValue = parseCharValue(value);
+		parseCharValue(value);
 	}
 
 	/**
@@ -52,10 +57,19 @@ public class PushChar extends SimpleInstruction {
 	 */
 	@Override
 	public void execute() {
-		if (fValue instanceof Character)
-			pushNewValue((Character) fValue);
-		else
-			pushNewValue((Long) fValue);
+		if (multiChar) {
+			pushNewValue(fInterpreter.getTypeEngine().getIntegerTypeOfSize(4, false), fValue);
+			return;
+		}
+		
+		if (!isWide) {
+			// TODO: truncate to size of this type
+			pushNewValue(fInterpreter.getTypeEngine().getCharacterType(
+					fInterpreter.getTypeEngine().getTypeSize(TypeUtils.BASIC_TYPE_CHAR)), fValue);
+		} else {
+			pushNewValue(fInterpreter.getTypeEngine().getCharacterType(
+					fInterpreter.getTypeEngine().getTypeSize(TypeUtils.BASIC_TYPE_WCHAR_T)), fValue);
+		}
 	}
 
 	/**
@@ -65,22 +79,26 @@ public class PushChar extends SimpleInstruction {
 	 */
 	@Override
 	public String toString() {
-		if (fValue instanceof Character)
-			return ((Character) fValue).toString();
-		else
-			return ((Long) fValue).toString();
+		if (fValue < 65536)
+			return "" + ((char) fValue); //$NON-NLS-1$
+		char[] surrogate = { (char)(fValue >> 16), (char)(fValue & 0xffff) };
+		return new String(surrogate);
 	}
 
 	/**
-	 * Convert string value of form 'X' to char X
+	 * Convert string value of form 'X' to char X.  This may be either a single
+	 * character (char or wchar_t) or a multi-character constant, which is treated
+	 * as an integer.
 	 * 
 	 * @param value
 	 *            - string of form 'X'
-	 * @return char X if X is a single character; integer X otherwise
 	 * @throws NumberFormatException
 	 */
-	public static Object parseCharValue(String value) throws NumberFormatException {
-		// TODO: handle wide character constant somewhere
+	private void parseCharValue(String value) throws NumberFormatException {
+		if (value.startsWith("L")) { //$NON-NLS-1$
+			isWide = true;
+			value = value.substring(1);
+		}
 		if (value.length() < 3 || value.charAt(0) != '\'' || !value.endsWith("'")) //$NON-NLS-1$
 			throw new NumberFormatException();
 
@@ -91,14 +109,11 @@ public class PushChar extends SimpleInstruction {
 			if (value.length() < 3)
 				throw new NumberFormatException();
 
-			long longValue = Long.parseLong(value.substring(2), 16);
-
-			if (longValue <= 0xff)
-				return new Character((char) longValue);
-			else
-				return new Long(longValue & 0xffffffff);
+			fValue = Long.parseLong(value.substring(2), 16);
+			return;
 		}
 
+		// escape character
 		if (value.startsWith("\\")) { //$NON-NLS-1$
 			if (value.length() < 2)
 				throw new NumberFormatException();
@@ -108,7 +123,8 @@ public class PushChar extends SimpleInstruction {
 				if (value.length() > 4)
 					throw new NumberFormatException();
 
-				return new Character((char) Long.parseLong(value.substring(1), 8));
+				fValue = Long.parseLong(value.substring(1), 8);
+				return;
 			}
 
 			if (value.length() > 2)
@@ -116,42 +132,39 @@ public class PushChar extends SimpleInstruction {
 
 			switch (value.charAt(1)) {
 			case 'n':
-				return '\n';
+				fValue = '\n'; break;
 			case 't':
-				return '\t';
+				fValue = '\t'; break;
 			case 'v':
-				return VERTICAL_TAB;
+				fValue = VERTICAL_TAB; break;
 			case 'b':
-				return '\b';
+				fValue = '\b'; break;
 			case 'r':
-				return '\r';
+				fValue = '\r'; break;
 			case 'f':
-				return '\f';
+				fValue = '\f'; break;
 			case 'a':
-				return BELL;
+				fValue = BELL; break;
 			case '\\':
-				return '\\';
+				fValue = '\\'; break;
 			case '?':
-				return '?';
+				fValue = '?'; break;
 			case '\'':
-				return '\'';
+				fValue = '\''; break;
 			case '"':
-				return '"';
+				fValue = '"'; break;
 			default:
-				return new Character(value.charAt(1));
+				fValue = value.charAt(1); break;
 			}
+			return;
 		}
 
-		long longValue = 0;
-
+		multiChar = (value.length() > 1);
+		
+		fValue = 0;
 		for (int i = 0; i < value.length(); i++) {
-			longValue = (longValue << 8) + value.charAt(i);
+			fValue = (fValue << 8) + value.charAt(i);
 		}
-
-		if (longValue <= 0xff)
-			return new Character((char) longValue);
-		else
-			return new Long(longValue & 0xffffffff);
 	}
 
 }

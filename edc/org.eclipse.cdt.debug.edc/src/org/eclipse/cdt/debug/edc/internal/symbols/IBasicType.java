@@ -43,4 +43,8 @@ public interface IBasicType extends IType {
 	public boolean isShort();
 
 	public boolean isLong();
+	
+	public boolean isLongLong();
+	
+	public boolean isComplex();
 }

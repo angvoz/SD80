@@ -26,7 +26,7 @@ public class Enumeration extends MayBeQualifiedType implements IEnumeration {
 		super(name, scope, byteSize, properties);
 		name = "enum"; //$NON-NLS-1$
 	}
-
+	
 	public int enumeratorCount() {
 		return enumerators.size();
 	}

@@ -12,11 +12,22 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
-/*
- * Get the correct type of value from an object, converting if needed
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
+import org.eclipse.core.runtime.CoreException;
+
+/**
+ * Get the correct type of value from an object, converting if needed.
+ * <p>
+ * All of these expect to be called with values no larger than their types (e.g. by {@link Instruction#convertForPromotion(Object)})
+ * so we throw exceptions if not.
  */
 public class GetValue {
 
+	private static CoreException badType() {
+		return EDCDebugger.newCoreException(ASTEvalMessages.GetValue_TypePromotionError);
+	}
+	
 	/**
 	 * Get the boolean value of an object
 	 * 
@@ -24,39 +35,39 @@ public class GetValue {
 	 *            - possibly Boolean object
 	 * @return boolean value of param, or false if param is not a Boolean object
 	 */
-	public static boolean getBooleanValue(Object value) {
-		if (value instanceof Boolean)
-			return (Boolean) value;
-		return false;
+	public static boolean getBooleanValue(OperandValue op) throws CoreException {
+		Number value = op.getValue();
+		if (value instanceof BigInteger)
+			return ((BigInteger) value).signum() != 0 ? true : false;
+		return value.longValue() != 0;
 	}
 
 	/**
 	 * Get the integer value of an object
 	 * 
 	 * @param value
-	 *            - possibly Integer, Short, Byte, or Character object
+	 *            - possibly Integer, Short, or Byte object
 	 * @return integer value of param, or 0 if param is not an integer object
 	 */
-	public static int getIntValue(Object value) {
+	public static int getIntValue(OperandValue op) throws CoreException  {
+		Number value = op.getValue();
 		if (value instanceof Integer)
 			return (Integer) value;
 		if (value instanceof Short)
 			return new Integer((Short) value);
 		if (value instanceof Byte)
 			return new Integer((Byte) value);
-		if (value instanceof Character)
-			return new Integer((Character) value);
-		return 0;
+		throw badType();
 	}
 
 	/**
 	 * Get the long value of an object
 	 * 
-	 * @param value
-	 *            - possibly Long, Integer, Short, Byte, or Character object
+	 * @param value value with Long, Integer, Short, or Byte value
 	 * @return long value of param, or 0 if param is not an integral object
 	 */
-	public static long getLongValue(Object value) {
+	public static long getLongValue(OperandValue op) throws CoreException  {
+		Number value = op.getValue();
 		if (value instanceof Long)
 			return (Long) value;
 		if (value instanceof Integer)
@@ -65,21 +76,19 @@ public class GetValue {
 			return new Long((Short) value);
 		if (value instanceof Byte)
 			return new Long((Byte) value);
-		if (value instanceof Character)
-			return new Long((Character) value);
-		return 0;
+		throw badType();
 	}
 
 	/**
 	 * Get the BigInteger value of an object
 	 * 
-	 * @param value
-	 *            - possibly BigInteger, Long, Integer, Short, Byte, or
+	 * @param value value with possibly BigInteger, Long, Integer, Short, Byte, or
 	 *            Character object
 	 * @return BigInteger value of param, or 0 if param is not an integral
 	 *         object
 	 */
-	public static BigInteger getBigIntegerValue(Object value) {
+	public static BigInteger getBigIntegerValue(OperandValue op) throws CoreException  {
+		Number value = op.getValue();
 		if (value instanceof BigInteger)
 			return (BigInteger) value;
 		if (value instanceof Long)
@@ -90,20 +99,20 @@ public class GetValue {
 			return new BigInteger(((Short) value).toString());
 		if (value instanceof Byte)
 			return new BigInteger(new byte[] { (Byte) value });
-		if (value instanceof Character)
-			return new BigInteger(new byte[] { (byte) Character.getNumericValue((Character) value) });
-		return BigInteger.ZERO;
+		//if (value instanceof Character)
+		//	return new BigInteger(new byte[] { (byte) Character.getNumericValue((Character) value) });
+		throw badType();
 	}
 
 	/**
 	 * Get the float value of an object
 	 * 
-	 * @param value
-	 *            - possibly Float or integral (e.g., Long) object
+	 * @param value with possibly Float or integral (e.g., Long) object
 	 * @return float value of param, or 0 if param is not a Float or integral
 	 *         object
 	 */
-	public static float getFloatValue(Object value) {
+	public static float getFloatValue(OperandValue op) throws CoreException  {
+		Number value = op.getValue();
 		if (value instanceof Float)
 			return (Float) value;
 		if (value instanceof Long)
@@ -114,11 +123,9 @@ public class GetValue {
 			return new Float((Short) value);
 		if (value instanceof Byte)
 			return new Float((Byte) value);
-		if (value instanceof Character)
-			return new Float((Character) value);
 		if (value instanceof BigInteger)
 			return new Float(((BigInteger) value).floatValue());
-		return 0;
+		throw badType();
 	}
 
 	/**
@@ -130,7 +137,8 @@ public class GetValue {
 	 * @return double value of param, or 0 if param is not a float or integral
 	 *         object
 	 */
-	public static double getDoubleValue(Object value) {
+	public static double getDoubleValue(OperandValue op) throws CoreException  {
+		Number value = op.getValue();
 		if (value instanceof Double)
 			return (Double) value;
 		if (value instanceof Float)
@@ -143,11 +151,9 @@ public class GetValue {
 			return new Double((Short) value);
 		if (value instanceof Byte)
 			return new Double((Byte) value);
-		if (value instanceof Character)
-			return new Double((Character) value);
 		if (value instanceof BigInteger)
 			return new Double(((BigInteger) value).doubleValue());
-		return 0;
+		throw badType();
 	}
 
 	/**
@@ -158,10 +164,11 @@ public class GetValue {
 	 * @return string value of String param, or quoted string for Character
 	 *         param
 	 */
-	public static String getStringValue(Object value) {
-		if (value instanceof Character)
-			return "\"" + ((Character) value).charValue() + "\""; //$NON-NLS-1$ //$NON-NLS-2$
-		return (String) value;
+	public static String getStringValue(OperandValue value) throws CoreException  {
+		if (value.getStringValue() != null)
+			return value.getStringValue();
+		return "\"" + (char) (value.getValue().longValue()) + "\""; //$NON-NLS-1$ //$NON-NLS-2$
+		//throw badType();
 	}
 
 }

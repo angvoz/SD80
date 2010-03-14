@@ -24,46 +24,64 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 public class EDCDetailPaneFactory implements IDetailPaneFactory {
 
 	public IDetailPane createDetailPane(String paneID) {
-        return new CustomFormatDetailPane();
-	}
-
-	public String getDefaultDetailPane(IStructuredSelection selection) {
-		if (hasCustomProvider(selection))
-			return CustomFormatDetailPane.ID;
+		if (paneID.equals(CustomFormatDetailPane.ID)) {
+			return new CustomFormatDetailPane();
+		} else if (paneID.equals(EDCDetailPane.ID)) {
+			return new EDCDetailPane();
+		}
 		return null;
 	}
 
+	public String getDefaultDetailPane(IStructuredSelection selection) {
+		if (selection.size() != 1)
+			return null;
+		
+		IEDCExpression expression = 
+			CustomFormatDetailPane.getExpressionFromSelectedElement(selection.getFirstElement());
+		if (expression == null)
+			return null;
+		
+		if (hasCustomProvider(expression))
+			return CustomFormatDetailPane.ID;
+		return EDCDetailPane.ID;
+	}
+
 	public String getDetailPaneDescription(String paneID) {
-        if (paneID.equals(CustomFormatDetailPane.ID)){
-            return CustomFormatDetailPane.DESCRIPTION;
-        }
-        return null;
+		if (paneID.equals(CustomFormatDetailPane.ID)) {
+			return CustomFormatDetailPane.DESCRIPTION;
+		} else if (paneID.equals(EDCDetailPane.ID)) {
+			return EDCDetailPane.DESCRIPTION;
+		}
+		return null;
 	}
 
 	public String getDetailPaneName(String paneID) {
-        if (paneID.equals(CustomFormatDetailPane.ID)){
-            return CustomFormatDetailPane.NAME;
-        }
-        return null;
-	}
-	
-	public Set<String> getDetailPaneTypes(IStructuredSelection selection) {
-		if (hasCustomProvider(selection))
-			return Collections.singleton(CustomFormatDetailPane.ID);
-		return Collections.emptySet();
+		if (paneID.equals(CustomFormatDetailPane.ID)) {
+			return CustomFormatDetailPane.NAME;
+		} else if (paneID.equals(EDCDetailPane.ID)) {
+			return EDCDetailPane.NAME;
+		}
+		return null;
 	}
 
-	private static boolean hasCustomProvider(IStructuredSelection selection) {
+	public Set<String> getDetailPaneTypes(IStructuredSelection selection) {
 		if (selection.size() != 1)
-			return false;
+			return Collections.emptySet();
 		
-		IEDCExpression expressionDMC = 
+		IEDCExpression expression = 
 			CustomFormatDetailPane.getExpressionFromSelectedElement(selection.getFirstElement());
-		if (expressionDMC != null) {
-			return CustomFormatDetailPane.getCustomConverter(expressionDMC) != null;
+		if (expression == null)
+			return Collections.emptySet();
+
+		if (hasCustomProvider(expression))
+			return Collections.singleton(CustomFormatDetailPane.ID);
+		return Collections.singleton(EDCDetailPane.ID);
+	}
+
+	private static boolean hasCustomProvider(IEDCExpression expression) {
+		if (expression != null) {
+			return CustomFormatDetailPane.getCustomConverter(expression) != null;
 		}
 		return false;
 	}
-	
-	
 }

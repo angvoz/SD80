@@ -247,9 +247,8 @@ void ProcessService::command_start(char * token, Channel * c) {
 	std::string wargs;
 
 	wargs += quoteIfNeeded(executable.c_str());
-	for (int i = 0; i < args_len; i++) {
-		if (i > 0)
-			wargs += ' ';
+	for (int i = 1; i < args_len; i++) {
+		wargs += ' ';
 		wargs += quoteIfNeeded(args[i]);
 	}
 

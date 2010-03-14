@@ -15,8 +15,6 @@ import java.math.BigInteger;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
 
 /*
  * Binary divide operation "/"
@@ -61,7 +59,7 @@ public class OperatorDivide extends BinaryOperator {
 	@Override
 	protected int getIntResult(int leftOperand, int rightOperand) throws CoreException {
 		if (rightOperand == 0)
-			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, ASTEvalMessages.DivideByZero));
+			throw EDCDebugger.newCoreException(ASTEvalMessages.DivideByZero);
 		else
 			return leftOperand / rightOperand;
 	}
@@ -80,7 +78,7 @@ public class OperatorDivide extends BinaryOperator {
 	@Override
 	protected long getLongResult(long leftOperand, long rightOperand) throws CoreException {
 		if (rightOperand == 0)
-			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, ASTEvalMessages.DivideByZero));
+			throw EDCDebugger.newCoreException(ASTEvalMessages.DivideByZero);
 		else
 			return leftOperand / rightOperand;
 	}
@@ -102,7 +100,7 @@ public class OperatorDivide extends BinaryOperator {
 	protected BigInteger getBigIntegerResult(BigInteger leftOperand, BigInteger rightOperand, int length)
 			throws CoreException {
 		if (rightOperand.equals(BigInteger.ZERO))
-			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, ASTEvalMessages.DivideByZero));
+			throw EDCDebugger.newCoreException(ASTEvalMessages.DivideByZero);
 		else
 			return leftOperand.divide(rightOperand);
 	}
@@ -148,20 +146,4 @@ public class OperatorDivide extends BinaryOperator {
 	protected boolean getBooleanResult(boolean leftOperand, boolean rightOperand) {
 		return false;
 	}
-
-	/**
-	 * Get string result of applying binary divide "/" to two strings
-	 * 
-	 * @param leftOperand
-	 *            - left string operand
-	 * @param rightOperand
-	 *            - right string operand
-	 * @return <code>null</code>
-	 * @throws CoreException
-	 */
-	@Override
-	protected String getStringResult(String leftOperand, String rightOperand) throws CoreException {
-		return null;
-	}
-
 }

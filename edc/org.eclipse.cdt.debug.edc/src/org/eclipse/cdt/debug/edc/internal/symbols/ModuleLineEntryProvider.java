@@ -201,8 +201,9 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			
 			FileLineEntryProvider provider = fileProviders.get(path);
 			if (provider == null) {
-				provider = new FileLineEntryProvider(cu, path);
-				registerFileLineEntryProvider(path, provider);
+				// This will look for an existing one and create a 
+				// new one if none exits.
+				provider = getFileLineProviderForCU(cu,	path);
 				fileProviders.put(path, provider);
 			}
 

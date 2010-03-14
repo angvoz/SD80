@@ -47,7 +47,7 @@ public class PushFloat extends SimpleInstruction {
 	 */
 	@Override
 	public void execute() {
-		pushNewValue(fValue);
+		pushNewValue(fInterpreter.getTypeEngine().getFloatTypeOfSize(4), fValue);
 	}
 
 	/**

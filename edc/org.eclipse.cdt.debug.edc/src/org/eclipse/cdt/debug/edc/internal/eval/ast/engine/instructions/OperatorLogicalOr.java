@@ -55,7 +55,8 @@ public class OperatorLogicalOr extends BinaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getIntResult(int leftOperand, int rightOperand) throws CoreException {
-		return false;
+		// as bools
+		return (leftOperand != 0) || (rightOperand != 0);
 	}
 
 	/**
@@ -70,7 +71,8 @@ public class OperatorLogicalOr extends BinaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getLongResult(long leftOperand, long rightOperand) throws CoreException {
-		return false;
+		// as bools
+		return (leftOperand != 0) || (rightOperand != 0);
 	}
 
 	/**
@@ -85,7 +87,8 @@ public class OperatorLogicalOr extends BinaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getBigIntegerResult(BigInteger leftOperand, BigInteger rightOperand) throws CoreException {
-		return false;
+		// as bools
+		return (leftOperand.signum() != 0) || (rightOperand.signum() != 0);
 	}
 
 	/**
@@ -99,7 +102,9 @@ public class OperatorLogicalOr extends BinaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getFloatResult(float leftOperand, float rightOperand) {
-		return false;
+		// as bools
+		return (leftOperand != 0) || (rightOperand != 0);
+
 	}
 
 	/**
@@ -113,7 +118,8 @@ public class OperatorLogicalOr extends BinaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getDoubleResult(double leftOperand, double rightOperand) {
-		return false;
+		// as bools
+		return (leftOperand != 0) || (rightOperand != 0);
 	}
 
 	/**
@@ -143,7 +149,8 @@ public class OperatorLogicalOr extends BinaryLogicalOperator {
 	 */
 	@Override
 	protected boolean getStringResult(String leftOperand, String rightOperand) throws CoreException {
-		return false;
+		// address or
+		return true;
 	}
 
 }

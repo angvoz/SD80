@@ -35,7 +35,7 @@ public class PushBoolean extends SimpleInstruction {
 	 */
 	@Override
 	public void execute() {
-		pushNewValue(fValue);
+		pushNewValue(fInterpreter.getTypeEngine().getBooleanType(4), fValue);
 	}
 
 	/**

@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,16 +54,16 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	 * This represents a forward type reference, which is a type
 	 * that resolves itself when referenced.
 	 */
-	static class ForwardTypeReference implements IType, IForwardTypeReference {
+	static public class ForwardTypeReference implements IType, IForwardTypeReference {
 
-		static final IType NULL_TYPE_ENTRY = new IType() {
+		static public final IType NULL_TYPE_ENTRY = new IType() {
 
 			public int getByteSize() {
 				return 0;
 			}
 
 			public String getName() {
-				return "<<unhandled type>>";
+				return DwarfMessages.DwarfDebugInfoProvider_UnhandledType;
 			}
 
 			public Map<Object, Object> getProperties() {
@@ -637,7 +638,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			if (attr != null) {
 				return attr.getValueAsString();
 			}
-			return "";
+			return ""; //$NON-NLS-1$
 		}
 
 		public byte[] getAttributeValueAsBytes(short attributeName) {
@@ -690,6 +691,12 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	// just add the compile unit offset into the .debug_info section.
 	protected Map<Long, AttributeList> functionsByOffset = new HashMap<Long, AttributeList>();
 	protected Map<Long, IType> typesByOffset = new HashMap<Long, IType>();
+
+	// for casting to a type, keep certain types by name
+	protected Map<String, List<IType>> typesByName = new HashMap<String, List<IType>>();
+	// for casting to a type, track whether the cast name includes an aggregate designator
+	enum TypeAggregate { Class, Struct, Union, None };
+
 	// map of entities which created scopes
 	protected Map<Long, Scope> scopesByOffset = new HashMap<Long, Scope>();
 	
@@ -743,7 +750,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	 */
 	@Override
 	public String toString() {
-		return "DWARF debug info provider for "+ symbolFilePath; //$NON-NLS-1$
+		return DwarfMessages.DwarfDebugInfoProvider_DwarfProviderFor + symbolFilePath;
 	}
 	
 	/* (non-Javadoc)
@@ -1048,11 +1055,13 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				type = typesByOffset.get(offset);
 				// may be unhandled currently
 				if (type == null) { 
-					EDCDebugger.getMessageLogger().logError("Not parsing type at " + Long.toHexString(offset_) + " in " + symbolFilePath, null);
+					EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfDebugInfoProvider_NotParsingType1 + Long.toHexString(offset_) +
+									DwarfMessages.DwarfDebugInfoProvider_NotParsingType2 + symbolFilePath, null);
 				}
 			} else {
 				// may be unhandled currently
-				EDCDebugger.getMessageLogger().logError("Cannot resolve compilation unit header for type at " + Long.toHexString(offset_) + " in " + symbolFilePath, null);
+				EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfDebugInfoProvider_CannotResolveCompUnit1 + Long.toHexString(offset_) +
+								DwarfMessages.DwarfDebugInfoProvider_CannotResolveCompUnit2 + symbolFilePath, null);
 			}
 		}
 		return type;
@@ -1143,7 +1152,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				try {
 					cie = reader.parseCommonInfoEntry(entry.ciePtr, entry.addressSize);
 				} catch (IOException e) {
-					EDCDebugger.getMessageLogger().logError("Failed to read CIE at " + entry.ciePtr, e);
+					EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfDebugInfoProvider_FailedToReadCIE + entry.ciePtr, e);
 				}
 				commonInfoEntries.put(entry.ciePtr, cie);
 			} else {
@@ -1160,6 +1169,52 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	 */
 	public IFrameRegisterProvider getFrameRegisterProvider() {
 		return frameRegisterProvider;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider#getTypesByName(java.lang.String)
+	 */
+	public Collection<IType> getTypesByName(String name) {
+		// is name has "struct", "class" or "union", search without that
+		name = name.trim();
+		
+		String baseName = name;
+		TypeAggregate aggregate = TypeAggregate.None;
+		
+		if (baseName.startsWith("class ")) { //$NON-NLS-1$
+			aggregate = TypeAggregate.Class;
+			baseName = baseName.replace("class ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+		} else if (baseName.startsWith("struct ")) { //$NON-NLS-1$
+			aggregate = TypeAggregate.Struct;
+			baseName = baseName.replace("struct ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+		} else if (baseName.startsWith("union ")) { //$NON-NLS-1$
+			aggregate = TypeAggregate.Union;
+			baseName = baseName.replace("union ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+		}
+		
+		Collection<IType> types = typesByName.get(baseName);
+		
+		if (types == null)
+			return new ArrayList<IType>(0);
+		
+		// make sure that the aggregate type matches as well as the name
+		if (aggregate == TypeAggregate.None)
+			return Collections.unmodifiableCollection(types);
+		
+		Iterator<IType> itr = types.iterator();
+		while (itr.hasNext()) {
+			IType nextType = itr.next();
+			if ((aggregate == TypeAggregate.Class  && !nextType.getName().contains("class ")) || //$NON-NLS-1$
+				(aggregate == TypeAggregate.Struct && !nextType.getName().contains("struct ")) || //$NON-NLS-1$
+			    (aggregate == TypeAggregate.Union  && !nextType.getName().contains("union "))) //$NON-NLS-1$
+				types.remove(nextType);
+		}
+
+		if (types.isEmpty())
+			return new ArrayList<IType>(0);
+		
+		return Collections.unmodifiableCollection(types);
 	}
 
 }

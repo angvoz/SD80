@@ -318,16 +318,72 @@ public class TestUtils {
 		return contextHolder[0];
 	}
 
+	/**
+	 * Get only the formatted value of an expression.
+	 * @param session
+	 * @param frame
+	 * @param expr
+	 * @return
+	 * @throws Exception
+	 * @throws ExecutionException
+	 */
 	public static String getExpressionValue(final DsfSession session, final IDMContext frame, final String expr)
 			throws Exception, ExecutionException {
 
-		Query<String> runnable = new Query<String>() {
+		ExpressionDMC expression = getExpressionDMC(session, frame, expr);
+		String formatted = getFormattedExpressionValue(session, frame, expression);
+		
+		return formatted;
+	}
+	
+	/**
+	 * Get an evaluated expression context.
+	 * @param session
+	 * @param frame
+	 * @param expr
+	 * @return
+	 * @throws Exception
+	 * @throws ExecutionException
+	 */
+	public static ExpressionDMC getExpressionDMC(final DsfSession session, final IDMContext frame, final String expr)
+		throws Exception, ExecutionException {
+		
+		Query<ExpressionDMC> runnable = new Query<ExpressionDMC>() {
+			
+			@Override
+			protected void execute(DataRequestMonitor<ExpressionDMC> rm) {
+				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
+				Expressions expressionsService = servicesTracker.getService(Expressions.class);
+				ExpressionDMC expression = (ExpressionDMC) expressionsService.createExpression(frame, expr);
+				expression.evaluateExpression();
+				rm.setData(expression);
+				rm.done();
+			}
+		};
+		
+		session.getExecutor().execute(runnable);
+		
+		return runnable.get();
+	}
 
+	/**
+	 * Get the formatted string value of an expression context.
+	 * @param session
+	 * @param frame
+	 * @param expression
+	 * @return
+	 * @throws Exception
+	 * @throws ExecutionException
+	 */
+	public static String getFormattedExpressionValue(final DsfSession session, final IDMContext frame, final ExpressionDMC expression)
+		throws Exception, ExecutionException {
+		
+		Query<String> runnable = new Query<String>() {
+		
 			@Override
 			protected void execute(DataRequestMonitor<String> rm) {
 				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
 				Expressions expressionsService = servicesTracker.getService(Expressions.class);
-				ExpressionDMC expression = (ExpressionDMC) expressionsService.createExpression(frame, expr);
 				FormattedValueDMContext fvc = expressionsService.getFormattedValueContext(expression,
 						IFormattedValues.NATURAL_FORMAT);
 				FormattedValueDMData formattedValue = expression.getFormattedValue(fvc);
@@ -355,9 +411,9 @@ public class TestUtils {
 				rm.done();
 			}
 		};
-
+		
 		session.getExecutor().execute(runnable);
-
+		
 		return runnable.get();
 	}
 

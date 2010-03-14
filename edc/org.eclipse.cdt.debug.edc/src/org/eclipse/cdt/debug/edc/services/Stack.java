@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.services;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -34,6 +35,7 @@ import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
+import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
@@ -140,10 +142,18 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
     	
     	public BigInteger getRegister(int regnum, int bytes) throws CoreException {
     		String value = registers.getRegisterValue(executionDMC, regnum);
-    		if (value.equals(Registers.REGISTER_VALUE_ERROR))
+    		if (value == null || value.equals(Registers.REGISTER_VALUE_ERROR))
     			throw EDCDebugger.newCoreException("failed to read register");
     		return new BigInteger(value, 16);
     	}
+
+		public void writeRegister(int regnum, int bytes, BigInteger value) throws CoreException {
+			String id = registers.getRegisterNameFromCommonID(regnum);
+			if (id != null)
+				registers.writeRegister(executionDMC, id, value.toString(16));
+			else
+				throw EDCDebugger.newCoreException(MessageFormat.format("could not find register number {0}", regnum));
+		}
     }
     
     /**
@@ -176,13 +186,22 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			}
 			throw EDCDebugger.newCoreException("cannot read $R" + regnum + " from frame");
 		}
+
+		public void writeRegister(int regnum, int bytes, BigInteger value) throws CoreException {
+			BigInteger addrVal = preservedRegisters.get(regnum);
+			if (addrVal != null) {
+				MemoryVariableLocation location = new MemoryVariableLocation(
+						dsfServicesTracker, context, 
+						addrVal, true);
+				location.writeValue(bytes, value);
+			}
+		}
 	}
 
 	/**
 	 * Frame registers which always throws an exception.
 	 */
-	public static class AlwaysFailingFrameRegisters implements
-			IFrameRegisters {
+	public static class AlwaysFailingFrameRegisters implements IFrameRegisters {
 		private final CoreException e;
 
 		public AlwaysFailingFrameRegisters(CoreException e) {
@@ -190,6 +209,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 
 		public BigInteger getRegister(int regnum, int bytes) throws CoreException {
+			throw e;
+		}
+
+		public void writeRegister(int regnum, int bytes, BigInteger value)
+				throws CoreException {
 			throw e;
 		}
 	}
@@ -244,6 +268,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private IFunctionScope functionScope;
 		private IFrameRegisters frameRegisters;
 		public StackFrameDMC calledFrame;
+		private TypeEngine typeEngine = new TypeEngine(dsfServicesTracker);
 
 		public StackFrameDMC(final IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
 			super(Stack.this, new IDMContext[] { executionDMC }, frameProperties);
@@ -636,6 +661,14 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		public StackFrameDMC getCalledFrame() throws CoreException {
 			return calledFrame;
 		}
+
+		/**
+		 * Get a type engine (which holds cached information about types for use by expressions)
+		 * @return ASTTypeEngine instance
+		 */
+		public TypeEngine getTypeEngine() {
+			return typeEngine;
+		}
 	}
 
 	public class VariableData implements IVariableDMData {
@@ -791,8 +824,14 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			updateFrames(context);
 		synchronized (stackFrames) {
 			List<StackFrameDMC> frames = stackFrames.get(context.getID());
-			if (endIndex >= startIndex && endIndex - startIndex + 1 < frames.size())
-				frames = frames.subList(startIndex, endIndex + 1);
+			// endIndex is inclusive and may be negative to fetch all frames
+			if (endIndex >= 0) {
+				if (startIndex < frames.size() && startIndex <= endIndex) {
+					frames = frames.subList(startIndex, Math.min(endIndex + 1, frames.size()));
+				} else {
+					frames = Collections.emptyList();
+				}
+			}
 			IFrameDMContext[] result = frames.toArray(new IFrameDMContext[frames.size()]);
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, result);
 			return result;

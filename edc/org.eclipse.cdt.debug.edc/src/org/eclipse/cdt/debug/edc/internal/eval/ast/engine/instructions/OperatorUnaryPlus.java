@@ -12,6 +12,8 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -129,7 +131,7 @@ public class OperatorUnaryPlus extends UnaryOperator {
 	 */
 	@Override
 	protected String getStringResult(String operand) throws CoreException {
-		return null;
+		throw EDCDebugger.newCoreException(ASTEvalMessages.UnsupportedStringOperation);
 	}
 
 }

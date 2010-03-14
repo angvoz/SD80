@@ -16,8 +16,7 @@ import org.eclipse.cdt.debug.edc.symbols.IScope;
 
 public class ReferenceType extends Type implements IReferenceType {
 	
-	public ReferenceType(String name, IScope scope, Map<Object, Object> properties) {
-		super(name, scope, 0, properties);
+	public ReferenceType(String name, IScope scope, int byteSize, Map<Object, Object> properties) {
+		super(name, scope, byteSize, properties);
 	}
-
 }

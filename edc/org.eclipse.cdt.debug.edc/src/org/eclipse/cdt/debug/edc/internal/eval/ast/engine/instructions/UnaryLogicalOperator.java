@@ -12,7 +12,9 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -51,46 +53,39 @@ public abstract class UnaryLogicalOperator extends CompoundInstruction {
 	 */
 	@Override
 	public void execute() throws CoreException {
-		Object operand = popValue();
-
-		if (operand == null)
-			return;
-
-		if (operand instanceof InvalidExpression) {
-			push(operand);
-			return;
-		}
+		OperandValue operand = popValue();
 
 		operand = convertForPromotion(operand);
 
 		// change chars/shorts to int, etc.
-		int promotedType = getBinaryPromotionType(operand, operand);
-
-		// let others convert the type to the string "bool", "_Bool", etc.
-		this.setValueType(ASTEvaluationEngine.UNKNOWN_TYPE);
-
-		switch (promotedType) {
+		int resultType = getJavaBinaryPromotionType(operand, operand);
+		IType type = fInterpreter.getTypeEngine().getBooleanType(1);
+		
+		switch (resultType) {
 		case T_String:
-			pushNewValue(getStringResult(GetValue.getStringValue(operand)));
+			pushNewValue(type, getStringResult(GetValue.getStringValue(operand)));
 			break;
 		case T_double:
-			pushNewValue(getDoubleResult(GetValue.getDoubleValue(operand)));
+			pushNewValue(type, getDoubleResult(GetValue.getDoubleValue(operand)));
 			break;
 		case T_float:
-			pushNewValue(getFloatResult(GetValue.getFloatValue(operand)));
+			pushNewValue(type, getFloatResult(GetValue.getFloatValue(operand)));
 			break;
 		case T_long:
-			pushNewValue(getLongResult(GetValue.getLongValue(operand)));
+			pushNewValue(type, getLongResult(GetValue.getLongValue(operand)));
 			break;
 		case T_int:
-			pushNewValue(getIntResult(GetValue.getIntValue(operand)));
+			pushNewValue(type, getIntResult(GetValue.getIntValue(operand)));
 			break;
 		case T_boolean:
-			pushNewValue(getBooleanResult(GetValue.getBooleanValue(operand)));
+			pushNewValue(type, getBooleanResult(GetValue.getBooleanValue(operand)));
 			break;
 		case T_BigInt:
-			pushNewValue(getBigIntegerResult(GetValue.getBigIntegerValue(operand)));
+			pushNewValue(type, getBigIntegerResult(GetValue.getBigIntegerValue(operand)));
 			break;
+		default:
+			throw EDCDebugger.newCoreException(ASTEvalMessages.UnhandledTypeCode + resultType);
+
 		}
 	}
 

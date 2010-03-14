@@ -276,7 +276,7 @@ public class DwarfInfoReader {
 				
 				if (entry != null) {
 					String baseName = name;
-					int baseStart = name.lastIndexOf("::");
+					int baseStart = name.lastIndexOf("::"); //$NON-NLS-1$
 					if (baseStart != -1)
 						baseName = name.substring(baseStart + 2);
 
@@ -1443,7 +1443,7 @@ public class DwarfInfoReader {
 				System.out.print("Read type " + type.getName());
 				while (type.getType() != null) {
 					type = type.getType();
-					System.out.print(" " + type.getName());
+					System.out.print(" " + type.getName()); //$NON-NLS-1$
 				}
 				System.out.println();
 			}
@@ -1934,6 +1934,7 @@ public class DwarfInfoReader {
 		ClassType type = new ClassType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
+		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 	
@@ -1946,6 +1947,7 @@ public class DwarfInfoReader {
 		StructType type = new StructType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
+		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
@@ -1958,6 +1960,7 @@ public class DwarfInfoReader {
 		UnionType type = new UnionType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
+		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
@@ -2069,9 +2072,9 @@ public class DwarfInfoReader {
 		// Empty fields confuse the expressions service (#10369)
 		if (name.length() == 0) {
 			if (compositeType != null) {
-				name = "$unnamed$" + (compositeType.fieldCount() + 1);
+				name = "$unnamed$" + (compositeType.fieldCount() + 1); //$NON-NLS-1$
 			} else {
-				name = "$unnamed$";
+				name = "$unnamed$"; //$NON-NLS-1$
 			}
 		}
 
@@ -2156,8 +2159,12 @@ public class DwarfInfoReader {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
 
-		ReferenceType type = new ReferenceType(name, currentParentScope, null);
+		if (byteSize == 0)
+			byteSize = currentCUHeader.addressSize;
+		
+		ReferenceType type = new ReferenceType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
@@ -2169,9 +2176,13 @@ public class DwarfInfoReader {
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
 		
+		if (byteSize == 0)
+			byteSize = currentCUHeader.addressSize;
+		
 		PointerType type = new PointerType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
+		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
@@ -2202,6 +2213,7 @@ public class DwarfInfoReader {
 		Enumeration type = new Enumeration(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
+		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
@@ -2240,6 +2252,7 @@ public class DwarfInfoReader {
 		TypedefType type = new TypedefType(name, currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
+		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
@@ -2258,23 +2271,23 @@ public class DwarfInfoReader {
 			baseType = ICPPBasicType.t_bool;
 			break;
 		case DwarfConstants.DW_ATE_float:
-			if (name.contains("float")) {
+			if (name.contains("float")) { //$NON-NLS-1$
 				baseType = IBasicType.t_float;
-			} else if (name.contains("long double")) {
+			} else if (name.contains("long double")) { //$NON-NLS-1$
 				baseType = IBasicType.t_double;
 				qualifierBits |= ICPPBasicType.IS_LONG;
-			} else if (name.contains("double")) {
+			} else if (name.contains("double")) { //$NON-NLS-1$
 				baseType = IBasicType.t_double;
 			}
 			break;
 		case DwarfConstants.DW_ATE_signed:
 			baseType = IBasicType.t_int;
 			qualifierBits |= ICPPBasicType.IS_SIGNED;
-			if (name.contains("short")) {
+			if (name.contains("short")) { //$NON-NLS-1$
 				qualifierBits |= ICPPBasicType.IS_SHORT;
-			} else if (name.contains("long long")) {
+			} else if (name.contains("long long")) { //$NON-NLS-1$
 				qualifierBits |= ICPPBasicType.IS_LONG_LONG;
-			} else if (name.contains("long")) {
+			} else if (name.contains("long")) { //$NON-NLS-1$
 				qualifierBits |= ICPPBasicType.IS_LONG;
 			}
 			break;
@@ -2285,11 +2298,11 @@ public class DwarfInfoReader {
 		case DwarfConstants.DW_ATE_unsigned:
 			baseType = IBasicType.t_int;
 			qualifierBits |= ICPPBasicType.IS_UNSIGNED;
-			if (name.contains("short")) {
+			if (name.contains("short")) { //$NON-NLS-1$
 				qualifierBits |= ICPPBasicType.IS_SHORT;
-			} else if (name.contains("long long")) {
+			} else if (name.contains("long long")) { //$NON-NLS-1$
 				qualifierBits |= ICPPBasicType.IS_LONG_LONG;
-			} else if (name.contains("long")) {
+			} else if (name.contains("long")) { //$NON-NLS-1$
 				qualifierBits |= ICPPBasicType.IS_LONG;
 			}
 			break;
@@ -2299,23 +2312,23 @@ public class DwarfInfoReader {
 			break;
 		case DwarfConstants.DW_ATE_complex_float:
 			qualifierBits |= ICPPBasicType.IS_COMPLEX;
-			if (name.contains("float")) {
+			if (name.contains("float")) { //$NON-NLS-1$
 				baseType = IBasicType.t_float;
-			} else if (name.contains("long double")) {
+			} else if (name.contains("long double")) { //$NON-NLS-1$
 				baseType = IBasicType.t_double;
 				qualifierBits |= ICPPBasicType.IS_LONG;
-			} else if (name.contains("double")) {
+			} else if (name.contains("double")) { //$NON-NLS-1$
 				baseType = IBasicType.t_double;
 			}
 			break;
 		case DwarfConstants.DW_ATE_imaginary_float:
 			qualifierBits |= ICPPBasicType.IS_IMAGINARY;
-			if (name.contains("float")) {
+			if (name.contains("float")) { //$NON-NLS-1$
 				baseType = IBasicType.t_float;
-			} else if (name.contains("long double")) {
+			} else if (name.contains("long double")) { //$NON-NLS-1$
 				baseType = IBasicType.t_double;
 				qualifierBits |= ICPPBasicType.IS_LONG;
-			} else if (name.contains("double")) {
+			} else if (name.contains("double")) { //$NON-NLS-1$
 				baseType = IBasicType.t_double;
 			}
 			break;
@@ -2332,10 +2345,15 @@ public class DwarfInfoReader {
 		default:
 			break;
 		}
-
+		
+		// RVCT has interesting conceptions about "encoding" here.  Be sure not to get confused later.
+		if (name.equals("void") && byteSize == 0) //$NON-NLS-1$
+			baseType = IBasicType.t_void;
+		
 		CPPBasicType type = new CPPBasicType(name, currentParentScope, baseType, qualifierBits, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type);
+		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
@@ -2603,5 +2621,17 @@ public class DwarfInfoReader {
 		
 		return new CommonInformationEntry(codeAlignmentFactor, dataAlignmentFactor, 
 				returnAddressRegister, version, instructions, addressSize);
+	}
+	
+	private void storeTypeByName(String name, IType type) {
+		if (name.length() == 0)
+			return;
+
+		List<IType> typeList = provider.typesByName.get(name);
+		if (typeList == null) {
+			typeList = new ArrayList<IType>();
+			provider.typesByName.put(name, typeList);
+		}
+		typeList.add(type);
 	}
 }

@@ -12,9 +12,11 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.symbols.IRegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -25,11 +27,17 @@ public class RegisterVariableLocation implements IRegisterVariableLocation {
 	protected String name;
 	protected int id;
 	protected final IDMContext context;
+	protected final DsfServicesTracker tracker;
 
-	public RegisterVariableLocation(IDMContext context, String name, int id) {
+	public RegisterVariableLocation(DsfServicesTracker tracker, IDMContext context, String name, int id) {
+		this.tracker = tracker;
 		this.context = context;
 		this.name = name;
 		this.id = id;
+		if (name == null) {
+			Registers registerservice = tracker.getService(Registers.class);
+			this.name = registerservice.getRegisterNameFromCommonID(getRegisterID());
+		} 
 	}
 	
 	/* (non-Javadoc)
@@ -61,17 +69,27 @@ public class RegisterVariableLocation implements IRegisterVariableLocation {
 	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#addOffset(long)
 	 */
 	public IVariableLocation addOffset(long offset) {
-		return new RegisterOffsetVariableLocation(context, name, id, offset);
+		return new RegisterOffsetVariableLocation(tracker, context, name, id, offset);
 	}
 
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getLocationName(org.eclipse.cdt.dsf.service.DsfServicesTracker)
 	 */
-	public String getLocationName(DsfServicesTracker servicesTracker) {
-		if (getRegisterName() == null) {
-			Registers registerservice = servicesTracker.getService(Registers.class);
-			return "$" + registerservice.getRegisterNameFromCommonID(getRegisterID()); //$NON-NLS-1$
-		} else
-			return "$" + getRegisterName(); //$NON-NLS-1$
+	public String getLocationName() {
+		return "$" + getRegisterName(); //$NON-NLS-1$
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getAddress()
+	 */
+	public IAddress getAddress() {
+		return null;
+	}
+
+	public void writeValue(int bytes, BigInteger value) throws CoreException {
+		if (context instanceof StackFrameDMC)
+			((StackFrameDMC)context).getFrameRegisters().writeRegister(id, bytes, value);
+		else
+			throw EDCDebugger.newCoreException("cannot write register without frame");
 	}
 }

@@ -24,5 +24,12 @@ public class TypedefType extends MayBeQualifiedType implements ITypedef {
 	public String getName() {
 		return name;
 	}
-
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.Type#getByteSize()
+	 */
+	@Override
+	public int getByteSize() {
+		return updateByteSizeFromSubType();
+	}
 }

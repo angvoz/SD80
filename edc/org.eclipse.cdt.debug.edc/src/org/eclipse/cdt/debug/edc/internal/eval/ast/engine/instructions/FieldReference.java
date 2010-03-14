@@ -10,11 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
-import java.math.BigInteger;
 import java.text.MessageFormat;
 
-import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
@@ -23,11 +22,10 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
-import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
-import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.cdt.debug.edc.symbols.VariableLocationFactory;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -58,56 +56,22 @@ public class FieldReference extends CompoundInstruction {
 	@Override
 	public void execute() throws CoreException {
 		// pop the structure variable at the start of the field references
-		Object operand = popValue();
+		OperandValue operand = popValue();
 
 		if (operand == null)
 			return;
 
-		if (operand instanceof InvalidExpression) {
-			push(operand);
-			return;
-		}
+		IType variableType = TypeUtils.getStrippedType(operand.getValueType());
 
-		if (!(operand instanceof VariableWithValue) || ((VariableWithValue) operand).getVariable() == null) {
-			push(new Long(0));
-			return;
-		}
-
-		VariableWithValue variableWithValue = (VariableWithValue) operand;
-		IType variableType = TypeUtils.getStrippedType(variableWithValue.getVariable().getType());
-
-		Object location = null;
-
+		IVariableLocation location = null;
 		boolean referenceType = variableType instanceof IReferenceType;
 
 		if (refExpression.isPointerDereference()) {
 			// '->' operator requires a pointer type
 			boolean validPointerType = variableType instanceof IPointerType;
 			
-			if (validPointerType) {
-				Object value = variableWithValue.getValue();
-				
-				if (value instanceof Long)
-					variableWithValue.setValue(new BigInteger(((Long) value).toString()));
-				else if (value instanceof Integer)
-					variableWithValue.setValue(new BigInteger(((Integer) value).toString()));
-			
-				validPointerType = variableWithValue.getValue() instanceof BigInteger ||
-								variableWithValue.getValue() instanceof IAddress;
-			}
-			
 			if (!validPointerType) {
-				IInvalidExpression invalidExpression = null;
-				if (variableWithValue.getValue() instanceof IInvalidExpression)
-					invalidExpression = (IInvalidExpression) variableWithValue.getValue();
-				else
-					invalidExpression = new InvalidExpression(
-						ASTEvalMessages.FieldReference_InvalidPointerDeref);
-				push(invalidExpression);
-				setLastValue(invalidExpression);
-				setValueLocation(""); //$NON-NLS-1$
-				setValueType(""); //$NON-NLS-1$
-				return;
+				throw EDCDebugger.newCoreException(ASTEvalMessages.FieldReference_InvalidPointerDeref);
 			}
 
 			IPointerType pointer = (IPointerType) variableType;
@@ -116,28 +80,6 @@ public class FieldReference extends CompoundInstruction {
 			variableType = TypeUtils.getStrippedType(pointedTo);
 		} else if (referenceType) {
 			// '.' may be used with a reference "&" type
-			Object value = variableWithValue.getValue();
-			
-			if (value instanceof Long)
-				variableWithValue.setValue(new BigInteger(((Long) value).toString()));
-			else if (value instanceof Integer)
-				variableWithValue.setValue(new BigInteger(((Integer) value).toString()));
-			
-			if (   !(variableWithValue.getValue() instanceof BigInteger)
-				&& !(variableWithValue.getValue() instanceof IAddress)) {
-				IInvalidExpression invalidExpression = null;
-				if (variableWithValue.getValue() instanceof IInvalidExpression)
-					invalidExpression = (IInvalidExpression) variableWithValue.getValue();
-				else
-					invalidExpression = new InvalidExpression(
-						ASTEvalMessages.FieldReference_InvalidDotDeref);
-				push(invalidExpression);
-				setLastValue(invalidExpression);
-				setValueLocation(""); //$NON-NLS-1$
-				setValueType(""); //$NON-NLS-1$
-				return;
-			}
-
 			IReferenceType pointer = (IReferenceType) variableType;
 
 			IType pointedTo = pointer.getType();
@@ -145,13 +87,7 @@ public class FieldReference extends CompoundInstruction {
 		}
 
 		if (!TypeUtils.isCompositeType(variableType)) {
-			InvalidExpression invalidExpression = new InvalidExpression(
-					ASTEvalMessages.FieldReference_InvalidDotDeref);
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
+			throw EDCDebugger.newCoreException(ASTEvalMessages.FieldReference_InvalidDotDeref);
 		}
 
 		// get the field/member
@@ -160,25 +96,14 @@ public class FieldReference extends CompoundInstruction {
 		IField[] fields = compositeType.findFields(fieldName);
 
 		if (fields == null) {
-			InvalidExpression invalidExpression =
-				new InvalidExpression(MessageFormat.format(ASTEvalMessages.FieldReference_InvalidMember, fieldName));
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
+			throw EDCDebugger.newCoreException(
+					MessageFormat.format(ASTEvalMessages.FieldReference_InvalidMember, fieldName));
 		}
 		
 		if (fields.length > 1) {
-			InvalidExpression invalidExpression =
-				new InvalidExpression(MessageFormat.format(
-						ASTEvalMessages.FieldReference_AmbiguousMember, fieldName,
-						variableWithValue.getVariable().getName()));
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
+			throw EDCDebugger.newCoreException(
+					MessageFormat.format(ASTEvalMessages.FieldReference_AmbiguousMember, fieldName,
+						operand.getValueType().getName()));
 		}
 		
 		// type and address of the field
@@ -188,30 +113,17 @@ public class FieldReference extends CompoundInstruction {
 		if (   refExpression.isPointerDereference()
 			|| (!refExpression.isPointerDereference() && referenceType)) {
 			// pointer with '->' operator, or reference with '.' 
-			if (variableWithValue.getValue() instanceof BigInteger) {
-				location = new Addr64((BigInteger) variableWithValue.getValue());
-			} else {
-				location = variableWithValue.getValue();
-			}
+			location = VariableLocationFactory.createMemoryVariableLocation(
+					fInterpreter.getServicesTracker(), fInterpreter.getContext(),
+					operand.getValue());
 		} else {
 			// '.' operator
-			location = variableWithValue.getValueLocation();
+			location = operand.getValueLocation();
 		}
 
-		if (location instanceof IAddress)
-			location = ((IAddress) location).add(field.getFieldOffset());
-		else if (location instanceof IVariableLocation)
-			location = ((IVariableLocation) location).addOffset(field.getFieldOffset());
-		else
-			assert(false);
+		location = location.addOffset(field.getFieldOffset());
 		
-		setValueType(typeOfField);
-		setValueLocation(location);
-
-		// create a skeletal VariableWithValue for the result
-		Variable variable = new Variable(field.getName(), variableWithValue.getVariable().getScope(), typeOfField, null);
-		VariableWithValue varValue = new VariableWithValue(variableWithValue.getServicesTracker(), variableWithValue
-				.getFrame(), variable, field.getBitSize() > 0);
+		OperandValue varValue = new OperandValue(typeOfField, field.getBitSize() > 0);
 
 		typeOfField = TypeUtils.getStrippedType(typeOfField);
 
@@ -224,12 +136,11 @@ public class FieldReference extends CompoundInstruction {
 			// TODO support 12-byte long double
 			if (byteSize != 1 && byteSize != 2 && byteSize != 4 && byteSize != 8 &&
 				!(typeOfField instanceof IPointerType && byteSize == 0)) {
-				pushNewValue(new Long(0));
-				return;
+				throw EDCDebugger.newCoreException(ASTEvalMessages.FieldReference_UnhandledOperandSize + byteSize);
 			}
 
 			// read the value pointed to
-			Object newValue = varValue.getValueByType(typeOfField, location);
+			Number newValue = varValue.getValueByType(typeOfField, location);
 
 			// if this is a bit-field, then mask and/or extend the value
 			// appropriately
@@ -253,12 +164,11 @@ public class FieldReference extends CompoundInstruction {
 		} else if (typeOfField instanceof IAggregate) {
 			// for aggregates, the address of the aggregate is the value
 			// returned
-			varValue.setValue(location);
+			varValue.setAddressValue(location);
 			varValue.setValueLocation(location);
 
 		} else {
-			pushNewValue(new Long(0));
-			return;
+			throw EDCDebugger.newCoreException(ASTEvalMessages.FieldReference_CannotDereferenceType);
 		}
 
 		push(varValue);

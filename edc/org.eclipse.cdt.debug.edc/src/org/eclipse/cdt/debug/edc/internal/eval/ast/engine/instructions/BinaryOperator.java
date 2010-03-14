@@ -12,7 +12,11 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.math.BigInteger;
 
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
+import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.core.runtime.CoreException;
 
 /*
@@ -41,55 +45,63 @@ public abstract class BinaryOperator extends CompoundInstruction {
 	 */
 	@Override
 	public void execute() throws CoreException {
-		Object right = popValue();
-		Object left = popValue();
-
-		if (right == null || left == null)
-			return;
-
-		if (right instanceof InvalidExpression) {
-			push(right);
-			return;
-		}
-
-		if (left instanceof InvalidExpression) {
-			push(left);
-			return;
-		}
+		OperandValue right = popValue();
+		OperandValue left = popValue();
 
 		right = convertForPromotion(right);
 		left = convertForPromotion(left);
 
-		// let others convert the type to the string "bool", "int", etc.
-		this.setValueType(ASTEvaluationEngine.UNKNOWN_TYPE);
+		if (customHandleOperation(fInterpreter, left, right))
+			return;
 
-		int resultType = getBinaryPromotionType(right, left);
+		int resultType = getJavaBinaryPromotionType(right, left);
+		IType type;
+		if (resultType == T_String)
+			type = left.getValueType();
+		else
+			type = getBinaryPromotionType(right, left);
+		
+		// non-logical operations on booleans are int results
+		if ((type instanceof ICPPBasicType) && ((ICPPBasicType) type).getBaseType() == ICPPBasicType.t_bool) {
+			type = fInterpreter.getTypeEngine().getIntegerTypeFor(TypeUtils.BASIC_TYPE_INT, true);
+		}
 
 		switch (resultType) {
 		case T_String:
-			pushNewValue(getStringResult(GetValue.getStringValue(left), GetValue.getStringValue(right)));
+			pushNewValue(type, getStringResult(GetValue.getStringValue(left), GetValue.getStringValue(right)));
 			break;
 		case T_double:
-			pushNewValue(getDoubleResult(GetValue.getDoubleValue(left), GetValue.getDoubleValue(right)));
+			pushNewValue(type, getDoubleResult(GetValue.getDoubleValue(left), GetValue.getDoubleValue(right)));
 			break;
 		case T_float:
-			pushNewValue(getFloatResult(GetValue.getFloatValue(left), GetValue.getFloatValue(right)));
+			pushNewValue(type, getFloatResult(GetValue.getFloatValue(left), GetValue.getFloatValue(right)));
 			break;
 		case T_long:
-			pushNewValue(getLongResult(GetValue.getLongValue(left), GetValue.getLongValue(right)));
+			pushNewValue(type, getLongResult(GetValue.getLongValue(left), GetValue.getLongValue(right)));
 			break;
 		case T_int:
-			pushNewValue(getIntResult(GetValue.getIntValue(left), GetValue.getIntValue(right)));
+			pushNewValue(type, getIntResult(GetValue.getIntValue(left), GetValue.getIntValue(right)));
 			break;
 		case T_boolean:
-			pushNewValue(getBooleanResult(GetValue.getBooleanValue(left), GetValue.getBooleanValue(right)));
+			pushNewValue(type, getBooleanResult(GetValue.getBooleanValue(left), GetValue.getBooleanValue(right)));
 			break;
 		case T_BigInt:
-			// TODO: get the length of a long long rather than using hard-coded
-			// 8
-			pushNewValue(getBigIntegerResult(GetValue.getBigIntegerValue(left), GetValue.getBigIntegerValue(right), 8));
+			pushNewValue(type, getBigIntegerResult(GetValue.getBigIntegerValue(left), GetValue.getBigIntegerValue(right), 8));
 			break;
+		default:
+			throw EDCDebugger.newCoreException(ASTEvalMessages.UnhandledTypeCode + resultType);
 		}
+	}
+
+	/**
+	 * Handle type operation in a non-standard way
+	 * @param fInterpreter
+	 * @param left
+	 * @param right
+	 * @return true if handled
+	 */
+	protected boolean customHandleOperation(Interpreter fInterpreter, OperandValue left, OperandValue right) throws CoreException {
+		return false;
 	}
 
 	/**
@@ -171,7 +183,8 @@ public abstract class BinaryOperator extends CompoundInstruction {
 	protected abstract boolean getBooleanResult(boolean leftOperand, boolean rightOperand);
 
 	/**
-	 * Get string result of applying a binary operation to two strings
+	 * Get string result of applying a binary operation to two strings.
+	 * Default implementation throws.
 	 * 
 	 * @param leftOperand
 	 *            - left string operand
@@ -181,6 +194,8 @@ public abstract class BinaryOperator extends CompoundInstruction {
 	 *         operation-specific default
 	 * @throws CoreException
 	 */
-	protected abstract String getStringResult(String leftOperand, String rightOperand) throws CoreException;
+	protected String getStringResult(String leftOperand, String rightOperand) throws CoreException {
+		throw EDCDebugger.newCoreException(ASTEvalMessages.UnsupportedStringOperation);
+	}
 
 }

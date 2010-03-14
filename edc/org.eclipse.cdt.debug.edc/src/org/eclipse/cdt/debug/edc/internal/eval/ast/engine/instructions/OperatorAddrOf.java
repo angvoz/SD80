@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation;
@@ -38,56 +39,32 @@ public class OperatorAddrOf extends CompoundInstruction {
 	 */
 	@Override
 	public void execute() throws CoreException {
-		Object operand = popValue();
+		OperandValue operand = popValue();
 
-		if (operand == null)
-			return;
-
-		if (operand instanceof InvalidExpression) {
-			push(operand);
-			return;
+		// only allow address of an lvalue
+		if (operand.getValueLocation() == null) {
+			throw EDCDebugger.newCoreException(ASTEvalMessages.OperatorAddrOf_RequiresVariable);
 		}
 
-		// only allow address of a variable
-		if (!(operand instanceof VariableWithValue) || ((VariableWithValue) operand).getVariable() == null) {
-			InvalidExpression invalidExpression = new InvalidExpression(ASTEvalMessages.OperatorAddrOf_RequiresVariable);
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
-		}
-
-		VariableWithValue variableWithValue = (VariableWithValue) operand;
-		operand = variableWithValue.getValue();
-		IType subType = variableWithValue.getVariable().getType();
+		IType subType = operand.getValueType();
 
 		// do not allow a variable that is in a register
-		if (variableWithValue.getValueLocation() instanceof RegisterVariableLocation) {
-			InvalidExpression invalidExpression = new InvalidExpression(ASTEvalMessages.OperatorAddrOf_NoRegister);
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
+		if (operand.getValueLocation() instanceof RegisterVariableLocation) {
+			throw EDCDebugger.newCoreException(ASTEvalMessages.OperatorAddrOf_NoRegister);
 		}
 
 		// do not allow a bit-field
-		if (variableWithValue.isBitField()) {
-			InvalidExpression invalidExpression = new InvalidExpression(ASTEvalMessages.OperatorAddrOf_NoBitField);
-			push(invalidExpression);
-			setLastValue(invalidExpression);
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType(""); //$NON-NLS-1$
-			return;
+		if (operand.isBitField()) {
+			throw EDCDebugger.newCoreException(ASTEvalMessages.OperatorAddrOf_NoBitField);
 		}
 
 		PointerType pointer = new PointerType();
 		pointer.setType(subType);
 
-		setValueLocation(variableWithValue.getValueLocation());
-		setValueType(pointer);
-		push(operand);
+		OperandValue addr = new OperandValue(pointer);
+		addr.setValueLocation(operand.getValueLocation());
+		addr.setValue(operand.getValueLocationAddress());
+		push(addr);
 	}
 
 }

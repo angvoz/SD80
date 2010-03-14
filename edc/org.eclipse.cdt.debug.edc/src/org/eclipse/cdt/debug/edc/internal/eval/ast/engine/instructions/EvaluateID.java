@@ -16,8 +16,8 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
@@ -26,7 +26,9 @@ import org.eclipse.cdt.debug.edc.services.Stack.IVariableEnumeratorContext;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.services.Stack.VariableDMC;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
@@ -72,14 +74,14 @@ public class EvaluateID extends SimpleInstruction {
 	@Override
 	public void execute() throws CoreException {
 
-		Object context = getContext();
+		IDMContext context = getContext();
 
 		if (!(context instanceof StackFrameDMC))
-			return;
+			throw EDCDebugger.newCoreException(MessageFormat.format(ASTEvalMessages.EvaluateID_CannotResolveName, name));
 
 		StackFrameDMC frame = (StackFrameDMC) context;
 		DsfServicesTracker servicesTracker = frame.getDsfServicesTracker();
-		IEDCModules modules = servicesTracker.getService(Modules.class);
+		IEDCModules modules = servicesTracker.getService(IEDCModules.class);
 
 		// check by name for a variable or enumerator
 		IVariableEnumeratorContext variableOrEnumerator = frame.findVariableOrEnumeratorByName(name, false);
@@ -91,7 +93,7 @@ public class EvaluateID extends SimpleInstruction {
 		// This may be called on debugger shutdown, in which case the "modules" 
 		// service may have been shutdown.
 		if (variable != null && modules != null) {
-			Object valueLocation;
+			IVariableLocation valueLocation;
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getVariable().getLocationProvider();
 			IAddress pcValue = frame.getIPAddress();
@@ -99,10 +101,8 @@ public class EvaluateID extends SimpleInstruction {
 			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
 			if (valueLocation == null) {
 				// unhandled
-				valueLocation = new InvalidVariableLocation("no location found for " + variable.getName());
+				valueLocation = new InvalidVariableLocation(MessageFormat.format(ASTEvalMessages.EvaluateID_NameHasNoLocation, variable.getName()));
 			}
-			setValueLocation(valueLocation);
-			setValueType(variable.getVariable().getType());
 			// create a VariableWithValue and push on the stack
 			VariableWithValue varWval = new VariableWithValue(servicesTracker, frame, variable.getVariable());
 			varWval.setValueLocation(valueLocation);
@@ -111,19 +111,15 @@ public class EvaluateID extends SimpleInstruction {
 		}
 
 		if (enumerator != null) {
-			setValueLocation(""); //$NON-NLS-1$
-			setValueType("long"); //$NON-NLS-1$
-			push(new Long(enumerator.getEnumerator().getValue()));
+			// TODO: map IEnumerator to an IEnumeration and use the real type
+			pushNewValue(fInterpreter.getTypeEngine().getIntegerTypeOfSize(4, true), 
+					enumerator.getEnumerator().getValue());
 			return;
 		}
 
 		// did not find a variable or an enumerator to match the expression
-		InvalidExpression invalidExpression = new InvalidExpression(MessageFormat.format(ASTEvalMessages.EvaluateID_VariableNotFound, name));
-		push(invalidExpression);
-		setLastValue(invalidExpression);
-		setValueLocation(""); //$NON-NLS-1$
-		setValueType(""); //$NON-NLS-1$
-		return;
+		throw EDCDebugger.newCoreException(
+				MessageFormat.format(ASTEvalMessages.EvaluateID_VariableNotFound, name));
 	}
 
 }

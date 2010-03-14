@@ -19,7 +19,7 @@ import org.eclipse.core.runtime.CoreException;
  */
 public interface IVariableValueConverter {
 	/**
-	 * Return a value, null to indicate no change, or empty string for no value.
+	 * Return the formatted value.
 	 * @param variable IExpressionDMContext
 	 * @return String
 	 * @throws CoreException any error on getting the value.
@@ -28,15 +28,24 @@ public interface IVariableValueConverter {
 	
 	/**
 	 * Whether the value is editable. 
-	 * If false, {@link #setValue(String)} will fail.
+	 * If false, {@link #setValue(String)} and {@link #getEditableValue(IExpressionDMContext)} may fail.
 	 * @return boolean
 	 */
 	boolean canEditValue();
 	
 	/**
+	 * Return the formatted value for editing.
+	 * @param variable IExpressionDMContext
+	 * @return String
+	 * @throws CoreException any error on getting the value.
+	 */
+	String getEditableValue(IExpressionDMContext variable) throws CoreException;
+	
+	/**
 	 * The value entered by the user to change the variable. 
 	 * @param variable IExpressionDMContext
-	 * @param newValue
+	 * @param newValue String
+	 * @throws CoreException any error on setting the value.
 	 */
-	void setValue(IExpressionDMContext variable, String newValue);
+	void setValue(IExpressionDMContext variable, String newValue) throws CoreException;
 }

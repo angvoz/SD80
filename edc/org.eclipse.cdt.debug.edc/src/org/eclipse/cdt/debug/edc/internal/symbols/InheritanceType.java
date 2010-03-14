@@ -42,7 +42,7 @@ public class InheritanceType extends Type implements IInheritance {
 			return ((ICompositeType) getType()).getBaseName();
 
 		if (getType() == null)
-			return "";
+			return "$"; //$NON-NLS-$  // do not confuse expression formatter
 		else
 			return getType().getName();
 	}

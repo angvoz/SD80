@@ -19,7 +19,7 @@ import org.eclipse.core.runtime.CoreException;
  */
 public class OperatorShiftLeft extends BinaryOperator {
 
-/**
+	/**
 	 * Constructor for a binary shift left operation "<<"
 	 * 
 	 * @param start - instruction start
@@ -28,7 +28,7 @@ public class OperatorShiftLeft extends BinaryOperator {
 		this(0, false, start);
 	}
 
-/**
+	/**
 	 * Constructor for a binary shift left operation "<<"
 	 * 
 	 * @param resultId - for assignment, variable ID of the result 
@@ -39,7 +39,7 @@ public class OperatorShiftLeft extends BinaryOperator {
 		super(resultId, isAssignmentOperator, start);
 	}
 
-/**
+	/**
 	 * Get int result of applying binary shift left "<<" to two ints
 	 * 
 	 * @param leftOperand - left int operand
@@ -52,7 +52,7 @@ public class OperatorShiftLeft extends BinaryOperator {
 		return leftOperand << rightOperand;
 	}
 
-/**
+	/**
 	 * Get long result of applying binary shift left "<<" to two longs
 	 * 
 	 * @param leftOperand - left long operand
@@ -65,7 +65,7 @@ public class OperatorShiftLeft extends BinaryOperator {
 		return leftOperand << rightOperand;
 	}
 
-/**
+	/**
 	 * Get BigInteger result of applying binary shift left "<<" to two BigIntegers
 	 * 
 	 * @param leftOperand - left BigInteger operand
@@ -80,7 +80,7 @@ public class OperatorShiftLeft extends BinaryOperator {
 		return leftOperand.shiftLeft(rightOperand.intValue()).and(Instruction.Mask8Bytes);
 	}
 
-/**
+	/**
 	 * Get float result of applying binary shift left "<<" to two floats
 	 * 
 	 * @param leftOperand - left float operand
@@ -92,7 +92,7 @@ public class OperatorShiftLeft extends BinaryOperator {
 		return 0;
 	}
 
-/**
+	/**
 	 * Get double result of applying binary shift left "<<" to two doubles
 	 * 
 	 * @param leftOperand - left double operand
@@ -104,7 +104,7 @@ public class OperatorShiftLeft extends BinaryOperator {
 		return 0;
 	}
 
-/**
+	/**
 	 * Get boolean result of applying binary shift left "<<" to two booleans
 	 * 
 	 * @param leftOperand - left boolean operand
@@ -115,18 +115,4 @@ public class OperatorShiftLeft extends BinaryOperator {
 	protected boolean getBooleanResult(boolean leftOperand, boolean rightOperand) {
 		return false;
 	}
-
-/**
-	 * Get string result of applying binary shift left "<<" to two strings
-	 * 
-	 * @param leftOperand - left string operand
-	 * @param rightOperand - right string operand
-	 * @return <code>null</code>
-	 * @throws CoreException
-	 */
-	@Override
-	protected String getStringResult(String leftOperand, String rightOperand) throws CoreException {
-		return null;
-	}
-
 }

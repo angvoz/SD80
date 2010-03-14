@@ -12,15 +12,16 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.symbols.IValueVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 /**
  * This is an actual value, calculated from somewhere, which does not have a location.
  */
-public class ValueVariableLocation implements IVariableLocation {
+public class ValueVariableLocation implements IValueVariableLocation {
 
 	private BigInteger value;
 
@@ -53,7 +54,18 @@ public class ValueVariableLocation implements IVariableLocation {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getLocationName(org.eclipse.cdt.dsf.service.DsfServicesTracker)
 	 */
-	public String getLocationName(DsfServicesTracker servicesTracker) {
+	public String getLocationName() {
 		return "";
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getAddress()
+	 */
+	public IAddress getAddress() {
+		return null;
+	}
+
+	public void writeValue(int bytes, BigInteger value) throws CoreException {
+		throw EDCDebugger.newCoreException("Can't write to a value location");
 	}
 }

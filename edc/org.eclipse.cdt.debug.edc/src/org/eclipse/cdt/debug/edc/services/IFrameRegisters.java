@@ -30,4 +30,13 @@ public interface IFrameRegisters {
 	 * @throws CoreException if cannot read
 	 */
 	BigInteger getRegister(int regnum, int bytes) throws CoreException;
+	
+	/**
+	 * Write the value into the register or its location in the frame.
+	 * @param regnum <code>int</code> common register #
+	 * @param bytes <code>int</code> size of register to write (starting from least significant byte)
+	 * @param value <code>BigInteger</code>
+	 * @throws CoreException if cannot write
+	 */
+	void writeRegister(int regnum, int bytes, BigInteger value) throws CoreException;
 }

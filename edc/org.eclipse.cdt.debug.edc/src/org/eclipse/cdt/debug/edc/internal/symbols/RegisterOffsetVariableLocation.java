@@ -12,7 +12,9 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
+import org.eclipse.cdt.debug.edc.symbols.IRegisterOffsetVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -21,9 +23,10 @@ import org.eclipse.core.runtime.CoreException;
 public class RegisterOffsetVariableLocation extends RegisterVariableLocation implements IRegisterOffsetVariableLocation {
 
 	protected final long offset;
+	private int addressSize;
 
-	public RegisterOffsetVariableLocation(IDMContext context, String name, int id, long offset) {
-		super(context, name, id);
+	public RegisterOffsetVariableLocation(DsfServicesTracker tracker, IDMContext context, String name, int id, long offset) {
+		super(tracker, context, name, id);
 		this.offset = offset;
 	}
 
@@ -52,25 +55,35 @@ public class RegisterOffsetVariableLocation extends RegisterVariableLocation imp
 	 */
 	@Override
 	public IVariableLocation addOffset(long offset) {
-		return new RegisterOffsetVariableLocation(context, name, id, offset + this.offset);
+		return new RegisterOffsetVariableLocation(tracker, context, name, id, offset + this.offset);
 	}
 	
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation#getLocationName(org.eclipse.cdt.dsf.service.DsfServicesTracker)
 	 */
 	@Override
-	public String getLocationName(DsfServicesTracker servicesTracker) {
+	public String getLocationName() {
 		try {
-			int addressSize = 4;
-			ITargetEnvironment targetEnvironment = servicesTracker.getService(ITargetEnvironment.class);
-			if (targetEnvironment != null)
-				addressSize = targetEnvironment.getPointerSize();
+			if (addressSize == 0) {
+				addressSize = 4;
+				ITargetEnvironment targetEnvironment = tracker.getService(ITargetEnvironment.class);
+				if (targetEnvironment != null)
+					addressSize = targetEnvironment.getPointerSize();
+			}
 			BigInteger regval = super.readValue(addressSize);
 			regval = regval.add(BigInteger.valueOf(offset));
 			return "0x" + Long.toHexString(regval.longValue());
 		} catch (CoreException e) {
 			// fallback
-			return super.getLocationName(servicesTracker) + (offset < 0 ? " + " : " - " ) + Math.abs(offset);
+			return super.getLocationName() + (offset < 0 ? " + " : " - " ) + Math.abs(offset);
 		}
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation#getAddress()
+	 */
+	@Override
+	public IAddress getAddress() {
+		return null;
 	}
 }

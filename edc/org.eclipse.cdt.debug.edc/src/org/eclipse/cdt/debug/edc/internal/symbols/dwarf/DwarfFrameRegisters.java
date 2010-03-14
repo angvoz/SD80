@@ -171,5 +171,21 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 	}
 
 
+	public void writeRegister(int regnum, int bytes, BigInteger value) throws CoreException {
+		CoreException exception = null;
+		try {
+			IVariableLocation loc = getRegisterLocation(regnum);
+			if (loc == null)
+				throw EDCDebugger.newCoreException("cannot write register " + regnum + " at " + context.getIPAddress().toHexAddressString());
+			loc.writeValue(bytes, value);
+			cachedRegisters.put(regnum, value);
+		} catch (CoreException e) {
+			exception = e;
+			cachedRegisters.put(regnum, exception);
+		}
+		
+		if (exception != null)
+			throw exception;
+	}
 
 }

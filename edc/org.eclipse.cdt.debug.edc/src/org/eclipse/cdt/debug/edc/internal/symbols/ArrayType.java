@@ -36,6 +36,7 @@ public class ArrayType extends MayBeQualifiedType implements IArrayType {
 			existingBound.incDimensionIndex();
 		}
 		bounds.add(bound);
+		byteSize = 0;	// recalculate
 	}
 
 	public IArrayBoundType[] getBounds() {
@@ -55,4 +56,19 @@ public class ArrayType extends MayBeQualifiedType implements IArrayType {
 		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.Type#getByteSize()
+	 */
+	@Override
+	public int getByteSize() {
+		if (byteSize == 0) {
+			if (bounds.size() > 0) {
+				updateByteSizeFromSubType();
+				for (IArrayBoundType bound : bounds) {
+					byteSize *= bound.getElementCount();
+				}
+			}
+		}
+		return byteSize;
+	}
 }

@@ -50,8 +50,7 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 	
 	public AbstractCompositeFormatProvider(IType type, boolean forDetails, List<NameToFieldPath> nameToFieldPaths) {
 		super(type, forDetails);
-		this.nameToFieldPaths = 
-			(NameToFieldPath[]) nameToFieldPaths.toArray(new NameToFieldPath[nameToFieldPaths.size()]);
+		this.nameToFieldPaths = nameToFieldPaths.toArray(new NameToFieldPath[nameToFieldPaths.size()]);
 	}
 
 	public Iterator<IExpressionDMContext> getChildIterator(IExpressionDMContext variable) throws CoreException {

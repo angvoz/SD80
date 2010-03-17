@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.Set;
 
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.debug.ui.IDetailPane;
 import org.eclipse.debug.ui.IDetailPaneFactory;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -26,31 +28,28 @@ public class EDCDetailPaneFactory implements IDetailPaneFactory {
 	public IDetailPane createDetailPane(String paneID) {
 		if (paneID.equals(CustomFormatDetailPane.ID)) {
 			return new CustomFormatDetailPane();
-		} else if (paneID.equals(EDCDetailPane.ID)) {
-			return new EDCDetailPane();
+		} else if (paneID.equals(EDCVariableDetailPane.ID)) {
+			return new EDCVariableDetailPane();
 		}
 		return null;
 	}
 
 	public String getDefaultDetailPane(IStructuredSelection selection) {
-		if (selection.size() != 1)
-			return null;
-		
-		IEDCExpression expression = 
-			CustomFormatDetailPane.getExpressionFromSelectedElement(selection.getFirstElement());
-		if (expression == null)
-			return null;
-		
-		if (hasCustomProvider(expression))
-			return CustomFormatDetailPane.ID;
-		return EDCDetailPane.ID;
+		if (!selection.isEmpty()) {
+			IEDCExpression expression = getExpressionFromSelectedElement(selection.getFirstElement());
+			if (hasCustomProvider(expression))
+				return CustomFormatDetailPane.ID;
+			else if (expression != null)
+				return EDCVariableDetailPane.ID;
+		}
+		return null;
 	}
 
 	public String getDetailPaneDescription(String paneID) {
 		if (paneID.equals(CustomFormatDetailPane.ID)) {
 			return CustomFormatDetailPane.DESCRIPTION;
-		} else if (paneID.equals(EDCDetailPane.ID)) {
-			return EDCDetailPane.DESCRIPTION;
+		} else if (paneID.equals(EDCVariableDetailPane.ID)) {
+			return EDCVariableDetailPane.DESCRIPTION;
 		}
 		return null;
 	}
@@ -58,24 +57,21 @@ public class EDCDetailPaneFactory implements IDetailPaneFactory {
 	public String getDetailPaneName(String paneID) {
 		if (paneID.equals(CustomFormatDetailPane.ID)) {
 			return CustomFormatDetailPane.NAME;
-		} else if (paneID.equals(EDCDetailPane.ID)) {
-			return EDCDetailPane.NAME;
+		} else if (paneID.equals(EDCVariableDetailPane.ID)) {
+			return EDCVariableDetailPane.NAME;
 		}
 		return null;
 	}
 
 	public Set<String> getDetailPaneTypes(IStructuredSelection selection) {
-		if (selection.size() != 1)
-			return Collections.emptySet();
-		
-		IEDCExpression expression = 
-			CustomFormatDetailPane.getExpressionFromSelectedElement(selection.getFirstElement());
-		if (expression == null)
-			return Collections.emptySet();
-
-		if (hasCustomProvider(expression))
-			return Collections.singleton(CustomFormatDetailPane.ID);
-		return Collections.singleton(EDCDetailPane.ID);
+		if (!selection.isEmpty()) {
+			IEDCExpression expression = getExpressionFromSelectedElement(selection.getFirstElement());
+			if (hasCustomProvider(expression))
+				return Collections.singleton(CustomFormatDetailPane.ID);
+			else if (expression != null)
+				return Collections.singleton(EDCVariableDetailPane.ID);
+		}
+		return Collections.emptySet();
 	}
 
 	private static boolean hasCustomProvider(IEDCExpression expression) {
@@ -83,5 +79,16 @@ public class EDCDetailPaneFactory implements IDetailPaneFactory {
 			return CustomFormatDetailPane.getCustomConverter(expression) != null;
 		}
 		return false;
+	}
+	
+	public static IEDCExpression getExpressionFromSelectedElement(Object element) {
+		if (element instanceof IAdaptable) {
+			IExpressionDMContext expression = 
+				(IExpressionDMContext) ((IAdaptable) element).getAdapter(IExpressionDMContext.class);
+			if (expression instanceof IEDCExpression) {
+				return (IEDCExpression) expression;
+			}
+		}
+		return null;
 	}
 }

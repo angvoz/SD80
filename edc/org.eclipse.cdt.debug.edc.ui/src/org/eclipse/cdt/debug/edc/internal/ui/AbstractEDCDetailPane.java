@@ -10,11 +10,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
-import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.IFormattedDataDMContext;
+import org.eclipse.cdt.dsf.debug.ui.viewmodel.variable.SyncVariableDataAccess;
+import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.commands.operations.IUndoContext;
-import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.debug.internal.ui.actions.ActionMessages;
@@ -125,18 +125,6 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		}
 	}
 	
-	public abstract class DetailJob extends Job {
-		public DetailJob(String name) {
-			super(name);
-		}
-
-		protected ExpressionDMC expressionDMC;
-		
-		protected void setExpressionDMC(ExpressionDMC expressionDMC) {
-			this.expressionDMC = expressionDMC;
-		}
-	}
-
 	protected static final String COPY_ACTION = ActionFactory.COPY.getId();
 	protected static final String CUT_ACTION = ActionFactory.CUT.getId();
 	protected static final String PASTE_ACTION = ActionFactory.PASTE.getId();
@@ -421,14 +409,8 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		}
 	}
 
-	public static ExpressionDMC getExpressionFromSelectedElement(Object element) {
-		if (element instanceof IAdaptable) {
-			IExpressionDMContext expression = 
-				(IExpressionDMContext) ((IAdaptable) element).getAdapter(IExpressionDMContext.class);
-			if (expression instanceof ExpressionDMC) {
-				return (ExpressionDMC) expression;
-			}
-		}
-		return null;
+	protected static SyncVariableDataAccess createSyncVariableDataAccess(IFormattedDataDMContext context) {
+		DsfSession session = DsfSession.getSession(context.getSessionId());
+		return new SyncVariableDataAccess(session);
 	}
 }

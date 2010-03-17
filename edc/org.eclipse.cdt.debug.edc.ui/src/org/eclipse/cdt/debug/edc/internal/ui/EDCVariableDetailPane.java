@@ -10,17 +10,17 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui;
 
-import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
-import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
-import org.eclipse.cdt.dsf.concurrent.Query;
+import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.IFormattedDataDMContext;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.numberformat.FormattedValueVMUtil;
+import org.eclipse.cdt.dsf.debug.ui.viewmodel.variable.SyncVariableDataAccess;
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -40,11 +40,14 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
 @SuppressWarnings("restriction")
-public class EDCDetailPane extends AbstractEDCDetailPane {
+public class EDCVariableDetailPane extends AbstractEDCDetailPane {
 	
 	public class SetNumberFormatAction extends Action {
 
-	    private class SingleNumberFormatAction extends Action {
+		public String currentFormat;
+	    private List<String> formatList;
+
+		private class SingleNumberFormatAction extends Action {
 	        private final String formatId;
 	        SingleNumberFormatAction(String formatId) {
 	            super(FormattedValueVMUtil.getFormatLabel(formatId), AS_RADIO_BUTTON);
@@ -63,8 +66,7 @@ public class EDCDetailPane extends AbstractEDCDetailPane {
 	 
 		public SetNumberFormatAction() {
 			super("Number Format", IAction.AS_DROP_DOWN_MENU);
-			setEnabled(true);
-			currentFormat = IFormattedValues.NATURAL_FORMAT;
+			formatList = new ArrayList<String>();
 			setMenuCreator(new IMenuCreator() {
 				public Menu getMenu(Menu parent) {
 					Menu menu = new Menu(parent);
@@ -79,7 +81,7 @@ public class EDCDetailPane extends AbstractEDCDetailPane {
 							for (MenuItem item : menu.getItems())
 								item.dispose();
 							// create new items
-							for (String formatId : FORMAT_IDS) {
+							for (String formatId : formatList) {
 								SingleNumberFormatAction action = new SingleNumberFormatAction(formatId);
 								if (formatId.equals(currentFormat))
 									action.setChecked(true);
@@ -100,61 +102,67 @@ public class EDCDetailPane extends AbstractEDCDetailPane {
 			});
 		}
 
-
-		@Override
-		public void run() {
-			super.run();
-		}
-	}
-
-	public class DisplayDetailJob extends DetailJob {
-		private class GetValueQuery extends Query<String> {
-
-			@Override
-			protected void execute(final DataRequestMonitor<String> rm) {
-				try {
-					Expressions expressions = (Expressions) expressionDMC.getService();
-					String value = expressions.getExpressionValue(expressionDMC, currentFormat);
-					rm.setData(value);
-				} catch (Throwable t) {
-					rm.setStatus(new Status(IStatus.ERROR, EDCDebugUI.PLUGIN_ID, t.getMessage()));
-				}
-				finally {
-					rm.done();
-				}
-			}
-			
-			@Override
-			public boolean cancel(boolean mayInterruptIfRunning) {
-				DisplayDetailJob.this.cancel();
-				return super.cancel(mayInterruptIfRunning);
+		public void setSelection(IStructuredSelection selection) {
+			formatList.clear();
+			IFormattedDataDMContext context = getContextFromSelection(selection);
+			if (context != null) {
+				String[] formats = createSyncVariableDataAccess(context).getSupportedFormats(context);
+				formatList.addAll(Arrays.asList(formats));
+				if (formatList.remove(IFormattedValues.NATURAL_FORMAT)) // put natural first, if exists
+					formatList.add(0, IFormattedValues.NATURAL_FORMAT);
+				if ((currentFormat == null || !formatList.contains(currentFormat)) && !formatList.isEmpty())
+					currentFormat = formatList.get(0);
 			}
 		}
 		
-		public DisplayDetailJob(IStructuredSelection selection) {
-			super("compute variable details");
-			setExpressionDMC(getExpressionFromSelectedElement(selection.getFirstElement()));
+		@Override
+		public boolean isEnabled() {
+			return !formatList.isEmpty();
 		}
-	
+		
+		public String getCurrentFormat() {
+			if (currentFormat == null)
+				currentFormat = IFormattedValues.NATURAL_FORMAT; // default if we get here
+			
+			return currentFormat;
+		}
+	}
+
+	public abstract class DetailJob extends Job {
+		protected SyncVariableDataAccess syncVariableDataAccess;
+
+		public DetailJob(String name, IFormattedDataDMContext context) {
+			super(name);
+			syncVariableDataAccess = createSyncVariableDataAccess(context);
+		}
+
+	}
+
+	public class DisplayDetailJob extends DetailJob {
+
+		private final IFormattedDataDMContext context;
+
+		public DisplayDetailJob(IFormattedDataDMContext context) {
+			super("compute variable details", context);
+			this.context = context;
+		}
+		
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
-			GetValueQuery getValueQuery = new GetValueQuery();
-			expressionDMC.getService().getExecutor().execute(getValueQuery);
-			String text;
 			try {
-				text = getValueQuery.get();
-			} catch (final Throwable e) {
-				text = MessageFormat.format("Could not get value: {0}", e.getMessage());
+				final String text = syncVariableDataAccess.getFormattedValue(context, getCurrentFormat());
+				Display.getDefault().asyncExec(new Runnable() {
+					public void run() {
+						document.set(text);
+					}
+				});
 			}
-			final String _text = text;
-			Display.getDefault().asyncExec(new Runnable() {
-				public void run() {
-					document.set(_text);
-				}
-			});
+			catch (Throwable t) {
+				return EDCDebugUI.newErrorStatus(IDsfStatusConstants.REQUEST_FAILED, "could not compute variable details", t);
+			}
 			return Status.OK_STATUS;
 		}
-	
+
 		@Override
 		protected void canceling() {
 			super.canceling();
@@ -165,42 +173,23 @@ public class EDCDetailPane extends AbstractEDCDetailPane {
 	}
 
 	public class SetValueJob extends DetailJob {
-		private class SetValueQuery extends Query<Object> {
 
-			@Override
-			protected void execute(final DataRequestMonitor<Object> rm) {
-				try {
-					Expressions expressions = (Expressions) expressionDMC.getService();
-					expressions.writeExpression(expressionDMC, newValue, currentFormat, rm); // will call rm.done()
-				} catch (Throwable t) {
-					rm.setStatus(new Status(IStatus.ERROR, EDCDebugUI.PLUGIN_ID, t.getMessage()));
-				}
-			}
-			
-			@Override
-			public boolean cancel(boolean mayInterruptIfRunning) {
-				SetValueJob.this.cancel();
-				return super.cancel(mayInterruptIfRunning);
-			}
-		}
-		
+		private final IFormattedDataDMContext context;
 		private final String newValue;
 	
-		public SetValueJob(IStructuredSelection selection, String newValue) {
-			super("set variable value");
-			setExpressionDMC(getExpressionFromSelectedElement(selection.getFirstElement()));
+		public SetValueJob(IFormattedDataDMContext context, String newValue) {
+			super("set variable value", context);
+			this.context = context;
 			this.newValue = newValue;
 		}
 
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
-			SetValueQuery setValueQuery = new SetValueQuery();
-			expressionDMC.getService().getExecutor().execute(setValueQuery);
 			try {
-				setValueQuery.get();
-			} catch (final Throwable e) {
-				return new Status(IStatus.ERROR, EDCDebugUI.PLUGIN_ID, 
-						MessageFormat.format("Could not set custom value: {0}", e.getMessage()));
+				syncVariableDataAccess.writeVariable(context, newValue, getCurrentFormat());
+			}
+			catch (Throwable t) {
+				return EDCDebugUI.newErrorStatus(IDsfStatusConstants.REQUEST_FAILED, "set variable value", t);
 			}
 			return Status.OK_STATUS;
 		}
@@ -209,45 +198,42 @@ public class EDCDetailPane extends AbstractEDCDetailPane {
 	public static final String ID = "EDCDetailPane";
 	public static final String DESCRIPTION = "EDC detail pane";
 	public static final String NAME = "EDC Variable Details";
-    private static final List<String> FORMAT_IDS = new ArrayList<String>(); 
-    static {
-    	FORMAT_IDS.add(IFormattedValues.NATURAL_FORMAT);
-    	FORMAT_IDS.add(IFormattedValues.HEX_FORMAT);
-    	FORMAT_IDS.add(IFormattedValues.DECIMAL_FORMAT);
-    	FORMAT_IDS.add(IFormattedValues.OCTAL_FORMAT);
-    	FORMAT_IDS.add(IFormattedValues.BINARY_FORMAT);
-    }
 	
 	protected static final String NUMBER_FORMAT_ACTION = "setNumberFormat"; //$NON-NLS-1$
-	public String currentFormat;
+	private SetNumberFormatAction setNumberFormatAction;
 	
 	@Override
 	protected Job createDisplayDetailJob(IStructuredSelection selection) {
-		if (selection.isEmpty())
-			return null;
-		return new DisplayDetailJob(selection);
+		IFormattedDataDMContext context = getContextFromSelection(selection);
+		if (context != null) {
+			return new DisplayDetailJob(context);
+		}
+		return null;
 	}
 
 	@Override
 	protected boolean canSetValue(IStructuredSelection selection) {
-		if (selection.isEmpty())
-			return false;
-		final ExpressionDMC expressionDMC = getExpressionFromSelectedElement(selection.getFirstElement());
-		Expressions expressions = (Expressions) expressionDMC.getService();
-		return expressions.canWriteExpression(expressionDMC);
+		IFormattedDataDMContext context = getContextFromSelection(selection);
+		if (context != null) {
+			return createSyncVariableDataAccess(context).canWriteExpression(context);
+		}
+		return false;
 	}
 
 	@Override
 	protected Job createSetValueJob(IStructuredSelection selection, String newValue) {
-		if (selection.isEmpty())
-			return null;
-		return new SetValueJob(selection, newValue);
+		IFormattedDataDMContext context = getContextFromSelection(selection);
+		if (context != null) {
+			return new SetValueJob(context, newValue);
+		}
+		return null;
 	}
 	
 	@Override
 	protected void createActions() {
 		super.createActions();
-		setAction(NUMBER_FORMAT_ACTION, new SetNumberFormatAction());
+		setNumberFormatAction = new SetNumberFormatAction();
+		setAction(NUMBER_FORMAT_ACTION, setNumberFormatAction);
 	}
 	
 	@Override
@@ -255,6 +241,26 @@ public class EDCDetailPane extends AbstractEDCDetailPane {
 		super.fillContextMenu(menu);
 		menu.add(new Separator());
 		menu.add(getAction(NUMBER_FORMAT_ACTION));
+	}
+	
+	public IFormattedDataDMContext getContextFromSelection(IStructuredSelection selection) {
+		if (selection != null && !selection.isEmpty()) {
+			Object element = ((IStructuredSelection) selection).getFirstElement();
+			if (element instanceof IAdaptable) {
+				return (IFormattedDataDMContext) ((IAdaptable) element).getAdapter(IFormattedDataDMContext.class);
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public void display(IStructuredSelection selection) {
+		setNumberFormatAction.setSelection(selection);
+		super.display(selection);
+	}
+
+	protected String getCurrentFormat() {
+		return setNumberFormatAction.getCurrentFormat();
 	}
 
 	public String getID() {

@@ -33,12 +33,17 @@ import org.eclipse.swt.widgets.Display;
 
 public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 	
-	public abstract class CustomDetailJob extends DetailJob {
+	public abstract class CustomDetailJob extends Job {
 		public CustomDetailJob(String name) {
 			super(name);
 		}
 
+		protected ExpressionDMC expressionDMC;
 		protected IVariableValueConverter customConverter;
+		
+		protected void setExpressionDMC(IEDCExpression expressionDMC) {
+			this.expressionDMC = (ExpressionDMC) expressionDMC;
+		}
 		
 		protected void setCustomConverter(IVariableValueConverter customConverter) {
 			this.customConverter = customConverter;
@@ -69,7 +74,7 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 		
 		public DisplayDetailJob(IStructuredSelection selection) {
 			super("compute variable details");
-			setExpressionDMC(getExpressionFromSelectedElement(selection.getFirstElement()));
+			setExpressionDMC(EDCDetailPaneFactory.getExpressionFromSelectedElement(selection.getFirstElement()));
 			setCustomConverter(getCustomConverter(expressionDMC));
 		}
 	
@@ -127,7 +132,7 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 	
 		public SetValueJob(IStructuredSelection selection, String newValue) {
 			super("set variable value");
-			setExpressionDMC(getExpressionFromSelectedElement(selection.getFirstElement()));
+			setExpressionDMC(EDCDetailPaneFactory.getExpressionFromSelectedElement(selection.getFirstElement()));
 			setCustomConverter(getCustomConverter(expressionDMC));
 			this.newValue = newValue;
 		}
@@ -168,11 +173,11 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 	protected boolean canSetValue(IStructuredSelection selection) {
 		if (selection.isEmpty())
 			return false;
-		ExpressionDMC expressionDMC = getExpressionFromSelectedElement(selection.getFirstElement());
-		EDCLaunch launch = EDCLaunch.getLaunchForSession(expressionDMC.getSessionId());
+		IEDCExpression expression = EDCDetailPaneFactory.getExpressionFromSelectedElement(selection.getFirstElement());
+		EDCLaunch launch = EDCLaunch.getLaunchForSession(expression.getSessionId());
 		if (launch.isSnapshotLaunch())
 			return false;
-		IVariableValueConverter customConverter = getCustomConverter(expressionDMC);
+		IVariableValueConverter customConverter = getCustomConverter(expression);
 		return customConverter.canEditValue();
 	}
 	
@@ -212,8 +217,8 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 	protected boolean isEditingEnabled(IStructuredSelection selection) {
 		if (selection.isEmpty())
 			return false;
-		ExpressionDMC expressionDMC = getExpressionFromSelectedElement(selection.getFirstElement());
-		IVariableValueConverter customConverter = getCustomConverter(expressionDMC);
+		IEDCExpression expression = EDCDetailPaneFactory.getExpressionFromSelectedElement(selection.getFirstElement());
+		IVariableValueConverter customConverter = getCustomConverter(expression);
 		return customConverter.canEditValue();
 	}
 }

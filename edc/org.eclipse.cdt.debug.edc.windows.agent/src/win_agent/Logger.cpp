@@ -16,7 +16,7 @@ Logger* Logger::defaultLogger = NULL;
 
 Logger::Logger(const char* name) {
 	loggerName = name;
-	open_log_file("C:\\EDC_Win_Agent_Log.txt");
+	// open_log_file("C:\\EDC_Win_Agent_Log.txt");
 }
 
 Logger::~Logger(void) {

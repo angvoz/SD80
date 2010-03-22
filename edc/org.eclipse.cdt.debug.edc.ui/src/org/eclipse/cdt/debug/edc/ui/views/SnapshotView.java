@@ -761,7 +761,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 					}
 				}
 				
-				refreshAction.run();
+				if (!viewer.getControl().isDisposed())
+					refreshAction.run();
 			}
 		});
 

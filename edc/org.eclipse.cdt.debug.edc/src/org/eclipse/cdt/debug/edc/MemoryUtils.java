@@ -12,6 +12,12 @@ package org.eclipse.cdt.debug.edc;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
+import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.model.MemoryByte;
 
 public class MemoryUtils {
@@ -599,5 +605,103 @@ public class MemoryUtils {
 
 		return bytes;
 	}
+	
+	public static class TypeCharacteristics {
+		public int basicType = IBasicType.t_unspecified;
+		public boolean isSigned = false;
+		public boolean isShort = false;
+		public boolean isLong = false;
+		public boolean isLongLong = false;
+		public boolean isComplex = false;
+		
+		public TypeCharacteristics(IType varType) {
+			if (varType instanceof IBasicType) {
+				IBasicType type = (IBasicType) varType;
+				basicType = type.getBaseType();
+				isSigned = type.isSigned();
+				isShort = type.isShort();
+				isLong = type.isLong();
+				
+				if (varType instanceof ICPPBasicType) {
+					ICPPBasicType cppType = (ICPPBasicType) varType;
+					isLongLong = cppType.isLongLong();
+					isComplex  = cppType.isComplex();
+				}
+			} else if (varType instanceof IPointerType) {
+				// treat pointer as an unsigned int
+				basicType = IBasicType.t_int;
+			} else if (varType instanceof IEnumerator){
+				// treat enumerator as a signed int
+				basicType = IBasicType.t_int;
+				isSigned = true;
+			} else {
+				// treat unknown type as an unsigned int
+				basicType = IBasicType.t_int;
+			}
+		}
+	}
 
+	public static BigInteger convertValueToMemory(IType varType, Number value) throws CoreException {
+		BigInteger result = null;
+		int varSize = varType.getByteSize();
+		if (varSize <= 0)
+			throw EDCDebugger.newCoreException("Type has no size");
+			
+		TypeCharacteristics characteristics = new TypeCharacteristics(varType);
+	
+		// all other locations
+		switch (characteristics.basicType) {
+		case IBasicType.t_float:
+		case IBasicType.t_double:
+			if (varSize == 4) {
+				result = BigInteger.valueOf(Float.floatToIntBits(value.floatValue()));
+			} else if (varSize == 8) {
+				result = BigInteger.valueOf(Double.doubleToLongBits(value.doubleValue()));
+			}
+			break;
+	
+		case ICPPBasicType.t_bool:
+		case ICPPBasicType.t_wchar_t:
+		case IBasicType.t_char:
+		case IBasicType.t_int:
+		case IBasicType.t_void:
+			if (characteristics.isSigned) {
+				// as needed, mask the value and sign-extend
+				if (varSize == 4) {
+					result = BigInteger.valueOf(value.intValue());
+				} else if (varSize == 2) {
+					int intResult = value.intValue() & 0xffff;
+					if ((intResult & 0x00008000) != 0)
+						intResult |= 0xffff0000;
+					result = BigInteger.valueOf(intResult);
+				} else if (varSize == 1) {
+					int intResult = value.intValue() & 0xff;
+					if ((intResult & 0x00000080) != 0)
+						intResult |= 0xffffff00;
+					result = BigInteger.valueOf(intResult);
+				} else {
+					// assume an 8-byte long is the default
+					result = BigInteger.valueOf(value.longValue());
+				}
+			} else {
+				if (varSize == 4) {
+					result = BigInteger.valueOf(value.longValue() & 0xffffffffL);  // keep it unsigned
+				} else if (varSize == 2) {
+					result = BigInteger.valueOf(value.intValue() & 0xffff);
+				} else if (varSize == 1) {
+					result = BigInteger.valueOf(value.intValue() & 0xff);
+				} else {
+					// assume an 8-byte long is the default
+					result = BigInteger.valueOf(value.longValue());
+				}
+			}
+			break;
+	
+		case IBasicType.t_unspecified:
+		default:
+			assert false;
+			throw EDCDebugger.newCoreException("Unhandled type");
+		}
+		return result;
+	}
 }

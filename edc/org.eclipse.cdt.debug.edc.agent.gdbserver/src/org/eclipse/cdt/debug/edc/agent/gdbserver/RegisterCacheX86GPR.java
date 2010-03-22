@@ -52,12 +52,10 @@ public class RegisterCacheX86GPR extends RegisterCache {
 	 */
 	@Override
 	public void updateCache(Packet p) throws AgentException {
+		/*
+		 * note the register values in the packet data is in little-endian.
+		 */
 		for (int i = 0; i < fCache.length; i++)
-			cacheRegister(i, p.getData().substring(i * 8, i * 8 + 8)); // note
-		// the
-		// packet
-		// data
-		// is in
-		// big-endian
+			cacheRegister(i, p.getData().substring(i * 8, i * 8 + 8));
 	}
 }

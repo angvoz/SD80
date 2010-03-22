@@ -35,8 +35,8 @@ public class ExpressionsBasicTypes extends BaseExpressionTest {
 		// expressions without operators
 		// No booleans, which need logical operators (e.g. ==, !=, etc.)
 
-		checkExpr(charType, "'b'", "'b'"); // char
-		checkExpr(wcharType, "L'\u3039'", "L'\\u3039'"); // wchar_t
+		checkExpr(charType, "98 ('b')", "'b'"); // char
+		checkExpr(wcharType, "0x3039 (L'\u3039')", "L'\\u3039'"); // wchar_t
 		checkExpr(intType, "15", "15"); // int
 		checkExpr(longType, "15", "15L"); // long
 		checkExpr(floatType, "1.5678", "1.5678F"); // float
@@ -380,7 +380,7 @@ public class ExpressionsBasicTypes extends BaseExpressionTest {
 
 		checkExpr("volatile int", "4", "SizeOfInt");
 		checkExpr("volatile int", "1024", "lint");
-		checkExpr("volatile char", "'a'", "lchar");
+		checkExpr("volatile char", "97 ('a')", "lchar");
 		checkExpr("volatile float", "55.55", "lfloat");
 		checkExpr("volatile double", "222.222", "ldouble");
 		checkExpr("volatile long", "123456789", "llong");

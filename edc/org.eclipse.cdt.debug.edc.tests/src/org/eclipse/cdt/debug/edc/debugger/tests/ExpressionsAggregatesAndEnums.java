@@ -60,9 +60,9 @@ public class ExpressionsAggregatesAndEnums extends BaseExpressionTest {
 		openSnapshotAndWaitForSuspendedContext(0);
 
 		checkExprNoError("lstruct");
-		checkExpr("'1'", "lstruct.achar");
-		checkExpr("'\u0002'", "lstruct.auchar");
-		checkExpr("'3'", "lstruct.aschar");
+		checkExpr("49 ('1')", "lstruct.achar");
+		checkExpr("2 ('\\002')", "lstruct.auchar");
+		checkExpr("51 ('3')", "lstruct.aschar");
 		checkExpr("4", "lstruct.ashort");
 		checkExpr("5", "lstruct.aushort");
 		checkExpr("6", "lstruct.asshort");

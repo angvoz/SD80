@@ -11,13 +11,19 @@
 
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
+import java.util.concurrent.ExecutionException;
+
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.services.IExpressions2.CastInfo;
+import org.eclipse.cdt.debug.edc.services.IExpressions2.ICastedExpressionDMContext;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
+import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.core.runtime.CoreException;
 import org.junit.Assert;
 import org.junit.Before;
 
@@ -29,8 +35,10 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 	private TypeEngine typeEngine;
 	protected IType boolType;
 	protected IType charType;
+	protected IType signedCharType;
 	protected IType wcharType;
 	protected IType shortType;
+	protected IType signedShortType;
 	protected IType intType;
 	protected IType longType;
 	protected IType floatType;
@@ -50,7 +58,10 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 		
 		charType = typeEngine.getCharacterType(typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_CHAR));
 		wcharType = typeEngine.getCharacterType(typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_WCHAR_T));
-		
+
+		signedCharType = typeEngine.getBasicType(ICPPBasicType.t_char, ICPPBasicType.IS_SIGNED + ICPPBasicType.IS_SHORT, 
+				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_CHAR));
+
 		boolType = typeEngine.getBasicType(ICPPBasicType.t_bool, 0, typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_BOOL));
 		
 		shortType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_SIGNED + ICPPBasicType.IS_SHORT, 
@@ -77,7 +88,7 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 
 	protected void checkExprNoError(String expr)
 			throws Exception {
-		ExpressionDMC exprVal = TestUtils.getExpressionDMC(session, frame, expr);
+		IEDCExpression exprVal = TestUtils.getExpressionDMC(session, frame, expr);
 		if (exprVal.getEvaluationError() != null)
 			Assert.fail(expr + " got error " + exprVal.getEvaluationError().getMessage());
 	}
@@ -96,10 +107,93 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 	 */
 	protected void checkExpr(Object type, String result, String expr)
 			throws Exception {
-		ExpressionDMC exprVal = TestUtils.getExpressionDMC(session, frame, expr);
+		IEDCExpression exprVal = TestUtils.getExpressionDMC(session, frame, expr);
 		if (exprVal.getEvaluationError() != null)
 			Assert.fail(expr + " got error " + exprVal.getEvaluationError().getMessage());
 
+		doCheckExprValue(type, result, exprVal);
+		
+	}
+
+	/**
+	 * Get a child expression from a casted expression.
+	 * @param expr the expression to cast
+	 * @param castInfo the casting details
+	 * @param childExpr the name of the child to fetch
+	 * @return evaluated child expression or <code>null</code>
+	 * @throws CoreException for any error
+	 */
+	protected IEDCExpression getCastedChildExpr(String expr, CastInfo castInfo, String childExpr)
+			throws Exception {
+		IExpressionDMContext exprDMC = TestUtils.getExpressionDMC(session, frame, expr);
+		if (((IEDCExpression) exprDMC).getEvaluationError() != null)
+			throw new CoreException(((IEDCExpression) exprDMC).getEvaluationError());
+		
+		ICastedExpressionDMContext castedExprVal = TestUtils.getCastedExpressionDMC(session, frame, exprDMC, castInfo);
+		
+		IExpressionDMContext[] childDMCs = TestUtils.getSubExpressionDMCs(session, frame, castedExprVal);
+		
+		for (IExpressionDMContext childDMC : childDMCs) {
+			
+			if (!(childDMC instanceof IEDCExpression))
+				continue;
+			if (((IEDCExpression)childDMC).getName().equals(childExpr)) {
+				IEDCExpression exprVal = (IEDCExpression) childDMC;
+				/* ignore, just evaluate */ TestUtils.getFormattedExpressionValue(session, frame, exprVal);
+				
+				return exprVal;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Check that a casted expression provides the expected kind of children.
+	 * @param type the type to check (either IType or String), or <code>null</code>
+	 * @param result
+	 * @param expr the expression to cast
+	 * @param castInfo the casting details
+	 * @param childExpr the name of the child to fetch 
+	 * @throws CoreException for any error
+	 * @throws Exception
+	 */
+	protected void checkCastedChildExpr(Object type, String result, String expr, CastInfo castInfo, String childExpr)
+			throws CoreException, Exception {
+		IEDCExpression exprVal = getCastedChildExpr(expr, castInfo, childExpr);
+		if (exprVal == null)
+			Assert.fail("Did not find child " + childExpr);
+	
+		if (exprVal.getEvaluationError() != null)
+			throw new CoreException(exprVal.getEvaluationError());
+	
+		doCheckExprValue(type, result, exprVal);
+	}
+
+	protected void checkCastedChildExprFail(String expr, CastInfo castInfo, String childExpr) {
+		IEDCExpression exprVal;
+		try {
+			exprVal = getCastedChildExpr(expr, castInfo, childExpr);
+		} catch (Exception e) {
+			// fine
+			return;
+		}
+		if (exprVal == null)
+			return;
+	
+		if (exprVal.getEvaluationError() != null)
+			return;
+	
+		Assert.fail("expected failure to cast and find " + childExpr);
+	}
+	/**
+	 * @param type
+	 * @param result
+	 * @param exprVal
+	 * @throws Exception
+	 * @throws ExecutionException
+	 */
+	private void doCheckExprValue(Object type, String result,
+			IEDCExpression exprVal) throws Exception, ExecutionException {
 		String formatted = TestUtils.getFormattedExpressionValue(session, frame, exprVal);
 		if (!result.equals(formatted))
 			Assert.assertEquals(result, formatted);	// the test is duplicated this way to allow breakpoint
@@ -121,7 +215,6 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 				throw new IllegalStateException("Unexpected type to check: " + type);
 			}
 		}
-		
 	}
 
 	/**
@@ -141,7 +234,7 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 	 */
 
 	protected void checkExprError(String expr) throws Exception {
-		ExpressionDMC exprVal = TestUtils.getExpressionDMC(session, frame, expr);
+		IEDCExpression exprVal = TestUtils.getExpressionDMC(session, frame, expr);
 		if (exprVal.getEvaluationError() != null)
 			return;
 		String formatted = TestUtils.getFormattedExpressionValue(session, frame, exprVal);
@@ -155,7 +248,7 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 	 * @throws Exception
 	 */
 	protected void checkExprError(String message, String expr) throws Exception {
-		ExpressionDMC exprVal = TestUtils.getExpressionDMC(session, frame, expr);
+		IEDCExpression exprVal = TestUtils.getExpressionDMC(session, frame, expr);
 		if (exprVal.getEvaluationError() != null) {
 			Assert.assertEquals(message, exprVal.getEvaluationError().getMessage());
 			return;

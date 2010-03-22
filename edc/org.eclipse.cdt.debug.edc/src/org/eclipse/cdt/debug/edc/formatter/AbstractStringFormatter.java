@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.formatter;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IType;
@@ -56,6 +57,15 @@ public abstract class AbstractStringFormatter implements IVariableFormatProvider
 			IVariableLocation exprLoc = expressionDMC.getEvaluatedLocation();
 			if (exprLoc instanceof IMemoryVariableLocation && ((IMemoryVariableLocation) exprLoc).getAddress().isZero())
 				return "0";
+
+			int maximumLength = getMaximumLength();
+			// limit to express char[] size if given
+			if (expressionDMC.getEvaluatedType() instanceof IArrayType) {
+				long boundLength = ((IArrayType)expressionDMC.getEvaluatedType()).getBound(0).getBoundCount();
+				if (boundLength > 0) {
+					maximumLength = (int) Math.min(boundLength, 4096);
+				}
+			}
 			
 			Number value = expressionDMC.getEvaluatedValue();
 			if (value == null) {
@@ -77,7 +87,7 @@ public abstract class AbstractStringFormatter implements IVariableFormatProvider
 				return "0";
 			
 			String formattedString = 
-				FormatUtils.getFormattedNullTermString(variable, address, size, getMaximumLength());
+				FormatUtils.getFormattedNullTermString(variable, address, size, maximumLength);
 			return quoteString(formattedString);
 		}
 

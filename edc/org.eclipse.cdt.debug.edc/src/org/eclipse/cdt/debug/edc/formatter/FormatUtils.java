@@ -173,11 +173,15 @@ public class FormatUtils {
 				address = address.add(charSize);
 			}
 			else {
-				// error in reading memory, bail out.
-				throw EDCDebugger.newCoreException(EDCFormatterMessages.FormatUtils_CannotReadMemory + address.getValue().toString(16));
+				// Error in reading memory, bail out.  If we got more than one character,
+				// use ellipsis, else fail.
+				if (sb.length() == 0)
+					throw EDCDebugger.newCoreException(EDCFormatterMessages.FormatUtils_CannotReadMemory + address.getValue().toString(16));
+				maximumLength = 0;
+				break;
 			}
 		}
-		if (maximumLength == 0)
+		if (maximumLength <= 0)
 			sb.append("..."); //$NON-NLS-1$
 		
 		return sb.toString();

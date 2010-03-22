@@ -19,8 +19,10 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.core.dom.ast.IBasicType;
 import org.eclipse.cdt.debug.core.model.ICastToArray;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
@@ -41,6 +43,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
 import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
@@ -60,9 +63,11 @@ import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
+import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMContext;
+import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
@@ -750,7 +755,28 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		}
 
 		public BasicType getBasicType() {
-			return null;
+			IType type = dmc.getEvaluatedType();
+			type = TypeUtils.getStrippedType(type);
+			BasicType basicType = BasicType.unknown;
+			if (type instanceof IArrayType) {
+				basicType = BasicType.array;
+			}
+			else if (type instanceof IBasicType) {
+				basicType = BasicType.basic;
+			}
+			else if (type instanceof ICompositeType) {
+				basicType = BasicType.composite;
+			}
+			else if (type instanceof IEnumeration) {
+				basicType = BasicType.enumeration;
+			}
+			else if (type instanceof IPointerType) {
+				basicType = BasicType.pointer;
+			}
+			else if (type instanceof ISubroutineType) {
+				basicType = BasicType.function;
+			}
+			return basicType;
 		}
 
 		public String getEncoding() {
@@ -1183,6 +1209,13 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 		});
 	}
 
+    @Immutable
+    private static class ExpressionChangedDMEvent extends AbstractDMEvent<IExpressionDMContext> implements IExpressionChangedDMEvent {
+        ExpressionChangedDMEvent(IExpressionDMContext expression) {
+            super(expression);
+        }
+    }
+
 	public void writeExpression(IExpressionDMContext exprContext, String expressionValue, String formatId, RequestMonitor rm) {
 		ExpressionDMC expressionDMC = (ExpressionDMC) exprContext;
 		if (isComposite(expressionDMC)) {
@@ -1190,19 +1223,36 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 			rm.done();
 			return;
 		}
+
+		IType exprType = TypeUtils.getStrippedType(expressionDMC.getEvaluatedType());
+
 		// first try to get value by format as BigInteger
-		BigInteger value = parseIntegerByFormat(expressionValue, formatId);
-        if (value == null) {
-       		// TODO parse as expression
-        	rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_CannotParseExpression, null));
-			rm.done();
-			return;
+		Number number = parseIntegerByFormat(expressionValue, formatId);
+        if (number == null) {
+       		ExpressionDMC temp = (ExpressionDMC) createExpression(expressionDMC.getFrame(), expressionValue);
+       		temp.evaluateExpression();
+			number = temp.getEvaluatedValue();
+
+       		if (number == null) {
+       			rm.setStatus(EDCDebugger.dsfRequestFailedStatus("Cannot parse expression", null));
+       			rm.done();
+       			return;
+       		}
         }
         
+        BigInteger value = null;
+		try {
+			value = MemoryUtils.convertValueToMemory(exprType, number);
+		} catch (CoreException e) {
+   			rm.setStatus(e.getStatus());
+   			rm.done();
+   			return;
+		}
+        
         IVariableLocation variableLocation = expressionDMC.getValueLocation();
-		IType exprType = TypeUtils.getStrippedType(expressionDMC.getEvaluatedType());
     	try {
     		variableLocation.writeValue(exprType.getByteSize(), value);
+    		getSession().dispatchEvent(new ExpressionChangedDMEvent(exprContext), getProperties());
 		} catch (CoreException e) {
 			rm.setStatus(e.getStatus());
 		}
@@ -1247,8 +1297,8 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 	}
 
 	public void getAvailableFormats(IFormattedDataDMContext formattedDataContext, DataRequestMonitor<String[]> rm) {
-		rm.setData(new String[] { IFormattedValues.BINARY_FORMAT, IFormattedValues.NATURAL_FORMAT,
-				IFormattedValues.HEX_FORMAT, IFormattedValues.OCTAL_FORMAT, IFormattedValues.DECIMAL_FORMAT });
+		rm.setData(new String[] { IFormattedValues.NATURAL_FORMAT, IFormattedValues.DECIMAL_FORMAT, 
+				IFormattedValues.HEX_FORMAT, IFormattedValues.OCTAL_FORMAT, IFormattedValues.BINARY_FORMAT });
 		rm.done();
 	}
 
@@ -1260,6 +1310,8 @@ public class Expressions extends AbstractEDCService implements IExpressions {
 
 		if (idmContext instanceof ExpressionDMC) {
 			exprDMC = (ExpressionDMC) formattedDataContext.getParents()[0];
+
+			exprDMC.evaluateExpression();
 
 			if (exprDMC != null && exprDMC.getEvaluationError() != null) {
 				rm.setStatus(exprDMC.getEvaluationError());

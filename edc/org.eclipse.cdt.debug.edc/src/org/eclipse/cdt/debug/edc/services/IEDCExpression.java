@@ -1,24 +1,35 @@
 package org.eclipse.cdt.debug.edc.services;
 
+import java.util.concurrent.Executor;
+
+import org.eclipse.cdt.debug.edc.services.IExpressions2.CastInfo;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
-import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.IStatus;
 
 public interface IEDCExpression extends IExpressionDMContext, IEDCDMContext {
 
-	// we need a property to hold the expression string when it differs from the
-	// string we display in the Variables view Name column or the Expressions
-	// view Expression column
-	public final static String EXPRESSION_PROP = "Expression"; //$NON-NLS-1$
+	public Executor getExecutor();
+	public DsfServicesTracker getServiceTracker();
 
+	/**
+	 * Change the name of the expression that appears in the Variables view Name
+	 * column or the Expressions view Expression column.  This is typically
+	 * used to make the subexpressions of an expression show only the
+	 * suffix of the expression relative to the parent expression and
+	 * to differentiates children from each other (though it is not intended
+	 * to have any syntactic significance when catenated to the parent).
+	 * 
+	 * Note: {@link #getExpression()} is always the full expression.
+	 */
+	public void setName(String name);
+	
 	public IFrameDMContext getFrame();
-
-	public String getExpression();
 
 	public void evaluateExpression();
 
@@ -45,6 +56,8 @@ public interface IEDCExpression extends IExpressionDMContext, IEDCDMContext {
 
 	public boolean hasChildren();
 
-	public IExpressions getService();
+	/** Get any casting in effect.  May be <code>null</code>. */
+	public CastInfo getCastInfo();
+
 
 }

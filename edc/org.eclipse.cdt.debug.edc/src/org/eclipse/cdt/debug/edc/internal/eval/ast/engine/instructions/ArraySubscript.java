@@ -111,7 +111,10 @@ public class ArraySubscript extends CompoundInstruction {
 			op.setValueLocation(VariableLocationFactory.createMemoryVariableLocation(
 					fInterpreter.getServicesTracker(), fInterpreter.getContext(), 
 					location.getAddress().getValue()));
-			op.setValue(op.getValueLocation().readValue(byteSize));
+			
+			// read actual value
+			Number newValue = op.getValueByType(op.getValueType(), op.getValueLocation());
+			op.setValue(newValue);
 			push(op);
 			
 			return;

@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.formatter;
 
 import java.util.List;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
@@ -34,7 +33,9 @@ public class DefaultArrayFormatter implements IVariableFormatProvider {
 
 		@Override
 		protected String getSummaryValue(IExpressionDMContext variable) throws CoreException {
-			IExpressions expressions = ((IEDCExpression) variable).getService();
+			IExpressions expressions = ((IEDCExpression) variable).getServiceTracker().getService(IExpressions.class);
+			if (expressions == null)
+				return ""; //$NON-NLS-1$
 			StringBuilder sb = new StringBuilder("[");
 			List<IExpressionDMContext> children = FormatUtils.getAllChildExpressions(variable);
 			boolean skip = true;
@@ -50,7 +51,7 @@ public class DefaultArrayFormatter implements IVariableFormatProvider {
 					sb.append("}");
 				}
 				else {
-					ExpressionDMC childExpression = (ExpressionDMC) child;
+					IEDCExpression childExpression = (IEDCExpression) child;
 					FormattedValueDMContext fvc = 
 						expressions.getFormattedValueContext(childExpression, IExpressions.NATURAL_FORMAT);
 					FormattedValueDMData formattedValue = childExpression.getFormattedValue(fvc);

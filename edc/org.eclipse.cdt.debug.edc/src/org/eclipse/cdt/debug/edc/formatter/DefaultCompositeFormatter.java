@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.formatter;
 
 import java.util.List;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
@@ -43,8 +42,8 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 			if (sb.length() == 0) {
 				// if debug information does not include child information,
 				// return the already evaluated value
-				if (variable instanceof ExpressionDMC) {
-					ExpressionDMC variableEDMC = (ExpressionDMC)variable;
+				if (variable instanceof IEDCExpression) {
+					IEDCExpression variableEDMC = (IEDCExpression)variable;
 					return variableEDMC.getEvaluatedValueString();
 				}
 			}
@@ -73,12 +72,11 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 				prefix = ""; //$NON-NLS-1$
 			List<IExpressionDMContext> childContexts = FormatUtils.getAllChildExpressions(variable);
 			for (IExpressionDMContext child : childContexts) {
-				ExpressionDMC childExpression = (ExpressionDMC) child;
+				IEDCExpression childExpression = (IEDCExpression) child;
 				
 				// if any child is at null, likely the struct is at null or crosses null, and is bad news
 				if (hasNullLocation(childExpression)) {
-					sb.setLength(0);
-					return;
+					continue;
 				}
 					
 				IVariableValueConverter customConverter = 
@@ -125,9 +123,12 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 			}
 		}
 
-		private void addSimpleChild(String prefix, StringBuilder sb, ExpressionDMC childExpression) {
+		private void addSimpleChild(String prefix, StringBuilder sb, IEDCExpression childExpression) {
+			IExpressions expressions = ((IEDCExpression) childExpression).getServiceTracker().getService(IExpressions.class);
+			if (expressions == null)
+				return;
+			
 			sb.append(prefix);
-			IExpressions expressions = ((IEDCExpression) childExpression).getService();
 			FormattedValueDMContext fvc = 
 				expressions.getFormattedValueContext(childExpression, IExpressions.NATURAL_FORMAT);
 			FormattedValueDMData formattedValue = childExpression.getFormattedValue(fvc);

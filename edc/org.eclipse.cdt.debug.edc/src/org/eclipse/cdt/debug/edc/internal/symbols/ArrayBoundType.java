@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
+import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 
 public class ArrayBoundType extends Type implements IArrayBoundType {
@@ -28,7 +29,7 @@ public class ArrayBoundType extends Type implements IArrayBoundType {
 	// "[8]" is index 0;
 	private long dimensionIndex = 0;
 
-	public ArrayBoundType(Scope scope, long arrayBound) {
+	public ArrayBoundType(IScope scope, long arrayBound) {
 		super("", scope, 4, null); //$NON-NLS-1$
 
 		if (arrayBound < 1) {

@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.formatter;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -21,8 +22,6 @@ import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
-import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
@@ -120,11 +119,12 @@ public class FormatUtils {
 
 	
 	public static IExpressionDMContext createSubExpression(IExpressionDMContext variable, String name, String subExpressionStr) {
-		ExpressionDMC parentExpr = (ExpressionDMC) variable;
-		IExpressions expressions = parentExpr.getService();
+		IEDCExpression parentExpr = (IEDCExpression) variable;
+		IExpressions expressions = parentExpr.getServiceTracker().getService(IExpressions.class);
+		if (expressions == null)
+			return null;
 		String expressionStr = parentExpr.getExpression() + subExpressionStr;
-		ExpressionDMC subExpression = (ExpressionDMC) expressions.createExpression(parentExpr, expressionStr);
-		subExpression.setProperty(IEDCExpression.EXPRESSION_PROP, expressionStr);
+		IEDCExpression subExpression = (IEDCExpression) expressions.createExpression(parentExpr, expressionStr);
 		subExpression.setName(name);
 		return subExpression;
 	}
@@ -189,7 +189,7 @@ public class FormatUtils {
 
 	public static IExpressionDMContext findInCollectionByName(Collection<IExpressionDMContext> collection, String name) {
 		for (IExpressionDMContext context : collection) {
-			if (((ExpressionDMC) context).getName().equals(name))
+			if (((IEDCExpression) context).getName().equals(name))
 				return context;
 		}
 		
@@ -197,20 +197,15 @@ public class FormatUtils {
 	}
 
 	public static List<IExpressionDMContext> getAllChildExpressions(IExpressionDMContext variable) {
-		ExpressionDMC variableDMC = (ExpressionDMC) variable;
-		Expressions expressions = (Expressions) variableDMC.getService();
-		StackFrameDMC frame = (StackFrameDMC) variableDMC.getFrame();
-		IType type = TypeUtils.getStrippedType(variableDMC.getEvaluatedType());
-
-		if (!(type instanceof IAggregate) && !(type instanceof IPointerType)) {
+		
+		IEDCExpression variableDMC = (IEDCExpression) variable;
+		Expressions expressions = variableDMC.getServiceTracker().getService(Expressions.class);
+		if (expressions == null)
 			return Collections.emptyList();
-		}
-
-		List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
-		for (ExpressionDMC expressionDMC : expressions.getsubExpressions(variableDMC, frame, type)) {
-			children.add(expressionDMC);
-		}
-		return children;
+		
+		List<IExpressionDMContext> kids = Arrays.<IExpressionDMContext>asList(
+				expressions.getLogicalSubExpressions(variableDMC));
+		return kids;
 	}
 
 	public static String getFieldAccessor(IType type) {
@@ -224,9 +219,11 @@ public class FormatUtils {
 	}
 
 	public static String getMemberValue(IExpressionDMContext variable, IType type, String memberName, String format) {
-		IExpressions expressions = ((IEDCExpression)variable).getService();
-		ExpressionDMC expression = 
-			(ExpressionDMC) expressions.createExpression(variable, variable.getExpression()
+		IExpressions expressions = ((IEDCExpression)variable).getServiceTracker().getService(IExpressions.class);
+		if (expressions == null)
+			return ""; //$NON-NLS-1$
+		IEDCExpression expression = 
+			(IEDCExpression) expressions.createExpression(variable, variable.getExpression()
 					+ FormatUtils.getFieldAccessor(type) + memberName);
 		FormattedValueDMContext fvc = expressions.getFormattedValueContext(expression, format);
 		return expression.getFormattedValue(fvc).getFormattedValue();
@@ -248,7 +245,7 @@ public class FormatUtils {
 	
 	/**
 	 * Get an address from an expression representing a pointer.
-	 * @param value the evaluated value of an ExpressionDMC
+	 * @param value the evaluated value of an IEDCExpression
 	 * @return the pointer address or <code>null</code>
 	 */
 	public static IAddress getPointerValue(Number value) {

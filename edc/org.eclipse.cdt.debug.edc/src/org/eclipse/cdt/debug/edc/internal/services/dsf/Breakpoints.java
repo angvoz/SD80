@@ -26,7 +26,6 @@ import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICWatchpoint;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleLoadedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleUnloadedEvent;
@@ -35,6 +34,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ProcessExecuti
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.ISymbol;
@@ -1127,7 +1127,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 					drm.done();
 				} else {
 					Expressions exprService = getServicesTracker().getService(Expressions.class);
-					ExpressionDMC expression = (ExpressionDMC) exprService.createExpression(getData(), expr);
+					IEDCExpression expression = (IEDCExpression) exprService.createExpression(getData(), expr);
 					FormattedValueDMContext fvc = exprService.getFormattedValueContext(expression,
 							IFormattedValues.NATURAL_FORMAT);
 					FormattedValueDMData value = expression.getFormattedValue(fvc);

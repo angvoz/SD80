@@ -58,6 +58,12 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 	}
 
 	/**
+	 */
+	public long getLong() {
+		return fLong;
+	}
+	
+	/**
 	 * Execute pushing a long on the stack
 	 * 
 	 * @throws CoreException
@@ -108,7 +114,6 @@ public class PushLongOrBigInteger extends SimpleInstruction {
 	 * 
 	 * @param value
 	 *            - string version of a long
-	 * @return string converted to a long, or 0 if it cannot be converted
 	 * @throws NumberFormatException
 	 */
 	public void parseLongOrBigInteger(String value) throws NumberFormatException {

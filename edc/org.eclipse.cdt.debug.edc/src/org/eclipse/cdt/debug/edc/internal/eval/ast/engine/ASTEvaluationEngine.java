@@ -10,7 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine;
 
+import org.eclipse.cdt.core.dom.ast.ASTVisitor;
+import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.parser.ISourceCodeParser;
 import org.eclipse.cdt.core.dom.parser.c.GCCScannerExtensionConfiguration;
 import org.eclipse.cdt.core.dom.parser.cpp.GPPParserExtensionConfiguration;
@@ -54,8 +57,7 @@ public class ASTEvaluationEngine {
 	public InstructionSequence getCompiledExpression(String expression) throws CoreException {
 
 		FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { return " + expression + " ; }").toCharArray());
-		IScannerInfo scannerInfo = new ScannerInfo(); // creates an empty
-		// scanner info
+		IScannerInfo scannerInfo = new ScannerInfo(); // creates an empty scanner info
 		IScanner scanner = new CPreprocessor(reader, scannerInfo, ParserLanguage.CPP, new NullLogService(), GCCScannerExtensionConfiguration.getInstance(), IncludeFileContentProvider.getEmptyFilesProvider());
 		ISourceCodeParser parser = new GNUCPPSourceParser(scanner, ParserMode.COMPLETE_PARSE, new NullLogService(), GPPParserExtensionConfiguration.getInstance(), null);
 		IASTTranslationUnit ast = parser.parse();
@@ -80,6 +82,58 @@ public class ASTEvaluationEngine {
 	 */
 	public TypeEngine getTypeEngine() {
 		return typeEngine;
+	}
+
+	
+	static private class ASTTypeVisitor extends ASTVisitor {
+		private IASTTypeId theType;
+		private String errorMessage;
+		
+		{
+			shouldVisitTypeIds = true;
+			shouldVisitProblems = true;
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTTypeId)
+		 */
+		@Override
+		public int visit(IASTTypeId typeId) {
+			theType = typeId;
+			return PROCESS_ABORT;
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.core.dom.ast.ASTVisitor#visit(org.eclipse.cdt.core.dom.ast.IASTProblem)
+		 */
+		@Override
+		public int visit(IASTProblem problem) {
+			errorMessage = problem.getMessage();
+			return PROCESS_ABORT;
+		}
+	}
+	/**
+	 * Parse the given type string and get the AST tree for it
+	 * @param type
+	 * @return IASTTypeId instance
+	 * @throws CoreException
+	 */
+	public IASTTypeId getCompiledType(String type) throws CoreException {
+
+		FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { typeof(" + type + ") x; }").toCharArray());
+		IScannerInfo scannerInfo = new ScannerInfo(); // creates an empty scanner info
+		IScanner scanner = new CPreprocessor(reader, scannerInfo, ParserLanguage.CPP, new NullLogService(), GCCScannerExtensionConfiguration.getInstance(), IncludeFileContentProvider.getEmptyFilesProvider());
+		ISourceCodeParser parser = new GNUCPPSourceParser(scanner, ParserMode.COMPLETE_PARSE, new NullLogService(), GPPParserExtensionConfiguration.getInstance(), null);
+		IASTTranslationUnit ast = parser.parse();
+
+		ASTTypeVisitor visitor = new ASTTypeVisitor();
+		ast.accept(visitor);
+		if (visitor.errorMessage != null)
+			throw EDCDebugger.newCoreException(visitor.errorMessage);
+		if (visitor.theType == null)
+			throw EDCDebugger.newCoreException("did not detect type");
+		
+		return visitor.theType;
 	}
 
 }

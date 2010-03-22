@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.tcf.extension.AgentException;
+import org.eclipse.cdt.debug.edc.tcf.extension.AgentUtils;
 
 /**
  * A cache for a group of registers where the group can be GPR, FPR, or whatever
@@ -31,8 +32,7 @@ public abstract class RegisterCache {
 		public String name; // should be in sync with reg names defined in host
 		// debugger
 		public int size; // size in bytes
-		public String value; // string representation of value in hexadecimal
-		// and in big-endian.
+		public String value; // string representation of value in hexadecimal and in little-endian.
 		public boolean valid;
 
 		public Register(String name, int size) {
@@ -48,7 +48,7 @@ public abstract class RegisterCache {
 		}
 	}
 
-	// value stored in big-endian as that's the endianness used by GDB remote
+	// value stored in little-endian as that's the endianness used by GDB remote
 	// protocol on transmitting register values.
 	private Register[] fCache;
 
@@ -126,7 +126,7 @@ public abstract class RegisterCache {
 	 * Get cached value of the given register.
 	 * 
 	 * @param id
-	 * @return String representation of the hex value in little-endian
+	 * @return String representation of the hex value in big-endian
 	 * @throws AgentException
 	 *             if the register is not part of the cache.
 	 */
@@ -137,10 +137,24 @@ public abstract class RegisterCache {
 	}
 
 	/**
+	 * Get register value in big-endian byte array.
+	 * E.g. with value 0x11223344, big-endian array is: [0x11, 0x22, 0x33, 0x44]
+	 * while little-endian is: [0x44, 0x33, 0x22, 0x11]
+	 * 
+	 * @param id
+	 * @return byte[] representation of the value in big-endian
+	 * @throws AgentException
+	 *             if the register is not part of the cache.
+	 */
+	public byte[] getRegisterValueAsBytes(int id) throws AgentException {
+		return AgentUtils.hexStringToByteArray(getRegisterValue(id));
+	}
+
+	/**
 	 * Get cached value of the given register.
 	 * 
 	 * @param id
-	 * @return String representation of the hex value in little-endian
+	 * @return String representation of the hex value in big-endian
 	 * @throws AgentException
 	 *             if the register is not part of the cache.
 	 */
@@ -154,7 +168,7 @@ public abstract class RegisterCache {
 	 * 
 	 * @param id
 	 * @param value
-	 *            - must be in big-endian.
+	 *            - hex string in little-endian.
 	 * @throws AgentException
 	 *             if the register is not part of the cache.
 	 */
@@ -170,7 +184,7 @@ public abstract class RegisterCache {
 	 * 
 	 * @param id
 	 * @param value
-	 *            - must be in big-endian.
+	 *            - hex string in little-endian.
 	 * @throws AgentException
 	 *             if the register is not part of the cache.
 	 */

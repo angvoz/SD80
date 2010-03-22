@@ -15,8 +15,8 @@ import java.io.IOException;
 
 import org.eclipse.cdt.debug.edc.agent.gdbserver.services.MemoryService;
 import org.eclipse.cdt.debug.edc.agent.gdbserver.services.ProcessesService;
+import org.eclipse.cdt.debug.edc.agent.gdbserver.services.RegistersService;
 import org.eclipse.cdt.debug.edc.agent.gdbserver.services.RunControlService;
-import org.eclipse.cdt.debug.edc.agent.gdbserver.services.SimpleRegistersService;
 import org.eclipse.cdt.debug.edc.tcf.extension.AgentException;
 import org.eclipse.cdt.debug.edc.tcf.extension.AgentUtils;
 import org.eclipse.cdt.debug.edc.tcf.extension.SimpleEventQueue;
@@ -48,8 +48,12 @@ public class GdbserverAgent {
 		 * Tell framework that we are offering this service.
 		 */
 		public IService[] getLocalService(IChannel channel) {
-			return new IService[] { new ProcessesService(channel), new RunControlService(channel),
-					new SimpleRegistersService(channel), new MemoryService(channel) };
+			return new IService[] { 
+					new ProcessesService(channel), 
+					new RunControlService(channel),
+					new RegistersService(channel), 
+//					new SimpleRegistersService(channel), 
+					new MemoryService(channel) };
 		}
 
 		public IService getServiceProxy(IChannel channel, String serviceName) {

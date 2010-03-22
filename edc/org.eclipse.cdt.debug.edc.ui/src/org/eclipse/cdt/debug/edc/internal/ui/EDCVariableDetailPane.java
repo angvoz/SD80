@@ -153,7 +153,7 @@ public class EDCVariableDetailPane extends AbstractEDCDetailPane {
 				final String text = syncVariableDataAccess.getFormattedValue(context, getCurrentFormat());
 				Display.getDefault().asyncExec(new Runnable() {
 					public void run() {
-						document.set(text);
+						document.set(text == null ? "" : text); //$NON-NLS-1$
 					}
 				});
 			}

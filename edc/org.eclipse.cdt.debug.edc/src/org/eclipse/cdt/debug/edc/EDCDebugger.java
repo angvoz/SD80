@@ -21,6 +21,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.eclipse.debug.core.DebugException;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.osgi.framework.debug.FrameworkDebugOptions;
 import org.eclipse.osgi.service.debug.DebugTrace;
@@ -140,7 +141,10 @@ public class EDCDebugger extends Plugin {
 	 * @return a {@link CoreException} object.
 	 */
 	public static CoreException newCoreException(String msg, Throwable t) {
-		return new CoreException(new Status(IStatus.ERROR, PLUGIN_ID, msg, t));
+		if ((msg == null || msg.length() == 0) && t instanceof CoreException)
+			return new CoreException(((CoreException) t).getStatus());
+		else
+			return new CoreException(new Status(IStatus.ERROR, PLUGIN_ID, msg, t));
 	}
 
 	/**
@@ -153,6 +157,35 @@ public class EDCDebugger extends Plugin {
 	 */
 	public static CoreException newCoreException(String msg) {
 		return new CoreException(new Status(IStatus.ERROR, PLUGIN_ID, msg));
+	}
+
+	/**
+	 * Utility method for creating a DebugException object with this EDC plugin
+	 * ID.
+	 * 
+	 * @param msg
+	 *            - error message.
+	 * @param e
+	 *            - cause exception, can be null.
+	 * @return a {@link DebugException} object.
+	 */
+	public static DebugException newDebugException(String msg, Throwable t) {
+		if ((msg == null || msg.length() == 0) && t instanceof CoreException)
+			return new DebugException(((CoreException) t).getStatus());
+		else
+			return new DebugException(new Status(IStatus.ERROR, PLUGIN_ID, msg, t));
+	}
+
+	/**
+	 * Utility method for creating a DebugException object with this EDC plugin
+	 * ID.
+	 * 
+	 * @param msg
+	 *            - error message.
+	 * @return a {@link DebugException} object.
+	 */
+	public static DebugException newDebugException(String msg) {
+		return new DebugException(new Status(IStatus.ERROR, PLUGIN_ID, msg));
 	}
 
 	public static MessageLogger getMessageLogger() {

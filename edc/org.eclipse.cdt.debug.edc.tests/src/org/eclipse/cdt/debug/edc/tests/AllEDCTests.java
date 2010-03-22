@@ -12,13 +12,13 @@ package org.eclipse.cdt.debug.edc.tests;
 
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsBasicTypes;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsAggregatesAndEnums;
+import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsCasting;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInheritance;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInvalidExpressions;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTests;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlag;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsLinux;
 import org.eclipse.cdt.debug.edc.debugger.tests.SnapshotTests;
-import org.eclipse.cdt.debug.edc.debugger.tests.Variables;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
@@ -27,6 +27,7 @@ import org.junit.runners.Suite;
 						ExpressionsAggregatesAndEnums.class,
 						ExpressionsInheritance.class,
 						ExpressionsInvalidExpressions.class,
+						ExpressionsCasting.class,
 						SymbolReader.class,
 						TestDwarfReader.class,
 						TestSourceToAddressMapping.class,
@@ -40,7 +41,6 @@ import org.junit.runners.Suite;
 						TestDisassemblerARM.class,
 						TestDisassemblerX86.class,
 						TestOpcodeARM.class,
-						Variables.class,
 						RegisterFrameTests.class,
 						RegisterFrameTestsLinux.class,
 						RegisterFrameTestsBlackFlag.class,

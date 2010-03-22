@@ -14,7 +14,6 @@ import java.text.MessageFormat;
 
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
@@ -38,11 +37,11 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 			super(name);
 		}
 
-		protected ExpressionDMC expressionDMC;
+		protected IEDCExpression expressionDMC;
 		protected IVariableValueConverter customConverter;
 		
 		protected void setExpressionDMC(IEDCExpression expressionDMC) {
-			this.expressionDMC = (ExpressionDMC) expressionDMC;
+			this.expressionDMC = (IEDCExpression) expressionDMC;
 		}
 		
 		protected void setCustomConverter(IVariableValueConverter customConverter) {
@@ -81,7 +80,7 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
 			GetCustomValueQuery customValueQuery = new GetCustomValueQuery();
-			expressionDMC.getService().getExecutor().execute(customValueQuery);
+			expressionDMC.getExecutor().execute(customValueQuery);
 			String text;
 			try {
 				text = customValueQuery.get();
@@ -140,7 +139,7 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
 			SetCustomValueQuery setValueQuery = new SetCustomValueQuery();
-			expressionDMC.getService().getExecutor().execute(setValueQuery);
+			expressionDMC.getExecutor().execute(setValueQuery);
 			try {
 				setValueQuery.get();
 			} catch (final Throwable e) {

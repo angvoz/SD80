@@ -188,6 +188,12 @@ public class OperandValue {
 		if (varType instanceof IBasicType) {
 			IBasicType type = (IBasicType) varType;
 			basicType = type.getBaseType();
+			
+			if (basicType == ICPPBasicType.t_void)
+				throw EDCDebugger.newCoreException(ASTEvalMessages.OperandValue_CannotReadVoid);
+			if (basicType == ICPPBasicType.t_unspecified)
+				throw EDCDebugger.newCoreException(ASTEvalMessages.OperandValue_CannotReadUnspecifiedType);
+			
 			isSigned = type.isSigned();
 			isShort = type.isShort();
 			isLong = type.isLong();

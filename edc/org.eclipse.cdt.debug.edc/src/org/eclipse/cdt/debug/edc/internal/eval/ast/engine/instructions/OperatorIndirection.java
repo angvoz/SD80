@@ -19,7 +19,6 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
-import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
@@ -73,9 +72,6 @@ public class OperatorIndirection extends CompoundInstruction {
 
 		OperandValue opValue = new OperandValue(unqualifiedPointedTo);
 		
-		if (unqualifiedPointedTo instanceof ITypedef)
-			unqualifiedPointedTo = TypeUtils.getStrippedType(unqualifiedPointedTo.getType());
-
 		// for a lvalues (base arithmetic types, enums, and pointers), read the
 		// value and cast it to the right type
 		IMemoryVariableLocation location = VariableLocationFactory.createMemoryVariableLocation(
@@ -108,7 +104,8 @@ public class OperatorIndirection extends CompoundInstruction {
 			push(opValue);
 
 		} else {
-			throw EDCDebugger.newCoreException(MessageFormat.format(ASTEvalMessages.OperatorIndirection_UnhandledType, unqualifiedPointedTo.getName()));
+			throw EDCDebugger.newCoreException(MessageFormat.format(ASTEvalMessages.OperatorIndirection_UnhandledType, 
+					unqualifiedPointedTo != null ? unqualifiedPointedTo.getName() : "null"));
 		}
 	}
 }

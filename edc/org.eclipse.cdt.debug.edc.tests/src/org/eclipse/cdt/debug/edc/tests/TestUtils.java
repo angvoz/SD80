@@ -18,12 +18,15 @@ import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.launch.IEDCLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.services.IExpressions2;
 import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.services.IExpressions2.CastInfo;
+import org.eclipse.cdt.debug.edc.services.IExpressions2.ICastedExpressionDMContext;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -31,6 +34,7 @@ import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IStack;
+import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
@@ -330,7 +334,7 @@ public class TestUtils {
 	public static String getExpressionValue(final DsfSession session, final IDMContext frame, final String expr)
 			throws Exception, ExecutionException {
 
-		ExpressionDMC expression = getExpressionDMC(session, frame, expr);
+		IEDCExpression expression = getExpressionDMC(session, frame, expr);
 		String formatted = getFormattedExpressionValue(session, frame, expression);
 		
 		return formatted;
@@ -345,16 +349,16 @@ public class TestUtils {
 	 * @throws Exception
 	 * @throws ExecutionException
 	 */
-	public static ExpressionDMC getExpressionDMC(final DsfSession session, final IDMContext frame, final String expr)
+	public static IEDCExpression getExpressionDMC(final DsfSession session, final IDMContext frame, final String expr)
 		throws Exception, ExecutionException {
 		
-		Query<ExpressionDMC> runnable = new Query<ExpressionDMC>() {
+		Query<IEDCExpression> runnable = new Query<IEDCExpression>() {
 			
 			@Override
-			protected void execute(DataRequestMonitor<ExpressionDMC> rm) {
+			protected void execute(DataRequestMonitor<IEDCExpression> rm) {
 				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
 				Expressions expressionsService = servicesTracker.getService(Expressions.class);
-				ExpressionDMC expression = (ExpressionDMC) expressionsService.createExpression(frame, expr);
+				IEDCExpression expression = (IEDCExpression) expressionsService.createExpression(frame, expr);
 				expression.evaluateExpression();
 				rm.setData(expression);
 				rm.done();
@@ -366,6 +370,7 @@ public class TestUtils {
 		return runnable.get();
 	}
 
+
 	/**
 	 * Get the formatted string value of an expression context.
 	 * @param session
@@ -375,7 +380,7 @@ public class TestUtils {
 	 * @throws Exception
 	 * @throws ExecutionException
 	 */
-	public static String getFormattedExpressionValue(final DsfSession session, final IDMContext frame, final ExpressionDMC expression)
+	public static String getFormattedExpressionValue(final DsfSession session, final IDMContext frame, final IEDCExpression expression)
 		throws Exception, ExecutionException {
 		
 		Query<String> runnable = new Query<String>() {
@@ -409,6 +414,83 @@ public class TestUtils {
 				
 				rm.setData(formattedValue.getFormattedValue());
 				rm.done();
+			}
+		};
+		
+		session.getExecutor().execute(runnable);
+		
+		return runnable.get();
+	}
+
+	/**
+	 * Get a casted expression.
+	 * @param session
+	 * @param frame
+	 * @param expr
+	 * @return casted expression DMC
+	 * @throws Exception
+	 * @throws ExecutionException
+	 */
+	public static ICastedExpressionDMContext getCastedExpressionValue(final DsfSession session, final IDMContext frame, final String expr, final String type)
+			throws Exception, ExecutionException {
+
+		IEDCExpression expression = getExpressionDMC(session, frame, expr);
+		
+		CastInfo castInfo = new CastInfo(type);
+		
+		ICastedExpressionDMContext castedDMC = getCastedExpressionDMC(session, frame, expression, castInfo);
+		
+		return castedDMC;
+	}
+	
+	/**
+	 * @param session
+	 * @param frame
+	 * @param expression
+	 * @param castInfo
+	 * @return
+	 * @throws ExecutionException 
+	 * @throws InterruptedException 
+	 */
+	public static ICastedExpressionDMContext getCastedExpressionDMC(
+			final DsfSession session, final IDMContext frame, final IExpressionDMContext expression,
+			final CastInfo castInfo) throws InterruptedException, ExecutionException {
+		Query<ICastedExpressionDMContext> runnable = new Query<ICastedExpressionDMContext>() {
+			
+			@Override
+			protected void execute(DataRequestMonitor<ICastedExpressionDMContext> rm) {
+				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
+				IExpressions2 expressionsService = servicesTracker.getService(IExpressions2.class);
+				rm.setData(expressionsService.createCastedExpression(expression, castInfo));
+				rm.done();
+			}
+		};
+		
+		session.getExecutor().execute(runnable);
+		
+		return runnable.get();
+	}
+
+	/**
+	 * Get an evaluated expression context.
+	 * @param session
+	 * @param frame
+	 * @param expr
+	 * @return
+	 * @throws Exception
+	 * @throws ExecutionException
+	 */
+	public static IExpressionDMContext[] getSubExpressionDMCs(final DsfSession session, final IDMContext frame, 
+			final IExpressionDMContext expr)
+		throws Exception, ExecutionException {
+		
+		Query<IExpressionDMContext[]> runnable = new Query<IExpressionDMContext[]>() {
+			
+			@Override
+			protected void execute(DataRequestMonitor<IExpressionDMContext[]> rm) {
+				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
+				Expressions expressionsService = servicesTracker.getService(Expressions.class);
+				expressionsService.getSubExpressions(expr, rm);
 			}
 		};
 		

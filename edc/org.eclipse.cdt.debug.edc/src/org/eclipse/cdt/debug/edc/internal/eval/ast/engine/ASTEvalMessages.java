@@ -56,6 +56,10 @@ public class ASTEvalMessages extends NLS {
 
 	public static String OperandValue_CannotGetAddress;
 
+	public static String OperandValue_CannotReadUnspecifiedType;
+
+	public static String OperandValue_CannotReadVoid;
+
 	public static String OperandValue_UnhandledType;
 
 	public static String OperandValue_VariableNoAddress;
@@ -63,12 +67,26 @@ public class ASTEvalMessages extends NLS {
 	public static String OperatorAddrOf_RequiresVariable;
 	public static String OperatorAddrOf_NoRegister;
 	public static String OperatorAddrOf_NoBitField;
+
+	public static String OperatorCast_CannotCastString;
 	public static String OperatorIndirection_RequiresPointer;
 	public static String OperatorIndirection_NoBitField;
 
 	public static String OperatorIndirection_UnhandledType;
 	public static String OperatorMinus_NonPtrMinusPtr;
 	public static String OperatorPlus_PtrPlusPtr;
+
+	public static String TypeEngine_CannotResolveBaseType;
+
+	public static String TypeEngine_CannotResolveType;
+
+	public static String TypeEngine_ExpectedLiteralConstant;
+
+	public static String TypeEngine_NoDecltypeSupport;
+
+	public static String TypeEngine_NoTypeToCast;
+
+	public static String TypeEngine_UnhandledType;
 
 	public static String VariableWithValue_CannotLocateVariable;
 	public static String VariableWithValue_NoTwelveByteLongDouble; 

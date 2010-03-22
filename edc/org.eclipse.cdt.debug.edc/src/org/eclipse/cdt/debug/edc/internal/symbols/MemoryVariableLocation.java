@@ -60,11 +60,15 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 	 */
 	@Override
 	public String toString() {
-		return "0x" + Long.toHexString(getAddress().getValue().longValue()) + (isRuntimeAddress() ? "" : " (link address)");
+		return "0x" + Long.toHexString(address.getValue().longValue()) + (isRuntimeAddress ? "" : " (link address)");
 	}
 	
 	public IAddress getAddress() {
-		return address;
+		try {
+			return getRealAddress();
+		} catch (CoreException e) {
+			return null;
+		}
 	}
 
 	public boolean isRuntimeAddress() {

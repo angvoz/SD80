@@ -49,6 +49,7 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorB
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorBinaryOr;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorBinaryXor;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorBitwiseNot;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorCast;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorDivide;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorEquals;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorGreaterEqual;
@@ -343,7 +344,6 @@ public class ASTInstructionCompiler extends ASTVisitor {
 	}
 
 	private void visitArraySubscriptExpression(IASTArraySubscriptExpression expression) {
-		// TODO: implement
 		push(new ArraySubscript(counter));
 	}
 
@@ -352,8 +352,7 @@ public class ASTInstructionCompiler extends ASTVisitor {
 	}
 
 	private void visitCastExpression(IASTCastExpression expression) {
-		// TODO: implement
-		push(new NoOp(counter));
+		push(new OperatorCast(counter, expression));
 	}
 
 	private void visitLiteralExpression(IASTLiteralExpression expression) {

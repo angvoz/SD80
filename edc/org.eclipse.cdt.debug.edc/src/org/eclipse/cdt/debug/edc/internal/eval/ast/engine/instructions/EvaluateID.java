@@ -93,12 +93,14 @@ public class EvaluateID extends SimpleInstruction {
 		// This may be called on debugger shutdown, in which case the "modules" 
 		// service may have been shutdown.
 		if (variable != null && modules != null) {
-			IVariableLocation valueLocation;
+			IVariableLocation valueLocation = null;
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getVariable().getLocationProvider();
 			IAddress pcValue = frame.getIPAddress();
 			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
-			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
+			if (module != null && provider != null) {
+				valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
+			}
 			if (valueLocation == null) {
 				// unhandled
 				valueLocation = new InvalidVariableLocation(MessageFormat.format(ASTEvalMessages.EvaluateID_NameHasNoLocation, variable.getName()));

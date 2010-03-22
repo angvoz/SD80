@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions.ExpressionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
@@ -64,12 +63,14 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 			IExpressionDMContext createSubExpression = 
 				FormatUtils.createSubExpression(variable, nameToFieldPath.getName(), 
 						FormatUtils.getFieldAccessor(type) + nameToFieldPath.getFieldPath());
-			childExpressions.add(createSubExpression);
+			if (createSubExpression != null) {
+				childExpressions.add(createSubExpression);
+			}
 		}
 		// now add all unmapped children
 		List<IExpressionDMContext> allChildren = FormatUtils.getAllChildExpressions(variable);
 		for (IExpressionDMContext child : allChildren) {
-			String name = ((ExpressionDMC) child).getName();
+			String name = ((IEDCExpression) child).getName();
 			if (!hasFieldPath(name))
 				childExpressions.add(child);
 		}
@@ -93,12 +94,15 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 	}
 
 	protected String getValueString(IExpressionDMContext variable) throws CoreException {
+		IExpressions expressions = ((IEDCExpression) variable).getServiceTracker().getService(IExpressions.class);
+		if (expressions == null)
+			return ""; //$NON-NLS-1$
+		
 		StringBuilder sb = new StringBuilder();
-		IExpressions expressions = ((IEDCExpression) variable).getService();
 		List<IExpressionDMContext> children = getChildren(variable);
 		int i = 0;
 		for (IExpressionDMContext child : children) {
-			ExpressionDMC childExpression = (ExpressionDMC) child;
+			IEDCExpression childExpression = (IEDCExpression) child;
 			FormattedValueDMContext fvc = 
 				expressions.getFormattedValueContext(childExpression, IExpressions.NATURAL_FORMAT);
 			FormattedValueDMData formattedValue = childExpression.getFormattedValue(fvc);

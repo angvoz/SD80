@@ -33,8 +33,11 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
+import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
@@ -268,7 +271,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private IFunctionScope functionScope;
 		private IFrameRegisters frameRegisters;
 		public StackFrameDMC calledFrame;
-		private TypeEngine typeEngine = new TypeEngine(dsfServicesTracker);
+		private TypeEngine typeEngine;
 
 		public StackFrameDMC(final IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
 			super(Stack.this, new IDMContext[] { executionDMC }, frameProperties);
@@ -319,6 +322,20 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				}
 			}
 			properties.putAll(frameProperties);
+			
+			// get the type engine
+			IDebugInfoProvider debugInfoProvider = null;
+			IEDCModules modules = dsfServicesTracker.getService(IEDCModules.class);
+			if (modules != null) {
+				IEDCModuleDMContext module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+				if (module != null) {
+					IEDCSymbolReader symbolReader = module.getSymbolReader();
+					if (symbolReader instanceof EDCSymbolReader) {
+						debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
+					}
+				}
+			}
+			typeEngine = new TypeEngine(dsfServicesTracker, debugInfoProvider);
 		}
 
 		public IFunctionScope getFunctionScope() {

@@ -105,14 +105,16 @@ public class EDCVariableDetailPane extends AbstractEDCDetailPane {
 		public void setSelection(IStructuredSelection selection) {
 			formatList.clear();
 			IFormattedDataDMContext context = getContextFromSelection(selection);
-			if (context != null) {
-				String[] formats = createSyncVariableDataAccess(context).getSupportedFormats(context);
-				formatList.addAll(Arrays.asList(formats));
-				if (formatList.remove(IFormattedValues.NATURAL_FORMAT)) // put natural first, if exists
-					formatList.add(0, IFormattedValues.NATURAL_FORMAT);
-				if ((currentFormat == null || !formatList.contains(currentFormat)) && !formatList.isEmpty())
-					currentFormat = formatList.get(0);
-			}
+			if (context == null)
+				return;
+			String[] formats = createSyncVariableDataAccess(context).getSupportedFormats(context);
+			if (formats == null)
+				return;
+			formatList.addAll(Arrays.asList(formats));
+			if (formatList.remove(IFormattedValues.NATURAL_FORMAT)) // put natural first, if exists
+				formatList.add(0, IFormattedValues.NATURAL_FORMAT);
+			if ((currentFormat == null || !formatList.contains(currentFormat)) && !formatList.isEmpty())
+				currentFormat = formatList.get(0);
 		}
 		
 		@Override

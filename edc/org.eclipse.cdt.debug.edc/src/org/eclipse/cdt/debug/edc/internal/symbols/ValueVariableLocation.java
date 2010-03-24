@@ -66,6 +66,6 @@ public class ValueVariableLocation implements IValueVariableLocation {
 	}
 
 	public void writeValue(int bytes, BigInteger value) throws CoreException {
-		throw EDCDebugger.newCoreException("Can't write to a value location");
+		throw EDCDebugger.newCoreException("cannot modify derived value");
 	}
 }

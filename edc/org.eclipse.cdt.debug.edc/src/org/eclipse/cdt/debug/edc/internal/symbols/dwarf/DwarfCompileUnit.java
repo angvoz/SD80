@@ -89,6 +89,10 @@ public class DwarfCompileUnit extends CompileUnitScope {
 		return true;
 	}
 
+	public AttributeList getAttributeList() {
+		return attributes;
+	}
+	
 	@Override
 	protected Collection<ILineEntry> parseLineTable() {
 		DwarfInfoReader reader = new DwarfInfoReader(provider);

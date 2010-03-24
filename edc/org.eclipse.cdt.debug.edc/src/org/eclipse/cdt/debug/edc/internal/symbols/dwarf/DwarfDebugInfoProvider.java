@@ -1150,7 +1150,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			CommonInformationEntry cie = null;
 			if (!commonInfoEntries.containsKey(entry.ciePtr)) {
 				try {
-					cie = reader.parseCommonInfoEntry(entry.ciePtr, entry.addressSize);
+					cie = reader.parseCommonInfoEntry(entry.ciePtr, entry.addressSize, framePC);
 				} catch (IOException e) {
 					EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfDebugInfoProvider_FailedToReadCIE + entry.ciePtr, e);
 				}

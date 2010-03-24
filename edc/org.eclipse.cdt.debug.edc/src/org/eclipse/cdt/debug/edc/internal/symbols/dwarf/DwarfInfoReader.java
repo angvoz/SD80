@@ -2585,9 +2585,10 @@ public class DwarfInfoReader {
 	 * Parse a CIE
 	 * @param ciePtr
 	 * @param addressSize 
+	 * @param framePC 
 	 * @return the CIE or <code>null</code> in case of error
 	 */
-	public CommonInformationEntry parseCommonInfoEntry(Long ciePtr, int addressSize) throws IOException {
+	public CommonInformationEntry parseCommonInfoEntry(Long ciePtr, int addressSize, IAddress framePC) throws IOException {
 		IExecutableSection frameSection = exeReader.findExecutableSection(DWARF_DEBUG_FRAME);
 		if (frameSection == null)
 			return null;
@@ -2607,20 +2608,21 @@ public class DwarfInfoReader {
 		
 		byte version = buffer.get();
 		String augmentation = readString(buffer);
-		if (augmentation.length() > 0) {
-			// no idea how to handle
-			assert(false);
-			return null;
-		}
-		
 		long codeAlignmentFactor = read_unsigned_leb128(buffer);
 		long dataAlignmentFactor = read_signed_leb128(buffer);
 		int returnAddressRegister = version < 3 ? buffer.get() & 0xff : (int) read_unsigned_leb128(buffer);
 		
+
 		IStreamBuffer instructions = buffer.wrapSubsection(nextPosition - buffer.position());
 		
+		String producer = null;
+		ICompileUnitScope cuScope = provider.getCompileUnitForAddress(framePC);
+		if (cuScope instanceof DwarfCompileUnit)
+			producer = ((DwarfCompileUnit) cuScope).getAttributeList().getAttributeValueAsString(DwarfConstants.DW_AT_producer);
+		
 		return new CommonInformationEntry(codeAlignmentFactor, dataAlignmentFactor, 
-				returnAddressRegister, version, instructions, addressSize);
+				returnAddressRegister, version, instructions, addressSize, 
+				producer, augmentation);
 	}
 	
 	private void storeTypeByName(String name, IType type) {

@@ -64,21 +64,17 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		public Stack<Map<Integer, AbstractRule>> stateStack;
 		
 		CFARegisterRule cfaRegRule = new CFARegisterRule(0, 0);
-		/** current CFA register # */
-		//long cfaRegNum;
-		/** current CFA register offset */
-		//long cfaOffset;
-		/** current CFA value */
-		//BigInteger cfaValue;
 		
 		private final int addressSize;
+		public boolean cfaOffsetsAreReversed;
 		
 		public InstructionState(DsfServicesTracker tracker,
 				IFrameDMContext context,
 				IFrameRegisters childRegisters,
-				int addressSize) {
+				FrameDescriptionEntry fde) {
 			this.tracker = tracker;
-			this.addressSize = addressSize;
+			this.addressSize = fde.addressSize;
+			this.cfaOffsetsAreReversed = fde.getCIE().cfaOffsetsAreReversed;
 			this.regRules = new TreeMap<Integer, AbstractRule>();
 			this.stateStack = new Stack<Map<Integer,AbstractRule>>();
 			this.initialRules = new TreeMap<Integer, AbstractRule>();
@@ -92,20 +88,20 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		public static final int CFA = -1;
 		
 		/**
-		 * Set the current CFA location
-		 * @return
-		 */
-		public void getCFALocation() throws CoreException {
-			//BigInteger regval = childRegisters.getRegister((int) cfaRegNum, addressSize);
-			//cfaValue = regval.add(BigInteger.valueOf(cfaOffset));
-		}
-
-		/**
+		 * Read the current CFA.
 		 * @return
 		 */
 		public BigInteger readCFA() throws CoreException {
 			BigInteger regval = childRegisters.getRegister(cfaRegRule.regnum, addressSize);
-			return regval.add(BigInteger.valueOf(cfaRegRule.offset));
+			return regval.add(BigInteger.valueOf(cfaOffsetsAreReversed ? -cfaRegRule.offset : cfaRegRule.offset));
+		}
+
+		/**
+		 * Get the register which is the CFA base.
+		 * @return register number
+		 */
+		public int getCFARegister() {
+			return cfaRegRule.regnum;
 		}
 		
 		
@@ -295,7 +291,6 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		long offset;
 		public DefCFAInstruction(long regnum, long offset) {
 			this.regnum = regnum;
-			this.offset = offset;
 		}
 		@Override
 		public String toString() {
@@ -305,9 +300,6 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		public void applyInstruction(InstructionState state) throws CoreException {
 			state.cfaRegRule.regnum = (int) regnum;
 			state.cfaRegRule.offset = offset; 
-			//state.cfaRegNum = regnum;
-			//state.cfaOffset = offset;
-			//state.getCFALocation();
 		}
 	}
 	
@@ -324,8 +316,6 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		@Override
 		public void applyInstruction(InstructionState state) throws CoreException {
 			state.cfaRegRule.regnum = (int) regnum;
-			//state.cfaRegNum = (int) regnum;
-			//state.getCFALocation();
 		}
 	}
 	
@@ -343,8 +333,6 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		@Override
 		public void applyInstruction(InstructionState state) throws CoreException {
 			state.cfaRegRule.offset = offset;
-			//state.cfaOffset = offset;
-			//state.getCFALocation();
 		}
 	}
 	
@@ -467,7 +455,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		}
 		@Override
 		public String toString() {
-			return super.toString() + "expression";
+			return super.toString() + " expression";
 		}
 		@Override
 		public void applyInstruction(InstructionState state) throws CoreException {
@@ -480,7 +468,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		}
 		@Override
 		public String toString() {
-			return super.toString() + "restore";
+			return super.toString() + " restore";
 		}
 		@Override
 		public void applyInstruction(InstructionState state) throws CoreException {
@@ -519,137 +507,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		}
 	}
 
-	static AbstractInstruction parseInstruction(int opcode, IStreamBuffer buffer, 
-			DwarfDebugInfoProvider provider, int addressSize, long dataAlignmentFactor) throws IOException {
-		int reg;
-		long offset;
-		IStreamBuffer expr;
-		
-		//
-		// CFA DEFINITION INSTRUCTIONS
-		//
-		if (opcode >= DwarfConstants.DW_CFA_offset && opcode < DwarfConstants.DW_CFA_offset + 0x40) {
-			reg = opcode - DwarfConstants.DW_CFA_offset;
-			offset = DwarfInfoReader.read_unsigned_leb128(buffer) * dataAlignmentFactor;
-			return new OffsetInstruction(reg, offset);
-		} else if (opcode >= DwarfConstants.DW_CFA_restore && opcode < DwarfConstants.DW_CFA_restore + 0x40) {
-			reg = opcode - DwarfConstants.DW_CFA_restore;
-			return new RestoreInstruction(reg);
-		} else {
-			switch (opcode) {
-			case DwarfConstants.DW_CFA_nop:
-				// ignore
-				return new NopInstruction();
-			case DwarfConstants.DW_CFA_def_cfa:
-				reg = readRegister(buffer);
-				offset = DwarfInfoReader.read_unsigned_leb128(buffer);
-				return new DefCFAInstruction(reg, offset);
-			case DwarfConstants.DW_CFA_def_cfa_sf:
-				reg = readRegister(buffer);
-				offset = DwarfInfoReader.read_signed_leb128(buffer) * dataAlignmentFactor;
-				return new DefCFAInstruction(reg, offset);
-			case DwarfConstants.DW_CFA_def_cfa_register: {
-				reg = readRegister(buffer);
-				return new DefCFARegisterInstruction(reg);
-			}
-			case DwarfConstants.DW_CFA_def_cfa_offset: {
-				offset = DwarfInfoReader.read_unsigned_leb128(buffer); // non-factored
-				return new DefCFAOffsetInstruction(offset);
-			}
-			case DwarfConstants.DW_CFA_def_cfa_offset_sf: {
-				offset = DwarfInfoReader.read_signed_leb128(buffer) * dataAlignmentFactor;
-				return new DefCFAOffsetInstruction(offset);
-			}
-			case DwarfConstants.DW_CFA_def_cfa_expression: {
-				byte form = buffer.get();
-				expr = readExpression(form, addressSize, provider, buffer);
-				return new DefCFAExpressionInstruction(expr);
-			}
-			}
-		}
-			
-		//
-		// REGISTER RULE INSTRUCTIONS
-		//
-		if (opcode >= DwarfConstants.DW_CFA_offset && opcode < DwarfConstants.DW_CFA_offset + 0x40) {
-			reg = opcode - DwarfConstants.DW_CFA_offset;
-			offset = DwarfInfoReader.read_unsigned_leb128(buffer) * dataAlignmentFactor;
-			return new OffsetInstruction(reg, offset);
-		} else if (opcode >= DwarfConstants.DW_CFA_restore && opcode < DwarfConstants.DW_CFA_restore + 0x40) {
-			reg = opcode - DwarfConstants.DW_CFA_restore;
-			return new RestoreInstruction(reg);
-		} else {
-			switch (opcode) {
-			case DwarfConstants.DW_CFA_nop:
-				break;
-				
-			case DwarfConstants.DW_CFA_undefined:
-				reg = readRegister(buffer);
-				return new UndefinedInstruction(reg);
-			case DwarfConstants.DW_CFA_same_value:
-				reg = readRegister(buffer);
-				return new SameValueInstruction(reg);
-			case DwarfConstants.DW_CFA_offset_extended:
-				reg = readRegister(buffer);
-				offset = DwarfInfoReader.read_unsigned_leb128(buffer) * dataAlignmentFactor;
-				return new OffsetInstruction(reg, offset);
-			case DwarfConstants.DW_CFA_offset_extended_sf:
-				reg = readRegister(buffer);
-				offset = DwarfInfoReader.read_signed_leb128(buffer) * dataAlignmentFactor;
-				return new OffsetInstruction(reg, offset);
-			case DwarfConstants.DW_CFA_val_offset:
-				reg = readRegister(buffer);
-				offset = DwarfInfoReader.read_unsigned_leb128(buffer) * dataAlignmentFactor;
-				return new ValueOffsetInstruction(reg, offset);
-			case DwarfConstants.DW_CFA_val_offset_sf:
-				reg = readRegister(buffer);
-				offset = DwarfInfoReader.read_signed_leb128(buffer) * dataAlignmentFactor;
-				return new ValueOffsetInstruction(reg, offset);
-			case DwarfConstants.DW_CFA_register: {
-				reg = readRegister(buffer);
-				int otherReg = readRegister(buffer);
-				return new RegisterInstruction(reg, otherReg);
-			}
-			case DwarfConstants.DW_CFA_expression: {
-				reg = readRegister(buffer);
-				byte form = buffer.get();
-				expr = readExpression(form, addressSize, provider, buffer);
-				return new ExpressionInstruction(reg, expr);
-			}
-			case DwarfConstants.DW_CFA_val_expression: {
-				reg = readRegister(buffer);
-				byte form = buffer.get();
-				expr = readExpression(form, addressSize, provider, buffer);
-				return new ValueExpressionInstruction(reg, expr);
-			}
-			case DwarfConstants.DW_CFA_restore_extended:
-				reg = readRegister(buffer);
-				return new RestoreInstruction(reg);
-			case DwarfConstants.DW_CFA_remember_state:
-				return new RememberStateInstruction();
-			case DwarfConstants.DW_CFA_restore_state:
-				return new RestoreStateInstruction();
-			}
-		}
-		return null;
-	}
 
-	/**
-	 * @param buffer
-	 * @return
-	 * @throws IOException
-	 */
-	private static int readRegister(IStreamBuffer buffer) throws IOException {
-		return (int) DwarfInfoReader.read_unsigned_leb128(buffer);
-	}
-
-	private static IStreamBuffer readExpression(byte form, int addressSize, 
-			DwarfDebugInfoProvider provider, IStreamBuffer buffer) {
-		AttributeValue value = new AttributeValue(form, buffer, (byte) addressSize, null);
-		return new MemoryStreamBuffer(value.getValueAsBytes(), 
-				provider.getExecutableSymbolicsReader().getByteOrder());
-	}
-	
 	/**
 	 * A "CIE" from the .debug_frame section.
 	 */
@@ -663,21 +521,49 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		final IStreamBuffer instructions;
 		private List<AbstractInstruction> initialLocations;
 		private CoreException initialLocationsError;
-		
+		private boolean cfaOffsetSfIsFactored;
+		private boolean cfaOffsetsAreReversed;
 		
 		public CommonInformationEntry(long codeAlignmentFactor,
 				long dataAlignmentFactor, int returnAddressRegister,
 				int version,
 				IStreamBuffer instructions,
-				int addressSize) {
+				int addressSize, 
+				String producer, String augmentation) {
+			
 			this.codeAlignmentFactor = codeAlignmentFactor;
 			this.dataAlignmentFactor = dataAlignmentFactor;
 			this.returnAddressRegister = returnAddressRegister;
 			this.version = version;
 			this.instructions = instructions;
 			this.addressSize = addressSize;
+			
+			checkAugmentations(producer, augmentation);
 		}
 		
+		/**
+		 * Handle augmentations we find.
+		 */
+		private void checkAugmentations(String producer, String augmentation) {
+			// RVCT has bugs with the frame info in DWARF 1/2 and some DWARF 3
+			
+			if (augmentation.startsWith("armcc") && augmentation.contains("+")) {
+				// this means bugs are fixed
+				
+			} else {
+				if (producer != null && producer.contains("RVCT")) { //$NON-NLS-1$
+					if (version == 1) {
+						cfaOffsetSfIsFactored = true;
+						cfaOffsetsAreReversed = true;
+					}
+					
+					if (version == 3) {
+						cfaOffsetsAreReversed = true;
+					}
+				}
+			}
+		}
+
 		/**
 		 * Get the rules defining initial locations for all the registers 
 		 * @return list of instructions
@@ -721,6 +607,143 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 			return instrs;
 		}
 
+		public AbstractInstruction parseInstruction(int opcode, IStreamBuffer buffer, 
+				DwarfDebugInfoProvider provider, int addressSize, long dataAlignmentFactor) throws IOException {
+			int reg;
+			long offset;
+			IStreamBuffer expr;
+			
+			//
+			// CFA DEFINITION INSTRUCTIONS
+			//
+			if (opcode >= DwarfConstants.DW_CFA_offset && opcode < DwarfConstants.DW_CFA_offset + 0x40) {
+				reg = opcode - DwarfConstants.DW_CFA_offset;
+				offset = DwarfInfoReader.read_unsigned_leb128(buffer) * dataAlignmentFactor;
+				return new OffsetInstruction(reg, offset);
+			} else if (opcode >= DwarfConstants.DW_CFA_restore && opcode < DwarfConstants.DW_CFA_restore + 0x40) {
+				reg = opcode - DwarfConstants.DW_CFA_restore;
+				return new RestoreInstruction(reg);
+			} else {
+				switch (opcode) {
+				case DwarfConstants.DW_CFA_nop:
+					// ignore
+					return new NopInstruction();
+				case DwarfConstants.DW_CFA_def_cfa:
+					reg = readRegister(buffer);
+					offset = DwarfInfoReader.read_unsigned_leb128(buffer);
+					if (cfaOffsetSfIsFactored) {
+						offset *= dataAlignmentFactor;
+					}
+					return new DefCFAInstruction(reg, offset);
+				case DwarfConstants.DW_CFA_def_cfa_sf:
+					reg = readRegister(buffer);
+					offset = DwarfInfoReader.read_signed_leb128(buffer) * dataAlignmentFactor;
+					return new DefCFAInstruction(reg, offset);
+				case DwarfConstants.DW_CFA_def_cfa_register: {
+					reg = readRegister(buffer);
+					return new DefCFARegisterInstruction(reg);
+				}
+				case DwarfConstants.DW_CFA_def_cfa_offset: {
+					offset = DwarfInfoReader.read_unsigned_leb128(buffer); // non-factored, usually
+					if (cfaOffsetSfIsFactored) {
+						offset *= dataAlignmentFactor;
+					}
+					return new DefCFAOffsetInstruction(offset);
+				}
+				case DwarfConstants.DW_CFA_def_cfa_offset_sf: {
+					offset = DwarfInfoReader.read_signed_leb128(buffer) * dataAlignmentFactor;
+					return new DefCFAOffsetInstruction(offset);
+				}
+				case DwarfConstants.DW_CFA_def_cfa_expression: {
+					byte form = buffer.get();
+					expr = readExpression(form, addressSize, provider, buffer);
+					return new DefCFAExpressionInstruction(expr);
+				}
+				}
+			}
+				
+			//
+			// REGISTER RULE INSTRUCTIONS
+			//
+			if (opcode >= DwarfConstants.DW_CFA_offset && opcode < DwarfConstants.DW_CFA_offset + 0x40) {
+				reg = opcode - DwarfConstants.DW_CFA_offset;
+				offset = DwarfInfoReader.read_unsigned_leb128(buffer) * dataAlignmentFactor;
+				return new OffsetInstruction(reg, offset);
+			} else if (opcode >= DwarfConstants.DW_CFA_restore && opcode < DwarfConstants.DW_CFA_restore + 0x40) {
+				reg = opcode - DwarfConstants.DW_CFA_restore;
+				return new RestoreInstruction(reg);
+			} else {
+				switch (opcode) {
+				case DwarfConstants.DW_CFA_nop:
+					break;
+					
+				case DwarfConstants.DW_CFA_undefined:
+					reg = readRegister(buffer);
+					return new UndefinedInstruction(reg);
+				case DwarfConstants.DW_CFA_same_value:
+					reg = readRegister(buffer);
+					return new SameValueInstruction(reg);
+				case DwarfConstants.DW_CFA_offset_extended:
+					reg = readRegister(buffer);
+					offset = DwarfInfoReader.read_unsigned_leb128(buffer) * dataAlignmentFactor;
+					return new OffsetInstruction(reg, offset);
+				case DwarfConstants.DW_CFA_offset_extended_sf:
+					reg = readRegister(buffer);
+					offset = DwarfInfoReader.read_signed_leb128(buffer) * dataAlignmentFactor;
+					return new OffsetInstruction(reg, offset);
+				case DwarfConstants.DW_CFA_val_offset:
+					reg = readRegister(buffer);
+					offset = DwarfInfoReader.read_unsigned_leb128(buffer) * dataAlignmentFactor;
+					return new ValueOffsetInstruction(reg, offset);
+				case DwarfConstants.DW_CFA_val_offset_sf:
+					reg = readRegister(buffer);
+					offset = DwarfInfoReader.read_signed_leb128(buffer) * dataAlignmentFactor;
+					return new ValueOffsetInstruction(reg, offset);
+				case DwarfConstants.DW_CFA_register: {
+					reg = readRegister(buffer);
+					int otherReg = readRegister(buffer);
+					return new RegisterInstruction(reg, otherReg);
+				}
+				case DwarfConstants.DW_CFA_expression: {
+					reg = readRegister(buffer);
+					byte form = buffer.get();
+					expr = readExpression(form, addressSize, provider, buffer);
+					return new ExpressionInstruction(reg, expr);
+				}
+				case DwarfConstants.DW_CFA_val_expression: {
+					reg = readRegister(buffer);
+					byte form = buffer.get();
+					expr = readExpression(form, addressSize, provider, buffer);
+					return new ValueExpressionInstruction(reg, expr);
+				}
+				case DwarfConstants.DW_CFA_restore_extended:
+					reg = readRegister(buffer);
+					return new RestoreInstruction(reg);
+				case DwarfConstants.DW_CFA_remember_state:
+					return new RememberStateInstruction();
+				case DwarfConstants.DW_CFA_restore_state:
+					return new RestoreStateInstruction();
+				}
+			}
+			return null;
+		}
+
+		/**
+		 * @param buffer
+		 * @return
+		 * @throws IOException
+		 */
+		private int readRegister(IStreamBuffer buffer) throws IOException {
+			return (int) DwarfInfoReader.read_unsigned_leb128(buffer);
+		}
+
+		private IStreamBuffer readExpression(byte form, int addressSize, 
+				DwarfDebugInfoProvider provider, IStreamBuffer buffer) {
+			AttributeValue value = new AttributeValue(form, buffer, (byte) addressSize, null);
+			return new MemoryStreamBuffer(value.getValueAsBytes(), 
+					provider.getExecutableSymbolicsReader().getByteOrder());
+		}
+		
 	}
 
 
@@ -840,7 +863,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 					// REGISTER RULE INSTRUCTIONS
 					// 
 					
-					AbstractInstruction instr = parseInstruction(opcode, buffer, provider, addressSize, cie.dataAlignmentFactor);
+					AbstractInstruction instr = cie.parseInstruction(opcode, buffer, provider, addressSize, cie.dataAlignmentFactor);
 					if (instr != null) {
 						row.add(instr);
 					} else {

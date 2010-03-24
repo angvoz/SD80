@@ -30,8 +30,23 @@ public abstract class SimpleDebuggerTest {
 	protected Expressions expressionsService;
 	protected EDCLaunch launch;
 
+	/** Get the id the launch configuation type used by the snapshot, when it
+	 * might not be available at runtime.  If non-<code>null</code>, your test should
+	 * check launch != <code>null</code> before continuing.
+	 * @return launchConfigurationType id, or null if the snapshot uses a standard CDT EDC launcher */
+	protected String getRequiredLaunchConfigurationType() {
+		return null;
+	}
+	
 	@Before
 	public void launchAndWaitForSuspendedContext() throws Exception {
+		String reqdLauncher = getRequiredLaunchConfigurationType();
+		if (reqdLauncher != null) {
+			if (!TestUtils.hasLaunchConfiguationType(reqdLauncher)) {
+				return;
+			}
+		}
+			
 		TestUtils.disableDebugPerspectiveSwitchPrompt();
 		launch = TestUtils.createLaunchForAlbum(getAlbumName());
 		Assert.assertNotNull(launch);
@@ -92,5 +107,4 @@ public abstract class SimpleDebuggerTest {
 	public String getExpressionValue(String expression) throws Exception {
 		return TestUtils.getExpressionValue(session, frame, expression);
 	}
-
 }

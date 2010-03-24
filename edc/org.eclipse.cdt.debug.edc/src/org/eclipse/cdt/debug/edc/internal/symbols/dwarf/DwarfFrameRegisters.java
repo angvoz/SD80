@@ -12,6 +12,7 @@
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.math.BigInteger;
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -80,7 +81,8 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 			try {
 				IVariableLocation loc = getRegisterLocation(regnum);
 				if (loc == null)
-					throw EDCDebugger.newCoreException("cannot read register " + regnum + " at " + context.getIPAddress().toHexAddressString());
+					throw EDCDebugger.newCoreException(MessageFormat.format(DwarfMessages.DwarfFrameRegisters_CannotReadRegister,
+							regnum, context.getIPAddress().toHexAddressString()));
 				value = loc.readValue(bytes);
 				cachedRegisters.put(regnum, value);
 			} catch (CoreException e) {
@@ -110,7 +112,7 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 	private IVariableLocation getRegisterLocation(int regnum) throws CoreException {
 		
 		if (frameRegisterRules == null) {
-			state = new InstructionState(tracker, context, childRegisters, fde.addressSize);
+			state = new InstructionState(tracker, context, childRegisters, fde);
 			frameRegisterRules = calculateFrameRegisterRules(state);
 		}
 		
@@ -120,7 +122,10 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 			// But DWARF-2 producers didn't know what to do (or is it ABI-defined?), 
 			// so for these, assume the current register for now
 			if (fde.getCIE().version < 3)
-				return new ValueVariableLocation(childRegisters.getRegister(regnum, fde.addressSize));
+				if (regnum == state.getCFARegister())
+					return new ValueVariableLocation(state.readCFA());
+				else
+					return new ValueVariableLocation(childRegisters.getRegister(regnum, fde.addressSize));
 			else
 				return null;
 		}
@@ -137,7 +142,7 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 	 */
 	private Map<Integer, AbstractRule> calculateFrameRegisterRules(InstructionState state) throws CoreException {
 		if (fde.getCIE() == null)
-			throw EDCDebugger.newCoreException("no CIE for " + fde);
+			throw EDCDebugger.newCoreException(MessageFormat.format(DwarfMessages.DwarfFrameRegisters_NoCommonInfoEntry, fde));
 		
 		List<AbstractInstruction> initialLocationInstructions =
 			fde.getCIE().getInitialLocations(provider);
@@ -163,7 +168,7 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 					instr.applyInstruction(state);
 				}
 			} catch (Exception e) {
-				throw EDCDebugger.newCoreException("internal error calculating location", e);
+				throw EDCDebugger.newCoreException(DwarfMessages.DwarfFrameRegisters_ErrorCalculatingLocation, e);
 			}
 		}
 		
@@ -176,7 +181,8 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 		try {
 			IVariableLocation loc = getRegisterLocation(regnum);
 			if (loc == null)
-				throw EDCDebugger.newCoreException("cannot write register " + regnum + " at " + context.getIPAddress().toHexAddressString());
+				throw EDCDebugger.newCoreException(MessageFormat.format(DwarfMessages.DwarfFrameRegisters_CannotWriteRegister,
+						regnum, context.getIPAddress().toHexAddressString()));
 			loc.writeValue(bytes, value);
 			cachedRegisters.put(regnum, value);
 		} catch (CoreException e) {

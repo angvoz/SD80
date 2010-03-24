@@ -27,6 +27,14 @@ public class DwarfMessages extends NLS {
 
 	public static String DwarfDebugInfoProvider_UnhandledType;
 
+	public static String DwarfFrameRegisters_CannotReadRegister;
+
+	public static String DwarfFrameRegisters_CannotWriteRegister;
+
+	public static String DwarfFrameRegisters_ErrorCalculatingLocation;
+
+	public static String DwarfFrameRegisters_NoCommonInfoEntry;
+
 	public static String UnknownVariableAddress;
 	public static String NotImplementedFormat;
 	public static String InternalErrorFormat;

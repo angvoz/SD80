@@ -45,7 +45,6 @@ import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
-import org.eclipse.cdt.debug.edc.services.IExpressions2;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IInvalidVariableLocation;
@@ -61,6 +60,7 @@ import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
+import org.eclipse.cdt.dsf.debug.service.IExpressions2;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
@@ -627,9 +627,9 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			// to cast the lvalue rather than the rvalue (e.g. viewing an int as a float)
 			if (castType != null) {
 				if (castInfo.getArrayCount() <= 0 && !castType.contains("[")) //$NON-NLS-1$
-					castExpression = "*(" + castType + "*)&(" + getExpression() + ")"; //$NON-NLS-1$  //$NON-NLS-2$  //$NON-NLS-3$ 
+					castExpression = "*(" + castType + "*)&(" + expression + ")"; //$NON-NLS-1$  //$NON-NLS-2$  //$NON-NLS-3$ 
 				else
-					castExpression = "(" + castType + ")" + getExpression(); //$NON-NLS-1$  //$NON-NLS-2$
+					castExpression = "(" + castType + ")" + expression; //$NON-NLS-1$  //$NON-NLS-2$
 			}
 			
 			this.expression = castExpression;

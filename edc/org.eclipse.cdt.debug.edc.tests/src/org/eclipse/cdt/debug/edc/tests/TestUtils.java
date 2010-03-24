@@ -212,8 +212,10 @@ public class TestUtils {
 			}
 		};
 		lm.addLaunchListener(listener);
-		configuration.doSave().launch(ILaunchManager.DEBUG_MODE, new NullProgressMonitor(), true);
-
+		ILaunch launch = configuration.doSave().launch(ILaunchManager.DEBUG_MODE, new NullProgressMonitor(), true);
+		if (launch == null)
+			return null;
+		
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
 				return launchHolder[0] != null;
@@ -503,4 +505,12 @@ public class TestUtils {
 		return new DsfServicesTracker(EDCTestPlugin.getBundleContext(), session.getId());
 	}
 
+	/** Tell if a given launcher is available.  Useful when a snapshot test depends on an internal
+	 * launch type.
+	 * @param id the id of the org.eclipse.debug.core.launchConfigurationTypes launchConfigurationType
+	 * @return true if found
+	 */
+	public static boolean hasLaunchConfiguationType(String id) {
+		return DebugPlugin.getDefault().getLaunchManager().getLaunchConfigurationType(id) != null;
+	}
 }

@@ -22,6 +22,10 @@ import org.junit.Test;
  * (actual case in bug 304040)
  */
 public class RegisterFrameTestsBlackFlag extends SimpleDebuggerTest {
+	/**
+	 * 
+	 */
+	private static final String YOU_SHOULD_BE_SEEING_THIS_TEXT = "\"You should be seeing this text!\"";
 	boolean formatterSetting;
 	
 	public void setFormatter(boolean enable) {
@@ -51,8 +55,17 @@ public class RegisterFrameTestsBlackFlag extends SimpleDebuggerTest {
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.debugger.tests.SimpleDebuggerTest#getRequiredLaunchConfigurationType()
+	 */
+	@Override
+	protected String getRequiredLaunchConfigurationType() {
+		return "com.nokia.cdt.debug.launch.systemTRKLaunch";
+	}
+	
 	@Test
 	public void testLength() throws Exception {
+		if (launch == null) return;
 		frame = TestUtils.waitForStackFrame(session, threadDMC, 0);
 		
 		try {
@@ -64,6 +77,7 @@ public class RegisterFrameTestsBlackFlag extends SimpleDebuggerTest {
 	}
 	@Test
 	public void testShowConstArguments() throws Exception {
+		if (launch == null) return;
 		frame = TestUtils.waitForStackFrame(session, threadDMC, 1);
 		try {
 			// note: formatter was half-showing decimal and hex at this time
@@ -82,20 +96,21 @@ public class RegisterFrameTestsBlackFlag extends SimpleDebuggerTest {
 	}
 	@Test
 	public void testShowTPtr() throws Exception {
+		if (launch == null) return;
 		frame = TestUtils.waitForStackFrame(session, threadDMC, 2);
 		try {
 			setFormatter(true);
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("cstr8"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("cstr16"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("cstr"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("ptrC8"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("ptrC16"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("ptrC"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("ptr8"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("ptr16"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("ptr8p"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("ptr16p"));
-			assertEquals("\"You should be seeing this text!\"", getExpressionValue("ptrp"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("cstr8"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("cstr16"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("cstr"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("ptrC8"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("ptrC16"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("ptrC"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("ptr8"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("ptr16"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("ptr8p"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("ptr16p"));
+			assertEquals(YOU_SHOULD_BE_SEEING_THIS_TEXT, getExpressionValue("ptrp"));
 			
 		} finally {
 			restoreFormatter();

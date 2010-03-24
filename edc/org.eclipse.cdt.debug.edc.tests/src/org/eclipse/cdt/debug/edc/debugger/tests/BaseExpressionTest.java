@@ -15,14 +15,14 @@ import java.util.concurrent.ExecutionException;
 
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
-import org.eclipse.cdt.debug.edc.services.IExpressions2.CastInfo;
-import org.eclipse.cdt.debug.edc.services.IExpressions2.ICastedExpressionDMContext;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IExpressions2.CastInfo;
+import org.eclipse.cdt.dsf.debug.service.IExpressions2.ICastedExpressionDMContext;
 import org.eclipse.core.runtime.CoreException;
 import org.junit.Assert;
 import org.junit.Before;
@@ -115,6 +115,43 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 		
 	}
 
+	/**
+	 * Get a casted expression.
+	 * @param expr the expression to cast
+	 * @param castInfo the casting details
+	 * @return evaluated expression or <code>null</code>
+	 * @throws CoreException for any error
+	 */
+	protected IEDCExpression getCastedExpr(String expr, CastInfo castInfo)
+			throws Exception {
+		IExpressionDMContext exprDMC = TestUtils.getExpressionDMC(session, frame, expr);
+		if (((IEDCExpression) exprDMC).getEvaluationError() != null)
+			throw new CoreException(((IEDCExpression) exprDMC).getEvaluationError());
+		
+		ICastedExpressionDMContext castedExprVal = TestUtils.getCastedExpressionDMC(session, frame, exprDMC, castInfo);
+		
+		return (IEDCExpression) castedExprVal;
+	}
+
+	/**
+	 * Check that a casted expression provides the expected value.
+	 * @param type the type to check (either IType or String), or <code>null</code>
+	 * @param result
+	 * @param expr the expression to cast
+	 * @param castInfo the casting details
+	 * @throws CoreException for any error
+	 * @throws Exception
+	 */
+
+	protected void checkCastedExpr(Object type, String result, String expr, CastInfo castInfo) throws Exception {
+		IEDCExpression exprVal = getCastedExpr(expr, castInfo);
+		
+		if (exprVal.getEvaluationError() != null)
+			throw new CoreException(exprVal.getEvaluationError());
+	
+		doCheckExprValue(type, result, exprVal);
+		
+	}
 	/**
 	 * Get a child expression from a casted expression.
 	 * @param expr the expression to cast

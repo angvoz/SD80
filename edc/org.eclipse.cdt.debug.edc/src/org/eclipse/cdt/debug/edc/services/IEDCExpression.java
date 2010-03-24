@@ -2,10 +2,10 @@ package org.eclipse.cdt.debug.edc.services;
 
 import java.util.concurrent.Executor;
 
-import org.eclipse.cdt.debug.edc.services.IExpressions2.CastInfo;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IExpressions2.CastInfo;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;

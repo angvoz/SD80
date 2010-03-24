@@ -11,7 +11,7 @@
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
-import org.eclipse.cdt.debug.edc.services.IExpressions2.CastInfo;
+import org.eclipse.cdt.dsf.debug.service.IExpressions2.CastInfo;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,6 +64,16 @@ public class ExpressionsCasting extends BaseExpressionTest {
 		checkCastedChildExpr(null, "48", "der2", new CastInfo("Der2 *"), "b2");
 		
 	}
+	
+	@Test
+	public void testCastingClassesInUI1b() throws Exception {
+		openSnapshotAndWaitForSuspendedContext(0);
+		
+		// casting of nested items
+		// (this is superfluous; the UI takes a different path)
+		checkCastedExpr(null, "1.4E-45", "b->a", new CastInfo("float"));
+	}
+	
 	@Test
 	public void testCastingClassesInUI2() throws Exception {
 		openSnapshotAndWaitForSuspendedContext(1);

@@ -9,19 +9,14 @@
  * Nokia - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.debug.edc.services;
+package org.eclipse.cdt.dsf.debug.service;
 
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
-import org.eclipse.cdt.dsf.debug.service.IExpressions;
 
 /**
- * TODO: remove; this is expected to live in DSF soon.
- * 
  * This interface extends the expressions service with support for casting to type or
  * array.  
  * @since 2.1
- * @noimplement This interface is not intended to be implemented by clients.
- * @noextend This interface is not intended to be extended by clients.
  */
 public interface IExpressions2 extends IExpressions {
 

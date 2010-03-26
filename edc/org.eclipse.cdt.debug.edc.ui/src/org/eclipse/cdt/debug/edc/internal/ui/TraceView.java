@@ -134,6 +134,9 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 		}
 
 		public synchronized void onMessageReceived(char type, String token, String service, String name, byte[] data) {
+			if (name != null && name.contains("HeartBeat"))
+				return;
+
 			try {
 				bf.append("Time(ms): " + System.currentTimeMillis() + " Inp: " );
 				bf.append(type);
@@ -170,6 +173,9 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 		}
 
 		public synchronized void onMessageSent(char type, String token, String service, String name, byte[] data) {
+			if (name != null && name.contains("HeartBeat"))
+				return;
+
 			try {
 				bf.append("Time(ms): " + System.currentTimeMillis() + " Out: ");
 				bf.append(type);
@@ -274,7 +280,7 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 					}
 				}
 				p.tab.setText(title);
-				p.text = new Text(tabs, SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER | SWT.READ_ONLY | SWT.MULTI);
+				p.text = new Text(tabs, SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER | SWT.MULTI);
 				p.tab.setControl(p.text);
 				p.text.setBackground(parent.getDisplay().getSystemColor(SWT.COLOR_WHITE));
 			}

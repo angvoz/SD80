@@ -44,9 +44,10 @@ import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
+import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.debug.service.IModules;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
+import org.eclipse.cdt.dsf.debug.service.IModules;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
@@ -659,6 +660,51 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 
 	}
 
+	/**
+	 * Get runtime addresses mapped to given source line in given run context.
+	 *  
+	 * @param context
+	 * @param sourceFile
+	 * @param lineNumber
+	 * @param drm If no address found, holds an empty list.
+	 */
+	public void getLineAddress(IExecutionDMContext context,
+			String sourceFile, int lineNumber, final DataRequestMonitor<List<IAddress>> drm) {
+		final List<IAddress> addrs = new ArrayList<IAddress>(1);
+		
+		final ExecutionDMC dmc = (ExecutionDMC) context;
+		if (dmc == null) {
+			drm.setData(addrs);
+			drm.done();
+			return;
+		}
+		
+		ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+
+		calcAddressInfo(symCtx, sourceFile, lineNumber, 0, 
+				new DataRequestMonitor<AddressRange[]>(getExecutor(), drm) {
+
+			@Override
+			protected void handleCompleted() {
+				if (! isSuccess()) {
+					drm.setStatus(getStatus());
+					drm.done();
+					return;
+				}
+
+				AddressRange[] addr_ranges = getData();
+
+				for (AddressRange range : addr_ranges) {
+					IAddress a = range.getStartAddress();  // this is runtime address
+					addrs.add(a);
+				}
+
+				drm.setData(addrs);
+				drm.done();
+			}
+		});
+	}
+		
 	public void getModuleData(IModuleDMContext dmc, DataRequestMonitor<IModuleDMData> rm) {
 		rm.setData(new ModuleDMData((ModuleDMC) dmc));
 		rm.done();

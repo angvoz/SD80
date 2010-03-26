@@ -39,8 +39,8 @@ import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.Registers;
-import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.services.Registers.RegisterGroupDMC;
+import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.services.Stack.VariableDMC;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
@@ -56,21 +56,20 @@ import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.debug.service.ICachingService;
-import org.eclipse.cdt.dsf.debug.service.IRunControl;
-import org.eclipse.cdt.dsf.debug.service.IRunControl2;
-import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
+import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
-import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
 import org.eclipse.cdt.dsf.debug.service.IModules.IModuleDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterGroupDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl;
+import org.eclipse.cdt.dsf.debug.service.IRunControl2;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IVariableDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -2202,13 +2201,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 * @param context
 	 * @param sourceFile
 	 * @param lineNumber
-	 * @param drm If no address found, or the run context is not suspended, holds an empty list.
+	 * @param drm holds an empty list if no address found, or the run context is not suspended.
 	 */
 	private void getLineAddress(IExecutionDMContext context,
-			String sourceFile, int lineNumber, final DataRequestMonitor<List<IAddress>> drm) {
-		final List<IAddress> addrs = new ArrayList<IAddress>(1);
+			String sourceFile, int lineNumber, DataRequestMonitor<List<IAddress>> drm) {
+		List<IAddress> addrs = new ArrayList<IAddress>(1);
 		
-		final ExecutionDMC dmc = (ExecutionDMC) context;
+		ExecutionDMC dmc = (ExecutionDMC) context;
 		if (dmc == null || ! dmc.isSuspended()) {
 			drm.setData(addrs);
 			drm.done();
@@ -2217,30 +2216,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		Modules moduleService = getServicesTracker().getService(Modules.class);
 
-		ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
-
-		moduleService.calcAddressInfo(symCtx, sourceFile, lineNumber, 0, 
-				new DataRequestMonitor<AddressRange[]>(getExecutor(), drm) {
-
-			@Override
-			protected void handleCompleted() {
-				if (! isSuccess()) {
-					drm.setStatus(getStatus());
-					drm.done();
-					return;
-				}
-
-				AddressRange[] addr_ranges = getData();
-
-				for (AddressRange range : addr_ranges) {
-					IAddress a = range.getStartAddress();  // this is runtime address
-					addrs.add(a);
-				}
-
-				drm.setData(addrs);
-				drm.done();
-			}
-		});
+		moduleService.getLineAddress(dmc, sourceFile, lineNumber, drm);
 	}
 	
 }

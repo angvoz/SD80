@@ -378,17 +378,19 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return dsfServicesTracker;
 		}
 
-		@Override
-		public String toString() {
-			return baseToString() + ".frame[" + getID() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
-		}
-
 		public int compareTo(StackFrameDMC f) {
 			if (level < f.level)
 				return -1;
 			if (level > f.level)
 				return +1;
 			return 0;
+		}
+
+		@Override
+		public String toString() {
+			return "StackFrameDMC [baseAddress=" + baseAddress
+					+ ", sourceFile=" + sourceFile + ", functionName="
+					+ functionName + ", lineNumber=" + lineNumber + "]";
 		}
 
 		/**
@@ -681,7 +683,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 		/**
 		 * Get a type engine (which holds cached information about types for use by expressions)
-		 * @return ASTTypeEngine instance
+		 * @return TypeEngine instance
 		 */
 		public TypeEngine getTypeEngine() {
 			return typeEngine;

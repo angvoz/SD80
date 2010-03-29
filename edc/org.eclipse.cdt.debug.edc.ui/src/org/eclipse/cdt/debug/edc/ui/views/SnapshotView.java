@@ -18,6 +18,7 @@ import java.util.List;
 
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumStateListener;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
@@ -37,6 +38,7 @@ import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.CellEditor;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
@@ -516,7 +518,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 				}
 			}
 		};
-		launchAction.setText("Luanch Snapshot");
+		launchAction.setText("Launch Snapshot");
 		launchAction.setToolTipText("Launches the selected snapshot");
 		launchAction.setImageDescriptor(PLAY_SNAPSHOT_IMGDESC); //$NON-NLS-1$
 
@@ -577,8 +579,12 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 						refreshAction.run();
 					}
 
+				} catch (CoreException x) {
+					ErrorDialog.openError(viewer.getControl().getShell(), "Import Error",
+							"Failed to import snapshot.", x.getStatus()); 
 				} catch (Exception x) {
-					x.printStackTrace();
+					ErrorDialog.openError(viewer.getControl().getShell(), "Import Error",
+							null, EDCDebugger.dsfRequestFailedStatus("Failed to import snapshot.", x));
 				}
 			}
 		};

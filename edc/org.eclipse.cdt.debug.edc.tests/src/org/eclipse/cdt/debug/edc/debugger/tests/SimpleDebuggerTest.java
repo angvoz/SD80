@@ -61,34 +61,8 @@ public abstract class SimpleDebuggerTest {
 	
 	@After
 	public void shutdown() {
-		
-		// shutdown the launch
-		if (launch != null) {
-			// terminating the launch will cause the session to end, but wait for
-			// it to end to prevent multiple launches from tests existing at the
-			// same time which can cause some weird behavior
-			DsfSession.addSessionEndedListener(new DsfSession.SessionEndedListener() {
-				
-				public void sessionEnded(DsfSession session) {
-					if (SimpleDebuggerTest.this.session == session) {
-						SimpleDebuggerTest.this.session = null;
-					}
-				}
-			});
-			
-			try {
-				launch.terminate();
-			} catch (DebugException de) {
-			}
-			launch = null;
-			
-			while (session != null) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-				}
-			}
-		}
+		TestUtils.shutdownDebugSession(launch, session);
+		session = null;
 	}
 	
 	public void openSnapshotAndWaitForSuspendedContext(int index) throws Exception {

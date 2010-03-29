@@ -24,6 +24,10 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.core.ILaunchManager;
 
+/**
+ * Test based on live debug session for an x86 application on local host.
+ * It runs with EDC Windows debugger or EDC Linux debugger.
+ */
 public abstract class BaseLaunchTest extends AbstractLaunchTest {
 
 	private static final String CDT_LOCAL_LAUNCH_TYPE = ICDTLaunchConfigurationConstants.ID_LAUNCH_C_APP;
@@ -38,6 +42,9 @@ public abstract class BaseLaunchTest extends AbstractLaunchTest {
 		String exePath = getTestExecutable();
 		configuration.setAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, exePath);
 
+		// do more configuration.
+		configureLaunchConfiguration(configuration);
+		
 		String launchDelegateID = EDC_LAUNCH_DELEGATE_LINUX;
 		if (Platform.getOS().equals(Platform.OS_WIN32))
 			launchDelegateID = EDC_LAUNCH_DELEGATE_WINDOWS;
@@ -49,6 +56,21 @@ public abstract class BaseLaunchTest extends AbstractLaunchTest {
 		return (EDCLaunch) configuration.doSave().launch(ILaunchManager.DEBUG_MODE, new NullProgressMonitor(), true);
 	}
 
+	/**
+	 * Set more settings for the launch configuration so that subclass can do whatever it likes.
+	 * 
+	 * @param configuration
+	 */
+	protected void configureLaunchConfiguration(
+			ILaunchConfigurationWorkingCopy configuration) {
+		// default do nothing.
+	}
+
+	/**
+	 * Get full path of executable file in {plugin}/resources/SymbolFiles folder.
+	 * 
+	 * @return a full path
+	 */
 	protected String getTestExecutable() {
 		/*
 		 * String exePath = System.getenv("EXEPATH"); if (exePath == null ||
@@ -62,12 +84,28 @@ public abstract class BaseLaunchTest extends AbstractLaunchTest {
 			fail("Folder resources/SymbolFiles is missing in the test project.");
 		}
 		IPath dataPath = new Path(res_folder);
-		if (Platform.getOS().equals(Platform.OS_WIN32))
-			dataPath = dataPath.append("BlackFlagMinGW.exe");
-		else
-			dataPath = dataPath.append("BlackFlag_linuxgcc.exe");
+		
+		String exeFileName = getExeFileName();
+		dataPath = dataPath.append(exeFileName);
 
 		return dataPath.toOSString();
+	}
+
+	/**
+	 * Get executable file name without path. The file is supposed to be in 
+	 * {plugin}/resources/SymbolFiles folder.
+	 */
+	protected String getExeFileName() {
+		
+		String ret = null;
+		if (Platform.getOS().equals(Platform.OS_WIN32))
+			// This is an executable with hard-coded breakpoint (a divide-by-zero statement)
+			// so that it will suspend by itself after launch.
+			ret = "BlackFlagMinGW.exe";
+		else
+			ret = "BlackFlag_linuxgcc.exe";
+		
+		return ret;
 	}
 
 }

@@ -29,14 +29,14 @@ import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions2;
 import org.eclipse.cdt.dsf.debug.service.IExpressions2.CastInfo;
 import org.eclipse.cdt.dsf.debug.service.IExpressions2.ICastedExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
-import org.eclipse.cdt.dsf.debug.service.IStack;
-import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
+import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -44,6 +44,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
@@ -54,6 +55,10 @@ import org.eclipse.debug.internal.ui.IInternalDebugUIConstants;
 import org.eclipse.jface.dialogs.MessageDialogWithToggle;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.WorkbenchException;
 import org.junit.Assert;
 
 @SuppressWarnings("restriction")
@@ -175,7 +180,15 @@ public class TestUtils {
 			return s1.equals(s2);
 	}
 
+	public static void showPerspective(String perspective) throws WorkbenchException {
+		IWorkbench workbench = PlatformUI.getWorkbench();
+		IWorkbenchWindow activeWindow = workbench.getActiveWorkbenchWindow();
+		workbench.showPerspective(perspective, activeWindow);
+	}
+
 	public static void disableDebugPerspectiveSwitchPrompt() {
+		if (null == Display.getCurrent() || null == Display.getCurrent().getActiveShell()) // in case test is run in headless mode.
+			return;
 		IPreferenceStore store = DebugUIPlugin.getDefault().getPreferenceStore();
 		store.setValue(IInternalDebugUIConstants.PREF_SWITCH_PERSPECTIVE_ON_SUSPEND, MessageDialogWithToggle.ALWAYS);
 	}
@@ -512,5 +525,37 @@ public class TestUtils {
 	 */
 	public static boolean hasLaunchConfiguationType(String id) {
 		return DebugPlugin.getDefault().getLaunchManager().getLaunchConfigurationType(id) != null;
+	}
+
+	public static void shutdownDebugSession(EDCLaunch launch, final DsfSession session) {
+		final Boolean done[] = new Boolean[] {false};
+		
+		// shutdown the launch
+		if (launch != null) {
+			// terminating the launch will cause the session to end, but wait for
+			// it to end to prevent multiple launches from tests existing at the
+			// same time which can cause some weird behavior
+			DsfSession.addSessionEndedListener(new DsfSession.SessionEndedListener() {
+				
+				public void sessionEnded(DsfSession se) {
+					if (session == se) {
+						done[0] = true;
+					}
+				}
+			});
+			
+			try {
+				launch.terminate();
+			} catch (DebugException de) {
+			}
+			launch = null;
+			
+			while (! done[0]) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+				}
+			}
+		}
 	}
 }

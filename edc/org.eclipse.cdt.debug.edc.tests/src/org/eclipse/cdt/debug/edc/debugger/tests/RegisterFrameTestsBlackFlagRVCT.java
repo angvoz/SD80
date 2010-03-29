@@ -88,6 +88,7 @@ public class RegisterFrameTestsBlackFlagRVCT extends SimpleDebuggerTest {
 	@Test
 	public void testBaseFunction() throws Exception {
 		if (launch == null) return;
+		openSnapshotAndWaitForSuspendedContext(0);
 		doTestStringFormatting();
 	}
 	@Test

@@ -1,0 +1,5 @@
+NOTE:
+
+These files are used by a lot of unit tests, not always in obvious ways.  Be sure to
+fully check all the other tests in this plugin (and Nokia internal ones) before 
+recreating or modifying the executables, symbol files, or snapshots.

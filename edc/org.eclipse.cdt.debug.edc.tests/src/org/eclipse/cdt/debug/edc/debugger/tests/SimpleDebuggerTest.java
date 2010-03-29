@@ -17,7 +17,6 @@ import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
-import org.eclipse.debug.core.DebugException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

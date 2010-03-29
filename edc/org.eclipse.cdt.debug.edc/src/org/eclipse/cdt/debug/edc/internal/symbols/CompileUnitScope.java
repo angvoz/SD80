@@ -30,7 +30,7 @@ public abstract class CompileUnitScope extends Scope implements ICompileUnitScop
 	protected Collection<ILineEntry> lineEntries;
 
 	public CompileUnitScope(IPath filePath, IModuleScope parent, IAddress lowAddress, IAddress highAddress) {
-		super(filePath != null ? filePath.lastSegment() : "", lowAddress, highAddress, parent);
+		super(filePath != null ? filePath.lastSegment() : "", lowAddress, highAddress, parent); //$NON-NLS-1$
 
 		this.filePath = filePath;
 	}
@@ -79,18 +79,18 @@ public abstract class CompileUnitScope extends Scope implements ICompileUnitScop
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("CompileUnitScope [");
-		builder.append("lowAddress=");
+		builder.append("CompileUnitScope ["); //$NON-NLS-1$
+		builder.append("lowAddress="); //$NON-NLS-1$
 		builder.append(lowAddress);
-		builder.append(", highAddress=");
+		builder.append(", highAddress="); //$NON-NLS-1$
 		builder.append(highAddress);
-		builder.append(", ");
+		builder.append(", "); //$NON-NLS-1$
 		if (filePath != null) {
-			builder.append("path=");
+			builder.append("path="); //$NON-NLS-1$
 			builder.append(filePath.toOSString());
-			builder.append(", ");
+			builder.append(", "); //$NON-NLS-1$
 		}
-		builder.append("]");
+		builder.append("]"); //$NON-NLS-1$
 		return builder.toString();
 	}
 }

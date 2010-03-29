@@ -471,8 +471,6 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		regDMC = findRegisterDMCByName(context, regID);
 		assert regDMC != null;
 		
-//		writeRegister(new RegisterDMC(context, regID, regID, regID), regValue, IFormattedValues.HEX_FORMAT,
-//				new RequestMonitor(getExecutor(), null));
 		writeRegister(regDMC, regValue, IFormattedValues.HEX_FORMAT,
 				new RequestMonitor(getExecutor(), null));
 	}

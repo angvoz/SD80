@@ -43,8 +43,6 @@ public class DwarfMessages extends NLS {
 
 	public static String LocationExpression_DW_OP;
 
-	public static String LocationExpression_ErrBadDeref;
-
 	public static String LocationExpression_MultiRegisterVariable;
 
 	public static String LocationExpression_UnexpectedOperand;

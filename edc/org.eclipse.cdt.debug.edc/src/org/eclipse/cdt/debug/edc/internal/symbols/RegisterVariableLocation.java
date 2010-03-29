@@ -45,9 +45,9 @@ public class RegisterVariableLocation implements IRegisterVariableLocation {
 	 */
 	@Override
 	public String toString() {
-		return getRegisterName() != null ? getRegisterName() : "R" + id +
+		return getRegisterName() != null ? getRegisterName() : "R" + id + //$NON-NLS-1$
 				(context instanceof StackFrameDMC && ((StackFrameDMC) context).getLevel() > 0 ?
-						" (level " + ((StackFrameDMC) context).getLevel() + ")" : "");
+						" (level " + ((StackFrameDMC) context).getLevel() + ")" : ""); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
 	
 	public String getRegisterName() {
@@ -62,7 +62,7 @@ public class RegisterVariableLocation implements IRegisterVariableLocation {
 		if (context instanceof StackFrameDMC)
 			return ((StackFrameDMC)context).getFrameRegisters().getRegister(id, bytes);
 		else
-			throw EDCDebugger.newCoreException("cannot read register without frame");
+			throw EDCDebugger.newCoreException(SymbolsMessages.RegisterVariableLocation_CannotReadFramelessRegister);
 	}
 	
 	/* (non-Javadoc)
@@ -90,6 +90,6 @@ public class RegisterVariableLocation implements IRegisterVariableLocation {
 		if (context instanceof StackFrameDMC)
 			((StackFrameDMC)context).getFrameRegisters().writeRegister(id, bytes, value);
 		else
-			throw EDCDebugger.newCoreException("cannot write register without frame");
+			throw EDCDebugger.newCoreException(SymbolsMessages.RegisterVariableLocation_CannotWriteFramelessRegister);
 	}
 }

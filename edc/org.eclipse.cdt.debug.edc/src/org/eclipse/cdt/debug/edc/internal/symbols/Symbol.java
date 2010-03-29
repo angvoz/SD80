@@ -45,5 +45,12 @@ public class Symbol implements ISymbol {
 		}
 		return 0;
 	}
+	
+	@Override
+	public String toString() {
+		return "name=" + name + //$NON-NLS-1$
+				", address=0x" + Long.toHexString(address.getValue().longValue()) + //$NON-NLS-1$
+				", size=" + size; //$NON-NLS-1$
+	}
 
 }

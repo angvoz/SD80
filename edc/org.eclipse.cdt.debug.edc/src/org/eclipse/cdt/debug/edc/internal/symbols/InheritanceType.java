@@ -23,7 +23,7 @@ public class InheritanceType extends Type implements IInheritance {
 	private final long fieldsOffset;
 	
 	public InheritanceType(IScope scope, int accessibility, long inheritanceOffset, Map<Object, Object> properties) {
-		super("", scope, 0, properties);
+		super("", scope, 0, properties); //$NON-NLS-1$
 		this.accessibility = accessibility;
 		this.fieldsOffset = inheritanceOffset;
 	}
@@ -42,7 +42,7 @@ public class InheritanceType extends Type implements IInheritance {
 			return ((ICompositeType) getType()).getBaseName();
 
 		if (getType() == null)
-			return "$"; //$NON-NLS-$  // do not confuse expression formatter
+			return "$"; //$NON-NLS-1$  // do not confuse expression formatter
 		else
 			return getType().getName();
 	}

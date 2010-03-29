@@ -623,15 +623,27 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			
 			String castExpression = expression;
 			
-			// if not casting to array, assume it's primitive and do the manipulation
-			// to cast the lvalue rather than the rvalue (e.g. viewing an int as a float)
+			// If changing type, assume it's reinterpret_cast<>. 
+			// Once we support RTTI, this should be dynamic_cast<> when casting
+			// class pointers to class pointers.
 			if (castType != null) {
-				if (castInfo.getArrayCount() <= 0 && !castType.contains("[")) //$NON-NLS-1$
-					castExpression = "*(" + castType + "*)&(" + expression + ")"; //$NON-NLS-1$  //$NON-NLS-2$  //$NON-NLS-3$ 
-				else
-					castExpression = "(" + castType + ")" + expression; //$NON-NLS-1$  //$NON-NLS-2$
+				if (castInfo.getArrayCount() > 0) {
+					castType += "[]"; //$NON-NLS-1$
+					expression = "&" + expression; //$NON-NLS-1$
+				}
+				castExpression = "reinterpret_cast<" + castType +">(" + expression + ")"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			} else if (castInfo.getArrayCount() > 0) {
+				// For arrays, be sure the OperatorSubscript accepts the base type.
+				// Force non-pointer expressions to be pointers.
+				exprDMC.evaluateExpression();
+				IType exprType = TypeUtils.getStrippedType(exprDMC.getEvaluatedType());
+				if (exprType != null) {
+					if (!(exprType instanceof IPointerType)) {
+						// cast to pointer if not already one (cast to array is not valid C/C++ but we support it)
+						castExpression = "("  + exprDMC.getTypeName() + "[])&" + expression; //$NON-NLS-1$ //$NON-NLS-2$
+					}
+				}
 			}
-			
 			this.expression = castExpression;
 		}
 
@@ -960,6 +972,11 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		CastInfo cast = null;
 		if (exprContext instanceof IEDCExpression && (cast = ((IEDCExpression) exprContext).getCastInfo()) != null) { 
 			if (cast.getArrayCount() > 0) {
+				if (((IEDCExpression)exprContext).getEvaluationError() != null) {
+					rm.setData(0);
+					rm.done();
+					return;
+				}
 				rm.setData(cast.getArrayCount());
 				rm.done();
 				return;

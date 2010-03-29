@@ -56,7 +56,8 @@ public class ASTEvaluationEngine {
 	
 	public InstructionSequence getCompiledExpression(String expression) throws CoreException {
 
-		FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { return " + expression + " ; }").toCharArray());
+		FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { return " + //$NON-NLS-1$ //$NON-NLS-2$
+							expression + " ; }").toCharArray()); //$NON-NLS-1$
 		IScannerInfo scannerInfo = new ScannerInfo(); // creates an empty scanner info
 		IScanner scanner = new CPreprocessor(reader, scannerInfo, ParserLanguage.CPP, new NullLogService(), GCCScannerExtensionConfiguration.getInstance(), IncludeFileContentProvider.getEmptyFilesProvider());
 		ISourceCodeParser parser = new GNUCPPSourceParser(scanner, ParserMode.COMPLETE_PARSE, new NullLogService(), GPPParserExtensionConfiguration.getInstance(), null);
@@ -66,6 +67,9 @@ public class ASTEvaluationEngine {
 		ast.accept(visitor);
 		if (visitor.hasErrors())
 			throw EDCDebugger.newCoreException(visitor.getErrorMessage());
+		
+		visitor.fixupInstructions(typeEngine);
+		
 		return visitor.getInstructions();
 
 	}
@@ -120,7 +124,8 @@ public class ASTEvaluationEngine {
 	 */
 	public IASTTypeId getCompiledType(String type) throws CoreException {
 
-		FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { typeof(" + type + ") x; }").toCharArray());
+		FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { typeof(" + //$NON-NLS-1$ //$NON-NLS-2$
+							type + ") x; }").toCharArray()); //$NON-NLS-1$
 		IScannerInfo scannerInfo = new ScannerInfo(); // creates an empty scanner info
 		IScanner scanner = new CPreprocessor(reader, scannerInfo, ParserLanguage.CPP, new NullLogService(), GCCScannerExtensionConfiguration.getInstance(), IncludeFileContentProvider.getEmptyFilesProvider());
 		ISourceCodeParser parser = new GNUCPPSourceParser(scanner, ParserMode.COMPLETE_PARSE, new NullLogService(), GPPParserExtensionConfiguration.getInstance(), null);
@@ -131,7 +136,7 @@ public class ASTEvaluationEngine {
 		if (visitor.errorMessage != null)
 			throw EDCDebugger.newCoreException(visitor.errorMessage);
 		if (visitor.theType == null)
-			throw EDCDebugger.newCoreException("did not detect type");
+			throw EDCDebugger.newCoreException(ASTEvalMessages.ASTEvaluationEngine_DidNotDetectType);
 		
 		return visitor.theType;
 	}

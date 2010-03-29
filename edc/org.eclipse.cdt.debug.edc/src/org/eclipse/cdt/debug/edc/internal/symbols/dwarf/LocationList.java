@@ -37,6 +37,9 @@ public class LocationList implements ILocationProvider {
 		this.scope = scope;
 	}
 
+	public LocationEntry[] getLocationEntries() {
+		return locationList;
+	}
 	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress) {
 		
 		if (locationList != null) {

@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -44,10 +45,7 @@ public class OperatorCast extends CompoundInstruction {
 		if (value.getStringValue() != null)
 			throw EDCDebugger.newCoreException(ASTEvalMessages.OperatorCast_CannotCastString);
 		
-		if (castType == null) {
-			IASTTypeId typeId = castExpr.getTypeId();
-			castType = fInterpreter.getTypeEngine().getTypeForTypeId(typeId);
-		}
+		castType = getCastType(fInterpreter.getTypeEngine());
 		
 		IVariableLocation location = value.getValueLocation();
 		
@@ -55,53 +53,73 @@ public class OperatorCast extends CompoundInstruction {
 		Number origValue = value.getValue();
 		Number castedValue = origValue;
 		
-		// when casting to primtive type, reduce or zero/sign extend
 		if (castType instanceof ICPPBasicType) {
 			ICPPBasicType cppType = (ICPPBasicType) castType;
-			switch (cppType.getByteSize()) {
-			case 1:
-				if (cppType.isSigned())
-					castedValue = origValue.byteValue();
-				else
-					castedValue = origValue.byteValue() & 0xff;
-				break;
-			case 2:
-				if (cppType.isSigned())
-					castedValue = origValue.shortValue();
-				else
-					castedValue = origValue.shortValue() & 0xfffff;
-				break;
-			case 4:
-				if (cppType.isSigned())
-					castedValue = origValue.intValue();
-				else
-					castedValue = origValue.intValue() & 0xffffffffL;
-				break;
-			case 8:
-				if (cppType.isSigned())
-					castedValue = BigInteger.valueOf(origValue.longValue());
-				else
-					castedValue = BigInteger.valueOf(origValue.longValue()).and(Mask8Bytes);
-				break;
+			// when casting to primtive integral type, reduce or zero/sign extend
+			if (cppType.getBaseType() == ICPPBasicType.t_char || 
+					cppType.getBaseType() == ICPPBasicType.t_int ||
+					cppType.getBaseType() == ICPPBasicType.t_wchar_t ||
+					cppType.getBaseType() == ICPPBasicType.t_bool) {
+				switch (cppType.getByteSize()) {
+				case 1:
+					if (cppType.isSigned())
+						castedValue = origValue.byteValue();
+					else
+						castedValue = origValue.byteValue() & 0xff;
+					break;
+				case 2:
+					if (cppType.isSigned())
+						castedValue = origValue.shortValue();
+					else
+						castedValue = origValue.shortValue() & 0xfffff;
+					break;
+				case 4:
+					if (cppType.isSigned())
+						castedValue = origValue.intValue();
+					else
+						castedValue = origValue.intValue() & 0xffffffffL;
+					break;
+				case 8:
+					if (cppType.isSigned())
+						castedValue = BigInteger.valueOf(origValue.longValue());
+					else
+						castedValue = BigInteger.valueOf(origValue.longValue()).and(Mask8Bytes);
+					break;
+				}
+			} else if (cppType.getBaseType() == ICPPBasicType.t_float ||
+					cppType.getBaseType() == ICPPBasicType.t_double) {
+				// and be sure integers promoted to floats, if needed
+				switch (cppType.getByteSize()) {
+				case 4:
+					castedValue = Float.valueOf(origValue.longValue());
+					break;
+				case 8:
+				case 12:
+					castedValue = Double.valueOf(origValue.longValue());
+					break;
+				}
 			}
 		}
 		
 		castValue.setValue(castedValue);
 		castValue.setValueLocation(location);
 		
-		/*
-		// The "view as array" support supports an array cast.
-		// We need to dereference the pointer first.
-		// e.g.  char* str = "foo";  --> (char[])(str
-		IType origType = TypeUtils.getStrippedType(value.getValueType());
-		if (origType instanceof IPointerType) {
-			BigInteger addr = value.getValueLocation().readValue(((IPointerType) origType).getByteSize());
-			location = VariableLocationFactory.createMemoryVariableLocation(
-					fInterpreter.getServicesTracker(), fInterpreter.getContext(), addr);
-			castValue.setValueLocation(location);
-		}
-		*/
-		
 		fInterpreter.push(castValue);
+	}
+
+	/**
+	 * @return 
+	 * @throws CoreException
+	 */
+	public IType getCastType(TypeEngine typeEngine) throws CoreException {
+		if (castType == null) {
+			IASTTypeId typeId = castExpr.getTypeId();
+			castType = typeEngine.getTypeForTypeId(typeId);
+		}
+		return castType;
+	}
+
+	public IASTCastExpression getCastExpr() {
+		return castExpr;
 	}
 }

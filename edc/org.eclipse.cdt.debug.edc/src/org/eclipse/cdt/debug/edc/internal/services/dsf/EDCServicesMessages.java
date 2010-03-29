@@ -25,13 +25,7 @@ public class EDCServicesMessages extends NLS {
 
 	public static String Expressions_ExpressionNoLocation;
 
-	public static String Expressions_InvalidType;
-
-	public static String Expressions_NoCurrentValue;
-
 	public static String Expressions_SyntaxError;
-
-	public static String Expressions_UnknownType;
 
 	static {
 		// initialize resource bundle

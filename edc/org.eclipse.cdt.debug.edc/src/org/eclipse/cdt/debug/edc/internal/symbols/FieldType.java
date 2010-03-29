@@ -63,16 +63,16 @@ public class FieldType extends Type implements IField {
 
 	@Override
 	public String toString() {
-		return name + " offset = " + fieldOffset
-				+ ", byteSize = " +	getByteSize()
-				+ (bitOffset != 0 ? ", bitOffset = " + bitOffset : "")
-				+ (bitSize != 0 ? ", bitSize = " + bitSize : "")
-				+ ", accessibility = " +
+		return name + " offset = " + fieldOffset //$NON-NLS-1$
+				+ ", byteSize = " +	getByteSize() //$NON-NLS-1$
+				+ (bitOffset != 0 ? ", bitOffset = " + bitOffset : "") //$NON-NLS-1$ //$NON-NLS-2$
+				+ (bitSize != 0 ? ", bitSize = " + bitSize : "") //$NON-NLS-1$ //$NON-NLS-2$
+				+ ", accessibility = " + //$NON-NLS-1$
 					(accessibility == ICompositeType.ACCESS_PRIVATE ?
-							"private"
+							"private" //$NON-NLS-1$
 					: (accessibility == ICompositeType.ACCESS_PROTECTED ?
-							"protected"
-							: "public"));
+							"protected" //$NON-NLS-1$
+							: "public")); //$NON-NLS-1$
 	}
 
 }

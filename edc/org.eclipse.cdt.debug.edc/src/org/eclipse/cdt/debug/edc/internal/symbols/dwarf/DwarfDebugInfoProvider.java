@@ -1195,8 +1195,15 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		
 		Collection<IType> types = typesByName.get(baseName);
 		
-		if (types == null)
+		if (types == null) {
+			// Maybe we optimistically searched for relevant types;
+			// if that fails, do the full search now
+			if (!parsedForTypes) {
+				ensureParsedForTypes();
+				return getTypesByName(baseName);
+			}
 			return new ArrayList<IType>(0);
+		}
 		
 		// make sure that the aggregate type matches as well as the name
 		if (aggregate == TypeAggregate.None)

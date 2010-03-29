@@ -60,7 +60,8 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 	 */
 	@Override
 	public String toString() {
-		return "0x" + Long.toHexString(address.getValue().longValue()) + (isRuntimeAddress ? "" : " (link address)");
+		return "0x" + Long.toHexString(address.getValue().longValue()) + //$NON-NLS-1$
+				(isRuntimeAddress ? "" : " (link address)"); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 	
 	public IAddress getAddress() {
@@ -91,7 +92,7 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 		IStatus memGetStatus = memoryService.getMemory(exeDMC, theAddress, memBuffer, varSize, 1);
 		if (!memGetStatus.isOK()) {
 			throw EDCDebugger.newCoreException(MessageFormat.format(
-					"cannot read address {0}", theAddress.toHexAddressString()));
+					SymbolsMessages.MemoryVariableLocation_CannotReadAddrFormat, theAddress.toHexAddressString()));
 		}
 
 		return MemoryUtils.convertByteArrayToUnsignedLong(
@@ -115,7 +116,7 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 		if (!isRuntimeAddress) {
 			StackFrameDMC frame = DMContexts.getAncestorOfType(context, StackFrameDMC.class);
 			if (frame == null) 
-				throw EDCDebugger.newCoreException("Cannot find frame");
+				throw EDCDebugger.newCoreException(SymbolsMessages.MemoryVariableLocation_CannotFindFrame);
 			Modules modules = tracker.getService(Modules.class);
 			IAddress pcValue = frame.getIPAddress();
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
@@ -136,12 +137,12 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 	public String getLocationName() {
 		if (!isRuntimeAddress) {
 			try {
-				return "0x" + Long.toHexString(getRealAddress().getValue().longValue());
+				return SymbolsMessages.MemoryVariableLocation_Hex + Long.toHexString(getRealAddress().getValue().longValue());
 			} catch (CoreException e) {
-				return "0x" + Long.toHexString(address.getValue().longValue()) + " (link time)"; // should not happen
+				return SymbolsMessages.MemoryVariableLocation_Hex + Long.toHexString(address.getValue().longValue()) + SymbolsMessages.MemoryVariableLocation_LinkTime; // should not happen
 			}
 		} else {
-			return "0x" + Long.toHexString(address.getValue().longValue());
+			return SymbolsMessages.MemoryVariableLocation_Hex + Long.toHexString(address.getValue().longValue());
 		}
 	}
 
@@ -153,7 +154,7 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 		IStatus status = memory.setMemory(exeDMC, theAddress, 1, bytes, buffer);
 		if (!status.isOK()) {
 			throw EDCDebugger.newCoreException(MessageFormat.format(
-					"cannot write address {0}", theAddress.toHexAddressString()), status.getException());
+					SymbolsMessages.MemoryVariableLocation_CannotWriteAddrFormat, theAddress.toHexAddressString()), status.getException());
 		}
 	}
 }

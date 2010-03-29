@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.TreeMap;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IAddress;
@@ -95,7 +96,7 @@ public class DwarfInfoReader {
 
 	/* Section names. */
 	public final static String DWARF_DEBUG_INFO      = ".debug_info"; //$NON-NLS-1$
-	public final static String DWARF_DEBUG_RANGES   = ".debug_ranges"; //$NON-NLS-1$
+	public final static String DWARF_DEBUG_RANGES    = ".debug_ranges"; //$NON-NLS-1$
 	public final static String DWARF_DEBUG_ABBREV    = ".debug_abbrev"; //$NON-NLS-1$
 	public final static String DWARF_DEBUG_ARANGES   = ".debug_aranges"; //$NON-NLS-1$
 	public final static String DWARF_DEBUG_LINE      = ".debug_line"; //$NON-NLS-1$
@@ -110,7 +111,7 @@ public class DwarfInfoReader {
 	public final static String DWARF_DEBUG_WEAKNAMES = ".debug_weaknames"; //$NON-NLS-1$
 	public final static String DWARF_DEBUG_MACINFO   = ".debug_macinfo"; //$NON-NLS-1$
 
-	private Map<Long, List<LocationEntry>> locationEntriesByOffset = new HashMap<Long, List<LocationEntry>>();
+	private Map<Long, Collection<LocationEntry>> locationEntriesByOffset = new HashMap<Long, Collection<LocationEntry>>();
 
 	// the target for all the reading
 	private DwarfDebugInfoProvider provider;
@@ -410,7 +411,8 @@ public class DwarfInfoReader {
 		if (header == null)
 			return;
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse for " + Integer.toHexString(header.debugInfoOffset) + " : " + header.scope.getFilePath());
+		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse for "
+				+ Integer.toHexString(header.debugInfoOffset) + " : " + header.scope.getFilePath());
 		
 		IStreamBuffer buffer = debugInfoSection.getBuffer();
 		
@@ -454,7 +456,8 @@ public class DwarfInfoReader {
 		if (header == null)
 			return;
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Type parse of " + Integer.toHexString(header.debugInfoOffset) + " : " + header.scope.getFilePath());
+		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Type parse of "
+				+ Integer.toHexString(header.debugInfoOffset) + " : " + header.scope.getFilePath());
 		
 		IStreamBuffer buffer = debugInfoSection.getBuffer();
 		
@@ -864,7 +867,8 @@ public class DwarfInfoReader {
 			Stack<Scope> nestingStack)
 			throws IOException {
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse of " + header.scope.getName() + " @ " + Long.toHexString(header.debugInfoOffset));
+		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse of "
+				+ header.scope.getName() + " @ " + Long.toHexString(header.debugInfoOffset));
 
 		while (in.remaining() > 0) {
 			long offset = in.position() + currentCUHeader.debugInfoOffset;
@@ -876,6 +880,7 @@ public class DwarfInfoReader {
 					assert false;
 					continue;
 				}
+
 				if (entry.hasChildren) {
 					nestingStack.push(currentParentScope);
 				}
@@ -907,7 +912,8 @@ public class DwarfInfoReader {
 			Stack<Scope> nestingStack)
 			throws IOException {
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Parsing types for " + header.scope.getName() + " @ " + Long.toHexString(header.debugInfoOffset));
+		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Parsing types for "
+				+ header.scope.getName() + " @ " + Long.toHexString(header.debugInfoOffset));
 		
 		Stack<IType> typeStack = new Stack<IType>();
 		typeToParentMap = new HashMap<IType, IType>();
@@ -1151,7 +1157,7 @@ public class DwarfInfoReader {
 			processVariable(offset, attributeList, true);
 			break;
 		case DwarfConstants.DW_TAG_lexical_block:
-			processLexicalBlock(offset, attributeList);
+			processLexicalBlock(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_member:
 			processField(offset, attributeList, header);
@@ -1199,10 +1205,10 @@ public class DwarfInfoReader {
 		case DwarfConstants.DW_TAG_friend:
 			break;
 		case DwarfConstants.DW_TAG_subprogram:
-			processSubProgram(offset, attributeList);
+			processSubProgram(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_inlined_subroutine:
-			processInlinedSubroutine(offset, attributeList);
+			processInlinedSubroutine(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_template_type_param:
 			break;
@@ -1337,12 +1343,15 @@ public class DwarfInfoReader {
 		return str;
 	}
 
-	private List<LocationEntry> getLocationRecord(long offset) {
+	private Collection<LocationEntry> getLocationRecord(long offset) {
 		// first check the cache
-		List<LocationEntry> entries = locationEntriesByOffset.get(offset);
+		Collection<LocationEntry> entries = locationEntriesByOffset.get(offset);
 		if (entries == null) {
 			// not found so try to get the entries from the offset
-			entries = new ArrayList<LocationEntry>();
+			
+			// note: some compilers generate MULTIPLE ENTRIES for the same location,
+			// and the last one tends to be more correct... use a map here when reading
+			TreeMap<IRangeList.Entry, LocationEntry> entryMap = new TreeMap<IRangeList.Entry, LocationEntry>();
 
 			try {
 				IStreamBuffer data = getDwarfSection(DWARF_DEBUG_LOC);
@@ -1378,9 +1387,10 @@ public class DwarfInfoReader {
 						byte[] bytes = new byte[numOpCodes];
 						data.get(bytes);
 						LocationEntry entry = new LocationEntry(lowPC + base, highPC + base, bytes);
-						entries.add(entry);
+						entryMap.put(new IRangeList.Entry(lowPC + base, highPC + base), entry);
 					}
 
+					entries = entryMap.values();
 					locationEntriesByOffset.put(offset, entries);
 				}
 			} catch (Exception e) {
@@ -1452,7 +1462,6 @@ public class DwarfInfoReader {
 
 	private void registerScope(long offset, Scope scope) {
 		provider.scopesByOffset.put(offset, scope);
-		currentParentScope = scope;
 	}
 
 	/**
@@ -1562,6 +1571,17 @@ public class DwarfInfoReader {
 			RangeList ranges = readRangeList(value.getValueAsInt(), baseValue);
 			if (ranges != null) {
 				scope.setRangeList(ranges);
+				
+				// if the range list high and low pc extend outside the parent's
+				// high/low range, adjust the parent (found in GCC-E)
+				if (ranges.getLowAddress() < scope.getParent().getLowAddress().getValue().longValue()) {
+					if (scope.getParent() instanceof Scope)
+						((Scope)scope.getParent()).setLowAddress(new Addr32(ranges.getLowAddress()));
+				}
+				if (ranges.getHighAddress() > scope.getParent().getHighAddress().getValue().longValue()) {
+					if (scope.getParent() instanceof Scope)
+						((Scope)scope.getParent()).setHighAddress(new Addr32(ranges.getHighAddress()));
+				}
 				return;
 			}
 		}
@@ -1641,7 +1661,7 @@ public class DwarfInfoReader {
 		attributeList.attributeMap.remove(DwarfConstants.DW_AT_ranges);
 	}
 
-	private void processLexicalBlock(long offset, AttributeList attributeList) {
+	private void processLexicalBlock(long offset, AttributeList attributeList, boolean hasChildren) {
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 
 		if (!attributeList.hasCodeRangeAttributes()) {
@@ -1654,6 +1674,8 @@ public class DwarfInfoReader {
 
 		currentParentScope.addChild(lb);
 		registerScope(offset, lb);
+		if (hasChildren)
+			currentParentScope = lb;
 	}
 
 	static class DereferencedAttributes {
@@ -1696,6 +1718,33 @@ public class DwarfInfoReader {
 			// dereferenced function does not exist yet
 			providingCU = provider.scanCompilationHeader(debugInfoOffset);
 			attributes = provider.functionsByOffset.get(debugInfoOffset);
+			if (attributes == null) {
+				// dereferenced entry is not parsed yet, perhaps because it's
+				// later in the current compile unit (despite Dwarf 3 spec saying
+				// that's not allowed)
+				IStreamBuffer buffer = getDwarfSection(DWARF_DEBUG_INFO);
+	
+				if (buffer != null) {
+					buffer.position(debugInfoOffset);
+	
+					try {
+						// get stored abbrev table, or read and parse an abbrev table
+						Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(providingCU.abbreviationOffset);
+	
+						long code = read_unsigned_leb128(buffer);
+	
+						if (code != 0) {
+							AbbreviationEntry entry = abbrevs.get(new Long(code));
+							if (entry != null) {
+								attributes = new AttributeList(entry, buffer, providingCU.addressSize, getDebugStrings());
+							}
+						}
+					} catch (IOException e) {
+						EDCDebugger.getMessageLogger().logError("Failed to parse debug info from section " 
+								+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
+					}
+				}
+			}
 		} else {
 			providingCU = provider.fetchCompileUnitHeader(debugInfoOffset);
 			if (providingCU == null) {
@@ -1703,13 +1752,14 @@ public class DwarfInfoReader {
 				return null;
 			}
 		}
+
 		if (attributes == null)
 			return null;
 		
 		return new DereferencedAttributes(providingCU, attributes);
 	}
 
-	private void processSubProgram(long offset, AttributeList attributeList) {
+	private void processSubProgram(long offset, AttributeList attributeList, boolean hasChildren) {
 		// if it's a declaration just add to the offsets map for later lookup
 		if (attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_declaration) > 0) {
 			provider.functionsByOffset.put(offset, attributeList);
@@ -1773,7 +1823,9 @@ public class DwarfInfoReader {
 		DwarfFunctionScope function = new DwarfFunctionScope(name, currentCompileUnitScope, null, null, null);
 		setupAddresses(attributeList, function);
 		
+		Scope originalParentScope = currentParentScope;
 		registerScope(offset, function);
+		currentParentScope = function;	// needed for getLocationProvider(), etc.
 		
 		AttributeValue frameBaseAttribute = attributeList.getAttribute(DwarfConstants.DW_AT_frame_base);
 		ILocationProvider locationProvider = getLocationProvider(frameBaseAttribute);
@@ -1806,6 +1858,10 @@ public class DwarfInfoReader {
 			}
 			functions.add(function);
 		}
+		
+		// if the entry has no children, then restore the original parent scope
+		if (!hasChildren)
+			currentParentScope = originalParentScope;
 	}
 
 	/** 
@@ -1843,7 +1899,7 @@ public class DwarfInfoReader {
 		return type;
 	}
 	 
-	private void processInlinedSubroutine(long offset, AttributeList attributeList) {
+	private void processInlinedSubroutine(long offset, AttributeList attributeList, boolean hasChildren) {
 		// functions with no high/low pc aren't real (probably an error)
 		if (!attributeList.hasCodeRangeAttributes()) {
 			return;
@@ -1903,6 +1959,8 @@ public class DwarfInfoReader {
 		currentParentScope.addChild(function);
 		
 		registerScope(offset, function);
+		if (hasChildren)
+			currentParentScope = function;
 		
 		// keep track of all functions by name for faster lookup
 		List<IFunctionScope> functions = provider.functionsByName.get(name);
@@ -2467,7 +2525,7 @@ public class DwarfInfoReader {
 			byte actualForm = locationValue.getActualForm();
 			if (actualForm == DwarfConstants.DW_FORM_data4) {
 				// location list
-				List<LocationEntry> entryList = getLocationRecord(locationValue.getValueAsLong());
+				Collection<LocationEntry> entryList = getLocationRecord(locationValue.getValueAsLong());
 				return new LocationList(entryList.toArray(new LocationEntry[entryList.size()]),
 						exeReader.getByteOrder(),
 						currentCUHeader.addressSize, currentParentScope);

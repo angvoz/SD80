@@ -44,7 +44,16 @@ public class ExpressionsCasting extends BaseExpressionTest {
 		checkExpr(signedShortType, "-1", "(short)(signed char)0xff"); 
 		
 		// cast of value is just a cast
-		checkExpr(floatType, "1426063360", "(float)0x55000000"); 
+		checkExpr(floatType, "1.42606336E9", "(float)0x55000000");
+		
+		// need reinterpret otherwise.  This works without having memory locations.
+		checkExpr(floatType, "-128.0", "reinterpret_cast<float>(0xC3000000)"); 
+	}
+	
+	@Test
+	public void testCastPrecedence() throws Exception {
+		// there was a problem here
+		checkExpr(floatType, "0.5", "(float)1 / 2"); 
 	}
 	
 	@Test
@@ -63,6 +72,11 @@ public class ExpressionsCasting extends BaseExpressionTest {
 		checkCastedChildExpr(null, "32", "der1", new CastInfo("Der1*"), "b1");
 		checkCastedChildExpr(null, "48", "der2", new CastInfo("Der2 *"), "b2");
 		
+		// Nokia bug 10979: make sure we can cast primitive or struct types to array 
+		CastInfo arrayCast = new CastInfo(0, 5);
+		checkCastedChildExpr(null, "0x3d3ef8", "*b", arrayCast, "*b[0]");
+		// be sure we calc the array element size properly too...
+		checkCastedChildExpr(null, "0x3d3f00", "*b", arrayCast, "*b[1]");
 	}
 	
 	@Test
@@ -119,6 +133,9 @@ public class ExpressionsCasting extends BaseExpressionTest {
 		
 		// illegal index
 		checkCastedChildExprFail("lstring", arrayCast, "lstring[5]");
+		
+		// Nokia bug 10979: make sure we can cast primitive types to array 
+		checkCastedChildExpr(null, "2293560", "SizeOfInt", arrayCast, "SizeOfInt[1]");
 	}
 	@Override
 	public String getAlbumName() {

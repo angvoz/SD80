@@ -69,7 +69,7 @@ public class Section implements ISection {
 
 	@Override
 	public String toString() {
-		return MessageFormat.format("[sectionID={0}, link address={1}, runtime address={2}]", id, linkAddress.toHexAddressString(),
+		return MessageFormat.format("[sectionID={0}, link address={1}, runtime address={2}]", id, linkAddress.toHexAddressString(), //$NON-NLS-1$
 				runtimeAddress.toHexAddressString());
 	}
 

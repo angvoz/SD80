@@ -35,7 +35,7 @@ public class RegisterOffsetVariableLocation extends RegisterVariableLocation imp
 	 */
 	@Override
 	public String toString() {
-		return super.toString() + " + " + getOffset();
+		return super.toString() + " + " + getOffset(); //$NON-NLS-1$
 	}
 	
 	/* (non-Javadoc)
@@ -72,10 +72,10 @@ public class RegisterOffsetVariableLocation extends RegisterVariableLocation imp
 			}
 			BigInteger regval = super.readValue(addressSize);
 			regval = regval.add(BigInteger.valueOf(offset));
-			return "0x" + Long.toHexString(regval.longValue());
+			return SymbolsMessages.RegisterOffsetVariableLocation_Hex + Long.toHexString(regval.longValue());
 		} catch (CoreException e) {
 			// fallback
-			return super.getLocationName() + (offset < 0 ? " + " : " - " ) + Math.abs(offset);
+			return super.getLocationName() + (offset < 0 ? SymbolsMessages.RegisterOffsetVariableLocation_Positive : SymbolsMessages.RegisterOffsetVariableLocation_Negative ) + Math.abs(offset);
 		}
 	}
 	

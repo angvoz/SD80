@@ -30,7 +30,6 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTArrayDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushLongOrBigInteger;
 import org.eclipse.cdt.debug.edc.internal.symbols.ArrayBoundType;
@@ -367,7 +366,7 @@ public class TypeEngine {
 	 */
 	public IType getTypeForTypeId(IASTTypeId typeId) throws CoreException {
 		if (typeId == null)
-			throw EDCDebugger.newCoreException(ASTEvalMessages.TypeEngine_NoTypeToCast);
+			throw EDCDebugger.newCoreException(SymbolsMessages.TypeEngine_NoTypeToCast);
 
 		if (typeId instanceof IASTProblemTypeId)
 			throw EDCDebugger.newCoreException(((IASTProblemTypeId) typeId).getProblem().getMessage());
@@ -448,7 +447,7 @@ public class TypeEngine {
 		}
 		
 		if (type == null) {
-			throw EDCDebugger.newCoreException(ASTEvalMessages.TypeEngine_CannotResolveType + typeSignature);
+			throw EDCDebugger.newCoreException(SymbolsMessages.TypeEngine_CannotResolveType + typeSignature);
 		}
 			
 		if (typeId.getAbstractDeclarator() instanceof ICPPASTDeclarator) {
@@ -463,7 +462,7 @@ public class TypeEngine {
 				ICPPASTArrayDeclarator arrayDeclarator = (ICPPASTArrayDeclarator) declarator;
 				IArrayType arrayType = new ArrayType(type.getName()+"[]", type.getScope(), 0, null); //$NON-NLS-1$
 				for (IASTArrayModifier arrayMod : arrayDeclarator.getArrayModifiers()) {
-					long elementCount = 0;
+					long elementCount = 1;
 					if (arrayMod.getConstantExpression() != null) {
 						elementCount = getConstantValue(arrayMod.getConstantExpression());
 					}
@@ -485,7 +484,7 @@ public class TypeEngine {
 				return pusher.getLong();
 			}
 		}
-		throw EDCDebugger.newCoreException(ASTEvalMessages.TypeEngine_ExpectedLiteralConstant + 
+		throw EDCDebugger.newCoreException(SymbolsMessages.TypeEngine_ExpectedIntegerConstant + 
 				ASTSignatureUtil.getExpressionString(constantExpression));
 	}
 
@@ -524,12 +523,12 @@ public class TypeEngine {
 			// we'd need to parse the subexpression then get its type
 		case IASTSimpleDeclSpecifier.t_decltype:
 			// not sure about this one
-			throw EDCDebugger.newCoreException(ASTEvalMessages.TypeEngine_NoDecltypeSupport);	
+			throw EDCDebugger.newCoreException(SymbolsMessages.TypeEngine_NoDecltypeSupport);	
 		case IASTSimpleDeclSpecifier.t_unspecified:
 			baseType = ICPPBasicType.t_int;
 			break;
 		default:
-			throw EDCDebugger.newCoreException(ASTEvalMessages.TypeEngine_UnhandledType + simpleDeclSpec);	
+			throw EDCDebugger.newCoreException(SymbolsMessages.TypeEngine_UnhandledType + simpleDeclSpec);	
 		}
 		
 		int flags = 0;
@@ -577,14 +576,14 @@ public class TypeEngine {
 		if (arrayType == null) {
 			type = TypeUtils.getStrippedType(type);
 			
-			IType baseType = null;
+			IType baseType = type;
 			
 			if (type instanceof IPointerType || type instanceof IArrayType) {
 				baseType = type.getType();
 			}
 	
 			if (baseType == null)
-				throw EDCDebugger.newCoreException(ASTEvalMessages.TypeEngine_CannotResolveBaseType + type.getName());
+				throw EDCDebugger.newCoreException(SymbolsMessages.TypeEngine_CannotResolveBaseType + typeSig);
 			
 			arrayType = new ArrayType(baseType.getName()+"[]", baseType.getScope(),  //$NON-NLS-1$
 					baseType.getByteSize() * count, null);

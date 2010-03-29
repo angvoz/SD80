@@ -35,6 +35,7 @@ import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCastExpression;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.ArraySubscript;
@@ -50,6 +51,7 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorB
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorBinaryXor;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorBitwiseNot;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorCast;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorCastValue;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorDivide;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorEquals;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.OperatorGreaterEqual;
@@ -75,6 +77,7 @@ import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushDoubl
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushFloat;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushLongOrBigInteger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushString;
+import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.internal.core.dom.parser.ASTAmbiguousNode;
 
 @SuppressWarnings("restriction")
@@ -352,7 +355,10 @@ public class ASTInstructionCompiler extends ASTVisitor {
 	}
 
 	private void visitCastExpression(IASTCastExpression expression) {
-		push(new OperatorCast(counter, expression));
+		if (expression.getOperator() == ICPPASTCastExpression.op_reinterpret_cast) 
+			push(new OperatorCastValue(counter, expression));
+		else
+			push(new OperatorCast(counter, expression));
 	}
 
 	private void visitLiteralExpression(IASTLiteralExpression expression) {
@@ -515,4 +521,17 @@ public class ASTInstructionCompiler extends ASTVisitor {
 		}
 	}
 
+	/**
+	 * Fixup the instruction stream:
+	 * 
+	 * (1) Remove NoOps
+	 * (2) Reduce (possibly internally generated) cast expressions to avoid 
+	 * taking the address of a register or bitfield.
+	 * @param typeEngine 
+	 * 
+	 */
+	public void fixupInstructions(TypeEngine typeEngine) {
+		instructions.removeNoOps();
+		instructions.reduceCasts(typeEngine);
+	}
 }

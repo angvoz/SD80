@@ -44,10 +44,43 @@ public interface IRangeList extends Iterable<IRangeList.Entry> {
 		public int compareTo(Entry o) {
 			if (low < o.low)
 				return -1;
-			if (high >= o.high)
+			if (low > o.low && high >= o.high)
+				return 1;
+			if (low == o.low && high > o.high)
 				return 1;
 			return 0;
 		}
+		/* (non-Javadoc)
+		 * @see java.lang.Object#hashCode()
+		 */
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + (int) (high ^ (high >>> 32));
+			result = prime * result + (int) (low ^ (low >>> 32));
+			return result;
+		}
+		/* (non-Javadoc)
+		 * @see java.lang.Object#equals(java.lang.Object)
+		 */
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Entry other = (Entry) obj;
+			if (high != other.high)
+				return false;
+			if (low != other.low)
+				return false;
+			return true;
+		}
+
+		
 	}
 	
 	/** Get absolute low address for the range */

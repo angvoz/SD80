@@ -17,7 +17,7 @@ import org.eclipse.cdt.debug.edc.symbols.IScope;
 public class SubroutineType extends Type implements ISubroutineType {
 
 	public SubroutineType(IScope scope, Map<Object, Object> properties) {
-		super("", scope, 0, properties);
+		super("", scope, 0, properties); //$NON-NLS-1$
 	}
 
 	// create an internal pointer for expression evaluation

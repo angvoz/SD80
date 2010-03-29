@@ -34,7 +34,7 @@ public class InvalidVariableLocation implements IInvalidVariableLocation {
 	 */
 	@Override
 	public String toString() {
-		return "Invalid: " + getMessage();
+		return "Invalid: " + getMessage(); //$NON-NLS-1$
 	}
 	
 	
@@ -67,7 +67,7 @@ public class InvalidVariableLocation implements IInvalidVariableLocation {
 	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getLocationName(org.eclipse.cdt.dsf.service.DsfServicesTracker)
 	 */
 	public String getLocationName() {
-		return "";
+		return ""; //$NON-NLS-1$
 	}
 
 	/* (non-Javadoc)
@@ -78,6 +78,6 @@ public class InvalidVariableLocation implements IInvalidVariableLocation {
 	}
 
 	public void writeValue(int bytes, BigInteger value) throws CoreException {
-		throw EDCDebugger.newCoreException("Can't write to an invalid variable location");
+		throw EDCDebugger.newCoreException(SymbolsMessages.InvalidVariableLocation_CannotWriteInvalidLocation);
 	}
 }

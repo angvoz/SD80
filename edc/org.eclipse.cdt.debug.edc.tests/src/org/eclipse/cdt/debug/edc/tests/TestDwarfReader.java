@@ -53,8 +53,10 @@ import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfInfoReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.LocationEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.LocationExpression;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.PublicNameInfo;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.LocationList;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
@@ -2135,5 +2137,32 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		}
 		assertTrue("Did not find 'bigbuffer'", found);
 		
+	}
+	
+	/**
+	 * RVCT generates location lists with two duplicate address ranges, where
+	 * the latter is the one to trust.  Be sure we filter out the earlier ones.
+	 * @throws Exception
+	 */
+	@Test
+	public void testBrokenLocationLists() throws Exception {
+		IPath file = getFile("BlackFlag_rvct.sym");
+		IEDCSymbolReader reader = Symbols.getSymbolReader(file);
+		// show_Const_Arguments
+		IFunctionScope func = (IFunctionScope) reader.getModuleScope().getScopeAtAddress(new Addr32(0x9648));
+		Collection<IVariable> variables = func.getParameters();
+		boolean found = false;
+		for (IVariable var : variables) {
+			if (var.getName().equals("aArg1")) {
+				found = true;
+				LocationEntry[] entries = ((LocationList)var.getLocationProvider()).getLocationEntries();
+				assertEquals(2, entries.length);
+				assertEquals(0x9648, entries[0].getLowPC());
+				assertEquals(1, entries[0].getBytes().length);
+				assertEquals((byte)0x50, entries[0].getBytes()[0]);
+				break;
+			}
+		}
+		assertTrue(found);
 	}
 }

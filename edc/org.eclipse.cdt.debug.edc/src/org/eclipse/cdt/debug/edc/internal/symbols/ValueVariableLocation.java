@@ -34,13 +34,13 @@ public class ValueVariableLocation implements IValueVariableLocation {
 	 */
 	@Override
 	public String toString() {
-		return "0x" + Long.toHexString(value.longValue());
+		return "0x" + Long.toHexString(value.longValue()); //$NON-NLS-1$
 	}
 	
 	
 	public BigInteger readValue(int bytes) throws CoreException {
 		if (value == null)
-			throw EDCDebugger.newCoreException("no value available");
+			throw EDCDebugger.newCoreException(SymbolsMessages.ValueVariableLocation_NoValueAvailable);
 		return value;
 	}
 	
@@ -55,7 +55,7 @@ public class ValueVariableLocation implements IValueVariableLocation {
 	 * @see org.eclipse.cdt.debug.edc.symbols.IVariableLocation#getLocationName(org.eclipse.cdt.dsf.service.DsfServicesTracker)
 	 */
 	public String getLocationName() {
-		return "";
+		return ""; //$NON-NLS-1$
 	}
 	
 	/* (non-Javadoc)
@@ -66,6 +66,6 @@ public class ValueVariableLocation implements IValueVariableLocation {
 	}
 
 	public void writeValue(int bytes, BigInteger value) throws CoreException {
-		throw EDCDebugger.newCoreException("cannot modify derived value");
+		throw EDCDebugger.newCoreException(SymbolsMessages.ValueVariableLocation_CannotModifyDerivedValue);
 	}
 }

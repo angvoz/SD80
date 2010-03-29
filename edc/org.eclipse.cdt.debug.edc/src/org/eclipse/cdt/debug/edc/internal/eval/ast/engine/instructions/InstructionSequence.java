@@ -11,8 +11,14 @@
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -164,5 +170,77 @@ public class InstructionSequence {
 	 */
 	public int getEnd() {
 		return fInstructions.size() - 1;
+	}
+
+	/**
+	 * Remove no-ops from the instruction list
+	 */
+	public void removeNoOps() {
+		for (Iterator<Instruction> iter = fInstructions.iterator(); iter.hasNext(); ) {
+			if (iter.next() instanceof NoOp) {
+				iter.remove();
+			}
+		}
+	}
+
+	/**
+	 * Fixup instructions like:  *(<type>*)&<something>
+	 *<p>
+	 * We want to avoid getting the address of a register or bitfield and
+	 * causing an error, so just make a synthetic "cast value" operator here.
+	 * <p>
+	 * If there is a concern about incorrectly avoiding an error here -- 
+	 * "if the variable is in a register, then this should fail" -- I argue that 
+	 * the user doesn't necessarily know it's in a register at compile time, and 
+	 * we should try harder to allow evaluating such an expression.  Asking him to 
+	 * modify and rebuild his code so the variable will be in memory is a bit draconian.   
+	 * @param typeEngine 
+	 */
+	public void reduceCasts(TypeEngine typeEngine) {
+		boolean anyChanges = false;
+		for (int i = 0; i < fInstructions.size(); i++) {
+			Instruction inst = fInstructions.get(i);
+			if ((inst instanceof OperatorAddrOf) && i + 1 < fInstructions.size()) {
+				Instruction inst2 = fInstructions.get(i + 1);
+				if (inst2 instanceof OperatorCast && i + 2 < fInstructions.size()) {
+					Instruction inst3 = fInstructions.get(i + 2);
+					if (inst3 instanceof OperatorIndirection) {
+						// see if it's a pointer or array
+						IType castType = null;
+						try {
+							castType = TypeUtils.getStrippedType(((OperatorCast) inst2).getCastType(typeEngine));
+						} catch (CoreException e) {
+							// ignore
+							continue;
+						}
+						if (castType instanceof IPointerType || castType instanceof IArrayType) {
+							OperatorCastValue cv = new OperatorCastValue(inst.getSize(), castType.getType());
+							fInstructions.set(i, cv);
+							fInstructions.set(i + 1, new NoOp(inst2.getSize()));
+							fInstructions.set(i + 2, new NoOp(inst3.getSize()));
+							anyChanges = true;
+						}
+					}
+				} else if (inst2 instanceof OperatorCastValue) {
+					// see if it's a pointer or array
+					IType castType;
+					try {
+						castType = TypeUtils.getStrippedType(((OperatorCastValue)inst2).getCastType(typeEngine));
+					} catch (CoreException e) {
+						// ignore
+						continue;
+					}
+					if (castType instanceof IPointerType || castType instanceof IArrayType) {
+						OperatorCastValue cv = new OperatorCastValue(inst.getSize(), castType.getType());
+						fInstructions.set(i, cv);
+						fInstructions.set(i + 1, new NoOp(inst2.getSize()));
+						anyChanges = true;
+					}
+				}
+			}
+		}
+		if (anyChanges) {
+			removeNoOps();
+		}
 	}
 }

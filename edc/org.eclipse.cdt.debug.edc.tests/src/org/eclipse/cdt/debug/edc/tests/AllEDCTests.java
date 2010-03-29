@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.tests;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsBasicTypes;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsAggregatesAndEnums;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsCasting;
+import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsCasting2;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInheritance;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInvalidExpressions;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTests;
@@ -29,6 +30,7 @@ import org.junit.runners.Suite;
 						ExpressionsInheritance.class,
 						ExpressionsInvalidExpressions.class,
 						ExpressionsCasting.class,
+						ExpressionsCasting2.class,
 						SymbolReader.class,
 						TestDwarfReader.class,
 						TestSourceToAddressMapping.class,

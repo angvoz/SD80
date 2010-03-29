@@ -19,7 +19,7 @@ import org.eclipse.cdt.debug.edc.symbols.IType;
 public class Type implements IType {
 
 	/** This property key maps to an {@link IForwardTypeReference} object */
-	public static final String TYPE_REFERENCE = "type_reference";
+	public static final String TYPE_REFERENCE = "type_reference"; //$NON-NLS-1$
 	
 	protected String name;
 	protected IScope scope;

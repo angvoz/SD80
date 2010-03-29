@@ -12,10 +12,21 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 
 public interface IArrayBoundType {
 
+	/** bound of this array dimension. E.g., for "int a[7][8]", this would be
+	 * either 7 or 8.
+	 */
 	public long getBoundCount();
 
+	/**  number of array elements associated with each index of this array
+	 *  dimension.
+	 * 	E.g., for "int a[7][8]", "a[1]" comprises 8 elements, but "a[1][2]"
+	 * comprises 1 element.
+	 */
 	public long getElementCount();
 
+	/** array dimension ordinal. E.g., for "int a[7][8]", "[7]" is index 1 and
+	 * "[8]" is index 0;
+	 */
 	public long getDimensionIndex();
 
 	public void multiplyElementCount(long multiply);

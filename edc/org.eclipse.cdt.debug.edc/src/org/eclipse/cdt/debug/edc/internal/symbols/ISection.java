@@ -23,12 +23,12 @@ public interface ISection {
 	/**
 	 * Commonly known properties of a section
 	 */
-	static final String PROPERTY_ID = "id";
-	static final String PROPERTY_SIZE = "size";
-	static final String PROPERTY_LINK_ADDRESS = "link_address";
-	static final String PROPERTY_RUNTIME_ADDRESS = "runtime_address";
+	static final String PROPERTY_ID = "id"; //$NON-NLS-1$
+	static final String PROPERTY_SIZE = "size"; //$NON-NLS-1$
+	static final String PROPERTY_LINK_ADDRESS = "link_address"; //$NON-NLS-1$
+	static final String PROPERTY_RUNTIME_ADDRESS = "runtime_address"; //$NON-NLS-1$
 	/** Canonical section name: one of NAME_TEXT, NAME_DATA, NAME_RODATA, or NAME_BSS */
-	static final String PROPERTY_NAME = "name";
+	static final String PROPERTY_NAME = "name"; //$NON-NLS-1$
 	
 	/* TODO: not used
 	static final String PROPERTY_READABLE = "readable";
@@ -36,10 +36,10 @@ public interface ISection {
 	static final String PROPERTY_EXECUTABLE = "executable";
 	 */
 	
-	static final String NAME_TEXT = ".text";
-	static final String NAME_DATA = ".data";
-	static final String NAME_RODATA = ".rodata"; // read only data
-	static final String NAME_BSS = ".bss"; // uninitialized data
+	static final String NAME_TEXT = ".text"; //$NON-NLS-1$
+	static final String NAME_DATA = ".data"; //$NON-NLS-1$
+	static final String NAME_RODATA = ".rodata"; // read only data //$NON-NLS-1$
+	static final String NAME_BSS = ".bss"; // uninitialized data //$NON-NLS-1$
 
 	/**
 	 * Get the section id

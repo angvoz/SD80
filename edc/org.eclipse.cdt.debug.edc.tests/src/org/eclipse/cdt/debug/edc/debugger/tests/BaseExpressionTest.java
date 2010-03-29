@@ -54,6 +54,8 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 
 	@Before
 	public void gatherTypes() {
+		if (frame == null)
+			return;
 		typeEngine = ((StackFrameDMC)frame).getTypeEngine();
 		
 		charType = typeEngine.getCharacterType(typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_CHAR));

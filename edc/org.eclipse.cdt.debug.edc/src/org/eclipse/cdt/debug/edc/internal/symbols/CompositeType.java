@@ -86,8 +86,8 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 		String baseFieldName = name;
 		ArrayList<String> nameQualifiers = new ArrayList<String>();
 		
-		if (name.contains("::")) {
-			StringTokenizer st = new StringTokenizer(name, "::", false);
+		if (name.contains("::")) { //$NON-NLS-1$
+			StringTokenizer st = new StringTokenizer(name, "::", false); //$NON-NLS-1$
 			while (st.hasMoreTokens()) {
 				baseFieldName = st.nextToken();
 				nameQualifiers.add(baseFieldName);
@@ -179,11 +179,11 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 			ArrayList<String> matchQualifiers = new ArrayList<String>();
 			String matchName = matches.get(i).getName();
 			
-			if (!matchName.contains("::"))
+			if (!matchName.contains("::")) //$NON-NLS-1$
 				continue;
 			
 			// tokenize the match's name
-			StringTokenizer st = new StringTokenizer(matchName, "::", false);
+			StringTokenizer st = new StringTokenizer(matchName, "::", false); //$NON-NLS-1$
 			while (st.hasMoreTokens()) {
 				matchQualifiers.add(st.nextToken());
 			}
@@ -230,7 +230,7 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 				
 				if (fieldName.equals(name)) {
 					// create a field with the prefixed name
-					FieldType newField = new FieldType(prefix + "::" + field.getName(), scope,
+					FieldType newField = new FieldType(prefix + "::" + field.getName(), scope, //$NON-NLS-1$
 							composite, offset + field.getFieldOffset(), 0 /* bitSize */, 0 /* bitOffset */,
 							field.getType().getByteSize(), field.getAccessibility(),
 							field.getProperties());
@@ -257,7 +257,7 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 
 			if (inheritance.getType() instanceof ICompositeType) {
 				ICompositeType inheritComposite = (ICompositeType)inheritance.getType();
-				matches = findInheritedByName(name, inheritComposite, prefix + "::" + inheritComposite.getBaseName(),
+				matches = findInheritedByName(name, inheritComposite, prefix + "::" + inheritComposite.getBaseName(), //$NON-NLS-1$
 								offset + inheritance.getFieldsOffset(), matches);
 			}
 		}

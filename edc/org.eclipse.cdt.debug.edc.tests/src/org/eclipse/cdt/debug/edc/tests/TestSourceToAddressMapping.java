@@ -20,9 +20,11 @@ package org.eclipse.cdt.debug.edc.tests;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.LineEntryMapper;
@@ -30,6 +32,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
 import org.eclipse.core.runtime.IPath;
@@ -260,7 +263,13 @@ public class TestSourceToAddressMapping extends BaseDwarfTestCase {
 		assertTrue(curinfo, addresses.size() > 0);
 		
 		List<String> functionsFound = new ArrayList<String>();
+		
+		// make sure duplicates don't exist
+		Set<AddressRange> foundRanges = new HashSet<AddressRange>();
 		for (AddressRange range : addresses) {
+			assertFalse(range+"", foundRanges.contains(range));
+			foundRanges.add(range);
+
 			checkFunction(reader, range, curinfo, functionsFound);
 		}
 		
@@ -304,5 +313,26 @@ public class TestSourceToAddressMapping extends BaseDwarfTestCase {
 			
 			functionsFound.add(function.getName());
 		}
+	}
+	
+	/**
+	 * Make sure we find multiple ranges for lines when multiple statements live there
+	 * @throws Exception
+	 */
+	@Test
+	public void testMultiRangeLines() throws Exception {
+		TestInfo info = lookupInfo("SimpleCpp_gcce_432.sym");
+		
+		IEDCSymbolReader reader = Symbols.getSymbolReader(info.symFile);
+		assertNotNull(reader);
+		
+		IModuleLineEntryProvider moduleLineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();
+		assertNotNull(moduleLineEntryProvider);
+		
+		IPath lookupPath = findSource(reader, new Path("inc/Templates.h"));
+		
+		// "for", init, test, incr * 2 for two template instances
+		Collection<ILineEntry> entries = moduleLineEntryProvider.getLineEntriesForLines(lookupPath, 37, 37);
+		assertEquals(8, entries.size());
 	}
 }

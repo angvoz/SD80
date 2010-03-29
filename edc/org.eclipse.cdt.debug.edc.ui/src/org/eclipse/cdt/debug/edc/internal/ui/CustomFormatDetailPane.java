@@ -217,6 +217,8 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 		if (selection.isEmpty())
 			return false;
 		IEDCExpression expression = EDCDetailPaneFactory.getExpressionFromSelectedElement(selection.getFirstElement());
+		if (expression == null)
+			return false;
 		IVariableValueConverter customConverter = getCustomConverter(expression);
 		return customConverter.canEditValue();
 	}

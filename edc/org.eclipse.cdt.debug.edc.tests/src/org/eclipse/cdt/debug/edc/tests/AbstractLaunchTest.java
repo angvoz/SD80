@@ -24,12 +24,6 @@ import org.junit.Assert;
 
 public abstract class AbstractLaunchTest extends Assert {
 
-	public static void showPerspective(String perspective) throws WorkbenchException {
-		IWorkbench workbench = PlatformUI.getWorkbench();
-		IWorkbenchWindow activeWindow = workbench.getActiveWorkbenchWindow();
-		workbench.showPerspective(perspective, activeWindow);
-	}
-
 	protected DsfSession waitForSession(final EDCLaunch launch) throws InterruptedException {
 		final DsfSession sessionHolder[] = { null };
 		TestUtils.wait(new Condition() {

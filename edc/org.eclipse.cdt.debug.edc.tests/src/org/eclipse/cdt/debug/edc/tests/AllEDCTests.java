@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTests;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlag;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlagRVCT;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsLinux;
+import org.eclipse.cdt.debug.edc.debugger.tests.RunAndMoveToLine;
 import org.eclipse.cdt.debug.edc.debugger.tests.SnapshotTests;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -48,6 +49,7 @@ import org.junit.runners.Suite;
 						RegisterFrameTestsLinux.class,
 						RegisterFrameTestsBlackFlag.class,
 						RegisterFrameTestsBlackFlagRVCT.class,
+						RunAndMoveToLine.class,
 						SnapshotTests.class,
 						SnapshotMetaDataTests.class })
 

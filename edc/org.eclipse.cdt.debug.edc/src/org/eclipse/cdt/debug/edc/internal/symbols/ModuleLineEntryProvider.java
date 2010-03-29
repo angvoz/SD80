@@ -21,8 +21,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -167,6 +169,8 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 
 	}
 	
+	// CUs we've already considered
+	private Set<ICompileUnitScope> parsedCUs = new HashSet<ICompileUnitScope>();
 	// mapping to find info for a given path
 	private Map<IPath, List<FileLineEntryProvider>> pathToLineEntryMap = new HashMap<IPath, List<FileLineEntryProvider>>();
 	// all known providers
@@ -186,6 +190,11 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	 * @param scope
 	 */
 	public void addCompileUnit(ICompileUnitScope cu) {
+		if (parsedCUs.contains(cu))
+			return;
+		
+		parsedCUs.add(cu);
+		
 		Collection<ILineEntry> lineEntries = cu.getLineEntries();
 		
 		// files created for this compile unit scope (union of all CUs in this.lineEntryMap)

@@ -132,21 +132,18 @@ public class DisassembleX86Binary {
 
 		// To add individual data files...
 		//
-		// list.add("/mydisk/myprog/cpp/examples/div0");
 		// list.add("/bin/ls");
-		// list.add("/usr/bin/vi");
-		// list.add("/usr/bin/nautilus");
 		// list.add("/usr/bin/gdb");
 
 		// To add files under one folder...
 		//
 		// All all binary files under resources folder in the project.
-		String res_folder = EDCTestPlugin.projectRelativePath("resources");
-		list.addAll(Arrays.asList(TestUtils.getFileFullNamesByExtension(res_folder, "")));
+//		String res_folder = EDCTestPlugin.projectRelativePath("resources/symbolFiles");
+//		list.addAll(Arrays.asList(TestUtils.getFileFullNamesByExtension(res_folder, "")));
 
-		// list.addAll(Arrays.asList(TestUtils.getFileFullNamesByExtension(
-		// "/usr/bin", "")));
-
+		list.add(EDCTestPlugin.projectRelativePath("resources/symbolFiles/ls"));
+		list.add(EDCTestPlugin.projectRelativePath("resources/symbolFiles/vi"));
+		
 		names = new String[list.size()];
 		list.toArray(names);
 

@@ -42,12 +42,6 @@ static void addRegisterContextsForThread(std::string threadContextID) {
 		Properties& props = (*it)->getProperties();
 
 		// This will be added as child context of the thread.
-//		PropertyValue* pv = props[PROP_NAME];
-//		const std::string& str = pv->getStringValue();
-//
-//		RegisterGroupInAgent* rgContext = new RegisterGroupInAgent(
-//			str, threadContextID, props);
-
 		RegisterGroupInAgent* rgContext = new RegisterGroupInAgent(
 			props[PROP_NAME]->getStringValue(), threadContextID, props);
 
@@ -57,8 +51,8 @@ static void addRegisterContextsForThread(std::string threadContextID) {
 		//
 		std::list<RegisterInfo*>& regs = (*it)->getRegisters();
 		for (std::list<RegisterInfo*>::iterator it2 = regs.begin(); it2 != regs.end(); it2++) {
-			props = (*it2)->getProperties();
-			new RegisterInAgent(props[PROP_NAME]->getStringValue(), rgContextID, props);
+			Properties& regProps = (*it2)->getProperties();
+			new RegisterInAgent(regProps[PROP_NAME]->getStringValue(), rgContextID, regProps);
 		}
 	}
 }

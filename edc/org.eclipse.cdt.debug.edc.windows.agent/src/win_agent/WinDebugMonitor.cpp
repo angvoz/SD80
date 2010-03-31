@@ -170,7 +170,6 @@ WinDebugMonitor::WinDebugMonitor(DWORD processID, bool debug_children, std::stri
 
 WinDebugMonitor::~WinDebugMonitor(void)
 {
-
 }
 
 void WinDebugMonitor::LaunchProcess(std::string& executable, std::string& directory, std::string& args, std::vector<std::string>& environment, bool debug_children, std::string& token, Channel *c) throw (AgentException)
@@ -319,7 +318,7 @@ DWORD WINAPI debuggerMonitorThread(LPVOID param)
 
 void WinDebugMonitor::Suspend()
 {
-	DWORD error = SuspendThread(monitorThread_);
+	SuspendThread(monitorThread_);
 }
 
 void WinDebugMonitor::Resume()
@@ -615,7 +614,6 @@ void WinDebugMonitor::HandleException(DEBUG_EVENT& debugEvent)
 
 void WinDebugMonitor::HandleDLLLoadedEvent(DEBUG_EVENT& debugEvent)
 {
-	WinProcess* process = WinProcess::GetProcessByID(debugEvent.dwProcessId);
 	unsigned long codeSize = 0;
 	unsigned long baseOfCode = 0;
 	std::string moduleName = GetExecutableInfo(debugEvent.u.LoadDll.hFile, baseOfCode, codeSize);

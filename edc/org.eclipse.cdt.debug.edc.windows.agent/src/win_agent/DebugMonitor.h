@@ -40,7 +40,7 @@ public:
 
 	DebugMonitor(bool debug_children, std::string& token, Channel *c);
 
-	~DebugMonitor(void);
+	virtual ~DebugMonitor(void);
 
 	/*
 	 * Start the process and put it under debug.

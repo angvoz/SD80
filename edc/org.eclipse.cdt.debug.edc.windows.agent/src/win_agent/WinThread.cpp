@@ -364,7 +364,8 @@ void WinThread::Suspend() throw (AgentException) {
 	EnsureValidContextInfo();
 	exceptionInfo_.ExceptionRecord.ExceptionCode = USER_SUSPEND_THREAD; // "Suspended"
 	isUserSuspended_ = true;
-	EventClientNotifier::SendContextSuspended(this);
+	if (! isTerminating_)	// don't send Suspend event if we are terminating.
+		EventClientNotifier::SendContextSuspended(this);
 	Logger::getLogger().Log(Logger::LOG_NORMAL, "WinThread::Suspend",
 			"suspendCount: %d", suspendCount);
 }
@@ -394,6 +395,7 @@ void WinThread::SingleStep() throw (AgentException) {
 
 void WinThread::PrepareForTermination() throw (AgentException) {
 	isTerminating_ = true;
+
 	if (isSuspended()) {
 		Suspend();
 		ContinueDebugEvent(parentProcess_.GetOSID(), GetOSID(), DBG_CONTINUE);

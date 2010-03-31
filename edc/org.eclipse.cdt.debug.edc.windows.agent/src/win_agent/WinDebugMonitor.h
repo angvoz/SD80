@@ -32,7 +32,7 @@ public:
 
 	WinDebugMonitor(DWORD processID, bool debug_children, std::string& token, Channel *c);
 
-	~WinDebugMonitor(void);
+	virtual ~WinDebugMonitor(void);
 
 	void StartProcessForDebug();
 	void EventLoop();

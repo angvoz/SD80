@@ -197,26 +197,28 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		
 		Collection<ILineEntry> lineEntries = cu.getLineEntries();
 		
-		// files created for this compile unit scope (union of all CUs in this.lineEntryMap)
-		// (kept because we visit the same file a lot in this function)
-		Map<IPath, FileLineEntryProvider> fileProviders = new HashMap<IPath, FileLineEntryProvider>(4);
-		
-		// go through each entry and extract entries for each file.
-		//
-		// allocate one FileLineEntryProvider per CU
-		//
-		for (ILineEntry entry : lineEntries) {
-			IPath path = entry.getFilePath();
+		if (lineEntries.size() > 0) {
+			// files created for this compile unit scope (union of all CUs in this.lineEntryMap)
+			// (kept because we visit the same file a lot in this function)
+			Map<IPath, FileLineEntryProvider> fileProviders = new HashMap<IPath, FileLineEntryProvider>(4);
 			
-			FileLineEntryProvider provider = fileProviders.get(path);
-			if (provider == null) {
-				// This will look for an existing one and create a 
-				// new one if none exits.
-				provider = getFileLineProviderForCU(cu,	path);
-				fileProviders.put(path, provider);
+			// go through each entry and extract entries for each file.
+			//
+			// allocate one FileLineEntryProvider per CU
+			//
+			for (ILineEntry entry : lineEntries) {
+				IPath path = entry.getFilePath();
+				
+				FileLineEntryProvider provider = fileProviders.get(path);
+				if (provider == null) {
+					// This will look for an existing one and create a 
+					// new one if none exits.
+					provider = getFileLineProviderForCU(cu,	path);
+					fileProviders.put(path, provider);
+				}
+	
+				provider.addLineEntry(entry);
 			}
-
-			provider.addLineEntry(entry);
 		}
 		
 		// then, look for lines provided by decl file/line/column entries

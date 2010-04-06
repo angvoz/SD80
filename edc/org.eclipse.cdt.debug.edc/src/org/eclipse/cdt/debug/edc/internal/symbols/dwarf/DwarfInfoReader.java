@@ -17,7 +17,10 @@
 
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -90,7 +93,10 @@ import org.eclipse.core.runtime.IPath;
  */
 public class DwarfInfoReader {
 
-	static public boolean DEBUG = false;
+	// These are only for developer of the reader.
+	// 
+	private static boolean DEBUG = false;
+	private String dumpFileName = "C:\\temp\\_EDC_DwarfReaderDump.txt";
 	
 	// TODO 64-bit Dwarf currently unsupported
 
@@ -196,6 +202,13 @@ public class DwarfInfoReader {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse for " + symbolFilePath);
 		for (DwarfCompileUnit compileUnit : provider.compileUnits) {
 			parseCompilationUnitForAddresses(compileUnit);
+			if (DEBUG) {
+				// For internal check.
+				if (compileUnit.getHighAddress().isZero())
+					assert(compileUnit.getChildren().size() == 0);
+				else
+					assert(compileUnit.getChildren().size() >= 0);
+			}
 		}
 		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished address parse");
 		
@@ -542,8 +555,11 @@ public class DwarfInfoReader {
 
 				// do a quick parse of the line table to get any other
 				// referenced files
-				int stmtList = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_stmt_list);
-				quickParseLineInfo(stmtList, compDir);
+				AttributeValue a = attributeList.getAttribute(DwarfConstants.DW_AT_stmt_list);
+				if (a != null) {
+					int stmtList = a.getValueAsInt();
+					quickParseLineInfo(stmtList, compDir);
+				}
 
 				// skip past the compile unit. note that the unit_length does
 				// not include the size of the unit length itself
@@ -644,8 +660,9 @@ public class DwarfInfoReader {
 		List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
 		try {
 			IStreamBuffer data = getDwarfSection(DWARF_DEBUG_LINE);
-			int stmtList = attributes.getAttributeValueAsInt(DwarfConstants.DW_AT_stmt_list);
-			if (data != null && stmtList >= 0) {
+			AttributeValue a = attributes.getAttribute(DwarfConstants.DW_AT_stmt_list);
+			if (data != null && a != null) {
+				int stmtList = a.getValueAsInt();
 				data.position(stmtList);
 
 				/*
@@ -1649,8 +1666,11 @@ public class DwarfInfoReader {
 			// do a quick parse of the line table to get any other referenced files.
 			// note that even the full parse doesn't parse the line table information.
 			// that is calculated (and then cached) on demand
-			int stmtList = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_stmt_list);
-			quickParseLineInfo(stmtList, compDir);
+			AttributeValue a = attributeList.getAttribute(DwarfConstants.DW_AT_stmt_list);
+			if (a != null) {
+				int stmtList = a.getValueAsInt();
+				quickParseLineInfo(stmtList, compDir);
+			}
 		}
 		
 		// remove unused attributes
@@ -2549,32 +2569,45 @@ public class DwarfInfoReader {
 
 	private void dumpSymbols() {
 		if (DEBUG) {
-			System.out.println("Module - " + toString());
-			System.out.println("	Variables - " + moduleScope.getVariables().size());
-			System.out.println("	Compile units - " + moduleScope.getChildren().size());
-			System.out.println();
+			PrintStream out = null;
+			try {
+				out = new PrintStream(new File(dumpFileName));
+			} catch (FileNotFoundException e) {
+				System.out.println("Failed to open or create the dump file: " + dumpFileName);
+				return;
+			}
+			
+			// If to write to console
+			// PrintStream out = System.out;
+			
+			out.println("Module - " + symbolFilePath);
+			out.println("	Variables - " + moduleScope.getVariables().size());
+			out.println("	Compile units - " + moduleScope.getChildren().size());
+			out.println();
 
 			for (IScope cu : moduleScope.getChildren()) {
-				System.out.println("	Compile unit - " + cu.toString());
-				System.out.println("		Variables - " + cu.getVariables().size());
-				System.out.println("		Functions - " + cu.getChildren().size());
-				System.out.println();
+				out.println("	Compile unit - " + cu.toString());
+				out.println("		Variables - " + cu.getVariables().size());
+				out.println("		Functions - " + cu.getChildren().size());
+				out.println();
 
 				for (IScope func : cu.getChildren()) {
-					System.out.println("		Function - " + func.toString());
-					System.out.println("			Variables - " + func.getVariables().size());
-					System.out.println("			Parameters - " + ((IFunctionScope) func).getParameters().size());
-					System.out.println("			Lexical blocks - " + func.getChildren().size());
-					System.out.println();
+					out.println("		Function - " + func.toString());
+					out.println("			Variables - " + func.getVariables().size());
+					out.println("			Parameters - " + ((IFunctionScope) func).getParameters().size());
+					out.println("			Lexical blocks - " + func.getChildren().size());
+					out.println();
 
 					// not accurate: can contain IFunctionScope too!
 					for (IScope block : func.getChildren()) {
-						System.out.println("			Lexical block - " + block.toString());
-						System.out.println("				Variables - " + block.getVariables().size());
-						System.out.println();
+						out.println("			Lexical block - " + block.toString());
+						out.println("				Variables - " + block.getVariables().size());
+						out.println();
 					}
 				}
 			}
+			
+			out.close();
 		}
 	}
 

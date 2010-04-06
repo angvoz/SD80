@@ -246,9 +246,17 @@ public class DwarfCompileUnit extends CompileUnitScope {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("DwarfCompileUnit [");
-		builder.append("lowAddress=");
+		
+		builder.append("SymFile=");
+		builder.append(provider.getSymbolFile().lastSegment());
+		
+		builder.append(", SectionOffset=0x");
+		builder.append(Integer.toHexString(header.debugInfoOffset));
+		
+		builder.append(", lowAddr=");
 		builder.append(lowAddress != null ? lowAddress.toHexAddressString() : null);
-		builder.append(", highAddress=");
+		
+		builder.append(", highAddr=");
 		builder.append(highAddress != null ? highAddress.toHexAddressString() : null);
 		if (filePath != null) {
 			builder.append(", path=");
@@ -258,7 +266,7 @@ public class DwarfCompileUnit extends CompileUnitScope {
 		builder.append(parsedForVarsAndAddresses);
 		builder.append(", parsedForTypes=");
 		builder.append(parsedForTypes);
-		builder.append("]");
+		builder.append("]\n");
 		return builder.toString();
 	}
 	

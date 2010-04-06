@@ -2152,7 +2152,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				}
 				else {
 					List<IAddress> addrs = getData();
-					assert addrs.size() == 1;	// ensured by canMoveToLine().
+					// No, canMoveToLine() does not do sanity check now.
+					// We just move to the first address we found, which may or
+					// may not be the address user wants. Is it better we return
+					// error if "addrs.size() > 1" ? .......03/28/10
+					// assert addrs.size() == 1;	// ensured by canMoveToLine().
 					moveToAddress(context, addrs.get(0), resume, rm);
 				}
 			}});

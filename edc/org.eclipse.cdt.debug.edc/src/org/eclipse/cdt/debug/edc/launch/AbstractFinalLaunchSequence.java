@@ -174,17 +174,26 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 						registers.tcfServiceReady(regSvc);
 					}
 					else {	// look for ISimpleRegisters service.
-						ISimpleRegisters simpleRegProxy = channel.getRemoteService(ISimpleRegisters.class);
-						if (simpleRegProxy == null) {
-							simpleRegProxy = new SimpleRegistersProxy(channel);
-							channel.setServiceProxy(ISimpleRegisters.class, simpleRegProxy);
+						try {
+							regSvc = getTCFService(ISimpleRegisters.NAME);
+						} catch (CoreException e) {
 						}
-						registers.tcfServiceReady(simpleRegProxy);
+						if (regSvc == null) {
+							requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Fail to find Registers service in agent."));
+						}
+						else {
+							ISimpleRegisters simpleRegProxy = channel.getRemoteService(ISimpleRegisters.class);
+							if (simpleRegProxy == null) {
+								simpleRegProxy = new SimpleRegistersProxy(channel);
+								channel.setServiceProxy(ISimpleRegisters.class, simpleRegProxy);
+							}
+							registers.tcfServiceReady(simpleRegProxy);
+						}
 					}
+					
+					requestMonitor.done();
 				}
 			});
-
-			requestMonitor.done();
 		}
 	};
 

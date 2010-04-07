@@ -99,14 +99,14 @@ static void clear_stale_peers(void * x) {
 }
 
 PeerServer * peer_server_alloc(void) {
-    PeerServer * s = loc_alloc_zero(sizeof *s);
+    PeerServer * s = (PeerServer *)loc_alloc_zero(sizeof *s);
 
     s->max = 8;
-    s->list = loc_alloc(s->max * sizeof *s->list);
+    s->list = (PeerServerList *)loc_alloc(s->max * sizeof *s->list);
     return s;
 }
 
-void peer_server_addprop(PeerServer * s, char * name, char * value) {
+void peer_server_addprop(PeerServer * s, const char * name, const char * value) {
     int i;
 
     if (strcmp(name, "ID") == 0) {
@@ -124,14 +124,14 @@ void peer_server_addprop(PeerServer * s, char * name, char * value) {
     }
     if (s->ind == s->max) {
         s->max *= 2;
-        s->list = loc_realloc(s->list, s->max * sizeof *s->list);
+        s->list = (PeerServerList *)loc_realloc(s->list, s->max * sizeof *s->list);
     }
     s->list[s->ind].name = name;
     s->list[s->ind].value = value;
     s->ind++;
 }
 
-char * peer_server_getprop(PeerServer * s, const char * name, char * default_value) {
+const char * peer_server_getprop(PeerServer * s, const char * name, const char * default_value) {
     int i;
 
     for (i = 0; i < s->ind; i++) {
@@ -234,11 +234,11 @@ int peer_server_iter(peer_server_iter_fnp fnp, void * arg) {
 void peer_server_add_listener(peer_server_listener fnp, void * arg) {
     if (listeners_max == 0) {
         listeners_max = 4;
-        listeners = loc_alloc(listeners_max * sizeof(PeersListener));
+        listeners = (PeersListener *)loc_alloc(listeners_max * sizeof(PeersListener));
     }
     else if (listeners_cnt == listeners_max) {
         listeners_max *= 2;
-        listeners = loc_realloc(listeners, listeners_max * sizeof(PeersListener));
+        listeners = (PeersListener *)loc_realloc(listeners, listeners_max * sizeof(PeersListener));
     }
     listeners[listeners_cnt].fnp = fnp;
     listeners[listeners_cnt].arg = arg;

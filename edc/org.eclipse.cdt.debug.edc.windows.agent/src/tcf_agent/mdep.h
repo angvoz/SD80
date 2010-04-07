@@ -33,9 +33,12 @@
 #elif defined(__MINGW32__)
 #  define _WIN32_IE 0x0501
 #elif defined(_MSC_VER)
+#  pragma warning(disable:4054) /* 'type cast' : from function pointer '...' to data pointer 'void *' */
+#  pragma warning(disable:4055) /* 'type cast' : from data pointer 'void *' to function pointer '...' */
+#  pragma warning(disable:4127) /* conditional expression is constant */
+#  pragma warning(disable:4152) /* nonstandard extension, function/data pointer conversion in expression */
 #  pragma warning(disable:4100) /* unreferenced formal parameter */
 #  pragma warning(disable:4996) /* 'strcpy': This function or variable may be unsafe */
-#  pragma warning(disable:4152) /* nonstandard extension, function/data pointer conversion in expression */
 #  ifdef _DEBUG
 #    define _CRTDBG_MAP_ALLOC
 #    include <stdlib.h>
@@ -290,14 +293,16 @@ extern char * canonicalize_file_name(const char * path);
 #include <wrn/coreip/hostLib.h>
 #if _WRS_VXWORKS_MAJOR > 6 || _WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR >= 7
 #  include <private/taskLibP.h>
-#  define kernelVersion() vxWorksVersion
 #endif
 
 #define environ taskIdCurrent->ppEnviron
 
 #define closesocket close
 
+#if _WRS_VXWORKS_MAJOR < 6 || _WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR < 8
 typedef unsigned long uintptr_t;
+#endif
+
 typedef unsigned long useconds_t;
 
 #define FILE_PATH_SIZE PATH_MAX
@@ -359,10 +364,10 @@ extern const char * loc_gai_strerror(int ecode);
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 
-#define O_LARGEFILE 0
-#define canonicalize_file_name(path)    realpath(path, NULL)
+#  define O_LARGEFILE 0
+#  define canonicalize_file_name(path) realpath(path, NULL)
 #  define SA_LEN(addr) ((addr)->sa_len)
-extern char **environ;
+extern char ** environ;
 
 #else /* not BSD */
 
@@ -376,6 +381,11 @@ extern int tkill(pid_t pid, int signal);
 
 #define closesocket close
 
+#endif
+
+#if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__APPLE__)
+extern size_t strlcpy(char * dst, const char * src, size_t size);
+extern size_t strlcat(char * dst, const char * src, size_t size);
 #endif
 
 extern pthread_attr_t pthread_create_attr;

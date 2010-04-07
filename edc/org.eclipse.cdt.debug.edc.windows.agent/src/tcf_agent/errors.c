@@ -59,6 +59,7 @@ void release_error_report(ErrorReport * report) {
             loc_free(i->value);
             loc_free(i);
         }
+        loc_free(report->format);
         loc_free(report);
     }
 }
@@ -117,7 +118,6 @@ int set_win32_errno(DWORD win32_error_code) {
 #endif
 
 const char * errno_to_str(int err) {
-    static char buf[256];
     switch (err) {
     case ERR_ALREADY_STOPPED:
         return "Already stopped";
@@ -174,6 +174,10 @@ const char * errno_to_str(int err) {
     default:
         if (err >= ERR_MESSAGE_MIN && err <= ERR_MESSAGE_MAX) {
             ErrorMessage * m = msgs + (err - ERR_MESSAGE_MIN);
+            if (m->report != NULL && m->report->format != NULL) {
+                /* TODO: error report args */
+                return m->report->format;
+            }
             switch (m->source) {
 #ifdef WIN32
             case SRC_SYSTEM:
@@ -182,8 +186,7 @@ const char * errno_to_str(int err) {
             case SRC_GAI:
                 return loc_gai_strerror(m->error);
             case SRC_MESSAGE:
-                snprintf(buf, sizeof(buf), "%s: %s", m->text, errno_to_str(m->error));
-                return buf;
+                return m->text;
             case SRC_REPORT:
                 return errno_to_str(m->error);
             }
@@ -192,24 +195,23 @@ const char * errno_to_str(int err) {
     }
 }
 
-int set_errno(int no, char * msg) {
+int set_errno(int no, const char * msg) {
     errno = no;
     if (no != 0 && msg != NULL) {
-        ErrorMessage * m = alloc_msg(SRC_MESSAGE);
-        if (no >= ERR_MESSAGE_MIN && no <= ERR_MESSAGE_MAX) {
-            ErrorMessage * m = msgs + (no - ERR_MESSAGE_MIN);
-            if (m->source == SRC_MESSAGE) no = m->error;
-            else if (m->source == SRC_REPORT) no = m->error;
-            else no = ERR_OTHER;
-        }
-        m->error = no;
-        m->text = loc_strdup(msg);
+        const char * text0 = errno_to_str(no);
+        int len = strlen(msg) + strlen(text0) + 4;
+        char * text1 = (char *)loc_alloc(len);
+        ErrorMessage * m = NULL;
+        snprintf(text1, len, "%s: %s", msg, text0);
+        m = alloc_msg(SRC_MESSAGE);
+        m->error = get_error_code(no);
+        m->text = text1;
     }
     return errno;
 }
 
 int set_gai_errno(int no) {
-        errno = no;
+    errno = no;
     if (no != 0) {
         ErrorMessage * m = alloc_msg(SRC_GAI);
         m->error = no;
@@ -243,7 +245,7 @@ int get_error_code(int no) {
 }
 
 static void add_report_prop(ErrorReport * report, const char * name, ByteArrayOutputStream * buf) {
-    ErrorReportItem * i = loc_alloc(sizeof(ErrorReportItem));
+    ErrorReportItem * i = (ErrorReportItem *)loc_alloc(sizeof(ErrorReportItem));
     i->name = loc_strdup(name);
     get_byte_array_output_stream_data(buf, &i->value, NULL);
     i->next = report->props;
@@ -276,14 +278,14 @@ ErrorReport * get_error_report(int err) {
         }
     }
     if (err != 0) {
-        ErrorReport * report = loc_alloc_zero(sizeof(ErrorReport));
+        ErrorReport * report = (ErrorReport *)loc_alloc_zero(sizeof(ErrorReport));
         struct timespec timenow;
 
         if (clock_gettime(CLOCK_REALTIME, &timenow) == 0) {
             report->time_stamp = (uint64_t)timenow.tv_sec * 1000 + timenow.tv_nsec / 1000000;
         }
 
-        add_report_prop_str(report, "Format", errno_to_str(err));
+        report->format = loc_strdup(errno_to_str(err));
 
         if (m != NULL) {
             if (m->source == SRC_MESSAGE) {
@@ -296,12 +298,12 @@ ErrorReport * get_error_report(int err) {
                 err = ERR_OTHER;
             }
 #endif
-    else {
+            else {
                 err = ERR_OTHER;
-    }
-}
+            }
+        }
 
-        if (err < STD_ERR_BASE) {
+        if (err < STD_ERR_BASE || err > ERR_MESSAGE_MAX) {
             add_report_prop_int(report, "AltCode", err);
 #if defined(_MSC_VER)
             add_report_prop_str(report, "AltOrg", "MSC");
@@ -315,7 +317,7 @@ ErrorReport * get_error_report(int err) {
             add_report_prop_str(report, "AltOrg", "POSIX");
 #endif
             err = ERR_OTHER;
-}
+        }
 
         assert(err >= STD_ERR_BASE);
         assert(err < ERR_MESSAGE_MIN);
@@ -348,7 +350,7 @@ void check_error(int error) {
 
 #else /* NDEBUG */
 
-void check_error_debug(char * file, int line, int error) {
+void check_error_debug(const char * file, int line, int error) {
     if (error == 0) return;
 #if ENABLE_Trace
     trace(LOG_ALWAYS, "Fatal error %d: %s", error, errno_to_str(error));

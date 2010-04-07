@@ -175,9 +175,7 @@ static ReplyHandlerInfo * find_reply_handler(Channel * c, unsigned long tokenid,
     ReplyHandlerInfo * rh;
     while ((rh = *rhp) != NULL) {
         if (rh->c == c && rh->tokenid == tokenid) {
-            if (take) {
-                *rhp = rh->next;
-            }
+            if (take) *rhp = rh->next;
             return rh;
         }
         rhp = &rh->next;
@@ -230,19 +228,19 @@ void handle_protocol_message(Channel * c) {
                 mh->handler(token, c, mh->client_data);
             }
             else if (p->default_handler != NULL) {
-                    args[0] = type;
-                    args[1] = token;
-                    args[2] = service;
-                    args[3] = name;
-                    p->default_handler(c, args, 4, p->client_data);
-                }
-                else {
-                    trace(LOG_PROTOCOL, "Command is not recognized: %s %s ...", service, name);
-                    skip_until_EOM(c);
-                    write_stringz(&c->out, "N");
-                    write_stringz(&c->out, token);
-                    write_stream(&c->out, MARKER_EOM);
-                }
+                args[0] = type;
+                args[1] = token;
+                args[2] = service;
+                args[3] = name;
+                p->default_handler(c, args, 4, p->client_data);
+            }
+            else {
+                trace(LOG_PROTOCOL, "Command is not recognized: %s %s ...", service, name);
+                skip_until_EOM(c);
+                write_stringz(&c->out, "N");
+                write_stringz(&c->out, token);
+                write_stream(&c->out, MARKER_EOM);
+            }
             clear_trap(&trap);
         }
         else {
@@ -345,9 +343,9 @@ void handle_protocol_message(Channel * c) {
         else c->congestion_level = s ? -n : n;
     }
     else if (p->default_handler != NULL) {
-            args[0] = type;
-            p->default_handler(c, args, 1, p->client_data);
-        }
+        args[0] = type;
+        p->default_handler(c, args, 1, p->client_data);
+    }
     else {
         trace(LOG_ALWAYS, "Invalid TCF message: %s ...", type);
         error = ERR_PROTOCOL;
@@ -356,27 +354,26 @@ void handle_protocol_message(Channel * c) {
 }
 
 static void message_handler_old(Channel * c, char ** args, int nargs, void * client_data) {
-    ProtocolMessageHandler handler = client_data;
+    ProtocolMessageHandler handler = (ProtocolMessageHandler)client_data;
     handler(c, args, nargs);
 }
 
-void set_default_message_handler(Protocol *p, ProtocolMessageHandler handler) {
-    set_default_message_handler2(p, message_handler_old, handler);
+void set_default_message_handler(Protocol * p, ProtocolMessageHandler handler) {
+    set_default_message_handler2(p, (ProtocolMessageHandler2)message_handler_old, (void*)handler);
 }
 
-void set_default_message_handler2(Protocol *p, ProtocolMessageHandler2 handler, void * client_data) {
+void set_default_message_handler2(Protocol * p, ProtocolMessageHandler2 handler, void * client_data) {
     p->default_handler = handler;
     p->client_data = client_data;
 }
 
-static void command_handler_old(char * token, Channel * c, void * client_data)
-{
-    ProtocolCommandHandler handler = client_data;
+static void command_handler_old(char * token, Channel * c, void * client_data) {
+    ProtocolCommandHandler handler = (ProtocolCommandHandler)client_data;
     handler(token, c);
 }
 
 void add_command_handler(Protocol * p, const char * service, const char * name, ProtocolCommandHandler handler) {
-    add_command_handler2(p, service, name, command_handler_old, handler);
+    add_command_handler2(p, service, name, (ProtocolCommandHandler2)command_handler_old, (void *)handler);
 }
 
 void add_command_handler2(Protocol * p, const char * service, const char * name, ProtocolCommandHandler2 handler, void * client_data) {
@@ -392,12 +389,12 @@ void add_command_handler2(Protocol * p, const char * service, const char * name,
 }
 
 static void event_handler_old(Channel * c, void * client_data) {
-    ProtocolEventHandler handler = client_data;
+    ProtocolEventHandler handler = (ProtocolEventHandler)client_data;
     handler(c);
 }
 
 void add_event_handler(Channel * c, const char * service, const char * name, ProtocolEventHandler handler) {
-    add_event_handler2(c, service, name, event_handler_old, handler);
+    add_event_handler2(c, service, name, (ProtocolEventHandler2)event_handler_old, (void*)handler);
 }
 
 void add_event_handler2(Channel * c, const char * service, const char * name, ProtocolEventHandler2 handler, void * client_data) {
@@ -412,28 +409,37 @@ void add_event_handler2(Channel * c, const char * service, const char * name, Pr
     event_handlers[h] = eh;
 }
 
+static void send_command_failed(void * args) {
+    ReplyHandlerInfo * rh = (ReplyHandlerInfo *)args;
+    rh->handler(rh->c, rh->client_data, ERR_CHANNEL_CLOSED);
+    loc_free(rh);
+}
+
 ReplyHandlerInfo * protocol_send_command(Channel * c, const char * service, const char * name, ReplyHandlerCB handler, void * client_data) {
     Protocol * p = c->protocol;
-    ReplyHandlerInfo *rh;
-    int h;
-    unsigned long tokenid;
-    char token[256];
+    ReplyHandlerInfo * rh = (ReplyHandlerInfo *)loc_alloc(sizeof(ReplyHandlerInfo));
 
-    do tokenid = p->tokenid++;
-    while (find_reply_handler(c, tokenid, 0) != NULL);
-    sprintf(token, "%lu", tokenid);
-    write_stringz(&c->out, "C");
-    write_stringz(&c->out, token);
-    write_stringz(&c->out, service);
-    write_stringz(&c->out, name);
-    rh = loc_alloc(sizeof *rh);
-    rh->tokenid = tokenid;
     rh->c = c;
     rh->handler = handler;
     rh->client_data = client_data;
-    h = reply_hash(c, tokenid);
-    rh->next = reply_handlers[h];
-    reply_handlers[h] = rh;
+    if (c->peer_service_list == NULL) {
+        post_event(send_command_failed, rh);
+    }
+    else {
+        int h;
+        unsigned long tokenid;
+        do tokenid = p->tokenid++;
+        while (find_reply_handler(c, tokenid, 0) != NULL);
+        write_stringz(&c->out, "C");
+        json_write_ulong(&c->out, tokenid);
+        write_stream(&c->out, 0);
+        write_stringz(&c->out, service);
+        write_stringz(&c->out, name);
+        rh->tokenid = tokenid;
+        h = reply_hash(c, tokenid);
+        rh->next = reply_handlers[h];
+        reply_handlers[h] = rh;
+    }
     return rh;
 }
 
@@ -443,7 +449,7 @@ struct sendRedirectInfo {
 };
 
 static void redirect_done(Channel * c, void * client_data, int error) {
-    struct sendRedirectInfo * info = client_data;
+    struct sendRedirectInfo * info = (struct sendRedirectInfo *)client_data;
 
     if (!error) {
         assert(c->state == ChannelStateRedirectSent);
@@ -466,7 +472,7 @@ static void redirect_done(Channel * c, void * client_data, int error) {
 }
 
 ReplyHandlerInfo * send_redirect_command(Channel * c, const char * peerId, ReplyHandlerCB handler, void * client_data) {
-    struct sendRedirectInfo * info = loc_alloc_zero(sizeof *info);
+    struct sendRedirectInfo * info = (struct sendRedirectInfo *)loc_alloc_zero(sizeof *info);
     ReplyHandlerInfo * rh;
 
     assert(c->state == ChannelStateConnected);
@@ -506,8 +512,8 @@ void send_hello_message(Channel * c) {
     write_stream(&c->out, '[');
 #if ENABLE_ZeroCopy
     if (!c->disable_zero_copy) {
-    json_write_string(&c->out, "ZeroCopy");
-    cnt++;
+        json_write_string(&c->out, "ZeroCopy");
+        cnt++;
     }
 #endif
     while (s) {
@@ -547,14 +553,14 @@ static void event_locator_hello(Channel * c) {
     }
     else {
         int max = 4;
-        list = loc_alloc(max * sizeof *list);
+        list = (char **)loc_alloc(max * sizeof *list);
         for (;;) {
             int ch;
             char * service = json_read_alloc_string(&c->inp);
             if (strcmp(service, "ZeroCopy") == 0) c->out.supports_zero_copy = 1;
             if (cnt == max) {
                 max *= 2;
-                list = loc_realloc(list, max * sizeof *list);
+                list = (char **)loc_realloc(list, max * sizeof *list);
             }
             list[cnt++] = service;
             ch = read_stream(&c->inp);
@@ -621,14 +627,13 @@ static void channel_closed(Channel * c) {
                 *rhp = rh->next;
                 if (set_trap(&trap)) {
                     rh->handler(c, rh->client_data, ERR_CHANNEL_CLOSED);
-                    loc_free(rh);
                     clear_trap(&trap);
                 }
                 else {
                     trace(LOG_ALWAYS, "Exception handling reply %ul: %d %s",
                           rh->tokenid, trap.error, errno_to_str(trap.error));
-                    loc_free(rh);
                 }
+                loc_free(rh);
             }
             else {
                 rhp = &rh->next;
@@ -643,7 +648,7 @@ static void channel_closed(Channel * c) {
 }
 
 Protocol * protocol_alloc(void) {
-    Protocol * p = loc_alloc_zero(sizeof *p);
+    Protocol * p = (Protocol *)loc_alloc_zero(sizeof *p);
 
     assert(is_dispatch_thread());
     if (!ini_done) {

@@ -35,7 +35,7 @@ typedef struct Proxy {
 } Proxy;
 
 static void proxy_connecting(Channel * c) {
-    Proxy * target = c->client_data;
+    Proxy * target = (Proxy *)c->client_data;
     Proxy * host = target + target->other;
 
     assert(c == target->c);
@@ -50,7 +50,7 @@ static void proxy_connecting(Channel * c) {
 }
 
 static void proxy_connected(Channel * c) {
-    Proxy * target = c->client_data;
+    Proxy * target = (Proxy *)c->client_data;
     Proxy * host = target + target->other;
 
     assert(target->c == c);
@@ -68,28 +68,24 @@ static void proxy_connected(Channel * c) {
     }
     else {
         int i;
-    trace(LOG_PROXY, "Proxy connected, target services:");
-    for (i = 0; i < target->c->peer_service_cnt; i++) {
-        trace(LOG_PROXY, "    %s", target->c->peer_service_list[i]);
-        protocol_get_service(host->proto, target->c->peer_service_list[i]);
+        trace(LOG_PROXY, "Proxy connected, target services:");
+        for (i = 0; i < target->c->peer_service_cnt; i++) {
+            trace(LOG_PROXY, "    %s", target->c->peer_service_list[i]);
+            protocol_get_service(host->proto, target->c->peer_service_list[i]);
+        }
     }
-}
 
     send_hello_message(host->c);
 }
 
 static void proxy_disconnected(Channel * c) {
-    Proxy * proxy = c->client_data;
+    Proxy * proxy = (Proxy *)c->client_data;
 
     assert(c == proxy->c);
     if (proxy[proxy->other].c->state == ChannelStateDisconnected) {
         trace(LOG_PROXY, "Proxy disconnected");
         if (proxy->other == -1) proxy--;
-        assert(proxy[0].c->spg == proxy[1].c->spg);
-        suspend_group_free(c->spg);
         broadcast_group_free(c->bcg);
-        assert(proxy[0].c->spg == NULL);
-        assert(proxy[1].c->spg == NULL);
         assert(proxy[0].c->bcg == NULL);
         assert(proxy[1].c->bcg == NULL);
         proxy[0].c->client_data = NULL;
@@ -114,30 +110,32 @@ static void logchr(char ** pp, int c) {
     *pp = p;
 }
 
-static void logstr(char ** pp, char * s) {
+static void logstr(char ** pp, const char * s) {
     char * p = *pp;
-    int c;
+    char c;
 
     while ((c = *s++) != '\0') {
-        if (p + 2 < logbuf + sizeof logbuf) *p++ = (char)c;
+        if (p + 2 < logbuf + sizeof logbuf) *p++ = c;
     }
     *pp = p;
 }
 
 static void proxy_default_message_handler(Channel * c, char ** argv, int argc) {
-    Proxy * proxy = c->client_data;
+    Proxy * proxy = (Proxy *)c->client_data;
     Channel * otherc = proxy[proxy->other].c;
-    char * p;
+    InputStream * inp = &c->inp;
+    OutputStream * out = &otherc->out;
+    char * p = logbuf;
     int i = 0;
 
     assert(c == proxy->c);
     assert(argc > 0 && strlen(argv[0]) == 1);
     if (proxy[proxy->other].c->state == ChannelStateDisconnected) return;
     if (argv[0][0] == 'C') {
-        write_stringz(&otherc->out, argv[0]);
+        write_stringz(out, argv[0]);
         /* Prefix token with 'R'emote to distinguish from locally
          * generated commands */
-        write_string(&otherc->out, "R");
+        write_string(out, "R");
         i = 1;
     }
     else if (argv[0][0] == 'R' || argv[0][0] == 'P' || argv[0][0] == 'N') {
@@ -148,13 +146,12 @@ static void proxy_default_message_handler(Channel * c, char ** argv, int argc) {
         argv[1]++;
     }
     while (i < argc) {
-        write_stringz(&otherc->out, argv[i]);
+        write_stringz(out, argv[i]);
         i++;
     }
 
-    p = logbuf;
     if (log_mode & LOG_TCFLOG) {
-        logstr(&p, proxy->other > 0 ? "---> " : "<--- ");
+        logstr(&p, (char *)(proxy->other > 0 ? "---> " : "<--- "));
         for (i = 0; i < argc; i++) {
             logstr(&p, argv[i]);
             logchr(&p, ' ');
@@ -163,34 +160,40 @@ static void proxy_default_message_handler(Channel * c, char ** argv, int argc) {
 
     /* Copy body of message */
     do {
-        i = read_stream(&c->inp);
-        if (log_mode & LOG_TCFLOG) {
-            if (i > ' ' && i < 127) {
-                /* Printable ASCII  */
-                logchr(&p, i);
-            }
-            else if (i == 0) {
-                logstr(&p, " ");
-            }
-            else if (i > 0) {
-                char buf[40];
-                snprintf(buf, sizeof buf, "\\x%02x", i);
-                logstr(&p, buf);
-            }
-            else if (i == MARKER_EOM) {
-                logstr(&p, "<eom>");
-            }
-            else if (i == MARKER_EOS) {
-                logstr(&p, "<eom>");
-            }
-            else {
-                logstr(&p, "<?>");
-            }
+        if (out->supports_zero_copy && (log_mode & LOG_TCFLOG) == 0 && inp->end - inp->cur >= 0x100) {
+            write_block_stream(out, (char *)inp->cur, inp->end - inp->cur);
+            inp->cur = inp->end;
         }
-        write_stream(&otherc->out, i);
+        else {
+            i = read_stream(inp);
+            if (log_mode & LOG_TCFLOG) {
+                if (i > ' ' && i < 127) {
+                    /* Printable ASCII  */
+                    logchr(&p, i);
+                }
+                else if (i == 0) {
+                    logstr(&p, " ");
+                }
+                else if (i > 0) {
+                    char buf[40];
+                    snprintf(buf, sizeof buf, "\\x%02x", i);
+                    logstr(&p, buf);
+                }
+                else if (i == MARKER_EOM) {
+                    logstr(&p, "<eom>");
+                }
+                else if (i == MARKER_EOS) {
+                    logstr(&p, "<eom>");
+                }
+                else {
+                    logstr(&p, "<?>");
+                }
+            }
+            write_stream(out, i);
+        }
     }
     while (i != MARKER_EOM && i != MARKER_EOS);
-    flush_stream(&otherc->out);
+    flush_stream(out);
     if (log_mode & LOG_TCFLOG) {
         *p = '\0';
         trace(LOG_TCFLOG, "%d: %s", proxy->instance, logbuf);
@@ -198,9 +201,8 @@ static void proxy_default_message_handler(Channel * c, char ** argv, int argc) {
 }
 
 void proxy_create(Channel * c1, Channel * c2) {
-    TCFSuspendGroup * spg = suspend_group_alloc();
     TCFBroadcastGroup * bcg = broadcast_group_alloc();
-    Proxy * proxy = loc_alloc_zero(2 * sizeof *proxy);
+    Proxy * proxy = (Proxy *)loc_alloc_zero(2 * sizeof *proxy);
     int i;
 
     static int instance;
@@ -247,8 +249,6 @@ void proxy_create(Channel * c1, Channel * c2) {
     c2->protocol = proxy[1].proto;
     set_default_message_handler(proxy[1].proto, proxy_default_message_handler);
 
-    channel_set_suspend_group(c1, spg);
-    channel_set_suspend_group(c2, spg);
     channel_set_broadcast_group(c1, bcg);
     channel_set_broadcast_group(c2, bcg);
     channel_start(c2);

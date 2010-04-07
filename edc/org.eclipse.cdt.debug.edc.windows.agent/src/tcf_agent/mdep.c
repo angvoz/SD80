@@ -56,7 +56,7 @@ typedef struct {
 
 int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t * attr) {
     assert(attr == NULL);
-    *mutex = CreateMutex(NULL, FALSE, NULL);
+    *mutex = (pthread_mutex_t)CreateMutex(NULL, FALSE, NULL);
     if (*mutex == NULL) return set_win32_errno(GetLastError());
     return 0;
 }
@@ -76,7 +76,7 @@ int pthread_mutex_unlock(pthread_mutex_t * mutex) {
 }
 
 int pthread_cond_init(pthread_cond_t * cond, const pthread_condattr_t * attr) {
-    PThreadCond * p = loc_alloc_zero(sizeof(PThreadCond));
+    PThreadCond * p = (PThreadCond *)loc_alloc_zero(sizeof(PThreadCond));
     assert(attr == NULL);
     p->waiters_count = 0;
     p->was_broadcast = 0;
@@ -272,13 +272,13 @@ int pthread_create(pthread_t * thread, const pthread_attr_t * attr,
     a = (ThreadArgs *)loc_alloc(sizeof(ThreadArgs));
     a->start = start;
     a->args = args;
-    r = CreateThread (0, 0, (LPTHREAD_START_ROUTINE)start_thread, a, 0, 0);
+    r = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)start_thread, a, 0, 0);
     if (r == NULL) {
         int err = set_win32_errno(GetLastError());
         loc_free(a);
         return errno = err;
     }
-    *thread = r;
+    *thread = (pthread_t)r;
     return 0;
 }
 
@@ -290,7 +290,7 @@ int pthread_join(pthread_t thread, void ** value_ptr) {
 }
 
 pthread_t pthread_self(void) {
-    return GetCurrentThread();
+    return (pthread_t)GetCurrentThread();
 }
 
 int pthread_attr_init(pthread_attr_t * attr) {
@@ -367,7 +367,7 @@ int wsa_recv(int socket, void * buf, size_t size, int flags) {
     int res = 0;
     SetLastError(0);
     WSASetLastError(0);
-    res = recv(socket, buf, size, flags);
+    res = recv(socket, (char *)buf, size, flags);
     if (res < 0) {
         set_win32_errno(WSAGetLastError());
         return -1;
@@ -381,7 +381,7 @@ int wsa_recvfrom(int socket, void * buf, size_t size, int flags,
     int res = 0;
     SetLastError(0);
     WSASetLastError(0);
-    res = recvfrom(socket, buf, size, flags, addr, addr_size);
+    res = recvfrom(socket, (char *)buf, size, flags, addr, addr_size);
     if (res < 0) {
         set_win32_errno(WSAGetLastError());
         return -1;
@@ -394,7 +394,7 @@ int wsa_send(int socket, const void * buf, size_t size, int flags) {
     int res = 0;
     SetLastError(0);
     WSASetLastError(0);
-    res = send(socket, buf, size, flags);
+    res = send(socket, (char *)buf, size, flags);
     if (res < 0) {
         set_win32_errno(WSAGetLastError());
         return -1;
@@ -408,7 +408,7 @@ int wsa_sendto(int socket, const void * buf, size_t size, int flags,
     int res = 0;
     SetLastError(0);
     WSASetLastError(0);
-    res = sendto(socket, buf, size, flags, dest_addr, dest_size);
+    res = sendto(socket, (char *)buf, size, flags, dest_addr, dest_size);
     if (res < 0) {
         set_win32_errno(WSAGetLastError());
         return -1;
@@ -769,8 +769,8 @@ char * get_user_home(void) {
     if (a_buf[0] != 0) return a_buf;
     if (!SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, SHGFP_TYPE_CURRENT, w_buf))) {
         errno = ERR_OTHER;
-    return NULL;
-}
+        return NULL;
+    }
     if (!WideCharToMultiByte(CP_UTF8, 0, w_buf, -1, a_buf, sizeof(a_buf), NULL, NULL)) {
         set_win32_errno(GetLastError());
         return 0;
@@ -784,8 +784,8 @@ void ini_mdep(void) {
     int err;
 
     SetErrorMode(SEM_FAILCRITICALERRORS);
-    err = WSAStartup( wVersionRequested, &wsaData );
-    if ( err != 0 ) {
+    err = WSAStartup(wVersionRequested, &wsaData);
+    if (err != 0) {
         fprintf(stderr, "Couldn't access winsock.dll.\n");
         exit(1);
     }
@@ -794,14 +794,14 @@ void ini_mdep(void) {
     /* than 1.1 in addition to 1.1, it will still return */
     /* 1.1 in wVersion since that is the version we */
     /* requested.     */
-    if (LOBYTE( wsaData.wVersion ) != 1 || HIBYTE( wsaData.wVersion ) != 1) {
+    if (LOBYTE(wsaData.wVersion) != 1 || HIBYTE(wsaData.wVersion) != 1) {
         fprintf(stderr, "Unacceptable version of winsock.dll.\n");
         WSACleanup();
         exit(1);
     }
     pthread_attr_init(&pthread_create_attr);
 #if defined(_DEBUG) && defined(_MSC_VER)
-    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF /* | _CRTDBG_LEAK_CHECK_DF */);
 #endif
 }
 
@@ -844,7 +844,11 @@ int getegid(void) {
 
 char * get_os_name(void) {
     static char str[256];
+#if _WRS_VXWORKS_MAJOR > 6 || _WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR >= 7
+    snprintf(str, sizeof(str), "VxWorks %s", vxWorksVersion);
+#else
     snprintf(str, sizeof(str), "VxWorks %s", kernelVersion());
+#endif
     return str;
 }
 
@@ -854,7 +858,7 @@ char * get_user_home(void) {
 
 void ini_mdep(void) {
     pthread_attr_init(&pthread_create_attr);
-    pthread_attr_setstacksize(&pthread_create_attr, 0x4000);
+    pthread_attr_setstacksize(&pthread_create_attr, 0x8000);
     pthread_attr_setname(&pthread_create_attr, "tTcf");
 }
 
@@ -1243,4 +1247,37 @@ void become_daemon(void) {
     }
     running_as_daemon = 1;
 }
+#endif
+
+#if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__APPLE__)
+
+size_t strlcpy(char * dst, const char * src, size_t size) {
+    char ch;
+    const char * src0 = src;
+    const char * dst1 = dst + size - 1;
+
+    while ((ch = *src) != 0) {
+        if (dst < dst1) *dst++ = ch;
+        src++;
+    }
+    if (dst <= dst1) *dst = 0;
+    return src - src0;
+}
+
+size_t strlcat(char * dst, const char * src, size_t size) {
+    char ch;
+    const char * dst0 = dst;
+    const char * src0 = src;
+    const char * dst1 = dst + size - 1;
+
+    while (dst <= dst1 && *dst != 0) dst++;
+
+    while ((ch = *src) != 0) {
+        if (dst < dst1) *dst++ = ch;
+        src++;
+    }
+    if (dst <= dst1) *dst = 0;
+    return (dst - dst0) + (src - src0);
+}
+
 #endif

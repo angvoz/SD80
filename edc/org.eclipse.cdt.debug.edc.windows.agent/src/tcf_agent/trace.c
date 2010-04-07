@@ -34,7 +34,7 @@ FILE * log_file = NULL;
 
 static pthread_mutex_t mutex;
 
-int print_trace(int mode, char *fmt, ...) {
+int print_trace(int mode, const char * fmt, ...) {
     va_list ap;
 
     if (log_file == NULL) return 0;
@@ -75,14 +75,14 @@ int print_trace(int mode, char *fmt, ...) {
         }
     }
     va_end(ap);
-        return 1;
-    }
+    return 1;
+}
 
 #endif /* ENABLE_Trace */
 
-void open_log_file(char * log_name) {
+void open_log_file(const char * log_name) {
 #if ENABLE_Trace
-    if (log_name == 0) {
+    if (log_name == NULL) {
         log_file = NULL;
     }
     else if (strcmp(log_name, "-") == 0) {

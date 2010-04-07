@@ -26,7 +26,6 @@
 static Protocol * proto;
 static ChannelServer * serv;
 static TCFBroadcastGroup * bcg;
-static TCFSuspendGroup * spg;
 
 static long channelCount = 0;
 
@@ -64,7 +63,6 @@ static void channel_new_connection(ChannelServer * serv, Channel * c) {
 	c->connected = channel_server_connected;
 	c->receive = channel_server_receive;
 	c->disconnected = channel_server_disconnected;
-	channel_set_suspend_group(c, spg);
 	channel_set_broadcast_group(c, bcg);
 	channel_start(c);
 }
@@ -91,7 +89,6 @@ int main(int argc, char* argv[]) {
 	ini_events_queue();
 
 	bcg = broadcast_group_alloc();
-	spg = suspend_group_alloc();
 	proto = protocol_alloc();
 
 	LogTrace("Starting up");

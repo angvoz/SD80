@@ -49,6 +49,7 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 
 	public void launch(ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor)
 			throws CoreException {
+		org.eclipse.cdt.launch.LaunchUtils.enableActivity("org.eclipse.cdt.debug.edc.ui.edcActivity", true); //$NON-NLS-1$
 		if (monitor == null) {
 			monitor = new NullProgressMonitor();
 		}

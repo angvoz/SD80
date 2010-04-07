@@ -385,21 +385,22 @@ public class RegistersService implements IRegisters {
 		 * @param contextID
 		 * @return owning thread context id.
 		 */
-		private String getThreadContextID(String contextID) {
-			String ret = null;
-			while (true){
-				ContextInAgent context = ContextManager.findDebuggedContext(contextID);
-				if (context == null)
-					break;
-				if (context instanceof ThreadInAgent) {
-					ret = contextID;
-					break;
-				}
-				contextID = context.getParentID();
-			};
-			
-			return ret;
-		}
+//		private String getThreadContextID(String contextID) {
+//			String ret = null;
+//			while (true){
+//				ContextInAgent context = ContextManager.findDebuggedContext(contextID);
+//				if (context == null)
+//					break;
+//				if (context instanceof ThreadInAgent) {
+//					ret = contextID;
+//					break;
+//				}
+//				contextID = context.getParentID();
+//			};
+//			
+//			return ret;
+//		}
+// unused; remove?
 
 		private List<List<String>> searchForContext(ContextInAgent startContext, String propName, Object propValue) {
 			List<List<String>> result = new ArrayList<List<String>>();

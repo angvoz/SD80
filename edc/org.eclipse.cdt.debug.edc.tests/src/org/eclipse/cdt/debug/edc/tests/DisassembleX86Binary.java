@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -141,8 +140,8 @@ public class DisassembleX86Binary {
 //		String res_folder = EDCTestPlugin.projectRelativePath("resources/symbolFiles");
 //		list.addAll(Arrays.asList(TestUtils.getFileFullNamesByExtension(res_folder, "")));
 
-		list.add(EDCTestPlugin.projectRelativePath("resources/symbolFiles/ls"));
-		list.add(EDCTestPlugin.projectRelativePath("resources/symbolFiles/vi"));
+		list.add(EDCTestPlugin.projectRelativePath("resources/SymbolFiles/ls"));
+		list.add(EDCTestPlugin.projectRelativePath("resources/SymbolFiles/vi"));
 		
 		names = new String[list.size()];
 		list.toArray(names);

@@ -12,9 +12,13 @@ package org.eclipse.cdt.debug.edc.tests;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
+import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
+import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
@@ -55,6 +59,7 @@ import org.eclipse.debug.internal.ui.IInternalDebugUIConstants;
 import org.eclipse.jface.dialogs.MessageDialogWithToggle;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.tm.tcf.services.IRunControl;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
@@ -525,6 +530,21 @@ public class TestUtils {
 	 */
 	public static boolean hasLaunchConfiguationType(String id) {
 		return DebugPlugin.getDefault().getLaunchManager().getLaunchConfigurationType(id) != null;
+	}
+
+	/**
+	 * Tell whether there is a TCF agent launcher available with the given ID.
+	 * @param reqdLauncher
+	 * @return
+	 */
+	public static boolean hasTCFAgentLauncher(String id) {
+		TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
+		ITCFAgentLauncher[] registered = tcfServiceManager.getRegisteredAgents(IRunControl.NAME, Collections.<String, String>emptyMap());
+		for (ITCFAgentLauncher launcher : registered) {
+			if (launcher.getClass().getName().equals(id))
+				return true;
+		}
+		return false;
 	}
 
 	public static void shutdownDebugSession(EDCLaunch launch, final DsfSession session) {

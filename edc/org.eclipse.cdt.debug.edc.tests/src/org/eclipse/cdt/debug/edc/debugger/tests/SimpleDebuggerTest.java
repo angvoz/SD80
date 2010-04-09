@@ -37,6 +37,14 @@ public abstract class SimpleDebuggerTest {
 		return null;
 	}
 	
+	/** Get the id (class name) the TCF agent launcher used by the snapshot, when it
+	 * might not be available at runtime.  If non-<code>null</code>, your test should
+	 * check launch != <code>null</code> before continuing.
+	 * @return org.eclipse.debug.edc.tcfAgentLauncher id, or null if the snapshot uses a host CDT EDC launcher */
+	protected String getRequiredTCFAgentLauncher() {
+		return null;
+	}
+	
 	@Before
 	public void launchAndWaitForSuspendedContext() throws Exception {
 		String reqdLauncher = getRequiredLaunchConfigurationType();
@@ -45,7 +53,12 @@ public abstract class SimpleDebuggerTest {
 				return;
 			}
 		}
-			
+		reqdLauncher = getRequiredTCFAgentLauncher();
+		if (reqdLauncher != null) {
+			if (!TestUtils.hasTCFAgentLauncher(reqdLauncher)) {
+				return;
+			}
+		}
 		TestUtils.disableDebugPerspectiveSwitchPrompt();
 		launch = TestUtils.createLaunchForAlbum(getAlbumName());
 		Assert.assertNotNull(launch);

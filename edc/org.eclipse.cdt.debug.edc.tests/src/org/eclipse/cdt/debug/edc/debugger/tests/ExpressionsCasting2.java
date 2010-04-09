@@ -10,7 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
+import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.dsf.debug.service.IExpressions2.CastInfo;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -28,6 +31,20 @@ public class ExpressionsCasting2 extends BaseExpressionTest {
 	protected String getRequiredLaunchConfigurationType() {
 		return "com.nokia.cdt.debug.launch.systemTRKLaunch";
 	}
+	
+
+	boolean formatterSetting;
+	
+	@Before
+	public void turnOnFormatter() {
+		formatterSetting = FormatExtensionManager.instance().isEnabled();
+		FormatExtensionManager.instance().setEnabled(true);
+	}
+	@After
+	public void restoreFormatter() {
+		FormatExtensionManager.instance().setEnabled(formatterSetting);
+	}
+	
 	
 	@Test
 	public void testCastingRegisters() throws Exception {

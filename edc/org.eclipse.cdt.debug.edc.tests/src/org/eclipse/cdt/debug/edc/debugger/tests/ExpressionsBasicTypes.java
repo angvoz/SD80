@@ -11,7 +11,10 @@
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
+import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -29,6 +32,20 @@ import org.junit.Test;
  */
 public class ExpressionsBasicTypes extends BaseExpressionTest {
 
+
+	boolean formatterSetting;
+	
+	@Before
+	public void turnOnFormatter() {
+		formatterSetting = FormatExtensionManager.instance().isEnabled();
+		FormatExtensionManager.instance().setEnabled(true);
+	}
+	@After
+	public void restoreFormatter() {
+		FormatExtensionManager.instance().setEnabled(formatterSetting);
+	}
+	
+	
 	@Test
 	public void testExpressionsWithoutVariables() throws Exception {
 

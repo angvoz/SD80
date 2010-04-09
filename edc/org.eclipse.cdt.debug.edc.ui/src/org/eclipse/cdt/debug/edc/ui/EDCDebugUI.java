@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.ui;
 
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.MessageLogger;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
@@ -100,7 +101,7 @@ public class EDCDebugUI extends AbstractUIPlugin {
 
 	public IPreferenceStore getPreferenceStore() {
 		if (preferenceStore == null) {
-			preferenceStore = new ScopedPreferenceStore(new InstanceScope(), getBundle().getSymbolicName());
+			preferenceStore = new ScopedPreferenceStore(new InstanceScope(), EDCDebugger.PLUGIN_ID);
 
 		}
 		return preferenceStore;

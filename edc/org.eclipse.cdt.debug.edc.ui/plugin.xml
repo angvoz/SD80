@@ -85,6 +85,15 @@
            id="org.eclipse.ui.commands.toggleState">
      </state>
   </command>
+  <command
+        description="Show all variables globally defined by the current source file"
+        id="org.eclipse.cdt.debug.edc.ui.toggleShowAllVariables"
+        name="Show All Variables">
+     <state
+           class="org.eclipse.ui.handlers.RegistryToggleState:false"
+           id="org.eclipse.ui.commands.toggleState">
+     </state>
+  </command>
 
    </extension>
 
@@ -182,6 +191,14 @@
       </command>
 
 	</menuContribution>
+      <menuContribution
+            locationURI="menu:org.eclipse.debug.ui.VariableView?after=formatting">
+         <command
+               commandId="org.eclipse.cdt.debug.edc.ui.toggleShowAllVariables"
+               label="Show All Variables"
+               style="toggle">
+         </command>
+      </menuContribution>
       <menuContribution
             locationURI="toolbar:org.eclipse.debug.ui.VariableView">
          <command
@@ -381,6 +398,10 @@
       <handler
             class="org.eclipse.cdt.debug.edc.internal.ui.actions.ToggleCustomFormattingCommandHandler"
             commandId="org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting">
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.ToggleShowAllVariablesCommandHandler"
+            commandId="org.eclipse.cdt.debug.edc.ui.toggleShowAllVariables">
       </handler>
       <!-- Provide the custom handler for the standard Delete commmand; we use it in the Snapshot view --> 
       <handler

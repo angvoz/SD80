@@ -10,8 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.jface.preference.ComboFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -29,7 +29,7 @@ public class SnapshotPreferencePage extends FieldEditorPreferencePage
 	 */
 	public SnapshotPreferencePage() {
 		super(FLAT);
-		IPreferenceStore store= EDCDebugger.getDefault().getPreferenceStore();
+		IPreferenceStore store= EDCDebugUI.getDefault().getPreferenceStore();
 		setPreferenceStore(store);
 	}
 

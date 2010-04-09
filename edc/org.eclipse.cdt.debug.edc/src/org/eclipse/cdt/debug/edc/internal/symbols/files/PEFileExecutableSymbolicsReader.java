@@ -128,10 +128,30 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 		}
 
 		// load the symbol table
-		for (org.eclipse.cdt.utils.coff.Coff.Symbol symbol : peFile.getSymbols()) {
+		//
+		/*
+		 * Note this "rawSymbols" array contains both standard and auxiliary
+		 * symbol records. It's assumed symbols in the array are in the same
+		 * order they appear in the symbol table section, no sorting of any kind
+		 * is done.
+		 * 
+		 * Actually auxiliary symbols should not be treated the same as standard
+		 * symbols by Coff and PE in CDT core. But fixing that would break API,
+		 * which is not allowed for CDT 7.0 at this time......... 04/07/10
+		 */
+		org.eclipse.cdt.utils.coff.Coff.Symbol[] rawSymbols = peFile.getSymbols();
+		
+		for (int i=0; i < rawSymbols.length; i++) {
+			org.eclipse.cdt.utils.coff.Coff.Symbol symbol = rawSymbols[i];
+
 			String symName = symbol.getName(peFile.getStringTable());
-			//System.out.println(symbols.size() + ": " + symName);
 			symbols.add(new Symbol(symName, new Addr32(symbol.n_value), 1));
+			
+			// skip auxiliary symbol record(s) if any as otherwise they may
+			// give us bogus match in any symbol table lookup.
+			if (symbol.n_numaux > 0) {
+				i += symbol.n_numaux; 
+			}
 		}
 
 		// now sort it by address for faster lookups

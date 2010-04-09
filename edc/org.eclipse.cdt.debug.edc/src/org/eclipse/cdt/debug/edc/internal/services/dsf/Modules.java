@@ -741,7 +741,12 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 
 	public void moduleUnloaded(ISymbolDMContext symbolContext, ExecutionDMC executionDMC,
 			Map<String, Object> moduleProps) {
-		ModuleDMC module = getModuleByName(symbolContext, moduleProps.get(IEDCDMContext.PROP_NAME));
+		Object fileName = moduleProps.get(IEDCDMContext.PROP_NAME);
+		ModuleDMC module = getModuleByName(symbolContext, fileName);
+		if (module == null) {
+			EDCDebugger.getMessageLogger().logError("Unexpected unload of module: " + fileName, null);
+			return;
+		}
 		Object requireResumeValue = moduleProps.get("RequireResume");
 		if (requireResumeValue != null && requireResumeValue instanceof Boolean)
 			module.setProperty("RequireResume", requireResumeValue);

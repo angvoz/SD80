@@ -175,7 +175,7 @@ public class X86Stack extends Stack {
 				}
 			}
 		} catch (Exception e) { // catch any exception
-			EDCDebugger.getMessageLogger().logAndShowError("Exception happened in computing stack frames.", e);
+			EDCDebugger.getMessageLogger().logError("Exception happened in computing stack frames.", e);
 		}
 
 		return frames;

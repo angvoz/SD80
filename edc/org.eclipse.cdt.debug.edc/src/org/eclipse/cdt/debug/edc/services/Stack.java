@@ -27,32 +27,33 @@ import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
 import org.eclipse.cdt.debug.edc.internal.launch.CSourceLookup;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
+import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
+import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
-import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
+import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -65,6 +66,8 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -72,6 +75,8 @@ import org.w3c.dom.NodeList;
 public abstract class Stack extends AbstractEDCService implements IStack, ICachingService {
 
 	public static final String STACK_FRAME = "stack_frame";
+	
+	public Boolean showAllVariablesEnabled = null;
 
 	private final Map<String, List<StackFrameDMC>> stackFrames = Collections
 			.synchronizedMap(new HashMap<String, List<StackFrameDMC>>());
@@ -274,7 +279,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private TypeEngine typeEngine;
 
 		public StackFrameDMC(final IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
-			super(Stack.this, new IDMContext[] { executionDMC }, frameProperties);
+			super(Stack.this, new IDMContext[] { executionDMC }, createFrameID(executionDMC, frameProperties), frameProperties);
 			this.executionDMC = executionDMC;
 			this.level = (Integer) frameProperties.get(LEVEL_INDEX);
 			this.moduleName = (String) frameProperties.get(MODULE_NAME);
@@ -456,7 +461,21 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 
 		public IVariableDMContext[] getLocals() {
-			if (locals == null) {
+			// may need to refresh the locals list because "Show All Variables"
+			// toggle has changed
+		    if (showAllVariablesEnabled == null) {
+				IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		    	showAllVariablesEnabled = scope.getBoolean(IEDCSymbols.SHOW_ALL_VARIABLES_ENABLED, false);
+		    }
+
+			Boolean enabled = showAllVariablesEnabled;
+			if (locals != null) {
+				IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+				enabled = scope.getBoolean(IEDCSymbols.SHOW_ALL_VARIABLES_ENABLED, showAllVariablesEnabled);
+			}
+
+			if (locals == null || (locals != null && enabled != showAllVariablesEnabled)) {
+				showAllVariablesEnabled = enabled;
 				locals = new ArrayList<VariableDMC>();
 				IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
 				IFunctionScope scope = symbolsService
@@ -473,6 +492,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				if (module != null) {
 					linkAddress = module.toLinkAddress(ipAddress);
 				}
+
 				while (scope != null) {
 					Collection<IVariable> scopedVariables = scope.getScopedVariables(linkAddress);
 					for (IVariable variable : scopedVariables) {
@@ -481,31 +501,46 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						localsByName.put(var.getName(), var);
 					}
 
-					/* turn this off until we have a real solution for globals.
-					 * GCC publishes way too many globals, while RVCT publishes none. 
-					 
-					// add file-scope globals too
+					// if requesting to show all variables, add file-scope globals too
 					// (this isn't nearly sufficient since globals can show up
 					// in a header while all code is in the source file)
-					IScope parentScope = scope.getParent();
+					IScope parentScope = null;
+					if (showAllVariablesEnabled)
+						parentScope = scope.getParent();
 					while (parentScope != null) {
-						Collection<IVariable> globals = null;
 						if (parentScope instanceof ICompileUnitScope) {
-							globals = ((ICompileUnitScope) parentScope).getVariables();
-						} else if (parentScope instanceof IModuleScope) {
-							// waaaay too many
-							//globals = ((IModuleScope) parentScope).getVariables();
-						}
-						if (globals != null) {
-							for (IVariable variable : globals) {
-								VariableDMC var = new VariableDMC(Stack.this, this, variable);
-								locals.add(var);
-								localsByName.put(var.getName(), var);
+							ICompileUnitScope cuScope = ((ICompileUnitScope) parentScope);
+
+							// there may be multiple compile unit scopes for the same source file,
+							// so look for a debug info provider to find multiples
+							IDebugInfoProvider debugInfoProvider = null;
+							IEDCSymbolReader symbolReader = module.getSymbolReader();
+							if (symbolReader instanceof EDCSymbolReader) {
+								debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
+							}
+
+							List<ICompileUnitScope> cuScopes = null;
+							if (debugInfoProvider != null) {
+								cuScopes = debugInfoProvider.getCompileUnitsForFile(cuScope.getFilePath());
+							} else {
+								cuScopes = new ArrayList<ICompileUnitScope>(1);
+								cuScopes.add(cuScope);
+							}
+
+							// add the globals of all compile unit scopes for the source file
+							for (ICompileUnitScope nextCuScope : cuScopes) {
+								Collection<IVariable> globals = nextCuScope.getVariables();
+								if (globals != null) {
+									for (IVariable variable : globals) {
+										VariableDMC var = new VariableDMC(Stack.this, this, variable);
+										locals.add(var);
+										localsByName.put(var.getName(), var);
+									}
+								}
 							}
 						}
 						parentScope = parentScope.getParent();
 					}
-					*/
 					
 					if (!(scope.getParent() instanceof IFunctionScope))
 						break;
@@ -739,6 +774,12 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public Stack(DsfSession session, String[] classNames) {
 		super(session, classNames);
+	}
+
+	public static String createFrameID(IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
+		int level = (Integer) frameProperties.get(StackFrameDMC.LEVEL_INDEX);
+		String parentID = executionDMC.getID();
+		return parentID + ".frame[" + level + "]";
 	}
 
 	@Override

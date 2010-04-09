@@ -227,7 +227,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 						// string
 						imageBaseAddr = new Addr64((String) base, 16);
 					else
-						EDCDebugger.getMessageLogger().logAndShowError(
+						EDCDebugger.getMessageLogger().logError(
 								MessageFormat.format("Module property PROP_ADDRESS has invalid format {0}.", base
 										.getClass()), null);
 				}
@@ -266,7 +266,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 					dataSize = (Number) props.get(IModuleProperty.PROP_DATA_SIZE);
 					bssSize = (Number) props.get(IModuleProperty.PROP_BSS_SIZE);
 				} catch (ClassCastException e) {
-					EDCDebugger.getMessageLogger().logAndShowError("Module property value has invalid format.", null);
+					EDCDebugger.getMessageLogger().logError("Module property value has invalid format.", null);
 				}
 
 				if (symReader != null) {

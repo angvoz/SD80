@@ -18,6 +18,7 @@ import java.util.Map;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
 import org.eclipse.cdt.debug.edc.ITCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
@@ -47,12 +48,12 @@ import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.protocol.Protocol;
 import org.eclipse.tm.tcf.services.IMemory;
 import org.eclipse.tm.tcf.services.IProcesses;
-import org.eclipse.tm.tcf.services.IRegisters;
-import org.eclipse.tm.tcf.services.IRunControl;
 import org.eclipse.tm.tcf.services.IProcesses.DoneCommand;
 import org.eclipse.tm.tcf.services.IProcesses.DoneGetChildren;
 import org.eclipse.tm.tcf.services.IProcesses.DoneGetContext;
 import org.eclipse.tm.tcf.services.IProcesses.ProcessContext;
+import org.eclipse.tm.tcf.services.IRegisters;
+import org.eclipse.tm.tcf.services.IRunControl;
 import org.eclipse.tm.tcf.util.TCFTask;
 
 public abstract class AbstractFinalLaunchSequence extends Sequence {
@@ -66,6 +67,8 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * field explicitly except to set it. Use {@link #getTCFPeer()}
 	 */
 	private IPeer tcfPeer;
+	
+	private boolean usingRemotePeers;
 
 	/**
 	 * Attributes that the debugger requires the TCF peer to match. Derivatives
@@ -117,16 +120,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected Step initFindPeerStep = new Step() {
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
-			try {
-				TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-				tcfPeer = tcfServiceManager.getPeer(IRunControl.NAME, peerAttributes);
-				if (tcfPeer == null) {
-					requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Could not find a suitable TCF peer", null));
-				}
-			} catch (CoreException e) {
-				requestMonitor.setStatus(e.getStatus());				
-			}
-
+			findPeer(requestMonitor);
 			requestMonitor.done();
 		}
 	};
@@ -288,6 +282,43 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		return tcfServiceManager.getPeerService(getTCFPeer(), tcfServiceName);
 	}
 
+	protected void findPeer(RequestMonitor requestMonitor) {
+		try {
+			ILaunchConfiguration cfg = launch.getLaunchConfiguration();
+			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
+			IPeer[] runningPeers = tcfServiceManager.getRunningPeers(IRunControl.NAME, peerAttributes, !isUsingRemotePeers());
+			
+			if (isUsingRemotePeers())
+			{
+				tcfPeer = selectPeer(runningPeers);
+			}
+			else
+			{
+				if (runningPeers.length == 0)
+				{
+					ITCFAgentLauncher[] registered = tcfServiceManager.getRegisteredAgents(IRunControl.NAME, peerAttributes);
+					if (registered.length > 0)
+					{
+						tcfPeer = tcfServiceManager.launchAgent(registered[0]);
+					}
+				}
+				else
+					tcfPeer = runningPeers[0];
+			}
+			
+			if (tcfPeer == null) {
+				requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Could not find a suitable TCF peer", null));
+			}
+		} catch (CoreException e) {
+			requestMonitor.setStatus(e.getStatus());				
+		}
+	}
+
+	public IPeer selectPeer(IPeer[] runningPeers) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	/**
 	 * Find the given TCF service and link it to the given DSF service. The TCF
 	 * service will be used to carry out the DSF one.
@@ -334,9 +365,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	public AbstractFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm,
 			String sequenceName, String abortName) {
 		super(executor, pm, sequenceName, abortName);
-
 		specifyRequiredPeer();
-
 		this.launch = launch;
 	}
 
@@ -634,5 +663,13 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 */
 	protected IPeer getTCFPeer() {
 		return tcfPeer;
+	}
+
+	public boolean isUsingRemotePeers() {
+		return usingRemotePeers;
+	}
+
+	public void setUsingRemotePeers(boolean usingRemotePeers) {
+		this.usingRemotePeers = usingRemotePeers;
 	}
 }

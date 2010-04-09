@@ -44,6 +44,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
@@ -73,8 +74,6 @@ import org.eclipse.core.runtime.Status;
 
 public class Expressions extends AbstractEDCService implements IExpressions2 {
 
-	private static int nextExpressionID = 100;
-
 	private static final String HEX_PREFIX = "0x"; //$NON-NLS-1$
 
 	private static final String OCTAL_PREFIX = "0"; //$NON-NLS-1$
@@ -98,7 +97,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		private String valueString;
 
 		public BaseEDCExpressionDMC(IDMContext parent, String expression, String name) {
-			super(Expressions.this, new IDMContext[] { parent }, name, nextExpressionID++ + "." + expression); //$NON-NLS-1$
+			super(Expressions.this, new IDMContext[] { parent }, name, ((IEDCDMContext)parent).getID() + "." + name); //$NON-NLS-1$
 			this.expression = expression;
 			this.frame = DMContexts.getAncestorOfType(parent, StackFrameDMC.class);
 			engine = new ASTEvaluationEngine(getServicesTracker(), frame, frame.getTypeEngine());

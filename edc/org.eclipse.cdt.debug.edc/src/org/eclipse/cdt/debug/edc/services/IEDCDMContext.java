@@ -5,24 +5,23 @@ import java.util.Map;
 public interface IEDCDMContext {
 
 	/**
-	 * Context property names.
+	 * Context property description.
 	 */
-
 	public static final String PROP_DESCRIPTION = "Description";
-	/**
-	 * Context property names.
-	 */
 
+	/**
+	 * Context property id.
+	 */
 	public static final String PROP_ID = "ID";
-	/**
-	 * Context property names.
-	 */
 
+	/**
+	 * Context property name.
+	 */
 	public static final String PROP_NAME = "Name";
-	/**
-	 * Context property names.
-	 */
 
+	/**
+	 * Context property value.
+	 */
 	public static final String PROP_VALUE = "Value";
 
 	public Object getProperty(String key);

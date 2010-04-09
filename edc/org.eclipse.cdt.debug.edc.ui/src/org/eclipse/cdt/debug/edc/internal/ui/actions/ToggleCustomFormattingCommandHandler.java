@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMAdapter;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMProvider;
@@ -19,6 +20,8 @@ import org.eclipse.core.commands.Command;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IPresentationContext;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.TreeModelViewer;
 import org.eclipse.debug.ui.AbstractDebugView;
@@ -29,6 +32,7 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
+import org.osgi.service.prefs.BackingStoreException;
 
 @SuppressWarnings("restriction")
 public class ToggleCustomFormattingCommandHandler extends AbstractHandler {
@@ -37,6 +41,13 @@ public class ToggleCustomFormattingCommandHandler extends AbstractHandler {
 		Command command = event.getCommand();
 		boolean enabled = HandlerUtil.toggleCommandState(command);
 		FormatExtensionManager.instance().setEnabled(!enabled );
+		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		scope.putBoolean(FormatExtensionManager.VARIABLE_FORMATS_ENABLED, enabled);
+		try {
+			scope.flush();
+		} catch (BackingStoreException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
 		refreshViewer(event);
 		return null;
 	}

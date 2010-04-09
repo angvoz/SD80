@@ -30,19 +30,14 @@ import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.window.Window;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.tm.tcf.core.AbstractPeer;
 import org.eclipse.tm.tcf.protocol.IChannel;
+import org.eclipse.tm.tcf.protocol.IChannel.IChannelListener;
 import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.Protocol;
-import org.eclipse.tm.tcf.protocol.IChannel.IChannelListener;
 import org.eclipse.tm.tcf.services.ILocator;
 import org.eclipse.tm.tcf.util.TCFTask;
-import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 
 /**
  * Utility class that provides access to TCF agents and services. It abstracts
@@ -133,28 +128,28 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		return p.getID().equals("TCFLocal");
 	}
 
-	/**
-	 * Find a TCF peer that matches the given attributes and offers the given
-	 * service. Running agents on LAN will be searched. If no running agent
-	 * meets the need, local registered agents will be searched. When multiple
-	 * candidates are found, user will be prompted to select one. If the
-	 * selected one is a non-started agent, it will be launched.<br>
-	 * But if JUnit test is running, only local agent will be searched and no
-	 * prompt dialog will be presented.
-	 * 
-	 * @param serviceName
-	 * @param attributesToMatch
-	 * @return a running agent
-	 * @throws CoreException
-	 *             on any error.
-	 */
-	public IPeer getPeer(final String serviceName, final Map<String, String> attributesToMatch) throws CoreException {
+	public ITCFAgentLauncher[] getRegisteredAgents(final String serviceName, final Map<String, String> attributesToMatch)
+	{
+		List<String> registeredPeerLabels = new ArrayList<String>();
+		List<ITCFAgentLauncher> registeredAgents = new ArrayList<ITCFAgentLauncher>();
 
+		// Find registered agents that meets our need and which can be launched.
+
+		for (ITCFAgentLauncher descriptor : tcfAgentLaunchers) {
+			if (descriptor.getServiceNames().contains(serviceName)
+					&& matchesAllAttributes(descriptor.getPeerAttributes(), attributesToMatch)
+					&& descriptor.isLaunchable()) {
+				registeredPeerLabels.add(descriptor.getPeerName() + " (local registered non-started)");
+				registeredAgents.add(descriptor);
+			}
+		}
+		return registeredAgents.toArray(new ITCFAgentLauncher[registeredAgents.size()]);
+	}
+	
+	public IPeer[] getRunningPeers(final String serviceName, final Map<String, String> attributesToMatch, final boolean localOnly) throws CoreException {
 		if (!initialized) {
 			initialize();
 		}
-
-		final boolean unitTestRunning = GeneralUtils.isJUnitRunning();
 
 		// first find running agents with matching attributes
 		//
@@ -172,26 +167,19 @@ public class TCFServiceManager implements ITCFServiceManager  {
 						continue;
 
 					if (matchesAllAttributes(p.getAttributes(), attributesToMatch)) {
-						if (unitTestRunning) {
-							// for junit, only look at local peer
-							if (isLocalPeer(p))
-								runningCandidates1.add(p);
-						} else
-							runningCandidates1.add(p);
+						runningCandidates1.add(p);
 					}
 				}
 			}
 		});
-
-		final List<IPeer> runningCandidates2 = new ArrayList<IPeer>();
-		final List<String> runningCandidateLabels = new ArrayList<String>();
-		final List<String> runningLocalAgentPorts = new ArrayList<String>();
 		
-		final boolean[] localAgentFound = { false };
-
 		// Now search the running candidates for the one that offers the
 		// required service.
-		//
+
+		final List<IPeer> runningCandidates2 = new ArrayList<IPeer>();
+		final List<String> runningLocalAgentPorts = new ArrayList<String>();
+		final boolean[] localAgentFound = { false };
+
 		for (final IPeer peer : runningCandidates1) {
 
 			// wait up to 3 seconds for the asynchronous task.
@@ -222,18 +210,15 @@ public class TCFServiceManager implements ITCFServiceManager  {
 								runningLocalAgentPorts.add(port);
 						}
 					}
-					
-					final String peerLabel = peer.getName() + " (" + peer.getID() + ") "
-							+ (isLocalAgent ? "(local running)" : "(remote running)");
 
 					IChannel ch = getChannelForPeer(peer);
 					if (ch != null) {
 						assert (ch.getState() == IChannel.STATE_OPEN);
 						if (null != ch.getRemoteService(serviceName)) {
-							runningCandidates2.add(peer);
+							if (!localOnly || isLocalAgent)
+								runningCandidates2.add(peer);
 							if (isLocalAgent)
 								localAgentFound[0] = true;
-							runningCandidateLabels.add(peerLabel);
 						}
 						done(this);
 					} else {
@@ -244,10 +229,10 @@ public class TCFServiceManager implements ITCFServiceManager  {
 								channel.removeChannelListener(this);
 
 								if (null != channel.getRemoteService(serviceName)) {
-									runningCandidates2.add(peer);
+									if (!localOnly || isLocalAgent)
+										runningCandidates2.add(peer);
 									if (isLocalAgent)
 										localAgentFound[0] = true;
-									runningCandidateLabels.add(peerLabel);
 								}
 								done(this); // argument is do-not-care
 							}
@@ -280,135 +265,8 @@ public class TCFServiceManager implements ITCFServiceManager  {
 				});
 			}
 		}
-
-		IPeer finalCandidate = null;
-
-		boolean useRegisteredAgents = false;
-		boolean promptUser = false;
-
-		final ArrayList<String> options = new ArrayList<String>();
-
-		/*
-		 * We need to offer registered agents as candidates if 1) no running
-		 * agent meets our need, or 2) none of the running agents matched is
-		 * local
-		 * 
-		 * Namely if there is a local running agent that meets our need, don't
-		 * bother checking registered agent.
-		 */
-		if (runningCandidates2.size() == 0) {
-			// no running agents found. Check registered agents.
-			useRegisteredAgents = true;
-		}
-		// Single local agent meeting our requirement, use it and
-		// don't bother prompting user.
-		// Or for junit test, just use the first candidate.
-		else if (runningCandidates2.size() == 1 && localAgentFound[0] || unitTestRunning) {
-			finalCandidate = runningCandidates2.get(0);
-			return finalCandidate;
-		} else if (runningCandidates2.size() > 1 || runningCandidates2.size() == 1 && !localAgentFound[0]) {
-
-			// Prompt user if we
-			// 1) find two or more candidates or
-			// 2) find only one candidate but it's remote agent.
-			//
-			promptUser = true;
-
-			options.addAll(runningCandidateLabels);
-
-			// If none of the running agents found is local, make
-			// registered agents available as options for user to choose.
-			//
-			if (!localAgentFound[0])
-				useRegisteredAgents = true;
-		}
-
-		List<String> registeredPeerLabels = new ArrayList<String>();
-		List<ITCFAgentLauncher> registeredAgents = new ArrayList<ITCFAgentLauncher>();
-
-		// Find registered agents that meets our need and which can be launched.
-		//
-		if (useRegisteredAgents) {
-			for (ITCFAgentLauncher descriptor : tcfAgentLaunchers) {
-				if (descriptor.getServiceNames().contains(serviceName)
-						&& matchesAllAttributes(descriptor.getPeerAttributes(), attributesToMatch)
-						&& descriptor.isLaunchable()) {
-					registeredPeerLabels.add(descriptor.getPeerName() + " (local registered non-started)");
-					registeredAgents.add(descriptor);
-
-					// For unit test, just use the fist candidate found.
-					if (unitTestRunning)
-						break;
-				}
-			}
-
-			options.addAll(registeredPeerLabels);
-			
-			// We wanted to prompt the user because nothing was running
-			// locally and a registered agent might have provided more agents.
-			// But even if only one is found, still prompt the user, otherwise
-			// there's a chance of running a remote agent from the wrong place.
-			//
-			/*
-			if (options.size() == 1) {
-				promptUser = false;
-			}
-			*/
-		}
-
-		final String selection[] = { null };
-		final boolean[] userCanceled = { false };
-
-		/*
-		 * We need to prompt user to choose if 1) two or more options (including
-		 * running ones and registered ones) available, or 2) only one remote
-		 * running agent is available
-		 */
-		if (options.size() == 0) // no matching agent
-			throw EDCDebugger.newCoreException(MessageFormat.format(
-					"No peer was found that provides service [{0}] and has attributes {1}", serviceName,
-					attributesToMatch));
-		if (options.size() == 1 && !promptUser)
-			selection[0] = options.get(0);
-		else {
-			// Prompt is required or more than one options available
-			runInUIThread(new Runnable() {
-				public void run() {
-					ElementListSelectionDialog dialog = new ElementListSelectionDialog(null, new LabelProvider());
-					dialog.setElements(options.toArray());
-					dialog.setTitle("Select TCF Peer");
-					dialog.setMessage("Select the TCF peer you want the debugger to use:");
-					if (dialog.open() == Window.OK) {
-						selection[0] = (String) dialog.getFirstResult();
-					} else { // user canceled
-						userCanceled[0] = true;
-					}
-				}
-			});
-			if (userCanceled[0])
-				throw new CoreException(Status.CANCEL_STATUS);
-		}
-
-		int i = runningCandidateLabels.indexOf(selection[0]);
-		if (i >= 0)
-			finalCandidate = runningCandidates2.get(i);
-		else {
-			// User selected a registered agent
-			// We launch the agent.
-			i = registeredPeerLabels.indexOf(selection[0]);
-			ITCFAgentLauncher descriptor = registeredAgents.get(i);
-			finalCandidate = launchAgent(descriptor);
-		}
-
-		return finalCandidate;
-	}
-
-	private void runInUIThread(Runnable runnable) {
-		if (Display.getCurrent() != null) {
-			runnable.run();
-		} else {
-			Display.getDefault().syncExec(runnable);
-		}
+		
+		return runningCandidates2.toArray(new IPeer[runningCandidates2.size()]);
 	}
 
 	protected boolean isLocalPeer(IPeer peer) {
@@ -542,7 +400,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		}
 	}
 
-private IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreException {
+public IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreException {
 		final WaitForResult<IPeer> waitForPeer = new WaitForResult<IPeer>() {
 		};
 

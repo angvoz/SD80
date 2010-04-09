@@ -18,4 +18,6 @@ public interface IEDCLaunchConfigurationConstants {
 
 	public static final String ATTR_ALBUM_FILE = "org.eclipse.cdt.debug.edc.internal.launch.snapshotAlbum"; //$NON-NLS-1$
 
+	public static final String ATTR_USE_REMOTE_PEERS = "org.eclipse.cdt.debug.edc.useRemotePeers"; //$NON-NLS-1$
+
 }

@@ -8,6 +8,10 @@ import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 
 public interface IEDCSymbols {
+	/**
+	 * Preference to show all variables that are defined as global by the current source file 
+	 */
+	public static final String SHOW_ALL_VARIABLES_ENABLED = "show_all_variables_enabled";
 
 	/**
 	 * Get the function at the given runtime address

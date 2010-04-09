@@ -13,27 +13,27 @@ package org.eclipse.cdt.debug.edc.internal.formatter;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableFormatProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.symbols.IType;
-import org.eclipse.core.commands.Command;
-import org.eclipse.core.commands.State;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.commands.ICommandService;
-import org.eclipse.ui.handlers.RegistryToggleState;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 
 /**
  * Manages format extensions
  */
 public class FormatExtensionManager implements IVariableFormatManager {
 	
+	// Preferences
+	public static final String VARIABLE_FORMATS_ENABLED = "variable_formats_enabled";
+
 	/**
 	 * A chooser implementation that always defers to any formatter that is not one of the default formatters
 	 */
@@ -101,19 +101,8 @@ public class FormatExtensionManager implements IVariableFormatManager {
 	private FormatExtensionManager(IVariableFormatProviderChooser chooser) {
 		readProviders();
 		setFormatProviderChooser(chooser);
-		setInitialStateFromCommand();
-	}
-	
-	private void setInitialStateFromCommand() {
-		if (PlatformUI.isWorkbenchRunning()) {
-			ICommandService commandService = 
-				(ICommandService) PlatformUI.getWorkbench().getService(ICommandService.class);
-			final Command command = 
-				commandService.getCommand("org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting"); //$NON-NLS-1$
-			State state = command.getState(RegistryToggleState.STATE_ID);
-			if (state != null && state.getValue() instanceof Boolean)
-				setEnabled(((Boolean) state.getValue()).booleanValue());
-		}
+		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		enabled = scope.getBoolean(VARIABLE_FORMATS_ENABLED, false);
 	}
 
 	private void readProviders() {

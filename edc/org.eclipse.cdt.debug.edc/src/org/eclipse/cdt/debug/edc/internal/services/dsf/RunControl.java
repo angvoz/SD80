@@ -1685,7 +1685,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						// tons of test) warning here.
 						EDCDebugger
 								.getMessageLogger()
-								.logAndShow(
+								.log(
 										new Status(
 												IStatus.WARNING,
 												EDCDebugger.PLUGIN_ID,

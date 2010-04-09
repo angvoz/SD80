@@ -13,14 +13,17 @@ package org.eclipse.cdt.debug.edc.internal;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
+import org.eclipse.core.runtime.preferences.DefaultScope;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 
 public class EDCDebugPreferenceInitializer extends
 		AbstractPreferenceInitializer {
 
 	@Override
 	public void initializeDefaultPreferences() {
-		EDCDebugger.getDefault().getPreferenceStore().setDefault(Album.PREF_VARIABLE_CAPTURE_DEPTH, 5);
-		EDCDebugger.getDefault().getPreferenceStore().setDefault(Album.PREF_CREATION_CONTROL, Album.CREATE_MANUAL);
+		IEclipsePreferences node = new DefaultScope().getNode(EDCDebugger.PLUGIN_ID);
+		node.putInt(Album.PREF_VARIABLE_CAPTURE_DEPTH, 5);
+		node.put(Album.PREF_CREATION_CONTROL, Album.CREATE_MANUAL);
 	}
 
 }

@@ -70,12 +70,6 @@ import org.eclipse.debug.core.sourcelookup.ISourceContainer;
 import org.eclipse.debug.core.sourcelookup.ISourceLookupDirector;
 import org.eclipse.debug.core.sourcelookup.containers.DirectorySourceContainer;
 import org.eclipse.debug.internal.core.LaunchManager;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.IWorkbenchWindow;
-import org.eclipse.ui.PartInitException;
-import org.eclipse.ui.PlatformUI;
 import org.osgi.framework.Bundle;
 import org.osgi.service.prefs.BackingStoreException;
 import org.w3c.dom.Document;
@@ -117,8 +111,6 @@ public class Album extends PlatformObject implements IAlbum {
 
 	private static String[] DSA_FILE_EXTENSIONS = new String[] {"dsa"};
 	
-	private static boolean snapshotViewInited;
-	
 	// Preferences
 	public static final String PREF_CREATION_CONTROL = "creation_control";
 	public static final String CREATE_MANUAL = "manual";
@@ -128,7 +120,6 @@ public class Album extends PlatformObject implements IAlbum {
 	public static final String PREF_VARIABLE_CAPTURE_DEPTH = "variable_capture_depth";
 
 	private static final String CAMERA_CLICK_WAV = "/sounds/camera_click.wav";
-	private static final String SNAPSHOT_VIEW_ID = "org.eclipse.cdt.debug.edc.ui.views.SnapshotView";
 	
 	private Document document;
 	private Element albumRootElement;
@@ -183,7 +174,6 @@ public class Album extends PlatformObject implements IAlbum {
 
 			if (album != null) {
 				fireAlbumStateChanged(album);
-				showSnapshotView();
 			}
 		}
 	};
@@ -598,7 +588,6 @@ public class Album extends PlatformObject implements IAlbum {
 					snapshot.open(session);
 				}
 				fireAlbumStateChanged(album);
-				showSnapshotView();
 			}
 		};
 
@@ -965,16 +954,16 @@ public class Album extends PlatformObject implements IAlbum {
 	}
 
 	public static void createSnapshotForSession(final DsfSession session, final StackFrameDMC stackFrame, final IProgressMonitor monitor) {
-		
-					String sessionId = session.getId();
-					Album album = Album.getRecordingForSession(sessionId);
-					if (album == null) {
-						album = new Album();
-						album.setRecordingSessionID(sessionId);
-					}
+
+		String sessionId = session.getId();
+		Album album = Album.getRecordingForSession(sessionId);
+		if (album == null) {
+			album = new Album();
+			album.setRecordingSessionID(sessionId);
+		}
 		final IAlbum finalAlbum = album;
-					playSnapshotSound();
-		
+		playSnapshotSound();
+
 		Query<Boolean> query = new Query<Boolean>() {
 
 			@Override
@@ -982,32 +971,21 @@ public class Album extends PlatformObject implements IAlbum {
 				((Album) finalAlbum).createSnapshot(session, stackFrame, monitor);
 				rm.setData(true);
 				rm.done();
-			}};
-
-			session.getExecutor().execute(query);
-
-			try {
-				query.get();
-			} catch (InterruptedException exc) {
-				Thread.currentThread().interrupt();
-			} catch (java.util.concurrent.ExecutionException e) {
-				EDCDebugger.getMessageLogger().logError(null, e);
 			}
-			
-					showSnapshotView();
-					int numViewChecks = 0;
-					while (!snapshotViewInited){
-						// Make sure the snapshot view has been opened so it
-						// is listening for album change events
-						try {
-							Thread.sleep(2000);
-							if (++numViewChecks == 2) break;//try 4 secs
-						} catch (InterruptedException e) {
-						}
-					}
-					fireAlbumStateChanged(album);
-				}
-	
+		};
+
+		session.getExecutor().execute(query);
+
+		try {
+			query.get();
+		} catch (InterruptedException exc) {
+			Thread.currentThread().interrupt();
+		} catch (java.util.concurrent.ExecutionException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
+		fireAlbumStateChanged(album);
+	}
+
 	protected static void playSnapshotSound() {
 		Bundle bundle = Platform.getBundle(EDCDebugger.getUniqueIdentifier());
 		if (bundle == null)
@@ -1220,39 +1198,6 @@ public class Album extends PlatformObject implements IAlbum {
 		for (ISnapshotAlbumStateListener l : listeners) {
 			l.albumChanged(album);
 		}
-	}
-
-	private static void showSnapshotView() {
-
-		Display.getDefault().asyncExec(new Runnable() {
-			public void run() {
-
-				IWorkbench workbench = PlatformUI.getWorkbench();
-				IWorkbenchWindow workbenchWindow = workbench
-						.getActiveWorkbenchWindow();
-				if (workbenchWindow == null) {
-					if (workbench.getWorkbenchWindowCount() == 0)
-						return;
-					workbenchWindow = workbench.getWorkbenchWindows()[0];
-				}
-				IWorkbenchPage page = workbenchWindow.getActivePage();
-				if (page == null) {
-					if (workbenchWindow.getPages().length == 0)
-						return;
-					page = workbenchWindow.getPages()[0];
-				}
-				
-				try {
-					if (page.findView(SNAPSHOT_VIEW_ID) == null){
-						page.showView(SNAPSHOT_VIEW_ID);
-					}
-					snapshotViewInited = true;
-				} catch (PartInitException e) {
-					return;
-				}
-			}
-		});
-
 	}
 
 	public static void captureSnapshotForSession(final DsfSession session,

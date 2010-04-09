@@ -26,6 +26,7 @@ import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
 import org.eclipse.cdt.debug.edc.services.IFrameRegisterProvider;
 import org.eclipse.cdt.debug.edc.services.IFrameRegisters;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
@@ -34,11 +35,12 @@ import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.debug.service.ISymbols;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
+import org.eclipse.cdt.dsf.debug.service.ISymbols;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.model.ISourceLocator;
@@ -234,4 +236,60 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 		}
 		readerCache.clear();
 	}
+
+	/**
+	 * A wrapper method that calls into symbol reader to get runtime address(es)
+	 * for a given function name. 
+	 * Currently this method use symbol table instead of debug info (e.g. dwarf2)
+	 * to get function address. See reason in the implementation.
+	 * 
+	 * @param module where the runtime address is.
+	 * @param functionName
+	 * @return list of runtime addresses.
+	 */
+	public List<IAddress> getFunctionAddress(IEDCModuleDMContext module, String functionName) {
+		
+		List<IAddress> ret = new ArrayList<IAddress>(2);
+		
+		IEDCSymbolReader symReader = module.getSymbolReader();
+		if (symReader == null)
+			return ret;
+		
+		// Remove "()" if any
+		int parenIndex = functionName.indexOf('(');
+		if (parenIndex >= 0)
+			functionName = functionName.substring(0, parenIndex);
+
+		// Supposedly we could call this to get what we need, but this may cause full parse of 
+		// debug info and lead to heap overflow for a large symbol file (over one giga bytes of 
+		// memory required in parsing a 180M symbol file) and chokes the debugger.
+		// So before a good solution is available, we resort to symbol table of the executable.
+		// ................04/02/10
+//			Collection<IFunctionScope> functions = symReader.getModuleScope().getFunctionsByName(function);
+//			for (IFunctionScope f : functions) {
+//				IAddress breakAddr = f.getLowAddress();
+//		        ...
+
+		// assume it's the human-readable name first
+		Collection<ISymbol> symbols = symReader.findUnmangledSymbols(functionName);
+		if (symbols.isEmpty()) {
+			// else look for a raw symbol
+			symbols = symReader.findSymbols(functionName);
+		}
+		
+		for (ISymbol symbol : symbols) {
+			// don't consider zero sized symbol.
+			if (symbol.getSize() ==  0) 
+				continue;
+
+			IAddress addr = symbol.getAddress();
+			// convert from link to runtime address
+			addr = module.toRuntimeAddress(addr);
+			
+			ret.add(addr);
+		}
+
+		return ret;
+	}
+	
 }

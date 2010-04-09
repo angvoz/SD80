@@ -11,7 +11,6 @@
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,15 +23,13 @@ import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
-import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator2;
-import org.eclipse.cdt.dsf.debug.service.IBreakpointAttributeTranslator2;
 import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator2.BreakpointEventType;
 import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator2.ITargetBreakpointInfo;
+import org.eclipse.cdt.dsf.debug.service.IBreakpointAttributeTranslator2;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointDMContext;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
@@ -220,23 +217,13 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 			String function = (String) attributes.get(ICLineBreakpoint.FUNCTION);
 			assert (function != null && function.length() > 0);
 			
-			IEDCSymbolReader symReader = module.getSymbolReader();
-			if (symReader != null) {
-				int parenIndex = function.indexOf('(');
-				if (parenIndex >= 0)
-					function = function.substring(0, parenIndex);
-
-				Collection<IFunctionScope> functions = symReader.getModuleScope().getFunctionsByName(function);
-				for (IFunctionScope f : functions) {
-					IAddress breakAddr = f.getLowAddress();
-					// convert from link to runtime address
-					breakAddr = module.toRuntimeAddress(breakAddr);
-
-					oneBPAttr = new HashMap<String, Object>(attributes);
-					oneBPAttr.put(Breakpoints.RUNTIME_ADDRESS, breakAddr.toString(16));
-					
-					targetBPAttrs.add(oneBPAttr);
-				}
+			Symbols symService = dsfServicesTracker.getService(Symbols.class);
+			List<IAddress> addrs = symService.getFunctionAddress(module, function);
+			for (IAddress a : addrs) {
+				oneBPAttr = new HashMap<String, Object>(attributes);
+				oneBPAttr.put(Breakpoints.RUNTIME_ADDRESS, a.toString(16));
+				
+				targetBPAttrs.add(oneBPAttr);
 			}
 
 			drm.setData(targetBPAttrs);

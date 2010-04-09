@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.IllegalFormatException;
@@ -36,8 +35,6 @@ import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.services.Stack;
-import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
-import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.cdt.debug.internal.core.breakpoints.BreakpointProblems;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -864,7 +861,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 
 				// We should do these regardless of whether installing
 				// breakpoints succeeded or not.
-				installStartupBreakpoint(module, new RequestMonitor(getExecutor(), null) {
+				setStartupBreakpoint(module, new RequestMonitor(getExecutor(), null) {
 
 					@Override
 					protected void handleCompleted() {
@@ -891,7 +888,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 * @param module
 	 * @param rm
 	 */
-	protected void installStartupBreakpoint(ModuleDMC module, RequestMonitor rm) {
+	protected void setStartupBreakpoint(ModuleDMC module, RequestMonitor rm) {
 		if (startupBreakpointResolved) {
 			// already set in a module, no need to try it for any other module
 			rm.done();
@@ -933,28 +930,12 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 				iaddr = null;
 		} else {
 			// the point is a symbol
-			IEDCSymbolReader symReader = module.getSymbolReader();
-			if (symReader != null) {
-				// Only look at the symbol table, since we only need the
-				// address, and we want to avoid a full scan of debug info
-				// in case there is a mistyped (or missing) identifier.
-				// bug 303129
-				
-				// assume it's the human-readable name first
-				Collection<ISymbol> symbols = symReader.findUnmangledSymbols(startupStopAt);
-				if (symbols.isEmpty()) {
-					// else look for a raw symbol
-					symbols = symReader.findSymbols(startupStopAt);
-				}
-				for (ISymbol symbol : symbols) {
-					// only consider possible functions (TODO, ISymbol is not descriptive enough)
-					if (symbol.getSize() > 0) {
-						// TODO what if there are multiple symbols with this name?
-						iaddr = module.toRuntimeAddress(symbol.getAddress());
-						break;
-					}
-				}
-			}
+			Symbols symService = getServicesTracker().getService(Symbols.class);
+			List<IAddress> addrs = symService.getFunctionAddress(module, startupStopAt);
+			
+			if (addrs.size() > 0)
+				// just choose the first one
+				iaddr = addrs.get(0);
 		}
 
 		if (iaddr == null) {

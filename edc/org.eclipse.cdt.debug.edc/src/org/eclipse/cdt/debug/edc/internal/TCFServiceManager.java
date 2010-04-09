@@ -61,9 +61,6 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	private List<ITCFAgentLauncher> launchedtcfAgentLaunchers;
 
 	public TCFServiceManager() {
-	}
-
-	private void initialize() throws CoreException {
 		// load TCFAgentLauncher extensions
 		tcfAgentLaunchers = new ArrayList<ITCFAgentLauncher>();
 		launchedtcfAgentLaunchers = new ArrayList<ITCFAgentLauncher>();
@@ -96,6 +93,9 @@ public class TCFServiceManager implements ITCFServiceManager  {
 			}
 		}
 
+	}
+
+	private void initialize() throws CoreException {
 		// record local host IP addresses
 		localIPAddresses = getLocalIPAddresses();
 

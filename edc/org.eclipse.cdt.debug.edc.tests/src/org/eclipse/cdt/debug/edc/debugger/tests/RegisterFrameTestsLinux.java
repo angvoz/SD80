@@ -37,12 +37,28 @@ public class RegisterFrameTestsLinux extends SimpleDebuggerTest {
 		FormatExtensionManager.instance().setEnabled(formatterSetting);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.debugger.tests.SimpleDebuggerTest#getRequiredLaunchConfigurationType()
+	 */
+	@Override
+	protected String getRequiredLaunchConfigurationType() {
+		return "org.eclipse.cdt.launch.applicationLaunchType";
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.debugger.tests.SimpleDebuggerTest#getRequiredTCFAgentLauncher()
+	 */
+	@Override
+	protected String getRequiredTCFAgentLauncher() {
+		return "org.eclipse.cdt.debug.edc.linux.x86.GdbserverAgentDescriptor";
+	}
 	/*
 	 * The "1" series has a breakpoint in a valid function at the top
 	 */
 
 	@Test
 	public void testProcessFile1() throws Exception {
+		if (launch == null) return;
 		frame = TestUtils.waitForStackFrame(session, threadDMC, 0);
 		assertEquals("0x9861008", getExpressionValue("f"));
 		assertEquals("0xbfaf75fd", getExpressionValue("filename"));
@@ -50,12 +66,14 @@ public class RegisterFrameTestsLinux extends SimpleDebuggerTest {
 	}
 	@Test
 	public void testProcessArg1() throws Exception {
+		if (launch == null) return;
 		frame = TestUtils.waitForStackFrame(session, threadDMC, 1);
 		assertEquals("0xbfaf75fd", getExpressionValue("arg"));
 		assertEquals("5", getExpressionValue("errors"));
 	}
 	@Test
 	public void testMain1() throws Exception {
+		if (launch == null) return;
 		frame = TestUtils.waitForStackFrame(session, threadDMC, 2);
 		assertEquals("1", getExpressionValue("argc"));
 		assertEquals("0xbfaf7234", getExpressionValue("argv"));

@@ -331,8 +331,8 @@ public class TestSourceToAddressMapping extends BaseDwarfTestCase {
 		
 		IPath lookupPath = findSource(reader, new Path("inc/Templates.h"));
 		
-		// "for", init, test, incr * 2 for two template instances
+		// "for", init, test for two template instances
 		Collection<ILineEntry> entries = moduleLineEntryProvider.getLineEntriesForLines(lookupPath, 37, 37);
-		assertEquals(8, entries.size());
+		assertEquals(4, entries.size());
 	}
 }

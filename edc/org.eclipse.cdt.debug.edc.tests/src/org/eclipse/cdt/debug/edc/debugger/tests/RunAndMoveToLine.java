@@ -61,7 +61,7 @@ public class RunAndMoveToLine extends BaseLaunchTest {
 		//   "C:\\myprog\\BlackFlagWascana\\src\\"
 		// Note we don't need any source file to perform the test.
 		//
-		return "BlackflagMinGW_NoHardcodedBreak.exe";
+		return "BlackFlagMinGW_NoHardcodedBreak.exe";
 	}
 
 	@Override

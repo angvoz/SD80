@@ -117,6 +117,16 @@ void WinProcess::Terminate() throw (AgentException) {
 }
 
 void WinProcess::Resume() throw (AgentException) {
+	std::list<Context*> kids = GetChildren();
+
+	std::list<Context *>::iterator iter;
+	for (iter = kids.begin(); iter != kids.end(); iter++)
+	{
+		WinThread* thread = dynamic_cast<WinThread*>(*iter);
+		if (thread != NULL) {
+			thread->Resume();
+		}
+	}
 }
 
 int WinProcess::WriteMemory(unsigned long address, unsigned long size,

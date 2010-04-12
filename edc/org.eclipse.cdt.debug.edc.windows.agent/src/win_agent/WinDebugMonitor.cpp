@@ -201,22 +201,14 @@ void WinDebugMonitor::AttachToProcessForDebug()
 	if (!DebugActiveProcess(processID))
 	{
 		DWORD err = GetLastError();
-		/*
-		std::string msg = "Failed to attach to process ";
-		msg += '\"';
-		msg += AgentUtils::IntToString(processID);
-		msg += "\". Win32 error code: ";
-		msg += AgentUtils::IntToString(err);
 
-		// Don't throw exception, just report the error to host.
-		// throw AgentException(msg);
-		set_exception_errno(err, (char*)msg.c_str());
-		tcf.writeError(ERR_EXCEPTION);
-		*/
 		tcf.writeError(set_win32_errno(err));
 
 		tcf.writeComplete();
 	} else {
+		// Allow detach without kill.
+		DebugSetProcessKillOnExit(false);
+
 		// OK
 		tcf.writeError(0);
 		tcf.writeComplete();

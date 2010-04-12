@@ -53,6 +53,7 @@ public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		steps.add(initRunControlStep);
 		steps.add(initRegistersServiceStep);
 		steps.add(initMemoryServiceStep);
+		steps.add(initProcessesServiceStep);
 		steps.add(doAttach ? attachStep : launchStep);
 		steps.add(cleanupStep);
 	}

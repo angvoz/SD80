@@ -22,7 +22,7 @@ public:
 	WinProcess(WinDebugMonitor* monitor, DEBUG_EVENT& debugEvent);
 	WinProcess(DWORD procID, std::string procName);
 
-	~WinProcess(void);
+	virtual ~WinProcess(void);
 
 	virtual int ReadMemory(unsigned long address, unsigned long size,
 			char* memBuffer, unsigned long bufferSize, unsigned long& sizeRead);
@@ -32,15 +32,11 @@ public:
 
 	virtual void Resume() throw (AgentException);
 
-	virtual void Suspend() throw (AgentException) {/* TODO */
-	}
-	;
+	virtual void Suspend() throw (AgentException) {/* TODO */};
 
 	virtual void Terminate() throw (AgentException);
 
-	virtual void SingleStep() throw (AgentException) { /* TODO */
-	}
-	;
+	virtual void SingleStep() throw (AgentException) { /* TODO */};
 
 	HANDLE GetProcessHandle();
 

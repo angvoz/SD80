@@ -21,6 +21,7 @@
 #include "ContextManager.h"
 #include "EventClientNotifier.h"
 #include "Logger.h"
+#include "DetachProcessAction.h"
 
 static const char * sServiceName = "Processes";
 
@@ -46,6 +47,9 @@ const char* ProcessService::GetName() {
 	return sServiceName;
 }
 
+/*
+ * This will return a context, running or debugged one.
+ */
 void ProcessService::command_get_context(char * token, Channel * c) {
 	LogTrace("ProcessService::command_get_context", "token: %s", token);
 	TCFChannel channel(c);
@@ -55,6 +59,9 @@ void ProcessService::command_get_context(char * token, Channel * c) {
 	channel.readComplete();
 
 	Context* context = ContextManager::findRunningContext(id);
+	// not in running context cache, try this
+	if (context == NULL)
+		context = ContextManager::findDebuggedContext(id);
 
 	channel.writeReplyHeader(token);
 
@@ -164,6 +171,24 @@ void ProcessService::command_attach(char * token, Channel * c) {
 }
 
 void ProcessService::command_detach(char * token, Channel * c) {
+	LogTrace("ProcessService::command_detach", "token: %s", token);
+	TCFChannel channel(c);
+	std::string id = channel.readString();
+	channel.readZero();
+	channel.readComplete();
+
+	WinProcess* context = dynamic_cast<WinProcess*>(ContextManager::findDebuggedContext(id));
+
+	if (context == NULL) {
+		channel.writeReplyHeader(token);
+		// Return an invalid context ID error.
+		channel.writeError(ERR_INV_CONTEXT);
+		channel.writeComplete();
+	}
+	else {
+		context->GetMonitor()->PostAction(new DetachProcessAction(context->GetOSID(), token, c));
+	}
+
 }
 
 void ProcessService::command_terminate(char * token, Channel * c) {

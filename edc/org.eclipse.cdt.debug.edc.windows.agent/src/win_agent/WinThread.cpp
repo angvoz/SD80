@@ -371,6 +371,9 @@ void WinThread::Suspend() throw (AgentException) {
 }
 
 void WinThread::Resume() throw (AgentException) {
+	if (! isSuspended())
+		return;
+
 	if (isUserSuspended_){
 		ResumeThread(handle_);
 		isUserSuspended_ = false;

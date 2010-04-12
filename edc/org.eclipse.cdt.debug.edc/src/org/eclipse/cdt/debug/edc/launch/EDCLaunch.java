@@ -24,6 +24,7 @@ import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.launch.ShutdownSequence;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Processes;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.RootExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
@@ -224,7 +225,13 @@ public class EDCLaunch extends Launch {
 
 	@Override
 	public void disconnect() throws DebugException {
-		terminate();
+        getDsfExecutor().execute(new Runnable() {
+            public void run() {
+                Processes procService = tracker.getService(Processes.class);
+                if (procService != null)
+                	procService.detachDebuggerFromSession(null);
+            }
+        });
 	}
 
 	// IDisconnect

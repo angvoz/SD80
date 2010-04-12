@@ -234,6 +234,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public abstract ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext);
 
+		public abstract boolean canDetach();
+		
 		public void loadSnapshot(Element element) throws Exception {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, element);
 			NodeList ecElements = element.getElementsByTagName(EXECUTION_CONTEXT);
@@ -295,8 +297,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			synchronized (properties) {
 				properties.put(PROP_IS_SUSPENDED, isSuspended);
 			}
-			if (getParentExecutionDMC() != null)
-				getParentExecutionDMC().childIsSuspended(isSuspended);
+			if (getParent() != null)
+				getParent().childIsSuspended(isSuspended);
 		}
 
 		private void childIsSuspended(boolean isSuspended) {
@@ -674,12 +676,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				});
 			} else {	
 				// Snapshots, for e.g., don't have a TCF RunControlContext, so just remove all the contexts recursively
-				stopDebugAllContexts();
+				detachAllContexts();
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
 
-		public ExecutionDMC getParentExecutionDMC() {
+		protected ExecutionDMC getParent() {
 			return parentExecutionDMC;
 		}
 
@@ -702,11 +704,22 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			latestPC = pc;
 		}
 
-		public void contextRemoved(String childContextId) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, childContextId);
-			ExecutionDMC dmc = getContext(childContextId);
-			removeChild(dmc);
-			getSession().dispatchEvent(new ExitedEvent(dmc), RunControl.this.getProperties());
+		/**
+		 * Detach debugger from this context and all its children and grand-children.
+		 * This is to purge the context from debugger UI and internal storage.
+		 */
+		public void detachFromDebugger(){
+			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE);
+
+			for (ExecutionDMC e : getChildren())
+				// recursively forget children first
+				e.detachFromDebugger();
+
+			ExecutionDMC parent = getParent();
+			if (parent != null)
+				parent.removeChild(this);
+			
+			getSession().dispatchEvent(new ExitedEvent(this), RunControl.this.getProperties());
 			
 			if (getRootDMC().getChildren().length == 0) 
 				// no more contexts under debug, fire exitedEvent for the rootDMC which
@@ -715,20 +728,6 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				getSession().dispatchEvent(new ExitedEvent(getRootDMC()), RunControl.this.getProperties());
 			
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
-		}
-		
-		/**
-		 * Stop debug all children & grand-children under this context.
-		 * This does not kill the actual process or thread.
-		 * 
-		 * @param dmc
-		 */
-		protected void stopDebugChildren(){
-			for (ExecutionDMC e : getChildren()){
-				e.stopDebugChildren();
-				
-				contextRemoved(e.getID());
-			}
 		}
 
 		/**
@@ -944,6 +943,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return contextElement;
 		}
 
+		@Override
+		public boolean canDetach() {
+			// can detach from a process.
+			return true;
+		}
+
 	}
 
 	public class ThreadExecutionDMC extends ExecutionDMC implements IThreadDMContext, IDisassemblyDMContext {
@@ -1031,6 +1036,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return null;
 		}
 
+		@Override
+		public boolean canDetach() {
+			// Cannot detach from a thread.
+			return false;
+		}
+
 	}
 
 	public class RootExecutionDMC extends ExecutionDMC implements ISourceLookupDMContext {
@@ -1048,6 +1059,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public ISymbolDMContext getSymbolDMContext() {
 			return null;
+		}
+
+		@Override
+		public boolean canDetach() {
+			return false;
 		}
 	}
 
@@ -1915,10 +1931,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		public void contextRemoved(String[] context_ids) {
 			for (String contextID : context_ids) {
 				ExecutionDMC dmc = getContext(contextID);
-				ExecutionDMC parent = dmc.getParentExecutionDMC();
-				if (parent != null) {
-					parent.contextRemoved(contextID);
-				}
+				assert dmc != null;
+				if (dmc != null)
+					dmc.detachFromDebugger();
 			}
 		}
 
@@ -1974,8 +1989,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 * the actual process or thread.
 	 * See: {@link #terminateAllContexts(RequestMonitor)}
 	 */
-	public void stopDebugAllContexts(){
-		getRootDMC().stopDebugChildren();
+	private void detachAllContexts(){
+		getRootDMC().detachFromDebugger();
 	}
 
 	/**
@@ -1992,7 +2007,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				// because connection to target is lost, or some processes
 				// cannot be killed (e.g. OS does not permit that).
 				// Just untarget the contexts.
-				stopDebugAllContexts();
+				detachAllContexts();
 		
 				if (rm != null)
 					rm.done();

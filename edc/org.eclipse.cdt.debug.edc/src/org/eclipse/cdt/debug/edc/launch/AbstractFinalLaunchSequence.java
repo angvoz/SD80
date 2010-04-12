@@ -23,6 +23,7 @@ import org.eclipse.cdt.debug.edc.ITCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Processes;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
 import org.eclipse.cdt.debug.edc.services.Registers;
@@ -224,6 +225,20 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	};
 
 	/*
+	 * Initialize the processes service
+	 */
+	protected Step initProcessesServiceStep = new Step() {
+
+		@Override
+		public void execute(final RequestMonitor requestMonitor) {
+			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
+			Processes p = tracker.getService(Processes.class);
+			findTCFServiceForDSFService(p, IProcesses.NAME, requestMonitor);
+			requestMonitor.done();
+		}
+	};
+
+	/*
 	 * Launch the process
 	 */
 	protected Step launchStep = new Step() {
@@ -284,7 +299,6 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 	protected void findPeer(RequestMonitor requestMonitor) {
 		try {
-			ILaunchConfiguration cfg = launch.getLaunchConfiguration();
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
 			IPeer[] runningPeers = tcfServiceManager.getRunningPeers(IRunControl.NAME, peerAttributes, !isUsingRemotePeers());
 			

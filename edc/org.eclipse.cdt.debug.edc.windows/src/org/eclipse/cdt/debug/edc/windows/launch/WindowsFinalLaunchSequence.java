@@ -84,6 +84,7 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		steps.add(initRestartStep);
 		steps.add(initRegistersServiceStep);
 		steps.add(initMemoryServiceStep);
+		steps.add(initProcessesServiceStep);
 		steps.add(doAttach ? attachStep : launchStep);
 		steps.add(cleanupStep);
 	}

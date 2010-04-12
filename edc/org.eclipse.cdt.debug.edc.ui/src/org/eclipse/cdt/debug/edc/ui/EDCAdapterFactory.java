@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.core.model.IRestart;
 import org.eclipse.cdt.debug.core.model.ISteppingModeTarget;
 import org.eclipse.cdt.debug.edc.internal.ui.DsfTerminateCommand;
 import org.eclipse.cdt.debug.edc.internal.ui.EDCViewModelAdapter;
+import org.eclipse.cdt.debug.edc.internal.ui.actions.EDCDisconnectCommand;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.ThreadSafe;
@@ -74,9 +75,10 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 		final DsfStepOverCommand fStepOverCommand;
 		final DsfStepReturnCommand fStepReturnCommand;
 		final DsfTerminateCommand fTerminateCommand;
-
 		final DsfSuspendCommand fSuspendCommand;
 		final DsfResumeCommand fResumeCommand;
+		final EDCDisconnectCommand fDisconnectCommand;
+		
 		final IDebugModelProvider fDebugModelProvider;
 		final DsfSuspendTrigger fSuspendTrigger;
 		final DsfSteppingModeTarget fSteppingModeTarget;
@@ -102,6 +104,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 			}
 			session.registerModelAdapter(ISourceDisplay.class, fSourceDisplayAdapter);
 
+			fDisconnectCommand = new EDCDisconnectCommand(session);
 			fSteppingModeTarget = new DsfSteppingModeTarget();
 			fStepIntoCommand = new DsfStepIntoCommand(session, fSteppingModeTarget);
 			fStepOverCommand = new DsfStepOverCommand(session, fSteppingModeTarget);
@@ -113,6 +116,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 			fModelSelectionPolicyFactory = new DefaultEDCModelSelectionPolicyFactory();
 			fRefreshAllTarget = new DefaultRefreshAllTarget();
 
+			session.registerModelAdapter(IDisconnectHandler.class, fDisconnectCommand);
 			session.registerModelAdapter(ISteppingModeTarget.class, fSteppingModeTarget);
 			session.registerModelAdapter(IStepIntoHandler.class, fStepIntoCommand);
 			session.registerModelAdapter(IStepOverHandler.class, fStepOverCommand);
@@ -165,6 +169,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 			session.unregisterModelAdapter(IRefreshAllTarget.class);
 			session.unregisterModelAdapter(ITerminateHandler.class);
 
+			fDisconnectCommand.dispose();
 			fStepIntoCommand.dispose();
 			fStepOverCommand.dispose();
 			fStepReturnCommand.dispose();

@@ -520,11 +520,13 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			doAttachTask(contexts[selectedIndex]);
 
 		} catch (CoreException e) {
-			requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), e.getMessage()));
-			requestMonitor.done();
-			return;
+			if (e.getStatus().matches(IStatus.CANCEL))
+				requestMonitor.cancel();
+			else {
+				requestMonitor.setStatus(e.getStatus());
+			}
 		}
-
+		
 		requestMonitor.done();
 	}
 

@@ -14,7 +14,7 @@
            delegate="org.eclipse.cdt.debug.edc.windows.launch.WindowsLaunchDelegate"
            delegateDescription="Start new process under control of EDC debugger"
            id="org.eclipse.cdt.debug.edc.windows.localLaunchDelegate"
-           modes="run,debug"
+           modes="debug"
            name="EDC Create Process (Windows)"
            sourceLocatorId="org.eclipse.cdt.debug.ui.DefaultSourceLocator"
            sourcePathComputerId="org.eclipse.cdt.debug.core.sourcePathComputer"

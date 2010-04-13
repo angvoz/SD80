@@ -33,6 +33,7 @@ public class FormatExtensionManager implements IVariableFormatManager {
 	
 	// Preferences
 	public static final String VARIABLE_FORMATS_ENABLED = "variable_formats_enabled";
+	public static final boolean VARIABLE_FORMATS_ENABLED_DEFAULT = true;
 
 	/**
 	 * A chooser implementation that always defers to any formatter that is not one of the default formatters
@@ -92,7 +93,7 @@ public class FormatExtensionManager implements IVariableFormatManager {
 	
 	private Map<String, FormatProviderExtension> formatProviders;
 	private IVariableFormatProviderChooser chooser;
-	private boolean enabled = true;
+	private boolean enabled = FormatExtensionManager.VARIABLE_FORMATS_ENABLED_DEFAULT;
 
 	public static IVariableFormatManager instance() {
 		return instance;
@@ -102,7 +103,7 @@ public class FormatExtensionManager implements IVariableFormatManager {
 		readProviders();
 		setFormatProviderChooser(chooser);
 		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
-		enabled = scope.getBoolean(VARIABLE_FORMATS_ENABLED, false);
+		enabled = scope.getBoolean(VARIABLE_FORMATS_ENABLED, FormatExtensionManager.VARIABLE_FORMATS_ENABLED_DEFAULT);
 	}
 
 	private void readProviders() {

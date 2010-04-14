@@ -197,6 +197,12 @@
                commandId="org.eclipse.cdt.debug.edc.ui.toggleShowAllVariables"
                label="Show All Variables"
                style="toggle">
+             <visibleWhen
+                  checkEnabled="false">
+               <reference
+                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCDebugSession">
+               </reference>
+            </visibleWhen>
          </command>
       </menuContribution>
       <menuContribution
@@ -206,6 +212,12 @@
                icon="icons/obj16/var_format.png"
                label="Toggle Custom Variable Formatting"
                style="toggle">
+              <visibleWhen
+                  checkEnabled="false">
+               <reference
+                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCDebugSession">
+               </reference>
+            </visibleWhen>
          </command>
       </menuContribution>
       <menuContribution
@@ -215,6 +227,12 @@
                icon="icons/obj16/tcf.gif"
                label="Toggle Custom Variable Formatting"
                style="toggle">
+             <visibleWhen
+                  checkEnabled="false">
+               <reference
+                     definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCDebugSession">
+               </reference>
+            </visibleWhen>
          </command>
       </menuContribution>
 
@@ -335,6 +353,28 @@
             </or>
            </and>
       </definition>
+      <definition
+            id="org.eclipse.cdt.debug.edc.ui.testIsEDCDebugSession">
+         <and>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCUIPluginActive">
+            </reference>
+             <or>
+               <with
+                     variable="activePart">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isEDCSession">
+                  </test>
+               </with>
+               <with
+                     variable="selection">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isEDCSession">
+                  </test>
+               </with>
+            </or>
+           </and>
+      </definition>
       <definition id="org.eclipse.cdt.debug.edc.ui.testIsEDCRunning">
          <with
                variable="org.eclipse.core.runtime.Platform">
@@ -435,6 +475,20 @@
             id="org.eclipse.cdt.debug.edc.ui.partSnapshotPropertyTester"
             namespace="org.eclipse.cdt.debug.edc.ui"
             properties="isSnapshotCreationAvailable"
+            type="org.eclipse.ui.IWorkbenchPart">
+      </propertyTester>
+      <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.selectionSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isEDCSession"
+            type="org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext">
+      </propertyTester>
+      <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.partSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isEDCSession"
             type="org.eclipse.ui.IWorkbenchPart">
       </propertyTester>
      <propertyTester

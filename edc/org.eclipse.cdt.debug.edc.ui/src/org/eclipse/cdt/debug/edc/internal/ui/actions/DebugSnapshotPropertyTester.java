@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
@@ -28,11 +29,18 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 	public boolean test(Object receiver, String property, Object[] args, Object expectedValue) {
 
 		IDMVMContext testContext = null;
+		
+		boolean isEDCSession = false;
+		boolean isSnapshotSession = false;
 
 		if (receiver instanceof IWorkbenchPart) {
 			Object selection = getContextSelectionForPart((IWorkbenchPart) receiver);
 			if (selection instanceof IDMVMContext) {
 				testContext = ((IDMVMContext) selection);
+			}
+			else if (selection instanceof EDCLaunch)
+			{
+				isEDCSession = true;
 			}
 		} else if (receiver instanceof IDMVMContext) {
 			testContext = ((IDMVMContext) receiver);
@@ -40,20 +48,23 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 
 		if (testContext != null) {
 			String sessionID = testContext.getDMContext().getSessionId();
-			boolean isSnapshotSession = Album.isSnapshotSession(sessionID);
+			isSnapshotSession = Album.isSnapshotSession(sessionID);
 			IDMContext context = testContext.getDMContext();
 			if (context instanceof IEDCDMContext) {
-				if (property.equals("isSnapshotCreationAvailable")) {
-					return !isSnapshotSession;
-
-				} else if (property.equals("isSnapshotSession")) {
-					return isSnapshotSession;
-				} else if (property.equals("isPreviousSnapshotAvailable")) {
-					return true; // Album.getRecordingForSession(sessionID) != null;
-				}
+				isEDCSession = true;
 			}
-
 		}
+		
+		if (property.equals("isSnapshotCreationAvailable")) {
+			return !isSnapshotSession;
+		} else if (property.equals("isEDCSession")) {
+			return isEDCSession;
+		} else if (property.equals("isSnapshotSession")) {
+			return isSnapshotSession;
+		} else if (property.equals("isPreviousSnapshotAvailable")) {
+			return true;
+		}
+
 		return false;
 	}
 

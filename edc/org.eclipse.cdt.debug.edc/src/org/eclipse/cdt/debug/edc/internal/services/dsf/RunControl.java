@@ -1945,7 +1945,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		public void contextSuspended(final String context, final String pc, final String reason,
 				final Map<String, Object> params) {
 			ExecutionDMC dmc = getContext(context);
-			dmc.contextSuspended(pc, reason, params);
+			if (dmc != null)
+				dmc.contextSuspended(pc, reason, params);
+			else {
+				EDCDebugger.getMessageLogger().logError(
+					MessageFormat.format("Unkown context [{0}] is reported in suspended event. Make sure TCF agent has reported contextAdded event first.", context), 
+					null);
+			}
 		}
 	};
 

@@ -10,15 +10,15 @@
  *******************************************************************************/
 package org.eclipse.cdt.codan.internal.core.cfg;
 
-import org.eclipse.cdt.codan.provisional.core.model.cfg.ILabeledNode;
+import org.eclipse.cdt.codan.provisional.core.model.cfg.IBranchNode;
 
 /**
  * TODO: add description
  */
-public class LabeledNode extends ConnectorNode implements ILabeledNode {
-	private String label;
+public class BranchNode extends PlainNode implements IBranchNode {
+	protected String label;
 
-	public LabeledNode(String label) {
+	public BranchNode(String label) {
 		super();
 		this.label = label;
 	}
@@ -27,7 +27,7 @@ public class LabeledNode extends ConnectorNode implements ILabeledNode {
 	 * (non-Javadoc)
 	 * 
 	 * @see
-	 * org.eclipse.cdt.codan.provisional.core.model.cfg.ILabeledNode#getLabel()
+	 * org.eclipse.cdt.codan.provisional.core.model.cfg.IBranchNode#getLabel()
 	 */
 	public String getLabel() {
 		return label;
@@ -35,8 +35,6 @@ public class LabeledNode extends ConnectorNode implements ILabeledNode {
 
 	@Override
 	public String toStringData() {
-		if (getData() == null)
-			return label + ":";
-		return getData().toString();
+		return label;
 	}
 }

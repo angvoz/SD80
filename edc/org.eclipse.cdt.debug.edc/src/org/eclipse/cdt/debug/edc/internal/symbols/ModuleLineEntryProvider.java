@@ -148,14 +148,14 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			if (lineEntry.getFilePath().equals(filePath)) {
 				SortedMap<Integer, List<ILineEntry>> subMap = lineEntriesByLine.tailMap(lineEntry.getLineNumber() + 1);
 				if (!subMap.isEmpty()) {
-					IFunctionScope function = compileUnitScope.getFunctionAtAddress(lineEntry.getLowAddress());
+					IFunctionScope function = ignoreInlineFunctions(compileUnitScope.getFunctionAtAddress(lineEntry.getLowAddress()));
 					if (function == null) {
 						return null;
 					}
 					for (ILineEntry nextEntry : subMap.get(subMap.firstKey())) {
 						// return the entry at the next line if it's in the
 						// same function and has a higher address
-						IFunctionScope nextFunction = compileUnitScope.getFunctionAtAddress(nextEntry.getLowAddress());
+						IFunctionScope nextFunction = ignoreInlineFunctions(compileUnitScope.getFunctionAtAddress(nextEntry.getLowAddress()));
 						if (function.equals(nextFunction)) {
 							if (nextEntry.getLowAddress().compareTo(lineEntry.getHighAddress()) >= 0) {
 								return nextEntry;
@@ -165,6 +165,14 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 				}
 			}
 			return null;
+		}
+
+		private IFunctionScope ignoreInlineFunctions(IFunctionScope function) {
+			while (function.getParent() instanceof IFunctionScope)
+			{
+				function = (IFunctionScope) function.getParent();
+			}			
+			return function;
 		}
 
 	}

@@ -38,6 +38,7 @@ import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
+import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Registers.RegisterGroupDMC;
 import org.eclipse.cdt.debug.edc.services.Stack;
@@ -46,8 +47,10 @@ import org.eclipse.cdt.debug.edc.services.Stack.VariableDMC;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
+import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -1375,7 +1378,20 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return;
 		}
 
+		if (handleSteppingOutOfInLineFunctions(dmc, frames, rm))
+			return;
+
 		final IAddress stepToAddress = ((StackFrameDMC) frames[1]).getIPAddress();
+		
+		
+		boolean keepgoing = true;
+		if (!keepgoing) {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+					"Cannot step out as no caller frame is available.", null));
+			rm.done();
+			return;
+		}
+		
 		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 
 		prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
@@ -1407,6 +1423,32 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					rm.done();
 			}
 		});
+	}
+
+	private boolean handleSteppingOutOfInLineFunctions(final ExecutionDMC dmc, IFrameDMContext[] frames, final RequestMonitor rm) {
+		assert frames.length > 1 && frames[0] instanceof StackFrameDMC;
+		// Check to see if we are in an inlined function
+		StackFrameDMC currentFrame = ((StackFrameDMC) frames[0]);
+		IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+		IFunctionScope functionScope = symbolsService
+		.getFunctionAtAddress(dmc.getSymbolDMContext(), currentFrame.getIPAddress());
+		
+		if (functionScope != null)
+		{
+			IScope parentScope = functionScope.getParent();
+			if (parentScope instanceof IFunctionScope && currentFrame.getModule() != null)
+			{
+				// return currentFrame.getModule().toRuntimeAddress(functionScope.getHighAddress());
+				stepAddressRange(dmc, false, currentFrame.getIPAddress(), functionScope.getHighAddress(), new RequestMonitor(getExecutor(), rm){
+
+					@Override
+					protected void handleSuccess() {
+						step(dmc, StepType.STEP_OVER, new RequestMonitor(getExecutor(), new RequestMonitor(getExecutor(), rm)));
+					}});
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

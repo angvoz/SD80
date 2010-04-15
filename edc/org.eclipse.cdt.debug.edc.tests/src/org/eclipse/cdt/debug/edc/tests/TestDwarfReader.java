@@ -305,12 +305,12 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		}
 	}
 	static {
-		setPubCount("BlackFlagMinGW.exe", 209, 214, 52, 52);
-		setPubCount("BlackFlag_gcce.sym", 217, 222, 94, 105);
-		setPubCount("BlackFlag_linuxgcc.exe", 174, 176, 48, 48);
-		setPubCount("BlackFlag_rvct.sym", 101, 108, 52, 75);
-		setPubCount("HelloWorld_rvct_2_2.exe.sym", 12, 15, 2, 2);
-		setPubCount("HelloWorld_rvct_4_0.exe.sym", 958, 1013, 1, 1);
+		setPubCount("BlackFlagMinGW.exe", 209, 241, 52, 52);
+		setPubCount("BlackFlag_gcce.sym", 217, 286, 94, 105);
+		setPubCount("BlackFlag_linuxgcc.exe", 174, 206, 48, 48);
+		setPubCount("BlackFlag_rvct.sym", 100, 101, 51, 87);
+		setPubCount("HelloWorld_rvct_2_2.exe.sym", 11, 14, 2, 4);
+		setPubCount("HelloWorld_rvct_4_0.exe.sym", 958, 978, 1, 1);
 	}
 	
 	protected static void addPubFuncs(String sym, Object... names) {
@@ -1184,6 +1184,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		assertNotNull(thisVar.getType());
 		_testSpecificTypes4(thisVar.getType());
 	}
+
 	/**
 	 * Test some type lookup edge cases
 	 */
@@ -1352,7 +1353,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 	private void readFully(IEDCSymbolReader symbolReader) {
 		IModuleScope moduleScope = symbolReader.getModuleScope();
 		moduleScope.getChildren();
-		moduleScope.getVariablesByName(null);
+		moduleScope.getVariablesByName(null, false);
 		moduleScope.getFunctionsByName(null);
 	}
 
@@ -1675,7 +1676,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 			}
 			for (String name : info.pubVars) {
 				String simpleName = stripName(name);
-				Collection<IVariable> vars = symbolReader.getModuleScope().getVariablesByName(simpleName);
+				Collection<IVariable> vars = symbolReader.getModuleScope().getVariablesByName(simpleName, false);
 				assertNotNull(info.symFile.lastSegment() + ":" + name, vars);
 				assertTrue(info.symFile.lastSegment() + ":" + name, !vars.isEmpty());
 				for (IVariable var : vars) {
@@ -2127,7 +2128,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		assertTrue("Did not find 'tmp'", found);
 		
 		found = false;
-		for (IVariable var : reader.getModuleScope().getVariablesByName("bigbuffer")) {
+		for (IVariable var : reader.getModuleScope().getVariablesByName("bigbuffer", false)) {
 			IType type = var.getType();
 			assertTrue(type instanceof IArrayType);
 			IArrayBoundType bound = ((IArrayType) type).getBound(0);

@@ -253,7 +253,7 @@ public class SymbolReader {
 		Assert.assertFalse(module.getLowAddress().isZero());
 		Assert.assertFalse(module.getHighAddress().isZero());
 
-		Collection<IVariable> variables = reader.getModuleScope().getVariablesByName("gstring");
+		Collection<IVariable> variables = reader.getModuleScope().getVariablesByName("gstring", false);
 		Assert.assertEquals(1, variables.size());
 		Assert.assertTrue(variables.iterator().next().getScope() instanceof IModuleScope);
 		Assert.assertNotNull(variables.iterator().next().getLocationProvider());

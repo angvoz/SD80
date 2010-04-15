@@ -495,6 +495,47 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				break;
 			}
 		}
+		
+		/**
+		 * Parse attributes and then skip to sibling, if any
+		 * 
+		 * @param names array to hold up to two names
+		 * @param entry debug info entry
+		 * @param in buffer stream of debug info
+		 * @param addressSize 
+		 * @param debugStrings
+		 * @return DW_AT_name value, or null if there is no or invalid DW_AT_name attribute  
+		 */
+		public static void skipAttributesToSibling(AbbreviationEntry entry, IStreamBuffer in, byte addressSize) {
+		
+			long sibling = -1;
+
+			// go through the attributes and throw away everything except the sibling
+			int len = entry.attributes.size();
+			for (int i = 0; i < len; i++) {
+				Attribute attr = entry.attributes.get(i);
+				try {
+					if (attr.tag == DwarfConstants.DW_AT_sibling) {
+						if (attr.form == DwarfConstants.DW_FORM_ref_udata) {
+							sibling = DwarfInfoReader.read_unsigned_leb128(in);
+						} else if (attr.form == DwarfConstants.DW_FORM_ref4) {
+							sibling = in.getInt();
+						} else {
+							// TODO: allow other forms for sibling value
+							AttributeValue.skipAttributeValue(attr.form, in, addressSize);
+						}
+					} else {
+						AttributeValue.skipAttributeValue(attr.form, in, addressSize);
+					}
+				} catch (IOException e) {
+					EDCDebugger.getMessageLogger().logError(null, e);
+					break;
+				}
+			}
+
+			if (sibling != -1)
+				in.position(sibling);
+		}
 
 
 		public byte getActualForm() {
@@ -711,7 +752,6 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	protected Map<String, List<IVariable>> variablesByName = new HashMap<String, List<IVariable>>();
 	protected Map<String, List<PublicNameInfo>> publicFunctions = new HashMap<String, List<PublicNameInfo>>();
 	protected Map<String, List<PublicNameInfo>> publicVariables = new HashMap<String, List<PublicNameInfo>>();
-	
 
 	// abbreviation tables (lists of abbrev entries), mapped by .debug_abbrev offset
 	protected Map<Integer, Map<Long, AbbreviationEntry>> abbreviationMaps = new HashMap<Integer, Map<Long, AbbreviationEntry>>();
@@ -729,6 +769,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	private boolean parsedInitially = false;
 	private boolean parsedForVarsAndAddresses = false;
 	private boolean parsedForTypes = false;
+	private boolean parsedForGlobalVars = false;
 	
 	private final IExecutableSymbolicsReader exeReader;
 	private final DwarfModuleScope moduleScope;
@@ -815,6 +856,28 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			parsedForVarsAndAddresses = true;
 			reader.parseForAddresses();
 		}
+	}
+	
+	private void ensureParsedForGlobalVariables() {
+		if (parsedForGlobalVars)
+			return;
+		parsedForGlobalVars = true;
+
+		if (publicVariables.size() == 0)
+			return;
+
+		// determine compilation units containing globals
+		HashSet<CompilationUnitHeader> cuWithGlobalsArray = new HashSet<CompilationUnitHeader>(publicVariables.size());
+		for (List<PublicNameInfo> infoList : publicVariables.values()) {
+			for (PublicNameInfo info : infoList) {
+				cuWithGlobalsArray.add(info.cuHeader);
+			}
+		}
+
+		// parse compilation units containing global variables
+		DwarfInfoReader reader = new DwarfInfoReader(this);
+		for (CompilationUnitHeader cuHeader : cuWithGlobalsArray)
+			reader.parseCompilationUnitForAddresses(cuHeader.scope);
 	}
 
 	void ensureParsedForTypes() {
@@ -914,12 +977,12 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		return Collections.unmodifiableCollection(result);
 	}
 
-	public Collection<IVariable> getVariablesByName(String name) {
+	public Collection<IVariable> getVariablesByName(String name, boolean globalsOnly) {
 		List<IVariable> result;
 
 		ensureParsedInitially();
 		
-		// first, match against public variable names
+		// match against public variable names, which the initial parse populated
 		if (publicVariables.size() > 0) {
 			if (name != null) {
 				DwarfInfoReader reader = new DwarfInfoReader(this);
@@ -944,15 +1007,16 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 					}
 				} else {
 					// not a public name, so parse all computation units looking for variables
-					ensureParsedForVariables();
+					if (!globalsOnly)
+						ensureParsedForVariables();
 				}
 			} else {
 				// name is null, so parse all computation units looking for variables
-				ensureParsedForVariables();
+				if (globalsOnly)
+					ensureParsedForGlobalVariables();
+				else
+					ensureParsedForVariables();
 			}
-		} else {
-			// no public names, so parse all computation units looking for variables
-			ensureParsedForVariables();
 		}
 
 		if (name != null) {
@@ -961,8 +1025,8 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				return new ArrayList<IVariable>(0);
 		} else {
 			result = new ArrayList<IVariable>(variablesByName.size()); // at least this big
-			for (List<IVariable> functions : variablesByName.values())
-				result.addAll(functions);
+			for (List<IVariable> variables : variablesByName.values())
+				result.addAll(variables);
 		}
 		return Collections.unmodifiableCollection(result);
 	}

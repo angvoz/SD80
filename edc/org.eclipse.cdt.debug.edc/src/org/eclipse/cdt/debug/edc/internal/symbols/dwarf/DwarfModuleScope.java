@@ -110,9 +110,10 @@ public class DwarfModuleScope extends Scope implements IModuleScope {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IModuleScope#getVariablesByName(java.lang.String)
 	 */
-	public Collection<IVariable> getVariablesByName(String name) {
+	public Collection<IVariable> getVariablesByName(String name, boolean globalsOnly) {
+		// at the module scope, the variables we want are global
 		if (provider != null) 
-			return provider.getVariablesByName(name);
+			return provider.getVariablesByName(name, globalsOnly);
 		else
 			return Collections.emptyList();
 	}

@@ -217,6 +217,7 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 			String function = (String) attributes.get(ICLineBreakpoint.FUNCTION);
 			assert (function != null && function.length() > 0);
 			
+			// the point is a symbol
 			Symbols symService = dsfServicesTracker.getService(Symbols.class);
 			List<IAddress> addrs = symService.getFunctionAddress(module, function);
 			for (IAddress a : addrs) {

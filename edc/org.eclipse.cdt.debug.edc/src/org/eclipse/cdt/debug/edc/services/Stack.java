@@ -277,6 +277,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private IFrameRegisters frameRegisters;
 		public StackFrameDMC calledFrame;
 		private TypeEngine typeEngine;
+		private IEDCModuleDMContext module;
 
 		public StackFrameDMC(final IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
 			super(Stack.this, new IDMContext[] { executionDMC }, createFrameID(executionDMC, frameProperties), frameProperties);
@@ -332,7 +333,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			IDebugInfoProvider debugInfoProvider = null;
 			IEDCModules modules = dsfServicesTracker.getService(IEDCModules.class);
 			if (modules != null) {
-				IEDCModuleDMContext module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
 				if (module != null) {
 					IEDCSymbolReader symbolReader = module.getSymbolReader();
 					if (symbolReader instanceof EDCSymbolReader) {
@@ -583,6 +584,19 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			IScope variableScope = this.getVariableScope().getParent();
 
 			while (variableOrEnumerator == null && variableScope != null) {
+				// At the module level, match against globals across the entire symbol
+				// file, even for big symbol files.
+				if (variableScope instanceof IModuleScope) {
+					Collection<IVariable> variables = ((IModuleScope)variableScope).getVariablesByName(name, true);
+					if (variables.size() > 0) {
+						Object[] variableArray = variables.toArray();
+						if (variableArray[0] instanceof IVariable)
+							variableOrEnumerator = new VariableDMC(Stack.this, this, (IVariable)variableArray[0]);
+					}
+					// module scope has no parent with variables
+					break;
+				}
+
 				for (IVariable scopeVariable : variableScope.getVariables()) {
 					if (scopeVariable.getName().equals(name)) {
 						variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
@@ -610,16 +624,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				}
 
 				variableScope = variableScope.getParent();
-				
-				// TODO: we often get to the point of the module scope when a text hover
-				// is asking for a variable.  We probably don't want to fish out all the globals across the entire
-				// sym file, especially not for big sym files.  So, for the new reader, 
-				// bail here.  We need to address this issue later along with other global variable fixes.
-				if (variableScope instanceof IModuleScope) {
-					break;
-				}
 			}
-				
+			
 			return variableOrEnumerator;
 		}
 		
@@ -723,6 +729,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		public TypeEngine getTypeEngine() {
 			return typeEngine;
 		}
+		
+		public IEDCModuleDMContext getModule() {
+			return module;
+		}
+		
 	}
 
 	public class VariableData implements IVariableDMData {

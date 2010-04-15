@@ -47,7 +47,7 @@ public interface IModuleScope extends IScope {
 	List<ICompileUnitScope> getCompileUnitsForFile(IPath filePath);
 	
 	/**
-	 * Get all functions in any scope in the module with the given name
+	 * Get all functions with the given name in any scope in the module
 	 * 
 	 * @param name
 	 *            the function name, or <code>null</code> for all functions
@@ -56,13 +56,17 @@ public interface IModuleScope extends IScope {
 	Collection<IFunctionScope> getFunctionsByName(String name);
 
 	/**
-	 * Get all variables in any scope in the module with the given name
+	 * Get all variables with the given name in any scope in the module
 	 * 
-	 * @param name 
-	 *            the variable name, or <code>null</code> for all variables
+	 * @param name
+	 *            the variable name, or <code>null</code> to get all variables
+	 * @param globalsOnly
+	 *            whether to assume local variables in scope have been recorded
+     *            and only globally-visible variables remain to be found
 	 * @return unmodifiable list of variables, which may be empty
 	 */
-	Collection<IVariable> getVariablesByName(String name);
+	Collection<IVariable> getVariablesByName(String name, boolean globalsOnly);
+
 	
 	/**
 	 * Get all the types declared in the module.

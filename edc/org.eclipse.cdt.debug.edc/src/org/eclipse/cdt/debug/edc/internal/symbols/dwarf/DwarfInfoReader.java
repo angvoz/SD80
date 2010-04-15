@@ -72,6 +72,8 @@ import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.F
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.PublicNameInfo;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.CommonInformationEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.FrameDescriptionEntry;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.BaseExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.UnmanglingException;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
@@ -81,6 +83,7 @@ import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IRangeList;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.IUnmangler;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IPath;
@@ -92,6 +95,13 @@ import org.eclipse.core.runtime.IPath;
  * holds the global state of everything parsed so far.
  */
 public class DwarfInfoReader {
+	
+	private class BaseAndScopedNames {
+		public String baseName;			// e.g., "bar"
+		public String nameWithScope;	// e.g., "foo::bar" 
+	}
+	
+	private BaseAndScopedNames baseAndScopedNames = new BaseAndScopedNames();
 
 	// These are only for developer of the reader.
 	// 
@@ -288,25 +298,34 @@ public class DwarfInfoReader {
 				long code = read_unsigned_leb128(dataInfoBytes);
 				AbbreviationEntry entry = abbrevs.get(new Long(code));
 				
-				if (entry != null) {
+				if (entry != null && name.length() > 0) {
 					String baseName = name;
 					int baseStart = name.lastIndexOf("::"); //$NON-NLS-1$
 					if (baseStart != -1)
 						baseName = name.substring(baseStart + 2);
-
 					if (entry.tag == DwarfConstants.DW_TAG_variable) {
-						List<PublicNameInfo> variables = provider.publicVariables.get(name);
+						List<PublicNameInfo> variables = provider.publicVariables.get(baseName);
 						if (variables == null) {
 							variables = new ArrayList<PublicNameInfo>();
 						}
 						variables.add(new PublicNameInfo(name, header, entry.tag));
 						provider.publicVariables.put(baseName, variables);
 					} else if (entry.tag == DwarfConstants.DW_TAG_subprogram) {
-						List<PublicNameInfo> functions = provider.publicFunctions.get(name);
+						List<PublicNameInfo> functions = provider.publicFunctions.get(baseName);
 						if (functions == null) {
 							functions = new ArrayList<PublicNameInfo>();
+							functions.add(new PublicNameInfo(name, header, entry.tag));
+						} else {
+							// we don't store debug info offsets, so polymorphic functions for a compilation
+							// unit have identical PublicNameInfo fields; throw all but one away
+							ArrayList<PublicNameInfo> arrayList = (ArrayList<PublicNameInfo>)functions;
+							boolean found = false;
+							for (int i = arrayList.size() - 1; 
+									!found && (i >= 0) && (arrayList.get(i).cuHeader == header); i--)
+								found = arrayList.get(i).nameWithNameSpace.equals(name);
+							if (!found)
+								functions.add(new PublicNameInfo(name, header, entry.tag));
 						}
-						functions.add(new PublicNameInfo(name, header, entry.tag));
 						provider.publicFunctions.put(baseName, functions);
 						
 					}
@@ -343,12 +362,15 @@ public class DwarfInfoReader {
 		}
 
 		IStreamBuffer buffer = debugInfoSection.getBuffer();
+		IStreamBuffer debugStrings = getDebugStrings();
+		boolean havePubNames = publicNamesSection != null && publicNamesSection.getBuffer() != null;
+
 		if (buffer != null) {
 			long fileIndex = 0;
 			long fileEndIndex = buffer.capacity();
 			
 			while (fileIndex < fileEndIndex) {
-				fileIndex = parseCompilationUnitShallow(buffer, fileIndex);
+				fileIndex = parseCompilationUnitForNames(buffer, fileIndex, debugStrings, havePubNames);
 			}
 		}
 		provider.compileUnits.trimToSize();
@@ -406,6 +428,257 @@ public class DwarfInfoReader {
 		fileIndex += currentCUHeader.length + 4;		
 		
 		return fileIndex;
+	}
+
+	/**
+	 * Parse the compile unit quickly looking for variables that are globally visible 
+     *
+	 * @return offset of next compilation unit
+	 */
+	public long parseCompilationUnitForNames(IStreamBuffer buffer, long fileIndex, IStreamBuffer debugStrings, boolean havePubNames) {
+		buffer.position(fileIndex);
+
+		currentCUHeader = new CompilationUnitHeader();
+
+		// read the length of the compile unit from the file
+		currentCUHeader.length = buffer.getInt();
+
+		// now read the whole compile unit into memory. note that we're
+		// reading the whole section including the size that we already
+		// read because other code will use the offset of the buffer as
+		// the offset of the section to store things by offset (types,
+		// function declarations, etc).
+		buffer.position(fileIndex);
+		
+		IStreamBuffer in = buffer.wrapSubsection(currentCUHeader.length + 4);
+
+		// skip over the length since we already know it
+		in.position(4);
+
+		currentCUHeader.version = in.getShort();
+		currentCUHeader.abbreviationOffset = in.getInt();
+		currentCUHeader.addressSize = in.get();
+		currentCUHeader.debugInfoOffset = (int) fileIndex;
+		
+		try {
+			// get stored abbrev table, or read and parse an abbrev table
+			Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(currentCUHeader.abbreviationOffset);
+			
+			// read the compile unit's attribute list
+			long code = read_unsigned_leb128(in);
+			AbbreviationEntry entry = abbrevs.get(Long.valueOf(code));
+			
+			AttributeList attributeList = new AttributeList(entry, in, currentCUHeader.addressSize, debugStrings);
+			processCompileUnit(currentCUHeader, entry.hasChildren, attributeList);
+			
+			if (!havePubNames) {
+				// record file scope variables
+				byte addressSize = currentCUHeader.addressSize;
+				while (in.remaining() > 0) {
+					code = read_unsigned_leb128(in);
+		
+					if (code != 0) {
+						entry = abbrevs.get(Long.valueOf(code));
+		
+						switch (entry.tag) {
+						// record names of interest, but not other Dwarf attributes
+						case DwarfConstants.DW_TAG_variable:
+						{
+							// get variable names at the compile unit scope level
+							parseAttributesForNames(true, baseAndScopedNames, entry, in, addressSize, debugStrings);
+							if (baseAndScopedNames.baseName != null)
+								storePublicNames(provider.publicVariables, baseAndScopedNames, currentCUHeader, (short) DwarfConstants.DW_TAG_variable);
+							break;
+						}
+						case DwarfConstants.DW_TAG_imported_declaration: // for possible namespace alias
+						case DwarfConstants.DW_TAG_namespace:
+						case DwarfConstants.DW_TAG_subprogram:
+						case DwarfConstants.DW_TAG_enumerator:
+						case DwarfConstants.DW_TAG_class_type:
+						case DwarfConstants.DW_TAG_structure_type:
+						case DwarfConstants.DW_TAG_array_type:
+						case DwarfConstants.DW_TAG_base_type:
+						case DwarfConstants.DW_TAG_enumeration_type:
+						case DwarfConstants.DW_TAG_pointer_type:
+						case DwarfConstants.DW_TAG_ptr_to_member_type:
+						case DwarfConstants.DW_TAG_subroutine_type:
+						case DwarfConstants.DW_TAG_typedef:
+						case DwarfConstants.DW_TAG_union_type:
+						case DwarfConstants.DW_TAG_access_declaration:
+						case DwarfConstants.DW_TAG_catch_block:
+						case DwarfConstants.DW_TAG_common_block:
+						case DwarfConstants.DW_TAG_common_inclusion:
+						case DwarfConstants.DW_TAG_condition:
+						case DwarfConstants.DW_TAG_const_type:
+						case DwarfConstants.DW_TAG_constant:
+						case DwarfConstants.DW_TAG_entry_point:
+						case DwarfConstants.DW_TAG_file_type:
+						case DwarfConstants.DW_TAG_formal_parameter:
+						case DwarfConstants.DW_TAG_friend:
+						case DwarfConstants.DW_TAG_imported_module:
+						case DwarfConstants.DW_TAG_inheritance:
+						case DwarfConstants.DW_TAG_inlined_subroutine:
+						case DwarfConstants.DW_TAG_interface_type:
+						case DwarfConstants.DW_TAG_label:
+						case DwarfConstants.DW_TAG_lexical_block:
+						case DwarfConstants.DW_TAG_member:
+						case DwarfConstants.DW_TAG_module:
+						case DwarfConstants.DW_TAG_namelist:
+						case DwarfConstants.DW_TAG_namelist_item:
+						case DwarfConstants.DW_TAG_packed_type:
+						case DwarfConstants.DW_TAG_reference_type:
+						case DwarfConstants.DW_TAG_restrict_type:
+						case DwarfConstants.DW_TAG_set_type:
+						case DwarfConstants.DW_TAG_shared_type:
+						case DwarfConstants.DW_TAG_string_type:
+						case DwarfConstants.DW_TAG_subrange_type:
+						case DwarfConstants.DW_TAG_template_type_param:
+						case DwarfConstants.DW_TAG_template_value_param:
+						case DwarfConstants.DW_TAG_thrown_type:
+						case DwarfConstants.DW_TAG_try_block:
+						case DwarfConstants.DW_TAG_unspecified_parameters:
+						case DwarfConstants.DW_TAG_variant:
+						case DwarfConstants.DW_TAG_variant_part:
+						case DwarfConstants.DW_TAG_volatile_type:
+						case DwarfConstants.DW_TAG_with_stmt:
+						{
+							AttributeValue.skipAttributesToSibling(entry, in, addressSize);
+							break;
+						}
+		//				case DwarfConstants.DW_TAG_compile_unit:
+		//				case DwarfConstants.DW_TAG_partial_unit:
+		//				case DwarfConstants.DW_TAG_unspecified_type:
+						default:
+							// skip entire entries
+							AttributeList.skipAttributes(entry, in, addressSize);						
+							break;
+						}
+					}
+				}
+			}
+		} catch (IOException e) {
+			EDCDebugger.getMessageLogger().logError("Failed to parse debug info from section " 
+					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
+		}
+		
+		// skip past the compile unit. note that the
+		// currentCUHeader.length does not include
+		// the size of the unit length itself
+		fileIndex += currentCUHeader.length + 4;		
+		
+		return fileIndex;
+	}
+	
+	/**
+	 * Parse attributes, returning names
+	 * 
+	 * @param onlyExternal only return names if they have external visibility
+	 * @param names array to hold up to two names
+	 * @param entry debug info entry
+	 * @param in buffer stream of debug info
+	 * @param addressSize 
+	 * @param debugStrings
+	 * @return DW_AT_name value in names[0], unmangled DW_AT_MIPS_linkage_name value in
+	 * names[1], or nulls  
+	 */
+	private void parseAttributesForNames(boolean onlyExternal, BaseAndScopedNames baseAndScopedNames, AbbreviationEntry entry, IStreamBuffer in,
+			byte addressSize, IStreamBuffer debugStrings) {
+	
+		String name = null;
+		baseAndScopedNames.baseName = null;
+		baseAndScopedNames.nameWithScope = null;
+		boolean isExternal = false;
+
+		// go through the attributes and throw away everything except the names
+		int len = entry.attributes.size();
+		for (int i = 0; i < len; i++) {
+			Attribute attr = entry.attributes.get(i);
+			try {
+				if (   attr.tag == DwarfConstants.DW_AT_name
+					|| attr.tag == DwarfConstants.DW_AT_MIPS_linkage_name) {
+					// names should be DW_FORM_string or DW_FORM_strp 
+				    if (attr.form == DwarfConstants.DW_FORM_string) {
+						int c;
+						StringBuffer sb = new StringBuffer();
+						while ((c = (in.get() & 0xff)) != -1) {
+							if (c == 0) {
+								break;
+							}
+							sb.append((char) c);
+						}
+						name = sb.toString();
+					} else if (attr.form == DwarfConstants.DW_FORM_strp) {
+						int debugStringOffset = in.getInt();
+						if (   debugStrings != null
+							&& debugStringOffset >= 0
+							&& debugStringOffset < debugStrings.capacity()) {
+							debugStrings.position(debugStringOffset);
+							name = DwarfInfoReader.readString(debugStrings);
+						}
+					}
+				    
+				    if (name != null) {
+				    	if (attr.tag == DwarfConstants.DW_AT_name) {
+				    		baseAndScopedNames.baseName = name;
+				    		baseAndScopedNames.nameWithScope = name;
+				    	} else {
+				    		IUnmangler unmangler = null;
+				    		if (exeReader instanceof BaseExecutableSymbolicsReader)
+				    			unmangler = ((BaseExecutableSymbolicsReader)exeReader).getUnmangler();
+				    		try {
+				    			baseAndScopedNames.nameWithScope = unmangler.unmangle(unmangler.undecorate(name));
+				    		} catch(UnmanglingException ue) {
+				    		}
+				    	}
+				    	name = null;
+				    }
+				} else if (attr.tag == DwarfConstants.DW_AT_external) {
+					if (attr.form == DwarfConstants.DW_FORM_flag) {
+						isExternal = in.get() != 0;
+					} else {
+						AttributeValue.skipAttributeValue(attr.form, in, addressSize);
+					}
+				} else {
+					AttributeValue.skipAttributeValue(attr.form, in, addressSize);
+				}
+			} catch (IOException e) {
+				EDCDebugger.getMessageLogger().logError(null, e);
+				break;
+			}
+		}
+
+		// if only looking for externals, throw away internals
+		if (onlyExternal && !isExternal) {
+			baseAndScopedNames.baseName = null;
+			baseAndScopedNames.nameWithScope = null;
+		} else {
+			// if only have the scoped name, derive the base name
+			if (baseAndScopedNames.nameWithScope != null && baseAndScopedNames.baseName == null) {
+				int baseStart = baseAndScopedNames.nameWithScope.lastIndexOf("::"); //$NON-NLS-1$
+				if (baseStart != -1)
+					baseAndScopedNames.baseName = baseAndScopedNames.nameWithScope.substring(baseStart + 2);
+				else
+					baseAndScopedNames.baseName = baseAndScopedNames.nameWithScope;
+			}
+		}
+	}
+
+	/**
+	 * Store compilation unit level names from Dwarf .debug_info
+	 * 
+	 * @param namesStore
+	 * @param names
+	 * @param offset
+	 */
+	private void storePublicNames(Map<String, List<PublicNameInfo>> namesStore, BaseAndScopedNames baseAndScopedNames,
+			CompilationUnitHeader cuHeader, short tag) {
+
+		List<PublicNameInfo> currentNames = namesStore.get(baseAndScopedNames.baseName);
+		if (currentNames == null) {
+			currentNames = new ArrayList<PublicNameInfo>();
+			namesStore.put(baseAndScopedNames.baseName, currentNames);
+		}
+		currentNames.add(new PublicNameInfo(baseAndScopedNames.nameWithScope, cuHeader, tag));
 	}
 	
 	/**
@@ -577,8 +850,7 @@ public class DwarfInfoReader {
 	 * @return ByteBuffer or <code>null</code>
 	 */
 	private IStreamBuffer getDebugStrings() {
-		IStreamBuffer data = getDwarfSection(DWARF_DEBUG_STR);
-		return data;
+		return getDwarfSection(DWARF_DEBUG_STR);
 	}
 
 	/**

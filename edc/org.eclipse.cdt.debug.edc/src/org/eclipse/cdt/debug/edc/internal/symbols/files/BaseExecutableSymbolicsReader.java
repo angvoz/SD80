@@ -202,4 +202,8 @@ public abstract class BaseExecutableSymbolicsReader implements IExecutableSymbol
 		
 		return matchSymbols;
 	}
+
+	public IUnmangler getUnmangler() {
+		return unmangler;
+	}
 }

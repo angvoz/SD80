@@ -10,17 +10,17 @@
  *******************************************************************************/
 package org.eclipse.cdt.codan.core.cxx.internal.model.cfg;
 
-import org.eclipse.cdt.codan.internal.core.cfg.LabeledNode;
+import org.eclipse.cdt.codan.internal.core.cfg.BranchNode;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 
 /**
  * TODO: add description
  */
-public class CxxLabeledNode extends LabeledNode {
+public class CxxBranchNode extends BranchNode {
 	private IASTNode labelData;
 
 
-    CxxLabeledNode(IASTNode label) {
+    CxxBranchNode(IASTNode label) {
 		super(label.getRawSignature());
 		this.labelData = label;
 	}

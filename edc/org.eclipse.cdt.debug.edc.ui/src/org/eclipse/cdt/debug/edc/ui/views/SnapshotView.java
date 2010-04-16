@@ -20,17 +20,18 @@ import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumStateListener;
+import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumEventListener;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
+import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuListener;
@@ -75,7 +76,7 @@ import org.eclipse.ui.contexts.IContextService;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
-public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListener {
+public class SnapshotView extends ViewPart implements ISnapshotAlbumEventListener {
 
 	/**
 	 * The ID of the view as specified by the extension.
@@ -108,6 +109,8 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	private static final ImageDescriptor PLAY_SNAPSHOT_IMGDESC = AbstractUIPlugin
 	.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
 			"/icons/etool16/play_snapshots.gif"); //$NON-NLS-1$
+
+	public static final String SNAPSHOT_VIEW_ID = "org.eclipse.cdt.debug.edc.ui.views.SnapshotView";
 
 	private static final Image ALBUM_NODE_IMAGE = ALBUM_NODE_IMGDESC
 			.createImage();
@@ -189,7 +192,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 
 	public void createPartControl(Composite parent) {
 		
-		Album.addSnapshotAlbumStateChangedListener(this);
+		Album.addSnapshotAlbumEventListener(this);
 		
 		viewer = new TreeViewer(parent, SWT.H_SCROLL | SWT.V_SCROLL);
 
@@ -748,32 +751,6 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
         return dir.delete();
     }
 
-	public void albumChanged(final IAlbum album) {
-		
-		Display.getDefault().asyncExec(new Runnable() {
-			public void run() {
-				
-				if (album.getSnapshots().size() == 1 && album.isRecording()){
-					// Album just created, refresh the Snapshot project
-					String defaultProjectName = "Snapshots";
-					ICProject cProject = CoreModel.getDefault().getCModel().getCProject(
-							defaultProjectName);
-					if (cProject != null && cProject.exists()){
-						try {
-							cProject.getProject().refreshLocal(IProject.DEPTH_INFINITE, new NullProgressMonitor());
-						} catch (CoreException e) {
-							e.printStackTrace();
-						}
-					}
-				}
-				
-				if (!viewer.getControl().isDisposed())
-					refreshAction.run();
-			}
-		});
-
-	}
-
 	@Override
 	public void dispose() {
 		if (contextActivation != null) {
@@ -790,7 +767,53 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumStateListene
 	 * snapshot
 	 */
 	public void refresh() {
-		refreshAction.run();
+		Display.getDefault().asyncExec(new Runnable() {
+			public void run() {
+				if (!viewer.getControl().isDisposed())
+					refreshAction.run();
+			}
+		});
+
+	}
+
+	private void revealSnapshot(final Snapshot snapshot) {
+		Display.getDefault().asyncExec(new Runnable() {
+			public void run() {
+				if (!viewer.getControl().isDisposed()) {
+					TreeNode[] nodes = (TreeNode[]) viewer.getInput();
+					Album album = snapshot.getAlbum();
+					for (TreeNode treeNode : nodes) {
+						if (treeNode.getValue().equals(album))
+						{
+							TreeNode[] children = treeNode.getChildren();
+							for (TreeNode snapNode : children) {
+								if (snapNode.getValue().equals(snapshot))
+								{
+									viewer.reveal(snapNode);
+									break;
+								}
+							}
+							break;
+						}
+					}
+				}
+			}
+		});
+	}
+	
+	public void snapshotCreated(final Album album, Snapshot snapshot,
+			DsfSession session, StackFrameDMC stackFrame) {
+		refresh();
+		revealSnapshot(snapshot);
+	}
+
+	public void snapshotOpened(Snapshot snapshot) {
+		refresh();
+		revealSnapshot(snapshot);
+	}
+
+	public void snapshotSessionEnded(Album album, DsfSession session) {
+		refresh();
 	}
 
 }

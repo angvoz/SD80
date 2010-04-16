@@ -110,7 +110,7 @@ public class Album extends PlatformObject implements IAlbum {
 	private static final String ALBUM_VERSION = "100";
 
 	private static String[] DSA_FILE_EXTENSIONS = new String[] {"dsa"};
-	
+
 	// Preferences
 	public static final String PREF_CREATION_CONTROL = "creation_control";
 	public static final String CREATE_MANUAL = "manual";
@@ -147,7 +147,7 @@ public class Album extends PlatformObject implements IAlbum {
     /**
      * Listener for state changes on albums
      */
-	protected static List<ISnapshotAlbumStateListener> listeners = new ArrayList<ISnapshotAlbumStateListener>();
+	protected static List<ISnapshotAlbumEventListener> listeners = new ArrayList<ISnapshotAlbumEventListener>();
 
 	private static Map<String, Album> albumsBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());
 	private static Map<String, Album> albumsRecordingBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());	
@@ -173,7 +173,9 @@ public class Album extends PlatformObject implements IAlbum {
 			}
 
 			if (album != null) {
-				fireAlbumStateChanged(album);
+				for (ISnapshotAlbumEventListener l : listeners) {
+					l.snapshotSessionEnded(album, session);
+				}
 			}
 		}
 	};
@@ -572,7 +574,6 @@ public class Album extends PlatformObject implements IAlbum {
 	 */
 	public void openSnapshot(final int index) {
 
-		final IAlbum album = this;
 		final DsfSession session = DsfSession.getSession(sessionID);
 
 		DsfRunnable openIt = new DsfRunnable() {
@@ -586,8 +587,11 @@ public class Album extends PlatformObject implements IAlbum {
 				if (session != null && snapshotList.size() > index) {
 					Snapshot snapshot = snapshotList.get(index);
 					snapshot.open(session);
+					// Fire the event
+					for (ISnapshotAlbumEventListener l : listeners) {
+						l.snapshotOpened(snapshot);
+					}
 				}
-				fireAlbumStateChanged(album);
 			}
 		};
 
@@ -961,14 +965,15 @@ public class Album extends PlatformObject implements IAlbum {
 			album = new Album();
 			album.setRecordingSessionID(sessionId);
 		}
-		final IAlbum finalAlbum = album;
+		final Album finalAlbum = album;
+		final Snapshot[] newSnapshot = new Snapshot[1];
 		playSnapshotSound();
 
 		Query<Boolean> query = new Query<Boolean>() {
 
 			@Override
 			protected void execute(DataRequestMonitor<Boolean> rm) {
-				((Album) finalAlbum).createSnapshot(session, stackFrame, monitor);
+				newSnapshot[0]= finalAlbum.createSnapshot(session, stackFrame, monitor);
 				rm.setData(true);
 				rm.done();
 			}
@@ -983,7 +988,11 @@ public class Album extends PlatformObject implements IAlbum {
 		} catch (java.util.concurrent.ExecutionException e) {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}
-		fireAlbumStateChanged(album);
+		
+		// Fire the event to anyone listening
+		for (ISnapshotAlbumEventListener l : listeners) {
+			l.snapshotCreated(album, newSnapshot[0], session, stackFrame);
+		}
 	}
 
 	protected static void playSnapshotSound() {
@@ -1175,7 +1184,7 @@ public class Album extends PlatformObject implements IAlbum {
 	/**
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static void addSnapshotAlbumStateChangedListener(ISnapshotAlbumStateListener listener) {
+	public static void addSnapshotAlbumEventListener(ISnapshotAlbumEventListener listener) {
 		synchronized (listener) {
 			listeners.add(listener);
 		}	
@@ -1185,18 +1194,9 @@ public class Album extends PlatformObject implements IAlbum {
 	/**
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
-	public static void removeSnapshotAlbumStateChangedListener(ISnapshotAlbumStateListener listener) {
+	public static void removeSnapshotAlbumEventListener(ISnapshotAlbumEventListener listener) {
 		synchronized (listener) {
 			listeners.remove(listener);
-		}
-	}
-	
-	/**
-	 * @noreference This method is not intended to be referenced by clients.
-	 */
-	public static void fireAlbumStateChanged(IAlbum album) {
-		for (ISnapshotAlbumStateListener l : listeners) {
-			l.albumChanged(album);
 		}
 	}
 

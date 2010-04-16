@@ -10,10 +10,16 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.snapshot;
 
-import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.dsf.service.DsfSession;
 
-public interface ISnapshotAlbumStateListener {
+public interface ISnapshotAlbumEventListener {
 
-	public void albumChanged(IAlbum album);
+	public void snapshotCreated(Album album, Snapshot snapshot,
+			DsfSession session, StackFrameDMC stackFrame);
+
+	public void snapshotOpened(Snapshot snapshot);
+
+	public void snapshotSessionEnded(Album album, DsfSession session);
 	
 }

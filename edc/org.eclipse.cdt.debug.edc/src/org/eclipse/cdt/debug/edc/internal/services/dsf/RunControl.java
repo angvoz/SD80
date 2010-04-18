@@ -1435,17 +1435,19 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		if (functionScope != null)
 		{
-			IScope parentScope = functionScope.getParent();
+			IScope parentScope = functionScope.getParent();		
 			if (parentScope instanceof IFunctionScope && currentFrame.getModule() != null)
 			{
-				// return currentFrame.getModule().toRuntimeAddress(functionScope.getHighAddress());
-				stepAddressRange(dmc, false, currentFrame.getIPAddress(), functionScope.getHighAddress(), new RequestMonitor(getExecutor(), rm){
+				if (!currentFrame.getModule().toRuntimeAddress(functionScope.getLowAddress()).equals(currentFrame.getIPAddress()))
+				{
+					stepAddressRange(dmc, false, currentFrame.getIPAddress(), functionScope.getHighAddress(), new RequestMonitor(getExecutor(), rm){
 
-					@Override
-					protected void handleSuccess() {
-						step(dmc, StepType.STEP_OVER, new RequestMonitor(getExecutor(), new RequestMonitor(getExecutor(), rm)));
-					}});
-				return true;
+						@Override
+						protected void handleSuccess() {
+							step(dmc, StepType.STEP_OVER, new RequestMonitor(getExecutor(), new RequestMonitor(getExecutor(), rm)));
+						}});
+					return true;
+				}
 			}
 		}
 		return false;

@@ -224,7 +224,7 @@
             locationURI="toolbar:org.eclipse.debug.ui.ExpressionView">
          <command
                commandId="org.eclipse.cdt.debug.edc.ui.toggleCustomFormatting"
-               icon="icons/obj16/tcf.gif"
+               icon="icons/obj16/var_format.png"
                label="Toggle Custom Variable Formatting"
                style="toggle">
              <visibleWhen

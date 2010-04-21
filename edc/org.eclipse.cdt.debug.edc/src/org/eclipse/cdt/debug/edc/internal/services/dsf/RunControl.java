@@ -1628,47 +1628,44 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							String expr = (String) jta.getValue();
 							if (expr.equals(JumpToAddress.EXPRESSION_RETURN_FAR)
 									|| expr.equals(JumpToAddress.EXPRESSION_RETURN_NEAR)) {
-								// The current instruction is return
-								// instruction. Just execute it
-								// to step-out and we are done with the
-								// stepping. This way we avoid
-								// looking for return address from caller stack
-								// frame which may not
+								// The current instruction is return instruction. Just execute it
+								// to step-out and we are done with the stepping. This way we avoid
+								// looking for return address from caller stack frame which may not
 								// even available.
-								// Is it possible that the destination address
-								// of the step-out
-								// is still within the [startAddr, endAddr)
-								// range ? In theory
-								// yes, but in practice it means one source line
-								// has several
-								// function bodies in it, who the hell would do
-								// that ?
+								// Is it possible that the destination address of the step-out
+								// is still within the [startAddr, endAddr)range ? In theory
+								// yes, but in practice it means one source line has several
+								// function bodies in it, who would do that?
 								//
 								stepIntoOneInstruction(dmc, rm);
 								return;
 							} else { // others
 								// evaluate the address expression
-								IAddressExpressionEvaluator evaluator = getTargetEnvironmentService()
-										.getAddressExpressionEvaluator();
-								if (evaluator == null) {
-									rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-											"No evaluator for address expression yet.", null));
-									rm.done();
-									return;
+
+								if (!jta.isSubroutineAddress() || stepIn)
+								{
+									IAddressExpressionEvaluator evaluator = getTargetEnvironmentService()
+									.getAddressExpressionEvaluator();
+									if (evaluator == null) {
+										rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+												"No evaluator for address expression yet.", null));
+										rm.done();
+										return;
+									}
+
+									Registers regService = getServicesTracker().getService(Registers.class);
+
+									IAddress addr;
+									try {
+										addr = evaluator.evaluate(dmc, expr, regService, memoryService);
+									} catch (CoreException e) {
+										rm.setStatus(e.getStatus());
+										rm.done();
+										return;
+									}
+									stopPoints.add(addr);
+
 								}
-
-								Registers regService = getServicesTracker().getService(Registers.class);
-
-								IAddress addr;
-								try {
-									addr = evaluator.evaluate(dmc, expr, regService, memoryService);
-								} catch (CoreException e) {
-									rm.setStatus(e.getStatus());
-									rm.done();
-									return;
-								}
-
-								stopPoints.add(addr);
 							}
 						} else {
 							// we must run to this instruction first
@@ -1692,12 +1689,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 								if (stepIn) {
 									stopPoints.add(jumpAddress);
 									// no need to check remaining instructions
-									// !! Wrong. Control may jump over (skip)
-									// this instruction
-									// within the [startAddr, endAddr) range, so
-									// we still need
-									// to parse instructions after this
-									// instruction.
+									// !! Wrong. Control may jump over (skip)this instruction
+									// within the [startAddr, endAddr) range, so we still need
+									// to parse instructions after this instruction.
 									// break;
 								} else {
 									// step over the call instruction. Just stop
@@ -1715,7 +1709,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							// conditional jump
 							// ignore jump within the address range
 							if (!(startAddr.compareTo(jumpAddress) <= 0 && jumpAddress.compareTo(endAddr) < 0))
+							{
 								stopPoints.add(jumpAddress);
+							}
 						}
 					}
 				} // end of parsing instructions
@@ -1743,17 +1739,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						 */
 						// Log (and show it, get rid of the "show" part after
 						// tons of test) warning here.
-						EDCDebugger
-								.getMessageLogger()
-								.log(
-										new Status(
-												IStatus.WARNING,
-												EDCDebugger.PLUGIN_ID,
-												MessageFormat
-														.format(
-																"More than one run-to-check points in the address range [{0},{1}). Stepping might fail.",
-																startAddr.toHexAddressString(), endAddr
-																		.toHexAddressString())));
+						EDCDebugger.getMessageLogger().log(
+								new Status(IStatus.WARNING, EDCDebugger.PLUGIN_ID,
+										MessageFormat.format(
+												"More than one run-to-check points in the address range [{0},{1}). Stepping might fail.",
+												startAddr.toHexAddressString(), endAddr.toHexAddressString())));
 					}
 
 					// ------------ Phase 1: run to the first RTC.

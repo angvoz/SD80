@@ -660,16 +660,6 @@
    </extension>
 
    <extension
-         point="org.eclipse.cdt.ui.textHovers">
-      <hover
-            activate="true"
-            class="org.eclipse.cdt.debug.edc.internal.ui.EDCDebugTextHover"
-            description="Shows formatted value in debugger hover"
-            id="org.eclipse.cdt.debug.edc.internal.ui.EDCDebugTextHover"
-            label="Debug Text Hover">
-      </hover>
-   </extension>
-   <extension
          point="org.eclipse.ui.console.consoleFactories">
       <consoleFactory
             class="org.eclipse.cdt.debug.edc.ui.console.DebugProgramOutputConsoleFactory"

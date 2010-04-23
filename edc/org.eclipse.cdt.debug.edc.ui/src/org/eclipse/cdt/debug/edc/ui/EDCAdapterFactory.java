@@ -19,6 +19,7 @@ import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.IRestart;
 import org.eclipse.cdt.debug.core.model.ISteppingModeTarget;
 import org.eclipse.cdt.debug.edc.internal.ui.DsfTerminateCommand;
+import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugTextHover;
 import org.eclipse.cdt.debug.edc.internal.ui.EDCViewModelAdapter;
 import org.eclipse.cdt.debug.edc.internal.ui.actions.EDCDisconnectCommand;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
@@ -36,6 +37,7 @@ import org.eclipse.cdt.dsf.debug.ui.viewmodel.SteppingController;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.actions.DefaultRefreshAllTarget;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.actions.IRefreshAllTarget;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.cdt.ui.text.c.hover.ICEditorTextHover;
 import org.eclipse.core.runtime.IAdapterFactory;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
@@ -86,6 +88,8 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 		final SteppingController fSteppingController;
 		final DefaultRefreshAllTarget fRefreshAllTarget;
 
+		final EDCDebugTextHover fDebugTextHover;
+		
 		SessionAdapterSet(final EDCLaunch launch) {
 			fLaunch = launch;
 			DsfSession session = launch.getSession();
@@ -142,6 +146,12 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 			 * this session.
 			 */
 			session.registerModelAdapter(ILaunch.class, fLaunch);
+
+            /*
+             * Register debug hover adapter (bug 309001).
+             */
+            fDebugTextHover = new EDCDebugTextHover();
+            session.registerModelAdapter(ICEditorTextHover.class, fDebugTextHover);
 		}
 
 		void dispose() {
@@ -168,6 +178,8 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 			session.unregisterModelAdapter(IModelSelectionPolicyFactory.class);
 			session.unregisterModelAdapter(IRefreshAllTarget.class);
 			session.unregisterModelAdapter(ITerminateHandler.class);
+
+            session.unregisterModelAdapter(ICEditorTextHover.class);
 
 			fDisconnectCommand.dispose();
 			fStepIntoCommand.dispose();

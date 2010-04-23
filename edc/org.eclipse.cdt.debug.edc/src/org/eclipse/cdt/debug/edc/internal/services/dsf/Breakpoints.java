@@ -35,6 +35,7 @@ import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.debug.internal.core.breakpoints.BreakpointProblems;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -825,16 +826,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			return;
 		}
 		
-		final boolean requireResume;
-		Object requireResumeValue = module.getProperties().get("RequireResume");
-		if (requireResumeValue != null) {
-			if (requireResumeValue instanceof Boolean)
-				requireResume = (Boolean) requireResumeValue;
-			else
-				requireResume = true;
-		}
-		else
-			requireResume = true;
+		final boolean requireResume	= requireResume(module);
 	
 		IBreakpointsTargetDMContext bt_dmc = DMContexts.getAncestorOfType(module, IBreakpointsTargetDMContext.class);
 		bm.startTrackingBreakpoints(bt_dmc, new RequestMonitor(getExecutor(), null) {
@@ -880,6 +872,22 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		});
 
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+	}
+
+	/**
+	 * Check if resume is required after handling load/unload of the given module.
+	 * 
+	 * @param module
+	 * @return
+	 */
+	private boolean requireResume(ModuleDMC module) {
+		boolean requireResume = true;
+		Object propvalue = module.getProperties().get(IModuleProperty.PROP_RESUME);
+		if (propvalue != null)
+			if (propvalue instanceof Boolean)
+				requireResume = (Boolean) propvalue;
+
+		return requireResume;
 	}
 
 	/**
@@ -973,16 +981,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		final ExecutionDMC executionDMC = event.getExecutionDMC();
 		final ModuleDMC module = (ModuleDMC) e.getUnloadedModuleContext();
 		
-		final boolean requireResume;
-		Object requireResumeValue = module.getProperties().get("RequireResume");
-		if (requireResumeValue != null) {
-			if (requireResumeValue instanceof Boolean)
-				requireResume = (Boolean) requireResumeValue;
-			else
-				requireResume = true;
-		}
-		else
-			requireResume = true;
+		final boolean requireResume	= requireResume(module);
 		
 		BreakpointsMediator2 bm = getServicesTracker().getService(BreakpointsMediator2.class);
 		IBreakpointsTargetDMContext bt_dmc = DMContexts.getAncestorOfType(e.getUnloadedModuleContext(),
@@ -991,7 +990,6 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			@Override
 			protected void handleFailure() {
 				// super will just log the error.
-				// TODO: do we want to display a dialog for user ?
 				super.handleFailure();
 				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
 						"uninstalling breakpoints failed");

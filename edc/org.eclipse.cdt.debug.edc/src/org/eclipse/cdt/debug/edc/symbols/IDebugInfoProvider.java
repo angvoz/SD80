@@ -15,6 +15,7 @@ import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
 
 /**
  * This interface handles fetching debug information from a particular 
@@ -48,7 +49,7 @@ public interface IDebugInfoProvider {
 	 * Get the paths to all source files known for the module.
 	 * @return non-<code>null</code> array of build-time paths
 	 */
-	String[] getSourceFiles();
+	String[] getSourceFiles(IProgressMonitor monitor);
 	
 	/**
 	 * Get all functions with the given name in any scope in the module

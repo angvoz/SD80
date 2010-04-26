@@ -94,7 +94,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			level = dmc.getLevel();
 			address = dmc.getIPAddress();
 			module = dmc.getModuleName();
-			file = dmc.getSourceFile().length() > 0 ? dmc.getSourceFile() : null;
+			file = dmc.getSourceFile(); // "" instead of null if no file.
 			lineNumber = dmc.getLineNumber();
 			function = dmc.getFunctionName();
 		}
@@ -111,6 +111,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return level;
 		}
 
+		// DSF requires non-null return value.
 		public String getFile() {
 			return file;
 		}
@@ -352,6 +353,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return moduleName;
 		}
 
+		/**
+		 * Get source file name if any for the frame. 
+		 * @return valid file name or "" otherwise.
+		 */
 		public String getSourceFile() {
 			return sourceFile;
 		}

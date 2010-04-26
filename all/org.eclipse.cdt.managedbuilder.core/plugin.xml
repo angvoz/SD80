@@ -6,6 +6,7 @@
    <extension-point id="buildDefinitions" name="Managed Build Definitions" schema="schema/buildDefinitions.exsd"/>
    <extension-point id="projectConverter" name="Managed Build Project Converter" schema="schema/Converter.exsd"/>
    <extension-point id="buildProperties" name="Build Properties" schema="schema/buildProperties.exsd"/>
+   <extension-point id="tcModificationInfo" name="ToolChain Modification Info" schema="schema/tcModificationInfo.exsd"/>
    
 
 <!-- =================================================================================== -->
@@ -29,7 +30,8 @@
          point="org.eclipse.core.resources.builders">
       <builder
             hasNature="true"
-            callOnEmptyDelta="true">
+            callOnEmptyDelta="true"
+            isConfigurable="true">
          <!--run
                class="org.eclipse.cdt.managedbuilder.internal.core.GeneratedMakefileBuilder">
          </run-->
@@ -78,6 +80,10 @@
       <scannerInfoCollector
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.DefaultGCCScannerInfoCollector"
             scope="project"/>
+      <buildOutputProvider>
+         <open/>
+         <scannerInfoConsoleParser class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.ManagedGCCScannerInfoConsoleParser"/>
+      </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
                arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}"
@@ -93,6 +99,10 @@
       <scannerInfoCollector
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.DefaultGCCScannerInfoCollector"
             scope="project"/>
+      <buildOutputProvider>
+         <open/>
+         <scannerInfoConsoleParser class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.ManagedGCCScannerInfoConsoleParser"/>
+      </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
                arguments="-E -P -v -dD ${plugin_state_location}/specs.cpp"
@@ -108,6 +118,10 @@
       <scannerInfoCollector
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.DefaultGCCScannerInfoCollector"
             scope="project"/>
+      <buildOutputProvider>
+         <open/>
+         <scannerInfoConsoleParser class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.ManagedGCCScannerInfoConsoleParser"/>
+      </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
                arguments="-E -P -v -dD ${plugin_state_location}/specs.c"
@@ -123,10 +137,14 @@
       <scannerInfoCollector
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.DefaultGnuWinScannerInfoCollector"
             scope="project"/>
+      <buildOutputProvider>
+         <open/>
+         <scannerInfoConsoleParser class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.ManagedGCCScannerInfoConsoleParser"/>
+      </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
-               arguments="-E -P -v -dD ${plugin_state_location}/${specs_file}"
-               command="gcc"
+               arguments="-c &apos;gcc -E -P -v -dD &quot;${plugin_state_location}/${specs_file}&quot;&apos;"
+               command="sh"
                class="org.eclipse.cdt.make.internal.core.scannerconfig2.GCCSpecsRunSIProvider"/>
          <scannerInfoConsoleParser class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCSpecsConsoleParser"/>
       </scannerInfoProvider>
@@ -138,10 +156,14 @@
       <scannerInfoCollector
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.DefaultGnuWinScannerInfoCollector"
             scope="project"/>
+      <buildOutputProvider>
+         <open/>
+         <scannerInfoConsoleParser class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.ManagedGCCScannerInfoConsoleParser"/>
+      </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
-               arguments="-E -P -v -dD ${plugin_state_location}/specs.cpp"
-               command="g++"
+               arguments="-c &apos;g++ -E -P -v -dD &quot;${plugin_state_location}/specs.cpp&quot;&apos;"
+               command="sh"
                class="org.eclipse.cdt.make.internal.core.scannerconfig2.GCCSpecsRunSIProvider"/>
          <scannerInfoConsoleParser class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCSpecsConsoleParser"/>
       </scannerInfoProvider>
@@ -153,10 +175,14 @@
       <scannerInfoCollector
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.DefaultGnuWinScannerInfoCollector"
             scope="project"/>
+      <buildOutputProvider>
+         <open/>
+         <scannerInfoConsoleParser class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.ManagedGCCScannerInfoConsoleParser"/>
+      </buildOutputProvider>
       <scannerInfoProvider providerId="specsFile">
          <run
-               arguments="-E -P -v -dD ${plugin_state_location}/specs.c"
-               command="gcc"
+               arguments="-c &apos;gcc -E -P -v -dD &quot;${plugin_state_location}/specs.c&quot;&apos;"
+               command="sh"
                class="org.eclipse.cdt.make.internal.core.scannerconfig2.GCCSpecsRunSIProvider"/>
          <scannerInfoConsoleParser class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCSpecsConsoleParser"/>
       </scannerInfoProvider>
@@ -207,7 +233,7 @@
    <extension point="org.eclipse.core.runtime.contentTypes"> 
       <file-association 
        content-type="org.eclipse.cdt.managedbuilder.core.executableFile"
-       file-extensions="exe"/>
+       file-extensions="exe,elf,out"/>
    </extension> 
 
    <extension point="org.eclipse.core.runtime.contentTypes"> 
@@ -236,7 +262,7 @@
          name="%ProjectConverter.name"
          point="org.eclipse.cdt.core.projectConverter">
          <converter
-         	owners="org.eclipse.cdt.managedbuilder.core.managedMake"
+         	owners="org.eclipse.cdt.managedbuilder.core.managedMake;org.eclipse.cdt.make.core.make"
          	natures="org.eclipse.cdt.managedbuilder.core.managedBuildNature"
          	class="org.eclipse.cdt.managedbuilder.internal.dataprovider.ProjectConverter"
          />
@@ -282,12 +308,12 @@
       </managedBuildRevision>
       <configuration
       	id="org.eclipse.cdt.build.core.emptycfg" 
-      	name="Configuration1">
+      	name="%cfg1_empty">
       </configuration>
 
 	 <configuration
 	 	id="org.eclipse.cdt.build.core.prefbase.cfg"
-	 	name="Configuration1"
+	 	name="%cfg1_base"
 	 	 >     
 	  <toolChain
 	  	id="org.eclipse.cdt.build.core.prefbase.toolchain"
@@ -321,7 +347,7 @@
       	/-->
       </tool>
 	  <builder
-	  	  isAbstract="true"
+	  	  isAbstract="false"
 	      id="org.eclipse.cdt.build.core.settings.default.builder"
           command="make"
           arguments=""
@@ -345,7 +371,7 @@
           ignoreErrCmd="-k"
           parallelBuildCmd="-j*"
           errorParsers="org.eclipse.cdt.core.MakeErrorParser"
-          name="Gnu Make Builder"
+          name="%GNUMakeBuilder.name"
           isSystem="true">
    	  </builder>   
 	  	
@@ -420,6 +446,12 @@
       	id="org.eclipse.cdt.build.core.internal.builder"
       	name="%InternalBuilder.name">
       </builder>
+      
+      <tool
+        id="org.eclipse.cdt.build.core.default.tool"
+        isAbstract="true"
+        isSystem="true"/>
+        
       </extension>
       
    <extension
@@ -543,6 +575,11 @@
                <simple name="path"/>
             </baseType>
          </complexArray>
+      </processType>
+            <processType
+            name="GenerateMakefileWithBuildDescription"
+            processRunner="org.eclipse.cdt.managedbuilder.templateengine.processes.GenerateMakefileWithBuildDescription">
+         <simple name="projectName"/>
       </processType>
    </extension>
 

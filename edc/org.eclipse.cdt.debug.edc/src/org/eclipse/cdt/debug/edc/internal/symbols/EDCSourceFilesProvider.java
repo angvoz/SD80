@@ -25,7 +25,7 @@ public class EDCSourceFilesProvider implements ISourceFilesProvider {
 			IEDCSymbolReader reader = Symbols.getSymbolReader(executable.getPath());
 			if (reader != null) {
 				// note: don't dispose reader here
-				return reader.getSourceFiles();
+				return reader.getSourceFiles(monitor);
 			}
 		} catch (Exception e) {
 		}

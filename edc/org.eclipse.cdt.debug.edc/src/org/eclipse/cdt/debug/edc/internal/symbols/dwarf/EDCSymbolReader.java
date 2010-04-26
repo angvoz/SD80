@@ -22,6 +22,8 @@ import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
 
 /**
  * This class handles the high-level retrieval of symbolic information, using 
@@ -121,7 +123,14 @@ public class EDCSymbolReader implements IEDCSymbolReader {
 
 	public String[] getSourceFiles() {
 		if (debugInfoProvider != null)
-			return debugInfoProvider.getSourceFiles();
+			return debugInfoProvider.getSourceFiles(new NullProgressMonitor());
+		else
+			return NO_SOURCE_FILES;
+	}
+
+	public String[] getSourceFiles(IProgressMonitor monitor) {
+		if (debugInfoProvider != null)
+			return debugInfoProvider.getSourceFiles(monitor);
 		else
 			return NO_SOURCE_FILES;
 	}

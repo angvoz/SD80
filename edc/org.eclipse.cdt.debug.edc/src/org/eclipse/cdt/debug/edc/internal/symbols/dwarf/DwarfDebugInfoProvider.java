@@ -38,11 +38,12 @@ import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.IRangeList;
+import org.eclipse.cdt.debug.edc.symbols.IRangeList.Entry;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
-import org.eclipse.cdt.debug.edc.symbols.IRangeList.Entry;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
 
 /**
  * This class handles the low-level aspects of reading DWARF data.
@@ -826,7 +827,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		frameRegisterProvider.dispose();
 	}
 
-	void ensureParsedInitially() {
+	synchronized void ensureParsedInitially() {
 		if (!parsedInitially) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			parsedInitially = true;
@@ -834,7 +835,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 	}
 
-	void ensureParsedForAddresses() {
+	synchronized void ensureParsedForAddresses() {
 		if (!parsedForVarsAndAddresses) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			if (!parsedInitially) {
@@ -846,7 +847,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 	}
 
-	void ensureParsedForVariables() {
+	synchronized void ensureParsedForVariables() {
 		if (!parsedForVarsAndAddresses) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			if (!parsedInitially) {
@@ -858,7 +859,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 	}
 	
-	private void ensureParsedForGlobalVariables() {
+	synchronized private void ensureParsedForGlobalVariables() {
 		if (parsedForGlobalVars)
 			return;
 		parsedForGlobalVars = true;
@@ -880,7 +881,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			reader.parseCompilationUnitForAddresses(cuHeader.scope);
 	}
 
-	void ensureParsedForTypes() {
+	synchronized void ensureParsedForTypes() {
 		if (!parsedForTypes) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			if (!parsedInitially) {
@@ -1077,10 +1078,10 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		return Collections.emptyList();
 	}
 
-	public String[] getSourceFiles() {
+	synchronized public String[] getSourceFiles(IProgressMonitor monitor) {
 		if (referencedFiles.isEmpty()) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
-			reader.quickParseDebugInfo();
+			reader.quickParseDebugInfo(monitor);
 		}
 
 		return referencedFiles.toArray(new String[referencedFiles.size()]);

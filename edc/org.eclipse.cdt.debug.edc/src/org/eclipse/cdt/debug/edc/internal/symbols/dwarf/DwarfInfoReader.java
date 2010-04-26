@@ -87,6 +87,10 @@ import org.eclipse.cdt.debug.edc.symbols.IUnmangler;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 
 /**
  * Handle restartable parsing of Dwarf information from a single module.  
@@ -149,7 +153,7 @@ public class DwarfInfoReader {
 	private DwarfFileHelper fileHelper;
 
 	private RangeList codeRanges;
-	
+
 	/**
 	 * Create a reader for the provider.  This constructor and any methods 
 	 * on this reader class will incrementally update the provider.
@@ -192,17 +196,30 @@ public class DwarfInfoReader {
 		return buffer;
 	}
 
-
 	/** 
 	 * Parse top-level debugging information about compilation units and globally
 	 * visible objects, but do not expand or gather data about other objects in
  	 * compilation units.  
 	 */
 	public void parseInitial() {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Initial parse for " + symbolFilePath);
-		parseCUDebugInfo();
-		parsePublicNames();
-		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished initial parse");
+		Job parseInitialJob = new Job("Reading Debug Symbol Information: " + symbolFilePath) {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Initial parse for " + symbolFilePath);
+				parseCUDebugInfo(monitor);
+				parsePublicNames();
+				traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished initial parse");
+				return Status.OK_STATUS;
+			}
+		};
+		
+		try {
+			parseInitialJob.schedule();
+			parseInitialJob.join();
+		} catch (InterruptedException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
 	}
 	
 	/**
@@ -348,12 +365,15 @@ public class DwarfInfoReader {
 	}
 	/**
 	 * Parse compilation unit headers and top-level info in the .debug_info section
+	 * @param monitor 
 	 */
-	private void parseCUDebugInfo() {
+	private void parseCUDebugInfo(IProgressMonitor monitor) {
 
 		if (debugInfoSection == null) {	// no dwarf data.
 			return;
 		}
+		long startTime = System.currentTimeMillis() / 1000;
+		System.out.println("parseCUDebugInfo " + symbolFilePath.toOSString() + " - start: " + startTime);
 		
 		// if we haven't built the referenced files list from a quick parse yet,
 		// flag it here so we can build the file list as we parse.
@@ -365,16 +385,24 @@ public class DwarfInfoReader {
 		IStreamBuffer debugStrings = getDebugStrings();
 		boolean havePubNames = publicNamesSection != null && publicNamesSection.getBuffer() != null;
 
+		int totalWork = (int) (buffer.capacity() / 1024);
+		monitor.beginTask("Read Debug Info", totalWork);
 		if (buffer != null) {
 			long fileIndex = 0;
 			long fileEndIndex = buffer.capacity();
 			
 			while (fileIndex < fileEndIndex) {
+				long oldIndex = fileIndex;
 				fileIndex = parseCompilationUnitForNames(buffer, fileIndex, debugStrings, havePubNames);
+				monitor.worked((int) ((fileIndex - oldIndex) / 1024));
 			}
 		}
+		monitor.done();
 		provider.compileUnits.trimToSize();
 		provider.buildReferencedFilesList = false;
+		long endTime = System.currentTimeMillis() / 1000;
+		System.out.println("parseCUDebugInfo end: " + endTime + " total time: " + (endTime - startTime));
+
 	}
 
 	/**
@@ -776,13 +804,38 @@ public class DwarfInfoReader {
 					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
 		}
 	}
+
+	public void quickParseDebugInfo(IProgressMonitor monitor) {
+
+		Job quickParseJob = new Job("Reading Debug Symbol Information: " + symbolFilePath) {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Quick parse for " + symbolFilePath);
+				doQuickParseDebugInfo(monitor);
+				traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished quick parse");
+				return Status.OK_STATUS;
+			}
+		};
+		
+		try {
+			quickParseJob.schedule();
+			quickParseJob.join();
+		} catch (InterruptedException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
+	}
 	
 	/**
 	 * Does a quick parse of the .debug_info section just to get a list of
 	 * referenced files from the compile units.
 	 */
-	public void quickParseDebugInfo() {
+	private void doQuickParseDebugInfo(IProgressMonitor monitor) {
 
+	
+		long startTime = System.currentTimeMillis() / 1000;
+		System.out.println("quickParseDebugInfo " + symbolFilePath.toOSString() + " - start: " + startTime);
+		
 		if (debugInfoSection == null) {	// no dwarf data.
 			return;
 		}
@@ -796,6 +849,8 @@ public class DwarfInfoReader {
 
 			long fileIndex = 0;
 			long fileEndIndex = buffer.capacity();
+			
+			monitor.beginTask("Read Debug Info", (int) (fileEndIndex / 1024));
 
 			buffer.position(0);
 			while (fileIndex < fileEndIndex) {
@@ -836,12 +891,19 @@ public class DwarfInfoReader {
 
 				// skip past the compile unit. note that the unit_length does
 				// not include the size of the unit length itself
+				long oldIndex = fileIndex;
 				fileIndex += unit_length + 4;
+				monitor.worked((int) ((fileIndex - oldIndex) / 1024));
 			}
 
 		} catch (IOException e) {
 			EDCDebugger.getMessageLogger().logError("Failed to parse source files from section " 
 					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
+		} finally {
+			monitor.done();
+			long endTime = System.currentTimeMillis() / 1000;
+			System.out.println("quickParseDebugInfo end: " + endTime + " total time: " + (endTime - startTime));
+
 		}
 	}
 

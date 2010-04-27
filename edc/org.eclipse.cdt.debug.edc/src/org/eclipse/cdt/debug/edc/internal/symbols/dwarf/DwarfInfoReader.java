@@ -372,8 +372,6 @@ public class DwarfInfoReader {
 		if (debugInfoSection == null) {	// no dwarf data.
 			return;
 		}
-		long startTime = System.currentTimeMillis() / 1000;
-		System.out.println("parseCUDebugInfo " + symbolFilePath.toOSString() + " - start: " + startTime);
 		
 		// if we haven't built the referenced files list from a quick parse yet,
 		// flag it here so we can build the file list as we parse.
@@ -400,9 +398,6 @@ public class DwarfInfoReader {
 		monitor.done();
 		provider.compileUnits.trimToSize();
 		provider.buildReferencedFilesList = false;
-		long endTime = System.currentTimeMillis() / 1000;
-		System.out.println("parseCUDebugInfo end: " + endTime + " total time: " + (endTime - startTime));
-
 	}
 
 	/**
@@ -831,10 +826,6 @@ public class DwarfInfoReader {
 	 * referenced files from the compile units.
 	 */
 	private void doQuickParseDebugInfo(IProgressMonitor monitor) {
-
-	
-		long startTime = System.currentTimeMillis() / 1000;
-		System.out.println("quickParseDebugInfo " + symbolFilePath.toOSString() + " - start: " + startTime);
 		
 		if (debugInfoSection == null) {	// no dwarf data.
 			return;
@@ -901,9 +892,6 @@ public class DwarfInfoReader {
 					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
 		} finally {
 			monitor.done();
-			long endTime = System.currentTimeMillis() / 1000;
-			System.out.println("quickParseDebugInfo end: " + endTime + " total time: " + (endTime - startTime));
-
 		}
 	}
 

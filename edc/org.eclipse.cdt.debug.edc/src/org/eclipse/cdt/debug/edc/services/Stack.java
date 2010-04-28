@@ -842,7 +842,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getTopFrame(IDMContext execContext, DataRequestMonitor<IFrameDMContext> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, execContext);
-		IFrameDMContext[] frames = getFramesForDMC((ExecutionDMC) execContext, 0, ALL_FRAMES);
+		IFrameDMContext[] frames = getFramesForDMC((ExecutionDMC) execContext, 0, 0);
 
 		if (frames.length == 0) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE,
@@ -897,7 +897,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			needsUpdate = frames == null;
 		}
 		if (needsUpdate)
-			updateFrames(context);
+			updateFrames(context, startIndex, endIndex);
 		synchronized (stackFrames) {
 			List<StackFrameDMC> frames = stackFrames.get(context.getID());
 			// endIndex is inclusive and may be negative to fetch all frames
@@ -914,9 +914,9 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 	}
 
-	private void updateFrames(IEDCExecutionDMC context) {
+	private void updateFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
 		ArrayList<StackFrameDMC> frames = new ArrayList<StackFrameDMC>();
-		List<Map<String, Object>> frameProperties = computeStackFrames(context);
+		List<Map<String, Object>> frameProperties = computeStackFrames(context, startIndex, endIndex);
 		StackFrameDMC previous = null;
 		for (Map<String, Object> props : frameProperties) {
 			StackFrameDMC frame = new StackFrameDMC(context, props);
@@ -927,10 +927,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			frames.add(frame);
 			previous = frame;
 		}
-		stackFrames.put(context.getID(), frames);
+		if (endIndex == ALL_FRAMES)
+			stackFrames.put(context.getID(), frames);
 	}
 
-	protected abstract List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context);
+	protected abstract List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex);
 
 	public void loadFramesForContext(IEDCExecutionDMC exeDmc, Element allFrames) throws Exception {
 		flushCache(null);

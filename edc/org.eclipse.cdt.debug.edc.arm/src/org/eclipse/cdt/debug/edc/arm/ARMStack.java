@@ -96,10 +96,10 @@ public class ARMStack extends Stack {
 	}
 
 	@Override
-	protected List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context) {
+	protected List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
 
 		ArrayList<Map<String, Object>> frames = new ArrayList<Map<String, Object>>();
-
+		
 		Registers registersService = getServicesTracker().getService(Registers.class);
 		IAddress pcValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.PC), 16);
 
@@ -143,9 +143,12 @@ public class ARMStack extends Stack {
 
 		int frameCount = 0;
 		HashMap<String, Object> properties = null;
+		
+		if (endIndex == ALL_FRAMES)
+			endIndex = MAX_FRAMES;
 
 		// keep going until we reach the maximum number of frames
-		while (frameCount < MAX_FRAMES) {
+		while (frameCount <= endIndex) {
 			IAddress functionStartAddress = null;
 			String moduleName = "Unknown";
 

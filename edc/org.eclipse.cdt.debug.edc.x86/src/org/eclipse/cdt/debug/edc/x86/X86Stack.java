@@ -71,7 +71,7 @@ public class X86Stack extends Stack {
 	 * out of range of ESP, we must quit here.)  
 	 */
 	@Override
-	protected List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context) {
+	protected List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
 
 		ArrayList<Map<String, Object>> frames = new ArrayList<Map<String, Object>>();
 

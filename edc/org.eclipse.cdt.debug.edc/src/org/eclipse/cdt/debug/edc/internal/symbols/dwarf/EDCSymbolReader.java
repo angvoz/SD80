@@ -14,6 +14,7 @@ import java.nio.ByteOrder;
 import java.util.Collection;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
@@ -23,7 +24,9 @@ import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 
 /**
  * This class handles the high-level retrieval of symbolic information, using 
@@ -123,7 +126,26 @@ public class EDCSymbolReader implements IEDCSymbolReader {
 
 	public String[] getSourceFiles() {
 		if (debugInfoProvider != null)
-			return debugInfoProvider.getSourceFiles(new NullProgressMonitor());
+		{
+			final String[][] resultHolder = new String[1][];
+			Job quickParseJob = new Job("Reading Debug Symbol Information: " + debugInfoProvider.getSymbolFile().toOSString()) {
+
+				@Override
+				protected IStatus run(IProgressMonitor monitor) {
+					String[] sourceFiles = getSourceFiles(monitor);
+					resultHolder[0] = sourceFiles;
+					return Status.OK_STATUS;
+				}
+			};
+			
+			try {
+				quickParseJob.schedule();
+				quickParseJob.join();
+			} catch (InterruptedException e) {
+				EDCDebugger.getMessageLogger().logError(null, e);
+			}
+			return resultHolder[0];
+		}
 		else
 			return NO_SOURCE_FILES;
 	}

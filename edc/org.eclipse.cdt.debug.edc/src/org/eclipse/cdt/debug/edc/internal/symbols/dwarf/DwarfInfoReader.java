@@ -801,24 +801,9 @@ public class DwarfInfoReader {
 	}
 
 	public void quickParseDebugInfo(IProgressMonitor monitor) {
-
-		Job quickParseJob = new Job("Reading Debug Symbol Information: " + symbolFilePath) {
-
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Quick parse for " + symbolFilePath);
-				doQuickParseDebugInfo(monitor);
-				traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished quick parse");
-				return Status.OK_STATUS;
-			}
-		};
-		
-		try {
-			quickParseJob.schedule();
-			quickParseJob.join();
-		} catch (InterruptedException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
-		}
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Quick parse for " + symbolFilePath);
+		doQuickParseDebugInfo(monitor);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished quick parse");
 	}
 	
 	/**

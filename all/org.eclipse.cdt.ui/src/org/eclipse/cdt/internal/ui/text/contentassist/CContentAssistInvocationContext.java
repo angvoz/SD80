@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2007 IBM Corporation and others.
+ * Copyright (c) 2005, 2010 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -24,8 +24,11 @@ import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.PreferenceConstants;
 import org.eclipse.cdt.ui.text.contentassist.ContentAssistInvocationContext;
+import org.eclipse.cdt.ui.text.contentassist.ICEditorContentAssistInvocationContext;
 
+import org.eclipse.cdt.internal.ui.editor.CEditor;
 import org.eclipse.cdt.internal.ui.text.CHeuristicScanner;
 import org.eclipse.cdt.internal.ui.text.Symbols;
 
@@ -38,10 +41,11 @@ import org.eclipse.cdt.internal.ui.text.Symbols;
  * 
  * @since 4.0
  */
-public class CContentAssistInvocationContext extends ContentAssistInvocationContext {
+public class CContentAssistInvocationContext extends ContentAssistInvocationContext implements ICEditorContentAssistInvocationContext {
 	
 	private final IEditorPart fEditor;
 	private final boolean fIsCompletion;
+	private final boolean fIsAutoActivated;
 	
 	private ITranslationUnit fTU= null;
 	private boolean fTUComputed= false;
@@ -58,12 +62,14 @@ public class CContentAssistInvocationContext extends ContentAssistInvocationCont
 	 * @param viewer the viewer used by the editor
 	 * @param offset the invocation offset
 	 * @param editor the editor that content assist is invoked in
+	 * @param isAutoActivated indicates whether content assist was auto-activated
 	 */
-	public CContentAssistInvocationContext(ITextViewer viewer, int offset, IEditorPart editor, boolean isCompletion) {
+	public CContentAssistInvocationContext(ITextViewer viewer, int offset, IEditorPart editor, boolean isCompletion, boolean isAutoActivated) {
 		super(viewer, offset);
 		Assert.isNotNull(editor);
 		fEditor= editor;
 		fIsCompletion= isCompletion;
+		fIsAutoActivated= isAutoActivated;
 	}
 	
 	/**
@@ -77,6 +83,7 @@ public class CContentAssistInvocationContext extends ContentAssistInvocationCont
 		fTUComputed= true;
 		fEditor= null;
 		fIsCompletion= isCompletion;
+		fIsAutoActivated= false;
 	}
 	
 	/**
@@ -105,36 +112,54 @@ public class CContentAssistInvocationContext extends ContentAssistInvocationCont
 	}
 		
 	public IASTCompletionNode getCompletionNode() {
+		
+		//for scalability
+		if (fEditor != null && fEditor instanceof CEditor) {
+			CEditor editor = (CEditor)fEditor;
+			
+			// check to make sure we should attempt local parsing completions... for remote projects
+			// we should not do this
+			if(!editor.shouldProcessLocalParsingCompletions()) {
+				return null;
+			}
+			
+			if (editor.isEnableScalablilityMode()) {
+				if (editor.isParserBasedContentAssistDisabled()) {
+					return null;
+				}
+				if (isAutoActivated() && editor.isContentAssistAutoActivartionDisabled()) {
+					return null;
+				}
+			}
+		}
+		
 		if (fCNComputed) return fCN;
 		
 		fCNComputed = true;
-		
+
 		int offset = getParseOffset();
 		if (offset < 0) return null;
 		
 		ICProject proj= getProject();
 		if (proj == null) return null;
 		
-		try{
+		try {
 			IIndexManager manager= CCorePlugin.getIndexManager();
-			if (manager.isProjectIndexed(proj)) {
-				fIndex = CCorePlugin.getIndexManager().getIndex(proj,
-						IIndexManager.ADD_DEPENDENCIES | IIndexManager.ADD_DEPENDENT);
+			fIndex = manager.getIndex(proj, IIndexManager.ADD_DEPENDENCIES | IIndexManager.ADD_DEPENDENT);
 
-				try {
-					fIndex.acquireReadLock();
-				} catch (InterruptedException e) {
-					fIndex = null;
-				}
+			try {
+				fIndex.acquireReadLock();
+			} catch (InterruptedException e) {
+				fIndex = null;
 			}
 
-			int flags = ITranslationUnit.AST_SKIP_ALL_HEADERS;
-			if (fIndex == null) {
-				flags = 0;
-			}
+			boolean parseNonIndexed= CUIPlugin.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.PREF_USE_STRUCTURAL_PARSE_MODE);
+			int flags = parseNonIndexed ? ITranslationUnit.AST_SKIP_INDEXED_HEADERS : ITranslationUnit.AST_SKIP_ALL_HEADERS;
+			flags |= ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT;
 			
 			fCN = fTU.getCompletionNode(fIndex, flags, offset);
 		} catch (CoreException e) {
+			CUIPlugin.log(e);
 		}
 		
 		return fCN;
@@ -193,7 +218,16 @@ public class CContentAssistInvocationContext extends ContentAssistInvocationCont
 			
 			token= scanner.previousToken(pos, bound);
 			
-			if (token == Symbols.TokenIDENT || token == Symbols.TokenGREATERTHAN) {
+			if (token == Symbols.TokenGREATERTHAN) {
+				// skip template arguments
+				pos= scanner.findOpeningPeer(pos - 1, '<', '>');
+				if (pos == CHeuristicScanner.NOT_FOUND) return contextPosition;
+				pos= scanner.findNonWhitespaceBackward(pos - 1, bound);
+				if (pos == CHeuristicScanner.NOT_FOUND) return contextPosition;
+				token= scanner.previousToken(pos, bound);
+			}
+			
+			if (token == Symbols.TokenIDENT) {
 				return pos + 1;
 			}
 		}
@@ -245,6 +279,11 @@ public class CContentAssistInvocationContext extends ContentAssistInvocationCont
 		return !fIsCompletion || (getParseOffset() != getInvocationOffset());
 	}
 	
+	public boolean isAutoActivated() {
+		return fIsAutoActivated;
+	}
+
+	@Override
 	public void dispose() {
 		if (fIndex != null) {
 			fIndex.releaseReadLock();

@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -767,6 +768,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	protected boolean buildReferencedFilesList = true;
 	
 	private IPath symbolFilePath;
+	private long symbolFileLastModified;
 	private boolean parsedInitially = false;
 	private boolean parsedForVarsAndAddresses = false;
 	private boolean parsedForTypes = false;
@@ -778,10 +780,13 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	final DwarfFileHelper fileHelper;
 
 	private IFrameRegisterProvider frameRegisterProvider;
+	
+	private static String SOURCE_FILES_CACHE = "_source_files";
 
 	public DwarfDebugInfoProvider(IExecutableSymbolicsReader exeReader) {
 		this.exeReader = exeReader;
 		this.symbolFilePath = exeReader.getSymbolFile();
+		this.symbolFileLastModified = symbolFilePath.toFile().lastModified();
 		this.moduleScope = new DwarfModuleScope(this);
 		this.fileHelper = new DwarfFileHelper(symbolFilePath);
 		this.frameRegisterProvider = new DwarfFrameRegisterProvider(this);
@@ -1078,10 +1083,20 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		return Collections.emptyList();
 	}
 
+	@SuppressWarnings("unchecked")
 	synchronized public String[] getSourceFiles(IProgressMonitor monitor) {
 		if (referencedFiles.isEmpty()) {
-			DwarfInfoReader reader = new DwarfInfoReader(this);
-			reader.quickParseDebugInfo(monitor);
+			// Check the persistent cache
+			Object cachedFiles = EDCDebugger.getDefault().getCache().getCachedData(getSymbolFile().toOSString() + SOURCE_FILES_CACHE, symbolFileLastModified);
+			if (cachedFiles == null)
+			{
+				DwarfInfoReader reader = new DwarfInfoReader(this);
+				reader.quickParseDebugInfo(monitor);
+				EDCDebugger.getDefault().getCache().putCachedData(getSymbolFile().toOSString() + SOURCE_FILES_CACHE, (Serializable) referencedFiles, symbolFileLastModified);
+			}
+			else
+				if (cachedFiles instanceof Set<?>)
+					referencedFiles = (Set<String>) cachedFiles;
 		}
 
 		return referencedFiles.toArray(new String[referencedFiles.size()]);

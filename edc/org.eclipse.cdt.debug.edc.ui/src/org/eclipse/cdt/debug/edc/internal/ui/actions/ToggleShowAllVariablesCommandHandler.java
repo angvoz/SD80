@@ -24,6 +24,7 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.osgi.service.prefs.BackingStoreException;
 
+@SuppressWarnings("restriction")
 public class ToggleShowAllVariablesCommandHandler extends AbstractHandler {
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {

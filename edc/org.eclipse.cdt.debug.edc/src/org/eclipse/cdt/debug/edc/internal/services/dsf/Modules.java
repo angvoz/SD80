@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.io.File;
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -66,6 +67,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 
 	public static final String MODULE = "module";
 	public static final String SECTION = "section";
+	private static final String ADDRESS_RANGE_CACHE = "_address_range";
 
 	/**
 	 * Modules that are loaded for each ISymbolDMContext (process).
@@ -76,7 +78,9 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 	private ISourceLocator sourceLocator;
 	private static int nextModuleID = 100;
 
-	public static class EDCAddressRange implements AddressRange {
+	public static class EDCAddressRange implements AddressRange, Serializable {
+		
+		private static final long serialVersionUID = -6475152211053407789L;
 		private IAddress startAddr, endAddr;
 
 		public EDCAddressRange(IAddress start, IAddress end) {
@@ -597,6 +601,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 	 * The result AddressRange[] will contain absolute runtime addresses. And
 	 * the "symCtx" can be a process or a module.
 	 */
+	@SuppressWarnings("unchecked")
 	public void calcAddressInfo(ISymbolDMContext symCtx, String file, int line, int col,
 			DataRequestMonitor<AddressRange[]> rm) {
 		IModuleDMContext[] moduleList = null;
@@ -623,11 +628,28 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 			IEDCSymbolReader reader = mdmc.getSymbolReader();
 
 			if (reader != null) {
+
+				Collection<AddressRange> linkAddressRanges = null;
+				Map<String, Collection<AddressRange>> cachedRanges = new HashMap<String, Collection<AddressRange>>();
+				// Check the persistent cache
+				String cacheKey = reader.getSymbolFile().toOSString() + ADDRESS_RANGE_CACHE;
+				Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
+				if (cachedData != null && cachedData instanceof Map<?,?>)
+				{
+					cachedRanges = (Map<String, Collection<AddressRange>>) cachedData;
+					linkAddressRanges = cachedRanges.get(file + line);
+				}
 				
-				Collection<AddressRange> linkAddressRanges = LineEntryMapper.getAddressRangesAtSource(  
+				if (linkAddressRanges == null)
+				{
+					linkAddressRanges = LineEntryMapper.getAddressRangesAtSource(  
 						reader.getModuleScope().getModuleLineEntryProvider(),
 						PathUtils.createPath(file),
 						line);
+					
+					cachedRanges.put(file + line, linkAddressRanges);
+					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedRanges, reader.getModificationDate());				
+				}
 								
 				// map addresses
 				for (AddressRange linkAddressRange : linkAddressRanges) {

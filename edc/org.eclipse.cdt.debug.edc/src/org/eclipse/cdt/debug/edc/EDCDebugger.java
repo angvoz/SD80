@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc;
 
+import org.eclipse.cdt.debug.edc.internal.PersistentCache;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISettings;
@@ -44,6 +45,8 @@ public class EDCDebugger extends Plugin {
 	private DebugTrace trace;
 
     private ITCFServiceManager tcfServiceManager;
+    
+    private PersistentCache cache;
 	
 	/**
 	 * The constructor
@@ -93,6 +96,12 @@ public class EDCDebugger extends Plugin {
 	 */
 	@Override
 	public void stop(BundleContext context) throws Exception {
+		try {
+			if (cache != null)
+				cache.flushAll();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		plugin = null;
 		if (tcfServiceManager != null)
 			((TCFServiceManager) tcfServiceManager).shutdown();
@@ -212,5 +221,13 @@ public class EDCDebugger extends Plugin {
 
 	public static IStatus dsfRequestFailedStatus(String message, Throwable exception) {
 		return new Status(IStatus.ERROR, PLUGIN_ID, IDsfStatusConstants.REQUEST_FAILED, message, exception);
+	}
+
+	public PersistentCache getCache() {
+		if (cache == null)
+		{
+			cache = new PersistentCache(getStateLocation().append("cached_data"));
+		}
+		return cache;
 	}
 }

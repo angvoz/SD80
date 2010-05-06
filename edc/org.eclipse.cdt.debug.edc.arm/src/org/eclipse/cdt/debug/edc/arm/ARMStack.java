@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.arm;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
@@ -26,6 +28,7 @@ import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -37,6 +40,7 @@ public class ARMStack extends Stack {
 
 	private static int nextStackFrameID = 100;
 	private static final int MAX_FRAMES = 30;
+	private static final String FUNCTION_START_ADDRESS_CACHE = "_function_start_address";
 
 	// TODO need to figure out how register values for frames up the stack are
 	// accessed
@@ -95,6 +99,7 @@ public class ARMStack extends Stack {
 		super(session, new String[] { IStack.class.getName(), Stack.class.getName(), ARMStack.class.getName() });
 	}
 
+	@SuppressWarnings({ "restriction", "unchecked" })
 	@Override
 	protected List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
 
@@ -158,14 +163,37 @@ public class ARMStack extends Stack {
 			if (module != null) {
 				moduleName = module.getName();
 
-				// see if we have symbolics for the module
-				IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
-				IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
-				if (scope != null) {
-					// ignore inlined functions
-					while (scope.getParent() instanceof IFunctionScope)
-						scope = (IFunctionScope) scope.getParent();
-					functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
+				IEDCSymbolReader reader = module.getSymbolReader();
+				String cacheKey = reader.getSymbolFile().toOSString() + FUNCTION_START_ADDRESS_CACHE;
+				Map<IAddress, IAddress> cachedMapping = new HashMap<IAddress, IAddress>();
+				if (reader != null)
+				{
+					// Check the persistent cache
+					Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
+					if (cachedData != null && cachedData instanceof Map<?,?>)
+					{
+						cachedMapping = (Map<IAddress, IAddress>) cachedData;
+						IAddress cachedAddress = cachedMapping.get(module.toLinkAddress(pcValue));
+						if (cachedAddress != null)
+							functionStartAddress = module.toRuntimeAddress(cachedAddress);	
+					}
+
+				}
+				
+				if (functionStartAddress == null)
+				{
+					// see if we have symbolics for the module
+					IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
+					IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
+					if (scope != null) {
+						// ignore inlined functions
+						while (scope.getParent() instanceof IFunctionScope)
+							scope = (IFunctionScope) scope.getParent();
+						functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
+						// put it in the cache
+						cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
+						EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());									
+					}
 				}
 			}
 

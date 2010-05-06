@@ -12,6 +12,7 @@
 package org.eclipse.cdt.debug.edc.arm;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
@@ -58,6 +59,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 	 */
 	final static byte[] sARMBreakpointInstruction = new byte[] { 0x01, 0, (byte) 0x9f, (byte) 0xef };
 	final static byte[] sThumbBreakpointInstruction = new byte[] { 0, (byte) 0xdf, (byte) 0xef };
+	private static final String IS_THUMB_MODE = null;
 
 	private IDisassembler disassembler = null;
 
@@ -150,6 +152,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 		return aeEvaluator;
 	}
 
+	@SuppressWarnings({ "restriction", "unchecked" })
 	public boolean isThumbMode(IDMContext context, IAddress address, boolean useCPSR) {
 
 		IEDCExecutionDMC exeDMC = DMContexts.getAncestorOfType(context, IEDCExecutionDMC.class);
@@ -175,6 +178,23 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
 		IEDCModuleDMContext module = modules.getModuleByAddress(exeDMC.getSymbolDMContext(), address);
 		if (module != null) {
+			IEDCSymbolReader reader = module.getSymbolReader();
+			IAddress linkAddress = module.toLinkAddress(address);
+			
+			Map<IAddress, Boolean> cachedValues = new HashMap<IAddress, Boolean>();
+			String cacheKey = reader.getSymbolFile().toOSString() + IS_THUMB_MODE;
+			if (reader != null)
+			{
+				Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
+				if (cachedData != null && cachedData instanceof Map<?,?>)
+				{
+					cachedValues = (Map<IAddress, Boolean>) cachedData;
+					Boolean cachedValue = cachedValues.get(linkAddress);
+					if (cachedValue != null)
+						return cachedValue;
+				}
+			}
+
 			// see if we have symbolics for the module
 			IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
 			IFunctionScope scope = symbols.getFunctionAtAddress(exeDMC.getSymbolDMContext(), address);
@@ -183,17 +203,20 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 				// if the address is question has bit 0 set then it is a
 				// thumb address
 				if (functionStartAddress.getValue().testBit(0)) {
+					cachedValues.put(linkAddress, true);
+					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
 					return true;
 				}
 			}
 
-			IEDCSymbolReader reader = module.getSymbolReader();
 			if (reader != null) {
 				// see if we can get the mode from the symbol tab.
 				ISymbol symbol = reader.getSymbolAtAddress(module.toLinkAddress(address));
 				if (symbol != null) {
 					// if the symbol address is odd then it's in thumb mode
 					if (symbol.getAddress().getValue().testBit(0)) {
+						cachedValues.put(linkAddress, true);
+						EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
 						return true;
 					}
 
@@ -202,8 +225,12 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 						String mappingSymbol = armElf.getMappingSymbolAtAddress(symbol.getAddress());
 						if (mappingSymbol != null) {
 							if (mappingSymbol.startsWith("$t")) { //$NON-NLS-1$
+								cachedValues.put(linkAddress, true);
+								EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
 								return true;
 							} else if (mappingSymbol.startsWith("$a")) { //$NON-NLS-1$
+								cachedValues.put(linkAddress, false);
+								EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
 								return false;
 							}
 						}

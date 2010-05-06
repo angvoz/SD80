@@ -80,7 +80,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	private final Map<String, List<StackFrameDMC>> stackFrames = Collections
 			.synchronizedMap(new HashMap<String, List<StackFrameDMC>>());
+	private final Map<String, Boolean> allFramesCached = Collections
+	.synchronizedMap(new HashMap<String, Boolean>());
 
+	
+	
 	public static class StackFrameData implements IFrameDMData {
 
 		public final IAddress address;
@@ -894,7 +898,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		boolean needsUpdate = false;
 		synchronized (stackFrames) {
 			List<StackFrameDMC> frames = stackFrames.get(context.getID());
-			needsUpdate = frames == null;
+			// Need to update the frames if there is no cached list for this
+			// context or if the cached list does not include all of the
+			// requested frames.
+			needsUpdate = frames == null ||
+			(frames.get(0).getLevel() > startIndex || 
+				frames.get(frames.size() - 1).getLevel() < endIndex) ||
+				(endIndex == ALL_FRAMES && !allFramesCached.get(context.getID()));
 		}
 		if (needsUpdate)
 			updateFrames(context, startIndex, endIndex);
@@ -927,8 +937,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			frames.add(frame);
 			previous = frame;
 		}
-		if (endIndex == ALL_FRAMES)
-			stackFrames.put(context.getID(), frames);
+		stackFrames.put(context.getID(), frames);
+		allFramesCached.put(context.getID(), startIndex == 0 && endIndex == ALL_FRAMES);
 	}
 
 	protected abstract List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex);

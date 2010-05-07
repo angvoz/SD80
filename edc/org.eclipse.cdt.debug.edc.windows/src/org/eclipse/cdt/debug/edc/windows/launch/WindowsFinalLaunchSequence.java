@@ -12,8 +12,8 @@ package org.eclipse.cdt.debug.edc.windows.launch;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.core.model.IRestart;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IEDCConstants;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence;
 import org.eclipse.cdt.debug.edc.launch.ChooseProcessItem;

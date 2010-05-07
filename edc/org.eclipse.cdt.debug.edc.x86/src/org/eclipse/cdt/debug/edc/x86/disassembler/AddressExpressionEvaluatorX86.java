@@ -16,8 +16,8 @@ import java.util.ArrayList;
 import java.util.StringTokenizer;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCMemory;
 import org.eclipse.cdt.debug.edc.services.Registers;

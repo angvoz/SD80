@@ -14,7 +14,7 @@ import java.text.MessageFormat;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.launch.ServicesLaunchSequence;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotLaunchSequence;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;

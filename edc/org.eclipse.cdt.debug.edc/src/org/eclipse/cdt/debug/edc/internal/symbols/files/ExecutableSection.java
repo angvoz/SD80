@@ -12,8 +12,8 @@ package org.eclipse.cdt.debug.edc.internal.symbols.files;
 
 import java.io.IOException;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IStreamBuffer;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
 
 /**

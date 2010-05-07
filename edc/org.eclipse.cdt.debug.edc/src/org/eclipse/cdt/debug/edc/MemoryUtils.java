@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;

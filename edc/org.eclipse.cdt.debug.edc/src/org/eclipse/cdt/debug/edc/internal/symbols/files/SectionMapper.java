@@ -15,8 +15,8 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IStreamBuffer;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.FileStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.MemoryStreamBuffer;
 import org.eclipse.cdt.utils.ERandomAccessFile;

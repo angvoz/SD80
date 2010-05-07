@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: EDC Debug Plug-in
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: org.eclipse.cdt.debug.edc.EDCDebugger
+Bundle-Activator: org.eclipse.cdt.debug.edc.internal.EDCDebugger
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.debug.core;bundle-version="3.4.0",
  org.eclipse.cdt.debug.core;bundle-version="5.0.0",
@@ -21,6 +21,7 @@ Export-Package: org.eclipse.cdt.debug.edc,
   x-friends:="org.eclipse.cdt.debug.edc.windows,
    org.eclipse.cdt.debug.edc.tests,
    org.eclipse.cdt.debug.edc.windows,
+   org.eclipse.cdt.debug.edc.ui,
    org.eclipse.cdt.debug.edc.linux.x86,
    org.eclipse.cdt.debug.edc.x86",
  org.eclipse.cdt.debug.edc.internal.eval.ast.engine;x-friends:="org.eclipse.cdt.debug.edc.tests",

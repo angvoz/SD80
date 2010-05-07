@@ -9,7 +9,7 @@
  * Nokia - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.debug.edc.arm;
+package org.eclipse.cdt.debug.edc.internal.arm;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -18,11 +18,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
-import org.eclipse.cdt.debug.edc.arm.disassembler.AddressExpressionEvaluatorARM;
-import org.eclipse.cdt.debug.edc.arm.disassembler.DisassemblerARM;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
+import org.eclipse.cdt.debug.edc.internal.arm.disassembler.AddressExpressionEvaluatorARM;
+import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM;
 import org.eclipse.cdt.debug.edc.services.AbstractTargetEnvironment;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
@@ -185,7 +184,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			String cacheKey = reader.getSymbolFile().toOSString() + IS_THUMB_MODE;
 			if (reader != null)
 			{
-				Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
+				Object cachedData = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
 				if (cachedData != null && cachedData instanceof Map<?,?>)
 				{
 					cachedValues = (Map<IAddress, Boolean>) cachedData;
@@ -204,7 +203,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 				// thumb address
 				if (functionStartAddress.getValue().testBit(0)) {
 					cachedValues.put(linkAddress, true);
-					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
+					ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
 					return true;
 				}
 			}
@@ -216,7 +215,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 					// if the symbol address is odd then it's in thumb mode
 					if (symbol.getAddress().getValue().testBit(0)) {
 						cachedValues.put(linkAddress, true);
-						EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
+						ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
 						return true;
 					}
 
@@ -226,11 +225,11 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 						if (mappingSymbol != null) {
 							if (mappingSymbol.startsWith("$t")) { //$NON-NLS-1$
 								cachedValues.put(linkAddress, true);
-								EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
+								ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
 								return true;
 							} else if (mappingSymbol.startsWith("$a")) { //$NON-NLS-1$
 								cachedValues.put(linkAddress, false);
-								EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
+								ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
 								return false;
 							}
 						}
@@ -257,7 +256,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			try {
 				armElf = new ARMElf(symbolFile.toOSString());
 			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError("Failed to load ARM/Thumb symbol mapping", e);
+				ARMPlugin.getMessageLogger().logError("Failed to load ARM/Thumb symbol mapping", e);
 			}
 			readerToArmElfMap.put(symbolFile, armElf);
 		}

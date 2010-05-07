@@ -8,7 +8,7 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.arm;
+package org.eclipse.cdt.debug.edc.internal.arm;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
@@ -169,7 +168,7 @@ public class ARMStack extends Stack {
 				if (reader != null)
 				{
 					// Check the persistent cache
-					Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
+					Object cachedData = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
 					if (cachedData != null && cachedData instanceof Map<?,?>)
 					{
 						cachedMapping = (Map<IAddress, IAddress>) cachedData;
@@ -192,7 +191,7 @@ public class ARMStack extends Stack {
 						functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
 						// put it in the cache
 						cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
-						EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());									
+						ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());									
 					}
 				}
 			}

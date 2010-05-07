@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: ARM Debug Support
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc.arm
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: org.eclipse.cdt.debug.edc.arm.ARMPlugin
+Bundle-Activator: org.eclipse.cdt.debug.edc.internal.arm.ARMPlugin
 Bundle-Vendor: Nokia
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.cdt.debug.edc;bundle-version="1.0.0",
@@ -17,4 +17,5 @@ Require-Bundle: org.eclipse.core.runtime,
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Bundle-ActivationPolicy: lazy
 Export-Package: org.eclipse.cdt.debug.edc.arm,
- org.eclipse.cdt.debug.edc.arm.disassembler;x-friends:="org.eclipse.cdt.debug.edc.tests"
+ org.eclipse.cdt.debug.edc.internal.arm;x-friends:="org.eclipse.cdt.debug.edc.tests",
+ org.eclipse.cdt.debug.edc.internal.arm.disassembler;x-friends:="org.eclipse.cdt.debug.edc.tests"

@@ -9,7 +9,7 @@
  * Nokia - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.debug.edc.arm.disassembler;
+package org.eclipse.cdt.debug.edc.internal.arm.disassembler;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -20,14 +20,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IJumpToAddress;
 import org.eclipse.cdt.debug.edc.JumpToAddress;
-import org.eclipse.cdt.debug.edc.arm.disassembler.DisassemblerARM.IDisassemblerOptionsARM;
 import org.eclipse.cdt.debug.edc.disassembler.AssemblyFormatter;
 import org.eclipse.cdt.debug.edc.disassembler.DisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
+import org.eclipse.cdt.debug.edc.internal.arm.ARMPlugin;
+import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM.IDisassemblerOptionsARM;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -195,7 +195,7 @@ public class InstructionParserARM {
 				mnemonics = parseThumbOpcode(opcode, opcode2);
 			}
 		} catch (BufferUnderflowException e) {
-			err = EDCDebugger.newCoreException("Error: end of code buffer reached.", e);
+			err = ARMPlugin.newCoreException("Error: end of code buffer reached.", e);
 		}
 
 		// Now we are done with parsing.
@@ -222,7 +222,7 @@ public class InstructionParserARM {
 			// create informative error message
 			String msg = "Fail to disassemble this instruction (address + code-bytes): " + asmOutput.toString();
 			msg += "\nCause: " + err.getMessage();
-			throw EDCDebugger.newCoreException(msg);
+			throw ARMPlugin.newCoreException(msg);
 		} else {
 			// Now fill in output.
 			result.setAddress(address);

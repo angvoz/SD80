@@ -1,5 +1,9 @@
 package org.eclipse.cdt.debug.edc.arm;
 
+import org.eclipse.cdt.debug.edc.internal.arm.ARMDisassembly;
+import org.eclipse.cdt.debug.edc.internal.arm.ARMRegisters;
+import org.eclipse.cdt.debug.edc.internal.arm.ARMStack;
+import org.eclipse.cdt.debug.edc.internal.arm.TargetEnvironmentARM;
 import org.eclipse.cdt.debug.edc.launch.DebugServicesFactory;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly;

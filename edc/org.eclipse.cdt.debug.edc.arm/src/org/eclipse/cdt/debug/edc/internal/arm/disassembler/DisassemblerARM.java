@@ -9,7 +9,7 @@
  * Nokia - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.debug.edc.arm.disassembler;
+package org.eclipse.cdt.debug.edc.internal.arm.disassembler;
 
 import java.nio.ByteBuffer;
 import java.util.Map;

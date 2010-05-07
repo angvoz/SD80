@@ -11,7 +11,6 @@
 package org.eclipse.cdt.debug.edc.internal.ui;
 
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
-import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.jface.preference.ComboFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IPreferenceStore;

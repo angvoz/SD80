@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui;
 
-import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 
 public interface IEDCHelpContextIds {
 

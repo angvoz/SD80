@@ -13,7 +13,7 @@ package org.eclipse.cdt.debug.edc.windows;
 import java.util.concurrent.ExecutionException;
 
 import org.eclipse.cdt.debug.core.model.IRestart;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;

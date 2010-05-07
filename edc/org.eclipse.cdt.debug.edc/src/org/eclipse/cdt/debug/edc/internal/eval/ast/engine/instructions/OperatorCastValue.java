@@ -13,7 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.ValueVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IType;

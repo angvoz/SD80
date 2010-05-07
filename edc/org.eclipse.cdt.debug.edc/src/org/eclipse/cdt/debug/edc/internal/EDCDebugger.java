@@ -8,10 +8,10 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc;
+package org.eclipse.cdt.debug.edc.internal;
 
-import org.eclipse.cdt.debug.edc.internal.PersistentCache;
-import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
+import org.eclipse.cdt.debug.edc.ITCFServiceManager;
+import org.eclipse.cdt.debug.edc.MessageLogger;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISettings;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.LoggingProxy;

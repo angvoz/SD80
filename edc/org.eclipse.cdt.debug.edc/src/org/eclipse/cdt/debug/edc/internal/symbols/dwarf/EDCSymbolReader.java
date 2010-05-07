@@ -14,7 +14,7 @@ import java.nio.ByteOrder;
 import java.util.Collection;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;

@@ -9,13 +9,13 @@
  * Nokia - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.debug.edc.arm.disassembler;
+package org.eclipse.cdt.debug.edc.internal.arm.disassembler;
 
 import java.text.MessageFormat;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
+import org.eclipse.cdt.debug.edc.internal.arm.ARMPlugin;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.dsf.debug.service.IMemory;
@@ -53,7 +53,7 @@ public class AddressExpressionEvaluatorARM implements IAddressExpressionEvaluato
 			address = new Addr32(regVal, 16);
 		} else {
 			// invalid
-			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, MessageFormat.format(
+			throw new CoreException(new Status(IStatus.ERROR, ARMPlugin.PLUGIN_ID, MessageFormat.format(
 					"Jump address expression {0} is invalid.", expression)));
 		}
 		return address;

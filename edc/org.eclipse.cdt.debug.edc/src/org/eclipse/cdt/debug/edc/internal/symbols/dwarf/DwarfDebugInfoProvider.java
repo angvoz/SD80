@@ -26,8 +26,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IStreamBuffer;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.symbols.IForwardTypeReference;
 import org.eclipse.cdt.debug.edc.internal.symbols.Scope;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.CommonInformationEntry;

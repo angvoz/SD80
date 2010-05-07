@@ -18,15 +18,14 @@ import java.util.List;
 
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumEventListener;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugUI;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
-import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -587,7 +586,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumEventListene
 							"Failed to import snapshot.", x.getStatus()); 
 				} catch (Exception x) {
 					ErrorDialog.openError(viewer.getControl().getShell(), "Import Error",
-							null, EDCDebugger.dsfRequestFailedStatus("Failed to import snapshot.", x));
+							null, EDCDebugUI.dsfRequestFailedStatus("Failed to import snapshot.", x));
 				}
 			}
 		};

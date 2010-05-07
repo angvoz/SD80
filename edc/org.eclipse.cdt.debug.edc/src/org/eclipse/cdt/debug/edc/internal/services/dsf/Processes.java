@@ -12,7 +12,7 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.util.Map;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;

@@ -23,12 +23,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.IJumpToAddress;
 import org.eclipse.cdt.debug.edc.JumpToAddress;
 import org.eclipse.cdt.debug.edc.disassembler.DisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.x86.disassembler.DisassemblerX86.IDisassemblerOptionsX86;
 import org.eclipse.core.runtime.CoreException;
 

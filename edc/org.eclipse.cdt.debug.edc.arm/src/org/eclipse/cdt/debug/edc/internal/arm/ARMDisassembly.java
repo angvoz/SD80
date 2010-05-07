@@ -8,7 +8,7 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.arm;
+package org.eclipse.cdt.debug.edc.internal.arm;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.debug.edc.disassembler.EDCInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.EDCMixedInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
@@ -36,9 +35,9 @@ import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IInstruction;
 import org.eclipse.cdt.dsf.debug.service.IMemory;
+import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IMixedInstruction;
 import org.eclipse.cdt.dsf.debug.service.IModules;
-import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
@@ -62,7 +61,7 @@ public class ARMDisassembly extends Disassembly {
 			final DataRequestMonitor<IInstruction[]> drm) {
 		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
 		if (disassembler == null) {
-			drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+			drm.setStatus(new Status(IStatus.ERROR, ARMPlugin.PLUGIN_ID, REQUEST_FAILED,
 					"No disassembler is available yet.", null));
 			drm.done();
 			return;
@@ -236,7 +235,7 @@ public class ARMDisassembly extends Disassembly {
 		
 		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
 		if (disassembler == null) {
-			drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+			drm.setStatus(new Status(IStatus.ERROR, ARMPlugin.PLUGIN_ID, REQUEST_FAILED,
 					"No disassembler is available yet.", null));
 			drm.done();
 			return;

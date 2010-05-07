@@ -1,6 +1,6 @@
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMAdapter;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMProvider;

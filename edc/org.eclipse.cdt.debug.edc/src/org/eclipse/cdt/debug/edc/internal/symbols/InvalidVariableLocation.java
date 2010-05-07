@@ -13,7 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 import java.math.BigInteger;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.symbols.IInvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.core.runtime.CoreException;

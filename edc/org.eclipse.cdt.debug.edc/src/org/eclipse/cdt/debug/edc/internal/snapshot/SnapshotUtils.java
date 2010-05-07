@@ -33,7 +33,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.launch.IEDCLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.core.filesystem.EFS;

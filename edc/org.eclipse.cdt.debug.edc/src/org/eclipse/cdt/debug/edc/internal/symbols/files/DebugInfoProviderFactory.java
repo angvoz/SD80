@@ -13,7 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.symbols.files;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProviderFactory;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;

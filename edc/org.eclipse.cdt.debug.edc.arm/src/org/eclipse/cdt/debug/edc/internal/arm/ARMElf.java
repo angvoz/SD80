@@ -8,7 +8,7 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.arm;
+package org.eclipse.cdt.debug.edc.internal.arm;
 
 import java.io.IOException;
 import java.util.HashMap;

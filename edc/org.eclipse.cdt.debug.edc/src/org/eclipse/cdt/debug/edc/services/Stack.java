@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.services;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -260,6 +261,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		 * registers pushed into the stack frame if debug info does not provide it.
 		 */
 		public static final String PRESERVED_REGISTERS = "preserved_registers";
+		private static final String FRAME_PROPERTY_CACHE = "_frame_properties";
 
 		private final DsfServicesTracker dsfServicesTracker = getServicesTracker();
 		private final IEDCExecutionDMC executionDMC;
@@ -284,6 +286,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private TypeEngine typeEngine;
 		private IEDCModuleDMContext module;
 
+		@SuppressWarnings("unchecked")
 		public StackFrameDMC(final IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
 			super(Stack.this, new IDMContext[] { executionDMC }, createFrameID(executionDMC, frameProperties), frameProperties);
 			this.executionDMC = executionDMC;
@@ -306,37 +309,63 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			if (ipAddr instanceof String)
 				this.ipAddress = new Addr64((String) ipAddr, 16);
 
+			boolean usingCachedProperties = false;
+			IEDCModules modules = dsfServicesTracker.getService(IEDCModules.class);
+			Map<IAddress, Map<String, Object>> cachedFrameProperties = new HashMap<IAddress, Map<String, Object>>();
+			if (modules != null) {
+				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+				if (module != null) {
+					IEDCSymbolReader reader = module.getSymbolReader();
+					// Check the persistent cache
+					String cacheKey = reader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
+					Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
+					if (cachedData != null && cachedData instanceof Map<?,?>)
+					{
+						cachedFrameProperties = (Map<IAddress, Map<String, Object>>) cachedData;
+						Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(baseAddress));
+						if (cachedProperties != null)
+						{
+							frameProperties = cachedProperties;
+							usingCachedProperties = true;
+						}
+					}
+				}
+			}
+
 			if (frameProperties.containsKey(SOURCE_FILE)) {
 				this.sourceFile = (String) frameProperties.get(SOURCE_FILE);
 				this.functionName = (String) frameProperties.get(FUNCTION_NAME);
 				this.lineNumber = (Integer) frameProperties.get(LINE_NUMBER);
 			} else {
-				// compute the source location
-				IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
-				ILineEntry line = symbolsService.getLineEntryForAddress(executionDMC.getSymbolDMContext(), ipAddress);
-				if (line != null) {
-					sourceFile = line.getFilePath().toOSString();
-					frameProperties.put(SOURCE_FILE, sourceFile);
-					lineNumber = line.getLineNumber();
-					frameProperties.put(LINE_NUMBER, lineNumber);
-				}
-
-				functionScope = symbolsService
-						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), ipAddress);
-				if (functionScope != null) {
-					// ignore inlined functions
-					while (functionScope.getParent() instanceof IFunctionScope) {
-						functionScope = (IFunctionScope) functionScope.getParent();
+				if (!usingCachedProperties)
+				{
+					// compute the source location
+					IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+					
+					ILineEntry line = symbolsService.getLineEntryForAddress(executionDMC.getSymbolDMContext(), ipAddress);
+					if (line != null) {
+						sourceFile = line.getFilePath().toOSString();
+						frameProperties.put(SOURCE_FILE, sourceFile);
+						lineNumber = line.getLineNumber();
+						frameProperties.put(LINE_NUMBER, lineNumber);
 					}
-					functionName = functionScope.getName();
-					frameProperties.put(FUNCTION_NAME, functionName);
+
+					functionScope = symbolsService
+							.getFunctionAtAddress(executionDMC.getSymbolDMContext(), ipAddress);
+					if (functionScope != null) {
+						// ignore inlined functions
+						while (functionScope.getParent() instanceof IFunctionScope) {
+							functionScope = (IFunctionScope) functionScope.getParent();
+						}
+						functionName = functionScope.getName();
+						frameProperties.put(FUNCTION_NAME, functionName);
+					}
 				}
 			}
 			properties.putAll(frameProperties);
-			
+
 			// get the type engine
 			IDebugInfoProvider debugInfoProvider = null;
-			IEDCModules modules = dsfServicesTracker.getService(IEDCModules.class);
 			if (modules != null) {
 				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
 				if (module != null) {
@@ -344,6 +373,12 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					if (symbolReader instanceof EDCSymbolReader) {
 						debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
 					}
+					
+
+					String cacheKey = symbolReader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
+					cachedFrameProperties.put(module.toLinkAddress(baseAddress), frameProperties);
+					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedFrameProperties, symbolReader.getModificationDate());				
+
 				}
 			}
 			typeEngine = new TypeEngine(dsfServicesTracker, debugInfoProvider);
@@ -972,16 +1007,19 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			previousFrameDMC = frameDMC;
 		}
 		stackFrames.put(exeDmc.getID(), frames);
-
+		allFramesCached.put(exeDmc.getID(), true);
 	}
 
 	public void flushCache(IDMContext context) {
 		if (isSnapshot())
 			return;
 		if (context != null && context instanceof IEDCDMContext) {
-			stackFrames.remove(((IEDCDMContext) context).getID());
+			String contextID = ((IEDCDMContext) context).getID();
+			stackFrames.remove(contextID);
+			allFramesCached.remove(contextID);
 		} else {
 			stackFrames.clear();
+			allFramesCached.clear();
 		}
 	}
 

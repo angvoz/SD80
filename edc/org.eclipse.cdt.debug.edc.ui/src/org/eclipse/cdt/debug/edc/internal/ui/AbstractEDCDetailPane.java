@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui;
 
-import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.IFormattedDataDMContext;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.variable.SyncVariableDataAccess;
 import org.eclipse.cdt.dsf.service.DsfSession;

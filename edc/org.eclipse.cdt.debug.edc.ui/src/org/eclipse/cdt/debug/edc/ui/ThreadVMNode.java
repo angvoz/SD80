@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.ui;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ThreadExecutionDMC;
+import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugUI;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;

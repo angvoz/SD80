@@ -10,7 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;

@@ -10,7 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui.launch;
 
-import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
+import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugUI;
 
 /**
  * Debugger tab for Attach launch configuration type.

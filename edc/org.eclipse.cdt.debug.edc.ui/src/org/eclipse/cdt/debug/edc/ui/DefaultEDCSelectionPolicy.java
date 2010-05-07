@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.ui;
 import java.util.concurrent.ExecutionException;
 
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugUI;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;

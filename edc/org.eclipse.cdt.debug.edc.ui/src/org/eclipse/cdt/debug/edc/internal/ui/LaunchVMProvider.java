@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.internal.ui;
 
 import java.util.concurrent.RejectedExecutionException;
 
-import org.eclipse.cdt.debug.edc.ui.EDCDebugUI;
 import org.eclipse.cdt.debug.edc.ui.ThreadVMNode;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.ThreadSafe;

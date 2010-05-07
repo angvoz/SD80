@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui;
 
-import org.eclipse.cdt.debug.edc.EDCDebugger;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
@@ -33,7 +32,7 @@ public class DsfTerminateCommand implements ITerminateHandler {
 
 	public DsfTerminateCommand(DsfSession session) {
 		fExecutor = session.getExecutor();
-		fTracker = new DsfServicesTracker(EDCDebugger.getBundleContext(), session.getId());
+		fTracker = new DsfServicesTracker(EDCDebugUI.getBundleContext(), session.getId());
 	}
 
 	public void dispose() {

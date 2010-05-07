@@ -302,7 +302,9 @@ public class RunAndMoveToLine extends BaseLaunchTest {
 		
 		assertNotNull(fdata);
 		assertNotNull(fdata.getFile());
-		assertTrue("Source file name is not expected", fdata.getFile().contains(fileName));
+		assertTrue(
+			"Expected source file is [" + fileName + "] but got [" + fdata.getFile() + "].",
+			fdata.getFile().contains(fileName));
 		assertEquals(functionName, fdata.getFunction());
 		assertEquals(lineNo, fdata.getLine());
 	}

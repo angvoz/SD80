@@ -22,10 +22,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.arm.disassembler.DisassemblerARM;
-import org.eclipse.cdt.debug.edc.arm.disassembler.InstructionParserARM;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
+import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM;
+import org.eclipse.cdt.debug.edc.internal.arm.disassembler.InstructionParserARM;
 import org.eclipse.cdt.utils.elf.Elf;
 import org.eclipse.cdt.utils.elf.Elf.Attribute;
 import org.eclipse.cdt.utils.elf.Elf.Section;

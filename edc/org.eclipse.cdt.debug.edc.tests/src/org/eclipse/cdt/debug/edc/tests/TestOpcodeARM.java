@@ -11,7 +11,7 @@
 
 package org.eclipse.cdt.debug.edc.tests;
 
-import org.eclipse.cdt.debug.edc.arm.disassembler.OpcodeARM;
+import org.eclipse.cdt.debug.edc.internal.arm.disassembler.OpcodeARM;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

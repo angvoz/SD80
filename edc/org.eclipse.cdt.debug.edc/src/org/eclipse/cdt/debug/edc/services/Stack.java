@@ -322,7 +322,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					if (cachedData != null && cachedData instanceof Map<?,?>)
 					{
 						cachedFrameProperties = (Map<IAddress, Map<String, Object>>) cachedData;
-						Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(baseAddress));
+						Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(ipAddress));
 						if (cachedProperties != null)
 						{
 							frameProperties = cachedProperties;
@@ -373,10 +373,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					if (symbolReader instanceof EDCSymbolReader) {
 						debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
 					}
-					
-
 					String cacheKey = symbolReader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
-					cachedFrameProperties.put(module.toLinkAddress(baseAddress), frameProperties);
+					cachedFrameProperties.put(module.toLinkAddress(ipAddress), frameProperties);
 					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedFrameProperties, symbolReader.getModificationDate());				
 
 				}
@@ -874,7 +872,15 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getStackDepth(IDMContext dmc, int maxDepth, DataRequestMonitor<Integer> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, new Object[] { dmc, maxDepth });
-		rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, ALL_FRAMES).length);
+		// For the first time always return one so the top frame can be shown immediately.
+		if (dmc instanceof IEDCExecutionDMC && stackFrames.get(((IEDCExecutionDMC)dmc).getID()) == null)
+		{
+			// Instead of sticking "1" in the DRM we call getFramesForDMC
+			// to setup the cache
+			rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, 0).length);
+		}
+		else
+			rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, ALL_FRAMES).length);
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
 		rm.done();
 	}

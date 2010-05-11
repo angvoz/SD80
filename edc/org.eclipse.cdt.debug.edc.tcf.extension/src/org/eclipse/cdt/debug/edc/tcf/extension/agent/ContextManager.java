@@ -43,8 +43,12 @@ public class ContextManager {
 	 */
 	static public void removeDebuggedContext(String id, boolean removeChildren) {
 		if (removeChildren) {
-			for (String c : findDebuggedContext(id).getChildren()) {
-				removeDebuggedContext(c, true);
+			ContextInAgent cia = findDebuggedContext(id);
+			if (cia != null)
+			{
+				for (String c : cia.getChildren()) {
+					removeDebuggedContext(c, true);
+				}				
 			}
 		}
 		

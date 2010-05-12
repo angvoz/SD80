@@ -168,6 +168,9 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		}
 
 		private IFunctionScope ignoreInlineFunctions(IFunctionScope function) {
+			if (function == null)
+				return null;
+			
 			while (function.getParent() instanceof IFunctionScope)
 			{
 				function = (IFunctionScope) function.getParent();

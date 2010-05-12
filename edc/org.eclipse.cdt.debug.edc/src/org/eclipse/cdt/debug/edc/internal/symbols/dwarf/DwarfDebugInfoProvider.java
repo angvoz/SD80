@@ -1087,12 +1087,14 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	synchronized public String[] getSourceFiles(IProgressMonitor monitor) {
 		if (referencedFiles.isEmpty()) {
 			// Check the persistent cache
-			Object cachedFiles = EDCDebugger.getDefault().getCache().getCachedData(getSymbolFile().toOSString() + SOURCE_FILES_CACHE, symbolFileLastModified);
+			String cacheKey = getSymbolFile().toOSString() + SOURCE_FILES_CACHE;
+			Object cachedFiles = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, symbolFileLastModified);
 			if (cachedFiles == null)
 			{
 				DwarfInfoReader reader = new DwarfInfoReader(this);
 				reader.quickParseDebugInfo(monitor);
-				EDCDebugger.getDefault().getCache().putCachedData(getSymbolFile().toOSString() + SOURCE_FILES_CACHE, (Serializable) referencedFiles, symbolFileLastModified);
+				assert referencedFiles.size() > 0;
+				EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) new HashSet<String>(referencedFiles), symbolFileLastModified);
 			}
 			else
 				if (cachedFiles instanceof Set<?>)

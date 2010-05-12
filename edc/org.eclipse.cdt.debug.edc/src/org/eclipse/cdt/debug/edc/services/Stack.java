@@ -63,6 +63,7 @@ import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IStorage;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
@@ -316,17 +317,24 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
 				if (module != null) {
 					IEDCSymbolReader reader = module.getSymbolReader();
-					// Check the persistent cache
-					String cacheKey = reader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
-					Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
-					if (cachedData != null && cachedData instanceof Map<?,?>)
+					if (reader != null)
 					{
-						cachedFrameProperties = (Map<IAddress, Map<String, Object>>) cachedData;
-						Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(ipAddress));
-						if (cachedProperties != null)
+						IPath symbolFile = reader.getSymbolFile();
+						if (symbolFile != null)
 						{
-							frameProperties = cachedProperties;
-							usingCachedProperties = true;
+							// Check the persistent cache
+							String cacheKey = reader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
+							Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
+							if (cachedData != null && cachedData instanceof Map<?,?>)
+							{
+								cachedFrameProperties = (Map<IAddress, Map<String, Object>>) cachedData;
+								Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(ipAddress));
+								if (cachedProperties != null)
+								{
+									frameProperties = cachedProperties;
+									usingCachedProperties = true;
+								}
+							}
 						}
 					}
 				}
@@ -370,13 +378,18 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
 				if (module != null) {
 					IEDCSymbolReader symbolReader = module.getSymbolReader();
-					if (symbolReader instanceof EDCSymbolReader) {
-						debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
+					if (symbolReader != null)
+					{
+						if (symbolReader instanceof EDCSymbolReader) {
+							debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
+						}
+						if (symbolReader.getSymbolFile() != null)
+						{
+							String cacheKey = symbolReader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
+							cachedFrameProperties.put(module.toLinkAddress(ipAddress), frameProperties);
+							EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedFrameProperties, symbolReader.getModificationDate());				
+						}
 					}
-					String cacheKey = symbolReader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
-					cachedFrameProperties.put(module.toLinkAddress(ipAddress), frameProperties);
-					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedFrameProperties, symbolReader.getModificationDate());				
-
 				}
 			}
 			typeEngine = new TypeEngine(dsfServicesTracker, debugInfoProvider);

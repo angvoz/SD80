@@ -331,7 +331,12 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 								Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(ipAddress));
 								if (cachedProperties != null)
 								{
-									frameProperties = cachedProperties;
+									if (cachedProperties.containsKey(SOURCE_FILE))
+										frameProperties.put(SOURCE_FILE, cachedProperties.get(SOURCE_FILE));
+									if (cachedProperties.containsKey(FUNCTION_NAME))
+										frameProperties.put(FUNCTION_NAME, cachedProperties.get(FUNCTION_NAME));
+									if (cachedProperties.containsKey(LINE_NUMBER))
+										frameProperties.put(LINE_NUMBER, cachedProperties.get(LINE_NUMBER));
 									usingCachedProperties = true;
 								}
 							}

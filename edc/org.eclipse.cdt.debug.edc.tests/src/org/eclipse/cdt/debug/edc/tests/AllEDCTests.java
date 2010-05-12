@@ -10,8 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.tests;
 
-import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsBasicTypes;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsAggregatesAndEnums;
+import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsBasicTypes;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsCasting;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsCasting2;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInheritance;
@@ -20,7 +20,6 @@ import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTests;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlag;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlagRVCT;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsLinux;
-import org.eclipse.cdt.debug.edc.debugger.tests.RunAndMoveToLine;
 import org.eclipse.cdt.debug.edc.debugger.tests.SnapshotTests;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -49,7 +48,6 @@ import org.junit.runners.Suite;
 						RegisterFrameTestsLinux.class,
 						RegisterFrameTestsBlackFlag.class,
 						RegisterFrameTestsBlackFlagRVCT.class,
-						RunAndMoveToLine.class,
 						SnapshotTests.class,
 						SnapshotMetaDataTests.class })
 

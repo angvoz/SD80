@@ -40,6 +40,7 @@ public class PersistentCache {
 		}
 
 		public CacheEntry(ObjectInputStream ois) throws Exception {		
+			this.location = getDefaultLocation().append(Integer.toString(identifier.hashCode())).addFileExtension("txt");;
 			this.identifier = (String) ois.readObject();
 			this.freshness = (Long) ois.readObject();
 			this.data = (Serializable) ois.readObject();		
@@ -71,6 +72,14 @@ public class PersistentCache {
 			oos.writeObject(data);
 			fos.close();
 		}
+
+		public void delete() {
+			File cacheFile = getLocation().toFile();
+			if (cacheFile.exists())
+			{
+				cacheFile.delete();
+			}
+		}
 		
 	}
 	
@@ -87,6 +96,7 @@ public class PersistentCache {
 	}
 
 	public Object getCachedData(String cacheIdentifier, long freshness) {
+		freshness  = 0;
 		CacheEntry cache = caches.get(cacheIdentifier);
 		
 		if (cache == null)
@@ -102,7 +112,7 @@ public class PersistentCache {
 			else
 			{
 				caches.remove(cache);
-				cache.getLocation().toFile().delete();
+				cache.delete();
 			}
 		}		
 		return null;

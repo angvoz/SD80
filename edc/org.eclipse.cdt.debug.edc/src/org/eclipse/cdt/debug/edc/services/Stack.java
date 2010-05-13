@@ -891,13 +891,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	public void getStackDepth(IDMContext dmc, int maxDepth, DataRequestMonitor<Integer> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, new Object[] { dmc, maxDepth });
 		// For the first time always return one so the top frame can be shown immediately.
-		if (dmc instanceof IEDCExecutionDMC && stackFrames.get(((IEDCExecutionDMC)dmc).getID()) == null)
-		{
-			// Instead of sticking "1" in the DRM we call getFramesForDMC
-			// to setup the cache
-			rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, 0).length);
-		}
-		else
+//		if (dmc instanceof IEDCExecutionDMC && stackFrames.get(((IEDCExecutionDMC)dmc).getID()) == null)
+//		{
+//			// Instead of sticking "1" in the DRM we call getFramesForDMC
+//			// to setup the cache
+//			rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, 0).length);
+//		}
+//		else
 			rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, ALL_FRAMES).length);
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
 		rm.done();

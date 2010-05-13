@@ -282,7 +282,7 @@
             id="org.eclipse.cdt.debug.edc.ui.testIsPreviousSnapshotAvailable">
         <and>
             <reference
-                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCUIPluginActive">
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCDebugSession">
             </reference>
              <reference
                   definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotDebuggingActionSetActive">
@@ -332,7 +332,7 @@
             id="org.eclipse.cdt.debug.edc.ui.testIsSnapshotCreationAvailable">
          <and>
             <reference
-                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCUIPluginActive">
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCDebugSession">
             </reference>
              <reference
                   definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotDebuggingActionSetActive">

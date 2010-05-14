@@ -531,15 +531,15 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 	public static class ModuleUnloadedEvent extends AbstractDMEvent<ISymbolDMContext> implements ModuleUnloadedDMEvent {
 
 		private final ModuleDMC module;
-		private final ExecutionDMC executionDMC;
+		private final IExecutionDMContext executionDMC;
 
-		public ModuleUnloadedEvent(ISymbolDMContext symbolContext, ExecutionDMC executionDMC, ModuleDMC module) {
+		public ModuleUnloadedEvent(ISymbolDMContext symbolContext, IExecutionDMContext executionDMC, ModuleDMC module) {
 			super(symbolContext);
 			this.module = module;
 			this.executionDMC = executionDMC;
 		}
 
-		public ExecutionDMC getExecutionDMC() {
+		public IExecutionDMContext getExecutionDMC() {
 			return executionDMC;
 		}
 
@@ -753,7 +753,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		return nextModuleID++;
 	}
 
-	public void moduleLoaded(ISymbolDMContext symbolContext, ExecutionDMC executionDMC, Map<String, Object> moduleProps) {
+	public void moduleLoaded(ISymbolDMContext symbolContext, IExecutionDMContext executionDMC, Map<String, Object> moduleProps) {
 		ModuleDMC module = new ModuleDMC(symbolContext, moduleProps);
 		module.relocateSections(moduleProps);
 		addModule(module);
@@ -761,7 +761,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				Modules.this.getProperties());
 	}
 
-	public void moduleUnloaded(ISymbolDMContext symbolContext, ExecutionDMC executionDMC,
+	public void moduleUnloaded(ISymbolDMContext symbolContext, IExecutionDMContext executionDMC,
 			Map<String, Object> moduleProps) {
 		Object fileName = moduleProps.get(IEDCDMContext.PROP_NAME);
 		ModuleDMC module = getModuleByName(symbolContext, fileName);

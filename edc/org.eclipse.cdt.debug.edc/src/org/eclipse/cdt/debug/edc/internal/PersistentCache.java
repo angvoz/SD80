@@ -40,10 +40,10 @@ public class PersistentCache {
 		}
 
 		public CacheEntry(ObjectInputStream ois) throws Exception {		
-			this.location = getDefaultLocation().append(Integer.toString(identifier.hashCode())).addFileExtension("txt");;
 			this.identifier = (String) ois.readObject();
 			this.freshness = (Long) ois.readObject();
 			this.data = (Serializable) ois.readObject();		
+			this.location = getDefaultLocation().append(Integer.toString(identifier.hashCode())).addFileExtension("txt");;
 		}
 		
 		public IPath getLocation() {

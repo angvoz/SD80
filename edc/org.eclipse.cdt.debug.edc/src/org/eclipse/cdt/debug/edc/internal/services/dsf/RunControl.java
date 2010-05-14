@@ -352,7 +352,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			stateChangeDetails = (String) params.get("message");
 
 			if (stateChangeReason == StateChangeReason.SHAREDLIB) {
-				handleSharedLibraryEvent(pc, params);
+				handleModuleEvent(this, params);
 			} else {
 				final IExecutionDMContext dmc = this;
 
@@ -396,32 +396,33 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
 
-		private void handleSharedLibraryEvent(String pc, final Map<String, Object> params) {
-			final ISymbolDMContext symbolContext = getSymbolDMContext();
-
-			if (symbolContext != null) {
-				final ExecutionDMC dmc = this;
-				// The following needs be done in DSF dispatch thread.
-				getSession().getExecutor().execute(new Runnable() {
-					public void run() {
-						// based on params, either load or unload the module
-						boolean loaded = true;
-						Object loadedValue = params.get(IModuleProperty.PROP_MODULE_LOADED);
-						if (loadedValue != null) {
-							if (loadedValue instanceof Boolean)
-								loaded = (Boolean) loadedValue;
-						}
-
-						Modules modulesService = getServicesTracker().getService(Modules.class);
-						if (loaded)
-							modulesService.moduleLoaded(symbolContext, dmc, params);
-						else
-							modulesService.moduleUnloaded(symbolContext, dmc, params);
+		/**
+		 * handle module load event and unload event. A module is an executable file
+		 * or a library (e.g. DLL or shared lib).
+		 * 
+		 * @param dmc
+		 * @param moduleProperties
+		 */
+		private void handleModuleEvent(final IEDCExecutionDMC dmc, final Map<String, Object> moduleProperties) {
+			// The following needs be done in DSF dispatch thread.
+			getSession().getExecutor().execute(new Runnable() {
+				public void run() {
+					// based on properties, either load or unload the module
+					boolean loaded = true;
+					Object loadedValue = moduleProperties.get(IModuleProperty.PROP_MODULE_LOADED);
+					if (loadedValue != null) {
+						if (loadedValue instanceof Boolean)
+							loaded = (Boolean) loadedValue;
 					}
-				});
-			}
-		}
 
+					if (loaded)
+						handleModuleLoadedEvent(dmc, moduleProperties);
+					else
+						handleModuleUnloadedEvent(dmc, moduleProperties);
+				}
+			});
+		}
+		
 		/**
 		 * Preprocessing for suspend event. This is done before we broadcast the
 		 * suspend event across the debugger. Here's what's done in the
@@ -1425,6 +1426,42 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		});
 	}
 
+	/**
+	 * handle module load event. A module is an executable file
+	 * or a library (e.g. DLL or shared lib).
+	 * Allow subclass to override for special handling if needed.
+	 * This must be called in DSF dispatch thread.
+	 * 
+	 * @param dmc
+	 * @param moduleProperties
+	 */
+	protected void handleModuleLoadedEvent(IEDCExecutionDMC dmc, Map<String, Object> moduleProperties) {
+		ISymbolDMContext symbolContext = dmc.getSymbolDMContext();
+
+		if (symbolContext != null) {
+			Modules modulesService = getServicesTracker().getService(Modules.class);
+			modulesService.moduleLoaded(symbolContext, dmc, moduleProperties);
+		}
+	}
+		
+	/**
+	 * handle module unload event. A module is an executable file
+	 * or a library (e.g. DLL or shared lib).
+	 * Allow subclass to override for special handling if needed.
+	 * This must be called in DSF dispatch thread.
+	 * 
+	 * @param dmc
+	 * @param moduleProperties
+	 */
+	protected void handleModuleUnloadedEvent(IEDCExecutionDMC dmc, Map<String, Object> moduleProperties) {
+		ISymbolDMContext symbolContext = dmc.getSymbolDMContext();
+
+		if (symbolContext != null) {
+			Modules modulesService = getServicesTracker().getService(Modules.class);
+			modulesService.moduleUnloaded(symbolContext, dmc, moduleProperties);
+		}
+	}
+		
 	private boolean handleSteppingOutOfInLineFunctions(final ExecutionDMC dmc, IFrameDMContext[] frames, final RequestMonitor rm) {
 		assert frames.length > 1 && frames[0] instanceof StackFrameDMC;
 		// Check to see if we are in an inlined function

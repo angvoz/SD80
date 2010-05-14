@@ -978,7 +978,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		// An existing module (including main exe) is unloaded. Uninstall
 		// breakpoints for it.
 		ModuleUnloadedEvent event = (ModuleUnloadedEvent) e;
-		final ExecutionDMC executionDMC = event.getExecutionDMC();
+		final ExecutionDMC executionDMC = (ExecutionDMC)event.getExecutionDMC();
 		final ModuleDMC module = (ModuleDMC) e.getUnloadedModuleContext();
 		
 		final boolean requireResume	= requireResume(module);

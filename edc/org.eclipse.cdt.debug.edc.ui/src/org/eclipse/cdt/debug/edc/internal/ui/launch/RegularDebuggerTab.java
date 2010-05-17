@@ -28,7 +28,7 @@ public class RegularDebuggerTab extends AbstractDebuggerTab {
 	 * We therefore call setDefaults() ourselves.
 	 * Bug 281970
 	 */
-	private boolean fSetDefaultCalled;
+	private final static String DEFAULTS_SET = "org.eclipse.cdt.debug.edc.internal.ui.launch.RegularDebuggerTab.DEFAULTS_SET"; //$NON-NLS-1$
 	
 	public RegularDebuggerTab() {
 		super(false);
@@ -46,22 +46,22 @@ public class RegularDebuggerTab extends AbstractDebuggerTab {
 	
     @Override
     public void setDefaults(ILaunchConfigurationWorkingCopy config) {
-    	fSetDefaultCalled = true;
+		config.setAttribute(DEFAULTS_SET, true);
     	
     	super.setDefaults(config);
     }
     
     @Override
     public void initializeFrom(ILaunchConfiguration config) {
-		if (fSetDefaultCalled == false) {
-			try {
-				ILaunchConfigurationWorkingCopy wc;
-				wc = config.getWorkingCopy();
-				setDefaults(wc);
-				wc.doSave();
-			} catch (CoreException e) {
-			}
-		}
+    	try {
+    		if (config.hasAttribute(DEFAULTS_SET) == false) {
+    			ILaunchConfigurationWorkingCopy wc;
+    			wc = config.getWorkingCopy();
+    			setDefaults(wc);
+    			wc.doSave();
+    		}
+    	} catch (CoreException e) {
+    	}
 
 		super.initializeFrom(config);
     }

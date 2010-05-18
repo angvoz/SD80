@@ -96,7 +96,7 @@ public class PersistentCache {
 	}
 
 	public Object getCachedData(String cacheIdentifier, long freshness) {
-		freshness  = 0;
+	// 	freshness  = 0;
 		CacheEntry cache = caches.get(cacheIdentifier);
 		
 		if (cache == null)

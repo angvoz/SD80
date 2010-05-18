@@ -898,7 +898,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 //			rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, 0).length);
 //		}
 //		else
-			rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, ALL_FRAMES).length);
+		int startFrame = 0;
+		int endFrame = ALL_FRAMES;	
+		if (maxDepth > 0)
+			endFrame = maxDepth - 1;
+		rm.setData(getFramesForDMC((ExecutionDMC) dmc, startFrame, endFrame).length);
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
 		rm.done();
 	}

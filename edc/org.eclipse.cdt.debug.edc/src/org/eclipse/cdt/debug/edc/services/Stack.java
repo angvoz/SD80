@@ -50,6 +50,7 @@ import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
+import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
@@ -874,12 +875,27 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getFrames(IDMContext execContext, DataRequestMonitor<IFrameDMContext[]> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, execContext);
-		rm.setData(new IFrameDMContext[0]);
-		if (execContext instanceof IEDCExecutionDMC) {
+
+		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(execContext, ExecutionDMC.class);
+		if (execDmc != null)
+		{
+			if (!execDmc.isSuspended())
+			{
+				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "Context is running: " + execDmc, null)); //$NON-NLS-1$
+				rm.done();
+				return;
+			}
+
 			rm.setData(getFramesForDMC((ExecutionDMC) execContext, 0, ALL_FRAMES));
+			if (rm.getData().length == 0)
+				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execDmc, null)); //$NON-NLS-1$
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+			rm.done();
 		}
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
-		rm.done();
+		else {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
+			rm.done();
+		}
 	}
 
 	public void getLocals(IFrameDMContext frameCtx, DataRequestMonitor<IVariableDMContext[]> rm) {
@@ -890,21 +906,30 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getStackDepth(IDMContext dmc, int maxDepth, DataRequestMonitor<Integer> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, new Object[] { dmc, maxDepth });
-		// For the first time always return one so the top frame can be shown immediately.
-//		if (dmc instanceof IEDCExecutionDMC && stackFrames.get(((IEDCExecutionDMC)dmc).getID()) == null)
-//		{
-//			// Instead of sticking "1" in the DRM we call getFramesForDMC
-//			// to setup the cache
-//			rm.setData(getFramesForDMC((ExecutionDMC) dmc, 0, 0).length);
-//		}
-//		else
-		int startFrame = 0;
-		int endFrame = ALL_FRAMES;	
-		if (maxDepth > 0)
-			endFrame = maxDepth - 1;
-		rm.setData(getFramesForDMC((ExecutionDMC) dmc, startFrame, endFrame).length);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
-		rm.done();
+        final ExecutionDMC execDmc = DMContexts.getAncestorOfType(dmc, ExecutionDMC.class);
+		if (execDmc != null)
+		{
+			if (!execDmc.isSuspended())
+			{
+		           rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "Context is running: " + execDmc, null)); //$NON-NLS-1$
+			    	rm.done();
+			}
+			
+			int startFrame = 0;
+			int endFrame = ALL_FRAMES;	
+			if (maxDepth > 0)
+				endFrame = maxDepth - 1;
+			rm.setData(getFramesForDMC(execDmc, startFrame, endFrame).length);
+			if (rm.getData() == 0)
+				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execDmc, null)); //$NON-NLS-1$
+
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+			rm.done();
+		}
+		 else {
+	            rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
+	            rm.done();
+	        }
 	}
 
 	public void getTopFrame(IDMContext execContext, DataRequestMonitor<IFrameDMContext> rm) {
@@ -943,8 +968,25 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	public void getFrames(IDMContext execContext, int startIndex, int endIndex, DataRequestMonitor<IFrameDMContext[]> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE,
 				new Object[] { execContext, startIndex, endIndex });
-		if (execContext instanceof IEDCExecutionDMC) {
+		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(execContext, ExecutionDMC.class);
+		if (execDmc != null)
+		{
+			if (!execDmc.isSuspended())
+			{
+				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "Context is running: " + execDmc, null)); //$NON-NLS-1$
+				rm.done();
+				return;
+			}
+
 			rm.setData(getFramesForDMC((ExecutionDMC) execContext, startIndex, endIndex));
+			if (rm.getData().length == 0)
+				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execContext, null)); //$NON-NLS-1$
+			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+			rm.done();
+		}
+		else {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
+			rm.done();
 		}
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
 		rm.done();

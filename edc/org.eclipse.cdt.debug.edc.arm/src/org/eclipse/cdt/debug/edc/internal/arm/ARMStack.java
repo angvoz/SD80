@@ -37,7 +37,6 @@ import org.eclipse.debug.core.model.MemoryByte;
 
 public class ARMStack extends Stack {
 
-	private static int nextStackFrameID = 100;
 	private static final int MAX_FRAMES = 30;
 	private static final String FUNCTION_START_ADDRESS_CACHE = "_function_start_address";
 
@@ -207,7 +206,7 @@ public class ARMStack extends Stack {
 					.getValue().longValue();
 
 			properties = new HashMap<String, Object>();
-			properties.put(IEDCDMContext.PROP_ID, Integer.toString(nextStackFrameID++));
+			properties.put(IEDCDMContext.PROP_ID, context.getID() + "." + Integer.toString(frameCount));
 			properties.put(StackFrameDMC.LEVEL_INDEX, frameCount);
 			properties.put(StackFrameDMC.BASE_ADDR, baseAddress);
 			properties.put(StackFrameDMC.IP_ADDR, pcValue.getValue().longValue());

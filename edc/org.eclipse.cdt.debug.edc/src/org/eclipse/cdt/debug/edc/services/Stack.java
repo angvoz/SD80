@@ -906,15 +906,16 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getStackDepth(IDMContext dmc, int maxDepth, DataRequestMonitor<Integer> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, new Object[] { dmc, maxDepth });
-        final ExecutionDMC execDmc = DMContexts.getAncestorOfType(dmc, ExecutionDMC.class);
+		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(dmc, ExecutionDMC.class);
 		if (execDmc != null)
 		{
 			if (!execDmc.isSuspended())
 			{
-		           rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "Context is running: " + execDmc, null)); //$NON-NLS-1$
-			    	rm.done();
+				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "Context is running: " + execDmc, null)); //$NON-NLS-1$
+				rm.done();
+				return;
 			}
-			
+
 			int startFrame = 0;
 			int endFrame = ALL_FRAMES;	
 			if (maxDepth > 0)
@@ -926,10 +927,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
 			rm.done();
 		}
-		 else {
-	            rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
-	            rm.done();
-	        }
+		else {
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
+			rm.done();
+		}
 	}
 
 	public void getTopFrame(IDMContext execContext, DataRequestMonitor<IFrameDMContext> rm) {
@@ -989,7 +990,6 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			rm.done();
 		}
 		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
-		rm.done();
 	}
 
 	public IFrameDMContext[] getFramesForDMC(IEDCExecutionDMC context, int startIndex, int endIndex) {

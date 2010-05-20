@@ -26,7 +26,6 @@ public interface ISection {
 	static final String PROPERTY_ID = "id"; //$NON-NLS-1$
 	static final String PROPERTY_SIZE = "size"; //$NON-NLS-1$
 	static final String PROPERTY_LINK_ADDRESS = "link_address"; //$NON-NLS-1$
-	static final String PROPERTY_RUNTIME_ADDRESS = "runtime_address"; //$NON-NLS-1$
 	/** Canonical section name: one of NAME_TEXT, NAME_DATA, NAME_RODATA, or NAME_BSS */
 	static final String PROPERTY_NAME = "name"; //$NON-NLS-1$
 	
@@ -61,21 +60,6 @@ public interface ISection {
 	 * @return the base link address
 	 */
 	IAddress getLinkAddress();
-
-	/**
-	 * Get the base runtime address of the section
-	 * 
-	 * @return the base runtime address
-	 */
-	IAddress getRuntimeAddress();
-
-	/**
-	 * Relocates the section to the given runtime base address
-	 * 
-	 * @param runtimeAddress
-	 *            the relocated base address of the section
-	 */
-	void relocate(IAddress runtimeAddress);
 
 	/**
 	 * Get the properties of the section

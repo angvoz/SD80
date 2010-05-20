@@ -29,7 +29,9 @@ import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.internal.symbols.IRuntimeSection;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
+import org.eclipse.cdt.debug.edc.internal.symbols.RuntimeSection;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
@@ -121,7 +123,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 
 		private final IPath hostFilePath;
 		private IEDCSymbolReader symReader;
-		private final List<ISection> runtimeSections = new ArrayList<ISection>();
+		private final List<IRuntimeSection> runtimeSections = new ArrayList<IRuntimeSection>();
 
 		public ModuleDMC(ISymbolDMContext symbolContext, Map<String, Object> props) {
 			super(Modules.this, symbolContext == null ? new IDMContext[0] : new IDMContext[] { symbolContext }, Integer
@@ -160,8 +162,8 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				int sectionID = Integer.parseInt(sectionElement.getAttribute(ISection.PROPERTY_ID));
 				long size = Long.parseLong(sectionElement.getAttribute(ISection.PROPERTY_SIZE));
 
-				Section section = new Section(sectionID, size, linkAddress, properties);
-				section.relocate(new Addr64(sectionElement.getAttribute(ISection.PROPERTY_RUNTIME_ADDRESS)));
+				RuntimeSection section = new RuntimeSection(new Section(sectionID, size, linkAddress, properties));
+				section.relocate(new Addr64(sectionElement.getAttribute(IRuntimeSection.PROPERTY_RUNTIME_ADDRESS)));
 				runtimeSections.add(section);
 			}
 
@@ -174,12 +176,12 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 			Element propsElement = SnapshotUtils.makeXMLFromProperties(document, getProperties());
 			contextElement.appendChild(propsElement);
 
-			for (ISection s : runtimeSections) {
+			for (IRuntimeSection s : runtimeSections) {
 				Element sectionElement = document.createElement(SECTION);
 				sectionElement.setAttribute(ISection.PROPERTY_ID, Integer.toString(s.getId()));
 				sectionElement.setAttribute(ISection.PROPERTY_SIZE, Long.toString(s.getSize()));
 				sectionElement.setAttribute(ISection.PROPERTY_LINK_ADDRESS, s.getLinkAddress().toHexAddressString());
-				sectionElement.setAttribute(ISection.PROPERTY_RUNTIME_ADDRESS, s.getRuntimeAddress()
+				sectionElement.setAttribute(IRuntimeSection.PROPERTY_RUNTIME_ADDRESS, s.getRuntimeAddress()
 						.toHexAddressString());
 				propsElement = SnapshotUtils.makeXMLFromProperties(document, s.getProperties());
 				sectionElement.appendChild(propsElement);
@@ -212,10 +214,13 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 
 			initializeSymbolReader();
 
-			if (symReader != null) {
-				runtimeSections.addAll(symReader.getSections());
+			if (symReader != null) {	
+				for (ISection section: symReader.getSections())
+				{
+					runtimeSections.add(new RuntimeSection(section));
+				}
 			}
-
+			
 			if (props.containsKey(IModuleProperty.PROP_IMAGE_BASE_ADDRESS)) {
 				// Windows module (PE file)
 				//
@@ -246,7 +251,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 					IAddress linkBase = symReader.getBaseLinkAddress();
 					if (linkBase != null && !linkBase.equals(imageBaseAddr)) {
 						BigInteger offset = linkBase.distanceTo(imageBaseAddr);
-						for (ISection s : runtimeSections) {
+						for (IRuntimeSection s : runtimeSections) {
 							IAddress runtimeB = s.getLinkAddress().add(offset);
 							s.relocate(runtimeB);
 						}
@@ -254,7 +259,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				} else { // fill in fake section data
 					Map<String, Object> pp = new HashMap<String, Object>();
 					pp.put(ISection.PROPERTY_NAME, ISection.NAME_TEXT);
-					runtimeSections.add(new Section(0, size.longValue(), imageBaseAddr, pp));
+					runtimeSections.add(new RuntimeSection(new Section(0, size.longValue(), imageBaseAddr, pp)));
 				}
 			} else if (props.containsKey(IModuleProperty.PROP_CODE_ADDRESS)) {
 				// platforms other than Windows
@@ -275,7 +280,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 
 				if (symReader != null) {
 					// Relocate.
-					for (ISection s : runtimeSections) {
+					for (IRuntimeSection s : runtimeSections) {
 						if (s.getProperties().get(ISection.PROPERTY_NAME).equals(ISection.NAME_TEXT)
 								&& codeAddr != null)
 							s.relocate(new Addr64(codeAddr.toString()));
@@ -295,17 +300,17 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 
 					if (codeAddr != null && codeSize != null) {
 						pp.put(ISection.PROPERTY_NAME, ISection.NAME_TEXT);
-						runtimeSections.add(new Section(0, codeSize.intValue(), new Addr64(codeAddr.toString()), pp));
+						runtimeSections.add(new RuntimeSection(new Section(0, codeSize.intValue(), new Addr64(codeAddr.toString()), pp)));
 					}
 					if (dataAddr != null && dataSize != null) {
 						pp.clear();
 						pp.put(ISection.PROPERTY_NAME, ISection.NAME_DATA);
-						runtimeSections.add(new Section(0, dataSize.intValue(), new Addr64(dataAddr.toString()), pp));
+						runtimeSections.add(new RuntimeSection(new Section(0, dataSize.intValue(), new Addr64(dataAddr.toString()), pp)));
 					}
 					if (bssAddr != null && bssSize != null) {
 						pp.clear();
 						pp.put(ISection.PROPERTY_NAME, ISection.NAME_BSS);
-						runtimeSections.add(new Section(0, bssSize.intValue(), new Addr64(bssAddr.toString()), pp));
+						runtimeSections.add(new RuntimeSection(new Section(0, bssSize.intValue(), new Addr64(bssAddr.toString()), pp)));
 					}
 				}
 			} else {
@@ -349,7 +354,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		 * @return
 		 */
 		public boolean containsAddress(IAddress runtimeAddress) {
-			for (ISection s : runtimeSections) {
+			for (IRuntimeSection s : runtimeSections) {
 				long offset = s.getRuntimeAddress().distanceTo(runtimeAddress).longValue();
 				if (offset >= 0 && offset < s.getSize())
 					return true;
@@ -364,7 +369,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		public IAddress toLinkAddress(IAddress runtimeAddress) {
 			IAddress ret = null;
 
-			for (ISection s : runtimeSections) {
+			for (IRuntimeSection s : runtimeSections) {
 				long offset = s.getRuntimeAddress().distanceTo(runtimeAddress).longValue();
 				if (offset >= 0 && offset < s.getSize()) {
 					return s.getLinkAddress().add(offset);
@@ -380,7 +385,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		public IAddress toRuntimeAddress(IAddress linkAddress) {
 			IAddress ret = null;
 
-			for (ISection s : runtimeSections) {
+			for (IRuntimeSection s : runtimeSections) {
 				long offset = s.getLinkAddress().distanceTo(linkAddress).longValue();
 				if (offset >= 0 && offset < s.getSize()) {
 					return s.getRuntimeAddress().add(offset);
@@ -408,7 +413,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				builder.append(hostFilePath.lastSegment());
 				builder.append(", ");
 			}
-			for (ISection s : runtimeSections) {
+			for (IRuntimeSection s : runtimeSections) {
 				builder.append("\n");
 				builder.append(s);
 			}

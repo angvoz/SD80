@@ -260,4 +260,13 @@ public class PathUtils {
 		}
 		return new Path(builder.toString());
 	}
+
+	public static boolean isCaseSensitive() {
+		// Is the underlying file system case sensitive?
+		// This can actually be complex to determine and can even vary by volume
+		// but this is an OK general test for now.
+		if (HostOS.IS_UNIX)
+			return true;
+		return false;
+	}
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- =============================================================================== -->
+<!-- CONTEXT HELP FOR EDC SNAPSHOTS						                             -->
+<!-- =============================================================================== -->
+
+<contexts>
+		
+	<!-- ============================================================== -->
+	<!-- SNAPSHOT SECTION                                               -->
+	<!-- ============================================================== -->
+
+	<context id="wizard_platsim_page" >
+		<description>Define the project's launch configuration.</description>
+		<topic label="PlatSim launch configuration"    		href="html/launch/platsim_launch_config.htm" />
+		<topic label="PlatSim tab"    						href="html/launch/platsim_launch_config_platsim.htm" />
+	</context>
+
+</contexts>

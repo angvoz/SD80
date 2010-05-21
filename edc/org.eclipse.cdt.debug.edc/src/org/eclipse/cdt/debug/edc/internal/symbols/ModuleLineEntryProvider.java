@@ -29,6 +29,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
@@ -118,7 +119,10 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		public Collection<ILineEntry> getLineEntriesForLines(IPath path, int startLineNumber, int endLineNumber) {
 			// FIXME: ugly drive letter stuff
 			if (!filePath.setDevice(null).equals(path.setDevice(null)) )
-				return Collections.emptyList();
+			{
+				if (!PathUtils.isCaseSensitive() && filePath.toOSString().compareToIgnoreCase(path.toOSString()) != 0)
+					return Collections.emptyList();			
+			}
 			
 			List<ILineEntry> entries = new ArrayList<ILineEntry>();
 
@@ -314,6 +318,14 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		if (cus != null)
 			return Collections.unmodifiableCollection(cus);
 		
+		for (Map.Entry<IPath, List<FileLineEntryProvider>> entry : pathToLineEntryMap.entrySet()) {
+			if (!PathUtils.isCaseSensitive() && entry.getKey().toOSString().compareToIgnoreCase(sourceFile.toOSString()) == 0) {
+				cus = entry.getValue();
+				pathToLineEntryMap.put(sourceFile, entry.getValue());
+				return Collections.unmodifiableCollection(cus);
+			}
+		}
+		
 		// FIXME: drive letter nastiness
 		for (Map.Entry<IPath, List<FileLineEntryProvider>> entry : pathToLineEntryMap.entrySet()) {
 			if (entry.getKey().setDevice(null).equals(sourceFile.setDevice(null))) {
@@ -321,6 +333,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 				return Collections.unmodifiableCollection(cus);
 			}
 		}
+		
 		return Collections.emptyList();
 	}
 

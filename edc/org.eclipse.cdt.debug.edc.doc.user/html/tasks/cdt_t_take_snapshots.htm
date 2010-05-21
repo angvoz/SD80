@@ -1,0 +1,40 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<meta http-equiv="Content-Style-Type" content="text/css" />
+<meta name="LASTUPDATED" content="06/17/05 11:09:43" />
+<title>Taking Snapshots</title>
+<link rel="StyleSheet" href="../../book.css" type="text/css"/>
+</head>
+<body bgcolor="#FFFFFF">
+<h2>Taking Snapshots</h2>
+<p>You take a <b>snapshot</b> of a debug session to store all the data necessary to recreate the state of the debug session at a later time. The resulting snapshots are stored in a .dsa file for later browsing and sharing with others. Snapshots are taken during a debug session when program execution is halted and the <a href="../debug/viewing_debug.htm">Debug</a> view is visible.</p>
+<p align="center"><img src="../images/cdt_w_edc_debug_view.png" width="610" height="144"></p>
+<p align="center">Figure 1 - The Snapshot icon appears in the Debug view when EDC is available</p>
+<h3>Taking a Snapshot</h3>
+<ol>
+  <li>Launch a debug session for a C/C++ project</li>
+  <li>Run the executable until you reach the point in the program where a snapshot is desired</li>
+  <li>Halt the debug session so the <b>Debug</b> perspective is visible</li>
+  <li>Click the <b>Snapshot</b> icon (<img src="../images/icon_edc_snapshot.png" width="18" height="16" align="absmiddle">) in the <b>Debug</b> view to take a snapshot of the current state of the debug session</li>
+  <li>Advance the debug session to another point, then repeat Steps 2-4 to take additional snapshots</li>
+  </ol>
+<p><b>NOTE</b> Snapshots are only available when the Eclipse Debugger for C/C++ (EDC) plugins are installed.</p>
+<p>Snapshot files are stored in the directory specified in the Snapshots launch configuration using names that make it easy to identify the time of the snapshot. In addition, each snapshot appears in the <a href="../reference/cdt_u_dsa_view.htm">Snapshot Albums view</a> for quick retrieval.</p>
+<h3>Automating Snapshots</h3>
+<p>Snapshots can also be automatically taken based on specific debug session actions. To specify this, click the arrow next to the Snapshot icon (Figure 2) and choose an option from the dropdown list:</p>
+<ul>
+  <li><b>Manual</b> (default) - manually click the Snapshot icon to capture a debug session</li>
+  <li><b>Suspend</b> - automatically take a snapshot when a debug session is suspended</li>
+  <li><b>Breakpoints</b> - automatically take a snapshow whenever an active breakpoint is hit</li>
+</ul>
+<p align="center"><img src="../images/icon_snapshot_dropdown.png" width="105" height="85"></p>
+<p align="center">Figure 2 - Snapshot dropdown menu</p>
+<h4>Other references</h4>
+<ul>
+  <li><a href="../concepts/cdt_c_snapshots.htm">Snapshots Overview</a></li>
+</ul>
+<div id="footer">Copyright &copy; 2009 Nokia Corporation and/or its subsidiary(-ies). All rights reserved. <br>License: <a href="http://www.eclipse.org/legal/epl-v10.html">http://www.eclipse.org/legal/epl-v10.html</a></div>
+</body>
+</html>

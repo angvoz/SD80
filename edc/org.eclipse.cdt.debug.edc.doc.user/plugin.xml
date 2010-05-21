@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+
+<plugin>
+
+   <extension point="org.eclipse.help.toc" >
+      <toc
+            file="tocEDC_Concepts.xml"
+            primary="true"/>
+					
+      <toc
+            file="tocEDC_Reference.xml"
+            primary="false"/>
+
+      <toc
+            file="tocEDC_Tasks.xml"
+            primary="false"/>
+
+   </extension>
+
+<!-- =================================================================================== -->
+<!-- CONTEXT IDs for CONTEXTUAL HELP in windows, dialogs, and views                      -->
+<!-- =================================================================================== -->
+	
+	<extension point="org.eclipse.help.contexts" >
+	
+		<contexts file="html/context_help/snapshots_help.xml" 
+			plugin="com.nokia.cdt.debug.launch" />
+
+	</extension>
+
+	<extension point="org.eclipse.ui.cheatsheets.cheatSheetContent" >
+
+    	<!--
+    	<cheatsheet
+		   category="org.eclipse.cdt.debug.edt.cheatsheets"
+           contentFile="html/cheatsheets/snapshots_cs.xml"
+           id="com.nokia.carbide.internal.doc.user.using_trk_with_pnp"
+           name="Using Debug Snapshots"/>
+        -->
+        
+	</extension>
+
+
+</plugin>

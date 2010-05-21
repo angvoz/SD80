@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?NLS TYPE="org.eclipse.help.toc"?>
+
+<toc label="Snapshots" link_to="../org.eclipse.cdt.doc.user/toc.xml#cdt_Tasks_Anchor" >
+
+   <topic href="html/tasks/cdt_t_take_snapshots.htm" label="Taking Snapshots">
+   </topic>
+   <topic href="html/tasks/cdt_t_dsa_launch.htm" label="Launching Snapshots">
+   </topic>
+   <topic href="html/tasks/cdt_t_dsa_browse.htm" label="Browsing Snapshots">
+   </topic>
+   <topic href="html/tasks/cdt_t_dsa_browse.htm" label="Renaming Snapshots">
+   </topic>
+   <topic href="html/tasks/cdt_t_import_snapshots.htm" label="Importing Snapshots">
+   </topic>
+   <topic href="html/tasks/cdt_t_export_snapshots.htm" label="Exporting Snapshots">
+   </topic>
+ 
+</toc>

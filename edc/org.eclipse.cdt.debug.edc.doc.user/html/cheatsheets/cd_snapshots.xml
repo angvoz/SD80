@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cheatsheet
+      title="Using Snapshots DRAFT">
+   <intro>
+      <description>
+         <b>The snapshot feature makes is easy to store select points in a debug session which can later be viewed without debugging the program again.</b>
+      </description>
+   </intro>
+   <item
+         href="/org.eclipse.cdt.debug.edc.doc.user/html/concepts/cdt_c_snapshots.htm"
+         title="Snapshots Overview">
+   </item>
+</cheatsheet>

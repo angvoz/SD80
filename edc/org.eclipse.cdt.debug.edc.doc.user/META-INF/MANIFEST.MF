@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: CDT EDC User Guide
+Bundle-SymbolicName: org.eclipse.cdt.edc.doc.user;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: Nokia

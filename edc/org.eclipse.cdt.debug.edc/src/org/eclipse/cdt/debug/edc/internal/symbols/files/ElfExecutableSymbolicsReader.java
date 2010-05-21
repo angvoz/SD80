@@ -116,9 +116,12 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 			// debugger
 			if (name.length() > 0) {			
 				if (symbol.st_size != 0 || !symbolAddressSet.contains(symbol.st_value)) {
-					Symbol sym = new Symbol(symbol.toString(), symbol.st_value, symbol.st_size);
-					symbols.add(sym);
-					symbolAddressSet.add(symbol.st_value);
+					// need to get rid of labels with size 0
+					if (symbol.st_size != 0 || !name.startsWith("|")) {
+						Symbol sym = new Symbol(symbol.toString(), symbol.st_value, symbol.st_size);
+						symbols.add(sym);
+						symbolAddressSet.add(symbol.st_value);
+					}
 				}
 			}
 		}

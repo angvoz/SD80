@@ -55,6 +55,7 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IColumnPresentati
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelSelectionPolicyFactory;
+import org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerInputProvider;
 import org.eclipse.debug.ui.contexts.ISuspendTrigger;
 import org.eclipse.debug.ui.sourcelookup.ISourceDisplay;
 
@@ -152,6 +153,8 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
              */
             fDebugTextHover = new EDCDebugTextHover();
             session.registerModelAdapter(ICEditorTextHover.class, fDebugTextHover);
+            
+            session.registerModelAdapter(IViewerInputProvider.class, fViewModelAdapter);
 		}
 
 		void dispose() {

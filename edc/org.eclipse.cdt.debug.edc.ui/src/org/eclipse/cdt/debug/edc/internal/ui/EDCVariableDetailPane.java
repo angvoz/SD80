@@ -256,11 +256,14 @@ public class EDCVariableDetailPane extends AbstractEDCDetailPane {
 
 	@Override
 	public void display(IStructuredSelection selection) {
-		setNumberFormatAction.setSelection(selection);
+		if (setNumberFormatAction != null)
+			setNumberFormatAction.setSelection(selection);
 		super.display(selection);
 	}
 
 	protected String getCurrentFormat() {
+		if (setNumberFormatAction == null)
+			return IFormattedValues.NATURAL_FORMAT;
 		return setNumberFormatAction.getCurrentFormat();
 	}
 

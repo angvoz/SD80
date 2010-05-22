@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.ui;
 
 import org.eclipse.cdt.dsf.concurrent.ThreadSafe;
+import org.eclipse.cdt.dsf.debug.ui.IDsfDebugUIConstants;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.AbstractDebugVMAdapter;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.SteppingController;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.breakpoints.BreakpointVMProvider;
@@ -51,6 +52,8 @@ public class EDCViewModelAdapter extends AbstractDebugVMAdapter {
 			return new RegisterVMProvider(this, context, getSession());
 		} else if (IDebugUIConstants.ID_EXPRESSION_VIEW.equals(context.getId())) {
 			return new ExpressionVMProvider(this, context, getSession());
+        } else if (IDsfDebugUIConstants.ID_EXPRESSION_HOVER.equals(context.getId()) ) {
+            return new ExpressionVMProvider(this, context, getSession());
 		} else if (IDebugUIConstants.ID_MODULE_VIEW.equals(context.getId())) {
 			return new ModulesVMProvider(this, context, getSession());
 		} else if (IDebugUIConstants.ID_BREAKPOINT_VIEW.equals(context.getId())) {

@@ -32,4 +32,9 @@ public class EDCDebugTextHover extends AbstractDsfDebugTextHover {
     	return null;
     }
 
+	@Override
+	protected boolean useExpressionExplorer() {
+		return true;
+	}
+
 }

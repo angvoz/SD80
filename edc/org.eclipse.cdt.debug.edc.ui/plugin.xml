@@ -88,7 +88,7 @@
   <command
         description="Show all variables globally defined by the current source file"
         id="org.eclipse.cdt.debug.edc.ui.toggleShowAllVariables"
-        name="Show All Variables">
+        name="Show Globals Defined In File">
      <state
            class="org.eclipse.ui.handlers.RegistryToggleState:false"
            id="org.eclipse.ui.commands.toggleState">

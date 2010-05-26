@@ -195,7 +195,7 @@
             locationURI="menu:org.eclipse.debug.ui.VariableView?after=formatting">
          <command
                commandId="org.eclipse.cdt.debug.edc.ui.toggleShowAllVariables"
-               label="Show All Variables"
+               label="Show Globals Defined In File"
                style="toggle">
              <visibleWhen
                   checkEnabled="false">

@@ -453,11 +453,59 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return 0;
 		}
 
+		
 		@Override
 		public String toString() {
-			return "StackFrameDMC [baseAddress=" + baseAddress
-					+ ", sourceFile=" + sourceFile + ", functionName="
-					+ functionName + ", lineNumber=" + lineNumber + "]";
+			return "StackFrameDMC [baseAddress=" + baseAddress.toHexAddressString() + ", ipAddress="
+					+ ipAddress.toHexAddressString() + ", sourceFile=" + sourceFile
+					+ ", functionName=" + functionName + ", lineNumber="
+					+ lineNumber + "]";
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = super.hashCode();
+			result = prime * result + getOuterType().hashCode();
+			result = prime * result
+					+ ((baseAddress == null) ? 0 : baseAddress.hashCode());
+			result = prime * result
+					+ ((executionDMC == null) ? 0 : executionDMC.hashCode());
+			result = prime * result
+					+ ((ipAddress == null) ? 0 : ipAddress.hashCode());
+			result = prime * result + level;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (!super.equals(obj))
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			StackFrameDMC other = (StackFrameDMC) obj;
+			if (!getOuterType().equals(other.getOuterType()))
+				return false;
+			if (baseAddress == null) {
+				if (other.baseAddress != null)
+					return false;
+			} else if (!baseAddress.equals(other.baseAddress))
+				return false;
+			if (executionDMC == null) {
+				if (other.executionDMC != null)
+					return false;
+			} else if (!executionDMC.equals(other.executionDMC))
+				return false;
+			if (ipAddress == null) {
+				if (other.ipAddress != null)
+					return false;
+			} else if (!ipAddress.equals(other.ipAddress))
+				return false;
+			if (level != other.level)
+				return false;
+			return true;
 		}
 
 		/**
@@ -793,6 +841,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		
 		public IEDCModuleDMContext getModule() {
 			return module;
+		}
+
+		private Stack getOuterType() {
+			return Stack.this;
 		}
 		
 	}

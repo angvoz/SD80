@@ -549,18 +549,7 @@
   
     <extension
          point="org.eclipse.ui.activities">
- 
-      <category
-            name="Standard Debug Commands"
-            description="Standard Debug Commands"
-            id="org.eclipse.cdt.debug.edc.ui.platformDebugCatagory">
-      </category>
-  
-       <categoryActivityBinding
-            activityId="org.eclipse.cdt.debug.edc.ui.platformDebugActivity"
-            categoryId="org.eclipse.cdt.debug.edc.ui.platformDebugCatagory">
-      </categoryActivityBinding>
-  
+   
       <activity
             name="Standard Debug Actions"
             description="These are the standard platform debug commands"
@@ -597,17 +586,6 @@
    
    <extension
          point="org.eclipse.ui.activities">
- 
-      <category
-            name="EDC - Eclipse Debugger for C/C++"
-            description="Commands for the EDC Debugger"
-            id="org.eclipse.cdt.debug.edc.ui.edcCatagory">
-      </category>
-  
-       <categoryActivityBinding
-            activityId="org.eclipse.cdt.debug.edc.ui.edcActivity"
-            categoryId="org.eclipse.cdt.debug.edc.ui.edcCatagory">
-      </categoryActivityBinding>
   
       <activity
             name="EDC - Eclipse Debugger for C/C++"

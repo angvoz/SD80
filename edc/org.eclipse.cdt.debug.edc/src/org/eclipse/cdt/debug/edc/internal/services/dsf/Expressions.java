@@ -1454,27 +1454,31 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			}
 			
 			formattedValue = exprDMC.getFormattedValue(formattedDataContext); // must call this to get type
-			IVariableValueConverter customConverter = getCustomValueConverter(exprDMC);
-			if (customConverter != null) {
-				FormattedValueDMData customFormattedValue = null;
-				try {
-					customFormattedValue = new FormattedValueDMData(customConverter.getValue(exprDMC));
-					formattedValue = customFormattedValue;
-				}
-				catch (CoreException e) {
-					// Checked exception like failure in reading memory.
-					// Pass the error to the RM so that it would show up in UI. 
-					rm.setStatus(e.getStatus());
-					rm.done();
-					return;
-				}
-				catch (Throwable t) {
-					// Other unexpected errors, usually bug in the formatter. Log it 
-					// so that user will be able to see and report the bug. 
-					// Meanwhile default to normal formatting so that user won't see 
-					// such error in Variable UI.
-					EDCDebugger.getMessageLogger().logError(
-							EDCServicesMessages.Expressions_ErrorInVariableFormatter + customConverter.getClass().getName(), t);
+			
+			if (formattedDataContext.getFormatID().equals(IFormattedValues.NATURAL_FORMAT))
+			{
+				IVariableValueConverter customConverter = getCustomValueConverter(exprDMC);
+				if (customConverter != null) {
+					FormattedValueDMData customFormattedValue = null;
+					try {
+						customFormattedValue = new FormattedValueDMData(customConverter.getValue(exprDMC));
+						formattedValue = customFormattedValue;
+					}
+					catch (CoreException e) {
+						// Checked exception like failure in reading memory.
+						// Pass the error to the RM so that it would show up in UI. 
+						rm.setStatus(e.getStatus());
+						rm.done();
+						return;
+					}
+					catch (Throwable t) {
+						// Other unexpected errors, usually bug in the formatter. Log it 
+						// so that user will be able to see and report the bug. 
+						// Meanwhile default to normal formatting so that user won't see 
+						// such error in Variable UI.
+						EDCDebugger.getMessageLogger().logError(
+								EDCServicesMessages.Expressions_ErrorInVariableFormatter + customConverter.getClass().getName(), t);
+					}
 				}
 			}
 		} else

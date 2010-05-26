@@ -289,7 +289,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setSymbolCount("BlackFlagMinGW.exe", 6988);
 		setSymbolCount("BlackFlag_gcce.sym", 2372);
 		setSymbolCount("BlackFlag_linuxgcc.exe", 429);
-		setSymbolCount("BlackFlag_rvct.sym", 627);
+		setSymbolCount("BlackFlag_rvct.sym", 626);
 		setSymbolCount("HelloWorld_rvct_2_2.exe.sym", 151);
 		setSymbolCount("HelloWorld_rvct_4_0.exe.sym", 227);
 	}

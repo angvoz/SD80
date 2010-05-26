@@ -25,6 +25,8 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.variables.IStringVariableManager;
+import org.eclipse.core.variables.VariablesPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
 
 public class LaunchUtils {
@@ -135,4 +137,24 @@ public class LaunchUtils {
 	private static String getProjectName(ILaunchConfiguration configuration) throws CoreException {
 		return configuration.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROJECT_NAME, (String) null);
 	}
+	
+	/**
+	 * Convenience method.
+	 */
+	public static IStringVariableManager getStringVariableManager() {
+		return VariablesPlugin.getDefault().getStringVariableManager();
+	}
+	
+	public static String getWorkingDirectoryPath(ILaunchConfiguration config) throws CoreException {
+		String location = config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY, "");
+		if (location != null) {
+			String expandedLocation = LaunchUtils.getStringVariableManager().performStringSubstitution(location);
+			if (expandedLocation.length() > 0) {
+				return expandedLocation;
+			}
+		}
+		return "";
+	}
+
+
 }

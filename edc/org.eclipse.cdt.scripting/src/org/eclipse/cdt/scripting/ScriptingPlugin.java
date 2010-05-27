@@ -101,6 +101,12 @@ public class ScriptingPlugin extends Plugin implements IStartup {
 	}
 
 	private void startServelet() {
+		
+		// Configure log4j
+		org.apache.log4j.Logger.getLogger("org.jabsorb.JSONSerializer").setLevel(org.apache.log4j.Level.OFF);
+		// Uncomment this next line if you want logging to the console
+		// org.apache.log4j.Logger.getLogger("org.jabsorb.JSONSerializer").addAppender(new ConsoleAppender(new SimpleLayout()));
+
 		new Thread("Server Sr") {
 			@Override
 			public void run() {

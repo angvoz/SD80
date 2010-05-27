@@ -1,6 +1,8 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: CDT EDC User Guide
-Bundle-SymbolicName: org.eclipse.cdt.edc.doc.user;singleton:=true
+Bundle-Name: Eclipse Debugger for C/C++ User Guide
+Bundle-SymbolicName: org.eclipse.cdt.debug.edc.doc.user;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Vendor: Nokia
+Bundle-Vendor: NOKIA
+Require-Bundle: org.eclipse.help,
+ org.eclipse.ui.cheatsheets

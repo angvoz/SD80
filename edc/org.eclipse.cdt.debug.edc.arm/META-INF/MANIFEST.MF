@@ -4,7 +4,7 @@ Bundle-Name: ARM Debug Support
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc.arm
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.eclipse.cdt.debug.edc.internal.arm.ARMPlugin
-Bundle-Vendor: Nokia
+Bundle-Vendor: Eclipse CDT
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.cdt.debug.edc;bundle-version="1.0.0",
  org.eclipse.cdt.core;bundle-version="5.2.0",

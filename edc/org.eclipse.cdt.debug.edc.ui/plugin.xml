@@ -598,12 +598,6 @@
            	isEqualityPattern="true" 
             pattern="org.eclipse.cdt.debug.edc.ui/org.eclipse.cdt.debug.edc.ui.SnapshotPreferencePage">
       </activityPatternBinding>
- 
-       <activityPatternBinding
-            activityId="org.eclipse.cdt.debug.edc.ui.edcActivity"
-           	isEqualityPattern="true" 
-            pattern="org.eclipse.cdt.debug.edc.ui/org.eclipse.cdt.debug.edc.ui.views.SnapshotView">
-      </activityPatternBinding>
        
      </extension>
    

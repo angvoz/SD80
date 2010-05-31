@@ -3,6 +3,6 @@ Bundle-ManifestVersion: 2
 Bundle-Name: Eclipse Debugger for C/C++ User Guide
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc.doc.user;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Vendor: NOKIA
+Bundle-Vendor: Eclipse CDT
 Require-Bundle: org.eclipse.help,
  org.eclipse.ui.cheatsheets

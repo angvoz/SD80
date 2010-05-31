@@ -22,3 +22,4 @@ Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Export-Package: org.eclipse.cdt.debug.edc.windows,
  org.eclipse.cdt.debug.edc.windows.launch
+Bundle-Vendor: Eclipse CDT

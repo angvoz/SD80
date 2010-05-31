@@ -27,3 +27,4 @@ Bundle-ClassPath: .,
  libraries/log4j-1.2.15.jar,
  libraries/slf4j-api-1.5.6.jar,
  libraries/slf4j-log4j12-1.5.6.jar
+Bundle-Vendor: Eclipse CDT

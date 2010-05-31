@@ -51,3 +51,4 @@ Import-Package: org.eclipse.core.filesystem,
 Bundle-ClassPath: .,
  META-INF/,
  lib/truezip-6.jar
+Bundle-Vendor: Eclipse CDT

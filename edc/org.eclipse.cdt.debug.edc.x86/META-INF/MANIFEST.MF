@@ -4,7 +4,7 @@ Bundle-Name: X86
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc.x86
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.eclipse.cdt.debug.edc.x86.X86Plugin
-Bundle-Vendor: Nokia
+Bundle-Vendor: Eclipse CDT
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.cdt.core;bundle-version="5.2.0",
  org.eclipse.cdt.debug.core;bundle-version="7.0.0",

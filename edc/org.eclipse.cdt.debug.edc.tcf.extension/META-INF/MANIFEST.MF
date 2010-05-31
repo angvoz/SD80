@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: EDC Extension to TCF Core
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc.tcf.extension
 Bundle-Version: 1.0.0.qualifier
-Bundle-Vendor: Nokia
+Bundle-Vendor: Eclipse CDT
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Export-Package: org.eclipse.cdt.debug.edc.tcf.extension,
  org.eclipse.cdt.debug.edc.tcf.extension.agent,

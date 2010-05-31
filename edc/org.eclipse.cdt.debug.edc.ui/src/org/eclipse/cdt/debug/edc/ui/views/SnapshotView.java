@@ -666,7 +666,7 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumEventListene
 
 		if (albumList.size() == 0) {
 			TreeNode emptyAlbum = new TreeNode(
-					"Click the “Camera” button in the Debug View to create a new Album or double-click here to import an existing one.");
+					"Click the Camera button in the Debug View to create a new Album or double-click here to import an existing one.");
 			albumNodes.add(emptyAlbum);
 			return (TreeNode[]) albumNodes.toArray(new TreeNode[albumNodes
 					.size()]);

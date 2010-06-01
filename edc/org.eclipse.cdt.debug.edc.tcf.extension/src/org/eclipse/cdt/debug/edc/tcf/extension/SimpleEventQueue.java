@@ -44,6 +44,8 @@ public class SimpleEventQueue extends Thread implements IEventQueue {
 					x.printStackTrace();
 				}
 			}
+		} catch (InterruptedException x) {
+			System.exit(1);
 		} catch (Throwable x) {
 			x.printStackTrace();
 			System.exit(1);

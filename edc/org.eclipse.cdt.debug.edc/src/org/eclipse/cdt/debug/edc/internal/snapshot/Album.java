@@ -912,19 +912,23 @@ public class Album extends PlatformObject implements IAlbum {
 	 */
 	public void configureMappingSourceContainer(MappingSourceContainer mappingContainer) {
 		IPath albumRoot = getResourcesDirectory();
-		String device = null;
+		List<MapEntrySourceContainer> containers = new ArrayList<MapEntrySourceContainer>();
+		Set<String> devicesAlreadyAdded = new HashSet<String>();
+		String deviceName = null;
 		for (IPath iPath : files) {
-			device = iPath.getDevice();
+		    	deviceName = iPath.getDevice();
+			if (deviceName != null && !devicesAlreadyAdded.contains(deviceName))
+			{
+				String albumRootSuffix = deviceName;
+                if (albumRootSuffix.endsWith(":"))
+                	albumRootSuffix = albumRootSuffix.substring(0, albumRootSuffix.length() - 1);
+	                        devicesAlreadyAdded.add(deviceName);
+                            MapEntrySourceContainer newContainer = new MapEntrySourceContainer(PathUtils.createPath(deviceName), albumRoot.append(albumRootSuffix));
+                            containers.add(newContainer);
+                                
+			}
 		}
-		String deviceName = device;
-		if (deviceName != null) {
-			if (deviceName.endsWith(":"))
-				deviceName = deviceName.substring(0, deviceName.length() - 1);
-			albumRoot = albumRoot.append(deviceName);
-		}
-		MapEntrySourceContainer[] entries = new MapEntrySourceContainer[] { new MapEntrySourceContainer(
-				device != null ? new Path(device) : Path.ROOT, albumRoot) };
-		mappingContainer.addMapEntries(entries);
+		mappingContainer.addMapEntries(containers.toArray(new MapEntrySourceContainer[containers.size()]));
 	}
 
 	public static void setVariableCaptureDepth(int newSetting) {

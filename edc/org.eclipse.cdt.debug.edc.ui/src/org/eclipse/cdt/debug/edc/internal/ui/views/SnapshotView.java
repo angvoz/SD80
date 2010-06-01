@@ -9,7 +9,7 @@
  * Nokia - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.debug.edc.ui.views;
+package org.eclipse.cdt.debug.edc.internal.ui.views;
 
 import java.io.File;
 import java.util.ArrayList;

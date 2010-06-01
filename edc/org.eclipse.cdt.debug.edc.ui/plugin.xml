@@ -654,7 +654,7 @@
             name="Snapshot Albums"
             icon="icons/etool16/create_snapshot.png"
             category="org.eclipse.debug.ui"
-            class="org.eclipse.cdt.debug.edc.ui.views.SnapshotView"
+            class="org.eclipse.cdt.debug.edc.internal.ui.views.SnapshotView"
             id="org.eclipse.cdt.debug.edc.ui.views.SnapshotView">
       </view>
    </extension>

@@ -18,6 +18,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.examples.javaagent.remote.CalculatorServiceProxy;
 import org.eclipse.cdt.debug.edc.examples.javaagent.remote.ICalculator;
+import org.eclipse.cdt.debug.edc.tcf.extension.SimpleEventQueue;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.tm.tcf.core.AbstractPeer;
 import org.eclipse.tm.tcf.protocol.IChannel;
@@ -38,8 +39,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Manually run this test as a JUnit plugin test. Don't add this in any auto
- * test suite.
+ * Manually run this test as a standalone Java application, or as a JUnit plugin test 
+ * (but don't add this in any auto test suite.)
  * 
  * After you start the test, it will sit there until you terminate it.
  * 
@@ -56,6 +57,17 @@ import org.junit.Test;
  */
 public class ManualTCFAgentTest {
 
+	public static void main(String[] args) {
+		SimpleEventQueue queue = new SimpleEventQueue();
+		Protocol.setEventQueue(queue);
+		setup();
+		try {
+			new ManualTCFAgentTest().testTCF();
+		} finally {
+			tearDown();
+		}
+	}
+	
 	boolean exitTest = false;
 
 	class Peer extends AbstractPeer {
@@ -313,4 +325,5 @@ public class ManualTCFAgentTest {
 		}
 
 	}
+
 }

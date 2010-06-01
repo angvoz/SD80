@@ -42,6 +42,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchManager;
+import org.eclipse.tm.tcf.core.AbstractPeer;
 import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.IService;
@@ -70,6 +71,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	private IPeer tcfPeer;
 	
 	private boolean usingRemotePeers;
+	private boolean isLocallyAllocatedPeer;
 
 	/**
 	 * Attributes that the debugger requires the TCF peer to match. Derivatives
@@ -123,6 +125,21 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		public void execute(final RequestMonitor requestMonitor) {
 			findPeer(requestMonitor);
 			requestMonitor.done();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.dsf.concurrent.Sequence.Step#rollBack(org.eclipse.cdt.dsf.concurrent.RequestMonitor)
+		 */
+		@Override
+		public void rollBack(RequestMonitor rm) {
+			if (isLocallyAllocatedPeer) {
+				Protocol.invokeAndWait(new Runnable() {
+					public void run() {
+						((AbstractPeer) tcfPeer).dispose();
+					}
+				});
+			}
+			super.rollBack(rm);
 		}
 	};
 
@@ -328,8 +345,14 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		}
 	}
 
+	/**
+	 * Override to select a peer from the array of running peers, or create your
+	 * own on the fly.  Set the {@link #isLocallyAllocatedPeer} boolean if you
+	 * create your own and want it to be disposed automatically after the debug session ends.  
+	 * @param runningPeers
+	 * @return an IPeer or <code>null</code>
+	 */
 	public IPeer selectPeer(IPeer[] runningPeers) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -686,6 +709,24 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 	public void setUsingRemotePeers(boolean usingRemotePeers) {
 		this.usingRemotePeers = usingRemotePeers;
+	}
+
+	/**
+	 * Tell whether the peer in {@link #tcfPeer} was created during the launch
+	 * and should be disposed after the debug session ends
+	 * @return
+	 */
+	public boolean isLocallyAllocatedPeer() {
+		return isLocallyAllocatedPeer;
+	}
+
+	/**
+	 * Tell whether the peer in {@link #tcfPeer} was created during the launch
+	 * and should be disposed after the debug session ends
+	 * @param isLocallyAllocatedPeer
+	 */
+	public void setLocallyAllocatedPeer(boolean isLocallyAllocatedPeer) {
+		this.isLocallyAllocatedPeer = isLocallyAllocatedPeer;
 	}
 
 }

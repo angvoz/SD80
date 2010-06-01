@@ -26,6 +26,7 @@ Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Export-Package: org.eclipse.cdt.debug.edc.internal.ui;x-internal:=true,
  org.eclipse.cdt.debug.edc.internal.ui.actions;x-internal:=true,
  org.eclipse.cdt.debug.edc.internal.ui.launch;x-friends:="org.eclipse.cdt.debug.edc.windows,org.eclipse.cdt.debug.edc.windows.ui,org.eclipse.cdt.debug.edc.linux.x86",
+ org.eclipse.cdt.debug.edc.internal.ui.views;x-internal:=true,
  org.eclipse.cdt.debug.edc.ui,
  org.eclipse.cdt.debug.edc.ui.console
 Import-Package: org.eclipse.core.expressions,

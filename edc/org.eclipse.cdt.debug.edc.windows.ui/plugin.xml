@@ -9,7 +9,7 @@
     <tab
           class="org.eclipse.cdt.launch.ui.CMainTab"
           group="org.eclipse.cdt.launch.applicationLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.mainTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.mainTab"
           name="Main">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.localLaunchDelegate">
@@ -18,7 +18,7 @@
     <tab
           class="org.eclipse.cdt.launch.ui.CArgumentsTab"
           group="org.eclipse.cdt.launch.applicationLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.argumentsTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.argumentsTab"
           name="Arguments">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.localLaunchDelegate">
@@ -30,7 +30,7 @@
     <tab
           class="org.eclipse.debug.ui.EnvironmentTab"
           group="org.eclipse.cdt.launch.applicationLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.environmentTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.environmentTab"
           name="Environment">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.localLaunchDelegate">
@@ -42,7 +42,7 @@
     <tab
           class="org.eclipse.cdt.debug.edc.internal.ui.launch.RegularDebuggerTab"
           group="org.eclipse.cdt.launch.applicationLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.debuggerTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.debuggerTab"
           name="Debugger (regular)">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.localLaunchDelegate">
@@ -54,7 +54,7 @@
     <tab
           class="org.eclipse.debug.ui.sourcelookup.SourceLookupTab"
           group="org.eclipse.cdt.launch.applicationLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.sourceTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.sourceTab"
           name="Source">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.localLaunchDelegate">
@@ -66,7 +66,7 @@
     <tab
           class="org.eclipse.debug.ui.CommonTab"
           group="org.eclipse.cdt.launch.applicationLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.commonTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.commonTab"
           name="Common">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.localLaunchDelegate">
@@ -81,7 +81,7 @@
     <tab
           class="org.eclipse.cdt.debug.edc.internal.ui.launch.AttachDebuggerTab"
           group="org.eclipse.cdt.launch.attachLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.attachDebuggerTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.attachDebuggerTab"
           name="Debugger (attach)">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.attachLaunchDelegate">
@@ -90,7 +90,7 @@
     <tab
           class="org.eclipse.debug.ui.sourcelookup.SourceLookupTab"
           group="org.eclipse.cdt.launch.attachLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.attachSourceTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.attachSourceTab"
           name="Source">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.attachLaunchDelegate">
@@ -102,7 +102,7 @@
     <tab
           class="org.eclipse.debug.ui.CommonTab"
           group="org.eclipse.cdt.launch.attachLaunchTabGroup"
-          id="org.eclipse.cdt.debug.edc.windows.ui.attachCommonTab"
+          id="org.eclipse.cdt.debug.edc.internal.windows.ui.attachCommonTab"
           name="Common">
        <associatedDelegate
              delegate="org.eclipse.cdt.debug.edc.windows.attachLaunchDelegate">

@@ -8,7 +8,7 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.debug.edc.windows.ui;
+package org.eclipse.cdt.debug.edc.internal.windows.ui;
 
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.plugin.AbstractUIPlugin;

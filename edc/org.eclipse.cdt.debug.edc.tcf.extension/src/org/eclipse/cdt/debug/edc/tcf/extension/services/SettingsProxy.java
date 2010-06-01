@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.tcf.extension.services;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import org.eclipse.tm.tcf.core.Command;
 import org.eclipse.tm.tcf.protocol.IChannel;
@@ -61,9 +62,11 @@ public class SettingsProxy implements ISettings {
 			@SuppressWarnings("unchecked")
 			@Override
 			public void done(Exception error, Object[] args) {
-
-				Collection<String> idStrings = (Collection<String>) args[1];
-
+				Collection<String> idStrings;
+				if (args[1] != null)
+					idStrings = (Collection<String>) args[1];
+				else
+					idStrings = Collections.emptyList();
 				done.doneGetSettingValues(token, error, idStrings.toArray(new String[idStrings.size()]));
 			}
 		}.token;

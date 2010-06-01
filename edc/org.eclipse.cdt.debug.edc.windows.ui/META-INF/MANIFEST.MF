@@ -1,9 +1,9 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Ui Plug-in
+Bundle-Name: Windows Debug Plug-in
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc.windows.ui;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: org.eclipse.cdt.debug.edc.windows.ui.WindowsDebuggerUI
+Bundle-Activator: org.eclipse.cdt.debug.edc.internal.windows.ui.WindowsDebuggerUI
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  org.eclipse.cdt.debug.edc.windows;bundle-version="1.0.0",
@@ -19,3 +19,4 @@ Require-Bundle: org.eclipse.ui,
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Bundle-Vendor: Eclipse CDT
+Export-Package: org.eclipse.cdt.debug.edc.internal.windows.ui;x-internal:=true

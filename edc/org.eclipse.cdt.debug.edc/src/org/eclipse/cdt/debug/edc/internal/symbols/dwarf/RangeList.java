@@ -27,6 +27,8 @@ public class RangeList implements IRangeList {
 		if (!ranges.isEmpty()) {
 			if (ranges.get(ranges.size() - 1) == start) {
 				ranges.set(ranges.size() - 1, end);
+				if (end > high)
+					high = end;
 				return;
 			}
 		}

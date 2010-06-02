@@ -53,11 +53,15 @@ public class TestDisassemblerARM {
 		armOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		armOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
 		armOptions.put(IDisassemblerOptionsARM.DISASSEMBLER_MODE, InstructionParserARM.DISASSEMBLER_MODE_ARM);
+		armOptions.put(IDisassemblerOptionsARM.ENDIAN_MODE, InstructionParserARM.BIG_ENDIAN_MODE);
+
 
 		thumbOptions = new HashMap<String, Object>();
 		thumbOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		thumbOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
 		thumbOptions.put(IDisassemblerOptionsARM.DISASSEMBLER_MODE, InstructionParserARM.DISASSEMBLER_MODE_THUMB);
+		thumbOptions.put(IDisassemblerOptionsARM.ENDIAN_MODE, InstructionParserARM.BIG_ENDIAN_MODE);
+
 
 		sDisassembler = new DisassemblerARM();
 	}

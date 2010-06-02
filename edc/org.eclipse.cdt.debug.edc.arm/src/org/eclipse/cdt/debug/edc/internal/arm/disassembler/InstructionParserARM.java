@@ -133,7 +133,7 @@ public class InstructionParserARM {
 			codeBuffer.order(ByteOrder.BIG_ENDIAN);
 
 		Object mode = options.get(IDisassemblerOptionsARM.ENDIAN_MODE);
-		int endianMode = BIG_ENDIAN_MODE;
+		int endianMode = LITTLE_ENDIAN_MODE;
 		if (mode != null) {
 			endianMode = ((Integer) mode).intValue();
 		}

@@ -157,4 +157,20 @@ public class AgentUtils {
 		}
 		return true;
 	}
+
+	/**
+	 * Swap 4 byte array.
+	 * @param ba - the content is changed after this call.
+	 */
+	public static void swap4(byte[] ba) {
+		if (ba.length != 4)
+			throw new IllegalArgumentException("swap4() only supports swap of 4 byte array.");
+		
+		byte m = ba[0];
+		ba[0] = ba[3];
+		ba[3] = m;
+		m = ba[1];
+		ba[1] = ba[2];
+		ba[2] = m;
+	}
 }

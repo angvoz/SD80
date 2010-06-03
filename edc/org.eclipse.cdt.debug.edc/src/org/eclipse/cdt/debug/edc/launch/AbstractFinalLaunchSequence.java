@@ -146,6 +146,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected Step initRunControlStep = new Step() {
 
 		@Override
+		public String getTaskName() {
+			return "Init RunControl service";
+		}
+
+		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
 			RunControl runcontrol = tracker.getService(RunControl.class);
@@ -158,6 +163,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * Initialize Registers service.
 	 */
 	protected Step initRegistersServiceStep = new Step() {
+
+		@Override
+		public String getTaskName() {
+			return "Init Registers service";
+		}
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
@@ -215,6 +225,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected Step initMemoryServiceStep = new Step() {
 
 		@Override
+		public String getTaskName() {
+			return "Init Memory service";
+		}
+
+		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
 			Memory memory = tracker.getService(Memory.class);
@@ -227,6 +242,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * init breakpoints service.
 	 */
 	protected Step initBreakpointsServiceStep = new Step() {
+
+		@Override
+		public String getTaskName() {
+			return "Init Breakpoints service";
+		}
 
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
@@ -247,6 +267,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected Step initProcessesServiceStep = new Step() {
 
 		@Override
+		public String getTaskName() {
+			return "Init Processes service";
+		}
+
+		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 			assert getTCFPeer() != null : "initFindPeerStep must be run prior to this one";
 			Processes p = tracker.getService(Processes.class);
@@ -259,6 +284,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * Launch the process
 	 */
 	protected Step launchStep = new Step() {
+
+		@Override
+		public String getTaskName() {
+			return "Launch target";
+		}
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
@@ -282,6 +312,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * Attach to a process
 	 */
 	protected Step attachStep = new Step() {
+
+		@Override
+		public String getTaskName() {
+			return "Attach";
+		}
 
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
@@ -375,6 +410,9 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 		try {
 			IService service = getTCFService(tcfServiceName);
+			if (service == null)
+				throw EDCDebugger.newCoreException("Required service \"" + tcfServiceName + "\" is not available.");
+			
 			dsfService.tcfServiceReady(service);
 		} catch (CoreException e1) {
 			if (e1.getStatus().matches(IStatus.CANCEL))

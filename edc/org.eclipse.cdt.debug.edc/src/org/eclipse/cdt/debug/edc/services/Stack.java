@@ -958,6 +958,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getStackDepth(IDMContext dmc, int maxDepth, DataRequestMonitor<Integer> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, new Object[] { dmc, maxDepth });
+		
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(dmc, ExecutionDMC.class);
 		if (execDmc != null)
 		{
@@ -987,8 +988,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getTopFrame(IDMContext execContext, DataRequestMonitor<IFrameDMContext> rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, execContext);
+		
 		IFrameDMContext[] frames = getFramesForDMC((ExecutionDMC) execContext, 0, 0);
-
 		if (frames.length == 0) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE,
 					"No top stack frame available", null)); //$NON-NLS-1$
@@ -1048,7 +1049,9 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE,
 				new Object[] { context, startIndex, endIndex });
 
-		if (!context.isSuspended()) {
+		if (!context.isSuspended() || 
+			! RunControl.isNonContainer(context))	// no frames for container context. 
+		{
 			return new IFrameDMContext[0];
 		}
 

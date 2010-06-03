@@ -16,7 +16,7 @@ import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IProcesses;
-import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
+import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfCommandRunnable;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -46,12 +46,12 @@ public class EDCDisconnectCommand implements IDisconnectHandler {
 
         fExecutor.submit(new DsfCommandRunnable(fTracker, request.getElements()[0], request) { 
             @Override public void doExecute() {
-                IContainerDMContext containerDmc = DMContexts.getAncestorOfType(getContext(), IContainerDMContext.class);
+                IProcessDMContext processDmc = DMContexts.getAncestorOfType(getContext(), IProcessDMContext.class);
                 IProcesses procService = getProcessService();
 
                 if (procService != null) {
                 	procService.canDetachDebuggerFromProcess(
-                			containerDmc,
+                			processDmc,
                 			new DataRequestMonitor<Boolean>(fExecutor, null) {
                 				@Override
                 				protected void handleCompleted() {
@@ -75,11 +75,11 @@ public class EDCDisconnectCommand implements IDisconnectHandler {
 
     	fExecutor.submit(new DsfCommandRunnable(fTracker, request.getElements()[0], request) { 
             @Override public void doExecute() {
-                IContainerDMContext containerDmc = DMContexts.getAncestorOfType(getContext(), IContainerDMContext.class);
+                IProcessDMContext processDMC = DMContexts.getAncestorOfType(getContext(), IProcessDMContext.class);
                 IProcesses procService = getProcessService();
 
                 if (procService != null) {
-                	procService.detachDebuggerFromProcess(containerDmc, new RequestMonitor(fExecutor, null));
+                	procService.detachDebuggerFromProcess(processDMC, new RequestMonitor(fExecutor, null));
                 }
             }
         });

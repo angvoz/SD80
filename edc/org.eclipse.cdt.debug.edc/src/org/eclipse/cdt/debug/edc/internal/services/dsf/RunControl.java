@@ -966,12 +966,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 
 		public ISymbolDMContext getSymbolDMContext() {
-			IDMContext[] parents = getParents();
-			for (IDMContext context : parents) {
-				if (context instanceof ISymbolDMContext)
-					return (ISymbolDMContext) context;
-			}
-			return null;
+			return DMContexts.getAncestorOfType(this, ISymbolDMContext.class);
 		}
 
 		@Override
@@ -1048,6 +1043,33 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 	}
 
+	/**
+	 * Context representing a program running on a bare device without OS, which
+	 * can also be the boot-up "process" of an OS.
+	 * <p>
+	 * It's like a thread context as it has its registers and stack frames, but
+	 * also like a process as it has modules associated with it. Currently we
+	 * set it as an IProcessDMContext so that it appears as a ContainerVMNode in
+	 * debug view. See LaunchVMProvider for more. Also it's treated like a
+	 * process in
+	 * {@link Processes#getProcessesBeingDebugged(IDMContext, DataRequestMonitor)}
+	 */
+	public class BareDeviceExecutionDMC extends ThreadExecutionDMC 
+				implements IProcessDMContext, ISymbolDMContext, IBreakpointsTargetDMContext {
+
+		public BareDeviceExecutionDMC(ExecutionDMC parent,
+				Map<String, Object> properties, RunControlContext tcfContext) {
+			super(parent, properties, tcfContext);
+			assert !(Boolean)properties.get(PROP_IS_CONTAINER);
+		}
+
+		@Override
+		public boolean canDetach() {
+			return true;
+		}
+		
+	}
+	
 	public class RootExecutionDMC extends ExecutionDMC implements ISourceLookupDMContext {
 
 		public RootExecutionDMC(Map<String, Object> props) {
@@ -1056,7 +1078,16 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		@Override
 		public ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext) {
-			ProcessExecutionDMC newDMC = new ProcessExecutionDMC(this, properties, tcfContext);
+			Boolean isContainer = (Boolean)(properties.get(PROP_IS_CONTAINER));
+			ExecutionDMC newDMC;
+			// If the new context being added under root is a container context,
+			// we treat it as a Process, otherwise a bare device program context.
+			//
+			if (isContainer == null || Boolean.TRUE.equals(isContainer))
+				newDMC = new ProcessExecutionDMC(this, properties, tcfContext);
+			else
+				newDMC = new BareDeviceExecutionDMC(this, properties, tcfContext);
+			
 			getSession().dispatchEvent(new StartedEvent(newDMC), RunControl.this.getProperties());
 			return newDMC;
 		}
@@ -2314,5 +2345,15 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		moduleService.getLineAddress(dmc, sourceFile, lineNumber, drm);
 	}
-	
+
+	/**
+	 * Check if this context is non-container. Only non-container context
+	 * (thread and bare device context) can have register, stack frames, etc.
+	 * 
+	 * @param dmc
+	 * @return
+	 */
+	static public boolean isNonContainer(IDMContext dmc) {
+		return ! (dmc instanceof IContainerDMContext);
+	}
 }

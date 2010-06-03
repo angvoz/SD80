@@ -19,8 +19,8 @@ import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ThreadExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
@@ -33,7 +33,6 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
-import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
@@ -54,10 +53,10 @@ import org.w3c.dom.NodeList;
 public abstract class Registers extends AbstractEDCService implements IRegisters, ICachingService, IDSFServiceUsingTCF {
 
 	/**
-	 * Cache register groups per thread context.
-	 * Keyed on thread context ID.
+	 * Cache register groups per context.
+	 * Keyed on context ID.
 	 */
-	private Map<String, List<RegisterGroupDMC>> registerGroupsPerThread = 
+	private Map<String, List<RegisterGroupDMC>> registerGroupsPerContext = 
 		Collections.synchronizedMap(new HashMap<String, List<RegisterGroupDMC>>());
 
 	private ISimpleRegisters 	tcfSimpleRegistersService = null;
@@ -92,10 +91,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			properties.put(PROP_EXECUTION_CONTEXT_ID, contDmc.getID());
 		}
 
-		public RegisterGroupDMC(Registers service, IThreadDMContext threadExecutionDmc,
+		public RegisterGroupDMC(Registers service, IEDCExecutionDMC executionDmc,
 								Map<String, Object> props) {
-			super(service, new IDMContext[] { threadExecutionDmc }, props);
-			exeContext = (IEDCExecutionDMC) threadExecutionDmc;
+			super(service, new IDMContext[] { executionDmc }, props);
+			exeContext = (IEDCExecutionDMC) executionDmc;
 			properties.put(PROP_EXECUTION_CONTEXT_ID, exeContext.getID());
 		}
 
@@ -320,7 +319,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 * @return
 	 */
 	private RegisterDMC findRegisterDMCByName(IEDCExecutionDMC exeDMC, String name) {
-		assert exeDMC instanceof ThreadExecutionDMC;
+		assert RunControl.isNonContainer(exeDMC);
 		
 		// this will create the reg groups for the exeDMC if not yet. 
 		IRegisterGroupDMContext[] regGroups = getGroupsForContext(exeDMC);
@@ -399,11 +398,11 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 	public IRegisterGroupDMContext[] getGroupsForContext(IEDCExecutionDMC exeContext) {
 		String contextID = exeContext.getID();
-		List<RegisterGroupDMC> groupsForContext = registerGroupsPerThread.get(contextID);
-		if (groupsForContext == null || groupsForContext.size() == 0) {
+		List<RegisterGroupDMC> groupsForContext = registerGroupsPerContext.get(contextID);
+		if (groupsForContext == null) {
 			groupsForContext = createGroupsForContext(exeContext);
-			synchronized (registerGroupsPerThread) {
-				registerGroupsPerThread.put(contextID, groupsForContext);
+			synchronized (registerGroupsPerContext) {
+				registerGroupsPerContext.put(contextID, groupsForContext);
 			}
 		}
 		return groupsForContext.toArray(new IRegisterGroupDMContext[groupsForContext.size()]);
@@ -414,7 +413,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 		rm.setData(new IRegisterGroupDMContext[0]);
 		for (IDMContext context : parents) {
-			if (context instanceof ThreadExecutionDMC) {
+			if (RunControl.isNonContainer(context)) {
 				rm.setData(getGroupsForContext((IEDCExecutionDMC) context));
 			}
 		}
@@ -785,10 +784,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		registerValueCache.clear();
 	}
 
-	public void loadGroupsForContext(IThreadDMContext threadExecutionDmc, Element element) throws Exception {
+	public void loadGroupsForContext(IEDCExecutionDMC executionDmc, Element element) throws Exception {
 		// Can't call flushCache here because it does nothing for snapshot
 		// services.
-		registerGroupsPerThread.clear();
+		registerGroupsPerContext.clear();
 		registerValueCache.clear();
 
 		NodeList registerGroups = element.getElementsByTagName(RegisterGroupDMC.REGISTER_GROUP);
@@ -802,11 +801,11 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			HashMap<String, Object> properties = new HashMap<String, Object>();
 			SnapshotUtils.initializeFromXML(propElement, properties);
 
-			RegisterGroupDMC regdmc = new RegisterGroupDMC(this, threadExecutionDmc, properties);
+			RegisterGroupDMC regdmc = new RegisterGroupDMC(this, executionDmc, properties);
 			regdmc.loadSnapshot(groupElement);
 			regGroups.add(regdmc);
 		}
-		registerGroupsPerThread.put(((IEDCDMContext) threadExecutionDmc).getID(), regGroups);
+		registerGroupsPerContext.put(((IEDCDMContext) executionDmc).getID(), regGroups);
 	}
 
 	public void tcfServiceReady(IService service) {
@@ -835,7 +834,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	protected List<RegistersContext>	getTCFRegistersContexts(final String parentID) {
 		List<RegistersContext> tcfRegContexts = new ArrayList<RegistersContext>();
 		
-		TCFTask<String[]> getChildIDTask = new TCFTask<String[]>(5000) {
+		TCFTask<String[]> getChildIDTask = new TCFTask<String[]>() {
 			public void run() {
 				tcfRegistersService.getChildren(parentID, new org.eclipse.tm.tcf.services.IRegisters.DoneGetChildren() {
 
@@ -858,7 +857,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		
 		for (String gid: childIDs) {
 			final String id = gid;
-			TCFTask<RegistersContext> getGroupContextTask = new TCFTask<RegistersContext>(5000) {
+			TCFTask<RegistersContext> getGroupContextTask = new TCFTask<RegistersContext>() {
 				public void run() {
 					tcfRegistersService.getContext(id, new org.eclipse.tm.tcf.services.IRegisters.DoneGetContext(){
 						public void doneGetContext(IToken token, Exception error, RegistersContext context) {
@@ -912,12 +911,12 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 		List<RegisterGroupDMC> groups = Collections.synchronizedList(new ArrayList<RegisterGroupDMC>());
 
-		if (ctx instanceof ThreadExecutionDMC) {
+		if (RunControl.isNonContainer(ctx)) {
 			if (tcfRegistersService != null) {
 				List<RegistersContext> tcfRegGroups = getTCFRegistersContexts(ctx.getID());
 				
 				for (RegistersContext rg: tcfRegGroups) {
-					groups.add(new RegisterGroupDMC(this, (ThreadExecutionDMC)ctx, rg.getProperties()));
+					groups.add(new RegisterGroupDMC(this, ctx, rg.getProperties()));
 				}
 			}
 		}

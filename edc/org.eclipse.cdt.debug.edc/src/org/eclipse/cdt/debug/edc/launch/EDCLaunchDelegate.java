@@ -144,7 +144,7 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 					"Interrupted Exception in dispatch thread.\n" + e1.getLocalizedMessage(), e1)); //$NON-NLS-1$
 		} catch (ExecutionException e1) {
 			throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.REQUEST_FAILED,
-					"Error in services launch sequence.\n" + e1.getLocalizedMessage(), e1.getCause())); //$NON-NLS-1$
+					"Error in services launch sequence.", e1.getCause())); //$NON-NLS-1$
 		}
 
 		if (monitor.isCanceled())
@@ -184,7 +184,7 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 			}
 
 			throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.REQUEST_FAILED,
-					"Error in final launch sequence.\n" + e1.getLocalizedMessage(), e1.getCause())); //$NON-NLS-1$
+					"Error in final launch sequence.", e1.getCause())); //$NON-NLS-1$
 		} finally {
 			if (!succeed) {
 				Query<Object> launchShutdownQuery = new Query<Object>() {

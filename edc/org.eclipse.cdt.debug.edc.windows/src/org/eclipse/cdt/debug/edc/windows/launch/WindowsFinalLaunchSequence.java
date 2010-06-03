@@ -62,7 +62,7 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 	};
 
 	public WindowsFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		super(executor, launch, pm, "Configuring Windows Debugger", "Aborting configuring Windows debugger");
+		super(executor, launch, pm, "Configure Windows Debugger:", "Abort configuring Windows debugger");
 
 		boolean doAttach;
 

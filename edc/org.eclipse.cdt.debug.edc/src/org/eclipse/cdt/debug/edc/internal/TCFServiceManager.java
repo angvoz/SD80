@@ -355,12 +355,13 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	}
 
 	/**
-	 * Gets the service from the given TCF agent.
+	 * Gets the service from the given TCF peer.
 	 * 
 	 * @param peer
-	 *            TCF agent.
+	 *            TCF peer.
 	 * @param serviceName
 	 *            the name of the service
+	 * @return IService if the peer offers that service, null otherwise.
 	 * @throws CoreException on error
 	 */
 	public IService getPeerService(final IPeer peer, final String serviceName) throws CoreException {

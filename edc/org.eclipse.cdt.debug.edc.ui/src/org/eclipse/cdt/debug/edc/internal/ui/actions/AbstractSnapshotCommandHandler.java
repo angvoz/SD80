@@ -38,20 +38,28 @@ abstract public class AbstractSnapshotCommandHandler extends AbstractEDCCommandH
 
 	@SuppressWarnings("unchecked")
 	private void removePlatformDebugUI() {
-		IWorkbenchActivitySupport workbenchActivitySupport = PlatformUI.getWorkbench().getActivitySupport();
-		IActivityManager activityManager = workbenchActivitySupport.getActivityManager();
-		Set<String> enabledActivityIds = new HashSet<String>(activityManager.getEnabledActivityIds());
-		if (enabledActivityIds.remove("org.eclipse.cdt.debug.edc.ui.platformDebugActivity"))
-			workbenchActivitySupport.setEnabledActivityIds(enabledActivityIds);
+		PlatformUI.getWorkbench().getDisplay().asyncExec(new Runnable() {
+			public void run() {
+				IWorkbenchActivitySupport workbenchActivitySupport = PlatformUI.getWorkbench().getActivitySupport();
+				IActivityManager activityManager = workbenchActivitySupport.getActivityManager();
+				Set<String> enabledActivityIds = new HashSet<String>(activityManager.getEnabledActivityIds());
+				if (enabledActivityIds.remove("org.eclipse.cdt.debug.edc.ui.platformDebugActivity"))
+					workbenchActivitySupport.setEnabledActivityIds(enabledActivityIds);
+			}
+		});
 	}
 
 	@SuppressWarnings("unchecked")
 	private void restorePlatformDebugUI() {
-		IWorkbenchActivitySupport workbenchActivitySupport = PlatformUI.getWorkbench().getActivitySupport();
-		IActivityManager activityManager = workbenchActivitySupport.getActivityManager();
-		Set<String> enabledActivityIds = new HashSet<String>(activityManager.getEnabledActivityIds());
-		if (enabledActivityIds.add("org.eclipse.cdt.debug.edc.ui.platformDebugActivity"))
-			workbenchActivitySupport.setEnabledActivityIds(enabledActivityIds);
+		PlatformUI.getWorkbench().getDisplay().asyncExec(new Runnable() {
+			public void run() {
+				IWorkbenchActivitySupport workbenchActivitySupport = PlatformUI.getWorkbench().getActivitySupport();
+				IActivityManager activityManager = workbenchActivitySupport.getActivityManager();
+				Set<String> enabledActivityIds = new HashSet<String>(activityManager.getEnabledActivityIds());
+				if (enabledActivityIds.add("org.eclipse.cdt.debug.edc.ui.platformDebugActivity"))
+					workbenchActivitySupport.setEnabledActivityIds(enabledActivityIds);
+			}
+		});
 	}
 
 }

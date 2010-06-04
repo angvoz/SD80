@@ -3,7 +3,8 @@
       id="org.eclipse.cdt.debug.edc"
       label="%featureName"
       version="1.0.0.qualifier"
-      provider-name="%providerName">
+      provider-name="%providerName"
+      plugin="org.eclipse.cdt.debug.edc">
 
    <description>
       %description
@@ -110,5 +111,5 @@
          install-size="0"
          version="0.0.0"
          unpack="false"/>
-         
+
 </feature>

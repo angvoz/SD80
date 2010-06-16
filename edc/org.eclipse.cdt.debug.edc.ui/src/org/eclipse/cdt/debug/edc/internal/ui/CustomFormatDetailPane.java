@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2009 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.ui;
 
 import java.text.MessageFormat;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
@@ -79,7 +80,12 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
 			GetCustomValueQuery customValueQuery = new GetCustomValueQuery();
-			expressionDMC.getExecutor().execute(customValueQuery);
+			try {
+				expressionDMC.getExecutor().execute(customValueQuery);
+			} catch (RejectedExecutionException e) {
+				// is shutting down
+				return Status.CANCEL_STATUS;
+			}
 			String text;
 			try {
 				text = customValueQuery.get();
@@ -89,7 +95,7 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 			final String _text = text;
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
-					document.set(_text);
+					document.set(_text == null ? "" : _text); //$NON-NLS-1$
 				}
 			});
 			return Status.OK_STATUS;

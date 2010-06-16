@@ -118,4 +118,52 @@
          point="org.eclipse.core.runtime.preferences">
       <initializer class="org.eclipse.cdt.debug.edc.internal.EDCDebugPreferenceInitializer"/>
    </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QStringFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qstring"
+            label="QString Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QByteArrayFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qbytearray"
+            label="QByteArray Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QVectorFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qvector"
+            label="QVector Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QListFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qlist"
+            label="QList Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QSetQHashFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qsetqhash"
+            label="QSet and QHash Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QHashNodeFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qhashnode"
+            label="QHashNode Formatter">
+      </variableFormatProvider>
+   </extension>
 </plugin>

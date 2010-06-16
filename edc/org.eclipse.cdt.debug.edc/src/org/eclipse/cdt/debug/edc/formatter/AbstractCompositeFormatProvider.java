@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2009 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,8 +18,6 @@ import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
-import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
-import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -103,15 +101,12 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 		int i = 0;
 		for (IExpressionDMContext child : children) {
 			IEDCExpression childExpression = (IEDCExpression) child;
-			FormattedValueDMContext fvc = 
-				expressions.getFormattedValueContext(childExpression, IExpressions.NATURAL_FORMAT);
-			FormattedValueDMData formattedValue = childExpression.getFormattedValue(fvc);
 			if (i < nameToFieldPaths.length)
 				sb.append(nameToFieldPaths[i].getName());
 			else
 				sb.append(childExpression.getName());
 			sb.append("="); //$NON-NLS-1$
-			sb.append(formattedValue.getFormattedValue());
+			sb.append(FormatUtils.getVariableValue(childExpression));
 			sb.append(" "); //$NON-NLS-1$
 			i++;
 		}

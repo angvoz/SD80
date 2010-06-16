@@ -133,8 +133,8 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 	
 	protected SourceViewer viewer;
 	protected Document document;
+	protected IStructuredSelection currentSelection = StructuredSelection.EMPTY;
 	private Job displayDetailJob;
-	private IStructuredSelection currentSelection = StructuredSelection.EMPTY;
 
 	/**
 	 * Return the Job for displaying the detail for a selection
@@ -194,8 +194,6 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 	}
 
 	public void display(IStructuredSelection selection) {
-		if (currentSelection != null && currentSelection.equals(selection))
-			return;
 		this.currentSelection = selection;
 		if (selection == null || selection.isEmpty()){
 			clearSourceViewer();

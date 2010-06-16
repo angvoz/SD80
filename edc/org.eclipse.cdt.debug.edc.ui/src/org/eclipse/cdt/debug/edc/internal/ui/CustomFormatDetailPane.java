@@ -227,4 +227,11 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 		IVariableValueConverter customConverter = getCustomConverter(expression);
 		return customConverter.canEditValue();
 	}
+	
+	@Override
+	public void display(IStructuredSelection selection) {
+		if (currentSelection != null && currentSelection.equals(selection))
+			return;
+		super.display(selection);
+	}
 }

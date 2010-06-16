@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2009 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -16,6 +16,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
@@ -34,6 +36,7 @@ import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
@@ -229,6 +232,18 @@ public class FormatUtils {
 		return expression.getFormattedValue(fvc).getFormattedValue();
 	}
 
+	public static String getVariableValue(IExpressionDMContext variable) {
+		return getVariableValue(variable, IExpressions.NATURAL_FORMAT);
+	}
+
+	public static String getVariableValue(IExpressionDMContext variable, String format) {
+		IExpressions expressions = ((IEDCExpression)variable).getServiceTracker().getService(IExpressions.class);
+		FormattedValueDMContext fvc = 
+			expressions.getFormattedValueContext(variable, format);
+		FormattedValueDMData formattedValue = ((IEDCExpression) variable).getFormattedValue(fvc);
+		return formattedValue.getFormattedValue();
+	}
+	
 	public static IType getUnqualifiedTypeRemovePointers(IType type) {
 		IType unqualifiedType = TypeUtils.getStrippedType(type);
 		while (unqualifiedType instanceof IPointerType)
@@ -257,5 +272,38 @@ public class FormatUtils {
 			address = new Addr32(value.longValue());
 		}
 		return address;
+	}
+
+	public static String getTemplateTypeName(String typeName, IType type) {
+		// TODO Fix this when type gives template information Bug 11443
+		
+		ICompositeType composite = (ICompositeType) TypeUtils.getBaseType(type);
+		String baseName = composite.getBaseName();
+		
+		Matcher m = Pattern.compile(typeName + "<(.+)>").matcher(baseName);
+		if (m.matches())
+			return m.group(1);
+
+		// check classes and structs it derives from
+		for (IInheritance inheritance : composite.getInheritances()) {
+			String templateTypeName = getTemplateTypeName(typeName, inheritance.getType());
+			if (templateTypeName != null)
+				return templateTypeName;
+		}
+		
+		return null;
+	}
+	
+	public static String getFormattedValue(IExpressionDMContext variable) throws CoreException {
+		IVariableValueConverter valueConverter = getCustomValueConverter(variable);
+		if (valueConverter != null) {
+			return valueConverter.getValue(variable);
+		}
+		else
+			return getVariableValue(variable);
+	}
+
+	public static int getMaxNumberOfChildren() {
+		return 200; // this seems like a good default
 	}
 }

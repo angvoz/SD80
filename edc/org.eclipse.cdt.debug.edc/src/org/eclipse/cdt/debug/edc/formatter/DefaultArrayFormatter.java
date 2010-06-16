@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2009 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -17,8 +17,6 @@ import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
-import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
-import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.core.runtime.CoreException;
 
 public class DefaultArrayFormatter implements IVariableFormatProvider {
@@ -44,32 +42,32 @@ public class DefaultArrayFormatter implements IVariableFormatProvider {
 					skip = false;
 				else
 					sb.append(", ");
-				String customString = getCustomValueString(child);
+				String customString = getCustomValueString(child, getCurValueLength() + sb.length());
 				if (customString != null) {
-					sb.append("{");
+					sb.append('{');
 					sb.append(customString);
-					sb.append("}");
+					sb.append('}');
 				}
 				else {
 					IEDCExpression childExpression = (IEDCExpression) child;
-					FormattedValueDMContext fvc = 
-						expressions.getFormattedValueContext(childExpression, IExpressions.NATURAL_FORMAT);
-					FormattedValueDMData formattedValue = childExpression.getFormattedValue(fvc);
-					sb.append(formattedValue.getFormattedValue());
+					sb.append(FormatUtils.getVariableValue(childExpression));
 				}
-				if (sb.length() > STOP_LENGTH) {
+				if (getCurValueLength() + sb.length() > STOP_LENGTH) {
 					if (!children.get(children.size() - 1).equals(child))
 						sb.append(", ...");
 					break;
 				}
 			}
-			return sb.append("]").toString();
+			return sb.append(']').toString();
 		}
 
-		private String getCustomValueString(IExpressionDMContext variable) throws CoreException {
+		private String getCustomValueString(IExpressionDMContext variable, int curValueLength) throws CoreException {
 			IVariableValueConverter converter = FormatUtils.getCustomValueConverter(variable);
-			if (converter != null)
+			if (converter != null) {
+				if (converter instanceof AbstractVariableConverter)
+					((AbstractVariableConverter) converter).setCurValueLength(curValueLength);
 				return converter.getValue(variable);
+			}
 			return null;
 		}
 

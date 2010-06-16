@@ -88,7 +88,10 @@ public class TypeUtils {
 		return (IType) type;
 	}
 	
-	// return base type with no typedefs, consts, volatiles, pointer types, or array types
+	// return base type with no typedefs, consts, volatiles, or pointer types
+	// removing array types messes up formatters because they are assumed to act on the array
+	// but code creating expressions ignores the array syntax
+	// unlike with pointer types where -> is used instead of .
 	public static IType getBaseType(Object type) {
 		if (!(type instanceof IType))
 			return null;
@@ -97,7 +100,7 @@ public class TypeUtils {
 			type = ((IForwardTypeReference) type).getReferencedType();
 		
 		while (type instanceof ITypedef || type instanceof IQualifierType 
-				|| type instanceof IPointerType || type instanceof IArrayType) {
+				|| type instanceof IPointerType) {
 			type = ((IType) type).getType();
 			
 			if (type instanceof IForwardTypeReference)

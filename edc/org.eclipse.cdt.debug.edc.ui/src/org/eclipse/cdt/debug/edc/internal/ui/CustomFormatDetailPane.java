@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2009 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -226,5 +226,12 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 			return false;
 		IVariableValueConverter customConverter = getCustomConverter(expression);
 		return customConverter.canEditValue();
+	}
+	
+	@Override
+	public void display(IStructuredSelection selection) {
+		if (currentSelection != null && currentSelection.equals(selection))
+			return;
+		super.display(selection);
 	}
 }

@@ -194,6 +194,8 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 	}
 
 	public void display(IStructuredSelection selection) {
+		if (currentSelection != null && currentSelection.equals(selection))
+			return;
 		this.currentSelection = selection;
 		if (selection == null || selection.isEmpty()){
 			clearSourceViewer();

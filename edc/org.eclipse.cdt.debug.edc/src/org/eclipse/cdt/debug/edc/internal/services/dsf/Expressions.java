@@ -628,7 +628,14 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			if (castType != null) {
 				if (castInfo.getArrayCount() > 0) {
 					castType += "[]"; //$NON-NLS-1$
-					expression = "&" + expression; //$NON-NLS-1$
+					// Force non-pointer expressions to be pointers.
+					exprDMC.evaluateExpression();
+					IType exprType = TypeUtils.getStrippedType(exprDMC.getEvaluatedType());
+					if (exprType != null) {
+						if (!(exprType instanceof IPointerType || exprType instanceof IArrayType)) {
+							expression = "&" + expression; //$NON-NLS-1$
+						}
+					}
 				}
 				castExpression = "reinterpret_cast<" + castType +">(" + expression + ")"; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 			} else if (castInfo.getArrayCount() > 0) {
@@ -637,7 +644,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				exprDMC.evaluateExpression();
 				IType exprType = TypeUtils.getStrippedType(exprDMC.getEvaluatedType());
 				if (exprType != null) {
-					if (!(exprType instanceof IPointerType)) {
+					if (!(exprType instanceof IPointerType || exprType instanceof IArrayType)) {
 						// cast to pointer if not already one (cast to array is not valid C/C++ but we support it)
 						castExpression = "("  + exprDMC.getTypeName() + "[])&" + expression; //$NON-NLS-1$ //$NON-NLS-2$
 					}

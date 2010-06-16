@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2009 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,6 +21,7 @@ public abstract class AbstractVariableConverter implements IVariableValueConvert
 
 	protected IType type;
 	private boolean forDetails;
+	private int curValueLength;
 
 	public AbstractVariableConverter(IType type, boolean forDetails) {
 		this.forDetails = forDetails;
@@ -35,6 +36,14 @@ public abstract class AbstractVariableConverter implements IVariableValueConvert
 		if (forDetails)
 			return getDetailsValue(variable);
 		return getSummaryValue(variable);
+	}
+	
+	public void setCurValueLength(int curValueLength) {
+		this.curValueLength = curValueLength;
+	}
+	
+	public int getCurValueLength() {
+		return curValueLength;
 	}
 
 	public boolean canEditValue() {

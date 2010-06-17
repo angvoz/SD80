@@ -38,10 +38,16 @@ public abstract class AbstractVariableConverter implements IVariableValueConvert
 		return getSummaryValue(variable);
 	}
 	
+	/**
+	 * @since 2.0
+	 */
 	public void setCurValueLength(int curValueLength) {
 		this.curValueLength = curValueLength;
 	}
 	
+	/**
+	 * @since 2.0
+	 */
 	public int getCurValueLength() {
 		return curValueLength;
 	}

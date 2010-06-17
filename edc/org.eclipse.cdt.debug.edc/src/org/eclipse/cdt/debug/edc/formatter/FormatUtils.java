@@ -232,10 +232,16 @@ public class FormatUtils {
 		return expression.getFormattedValue(fvc).getFormattedValue();
 	}
 
+	/**
+	 * @since 2.0
+	 */
 	public static String getVariableValue(IExpressionDMContext variable) {
 		return getVariableValue(variable, IExpressions.NATURAL_FORMAT);
 	}
 
+	/**
+	 * @since 2.0
+	 */
 	public static String getVariableValue(IExpressionDMContext variable, String format) {
 		IExpressions expressions = ((IEDCExpression)variable).getServiceTracker().getService(IExpressions.class);
 		FormattedValueDMContext fvc = 
@@ -274,6 +280,9 @@ public class FormatUtils {
 		return address;
 	}
 
+	/**
+	 * @since 2.0
+	 */
 	public static String getTemplateTypeName(String typeName, IType type) {
 		// TODO Fix this when type gives template information Bug 11443
 		
@@ -294,6 +303,9 @@ public class FormatUtils {
 		return null;
 	}
 	
+	/**
+	 * @since 2.0
+	 */
 	public static String getFormattedValue(IExpressionDMContext variable) throws CoreException {
 		IVariableValueConverter valueConverter = getCustomValueConverter(variable);
 		if (valueConverter != null) {
@@ -303,6 +315,9 @@ public class FormatUtils {
 			return getVariableValue(variable);
 	}
 
+	/**
+	 * @since 2.0
+	 */
 	public static int getMaxNumberOfChildren() {
 		return 200; // this seems like a good default
 	}

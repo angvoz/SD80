@@ -82,7 +82,7 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 
 	/**
 	 * Check that an expression evaluates without an error.
-	 * @param result
+	 * @param k9View
 	 * @param expr
 	 * @param type the type to check (either IType or String), or <code>null</code>
 	 * @throws Exception

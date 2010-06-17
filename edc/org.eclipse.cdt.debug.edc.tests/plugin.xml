@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            name="K9 System"
+            icon="icons/obj16/k9_view.png"
+            category="org.eclipse.debug.ui"
+            class="org.eclipse.cdt.debug.edc.system.tests.K9SystemView"
+            id="org.eclipse.cdt.debug.edc.system.tests.K9SystemView">
+      </view>
+   </extension>
+
+</plugin>

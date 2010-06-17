@@ -549,6 +549,10 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	public void attachProcess(EDCLaunch launch, IProcesses service, RequestMonitor requestMonitor) {
 
 		try {
+			int pid = launch.getLaunchConfiguration().getAttribute(ICDTLaunchConfigurationConstants.ATTR_ATTACH_PROCESS_ID, -1);
+
+			String preTargetedID = Integer.toString(pid);
+			
 			// 1) get process list from agent (getChildren)
 			String[] processes = getProcessList(service);
 			int numProcesses = processes.length;
@@ -568,12 +572,27 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 				items[i] = item;
 			}
 
-			// 3) bring up dialog to choose which process
-			ChooseProcessItem selected = chooseProcess(items, "");
 			int selectedIndex = 0;
-			for (selectedIndex = 0; selectedIndex < numProcesses; selectedIndex++) {
-				if (selected.processID.equals(items[selectedIndex].processID))
-					break;
+			if (pid == -1)
+			{
+				// 3) bring up dialog to choose which process
+				ChooseProcessItem selected = chooseProcess(items, "");
+				for (selectedIndex = 0; selectedIndex < numProcesses; selectedIndex++) {
+					if (selected.processID.equals(items[selectedIndex].processID))
+						break;
+				}
+			}
+			else
+			{
+				for (int i = 0; i < contexts.length; i++) {
+					String procID = (String) contexts[i].getProperties().get(ProtocolConstants.PROP_OS_ID);
+					if (procID.equals(preTargetedID))
+					{
+						selectedIndex = i;
+						break;
+					}
+				}
+
 			}
 
 			// 4) attach
@@ -586,7 +605,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 				requestMonitor.setStatus(e.getStatus());
 			}
 		}
-		
+
 		requestMonitor.done();
 	}
 

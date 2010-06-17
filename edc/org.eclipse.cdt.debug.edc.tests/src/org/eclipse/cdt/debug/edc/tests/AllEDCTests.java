@@ -21,6 +21,7 @@ import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlag;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlagRVCT;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsLinux;
 import org.eclipse.cdt.debug.edc.debugger.tests.SnapshotTests;
+import org.eclipse.cdt.debug.edc.system.tests.K9SystemViewTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
@@ -49,6 +50,7 @@ import org.junit.runners.Suite;
 						RegisterFrameTestsBlackFlag.class,
 						RegisterFrameTestsBlackFlagRVCT.class,
 						SnapshotTests.class,
+						K9SystemViewTest.class,
 						SnapshotMetaDataTests.class })
 
 public class AllEDCTests {

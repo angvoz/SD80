@@ -113,4 +113,15 @@
     </tab>
  </extension>	
 
+   <extension
+         point="org.eclipse.ui.views">
+      <view
+            name="Windows System"
+            icon="icons/obj16/system_view.png"
+            category="org.eclipse.debug.ui"
+            class="org.eclipse.cdt.debug.edc.internal.windows.ui.WindowsSystemView"
+            id="org.eclipse.cdt.debug.edc.windows.WindowsSystemView">
+      </view>
+   </extension>
+
 </plugin>

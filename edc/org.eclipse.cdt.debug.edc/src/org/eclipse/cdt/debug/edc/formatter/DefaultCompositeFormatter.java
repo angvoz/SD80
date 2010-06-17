@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Nokia and others.
+ * Copyright (c) 2009, 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -20,6 +20,8 @@ import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.core.runtime.CoreException;
 
 public class DefaultCompositeFormatter implements IVariableFormatProvider {
@@ -89,8 +91,6 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 						customConverter instanceof DefaultArrayFormatter.DefaultArrayConverter;
 					if (!isDefaultArrayConverter)
 						sb.append("{");
-					if (customConverter instanceof AbstractVariableConverter)
-						((AbstractVariableConverter) customConverter).setCurValueLength(getCurValueLength() + sb.length());
 					sb.append(customConverter.getValue(child));
 					if (!isDefaultArrayConverter)
 						sb.append("}");
@@ -115,7 +115,7 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 					}
 				}
 				
-				if (getCurValueLength() + sb.length() > STOP_LENGTH) {
+				if (sb.length() > STOP_LENGTH) {
 					if (!childContexts.get(childContexts.size() - 1).equals(child))
 						sb.append("... ");
 					break;
@@ -129,9 +129,12 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 				return;
 			
 			sb.append(prefix);
+			FormattedValueDMContext fvc = 
+				expressions.getFormattedValueContext(childExpression, IExpressions.NATURAL_FORMAT);
+			FormattedValueDMData formattedValue = childExpression.getFormattedValue(fvc);
 			sb.append(childExpression.getName());
 			sb.append("="); //$NON-NLS-1$
-			sb.append(FormatUtils.getVariableValue(childExpression));
+			sb.append(formattedValue.getFormattedValue());
 			sb.append(" "); //$NON-NLS-1$
 		}
 

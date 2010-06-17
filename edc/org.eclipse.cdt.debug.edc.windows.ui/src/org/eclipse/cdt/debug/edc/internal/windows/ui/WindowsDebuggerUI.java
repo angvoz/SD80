@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.windows.ui;
 
+import org.eclipse.cdt.debug.edc.MessageLogger;
+import org.eclipse.core.runtime.Plugin;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
@@ -81,4 +83,19 @@ public class WindowsDebuggerUI extends AbstractUIPlugin {
 	public static BundleContext getBundleContext() {
 		return WindowsDebuggerUI.getDefault().getBundle().getBundleContext();
 	}
+	
+	public static MessageLogger getMessageLogger() {
+		return new MessageLogger() {
+			@Override
+			public String getPluginID() {
+				return PLUGIN_ID;
+			}
+
+			@Override
+			public Plugin getPlugin() {
+				return plugin;
+			}
+		};
+	}
+	
 }

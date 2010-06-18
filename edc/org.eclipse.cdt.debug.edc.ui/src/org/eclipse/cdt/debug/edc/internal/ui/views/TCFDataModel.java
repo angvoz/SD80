@@ -22,6 +22,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.IToken;
+import org.eclipse.tm.tcf.protocol.Protocol;
 import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IProcesses.DoneGetChildren;
 import org.eclipse.tm.tcf.services.IProcesses.DoneGetContext;
@@ -34,26 +35,35 @@ public abstract class TCFDataModel extends SystemDataModel {
 	private boolean buildComplete;
 	
 	@Override
-	public void buildDataModel(IProgressMonitor monitor)throws Exception {
-		TCFServiceManager tcfServiceManager = (TCFServiceManager)EDCDebugger.getDefault().getServiceManager();
-		if (peer == null)
-			findPeer();
-		
-		setBuildComplete(false);
-		IProcesses processesService = (IProcesses) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IProcesses.NAME);
-		processesService.getChildren(null, false, new DoneGetChildren() {
+	public void buildDataModel(final IProgressMonitor monitor)throws Exception {
+		try {
+			final TCFServiceManager tcfServiceManager = (TCFServiceManager)EDCDebugger.getDefault().getServiceManager();
+			if (peer == null)
+				findPeer();
 			
-			public void doneGetChildren(IToken token, Exception error,
-					String[] context_ids) {
-				receiveContextIDs(context_ids);
+			setBuildComplete(false);
+	        final IProcesses processesService = (IProcesses) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IProcesses.NAME);		
+			Protocol.invokeLater(new Runnable() {
+				public void run() {
+	                processesService.getChildren(null, false, new DoneGetChildren() {
+	                        public void doneGetChildren(IToken token, Exception error,
+	                        		String[] context_ids) {
+	                        	receiveContextIDs(context_ids);
+	                        }
+	                });
+				}
+			    
+			});
+			
+			while (!isBuildComplete() && !monitor.isCanceled())	{
+				Thread.sleep(1000);
 			}
-		});
-		
-		while (!isBuildComplete() && !monitor.isCanceled())
-		{
-			Thread.sleep(1000);
 		}
-	
+		finally {
+			if (monitor != null) {
+				monitor.done();
+			}
+		}
 	}
 
 	protected abstract void receiveContextIDs(String[] context_ids);

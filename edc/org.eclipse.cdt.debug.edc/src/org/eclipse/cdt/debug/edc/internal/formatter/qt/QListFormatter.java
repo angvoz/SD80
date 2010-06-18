@@ -85,11 +85,12 @@ public class QListFormatter implements IVariableFormatProvider {
 			IEDCExpression endChild = (IEDCExpression) children.get(END_CHILD_INDEX);
 			endChild.evaluateExpression();
 			int end = endChild.getEvaluatedValue().intValue();
-			if (begin > end) // sanity check
-				throw EDCDebugger.newCoreException("uninitialized");
+			int size = end - begin;
+			if (size < 0 || (size > 0x1000000)) // sanity
+				throw EDCDebugger.newCoreException("Uninitialized");
 			IEDCExpression arrayChild = (IEDCExpression) children.get(ARRAY_CHILD_INDEX);
 			IExpressions2 expressions2 = arrayChild.getServiceTracker().getService(IExpressions2.class);
-			int numItems = Math.min(end - begin, FormatUtils.getMaxNumberOfChildren());
+			int numItems = Math.min(size, FormatUtils.getMaxNumberOfChildren());
 			if (numItems == 0) {
 				children.remove(ARRAY_CHILD_INDEX);
 				isEmpty = true;

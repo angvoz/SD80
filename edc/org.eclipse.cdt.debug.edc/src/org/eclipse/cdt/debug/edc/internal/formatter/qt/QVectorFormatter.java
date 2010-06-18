@@ -22,6 +22,7 @@ import org.eclipse.cdt.debug.edc.formatter.FormatUtils;
 import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableFormatProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
@@ -78,6 +79,8 @@ public class QVectorFormatter implements IVariableFormatProvider {
 			IEDCExpression sizeChild = (IEDCExpression) children.get(SIZE_CHILD_INDEX);
 			sizeChild.evaluateExpression();
 			int size = sizeChild.getEvaluatedValue().intValue();
+			if (size < 0 || size > 0x1000000) // sanity
+				throw EDCDebugger.newCoreException("Uninitialized");
 			if (size == 0) {
 				children.remove(ARRAY_CHILD_INDEX);
 				isEmpty = true;

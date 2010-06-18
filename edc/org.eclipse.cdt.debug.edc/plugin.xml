@@ -166,4 +166,20 @@
             label="QHashNode Formatter">
       </variableFormatProvider>
    </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QVariantFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qvariant"
+            label="QVariant Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QLinkedListFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qlinkedlist"
+            label="QLinkedList Formatter">
+      </variableFormatProvider>
+   </extension>
 </plugin>

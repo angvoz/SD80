@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.formatter.qt;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,7 +18,6 @@ import org.eclipse.cdt.debug.edc.formatter.FormatUtils;
 import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableFormatProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
-import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.core.runtime.CoreException;
@@ -43,13 +41,8 @@ public class QByteArrayFormatter implements IVariableFormatProvider {
 		
 		@Override
 		protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
-			List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
-			for (IExpressionDMContext child : super.getChildren(variable)) {
-				String name = ((IEDCExpression) child).getName();
-				if (name.equals(DATA_NAME))
-					children.add(child);
-			}
-			return children;
+			IExpressionDMContext dataChild = FormatUtils.findInCollectionByName(super.getChildren(variable), DATA_NAME);
+			return Collections.singletonList(dataChild);
 		}
 		
 		@Override

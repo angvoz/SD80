@@ -14,6 +14,7 @@ package org.eclipse.cdt.debug.edc.internal.arm;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -219,7 +220,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 						return true;
 					}
 
-					ARMElf armElf = findOrLoadARMElf(reader.getSymbolFile());
+					ARMElf armElf = findOrLoadARMElf(reader.getSymbolFile(), reader.getByteOrder());
 					if (armElf != null) {
 						String mappingSymbol = armElf.getMappingSymbolAtAddress(symbol.getAddress());
 						if (mappingSymbol != null) {
@@ -247,14 +248,15 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 	 * Cache the ARM/Thumb symbol table information for a given sym file, instead of
 	 * re-reading it on every step.
 	 * @param symbolFile
+	 * @param byteOrder 
 	 * @return ARMElf instance or null
 	 */
-	private ARMElf findOrLoadARMElf(IPath symbolFile) {
+	private ARMElf findOrLoadARMElf(IPath symbolFile, ByteOrder byteOrder) {
 		
 		ARMElf armElf = readerToArmElfMap.get(symbolFile);
 		if (armElf == null) {
 			try {
-				armElf = new ARMElf(symbolFile.toOSString());
+				armElf = new ARMElf(symbolFile.toOSString(), byteOrder == ByteOrder.LITTLE_ENDIAN);
 			} catch (IOException e) {
 				ARMPlugin.getMessageLogger().logError("Failed to load ARM/Thumb symbol mapping", e);
 			}

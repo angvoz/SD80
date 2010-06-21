@@ -1073,10 +1073,10 @@ public class InstructionParserARM {
 			addrExpression = getThumbReg(opcode, 3);
 			break;
 		case thumb_bx:
-			instruction = mnemonic + "\t\t" + getThumbReg(opcode, 3);
+			instruction = mnemonic + "\t\t" + getThumbRegHigh(opcode, 3,6);
 			isSoleDestination = true;
 			isSubroutineAddress = false;
-			addrExpression = getThumbReg(opcode, 3);
+			addrExpression = getThumbRegHigh(opcode, 3, 6);
 			break;
 		case thumb_cmn:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);

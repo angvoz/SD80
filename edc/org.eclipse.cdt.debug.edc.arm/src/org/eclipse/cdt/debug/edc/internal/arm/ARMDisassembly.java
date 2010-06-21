@@ -57,7 +57,7 @@ public class ARMDisassembly extends Disassembly {
 	}
 
 	@Override
-	public void getInstructions(IDisassemblyDMContext context, BigInteger startAddress, BigInteger endAddress,
+	public void getInstructions(final IDisassemblyDMContext context, BigInteger startAddress, BigInteger endAddress,
 			final DataRequestMonitor<IInstruction[]> drm) {
 		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
 		if (disassembler == null) {
@@ -89,28 +89,56 @@ public class ARMDisassembly extends Disassembly {
 
 				Map<String, Object> options = new HashMap<String, Object>();
 
-				if (thumbMode)
-					options.put("DisassemblerMode", 2);
-				else
-					options.put("DisassemblerMode", 1);
+				// figure out the range and mode for the whole range first
+				List<RangeAndMode> fullRange = getModeAndRange(context, start, end);
 
-				if (getTargetEnvironmentService().isLittleEndian(null))
-					options.put("EndianMode", 2);
+				final List<IInstruction> result = new ArrayList<IInstruction>();
+				final CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), drm) {
 
-				try {
-					List<IDisassembledInstruction> insts = disassembler.disassembleInstructions(start, end, codeBuf,
-							options);
-
-					IInstruction[] ret = new IInstruction[insts.size()];
-					for (int i = 0; i < insts.size(); i++) {
-						ret[i] = new EDCInstruction(insts.get(i));
+					@Override
+					protected void handleSuccess() {
+						drm.setData(result.toArray(new IInstruction[result.size()]));
+						drm.done();
 					}
+				};
 
-					drm.setData(ret);
-					drm.done();
-				} catch (CoreException e) {
-					drm.setStatus(e.getStatus());
-					drm.done();
+				crm.setDoneCount(fullRange.size());
+				
+				// for each range disassemble it
+				for (RangeAndMode rangeAndMode : fullRange) {
+					if (rangeAndMode.isThumbMode())
+						thumbMode = true;
+					else
+						thumbMode = false;
+	
+					if (thumbMode)
+						options.put("DisassemblerMode", 2);
+					else
+						options.put("DisassemblerMode", 1);
+	
+					if (getTargetEnvironmentService().isLittleEndian(null))
+						options.put("EndianMode", 2);
+	
+					try {
+						int rangeOffs = rangeAndMode.getStartAddress().getValue().subtract(start.getValue()).intValue();
+						ByteBuffer rangeBytes = ByteBuffer.wrap(codeBuf.array(), 
+								rangeOffs, codeBuf.capacity() - rangeOffs);
+						List<IDisassembledInstruction> insts = disassembler.disassembleInstructions(
+								rangeAndMode.getStartAddress(), 
+								rangeAndMode.getEndAddress(), 
+								rangeBytes,
+								options);
+	
+						for (int i = 0; i < insts.size(); i++) {
+							result.add(new EDCInstruction(insts.get(i)));
+						}
+	
+						crm.done();
+					} catch (CoreException e) {
+						crm.setStatus(e.getStatus());
+						crm.done();
+						break;
+					}
 				}
 			}
 		});

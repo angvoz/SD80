@@ -354,17 +354,13 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
 			IPeer[] runningPeers = tcfServiceManager.getRunningPeers(IRunControl.NAME, peerAttributes, !isUsingRemotePeers());
 			
-			if (isUsingRemotePeers())
-			{
+			if (isUsingRemotePeers()) {
 				tcfPeer = selectPeer(runningPeers);
 			}
-			else
-			{
-				if (runningPeers.length == 0)
-				{
+			else {
+				if (runningPeers.length == 0) {
 					ITCFAgentLauncher[] registered = tcfServiceManager.getRegisteredAgents(IRunControl.NAME, peerAttributes);
-					if (registered.length > 0)
-					{
+					if (registered.length > 0) {
 						tcfPeer = tcfServiceManager.launchAgent(registered[0]);
 					}
 				}

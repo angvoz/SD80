@@ -70,5 +70,4 @@ public class FileStreamBuffer extends StreamBufferBase {
 	protected IStreamBuffer createSubBuffer(long offset, long size) {
 		return new FileStreamBuffer(file, order, offset, size);
 	}
-	
 }

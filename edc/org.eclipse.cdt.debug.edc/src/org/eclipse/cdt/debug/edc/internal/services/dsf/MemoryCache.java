@@ -40,6 +40,7 @@ import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.services.IMemory;
 import org.eclipse.tm.tcf.services.IMemory.DoneGetContext;
 import org.eclipse.tm.tcf.services.IMemory.DoneMemory;
+import org.eclipse.tm.tcf.services.IMemory.ErrorOffset;
 import org.eclipse.tm.tcf.services.IMemory.MemoryContext;
 import org.eclipse.tm.tcf.services.IMemory.MemoryError;
 import org.eclipse.tm.tcf.util.TCFTask;
@@ -435,10 +436,32 @@ public class MemoryCache implements ISnapshotContributor {
 				tcfMC.get(tcfAddress, word_size, buffer, 0, count * word_size, 0, new DoneMemory() {
 
 					public void doneMemory(IToken token, MemoryError error) {
-						if (error == null) {
+						if (error == null || !(error instanceof IMemory.ErrorOffset)) {
 							MemoryByte[] res = new MemoryByte[buffer.length];
 							for (int i = 0; i < buffer.length; i++) {
 								res[i] = new MemoryByte(buffer[i]);
+							}
+							done(res);
+						} else if (error instanceof IMemory.ErrorOffset) {
+							IMemory.ErrorOffset errorOffset = (ErrorOffset) error;
+							MemoryByte[] res = new MemoryByte[buffer.length];
+							
+							// TODO: figure actual endianness (MemoryByte.BIG_ENDIAN) flag; 
+							// we leave out the flag here which defaults to little-endian
+							for (int i = 0; i < buffer.length; i++) {
+								byte flags = MemoryByte.ENDIANESS_KNOWN | MemoryByte.READABLE | MemoryByte.WRITABLE;
+								
+								int st = errorOffset.getStatus(i);
+								if ((st & IMemory.ErrorOffset.BYTE_CANNOT_READ) != 0)
+									flags &= ~MemoryByte.READABLE;
+								if ((st & IMemory.ErrorOffset.BYTE_CANNOT_WRITE) != 0)
+									flags &= ~MemoryByte.WRITABLE;
+								if ((st & IMemory.ErrorOffset.BYTE_INVALID) != 0)
+									flags &= ~(MemoryByte.READABLE + MemoryByte.WRITABLE);
+								if ((st & IMemory.ErrorOffset.BYTE_UNKNOWN) != 0)
+									flags = 0;
+								
+								res[i] = new MemoryByte(buffer[i], flags);
 							}
 							done(res);
 						} else {

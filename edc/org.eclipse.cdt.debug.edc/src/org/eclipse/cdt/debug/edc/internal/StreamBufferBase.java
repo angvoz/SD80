@@ -29,7 +29,8 @@ public abstract class StreamBufferBase implements IStreamBuffer {
 	/* must be a power of 2 */
 	public static final int BUFFER_SIZE = 4096;
 	
-	protected final ByteOrder order;
+	protected ByteOrder order;
+	
 	// absolute
 	private long position;
 	// absolute
@@ -144,7 +145,8 @@ public abstract class StreamBufferBase implements IStreamBuffer {
 				offset += left;
 				position += left;
 				length -= left;
-				continue;
+			} else {
+				break;
 			}
 		}
 		return this;
@@ -231,5 +233,12 @@ public abstract class StreamBufferBase implements IStreamBuffer {
 			return a | (b << 32);
 		else
 			return b | (a << 32);
+	}
+	
+	public ByteOrder getOrder() {
+		return order;
+	}
+	public void setOrder(ByteOrder order) {
+		this.order = order;
 	}
 }

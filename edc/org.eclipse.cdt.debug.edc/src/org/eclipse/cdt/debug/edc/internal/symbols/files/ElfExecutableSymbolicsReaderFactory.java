@@ -10,11 +10,15 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols.files;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 
+import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.debug.edc.internal.symbols.elf.BufferedRandomReadAccessFile;
+import org.eclipse.cdt.debug.edc.internal.symbols.elf.Elf;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReaderFactory;
-import org.eclipse.cdt.utils.elf.Elf;
+import org.eclipse.cdt.utils.elf.Elf.ELFhdr;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -42,8 +46,19 @@ public class ElfExecutableSymbolicsReaderFactory implements IExecutableSymbolics
 	
 	private IExecutableSymbolicsReader detectExecutable(IPath binaryFile) {
 		try {
+			// quickly check the endianness (Elf repeats this)
+			FileInputStream fis = new FileInputStream(binaryFile.toOSString());
+			byte[] e_ident = new byte[16];
+			fis.read(e_ident);
+			if (e_ident[ELFhdr.EI_MAG0] != 0x7f || e_ident[ELFhdr.EI_MAG1] != 'E' || e_ident[ELFhdr.EI_MAG2] != 'L'
+					|| e_ident[ELFhdr.EI_MAG3] != 'F')
+				throw new IOException(CCorePlugin.getResourceString("Util.exception.notELF")); //$NON-NLS-1$
+			
+			boolean isle = (e_ident[ELFhdr.EI_DATA] == ELFhdr.ELFDATA2LSB);
+			
 			// If this constructor succeeds, it's ELF
-			Elf elf = new Elf(binaryFile.toOSString());
+			Elf elf = new Elf(new BufferedRandomReadAccessFile(binaryFile.toOSString(), isle), 
+					binaryFile.toOSString(), 0);
 			return new ElfExecutableSymbolicsReader(binaryFile, elf);
 		} catch (IOException e) {
 			// this class elides actual I/O errors with format errors; ignore

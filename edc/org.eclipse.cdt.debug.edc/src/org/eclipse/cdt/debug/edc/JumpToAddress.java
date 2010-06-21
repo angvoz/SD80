@@ -32,6 +32,10 @@ import org.eclipse.cdt.utils.Addr64;
 public class JumpToAddress implements IJumpToAddress {
 	public static final String EXPRESSION_RETURN_NEAR = "ret-near";
 	public static final String EXPRESSION_RETURN_FAR = "ret-far";
+	/**
+	 * @since 2.0
+	 */
+	public static final String EXPRESSION_LR = "lr";
 
 	private final IAddress address;
 	private final String expression;

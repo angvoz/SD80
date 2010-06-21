@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.launch;
 
 import java.io.FileNotFoundException;
+import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.ICProject;
@@ -28,6 +29,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.variables.IStringVariableManager;
 import org.eclipse.core.variables.VariablesPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.ILaunchManager;
 
 public class LaunchUtils {
 
@@ -156,5 +158,19 @@ public class LaunchUtils {
 		return "";
 	}
 
+	/**
+	 * @since 2.0
+	 */
+	public static String[] getProgramArgumentsArray(ILaunchConfiguration config) throws CoreException {
+		return org.eclipse.cdt.launch.LaunchUtils.getProgramArgumentsArray(config);
+	}
+	
+	/**
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public static Map<String, String> getEnvironmentVariables(ILaunchConfiguration config) throws CoreException {
+		return config.getAttribute(ILaunchManager.ATTR_ENVIRONMENT_VARIABLES, (Map<?,?>) null);
+	}
 
 }

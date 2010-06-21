@@ -22,9 +22,9 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
 import org.eclipse.cdt.debug.edc.internal.symbols.Symbol;
+import org.eclipse.cdt.debug.edc.internal.symbols.elf.Elf;
+import org.eclipse.cdt.debug.edc.internal.symbols.elf.Elf.PHdr;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
-import org.eclipse.cdt.utils.elf.Elf;
-import org.eclipse.cdt.utils.elf.Elf.PHdr;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -92,7 +92,7 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 		
 		// remember how to map the sections
 		Elf.Section[] sections = elfFile.getSections();
-		for (org.eclipse.cdt.utils.elf.Elf.Section section : sections) {
+		for (Elf.Section section : sections) {
 			String name = section.toString();
 			
 			if (name.length() > 0) {
@@ -109,7 +109,7 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 		// load the symbol table
 		elfFile.loadSymbols();
 		Set<IAddress> symbolAddressSet = new TreeSet<IAddress>();
-		for (org.eclipse.cdt.utils.elf.Elf.Symbol symbol : elfFile.getSymtabSymbols()) {
+		for (Elf.Symbol symbol : elfFile.getSymtabSymbols()) {
 			String name = symbol.toString();
 			// Multiple symbol entries for the same address are generated.
 			// Do not add duplicate symbols with 0 size to the list since it confuses

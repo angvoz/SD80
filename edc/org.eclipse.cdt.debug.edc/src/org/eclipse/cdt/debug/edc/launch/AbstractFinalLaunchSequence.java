@@ -445,20 +445,19 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		return steps.toArray(new Step[steps.size()]);
 	}
 
-	@SuppressWarnings("unchecked")
 	protected void launchProcess(final ILaunch launch, final IProcesses ps, final RequestMonitor requestMonitor) {
 		try {
 			ILaunchConfiguration cfg = launch.getLaunchConfiguration();
 
 			// Get absolute program path.
 			ICProject cproject = LaunchUtils.getCProject(cfg);
-			IPath program = LaunchUtils.verifyProgramPath(cfg, cproject); // works
-			// even if cproject is null.
+			// This works even if cproject is null.
+			IPath program = LaunchUtils.verifyProgramPath(cfg, cproject); 
 			final String file = program.toOSString();
 
 			final String workingDirectory = LaunchUtils.getWorkingDirectoryPath(cfg);
-			final String args = cfg.getAttribute(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_ARGUMENTS, "");
-			final Map<String, String> env = cfg.getAttribute(ILaunchManager.ATTR_ENVIRONMENT_VARIABLES, (Map<?,?>) null);
+			final String[] args = LaunchUtils.getProgramArgumentsArray(cfg);
+			final Map<String, String> env = LaunchUtils.getEnvironmentVariables(cfg);
 			final boolean append = cfg.getAttribute(ILaunchManager.ATTR_APPEND_ENVIRONMENT_VARIABLES, true);
 			final boolean attach = false;
 
@@ -475,7 +474,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 						vars.putAll(def);
 					if (env != null)
 						vars.putAll(env);
-					ps.start(workingDirectory, file, toArgsArray(file, args), vars, attach, new IProcesses.DoneStart() {
+					ps.start(workingDirectory, file, args, vars, attach, new IProcesses.DoneStart() {
 
 						public void doneStart(IToken token, Exception error, ProcessContext process) {
 							if (error != null) {
@@ -488,41 +487,6 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 							requestMonitor.done();
 						}
 					});
-				}
-
-				private String[] toArgsArray(String file, String cmd) {
-					// Create arguments list from a command line.
-					int i = 0;
-					int l = cmd.length();
-					List<String> arr = new ArrayList<String>();
-					arr.add(file);
-					for (;;) {
-						while (i < l && cmd.charAt(i) == ' ')
-							i++;
-						if (i >= l)
-							break;
-						String s = null;
-						if (cmd.charAt(i) == '"') {
-							i++;
-							StringBuffer bf = new StringBuffer();
-							while (i < l) {
-								char ch = cmd.charAt(i++);
-								if (ch == '"')
-									break;
-								if (ch == '\\' && i < l)
-									ch = cmd.charAt(i++);
-								bf.append(ch);
-							}
-							s = bf.toString();
-						} else {
-							int i0 = i;
-							while (i < l && cmd.charAt(i) != ' ')
-								i++;
-							s = cmd.substring(i0, i);
-						}
-						arr.add(s);
-					}
-					return arr.toArray(new String[arr.size()]);
 				}
 			};
 

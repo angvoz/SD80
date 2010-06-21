@@ -15,9 +15,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.internal.symbols.elf.BufferedRandomReadAccessFile;
+import org.eclipse.cdt.debug.edc.internal.symbols.elf.Elf;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
-import org.eclipse.cdt.utils.elf.Elf;
 
 /**
  * ARM Elf provides extra "mappings" in the symbol table to help distinguish
@@ -29,8 +30,8 @@ public class ARMElf extends Elf {
 
 	private Map<IAddress, Symbol> zeroSymbols = new HashMap<IAddress, Symbol>();
 	
-	public ARMElf(String filename) throws IOException {
-		super(filename);
+	public ARMElf(String filename, boolean isLE) throws IOException {
+		super(new BufferedRandomReadAccessFile(filename, isLE), filename, 0);
 		readSymbols();
 	}
 

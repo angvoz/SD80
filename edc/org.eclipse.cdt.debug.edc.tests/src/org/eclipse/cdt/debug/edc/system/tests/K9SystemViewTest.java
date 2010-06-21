@@ -19,6 +19,7 @@ import org.eclipse.cdt.internal.ui.util.StringMatcher;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.TreeModelViewer;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,10 +32,18 @@ public class K9SystemViewTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		// Open the K9 System View
-        IWorkbenchPage page= PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-        k9View = (K9SystemView)page.showView(K9SystemView.VIEW_ID);
-        Assert.assertNotNull("Can't open K9 System View", k9View != null);
+		PlatformUI.getWorkbench().getDisplay().syncExec(new Runnable() {
+			public void run() {
+				// Open the K9 System View
+		        IWorkbenchPage page= PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+		        try {
+					k9View = (K9SystemView)page.showView(K9SystemView.VIEW_ID);
+				} catch (PartInitException e) {
+					Assert.fail(e.getMessage());
+				}
+		        Assert.assertNotNull("Can't open K9 System View", k9View != null);
+			}
+		});
 	}
 
 	@Test

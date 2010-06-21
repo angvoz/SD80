@@ -29,10 +29,10 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleLoadedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleUnloadedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ProcessExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
@@ -53,6 +53,7 @@ import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ModuleLoadedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IModules.ModuleUnloadedDMEvent;
+import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
@@ -313,7 +314,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		public String toString() {
 			String s = getFileName();
 			if (s == null) // address breakpoint
-				s = getAddresses().toString();
+				s = getAddresses()[0].toHexAddressString();
 			else {
 				if (getFunctionName() != null)
 					s += ": " + getFunctionName();
@@ -633,14 +634,14 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		final Map<String, Object> properties = new HashMap<String, Object>(props);
 
 		if (usesTCFBreakpointService()) {
-			ProcessExecutionDMC exedmc = DMContexts.getAncestorOfType(exeDMC, ProcessExecutionDMC.class);
+			IProcessDMContext exedmc = DMContexts.getAncestorOfType(exeDMC, IProcessDMContext.class);
 
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ID, Long.toString(id));
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ENABLED, true);
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_TYPE,
 					org.eclipse.tm.tcf.services.IBreakpoints.TYPE_AUTO);
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_LOCATION, address.toString());
-			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_CONTEXTIDS, new String[] { exedmc.getID() });
+			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_CONTEXTIDS, new String[] { ((IEDCDMContext)exedmc).getID() });
 
 			getTargetEnvironmentService().updateBreakpointProperties(exeDMC, address, properties);
 

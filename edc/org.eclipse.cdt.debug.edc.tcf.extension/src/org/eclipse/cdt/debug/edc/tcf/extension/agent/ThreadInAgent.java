@@ -14,6 +14,7 @@ package org.eclipse.cdt.debug.edc.tcf.extension.agent;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
+import org.eclipse.cdt.debug.edc.tcf.extension.agent.ContextInAgent.IRegisterOwnerContext;
 import org.eclipse.tm.tcf.services.IRunControl;
 
 /**
@@ -21,7 +22,7 @@ import org.eclipse.tm.tcf.services.IRunControl;
  * 
  * @author LWang
  */
-public class ThreadInAgent extends ContextInAgent {
+public class ThreadInAgent extends ContextInAgent implements IRegisterOwnerContext {
 
 	private final long osID;
 

@@ -275,7 +275,9 @@ public class EDCLaunch extends Launch {
 				DsfSession.endSession(session);
 
 				// DsfMemoryBlockRetrieval.saveMemoryBlocks();
-				memRetrieval.saveMemoryBlocks();
+				if (memRetrieval != null) {
+					memRetrieval.saveMemoryBlocks();
+				}
 
 				// endSession takes a full dispatch to distribute the
 				// session-ended event, finish step only after the dispatch.

@@ -24,6 +24,13 @@ import org.eclipse.tm.tcf.services.IRunControl;
  */
 public abstract class ContextInAgent  {
 
+	/**
+	 * Context that has its own registers, e.g. a thread is such context but
+	 * process is not.
+	 * @since 2.0
+	 */
+	public interface IRegisterOwnerContext {};
+	
     private final Map<String, Object> properties;
     
     /**

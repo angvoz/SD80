@@ -148,26 +148,26 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 	}
 
-	private static StateChangeReason toStateChangeReason(String s) {
-		if (s == null)
+	private static StateChangeReason toDsfStateChangeReason(String tcfReason) {
+		if (tcfReason == null)
 			return StateChangeReason.UNKNOWN;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_USER_REQUEST))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_USER_REQUEST))
 			return StateChangeReason.USER_REQUEST;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_STEP))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_STEP))
 			return StateChangeReason.STEP;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_BREAKPOINT))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_BREAKPOINT))
 			return StateChangeReason.BREAKPOINT;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_EXCEPTION))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_EXCEPTION))
 			return StateChangeReason.EXCEPTION;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_CONTAINER))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_CONTAINER))
 			return StateChangeReason.CONTAINER;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_WATCHPOINT))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_WATCHPOINT))
 			return StateChangeReason.WATCHPOINT;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_SIGNAL))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_SIGNAL))
 			return StateChangeReason.SIGNAL;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_SHAREDLIB))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_SHAREDLIB))
 			return StateChangeReason.SHAREDLIB;
-		if (s.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_ERROR))
+		if (tcfReason.equals(org.eclipse.tm.tcf.services.IRunControl.REASON_ERROR))
 			return StateChangeReason.ERROR;
 		return StateChangeReason.UNKNOWN;
 	}
@@ -347,28 +347,29 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				properties.put(PROP_MESSAGE, reason);
 				properties.put(PROP_SUSPEND_PC, pc);
 			}
-			stateChangeReason = toStateChangeReason(reason);
+			stateChangeReason = toDsfStateChangeReason(reason);
 
 			stateChangeDetails = (String) params.get("message");
 
 			if (stateChangeReason == StateChangeReason.SHAREDLIB) {
 				handleModuleEvent(this, params);
 			} else {
-				final IExecutionDMContext dmc = this;
+				final ExecutionDMC dmc = this;
 
-				preprocessSuspend(pc, new DataRequestMonitor<Boolean>(getExecutor(), null) {
+				final DataRequestMonitor<Boolean> preprocessDrm = new DataRequestMonitor<Boolean>(getExecutor(), null) {
 					@Override
 					protected void handleCompleted() {
-						if (getData()) { // do suspend
+						boolean honorSuspend = getData();
+						
+						if (honorSuspend) { // do suspend
 
-							// Only after completion of adjustPC do we fire the
-							// event.
+							// Only after completion of those preprocessing do 
+							// we fire the event.
 							getSession().dispatchEvent(new SuspendedEvent(dmc, stateChangeReason, params),
 									RunControl.this.getProperties());
 
 							// All the following must be done in DSF dispatch
-							// thread
-							// to ensure data integrity.
+							// thread to ensure data integrity.
 
 							// Mark done of the single step RM, if any pending.
 							if (steppingRM != null) {
@@ -386,12 +387,19 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							//
 							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 							bpService.removeAllTempBreakpoints(new RequestMonitor(getExecutor(), null));
-						} else { // no suspend, say, due to breakpoint condition
-							// not met.
+							
+						} else { 
+							// ignore suspend, say, due to breakpoint condition not met.
 							RunControl.this.resume(dmc, new RequestMonitor(getExecutor(), null));
 						}
 					}
-				});
+				};
+				
+				// This needs be done in DSF dispatch thread.
+				getSession().getExecutor().execute(new Runnable() {
+					public void run() {
+						preprocessOnSuspend(dmc, latestPC, preprocessDrm);
+					}});
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
@@ -423,92 +431,6 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			});
 		}
 		
-		/**
-		 * Preprocessing for suspend event. This is done before we broadcast the
-		 * suspend event across the debugger. Here's what's done in the
-		 * preprocessing: <br>
-		 * 1. Adjust PC after control hits a software breakpoint where the PC
-		 * points at the byte right after the breakpoint instruction. This is to
-		 * move PC back to the address of the breakpoint instruction.<br>
-		 * 2. If we stops at a breakpoint, evaluate condition of the breakpoint
-		 * and determine if we should ignore the suspend event and resume or
-		 * should honor the suspend event and sent it up the ladder.
-		 * 
-		 * @param pc
-		 *            program pointer value from the event, in the format of
-		 *            big-endian hex string.
-		 * @param drm
-		 *            DataRequestMonitor whose result indicates whether to honor
-		 *            the suspend.
-		 */
-		private void preprocessSuspend(final String pc, final DataRequestMonitor<Boolean> drm) {
-			final ExecutionDMC dmc = this;
-
-			// The following needs be done in DSF dispatch thread.
-			getSession().getExecutor().execute(new Runnable() {
-
-				public void run() {
-					Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
-					Registers regService = getServicesTracker().getService(Registers.class);
-					String pcString;
-
-					if (pc == null) {
-						// read PC register
-						pcString = regService.getRegisterValue(dmc, getTargetEnvironmentService().getPCRegisterID());
-					} else
-						pcString = pc;
-
-					latestPC = pcString;
-
-					// This check is to speed up handling of suspend due to
-					// other reasons such as "step".
-					// The TCF agents should always report the
-					// "stateChangeReason" as BREAKPOINT when a breakpoint
-					// is hit.
-
-					if (stateChangeReason != StateChangeReason.BREAKPOINT) {
-						drm.setData(true);
-						drm.done();
-						return;
-					}
-
-					if (!bpService.usesTCFBreakpointService()) {
-						// generic software breakpoint is used.
-						// We need to move PC back to the breakpoint
-						// instruction.
-						long pcValue;
-
-						pcValue = Long.valueOf(pcString, 16);
-						pcValue -= getTargetEnvironmentService()
-								.getBreakpointInstruction(dmc, new Addr64(pcString, 16)).length;
-						pcString = Long.toHexString(pcValue);
-
-						// Stopped but not due to breakpoint set by debugger.
-						// For instance, some Windows DLL has "int 3"
-						// instructions in it.
-						// 
-						if (bpService.findBreakpoint(new Addr64(pcString, 16)) != null) {
-							// Now adjust PC register.
-							regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), pcString);
-							latestPC = pcString;
-						}
-					}
-
-					// check if a conditional breakpoint (must be a user bp) is
-					// hit
-					//
-					BreakpointDMData bp = bpService.findUserBreakpoint(new Addr64(latestPC, 16));
-					if (bp != null) {
-						// evaluate the condition
-						bpService.evaluateBreakpointCondition(dmc, bp, drm);
-					} else {
-						drm.setData(true);
-						drm.done();
-					}
-				}
-			});
-		}
-
 		public Boolean canTerminate() {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE);
 			Boolean result = false;
@@ -1176,6 +1098,90 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		return false;
 	}
 
+	/**
+	 * Preprocessing for suspend event. This is done before we broadcast the
+	 * suspend event across the debugger. Here's what's done in the
+	 * preprocessing by default: <br>
+	 * 1. Adjust PC after control hits a software breakpoint where the PC
+	 * points at the byte right after the breakpoint instruction. This is to
+	 * move PC back to the address of the breakpoint instruction.<br>
+	 * 2. If we stops at a breakpoint, evaluate condition of the breakpoint
+	 * and determine if we should ignore the suspend event and resume or
+	 * should honor the suspend event and sent it up the ladder.
+	 * <p>
+	 * Subclass can override this method to add their own special preprocessing,
+	 * while calling super implementation to carry out the default.
+	 * <p>
+	 * This must be called in DSF executor thread.
+	 * 
+	 * @param pc
+	 *            program pointer value from the event, in the format of
+	 *            big-endian hex string. Can be null.
+	 * @param drm
+	 *            DataRequestMonitor whose result indicates whether to honor
+	 *            the suspend.
+	 */
+	protected void preprocessOnSuspend(ExecutionDMC dmc, String pc,
+			DataRequestMonitor<Boolean> drm) {
+		Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+		Registers regService = getServicesTracker().getService(Registers.class);
+		String pcString;
+
+		if (pc == null) {
+			// read PC register
+			pcString = regService.getRegisterValue(dmc, getTargetEnvironmentService().getPCRegisterID());
+		} else
+			pcString = pc;
+
+		dmc.setPC(pcString);
+
+		// This check is to speed up handling of suspend due to
+		// other reasons such as "step".
+		// The TCF agents should always report the
+		// "stateChangeReason" as BREAKPOINT when a breakpoint
+		// is hit.
+
+		if (dmc.getStateChangeReason() != StateChangeReason.BREAKPOINT) {
+			drm.setData(true);
+			drm.done();
+			return;
+		}
+
+		if (!bpService.usesTCFBreakpointService()) {
+			// generic software breakpoint is used.
+			// We need to move PC back to the breakpoint
+			// instruction.
+			long pcValue;
+
+			pcValue = Long.valueOf(pcString, 16);
+			pcValue -= getTargetEnvironmentService()
+					.getBreakpointInstruction(dmc, new Addr64(pcString, 16)).length;
+			pcString = Long.toHexString(pcValue);
+
+			// Stopped but not due to breakpoint set by debugger.
+			// For instance, some Windows DLL has "int 3"
+			// instructions in it.
+			// 
+			if (bpService.findBreakpoint(new Addr64(pcString, 16)) != null) {
+				// Now adjust PC register.
+				regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), pcString);
+				dmc.setPC(pcString);
+			}
+		}
+
+		// check if a conditional breakpoint (must be a user bp) is
+		// hit
+		//
+		BreakpointDMData bp = bpService.findUserBreakpoint(new Addr64(pcString, 16));
+		if (bp != null) {
+			// evaluate the condition
+			bpService.evaluateBreakpointCondition(dmc, bp, drm);
+		} else {
+			drm.setData(true);
+			drm.done();
+		}
+	}
+
 	public void resume(IExecutionDMContext context, final RequestMonitor rm) {
 		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
 				MessageFormat.format("resume context {0}", context));
@@ -1508,7 +1514,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			{
 				if (!currentFrame.getModule().toRuntimeAddress(functionScope.getLowAddress()).equals(currentFrame.getIPAddress()))
 				{
-					stepAddressRange(dmc, false, currentFrame.getIPAddress(), functionScope.getHighAddress(), new RequestMonitor(getExecutor(), rm){
+					stepAddressRange(dmc, false, currentFrame.getIPAddress(), 
+									 currentFrame.getModule().toRuntimeAddress(functionScope.getHighAddress()),
+									 new RequestMonitor(getExecutor(), rm){
 
 						@Override
 						protected void handleSuccess() {
@@ -1695,7 +1703,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							//
 							String expr = (String) jta.getValue();
 							if (expr.equals(JumpToAddress.EXPRESSION_RETURN_FAR)
-									|| expr.equals(JumpToAddress.EXPRESSION_RETURN_NEAR)) {
+									|| expr.equals(JumpToAddress.EXPRESSION_RETURN_NEAR)
+									|| expr.equals(JumpToAddress.EXPRESSION_LR)) {
 								// The current instruction is return instruction. Just execute it
 								// to step-out and we are done with the stepping. This way we avoid
 								// looking for return address from caller stack frame which may not

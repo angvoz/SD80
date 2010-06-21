@@ -78,6 +78,10 @@ public class SimpleRegistersProxy implements ISimpleRegisters {
 				registerValues }) {
 			@Override
 			public void done(Exception error, Object[] args) {
+				if (error == null) {
+					assert args.length == 1;
+					error = toError(args[0]);
+				}
 				done.doneSet(token, error, null);
 			}
 		}.token;

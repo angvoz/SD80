@@ -16,8 +16,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumEventListener;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
@@ -30,6 +28,8 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.action.Action;
@@ -697,15 +697,17 @@ public class SnapshotView extends ViewPart implements ISnapshotAlbumEventListene
 
 		// See if the default project exists
 		String defaultProjectName = "Snapshots";
-		ICProject cProject = CoreModel.getDefault().getCModel().getCProject(defaultProjectName);
+		IWorkspace workspace = ResourcesPlugin.getWorkspace();
+		IProject snapshotsProject = workspace.getRoot().getProject(
+				defaultProjectName);
 
-		if (cProject == null || !cProject.exists()) {
+		if (snapshotsProject == null || !snapshotsProject.exists()) {
 			return albumList;
 		}
 
 		// Get all .dsa files from Snapshots project
 		try {
-			IResource[] resources = cProject.getProject().members();
+			IResource[] resources = snapshotsProject.members();
 			for (IResource resource : resources) {
 
 				try {

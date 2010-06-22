@@ -52,6 +52,7 @@ import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.DsfSession.SessionEndedListener;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
@@ -1164,17 +1165,22 @@ public class Album extends PlatformObject implements IAlbum {
 	}
 	
 	public IPath createEmptyAlbum() {
-		IPath zipPath = SnapshotUtils.getSnapshotsProject().getLocation();
-		zipPath = zipPath.append(getDefaultAlbumName());
-		zipPath = zipPath.addFileExtension("dsa");
-		boolean created =  ZipFileUtils.createNewZip(zipPath.toFile());
-		
-		if (created && zipPath.toFile().exists()){
-			setLocation(zipPath);
-		} else {
-			return null;
-		}
-		
+		IPath zipPath = null;
+		try {
+			zipPath = SnapshotUtils.getSnapshotsProject().getLocation();
+			zipPath = zipPath.append(getDefaultAlbumName());
+			zipPath = zipPath.addFileExtension("dsa");
+			boolean created =  ZipFileUtils.createNewZip(zipPath.toFile());
+			
+			if (created && zipPath.toFile().exists()){
+				setLocation(zipPath);
+			} else {
+				return null;
+			}
+			SnapshotUtils.getSnapshotsProject().refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+		} catch (CoreException e) {
+			EDCDebugger.getMessageLogger().logError(e.getLocalizedMessage(), e);
+		}		
 		return zipPath;
 	}
 

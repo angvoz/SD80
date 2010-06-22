@@ -30,14 +30,9 @@ import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.launch.IEDCLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
-import org.eclipse.core.filesystem.EFS;
-import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspace;
@@ -427,50 +422,22 @@ public class SnapshotUtils extends PlatformObject {
 		properties.put(mapKey, map);
 	}
 	
-	static public IProject getSnapshotsProject() {
-
-		final String SNAPSHOT_PROJECT_ID = "org.eclipse.cdt.debug.edc.snapshot"; //$NON-NLS-1$
-
+	static public IProject getSnapshotsProject() throws CoreException {
 		IProject snapshotsProject = null;
 		// See if the default project exists
 		String defaultProjectName = "Snapshots";
-		ICProject cProject = CoreModel.getDefault().getCModel().getCProject(defaultProjectName);
-		if (cProject.exists()) {
-			snapshotsProject = cProject.getProject();
+		IWorkspace workspace = ResourcesPlugin.getWorkspace();
+		snapshotsProject = workspace.getRoot().getProject(
+				defaultProjectName);
+		if (snapshotsProject.exists()) {
+			if (!snapshotsProject.isOpen())
+				snapshotsProject.open(new NullProgressMonitor());
 		} else {
-			final String[] ignoreList = { ".project", //$NON-NLS-1$
-					".cdtproject", //$NON-NLS-1$
-					".cproject", //$NON-NLS-1$
-					".cdtbuild", //$NON-NLS-1$
-					".settings", //$NON-NLS-1$
-			};
-
-			IWorkspace workspace = ResourcesPlugin.getWorkspace();
-			IProject newProjectHandle = workspace.getRoot().getProject(defaultProjectName);
-
-			int projectSuffix = 2;
-			while (newProjectHandle.exists()) {
-				newProjectHandle = workspace.getRoot().getProject(defaultProjectName + projectSuffix);
-				projectSuffix++;
-			}
-
-			IProjectDescription description = workspace.newProjectDescription(newProjectHandle.getName());
+			IProjectDescription description = workspace.newProjectDescription(defaultProjectName);
 			description.setLocation(null);
-			IFileStore store;
 			try {
-				store = EFS.getStore(workspace.getRoot().getLocationURI());
-				store = store.getChild(newProjectHandle.getName());
-				for (String deleteName : ignoreList) {
-					IFileStore projFile = store.getChild(deleteName);
-					projFile.delete(EFS.NONE, new NullProgressMonitor());
-				}
-				IFileStore[] children = store.childStores(EFS.NONE, new NullProgressMonitor());
-				for (IFileStore fileStore : children) {
-					if (fileStore.fetchInfo().isDirectory())
-						fileStore.delete(EFS.NONE, new NullProgressMonitor());
-				}
-				snapshotsProject = CCorePlugin.getDefault().createCProject(description, newProjectHandle, null,
-						SNAPSHOT_PROJECT_ID);
+				snapshotsProject.create(description, new NullProgressMonitor());
+				snapshotsProject.open(new NullProgressMonitor());
 			} catch (Exception e) {
 				EDCDebugger.getMessageLogger().logError(null, e);
 			}

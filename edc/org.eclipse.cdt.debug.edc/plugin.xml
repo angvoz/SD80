@@ -182,4 +182,20 @@
             label="QLinkedList Formatter">
       </variableFormatProvider>
    </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QMapFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qmap"
+            label="QMap Formatter">
+      </variableFormatProvider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.debug.edc.variableFormatProvider">
+      <variableFormatProvider
+            class="org.eclipse.cdt.debug.edc.internal.formatter.qt.QMapNodeFormatter"
+            id="org.eclipse.cdt.debug.edc.formatter.qt.qmapnode"
+            label="QMapNode Formatter">
+      </variableFormatProvider>
+   </extension>
 </plugin>

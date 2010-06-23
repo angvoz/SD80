@@ -221,20 +221,30 @@ public class DwarfInfoReader {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}
 	}
-	
+
 	/**
-	 * Parse all computation units for addresses
+	 * Parse all compilation units for addresses
+	 * 
+	 * @param includeCUWithoutCode
+	 *            whether to parse compile units without code. For variable
+	 *            info, we need to look into those CUs, whereas for scope
+	 *            info, we don't.
 	 */
-	public void parseForAddresses() {
+	public void parseForAddresses(boolean includeCUWithoutCode) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse for " + symbolFilePath);
 		for (DwarfCompileUnit compileUnit : provider.compileUnits) {
-			parseCompilationUnitForAddresses(compileUnit);
 			if (DEBUG) {
-				// For internal check.
+				// For internal check. 
 				if (compileUnit.getHighAddress().isZero())
 					assert(compileUnit.getChildren().size() == 0);
 				else
 					assert(compileUnit.getChildren().size() >= 0);
+			}
+
+			if (includeCUWithoutCode ||  	// parse every CU
+				! compileUnit.getHighAddress().isZero()) // parse only those with code. 
+			{
+				parseCompilationUnitForAddresses(compileUnit);
 			}
 		}
 		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished address parse");
@@ -356,7 +366,7 @@ public class DwarfInfoReader {
 	}
 
 	/**
-	 * Parse all computation units for types
+	 * Parse all compilation units for types
 	 */
 	public void parseForTypes() {
 		for (DwarfCompileUnit compileUnit : provider.compileUnits) {

@@ -681,7 +681,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		dip.setParsedInitially();
 		reader.parseInitial();
 		dip.setParsedForAddresses();
-		reader.parseForAddresses();
+		reader.parseForAddresses(true);
 		
 		return dip;
 	}

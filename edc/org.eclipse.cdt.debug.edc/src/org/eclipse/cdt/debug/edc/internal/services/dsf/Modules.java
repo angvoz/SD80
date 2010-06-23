@@ -638,10 +638,10 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				Map<String, Collection<AddressRange>> cachedRanges = new HashMap<String, Collection<AddressRange>>();
 				// Check the persistent cache
 				String cacheKey = reader.getSymbolFile().toOSString() + ADDRESS_RANGE_CACHE;
-				Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
-				if (cachedData != null && cachedData instanceof Map<?,?>)
+				Map<String, Collection<AddressRange>> cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
+				if (cachedData != null)
 				{
-					cachedRanges = (Map<String, Collection<AddressRange>>) cachedData;
+					cachedRanges = cachedData;
 					linkAddressRanges = cachedRanges.get(file + line);
 				}
 				

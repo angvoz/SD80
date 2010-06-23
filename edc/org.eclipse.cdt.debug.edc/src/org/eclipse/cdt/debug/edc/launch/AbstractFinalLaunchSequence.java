@@ -121,6 +121,12 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * trackerStep.
 	 */
 	protected Step initFindPeerStep = new Step() {
+		
+		@Override
+		public String getTaskName() {
+			return "Find/launch TCF peer";
+		}
+
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 			findPeer(requestMonitor);

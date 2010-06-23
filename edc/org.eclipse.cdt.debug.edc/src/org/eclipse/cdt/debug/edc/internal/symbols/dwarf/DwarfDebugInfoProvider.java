@@ -771,6 +771,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	private long symbolFileLastModified;
 	private boolean parsedInitially = false;
 	private boolean parsedForVarsAndAddresses = false;
+	private boolean parsedForScopesAndAddresses = false;
 	private boolean parsedForTypes = false;
 	private boolean parsedForGlobalVars = false;
 	
@@ -827,6 +828,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		parsedInitially = false;
 		parsedForTypes = false;
 		parsedForVarsAndAddresses = false;
+		parsedForScopesAndAddresses = false;
 		
 		fileHelper.dispose();
 		frameRegisterProvider.dispose();
@@ -840,15 +842,15 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 	}
 
-	synchronized void ensureParsedForAddresses() {
-		if (!parsedForVarsAndAddresses) {
+	synchronized void ensureParsedForScopes() {
+		if (!parsedForScopesAndAddresses) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			if (!parsedInitially) {
 				parsedInitially = true;
 				reader.parseInitial();
 			}
-			parsedForVarsAndAddresses = true;
-			reader.parseForAddresses();
+			parsedForScopesAndAddresses = true;
+			reader.parseForAddresses(false);
 		}
 	}
 
@@ -860,7 +862,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				reader.parseInitial();
 			}
 			parsedForVarsAndAddresses = true;
-			reader.parseForAddresses();
+			reader.parseForAddresses(true);
 		}
 	}
 	
@@ -941,7 +943,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				List<PublicNameInfo> nameMatches = publicFunctions.get(baseName);
 
 				if (nameMatches != null) {
-					// parse the computation units that have matches
+					// parse the compilation units that have matches
 					if (nameMatches.size() == 1) { // quick usual case
 						reader.parseCompilationUnitForAddresses(nameMatches.get(0).cuHeader.scope);
 					} else {
@@ -958,16 +960,16 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 						}
 					}
 				} else {
-					// not a public name, so parse all computation units looking for functions
-					ensureParsedForAddresses();
+					// not a public name, so parse all compilation units looking for functions
+					ensureParsedForScopes();
 				}
 			} else {
-				// name is null, so parse all computation units looking for functions
-				ensureParsedForAddresses();
+				// name is null, so parse all compilation units looking for functions
+				ensureParsedForScopes();
 			}
 		} else {
-			// no public names, so parse all computation units looking for functions
-			ensureParsedForAddresses();
+			// no public names, so parse all compilation units looking for functions
+			ensureParsedForScopes();
 		}
 		
 		if (name != null) {
@@ -995,7 +997,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				List<PublicNameInfo> nameMatches = publicVariables.get(name);
 
 				if (nameMatches != null) {
-					// parse the computation units that have matches
+					// parse the compilation units that have matches
 					if (nameMatches.size() == 1) { // quick usual case
 						reader.parseCompilationUnitForAddresses(nameMatches.get(0).cuHeader.scope);
 					} else {
@@ -1012,12 +1014,12 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 						}
 					}
 				} else {
-					// not a public name, so parse all computation units looking for variables
+					// not a public name, so parse all compilation units looking for variables
 					if (!globalsOnly)
 						ensureParsedForVariables();
 				}
 			} else {
-				// name is null, so parse all computation units looking for variables
+				// name is null, so parse all compilation units looking for variables
 				if (globalsOnly)
 					ensureParsedForGlobalVariables();
 				else
@@ -1053,7 +1055,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	}
 
 	public ICompileUnitScope getCompileUnitForAddress(IAddress linkAddress) {
-		ensureParsedForAddresses();
+		ensureParsedForScopes();
 		
 		IScope scope = moduleScope.getScopeAtAddress(linkAddress);
 		while (scope != null && !(scope instanceof ICompileUnitScope)) {

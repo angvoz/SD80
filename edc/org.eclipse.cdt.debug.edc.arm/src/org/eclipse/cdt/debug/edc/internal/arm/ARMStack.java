@@ -167,10 +167,9 @@ public class ARMStack extends Stack {
 				if (reader != null)
 				{
 					// Check the persistent cache
-					Object cachedData = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
-					if (cachedData != null && cachedData instanceof Map<?,?>)
+					cachedMapping = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
+					if (cachedMapping != null)
 					{
-						cachedMapping = (Map<IAddress, IAddress>) cachedData;
 						IAddress cachedAddress = cachedMapping.get(module.toLinkAddress(pcValue));
 						if (cachedAddress != null)
 							functionStartAddress = module.toRuntimeAddress(cachedAddress);	

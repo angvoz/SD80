@@ -184,10 +184,9 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			String cacheKey = reader.getSymbolFile().toOSString() + IS_THUMB_MODE;
 			if (reader != null)
 			{
-				Object cachedData = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
-				if (cachedData != null && cachedData instanceof Map<?,?>)
+				cachedValues = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
+				if (cachedValues != null)
 				{
-					cachedValues = (Map<IAddress, Boolean>) cachedData;
 					Boolean cachedValue = cachedValues.get(linkAddress);
 					if (cachedValue != null)
 						return cachedValue;

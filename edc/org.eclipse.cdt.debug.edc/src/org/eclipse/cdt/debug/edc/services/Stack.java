@@ -325,10 +325,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						{
 							// Check the persistent cache
 							String cacheKey = reader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
-							Object cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, reader.getModificationDate());
-							if (cachedData != null && cachedData instanceof Map<?,?>)
+							Map<IAddress, Map<String, Object>> cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
+							if (cachedData != null)
 							{
-								cachedFrameProperties = (Map<IAddress, Map<String, Object>>) cachedData;
+								cachedFrameProperties = cachedData;
 								Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(ipAddress));
 								if (cachedProperties != null)
 								{

@@ -53,7 +53,7 @@ public final class CMacroEntry extends ACSettingEntry implements ICMacroEntry{
 
 	@Override
 	protected String contentsToString() {
-		return new StringBuffer().append(getName()).append('=').append(fValue).toString();
+		return new StringBuffer().append(fName).append('=').append(fValue).toString();
 	}
 	
 }

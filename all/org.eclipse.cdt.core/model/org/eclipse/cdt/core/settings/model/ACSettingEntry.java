@@ -15,8 +15,8 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer
 
 
 public abstract class ACSettingEntry implements ICSettingEntry {
-	private int fFlags;
-	private String fName;
+	int fFlags;
+	String fName;
 	
 	ACSettingEntry(String name, int flags){
 		fName = name;

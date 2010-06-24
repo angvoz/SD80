@@ -22,7 +22,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ConsoleOutputStream;
@@ -105,33 +104,6 @@ public class CommonBuilder extends ACBuilder {
 	public static void outputError(String resourceName, String message) {
 		if (VERBOSE) {
 			System.err.println(ERROR_HEADER + resourceName + TRACE_FOOTER + message + NEWLINE);
-		}
-	}
-
-	private static class NullConsole implements IConsole { // return a null console
-		private final ConsoleOutputStream nullStream = new ConsoleOutputStream() {
-			@Override
-			public void write(byte[] b) throws IOException {
-			}
-			@Override
-			public void write(byte[] b, int off, int len) throws IOException {
-			}
-			@Override
-			public void write(int c) throws IOException {
-			}
-		};
-
-		public void start(IProject project) {
-		}
-	    // this can be a null console....
-		public ConsoleOutputStream getOutputStream() {
-			return nullStream;
-		}
-		public ConsoleOutputStream getInfoStream() {
-			return nullStream;
-		}
-		public ConsoleOutputStream getErrorStream() {
-			return nullStream;
 		}
 	}
 

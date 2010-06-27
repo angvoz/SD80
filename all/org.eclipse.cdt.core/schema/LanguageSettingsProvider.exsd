@@ -56,10 +56,10 @@
          <attribute name="class" type="string">
             <annotation>
                <documentation>
-                  a fully qualified name of the Java class that implements &lt;samp&gt;org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider&lt;/samp&gt; interface.
+                  a fully qualified name of the Java class that implements &lt;samp&gt;org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider&lt;/samp&gt; interface.
                </documentation>
                <appInfo>
-                  <meta.attribute kind="java" basedOn="org.eclipse.cdt.core.AbstractExecutableExtensionBase:org.eclipse.cdt.core.settings.model.ICLanguageSettingsProvider"/>
+                  <meta.attribute kind="java" basedOn="org.eclipse.cdt.core.AbstractExecutableExtensionBase:org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider"/>
                </appInfo>
             </annotation>
          </attribute>

@@ -33,7 +33,7 @@ import org.eclipse.tm.tcf.services.IProcesses;
 public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 	public LinuxFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		super(executor, launch, pm, "Configuring Linux Debugger", "Aborting configuring Linux debugger");
+		super(executor, launch, pm, "Configuring Linux Debugger", "Aborting configuring Linux debugger", true);
 
 		boolean doAttach;
 

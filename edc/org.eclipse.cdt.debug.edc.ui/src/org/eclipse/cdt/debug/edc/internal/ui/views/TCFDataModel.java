@@ -97,15 +97,12 @@ public abstract class TCFDataModel extends SystemDataModel {
 		IPeer[] runningPeers = tcfServiceManager.getRunningPeers(IProcesses.NAME, peerAttributes, true);
 		if (runningPeers.length > 0)
 			setPeer(choosePeer(runningPeers));
-		else
-		{
-			ITCFAgentLauncher[] registered = tcfServiceManager.getRegisteredAgents(IProcesses.NAME, peerAttributes);
-			if (registered.length > 0)
-			{
-				IPeer tcfPeer = tcfServiceManager.launchAgent(registered[0]);
+		else {
+			ITCFAgentLauncher[] registered = tcfServiceManager.findSuitableAgentLaunchers(IProcesses.NAME, peerAttributes, true);
+			if (registered.length > 0) {
+				IPeer tcfPeer = tcfServiceManager.launchAgent(registered[0], peerAttributes);
 				setPeer(tcfPeer);
 			}
-			 
 		}
 		if (getPeer() == null) {
 			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Could not find a suitable TCF peer", null));

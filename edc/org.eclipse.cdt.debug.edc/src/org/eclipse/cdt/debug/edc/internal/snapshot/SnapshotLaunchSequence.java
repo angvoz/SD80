@@ -44,7 +44,7 @@ public class SnapshotLaunchSequence extends AbstractFinalLaunchSequence {
 	};
 
 	public SnapshotLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		super(executor, launch, pm, "Configuring Snapshot Launch", "Aborting configuring Snapshot Launch");
+		super(executor, launch, pm, "Configuring Snapshot Launch", "Aborting configuring Snapshot Launch", true);
 	}
 
 	@Override

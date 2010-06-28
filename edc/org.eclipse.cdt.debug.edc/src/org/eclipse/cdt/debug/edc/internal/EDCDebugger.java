@@ -54,16 +54,19 @@ public class EDCDebugger extends Plugin {
 	public EDCDebugger() {
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.eclipse.core.runtime.Plugins#start(org.osgi.framework.BundleContext)
+	/* (non-Javadoc)
+	 * @see org.eclipse.core.runtime.Plugin#start(org.osgi.framework.BundleContext)
 	 */
 	@Override
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
 		plugin = this;
+
+		// Validate our plugin ID constant 
+		if (!getBundle().getSymbolicName().equals(PLUGIN_ID)) {
+			throw new IllegalStateException("PLUGIN_ID constant is not correct"); //$NON-NLS-1$
+		}
+
 		installChannelListener();
 	}
 
@@ -207,16 +210,10 @@ public class EDCDebugger extends Plugin {
 	}
 
 	/**
-	 * Convenience method which returns the unique identifier of this plugin.
+	 * Returns the unique identifier of this plugin.
 	 */
 	public static String getUniqueIdentifier() {
-		if (getDefault() == null) {
-			// If the default instance is not yet initialized,
-			// return a static identifier. This identifier must
-			// match the plugin id defined in plugin.xml
-			return PLUGIN_ID;
-		}
-		return getDefault().getBundle().getSymbolicName();
+		return PLUGIN_ID;
 	}
 
 	public static IStatus dsfRequestFailedStatus(String message, Throwable exception) {
@@ -224,8 +221,7 @@ public class EDCDebugger extends Plugin {
 	}
 
 	public PersistentCache getCache() {
-		if (cache == null)
-		{
+		if (cache == null) {
 			cache = new PersistentCache(getStateLocation().append("cached_data"));
 		}
 		return cache;

@@ -46,18 +46,32 @@ import org.eclipse.tm.tcf.util.TCFTask;
 public class TCFServiceManager implements ITCFServiceManager  {
 
 	/**
-	 * The stringified IP addresses of the local machine. Populated by
-	 * {@link #initialize()}. Typically "127.0.0.1" and the actual IP (plus
-	 * others if multiple NICs).
+	 * The IP addresses of the local machine. Typically, there's at least two
+	 * (the loopback address is one of them), but there can be more if there are
+	 * multiple network adapters (physical or virtual).
+	 * 
+	 * <p>
+	 * TODO: if you look at the TCF Java reference implementation, it updates
+	 * its list every so often, as a system's network configuration can change
+	 * during the life of a process. We should probably do that, too, though
+	 * it's clearly an edge case.
 	 */
-	private List<String> localIPAddresses;
+	private static List<String> localIPAddresses;
 	
 	private List<ITCFAgentLauncher> tcfAgentLaunchers;
 
 	private static final String EXTENSION_POINT_NAME = "tcfAgentLauncher";
 
-	private boolean initialized = false;
 	private List<ITCFAgentLauncher> launchedtcfAgentLaunchers;
+
+	static {
+		// record local host IP addresses
+		try {
+			localIPAddresses = getLocalIPAddresses();
+		} catch (CoreException e) {
+			EDCDebugger.getMessageLogger().logError("Problem getting local IP addresses", e); //$NON-NLS-1$
+		}
+	}
 
 	public TCFServiceManager() {
 		// load TCFAgentLauncher extensions
@@ -94,14 +108,12 @@ public class TCFServiceManager implements ITCFServiceManager  {
 
 	}
 
-	private void initialize() throws CoreException {
-		// record local host IP addresses
-		localIPAddresses = getLocalIPAddresses();
-
-		initialized = true;
-	}
-
-	private boolean matchesAllAttributes(Map<String, String> attributes, Map<String, String> attributesToMatch) {
+	/**
+	 * Returns true if <i>all</i> the attributes in [attributesToMatch] appear
+	 * identically in [attributes] (keys and respective values). Basically, is
+	 * [attributesToMatch] a subset of [attributes]?
+	 */
+	public static boolean matchesAllAttributes(Map<String, String> attributes, Map<String, String> attributesToMatch) {
 		for (String key : attributesToMatch.keySet()) {
 			if (!attributes.containsKey(key)) {
 				return false;
@@ -127,8 +139,18 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		return p.getID().equals("TCFLocal");
 	}
 
-	public ITCFAgentLauncher[] getRegisteredAgents(final String serviceName, final Map<String, String> attributesToMatch)
-	{
+	/**
+	 * Find any registered TCF agent-launchers that will (should) produce a peer
+	 * with the given attributes and that exposes the given service. The
+	 * agent-launchers are registered through an EDC extension point.
+	 * 
+	 * @param serviceName
+	 *            the required service
+	 * @param attributesToMatch
+	 *            the required peer attributes
+	 * @return zero or more agent-launchers that fit the bill
+	 */
+	public ITCFAgentLauncher[] findSuitableAgentLaunchers(final String serviceName, final Map<String, String> attributesToMatch, boolean localAgentsOnly) {
 		List<String> registeredPeerLabels = new ArrayList<String>();
 		List<ITCFAgentLauncher> registeredAgents = new ArrayList<ITCFAgentLauncher>();
 
@@ -145,13 +167,8 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		return registeredAgents.toArray(new ITCFAgentLauncher[registeredAgents.size()]);
 	}
 	
-	public IPeer[] getRunningPeers(final String serviceName, final Map<String, String> attributesToMatch, final boolean localOnly) throws CoreException {
-		if (!initialized) {
-			initialize();
-		}
-
-		// first find running agents with matching attributes
-		//
+	public IPeer[] getRunningPeers(final String serviceName, final Map<String, String> attributesToMatch, final boolean localAgentsOnly) throws CoreException {
+		// first find running peers with matching attributes
 		final List<IPeer> runningCandidates1 = new ArrayList<IPeer>();
 
 		Protocol.invokeAndWait(new Runnable() {
@@ -177,14 +194,13 @@ public class TCFServiceManager implements ITCFServiceManager  {
 
 		final List<IPeer> runningCandidates2 = new ArrayList<IPeer>();
 		final List<String> runningLocalAgentPorts = new ArrayList<String>();
-		final boolean[] localAgentFound = { false };
 
 		for (final IPeer peer : runningCandidates1) {
 
 			// wait up to 3 seconds for the asynchronous task.
 			TCFTask<Object> task = new TCFTask<Object>(3000) {
 				public void run() {
-					final boolean isLocalAgent = isLocalPeer(peer);
+					final boolean isLocalAgent = isInLocalAgent(peer);
 
 					/*
 					 * If host has multiple IP addresses (e.g. 127.0.0.1 &
@@ -214,10 +230,11 @@ public class TCFServiceManager implements ITCFServiceManager  {
 					if (ch != null) {
 						assert (ch.getState() == IChannel.STATE_OPEN);
 						if (null != ch.getRemoteService(serviceName)) {
-							if (!localOnly || isLocalAgent)
+							// If the peer is on a local host, add it. If the
+							// peer is on another host, then whether we add
+							// it or not depends on the caller's wishes.
+							if (isLocalAgent || !localAgentsOnly)
 								runningCandidates2.add(peer);
-							if (isLocalAgent)
-								localAgentFound[0] = true;
 						}
 						done(this);
 					} else {
@@ -228,10 +245,11 @@ public class TCFServiceManager implements ITCFServiceManager  {
 								channel.removeChannelListener(this);
 
 								if (null != channel.getRemoteService(serviceName)) {
-									if (!localOnly || isLocalAgent)
+									// If the peer is on this machine, add it. If the
+									// peer is on another machine, then whether we add
+									// it or not depends on the caller's wishes.
+									if (isLocalAgent || !localAgentsOnly)
 										runningCandidates2.add(peer);
-									if (isLocalAgent)
-										localAgentFound[0] = true;
 								}
 								done(this); // argument is do-not-care
 							}
@@ -268,7 +286,13 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		return runningCandidates2.toArray(new IPeer[runningCandidates2.size()]);
 	}
 
-	protected boolean isLocalPeer(IPeer peer) {
+	/**
+	 * Determines whether the given peer is running in a local agent. We compare
+	 * the IP address of the peer against the list of IP addresses for this
+	 * machine (typically, there are at least two: the loopback address and the
+	 * physical NIC).
+	 */
+	public static boolean isInLocalAgent(IPeer peer) {
 		assert Protocol.isDispatchThread();
 		String ipAddr = peer.getAttributes().get(IPeer.ATTR_IP_HOST);
 		return (localIPAddresses.contains(ipAddr));
@@ -400,7 +424,15 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		}
 	}
 
-public IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreException {
+	/**
+	 * Invokes an agent-launcher and waits (a while) for an agent to be
+	 * discovered that meets the given peer attributes
+	 * 
+	 * @param descriptor
+	 * @return
+	 * @throws CoreException
+	 */
+	public IPeer launchAgent(final ITCFAgentLauncher descriptor, final Map<String, String> peerAttrs) throws CoreException {
 		final WaitForResult<IPeer> waitForPeer = new WaitForResult<IPeer>() {
 		};
 
@@ -416,8 +448,7 @@ public IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreExceptio
 			}
 
 			public void peerAdded(IPeer peer) {
-
-				if (peer.getName().equals(descriptor.getPeerName())) {
+				if (matchesAllAttributes(peer.getAttributes(), peerAttrs)) {
 					waitForPeer.setData(peer);
 				}
 			}
@@ -471,7 +502,7 @@ public IPeer launchAgent(final ITCFAgentLauncher descriptor) throws CoreExceptio
 		return launchedPeer;
 	}
 
-	private List<String> getLocalIPAddresses() throws CoreException {
+	private static List<String> getLocalIPAddresses() throws CoreException {
 		List<String> ret = new ArrayList<String>();
 
 		Enumeration<NetworkInterface> e;

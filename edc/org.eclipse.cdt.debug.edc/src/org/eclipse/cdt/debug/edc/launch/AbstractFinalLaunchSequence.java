@@ -42,7 +42,6 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchManager;
-import org.eclipse.tm.tcf.core.AbstractPeer;
 import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.IService;
@@ -69,10 +68,13 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * field explicitly except to set it. Use {@link #getTCFPeer()}
 	 */
 	private IPeer tcfPeer;
-	
-	private boolean usingRemotePeers;
-	private boolean isLocallyAllocatedPeer;
 
+	/**
+	 * Whether this launcher will ignore TCF agents on other machines. Set at
+	 * construction.
+	 */
+	final private boolean useLocalAgentOnly;
+	
 	/**
 	 * Attributes that the debugger requires the TCF peer to match. Derivatives
 	 * populate this when we call {@link #specifyRequiredPeer()}
@@ -131,21 +133,6 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		public void execute(final RequestMonitor requestMonitor) {
 			findPeer(requestMonitor);
 			requestMonitor.done();
-		}
-		
-		/* (non-Javadoc)
-		 * @see org.eclipse.cdt.dsf.concurrent.Sequence.Step#rollBack(org.eclipse.cdt.dsf.concurrent.RequestMonitor)
-		 */
-		@Override
-		public void rollBack(RequestMonitor rm) {
-			if (isLocallyAllocatedPeer) {
-				Protocol.invokeAndWait(new Runnable() {
-					public void run() {
-						((AbstractPeer) tcfPeer).dispose();
-					}
-				});
-			}
-			super.rollBack(rm);
 		}
 	};
 
@@ -355,42 +342,82 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		return tcfServiceManager.getPeerService(getTCFPeer(), tcfServiceName);
 	}
 
+	/**
+	 * Looks for a peer that matches the criteria set by the subclass, and puts
+	 * it in {@link #tcfPeer} if successful. If more than one peer fits the
+	 * bill, the subclass is given the chance to choose via
+	 * {@link #selectPeer(IPeer[])}
+	 * 
+	 * @param requestMonitor
+	 */
 	protected void findPeer(RequestMonitor requestMonitor) {
 		try {
+			// We already found it. No-op
+			if (tcfPeer != null) {
+				return;
+			}
+			
+			// See if any already running (and discovered) peers fit the bill
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-			IPeer[] runningPeers = tcfServiceManager.getRunningPeers(IRunControl.NAME, peerAttributes, !isUsingRemotePeers());
-			
-			if (isUsingRemotePeers()) {
-				tcfPeer = selectPeer(runningPeers);
-			}
-			else {
-				if (runningPeers.length == 0) {
-					ITCFAgentLauncher[] registered = tcfServiceManager.getRegisteredAgents(IRunControl.NAME, peerAttributes);
-					if (registered.length > 0) {
-						tcfPeer = tcfServiceManager.launchAgent(registered[0]);
-					}
+			IPeer[] runningPeers = tcfServiceManager.getRunningPeers(IRunControl.NAME, peerAttributes, useLocalAgentOnly);
+			if (runningPeers.length > 0) {
+				int index = selectPeer(runningPeers);
+				if (index >= 0 && index < runningPeers.length) {
+					tcfPeer = runningPeers[index];
+					return;
 				}
-				else
-					tcfPeer = runningPeers[0];
+			}
+
+			// Invoke any registered agent-launchers which could make the
+			// desired peer available.
+			List<IPeer> launchedPeers = new ArrayList<IPeer>();
+			ITCFAgentLauncher[] agentLaunchers = tcfServiceManager.findSuitableAgentLaunchers(IRunControl.NAME, peerAttributes, useLocalAgentOnly);
+			for (ITCFAgentLauncher agentLauncher : agentLaunchers) {
+				IPeer peer = tcfServiceManager.launchAgent(agentLauncher, peerAttributes);	// this could take a little while...
+				if (peer != null) {
+					launchedPeers.add(peer);
+				}
+			}
+			if (launchedPeers.size() > 0) {
+				int index = selectPeer(launchedPeers.toArray(new IPeer[launchedPeers.size()]));
+				if (index >= 0 && index < launchedPeers.size()) {
+					tcfPeer = launchedPeers.get(index);
+					return;
+				}
 			}
 			
-			if (tcfPeer == null) {
-				requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Could not find a suitable TCF peer", null));
-			}
+			requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Could not find a suitable TCF peer", null));
 		} catch (CoreException e) {
 			requestMonitor.setStatus(e.getStatus());				
 		}
 	}
 
 	/**
-	 * Override to select a peer from the array of running peers, or create your
-	 * own on the fly.  Set the {@link #isLocallyAllocatedPeer} boolean if you
-	 * create your own and want it to be disposed automatically after the debug session ends.  
-	 * @param runningPeers
-	 * @return an IPeer or <code>null</code>
+	 * Subclass should override this to select a peer from the array of peers
+	 * which match the required minimum set of attributes specified by
+	 * {@link #specifyRequiredPeer()}. The default behavior is to use the first
+	 * candidate.
+	 * 
+	 * <p>
+	 * This methods represents a way for a specific launcher to do runtime peer
+	 * selection. Choosing the right peer might require opening a channel to it
+	 * to determine more detailed capabilities than what's available via its
+	 * attributes. Or perhaps some additional decision making is required, not
+	 * requiring a channel--e.g., more closely examining one of the peer
+	 * attributes. Either way, {@link #specifyRequiredPeer()} provides the
+	 * <i>minimum</i> set of attributes a peer should have to be considered for
+	 * the launch. This method is used to provide further and final pruning of
+	 * any candidates.
+	 * 
+	 * @param peers
+	 *            the candidates
+	 * @return the index of the peer to use; if the returned value is outside
+	 *         the range of candidates, then none of the peers are used.
+	 * @since 2.0
 	 */
-	public IPeer selectPeer(IPeer[] runningPeers) {
-		return null;
+	public int selectPeer(IPeer[] peers) {
+		assert peers.length > 0;
+		return 0;
 	}
 
 	/**
@@ -423,8 +450,11 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		}
 	}
 
-	public AbstractFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		this(executor, launch, pm, "Configuring Debugger", "Aborting configuring debugger");
+	/**
+	 * @since 2.0
+	 */
+	public AbstractFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm, boolean useLocalAgentOnly) {
+		this(executor, launch, pm, "Configuring Debugger", "Aborting configuring debugger", useLocalAgentOnly);
 	}
 
 	/**
@@ -438,12 +468,16 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * @param abortName
 	 *            name to display in the progress monitor when the sequence is
 	 *            aborting due to error.
+	 * @param useLocalAgentOnly
+	 *            whether to ignore peers from remote hosts
+	 * @since 2.0
 	 */
 	public AbstractFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm,
-			String sequenceName, String abortName) {
+			String sequenceName, String abortName, boolean useLocalAgentOnly) {
 		super(executor, pm, sequenceName, abortName);
-		specifyRequiredPeer();
 		this.launch = launch;
+		this.useLocalAgentOnly = useLocalAgentOnly;
+		specifyRequiredPeer();
 	}
 
 	@Override
@@ -726,30 +760,12 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		return tcfPeer;
 	}
 
-	public boolean isUsingRemotePeers() {
-		return usingRemotePeers;
-	}
-
-	public void setUsingRemotePeers(boolean usingRemotePeers) {
-		this.usingRemotePeers = usingRemotePeers;
-	}
-
 	/**
-	 * Tell whether the peer in {@link #tcfPeer} was created during the launch
-	 * and should be disposed after the debug session ends
-	 * @return
+	 * Returns whether this launcher will ignore TCF agents on other machines.
+	 * 
+	 * @since 2.0
 	 */
-	public boolean isLocallyAllocatedPeer() {
-		return isLocallyAllocatedPeer;
+	public boolean getUseLocalAgentOnly() {
+		return useLocalAgentOnly;
 	}
-
-	/**
-	 * Tell whether the peer in {@link #tcfPeer} was created during the launch
-	 * and should be disposed after the debug session ends
-	 * @param isLocallyAllocatedPeer
-	 */
-	public void setLocallyAllocatedPeer(boolean isLocallyAllocatedPeer) {
-		this.isLocallyAllocatedPeer = isLocallyAllocatedPeer;
-	}
-
 }

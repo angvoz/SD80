@@ -21,12 +21,10 @@ package org.eclipse.cdt.debug.edc.tests;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.core.runtime.IPath;
-import org.junit.After;
 import org.junit.Assert;
 
 /**
@@ -57,9 +55,5 @@ public abstract class BaseDwarfTestCase extends Assert {
 		}
 		return scopes;
 	}
-	
-	@After
-	public void tearDown() throws Exception {
-		Symbols.shutdown();
-	}
+
 }

@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -52,7 +53,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 	/** TEMPORARY system property (value "true", default "false") for selecting the old DWARF reader */
 	public static final String DWARF_USE_OLD_READER = "dwarf.use_old_reader"; //$NON-NLS-1$
 	
-	private static Map<IPath, IEDCSymbolReader> readerCache = new HashMap<IPath, IEDCSymbolReader>();
+	private static Map<IPath, WeakReference<IEDCSymbolReader>> readerCache = new HashMap<IPath, WeakReference<IEDCSymbolReader>>();
 	private ISourceLocator sourceLocator;
 	
 	public ISourceLocator getSourceLocator() {
@@ -182,7 +183,11 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 
 	public static IEDCSymbolReader getSymbolReader(IPath modulePath) {
 
-		IEDCSymbolReader reader = readerCache.get(modulePath);
+		IEDCSymbolReader reader = null;
+		WeakReference<IEDCSymbolReader> cacheEntry = readerCache.get(modulePath);
+		
+		if (cacheEntry != null)
+			reader = cacheEntry.get();
 
 		if (reader != null) {
 			if (reader.getSymbolFile() != null
@@ -192,7 +197,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 			}
 
 			// it's been deleted or modified. remove it from the cache
-			readerCache.remove(reader);
+			readerCache.remove(modulePath);
 		}
 
 		IExecutableSymbolicsReader exeReader = ExecutableSymbolicsReaderFactory.createFor(modulePath);
@@ -209,7 +214,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 		}
 
 		if (reader != null) {
-			readerCache.put(modulePath, reader);
+			readerCache.put(modulePath, new WeakReference<IEDCSymbolReader>(reader));
 		}
 		
 		return reader;
@@ -217,24 +222,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 
 	@Override
 	public void shutdown(RequestMonitor rm) {
-		// Shutdown all readers when this service is shutdown. This is overkill
-		// and will cause problems when more then one debug sessions is running,
-		// but is an temporary measure until we do some more work on the
-		// readers.
-		shutdown();
-
 		super.shutdown(rm);
-	}
-
-	/**
-	 * This is exposed only for testing.
-	 */
-	public static void shutdown() {
-		Collection<IEDCSymbolReader> readers = readerCache.values();
-		for (IEDCSymbolReader reader : readers) {
-			reader.shutDown();
-		}
-		readerCache.clear();
 	}
 
 	/**

@@ -485,6 +485,21 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		return steps.toArray(new Step[steps.size()]);
 	}
 
+	/**
+	 * This method is invoked by the the step
+	 * {@link AbstractFinalLaunchSequence#launchStep} to launch the thing to be
+	 * debugged. The base implementation knows how to carry out the launch via a
+	 * TCF IProcesses service. When dealing with an agent that doesn't provide
+	 * that service (typically the case for embedded bareboard debugging), the
+	 * subclass must override this method to inject its custom launch logic.
+	 * 
+	 * @param launch
+	 *            the launch object
+	 * @param ps
+	 *            the TCF processes service; operation will fail if null
+	 * @param requestMonitor
+	 *            monitor to invoke when processing is done
+	 */
 	protected void launchProcess(final ILaunch launch, final IProcesses ps, final RequestMonitor requestMonitor) {
 		try {
 			ILaunchConfiguration cfg = launch.getLaunchConfiguration();

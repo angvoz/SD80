@@ -126,7 +126,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		
 		@Override
 		public String getTaskName() {
-			return "Find/launch TCF peer";
+			return "Find or launch TCF peer";
 		}
 
 		@Override
@@ -353,7 +353,12 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	protected void findPeer(RequestMonitor requestMonitor) {
 		try {
 			// We already found it. No-op
-			if (tcfPeer != null) {
+			if (getTCFPeer() != null) {
+				return;
+			}
+			
+			// See if subclass wants an explicit peer.
+			if ((tcfPeer = selectExplicitPeer()) != null) {
 				return;
 			}
 			
@@ -393,10 +398,26 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	}
 
 	/**
+	 * Subclass may override this to select a peer that is not
+	 * otherwise discovered by the Locator service.
+	 * <p>
+	 * If this returns non-<code>null</code>, this peer will be
+	 * used instead of querying the locator service and using 
+	 * {@link #selectPeer(IPeer[])}.  
+	 * <p>
+	 * By default, this returns <code>null</code>.
+	 * @return an IPeer or <code>null</code>
+	 * @throws CoreException if unable to select the desired explicit peer
+	 * @since 2.0
+	 */
+	protected IPeer selectExplicitPeer() throws CoreException {
+		return null;
+	}
+
+	/**
 	 * Subclass should override this to select a peer from the array of peers
 	 * which match the required minimum set of attributes specified by
-	 * {@link #specifyRequiredPeer()}. The default behavior is to use the first
-	 * candidate.
+	 * {@link #specifyRequiredPeer()}.  The default behavior is to use the first candidate.
 	 * 
 	 * <p>
 	 * This methods represents a way for a specific launcher to do runtime peer
@@ -761,17 +782,18 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	/**
 	 * Return the single TCF peer associated with this debug session (ILaunch).
 	 * EDC currently only supports the scenario where a single TCF peer provides
-	 * all the services needed by a session. The peer is chosen based on
-	 * {@link #specifyRequiredPeer()}
-	 * 
+	 * all the services needed by a session. The peer is that from
+	 * {@link #selectExplicitPeer()} or chosen from the Locator service 
+	 * using attributes from {@link #specifyRequiredPeer()} and filtered
+	 * by {@link #selectPeer(IPeer[])}.
 	 * <p>
-	 * A subclass can override this method if it wants to explicitly provide the
-	 * peer. In that case it has no need to invoke {@link #initFindPeerStep}
 	 * 
 	 * @return the peer. Will return null if called before the
 	 *         {@link #initFindPeerStep} step has executed.
+	 * @since 2.0 a subclass can no longer override this method if it wants to explicitly provide the
+	 * peer: override {@link #selectExplicitPeer()} instead.
 	 */
-	protected IPeer getTCFPeer() {
+	protected final IPeer getTCFPeer() {
 		return tcfPeer;
 	}
 

@@ -539,7 +539,7 @@ public class TestUtils {
 	 */
 	public static boolean hasTCFAgentLauncher(String id) {
 		TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
-		ITCFAgentLauncher[] registered = tcfServiceManager.getRegisteredAgents(IRunControl.NAME, Collections.<String, String>emptyMap());
+		ITCFAgentLauncher[] registered = tcfServiceManager.findSuitableAgentLaunchers(IRunControl.NAME, Collections.<String, String>emptyMap(), true);
 		for (ITCFAgentLauncher launcher : registered) {
 			if (launcher.getClass().getName().equals(id))
 				return true;

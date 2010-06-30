@@ -545,23 +545,26 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 						requestMonitor.done();
 						return;
 					}
-					Map<String, String> vars = new HashMap<String, String>();
+					final Map<String, String> vars = new HashMap<String, String>();
 					if (append)
 						vars.putAll(def);
 					if (env != null)
 						vars.putAll(env);
-					ps.start(workingDirectory, file, args, vars, attach, new IProcesses.DoneStart() {
-
-						public void doneStart(IToken token, Exception error, ProcessContext process) {
-							if (error != null) {
-								requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(),
-										error.getLocalizedMessage(), error));
-								requestMonitor.done();
-								return;
-							}
-
-							requestMonitor.done();
-						}
+					Protocol.invokeAndWait(new Runnable() {
+						public void run() {
+							ps.start(workingDirectory, file, args, vars, attach, new IProcesses.DoneStart() {
+								public void doneStart(IToken token, Exception error, ProcessContext process) {
+									if (error != null) {
+										requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(),
+												error.getLocalizedMessage(), error));
+										requestMonitor.done();
+										return;
+									}
+		
+									requestMonitor.done();
+								}
+							});
+    					}
 					});
 				}
 			};

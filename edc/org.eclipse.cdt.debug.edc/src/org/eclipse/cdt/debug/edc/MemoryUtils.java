@@ -644,6 +644,8 @@ public class MemoryUtils {
 
 	public static BigInteger convertValueToMemory(IType varType, Number value) throws CoreException {
 		BigInteger result = null;
+		if (varType == null)
+			throw EDCDebugger.newCoreException("Unknown type");
 		int varSize = varType.getByteSize();
 		if (varSize <= 0)
 			throw EDCDebugger.newCoreException("Type has no size");

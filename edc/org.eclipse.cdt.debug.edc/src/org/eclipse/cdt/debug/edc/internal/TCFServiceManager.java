@@ -277,7 +277,11 @@ public class TCFServiceManager implements ITCFServiceManager  {
 				// when we try to auto-launch the agent again.
 				Protocol.invokeAndWait(new Runnable() {
 					public void run() {
-						((AbstractPeer) peer).dispose();
+						try {
+							((AbstractPeer) peer).dispose();
+						} catch (AssertionError e) {
+							// we were wrong; it is disposed
+						}
 					}
 				});
 			}

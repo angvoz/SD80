@@ -192,6 +192,7 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
     		// already disposed
 			drm.setData(targetBPAttrs);
 			drm.done();
+			return;
     	}
     	
     	Map<String, Object> oneBPAttr;

@@ -8,12 +8,14 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
+#include "TCFHeaders.h"
 #include "TerminateProcessAction.h"
 #include "WinProcess.h"
 #include "WinThread.h"
+#include "WinDebugMonitor.h"	// ReplyInfo
 
-TerminateProcessAction::TerminateProcessAction(ContextOSID processID) :
-	processID_(processID) {
+TerminateProcessAction::TerminateProcessAction(const AgentActionParams& params, ContextOSID processID) :
+	AgentAction(params), processID_(processID) {
 }
 
 TerminateProcessAction::~TerminateProcessAction(void) {
@@ -24,12 +26,24 @@ void TerminateProcessAction::Run() {
 
 	std::list<Context*>& threads = process->GetChildren();
 
+	AgentActionParams subParams(params.subParams());
+
 	std::list<Context*>::iterator itr;
 	for (itr = threads.begin(); itr != threads.end(); itr++) {
-		((WinThread*) *itr)->PrepareForTermination();
+		try {
+			((WinThread*) *itr)->PrepareForTermination(subParams);
+		} catch (const AgentException& e) {
+			postReply(&e, 0);
+			return;
+		}
+			
 	}
 
 	if (!TerminateProcess(process->GetProcessHandle(), 0)) {
 		DWORD error = GetLastError();
+		postReply(error, 0, new std::string("Failed to terminate process"));
+	} else {
+		postReply(0, 0);
 	}
+
 }

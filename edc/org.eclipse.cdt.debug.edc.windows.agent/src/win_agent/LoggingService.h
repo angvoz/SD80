@@ -11,7 +11,6 @@
 #ifndef LOGGINGSERVICE_H_
 #define LOGGINGSERVICE_H_
 
-#pragma once
 
 #include "TCFService.h"
 #include "TCFHeaders.h"

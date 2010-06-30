@@ -15,10 +15,16 @@
 #include <vector>
 #include "stdafx.h"
 #include "DebugMonitor.h"
+#include "TCFChannel.h" 
 #include <queue>
+
+extern "C" {
 #include "channel.h"
+#include "events.h"
+}
 
 class AgentAction;
+class AgentActionParams;
 class WinProcess;
 
 /*
@@ -26,18 +32,15 @@ class WinProcess;
  */
 class WinDebugMonitor: public DebugMonitor {
 public:
-	WinDebugMonitor(std::string& executable, std::string& directory,
-			std::string& args, std::vector<std::string>& environment, bool debug_children,
-			std::string& token, Channel *c);
+	WinDebugMonitor(const LaunchProcessParams& params);
 
-	WinDebugMonitor(DWORD processID, bool debug_children, std::string& token, Channel *c);
+	WinDebugMonitor(const AttachToProcessParams& params);
 
 	virtual ~WinDebugMonitor(void);
 
 	void StartProcessForDebug();
 	void EventLoop();
 	void StartMonitor();
-	void WriteError(unsigned long errNum, const char* message);
 
 	void CaptureMonitorThread();
 	void SetProcess(WinProcess* process);
@@ -54,16 +57,22 @@ public:
 	/*
 	 * Launch a process and monitor it.
 	 */
-	static void LaunchProcess(std::string& executable, std::string& directory,
-			std::string& args, std::vector<std::string>& environment, bool debug_children,
-			std::string& token, Channel *c) throw (AgentException);
+	static void LaunchProcess(const LaunchProcessParams& params) throw (AgentException);
 
 	/*
 	 * Attach to a process and monitor it.
 	 * processID: the Windows process ID.
 	 */
-	static void AttachToProcess(DWORD processID, bool debug_children,
-			std::string& token, Channel *c) throw (AgentException);
+	static void AttachToProcess(const AttachToProcessParams& params) throw (AgentException);
+
+	/**
+	 * Tell whether the exception is a first-chance exception where we want
+	 * to immediately suspend and debug.  Usually, we allow a user-written
+	 * __try/__except handler take these, but in some cases (e.g. DLL laod failure)
+	 * the process will just crash.
+	 */
+	bool ShouldDebugFirstChance(const DEBUG_EVENT& debugEvent);
+	static std::string GetDebugExceptionDescription(const EXCEPTION_DEBUG_INFO& exceptionInfo);
 
 private:
 	void AttachToProcessForDebug();
@@ -98,3 +107,4 @@ private:
 	std::queue<AgentAction*> actions_;
 
 };
+

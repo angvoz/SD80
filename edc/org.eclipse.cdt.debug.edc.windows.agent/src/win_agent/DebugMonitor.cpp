@@ -14,29 +14,29 @@
 
 #include "AgentUtils.h"
 
+#undef remove
+
 using namespace std;
 
 list<IContextEventListener *> DebugMonitor::gEventListeners;
 
-DebugMonitor::DebugMonitor(string& executable, string& directory, string& args,
-		std::vector<std::string>& environment, bool debug_children, std::string& token,
-		Channel *c) {
-	this->executable = executable;
-	this->directory = directory;
-	this->args = args;
-	this->environment = environment;
-	this->debug_children = debug_children;
-	this->channel = c;
-	this->token = token;
+DebugMonitor::DebugMonitor(const LaunchProcessParams& params) {
+	this->executable = params.executable;
+	this->directory = params.directory;
+	this->args = params.args;
+	this->environment = params.environment;
+	this->debug_children = params.debug_children;
+	this->channel = params.channel;
+	this->token = params.token;
 }
 
-DebugMonitor::DebugMonitor(bool debug_children, std::string& token,	Channel *c) {
+DebugMonitor::DebugMonitor(const AttachToProcessParams& params) {
 	this->executable = "";
 	this->directory = "";
 	this->args = "";
-	this->debug_children = debug_children;
-	this->channel = c;
-	this->token = token;
+	this->debug_children = params.debug_children;
+	this->channel = params.channel;
+	this->token = params.token;
 }
 
 DebugMonitor::~DebugMonitor(void) {

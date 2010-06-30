@@ -12,39 +12,34 @@
 
 #include <vector>
 #include "stdafx.h"
-#include "RunControlContext.h"
+#include "ProcessContext.h"
+#include "WinDebugMonitor.h"
 
 class WinThread;
 class WinDebugMonitor;
 
-class WinProcess: public RunControlContext {
+class WinProcess : public ProcessContext {
 public:
 	WinProcess(WinDebugMonitor* monitor, DEBUG_EVENT& debugEvent);
 	WinProcess(DWORD procID, std::string procName);
 
 	virtual ~WinProcess(void);
 
-	virtual int ReadMemory(unsigned long address, unsigned long size,
-			char* memBuffer, unsigned long bufferSize, unsigned long& sizeRead);
-	virtual int WriteMemory(unsigned long address, unsigned long size,
-			char* memBuffer, unsigned long bufferSize,
-			unsigned long& sizeWritten);
-
-	virtual void Resume() throw (AgentException);
-
-	virtual void Suspend() throw (AgentException) {/* TODO */};
-
-	virtual void Terminate() throw (AgentException);
-
-	virtual void SingleStep() throw (AgentException) { /* TODO */};
+	//
+	// Overrides of RunControlContext
+	//
+	virtual int ReadMemory(const ReadWriteMemoryParams& params) throw (AgentException);
+	virtual int WriteMemory(const ReadWriteMemoryParams& params) throw (AgentException);
+	virtual void Terminate(const AgentActionParams& params) throw (AgentException);
+	virtual void SingleStep(const AgentActionParams& params) throw (AgentException);
+	//
+	//	end overrides
 
 	HANDLE GetProcessHandle();
 
 	WinDebugMonitor* GetMonitor();
 
 	static WinProcess* GetProcessByID(int processID);
-
-	static ContextID CreateInternalID(ContextOSID osID);
 
 private:
 	void initialize();

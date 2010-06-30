@@ -11,55 +11,51 @@
 #pragma once
 
 #include "stdafx.h"
-#include "RunControlContext.h"
+#include "ThreadContext.h"
 
 #define USER_SUSPEND_THREAD 0
 
 class WinProcess;
 
-class WinThread: public RunControlContext {
+class WinThread : public ThreadContext {
 public:
 	WinThread(WinProcess& process, DEBUG_EVENT& debugEvent);
-	~WinThread(void);
+	virtual ~WinThread(void);
 
 	int GetThreadID();
 
 	static WinThread* GetThreadByID(int processID, int threadID);
 
-	virtual ContextAddress GetPCAddress();
-	virtual std::string GetSuspendReason();
-
 	virtual std::vector<std::string> GetRegisterValues(
-			std::vector<std::string> registerIDs);
+			const std::vector<std::string>& registerIDs);
 
-	virtual void SetRegisterValues(std::vector<std::string> registerIDs,
-			std::vector<std::string> registerValues);
+	virtual void SetRegisterValues(const std::vector<std::string>& registerIDs,
+			const std::vector<std::string>& registerValues);
 
-	char*	GetRegisterValue(std::string regName, int regSize);
-	bool 	SetRegisterValue(std::string regName, int regSize, char* val);
+	char*	GetRegisterValue(const std::string& regName, int regSize);
+	bool 	SetRegisterValue(const std::string& regName, int regSize, char* val);
 
-	virtual int ReadMemory(unsigned long address, unsigned long size,
-			char* memBuffer, unsigned long bufferSize, unsigned long& sizeRead);
-	virtual int WriteMemory(unsigned long address, unsigned long size,
-			char* memBuffer, unsigned long bufferSize,
-			unsigned long& sizeWritten);
+	//
+	// overrides of RunControlContext
+	//
+	virtual int ReadMemory(const ReadWriteMemoryParams& params) throw (AgentException);
+	virtual int WriteMemory(const ReadWriteMemoryParams& params) throw (AgentException);
 
-	virtual void Resume() throw (AgentException);
+	virtual void Resume(const AgentActionParams& params) throw (AgentException);
 
-	virtual void Suspend() throw (AgentException);
+	virtual void Suspend(const AgentActionParams& params) throw (AgentException);
 
-	virtual void Terminate() throw (AgentException);
+	virtual void Terminate(const AgentActionParams& params) throw (AgentException);
 
-	void PrepareForTermination() throw (AgentException);
-
-	virtual void SingleStep() throw (AgentException);
+	virtual void SingleStep(const AgentActionParams& params) throw (AgentException);
+	//
+	//	end overrides
+	
+	void PrepareForTermination(const AgentActionParams& params) throw (AgentException);
 
 	void HandleException(DEBUG_EVENT& debugEvent);
-	void HandleExecutableEvent(bool isLoaded, std::string exePath,
+	void HandleExecutableEvent(bool isLoaded, const std::string& exePath,
 			unsigned long baseAddress, unsigned long codeSize);
-
-	static ContextID CreateInternalID(ContextOSID osID, ContextID parentID);
-
 
 private:
 	void initialize();
@@ -69,8 +65,17 @@ private:
 	bool isSuspended();
 	void MarkSuspended();
 
+	/** Address where suspend is reported */
+	ContextAddress GetPCAddress();
+	/** REASON_xx code for suspend */
+	const char* GetSuspendReason();
+	/** Description for suspend */
+	std::string GetExceptionMessage();
+
 private:
 	void* getRegisterValueBuffer(const std::string& regName);
+
+	std::pair<int, int> threadLookupPair_;
 
 	bool threadContextValid_;
 	bool isSuspended_;

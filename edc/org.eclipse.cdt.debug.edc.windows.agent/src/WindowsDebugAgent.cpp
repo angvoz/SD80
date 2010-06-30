@@ -77,7 +77,24 @@ static void check_for_shutdown(void *x) {
 	post_event_with_delay(check_for_shutdown, NULL, 120 * 1000000);
 }
 
+// override this so we can actually break on it
+_CRTIMP void __cdecl __MINGW_NOTHROW _assert (const char* error, const char* file, int line)
+{
+	char message[256];
+	snprintf(message, sizeof(message),
+			"Fatal error: assertion failed at file=%s, line=%d: %s\n",
+			file ,line, error);
+	fputs(message, stderr);
+	trace(LOG_ALWAYS, message);
+	exit(3);
+}
+
 int main(int argc, char* argv[]) {
+#ifdef _DEBUG
+	char* log_name = "C:\\WindowsDebugAgentLog.txt";
+    log_mode = LOG_EVENTS | LOG_CHILD | LOG_WAITPID | LOG_CONTEXT | LOG_PROTOCOL | LOG_ASYNCREQ;
+    open_log_file(log_name);
+#endif
 
 	try {
 	char * url = "TCP:";

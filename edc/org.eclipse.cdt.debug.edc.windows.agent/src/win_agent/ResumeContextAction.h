@@ -10,11 +10,11 @@
  *******************************************************************************/
 #pragma once
 #include "AgentAction.h"
-#include "Context.h"
+#include "TCFContext.h"
 
 class ResumeContextAction: public AgentAction {
 public:
-	ResumeContextAction(ContextOSID processid, ContextOSID threadid);
+	ResumeContextAction(const AgentActionParams& params, ContextOSID processid, ContextOSID threadid);
 	virtual ~ResumeContextAction(void);
 
 	void Run();

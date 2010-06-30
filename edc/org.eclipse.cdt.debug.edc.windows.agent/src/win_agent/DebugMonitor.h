@@ -14,10 +14,46 @@
 #include <string>
 #include <list>
 #include <vector>
-#include "Context.h"
+#include "TCFContext.h"
+#include "AgentAction.h"
 #include "AgentException.h"
 #include "IContextEventListener.h"
 #include "channel.h"
+
+
+struct LaunchProcessParams : public AgentActionParams {
+	/*
+	 * Parameters:
+	 *  debugChildren -- whether to monitor/debug child processes
+	 */
+	LaunchProcessParams(const std::string& token, Channel *c,
+			const std::string& executable_, const std::string& directory_,
+			const std::string& args_, std::vector<std::string>& environment_, bool debug_children_) :
+				AgentActionParams(token, c), executable(executable_),
+				directory(directory_), args(args_), environment(environment_),
+				debug_children(debug_children_)
+	{};
+	std::string executable;
+	std::string directory;
+	std::string args;
+	std::vector<std::string>& environment;
+	bool debug_children;
+};
+
+
+struct AttachToProcessParams : public AgentActionParams {
+	/*
+	 * Parameters:
+	 *  debugChildren -- whether to monitor/debug child processes
+	 */
+	AttachToProcessParams(const std::string& token, Channel *c,
+			unsigned long processID_, bool debug_children_) :
+		AgentActionParams(token, c), processID(processID_),
+		debug_children(debug_children_)
+	{};
+	unsigned long processID;
+	bool debug_children;
+};
 
 /*
  * Monitor and dispatch debug events.
@@ -30,15 +66,9 @@
  */
 class DebugMonitor {
 public:
-	/*
-	 * Parameters:
-	 *  debugChildren -- whether to monitor/debug child processes
-	 */
-	DebugMonitor(std::string& executable, std::string& directory,
-			std::string& args, std::vector<std::string>& environment, bool debug_children,
-			std::string& token, Channel *c);
+	DebugMonitor(const LaunchProcessParams& params);
 
-	DebugMonitor(bool debug_children, std::string& token, Channel *c);
+	DebugMonitor(const AttachToProcessParams& params);
 
 	virtual ~DebugMonitor(void);
 
@@ -57,9 +87,6 @@ public:
 	 * Start the monitor in a thread.
 	 */
 	virtual void StartMonitor() = 0;
-
-	/* Write a error over the Channel */
-	virtual void WriteError(unsigned long errNum, const char* message) = 0;
 
 	bool GetDebugChildren();
 
@@ -91,7 +118,10 @@ protected:
 	std::string args;
 	std::vector<std::string> environment;
 	bool debug_children;
+
+	/** the channel used to start the debug session */
 	Channel *channel;
+	/** the token used to start the debug session; must use only if initial launch/attach fails */
 	std::string token;
 
 private:

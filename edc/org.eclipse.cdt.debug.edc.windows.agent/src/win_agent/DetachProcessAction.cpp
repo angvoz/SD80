@@ -10,6 +10,10 @@
  *******************************************************************************/
 #include "DetachProcessAction.h"
 #include "TCFChannel.h"
+#include "WinDebugMonitor.h"
+#include "ContextManager.h"
+#include "EventClientNotifier.h"
+#include "WinProcess.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,27 +24,26 @@ extern "C" {
 #endif
 
 
-DetachProcessAction::DetachProcessAction(ContextOSID processID, char* token, Channel* channel) :
-	processID(processID) {
-	tcfToken = token;
-	this->channel = channel;
+DetachProcessAction::DetachProcessAction(const AgentActionParams& params, ContextOSID processID) 
+	: AgentAction(params), processID(processID) {
 }
 
 DetachProcessAction::~DetachProcessAction(void) {
 }
 
 void DetachProcessAction::Run() {
-	TCFChannel tcfChannel(channel);
-
-	tcfChannel.writeReplyHeader((char*)tcfToken.c_str());
-
 	if (! DebugActiveProcessStop(processID)) {
 		DWORD err = GetLastError();
 
-		tcfChannel.writeError(set_win32_errno(err));
+		postReply(err);
 	}
-	else
-		tcfChannel.writeError(0);
+	else {
+		postReply(0);
 
-	tcfChannel.writeComplete();
+		Context* context = ContextManager::removeContext(WinProcess::CreateInternalID(processID));
+		if (context) {
+			EventClientNotifier::SendContextRemoved(context, true);
+		}
+	}
+
 }

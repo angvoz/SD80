@@ -409,11 +409,11 @@ public class EDCLaunch extends Launch {
 			} else {
 
 			}
-			snapshotSupportInitialized = true;
-
 		} catch (Exception e) {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}
+		
+		snapshotSupportInitialized = true;
 	}
 
 }

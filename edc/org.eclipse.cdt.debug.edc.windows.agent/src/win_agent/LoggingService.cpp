@@ -74,9 +74,38 @@ void LoggingService::sendOK(char * token, Channel * c)
 {
 	// Send OK message
 	TCFChannel tcf(c);
-	tcf.writeReplyHeader(token);
-	tcf.writeError(0);
+	tcf.writeCompleteReply(token, 0);
+}
+
+
+struct LoggingMessage {
+	Channel* channel;
+	std::string str;
+	const char* consoleID;
+	
+	LoggingMessage(Channel* channel_, const std::string& str_, const char* consoleID_) 
+		: channel(channel_), str(str_), consoleID(consoleID_) 
+	{ }
+};
+
+static void emit_logging_message(void *data) {
+	LoggingMessage* m = (LoggingMessage*) data;
+	
+	TCFChannel tcf(m->channel);
+
+	// write to the console
+	tcf.writeStringZ("E");
+	tcf.writeStringZ(sServiceName);
+	tcf.writeStringZ("write");
+
+	/* <array of context data> */
+	tcf.writeString(m->consoleID);
+	tcf.writeZero();
+	tcf.writeString(m->str);
+	tcf.writeZero();
 	tcf.writeComplete();
+	
+	delete m;
 }
 
 // Currently on sends "write" event. Another method could be send to add a newline with the "writeln" event.
@@ -86,18 +115,7 @@ void LoggingService::WriteLoggingMessage(Channel *channel, std::string str, cons
 	// only send messages to the proper console service and when there are more than one listener
 	if ( numConsoleListeners > 0 && strcmp(windowsConsoleID, consoleID) == 0 )
 	{
-		TCFChannel tcf(channel);
-
-		// write to the console
-		tcf.writeStringZ("E");
-		tcf.writeStringZ(sServiceName);
-		tcf.writeStringZ("write");
-
-		/* <array of context data> */
-		tcf.writeString(consoleID);
-		tcf.writeZero();
-		tcf.writeString(str);
-		tcf.writeZero();
-		tcf.writeComplete();
+		LoggingMessage* message = new LoggingMessage(channel, str, consoleID);
+		post_event(emit_logging_message, message);
 	}
 }

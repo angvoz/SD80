@@ -8,7 +8,8 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-#pragma once
+#ifndef MEMORYSERVICE_H
+#define MEMORYSERVICE_H
 
 #include "TCFService.h"
 
@@ -28,3 +29,4 @@ public:
 	static void command_get(char * token, Channel * c);
 	static void command_fill(char * token, Channel * c);
 };
+#endif

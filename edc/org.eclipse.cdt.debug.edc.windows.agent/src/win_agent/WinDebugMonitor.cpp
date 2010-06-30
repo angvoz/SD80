@@ -10,7 +10,7 @@
  *******************************************************************************/
 
 #include <iostream>
-#include "TCFOutputStream.h"
+#include "TCFHeaders.h"
 #include "WinDebugMonitor.h"
 #include "Logger.h"
 #include "WinProcess.h"
@@ -19,12 +19,12 @@
 #include "AgentUtils.h"
 #include "psapi.h"
 #include "AgentAction.h"
-#include "TCFChannel.h"
 #include "ContextManager.h"
 #include "LoggingService.h"
 
 // These aren't defined in any Windows system headers
 #define	EXCEPTION_DLL_NOT_FOUND				((unsigned long) 0xC0000135L)
+#define	EXCEPTION_ENTRY_NOT_FOUND			((unsigned long) 0xC0000139L)
 #define	EXCEPTION_DLL_INIT_FAIL				((unsigned long) 0xC0000142L)
 #define	EXCEPTION_MS_CPLUS					((unsigned long) 0xE06D7363L)
 #define	EXCEPTION_VDM_EVENT					((unsigned long) 0x40000005L)
@@ -118,7 +118,7 @@ std::string GetExecutableInfo(HANDLE hFile, unsigned long& baseOfCode, unsigned 
 									// Replace device path with DOS path
 									TCHAR szTempFile[MAX_PATH];
 
-									sprintf(szTempFile,
+									snprintf(szTempFile, sizeof(szTempFile),
 										TEXT("%s%s"),
 										szDrive,
 										pszFilename+uNameLen);
@@ -143,8 +143,8 @@ std::string GetExecutableInfo(HANDLE hFile, unsigned long& baseOfCode, unsigned 
 	return AgentUtils::makeString(pszFilename);
 }
 
-WinDebugMonitor::WinDebugMonitor(std::string& executable, std::string& directory, std::string& args, std::vector<std::string>& environment, bool debug_children, std::string& token, Channel *c) :
-DebugMonitor(executable, directory, args, environment, debug_children, token, c)
+WinDebugMonitor::WinDebugMonitor(const LaunchProcessParams& params) :
+		DebugMonitor(params)
 {
 	memset(&processInfo, 0, sizeof(processInfo));
 
@@ -155,8 +155,8 @@ DebugMonitor(executable, directory, args, environment, debug_children, token, c)
 	isAttach = false;
 }
 
-WinDebugMonitor::WinDebugMonitor(DWORD processID, bool debug_children, std::string& token, Channel *c) :
-	DebugMonitor(debug_children, token, c)
+WinDebugMonitor::WinDebugMonitor(const AttachToProcessParams& params) :
+	DebugMonitor(params)
 {
 	memset(&processInfo, 0, sizeof(processInfo));
 
@@ -164,7 +164,7 @@ WinDebugMonitor::WinDebugMonitor(DWORD processID, bool debug_children, std::stri
 	waitForDebugEvents = true;
 	wfdeWait = 50;
 	monitorThread_ = NULL;
-	this->processID = processID;
+	this->processID = (DWORD) params.processID;
 	isAttach = true;
 }
 
@@ -172,17 +172,17 @@ WinDebugMonitor::~WinDebugMonitor(void)
 {
 }
 
-void WinDebugMonitor::LaunchProcess(std::string& executable, std::string& directory, std::string& args, std::vector<std::string>& environment, bool debug_children, std::string& token, Channel *c) throw (AgentException)
+void WinDebugMonitor::LaunchProcess(const LaunchProcessParams& params) throw (AgentException)
 {
-	(new WinDebugMonitor(executable, directory, args, environment, debug_children, token, c))->StartMonitor();
+	(new WinDebugMonitor(params))->StartMonitor();
 }
 
 /*
  * Static method. Entry for attaching.
  */
-void WinDebugMonitor::AttachToProcess(DWORD processID, bool debug_children, std::string& token, Channel *c) throw (AgentException)
+void WinDebugMonitor::AttachToProcess(const AttachToProcessParams& params) throw (AgentException)
 {
-	(new WinDebugMonitor(processID, debug_children, token, c))->StartMonitor();
+	(new WinDebugMonitor(params))->StartMonitor();
 }
 
 void WinDebugMonitor::StartDebug() {
@@ -192,26 +192,22 @@ void WinDebugMonitor::StartDebug() {
 		AttachToProcessForDebug();
 }
 
+
 void WinDebugMonitor::AttachToProcessForDebug()
 {
-	TCFChannel tcf(channel);
-
 	// Note this is supposed to reply to TCF request ProcessService::Command_Attach().
 
 	if (!DebugActiveProcess(processID))
 	{
 		DWORD err = GetLastError();
 
-		tcf.writeError(set_win32_errno(err));
-
-		tcf.writeComplete();
+		AgentActionReply::postReply(channel, token, set_win32_errno(err));
 	} else {
 		// Allow detach without kill.
 		DebugSetProcessKillOnExit(false);
 
 		// OK
-		tcf.writeError(0);
-		tcf.writeComplete();
+		AgentActionReply::postReply(channel, token, 0);
 	}
 }
 
@@ -264,18 +260,13 @@ void WinDebugMonitor::StartProcessForDebug()
 		std::string msg = "Failed to start process ";
 		msg += '\"';
 		msg += AgentUtils::makeUTF8String(exeName);
-		msg += "\". Win32 error code: ";
-		msg += AgentUtils::IntToString(err);
+		msg += "\"";
+		err = set_win32_errno(err);
 
-		throw AgentException(msg);
+		AgentActionReply::postReply(channel, token, err, 1, new std::string(msg));
 	} else {
 		// AOK	
-		TCFChannel tcf(channel);
-		write_stringz(&channel->out, "R");
-		write_stringz(&channel->out, token.c_str());
-		tcf.writeError(0);
-		write_stringz(&channel->out, "null");
-		tcf.writeComplete();
+		AgentActionReply::postReply(channel, token, 0, 1);
 	}
 
 	delete[] envBuffer;
@@ -299,10 +290,10 @@ DWORD WINAPI debuggerMonitorThread(LPVOID param)
 		dpm->StartDebug();
 		dpm->EventLoop();
 	}
-	catch (AgentException e) 
+	catch (const AgentException& e) 
 	{
-		std::cout << e.what() << std::endl;
-		dpm->WriteError(GetLastError(), e.what());
+		DWORD error = GetLastError();
+		trace(LOG_ALWAYS, "Agent Exception: code=%x: %s", error, e.what());
 	}
 	
 	return 0;
@@ -332,16 +323,6 @@ void WinDebugMonitor::StartMonitor()
 	CloseHandle(startThread);
 }
 
-void WinDebugMonitor::WriteError(unsigned long errNum, const char* message) {
-	TCFOutputStream tcf(&channel->out);
-	
-	write_stringz(&channel->out, "R");
-	write_stringz(&channel->out, token.c_str());
-	tcf.writeError(errNum);
-	write_stringz(&channel->out, "null");
-	tcf.writeComplete();
-}
-
 void WinDebugMonitor::EventLoop()
 {
 	DEBUG_EVENT debugEvent;
@@ -350,8 +331,15 @@ void WinDebugMonitor::EventLoop()
 	{
 		if (WaitForDebugEvent(&debugEvent, wfdeWait))
 			HandleDebugEvent(debugEvent);
-		else
-			HandleNoDebugEvent();
+		else {
+			DWORD err = GetLastError();
+			if (err == ERROR_SEM_TIMEOUT || err == 0)
+				HandleNoDebugEvent();
+			else {
+				trace(LOG_ALWAYS, "WinDebugMonitor::EventLoop: error %d", err);
+				waitForDebugEvents = false;
+			}
+		}
 	}
 }
 
@@ -439,108 +427,119 @@ void WinDebugMonitor::HandleNoDebugEvent()
 	}
 }
 
-static char * win32_debug_exception_name(int event) {
-	switch (event) {
-	case EXCEPTION_BREAKPOINT:
-		return "EXCEPTION_BREAKPOINT";
-		break;
+std::string WinDebugMonitor::GetDebugExceptionDescription(const EXCEPTION_DEBUG_INFO& exceptionInfo) {
+	DWORD code = exceptionInfo.ExceptionRecord.ExceptionCode;
 
+	const char* base = "Exception";
+	std::string detail;
+
+	switch (code) {
 	case EXCEPTION_SINGLE_STEP:
-		return "EXCEPTION_SINGLE_STEP";
+		base = "Step";
+		break;
+	case EXCEPTION_BREAKPOINT:
+		base = "Breakpoint";
 		break;
 
 	case EXCEPTION_ACCESS_VIOLATION:
-		return "EXCEPTION_ACCESS_VIOLATION";
+		base = "Access violation";
+		detail = " at 0x" + AgentUtils::IntToHexString(exceptionInfo.ExceptionRecord.ExceptionInformation[1]);
 		break;
 	case DBG_CONTROL_C:
-		return "DBG_CONTROL_C";
+		base = "Control-C";
 		break;
 	case DBG_CONTROL_BREAK:
-		return "DBG_CONTROL_BREAK";
+		base = "Control-Break";
 		break;
 	case STATUS_DATATYPE_MISALIGNMENT:
-		return "STATUS_DATATYPE_MISALIGNMENT";
+		base = "Datatype misalignment";
 		break;
 	case STATUS_IN_PAGE_ERROR:
-		return "STATUS_IN_PAGE_ERROR";
+		base = "Virtual memory paging error";
 		break;
 	case STATUS_NO_MEMORY:
-		return "STATUS_NO_MEMORY";
+		base = "Out of memory";
 		break;
 	case STATUS_ILLEGAL_INSTRUCTION:
-		return "STATUS_ILLEGAL_INSTRUCTION";
+		base = "Illegal instruction";
 		break;
 	case STATUS_NONCONTINUABLE_EXCEPTION:
-		return "STATUS_NONCONTINUABLE_EXCEPTION";
+		base =  "Noncontinuable exception";
 		break;
 	case STATUS_INVALID_DISPOSITION:
-		return "STATUS_INVALID_DISPOSITION";
+		base =  "Invalid disposition";
 		break;
 	case STATUS_ARRAY_BOUNDS_EXCEEDED:
-		return "STATUS_ARRAY_BOUNDS_EXCEEDED";
+		base = "Array bounds exceeded";
 		break;
 	case STATUS_FLOAT_DENORMAL_OPERAND:
-		return "STATUS_FLOAT_DENORMAL_OPERAND";
+		base = "Floating point denormal operand";
 		break;
 	case STATUS_FLOAT_DIVIDE_BY_ZERO:
-		return "STATUS_FLOAT_DIVIDE_BY_ZERO";
+		base =  "Floating point divide by zero";
 		break;
 	case STATUS_FLOAT_INEXACT_RESULT:
-		return "STATUS_FLOAT_INEXACT_RESULT";
+		base =  "Floating point inexact result";
 		break;
 	case STATUS_FLOAT_INVALID_OPERATION:
-		return "STATUS_FLOAT_INVALID_OPERATION";
+		base =  "Floating point invalid operation";
 		break;
 	case STATUS_FLOAT_STACK_CHECK:
-		return "STATUS_FLOAT_STACK_CHECK";
+		base = "Floating point stack check";
 		break;
 	case STATUS_FLOAT_OVERFLOW:
-		return "STATUS_FLOAT_OVERFLOW";
+		base = "Floating point overflow";
 		break;
 	case STATUS_FLOAT_UNDERFLOW:
-		return "STATUS_FLOAT_UNDERFLOW";
+		base = "Floating point underflow";
 		break;
 	case STATUS_INTEGER_DIVIDE_BY_ZERO:
-		return "STATUS_INTEGER_DIVIDE_BY_ZERO";
+		base = "Integer divide by zero";
 		break;
 	case STATUS_INTEGER_OVERFLOW:
-		return "STATUS_INTEGER_OVERFLOW";
+		base = "Integer overflow";
 		break;
 	case STATUS_PRIVILEGED_INSTRUCTION:
-		return "STATUS_PRIVILEGED_INSTRUCTION";
+		base = "Privileged instruction";
 		break;
 	case STATUS_STACK_OVERFLOW:
-		return "STATUS_STACK_OVERFLOW";
+		base = "Stack overflow";
 		break;
 	case EXCEPTION_DLL_NOT_FOUND:
-		return "EXCEPTION_DLL_NOT_FOUND";
+		base = "DLL not found";
+		// TODO: find out how to determine which DLL it was...
 		break;
 	case EXCEPTION_DLL_INIT_FAIL:
-		return "EXCEPTION_DLL_INIT_FAIL";
+		base = "DLL initialization failed";
+		break;
+	case EXCEPTION_ENTRY_NOT_FOUND:
+		base = "Entry point not found";
 		break;
 	case EXCEPTION_MS_CPLUS:
-		return "EXCEPTION_MS_CPLUS";
+		base = "C++ exception";
 		break;
 
-	case DBG_TERMINATE_PROCESS:
-		return "DBG_TERMINATE_PROCESS";
-		break;
 	case RPC_S_UNKNOWN_IF:
-		return "RPC_S_UNKNOWN_IF";
+		base = "RPC unknown interface";
 		break;
 	case RPC_S_SERVER_UNAVAILABLE:
-		return "RPC_S_SERVER_UNAVAILABLE";
+		base = "RPC server unavailable";
 		break;
 	case EXCEPTION_VDM_EVENT:
-		return "EXCEPTION_VDM_EVENT";
+		base = "VDM event";
 		break;
 	}
-	return "Unknown";
+
+	if (detail.size() > 0) {
+		return std::string(base) + detail;
+	}
+	return base;
 }
 
 void WinDebugMonitor::HandleExceptionEvent(DEBUG_EVENT& debugEvent)
 {
-	LogTrace("DebugProcessMonitor::HandleExceptionEvent", "event code: %s", win32_debug_exception_name(debugEvent.u.Exception.ExceptionRecord.ExceptionCode));
+	LogTrace("DebugProcessMonitor::HandleExceptionEvent", "event code: %s",
+			GetDebugExceptionDescription(debugEvent.u.Exception).c_str());
 
 	HandleException(debugEvent);
 
@@ -551,9 +550,12 @@ void WinDebugMonitor::HandleProcessCreatedEvent(DEBUG_EVENT& debugEvent)
 	WinProcess* process = new WinProcess(this, debugEvent);
 	WinThread* thread = new WinThread(*process, debugEvent);
 
+	process->SetDebugging(true);
+	thread->SetDebugging(true);
+
 	// record in our cache
-	ContextManager::addDebuggedContext(process);
-	ContextManager::addDebuggedContext(thread);
+	ContextManager::addContext(process);
+	ContextManager::addContext(thread);
 
 	// Notify host
 	EventClientNotifier::SendContextAdded(process);
@@ -569,35 +571,58 @@ void WinDebugMonitor::HandleProcessCreatedEvent(DEBUG_EVENT& debugEvent)
 void WinDebugMonitor::HandleThreadCreatedEvent(DEBUG_EVENT& debugEvent)
 {
 	WinProcess* process = WinProcess::GetProcessByID(debugEvent.dwProcessId);
-	WinThread* thread = new WinThread(*process, debugEvent);
-	ContextManager::addDebuggedContext(thread);
+	if (process) {
+		WinThread* thread = new WinThread(*process, debugEvent);
+		thread->SetDebugging(true);
+		ContextManager::addContext(thread);
+		EventClientNotifier::SendContextAdded(thread);
+	} else {
+		assert(false);
+	}
 
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
-	EventClientNotifier::SendContextAdded(thread);
 }
 
 void WinDebugMonitor::HandleProcessExitedEvent(DEBUG_EVENT& debugEvent)
 {
 	WinProcess* process = WinProcess::GetProcessByID(debugEvent.dwProcessId);
-	EventClientNotifier::SendContextRemoved(process);
+	if (process) {
+		ContextManager::removeContext(process->GetID());
+		EventClientNotifier::SendContextRemoved(process, true);
+	} else {
+		assert(false);
+	}
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
-
-	delete process;
 }
 
 void WinDebugMonitor::HandleThreadExitedEvent(DEBUG_EVENT& debugEvent)
 {
 	WinThread* thread = WinThread::GetThreadByID(debugEvent.dwProcessId, debugEvent.dwThreadId);
-	EventClientNotifier::SendContextRemoved(thread);
+	if (thread) {
+		ContextManager::removeContext(thread->GetID());
+		EventClientNotifier::SendContextRemoved(thread, true);
+	} else {
+		assert(false);
+	}
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
+}
 
-	delete thread;
+bool WinDebugMonitor::ShouldDebugFirstChance(const DEBUG_EVENT& debugEvent) {
+	if (debugEvent.dwDebugEventCode == EXCEPTION_DEBUG_EVENT) {
+		const EXCEPTION_DEBUG_INFO& info = debugEvent.u.Exception;
+		if (!info.dwFirstChance)
+			return false;
+		return info.ExceptionRecord.ExceptionCode == EXCEPTION_DLL_NOT_FOUND;
+	}
+	return false;
 }
 
 void WinDebugMonitor::HandleException(DEBUG_EVENT& debugEvent)
 {
 	WinThread* thread = WinThread::GetThreadByID(debugEvent.dwProcessId, debugEvent.dwThreadId);
-	if (handledFirstException_ || isAttach)
+	if (!thread)
+		assert(false);
+	if (thread && (handledFirstException_ || isAttach || ShouldDebugFirstChance(debugEvent)))
 		thread->HandleException(debugEvent);
 	else
 		ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
@@ -612,13 +637,17 @@ void WinDebugMonitor::HandleDLLLoadedEvent(DEBUG_EVENT& debugEvent)
 
 	LogTrace("DebugProcessMonitor::HandleDLLLoadedEvent", "Base address: %8.8x %s", debugEvent.u.LoadDll.lpBaseOfDll, moduleName.c_str());
 	WinThread* thread = WinThread::GetThreadByID(debugEvent.dwProcessId, debugEvent.dwThreadId);
-	thread->HandleExecutableEvent(true, moduleName, (unsigned long)debugEvent.u.LoadDll.lpBaseOfDll, codeSize);
+	if (thread) {
+		thread->HandleExecutableEvent(true, moduleName, (unsigned long)debugEvent.u.LoadDll.lpBaseOfDll, codeSize);
+	}
 }
 
 void WinDebugMonitor::HandleDLLUnloadedEvent(DEBUG_EVENT& debugEvent)
 {
 	WinThread* thread = WinThread::GetThreadByID(debugEvent.dwProcessId, debugEvent.dwThreadId);
-	thread->HandleExecutableEvent(false, "", (unsigned long)debugEvent.u.CreateProcessInfo.lpBaseOfImage, 0);
+	if (thread) {
+		thread->HandleExecutableEvent(false, "", (unsigned long)debugEvent.u.CreateProcessInfo.lpBaseOfImage, 0);
+	}
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
 }
 

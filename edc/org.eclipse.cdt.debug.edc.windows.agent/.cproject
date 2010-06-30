@@ -18,13 +18,23 @@
 					<folderInfo id="cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.mingw.exe.debug.1538365029" name="MinGW GCC" superClass="cdt.managedbuild.toolchain.gnu.mingw.exe.debug">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.mingw.exe.debug.2100792486" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.mingw.exe.debug"/>
-							<builder buildPath="${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/Debug}" id="cdt.managedbuild.tool.gnu.builder.mingw.base.159000015" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" superClass="cdt.managedbuild.tool.gnu.builder.mingw.base">
+							<builder buildPath="${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/Debug}" id="cdt.managedbuild.tool.gnu.builder.mingw.base.159000015" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" parallelBuildOn="true" parallelizationNumber="-1" stopOnErr="false" superClass="cdt.managedbuild.tool.gnu.builder.mingw.base">
 								<outputEntries>
 									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name="Debug"/>
 									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name="Release"/>
 								</outputEntries>
 							</builder>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.mingw.exe.debug.1887694892" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.mingw.exe.debug">
+								<option id="gnu.both.asm.option.include.paths.1865509858" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/framework}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/services}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/main}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/machine/i686}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/system/Windows}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/common_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/win_agent}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.471260719" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.mingw.base.320899905" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.mingw.base"/>
@@ -32,8 +42,14 @@
 								<option id="gnu.cpp.compiler.mingw.exe.debug.option.optimization.level.1862733942" name="Optimization Level" superClass="gnu.cpp.compiler.mingw.exe.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.mingw.exe.debug.option.debugging.level.1678712047" name="Debug Level" superClass="gnu.cpp.compiler.mingw.exe.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.731820516" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/common_agent}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/win_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/framework}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/services}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/main}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/machine/i686}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/system/Windows}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.82616184" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="_DEBUG"/>
@@ -43,6 +59,16 @@
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.debug.1347372394" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.debug">
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.mingw.exe.debug.option.optimization.level.234277509" name="Optimization Level" superClass="gnu.c.compiler.mingw.exe.debug.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.mingw.exe.debug.option.debugging.level.629164322" name="Debug Level" superClass="gnu.c.compiler.mingw.exe.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.include.paths.220381318" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/framework}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/services}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/main}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/machine/i686}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/system/Windows}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/common_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/win_agent}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1194206575" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.debug.338856969" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.debug"/>
@@ -61,12 +87,16 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="win_agent|tcf_agent" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
+						<entry excluding="common_agent|win_agent|tcf_agent" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/common_agent"/>
+						<entry excluding="services/sysmon.c|services/filesystem.c|framework/cpudefs.c|framework/context.c|system/Windows|system/VxWorks|system/Msys|system/GNU|system/FreeBSD|system/Darwin|system/Cygwin|services/tcf_elf.h|services/tcf_elf.c|services/sysmon.h|services/symbols.h|services/symbols.c|services/symbols_win32.c|services/symbols_proxy.c|services/symbols_elf.c|services/symbols_alloc.h|services/streamsservice.h|services/streamsservice.c|services/stacktrace.h|services/stacktrace.c|services/runctrl.h|services/runctrl.c|services/registers.h|services/registers.c|services/processes.h|services/processes.c|services/pathmap.h|services/pathmap.c|services/memoryservice.h|services/memoryservice.c|services/memorymap.h|services/memorymap.c|services/linenumbers.h|services/linenumbers.c|services/linenumbers_win32.c|services/linenumbers_proxy.c|services/linenumbers_elf.c|services/filesystem.h|services/expressions.h|services/expressions.c|services/dwarfreloc.h|services/dwarfreloc.c|services/dwarfio.h|services/dwarfio.c|services/dwarfframe.h|services/dwarfframe.c|services/dwarfexpr.h|services/dwarfexpr.c|services/dwarfcache.h|services/dwarfcache.c|services/dwarf.h|services/diagnostics.h|services/diagnostics.c|services/breakpoints.h|services/breakpoints.c|main" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/tcf_agent"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/win_agent"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/tcf_agent"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
+			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 			<storageModule moduleId="scannerConfiguration">
 				<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile"/>
 				<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
@@ -149,6 +179,26 @@
 						<parser enabled="true"/>
 					</scannerInfoProvider>
 				</profile>
+				<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+					<buildOutputProvider>
+						<openAction enabled="false" filePath=""/>
+						<parser enabled="true"/>
+					</buildOutputProvider>
+					<scannerInfoProvider id="specsFile">
+						<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+						<parser enabled="false"/>
+					</scannerInfoProvider>
+				</profile>
+				<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+					<buildOutputProvider>
+						<openAction enabled="false" filePath=""/>
+						<parser enabled="true"/>
+					</buildOutputProvider>
+					<scannerInfoProvider id="specsFile">
+						<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+						<parser enabled="false"/>
+					</scannerInfoProvider>
+				</profile>
 				<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601;cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601.;cdt.managedbuild.tool.gnu.cpp.compiler.mingw.exe.debug.472286202;cdt.managedbuild.tool.gnu.cpp.compiler.input.843378569">
 					<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileCPP"/>
 					<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
@@ -229,6 +279,26 @@
 						<scannerInfoProvider id="specsFile">
 							<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.c" command="gcc" useDefault="true"/>
 							<parser enabled="true"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+							<parser enabled="false"/>
 						</scannerInfoProvider>
 					</profile>
 				</scannerConfigBuildInfo>
@@ -314,6 +384,26 @@
 							<parser enabled="true"/>
 						</scannerInfoProvider>
 					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
 				</scannerConfigBuildInfo>
 				<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601;cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601.;cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.debug.1347372394;cdt.managedbuild.tool.gnu.c.compiler.input.1194206575">
 					<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC"/>
@@ -395,6 +485,26 @@
 						<scannerInfoProvider id="specsFile">
 							<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.c" command="gcc" useDefault="true"/>
 							<parser enabled="true"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+							<parser enabled="false"/>
 						</scannerInfoProvider>
 					</profile>
 				</scannerConfigBuildInfo>
@@ -480,11 +590,28 @@
 							<parser enabled="true"/>
 						</scannerInfoProvider>
 					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
 				</scannerConfigBuildInfo>
 			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
-			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
-			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 		</cconfiguration>
 		<cconfiguration id="cdt.managedbuild.config.gnu.mingw.exe.release.757224056">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="cdt.managedbuild.config.gnu.mingw.exe.release.757224056" moduleId="org.eclipse.cdt.core.settings" name="Release">
@@ -503,6 +630,16 @@
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.mingw.exe.release.1475534765" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.mingw.exe.release"/>
 							<builder buildPath="${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/Release}" id="cdt.managedbuild.tool.gnu.builder.mingw.base.262145787" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CDT Internal Builder" superClass="cdt.managedbuild.tool.gnu.builder.mingw.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.mingw.exe.release.1879731861" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.mingw.exe.release">
+								<option id="gnu.both.asm.option.include.paths.1343345944" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/win_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/framework}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/services}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/main}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/machine/i686}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/system/Windows}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/common_agent}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.421024354" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.mingw.base.1221113286" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.mingw.base"/>
@@ -512,12 +649,28 @@
 								<option id="gnu.cpp.compiler.option.include.paths.653960025" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/win_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/framework}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/services}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/main}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/machine/i686}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/system/Windows}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/common_agent}&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.474725460" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.release.1979802342" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.release">
 								<option defaultValue="gnu.c.optimization.level.most" id="gnu.c.compiler.mingw.exe.release.option.optimization.level.832130839" name="Optimization Level" superClass="gnu.c.compiler.mingw.exe.release.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.mingw.exe.release.option.debugging.level.2025140279" name="Debug Level" superClass="gnu.c.compiler.mingw.exe.release.option.debugging.level" value="gnu.c.debugging.level.none" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.include.paths.1162453484" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/win_agent}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/framework}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/services}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/main}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/machine/i686}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/tcf_agent/system/Windows}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/org.eclipse.cdt.debug.edc.windows.agent/src/common_agent}&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1040528181" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.release.94608933" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.release"/>
@@ -537,11 +690,15 @@
 					</folderInfo>
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/win_agent"/>
-						<entry excluding="win_agent|common|tcf_agent" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/tcf_agent"/>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/common_agent"/>
+						<entry excluding="services/sysmon.c|services/filesystem.c|framework/cpudefs.c|framework/context.c|system/Windows|system/VxWorks|system/Msys|system/GNU|system/FreeBSD|system/Darwin|system/Cygwin|services/tcf_elf.h|services/tcf_elf.c|services/sysmon.h|services/symbols.h|services/symbols.c|services/symbols_win32.c|services/symbols_proxy.c|services/symbols_elf.c|services/symbols_alloc.h|services/streamsservice.h|services/streamsservice.c|services/stacktrace.h|services/stacktrace.c|services/runctrl.h|services/runctrl.c|services/registers.h|services/registers.c|services/processes.h|services/processes.c|services/pathmap.h|services/pathmap.c|services/memoryservice.h|services/memoryservice.c|services/memorymap.h|services/memorymap.c|services/linenumbers.h|services/linenumbers.c|services/linenumbers_win32.c|services/linenumbers_proxy.c|services/linenumbers_elf.c|services/filesystem.h|services/expressions.h|services/expressions.c|services/dwarfreloc.h|services/dwarfreloc.c|services/dwarfio.h|services/dwarfio.c|services/dwarfframe.h|services/dwarfframe.c|services/dwarfexpr.h|services/dwarfexpr.c|services/dwarfcache.h|services/dwarfcache.c|services/dwarf.h|services/diagnostics.h|services/diagnostics.c|services/breakpoints.h|services/breakpoints.c|main" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src/tcf_agent"/>
+						<entry excluding="common_agent|win_agent|common|tcf_agent" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
+			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 			<storageModule moduleId="scannerConfiguration">
 				<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile"/>
 				<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
@@ -624,6 +781,26 @@
 						<parser enabled="true"/>
 					</scannerInfoProvider>
 				</profile>
+				<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+					<buildOutputProvider>
+						<openAction enabled="false" filePath=""/>
+						<parser enabled="true"/>
+					</buildOutputProvider>
+					<scannerInfoProvider id="specsFile">
+						<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+						<parser enabled="false"/>
+					</scannerInfoProvider>
+				</profile>
+				<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+					<buildOutputProvider>
+						<openAction enabled="false" filePath=""/>
+						<parser enabled="true"/>
+					</buildOutputProvider>
+					<scannerInfoProvider id="specsFile">
+						<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+						<parser enabled="false"/>
+					</scannerInfoProvider>
+				</profile>
 				<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601;cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601.;cdt.managedbuild.tool.gnu.cpp.compiler.mingw.exe.debug.472286202;cdt.managedbuild.tool.gnu.cpp.compiler.input.843378569">
 					<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileCPP"/>
 					<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
@@ -704,6 +881,26 @@
 						<scannerInfoProvider id="specsFile">
 							<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.c" command="gcc" useDefault="true"/>
 							<parser enabled="true"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+							<parser enabled="false"/>
 						</scannerInfoProvider>
 					</profile>
 				</scannerConfigBuildInfo>
@@ -789,6 +986,26 @@
 							<parser enabled="true"/>
 						</scannerInfoProvider>
 					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
 				</scannerConfigBuildInfo>
 				<scannerConfigBuildInfo instanceId="cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601;cdt.managedbuild.config.gnu.mingw.exe.debug.1644349601.;cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.debug.1347372394;cdt.managedbuild.tool.gnu.c.compiler.input.1194206575">
 					<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.managedbuilder.core.GCCManagedMakePerProjectProfileC"/>
@@ -870,6 +1087,26 @@
 						<scannerInfoProvider id="specsFile">
 							<runAction arguments="-E -P -v -dD ${plugin_state_location}/specs.c" command="gcc" useDefault="true"/>
 							<parser enabled="true"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+							<parser enabled="false"/>
 						</scannerInfoProvider>
 					</profile>
 				</scannerConfigBuildInfo>
@@ -955,11 +1192,28 @@
 							<parser enabled="true"/>
 						</scannerInfoProvider>
 					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfile">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlc" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
+					<profile id="org.eclipse.cdt.managedbuilder.xlc.core.XLCManagedMakePerProjectProfileCPP">
+						<buildOutputProvider>
+							<openAction enabled="false" filePath=""/>
+							<parser enabled="true"/>
+						</buildOutputProvider>
+						<scannerInfoProvider id="specsFile">
+							<runAction arguments="-E -v ${plugin_state_location}/${specs_file}" command="${XL_compilerRoot}/xlC" useDefault="true"/>
+							<parser enabled="false"/>
+						</scannerInfoProvider>
+					</profile>
 				</scannerConfigBuildInfo>
 			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
-			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
-			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">

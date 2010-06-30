@@ -9,12 +9,13 @@
  * Nokia - Initial API and implementation
  *******************************************************************************/
 #include "ResumeContextAction.h"
-#include "Context.h"
+#include "TCFContext.h"
 #include "WinProcess.h"
 #include "WinThread.h"
+#include "WinDebugMonitor.h"
 
-ResumeContextAction::ResumeContextAction(ContextOSID processid,
-		ContextOSID threadid) {
+ResumeContextAction::ResumeContextAction(const AgentActionParams& params, ContextOSID processid,
+		ContextOSID threadid) : AgentAction(params) {
 	processid_ = processid;
 	threadid_ = threadid;
 }
@@ -24,4 +25,6 @@ ResumeContextAction::~ResumeContextAction(void) {
 
 void ResumeContextAction::Run() {
 	ContinueDebugEvent(processid_, threadid_, DBG_CONTINUE);
+	params.reportSuccessForAction();
+
 }

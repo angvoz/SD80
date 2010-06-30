@@ -81,22 +81,20 @@ void RegistersService::command_get_context(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::findDebuggedContext(id);
-
-	channel.writeReplyHeader(token);
+	Context* context = ContextManager::findContext(id);
 
 	if (context == NULL) {
 		// Return an invalid context ID error.
-		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeZero();	// this puts a null object in the reply
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT, 1);
+		return;
 	}
-	else {
-		channel.writeError(0);
-		EventClientNotifier::WriteContext(*context, channel);
-		channel.writeZero();	// this puts a null object in the reply
-	}
-
+	
+	channel.writeReplyHeader(token);
+	channel.writeError(0);
+	EventClientNotifier::WriteContext(*context, channel);
+	channel.writeZero(); // end of context
 	channel.writeComplete();
+
 }
 
 void RegistersService::command_get_children(char * token, Channel * c) {
@@ -111,47 +109,47 @@ void RegistersService::command_get_children(char * token, Channel * c) {
 	if (parentID.length() == 0)
 		parentID = "root";
 
-	channel.writeReplyHeader(token);
 
-	Context* parent = ContextManager::findDebuggedContext(parentID);
+	Context* parent = ContextManager::findContext(parentID);
 
 	if (parent == NULL) {
 		// Return an invalid context ID error.
-		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeZero();	// this puts a null object in the reply
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT, 1);
+		return;
 	}
-	else {
-		channel.writeError(0);
+	
+	channel.writeReplyHeader(token);
+	
+	channel.writeError(0);
 
-		channel.writeCharacter('[');
+	channel.writeCharacter('[');
 
-		std::list<Context*>& children = parent->GetChildren();
+	std::list<Context*>& children = parent->GetChildren();
 
-		if (NULL != dynamic_cast<WinThread*>(parent)) {
-			// Currently it's assumed thread only has register group
-			// contexts as children.
-			// And we hook up the register children to a thread only
-			// when requested. This way we don't bother adding registers
-			// for a thread that user does not care about.
-			//  ..................02/11/10
-			if (children.size() == 0) {
-				// Add register contexts for the thread when accessed.
-				addRegisterContextsForThread(parentID);
-				children = parent->GetChildren();
-			}
-
-		}
-		std::list<Context*>::iterator itr;
-		for (itr = children.begin(); itr != children.end(); itr++) {
-			if (itr != children.begin())
-				channel.writeCharacter(',');
-			std::string contextID = ((Context*) *itr)->GetID();
-			channel.writeString(contextID);
+	if (NULL != dynamic_cast<WinThread*>(parent)) {
+		// Currently it's assumed thread only has register group
+		// contexts as children.
+		// And we hook up the register children to a thread only
+		// when requested. This way we don't bother adding registers
+		// for a thread that user does not care about.
+		//  ..................02/11/10
+		if (children.size() == 0) {
+			// Add register contexts for the thread when accessed.
+			addRegisterContextsForThread(parentID);
+			children = parent->GetChildren();
 		}
 
-		channel.writeCharacter(']');
-		channel.writeZero();	// this puts a null object in the reply
 	}
+	std::list<Context*>::iterator itr;
+	for (itr = children.begin(); itr != children.end(); itr++) {
+		if (itr != children.begin())
+			channel.writeCharacter(',');
+		std::string contextID = ((Context*) *itr)->GetID();
+		channel.writeString(contextID);
+	}
+
+	channel.writeCharacter(']');
+	channel.writeZero(); // end of context
 
 	channel.writeComplete();
 }
@@ -165,12 +163,15 @@ WinThread* getThreadForRegisterContext(Context* regCxt) {
 	RegisterGroupInAgent* regGroup;
 
 	if (NULL != dynamic_cast<RegisterInAgent *>(regCxt))
-		regGroup = dynamic_cast<RegisterGroupInAgent*>(ContextManager::findDebuggedContext(regCxt->GetParentID()));
-	else if (NULL == dynamic_cast<RegisterGroupInAgent *>(regCxt)) // invalid context
-		return NULL;
+		regGroup = dynamic_cast<RegisterGroupInAgent*>(ContextManager::findContext(regCxt->GetParentID()));
+	else 
+		regGroup = dynamic_cast<RegisterGroupInAgent *>(regCxt);
 
+	if (regGroup == NULL)	 // invalid context
+		return NULL;
+	
 	std::string threadID = regGroup->GetParentID();
-	WinThread* thread = dynamic_cast<WinThread *>(ContextManager::findDebuggedContext(threadID));
+	WinThread* thread = dynamic_cast<WinThread *>(ContextManager::findContext(threadID));
 
 	return thread;
 }
@@ -184,16 +185,12 @@ void RegistersService::command_get(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	RegisterInAgent* regCxt = dynamic_cast<RegisterInAgent *>(ContextManager::findDebuggedContext(regCxtID));
+	RegisterInAgent* regCxt = dynamic_cast<RegisterInAgent *>(ContextManager::findContext(regCxtID));
 	WinThread* thread = getThreadForRegisterContext(regCxt);
 
-	channel.writeReplyHeader(token);
-
-	if (regCxt == NULL || thread == NULL) {
+	if (regCxt == NULL || thread == NULL || !thread->IsDebugging()) {
 		// Return invalid-context-ID error.
-		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeZero();	// this puts a null object in the reply
-		channel.writeComplete();
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT, 1);
 		return;
 	}
 
@@ -205,18 +202,18 @@ void RegistersService::command_get(char * token, Channel * c) {
 
 	if (valueBuff == NULL) {
 		// no values got. Assuming target is running.
-		channel.writeError(ERR_IS_RUNNING);
-		channel.writeZero();	// this puts a null object in the reply
+		channel.writeCompleteReply(token, ERR_IS_RUNNING, 1);
+		return;
 	}
-	else {
-		// Currently EDC host expects big-endian.
-		AgentUtils::SwapBytes(valueBuff, regSize);
+	
+	// Currently EDC host expects big-endian.
+	AgentUtils::SwapBytes(valueBuff, regSize);
 
-		channel.writeError(0);
+	channel.writeReplyHeader(token);
+	channel.writeError(0);
 
-		channel.writeBinaryData(valueBuff, regSize);
-		delete[] valueBuff;
-	}
+	channel.writeBinaryData(valueBuff, regSize);
+	delete[] valueBuff;
 
 	channel.writeComplete();
 }
@@ -229,25 +226,21 @@ void RegistersService::command_set(char * token, Channel * c) {
 	std::string regCxtID = channel.readString();
 	channel.readZero();
 
-	RegisterInAgent* regCxt = dynamic_cast<RegisterInAgent *>(ContextManager::findDebuggedContext(regCxtID));
+	RegisterInAgent* regCxt = dynamic_cast<RegisterInAgent *>(ContextManager::findContext(regCxtID));
 
-	int regSize;
-	char* val;
+	int regSize = 4;
 	if (regCxt != NULL) {
 		regSize = regCxt->GetProperties()[PROP_SIZE]->getIntValue();
-		val = channel.readBinaryData(regSize);
-		channel.readZero();
 	}
+	char* val = channel.readBinaryData(regSize);
+	channel.readZero();
 	channel.readComplete();
 
 	WinThread* thread = getThreadForRegisterContext(regCxt);
 
-	channel.writeReplyHeader(token);
-
-	if (regCxt == NULL || thread == NULL) {
+	if (regCxt == NULL || thread == NULL || !thread->IsDebugging()) {
 		// Return invalid-context-ID error.
-		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeComplete();
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT);
 		return;
 	}
 
@@ -262,11 +255,9 @@ void RegistersService::command_set(char * token, Channel * c) {
 
 	if (!ok) {
 		// Assuming target is running.
-		channel.writeError(ERR_IS_RUNNING);
+		channel.writeCompleteReply(token, ERR_IS_RUNNING);
 	}
 	else {
-		channel.writeError(0);
+		channel.writeCompleteReply(token, 0);
 	}
-
-	channel.writeComplete();
 }

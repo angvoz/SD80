@@ -25,13 +25,14 @@
 std::map<std::pair<int, int>, WinThread*> WinThread::threadIDMap_;
 
 WinThread::WinThread(WinProcess& process, DEBUG_EVENT& debugEvent) :
-	RunControlContext(debugEvent.dwThreadId, process.GetID(), CreateInternalID(debugEvent.dwThreadId, process.GetID())),
+	ThreadContext(debugEvent.dwThreadId, process.GetID(), CreateInternalID(debugEvent.dwThreadId, process.GetID())),
+	threadLookupPair_(debugEvent.dwProcessId, debugEvent.dwThreadId),
 	parentProcess_(process)
 {
 	process.AddChild(this);
 
-	std::pair<int, int> ptPair(debugEvent.dwProcessId, debugEvent.dwThreadId);
-	threadIDMap_[ptPair] = this;
+	threadIDMap_[threadLookupPair_] = this;
+
 	threadContextValid_ = false;
 	if (debugEvent.dwDebugEventCode == CREATE_PROCESS_DEBUG_EVENT) {
 		handle_ = debugEvent.u.CreateProcessInfo.hThread;
@@ -71,15 +72,7 @@ int WinThread::GetThreadID() {
 
 WinThread::~WinThread(void) {
 	parentProcess_.RemoveChild(this);
-}
-
-ContextID WinThread::CreateInternalID(ContextOSID osID, ContextID parentID) {
-	// return:  parentID.Ttid
-	ContextID ret = parentID;
-	ret += ".t";	// a prefix
-	ret += AgentUtils::IntToString(osID);
-
-	return ret;
+	threadIDMap_.erase(threadLookupPair_);
 }
 
 ContextAddress WinThread::GetPCAddress() {
@@ -94,19 +87,29 @@ ContextAddress WinThread::GetPCAddress() {
 	return threadContextInfo_.Eip;
 }
 
-std::string WinThread::GetSuspendReason() {
-	std::string reason = "Exception";
+const char* WinThread::GetSuspendReason() {
+	const char* reason = REASON_EXCEPTION;
 
 	switch (exceptionInfo_.ExceptionRecord.ExceptionCode) {
 	case USER_SUSPEND_THREAD:
-		return "Suspended";
+		return REASON_USER_REQUEST;
 	case EXCEPTION_SINGLE_STEP:
-		return "Step";
+		return REASON_STEP;
 	case EXCEPTION_BREAKPOINT:
-		return "Breakpoint";
+		return REASON_BREAKPOINT;
 	}
 
 	return reason;
+}
+
+
+std::string WinThread::GetExceptionMessage() {
+	if (exceptionInfo_.ExceptionRecord.ExceptionCode == EXCEPTION_SINGLE_STEP
+			|| exceptionInfo_.ExceptionRecord.ExceptionCode == EXCEPTION_BREAKPOINT
+			|| exceptionInfo_.ExceptionRecord.ExceptionCode == USER_SUSPEND_THREAD)
+		return "";
+
+	return WinDebugMonitor::GetDebugExceptionDescription(exceptionInfo_);
 }
 
 void WinThread::MarkSuspended() {
@@ -118,15 +121,24 @@ void WinThread::HandleException(DEBUG_EVENT& debugEvent) {
 	MarkSuspended();
 	exceptionInfo_ = debugEvent.u.Exception;
 	EnsureValidContextInfo();
-	EventClientNotifier::SendContextSuspended(this);
+	EventClientNotifier::SendContextSuspended(this,
+			GetPCAddress(), GetSuspendReason(), GetExceptionMessage());
+
 }
 
-void WinThread::HandleExecutableEvent(bool isLoaded, std::string exePath,
+void WinThread::HandleExecutableEvent(bool isLoaded, const std::string& exePath,
 		unsigned long baseAddress, unsigned long codeSize) {
 	MarkSuspended();
 	EnsureValidContextInfo();
-	EventClientNotifier::SendExecutableEvent(this, isLoaded,
-			threadContextInfo_.Eip, exePath, baseAddress, codeSize);
+	
+	Properties props;
+	props[PROP_FILE] = new PropertyValue(exePath);
+	props[PROP_NAME] = new PropertyValue(AgentUtils::GetFileNameFromPath(exePath));
+	props[PROP_MODULE_LOADED] = new PropertyValue(isLoaded);
+	props[PROP_IMAGE_BASE_ADDRESS] = new PropertyValue((int) baseAddress);
+	props[PROP_CODE_SIZE] = new PropertyValue((int) codeSize);
+	EventClientNotifier::SendExecutableEvent(this, 
+			threadContextInfo_.Eip, props);
 }
 
 bool WinThread::isSuspended() {
@@ -225,17 +237,21 @@ void WinThread::SetContextInfo() {
 
 WinThread* WinThread::GetThreadByID(int processID, int threadID) {
 	std::pair<int, int> ptPair(processID, threadID);
-	return threadIDMap_[ptPair];
+	std::map<std::pair<int, int>, WinThread*>::iterator iter = threadIDMap_.find(ptPair);
+	if (iter == threadIDMap_.end())
+		return NULL;
+	else
+		return iter->second;
 }
 
 std::vector<std::string> WinThread::GetRegisterValues(
-		std::vector<std::string> registerIDs) {
+		const std::vector<std::string>& registerIDs) {
 	std::vector<std::string> registerValues;
 
 	if (isSuspended()) {
 		EnsureValidContextInfo();
 
-		std::vector<std::string>::iterator itVectorData;
+		std::vector<std::string>::const_iterator itVectorData;
 		for (itVectorData = registerIDs.begin(); itVectorData
 				!= registerIDs.end(); itVectorData++) {
 			std::string registerID = *itVectorData;
@@ -297,7 +313,7 @@ void* WinThread::getRegisterValueBuffer(const std::string& regName) {
  * Read one register.
  * Return binary data buffer, which caller should free by calling delete[].
  */
-char* WinThread::GetRegisterValue(std::string regName, int regSize) {
+char* WinThread::GetRegisterValue(const std::string& regName, int regSize) {
 
 	char* ret = NULL;
 
@@ -315,7 +331,7 @@ char* WinThread::GetRegisterValue(std::string regName, int regSize) {
 	return ret;
 }
 
-bool WinThread::SetRegisterValue(std::string regName, int regSize, char* val) {
+bool WinThread::SetRegisterValue(const std::string& regName, int regSize, char* val) {
 
 	if (! isSuspended())
 		return false;
@@ -327,64 +343,66 @@ bool WinThread::SetRegisterValue(std::string regName, int regSize, char* val) {
 	return SetThreadContext(handle_, &threadContextInfo_);
 }
 
-void WinThread::SetRegisterValues(std::vector<std::string> registerIDs,
-		std::vector<std::string> registerValues) {
+void WinThread::SetRegisterValues(const std::vector<std::string>& registerIDs,
+		const std::vector<std::string>& registerValues) {
 	if (isSuspended()) {
-		std::vector<std::string>::reverse_iterator itVectorData;
+		std::vector<std::string>::const_reverse_iterator itVectorData;
+		int idx = registerValues.size();
 		for (itVectorData = registerIDs.rbegin(); itVectorData
 				!= registerIDs.rend(); itVectorData++) {
 			std::string registerID = *itVectorData;
-			registerValueCache_[registerID] = registerValues.back();
-			registerValues.pop_back();
+			registerValueCache_[registerID] = registerValues[--idx];
 		}
 
 		SetContextInfo();
 	}
 }
 
-int WinThread::ReadMemory(unsigned long address, unsigned long size,
-		char* memBuffer, unsigned long bufferSize, unsigned long& sizeRead) {
-	return parentProcess_.ReadMemory(address, size, memBuffer, bufferSize,
-			sizeRead);
+int WinThread::ReadMemory(const ReadWriteMemoryParams& params) throw (AgentException) {
+	return parentProcess_.ReadMemory(params);
 }
 
-int WinThread::WriteMemory(unsigned long address, unsigned long size,
-		char* memBuffer, unsigned long bufferSize, unsigned long& sizeWritten) {
-	return parentProcess_.WriteMemory(address, size, memBuffer, bufferSize,
-			sizeWritten);
+int WinThread::WriteMemory(const ReadWriteMemoryParams& params) throw (AgentException) {
+	return parentProcess_.WriteMemory(params);
 }
 
-void WinThread::Terminate() throw (AgentException) {
-	parentProcess_.Terminate();
+void WinThread::Terminate(const AgentActionParams& params) throw (AgentException) {
+	parentProcess_.Terminate(params);
 }
 
-void WinThread::Suspend() throw (AgentException) {
+void WinThread::Suspend(const AgentActionParams& params) throw (AgentException) {
 	DWORD suspendCount = SuspendThread(handle_);
 	MarkSuspended();
 	EnsureValidContextInfo();
 	exceptionInfo_.ExceptionRecord.ExceptionCode = USER_SUSPEND_THREAD; // "Suspended"
 	isUserSuspended_ = true;
 	if (! isTerminating_)	// don't send Suspend event if we are terminating.
-		EventClientNotifier::SendContextSuspended(this);
+		EventClientNotifier::SendContextSuspended(this,
+				GetPCAddress(), GetSuspendReason(), GetExceptionMessage());
 	Logger::getLogger().Log(Logger::LOG_NORMAL, "WinThread::Suspend",
 			"suspendCount: %d", suspendCount);
+
+	params.reportSuccessForAction();
 }
 
-void WinThread::Resume() throw (AgentException) {
-	if (! isSuspended())
+void WinThread::Resume(const AgentActionParams& params) throw (AgentException) {
+	if (! isSuspended()) {
+		params.reportSuccessForAction();
 		return;
+	}
 
 	if (isUserSuspended_){
 		ResumeThread(handle_);
 		isUserSuspended_ = false;
+		params.reportSuccessForAction();
 	}
 	else {
 		parentProcess_.GetMonitor()->PostAction(new ResumeContextAction(
-			parentProcess_.GetOSID(), GetOSID()));
+			params, parentProcess_.GetOSID(), GetOSID()));
 	}
 }
 
-void WinThread::SingleStep() throw (AgentException) {
+void WinThread::SingleStep(const AgentActionParams& params) throw (AgentException) {
 	//if (exceptionInfo_.ExceptionRecord.ExceptionCode == USER_SUSPEND_THREAD){
 	//	ResumeThread(handle_);
 	//}
@@ -393,14 +411,14 @@ void WinThread::SingleStep() throw (AgentException) {
 	SetThreadContext(handle_, &threadContextInfo_);
 
 	parentProcess_.GetMonitor()->PostAction(new ResumeContextAction(
-			parentProcess_.GetOSID(), GetOSID()));
+			params, parentProcess_.GetOSID(), GetOSID()));
 }
 
-void WinThread::PrepareForTermination() throw (AgentException) {
+void WinThread::PrepareForTermination(const AgentActionParams& params) throw (AgentException) {
 	isTerminating_ = true;
 
 	if (isSuspended()) {
-		Suspend();
+		Suspend(params);
 		ContinueDebugEvent(parentProcess_.GetOSID(), GetOSID(), DBG_CONTINUE);
 	}
 }

@@ -10,7 +10,9 @@
  *******************************************************************************/
 #include "ProcessService.h"
 
+#include <algorithm>
 #include <string>
+#include <set>
 #include <Tlhelp32.h>
 
 #include "TCFHeaders.h"
@@ -26,7 +28,6 @@
 static const char * sServiceName = "Processes";
 
 static std::string quoteIfNeeded(const char* source);
-static void initializeDebugSession();
 
 ProcessService::ProcessService(Protocol * proto) :
 	TCFService(proto) {
@@ -58,25 +59,32 @@ void ProcessService::command_get_context(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	Context* context = ContextManager::findRunningContext(id);
-	// not in running context cache, try this
-	if (context == NULL)
-		context = ContextManager::findDebuggedContext(id);
-
-	channel.writeReplyHeader(token);
-
+	Context* context = ContextManager::findContext(id);
 	if (context == NULL) {
 		// Return an invalid context ID error.
-		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeString("null");
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT, 1);
+		return;
 	}
-	else {
-		channel.writeError(0);
-		EventClientNotifier::WriteContext(*context, channel);
-		channel.writeZero();
-	}
-
+	
+	channel.writeReplyHeader(token);
+	channel.writeError(0);
+	EventClientNotifier::WriteContext(*context, channel);
+	channel.writeZero();
 	channel.writeComplete();
+}
+
+/** Filter to get choose Contexts which are the top-level RunControlContext that were from the
+ * previous Processes::getChildren call.  Ignore those that are being debugged. */
+static bool IsNotRunningProcessContext(const ContextID& contextID) {
+	Context* context = ContextManager::findContext(contextID);
+	ProcessContext* rcContext = dynamic_cast<ProcessContext*>(context);
+	trace(LOG_ALWAYS, "Context %s: isRC=%d, isDebugging=%d", contextID.c_str(), rcContext!=0, rcContext && rcContext->IsDebugging());
+	return !rcContext || rcContext->IsDebugging();
+}
+/** Remove and delete a context by value. */
+static void RemoveAndDeleteContext(const ContextID& contextID) {
+	trace(LOG_ALWAYS, "Removing context %s", contextID.c_str());
+	delete ContextManager::removeContext(contextID);
 }
 
 void ProcessService::command_get_children(char * token, Channel * c) {
@@ -114,8 +122,15 @@ void ProcessService::command_get_children(char * token, Channel * c) {
             write_stringz(&c->out, "null");
         }
         else {
-        	// Get rid of stale cache.
-        	ContextManager::clearRunningContextCache();
+        	// Get all the known contexts
+        	std::list<ContextID> runContexts = ContextManager::getContexts();
+
+        	// Shuffle to the end the ones we want to remove
+        	std::list<ContextID>::iterator removeEnd = std::remove_if(runContexts.begin(), runContexts.end(),
+        			IsNotRunningProcessContext);
+
+        	// Remove these entries from the manager
+        	std::for_each(runContexts.begin(), removeEnd, RemoveAndDeleteContext);
 
             int cnt = 0;
             write_stream(&c->out, '[');
@@ -125,12 +140,17 @@ void ProcessService::command_get_children(char * token, Channel * c) {
                     if (cnt > 0) write_stream(&c->out, ',');
                     // We just pass the OS process ID.
 
-					WinProcess* newProc = new WinProcess(pe32.th32ProcessID, pe32.szExeFile);
+                    // If context still exists, it is being debugged, so leave it be.
+					WinProcess* process = dynamic_cast<WinProcess*>(ContextManager::findContext(
+							WinProcess::CreateInternalID(pe32.th32ProcessID)));
 
-					ContextManager::addRunningContext(newProc);
+					if (!process) {
+						process = new WinProcess(pe32.th32ProcessID, pe32.szExeFile);
+						ContextManager::addContext(process);
+					}
 
 					// Tell host the unique internal ID.
-					json_write_string(&c->out, newProc->GetID().c_str());
+					json_write_string(&c->out, process->GetID().c_str());
 
                     cnt++;
                 }
@@ -153,20 +173,19 @@ void ProcessService::command_attach(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findRunningContext(id));
+	RunControlContext* context = dynamic_cast<RunControlContext*>(ContextManager::findContext(id));
 
-	channel.writeReplyHeader(token);
-
+	// TODO: or not running
 	if (context == NULL) {
 		// Return an invalid context ID error.
-		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeComplete();
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT);
+		return;
 	}
-	else {
-		std::string str_tok = token;
-		// This function will report result to host debugger.
-		WinDebugMonitor::AttachToProcess(context->GetOSID(), true, str_tok, c);
-	}
+	
+	// This function will report result to host debugger.
+
+	AttachToProcessParams params(token, c, context->GetOSID(), true);
+	WinDebugMonitor::AttachToProcess(params);
 
 }
 
@@ -177,18 +196,16 @@ void ProcessService::command_detach(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	WinProcess* context = dynamic_cast<WinProcess*>(ContextManager::findDebuggedContext(id));
+	WinProcess* context = dynamic_cast<WinProcess*>(ContextManager::findContext(id));
 
-	if (context == NULL) {
-		channel.writeReplyHeader(token);
+	if (context == NULL || !context->IsDebugging()) {
 		// Return an invalid context ID error.
-		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeComplete();
-	}
-	else {
-		context->GetMonitor()->PostAction(new DetachProcessAction(context->GetOSID(), token, c));
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT);
+		return;
 	}
 
+	context->GetMonitor()->PostAction(new DetachProcessAction(
+			AgentActionParams(token, c), context->GetOSID()));
 }
 
 void ProcessService::command_terminate(char * token, Channel * c) {
@@ -237,13 +254,10 @@ std::wstring json_read_string(Channel * c) {
 
 void ProcessService::command_start(char * token, Channel * c) {
 	TCFChannel channel(c);
-	std::string tokenStr = token;
 	std::string directory = channel.readString();
 	channel.readZero();
 	std::string executable = channel.readString();
 	channel.readZero();
-
-	initializeDebugSession();
 
 	char ** args = NULL;
 	char ** envp = NULL;
@@ -272,7 +286,7 @@ void ProcessService::command_start(char * token, Channel * c) {
 	std::string wargs;
 
 	wargs += quoteIfNeeded(executable.c_str());
-	for (int i = 1; i < args_len; i++) {
+	for (int i = 0; i < args_len; i++) {
 		wargs += ' ';
 		wargs += quoteIfNeeded(args[i]);
 	}
@@ -280,8 +294,8 @@ void ProcessService::command_start(char * token, Channel * c) {
 	loc_free(args);
 	loc_free(envp);
 
-	WinDebugMonitor::LaunchProcess(executable, directory, wargs, environment, true,
-			tokenStr, c);
+	LaunchProcessParams params(token, c, executable, directory, wargs, environment, true);
+	WinDebugMonitor::LaunchProcess(params);
 
 }
 
@@ -361,12 +375,5 @@ static std::string quoteIfNeeded(const char* source) {
 		}
 
 	return target;
-}
-
-static void initializeDebugSession() {
-	// Clear stale data (and free memory).
-	// It's not easy to know when the debug session ends in agent. So we
-	// do this at beginning of a debug session.
-	ContextManager::clearContextCache();
 }
 

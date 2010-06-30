@@ -76,43 +76,39 @@ void SimpleRegistersService::command_get(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	WinThread* context = dynamic_cast<WinThread *>(ContextManager::findDebuggedContext(exeContextID));
+	WinThread* context = dynamic_cast<WinThread *>(ContextManager::findContext(exeContextID));
 
-	channel.writeReplyHeader(token);
-
-	if (context == NULL) {
+	if (context == NULL || !context->IsDebugging()) {
 		// Return invalid-context-ID error.
-		channel.writeError(ERR_INV_CONTEXT);
-		channel.writeZero();	// this puts a null object in the reply
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT, 1);
+		return;
 	}
-	else {
-		std::vector<std::string> registerValues = context->GetRegisterValues(
-				registerIDs);
+	
+	std::vector<std::string> registerValues = context->GetRegisterValues(
+			registerIDs);
 
-		if (registerValues.size() == 0) { 
-			// no values got. Assuming target is running.
-			// TODO: it's better the above context->GetRegisterValues() API return error code.
-			channel.writeError(ERR_IS_RUNNING);
-			channel.writeZero();	// this puts a null object in the reply
-		}
-		else {
-			channel.writeError(0);
-			channel.writeCharacter('[');
-
-			std::vector<std::string>::iterator itVectorData;
-			for (itVectorData = registerValues.begin(); itVectorData
-					!= registerValues.end(); itVectorData++) 
-			{
-				if (itVectorData != registerValues.begin())
-					write_stream(&c->out, ',');
-				std::string value = *itVectorData;
-				channel.writeString(value);
-			}
-
-			channel.writeCharacter(']');
-			channel.writeZero();
-		}
+	if (registerValues.size() == 0) { 
+		// no values got. Assuming target is running.
+		// TODO: it's better the above context->GetRegisterValues() API return error code.
+		channel.writeCompleteReply(token, ERR_IS_RUNNING, 1);
+		return;
 	}
+	
+	channel.writeError(0);
+	channel.writeCharacter('[');
+
+	std::vector<std::string>::iterator itVectorData;
+	for (itVectorData = registerValues.begin(); itVectorData
+			!= registerValues.end(); itVectorData++) 
+	{
+		if (itVectorData != registerValues.begin())
+			write_stream(&c->out, ',');
+		std::string value = *itVectorData;
+		channel.writeString(value);
+	}
+
+	channel.writeCharacter(']');
+	channel.writeZero();
 
 	channel.writeComplete();
 }
@@ -184,11 +180,15 @@ void SimpleRegistersService::command_set(char * token, Channel * c) {
 	channel.readZero();
 	channel.readComplete();
 
-	WinThread* context = dynamic_cast<WinThread *>(ContextManager::findDebuggedContext(exeContextID));
+	WinThread* context = dynamic_cast<WinThread *>(ContextManager::findContext(exeContextID));
 
-	if (context != NULL) {
-		context->SetRegisterValues(registerIDs, registerValues);
+	if (context == NULL || !context->IsDebugging()) {
+		// Return invalid-context-ID error.
+		channel.writeCompleteReply(token, ERR_INV_CONTEXT, 1);
+		return;
 	}
+
+	context->SetRegisterValues(registerIDs, registerValues);
 
 	channel.writeReplyHeader(token);
 	channel.writeZero();

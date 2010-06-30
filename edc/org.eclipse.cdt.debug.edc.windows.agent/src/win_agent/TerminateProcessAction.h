@@ -10,11 +10,11 @@
  *******************************************************************************/
 #pragma once
 #include "AgentAction.h"
-#include "Context.h"
+#include "TCFContext.h"
 
 class TerminateProcessAction: public AgentAction {
 public:
-	TerminateProcessAction(ContextOSID processID);
+	TerminateProcessAction(const AgentActionParams& params, ContextOSID processID);
 	virtual ~TerminateProcessAction(void);
 
 	void Run();

@@ -8,10 +8,8 @@
  * Contributors:
  * Nokia - Initial API and implementation
  *******************************************************************************/
-#ifndef REGISTERSERVICE_H_
-#define REGISTERSERVICE_H_
-
-#pragma once
+#ifndef SIMPLEREGISTERSSERVICE_H_
+#define SIMPLEREGISTERSSERVICE_H_
 
 #include "TCFService.h"
 #include "TCFHeaders.h"
@@ -27,4 +25,4 @@ public:
 	static void command_set(char * token, Channel * c);
 };
 
-#endif /* #define REGISTERSERVICE_H_ */
+#endif /* #define SIMPLEREGISTERSERVICE_H_ */

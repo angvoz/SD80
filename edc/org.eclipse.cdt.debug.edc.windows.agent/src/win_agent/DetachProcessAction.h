@@ -10,7 +10,7 @@
  *******************************************************************************/
 #pragma once
 #include "AgentAction.h"
-#include "Context.h"
+#include "TCFContext.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,17 +20,13 @@ extern "C" {
 }
 #endif
 
-class DetachProcessAction: public AgentAction {
+class DetachProcessAction : public AgentAction {
 public:
-	DetachProcessAction(ContextOSID processID, char* token, Channel* channel);
+	DetachProcessAction(const AgentActionParams& params, ContextOSID processID);
 	virtual ~DetachProcessAction(void);
 
 	void Run();
 
 private:
-
 	ContextOSID processID;
-	std::string tcfToken;
-	Channel*	channel;
-
 };

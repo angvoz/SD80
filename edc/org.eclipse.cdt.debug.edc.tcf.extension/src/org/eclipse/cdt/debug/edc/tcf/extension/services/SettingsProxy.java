@@ -63,7 +63,7 @@ public class SettingsProxy implements ISettings {
 			@Override
 			public void done(Exception error, Object[] args) {
 				Collection<String> idStrings;
-				if (args[1] != null)
+				if (args != null && args[1] != null)
 					idStrings = (Collection<String>) args[1];
 				else
 					idStrings = Collections.emptyList();

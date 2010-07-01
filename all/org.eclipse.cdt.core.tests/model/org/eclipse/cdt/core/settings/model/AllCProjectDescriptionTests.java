@@ -32,6 +32,9 @@ public class AllCProjectDescriptionTests {
 		suite.addTest(BackwardCompatibilityTests.suite());
 		suite.addTest(CProjectDescriptionBasicTests.suite());
 		suite.addTest(CProjectDescriptionStorageTests.suite());
+		
+		suite.addTest(LanguageSettingsManagerTests.suite());
+		suite.addTest(LanguageSettingsPersistenceTests.suite());
         return suite;
     }
 }

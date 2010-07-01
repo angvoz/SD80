@@ -25,5 +25,7 @@ public class ScannerDiscoveryTests extends TestSuite {
         addTest(GCCScannerInfoConsoleParserTests.suite());
         addTest(GCCPerFileBOPConsoleParserTests.suite());
         addTestSuite(ScannerConfigProfileTests.class);
+        
+        addTestSuite(GCCBuiltinSpecsDetectorTest.class);
     }
 }

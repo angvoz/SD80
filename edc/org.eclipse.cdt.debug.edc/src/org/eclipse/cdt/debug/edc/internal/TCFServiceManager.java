@@ -114,6 +114,9 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	 * [attributesToMatch] a subset of [attributes]?
 	 */
 	public static boolean matchesAllAttributes(Map<String, String> attributes, Map<String, String> attributesToMatch) {
+		if (attributesToMatch.isEmpty())
+			return false;
+		
 		for (String key : attributesToMatch.keySet()) {
 			if (!attributes.containsKey(key)) {
 				return false;

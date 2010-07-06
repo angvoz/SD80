@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Nokia Corporation and/or its subsidiaries
+ * Copyright (c) 2009,2010 Nokia Corporation and/or its subsidiaries
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,8 +19,8 @@ import java.util.Map;
 import org.eclipse.tm.tcf.services.IRunControl;
 
 /**
- * Run control context recorded in TCF agent.
- *
+ * Context in TCF agent.<br>
+ * Please see documents in org.eclipse.tm.tcf.docs for more.
  */
 public abstract class ContextInAgent  {
 
@@ -30,6 +30,13 @@ public abstract class ContextInAgent  {
 	 * @since 2.0
 	 */
 	public interface IRegisterOwnerContext {};
+	
+	/**
+	 * Context representing a run control entity, e.g. a thread or a process.
+	 * Register context is an example that's not run control context.
+	 * @since 2.0
+	 */
+	public interface IRunControlContext {};
 	
     private final Map<String, Object> properties;
     

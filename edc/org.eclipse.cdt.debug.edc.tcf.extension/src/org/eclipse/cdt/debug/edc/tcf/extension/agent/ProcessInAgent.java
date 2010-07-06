@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Nokia Corporation and/or its subsidiaries
+ * Copyright (c) 2009, 2010 Nokia Corporation and/or its subsidiaries
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,15 +15,13 @@ import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.tcf.extension.AgentException;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
+import org.eclipse.cdt.debug.edc.tcf.extension.agent.ContextInAgent.IRunControlContext;
 import org.eclipse.tm.tcf.services.IRunControl;
 
 /**
- * Process context.
- * 
- * @author LWang
- * 
+ * Context in a TCF agent representing a process.
  */
-public class ProcessInAgent extends ContextInAgent {
+public class ProcessInAgent extends ContextInAgent implements IRunControlContext {
 
 	private final long osID;
 

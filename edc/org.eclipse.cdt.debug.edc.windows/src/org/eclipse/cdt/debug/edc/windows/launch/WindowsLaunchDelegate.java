@@ -56,17 +56,20 @@ public class WindowsLaunchDelegate extends EDCLaunchDelegate {
 			ILaunchConfiguration configuration, String mode) {
 		try {
 			ILaunchConfiguration existingConfiguration = existingLaunch.getLaunchConfiguration();
-			ILaunchConfigurationType existingType = existingConfiguration.getType();
-			ILaunchConfigurationType newType = configuration.getType();
-			if (existingType.equals(newType))
+			if (existingConfiguration != null)
 			{
-				Set<String> modes = new HashSet<String>();
-				modes.add(mode);
-				ILaunchDelegate existingDelegate = existingConfiguration.getPreferredDelegate(modes);
-				ILaunchDelegate delegate = configuration.getPreferredDelegate(modes);
-				if (existingDelegate.equals(delegate))
+				ILaunchConfigurationType existingType = existingConfiguration.getType();
+				ILaunchConfigurationType newType = configuration.getType();
+				if (existingType.equals(newType))
 				{
-					return true;
+					Set<String> modes = new HashSet<String>();
+					modes.add(mode);
+					ILaunchDelegate existingDelegate = existingConfiguration.getPreferredDelegate(modes);
+					ILaunchDelegate delegate = configuration.getPreferredDelegate(modes);
+					if (existingDelegate.equals(delegate))
+					{
+						return true;
+					}
 				}
 			}
 		} catch (CoreException e) {

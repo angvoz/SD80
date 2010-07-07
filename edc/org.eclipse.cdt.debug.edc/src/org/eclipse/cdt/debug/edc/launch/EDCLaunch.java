@@ -81,6 +81,9 @@ public class EDCLaunch extends Launch {
 	private final String debugModelID;
 	private Album album;
 	private boolean snapshotSupportInitialized;
+	private boolean isFirstLaunch = true;
+	private ILaunchConfiguration activeLaunchConfiguration;
+	private List<ILaunchConfiguration> affiliatedLaunchConfigurations = Collections.synchronizedList(new ArrayList<ILaunchConfiguration>());
 
 	private static final Map<EDCLaunch, List<IChannel>> launchChannels = Collections
 			.synchronizedMap(new HashMap<EDCLaunch, List<IChannel>>());
@@ -414,6 +417,66 @@ public class EDCLaunch extends Launch {
 		}
 		
 		snapshotSupportInitialized = true;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public ILaunchConfiguration[] getAffiliatedLaunchConfigurations() {
+		return affiliatedLaunchConfigurations.toArray(new ILaunchConfiguration[affiliatedLaunchConfigurations.size()]);
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public void addAffiliatedLaunchConfiguration(
+			ILaunchConfiguration configuration) {
+		affiliatedLaunchConfigurations.add(configuration);
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public void setActiveLaunchConfiguration(ILaunchConfiguration activeLaunchConfiguration) {
+		this.activeLaunchConfiguration = activeLaunchConfiguration;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public ILaunchConfiguration getActiveLaunchConfiguration() {
+		if (activeLaunchConfiguration == null)
+			activeLaunchConfiguration = getLaunchConfiguration();
+		return activeLaunchConfiguration;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public void setFirstLaunch(boolean isFirstLaunch) {
+		this.isFirstLaunch = isFirstLaunch;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public boolean isFirstLaunch() {
+		return isFirstLaunch;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public ISourceLocator createSourceLocator()
+			throws CoreException {
+		DsfSourceLookupDirector locator = new DsfSourceLookupDirector(session);
+		String memento = getActiveLaunchConfiguration().getAttribute(ILaunchConfiguration.ATTR_SOURCE_LOCATOR_MEMENTO, (String) null);
+		if (memento == null) {
+			locator.initializeDefaults(getActiveLaunchConfiguration());
+		} else {
+			locator.initializeFromMemento(memento, getActiveLaunchConfiguration());
+		}
+		return locator;
 	}
 
 }

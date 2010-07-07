@@ -10,8 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.launch;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
@@ -28,15 +30,15 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.debug.core.sourcelookup.ISourceContainer;
 import org.osgi.framework.BundleContext;
 
 /**
  * ISourceLookup service implementation based on the CDT CSourceLookupDirector.
+ * Supports multiple source lookup directors.
  */
 public class CSourceLookup extends AbstractDsfService implements ISourceLookup {
 
-	private final Map<ISourceLookupDMContext, CSourceLookupDirector> directors = new HashMap<ISourceLookupDMContext, CSourceLookupDirector>();
+	private final Map<ISourceLookupDMContext, List<CSourceLookupDirector>> directors = new HashMap<ISourceLookupDMContext, List<CSourceLookupDirector>>();
 
 	public CSourceLookup(DsfSession session) {
 		super(session);
@@ -47,15 +49,17 @@ public class CSourceLookup extends AbstractDsfService implements ISourceLookup {
 		return EDCDebugger.getBundleContext();
 	}
 
-	public void setSourceLookupDirector(ISourceLookupDMContext ctx, CSourceLookupDirector director) {
-		directors.put(ctx, director);
+	public void addSourceLookupDirector(ISourceLookupDMContext ctx, CSourceLookupDirector director) {
+		List<CSourceLookupDirector> directorsInContext = directors.get(ctx);
+		if (directorsInContext == null)
+			directorsInContext = new ArrayList<CSourceLookupDirector>();
+		directorsInContext.add(director);
+		directors.put(ctx, directorsInContext);
 	}
 
-	public CSourceLookupDirector getSourceLookupDirector(ISourceLookupDMContext ctx) {
-		return directors.get(ctx);
-	}
-
-	public void setSourceLookupPath(ISourceLookupDMContext ctx, ISourceContainer[] containers, RequestMonitor rm) {
+	public CSourceLookupDirector[] getSourceLookupDirectors(ISourceLookupDMContext ctx) {
+		List<CSourceLookupDirector> directorList = directors.get(ctx);
+		return directorList.toArray(new CSourceLookupDirector[directorList.size()]);
 	}
 
 	@Override
@@ -100,17 +104,21 @@ public class CSourceLookup extends AbstractDsfService implements ISourceLookup {
 			rm.done();
 			return;
 		}
-		final CSourceLookupDirector director = directors.get(sourceLookupCtx);
+		final CSourceLookupDirector[] director = getSourceLookupDirectors(sourceLookupCtx);
 
 		new Job("Lookup Debugger Path") { //$NON-NLS-1$
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
-				IPath debuggerPath = director.getCompilationPath(sourceString);
-				if (debuggerPath != null) {
-					rm.setData(debuggerPath.toString());
-				} else {
-					rm.setData(sourceString);
-				}
+
+				rm.setData(sourceString);
+
+				for (CSourceLookupDirector cSourceLookupDirector : director) {
+					IPath debuggerPath = cSourceLookupDirector.getCompilationPath(sourceString);
+					if (debuggerPath != null) {
+						rm.setData(debuggerPath.toString());
+						break;
+					}
+				}			
 				rm.done();
 
 				return Status.OK_STATUS;
@@ -127,19 +135,22 @@ public class CSourceLookup extends AbstractDsfService implements ISourceLookup {
 			rm.done();
 			return;
 		}
-		final CSourceLookupDirector director = directors.get(sourceLookupCtx);
+		final CSourceLookupDirector[] director = getSourceLookupDirectors(sourceLookupCtx);
 
 		new Job("Lookup Source") { //$NON-NLS-1$
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
 				Object[] sources;
 				try {
-					sources = director.findSourceElements(debuggerPath);
-					if (sources == null || sources.length == 0) {
-						rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
-								IDsfStatusConstants.REQUEST_FAILED, "No sources found", null)); //$NON-NLS-1$);
-					} else {
-						rm.setData(sources[0]);
+					for (CSourceLookupDirector cSourceLookupDirector : director) {
+						sources = cSourceLookupDirector.findSourceElements(debuggerPath);
+						if (sources == null || sources.length == 0) {
+							rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
+									IDsfStatusConstants.REQUEST_FAILED, "No sources found", null)); //$NON-NLS-1$);
+						} else {
+							rm.setData(sources[0]);
+							break;
+						}
 					}
 				} catch (CoreException e) {
 					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.REQUEST_FAILED,

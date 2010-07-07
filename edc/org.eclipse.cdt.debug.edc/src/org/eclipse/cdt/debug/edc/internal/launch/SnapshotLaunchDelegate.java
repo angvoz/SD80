@@ -134,4 +134,10 @@ public class SnapshotLaunchDelegate extends EDCLaunchDelegate {
 		return EDCDebugger.getUniqueIdentifier();
 	}
 
+	@Override
+	protected boolean isSameTarget(EDCLaunch existingLaunch,
+			ILaunchConfiguration configuration, String mode) {
+		return false;
+	}
+
 }

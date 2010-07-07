@@ -55,6 +55,7 @@ public class LaunchVMProvider extends AbstractLaunchVMProvider implements IDebug
 
 		IVMNode stackFramesNode = new StackFramesVMNode(this, getSession());
 		addChildNodes(threadsNode, new IVMNode[] { stackFramesNode });
+		addChildNodes(containerNode, new IVMNode[] { stackFramesNode });
 
 		DebugPlugin.getDefault().addDebugEventListener(this);
 		DebugPlugin.getDefault().getLaunchManager().addLaunchListener(this);

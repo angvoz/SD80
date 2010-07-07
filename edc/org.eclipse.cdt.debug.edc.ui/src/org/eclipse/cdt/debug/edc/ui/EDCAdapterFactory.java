@@ -23,6 +23,7 @@ import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugTextHover;
 import org.eclipse.cdt.debug.edc.internal.ui.EDCViewModelAdapter;
 import org.eclipse.cdt.debug.edc.internal.ui.actions.EDCDisconnectCommand;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
+import org.eclipse.cdt.debug.edu.internal.ui.sourcelookup.EDCSourceDisplayAdapter;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.ThreadSafe;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfResumeCommand;
@@ -32,7 +33,6 @@ import org.eclipse.cdt.dsf.debug.ui.actions.DsfStepReturnCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfSteppingModeTarget;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfSuspendCommand;
 import org.eclipse.cdt.dsf.debug.ui.contexts.DsfSuspendTrigger;
-import org.eclipse.cdt.dsf.debug.ui.sourcelookup.DsfSourceDisplayAdapter;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.SteppingController;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.actions.DefaultRefreshAllTarget;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.actions.IRefreshAllTarget;
@@ -73,7 +73,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 	class SessionAdapterSet {
 		final EDCLaunch fLaunch;
 		final EDCViewModelAdapter fViewModelAdapter;
-		final DsfSourceDisplayAdapter fSourceDisplayAdapter;
+		final EDCSourceDisplayAdapter fSourceDisplayAdapter;
 		final DsfStepIntoCommand fStepIntoCommand;
 		final DsfStepOverCommand fStepOverCommand;
 		final DsfStepReturnCommand fStepReturnCommand;
@@ -102,8 +102,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 			fViewModelAdapter = new EDCViewModelAdapter(session, fSteppingController);
 
 			if (launch.getSourceLocator() instanceof ISourceLookupDirector) {
-				fSourceDisplayAdapter = new DsfSourceDisplayAdapter(session, (ISourceLookupDirector) launch
-						.getSourceLocator(), fSteppingController);
+				fSourceDisplayAdapter = new EDCSourceDisplayAdapter(session, fSteppingController);
 			} else {
 				fSourceDisplayAdapter = null;
 			}

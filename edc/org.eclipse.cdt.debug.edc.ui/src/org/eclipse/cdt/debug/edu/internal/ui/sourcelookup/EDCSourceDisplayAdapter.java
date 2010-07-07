@@ -153,17 +153,20 @@ public class EDCSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
 		private final IWorkbenchPage fPage;
 		private final FrameData fFrameData;
 		private final boolean fEventTriggered;
+		private CSourceLookupDirector[] fDirectors;
 
 		/**
 		 * Constructs a new source lookup job.
+		 * @param directors 
 		 */
-		public LookupJob(FrameData frameData, IWorkbenchPage page, boolean eventTriggered) {
+		public LookupJob(FrameData frameData, IWorkbenchPage page, boolean eventTriggered, CSourceLookupDirector[] directors) {
 			super("DSF Source Lookup");  //$NON-NLS-1$
 			setPriority(Job.INTERACTIVE);
 			setSystem(true);
 			fFrameData = frameData;
 			fPage = page;
 			fEventTriggered = eventTriggered;
+			fDirectors = directors;
 		}
 
         IDMContext getDmc() { return fFrameData.fDmc; }
@@ -174,7 +177,7 @@ public class EDCSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
                 return Status.CANCEL_STATUS;
             }
             
-			final SourceLookupResult result = performLookup();
+			final SourceLookupResult result = performLookup(fDirectors);
             executeFromJob(new DsfRunnable() { public void run() {
                 if (!monitor.isCanceled()) { 
                     fPrevResult = result;
@@ -186,16 +189,12 @@ public class EDCSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
 			return Status.OK_STATUS;
 		}
         
-		private SourceLookupResult performLookup() {
+		private SourceLookupResult performLookup(CSourceLookupDirector[] directors) {
             IDMContext dmc = fFrameData.fDmc;
 			SourceLookupResult result = new SourceLookupResult(dmc , null, null, null);
             String editorId = null;
             IEditorInput editorInput = null;
  
-			CSourceLookup lookup = fServicesTracker.getService(CSourceLookup.class);
-			RunControl runControl = fServicesTracker.getService(RunControl.class);
-			CSourceLookupDirector[] directors = lookup.getSourceLookupDirectors(runControl.getRootDMC());
-
 			Object sourceElement = null;
 			for (CSourceLookupDirector director : directors) {
 		           sourceElement = director.getSourceElement(dmc);
@@ -695,7 +694,10 @@ public class EDCSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
 							fPrevResult.updateArtifact(context);
 							startDisplayJob(fPrevResult, frameData, page, eventTriggered);
 						} else {
-							startLookupJob(frameData, page, eventTriggered);
+							CSourceLookup lookup = fServicesTracker.getService(CSourceLookup.class);
+							RunControl runControl = fServicesTracker.getService(RunControl.class);
+							CSourceLookupDirector[] directors = lookup.getSourceLookupDirectors(runControl.getRootDMC());							
+							startLookupJob(frameData, page, eventTriggered, directors);
 						}
 					}
 					@Override
@@ -719,13 +721,13 @@ public class EDCSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
         }
     }
     
-	private void startLookupJob(final FrameData frameData, final IWorkbenchPage page, boolean eventTriggered) {
+	private void startLookupJob(final FrameData frameData, final IWorkbenchPage page, boolean eventTriggered, CSourceLookupDirector[] directors) {
         // If there is a previous lookup job running, cancel it.
         if (fRunningLookupJob != null) {
             fRunningLookupJob.cancel();
         }
         
-        fRunningLookupJob = new LookupJob(frameData, page, eventTriggered);
+        fRunningLookupJob = new LookupJob(frameData, page, eventTriggered, directors);
         fRunningLookupJob.schedule();
     }
 

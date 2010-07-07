@@ -519,28 +519,32 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			String result = "";
 			CSourceLookup lookup = getServicesTracker().getService(CSourceLookup.class);
 			RunControl runControl = getServicesTracker().getService(RunControl.class);
-			CSourceLookupDirector director = lookup.getSourceLookupDirector(runControl.getRootDMC());
-			try {
-				Object[] elements = director.findSourceElements(sourceFile);
-				if (elements != null && elements.length > 0)
-				{
-					Object element = elements[0];
-					if (element instanceof File) {
-						try {
-							result = (((File) element).getCanonicalPath());
-						} catch (IOException e) {
-							EDCDebugger.getMessageLogger().logError(null, e);
+			CSourceLookupDirector[] directors = lookup.getSourceLookupDirectors(runControl.getRootDMC());
+
+			for (CSourceLookupDirector cSourceLookupDirector : directors) {
+				try {
+					Object[] elements = cSourceLookupDirector.findSourceElements(sourceFile);
+					if (elements != null && elements.length > 0)
+					{
+						Object element = elements[0];
+						if (element instanceof File) {
+							try {
+								result = (((File) element).getCanonicalPath());
+							} catch (IOException e) {
+								EDCDebugger.getMessageLogger().logError(null, e);
+							}
+						} else if (element instanceof IFile) {
+							result = (((IFile) element).getLocation().toOSString());
+						} else if (element instanceof IStorage) {
+							result = (((IStorage) element).getFullPath().toOSString());
+						} else if (element instanceof ITranslationUnit) {
+							result =(((ITranslationUnit) element).getLocation().toOSString());
 						}
-					} else if (element instanceof IFile) {
-						result = (((IFile) element).getLocation().toOSString());
-					} else if (element instanceof IStorage) {
-						result = (((IStorage) element).getFullPath().toOSString());
-					} else if (element instanceof ITranslationUnit) {
-						result =(((ITranslationUnit) element).getLocation().toOSString());
-					}
+						break;
+					}			
+				} catch (CoreException e1) {
+					EDCDebugger.getMessageLogger().logError(sourceFile, e1);
 				}
-			} catch (CoreException e1) {
-				EDCDebugger.getMessageLogger().logError(sourceFile, e1);
 			}
 			return result;
 		}

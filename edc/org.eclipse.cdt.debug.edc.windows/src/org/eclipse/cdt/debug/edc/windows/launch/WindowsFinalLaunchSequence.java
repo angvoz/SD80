@@ -15,6 +15,8 @@ import org.eclipse.cdt.debug.core.model.IRestart;
 import org.eclipse.cdt.debug.edc.IEDCConstants;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
+import org.eclipse.cdt.debug.edc.internal.launch.CSourceLookup;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence;
 import org.eclipse.cdt.debug.edc.launch.ChooseProcessItem;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
@@ -22,13 +24,16 @@ import org.eclipse.cdt.debug.edc.ui.console.AbstractLoggingConsoleFactory;
 import org.eclipse.cdt.debug.edc.ui.console.DebugProgramOutputConsoleFactory;
 import org.eclipse.cdt.debug.edc.windows.RestartCommand;
 import org.eclipse.cdt.debug.edc.windows.WindowsDebugger;
+import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
+import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.tm.tcf.protocol.IChannel;
 
+@SuppressWarnings("restriction")
 public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 	// logging
@@ -44,7 +49,22 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 			requestMonitor.done();
 		}
 	};
+	
+	private Step configureSourceLookupStep = new Step() {
 
+		@Override
+		public void execute(final RequestMonitor requestMonitor) {
+			RunControl runControlService = tracker.getService(RunControl.class);
+			CSourceLookup sourceLookup = tracker.getService(CSourceLookup.class);
+			ISourceLookupDMContext sourceLookupDmc = (ISourceLookupDMContext) (runControlService.getRootDMC());
+			try {
+				sourceLookup.addSourceLookupDirector(sourceLookupDmc, (CSourceLookupDirector) launch.createSourceLocator());
+			} catch (CoreException e) {
+				WindowsDebugger.getMessageLogger().logError(null, e);
+			}
+			requestMonitor.done();
+		}
+	};
 	// experimental "Restart" command support.
 	//
 	protected Step initRestartStep = new Step() {
@@ -77,16 +97,27 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		} catch (CoreException e) {
 		}
 
-		steps.add(trackerStep);
-		steps.add(initFindPeerStep);
-		steps.add(initRunControlStep);
-		steps.add(initLoggingStep);
-		steps.add(initRestartStep);
-		steps.add(initRegistersServiceStep);
-		steps.add(initMemoryServiceStep);
-		steps.add(initProcessesServiceStep);
-		steps.add(doAttach ? attachStep : launchStep);
-		steps.add(cleanupStep);
+		if (launch.isFirstLaunch())
+		{
+			steps.add(trackerStep);
+			steps.add(initFindPeerStep);
+			steps.add(initRunControlStep);
+			steps.add(initLoggingStep);
+			steps.add(initRestartStep);
+			steps.add(initRegistersServiceStep);
+			steps.add(initMemoryServiceStep);
+			steps.add(initProcessesServiceStep);
+			steps.add(doAttach ? attachStep : launchStep);
+			steps.add(cleanupStep);
+		}
+		else
+		{
+			steps.add(trackerStep);
+			steps.add(initFindPeerStep);
+			steps.add(initLoggingStep);
+			steps.add(configureSourceLookupStep);
+			steps.add(doAttach ? attachStep : launchStep);			
+		}
 	}
 
 	@Override

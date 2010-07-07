@@ -31,9 +31,9 @@ import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup;
+import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.ISymbols;
-import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IProgressMonitor;
 
@@ -118,7 +118,7 @@ public class ServicesLaunchSequence extends Sequence {
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
 			ISourceLookupDMContext sourceLookupDmc = (ISourceLookupDMContext) (runControlService.getRootDMC());
-			sourceLookup.setSourceLookupDirector(sourceLookupDmc, (CSourceLookupDirector) launch.getSourceLocator());
+			sourceLookup.addSourceLookupDirector(sourceLookupDmc, (CSourceLookupDirector) launch.getSourceLocator());
 			requestMonitor.done();
 		}
 	},

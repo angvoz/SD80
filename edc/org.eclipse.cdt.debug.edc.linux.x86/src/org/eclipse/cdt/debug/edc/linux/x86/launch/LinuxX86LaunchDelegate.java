@@ -18,6 +18,7 @@ import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
 import org.eclipse.cdt.dsf.debug.service.IDsfDebugServicesFactory;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.debug.core.ILaunchConfiguration;
 
 public class LinuxX86LaunchDelegate extends EDCLaunchDelegate {
 
@@ -41,6 +42,13 @@ public class LinuxX86LaunchDelegate extends EDCLaunchDelegate {
 	@Override
 	protected String getPluginID() {
 		return LinuxDebugger.getUniqueIdentifier();
+	}
+
+	@Override
+	protected boolean isSameTarget(EDCLaunch existingLaunch,
+			ILaunchConfiguration configuration, String mode) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

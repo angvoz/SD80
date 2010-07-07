@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.launch;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 
@@ -23,8 +25,6 @@ import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
 import org.eclipse.cdt.dsf.debug.service.IDsfDebugServicesFactory;
-import org.eclipse.cdt.dsf.debug.sourcelookup.DsfSourceLookupDirector;
-import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.launch.AbstractCLaunchDelegate2;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -33,10 +33,10 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.debug.core.DebugException;
+import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchManager;
-import org.eclipse.debug.core.model.ISourceLocator;
 
 abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 
@@ -64,49 +64,53 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 
 		try {
 			final EDCLaunch edcLaunch = (EDCLaunch) launch;
-
-			monitor.worked(1);
-
-			edcLaunch.setServiceFactory(newServiceFactory());
-
 			boolean forDebug = mode.equals(ILaunchManager.DEBUG_MODE);
 
-			if (forDebug) {
-				edcLaunch.initializeSnapshotSupport();
-			}
-
-			// Create and invoke the launch sequence to create the debug control and
-			// services
-			IProgressMonitor subMon1 = new SubProgressMonitor(monitor, 4, SubProgressMonitor.PREPEND_MAIN_LABEL_TO_SUBTASK);
-			final ServicesLaunchSequence servicesLaunchSequence = new ServicesLaunchSequence(edcLaunch.getSession(), edcLaunch,
-					subMon1);
-
-			edcLaunch.getSession().getExecutor().execute(servicesLaunchSequence);
-			try {
-				servicesLaunchSequence.get();
-			} catch (InterruptedException e1) {
-				throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.INTERNAL_ERROR,
-						"Interrupted Exception in dispatch thread.\n" + e1.getLocalizedMessage(), e1)); //$NON-NLS-1$
-			} catch (ExecutionException e1) {
-				throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.REQUEST_FAILED,
-						"Error in services launch sequence.", e1.getCause())); //$NON-NLS-1$
-			}
-
-			if (monitor.isCanceled())
-				return;
-
-			// The initializeControl method should be called after the
-			// ICommandControlService
-			// be initialized in the ServicesLaunchSequence above. This is because
-			// it is that
-			// service that will trigger the launch cleanup (if we need it during
-			// this launch)
-			// through an ICommandControlShutdownDMEvent
-			if (forDebug) {
-				edcLaunch.initializeMemoryRetrieval();
-			}
-
 			monitor.worked(1);
+			
+			if (edcLaunch.isFirstLaunch())
+			{
+				// First launch for this session, we need to create all of the services
+				edcLaunch.setServiceFactory(newServiceFactory());
+
+				if (forDebug) {
+					edcLaunch.initializeSnapshotSupport();
+				}
+				// Create and invoke the launch sequence to create the debug control and
+				// services
+				IProgressMonitor subMon1 = new SubProgressMonitor(monitor, 4, SubProgressMonitor.PREPEND_MAIN_LABEL_TO_SUBTASK);
+				final ServicesLaunchSequence servicesLaunchSequence = new ServicesLaunchSequence(edcLaunch.getSession(), edcLaunch,
+						subMon1);
+
+				edcLaunch.getSession().getExecutor().execute(servicesLaunchSequence);
+				try {
+					servicesLaunchSequence.get();
+				} catch (InterruptedException e1) {
+					throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.INTERNAL_ERROR,
+							"Interrupted Exception in dispatch thread.\n" + e1.getLocalizedMessage(), e1)); //$NON-NLS-1$
+				} catch (ExecutionException e1) {
+					throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.REQUEST_FAILED,
+							"Error in services launch sequence.", e1.getCause())); //$NON-NLS-1$
+				}
+
+				if (monitor.isCanceled())
+					return;
+
+				// The initializeControl method should be called after the
+				// ICommandControlService
+				// be initialized in the ServicesLaunchSequence above. This is because
+				// it is that
+				// service that will trigger the launch cleanup (if we need it during
+				// this launch)
+				// through an ICommandControlShutdownDMEvent
+				if (forDebug) {
+					edcLaunch.initializeMemoryRetrieval();
+				}
+
+				monitor.worked(1);
+				
+			}
+
 
 			// Create and invoke the final launch sequence to setup the debugger
 			IProgressMonitor subMon2 = new SubProgressMonitor(monitor, 4, SubProgressMonitor.PREPEND_MAIN_LABEL_TO_SUBTASK);
@@ -167,18 +171,6 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 		}
 	}
 
-	private ISourceLocator getSourceLocator(ILaunchConfiguration configuration, DsfSession session)
-			throws CoreException {
-		DsfSourceLookupDirector locator = new DsfSourceLookupDirector(session);
-		String memento = configuration.getAttribute(ILaunchConfiguration.ATTR_SOURCE_LOCATOR_MEMENTO, (String) null);
-		if (memento == null) {
-			locator.initializeDefaults(configuration);
-		} else {
-			locator.initializeFromMemento(memento, configuration);
-		}
-		return locator;
-	}
-
 	@Override
 	public ILaunch getLaunch(ILaunchConfiguration configuration, String mode) throws CoreException {
 		// Need to configure the source locator before creating the launch
@@ -186,10 +178,38 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 		// the adapters will be created for the whole session, including
 		// the source lookup adapter.
 
-		EDCLaunch launch = new EDCLaunch(configuration, mode, null, getDebugModelID());
-		launch.initialize();
-		launch.setSourceLocator(getSourceLocator(configuration, launch.getSession()));
+		EDCLaunch launch = findExistingLaunch(configuration, mode);
+		if (launch == null)
+		{
+			launch = new EDCLaunch(configuration, mode, null, getDebugModelID());
+			launch.initialize();
+			launch.setSourceLocator(launch.createSourceLocator());
+		}
+		else
+		{
+			launch.addAffiliatedLaunchConfiguration(configuration);
+			launch.setFirstLaunch(false);
+		}
+
+		launch.setActiveLaunchConfiguration(configuration);
+
 		return launch;
+	}
+
+	private EDCLaunch findExistingLaunch(ILaunchConfiguration configuration,
+			String mode) {
+        ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
+        List<ILaunch> launchList = Arrays.asList(manager.getLaunches());
+        
+        for (ILaunch iLaunch : launchList) {		
+        	if (iLaunch instanceof EDCLaunch)
+        	{
+        		EDCLaunch edcLaunch = (EDCLaunch) iLaunch;
+        		if (isSameTarget(edcLaunch, configuration, mode))
+        			return edcLaunch;
+         	}
+		}
+		return null;
 	}
 
 	abstract public String getDebugModelID();
@@ -208,4 +228,12 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 	};
 
 	abstract protected IDsfDebugServicesFactory newServiceFactory();
+	
+
+	/**
+	 * @param existingLaunch 
+	 * @since 2.0
+	 */
+	abstract protected boolean isSameTarget(EDCLaunch existingLaunch, ILaunchConfiguration configuration, String mode);
+
 }

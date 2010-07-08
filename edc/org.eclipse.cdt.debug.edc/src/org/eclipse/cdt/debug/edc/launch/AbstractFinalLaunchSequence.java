@@ -68,12 +68,6 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * field explicitly except to set it. Use {@link #getTCFPeer()}
 	 */
 	private IPeer tcfPeer;
-
-	/**
-	 * Whether this launcher will ignore TCF agents on other machines. Set at
-	 * construction.
-	 */
-	final private boolean useLocalAgentOnly;
 	
 	/**
 	 * Attributes that the debugger requires the TCF peer to match. Derivatives
@@ -364,6 +358,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			
 			// See if any already running (and discovered) peers fit the bill
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
+			boolean useLocalAgentOnly = useLocalAgentOnly();
 			IPeer[] runningPeers = tcfServiceManager.getRunningPeers(IRunControl.NAME, peerAttributes, useLocalAgentOnly);
 			if (runningPeers.length > 0) {
 				int index = selectPeer(runningPeers);
@@ -474,8 +469,8 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	/**
 	 * @since 2.0
 	 */
-	public AbstractFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm, boolean useLocalAgentOnly) {
-		this(executor, launch, pm, "Configuring Debugger", "Aborting configuring debugger", useLocalAgentOnly);
+	public AbstractFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
+		this(executor, launch, pm, "Configuring Debugger", "Aborting configuring debugger");
 	}
 
 	/**
@@ -494,10 +489,9 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * @since 2.0
 	 */
 	public AbstractFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm,
-			String sequenceName, String abortName, boolean useLocalAgentOnly) {
+			String sequenceName, String abortName) {
 		super(executor, pm, sequenceName, abortName);
 		this.launch = launch;
-		this.useLocalAgentOnly = useLocalAgentOnly;
 		specifyRequiredPeer();
 	}
 
@@ -801,11 +795,14 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	}
 
 	/**
-	 * Returns whether this launcher will ignore TCF agents on other machines.
-	 * 
+	 * Tell whether to match local peers or possibly remote peers.
+	 * <p>
+	 * This routine is called during the {@link #findPeer(RequestMonitor)}
+	 * step to indicate whether this sequence will consider TCF peers detected on other 
+	 * machines.  This check occurs only when no explicit peer is returned by {@link #selectExplicitPeer()}.
+	 * @return <code>true</code> to filter remote agents (whose {@link IPeer#ATTR_IP_HOST} does not lie on
+	 * a local network interface) or <code>false</code> to accept any peer matching {@link #peerAttributes}. 
 	 * @since 2.0
 	 */
-	public boolean getUseLocalAgentOnly() {
-		return useLocalAgentOnly;
-	}
+	abstract protected boolean useLocalAgentOnly();
 }

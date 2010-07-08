@@ -32,6 +32,8 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionEvent;
@@ -77,19 +79,20 @@ public abstract class SystemView extends ViewPart {
 
 		protected void createRootComosite(Composite parent) {
 			parent.setLayout(new GridLayout(1, false));
-			
+
 			createFilterTextBox(parent);
 
 			CTabFolder tabFolder = new CTabFolder(parent, SWT.BORDER);
 			tabFolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 			tabFolder.setSelectionBackground(Display.getCurrent().getSystemColor(SWT.COLOR_TITLE_INACTIVE_BACKGROUND_GRADIENT));
 			tabFolder.setLayout(new FillLayout(SWT.HORIZONTAL + SWT.VERTICAL));
-			
-			List<SystemVMContainer> vmContainers = getViewModel().getRootContainers();
-			
+
+			final List<SystemVMContainer> vmContainers = getViewModel().getRootContainers();
+
 			for (SystemVMContainer systemVMContainer : vmContainers) {
 				CTabItem tab = new CTabItem(tabFolder, SWT.NONE);
 				tab.setText(systemVMContainer.getName());
+				tab.setImage(systemVMContainer.getImage());
 				Composite composite = new Composite(tabFolder, SWT.NONE);
 				composite.setLayout(new FillLayout(SWT.HORIZONTAL + SWT.VERTICAL));
 				tab.setControl(composite);
@@ -105,15 +108,25 @@ public abstract class SystemView extends ViewPart {
 			selectedViewer = viewers.get(0);
 			tabFolder.setSelection(tabs.get(0));
 			tabFolder.addSelectionListener(new SelectionListener() {
-				
+
 				public void widgetSelected(SelectionEvent e) {
 					selectedViewer = (TreeModelViewer) e.item.getData("VIEWER");
 				}
-				
+
 				public void widgetDefaultSelected(SelectionEvent e) {
 					selectedViewer = (TreeModelViewer) e.item.getData("VIEWER");
 				}
 			});
+			tabFolder.addDisposeListener(new DisposeListener() {
+
+				public void widgetDisposed(DisposeEvent e) {
+					final List<SystemVMContainer> vmContainers = getViewModel().getRootContainers();					
+					for (SystemVMContainer systemVMContainer : vmContainers) {
+						systemVMContainer.setImage(null); // This is dispose of any image
+					}
+				}
+			});
+
 		}
 
 		public List<CTabItem> getTabs() {

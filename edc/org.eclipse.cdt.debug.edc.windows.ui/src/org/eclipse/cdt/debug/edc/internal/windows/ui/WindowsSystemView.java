@@ -68,7 +68,7 @@ public class WindowsSystemView extends SystemView {
 		}
 
 		@Override
-		protected void receiveContextIDs(String[] context_ids) {
+		protected void receiveContextIDs(String parentID, String[] context_ids) {
 			contextCountdown = context_ids.length;
 			for (int i = 0; i < context_ids.length; i++) {
 				try {

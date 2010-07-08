@@ -41,32 +41,42 @@ public abstract class TCFDataModel extends SystemDataModel {
 			if (peer == null)
 				findPeer();
 			
-			setBuildComplete(false);
-	        final IProcesses processesService = (IProcesses) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IProcesses.NAME);		
-			Protocol.invokeLater(new Runnable() {
-				public void run() {
-	                processesService.getChildren(null, false, new DoneGetChildren() {
-	                        public void doneGetChildren(IToken token, Exception error,
-	                        		String[] context_ids) {
-	                        	receiveContextIDs(context_ids);
-	                        }
-	                });
-				}
-			    
-			});
-			
-			while (!isBuildComplete() && !monitor.isCanceled())	{
-				Thread.sleep(1000);
+			if (getPeer() != null)
+			{
+		        final IProcesses processesService = (IProcesses) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IProcesses.NAME);
+		        if (processesService != null)
+		        {
+					setBuildComplete(false);
+					Protocol.invokeLater(new Runnable() {
+						public void run() {
+			                processesService.getChildren(null, false, new DoneGetChildren() {
+			                        public void doneGetChildren(IToken token, Exception error,
+			                        		String[] context_ids) {
+			                        	if (context_ids == null)
+			                        		setBuildComplete(true);
+			                        	else
+			                        		receiveContextIDs(null, context_ids);
+			                        }
+			                });
+						}
+					    
+					});
+					
+					while (!isBuildComplete() && !monitor.isCanceled())	{
+						Thread.sleep(1000);
+					}				
+		        }
 			}
 		}
 		finally {
+			setBuildComplete(true);
 			if (monitor != null) {
 				monitor.done();
 			}
 		}
 	}
 
-	protected abstract void receiveContextIDs(String[] context_ids);
+	protected abstract void receiveContextIDs(String parentID, String[] context_ids);
 
 	protected void getProcessContextInfo(String contextID) throws CoreException
 	{

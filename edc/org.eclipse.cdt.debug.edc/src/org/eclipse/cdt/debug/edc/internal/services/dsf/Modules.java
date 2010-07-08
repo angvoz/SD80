@@ -852,7 +852,8 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		String slashAndLowerFileName = File.separator + path.lastSegment().toLowerCase();
 		String absoluteLowerPath = path.makeAbsolute().toOSString().toLowerCase();
 		
-		Collection<Executable> executables = ExecutablesManager.getExecutablesManager().getExecutables(false);
+		// Note the 'wait=true' argument.  We can wait now that this job does not lock the UI.  
+		Collection<Executable> executables = ExecutablesManager.getExecutablesManager().getExecutables(true);
 		for (Executable e : executables) {
 			String p = e.getPath().makeAbsolute().toOSString().toLowerCase();
 			if (p.endsWith(absoluteLowerPath) || // stricter match first
@@ -862,6 +863,9 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 			}
 		}
 
+		EDCDebugger.getMessageLogger().logError(MessageFormat
+				.format("Failed to find host-side path for executable ''{0}''; breakpoints and symbolics will not be resolved",
+						originalPath), null);
 		return path;
 	}
 

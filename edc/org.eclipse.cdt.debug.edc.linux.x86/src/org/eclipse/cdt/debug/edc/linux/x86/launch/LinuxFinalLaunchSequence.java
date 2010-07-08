@@ -33,7 +33,7 @@ import org.eclipse.tm.tcf.services.IProcesses;
 public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 	public LinuxFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		super(executor, launch, pm, "Configuring Linux Debugger", "Aborting configuring Linux debugger", true);
+		super(executor, launch, pm, "Configuring Linux Debugger", "Aborting configuring Linux debugger");
 
 		boolean doAttach;
 
@@ -64,6 +64,14 @@ public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		return LinuxDebugger.chooseProcess(processes);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence#useLocalAgentOnly()
+	 */
+	@Override
+	protected boolean useLocalAgentOnly() {
+		return true;
+	}
+	
 	@Override
 	protected void specifyRequiredPeer() {
 		peerAttributes.put(IEDCConstants.PEER_ATTR_DEBUG_SUPPORT, "GDB Remote Protocol");

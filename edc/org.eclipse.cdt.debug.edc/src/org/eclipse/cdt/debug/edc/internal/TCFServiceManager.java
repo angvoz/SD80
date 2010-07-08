@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
@@ -348,7 +349,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		});
 
 		try {
-			channel = waitForChannel.get();
+			channel = waitForChannel.get(15, TimeUnit.SECONDS);
 		} catch (Exception e) {
 			throw EDCDebugger.newCoreException("Time out getting open channel for peer.", e);
 		}

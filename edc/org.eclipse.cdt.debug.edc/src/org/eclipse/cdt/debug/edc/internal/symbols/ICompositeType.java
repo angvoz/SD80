@@ -57,6 +57,23 @@ public interface ICompositeType extends IType, IAggregate {
 	public IField[] getFields();
 
 	/**
+	 * Add a template parameter to the end of the list of template parameters
+	 * Intended for use by a debug information parser.
+	 * 
+	 * @param templateParam
+	 *            template parameter to add
+	 */
+	public void addTemplateParam(ITemplateParam templateParam);
+
+	/**
+	 * Get an array of template parameters in composite
+	 * 
+	 * @return array of template parameters, or empty array if no
+	 *         template parameters
+	 */
+	public ITemplateParam[] getTemplateParams();
+
+	/**
 	 * Find the composite fields/members with the given name
 	 * 
 	 * @param name field name, which may contain "::" separators

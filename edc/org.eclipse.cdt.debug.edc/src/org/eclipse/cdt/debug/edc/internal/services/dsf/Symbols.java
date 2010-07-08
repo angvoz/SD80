@@ -47,12 +47,6 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.model.ISourceLocator;
 
 public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols {
-
-	/** TEMPORARY system property (value "true", default "true") for selecting the new on-demand DWARF reader */
-	public static final String DWARF_USE_NEW_READER = "dwarf.use_new_reader"; //$NON-NLS-1$
-	/** TEMPORARY system property (value "true", default "false") for selecting the old DWARF reader */
-	public static final String DWARF_USE_OLD_READER = "dwarf.use_old_reader"; //$NON-NLS-1$
-	
 	private static Map<IPath, WeakReference<IEDCSymbolReader>> readerCache = new HashMap<IPath, WeakReference<IEDCSymbolReader>>();
 	private ISourceLocator sourceLocator;
 	
@@ -223,6 +217,19 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 	@Override
 	public void shutdown(RequestMonitor rm) {
 		super.shutdown(rm);
+	}
+
+	/**
+	 * This is exposed only for testing.
+	 */
+	public static void releaseReaderCache() {
+		Collection<WeakReference<IEDCSymbolReader>> readers = readerCache.values();
+		for (WeakReference<IEDCSymbolReader> readerRef : readers) {
+			IEDCSymbolReader reader = readerRef.get();
+			if (reader != null)
+				reader.shutDown();
+		}
+		readerCache.clear();
 	}
 
 	/**

@@ -46,6 +46,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IInheritance;
 import org.eclipse.cdt.debug.edc.internal.symbols.ILexicalBlockScope;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ITemplateParam;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.internal.symbols.InheritanceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.SubroutineType;
@@ -73,6 +74,7 @@ import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IPath;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -87,6 +89,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		"BlackFlag_gcce_343.sym",
 		"HelloWorld_rvct_2_2.exe.sym",
 		"HelloWorld_rvct_4_0.exe.sym",
+		"QtConsole_gcce_343.sym",
 		"SimpleCpp_rvct_22.sym",
 		"SimpleCpp_rvct_40.sym",
 		"SimpleCpp_gcce_432.sym",
@@ -143,6 +146,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setExe("BlackFlag_rvct.sym", "BlackFlag_rvct.exe");
 		setExe("HelloWorld_rvct_2_2.exe.sym", "HelloWorld_rvct_2_2.exe");
 		setExe("HelloWorld_rvct_4_0.exe.sym", "HelloWorld_rvct_4_0.exe");
+		setExe("QtConsole_gcce_343.sym", "QtConsole_gcce_343.exe");
 	}
 	protected  static void setSources(String sym, int i) {
 		TestInfo info = lookupInfo(sym);
@@ -158,6 +162,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setSources("BlackFlag_rvct.sym", HostOS.IS_WIN32 ? 207 : 172);
 		setSources("HelloWorld_rvct_2_2.exe.sym", HostOS.IS_WIN32 ? 327 : 320);
 		setSources("HelloWorld_rvct_4_0.exe.sym", 315);
+		setSources("QtConsole_gcce_343.sym", 434);
 	}
 	protected  static void setModuleScopeChilden(String sym, int i) {
 		TestInfo info = lookupInfo(sym);
@@ -172,6 +177,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setModuleScopeChilden("BlackFlag_rvct.sym", 693);
 		setModuleScopeChilden("HelloWorld_rvct_2_2.exe.sym", 1579);
 		setModuleScopeChilden("HelloWorld_rvct_4_0.exe.sym", 1014);
+		setModuleScopeChilden("QtConsole_gcce_343.sym", 3);
 	}
 	
 	protected  static void setVariableCount(String sym, int i) {
@@ -186,6 +192,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setVariableCount("BlackFlag_rvct.sym", 61);
 		setVariableCount("HelloWorld_rvct_2_2.exe.sym", 1);
 		setVariableCount("HelloWorld_rvct_4_0.exe.sym", 1);
+		setVariableCount("QtConsole_gcce_343.sym", 2);
 	}
 	
 	static class VariableInfo {
@@ -223,33 +230,34 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/INC/CommonFramework.h", "KFormatFailed", "const class TLitC");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/INC/CommonFramework.h", "KTxtOK", "const class TLitC");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/INC/CommonFramework.h", "KTxtPressAnyKey", "const class TLitC");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/INC/CommonFramework.h", "console", "PointerType class CConsoleBase");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/INC/CommonFramework.h", "console", "class CConsoleBase *");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgchar", "char");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgdouble", "double");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgfloat", "float");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgint", "int");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sglong", "long");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sglongdouble", "long double");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgschar", "SCHAR signed char");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgschar", "SCHAR");
 		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgshort", "short");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgsint", "SINT int");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgslong", "SLONG long");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgslonglong", "SLONGLONG long long");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgsshort", "SSHORT short");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sguchar", "UCHAR unsigned char");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sguint", "UINT unsigned int");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgulong", "ULONG unsigned long");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgulonglong", "ULONGLONG unsigned long long");
-		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgushort", "USHORT unsigned short");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgsint", "SINT");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgslong", "SLONG");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgslonglong", "SLONGLONG");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgsshort", "SSHORT");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sguchar", "UCHAR");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sguint", "UINT");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgulong", "ULONG");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgulonglong", "ULONGLONG");
+		setCUVariableInfo("BlackFlag_rvct.sym", "/BlackFlag/SRC/dbg_simple_types.cpp", "sgushort", "USHORT");
 		setCUVariableInfo("HelloWorld_rvct_2_2.exe.sym", "/home/eswartz/source/runtime-New_configuration/ArmTest/inc/ArmTestApplication.h", "KUidArmTestApp", "const class TUid");
 		setCUVariableInfo("HelloWorld_rvct_2_2.exe.sym", "/src/cedar/generic/base/e32/compsupp/symaehabi/callfirstprocessfn.cpp", "KLitUser", "const class TLitC");
 		setCUVariableInfo("HelloWorld_rvct_2_2.exe.sym", "/home/eswartz/source/runtime-New_configuration/ArmTest/src/ArmTestAppUi.cpp", "KFileName", "const class TLitC");
 		setCUVariableInfo("HelloWorld_rvct_2_2.exe.sym", "/home/eswartz/source/runtime-New_configuration/ArmTest/src/ArmTestAppUi.cpp", "KText", "const class TLitC");
 		setCUVariableInfo("HelloWorld_rvct_4_0.exe.sym", "/home/eswartz/source/runtime-New_configuration/ArmTest/src/ArmTestApplication.cpp", "KUidArmTestApp", "const struct TUid");
-		setCUVariableInfo("HelloWorld_rvct_4_0.exe.sym", "/home/eswartz/source/runtime-New_configuration/ArmTest/inc/ArmTest.pan", "applicationName", "const struct TLitC");
+		setCUVariableInfo("HelloWorld_rvct_4_0.exe.sym", "/home/eswartz/source/runtime-New_configuration/ArmTest/src/ArmTestDocument.cpp", "mylit", "char[5]");
 		setCUVariableInfo("HelloWorld_rvct_4_0.exe.sym", "/home/eswartz/source/runtime-New_configuration/ArmTest/src/ArmTestAppUi.cpp", "KFileName", "const struct TLitC");
 		setCUVariableInfo("HelloWorld_rvct_4_0.exe.sym", "/home/eswartz/source/runtime-New_configuration/ArmTest/src/ArmTestAppUi.cpp", "KText", "const struct TLitC");
 		setCUVariableInfo("HelloWorld_rvct_4_0.exe.sym", "M:/dev2/sf/os/kernelhwsrv/kernel/eka/compsupp/symaehabi/callfirstprocessfn.cpp", "KLitUser", "const struct TLitC");
+		setCUVariableInfo("QtConsole_gcce_343.sym", "/Source/GCCE3/GCCE3/main.cpp", "myGlobalInt", "int");
 	}
 	
 	protected  static void setTypeCount(String sym, int i) {
@@ -261,9 +269,10 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setTypeCount("BlackFlagMinGW.exe", 1378);
 		setTypeCount("BlackFlag_gcce.sym", 3419);
 		setTypeCount("BlackFlag_linuxgcc.exe", 1104);
-		setTypeCount("BlackFlag_rvct.sym", 33498);
-		setTypeCount("HelloWorld_rvct_2_2.exe.sym", 83922);
-		setTypeCount("HelloWorld_rvct_4_0.exe.sym", 31045);
+		setTypeCount("BlackFlag_rvct.sym", 33699);
+		setTypeCount("HelloWorld_rvct_2_2.exe.sym", 84681);
+		setTypeCount("HelloWorld_rvct_4_0.exe.sym", 31560);
+		setTypeCount("QtConsole_gcce_343.sym", 1434);
 	}
 	
 	
@@ -292,6 +301,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setSymbolCount("BlackFlag_rvct.sym", 626);
 		setSymbolCount("HelloWorld_rvct_2_2.exe.sym", 151);
 		setSymbolCount("HelloWorld_rvct_4_0.exe.sym", 227);
+		setSymbolCount("QtConsole_gcce_343.sym", 509);
 	}
 	
 
@@ -329,6 +339,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		addPubFuncs("BlackFlag_rvct.sym", "E32Main", "dbg_watchpoints", "globalDestructorFunc");
 		addPubFuncs("HelloWorld_rvct_2_2.exe.sym", "E32Main", "CallThrdProcEntry", "CleanupClosePushL");
 		addPubFuncs("HelloWorld_rvct_4_0.exe.sym", "E32Main", "CallThrdProcEntry", "CleanupClosePushL");
+		addPubFuncs("QtConsole_gcce_343.sym", "main", "__gxx_personality_v0", "__gnu_unwind_frame");
 	}
 	
 	protected static void addPubVars(String sym, Object... names) {
@@ -347,6 +358,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		addPubVars("BlackFlag_rvct.sym", "vgushort", "gulong", "g_char");
 		addPubVars("HelloWorld_rvct_2_2.exe.sym", "mylit");
 		addPubVars("HelloWorld_rvct_4_0.exe.sym", "mylit");
+		addPubVars("QtConsole_gcce_343.sym", "myGlobalInt");
 	}
 	
 	@Test
@@ -358,6 +370,12 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 			System.out.println("Sym for exe " + info.exeFile + " is " + symbolReader.getSymbolFile());
 			assertEquals(info.symFile, symbolReader.getSymbolFile());
 		}
+	}
+	
+	@Before
+	public void setup() throws Exception {
+		// each test relies on starting from scratch
+		Symbols.releaseReaderCache();
 	}
 	
 	/**
@@ -514,24 +532,9 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 	}
 
 	private String getTypeName(IType type) {
-		StringBuilder builder = new StringBuilder();
-		getTypeName(type, builder);
-		return builder.toString();
+		return TypeUtils.getFullTypeName(type);
 	}
 
-	private void getTypeName(IType type, StringBuilder builder) {
-		if (builder.length() > 0)
-			builder.append(' ' );
-		if (type instanceof IForwardTypeReference)
-			type = ((IForwardTypeReference) type).getReferencedType();
-		String name = type.getName();
-		if (name.length() == 0)
-			name = type.getClass().getSimpleName();
-		builder.append(name);
-		if (type.getType() != null)
-			getTypeName(type.getType(), builder);
-	}
-	
 	/**
 	 * Test that we can find and resolve all types.  The lazy type evaluator only
 	 * is lazy as far as dereferenced types go, so we don't check anything but names
@@ -606,6 +609,9 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 			
 			if (checkType instanceof FieldType)
 				checkType = ((FieldType) checkType).getType();
+			if (checkType instanceof ICompositeType) 
+				return; // this is allowed, even though the spec says it should be here.
+						// we can't fix it up, because even if we sum up the field sizes, we can't predict the extra space used by alignment
 			if (checkType instanceof ArrayType) {
 				for (IArrayBoundType bound : ((ArrayType) checkType).getBounds()) {
 					if (bound.getElementCount() == 0)
@@ -618,6 +624,8 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				return; // should not get here, but something else tests this
 			if (checkType instanceof ICPPBasicType && ((ICPPBasicType) checkType).getBaseType() == ICPPBasicType.t_void)
 				return; // yup
+			if (checkType instanceof ITemplateParam)
+				return; // no inherent size
 			fail(name + " has zero size");
 		}
 		if (idx % 1000 == 0) System.out.print(".");
@@ -954,7 +962,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 			if (info.blackFlagMainFilePath != null) {
 				IEDCSymbolReader symbolReader = Symbols.getSymbolReader(info.symFile);
 			
-				List<ICompileUnitScope> cuList = symbolReader.getModuleScope().getCompileUnitsForFile(info.blackFlagMainFilePath);
+				List<ICompileUnitScope> cuList = getCompileUnitsFor(symbolReader, info.blackFlagMainFilePath.lastSegment());
 				assertFalse(cuList.isEmpty());
 				
 				for (ICompileUnitScope cu : cuList) {

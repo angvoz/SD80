@@ -12,13 +12,16 @@ package org.eclipse.cdt.debug.edc.symbols;
 
 import java.math.BigInteger;
 
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
+import org.eclipse.cdt.debug.edc.internal.symbols.IArrayBoundType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IForwardTypeReference;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 
 
@@ -200,6 +203,60 @@ public class TypeUtils {
 		}
 
 		return value;
+	}
+
+	/**
+	 * Get the full name of a type.
+	 * 
+	 * {@link TypeEngine#getTypeName(IType)} caches the full name returned by this routine and associates it
+	 * with the type passed in.
+	 *
+	 * @param type type whose full name is desired
+	 * @return full name of the type, with all qualifiers, array bounds, etc.
+	 * 
+	 * @since 2.0
+	 */
+	public static String getFullTypeName(IType type) {
+		if (type == null)
+			return ""; //$NON-NLS-1$
+		if (type instanceof IReferenceType)
+			return getFullTypeName(((IReferenceType) type).getType()) + " &"; //$NON-NLS-1$
+		if (type instanceof IPointerType)
+			return getFullTypeName(((IPointerType) type).getType()) + " *"; //$NON-NLS-1$
+		if (type instanceof IArrayType) {
+			IArrayType arrayType = (IArrayType) type;
+			String returnType = getFullTypeName(arrayType.getType());
+
+			IArrayBoundType[] bounds = arrayType.getBounds();
+			for (IArrayBoundType bound : bounds) {
+				returnType += "[" + bound.getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+			}
+			return returnType;
+		}
+		if (type instanceof IArrayDimensionType) {
+			IArrayDimensionType arrayDimensionType = (IArrayDimensionType) type;
+			IArrayType arrayType = arrayDimensionType.getArrayType();
+			String returnType = getFullTypeName(arrayType.getType());
+
+			IArrayBoundType[] bounds = arrayType.getBounds();
+			for (int i = arrayDimensionType.getDimensionCount(); i < arrayType.getBoundsCount(); i++) {
+				returnType += "[" + bounds[i].getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+			}
+			return returnType;
+		}
+		if (type instanceof ITypedef)
+			return ((ITypedef) type).getName();
+		if (type instanceof ICompositeType)
+			return ((ICompositeType) type).getName();
+		if (type instanceof IQualifierType)
+			return ((IQualifierType) type).getName()
+					+ " " + getFullTypeName(((IQualifierType) type).getType()); //$NON-NLS-1$
+		if (type instanceof ISubroutineType) {
+			// TODO: real stuff once we parse parameters
+			// TODO: the '*' for a function pointer (e.g. in a vtable) is in the wrong place
+			return getFullTypeName(((ISubroutineType) type).getType()) + "(...)"; //$NON-NLS-1$
+		}
+		return type.getName() + getFullTypeName(type.getType());
 	}
 
 }

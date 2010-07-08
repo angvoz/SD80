@@ -35,6 +35,54 @@ public class DwarfMessages extends NLS {
 
 	public static String DwarfFrameRegisters_NoCommonInfoEntry;
 
+	public static String DwarfInfoReader_DumpFileOpenOrCreateFailed;
+	
+	public static String DwarfInfoReader_FrameIndicesReadFailed;
+	
+	public static String DwarfInfoReader_ParseDebugInfoSectionFailed1;
+	public static String DwarfInfoReader_ParseDebugInfoSectionFailed2;
+	
+	public static String DwarfInfoReader_ParseSectionSourceFilesFailed1;
+	public static String DwarfInfoReader_ParseSectionSourceFilesFailed2;
+	
+	public static String DwarfInfoReader_ParseTraceInfoSectionFailed1;
+	public static String DwarfInfoReader_ParseTraceInfoSectionFailed2;
+	
+	public static String DwarfInfoReader_RangeReadFailed;
+	
+	public static String DwarfInfoReader_ReadDebugInfo;
+	
+	public static String DwarfInfoReader_ReadingSymbolInfo;
+	
+	public static String DwarfInfoReader_ReadType;
+	
+	public static String DwarfInfoReader_SubprogramNameNotFound1;
+	public static String DwarfInfoReader_SubprogramNameNotFound2;
+	
+	public static String DwarfInfoReader_TraceAddressParse1;
+	public static String DwarfInfoReader_TraceAddressParse2;
+	
+	public static String DwarfInfoReader_TraceAddressParseFor;
+	
+	public static String DwarfInfoReader_TraceFinishedAddressParse;
+	
+	public static String DwarfInfoReader_TraceFinishedInitialParse;
+	
+	public static String DwarfInfoReader_TraceFinishedQuickParse;
+	
+	public static String DwarfInfoReader_TraceInitialParseFor;
+	
+	public static String DwarfInfoReader_TraceParseTypes1;
+	public static String DwarfInfoReader_TraceParseTypes2;
+	
+	public static String DwarfInfoReader_TraceQuickParse;
+	
+	public static String DwarfInfoReader_TraceScopeAddressParse1;
+	public static String DwarfInfoReader_TraceScopeAddressParse2;
+	
+	public static String DwarfInfoReader_TraceTypeParse1;
+	public static String DwarfInfoReader_TraceTypeParse2;
+
 	public static String UnknownVariableAddress;
 	public static String NotImplementedFormat;
 	public static String InternalErrorFormat;

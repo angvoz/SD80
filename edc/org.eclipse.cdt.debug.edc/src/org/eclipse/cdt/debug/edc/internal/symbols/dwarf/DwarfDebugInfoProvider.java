@@ -782,7 +782,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 
 	private IFrameRegisterProvider frameRegisterProvider;
 	
-	private static String SOURCE_FILES_CACHE = "_source_files";
+	private static String SOURCE_FILES_CACHE = "_source_files"; //$NON-NLS-1$
 
 	public DwarfDebugInfoProvider(IExecutableSymbolicsReader exeReader) {
 		this.exeReader = exeReader;
@@ -1138,7 +1138,11 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				type = typesByOffset.get(offset);
 				// may be unhandled currently
 				if (type == null) { 
-					EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfDebugInfoProvider_NotParsingType1 + Long.toHexString(offset_) +
+					// workaround for GCC-E 3.x bug where some, but not all, type offsets are off by 4
+					// assume if you hit this null case that the problem may be the GCC-E bug
+					type = typesByOffset.get(offset - 4);
+					if (type == null)
+						EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfDebugInfoProvider_NotParsingType1 + Long.toHexString(offset_) +
 									DwarfMessages.DwarfDebugInfoProvider_NotParsingType2 + symbolFilePath, null);
 				}
 			} else {
@@ -1278,14 +1282,90 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		
 		Collection<IType> types = typesByName.get(baseName);
 		
+		String templateName  = null;
+		String templateName2 = null;
+
 		if (types == null) {
-			// Maybe we optimistically searched for relevant types;
-			// if that fails, do the full search now
-			if (!parsedForTypes) {
-				ensureParsedForTypes();
-				return getTypesByName(baseName);
+			// if we didn't match and this is a template name,
+			// remove extra spaces and composite type names 
+			if (baseName.indexOf('<') != -1) {
+				templateName = baseName;
+
+				while (templateName.contains("  ")) //$NON-NLS-1$
+					templateName = templateName.replaceAll("  ", " "); //$NON-NLS-1$ //$NON-NLS-2$
+				templateName = templateName.replaceAll(", ", ","); //$NON-NLS-1$ //$NON-NLS-2$
+				templateName = templateName.replaceAll("class ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				templateName = templateName.replaceAll("struct ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				templateName = templateName.replaceAll("union ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+
+				types = typesByName.get(templateName);
+
+				// template name without "<...>", rather than with "<...>", might match 
+				if (types == null) {
+					templateName2 = templateName.substring(0, templateName.indexOf('<'));
+
+					types = typesByName.get(templateName2);
+
+					// screen out types whose template list does not match
+					if (types != null) {
+						ArrayList<IType> matchingTypes = null;
+						for (Iterator<IType> it = types.iterator(); it.hasNext(); ) {
+							IType nextType = it.next();
+							String match = nextType.getName();
+							// for templates, remove composite type names (e.g., "class")
+							match = match.replaceAll("class ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+							match = match.replaceAll("struct ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+							match = match.replaceAll("union ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+
+							if (match.equals(templateName)) {
+								if (matchingTypes == null)
+									matchingTypes = new ArrayList<IType>(types.size());
+								matchingTypes.add(nextType);
+							}
+						}
+						types = matchingTypes; // may be null
+					}
+				}
 			}
-			return new ArrayList<IType>(0);
+
+			if (types == null) {
+				// Maybe we optimistically searched for relevant types;
+				// if that fails, do the full parse of types now
+				if (!parsedForTypes) {
+					ensureParsedForTypes();
+					types = getTypesByName(baseName);
+					if (types != null)
+						return types; // non-template return
+
+					if (baseName.indexOf('<') != -1) {
+						types = typesByName.get(templateName);
+						if (types == null)
+							types = typesByName.get(templateName2);
+						else
+							templateName2 = null; // did not match name without "<...>"
+					}
+				}
+				
+				if (types == null)
+					return new ArrayList<IType>(0);
+			}
+		}
+
+		// screen out types whose template list does not match
+		if (templateName2 != null) {
+			ArrayList<IType> matchingTypes = new ArrayList<IType>(types.size());
+			for (Iterator<IType> it = types.iterator(); it.hasNext(); ) { // types can't be null
+				IType nextType = it.next();
+				String match = nextType.getName();
+				// for templates, remove composite type names (e.g., "class")
+				match = match.replaceAll("class ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				match = match.replaceAll("struct ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				match = match.replaceAll("union ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+
+				if (match.equals(templateName))
+					matchingTypes.add(nextType);
+			}
+			types = matchingTypes;
 		}
 		
 		// make sure that the aggregate type matches as well as the name

@@ -162,10 +162,11 @@ public class ARMStack extends Stack {
 				moduleName = module.getName();
 
 				IEDCSymbolReader reader = module.getSymbolReader();
-				String cacheKey = reader.getSymbolFile().toOSString() + FUNCTION_START_ADDRESS_CACHE;
+				String cacheKey = null;
 				Map<IAddress, IAddress> cachedMapping = new HashMap<IAddress, IAddress>();
-				if (reader != null)
+				if (reader != null && reader.getSymbolFile() != null)
 				{
+					cacheKey = reader.getSymbolFile().toOSString() + FUNCTION_START_ADDRESS_CACHE;
 					// Check the persistent cache
 					cachedMapping = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
 					if (cachedMapping != null)
@@ -188,8 +189,10 @@ public class ARMStack extends Stack {
 							scope = (IFunctionScope) scope.getParent();
 						functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
 						// put it in the cache
-						cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
-						ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());									
+						if (cachedMapping != null) {
+							cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
+							ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());
+						}
 					}
 				}
 			}

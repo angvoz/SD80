@@ -182,9 +182,10 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			IAddress linkAddress = module.toLinkAddress(address);
 			
 			Map<IAddress, Boolean> cachedValues = new HashMap<IAddress, Boolean>();
-			String cacheKey = reader.getSymbolFile().toOSString() + IS_THUMB_MODE;
+			String cacheKey = null;
 			if (reader != null)
 			{
+				cacheKey = reader.getSymbolFile().toOSString() + IS_THUMB_MODE;
 				cachedValues = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
 				if (cachedValues != null)
 				{
@@ -202,8 +203,10 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 				// if the address is question has bit 0 set then it is a
 				// thumb address
 				if (functionStartAddress.getValue().testBit(0)) {
-					cachedValues.put(linkAddress, true);
-					ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
+					if (cachedValues != null) {
+						cachedValues.put(linkAddress, true);
+						ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());
+					}
 					return true;
 				}
 			}
@@ -214,8 +217,10 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 				if (symbol != null) {
 					// if the symbol address is odd then it's in thumb mode
 					if (symbol.getAddress().getValue().testBit(0)) {
-						cachedValues.put(linkAddress, true);
-						ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
+						if (cachedValues != null) {
+							cachedValues.put(linkAddress, true);
+							ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());
+						}
 						return true;
 					}
 
@@ -224,12 +229,16 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 						String mappingSymbol = armElf.getMappingSymbolAtAddress(symbol.getAddress());
 						if (mappingSymbol != null) {
 							if (mappingSymbol.startsWith("$t")) { //$NON-NLS-1$
-								cachedValues.put(linkAddress, true);
-								ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
+								if (cachedValues != null) {
+									cachedValues.put(linkAddress, true);
+									ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());
+								}
 								return true;
 							} else if (mappingSymbol.startsWith("$a")) { //$NON-NLS-1$
-								cachedValues.put(linkAddress, false);
-								ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());				
+								if (cachedValues != null) {
+									cachedValues.put(linkAddress, false);
+									ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());
+								}
 								return false;
 							}
 						}

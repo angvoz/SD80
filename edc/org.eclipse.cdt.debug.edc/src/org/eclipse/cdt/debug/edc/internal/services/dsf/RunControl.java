@@ -2036,13 +2036,14 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public void contextException(String context, String msg) {
 			ExecutionDMC dmc = getContext(context);
-			dmc.contextException(msg);
+			if (dmc != null)
+				dmc.contextException(msg);
 		}
 
 		public void contextRemoved(String[] context_ids) {
 			for (String contextID : context_ids) {
 				ExecutionDMC dmc = getContext(contextID);
-				assert dmc != null;
+				//assert dmc != null;	// we may see this until we support multiple process debugging properly
 				if (dmc != null)
 					dmc.detachFromDebugger();
 			}
@@ -2050,7 +2051,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public void contextResumed(String context) {
 			ExecutionDMC dmc = getContext(context);
-			dmc.contextResumed(true);
+			if (dmc != null)
+				dmc.contextResumed(true);
 		}
 
 		public void contextSuspended(final String context, final String pc, final String reason,

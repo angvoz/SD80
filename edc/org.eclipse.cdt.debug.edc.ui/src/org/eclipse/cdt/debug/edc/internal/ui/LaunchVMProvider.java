@@ -55,6 +55,11 @@ public class LaunchVMProvider extends AbstractLaunchVMProvider implements IDebug
 
 		IVMNode stackFramesNode = new StackFramesVMNode(this, getSession());
 		addChildNodes(threadsNode, new IVMNode[] { stackFramesNode });
+		
+		// When debug context like a bare board or bootup code of an OS where no
+		// process nor thread is available, we want to display only that context
+		// under root but with stack frames hooked up.
+		// This supports the BareDeviceExecutionDMC from the RunControl service.
 		addChildNodes(containerNode, new IVMNode[] { stackFramesNode });
 
 		DebugPlugin.getDefault().addDebugEventListener(this);

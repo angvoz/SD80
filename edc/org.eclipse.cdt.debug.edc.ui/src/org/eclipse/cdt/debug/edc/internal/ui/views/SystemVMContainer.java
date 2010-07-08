@@ -30,6 +30,7 @@ import org.eclipse.debug.internal.ui.viewers.model.provisional.IPresentationCont
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerUpdate;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.TreePath;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.IMemento;
 
 @SuppressWarnings("restriction")
@@ -56,6 +57,8 @@ public class SystemVMContainer implements IAdaptable {
 	private SystemVMContainer parent;
 
 	private SystemDMContainer dmContainer;
+
+	private Image image;
 
 	private IElementMementoProvider elementMementoProvider = new ElementMementoProvider() {
 
@@ -302,6 +305,16 @@ public class SystemVMContainer implements IAdaptable {
 		if (adapter.equals(IElementMementoProvider.class))
 			return elementMementoProvider;
 		return null;
+	}
+
+	public void setImage(Image image) {
+		if (image == null && this.image != null)
+			this.image.dispose();
+		this.image = image;
+	}
+
+	public Image getImage() {
+		return image;
 	}
 
 }

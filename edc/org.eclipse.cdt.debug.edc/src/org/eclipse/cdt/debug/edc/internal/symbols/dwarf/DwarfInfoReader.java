@@ -51,6 +51,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.InheritanceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.LexicalBlockScope;
@@ -60,6 +61,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.Scope;
 import org.eclipse.cdt.debug.edc.internal.symbols.StructType;
 import org.eclipse.cdt.debug.edc.internal.symbols.SubroutineType;
+import org.eclipse.cdt.debug.edc.internal.symbols.TemplateParamType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
 import org.eclipse.cdt.debug.edc.internal.symbols.UnionType;
 import org.eclipse.cdt.debug.edc.internal.symbols.VolatileType;
@@ -110,7 +112,7 @@ public class DwarfInfoReader {
 	// These are only for developer of the reader.
 	// 
 	private static boolean DEBUG = false;
-	private String dumpFileName = "C:\\temp\\_EDC_DwarfReaderDump.txt";
+	private String dumpFileName = "C:\\temp\\_EDC_DwarfReaderDump.txt"; //$NON-NLS-1$
 	
 	// TODO 64-bit Dwarf currently unsupported
 
@@ -146,7 +148,6 @@ public class DwarfInfoReader {
 	
 	private Map<IType, IType> typeToParentMap;
 	private IType currentParentType;
-	//private ForwardDwarfDefinition currentParent;
 	private Scope currentParentScope;
 	private DwarfCompileUnit currentCompileUnitScope;
 
@@ -202,14 +203,14 @@ public class DwarfInfoReader {
  	 * compilation units.  
 	 */
 	public void parseInitial() {
-		Job parseInitialJob = new Job("Reading Debug Symbol Information: " + symbolFilePath) {
+		Job parseInitialJob = new Job(DwarfMessages.DwarfInfoReader_ReadingSymbolInfo + symbolFilePath) {
 
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
-				traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Initial parse for " + symbolFilePath);
+				traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceInitialParseFor + symbolFilePath);
 				parseCUDebugInfo(monitor);
 				parsePublicNames();
-				traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished initial parse");
+				traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceFinishedInitialParse);
 				return Status.OK_STATUS;
 			}
 		};
@@ -231,7 +232,7 @@ public class DwarfInfoReader {
 	 *            info, we don't.
 	 */
 	public void parseForAddresses(boolean includeCUWithoutCode) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse for " + symbolFilePath);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceAddressParseFor + symbolFilePath);
 		for (DwarfCompileUnit compileUnit : provider.compileUnits) {
 			if (DEBUG) {
 				// For internal check. 
@@ -247,7 +248,7 @@ public class DwarfInfoReader {
 				parseCompilationUnitForAddresses(compileUnit);
 			}
 		}
-		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished address parse");
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceFinishedAddressParse);
 		
 		moduleScope.fixupRanges(Addr32.ZERO);
 
@@ -394,14 +395,14 @@ public class DwarfInfoReader {
 		boolean havePubNames = publicNamesSection != null && publicNamesSection.getBuffer() != null;
 
 		int totalWork = (int) (buffer.capacity() / 1024);
-		monitor.beginTask("Read Debug Info", totalWork);
+		monitor.beginTask(DwarfMessages.DwarfInfoReader_ReadDebugInfo, totalWork);
 		if (buffer != null) {
 			long fileIndex = 0;
 			long fileEndIndex = buffer.capacity();
 			
 			while (fileIndex < fileEndIndex) {
 				long oldIndex = fileIndex;
-				fileIndex = parseCompilationUnitForNames(buffer, fileIndex, debugStrings, havePubNames);
+				fileIndex = parseCompilationUnitForNames(buffer, fileIndex, debugStrings, fileEndIndex, havePubNames);
 				monitor.worked((int) ((fileIndex - oldIndex) / 1024));
 			}
 		}
@@ -411,70 +412,49 @@ public class DwarfInfoReader {
 	}
 
 	/**
-	 * Parse the header and top-level attributes of one compilation unit 
-	 * @return offset of next compilation unit
-	 */
-	public long parseCompilationUnitShallow(IStreamBuffer buffer, long fileIndex) {
-		buffer.position(fileIndex);
-
-		currentCUHeader = new CompilationUnitHeader();
-
-		// read the length of the compile unit from the file
-		currentCUHeader.length = buffer.getInt();
-
-		// now read the whole compile unit into memory. note that we're
-		// reading the whole section including the size that we already
-		// read because other code will use the offset of the buffer as
-		// the offset of the section to store things by offset (types,
-		// function declarations, etc).
-		buffer.position(fileIndex);
-		
-		IStreamBuffer data = buffer.wrapSubsection(currentCUHeader.length + 4);
-
-		// skip over the length since we already know it
-		data.position(4);
-
-		currentCUHeader.version = data.getShort();
-		currentCUHeader.abbreviationOffset = data.getInt();
-		currentCUHeader.addressSize = data.get();
-		currentCUHeader.debugInfoOffset = (int) fileIndex;
-
-		try {
-			// get stored abbrev table, or read and parse an abbrev table
-			Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(currentCUHeader.abbreviationOffset);
-			
-			// read only the compile unit's attribute list, ignoring its children
-			long code = read_unsigned_leb128(data);
-			AbbreviationEntry entry = abbrevs.get(Long.valueOf(code));
-			
-			AttributeList attributeList = new AttributeList(entry, data, currentCUHeader.addressSize, getDebugStrings());
-			processCompileUnit(currentCUHeader, entry.hasChildren, attributeList);
-			
-		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError("Failed to parse debug info from section " 
-					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
-		}
-		
-		// skip past the compile unit. note that the
-		// currentCUHeader.length does not include
-		// the size of the unit length itself
-		fileIndex += currentCUHeader.length + 4;		
-		
-		return fileIndex;
-	}
-
-	/**
 	 * Parse the compile unit quickly looking for variables that are globally visible 
      *
 	 * @return offset of next compilation unit
 	 */
-	public long parseCompilationUnitForNames(IStreamBuffer buffer, long fileIndex, IStreamBuffer debugStrings, boolean havePubNames) {
+	public long parseCompilationUnitForNames(IStreamBuffer buffer, long fileIndex, IStreamBuffer debugStrings, long fileEndIndex, boolean havePubNames) {
 		buffer.position(fileIndex);
 
 		currentCUHeader = new CompilationUnitHeader();
+		currentCUHeader.length             = buffer.getInt();
+		currentCUHeader.version            = buffer.getShort();
+		currentCUHeader.abbreviationOffset = buffer.getInt();
+		currentCUHeader.addressSize        = buffer.get();
+		currentCUHeader.debugInfoOffset    = (int) fileIndex;
 
-		// read the length of the compile unit from the file
-		currentCUHeader.length = buffer.getInt();
+		/*
+		 * With certain GCC-E 3.x compilers, some subset of compile unit headers can have unit
+		 * lengths 4 bytes too long. Before reading compile unit data, make sure there is a
+		 * valid compile unit header right after this unit's data. Adjust the length if needed.
+		 * To validate, check that the DWARF version and the address size are
+		 * the same as the previous compile unit's.
+		 */
+		if (fileIndex + currentCUHeader.length + 8 < fileEndIndex) {
+			// try good case
+			short nextVersion;
+			byte nextAddrSize;
+			buffer.position(fileIndex + currentCUHeader.length + 8); // to next version
+			nextVersion = buffer.getShort();
+			buffer.position(fileIndex + currentCUHeader.length + 14); // to next address size
+			nextAddrSize = buffer.get();
+			
+			if (currentCUHeader.version != nextVersion || currentCUHeader.addressSize != nextAddrSize) {
+				// try adjusting back by 4 bytes
+				buffer.position(fileIndex + currentCUHeader.length + 4); // to next version
+				nextVersion = buffer.getShort();
+				buffer.position(fileIndex + currentCUHeader.length + 10); // to next address size
+				nextAddrSize = buffer.get();
+				
+				if (currentCUHeader.version == nextVersion && currentCUHeader.addressSize == nextAddrSize) {
+					// all this work to adjust the length...
+					currentCUHeader.length -= 4;
+				}
+			}
+		}
 
 		// now read the whole compile unit into memory. note that we're
 		// reading the whole section including the size that we already
@@ -485,13 +465,8 @@ public class DwarfInfoReader {
 		
 		IStreamBuffer in = buffer.wrapSubsection(currentCUHeader.length + 4);
 
-		// skip over the length since we already know it
-		in.position(4);
-
-		currentCUHeader.version = in.getShort();
-		currentCUHeader.abbreviationOffset = in.getInt();
-		currentCUHeader.addressSize = in.get();
-		currentCUHeader.debugInfoOffset = (int) fileIndex;
+		// skip over the header info we already read
+		in.position(11);
 		
 		try {
 			// get stored abbrev table, or read and parse an abbrev table
@@ -590,8 +565,8 @@ public class DwarfInfoReader {
 				}
 			}
 		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError("Failed to parse debug info from section " 
-					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
+			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed1 
+					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, e);
 		}
 		
 		// skip past the compile unit. note that the
@@ -730,8 +705,8 @@ public class DwarfInfoReader {
 		if (header == null)
 			return;
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse for "
-				+ Integer.toHexString(header.debugInfoOffset) + " : " + header.scope.getFilePath());
+		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceAddressParse1
+				+ Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceAddressParse2 + header.scope.getFilePath());
 		
 		IStreamBuffer buffer = debugInfoSection.getBuffer();
 		
@@ -759,8 +734,8 @@ public class DwarfInfoReader {
 
 			parseForAddresses(data, abbrevs, header, new Stack<Scope>());
 		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError("Failed to parse debug info from section " 
-					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
+			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed1 
+					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, e);
 		}
 	}
 
@@ -775,8 +750,8 @@ public class DwarfInfoReader {
 		if (header == null)
 			return;
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Type parse of "
-				+ Integer.toHexString(header.debugInfoOffset) + " : " + header.scope.getFilePath());
+		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceTypeParse1
+				+ Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceTypeParse2 + header.scope.getFilePath());
 		
 		IStreamBuffer buffer = debugInfoSection.getBuffer();
 		
@@ -802,18 +777,17 @@ public class DwarfInfoReader {
 			// get stored abbrev table, or read and parse an abbrev table
 			Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(header.abbreviationOffset);
 
-			parseForTypes(data, abbrevs, header,
-						new Stack<Scope>());
+			parseForTypes(data, abbrevs, header, new Stack<Scope>());
 		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError("Failed to parse type debug info from section " 
-					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
+			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed1 
+					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed2 + symbolFilePath, e);
 		}
 	}
 
 	public void quickParseDebugInfo(IProgressMonitor monitor) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, "Quick parse for " + symbolFilePath);
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceQuickParse + symbolFilePath);
 		doQuickParseDebugInfo(monitor);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, "Finished quick parse");
+		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceFinishedQuickParse);
 	}
 	
 	/**
@@ -836,21 +810,49 @@ public class DwarfInfoReader {
 			long fileIndex = 0;
 			long fileEndIndex = buffer.capacity();
 			
-			monitor.beginTask("Read Debug Info", (int) (fileEndIndex / 1024));
+			monitor.beginTask(DwarfMessages.DwarfInfoReader_ReadDebugInfo, (int) (fileEndIndex / 1024));
 
 			buffer.position(0);
 			while (fileIndex < fileEndIndex) {
 				buffer.position(fileIndex);
-				
-				int unit_length = buffer.getInt();
 
+				int unit_length         = buffer.getInt();
+				short version           = buffer.getShort();
+				int debug_abbrev_offset = buffer.getInt();
+				byte address_size       = buffer.get();
+
+				/*
+				 * With certain GCC-E 3.x compilers, some subset of compile unit headers can have unit
+				 * lengths 4 bytes too long. So before reading this unit's data, make sure there is a
+				 * valid compile unit header right after this unit's data. Adjust the length if needed.
+				 * To validate, check that the DWARF version and the address size are
+				 * the same as the previous compile unit's.
+				 */
+				if (fileIndex + unit_length + 8 < fileEndIndex) {
+					// try good case
+					short nextVersion;
+					byte nextAddrSize;
+					buffer.position(fileIndex + unit_length + 8); // to next version
+					nextVersion = buffer.getShort();
+					buffer.position(fileIndex + unit_length + 14); // to next address size
+					nextAddrSize = buffer.get();
+					
+					if (version != nextVersion || address_size != nextAddrSize) {
+						// try adjusting back by 4 bytes
+						buffer.position(fileIndex + unit_length + 4); // to next version
+						nextVersion = buffer.getShort();
+						buffer.position(fileIndex + unit_length + 10); // to next address size
+						nextAddrSize = buffer.get();
+						
+						if (version == nextVersion && address_size == nextAddrSize) {
+							unit_length -= 4;
+						} // otherwise, just let things bomb
+					}
+				}
+				
 				buffer.position(fileIndex + 4);
-
 				IStreamBuffer data = buffer.wrapSubsection(unit_length);
-				
-				data.position(2); // skip version
-				int debug_abbrev_offset = data.getInt();
-				byte address_size = data.get();
+				data.position(7); // skip header info already read 
 
 				// get the abbreviation entry for the compile unit
 				// find the offset to the
@@ -883,8 +885,8 @@ public class DwarfInfoReader {
 			}
 
 		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError("Failed to parse source files from section " 
-					+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
+			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseSectionSourceFilesFailed1 
+					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseSectionSourceFilesFailed2 + symbolFilePath, e);
 		} finally {
 			monitor.done();
 		}
@@ -911,10 +913,10 @@ public class DwarfInfoReader {
 				data.position(lineTableOffset);
 
 				/*
-				 * Skip past the rest the bits of the header that we don't care
-				 * about unit_length - 4 bytes version - 2 bytes header_length -
-				 * 4 bytes minimum_instruction_length - 1 byte default_is_stmt -
-				 * 1 byte line_base - 1 byte line_range - 1 byte
+				 * Skip past the bytes of the header that we don't care	about:
+				 * unit_length (4 bytes), version (2 bytes), header_length (4 bytes),
+				 * minimum_instruction_length (1 byte), default_is_stmt (1 byte),
+				 * line_base (1 byte), line_range (1 byte)
 				 */
 				data.position(data.position() + 14);
 
@@ -1201,8 +1203,8 @@ public class DwarfInfoReader {
 			Stack<Scope> nestingStack)
 			throws IOException {
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Address parse of "
-				+ header.scope.getName() + " @ " + Long.toHexString(header.debugInfoOffset));
+		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceScopeAddressParse1
+				+ header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceScopeAddressParse2 + Long.toHexString(header.debugInfoOffset));
 
 		while (in.remaining() > 0) {
 			long offset = in.position() + currentCUHeader.debugInfoOffset;
@@ -1220,9 +1222,48 @@ public class DwarfInfoReader {
 				}
 				
 				if (isDebugInfoEntryWithAddressRange(entry.tag)) {
-					processDebugInfoEntry(offset, entry, 
-							new AttributeList(entry, in, header.addressSize, getDebugStrings()), 
-							header);
+					AttributeList attributeList = new AttributeList(entry, in, header.addressSize, getDebugStrings());
+					processDebugInfoEntry(offset, entry, attributeList, header);
+
+					// if we didn't create a scope for a routine or lexical block, then ignore its innards
+					switch (entry.tag) {
+					case DwarfConstants.DW_TAG_subprogram:
+					case DwarfConstants.DW_TAG_inlined_subroutine:
+					case DwarfConstants.DW_TAG_lexical_block:
+						if (entry.hasChildren && (provider.scopesByOffset.get(offset) == null)) {
+							// because some versions of GCC-E 3.x produce invalid sibling offsets,
+							// always read entry attributes, rather than skipping using siblings
+							// keep track of nesting just like in parseForTypes()
+							int nesting = 1;
+							while ((nesting > 0) && (in.remaining() > 0)) {
+								offset = in.position() + currentCUHeader.debugInfoOffset;
+								code = read_unsigned_leb128(in);
+
+								if (code != 0) {
+									entry = abbrevs.get(new Long(code));
+									if (entry == null) {
+										assert false;
+										continue;
+									}
+									if (entry.hasChildren)
+										nesting++;
+									// skip the attributes we're not reading...
+									AttributeList.skipAttributes(entry, in, header.addressSize);
+								} else {
+									nesting--;
+								}
+							}
+
+							// nesting loop ends after reading 0 code of skipped entry
+							if (nestingStack.isEmpty()) {
+								// FIXME
+								currentParentScope = null;
+							} else {
+								currentParentScope = nestingStack.pop();
+							}
+						}
+						break;
+					}
 				} else {
 					// skip the attributes we're not reading...
 					AttributeList.skipAttributes(entry, in, header.addressSize);
@@ -1246,8 +1287,8 @@ public class DwarfInfoReader {
 			Stack<Scope> nestingStack)
 			throws IOException {
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, "Parsing types for "
-				+ header.scope.getName() + " @ " + Long.toHexString(header.debugInfoOffset));
+		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceParseTypes1
+				+ header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceParseTypes2 + Long.toHexString(header.debugInfoOffset));
 		
 		Stack<IType> typeStack = new Stack<IType>();
 		typeToParentMap = new HashMap<IType, IType>();
@@ -1279,7 +1320,6 @@ public class DwarfInfoReader {
 					switch (entry.tag) {
 					case DwarfConstants.DW_TAG_subprogram:
 					case DwarfConstants.DW_TAG_inlined_subroutine:
-					case DwarfConstants.DW_TAG_variable:
 					case DwarfConstants.DW_TAG_lexical_block: {
 						Scope scope = provider.scopesByOffset.get(offset);  // may be null
 						if (scope != null)
@@ -1287,21 +1327,19 @@ public class DwarfInfoReader {
 						break;
 					}
 					}
-					
+
 					// skip the attributes we're not reading...
 					AttributeList.skipAttributes(entry, in, header.addressSize);
-					
 				}
 			} else {
-				if (code == 0) {
-					if (nestingStack.isEmpty()) {
-						// FIXME
-						currentParentType = null;
-						currentParentScope = null;
-					} else {
-						currentParentScope = nestingStack.pop();
-						currentParentType = typeStack.pop();
-					}
+				// code == 0
+				if (nestingStack.isEmpty()) {
+					// FIXME
+					currentParentType = null;
+					currentParentScope = null;
+				} else {
+					currentParentScope = nestingStack.pop();
+					currentParentType = typeStack.pop();
 				}
 			}
 		}
@@ -1339,7 +1377,7 @@ public class DwarfInfoReader {
 		//case DwarfConstants.DW_TAG_enumerator:
 		//case DwarfConstants.DW_TAG_file_type:
 		//case DwarfConstants.DW_TAG_friend:
-		//case DwarfConstants.DW_TAG_template_type_param:
+		case DwarfConstants.DW_TAG_template_type_param:
 		//case DwarfConstants.DW_TAG_template_value_param:
 		//case DwarfConstants.DW_TAG_thrown_type:
 		//case DwarfConstants.DW_TAG_try_block:
@@ -1377,91 +1415,6 @@ public class DwarfInfoReader {
 		}
 		return false;
 	}
-	/**
-	 * Parse a type from the debug information.  The TypeReference is
-	 * presumed to have been generated by {@link #parseDebugInfoEntriesWithForwardTypes(ByteBuffer, Map, CompilationUnitHeader)}
-	 * @param offset
-	 * @param ref
-	 */
-	/*
-	public IType parseType(long offset, ForwardDwarfDefinition ref) {
-		// restore the parsing state
-		switchToCompilationUnit(ref.header);
-		
-		return parseDwarfInner(offset, ref);
-	}
-
-	private void switchToCompilationUnit(CompilationUnitHeader header) {
-		currentCUHeader = header;
-		currentCompileUnitScope = header.scope;
-
-		if (currentCompileUnitScope == null)
-			throw new IllegalStateException();
-		
-		currentParentScope = currentCompileUnitScope;
-	}
-*/
-	/**
-	 * Parse a DWARF tag in isolation.
-	 * @param offset
-	 * @param ref
-	 * @return IType, if the tag represented a type, else <code>null</code>
-	 */
-	/*
-	private IType parseDwarfInner(long offset, ForwardDwarfDefinition ref) {
-		ByteBuffer in = debugInfoSection.getBuffer();
-		in.position(ref.attributeOffset);
-		AttributeList attributeList = new AttributeList(ref.entry, in,
-				ref.header.addressSize, getDebugStrings()); 
-		
-		currentParent = ref.parent;
-		currentParentScope = ref.parentScope;
-		processDebugInfoEntry(offset, ref.entry, attributeList, ref.header);
-		
-		IType type = null;
-		if (isForwardTypeTag(ref.entry.tag)) {
-			type = provider.typesByOffset.get(offset);
-			if (type == null)
-				throw new IllegalStateException();
-			
-			// store references to any dereferenced types (again, lazily fetched)
-			if (type.getProperties() != null) {
-				AttributeValue typeAttribute = (AttributeValue) type.getProperties().get(
-														Short.valueOf(DwarfConstants.DW_AT_type));
-				if (typeAttribute != null) {
-					// get the offset into the .debug_info section
-					long debugInfoOffset = ((Number) typeAttribute.value).longValue();
-					if (typeAttribute.getActualForm() == DwarfConstants.DW_FORM_ref_addr) {
-						// this is already relative to the .debug_info section
-					} else {
-						CompilationUnitHeader typeHeader = (CompilationUnitHeader) type.getProperties().get(DwarfInfoReader.CU_HEADER);
-						debugInfoOffset += typeHeader.debugInfoOffset;
-						
-						// adjust the current scope too
-						switchToCompilationUnit(typeHeader);
-					}
-	
-					IType subType = provider.typesByOffset.get(debugInfoOffset);
-					if (subType == null) {
-						ForwardDwarfDefinition fwdType = provider.forwardDwarfDefinitions.get(debugInfoOffset);
-						if (fwdType != null)
-							subType = new ForwardTypeReference(provider, debugInfoOffset);
-					}
-					// may still be null here if it's a tag we don't recognize yet
-					type.setType(subType);
-				}
-			}
-		}
-		
-		if (ref.entry.hasChildren) {
-			for (ForwardDwarfDefinition fwdDef : ref.childEntries) {
-				parseDwarfInner(fwdDef.offset, fwdDef);
-			}
-		}
-		
-		return type;
-	}
-	*/
 	
 	/**
 	 * Fully parse any debug info entry.
@@ -1479,13 +1432,13 @@ public class DwarfInfoReader {
 		// We are only interested in certain tags.
 		switch (tag) {
 		case DwarfConstants.DW_TAG_array_type:
-			processArrayType(offset, attributeList);
+			processArrayType(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_class_type:
-			processClassType(offset, attributeList, header);
+			processClassType(offset, attributeList, header, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_enumeration_type:
-			processEnumType(offset, attributeList);
+			processEnumType(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_formal_parameter:
 			processVariable(offset, attributeList, true);
@@ -1494,42 +1447,42 @@ public class DwarfInfoReader {
 			processLexicalBlock(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_member:
-			processField(offset, attributeList, header);
+			processField(offset, attributeList, header, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_pointer_type:
-			processPointerType(offset, attributeList);
+			processPointerType(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_reference_type:
-			processReferenceType(offset, attributeList);
+			processReferenceType(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_structure_type:
-			processStructType(offset, attributeList, header);
+			processStructType(offset, attributeList, header, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_subroutine_type:
-			processSubroutineType(offset, attributeList, header);
+			processSubroutineType(offset, attributeList, header, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_typedef:
-			processTypeDef(offset, attributeList);
+			processTypeDef(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_union_type:
-			processUnionType(offset, attributeList, header);
+			processUnionType(offset, attributeList, header, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_unspecified_parameters:
 			break;
 		case DwarfConstants.DW_TAG_inheritance:
-			processInheritance(offset, attributeList, header);
+			processInheritance(offset, attributeList, header, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_ptr_to_member_type:
 			break;
 		case DwarfConstants.DW_TAG_with_stmt:
 			break;
 		case DwarfConstants.DW_TAG_base_type:
-			processBasicType(offset, attributeList);
+			processBasicType(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_catch_block:
 			break;
 		case DwarfConstants.DW_TAG_const_type:
-			processConstType(offset, attributeList);
+			processConstType(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_enumerator:
 			processEnumerator(offset, attributeList);
@@ -1539,12 +1492,13 @@ public class DwarfInfoReader {
 		case DwarfConstants.DW_TAG_friend:
 			break;
 		case DwarfConstants.DW_TAG_subprogram:
-			processSubProgram(offset, attributeList, entry.hasChildren);
+			processSubprogram(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_inlined_subroutine:
 			processInlinedSubroutine(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_template_type_param:
+			processTemplateTypeParam(offset, attributeList, header, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_template_value_param:
 			break;
@@ -1556,10 +1510,10 @@ public class DwarfInfoReader {
 			processVariable(offset, attributeList, false);
 			break;
 		case DwarfConstants.DW_TAG_volatile_type:
-			processVolatileType(offset, attributeList);
+			processVolatileType(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_subrange_type:
-			processArrayBoundType(offset, attributeList);
+			processArrayBoundType(offset, attributeList, entry.hasChildren);
 			break;
 		}
 	}	
@@ -1774,17 +1728,15 @@ public class DwarfInfoReader {
 	}
 
 
-	private void registerType(long offset, IType type) {
-		Long typeKey = offset;
-		//if (provider.typesByOffset.containsKey(typeKey))
-		//	throw new IllegalStateException();
-		provider.typesByOffset.put(typeKey, type);
+	private void registerType(long offset, IType type, boolean hasChildren) {
+		provider.typesByOffset.put(offset, type);
 		
 		typeToParentMap.put(type, currentParentType);
-		currentParentType = type;
+		if (hasChildren)
+			currentParentType = type;
 		if (DEBUG) {
 			if (type != null) {
-				System.out.print("Read type " + type.getName());
+				System.out.print(DwarfMessages.DwarfInfoReader_ReadType + type.getName());
 				while (type.getType() != null) {
 					type = type.getType();
 					System.out.print(" " + type.getName()); //$NON-NLS-1$
@@ -1859,7 +1811,7 @@ public class DwarfInfoReader {
 			return list;
 			
 		} catch (BufferUnderflowException e) {
-			EDCDebugger.getMessageLogger().logError("Failed to read ranges", e);
+			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_RangeReadFailed, e);
 			return null;
 		}
 	}
@@ -2077,8 +2029,8 @@ public class DwarfInfoReader {
 							}
 						}
 					} catch (IOException e) {
-						EDCDebugger.getMessageLogger().logError("Failed to parse debug info from section " 
-								+ debugInfoSection.getName() + " in file " + symbolFilePath, e);
+						EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed1 
+								+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, e);
 					}
 				}
 			}
@@ -2096,7 +2048,7 @@ public class DwarfInfoReader {
 		return new DereferencedAttributes(providingCU, attributes);
 	}
 
-	private void processSubProgram(long offset, AttributeList attributeList, boolean hasChildren) {
+	private void processSubprogram(long offset, AttributeList attributeList, boolean hasChildren) {
 		// if it's a declaration just add to the offsets map for later lookup
 		if (attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_declaration) > 0) {
 			provider.functionsByOffset.put(offset, attributeList);
@@ -2105,7 +2057,7 @@ public class DwarfInfoReader {
 
 		// functions with no high/low pc aren't real functions. just treat them
 		// as declarations as they will be pointed to by abstract_origin from
-		// another sub program tag
+		// another subprogram tag
 		if (!attributeList.hasCodeRangeAttributes()) {
 			provider.functionsByOffset.put(offset, attributeList);
 			return;
@@ -2154,6 +2106,8 @@ public class DwarfInfoReader {
 			// the name should either be an attribute of the compile unit, or be
 			// in the declaration which according to the spec will always be
 			// before its definition in the Dwarf.
+			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_SubprogramNameNotFound1 + Long.toHexString(offset) +
+					DwarfMessages.DwarfInfoReader_SubprogramNameNotFound2, null);
 			return;
 		}
 
@@ -2282,7 +2236,7 @@ public class DwarfInfoReader {
 		int declFileNum = origAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_decl_file);
 		
 		if (declFileNum == 0) {
-			assert(false);
+			//assert(false);	// avoid this since it breaks the symbolics... need to log it instead
 			return;
 		}
 		
@@ -2308,19 +2262,19 @@ public class DwarfInfoReader {
 		functions.add(function);
 	}
 
-	private void processSubroutineType(long offset, AttributeList attributeList, CompilationUnitHeader header) {
+	private void processSubroutineType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		SubroutineType type = new SubroutineType(currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		
 		// TODO: associate parameters with this type in child tag parse
 		
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 	
-	private void processClassType(long offset, AttributeList attributeList, CompilationUnitHeader header) {
+	private void processClassType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 		
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2328,12 +2282,12 @@ public class DwarfInfoReader {
 
 		ClassType type = new ClassType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 	
-	private void processStructType(long offset, AttributeList attributeList, CompilationUnitHeader header) {
+	private void processStructType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2341,12 +2295,12 @@ public class DwarfInfoReader {
 
 		StructType type = new StructType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	private void processUnionType(long offset, AttributeList attributeList, CompilationUnitHeader header) {
+	private void processUnionType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2354,12 +2308,93 @@ public class DwarfInfoReader {
 
 		UnionType type = new UnionType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
+		
+		/*
+		 * For an anonymous union, which has members accessible by methods in a class, ARM RVCT
+		 * does not create an unnamed class member so you know the offset of the union's members.
+		 * Instead, it just gives the anonymous union's type a name of the form "__C" followed
+		 * by a number. And it places the union's DWARF info after all class member info.
+		 * 
+		 * When you have 2 named members and 2 anonymous unions in this order:
+		 * 		4-byte union <anonymous 1>
+		 * 		4-byte long  long1
+		 * 		4-byte union <anonymous 2>
+		 * 		4-byte long  long2
+		 * ARM RVCT DWARF info says the class has 2 members:
+		 * 		long1 at offset  4
+		 * 		long2 at offset 12
+		 * ARM RVCT DWARF info is in the order:
+		 * 		member long1
+		 * 		member long2
+		 * 		type   union <anonymous 1>
+		 * 		type   union <anonymous 2>
+		 * So the rules for handling anonymous unions in RVCT DWARF are:
+		 * 		1st read offsets and sizes of non-anonymous members, which leaves offset holes
+		 * 			for anonymous unions
+		 * 		2nd read anonymous union type info, which have compiler-generated names of
+		 * 			"__C" following by a number, and assign unnamed members to offset holes
+		 */
+		boolean isRVCTAnonymousUnion = false;
+		try {
+			isRVCTAnonymousUnion = name.startsWith("__C") && (name.length() > 3) && //$NON-NLS-1$
+								(name.charAt(3) != '-') && (Long.parseLong(name.substring(3)) > -1);
+		} catch (NumberFormatException nfe) {}
+
+		// if needed, create an "unnamed" member with the correct member offset
+		if (isRVCTAnonymousUnion && getCompositeParent(typeToParentMap.get(currentParentType)) != null) {
+			ICompositeType compositeType = getCompositeParent(typeToParentMap.get(currentParentType));
+
+			// unnamed member accessibility depends on the enclosing composite's type -
+			// public for a struct or union, private for a class
+			int accessibility = ICompositeType.ACCESS_PUBLIC;
+			if (compositeType instanceof ClassType)
+				accessibility = ICompositeType.ACCESS_PRIVATE;
+
+			// sort composite fields by offsets
+			IField[] fields = compositeType.getFields();
+			if (fields.length > 1) {
+				boolean sorted;
+				int passCnt = 1;
+				do {
+					sorted = true;
+					for (int i = 0; i < fields.length - passCnt; i++) {
+						if (fields[i].getFieldOffset() > fields[i + 1].getFieldOffset()) {
+							IField temp = fields[i];
+							fields[i] = fields[i + 1];
+							fields[i + 1] = temp;
+							sorted = false;
+						}
+					}
+					passCnt++;
+				} while (!sorted && passCnt < fields.length);
+			}
+
+			// find the offset for the anonymous union's data - between other members or at the end
+			long fieldOffset = 0;
+			for (int i = 0; i < fields.length; i++) {
+				if (fieldOffset < fields[i].getFieldOffset())
+					break;
+				fieldOffset = fields[i].getFieldOffset() + fields[i].getByteSize();
+			}
+
+			// empty field names confuse the expressions service
+			String fieldName = "$unnamed$" + (compositeType.fieldCount() + 1); //$NON-NLS-1$
+
+			FieldType fieldType = new FieldType(fieldName, currentParentScope, compositeType, fieldOffset, 0, 0,
+					byteSize, accessibility, null);
+			fieldType.setType(type);
+			// add the member to the deepest nested (last added) compositeNesting
+			// member
+			compositeType.addField(fieldType);
+			registerType(offset, fieldType, false);
+		}
+
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	private void processInheritance(long offset, AttributeList attributeList, CompilationUnitHeader header) {
+	private void processInheritance(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		ICompositeType compositeType = null;
@@ -2398,31 +2433,11 @@ public class DwarfInfoReader {
 		if (compositeType != null)
 			compositeType.addInheritance(type);
 		
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	/*
-	// remove composites that are out of scope and add a composite that is now
-	// is scope
-	private void adjustCompositeNesting(long offset, long siblingOffset, ICompositeType type,
-			CompilationUnitHeader header, ArrayList<CompositeNest> compositeNesting) {
-
-		// siblingOffset will be 0 when the composite is being used, but not
-		// being defined. E.g., when we are getting the type of a pointer such
-		// as "class foo *pFoo"
-		if (siblingOffset != 0) {
-			// if needed, remove composites whose definitions are finished
-			while ((compositeNesting.size() > 0)
-					&& (compositeNesting.get(0).getSiblingOffset() + header.debugInfoOffset <= offset))
-				compositeNesting.remove(0);
-
-			// add this structure to the start of the composite list
-			compositeNesting.add(0, new CompositeNest(siblingOffset, type));
-		}
-	}
-	 */
-	private void processField(long offset, AttributeList attributeList, CompilationUnitHeader header) {
+	private void processField(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2445,9 +2460,7 @@ public class DwarfInfoReader {
 			}
 		}
 
-		ICompositeType compositeType = null;
-		
-		compositeType = getCompositeParent();
+		ICompositeType compositeType = getCompositeParent();
 
 		// default accessibility depends on the composite type -
 		// public for a struct or union, private for a class
@@ -2480,27 +2493,33 @@ public class DwarfInfoReader {
 		// member
 		if (compositeType != null)
 			compositeType.addField(type);
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	/*
-	private ICompositeType getCompositeParent() {
-		ICompositeType compositeType = null;
-		ForwardDwarfDefinition def = currentParent;
-		while (def != null) {
-			IType type = provider.readType(def.offset);
-			if (type instanceof ICompositeType) { 
-				compositeType = (ICompositeType) type;
-				break;
-			} 
-			def = def.parent;
-		}
-		return compositeType;
-	}*/
+	private void processTemplateTypeParam(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
+		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+
+		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+		IType paramType = getTypeOrReference(attributeList.getAttribute(DwarfConstants.DW_AT_type), currentCUHeader);
+
+		TemplateParamType type = new TemplateParamType(name, paramType);
+		
+		ICompositeType compositeType = getCompositeParent();
+
+		// add the template param to the deepest nested (last added) compositeNesting
+		// member
+		if (compositeType != null)
+			compositeType.addTemplateParam(type);
+		registerType(offset, type, hasChildren);
+		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+	}
 	
 	private ICompositeType getCompositeParent() {
-		IType parent = currentParentType;
+		return getCompositeParent(currentParentType);
+	}
+	
+	private ICompositeType getCompositeParent(IType parent) {
 		while (parent != null) {
 			if (parent instanceof ICompositeType)
 				return ((ICompositeType) parent);
@@ -2509,7 +2528,7 @@ public class DwarfInfoReader {
 		return null;
 	}
 
-	private void processArrayType(long offset, AttributeList attributeList) {
+	private void processArrayType(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2517,7 +2536,7 @@ public class DwarfInfoReader {
 
 		ArrayType type = new ArrayType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
@@ -2531,7 +2550,7 @@ public class DwarfInfoReader {
 		return null;
 	}
 
-	private void processArrayBoundType(long offset, AttributeList attributeList) {
+	private void processArrayBoundType(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		long arrayBound = 0;
@@ -2545,12 +2564,12 @@ public class DwarfInfoReader {
 			throw new IllegalStateException();
 		((IArrayType) array).addBound(type);
 
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	private void processReferenceType(long offset, AttributeList attributeList) {
+	private void processReferenceType(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2561,11 +2580,11 @@ public class DwarfInfoReader {
 		
 		ReferenceType type = new ReferenceType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	private void processPointerType(long offset, AttributeList attributeList) {
+	private void processPointerType(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2576,30 +2595,30 @@ public class DwarfInfoReader {
 		
 		PointerType type = new PointerType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	private void processConstType(long offset, AttributeList attributeList) {
+	private void processConstType(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		ConstType type = new ConstType(currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	private void processVolatileType(long offset, AttributeList attributeList) {
+	private void processVolatileType(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		VolatileType type = new VolatileType(currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	private void processEnumType(long offset, AttributeList attributeList) {
+	private void processEnumType(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2607,7 +2626,7 @@ public class DwarfInfoReader {
 
 		Enumeration type = new Enumeration(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
@@ -2639,19 +2658,19 @@ public class DwarfInfoReader {
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, enumerator);
 	}
 
-	private void processTypeDef(long offset, AttributeList attributeList) {
+	private void processTypeDef(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 
 		TypedefType type = new TypedefType(name, currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
 
-	private void processBasicType(long offset, AttributeList attributeList) {
+	private void processBasicType(long offset, AttributeList attributeList, boolean hasChildren) {
 		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
@@ -2747,7 +2766,7 @@ public class DwarfInfoReader {
 		
 		CPPBasicType type = new CPPBasicType(name, currentParentScope, baseType, qualifierBits, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
-		registerType(offset, type);
+		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
 		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
 	}
@@ -2801,7 +2820,7 @@ public class DwarfInfoReader {
 				if (currentParentScope instanceof FunctionScope) {
 					((FunctionScope) currentParentScope).addParameter(variable);
 				} else {
-					assert (false);
+					//assert (false);
 				}
 			} else {
 				if (global) {
@@ -2831,32 +2850,6 @@ public class DwarfInfoReader {
 	}
 
 
-	/**
-	 * Dereference a DW_AT_type attribute, if present
-	 * @param attributeMap the map of Long, AttributeValue from AttributeList or Object, Object from Type
-	 * @return offset to referenced type or 0 if no type attribute 
-	 */
-	/*
-	private long getTypeReference(Map<Short,Object> attributeMap, CompilationUnitHeader header) {
-		AttributeValue typeAttribute = (AttributeValue) attributeMap.get(Short.valueOf(DwarfConstants.DW_AT_type));
-		if (typeAttribute != null) {
-			// get the offset into the .debug_info section
-			long debugInfoOffset = ((Number) typeAttribute.value).longValue();
-			if (typeAttribute.getActualForm() == DwarfConstants.DW_FORM_ref_addr) {
-				// this is already relative to the .debug_info section
-			} else {
-				if (header == null) {
-					header = (CompilationUnitHeader) attributeMap.get(CU_HEADER);
-					if (header == null) 
-						throw new IllegalStateException();
-				}
-				debugInfoOffset += header.debugInfoOffset;
-			}
-			return debugInfoOffset;
-		}
-		return 0;
-	}
-	 */
 	private ILocationProvider getLocationProvider(AttributeValue locationValue) {
 		if (locationValue != null) {
 			byte actualForm = locationValue.getActualForm();
@@ -2890,7 +2883,7 @@ public class DwarfInfoReader {
 			try {
 				out = new PrintStream(new File(dumpFileName));
 			} catch (FileNotFoundException e) {
-				System.out.println("Failed to open or create the dump file: " + dumpFileName);
+				System.out.println(DwarfMessages.DwarfInfoReader_DumpFileOpenOrCreateFailed + dumpFileName);
 				return;
 			}
 			
@@ -2982,7 +2975,7 @@ public class DwarfInfoReader {
 				
 				buffer.position(nextPosition);
 			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError("Failed to read frame indices", e);
+				EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_FrameIndicesReadFailed, e);
 				break;
 			}
 			
@@ -3040,6 +3033,16 @@ public class DwarfInfoReader {
 		List<IType> typeList = provider.typesByName.get(name);
 		if (typeList == null) {
 			typeList = new ArrayList<IType>();
+			
+			// for a template, remove extra spaces and composite type names (e.g., "class")
+			if (name.indexOf('<') != -1) {
+				while (name.contains("  ")) //$NON-NLS-1$
+					name = name.replaceAll("  ", " "); //$NON-NLS-1$ //$NON-NLS-2$
+				name = name.replaceAll(", ", ","); //$NON-NLS-1$ //$NON-NLS-2$
+				name = name.replaceAll("class ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				name = name.replaceAll("struct ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+				name = name.replaceAll("union ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+			}
 			provider.typesByName.put(name, typeList);
 		}
 		typeList.add(type);

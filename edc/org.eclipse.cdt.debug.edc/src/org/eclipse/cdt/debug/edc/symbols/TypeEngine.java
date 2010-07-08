@@ -30,7 +30,6 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTArrayDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.PushLongOrBigInteger;
 import org.eclipse.cdt.debug.edc.internal.symbols.ArrayBoundType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ArrayType;
@@ -40,10 +39,6 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
-import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
-import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -308,54 +303,10 @@ public class TypeEngine {
 		
 		String typeName = typeNameMap.get(valueType);
 		if (typeName == null) {
-			typeName = recursiveGetType(valueType);
+			typeName = TypeUtils.getFullTypeName(valueType);
 			typeNameMap.put(valueType, typeName);
 		}
 		return typeName;
-	}
-
-
-	private String recursiveGetType(IType type) {
-		if (type == null)
-			return ""; //$NON-NLS-1$
-		if (type instanceof IReferenceType)
-			return recursiveGetType(((IReferenceType) type).getType()) + " &"; //$NON-NLS-1$
-		if (type instanceof IPointerType)
-			return recursiveGetType(((IPointerType) type).getType()) + " *"; //$NON-NLS-1$
-		if (type instanceof IArrayType) {
-			IArrayType arrayType = (IArrayType) type;
-			String returnType = recursiveGetType(arrayType.getType());
-
-			IArrayBoundType[] bounds = arrayType.getBounds();
-			for (IArrayBoundType bound : bounds) {
-				returnType += "[" + bound.getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
-			}
-			return returnType;
-		}
-		if (type instanceof IArrayDimensionType) {
-			IArrayDimensionType arrayDimensionType = (IArrayDimensionType) type;
-			IArrayType arrayType = arrayDimensionType.getArrayType();
-			String returnType = recursiveGetType(arrayType.getType());
-
-			IArrayBoundType[] bounds = arrayType.getBounds();
-			for (int i = arrayDimensionType.getDimensionCount(); i < arrayType.getBoundsCount(); i++) {
-				returnType += "[" + bounds[i].getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
-			}
-			return returnType;
-		}
-		if (type instanceof ITypedef)
-			return ((ITypedef) type).getName();
-		if (type instanceof ICompositeType)
-			return ((ICompositeType) type).getName();
-		if (type instanceof IQualifierType)
-			return ((IQualifierType) type).getName()
-					+ " " + recursiveGetType(((IQualifierType) type).getType()); //$NON-NLS-1$
-		if (type instanceof ISubroutineType) {
-			// TODO: real stuff once we parse parameters
-			// TODO: the '*' for a function pointer (e.g. in a vtable) is in the wrong place
-			return recursiveGetType(((ISubroutineType) type).getType()) + "(...)"; //$NON-NLS-1$
-		}
-		return type.getName() + recursiveGetType(type.getType());
 	}
 
 	/**

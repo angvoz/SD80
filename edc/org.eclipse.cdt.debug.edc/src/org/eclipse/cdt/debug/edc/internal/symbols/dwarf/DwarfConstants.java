@@ -58,8 +58,8 @@ public class DwarfConstants {
 	public final static int DW_TAG_namelist_item = 0x2c;
 	public final static int DW_TAG_packed_type = 0x2d;
 	public final static int DW_TAG_subprogram = 0x2e;
-	public final static int DW_TAG_template_type_param = 0x2f;
-	public final static int DW_TAG_template_value_param = 0x30;
+	public final static int DW_TAG_template_type_param = 0x2f; // called DW_TAG_template_type_parameter in DWARF 3
+	public final static int DW_TAG_template_value_param = 0x30; // called DW_TAG_template_value_parameter in DWARF 3
 	public final static int DW_TAG_thrown_type = 0x31;
 	public final static int DW_TAG_try_block = 0x32;
 	public final static int DW_TAG_variant_part = 0x33;

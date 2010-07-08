@@ -22,13 +22,17 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 	private final int key;
 	
 	// composite name without "class ", "struct " or "union " prefix
-	private final String baseName;
+	private String baseName;
 
 	// fields in the composite 
 	protected ArrayList<IField> fields = new ArrayList<IField>();
 	
 	// classes inherited from
 	protected ArrayList<IInheritance> inheritances = null;
+	
+	// template parameters
+	protected ArrayList<ITemplateParam> templateParams = null;
+	boolean nameIncludesTemplateParams = false;
 
 	public CompositeType(String name, IScope scope, int key, int byteSize, Map<Object, Object> properties, String prefix) {
 		super(name, scope, byteSize, properties);
@@ -55,13 +59,51 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 		return fieldList.toArray(new IField[fields.size()]);
 	}
 
+	public void addTemplateParam(ITemplateParam templateParam) {
+		if (templateParams == null) {
+			templateParams = new ArrayList<ITemplateParam>(2);
+		}
+		templateParams.add(templateParam);
+	}
+
+	public ITemplateParam[] getTemplateParams() {
+		if (templateParams == null)
+			return new ITemplateParam[0];
+
+		ArrayList<ITemplateParam> templateParamList = new ArrayList<ITemplateParam>(templateParams);
+
+		return templateParamList.toArray(new ITemplateParam[templateParams.size()]);
+	}
+
 	@Override
 	public String getName() {
+		if (templateParams != null && !nameIncludesTemplateParams)
+			addTemplateStringToNames();
 		return name;
 	}
 	
 	public String getBaseName() {
+		if (templateParams != null && !nameIncludesTemplateParams)
+			addTemplateStringToNames();
 		return baseName;
+	}
+
+	// add template parameters (e.g. "<Long>") to name and base name
+	private void addTemplateStringToNames() {
+		nameIncludesTemplateParams = true;
+		String templateName = "<"; //$NON-NLS-1$
+		for (int i = 0; i < templateParams.size(); i++) {
+			templateName += templateParams.get(i).getName();
+			if (i + 1 < templateParams.size())
+				templateName += ","; //$NON-NLS-1$
+		}
+		templateName += ">"; //$NON-NLS-1$
+		// remove composite type names (e.g., "class")
+		templateName = templateName.replaceAll("class ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+		templateName = templateName.replaceAll("struct ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+		templateName = templateName.replaceAll("union ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+		name += templateName;
+		baseName += templateName;
 	}
 
 	public int inheritanceCount() {
@@ -115,11 +157,19 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 			
 			if (inheritances != null) {
 				for (IInheritance inheritance : inheritances) {
-					if (inheritance.getName().equals(baseFieldName)) {
+					String inheritanceName = inheritance.getName();
+					// for templates, remove composite type names (e.g., "class")
+					if (inheritanceName.indexOf('<') != -1) {
+						inheritanceName = inheritanceName.replaceAll("class ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+						inheritanceName = inheritanceName.replaceAll("struct ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+						inheritanceName = inheritanceName.replaceAll("union ", ""); //$NON-NLS-1$ //$NON-NLS-2$
+					}
+
+					if (inheritanceName.equals(baseFieldName)) {
 						IField[] foundFields = new IField[1];
 						
 						// treat the inherited type as a field
-						FieldType newField = new FieldType(inheritance.getName(), scope, this,
+						FieldType newField = new FieldType(inheritanceName, scope, this,
 								inheritance.getFieldsOffset(), 0 /* bitSize */, 0 /* bitOffset */,
 								inheritance.getType().getByteSize(), inheritance.getAccessibility(),
 								inheritance.getProperties());

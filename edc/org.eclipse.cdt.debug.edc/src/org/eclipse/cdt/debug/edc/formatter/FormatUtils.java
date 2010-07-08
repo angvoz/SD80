@@ -107,7 +107,7 @@ public class FormatUtils {
 		
 		// if base name ends with a template size (e.g., "<15>"),
 		// match ignoring the value in the braces
-		if (baseName.contains("<")) //$NON-NLS-1$
+		if (baseName.indexOf('<') != -1) //$NON-NLS-1$
 			if (baseName.matches(name + "<.*>$")) //$NON-NLS-1$
 				return true;
 

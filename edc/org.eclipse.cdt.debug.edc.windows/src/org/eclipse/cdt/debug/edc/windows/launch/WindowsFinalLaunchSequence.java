@@ -82,7 +82,7 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 	};
 
 	public WindowsFinalLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		super(executor, launch, pm, "Configure Windows Debugger:", "Abort configuring Windows debugger", true);
+		super(executor, launch, pm, "Configure Windows Debugger:", "Abort configuring Windows debugger");
 
 		boolean doAttach;
 
@@ -126,6 +126,14 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		return WindowsDebugger.chooseProcess(processes);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence#useLocalAgentOnly()
+	 */
+	@Override
+	protected boolean useLocalAgentOnly() {
+		return true;
+	}
+	
 	@Override
 	protected void specifyRequiredPeer() {
 		peerAttributes.put(IEDCConstants.PEER_ATTR_DEBUG_SUPPORT, "Win32 Debug API");

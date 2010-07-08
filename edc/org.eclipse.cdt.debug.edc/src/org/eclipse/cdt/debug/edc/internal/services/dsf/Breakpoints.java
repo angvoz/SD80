@@ -53,7 +53,6 @@ import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ModuleLoadedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IModules.ModuleUnloadedDMEvent;
-import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
@@ -634,7 +633,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		final Map<String, Object> properties = new HashMap<String, Object>(props);
 
 		if (usesTCFBreakpointService()) {
-			IProcessDMContext exedmc = DMContexts.getAncestorOfType(exeDMC, IProcessDMContext.class);
+			IBreakpointsTargetDMContext exedmc = DMContexts.getAncestorOfType(exeDMC, IBreakpointsTargetDMContext.class);
 
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ID, Long.toString(id));
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ENABLED, true);

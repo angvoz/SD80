@@ -44,7 +44,7 @@ public class SnapshotLaunchSequence extends AbstractFinalLaunchSequence {
 	};
 
 	public SnapshotLaunchSequence(DsfExecutor executor, EDCLaunch launch, IProgressMonitor pm) {
-		super(executor, launch, pm, "Configuring Snapshot Launch", "Aborting configuring Snapshot Launch", true);
+		super(executor, launch, pm, "Configuring Snapshot Launch", "Aborting configuring Snapshot Launch");
 	}
 
 	@Override
@@ -52,6 +52,14 @@ public class SnapshotLaunchSequence extends AbstractFinalLaunchSequence {
 		return steps;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.launch.AbstractFinalLaunchSequence#useLocalAgentOnly()
+	 */
+	@Override
+	protected boolean useLocalAgentOnly() {
+		return true;
+	}
+	
 	@Override
 	protected void specifyRequiredPeer() {
 		// No TCF agent needed.

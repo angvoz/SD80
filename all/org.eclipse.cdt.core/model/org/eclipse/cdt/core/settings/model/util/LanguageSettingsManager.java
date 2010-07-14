@@ -236,7 +236,8 @@ public class LanguageSettingsManager {
 			rootElement.setAttribute(ATTR_PROJECT_NAME, project.getName());
 			doc.appendChild(rootElement);
 
-			for (ILanguageSettingsProvider provider : getProviders(cfgDescription)) {
+			List<ILanguageSettingsProvider> providers = getProviders(cfgDescription);
+			for (ILanguageSettingsProvider provider : providers) {
 				if (provider instanceof LanguageSettingsPersistentProvider) {
 					((LanguageSettingsPersistentProvider) provider).serialize(rootElement);
 				}

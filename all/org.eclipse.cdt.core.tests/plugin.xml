@@ -258,4 +258,61 @@
          </entry>
       </provider>
    </extension>
+   <extension
+         point="org.eclipse.cdt.core.LanguageSettingsProvider">
+      <provider
+            id="org.eclipse.cdt.core.tests.language.settings"
+            name="Test Plugin Setting Entries UI Tester">
+         <language
+               id="org.eclipse.cdt.core.g++">
+         </language>
+         <entry
+               kind="includePath"
+               name="/test/include/path">
+         </entry>
+         <entry
+               kind="includePath"
+               name="/test/workspace/include/path">
+            <flag
+                  value="VALUE_WORKSPACE_PATH">
+            </flag>
+         </entry>
+         <entry
+               kind="includePath"
+               name="/test/builtin/include/path">
+            <flag
+                  value="BUILTIN">
+            </flag>
+         </entry>
+         <entry
+               kind="macro"
+               name="MACRO"
+               value="macro">
+         </entry>
+         <entry
+               kind="macro"
+               name="BUILTIN_MACRO"
+               value="builtin-macro">
+            <flag
+                  value="BUILTIN">
+            </flag>
+         </entry>
+         <entry
+               kind="includeFile"
+               name="/test/includes/file">
+         </entry>
+         <entry
+               kind="libraryPath"
+               name="/test/library/path">
+         </entry>
+         <entry
+               kind="libraryFile"
+               name="/test/library/file">
+         </entry>
+         <entry
+               kind="macroFile"
+               name="/test/macro/file">
+         </entry>
+      </provider>
+   </extension>
 </plugin>

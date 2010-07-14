@@ -3727,8 +3727,19 @@
       <provider
             class="org.eclipse.cdt.internal.ui.language.UserLanguageSettingsProvider"
             id="org.eclipse.cdt.ui.user.LanguageSettingsProvider"
-            name="CDT User Settings Provider">
+            name="CDT User Setting Entries">
       </provider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.ui.cPropertyTab">
+     <tab
+           class="org.eclipse.cdt.ui.newui.AllLanguageSettingEntriesTab"
+           icon="icons/obj16/ls_entries.gif"
+           name="%AllLanguageSettingEntries.name"
+           weight="006"
+           helpId="FIXME cdt_u_prop_pns_inc"
+           parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
+           tooltip="%AllLanguageSettingEntries.tooltip"/>
    </extension>
  <extension
        point="org.eclipse.ui.commands">

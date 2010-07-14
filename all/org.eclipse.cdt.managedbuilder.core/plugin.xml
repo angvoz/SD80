@@ -610,7 +610,7 @@
       <provider
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.MBSLanguageSettingsProvider"
             id="org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider"
-            name="CDT Managed Build Provider">
+            name="CDT MBS Setting Entries">
       </provider>
    </extension>
 

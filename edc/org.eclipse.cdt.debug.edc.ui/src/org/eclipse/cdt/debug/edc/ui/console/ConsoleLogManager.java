@@ -15,7 +15,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging.DoneAddListener;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging.DoneRemoveListener;
@@ -61,6 +63,8 @@ public class ConsoleLogManager implements LogListener {
 	 * The type id of the managed consoles
 	 */
 	private final String consoleType;
+
+	private IChannelListener channelOpenListener;
 
 	/**
 	 * Create a new manager to manager a console type with a specific ILogging
@@ -121,8 +125,47 @@ public class ConsoleLogManager implements LogListener {
 		});
 	}
 
+	
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((consoleType == null) ? 0 : consoleType.hashCode());
+		result = prime * result + ((logId == null) ? 0 : logId.hashCode());
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ConsoleLogManager other = (ConsoleLogManager) obj;
+		if (consoleType == null) {
+			if (other.consoleType != null)
+				return false;
+		} else if (!consoleType.equals(other.consoleType))
+			return false;
+		if (logId == null) {
+			if (other.logId != null)
+				return false;
+		} else if (!logId.equals(other.logId))
+			return false;
+		return true;
+	}
+
 	private void hookChannel(final IChannel channel) {
-		Protocol.invokeLater(new Runnable() {
+		Protocol.invokeAndWait(new Runnable() {
 			public void run() {
 				channel.addChannelListener(new IChannelListener() {
 
@@ -157,7 +200,13 @@ public class ConsoleLogManager implements LogListener {
 						});
 					}
 				};
-				task.getE();
+				// wait a fixed time since the target may be disconnected
+				try {
+					task.get(15, TimeUnit.SECONDS);
+				} catch (InterruptedException e) {
+				} catch (Exception e) {
+					EDCDebugger.getMessageLogger().logError(null, e);
+				}
 			}
 		}
 	}
@@ -165,28 +214,52 @@ public class ConsoleLogManager implements LogListener {
 	public void addConsole(MessageConsole console) {
 		if (consoleStreamMappings.isEmpty()) {
 			if (isChannelOpen()) {
-				TCFTask<Object> task = new TCFTask<Object>() {
-					public void run() {
-						ILogging logging = ConsoleLogManager.this.channel.getRemoteService(ILogging.class);
-						assert logging != null;
-						logging.addListener(logId, ConsoleLogManager.this, new DoneAddListener() {
-							public void doneAddListener(IToken token, Exception error) {
-								if (error == null)
-									done(this);
-								else
-									error(error);
-							}
-						});
+				addLoggingListener();
+			} else {
+				channelOpenListener = new IChannelListener() {
+					
+					public void onChannelOpened() {
+						addLoggingListener();
+						channel.removeChannelListener(channelOpenListener);
+					}
+					
+					public void onChannelClosed(Throwable error) {
+					}
+					
+					public void congestionLevel(int level) {
 					}
 				};
-				task.getE();
+				Protocol.invokeAndWait(new Runnable() {
+					public void run() {
+						channel.addChannelListener(channelOpenListener);
+					}
+				});
 			}
 		}
 		consoleStreamMappings.put(console, console.newMessageStream());
 	}
 
+	/**
+	 * 
+	 */
+	private void addLoggingListener() {
+		Protocol.invokeAndWait(new Runnable() {
+			public void run() {
+				ILogging logging = ConsoleLogManager.this.channel.getRemoteService(ILogging.class);
+				assert logging != null;
+				logging.addListener(logId, ConsoleLogManager.this, new DoneAddListener() {
+					public void doneAddListener(IToken token, Exception error) {
+						if (error != null)
+							EDCDebugger.getMessageLogger().logError("Failed to add logging listener", error);
+					}
+				});
+			}
+		});
+	}
+
 	private boolean isChannelOpen() {
-		return (((AbstractChannel) channel).getState() == IChannel.STATE_OPEN);
+		int state = ((AbstractChannel) channel).getState();
+		return state == IChannel.STATE_OPEN || state == IChannel.STATE_OPENNING;
 	}
 
 	public void appendText(final MessageConsole console, final String text, boolean eol) {
@@ -210,6 +283,15 @@ public class ConsoleLogManager implements LogListener {
 	public void writeln(String msg) {
 		for (MessageConsole console : consoleStreamMappings.keySet()) {
 			appendText(console, msg, true);
+		}
+	}
+
+	static void removeManagersForChannel(IChannel channel) {
+		if (managers != null) {
+			for (ConsoleLogManager consoleLogManager : managers.toArray(new ConsoleLogManager[managers.size()])) {
+				if (consoleLogManager.channel.equals(channel))
+					managers.remove(consoleLogManager);
+			}
 		}
 	}
 }

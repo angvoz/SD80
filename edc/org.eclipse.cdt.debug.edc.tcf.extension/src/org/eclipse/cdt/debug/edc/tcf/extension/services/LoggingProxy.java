@@ -106,7 +106,8 @@ public class LoggingProxy implements ILogging {
 			mapIdToListeners.put(id, listeners);
 		}
 		
-		listeners.add(listener);
+		if (!listeners.contains(listener))
+			listeners.add(listener);
 		
 		if (eventListener == null) {
 			eventListener = new ChannelEventListener();

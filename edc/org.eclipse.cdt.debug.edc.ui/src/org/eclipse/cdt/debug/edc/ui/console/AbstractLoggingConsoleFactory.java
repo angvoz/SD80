@@ -42,7 +42,12 @@ public abstract class AbstractLoggingConsoleFactory implements IConsoleFactory {
 	 *            IChannel
 	 */
 	public static void setChannel(String consoleType, String logId, IChannel channel) {
-		channelMappings.put(createKey(consoleType, logId), channel);
+		String key = createKey(consoleType, logId);
+		IChannel existing = channelMappings.get(key);
+		if (existing != null) {
+			ConsoleLogManager.removeManagersForChannel(existing);
+		}
+		channelMappings.put(key, channel);
 	}
 
 	/**

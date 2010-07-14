@@ -16,6 +16,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.cdt.debug.edc.tcf.extension.agent.ContextInAgent.IRunControlContext;
+
 /**
  * Manager of all contexts (threads and processes, etc) in the debug session.
  */
@@ -56,14 +58,31 @@ public class ContextManager {
 	}
 	
 	/**
-	 * Get list of context IDs under debug.
+	 * Get list of IDs of contexts under debug. This list includes 
+	 * all contexts including processes, threads, registers etc.
 	 * 
-	 * @return a list of IDs of contexts under debug.
+	 * @return a list of IDs.
 	 */
 	static public List<String> getDebuggedContexts() {
 		List<String> ret = new ArrayList<String>();
 		for (ContextInAgent c : gDebuggedContexts.values())
 			ret.add(c.getID());
+		
+		return ret;
+	}
+	
+	/**
+	 * Get list of IDs of run control contexts under debug. This list only includes 
+	 * contexts like process and thread, not registers.
+	 * 
+	 * @return a list of IDs.
+	 * @since 2.0
+	 */
+	static public List<String> getDebuggedRunControlContexts() {
+		List<String> ret = new ArrayList<String>();
+		for (ContextInAgent c : gDebuggedContexts.values())
+			if (c instanceof IRunControlContext)
+				ret.add(c.getID());
 		
 		return ret;
 	}

@@ -19,9 +19,25 @@ package org.eclipse.cdt.debug.edc.tcf.extension;
  * For C/C++ or other language based agents, a similar file should be created.
  */
 public interface ProtocolConstants {
-	// This is supplement to properties in IRunControl.
-	// OS Display name for a context. DO not use IRunControl.PROCESS_ID
+	/**
+	 * OS defined ID of a context in the debugged OS. This is supplement to
+	 * properties in IRunControl. It is similar to IRunControl.PROCESS_ID but
+	 * different in that this applies to any OS context (process, thread, etc)
+	 * while PROCESS_ID only applies to process context.
+	 */
 	static final String PROP_OS_ID = "OSID"; // value type: string
+
+	/**
+	 * Extra detail an agent wants host debugger to display for a suspended
+	 * context.
+	 */
+	static final String PROP_SUSPEND_DETAIL = "message"; // value type: string
+
+	/**
+	 * Is the context (process, thread, etc) the foreground (a.k.a current) one in the
+	 * debugged OS.
+	 */
+	static final String PROP_IS_FOREGROUND = "is_foreground"; // value type: boolean
 
 	/*
 	 * These are properties that a TCF agent should report with module (a

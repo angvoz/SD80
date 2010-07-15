@@ -51,6 +51,7 @@ import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -349,11 +350,19 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			}
 			stateChangeReason = toDsfStateChangeReason(reason);
 
-			stateChangeDetails = (String) params.get("message");
-
 			if (stateChangeReason == StateChangeReason.SHAREDLIB) {
 				handleModuleEvent(this, params);
 			} else {
+
+				stateChangeDetails = (String) params.get(ProtocolConstants.PROP_SUSPEND_DETAIL);
+				
+				// Show the context is foreground one, if possible.
+				//
+				Boolean isForeground = (Boolean)params.get(ProtocolConstants.PROP_IS_FOREGROUND);
+				if (isForeground == null)
+					isForeground = false;
+				stateChangeDetails += isForeground ? " [foreground]" : "";
+				
 				final ExecutionDMC dmc = this;
 
 				final DataRequestMonitor<Boolean> preprocessDrm = new DataRequestMonitor<Boolean>(getExecutor(), null) {

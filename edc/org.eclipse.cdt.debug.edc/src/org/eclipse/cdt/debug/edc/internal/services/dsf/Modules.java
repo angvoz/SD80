@@ -413,10 +413,19 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				builder.append(hostFilePath.lastSegment());
 				builder.append(", ");
 			}
+			
+			if (symbolContext != null) {
+				builder.append("owner=");
+				builder.append(symbolContext.toString());
+			}
+			
 			for (IRuntimeSection s : runtimeSections) {
 				builder.append("\n");
 				builder.append(s);
 			}
+			
+			builder.append("]");
+			
 			return builder.toString();
 		}
 

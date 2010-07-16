@@ -30,12 +30,14 @@ public interface ProtocolConstants {
 	/**
 	 * Extra detail an agent wants host debugger to display for a suspended
 	 * context.
+	 * @since 2.0
 	 */
 	static final String PROP_SUSPEND_DETAIL = "message"; // value type: string
 
 	/**
 	 * Is the context (process, thread, etc) the foreground (a.k.a current) one in the
 	 * debugged OS.
+	 * @since 2.0
 	 */
 	static final String PROP_IS_FOREGROUND = "is_foreground"; // value type: boolean
 

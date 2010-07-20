@@ -243,7 +243,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 				NodeList providerNodes = cfgNode.getChildNodes();
 				for (int iprovider=0;iprovider<providerNodes.getLength();iprovider++) {
 					Node providerNode = providerNodes.item(iprovider);
-					if(providerNode.getNodeType() != Node.ELEMENT_NODE)
+					if(providerNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_PROVIDER.equals(providerNode.getNodeName()))
 						continue;
 
 					NamedNodeMap providerAttributes = providerNode.getAttributes();

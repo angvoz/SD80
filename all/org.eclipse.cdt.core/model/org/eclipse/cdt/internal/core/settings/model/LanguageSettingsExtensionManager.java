@@ -38,7 +38,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsBaseProvider;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.cdt.internal.core.XmlUtil;
@@ -486,8 +486,8 @@ public class LanguageSettingsExtensionManager {
 			doc.appendChild(rootElement);
 
 			for (ILanguageSettingsProvider provider : fUserDefinedProviders.values()) {
-				if (provider instanceof LanguageSettingsPersistentProvider) {
-					((LanguageSettingsPersistentProvider) provider).serialize(rootElement);
+				if (provider instanceof LanguageSettingsSerializable) {
+					((LanguageSettingsSerializable) provider).serialize(rootElement);
 				}
 			}
 			serializeXml(doc, fileLocation);
@@ -527,8 +527,8 @@ public class LanguageSettingsExtensionManager {
 		if (doc!=null) {
 			Element rootElement = doc.getDocumentElement();
 			for (ILanguageSettingsProvider provider : fUserDefinedProviders.values()) {
-				if (provider instanceof LanguageSettingsPersistentProvider) {
-					((LanguageSettingsPersistentProvider) provider).load(rootElement);
+				if (provider instanceof LanguageSettingsSerializable) {
+					((LanguageSettingsSerializable) provider).load(rootElement);
 				}
 			}
 		}

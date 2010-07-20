@@ -38,7 +38,7 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
@@ -211,8 +211,8 @@ public class LanguageSettingsManager {
 				String[] allProviderIDs = LanguageSettingsManager.getProviderAvailableIds();
 				for (String id : allProviderIDs) {
 					ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
-					if (provider instanceof LanguageSettingsPersistentProvider) {
-						((LanguageSettingsPersistentProvider) provider).load(rootElement);
+					if (provider instanceof LanguageSettingsSerializable) {
+						((LanguageSettingsSerializable) provider).load(rootElement);
 					}
 				}
 			}
@@ -252,8 +252,8 @@ public class LanguageSettingsManager {
 			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
 				List<ILanguageSettingsProvider> providers = getProviders(cfgDescription);
 				for (ILanguageSettingsProvider provider : providers) {
-					if (provider instanceof LanguageSettingsPersistentProvider) {
-						((LanguageSettingsPersistentProvider) provider).serialize(rootElement);
+					if (provider instanceof LanguageSettingsSerializable) {
+						((LanguageSettingsSerializable) provider).serialize(rootElement);
 					}
 				}
 			}

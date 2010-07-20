@@ -272,7 +272,7 @@ public class LanguageSettingsUnderConstructionTests extends TestCase {
 			assertTrue(cfgDescription instanceof CConfigurationDescription);
 			
 	
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(cfgDescription, null, null, original);
 			provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, original);
 			
@@ -350,9 +350,9 @@ public class LanguageSettingsUnderConstructionTests extends TestCase {
 			// clear provider
 			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getProviders(cfgDescription);
 			assertEquals(1, providers.size());
-			assertTrue(providers.get(0) instanceof LanguageSettingsPersistentProvider);
+			assertTrue(providers.get(0) instanceof LanguageSettingsSerializable);
 			
-			LanguageSettingsPersistentProvider provider = (LanguageSettingsPersistentProvider)providers.get(0);
+			LanguageSettingsSerializable provider = (LanguageSettingsSerializable)providers.get(0);
 			provider.setSettingEntries(cfgDescription, null, null, null);
 			provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, null);
 			{
@@ -411,7 +411,7 @@ public class LanguageSettingsUnderConstructionTests extends TestCase {
 			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 			assertTrue(cfgDescription instanceof CConfigurationDescription);
 	
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(cfgDescription, null, null, original);
 			provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, original);
 			

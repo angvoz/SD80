@@ -16,12 +16,12 @@ import java.util.List;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 
-public abstract class AbstractBuildCommandParser extends LanguageSettingsPersistentProvider implements
+public abstract class AbstractBuildCommandParser extends LanguageSettingsSerializable implements
 		ILanguageSettingsOutputScanner {
 
 	private ICConfigurationDescription currentCfgDescription = null;

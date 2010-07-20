@@ -12,12 +12,12 @@
 package org.eclipse.cdt.internal.ui.language;
 
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 
 /**
  * Provider to support user interface for language settings. The important difference with
- * {@link LanguageSettingsPersistentProvider} is that it implements {@link ILanguageSettingsEditableProvider}.
+ * {@link LanguageSettingsSerializable} is that it implements {@link ILanguageSettingsEditableProvider}.
  *
  */
-public class UserLanguageSettingsProvider extends LanguageSettingsPersistentProvider implements ILanguageSettingsEditableProvider {
+public class UserLanguageSettingsProvider extends LanguageSettingsSerializable implements ILanguageSettingsEditableProvider {
 }

@@ -22,7 +22,7 @@ import org.eclipse.cdt.core.IConsoleParser;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsPersistentProvider;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
 import org.eclipse.cdt.utils.CommandLineUtil;
 import org.eclipse.core.resources.IProject;
@@ -32,7 +32,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.SubProgressMonitor;
 
-public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsPersistentProvider implements
+public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSerializable implements
 		ILanguageSettingsOutputScanner {
 	private static final String EOL = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
 

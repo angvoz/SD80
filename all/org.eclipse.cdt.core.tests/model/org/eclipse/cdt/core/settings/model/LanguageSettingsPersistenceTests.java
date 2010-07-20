@@ -98,7 +98,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 		
 		// create a provider
-		LanguageSettingsPersistentProvider mockProvider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+		LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 		// test setter and getter
 		mockProvider.setSettingEntries(null, FILE_0, LANG_ID, original);
 		List<ICLanguageSettingEntry> retrieved = mockProvider.getSettingEntries(null, FILE_0, LANG_ID);
@@ -127,7 +127,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	public void testEmptyProvider() throws Exception {
 		{
 			// create null provider
-			LanguageSettingsPersistentProvider providerNull = new LanguageSettingsPersistentProvider(PROVIDER_NULL, PROVIDER_NAME_NULL);
+			LanguageSettingsSerializable providerNull = new LanguageSettingsSerializable(PROVIDER_NULL, PROVIDER_NAME_NULL);
 			assertNull(providerNull.getSettingEntries(null, null, null));
 			// set and get null entries
 			providerNull.setSettingEntries(null, null, null, null);
@@ -159,10 +159,10 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		
-		LanguageSettingsPersistentProvider mockProvider = null;
+		LanguageSettingsSerializable mockProvider = null;
 		{
 			// create a provider
-			mockProvider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			mockProvider.setSettingEntries(null, null, null, original);
 			
 			// assign provider to workspace
@@ -199,7 +199,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
@@ -238,7 +238,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CIncludeFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
@@ -277,7 +277,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CMacroEntry("MACRO0", "value0",1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
@@ -316,7 +316,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CMacroFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
@@ -355,7 +355,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CLibraryPathEntry("name", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
@@ -394,7 +394,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CLibraryFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
@@ -435,7 +435,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		original.add(new CIncludePathEntry("path1", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
@@ -481,7 +481,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 		assertNotNull(emptySettingsPath);
 
 		// Create provider
-		LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
+		LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 
 		// store the entries in parent folder
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();

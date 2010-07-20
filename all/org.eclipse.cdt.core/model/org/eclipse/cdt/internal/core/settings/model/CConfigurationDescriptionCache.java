@@ -128,9 +128,7 @@ public class CConfigurationDescriptionCache extends CDefaultConfigurationData
 		((CBuildSettingCache)fBuildData).initEnvironmentCache();
 		ICdtVariable vars[] = CdtVariableManager.getDefault().getVariables(this);
 		fMacros = new StorableCdtVariables(vars, true);
-		
-		LanguageSettingsManager.load(this);
-		
+
 //		fInitializing = false;
 	}
 

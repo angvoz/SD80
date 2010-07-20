@@ -40,6 +40,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingsStorage;
 import org.eclipse.cdt.core.settings.model.ICStorageElement;
 import org.eclipse.cdt.core.settings.model.extension.ICProjectConverter;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.envvar.ContributedEnvironment;
 import org.eclipse.cdt.internal.core.settings.model.AbstractCProjectDescriptionStorage;
@@ -170,6 +171,7 @@ public class XmlProjectDescriptionStorage extends AbstractCProjectDescriptionSto
 				serializingLock.acquire();
 				projectModificaitonStamp = serialize(fDes.getProject(), ICProjectDescriptionStorageType.STORAGE_FILE_NAME, fElement);
 				((ContributedEnvironment) CCorePlugin.getDefault().getBuildEnvironmentManager().getContributedEnvironment()).serialize(fDes);
+				LanguageSettingsManager.serialize(fDes);
 			} finally {
 				serializingLock.release();
 				Job.getJobManager().removeJobChangeListener(notifyJobCanceller);				
@@ -481,6 +483,7 @@ public class XmlProjectDescriptionStorage extends AbstractCProjectDescriptionSto
 				// Update the modification stamp
 				projectModificaitonStamp = getModificationStamp(project.getFile(ICProjectDescriptionStorageType.STORAGE_FILE_NAME));
 				CProjectDescription des = new CProjectDescription(project, new XmlStorage(storage), storage, true, false);
+				LanguageSettingsManager.load(des);
 				try {
 					setThreadLocalProjectDesc(des);
 					des.loadDatas();

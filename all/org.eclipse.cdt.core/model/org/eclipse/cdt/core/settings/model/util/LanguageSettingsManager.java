@@ -27,11 +27,13 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
@@ -183,9 +185,15 @@ public class LanguageSettingsManager {
 		}
 	}
 
-	public static void load(ICConfigurationDescription cfgDescription) {
-		IProject project = cfgDescription.getProjectDescription().getProject();
+	public static void load(ICProjectDescription prjDescription) {
+		IProject project = prjDescription.getProject();
 		IFile file = project.getFile("language.settings.xml");
+		try {
+			// AG: FIXME not sure about that one
+			file.refreshLocal(IResource.DEPTH_ZERO, null);
+		} catch (CoreException e) {
+			// ignore failure
+		}
 		if (file.exists() && file.isAccessible()) {
 			Document doc = null;
 			try {
@@ -197,7 +205,12 @@ public class LanguageSettingsManager {
 			if (doc!=null) {
 				Element rootElement = doc.getDocumentElement();
 				
-				for (ILanguageSettingsProvider provider : LanguageSettingsManager.getProviders(cfgDescription)) {
+//				ICConfigurationDescription[] cfgDescriptions = projectDescription.getConfigurations();
+//				for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+//				}
+				String[] allProviderIDs = LanguageSettingsManager.getProviderAvailableIds();
+				for (String id : allProviderIDs) {
+					ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
 					if (provider instanceof LanguageSettingsPersistentProvider) {
 						((LanguageSettingsPersistentProvider) provider).load(rootElement);
 					}
@@ -226,20 +239,22 @@ public class LanguageSettingsManager {
 		}
 	}
 
-	public static void serialize(ICConfigurationDescription cfgDescription) throws CoreException {
+	public static void serialize(ICProjectDescription prjDescription) throws CoreException {
+		IProject project = prjDescription.getProject();
 		try {
-			IProject project = cfgDescription.getProjectDescription().getProject();
-			
 			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 			Document doc = builder.newDocument();
 			Element rootElement = doc.createElement(ROOT_ELEM);
 			rootElement.setAttribute(ATTR_PROJECT_NAME, project.getName());
 			doc.appendChild(rootElement);
 
-			List<ILanguageSettingsProvider> providers = getProviders(cfgDescription);
-			for (ILanguageSettingsProvider provider : providers) {
-				if (provider instanceof LanguageSettingsPersistentProvider) {
-					((LanguageSettingsPersistentProvider) provider).serialize(rootElement);
+			ICConfigurationDescription[] cfgDescriptions = CoreModel.getDefault().getProjectDescription(project).getConfigurations();
+			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+				List<ILanguageSettingsProvider> providers = getProviders(cfgDescription);
+				for (ILanguageSettingsProvider provider : providers) {
+					if (provider instanceof LanguageSettingsPersistentProvider) {
+						((LanguageSettingsPersistentProvider) provider).serialize(rootElement);
+					}
 				}
 			}
 			InputStream input = new ByteArrayInputStream(toByteArray(doc));

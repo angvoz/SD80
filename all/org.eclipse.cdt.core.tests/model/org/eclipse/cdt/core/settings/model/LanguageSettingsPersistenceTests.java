@@ -28,7 +28,9 @@ import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionMan
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
 /**
@@ -463,93 +465,16 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	
 	/**
 	 */
-	public void testConfigurationProvider() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
-
-		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
-		original.add(new CIncludePathEntry("path0", 0));
-
-		LanguageSettingsPersistentProvider provider = new LanguageSettingsPersistentProvider(PROVIDER_0, PROVIDER_NAME_0);
-		provider.setSettingEntries(cfgDescription, null, null, original);
-		provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, original);
-
-		// add mock serializable provider
-		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
-		providers.add(provider);
-		LanguageSettingsManager.setProviders(cfgDescription, providers);
-
-		{
-			// 1st double-check that provider returns proper data
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, PROVIDER_0, null, null);
-			assertEquals(original.get(0), retrieved.get(0));
-			assertEquals(original.size(), retrieved.size());
-		}
-
-		{
-			// 2nd double-check that provider returns proper data
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID);
-			assertEquals(original.get(0), retrieved.get(0));
-			assertEquals(original.size(), retrieved.size());
-		}
-		
-		// serialize
-		LanguageSettingsManager.serialize(cfgDescription);
-
-		// clear provider
-		provider.setSettingEntries(cfgDescription, null, null, null);
-		provider.setSettingEntries(cfgDescription, FILE_0, LANG_ID, null);
-		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, PROVIDER_0, null, null);
-			assertEquals(0, retrieved.size());
-		}
-		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID);
-			assertEquals(0, retrieved.size());
-		}
-
-		// re-load
-		LanguageSettingsManager.load(cfgDescription);
-		{
-			// 1st
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, PROVIDER_0, null, null);
-			assertEquals(original.get(0), retrieved.get(0));
-			assertEquals(original.size(), retrieved.size());
-		}
-		{
-			// 2nd
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager
-				.getSettingEntries(cfgDescription, PROVIDER_0, FILE_0, LANG_ID);
-			assertEquals(original.get(0), retrieved.get(0));
-			assertEquals(original.size(), retrieved.size());
-		}
-		
-		// serialize over existing file (no exception expected)
-		LanguageSettingsManager.serialize(cfgDescription);
-	}
-
-	/**
-	 */
 	public void testParentFolder() throws Exception {
 		// Create model project and accompanied descriptions
-		ICProject cproject = CProjectHelper.createNewStileCProject(getName(), IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 		// Create resources
-		IProject project = cproject.getProject();
 		final IFolder parentFolder = ResourceHelper.createFolder(project, "/ParentFolder/");
 		assertNotNull(parentFolder);
 		final IFile emptySettingsPath = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/empty");

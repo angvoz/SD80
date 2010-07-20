@@ -83,16 +83,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	@Override
 	protected void setUp() throws Exception {
-//		fProject = ResourceHelper.createCDTProject(TEST_PROJECT_NAME);
-//		assertNotNull(fProject);
-//		errorList = new ArrayList<ProblemMarkerInfo>();
 	}
 
 	@Override
 	protected void tearDown() throws Exception {
 //		ResourceHelper.cleanUp();
-//		fProject = null;
-
 		LanguageSettingsManager.setUserDefinedProviders(null);
 	}
 
@@ -127,18 +122,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 			}
 		}
 		return result;
-	}
-
-	private ICConfigurationDescription[] getConfigurationDescriptions(IProject project) {
-		CoreModel coreModel = CoreModel.getDefault();
-		ICProjectDescriptionManager mngr = coreModel.getProjectDescriptionManager();
-		// project description
-		ICProjectDescription projectDescription = mngr.getProjectDescription(project);
-		assertNotNull(projectDescription);
-		assertEquals(1, projectDescription.getConfigurations().length);
-		// configuration description
-		ICConfigurationDescription[] cfgDescriptions = projectDescription.getConfigurations();
-		return cfgDescriptions;
 	}
 
 	/**
@@ -443,8 +426,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_NullProvider() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
@@ -508,8 +492,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_Use() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		final ICConfigurationDescription modelCfgDescription = cfgDescriptions[0];
 		assertTrue(modelCfgDescription instanceof CConfigurationDescription);
@@ -564,8 +549,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_Providers() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
@@ -592,8 +578,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_Basic() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
@@ -706,8 +693,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_Filtered() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
@@ -748,8 +736,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_FilteredConflicting() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
@@ -780,8 +769,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_ReconciledProviders() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
@@ -828,13 +818,14 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testConfigurationDescription_ParentFolder() throws Exception {
 		// Create model project and accompanied descriptions
-		ICProject cproject = CProjectHelper.createNewStileCProject(getName(), IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
-		IProject project = cproject.getProject();
 		final IFolder parentFolder = ResourceHelper.createFolder(project, "/ParentFolder/");
 		assertNotNull(parentFolder);
 		final IFile emptySettingsPath = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/empty");
@@ -890,8 +881,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_ProviderIds() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
@@ -957,7 +949,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// check that test provider got loaded
-			ICConfigurationDescription[] loadedCfgDescriptions = getConfigurationDescriptions(cproject.getProject());
+			ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+			ICConfigurationDescription[] loadedCfgDescriptions = prjDescription.getConfigurations();
 			ICConfigurationDescription loadedCfgDescription = loadedCfgDescriptions[0];
 			assertTrue(cfgDescription instanceof CConfigurationDescription);
 

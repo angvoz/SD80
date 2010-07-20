@@ -133,23 +133,19 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 	}
 
 	/*
-		<provider id="provider.id">
-			<configuration id="cfg.id">
+		<configuration id="cfg.id">
+			<provider id="provider.id">
 				<language id="lang.id">
 					<resource uri="file://">
 						<settingEntry flags="" kind="includePath" name="path"/>
 					</resource>
 				</language>
-			</configuration>
-		</provider>
+			</provider>
+		</configuration>
 	 */
-	// provider/configuration/language/resource/settingEntry
+	// configuration/provider/language/resource/settingEntry
 	public void serialize(Element parentElement) {
 		Document doc = parentElement.getOwnerDocument();
-		
-		Element elementProvider = doc.createElement(ELEM_PROVIDER);
-		elementProvider.setAttribute(ATTR_ID, getId());
-		parentElement.appendChild(elementProvider);
 		
 		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
 			Element elementConfiguration = doc.createElement(ELEM_CONFIGURATION);
@@ -158,7 +154,12 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 				cfgId = ""; //$NON-NLS-1$
 			}
 			elementConfiguration.setAttribute(ATTR_ID, cfgId);
-			elementProvider.appendChild(elementConfiguration);
+			parentElement.appendChild(elementConfiguration);
+			
+			Element elementProvider = doc.createElement(ELEM_PROVIDER);
+			elementProvider.setAttribute(ATTR_ID, getId());
+			elementConfiguration.appendChild(elementProvider);
+			
 			for (Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang : entryCfg.getValue().entrySet()) {
 				Element elementLanguage = doc.createElement(ELEM_LANGUAGE);
 				String langId = entryLang.getKey();
@@ -166,7 +167,7 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 					langId = ""; //$NON-NLS-1$
 				}
 				elementLanguage.setAttribute(ATTR_ID, langId);
-				elementConfiguration.appendChild(elementLanguage);
+				elementProvider.appendChild(elementLanguage);
 				for (Entry<URI, List<ICLanguageSettingEntry>> entryRc : entryLang.getValue().entrySet()) {
 					Element elementRc = doc.createElement(ELEM_RESOURCE);
 					URI rcUri = entryRc.getKey();
@@ -221,37 +222,37 @@ public class LanguageSettingsPersistentProvider extends LanguageSettingsBaseProv
 	}
 
 
-	// provider/configuration/language/resource/settingEntry
+	// configuration/provider/language/resource/settingEntry
 	public void load(Element parentElement) {
 		fStorage.clear();
 
 		if (parentElement!=null) {
-			NodeList providerNodes = parentElement.getElementsByTagName(ELEM_PROVIDER);
+			NodeList cfgNodes = parentElement.getElementsByTagName(ELEM_CONFIGURATION);
 			
-			for (int iprovider=0;iprovider<providerNodes.getLength();iprovider++) {
-				Node providerNode = providerNodes.item(iprovider);
-				if(providerNode.getNodeType() != Node.ELEMENT_NODE)
+			for (int icfg=0;icfg<cfgNodes.getLength();icfg++) {
+				Node cfgNode = cfgNodes.item(icfg);
+				if(cfgNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_CONFIGURATION.equals(cfgNode.getNodeName()))
 					continue;
 
-				NamedNodeMap providerAttributes = providerNode.getAttributes();
-				String providerId = determineNodeValue(providerAttributes.getNamedItem(ATTR_ID));
-				if (!providerId.equals(this.getId())) {
-					continue;
+				NamedNodeMap cfgAttributes = cfgNode.getAttributes();
+				String cfgId = determineNodeValue(cfgAttributes.getNamedItem(ATTR_ID));
+				if (cfgId.length()==0) {
+					cfgId=null;
 				}
 
-				NodeList cfgNodes = providerNode.getChildNodes();
-				for (int icfg=0;icfg<cfgNodes.getLength();icfg++) {
-					Node cfgNode = cfgNodes.item(icfg);
-					if(cfgNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_CONFIGURATION.equals(cfgNode.getNodeName()))
+				NodeList providerNodes = cfgNode.getChildNodes();
+				for (int iprovider=0;iprovider<providerNodes.getLength();iprovider++) {
+					Node providerNode = providerNodes.item(iprovider);
+					if(providerNode.getNodeType() != Node.ELEMENT_NODE)
 						continue;
 
-					NamedNodeMap cfgAttributes = cfgNode.getAttributes();
-					String cfgId = determineNodeValue(cfgAttributes.getNamedItem(ATTR_ID));
-					if (cfgId.length()==0) {
-						cfgId=null;
+					NamedNodeMap providerAttributes = providerNode.getAttributes();
+					String providerId = determineNodeValue(providerAttributes.getNamedItem(ATTR_ID));
+					if (!providerId.equals(this.getId())) {
+						continue;
 					}
 					
-					NodeList langNodes = cfgNode.getChildNodes();
+					NodeList langNodes = providerNode.getChildNodes();
 					for (int ilang=0;ilang<langNodes.getLength();ilang++) {
 						Node langNode = langNodes.item(ilang);
 						if(langNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_LANGUAGE.equals(langNode.getNodeName()))

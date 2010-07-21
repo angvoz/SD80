@@ -24,7 +24,6 @@ import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.protocol.Protocol;
 import org.eclipse.tm.tcf.services.IProcesses;
-import org.eclipse.tm.tcf.services.IProcesses.DoneGetChildren;
 import org.eclipse.tm.tcf.services.IProcesses.DoneGetContext;
 import org.eclipse.tm.tcf.services.IProcesses.ProcessContext;
 
@@ -37,35 +36,16 @@ public abstract class TCFDataModel extends SystemDataModel {
 	@Override
 	public void buildDataModel(final IProgressMonitor monitor)throws Exception {
 		try {
-			final TCFServiceManager tcfServiceManager = (TCFServiceManager)EDCDebugger.getDefault().getServiceManager();
 			if (peer == null)
 				findPeer();
 			
 			if (getPeer() != null)
 			{
-		        final IProcesses processesService = (IProcesses) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IProcesses.NAME);
-		        if (processesService != null)
-		        {
-					setBuildComplete(false);
-					Protocol.invokeLater(new Runnable() {
-						public void run() {
-			                processesService.getChildren(null, false, new DoneGetChildren() {
-			                        public void doneGetChildren(IToken token, Exception error,
-			                        		String[] context_ids) {
-			                        	if (context_ids == null)
-			                        		setBuildComplete(true);
-			                        	else
-			                        		receiveContextIDs(null, context_ids);
-			                        }
-			                });
-						}
-					    
-					});
-					
-					while (!isBuildComplete() && !monitor.isCanceled())	{
-						Thread.sleep(1000);
-					}				
-		        }
+				setBuildComplete(false);
+				fetchModelData(monitor);			
+				while (!isBuildComplete() && !monitor.isCanceled())	{
+					Thread.sleep(500);
+				}				
 			}
 		}
 		finally {
@@ -73,6 +53,34 @@ public abstract class TCFDataModel extends SystemDataModel {
 			if (monitor != null) {
 				monitor.done();
 			}
+		}
+	}
+
+	protected void fetchModelData(final IProgressMonitor monitor) throws Exception {
+		fetchProcessServiceData(monitor);
+	}
+
+	protected void fetchProcessServiceData(final IProgressMonitor monitor) throws Exception {
+		final TCFServiceManager tcfServiceManager = (TCFServiceManager)EDCDebugger.getDefault().getServiceManager();
+		final IProcesses processesService = (IProcesses) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IProcesses.NAME);
+		if (processesService == null)
+			setBuildComplete(true);
+		else
+		{
+				Protocol.invokeLater(new Runnable() {
+				public void run() {
+					processesService.getChildren(null, false, new IProcesses.DoneGetChildren() {
+						public void doneGetChildren(IToken token, Exception error,
+								String[] context_ids) {
+							if (context_ids == null)
+								setBuildComplete(true);
+							else
+								receiveContextIDs(null, context_ids);
+						}
+					});
+				}
+
+			});	
 		}
 	}
 

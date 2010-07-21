@@ -45,6 +45,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingObject;
 import org.eclipse.cdt.core.settings.model.ICSourceEntry;
 import org.eclipse.cdt.core.settings.model.ICStorageElement;
 import org.eclipse.cdt.core.settings.model.ICTargetPlatformSetting;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.WriteAccessException;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.core.settings.model.extension.impl.CDefaultConfigurationData;
@@ -704,6 +705,17 @@ class MockConfig implements ICConfigurationDescription {
 	}
 
 	public void setReadOnly(boolean readOnly, boolean keepModify) {}
+
+	public void setLanguageSettingProviders(
+			List<ILanguageSettingsProvider> providers) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
 
 /*

@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.settings.model;
 
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.cdtvariables.ICdtVariablesContributor;
@@ -377,4 +378,9 @@ public interface ICConfigurationDescription extends ICSettingContainer, ICSettin
 	void updateExternalSettingsProviders(String[] ids) throws WriteAccessException;
 	
 	CConfigurationStatus getConfigurationStatus();
+	
+	// AG
+	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers);
+	public List<ILanguageSettingsProvider> getLanguageSettingProviders();
+
 }

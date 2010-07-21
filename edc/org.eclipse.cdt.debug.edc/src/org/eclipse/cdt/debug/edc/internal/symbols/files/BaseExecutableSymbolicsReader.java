@@ -173,7 +173,10 @@ public abstract class BaseExecutableSymbolicsReader implements IExecutableSymbol
 				try {
 					String unmangled = unmangler.unmangle(unmangler.undecorate(symName));
 					if (unmangled != null) {
-						String unmangledNoSpaces = unmangled.replaceAll("\\s", "");
+						String unmangledNoSpaces;
+						// remove any 'const' which is in front of '(' for now
+						unmangledNoSpaces = unmangled.replaceAll("\\bconst\\s*(?=\\()", "");
+						unmangledNoSpaces = unmangledNoSpaces.replaceAll("\\s", "");
 						
 						// remove full qualifier
 						if (unmangledNoSpaces.startsWith("::"))

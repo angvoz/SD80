@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
@@ -515,12 +516,12 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			};
 	
 			try {
-				tcfTask.getIO();
-			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError(null, e);
+				tcfTask.get(15, TimeUnit.SECONDS);
+			} catch (Throwable e) {
+				rm.setStatus(EDCDebugger.dsfRequestFailedStatus(null, e));
+			} finally {
+				rm.done();
 			}
-			
-			rm.done();
 		}
 		else {
 			// Ensure connection to service agent
@@ -552,12 +553,12 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			};
 	
 			try {
-				tcfTask.getIO();
-			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError(null, e);
+				tcfTask.get(15, TimeUnit.SECONDS);
+			} catch (Throwable e) {
+				rm.setStatus(EDCDebugger.dsfRequestFailedStatus(null, e));
+			} finally {
+				rm.done();
 			}
-
-			rm.done();
 		}
 	}
 
@@ -680,10 +681,11 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			};
 			
 			try {
-				tcfTask.getIO();	// ignore the return
+				tcfTask.get(15, TimeUnit.SECONDS);	// ignore the return
+			} catch (Throwable e) {
+				rm.setStatus(EDCDebugger.dsfRequestFailedStatus("Exception reading register " + registerDMC.getName(), e));
+			} finally {
 				rm.done();
-			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError("IOExceptoin reading register " + registerDMC.getName(), e);
 			}
 		}
 		else {
@@ -730,10 +732,11 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			};
 			
 			try {
-				tcfTask.getIO();	// ignore the return
+				tcfTask.get(15, TimeUnit.SECONDS);	// ignore the return
+			} catch (Throwable e) {
+				rm.setStatus(EDCDebugger.dsfRequestFailedStatus("Failed to read register " + registerDMC.getName(), e));
+			} finally {
 				rm.done();
-			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError("IOExceptoin reading register " + registerDMC.getName(), e);
 			}
 		}
 	}
@@ -849,9 +852,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		
 		String[] childIDs;
 		try {
-			childIDs = getChildIDTask.getIO();
-		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError("Fail to get TCF regisgters contexts for: " + parentID, e.getCause());
+			childIDs = getChildIDTask.get(15, TimeUnit.SECONDS);
+		} catch (Throwable e) {
+			EDCDebugger.getMessageLogger().logError("Fail to get TCF registers contexts for: " + parentID, e);
 			return tcfRegContexts;
 		}
 		
@@ -871,9 +874,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		
 			RegistersContext rgc = null;
 			try {
-				rgc = getGroupContextTask.getIO();
-			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError("Fail to get TCF regisgters context with ID: " + gid, e.getCause());
+				rgc = getGroupContextTask.get(15, TimeUnit.SECONDS);
+			} catch (Throwable e) {
+				EDCDebugger.getMessageLogger().logError("Fail to get TCF regisgters context with ID: " + gid, e);
 			}
 			
 			if (rgc != null)

@@ -931,11 +931,20 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 
 		if (address != 0) {
 			iaddr = new Addr32(address);
-			if (!module.containsAddress(iaddr))
-				// address not in the module, don't bother.
-				// This is to ensure the address breakpoint is installed
-				// after the container module is loaded.
-				iaddr = null;
+			
+			// Assume it is a link-time address first.  Run-time addresses are not predictable across launches.
+			IAddress runAddr = module.toRuntimeAddress(iaddr);
+			if (module.containsAddress(runAddr)) {
+				iaddr = runAddr;
+			} else {
+				// Try for a runtime address.
+				if (!module.containsAddress(iaddr)) {
+					// address not in the module, don't bother.
+					// This is to ensure the address breakpoint is installed
+					// after the container module is loaded. 
+					iaddr = null;
+				}
+			}
 		} else {
 			// the point is a symbol
 			Symbols symService = getServicesTracker().getService(Symbols.class);

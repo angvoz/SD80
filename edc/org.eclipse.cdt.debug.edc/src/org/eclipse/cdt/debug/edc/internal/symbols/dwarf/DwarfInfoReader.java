@@ -2236,7 +2236,7 @@ public class DwarfInfoReader {
 		int declFileNum = origAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_decl_file);
 		
 		if (declFileNum == 0) {
-			//assert(false);	// avoid this since it breaks the symbolics... need to log it instead
+			assert(false);
 			return;
 		}
 		
@@ -2820,7 +2820,7 @@ public class DwarfInfoReader {
 				if (currentParentScope instanceof FunctionScope) {
 					((FunctionScope) currentParentScope).addParameter(variable);
 				} else {
-					//assert (false);
+					assert (false);
 				}
 			} else {
 				if (global) {

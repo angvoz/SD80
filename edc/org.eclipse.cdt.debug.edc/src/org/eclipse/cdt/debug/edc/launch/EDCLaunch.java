@@ -56,7 +56,9 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugException;
+import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.debug.core.Launch;
 import org.eclipse.debug.core.model.IMemoryBlockRetrieval;
 import org.eclipse.debug.core.model.ISourceLocator;
@@ -366,7 +368,9 @@ public class EDCLaunch extends Launch {
 	}
 
 	public boolean isSnapshotLaunch() {
-		assert snapshotSupportInitialized;
+		// this is not set in run mode
+		if (ILaunchManager.DEBUG_MODE.equals(getLaunchMode()))
+			assert snapshotSupportInitialized;
 		return album != null;
 	}
 

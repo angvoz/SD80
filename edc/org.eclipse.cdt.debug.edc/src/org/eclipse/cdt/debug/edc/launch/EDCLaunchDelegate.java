@@ -25,6 +25,7 @@ import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
 import org.eclipse.cdt.dsf.debug.service.IDsfDebugServicesFactory;
+import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.launch.AbstractCLaunchDelegate2;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -205,7 +206,8 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
         	if (iLaunch instanceof EDCLaunch)
         	{
         		EDCLaunch edcLaunch = (EDCLaunch) iLaunch;
-        		if (isSameTarget(edcLaunch, configuration, mode))
+        		if (DsfSession.isSessionActive(edcLaunch.getSession().getId())
+        				&& isSameTarget(edcLaunch, configuration, mode))
         			return edcLaunch;
          	}
 		}

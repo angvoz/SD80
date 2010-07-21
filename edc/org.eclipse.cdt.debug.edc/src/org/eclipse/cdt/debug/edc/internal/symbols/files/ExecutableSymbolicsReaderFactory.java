@@ -10,7 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols.files;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
@@ -60,22 +63,38 @@ public class ExecutableSymbolicsReaderFactory {
 		//
 		// Note: there may be for "foo.exe" --> "foo.exe.sym" or "foo.sym"
 		//
+		// Note #2: there may be BOTH.  Pick the newest one.
+		//
+		List<IPath> candidates = new ArrayList<IPath>();
+		
 		IPath symFile;
 		symFile = binaryFile.removeFileExtension().addFileExtension(SYM_EXTENSION);
 		if (symFile.toFile().exists()) 
-			return symFile;
+			candidates.add(symFile);
 		symFile = binaryFile.removeFileExtension().addFileExtension(DBG_EXTENSION);
 		if (symFile.toFile().exists()) 
-			return symFile;
+			candidates.add(symFile);
 		
 		symFile = binaryFile.addFileExtension(SYM_EXTENSION);
 		if (symFile.toFile().exists())
-			return symFile;
+			candidates.add(symFile);
 		symFile = binaryFile.addFileExtension(DBG_EXTENSION);
 		if (symFile.toFile().exists())
-			return symFile;
+			candidates.add(symFile);
 		
-		return null;
+		if (candidates.isEmpty())
+			return null;
+		
+		if (candidates.size() > 1) {
+			Collections.sort(candidates, new java.util.Comparator<IPath>() {
+				public int compare(IPath o1, IPath o2) {
+					long diff = o1.toFile().lastModified() - o2.toFile().lastModified();
+					return diff > 0 ? -1 : diff < 0 ? 1 : 0;
+				}
+			});
+		}
+		
+		return candidates.get(0);
 	}
 	
 	protected static void initializeExtensions() {

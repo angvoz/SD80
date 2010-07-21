@@ -343,6 +343,12 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				}
 			} else {
 				// Binary file not on host. Do we want to prompt user for one ?
+				
+				// TODO: report this differently for the main executable vs. DLLs
+				EDCDebugger.getMessageLogger().log(IStatus.WARNING, MessageFormat
+						.format("Cannot debug ''{0}''; no match found on disk, through source lookup, or in Executables view",
+								hostFilePath), null);
+			
 			}
 		}
 
@@ -871,10 +877,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				return e.getPath();
 			}
 		}
-
-		EDCDebugger.getMessageLogger().logError(MessageFormat
-				.format("Failed to find host-side path for executable ''{0}''; breakpoints and symbolics will not be resolved",
-						originalPath), null);
+		
 		return path;
 	}
 

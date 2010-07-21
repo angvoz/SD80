@@ -53,7 +53,7 @@ import org.eclipse.ui.plugin.AbstractUIPlugin;
 @SuppressWarnings("restriction")
 public abstract class SystemView extends ViewPart {
 
-	protected static final int DEFAULT_REFRESH_INTERVAL = 5000;
+	protected static final int DEFAULT_REFRESH_INTERVAL = 30000;
 	private PresentationContext presentationContext;
 	private int refreshInterval = DEFAULT_REFRESH_INTERVAL;
 
@@ -61,9 +61,10 @@ public abstract class SystemView extends ViewPart {
 
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
+			IStatus result = refresh(monitor, true);
 			if (getRefreshInterval() > 0)
 				this.schedule(refreshInterval);
-			return refresh(monitor, true);
+			return result;
 		}};
 
 		private Text filterText;

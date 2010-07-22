@@ -30,6 +30,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -53,7 +54,46 @@ public class XmlUtil {
 		DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 		return builder.newDocument();
 	}
-
+	
+	/**
+	 * The method creates an element with specified names and attributes and appends it to the parent element.
+	 * This is basically an automation of often used sequence of calls.
+	 * 
+	 * @param parent - the node where to append the new element.
+	 * @param name - the name of the element type being created.
+	 * @param attributes - string array of pairs attributes and their values.
+	 *     Each attribute must have a value, so the array must have even number of elements.
+	 * @return the newly created element.
+	 * 
+	 * @throws ArrayIndexOutOfBoundsException in case of odd number of elements of the attribute array
+	 *    (i.e. the last attribute is missing a value).
+	 */
+	public static Element appendElement(Node parent, String name, String[] attributes) {
+		Document doc =  parent instanceof Document ? (Document)parent : parent.getOwnerDocument();
+		Element element = doc.createElement(name);
+		if (attributes!=null) {
+		int attrLen = attributes.length;
+			for (int i=0;i<attrLen;i+=2) {
+				String attrName = attributes[i];
+				String attrValue = attributes[i+1];
+				element.setAttribute(attrName, attrValue);
+			}
+		}
+		parent.appendChild(element);
+		return element;
+	}
+	
+	/**
+	 * Convenience method.
+	 * 
+	 * @param parent
+	 * @param name
+	 * @return
+	 */
+	public static Element appendElement(Node parent, String name) {
+		return appendElement(parent, name, null);
+	}
+	
 	/**
 	 * As a workaround for {@code javax.xml.transform.Transformer} not being able
 	 * to pretty print XML. This method prepares DOM {@code Document} for the transformer

@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
+import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.resources.IResource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -118,12 +119,12 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	}
 
 	private void serializeSettingEntries(Element parentElement, List<ICLanguageSettingEntry> settingEntries) {
-		Document doc = parentElement.getOwnerDocument();
 		for (ICLanguageSettingEntry entry : settingEntries) {
-			Element elementSettingEntry = doc.createElement(ELEM_SETTING_ENTRY);
-			elementSettingEntry.setAttribute(ATTR_KIND, LanguageSettingEntriesSerializer.kindToString(entry.getKind()));
-			elementSettingEntry.setAttribute(ATTR_NAME, entry.getName());
-			elementSettingEntry.setAttribute(ATTR_FLAGS, LanguageSettingEntriesSerializer.composeFlagsString(entry.getFlags()));
+			Element elementSettingEntry = XmlUtil.appendElement(parentElement, ELEM_SETTING_ENTRY, new String[] {
+					ATTR_KIND, LanguageSettingEntriesSerializer.kindToString(entry.getKind()),
+					ATTR_NAME, entry.getName(),
+					ATTR_FLAGS, LanguageSettingEntriesSerializer.composeFlagsString(entry.getFlags()),
+				});
 			switch(entry.getKind()) {
 			case ICLanguageSettingEntry.MACRO:
 				elementSettingEntry.setAttribute(ATTR_VALUE, entry.getValue());
@@ -132,7 +133,6 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 			// TODO: sourceAttachment fields need to be covered
 //							break;
 			}
-			parentElement.appendChild(elementSettingEntry);
 		}
 	}
 
@@ -149,35 +149,25 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	*/
 	// provider/configuration/language/resource/settingEntry
 	public Element serialize(Element parentElement) {
-		Document doc = parentElement.getOwnerDocument();
-		
-		Element elementProvider = doc.createElement(ELEM_PROVIDER);
-		elementProvider.setAttribute(ATTR_ID, getId());
-		parentElement.appendChild(elementProvider);
+		Element elementProvider = XmlUtil.appendElement(parentElement, ELEM_PROVIDER, new String[] {ATTR_ID, getId()});
 		
 		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
-			Element elementConfiguration = doc.createElement(ELEM_CONFIGURATION);
 			String cfgId = entryCfg.getKey();
 			if (cfgId==null) {
 				cfgId = ""; //$NON-NLS-1$
 			}
-			elementConfiguration.setAttribute(ATTR_ID, cfgId);
-			elementProvider.appendChild(elementConfiguration);
+			Element elementConfiguration = XmlUtil.appendElement(elementProvider, ELEM_CONFIGURATION, new String[] {ATTR_ID, cfgId});
 			for (Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang : entryCfg.getValue().entrySet()) {
-				Element elementLanguage = doc.createElement(ELEM_LANGUAGE);
 				String langId = entryLang.getKey();
 				if (langId==null) {
 					langId = ""; //$NON-NLS-1$
 				}
-				elementLanguage.setAttribute(ATTR_ID, langId);
-				elementConfiguration.appendChild(elementLanguage);
+				Element elementLanguage = XmlUtil.appendElement(elementConfiguration, ELEM_LANGUAGE, new String[] {ATTR_ID, langId});
 				for (Entry<URI, List<ICLanguageSettingEntry>> entryRc : entryLang.getValue().entrySet()) {
-					Element elementRc = doc.createElement(ELEM_RESOURCE);
 					URI rcUri = entryRc.getKey();
 					String rcUriString = rcUri!=null ? rcUri.toString() : ""; //$NON-NLS-1$
-					elementRc.setAttribute(ATTR_URI, rcUriString);
-					elementLanguage.appendChild(elementRc);
 					
+					Element elementRc = XmlUtil.appendElement(elementLanguage, ELEM_RESOURCE, new String[] {ATTR_URI, rcUriString});
 					serializeSettingEntries(elementRc, entryRc.getValue());
 				}
 			}

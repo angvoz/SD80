@@ -10,6 +10,32 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -22,6 +48,11 @@ import org.w3c.dom.NodeList;
 public class XmlUtil {
 	private static final String EOL_XML = "\n"; //$NON-NLS-1$
 	private static final String DEFAULT_IDENT = "\t"; //$NON-NLS-1$
+
+	public static Document newDocument() throws ParserConfigurationException {
+		DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+		return builder.newDocument();
+	}
 
 	/**
 	 * As a workaround for {@code javax.xml.transform.Transformer} not being able
@@ -103,6 +134,136 @@ public class XmlUtil {
 		}
 
 	}
+	
+	private static Document loadXML(InputStream xmlStream) throws CoreException {
+		try {
+			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+			return builder.parse(xmlStream);
+		} catch (Exception e) {
+			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to load language settings"), e);
+			throw new CoreException(s);
+		}
+	}
+
+	public static Document loadXML(URI uriLocation) throws CoreException {
+		java.io.File xmlFile = new java.io.File(uriLocation);
+		if (!xmlFile.exists()) {
+			return null;
+		}
+		
+		InputStream xmlStream;
+		try {
+			xmlStream = new FileInputStream(xmlFile);
+		} catch (Exception e) {
+			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to load language settings"), e);
+			throw new CoreException(s);
+		}
+		return loadXML(xmlStream);
+	}
+	
+	public static Document loadXML(IFile xmlFile) throws CoreException {
+		InputStream xmlStream = xmlFile.getContents();
+		return loadXML(xmlStream);
+	}
+
+	/**
+	 * TODO: ErrorParserManager
+	 * Serialize XML Document in a file.<br/>
+	 * Note: clients should synchronize access to this method.
+	 *
+	 * @param doc - XML to serialize
+	 * @param uriLocation - URI of the file
+	 * @throws IOException in case of problems with file I/O
+	 * @throws TransformerException in case of problems with XML output
+	 */
+	public static void serializeXml(Document doc, URI uriLocation) throws IOException, TransformerException {
+		XmlUtil.prettyFormat(doc);
+
+		java.io.File storeFile = new java.io.File(uriLocation);
+		if (!storeFile.exists()) {
+			storeFile.createNewFile();
+		}
+		OutputStream fileStream = new FileOutputStream(storeFile);
+
+		TransformerFactory transformerFactory = TransformerFactory.newInstance();
+		Transformer transformer = transformerFactory.newTransformer();
+		transformer.setOutputProperty(OutputKeys.METHOD, "xml");	//$NON-NLS-1$
+		transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8"); //$NON-NLS-1$
+		transformer.setOutputProperty(OutputKeys.INDENT, "yes");	//$NON-NLS-1$
+
+		XmlUtil.prettyFormat(doc);
+		DOMSource source = new DOMSource(doc);
+		StreamResult result = new StreamResult(new FileOutputStream(storeFile));
+		transformer.transform(source, result);
+
+		fileStream.close();
+		
+		refreshWorkspaceFiles(uriLocation);
+	}
+
+	private static byte[] toByteArray(Document doc) throws CoreException {
+		XmlUtil.prettyFormat(doc);
+
+		try {
+			ByteArrayOutputStream stream = new ByteArrayOutputStream();
+			Transformer transformer = TransformerFactory.newInstance().newTransformer();
+			transformer.setOutputProperty(OutputKeys.METHOD, "xml"); //$NON-NLS-1$
+			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8"); //$NON-NLS-1$
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes"); //$NON-NLS-1$
+			DOMSource source = new DOMSource(doc);
+			StreamResult result = new StreamResult(stream);
+			transformer.transform(source, result);
+
+			return stream.toByteArray();
+		} catch (Exception e) {
+			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);
+			throw new CoreException(s);
+		}
+	}
+
+	/**
+	 * TODO: ErrorParserManager
+	 * Serialize XML Document in a workspace file.<br/>
+	 * Note: clients should synchronize access to this method.
+	 *
+	 * @param doc - XML to serialize
+	 * @param file - file where to write the XML
+	 * @throws CoreException 
+	 */
+	public static void serializeXml(Document doc, IFile file) throws CoreException {
+		XmlUtil.prettyFormat(doc);
+		
+		
+		InputStream input = new ByteArrayInputStream(toByteArray(doc));
+		if (file.exists()) {
+			file.setContents(input, IResource.FORCE, null);
+		} else {
+			file.create(input, IResource.FORCE, null);
+		}
+	}
+	
+	/**
+	 * Refresh output file when it happens to belong to Workspace. There could
+	 * be multiple workspace {@link IFile} associated with one URI.
+	 * 
+	 * TODO: find better home for this method
+	 * TODO: replace BuildConsoleManager.refreshWorkspaceFiles(URI uri)
+	 *
+	 * @param uri - URI of the file.
+	 */
+	static void refreshWorkspaceFiles(URI uri) {
+		if (uri!=null) {
+			IFile[] files = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(uri);
+			for (IFile file : files) {
+				try {
+					file.refreshLocal(IResource.DEPTH_ZERO, null);
+				} catch (CoreException e) {
+					CCorePlugin.log(e);
+				}
+			}
+		}
+	}
+
 }
 
 

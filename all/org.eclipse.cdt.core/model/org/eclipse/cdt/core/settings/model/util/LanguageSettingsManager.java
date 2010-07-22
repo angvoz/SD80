@@ -67,10 +67,6 @@ public class LanguageSettingsManager {
 	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user";
 	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager.PROVIDER_DELIMITER;
 
-	private static final String ROOT_ELEM = "languageSettings";
-	private static final String ATTR_PROJECT_NAME = "project";
-
-
 	/**
 	 * Never returns {@code null} although individual providers return {@code null} if
 	 * no settings defined.
@@ -174,102 +170,12 @@ public class LanguageSettingsManager {
 		return false;
 	}
 	
-	private static Document loadXML(IFile xmlFile) throws CoreException {
-		try {
-			InputStream xmlStream = xmlFile.getContents();
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			return builder.parse(xmlStream);
-		} catch (Exception e) {
-			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to load language settings"), e);
-			throw new CoreException(s);
-		}
+	public static void loadLanguageSettings(ICProjectDescription prjDescription) {
+		LanguageSettingsExtensionManager.loadLanguageSettings(prjDescription);
 	}
 
-	public static void load(ICProjectDescription prjDescription) {
-		IProject project = prjDescription.getProject();
-		IFile file = project.getFile("language.settings.xml");
-		try {
-			// AG: FIXME not sure about that one
-			file.refreshLocal(IResource.DEPTH_ZERO, null);
-		} catch (CoreException e) {
-			// ignore failure
-		}
-		if (file.exists() && file.isAccessible()) {
-			Document doc = null;
-			try {
-				doc = loadXML(file);
-			} catch (Exception e) {
-				CCorePlugin.log("Can't load preferences from file "+file.getLocation(), e); //$NON-NLS-1$
-			}
-			
-			if (doc!=null) {
-				Element rootElement = doc.getDocumentElement();
-				
-//				ICConfigurationDescription[] cfgDescriptions = projectDescription.getConfigurations();
-//				for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
-//				}
-				String[] allProviderIDs = LanguageSettingsManager.getProviderAvailableIds();
-				for (String id : allProviderIDs) {
-					ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
-					if (provider instanceof LanguageSettingsSerializable) {
-						((LanguageSettingsSerializable) provider).load(rootElement);
-					}
-				}
-			}
-		}
-	}
-
-	private static byte[] toByteArray(Document doc) throws CoreException {
-		XmlUtil.prettyFormat(doc);
-
-		try {
-			ByteArrayOutputStream stream = new ByteArrayOutputStream();
-			Transformer transformer = TransformerFactory.newInstance().newTransformer();
-			transformer.setOutputProperty(OutputKeys.METHOD, "xml"); //$NON-NLS-1$
-			transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8"); //$NON-NLS-1$
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes"); //$NON-NLS-1$
-			DOMSource source = new DOMSource(doc);
-			StreamResult result = new StreamResult(stream);
-			transformer.transform(source, result);
-
-			return stream.toByteArray();
-		} catch (Exception e) {
-			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);
-			throw new CoreException(s);
-		}
-	}
-
-	public static void serialize(ICProjectDescription prjDescription) throws CoreException {
-		IProject project = prjDescription.getProject();
-		try {
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			Document doc = builder.newDocument();
-			Element rootElement = doc.createElement(ROOT_ELEM);
-			rootElement.setAttribute(ATTR_PROJECT_NAME, project.getName());
-			doc.appendChild(rootElement);
-
-			ICConfigurationDescription[] cfgDescriptions = CoreModel.getDefault().getProjectDescription(project).getConfigurations();
-			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
-				List<ILanguageSettingsProvider> providers = getProviders(cfgDescription);
-				for (ILanguageSettingsProvider provider : providers) {
-					if (provider instanceof LanguageSettingsSerializable) {
-						((LanguageSettingsSerializable) provider).serialize(rootElement);
-					}
-				}
-			}
-			InputStream input = new ByteArrayInputStream(toByteArray(doc));
-			
-			IFile file = project.getFile("language.settings.xml");
-			if (file.exists()) {
-				file.setContents(input, IResource.FORCE, null);
-			} else {
-				file.create(input, IResource.FORCE, null);
-			}
-
-		} catch (Exception e) {
-			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);
-			throw new CoreException(s);
-		}
+	public static void serializeLanguageSettings(ICProjectDescription prjDescription) throws CoreException {
+		LanguageSettingsExtensionManager.serializeLanguageSettings(prjDescription);
 	}
 
 	/**
@@ -413,7 +319,6 @@ public class LanguageSettingsManager {
 	public static void serializeWorkspaceProviders() throws CoreException {
 		LanguageSettingsExtensionManager.serializeLanguageSettings();
 	}
-
 
 	// FIXME: is there more straight way to get language id?
 	public static String[] getLanguageIds(ICConfigurationDescription cfgDescription, IResource resource) {

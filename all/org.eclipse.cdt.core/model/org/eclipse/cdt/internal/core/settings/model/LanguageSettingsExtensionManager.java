@@ -11,11 +11,9 @@
 
 package org.eclipse.cdt.internal.core.settings.model;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -24,24 +22,25 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
+import javax.sql.rowset.spi.SyncResolver;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.internal.core.XmlUtil;
+import org.eclipse.core.filesystem.URIUtil;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
@@ -56,6 +55,9 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 public class LanguageSettingsExtensionManager {
 	private static final String STORAGE_WORKSPACE_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
@@ -66,6 +68,10 @@ public class LanguageSettingsExtensionManager {
 	 * Name of the extension point for contributing language settings
 	 */
 	public final static String PROVIDER_EXTENSION_ID = "LanguageSettingsProvider"; //$NON-NLS-1$
+	
+	private static final String ELEM_LANGUAGE_SETTINGS = "languageSettings";
+	private static final String ATTR_PROJECT_NAME = "project";
+	
 	private static final String ELEM_PROVIDER = "provider"; //$NON-NLS-1$
 	private static final String ATTR_CLASS = "class"; //$NON-NLS-1$
 	private static final String ATTR_ID = "id"; //$NON-NLS-1$
@@ -78,13 +84,14 @@ public class LanguageSettingsExtensionManager {
 	private static final String ATTR_KIND = "kind"; //$NON-NLS-1$
 	private static final String ATTR_VALUE = "value"; //$NON-NLS-1$
 	
-	private static final String ELEM_LANGUAGE_SETTINGS = "languageSettings";
 
 
 	private static final LinkedHashMap<String, ILanguageSettingsProvider> fExtensionProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
 	private static final LinkedHashMap<String, ILanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
 	private static LinkedHashMap<String, ILanguageSettingsProvider> fUserDefinedProviders = null;
 	private static List<String> fDefaultProviderIds = null;
+
+	private static Object serializingLock = new Object();
 
 	static {
 //		loadUserDefinedProviders();
@@ -435,53 +442,22 @@ public class LanguageSettingsExtensionManager {
 	 * @param store - name of the store
 	 * @return location of the store in the plug-in state area
 	 */
-	private static IPath getStoreLocation(String store) {
-		return CCorePlugin.getDefault().getStateLocation().append(store);
+	private static URI getStoreLocation(String store) {
+		IPath location = CCorePlugin.getDefault().getStateLocation().append(store);
+		URI uri = URIUtil.toURI(location);
+		return uri;
 	}
 
-	/**
-	 * TODO: refactor with ErrorParserManager
-	 * Serialize XML Document in a file.
-	 *
-	 * @param doc - XML to serialize
-	 * @param location - location of the file
-	 * @throws IOException in case of problems with file I/O
-	 * @throws TransformerException in case of problems with XML output
-	 */
-	synchronized private static void serializeXml(Document doc, IPath location) throws IOException, TransformerException {
-		XmlUtil.prettyFormat(doc);
-
-		java.io.File storeFile = location.toFile();
-		if (!storeFile.exists()) {
-			storeFile.createNewFile();
-		}
-		OutputStream fileStream = new FileOutputStream(storeFile);
-
-		TransformerFactory transformerFactory = TransformerFactory.newInstance();
-		Transformer transformer = transformerFactory.newTransformer();
-		transformer.setOutputProperty(OutputKeys.METHOD, "xml");	//$NON-NLS-1$
-		transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8"); //$NON-NLS-1$
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");	//$NON-NLS-1$
-
-		XmlUtil.prettyFormat(doc);
-		DOMSource source = new DOMSource(doc);
-		StreamResult result = new StreamResult(new FileOutputStream(storeFile));
-		transformer.transform(source, result);
-
-		fileStream.close();
-	}
-
-	// TODO: reconcile the name with ErrorParserExtensionManager
-	public static void serializeLanguageSettings() throws CoreException {
-		IPath fileLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
+	synchronized public static void serializeLanguageSettings() throws CoreException {
+		URI uriLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
 		try {
 			if (fUserDefinedProviders==null) {
-				fileLocation.toFile().delete();
+				java.io.File file = new java.io.File(uriLocation);
+				file.delete();
 				return;
 			}
 			
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			Document doc = builder.newDocument();
+			Document doc = XmlUtil.newDocument();
 			Element rootElement = doc.createElement(ELEM_LANGUAGE_SETTINGS);
 			doc.appendChild(rootElement);
 
@@ -490,7 +466,73 @@ public class LanguageSettingsExtensionManager {
 					((LanguageSettingsSerializable) provider).serialize(rootElement);
 				}
 			}
-			serializeXml(doc, fileLocation);
+			
+			synchronized (serializingLock) {
+				XmlUtil.serializeXml(doc, uriLocation);
+			}
+
+		} catch (Exception e) {
+			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Internal error while trying to serialize language settings", e);
+			throw new CoreException(s);
+		}
+	}
+
+
+	public static void loadLanguageSettings() throws CoreException {
+		URI uriLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
+
+		Document doc = null;
+		try {
+			synchronized (serializingLock) {
+				doc = XmlUtil.loadXML(uriLocation);
+			}
+		} catch (Exception e) {
+			CCorePlugin.log("Can't load preferences from file "+uriLocation, e); //$NON-NLS-1$
+		}
+
+		if (doc!=null) {
+			Element rootElement = doc.getDocumentElement();
+			NodeList providerNodes = rootElement.getElementsByTagName(LanguageSettingsSerializable.ELEM_PROVIDER);
+			
+			for (int i=0;i<providerNodes.getLength();i++) {
+				Element providerNode = (Element)providerNodes.item(i);
+				NamedNodeMap providerAttributes = providerNode.getAttributes();
+				if (providerAttributes!=null) {
+					Node attributeId = providerAttributes.getNamedItem(ATTR_ID);
+					if (attributeId!=null) {
+						String providerId = attributeId.getNodeValue();
+						ILanguageSettingsProvider provider = fUserDefinedProviders.get(providerId);
+						if (provider instanceof LanguageSettingsSerializable) {
+							((LanguageSettingsSerializable)provider).load(providerNode);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	public static void serializeLanguageSettings(ICProjectDescription prjDescription) throws CoreException {
+		IProject project = prjDescription.getProject();
+		try {
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = doc.createElement(ELEM_LANGUAGE_SETTINGS);
+			rootElement.setAttribute(ATTR_PROJECT_NAME, project.getName());
+			doc.appendChild(rootElement);
+
+			ICConfigurationDescription[] cfgDescriptions = CoreModel.getDefault().getProjectDescription(project).getConfigurations();
+			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+				List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getProviders(cfgDescription);
+				for (ILanguageSettingsProvider provider : providers) {
+					if (provider instanceof LanguageSettingsSerializable) {
+						((LanguageSettingsSerializable) provider).serialize(rootElement);
+					}
+				}
+			}
+			
+			IFile file = project.getFile("language.settings.xml");
+			synchronized (serializingLock){
+				XmlUtil.serializeXml(doc, file);
+			}
 
 		} catch (Exception e) {
 			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);
@@ -498,41 +540,48 @@ public class LanguageSettingsExtensionManager {
 		}
 	}
 
-	private static Document loadXML(java.io.File xmlFile) throws CoreException {
+	public static void loadLanguageSettings(ICProjectDescription prjDescription) {
+		IProject project = prjDescription.getProject();
+		IFile file = project.getFile("language.settings.xml");
 		try {
-			InputStream xmlStream = new FileInputStream(xmlFile);
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			return builder.parse(xmlStream);
-		} catch (Exception e) {
-			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to load language settings"), e);
-			throw new CoreException(s);
+			// AG: FIXME not sure about that one
+			file.refreshLocal(IResource.DEPTH_ZERO, null);
+		} catch (CoreException e) {
+			// ignore failure
 		}
-	}
+		if (file.exists() && file.isAccessible()) {
+			Document doc = null;
+			try {
+				synchronized (serializingLock) {
+					doc = XmlUtil.loadXML(file);
+				}
+			} catch (Exception e) {
+				CCorePlugin.log("Can't load preferences from file "+file.getLocation(), e); //$NON-NLS-1$
+			}
+			
+			if (doc!=null) {
+				Element rootElement = doc.getDocumentElement();
+				
+				String[] allProviderIDs = LanguageSettingsManager.getProviderAvailableIds();
+				List<ILanguageSettingsProvider> allProviders = new ArrayList<ILanguageSettingsProvider>();
+				for (String id : allProviderIDs) {
+					ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
+					if (provider instanceof LanguageSettingsSerializable) {
+//						((LanguageSettingsSerializable) provider).load(rootElement);
+					}
+					allProviders.add(provider);
+				}
+				ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
+				for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+					List<ILanguageSettingsProvider> cfgProviders = new ArrayList<ILanguageSettingsProvider>();
+					for (ILanguageSettingsProvider provider : allProviders) {
+						
+					}
 
-	public static void loadLanguageSettings() throws CoreException {
-		IPath fileLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
-		java.io.File file = fileLocation.toFile();
-		if (!file.exists()) {
-			return;
-		}
-
-		Document doc = null;
-
-		try {
-			doc = loadXML(file);
-		} catch (Exception e) {
-			CCorePlugin.log("Can't load preferences from file "+file.getPath(), e); //$NON-NLS-1$
-		}
-
-		if (doc!=null) {
-			Element rootElement = doc.getDocumentElement();
-			for (ILanguageSettingsProvider provider : fUserDefinedProviders.values()) {
-				if (provider instanceof LanguageSettingsSerializable) {
-					((LanguageSettingsSerializable) provider).load(rootElement);
+//					cfgDescription.setLanguageSettingProviders(allProviders);
 				}
 			}
 		}
 	}
-
 
 }

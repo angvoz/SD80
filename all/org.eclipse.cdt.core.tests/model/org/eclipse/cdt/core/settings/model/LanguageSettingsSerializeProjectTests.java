@@ -37,6 +37,7 @@ import org.w3c.dom.Element;
 public class LanguageSettingsSerializeProjectTests extends TestCase {
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
+	private static final String CFG_ID = "test.configuration.id";
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
 	private static final String ELEM_LANGUAGE_SETTINGS = "languageSettings";
@@ -101,8 +102,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	 */
 	public void testSerializeProviderDOM() throws Exception {
 		IProject project = ResourceHelper.createCDTProjectWithConfig(this.getName());
-		ICConfigurationDescription cfgDescription = getFirstConfigurationDescription(project);
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		ICConfigurationDescription cfgDescription = new CProjectDescriptionTestHelper.DummyCConfigurationDescription(CFG_ID);
 
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));

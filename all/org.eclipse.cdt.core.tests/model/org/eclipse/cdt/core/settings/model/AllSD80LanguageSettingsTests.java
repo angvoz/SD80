@@ -23,6 +23,7 @@ public class AllSD80LanguageSettingsTests {
 
 		suite.addTest(LanguageSettingsManagerTests.suite());
 		suite.addTest(LanguageSettingsPersistenceTests.suite());
+		suite.addTest(LanguageSettingsSerializeProjectTests.suite());
 		suite.addTest(LanguageSettingsUnderConstructionTests.suite());
 		return suite;
 	}

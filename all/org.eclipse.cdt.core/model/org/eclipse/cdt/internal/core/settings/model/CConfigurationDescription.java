@@ -769,7 +769,8 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 
 	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
 		try {
-			getSpecSettings().setLanguageSettingProviders(providers);
+			CConfigurationSpecSettings specSettings = getSpecSettings();
+			specSettings.setLanguageSettingProviders(providers);
 		} catch (CoreException e) {
 			CCorePlugin.log(e);
 		}

@@ -22,6 +22,7 @@ import java.util.Map.Entry;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.IConfigurationElement;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -38,11 +39,13 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	private static final String ELEM_RESOURCE = "resource";
 	private static final String ATTR_URI = "uri";
 
-	private static final String ELEM_SETTING_ENTRY = "settingEntry";
+	private static final String ELEM_ENTRY = "entry";
 	private static final String ATTR_KIND = "kind";
 	private static final String ATTR_NAME = "name";
+	private static final String ATTR_CLASS = "class";
 	private static final String ATTR_VALUE = "value";
-	private static final String ATTR_FLAGS = "flags";
+
+	private static final String ELEM_FLAG = "flag";
 	
 	
 	private Map<String, // cfgDescriptionId
@@ -120,10 +123,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 
 	private void serializeSettingEntries(Element parentElement, List<ICLanguageSettingEntry> settingEntries) {
 		for (ICLanguageSettingEntry entry : settingEntries) {
-			Element elementSettingEntry = XmlUtil.appendElement(parentElement, ELEM_SETTING_ENTRY, new String[] {
+			Element elementSettingEntry = XmlUtil.appendElement(parentElement, ELEM_ENTRY, new String[] {
 					ATTR_KIND, LanguageSettingEntriesSerializer.kindToString(entry.getKind()),
 					ATTR_NAME, entry.getName(),
-					ATTR_FLAGS, LanguageSettingEntriesSerializer.composeFlagsString(entry.getFlags()),
 				});
 			switch(entry.getKind()) {
 			case ICLanguageSettingEntry.MACRO:
@@ -133,6 +135,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 			// TODO: sourceAttachment fields need to be covered
 //							break;
 			}
+			Element elementFlag = XmlUtil.appendElement(elementSettingEntry, ELEM_FLAG, new String[] {
+					ATTR_VALUE, LanguageSettingEntriesSerializer.composeFlagsString(entry.getFlags())
+				});
 		}
 	}
 
@@ -149,7 +154,11 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	*/
 	// provider/configuration/language/resource/settingEntry
 	public Element serialize(Element parentElement) {
-		Element elementProvider = XmlUtil.appendElement(parentElement, ELEM_PROVIDER, new String[] {ATTR_ID, getId()});
+		Element elementProvider = XmlUtil.appendElement(parentElement, ELEM_PROVIDER, new String[] {
+				ATTR_ID, getId(),
+				ATTR_NAME, getName(),
+				ATTR_CLASS, getClass().getCanonicalName(),
+			});
 		
 		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
 			String cfgId = entryCfg.getKey();
@@ -182,34 +191,48 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	private static String determineNodeValue(Node node) {
 		return node!=null ? node.getNodeValue() : null;
 	}
-	
-	
+
+
 	private ICLanguageSettingEntry loadSettingEntry(Node parentElement) {
 		NamedNodeMap settingAttributes = parentElement.getAttributes();
 		String settingKind = determineNodeValue(settingAttributes.getNamedItem(ATTR_KIND));
 		String settingName = determineNodeValue(settingAttributes.getNamedItem(ATTR_NAME));
-		String settingFlags = determineNodeValue(settingAttributes.getNamedItem(ATTR_FLAGS));
+//		String settingFlags = determineNodeValue(settingAttributes.getNamedItem(ATTR_FLAGS));
+		
+		NodeList flagNodes = parentElement.getChildNodes();
+		int flags = 0;
+		for (int i=0;i<flagNodes.getLength();i++) {
+			Node flagNode = flagNodes.item(i);
+			if(flagNode.getNodeType() != Node.ELEMENT_NODE || !ELEM_FLAG.equals(flagNode.getNodeName()))
+				continue;
+			
+			NamedNodeMap flagAttributes = flagNode.getAttributes();
+//			int bitFlag = LanguageSettingEntriesSerializer.composeFlags(determineAttributeValue(flagAttributes, ATTR_VALUE));
+			int bitFlag = LanguageSettingEntriesSerializer.composeFlags(determineNodeValue(flagAttributes.getNamedItem(ATTR_VALUE)));
+			flags |= bitFlag;
+
+		}
 	
 		ICLanguageSettingEntry entry = null;
 		switch (LanguageSettingEntriesSerializer.stringToKind(settingKind)) {
 		case ICSettingEntry.INCLUDE_PATH:
-			entry = new CIncludePathEntry(settingName, LanguageSettingEntriesSerializer.composeFlags(settingFlags));
+			entry = new CIncludePathEntry(settingName, flags);
 			break;
 		case ICSettingEntry.INCLUDE_FILE:
-			entry = new CIncludeFileEntry(settingName, LanguageSettingEntriesSerializer.composeFlags(settingFlags));
+			entry = new CIncludeFileEntry(settingName, flags);
 			break;
 		case ICSettingEntry.MACRO:
 			String settingValue = determineNodeValue(settingAttributes.getNamedItem(ATTR_VALUE));
-			entry = new CMacroEntry(settingName, settingValue, LanguageSettingEntriesSerializer.composeFlags(settingFlags));
+			entry = new CMacroEntry(settingName, settingValue, flags);
 			break;
 		case ICSettingEntry.MACRO_FILE:
-			entry = new CMacroFileEntry(settingName, LanguageSettingEntriesSerializer.composeFlags(settingFlags));
+			entry = new CMacroFileEntry(settingName, flags);
 			break;
 		case ICSettingEntry.LIBRARY_PATH:
-			entry = new CLibraryPathEntry(settingName, LanguageSettingEntriesSerializer.composeFlags(settingFlags));
+			entry = new CLibraryPathEntry(settingName, flags);
 			break;
 		case ICSettingEntry.LIBRARY_FILE:
-			entry = new CLibraryFileEntry(settingName, LanguageSettingEntriesSerializer.composeFlags(settingFlags));
+			entry = new CLibraryFileEntry(settingName, flags);
 			break;
 		}
 		return entry;
@@ -274,7 +297,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 						List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
 						for (int ientry=0;ientry<settingEntryNodes.getLength();ientry++) {
 							Node settingEntryNode = settingEntryNodes.item(ientry);
-							if(settingEntryNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_SETTING_ENTRY.equals(settingEntryNode.getNodeName()))
+							if(settingEntryNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_ENTRY.equals(settingEntryNode.getNodeName()))
 								continue;
 	
 							ICLanguageSettingEntry entry = loadSettingEntry(settingEntryNode);

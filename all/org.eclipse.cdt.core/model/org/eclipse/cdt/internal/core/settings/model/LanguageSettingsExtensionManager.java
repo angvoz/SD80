@@ -192,28 +192,6 @@ public class LanguageSettingsExtensionManager {
 		}
 	}
 
-	/**
-	 * @param node
-	 * @return node value or {@code null}
-	 */
-	private static String determineNodeValue(Node node) {
-		return node!=null ? node.getNodeValue() : null;
-	}
-
-
-	/**
-	 * Note: not sure if need to be concerned about the efficiency of this method pulling several
-	 * attributes in a row. Calling element.getAttributes() only once may be more efficient.
-	 * 
-	 * @param element
-	 * @param attr
-	 * @return
-	 */
-	private static String determineAttributeValue(Element element, String attr) {
-		NamedNodeMap attributes = element.getAttributes();
-		return attributes!=null ? determineNodeValue(attributes.getNamedItem(attr)) : null;
-	}
-	
 	
 	private static String determineAttributeValue(IConfigurationElement ce, String attr) {
 		String value = ce.getAttribute(attr);
@@ -529,7 +507,7 @@ public class LanguageSettingsExtensionManager {
 			
 			for (int i=0;i<providerNodes.getLength();i++) {
 				Element providerNode = (Element)providerNodes.item(i);
-				String providerId = determineAttributeValue(providerNode, ATTR_ID);
+				String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
 				if (providerId!=null) {
 					ILanguageSettingsProvider provider = fUserDefinedProviders.get(providerId);
 					if (provider instanceof LanguageSettingsSerializable) {
@@ -614,8 +592,8 @@ public class LanguageSettingsExtensionManager {
 				for (int ic=0;ic<configurationNodes.getLength();ic++) {
 					List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 					Element cfgNode = (Element)configurationNodes.item(ic);
-					String cfgId = determineAttributeValue(cfgNode, ATTR_ID);
-					String cfgName = determineAttributeValue(cfgNode, ATTR_NAME);
+					String cfgId = XmlUtil.determineAttributeValue(cfgNode, ATTR_ID);
+					String cfgName = XmlUtil.determineAttributeValue(cfgNode, ATTR_NAME);
 					
 					NodeList extensionNodes = cfgNode.getElementsByTagName(ELEM_EXTENSION);
 					for (int ie=0;ie<extensionNodes.getLength();ie++) {
@@ -627,13 +605,13 @@ public class LanguageSettingsExtensionManager {
 							ILanguageSettingsProvider provider=null;
 
 							// look for workspace-defined provider
-							String providerId = determineAttributeValue(providerNode, ATTR_ID);
+							String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
 							if (providerId!=null) {
 								provider = getProvider(providerId);
 							}
 
 							if (provider==null) {
-								String providerClass = determineAttributeValue(providerNode, ATTR_CLASS);
+								String providerClass = XmlUtil.determineAttributeValue(providerNode, ATTR_CLASS);
 								if (providerClass!=null) {
 									provider = createProviderCarcass(providerClass, Platform.getExtensionRegistry());
 									if (provider instanceof LanguageSettingsSerializable) {

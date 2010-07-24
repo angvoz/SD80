@@ -184,20 +184,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 		return elementProvider;
 	}
 	
-	/**
-	 * @param node
-	 * @return node value or {@code null}
-	 */
-	private static String determineNodeValue(Node node) {
-		return node!=null ? node.getNodeValue() : null;
-	}
-
-
 	private ICLanguageSettingEntry loadSettingEntry(Node parentElement) {
-		NamedNodeMap settingAttributes = parentElement.getAttributes();
-		String settingKind = determineNodeValue(settingAttributes.getNamedItem(ATTR_KIND));
-		String settingName = determineNodeValue(settingAttributes.getNamedItem(ATTR_NAME));
-//		String settingFlags = determineNodeValue(settingAttributes.getNamedItem(ATTR_FLAGS));
+		String settingKind = XmlUtil.determineAttributeValue(parentElement, ATTR_KIND);
+		String settingName = XmlUtil.determineAttributeValue(parentElement, ATTR_NAME);
 		
 		NodeList flagNodes = parentElement.getChildNodes();
 		int flags = 0;
@@ -206,9 +195,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 			if(flagNode.getNodeType() != Node.ELEMENT_NODE || !ELEM_FLAG.equals(flagNode.getNodeName()))
 				continue;
 			
-			NamedNodeMap flagAttributes = flagNode.getAttributes();
-//			int bitFlag = LanguageSettingEntriesSerializer.composeFlags(determineAttributeValue(flagAttributes, ATTR_VALUE));
-			int bitFlag = LanguageSettingEntriesSerializer.composeFlags(determineNodeValue(flagAttributes.getNamedItem(ATTR_VALUE)));
+			String settingFlags = XmlUtil.determineAttributeValue(flagNode, ATTR_VALUE);
+			int bitFlag = LanguageSettingEntriesSerializer.composeFlags(settingFlags);
 			flags |= bitFlag;
 
 		}
@@ -222,7 +210,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 			entry = new CIncludeFileEntry(settingName, flags);
 			break;
 		case ICSettingEntry.MACRO:
-			String settingValue = determineNodeValue(settingAttributes.getNamedItem(ATTR_VALUE));
+			String settingValue = XmlUtil.determineAttributeValue(parentElement, ATTR_VALUE);
 			entry = new CMacroEntry(settingName, settingValue, flags);
 			break;
 		case ICSettingEntry.MACRO_FILE:
@@ -244,9 +232,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 		fStorage.clear();
 	
 		if (providerNode!=null) {
-			NamedNodeMap providerAttributes = providerNode.getAttributes();
-			String providerId = determineNodeValue(providerAttributes.getNamedItem(ATTR_ID));
-			String providerName = determineNodeValue(providerAttributes.getNamedItem(ATTR_NAME));
+			String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
+			String providerName = XmlUtil.determineAttributeValue(providerNode, ATTR_NAME);
 			this.setId(providerId);
 			this.setName(providerName);
 
@@ -256,8 +243,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 				if(cfgNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_CONFIGURATION.equals(cfgNode.getNodeName()))
 					continue;
 
-				NamedNodeMap cfgAttributes = cfgNode.getAttributes();
-				String cfgId = determineNodeValue(cfgAttributes.getNamedItem(ATTR_ID));
+				String cfgId = XmlUtil.determineAttributeValue(cfgNode, ATTR_ID);
 				if (cfgId.length()==0) {
 					cfgId=null;
 				}
@@ -268,8 +254,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 					if(langNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_LANGUAGE.equals(langNode.getNodeName()))
 						continue;
 
-					NamedNodeMap langAttributes = langNode.getAttributes();
-					String langId = determineNodeValue(langAttributes.getNamedItem(ATTR_ID));
+					String langId = XmlUtil.determineAttributeValue(langNode, ATTR_ID);
 					if (langId.length()==0) {
 						langId=null;
 					}
@@ -280,8 +265,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 						if(rcNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_RESOURCE.equals(rcNode.getNodeName()))
 							continue;
 						
-						NamedNodeMap rcAttributes = rcNode.getAttributes();
-						String rcUriString = determineNodeValue(rcAttributes.getNamedItem(ATTR_URI));
+						String rcUriString = XmlUtil.determineAttributeValue(rcNode, ATTR_URI);
 						URI rcUri = null;
 						if (rcUriString.length()>0) {
 							try {

@@ -39,6 +39,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -55,6 +56,27 @@ public class XmlUtil {
 		return builder.newDocument();
 	}
 	
+	/**
+	 * @return node value or {@code null}
+	 */
+	private static String determineNodeValue(Node node) {
+		return node!=null ? node.getNodeValue() : null;
+	}
+
+	/**
+	 * TODO
+	 * Note: not sure if need to be concerned about the efficiency of this method pulling several
+	 * attributes in a row. Calling element.getAttributes() only once may be more efficient.
+	 * 
+	 * @param element
+	 * @param attr
+	 * @return attribute value or {@code null}
+	 */
+	public static String determineAttributeValue(Node element, String attr) {
+		NamedNodeMap attributes = element.getAttributes();
+		return attributes!=null ? determineNodeValue(attributes.getNamedItem(attr)) : null;
+	}
+
 	/**
 	 * The method creates an element with specified names and attributes and appends it to the parent element.
 	 * This is basically an automation of often used sequence of calls.

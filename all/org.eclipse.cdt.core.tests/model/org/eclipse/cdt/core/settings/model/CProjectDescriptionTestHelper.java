@@ -283,8 +283,7 @@ public class CProjectDescriptionTestHelper {
 		public void setActive() throws WriteAccessException {
 		}
 
-		public void setConfigurationData(String buildSystemId,
-				CConfigurationData data) throws WriteAccessException {
+		public void setConfigurationData(String buildSystemId, CConfigurationData data) throws WriteAccessException {
 		}
 
 		public boolean isModified() {
@@ -303,16 +302,14 @@ public class CProjectDescriptionTestHelper {
 			return null;
 		}
 
-		public void setSourceEntries(ICSourceEntry[] entries)
-				throws CoreException, WriteAccessException {
+		public void setSourceEntries(ICSourceEntry[] entries) throws CoreException, WriteAccessException {
 		}
 
 		public Map<String, String> getReferenceInfo() {
 			return null;
 		}
 
-		public void setReferenceInfo(Map<String, String> refs)
-				throws WriteAccessException {
+		public void setReferenceInfo(Map<String, String> refs) throws WriteAccessException {
 		}
 
 		public ICExternalSetting[] getExternalSettings() {
@@ -325,8 +322,7 @@ public class CProjectDescriptionTestHelper {
 			return null;
 		}
 
-		public void removeExternalSetting(ICExternalSetting setting)
-				throws WriteAccessException {
+		public void removeExternalSetting(ICExternalSetting setting) throws WriteAccessException {
 		}
 
 		public void removeExternalSettings() throws WriteAccessException {
@@ -354,8 +350,7 @@ public class CProjectDescriptionTestHelper {
 			return null;
 		}
 
-		public ICConfigExtensionReference create(String extensionPoint,
-				String extension) throws CoreException {
+		public ICConfigExtensionReference create(String extensionPoint, String extension) throws CoreException {
 			return null;
 		}
 
@@ -369,8 +364,7 @@ public class CProjectDescriptionTestHelper {
 			return false;
 		}
 
-		public ICLanguageSetting getLanguageSettingForFile(IPath path,
-				boolean ignoreExludeStatus) {
+		public ICLanguageSetting getLanguageSettingForFile(IPath path, boolean ignoreExludeStatus) {
 			return null;
 		}
 
@@ -381,16 +375,14 @@ public class CProjectDescriptionTestHelper {
 			return null;
 		}
 
-		public void updateExternalSettingsProviders(String[] ids)
-				throws WriteAccessException {
+		public void updateExternalSettingsProviders(String[] ids) throws WriteAccessException {
 		}
 
 		public CConfigurationStatus getConfigurationStatus() {
 			return null;
 		}
 
-		public void setLanguageSettingProviders(
-				List<ILanguageSettingsProvider> providers) {
+		public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
 		}
 
 		public List<ILanguageSettingsProvider> getLanguageSettingProviders() {

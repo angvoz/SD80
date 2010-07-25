@@ -913,9 +913,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_SerializeProviders() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
-		ICProject cproject = CProjectHelper.createNewStileCProject(projectName, IPDOMManager.ID_NO_INDEXER);
-
-		IProject project = cproject.getProject();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
 		ICProjectDescription writableProjDescription = CoreModel.getDefault().getProjectDescription(project, true);
 
 		ICConfigurationDescription[] cfgDescriptions = writableProjDescription.getConfigurations();

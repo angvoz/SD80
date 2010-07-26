@@ -21,6 +21,7 @@ public class AllSD80LanguageSettingsTests {
 	public static Test suite() {
 		TestSuite suite = new TestSuite(AllSD80LanguageSettingsTests.class.getName());
 
+		suite.addTest(LanguageSettingsExtensionsTests.suite());
 		suite.addTest(LanguageSettingsManagerTests.suite());
 		suite.addTest(LanguageSettingsPersistenceTests.suite());
 		suite.addTest(LanguageSettingsSerializeProjectTests.suite());

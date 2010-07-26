@@ -34,6 +34,7 @@ public class AllCProjectDescriptionTests {
 		suite.addTest(CProjectDescriptionBasicTests.suite());
 		suite.addTest(CProjectDescriptionStorageTests.suite());
 
+		suite.addTest(LanguageSettingsExtensionsTests.suite());
 		suite.addTest(LanguageSettingsManagerTests.suite());
 		suite.addTest(LanguageSettingsPersistenceTests.suite());
 		suite.addTest(LanguageSettingsSerializeProjectTests.suite());

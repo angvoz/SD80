@@ -19,11 +19,8 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
-import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
-import org.eclipse.cdt.core.testplugin.CProjectHelper;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
@@ -38,22 +35,14 @@ import org.eclipse.core.runtime.Path;
  * Test cases testing LanguageSettingsProvider functionality
  */
 public class LanguageSettingsManagerTests extends TestCase {
-	// These should match id and name of extension point defined in plugin.xml
-	private static final String DEFAULT_PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider";
-	private static final String DEFAULT_PROVIDER_NAME_EXT = "Test Plugin Language Settings Base Provider";
-	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.provider";
-	private static final String PROVIDER_NAME_EXT = "Test Plugin Language Settings Provider";
-	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
-	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
+	// Should match id of extension point defined in plugin.xml
+	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider";
 
-	private static final String CONFIGURATION_ID = "cfg.id";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
-	private static final String PROVIDER_NULL = "test.provider.null.id";
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_1 = "test.provider.1.id";
 	private static final String PROVIDER_2 = "test.provider.2.id";
-	private static final String PROVIDER_NAME_NULL = "test.provider.null.name";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
 	private static final String PROVIDER_NAME_1 = "test.provider.1.name";
 	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
@@ -87,7 +76,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
-//		ResourceHelper.cleanUp();
+		ResourceHelper.cleanUp();
 		LanguageSettingsManager.setUserDefinedProviders(null);
 	}
 
@@ -112,7 +101,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 * @return error parser IDs delimited with error parser delimiter ";"
 	 * @since 5.2
 	 */
-	public static String toDelimitedString(String[] ids) {
+	private static String toDelimitedString(String[] ids) {
 		String result=""; //$NON-NLS-1$
 		for (String id : ids) {
 			if (result.length()==0) {
@@ -124,119 +113,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 		return result;
 	}
 
-	/**
-	 * Check that regular ICLanguageSettingsProvider extension defined in plugin.xml is accessible.
-	 *
-	 * @throws Exception...
-	 */
-	public void testExtension() throws Exception {
-		{
-			List<String> ids = Arrays.asList(LanguageSettingsManager.getProviderExtensionIds());
-			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", ids.contains(DEFAULT_PROVIDER_ID_EXT));
-		}
-		{
-			List<String> ids = Arrays.asList(LanguageSettingsManager.getProviderAvailableIds());
-			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", ids.contains(DEFAULT_PROVIDER_ID_EXT));
-		}
-
-		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(DEFAULT_PROVIDER_ID_EXT);
-		assertNotNull(providerExt);
-
-		assertTrue(providerExt instanceof LanguageSettingsBaseProvider);
-		LanguageSettingsBaseProvider provider = (LanguageSettingsBaseProvider)providerExt;
-		assertEquals(DEFAULT_PROVIDER_ID_EXT, provider.getId());
-		assertEquals(DEFAULT_PROVIDER_NAME_EXT, provider.getName());
-
-		// retrieve wrong language
-		assertNull(provider.getSettingEntries(null, FILE_0, LANG_ID));
-
-		// benchmarks matching extension point definition
-		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
-		entriesExt.add(new CIncludePathEntry("/usr/include/",
-				ICSettingEntry.BUILTIN
-				| ICSettingEntry.READONLY
-				| ICSettingEntry.LOCAL
-				| ICSettingEntry.VALUE_WORKSPACE_PATH
-				| ICSettingEntry.RESOLVED
-				| ICSettingEntry.UNDEFINED
-		));
-		entriesExt.add(new CMacroEntry("TEST_DEFINE", "100", 0));
-		entriesExt.add(new CIncludeFileEntry("/include/file.inc", 0));
-		entriesExt.add(new CLibraryPathEntry("/usr/lib/", 0));
-		entriesExt.add(new CLibraryFileEntry("libdomain.a", 0));
-		entriesExt.add(new CMacroFileEntry("/macro/file.mac", 0));
-
-		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
-		for (int i=0;i<entriesExt.size();i++) {
-			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
-		}
-		assertEquals(entriesExt.size(), retrieved.size());
-	}
-
-	/**
-	 * Check that subclassed LanguageSettingsBaseProvider extension defined in plugin.xml is accessible.
-	 *
-	 * @throws Exception...
-	 */
-	public void testExtensionBaseProviderSubclass() throws Exception {
-		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
-		assertNotNull(providerExt);
-		
-		assertTrue(providerExt instanceof TestClassLSBaseProvider);
-		TestClassLSBaseProvider provider = (TestClassLSBaseProvider)providerExt;
-		assertEquals(BASE_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
-		
-		// Test for null languages
-		assertNull(provider.getLanguageIds());
-		
-		// benchmarks matching extension point definition
-		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
-		entriesExt.add(new CIncludePathEntry("/usr/include/", ICSettingEntry.BUILTIN));
-		
-		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
-		for (int i=0;i<entriesExt.size();i++) {
-			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
-		}
-		assertEquals(entriesExt.size(), retrieved.size());
-	}
-	
-	/**
-	 * Make sure extensions contributed through extension point are sorted by name.
-	 *
-	 * @throws Exception...
-	 */
-	public void testExtensionsSorting() throws Exception {
-		{
-			String[] ids = LanguageSettingsManager.getProviderExtensionIds();
-			String lastName="";
-			// providers created from extensions are to be sorted by names
-			for (String id : ids) {
-				String name = LanguageSettingsManager.getProvider(id).getName();
-				assertTrue(lastName.compareTo(name)<=0);
-				lastName = name;
-			}
-		}
-	}
-
-	/**
-	 * Make sure extensions contributed through extension point created with proper ID/name.
-	 *
-	 * @throws Exception...
-	 */
-	public void testExtensionsNameId() throws Exception {
-		// get test plugin extension non-default provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(PROVIDER_ID_EXT);
-		assertNotNull(providerExt);
-		assertTrue(providerExt instanceof TestClassLanguageSettingsProvider);
-
-		assertEquals(PROVIDER_ID_EXT, providerExt.getId());
-		assertEquals(PROVIDER_NAME_EXT, providerExt.getName());
-	}
-	
 	/**
 	 * Test setting/retrieval of providers and their IDs.
 	 *
@@ -337,7 +213,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testDefaultProviderIds() throws Exception {
 		final String[] availableProviderIds = LanguageSettingsManager.getProviderAvailableIds();
 		assertNotNull(availableProviderIds);
-		final String[] initialDefaultProviderIds = LanguageSettingsManager.getDefaultProviderIds();
+		LanguageSettingsManager.getDefaultProviderIds();
 
 		// preconditions
 		{
@@ -838,7 +714,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ILanguageSettingsProvider provider = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, null)  {
 			@Override
 			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-				IFolder pf = parentFolder;
 				if (rc.equals(parentFolder)) {
 					return original;
 				}
@@ -891,24 +766,25 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// ensure no test provider is set yet
 			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);
-			assertFalse(ids.contains(DEFAULT_PROVIDER_ID_EXT));
+			assertFalse(ids.contains(PROVIDER_ID_EXT));
 		}
 
 		{
 			// set test provider
 			List<String> ids = new ArrayList<String>();
-			ids.add(DEFAULT_PROVIDER_ID_EXT);
+			ids.add(PROVIDER_ID_EXT);
 			LanguageSettingsManager.setProviderIds(cfgDescription, ids);
 		}
 
 		{
 			// check that test provider got there
 			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);
-			assertTrue(ids.contains(DEFAULT_PROVIDER_ID_EXT));
+			assertTrue(ids.contains(PROVIDER_ID_EXT));
 		}
 	}
 
 	/**
+	 * TODO: not sure if this is a duplicate test
 	 */
 	public void testConfigurationDescription_SerializeProviders() throws Exception {
 		// Create model project and accompanied descriptions
@@ -923,18 +799,18 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// ensure no test provider is set yet
 			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);
-			assertFalse(ids.contains(DEFAULT_PROVIDER_ID_EXT));
+			assertFalse(ids.contains(PROVIDER_ID_EXT));
 		}
 		{
 			// set test provider
 			List<String> ids = new ArrayList<String>();
-			ids.add(DEFAULT_PROVIDER_ID_EXT);
+			ids.add(PROVIDER_ID_EXT);
 			LanguageSettingsManager.setProviderIds(cfgDescription, ids);
 		}
 		{
 			// check that test provider got there
 			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);
-			assertTrue(ids.contains(DEFAULT_PROVIDER_ID_EXT));
+			assertTrue(ids.contains(PROVIDER_ID_EXT));
 		}
 
 		{
@@ -953,7 +829,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 			List<String> ids = LanguageSettingsManager.getProviderIds(loadedCfgDescription);
-			assertTrue(ids.contains(DEFAULT_PROVIDER_ID_EXT));
+			assertTrue(ids.contains(PROVIDER_ID_EXT));
 		}
 
 	}

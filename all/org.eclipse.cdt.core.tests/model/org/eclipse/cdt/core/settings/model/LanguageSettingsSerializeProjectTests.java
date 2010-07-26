@@ -21,9 +21,8 @@ import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
-import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
-import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
+import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -41,6 +40,46 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
 	private static final String ELEM_LANGUAGE_SETTINGS = "languageSettings";
+
+	class MockConfigurationDescription extends CProjectDescriptionTestHelper.DummyCConfigurationDescription {
+		List<ILanguageSettingsProvider> providers;
+		public MockConfigurationDescription(String id) {
+			super(id);
+		}
+		
+		@Override
+		public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
+			this.providers = new ArrayList<ILanguageSettingsProvider>(providers);
+		}
+		
+		@Override
+		public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
+			return providers;
+		}
+	}
+	class MockProjectDescription extends CProjectDescriptionTestHelper.DummyCProjectDescription {
+		ICConfigurationDescription[] cfgDescriptions;
+		public void addConfiguration(ICConfigurationDescription cfgDescription) {
+			cfgDescriptions = new ICConfigurationDescription[] {cfgDescription};
+		}
+		
+		@Override
+		public ICConfigurationDescription[] getConfigurations() {
+			return cfgDescriptions;
+			
+		}
+		
+		@Override
+		public ICConfigurationDescription getConfigurationById(String id) {
+			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+				if (cfgDescription.getId().equals(id))
+					return cfgDescription;
+			}
+			return null;
+		}
+		
+
+	}
 
 	/**
 	 * Constructor.
@@ -101,22 +140,19 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	/**
 	 */
 	public void testSerializeProviderDOM() throws Exception {
-		IProject project = ResourceHelper.createCDTProjectWithConfig(this.getName());
-		ICConfigurationDescription cfgDescription = new CProjectDescriptionTestHelper.DummyCConfigurationDescription(CFG_ID);
+		ICConfigurationDescription mockCfgDescription = new CProjectDescriptionTestHelper.DummyCConfigurationDescription(CFG_ID);
+		Element elementProvider = null;
 
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		List<ICLanguageSettingEntry> original2 = new ArrayList<ICLanguageSettingEntry>();
 		original2.add(new CIncludePathEntry("path2", 0));
 		
-		Element elementProvider = null;
+		// create a provider
 		LanguageSettingsSerializable mockProvider = null;
-		{
-			// create a provider
-			mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
-			mockProvider.setSettingEntries(null, null, null, original);
-			mockProvider.setSettingEntries(cfgDescription, null, null, original2);
-		}
+		mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+		mockProvider.setSettingEntries(null, null, null, original);
+		mockProvider.setSettingEntries(mockCfgDescription, null, null, original2);
 		{
 			// prepare DOM storage
 			Document doc = XmlUtil.newDocument();
@@ -132,7 +168,96 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 			
-			List<ICLanguageSettingEntry> retrieved2 = loadedProvider.getSettingEntries(cfgDescription, null, null);
+			List<ICLanguageSettingEntry> retrieved2 = loadedProvider.getSettingEntries(mockCfgDescription, null, null);
+			assertEquals(original2.get(0), retrieved2.get(0));
+			assertEquals(original2.size(), retrieved2.size());
+		}
+	}
+	
+	/**
+	 */
+	public void testSerializeProjectDOM() throws Exception {
+		Element rootElement = null;
+		
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		List<ICLanguageSettingEntry> original2 = new ArrayList<ICLanguageSettingEntry>();
+		original2.add(new CIncludePathEntry("path2", 0));
+
+		
+		{
+			// create a provider
+			MockProjectDescription mockPrjDescription = new MockProjectDescription();
+			{
+				MockConfigurationDescription mockCfgDescription = new MockConfigurationDescription(CFG_ID);
+				mockPrjDescription.addConfiguration(mockCfgDescription);
+				
+				ICConfigurationDescription[] cfgDescriptions = mockPrjDescription.getConfigurations();
+				assertNotNull(cfgDescriptions);
+				assertEquals(1, cfgDescriptions.length);
+				ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+				assertNotNull(cfgDescription);
+				
+				LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+				mockProvider.setSettingEntries(null, null, null, original);
+				mockProvider.setSettingEntries(mockCfgDescription, null, null, original2);
+				
+				ArrayList<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+				providers.add(mockProvider);
+				cfgDescription.setLanguageSettingProviders(providers);
+			}
+			
+			// doublecheck the mock description
+			{
+				ICConfigurationDescription[] cfgDescriptions = mockPrjDescription.getConfigurations();
+				assertNotNull(cfgDescriptions);
+				assertEquals(1, cfgDescriptions.length);
+				ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+				assertNotNull(cfgDescription);
+				
+				List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+				assertNotNull(providers);
+				assertEquals(1, providers.size());
+				ILanguageSettingsProvider provider = providers.get(0);
+				assertNotNull(provider);
+				
+				List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
+				assertEquals(original.get(0), retrieved.get(0));
+				assertEquals(original.size(), retrieved.size());
+				
+				List<ICLanguageSettingEntry> retrieved2 = provider.getSettingEntries(cfgDescription, null, null);
+				assertEquals(original2.get(0), retrieved2.get(0));
+				assertEquals(original2.size(), retrieved2.size());
+			}
+
+			// prepare DOM storage
+			Document doc = XmlUtil.newDocument();
+			rootElement = XmlUtil.appendElement(doc, ELEM_LANGUAGE_SETTINGS);
+			// serialize language settings to the DOM
+			LanguageSettingsExtensionManager.serializeLanguageSettings(rootElement, mockPrjDescription);
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			MockProjectDescription mockPrjDescription = new MockProjectDescription();
+			mockPrjDescription.addConfiguration(new MockConfigurationDescription(CFG_ID));
+			LanguageSettingsExtensionManager.loadLanguageSettings(rootElement, mockPrjDescription);
+			
+			ICConfigurationDescription[] cfgDescriptions = mockPrjDescription.getConfigurations();
+			assertNotNull(cfgDescriptions);
+			assertEquals(1, cfgDescriptions.length);
+			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+			
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			assertNotNull(providers);
+			assertEquals(1, providers.size());
+			ILanguageSettingsProvider provider = providers.get(0);
+			assertNotNull(provider);
+			
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
+			assertEquals(original.get(0), retrieved.get(0));
+			assertEquals(original.size(), retrieved.size());
+			
+			List<ICLanguageSettingEntry> retrieved2 = provider.getSettingEntries(cfgDescription, null, null);
 			assertEquals(original2.get(0), retrieved2.get(0));
 			assertEquals(original2.size(), retrieved2.size());
 		}

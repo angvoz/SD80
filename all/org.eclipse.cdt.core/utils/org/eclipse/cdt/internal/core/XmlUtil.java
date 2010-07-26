@@ -91,7 +91,7 @@ public class XmlUtil {
 	 *    (i.e. the last attribute is missing a value).
 	 */
 	public static Element appendElement(Node parent, String name, String[] attributes) {
-		Document doc =  parent instanceof Document ? (Document)parent : parent.getOwnerDocument();
+		Document doc = parent instanceof Document ? (Document)parent : parent.getOwnerDocument();
 		Element element = doc.createElement(name);
 		if (attributes!=null) {
 		int attrLen = attributes.length;
@@ -302,6 +302,11 @@ public class XmlUtil {
 		} else {
 			file.create(input, IResource.FORCE, null);
 		}
+	}
+	
+	public static String toString(Document doc) throws CoreException {
+		XmlUtil.prettyFormat(doc);
+		return new String(toByteArray(doc));
 	}
 	
 	/**

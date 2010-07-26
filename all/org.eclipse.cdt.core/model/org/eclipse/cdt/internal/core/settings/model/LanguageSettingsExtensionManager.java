@@ -518,32 +518,35 @@ public class LanguageSettingsExtensionManager {
 		}
 	}
 
+	public static void serializeLanguageSettings(Element parentElement, ICProjectDescription prjDescription) throws CoreException {
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
+		for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+			Element elementConfiguration = XmlUtil.appendElement(parentElement, ELEM_CONFIGURATION, new String[] {
+					ATTR_ID, cfgDescription.getId(),
+					ATTR_NAME, cfgDescription.getName(),
+				});
+			Element elementExtension = XmlUtil.appendElement(elementConfiguration, ELEM_EXTENSION, new String[] {ATTR_POINT, PROVIDER_EXTENSION_FULL_ID});
+			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getProviders(cfgDescription);
+			for (ILanguageSettingsProvider provider : providers) {
+				if (provider instanceof LanguageSettingsSerializable) {
+					((LanguageSettingsSerializable) provider).serialize(elementExtension);
+				} else {
+					Element elementProvider = XmlUtil.appendElement(elementExtension, ELEM_PROVIDER, new String[] {
+							ATTR_ID, provider.getId(),
+							ATTR_NAME, provider.getName(),
+							ATTR_CLASS, provider.getClass().getCanonicalName(),
+						});
+				}
+			}
+		}
+	}
+	
 	public static void serializeLanguageSettings(ICProjectDescription prjDescription) throws CoreException {
 		IProject project = prjDescription.getProject();
 		try {
 			Document doc = XmlUtil.newDocument();
 			Element rootElement = XmlUtil.appendElement(doc, ELEM_PROJECT);
-			
-			ICConfigurationDescription[] cfgDescriptions = CoreModel.getDefault().getProjectDescription(project).getConfigurations();
-			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
-				Element elementConfiguration = XmlUtil.appendElement(rootElement, ELEM_CONFIGURATION, new String[] {
-						ATTR_ID, cfgDescription.getId(),
-						ATTR_NAME, cfgDescription.getName(),
-					});
-				Element elementExtension = XmlUtil.appendElement(elementConfiguration, ELEM_EXTENSION, new String[] {ATTR_POINT, PROVIDER_EXTENSION_FULL_ID});
-				List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getProviders(cfgDescription);
-				for (ILanguageSettingsProvider provider : providers) {
-					if (provider instanceof LanguageSettingsSerializable) {
-						((LanguageSettingsSerializable) provider).serialize(elementExtension);
-					} else {
-						Element elementProvider = XmlUtil.appendElement(elementExtension, ELEM_PROVIDER, new String[] {
-								ATTR_ID, provider.getId(),
-								ATTR_NAME, provider.getName(),
-								ATTR_CLASS, provider.getClass().getCanonicalName(),
-							});
-					}
-				}
-			}
+			serializeLanguageSettings(rootElement, prjDescription);
 			
 			IFile file = project.getFile(STORAGE_PROJECT_LANGUAGE_SETTINGS);
 			synchronized (serializingLock){
@@ -556,7 +559,66 @@ public class LanguageSettingsExtensionManager {
 		}
 	}
 
-	// languageSettings/configuration/provider/...
+	public static void loadLanguageSettings(Element parentElement, ICProjectDescription prjDescription) {
+		/*
+		<project>
+			<configuration id="cfg.id">
+				<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
+					<provider .../>
+					<provider .../>
+				</extension>
+			</configuration>
+		</project>
+		 */
+		NodeList configurationNodes = parentElement.getChildNodes();
+		for (int ic=0;ic<configurationNodes.getLength();ic++) {
+			Node cfgNode = configurationNodes.item(ic);
+			if (!(cfgNode instanceof Element && cfgNode.getNodeName().equals(ELEM_CONFIGURATION)) )
+				continue;
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+			String cfgId = XmlUtil.determineAttributeValue(cfgNode, ATTR_ID);
+			String cfgName = XmlUtil.determineAttributeValue(cfgNode, ATTR_NAME);
+			
+			NodeList extensionNodes = cfgNode.getChildNodes();
+			for (int ie=0;ie<extensionNodes.getLength();ie++) {
+				Node extNode = extensionNodes.item(ie);
+				if (!(extNode instanceof Element && extNode.getNodeName().equals(ELEM_EXTENSION)) )
+					continue;
+				NodeList providerNodes = extNode.getChildNodes();
+				
+				for (int i=0;i<providerNodes.getLength();i++) {
+					Node providerNode = providerNodes.item(i);
+					if (!(providerNode instanceof Element && providerNode.getNodeName().equals(ELEM_PROVIDER)) )
+						continue;
+					ILanguageSettingsProvider provider=null;
+
+					// look for workspace-defined provider
+					String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
+					if (providerId!=null) {
+						provider = getProvider(providerId);
+					}
+
+					if (provider==null) {
+						String providerClass = XmlUtil.determineAttributeValue(providerNode, ATTR_CLASS);
+						if (providerClass!=null) {
+							provider = createProviderCarcass(providerClass, Platform.getExtensionRegistry());
+							if (provider instanceof LanguageSettingsSerializable) {
+								((LanguageSettingsSerializable)provider).load((Element) providerNode);
+							}
+						}
+					}
+					if (provider!=null) {
+						providers.add(provider);
+					}
+				}
+			}
+			
+			ICConfigurationDescription cfgDescription = prjDescription.getConfigurationById(cfgId);
+			if (cfgDescription!=null)
+				cfgDescription.setLanguageSettingProviders(providers);
+		}
+	}
+	
 	public static void loadLanguageSettings(ICProjectDescription prjDescription) {
 		IProject project = prjDescription.getProject();
 		IFile file = project.getFile(STORAGE_PROJECT_LANGUAGE_SETTINGS);
@@ -572,63 +634,13 @@ public class LanguageSettingsExtensionManager {
 				synchronized (serializingLock) {
 					doc = XmlUtil.loadXML(file);
 				}
+				Element rootElement = doc.getDocumentElement(); // <project/>
+				loadLanguageSettings(rootElement, prjDescription);
 			} catch (Exception e) {
 				CCorePlugin.log("Can't load preferences from file "+file.getLocation(), e); //$NON-NLS-1$
 			}
 			
 			if (doc!=null) {
-				/*
-				<project>
-					<configuration id="cfg.id">
-						<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
-							<provider .../>
-							<provider .../>
-						</extension>
-					</configuration>
-				</project>
-				 */
-				Element rootElement = doc.getDocumentElement(); // <project/>
-				NodeList configurationNodes = rootElement.getElementsByTagName(ELEM_CONFIGURATION);
-				for (int ic=0;ic<configurationNodes.getLength();ic++) {
-					List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
-					Element cfgNode = (Element)configurationNodes.item(ic);
-					String cfgId = XmlUtil.determineAttributeValue(cfgNode, ATTR_ID);
-					String cfgName = XmlUtil.determineAttributeValue(cfgNode, ATTR_NAME);
-					
-					NodeList extensionNodes = cfgNode.getElementsByTagName(ELEM_EXTENSION);
-					for (int ie=0;ie<extensionNodes.getLength();ie++) {
-						Element extNode = (Element)extensionNodes.item(ie);
-						NodeList providerNodes = extNode.getElementsByTagName(LanguageSettingsSerializable.ELEM_PROVIDER);
-						
-						for (int i=0;i<providerNodes.getLength();i++) {
-							Element providerNode = (Element)providerNodes.item(i);
-							ILanguageSettingsProvider provider=null;
-
-							// look for workspace-defined provider
-							String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
-							if (providerId!=null) {
-								provider = getProvider(providerId);
-							}
-
-							if (provider==null) {
-								String providerClass = XmlUtil.determineAttributeValue(providerNode, ATTR_CLASS);
-								if (providerClass!=null) {
-									provider = createProviderCarcass(providerClass, Platform.getExtensionRegistry());
-									if (provider instanceof LanguageSettingsSerializable) {
-										((LanguageSettingsSerializable)provider).load(providerNode);
-									}
-								}
-							}
-							if (provider!=null) {
-								providers.add(provider);
-							}
-						}
-					}
-					
-					ICConfigurationDescription cfgDescription = prjDescription.getConfigurationById(cfgId);
-					if (cfgDescription!=null)
-						cfgDescription.setLanguageSettingProviders(providers);
-				}
 			}
 
 		}

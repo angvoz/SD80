@@ -247,15 +247,7 @@ public class LanguageSettingsManager {
 	 * @ ??? noreference This method is not intended to be referenced by clients.
 	 */
 	public static List<ILanguageSettingsProvider> getProviders(ICConfigurationDescription cfgDescription) {
-		if (cfgDescription instanceof CConfigurationDescription) {
-			return ((CConfigurationDescription)cfgDescription).getLanguageSettingProviders();
-		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-			return ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingProviders();
-		} else if (cfgDescription!=null) {
-			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error getting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
-		}
-		return new ArrayList<ILanguageSettingsProvider>();
+		return cfgDescription.getLanguageSettingProviders();
 	}
 
 	/**

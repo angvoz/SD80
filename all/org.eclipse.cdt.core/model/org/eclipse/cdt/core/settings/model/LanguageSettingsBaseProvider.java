@@ -49,6 +49,9 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 	}
 	
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
+		if (this.entries!=null)
+			throw new UnsupportedOperationException("LanguageSettingsBaseProvider can be configured only once");
+		
 		setId(id);
 		setName(name);
 		this.languages = languages!=null ? new ArrayList<String>(languages) : null;

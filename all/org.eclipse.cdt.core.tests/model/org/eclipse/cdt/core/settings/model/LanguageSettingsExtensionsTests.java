@@ -182,5 +182,26 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		assertEquals(PROVIDER_ID_EXT, providerExt.getId());
 		assertEquals(PROVIDER_NAME_EXT, providerExt.getName());
 	}
+	
+	/**
+	 * LanguageSettingsBaseProvider is not allowed to be configured twice.
+	 *
+	 * @throws Exception...
+	 */
+	public void testBaseProvider() throws Exception {
+		// create LanguageSettingsBaseProvider
+		LanguageSettingsBaseProvider provider = new LanguageSettingsBaseProvider();
+		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		entries.add(new CIncludePathEntry("/usr/include/", 0));
+		// configure it
+		provider.configureProvider("id", "name", null, entries);
+		
+		try {
+			// attempt to configure it twice should fail
+			provider.configureProvider("id", "name", null, entries);
+			fail("LanguageSettingsBaseProvider is not allowed to be configured twice");
+		} catch (UnsupportedOperationException e) {
+		}
+	}
 
 }

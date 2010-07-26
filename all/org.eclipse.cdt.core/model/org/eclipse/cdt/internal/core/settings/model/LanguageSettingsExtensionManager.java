@@ -200,7 +200,7 @@ public class LanguageSettingsExtensionManager {
 	}
 
 	/**
-	 * Creates empty non-configured provider as executable extension from extension point definition.
+	 * Creates (FIXME wrong: empty non-configured) provider as executable extension from extension point definition.
 	 * If "class" attribute is empty TODO is created.
 	 *
 	 * @param initialId - nominal ID of provider

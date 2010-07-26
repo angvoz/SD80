@@ -11,23 +11,11 @@
 
 package org.eclipse.cdt.core.settings.model.util;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
@@ -38,22 +26,14 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
-import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
 import org.osgi.service.prefs.BackingStoreException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 /**
  * TODO
@@ -251,47 +231,26 @@ public class LanguageSettingsManager {
 	}
 
 	/**
+	 * This usage is discouraged TODO .
 	 */
 	public static void setProviderIds(ICConfigurationDescription cfgDescription, List<String> ids) {
-		if (cfgDescription instanceof CConfigurationDescription) {
-			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());
-			for (String id : ids) {
-				ILanguageSettingsProvider provider = getProvider(id);
-				if (provider!=null) {
-					providers.add(provider);
-				}
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());
+		for (String id : ids) {
+			ILanguageSettingsProvider provider = getProvider(id);
+			if (provider!=null) {
+				providers.add(provider);
 			}
-			((CConfigurationDescription)cfgDescription).setLanguageSettingProviders(providers);
-		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());
-			for (String id : ids) {
-				ILanguageSettingsProvider provider = getProvider(id);
-				if (provider!=null) {
-					providers.add(provider);
-				}
-			}
-			((CConfigurationDescriptionCache)cfgDescription).setLanguageSettingProviders(providers);
-		} else if (cfgDescription!=null) {
-			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error setting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
 		}
+		cfgDescription.setLanguageSettingProviders(providers);
 	}
 	
 	/**
+	 * This usage is discouraged TODO .
 	 */
 	public static List<String> getProviderIds(ICConfigurationDescription cfgDescription) {
 		List<String> ids = new ArrayList<String>();
-		if (cfgDescription instanceof CConfigurationDescription) {
-			for (ILanguageSettingsProvider provider : ((CConfigurationDescription)cfgDescription).getLanguageSettingProviders()) {
-				ids.add(provider.getId());
-			}
-		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-			for (ILanguageSettingsProvider provider : ((CConfigurationDescriptionCache)cfgDescription).getLanguageSettingProviders()) {
-				ids.add(provider.getId());
-			}
-		} else if (cfgDescription!=null) {
-			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error getting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
+		for (ILanguageSettingsProvider provider : cfgDescription.getLanguageSettingProviders()) {
+			ids.add(provider.getId());
 		}
 		return ids;
 	}

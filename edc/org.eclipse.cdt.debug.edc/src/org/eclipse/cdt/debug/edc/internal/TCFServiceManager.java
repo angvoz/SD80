@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,7 +67,8 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	private List<ITCFAgentLauncher> launchedtcfAgentLaunchers;
 
 	static {
-		// record local host IP addresses
+		// Record local host IP addresses--not only numeric IP addresses but
+		// also hostnames if available.
 		try {
 			localIPAddresses = getLocalIPAddresses();
 		} catch (CoreException e) {
@@ -302,8 +304,8 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	 */
 	public static boolean isInLocalAgent(IPeer peer) {
 		assert Protocol.isDispatchThread();
-		String ipAddr = peer.getAttributes().get(IPeer.ATTR_IP_HOST);
-		return (localIPAddresses.contains(ipAddr));
+		String ipHost = peer.getAttributes().get(IPeer.ATTR_IP_HOST);
+		return localIPAddresses.contains(ipHost);
 	}
 
 	private IChannel getOpenChannel(final IPeer peer) throws CoreException {
@@ -528,7 +530,18 @@ public class TCFServiceManager implements ITCFServiceManager  {
 				ret.add(addr.getHostAddress());
 			}
 		}
-
+		
+		// Support agents who use hostnames instead of numeric IP addresses
+		try {
+			InetAddress localHost = InetAddress.getLocalHost();
+			if (localHost != null) {
+				ret.add(localHost.getHostName());
+				ret.add(localHost.getCanonicalHostName());
+			}
+		} catch (UnknownHostException exc) {
+			EDCDebugger.getMessageLogger().logError("", exc);
+		}
+		
 		return ret;
 	}
 

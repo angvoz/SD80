@@ -23,6 +23,7 @@ import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.index.tests.IndexListenerTest;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -183,7 +184,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	
 	/**
 	 */
-	public void testSerializeProjectDOM() throws Exception {
+	public void testSerializeConfigurationDOM() throws Exception {
 		Element rootElement = null;
 		
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -267,7 +268,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	
 	/**
 	 */
-	public void testSerializableProviderPerProjectDOM() throws Exception {
+	public void testSerializableProviderPerConfigurationDOM() throws Exception {
 		Element rootElement = null;
 		
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -319,7 +320,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	
 	/**
 	 */
-	public void testSubclassedSerializableProviderPerProjectDOM() throws Exception {
+	public void testSubclassedSerializableProviderPerConfigurationDOM() throws Exception {
 		Element rootElement = null;
 		
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -371,7 +372,55 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	
 	/**
 	 */
-	public void testSerializeDifferentProvidersInProjectDOM() throws Exception {
+	public void testReferenceProviderPerConfigurationDOM() throws Exception {
+		Element rootElement = null;
+		
+		// provider of other type (not LanguageSettingsSerializable) defined as an extension
+		ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getProvider(LanguageSettingsExtensionsTests.BASE_PROVIDER_SUBCLASS_ID_EXT);
+		
+		{
+			// create cfg description 
+			MockProjectDescription mockPrjDescription = new MockProjectDescription(new MockConfigurationDescription(CFG_ID));
+			ICConfigurationDescription[] cfgDescriptions = mockPrjDescription.getConfigurations();
+			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+			assertNotNull(cfgDescription);
+			
+			// populate with provider defined as extension
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+			providers.add(providerExt);
+			cfgDescription.setLanguageSettingProviders(providers);
+			
+			
+			// prepare DOM storage
+			Document doc = XmlUtil.newDocument();
+			rootElement = XmlUtil.appendElement(doc, ELEM_LANGUAGE_SETTINGS);
+			// serialize language settings to the DOM
+			LanguageSettingsExtensionManager.serializeLanguageSettings(rootElement, mockPrjDescription);
+		}
+		{
+			// re-load
+			MockProjectDescription mockPrjDescription = new MockProjectDescription(new MockConfigurationDescription(CFG_ID));
+			LanguageSettingsExtensionManager.loadLanguageSettings(rootElement, mockPrjDescription);
+			
+			ICConfigurationDescription[] cfgDescriptions = mockPrjDescription.getConfigurations();
+			assertNotNull(cfgDescriptions);
+			assertEquals(1, cfgDescriptions.length);
+			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+			assertNotNull(cfgDescription);
+			
+			// and check the newly loaded provider which should be same as extension one
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			assertNotNull(providers);
+			assertEquals(1, providers.size());
+			ILanguageSettingsProvider provider = providers.get(0);
+			assertNotNull(provider);
+			assertSame(providerExt, provider);
+		}
+	}
+	
+	/**
+	 */
+	public void testSerializeDifferentProvidersPerConfigurationDOM() throws Exception {
 		Element rootElement = null;
 		
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();

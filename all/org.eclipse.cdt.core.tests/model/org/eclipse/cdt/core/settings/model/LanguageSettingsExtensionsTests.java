@@ -33,7 +33,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.provider";
 	private static final String PROVIDER_NAME_EXT = "Test Plugin Language Settings Provider";
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
-	public static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
+	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
 
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";

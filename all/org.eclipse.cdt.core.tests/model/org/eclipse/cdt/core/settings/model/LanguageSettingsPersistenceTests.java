@@ -12,6 +12,7 @@
 package org.eclipse.cdt.core.settings.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -30,6 +31,9 @@ import org.eclipse.core.runtime.Path;
  * Test cases testing LanguageSettingsProvider functionality
  */
 public class LanguageSettingsPersistenceTests extends TestCase {
+	// Should match id of extension point defined in plugin.xml
+	private static final String EXTENSION_PROVIDER_ID = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
+
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
 	private static final String CFG_ID = "test.configuration.id";
@@ -37,6 +41,12 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_NAME_NULL = "test.provider.null.name";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
+
+	private class MockProvider extends LanguageSettingsSerializable {
+		public MockProvider(String id, String name) {
+			super(id, name);
+		}
+	}
 
 	/**
 	 * Constructor.
@@ -137,14 +147,16 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	
 	/**
 	 */
-	public void testBasicWorkspacePersistence() throws Exception {
+	public void testWorkspacePersistence_AddProvider() throws Exception {
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
 		
-		LanguageSettingsSerializable mockProvider = null;
 		{
+			// ID should not be in the list of workspace providers
+			List<String> oldAvailableIds = Arrays.asList(LanguageSettingsManager.getProviderAvailableIds());
+			assertFalse(oldAvailableIds.contains(PROVIDER_0));
 			// create a provider
-			mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			mockProvider.setSettingEntries(null, null, null, original);
 			
 			// assign provider to workspace
@@ -152,8 +164,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			String[] retrievedIds = LanguageSettingsManager.getProviderAvailableIds();
 			// user defined providers are always before extension providers
 			assertEquals(PROVIDER_0, retrievedIds[0]);
-		}
-		{
+			
 			// serialize language settings of user defined providers (on workspace level)
 			LanguageSettingsExtensionManager.serializeLanguageSettings();
 			// clear the provider
@@ -168,6 +179,59 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
 			assertEquals(PROVIDER_0, provider.getId());
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
+			assertEquals(original.get(0), retrieved.get(0));
+			assertEquals(original.size(), retrieved.size());
+		}
+	}
+	
+	/**
+	 */
+	public void testWorkspacePersistence_OverrideExtensionProvider() throws Exception {
+		MockProvider mockProvider;
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		
+		{
+			// ID should be in the list of workspace providers
+			List<String> oldAvailableIds = Arrays.asList(LanguageSettingsManager.getProviderAvailableIds());
+			assertTrue(oldAvailableIds.contains(EXTENSION_PROVIDER_ID));
+			ILanguageSettingsProvider oldProvider = LanguageSettingsManager.getProvider(EXTENSION_PROVIDER_ID);
+			assertTrue(oldProvider instanceof LanguageSettingsBaseProvider);
+		}
+
+		{
+			// create a new provider
+			mockProvider = new MockProvider(EXTENSION_PROVIDER_ID, PROVIDER_NAME_0);
+			mockProvider.setSettingEntries(null, null, null, original);
+			
+			// assign provider to workspace
+			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {mockProvider});
+			String[] retrievedIds = LanguageSettingsManager.getProviderAvailableIds();
+			// user defined providers are always before extension providers
+			assertEquals(EXTENSION_PROVIDER_ID, retrievedIds[0]);
+			// doublecheck it got there
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(EXTENSION_PROVIDER_ID);
+			assertTrue(provider instanceof MockProvider);
+		}
+		
+		{
+			// serialize language settings of user defined providers (on workspace level)
+			LanguageSettingsExtensionManager.serializeLanguageSettings();
+			// clear the provider
+			mockProvider.setSettingEntries(null, null, null, null);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(EXTENSION_PROVIDER_ID);
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
+			assertNull(retrieved);
+		}
+		{
+			// re-load and check language settings of the provider
+			LanguageSettingsExtensionManager.loadLanguageSettings();
+			
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(EXTENSION_PROVIDER_ID);
+			assertEquals(EXTENSION_PROVIDER_ID, provider.getId());
+			assertEquals(PROVIDER_NAME_0, provider.getName());
+			assertTrue(provider instanceof MockProvider);
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());

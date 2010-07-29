@@ -34,6 +34,9 @@ import org.w3c.dom.Element;
  * Test cases testing LanguageSettingsProvider functionality
  */
 public class LanguageSettingsSerializeProjectTests extends TestCase {
+	// Should match id of extension point defined in plugin.xml
+	private static final String EXTENSION_PROVIDER_ID = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
+	
 	private static final String DEFAULT_USER_PROVIDER_CLASS = "org.eclipse.cdt.internal.ui.language.UserLanguageSettingsProvider";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
@@ -380,7 +383,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 		Element rootElement = null;
 		
 		// provider of other type (not LanguageSettingsSerializable) defined as an extension
-		ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getProvider(LanguageSettingsExtensionsTests.BASE_PROVIDER_SUBCLASS_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getProvider(EXTENSION_PROVIDER_ID);
 		
 		{
 			// create cfg description 
@@ -428,8 +431,8 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 		Element rootElement = null;
 		
 		// provider overriding an extension and set on workspace level
-		String idExt = LanguageSettingsExtensionsTests.BASE_PROVIDER_SUBCLASS_ID_EXT;
-		ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getProvider(LanguageSettingsExtensionsTests.BASE_PROVIDER_SUBCLASS_ID_EXT);
+		String idExt = EXTENSION_PROVIDER_ID;
+		ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getProvider(idExt);
 		ILanguageSettingsProvider providerWsp = new MockProvider(idExt, PROVIDER_NAME_0);
 		{
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] { providerWsp });

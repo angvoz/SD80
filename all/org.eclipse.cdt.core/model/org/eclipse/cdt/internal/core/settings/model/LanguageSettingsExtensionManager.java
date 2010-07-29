@@ -526,7 +526,7 @@ public class LanguageSettingsExtensionManager {
 					ATTR_NAME, cfgDescription.getName(),
 				});
 			Element elementExtension = XmlUtil.appendElement(elementConfiguration, ELEM_EXTENSION, new String[] {ATTR_POINT, PROVIDER_EXTENSION_FULL_ID});
-			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getProviders(cfgDescription);
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
 			for (ILanguageSettingsProvider provider : providers) {
 				if (provider instanceof LanguageSettingsSerializable) {
 					((LanguageSettingsSerializable) provider).serialize(elementExtension);

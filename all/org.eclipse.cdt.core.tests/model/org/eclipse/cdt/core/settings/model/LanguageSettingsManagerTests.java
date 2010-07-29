@@ -325,7 +325,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			ILanguageSettingsProvider providerNull = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null);
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 			providers.add(providerNull);
-			LanguageSettingsManager.setProviders(cfgDescription, providers);
+			cfgDescription.setLanguageSettingProviders(providers);
 		}
 
 		// use provider returning null
@@ -353,7 +353,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			);
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 			providers.add(providerNull);
-			LanguageSettingsManager.setProviders(cfgDescription, providers);
+			cfgDescription.setLanguageSettingProviders(providers);
 		}
 		
 		// use provider returning null as item in array
@@ -405,7 +405,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			
 		};
 		providers.add(providerNo);
-		LanguageSettingsManager.setProviders(modelCfgDescription, providers);
+		modelCfgDescription.setLanguageSettingProviders(providers);
 
 		{
 			// retrieve the entries for model configuration description
@@ -435,11 +435,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 		providers.add(provider1);
 		providers.add(provider2);
-		LanguageSettingsManager.setProviders(cfgDescription, providers);
+		cfgDescription.setLanguageSettingProviders(providers);
 
 		{
 			// get providers
-			List<ILanguageSettingsProvider> retrieved = LanguageSettingsManager.getProviders(cfgDescription);
+			List<ILanguageSettingsProvider> retrieved = cfgDescription.getLanguageSettingProviders();
 			assertEquals(provider1, retrieved.get(0));
 			assertEquals(provider2, retrieved.get(1));
 			assertEquals(providers.size(), retrieved.size());
@@ -466,11 +466,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 		providers.add(provider1);
 		providers.add(provider2);
-		LanguageSettingsManager.setProviders(cfgDescription, providers);
+		cfgDescription.setLanguageSettingProviders(providers);
 
 		{
 			// get list of providers
-			List<ILanguageSettingsProvider> all = LanguageSettingsManager.getProviders(cfgDescription);
+			List<ILanguageSettingsProvider> all = cfgDescription.getLanguageSettingProviders();
 			assertTrue(all.contains(provider1));
 			assertTrue(all.contains(provider2));
 			assertTrue(all.size()>=2);
@@ -570,7 +570,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ILanguageSettingsProvider provider0 = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, original);
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 		providers.add(provider0);
-		LanguageSettingsManager.setProviders(cfgDescription, providers);
+		cfgDescription.setLanguageSettingProviders(providers);
 
 		{
 			// retrieve entries by kind
@@ -604,7 +604,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ILanguageSettingsProvider provider0 = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, original);
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 		providers.add(provider0);
-		LanguageSettingsManager.setProviders(cfgDescription, providers);
+		cfgDescription.setLanguageSettingProviders(providers);
 
 		{
 			// retrieve entries by kind, only first entry is returned
@@ -641,7 +641,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ILanguageSettingsProvider lowRankProvider = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, originalLow);
 		providers.add(lowRankProvider);
 
-		LanguageSettingsManager.setProviders(cfgDescription, providers);
+		cfgDescription.setLanguageSettingProviders(providers);
 
 		// retrieve entries by kind
 		{
@@ -694,7 +694,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		};
 		providers.add(provider);
-		LanguageSettingsManager.setProviders(cfgDescription, providers);
+		cfgDescription.setLanguageSettingProviders(providers);
 
 		{
 			// retrieve entries for a derived resource (in a subfolder)

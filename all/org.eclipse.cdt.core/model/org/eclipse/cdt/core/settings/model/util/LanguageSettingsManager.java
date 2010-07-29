@@ -102,7 +102,7 @@ public class LanguageSettingsManager {
 
 	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
-		for (ILanguageSettingsProvider provider: getProviders(cfgDescription)) {
+		for (ILanguageSettingsProvider provider: cfgDescription.getLanguageSettingProviders()) {
 			for (ICLanguageSettingEntry entry : getSettingEntries(cfgDescription, provider.getId(), rc, languageId, kind)) {
 				if (!containsEntry(list, entry.getName())) {
 					list.add(entry);
@@ -133,7 +133,7 @@ public class LanguageSettingsManager {
 	}
 	
 	public static boolean isCustomizedResource(ICConfigurationDescription cfgDescription, IResource rc) {
-		for (ILanguageSettingsProvider provider: getProviders(cfgDescription)) {
+		for (ILanguageSettingsProvider provider: cfgDescription.getLanguageSettingProviders()) {
 			ICResourceDescription rcDescription = cfgDescription.getResourceDescription(rc.getProjectRelativePath(), false);
 			for (ICLanguageSetting languageSetting : getLanguageIds(rcDescription)) {
 				String languageId = languageSetting.getLanguageId();
@@ -205,25 +205,7 @@ public class LanguageSettingsManager {
 	}
 
 	/**
-	 * This usage is discouraged TODO .
-	 * @noreference This method is not intended to be referenced by clients.
-	 */
-	@Deprecated
-	public static void setProviders(ICConfigurationDescription cfgDescription, List<ILanguageSettingsProvider> providers) {
-			cfgDescription.setLanguageSettingProviders(providers);
-	}
-
-	/**
-	 * This usage is discouraged TODO .
-	 * @ ??? noreference This method is not intended to be referenced by clients.
-	 */
-	@Deprecated
-	public static List<ILanguageSettingsProvider> getProviders(ICConfigurationDescription cfgDescription) {
-		return cfgDescription.getLanguageSettingProviders();
-	}
-
-	/**
-	 * This usage is discouraged TODO .
+	 * TODO .
 	 */
 	public static void setProviderIds(ICConfigurationDescription cfgDescription, List<String> ids) {
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());

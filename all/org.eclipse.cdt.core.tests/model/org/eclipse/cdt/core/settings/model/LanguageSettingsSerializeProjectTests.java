@@ -43,7 +43,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	private static final String CFG_ID = "test.configuration.id";
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
-	private static final String ELEM_LANGUAGE_SETTINGS = "languageSettings";
+	private static final String ELEM_TEST = "test";
 
 	class MockConfigurationDescription extends CProjectDescriptionTestHelper.DummyCConfigurationDescription {
 		List<ILanguageSettingsProvider> providers;
@@ -172,7 +172,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			
 			// serialize language settings to DOM
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_LANGUAGE_SETTINGS);
+			Element rootElement = doc.createElement(ELEM_TEST);
 			elementProvider = mockProvider.serialize(rootElement);
 		}
 		{
@@ -243,7 +243,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 			// prepare DOM storage
 			Document doc = XmlUtil.newDocument();
-			rootElement = XmlUtil.appendElement(doc, ELEM_LANGUAGE_SETTINGS);
+			rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			// serialize language settings to the DOM
 			LanguageSettingsExtensionManager.serializeLanguageSettings(rootElement, mockPrjDescription);
 		}
@@ -298,7 +298,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			
 			// prepare DOM storage
 			Document doc = XmlUtil.newDocument();
-			rootElement = XmlUtil.appendElement(doc, ELEM_LANGUAGE_SETTINGS);
+			rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			// serialize language settings to the DOM
 			LanguageSettingsExtensionManager.serializeLanguageSettings(rootElement, mockPrjDescription);
 		}
@@ -350,7 +350,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			
 			// prepare DOM storage
 			Document doc = XmlUtil.newDocument();
-			rootElement = XmlUtil.appendElement(doc, ELEM_LANGUAGE_SETTINGS);
+			rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			// serialize language settings to the DOM
 			LanguageSettingsExtensionManager.serializeLanguageSettings(rootElement, mockPrjDescription);
 		}
@@ -400,7 +400,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			
 			// prepare DOM storage
 			Document doc = XmlUtil.newDocument();
-			rootElement = XmlUtil.appendElement(doc, ELEM_LANGUAGE_SETTINGS);
+			rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			// serialize language settings to the DOM
 			LanguageSettingsExtensionManager.serializeLanguageSettings(rootElement, mockPrjDescription);
 		}
@@ -455,7 +455,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			
 			// prepare DOM storage
 			Document doc = XmlUtil.newDocument();
-			rootElement = XmlUtil.appendElement(doc, ELEM_LANGUAGE_SETTINGS);
+			rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			// serialize language settings to the DOM
 			LanguageSettingsExtensionManager.serializeLanguageSettings(rootElement, mockPrjDescription);
 		}
@@ -519,7 +519,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			
 			// prepare DOM storage
 			Document doc = XmlUtil.newDocument();
-			rootElement = XmlUtil.appendElement(doc, ELEM_LANGUAGE_SETTINGS);
+			rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			// serialize language settings to the DOM
 			LanguageSettingsExtensionManager.serializeLanguageSettings(rootElement, mockPrjDescription);
 		}

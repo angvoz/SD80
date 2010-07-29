@@ -20,12 +20,15 @@ import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
+import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 /**
  * Test cases testing LanguageSettingsProvider functionality
@@ -41,6 +44,9 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_NAME_NULL = "test.provider.null.name";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
+	
+	private static final String ELEM_TEST = "test";
+
 
 	private class MockProvider extends LanguageSettingsSerializable {
 		public MockProvider(String id, String name) {
@@ -241,6 +247,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	/**
 	 */
 	public void testCIncludePathEntry() throws Exception {
+		Element elementProvider;
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 1));
 		{
@@ -249,25 +256,20 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			provider.setSettingEntries(null, null, null, original);
 			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
 			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
-			// clear the provider
-			provider.setSettingEntries(null, null, null, null);
-		}
-		{
-			// doublecheck that provider is unloaded
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
-			assertNull(retrieved);
-		}
-		{
-			// re-load and check language settings of the provider
-			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = doc.createElement(ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(PROVIDER_0, provider.getId());
+			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
 			assertTrue(entry instanceof CIncludePathEntry);
+			
 			CIncludePathEntry includePathEntry = (CIncludePathEntry)entry;
 			assertEquals(original.get(0).getName(), includePathEntry.getName());
 			assertEquals(original.get(0).getValue(), includePathEntry.getValue());
@@ -280,30 +282,23 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	/**
 	 */
 	public void testCIncludeFileEntry() throws Exception {
+		Element elementProvider;
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludeFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
-			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
-			// clear the provider
-			provider.setSettingEntries(null, null, null, null);
-		}
-		{
-			// doublecheck that provider is unloaded
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
-			assertNull(retrieved);
-		}
-		{
-			// re-load and check language settings of the provider
-			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = doc.createElement(ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(PROVIDER_0, provider.getId());
+			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
 			assertTrue(entry instanceof CIncludeFileEntry);
@@ -319,30 +314,23 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	/**
 	 */
 	public void testCMacroEntry() throws Exception {
+		Element elementProvider;
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CMacroEntry("MACRO0", "value0",1));
 		{
 			// create a provider and serialize its settings
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
-			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
-			// clear the provider
-			provider.setSettingEntries(null, null, null, null);
-		}
-		{
-			// doublecheck that provider is unloaded
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
-			assertNull(retrieved);
-		}
-		{
-			// re-load and check language settings of the provider
-			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = doc.createElement(ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(PROVIDER_0, provider.getId());
+			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
 			assertTrue(entry instanceof CMacroEntry);
@@ -358,30 +346,23 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	/**
 	 */
 	public void testCMacroFileEntry() throws Exception {
+		Element elementProvider;
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CMacroFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
-			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
-			// clear the provider
-			provider.setSettingEntries(null, null, null, null);
-		}
-		{
-			// doublecheck that provider is unloaded
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
-			assertNull(retrieved);
-		}
-		{
-			// re-load and check language settings of the provider
-			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = doc.createElement(ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(PROVIDER_0, provider.getId());
+			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
 			assertTrue(entry instanceof CMacroFileEntry);
@@ -397,30 +378,23 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	/**
 	 */
 	public void testCLibraryPathEntry() throws Exception {
+		Element elementProvider;
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CLibraryPathEntry("name", 1));
 		{
 			// create a provider and serialize its settings
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
-			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
-			// clear the provider
-			provider.setSettingEntries(null, null, null, null);
-		}
-		{
-			// doublecheck that provider is unloaded
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
-			assertNull(retrieved);
-		}
-		{
-			// re-load and check language settings of the provider
-			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = doc.createElement(ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(PROVIDER_0, provider.getId());
+			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
 			assertTrue(entry instanceof CLibraryPathEntry);
@@ -436,30 +410,23 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	/**
 	 */
 	public void testCLibraryFileEntry() throws Exception {
+		Element elementProvider;
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CLibraryFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
-			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
-			// clear the provider
-			provider.setSettingEntries(null, null, null, null);
-		}
-		{
-			// doublecheck that provider is unloaded
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
-			assertNull(retrieved);
-		}
-		{
-			// re-load and check language settings of the provider
-			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = doc.createElement(ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(PROVIDER_0, provider.getId());
+			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
 			assertTrue(entry instanceof CLibraryFileEntry);
@@ -475,6 +442,7 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 	/**
 	 */
 	public void testMixedSettingEntries() throws Exception {
+		Element elementProvider;
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CMacroEntry("MACRO0", "value0",1));
 		original.add(new CIncludePathEntry("path0", 1));
@@ -483,24 +451,16 @@ public class LanguageSettingsPersistenceTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
-			assertNotNull(LanguageSettingsManager.getProvider(PROVIDER_0));
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
-			// clear the provider
-			provider.setSettingEntries(null, null, null, null);
-		}
-		{
-			// doublecheck that provider is unloaded
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
-			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
-			assertNull(retrieved);
-		}
-		{
-			// re-load and check language settings of the provider
-			LanguageSettingsExtensionManager.loadLanguageSettings();
 			
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(PROVIDER_0);
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = doc.createElement(ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(PROVIDER_0, provider.getId());
+			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.get(1), retrieved.get(1));

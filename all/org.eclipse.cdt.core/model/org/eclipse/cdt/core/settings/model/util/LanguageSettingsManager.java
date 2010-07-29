@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
@@ -26,8 +25,6 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
-import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
-import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
@@ -211,21 +208,16 @@ public class LanguageSettingsManager {
 	 * This usage is discouraged TODO .
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
+	@Deprecated
 	public static void setProviders(ICConfigurationDescription cfgDescription, List<ILanguageSettingsProvider> providers) {
-		if (cfgDescription instanceof CConfigurationDescription) {
-			((CConfigurationDescription)cfgDescription).setLanguageSettingProviders(providers);
-		} else if (cfgDescription instanceof CConfigurationDescriptionCache) {
-				((CConfigurationDescriptionCache)cfgDescription).setLanguageSettingProviders(providers);
-		} else if (cfgDescription!=null) {
-			String className = cfgDescription.getClass().getName();
-			CCorePlugin.log("Error setting ICLanguageSettingsProvider for unsupported configuration description type " + className); //$NON-NLS-1$
-		}
+			cfgDescription.setLanguageSettingProviders(providers);
 	}
 
 	/**
 	 * This usage is discouraged TODO .
 	 * @ ??? noreference This method is not intended to be referenced by clients.
 	 */
+	@Deprecated
 	public static List<ILanguageSettingsProvider> getProviders(ICConfigurationDescription cfgDescription) {
 		return cfgDescription.getLanguageSettingProviders();
 	}
@@ -245,7 +237,7 @@ public class LanguageSettingsManager {
 	}
 	
 	/**
-	 * This usage is discouraged TODO .
+	 * TODO
 	 */
 	public static List<String> getProviderIds(ICConfigurationDescription cfgDescription) {
 		List<String> ids = new ArrayList<String>();
@@ -259,7 +251,7 @@ public class LanguageSettingsManager {
 	 * TODO
 	 */
 	private static ILanguageSettingsProvider getProvider(ICConfigurationDescription cfgDescription, String id) {
-		for (ILanguageSettingsProvider provider : getProviders(cfgDescription)) {
+		for (ILanguageSettingsProvider provider : cfgDescription.getLanguageSettingProviders()) {
 			if (provider.getId().equals(id)) {
 				return provider;
 			}

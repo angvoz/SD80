@@ -20,6 +20,7 @@ import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializeProjectTests.MockConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
@@ -39,6 +40,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider";
 
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
+	private static final String CFG_ID = "test.configuration.id";
 	private static final String LANG_ID = "test.lang.id";
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_1 = "test.provider.1.id";
@@ -46,6 +48,23 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
 	private static final String PROVIDER_NAME_1 = "test.provider.1.name";
 	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
+
+	class MockConfigurationDescription extends CProjectDescriptionTestHelper.DummyCConfigurationDescription {
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+		public MockConfigurationDescription(String id) {
+			super(id);
+		}
+		
+		@Override
+		public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
+			this.providers = new ArrayList<ILanguageSettingsProvider>(providers);
+		}
+		
+		@Override
+		public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
+			return providers;
+		}
+	}
 
 	private class MockProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 		private final List<ICLanguageSettingEntry> entries;
@@ -300,15 +319,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	/**
 	 */
 	public void testConfigurationDescription_NullProvider() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
-		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
-		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
-
+		ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 		{
 			// set rough provider returning null with getSettingEntries()
 			ILanguageSettingsProvider providerNull = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null);
@@ -366,14 +377,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 * @throws Exception...
 	 */
 	public void testConfigurationDescription_Use() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
-		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
-		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-
-		final ICConfigurationDescription modelCfgDescription = cfgDescriptions[0];
-		assertTrue(modelCfgDescription instanceof CConfigurationDescription);
+		final ICConfigurationDescription modelCfgDescription = new MockConfigurationDescription(CFG_ID);
 
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
 		original.add(new CIncludePathEntry("path0", 0));
@@ -423,14 +427,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 * @throws Exception...
 	 */
 	public void testConfigurationDescription_Providers() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
-		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
-		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		final ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 
 		// set providers
 		ILanguageSettingsProvider provider1 = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null);
@@ -452,14 +449,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	/**
 	 */
 	public void testConfigurationDescription_Basic() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
-		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
-		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		final ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 
 		// create couple of providers
 		final List<ICLanguageSettingEntry> original1 = new ArrayList<ICLanguageSettingEntry>();
@@ -567,14 +557,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	/**
 	 */
 	public void testConfigurationDescription_Filtered() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
-		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
-		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		final ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 
 		// contribute the entries
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -610,14 +593,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	/**
 	 */
 	public void testConfigurationDescription_FilteredConflicting() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
-		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
-		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		final ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 
 		// contribute the entries
 		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -643,14 +619,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	/**
 	 */
 	public void testConfigurationDescription_ReconciledProviders() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
-		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
-		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		final ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 
 		// contribute the entries
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
@@ -754,14 +723,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	/**
 	 */
 	public void testConfigurationDescription_ProviderIds() throws Exception {
-		// Create model project and accompanied descriptions
-		String projectName = getName();
-		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
-		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
-		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-
-		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		final ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 
 		{
 			// ensure no test provider is set yet
@@ -784,7 +746,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
-	 * TODO: not sure if this is a duplicate test
+	 * TODO
 	 */
 	public void testConfigurationDescription_SerializeProviders() throws Exception {
 		// Create model project and accompanied descriptions

@@ -646,8 +646,14 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		if (tcfRegistersService != null) {	// TCF IRegisters service available
 			final RegistersContext tcfReg = registerDMC.getTCFContext();
 			
-			TCFTask<byte[]> tcfTask = new TCFTask<byte[]>() {
-				
+            if (tcfReg == null) {
+                    rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "RegisterDMC " + registerDMC.getID() + " has no underlying TCF register context."));
+                    rm.done();
+                    return;
+            }
+
+            TCFTask<byte[]> tcfTask = new TCFTask<byte[]>() {
+		
 				public void run() {
 					tcfReg.get(new org.eclipse.tm.tcf.services.IRegisters.DoneGet() {
 		

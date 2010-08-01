@@ -266,7 +266,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 							return name;
 						}
 					}
-					return UIMessages.getFormattedString("ErrorParsTab.error.NonAccessibleID", id); //$NON-NLS-1$
+					return "ErrorParsTab.error.NonAccessibleID [" + id + "]";
 				}
 				return OOPS;
 			}
@@ -308,7 +308,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		fAvailableProviders.clear();
 		fOptionsPageMap.clear();
 		for (String id : LanguageSettingsManager.getProviderAvailableIds()) {
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getProvider(id);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
 			fAvailableProviders.put(id, provider);
 			initializeOptionsPage(id);
 		}
@@ -425,22 +425,22 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			public IStatus isValid(String newText) {
 				StatusInfo status = new StatusInfo();
 				if (newText.trim().length() == 0) {
-					status.setError(UIMessages.getString("ErrorParsTab.error.NonEmptyName")); //$NON-NLS-1$
+					status.setError("ErrorParsTab.error.NonEmptyName");
 				} else if (newText.indexOf(LanguageSettingsManager.PROVIDER_DELIMITER)>=0) {
-					String message = MessageFormat.format( UIMessages.getString("ErrorParsTab.error.IllegalCharacter"), //$NON-NLS-1$
+					String message = MessageFormat.format("ErrorParsTab.error.IllegalCharacter",
 							new Object[] { LanguageSettingsManager.PROVIDER_DELIMITER });
 					status.setError(message);
 				} else if (fAvailableProviders.containsKey(makeId(newText))) {
-					status.setError(UIMessages.getString("ErrorParsTab.error.NonUniqueID")); //$NON-NLS-1$
+					status.setError("ErrorParsTab.error.NonUniqueID");
 				}
 				return status;
 			}
 
 		};
 		InputStatusDialog addDialog = new InputStatusDialog(usercomp.getShell(),
-				UIMessages.getString("ErrorParsTab.title.Add"), //$NON-NLS-1$
-				UIMessages.getString("ErrorParsTab.label.EnterName"), //$NON-NLS-1$
-				UIMessages.getString("ErrorParsTab.label.DefaultRegexProviderName"), //$NON-NLS-1$
+				"ErrorParsTab.title.Add",
+				"ErrorParsTab.label.EnterName",
+				"ErrorParsTab.label.DefaultRegexProviderName",
 				inputValidator);
 		addDialog.setHelpAvailable(false);
 
@@ -471,9 +471,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			public IStatus isValid(String newText) {
 				StatusInfo status = new StatusInfo();
 				if (newText.trim().length() == 0) {
-					status.setError(UIMessages.getString("ErrorParsTab.error.NonEmptyName")); //$NON-NLS-1$
+					status.setError("ErrorParsTab.error.NonEmptyName");
 				} else if (newText.indexOf(LanguageSettingsManager.PROVIDER_DELIMITER)>=0) {
-					String message = MessageFormat.format( UIMessages.getString("ErrorParsTab.error.IllegalCharacter"), //$NON-NLS-1$
+					String message = MessageFormat.format("ErrorParsTab.error.IllegalCharacter",
 							new Object[] { LanguageSettingsManager.PROVIDER_DELIMITER });
 					status.setError(message);
 				}
@@ -482,8 +482,8 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 		};
 		InputStatusDialog addDialog = new InputStatusDialog(usercomp.getShell(),
-				UIMessages.getString("ErrorParsTab.title.Edit"), //$NON-NLS-1$
-				UIMessages.getString("ErrorParsTab.label.EnterName"), //$NON-NLS-1$
+				"ErrorParsTab.title.Edit",
+				"ErrorParsTab.label.EnterName",
 				provider.getName(),
 				inputValidator);
 		addDialog.setHelpAvailable(false);
@@ -567,7 +567,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (!page.isForPrefs()) {
 			ICConfigurationDescription sd = src.getConfiguration();
 			ICConfigurationDescription dd = dst.getConfiguration();
+			List<ILanguageSettingsProvider> newProviders = null;
 			String[] s = null;
+			
 			if (sd instanceof ICMultiConfigDescription) {
 				// FIXME
 //				String[][] ss = ((ICMultiConfigDescription)sd).getProviderIDs();
@@ -576,13 +578,13 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			} else {
 //				s = sd.getBuildSetting().getProviderIDs();
 				s = LanguageSettingsManager.getProviderIds(fCfgDesc).toArray(new String[0]);
+				newProviders = sd.getLanguageSettingProviders();
 			}
 			if (dd instanceof ICMultiConfigDescription) {
 				// FIXME
 //				((ICMultiConfigDescription)dd).setProviderIDs(s);
 			} else {
-//				dd.getBuildSetting().setProviderIDs(s);
-				LanguageSettingsManager.setProviderIds(dd, Arrays.asList(s));
+				dd.setLanguageSettingProviders(newProviders);
 			}
 			initMapParsers();
 		}
@@ -616,9 +618,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					LanguageSettingsManager.setUserDefinedProviders(providers);
 					LanguageSettingsManager.setDefaultProviderIds(checkedProviderIds);
 				} catch (BackingStoreException e) {
-					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnApplyingSettings"), e); //$NON-NLS-1$
+					CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
 				} catch (CoreException e) {
-					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnApplyingSettings"), e); //$NON-NLS-1$
+					CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
 				}
 			}
 			initMapParsers();
@@ -667,16 +669,16 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (isProvidersEditable()) {
 			// Must be Build Settings Preference Page
 			if (MessageDialog.openQuestion(usercomp.getShell(),
-					UIMessages.getString(UIMessages.getString("ErrorParsTab.title.ConfirmReset")), //$NON-NLS-1$
-					UIMessages.getString(UIMessages.getString("ErrorParsTab.message.ConfirmReset")))) { //$NON-NLS-1$
+					"ErrorParsTab.title.ConfirmReset",
+					"ErrorParsTab.message.ConfirmReset")) {
 
 				try {
 					LanguageSettingsManager.setUserDefinedProviders(null);
 					LanguageSettingsManager.setDefaultProviderIds(null);
 				} catch (BackingStoreException e) {
-					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnRestoring"), e); //$NON-NLS-1$
+					CUIPlugin.log("ErrorParsTab.error.OnRestoring", e);
 				} catch (CoreException e) {
-					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnRestoring"), e); //$NON-NLS-1$
+					CUIPlugin.log("ErrorParsTab.error.OnRestoring", e);
 				}
 			}
 		} else {
@@ -685,7 +687,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 //				((ICMultiConfigDescription) fCfgDesc).setProviderIDs(null);
 			} else {
 //				fCfgDesc.getBuildSetting().setProviderIDs(null);
-				LanguageSettingsManager.setProviderIds(fCfgDesc, null);
+				fCfgDesc.setLanguageSettingProviders(null);
 			}
 		}
 		initMapParsers();
@@ -702,7 +704,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					else
 						dynamicPage.performDefaults();
 				} catch (CoreException e) {
-					CUIPlugin.log(UIMessages.getString("ErrorParsTab.error.OnApplyingSettings"), e); //$NON-NLS-1$
+					CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
 				}
 			}
 		}

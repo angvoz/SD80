@@ -183,8 +183,8 @@ public class LanguageSettingsManager {
 	/**
 	 * TODO
 	 */
-	public static ILanguageSettingsProvider getProvider(String id) {
-		return LanguageSettingsExtensionManager.getProvider(id);
+	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
+		return LanguageSettingsExtensionManager.getWorkspaceProvider(id);
 	}
 
 	/**
@@ -207,10 +207,11 @@ public class LanguageSettingsManager {
 	/**
 	 * TODO .
 	 */
+	@Deprecated
 	public static void setProviderIds(ICConfigurationDescription cfgDescription, List<String> ids) {
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());
 		for (String id : ids) {
-			ILanguageSettingsProvider provider = getProvider(id);
+			ILanguageSettingsProvider provider = getWorkspaceProvider(id);
 			if (provider!=null) {
 				providers.add(provider);
 			}

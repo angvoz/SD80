@@ -76,6 +76,7 @@ public class LanguageSettingsExtensionManager {
 	private static final String ELEM_CONFIGURATION = "configuration"; //$NON-NLS-1$
 	
 	private static final String ELEM_PROVIDER = "provider"; //$NON-NLS-1$
+	private static final String ELEM_PROVIDER_REFERENCE = "provider-reference"; //$NON-NLS-1$
 	private static final String ATTR_CLASS = "class"; //$NON-NLS-1$
 	private static final String ATTR_ID = "id"; //$NON-NLS-1$
 	private static final String ATTR_NAME = "name"; //$NON-NLS-1$
@@ -304,23 +305,17 @@ public class LanguageSettingsExtensionManager {
 
 
 	/**
-	 * FIXME - to clone
-	 * @param id - ID of provider
-	 * @return cloned copy of provider. Note that {@link ProviderNamedWrapper} returns
-	 * shallow copy with the same instance of underlying provider.
+	 * Get Language Settings Provider defined in the workspace. That includes user-defined
+	 * providers and after that providers defined as extensions via
+	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
+	 * That returns actual object, any modifications will affect any configuration
+	 * referring to the provider.
+	 * 
+	 * @param id - ID of provider to find.
+	 * @return the provider or {@code null} if provider is not defined.
 	 */
-	public static ILanguageSettingsProvider getProvider(String id) {
+	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
 		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
-
-//		try {
-//			if (provider instanceof RegexProvider) {
-//				return (RegexProvider) ((RegexProvider)provider).clone();
-//			} else if (provider instanceof ProviderNamedWrapper) {
-//				return (ProviderNamedWrapper) ((ProviderNamedWrapper)provider).clone();
-//			}
-//		} catch (CloneNotSupportedException e) {
-//			CCorePlugin.log(e);
-//		}
 		return provider;
 	}
 
@@ -489,7 +484,7 @@ public class LanguageSettingsExtensionManager {
 	}
 
 
-	public static void loadLanguageSettings() throws CoreException {
+	public static void loadLanguageSettingsWorkspace() throws CoreException {
 		URI uriLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
 
 		Document doc = null;
@@ -525,17 +520,25 @@ public class LanguageSettingsExtensionManager {
 					ATTR_ID, cfgDescription.getId(),
 					ATTR_NAME, cfgDescription.getName(),
 				});
-			Element elementExtension = XmlUtil.appendElement(elementConfiguration, ELEM_EXTENSION, new String[] {ATTR_POINT, PROVIDER_EXTENSION_FULL_ID});
 			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
 			for (ILanguageSettingsProvider provider : providers) {
-				if (provider instanceof LanguageSettingsSerializable) {
-					((LanguageSettingsSerializable) provider).serialize(elementExtension);
+				// strict equality, checking the instance
+				if (provider==getWorkspaceProvider(provider.getId())) {
+					// Element elementProviderReference =
+					XmlUtil.appendElement(elementConfiguration, ELEM_PROVIDER_REFERENCE, new String[] {
+							ATTR_ID, provider.getId()});
 				} else {
-					Element elementProvider = XmlUtil.appendElement(elementExtension, ELEM_PROVIDER, new String[] {
-							ATTR_ID, provider.getId(),
-							ATTR_NAME, provider.getName(),
-							ATTR_CLASS, provider.getClass().getCanonicalName(),
-						});
+					Element elementExtension = XmlUtil.appendElement(elementConfiguration, ELEM_EXTENSION, new String[] {ATTR_POINT, PROVIDER_EXTENSION_FULL_ID});
+					if (provider instanceof LanguageSettingsSerializable) {
+						((LanguageSettingsSerializable) provider).serialize(elementExtension);
+					} else {
+						// Element elementProvider =
+						XmlUtil.appendElement(elementExtension, ELEM_PROVIDER, new String[] {
+								ATTR_ID, provider.getId(),
+								ATTR_NAME, provider.getName(),
+								ATTR_CLASS, provider.getClass().getCanonicalName(),
+							});
+					}
 				}
 			}
 		}
@@ -563,8 +566,11 @@ public class LanguageSettingsExtensionManager {
 		/*
 		<project>
 			<configuration id="cfg.id">
+				<provider-reference id="..."/>
 				<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
 					<provider .../>
+				</extension>
+				<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
 					<provider .../>
 				</extension>
 			</configuration>
@@ -577,28 +583,29 @@ public class LanguageSettingsExtensionManager {
 				continue;
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 			String cfgId = XmlUtil.determineAttributeValue(cfgNode, ATTR_ID);
+			@SuppressWarnings("unused")
 			String cfgName = XmlUtil.determineAttributeValue(cfgNode, ATTR_NAME);
 			
-			NodeList extensionNodes = cfgNode.getChildNodes();
-			for (int ie=0;ie<extensionNodes.getLength();ie++) {
-				Node extNode = extensionNodes.item(ie);
-				if (!(extNode instanceof Element && extNode.getNodeName().equals(ELEM_EXTENSION)) )
+			NodeList extensionAndReferenceNodes = cfgNode.getChildNodes();
+			for (int ie=0;ie<extensionAndReferenceNodes.getLength();ie++) {
+				Node extNode = extensionAndReferenceNodes.item(ie);
+				if (!(extNode instanceof Element))
 					continue;
-				NodeList providerNodes = extNode.getChildNodes();
-				
-				for (int i=0;i<providerNodes.getLength();i++) {
-					Node providerNode = providerNodes.item(i);
-					if (!(providerNode instanceof Element && providerNode.getNodeName().equals(ELEM_PROVIDER)) )
-						continue;
-					ILanguageSettingsProvider provider=null;
-
-					// look for workspace-defined provider
-					String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
-					if (providerId!=null) {
-						provider = getProvider(providerId);
+				if (extNode.getNodeName().equals(ELEM_PROVIDER_REFERENCE)) {
+					String providerId = XmlUtil.determineAttributeValue(extNode, ATTR_ID);
+					ILanguageSettingsProvider provider = getWorkspaceProvider(providerId);
+					if (provider!=null) {
+						providers.add(provider);
 					}
-
-					if (provider==null) {
+				} else if (extNode.getNodeName().equals(ELEM_EXTENSION)) {
+					NodeList providerNodes = extNode.getChildNodes();
+					
+					for (int i=0;i<providerNodes.getLength();i++) {
+						Node providerNode = providerNodes.item(i);
+						if (!(providerNode instanceof Element && providerNode.getNodeName().equals(ELEM_PROVIDER)) )
+							continue;
+						ILanguageSettingsProvider provider=null;
+	
 						String providerClass = XmlUtil.determineAttributeValue(providerNode, ATTR_CLASS);
 						if (providerClass!=null) {
 							provider = createProviderCarcass(providerClass, Platform.getExtensionRegistry());
@@ -606,9 +613,9 @@ public class LanguageSettingsExtensionManager {
 								((LanguageSettingsSerializable)provider).load((Element) providerNode);
 							}
 						}
-					}
-					if (provider!=null) {
-						providers.add(provider);
+						if (provider!=null) {
+							providers.add(provider);
+						}
 					}
 				}
 			}

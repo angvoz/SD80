@@ -512,7 +512,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				for (String providerId : providerIds) {
 					ILanguageSettingsProvider provider = editedProviders.get(providerId);
 					if (provider==null) {
-						provider = LanguageSettingsManager.getProvider(providerId);
+						provider = LanguageSettingsManager.getWorkspaceProvider(providerId);
 					}
 					if (provider!=null) {
 						itemsList.add(provider);
@@ -867,7 +867,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				String providerId = epEntry.getKey();
 				EditedProvider editedProvider = epEntry.getValue();
 				
-				ILanguageSettingsProvider pro = LanguageSettingsManager.getProvider(providerId);
+				ILanguageSettingsProvider pro = LanguageSettingsManager.getWorkspaceProvider(providerId);
 				if (pro instanceof ILanguageSettingsEditableProvider) {
 					ILanguageSettingsEditableProvider provider = (ILanguageSettingsEditableProvider)pro;
 					for (ICConfigurationDescription cfgDescription : cfgDescs) {

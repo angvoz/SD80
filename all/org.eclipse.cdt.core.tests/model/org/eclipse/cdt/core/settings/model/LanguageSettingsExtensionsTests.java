@@ -86,7 +86,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		}
 
 		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(DEFAULT_PROVIDER_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(DEFAULT_PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
 
 		assertTrue(providerExt instanceof LanguageSettingsBaseProvider);
@@ -128,7 +128,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionBaseProviderSubclass() throws Exception {
 		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
 		assertNotNull(providerExt);
 		
 		assertTrue(providerExt instanceof TestClassLSBaseProvider);
@@ -161,7 +161,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			String lastName="";
 			// providers created from extensions are to be sorted by names
 			for (String id : ids) {
-				String name = LanguageSettingsManager.getProvider(id).getName();
+				String name = LanguageSettingsManager.getWorkspaceProvider(id).getName();
 				assertTrue(lastName.compareTo(name)<=0);
 				lastName = name;
 			}
@@ -175,7 +175,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionsNameId() throws Exception {
 		// get test plugin extension non-default provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getProvider(PROVIDER_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
 		assertTrue(providerExt instanceof TestClassLanguageSettingsProvider);
 

@@ -20,7 +20,6 @@ import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializeProjectTests.MockConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
@@ -143,7 +142,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertNotNull(availableProviderIds);
 		assertTrue(availableProviderIds.length>0);
 		final String firstId = LanguageSettingsManager.getProviderAvailableIds()[0];
-		final ILanguageSettingsProvider firstProvider = LanguageSettingsManager.getProvider(firstId);
+		final ILanguageSettingsProvider firstProvider = LanguageSettingsManager.getWorkspaceProvider(firstId);
 		assertNotNull(firstProvider);
 		assertEquals(firstId, firstProvider.getId());
 		final String firstName = firstProvider.getName();
@@ -153,9 +152,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(false, all.contains(PROVIDER_0));
 			assertEquals(true, all.contains(firstId));
 
-			assertNull(LanguageSettingsManager.getProvider(PROVIDER_0));
+			assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0));
 
-			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getProvider(firstId);
+			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
 			assertNotNull(retrieved2);
 			assertEquals(firstProvider, retrieved2);
 		}
@@ -175,12 +174,12 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(true, all.contains(PROVIDER_1));
 			assertEquals(true, all.contains(firstId));
 
-			ILanguageSettingsProvider retrieved1 = LanguageSettingsManager.getProvider(PROVIDER_1);
+			ILanguageSettingsProvider retrieved1 = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1);
 			assertNotNull(retrieved1);
 			assertEquals(PROVIDER_NAME_1, retrieved1.getName());
 			assertEquals(dummy1, retrieved1);
 
-			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getProvider(firstId);
+			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
 			assertNotNull(retrieved2);
 			assertEquals(firstNewName, retrieved2.getName());
 			assertEquals(dummy2, retrieved2);
@@ -193,9 +192,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(false, all.contains(PROVIDER_1));
 			assertEquals(true, all.contains(firstId));
 
-			assertNull(LanguageSettingsManager.getProvider(PROVIDER_1));
+			assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1));
 
-			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getProvider(firstId);
+			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
 			assertNotNull(retrieved2);
 			assertEquals(firstProvider, retrieved2);
 		}

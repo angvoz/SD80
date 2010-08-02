@@ -12,7 +12,6 @@
 package org.eclipse.cdt.core.settings.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -25,6 +24,7 @@ import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionMan
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
 import org.w3c.dom.Document;
@@ -34,12 +34,10 @@ import org.w3c.dom.Element;
  * Test cases testing LanguageSettingsProvider functionality
  */
 public class LanguageSettingsSerializableTests extends TestCase {
-	// Should match id of extension point defined in plugin.xml
-	private static final String EXTENSION_PROVIDER_ID = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
-
-	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
-	private static final String LANG_ID = "test.lang.id";
 	private static final String CFG_ID = "test.configuration.id";
+	private static final ICConfigurationDescription MOCK_CFG = new CProjectDescriptionTestHelper.DummyCConfigurationDescription(CFG_ID);
+	private static final IResource MOCK_RC = ResourcesPlugin.getWorkspace().getRoot();
+	private static final String LANG_ID = "test.lang.id";
 	private static final String PROVIDER_NULL = "test.provider.null.id";
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_NAME_NULL = "test.provider.null.name";
@@ -91,8 +89,8 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		// create a provider
 		LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 		// test setter and getter
-		mockProvider.setSettingEntries(null, FILE_0, LANG_ID, original);
-		List<ICLanguageSettingEntry> retrieved = mockProvider.getSettingEntries(null, FILE_0, LANG_ID);
+		mockProvider.setSettingEntries(null, MOCK_RC, LANG_ID, original);
+		List<ICLanguageSettingEntry> retrieved = mockProvider.getSettingEntries(null, MOCK_RC, LANG_ID);
 		assertEquals(original.get(0), retrieved.get(0));
 		assertEquals(original.size(), retrieved.size());
 	}
@@ -116,6 +114,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	/**
 	 */
 	public void testEmptyProvider() throws Exception {
+		Element elementProvider;
 		{
 			// create null provider
 			LanguageSettingsSerializable providerNull = new LanguageSettingsSerializable(PROVIDER_NULL, PROVIDER_NAME_NULL);
@@ -124,23 +123,232 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			providerNull.setSettingEntries(null, null, null, null);
 			assertNull(providerNull.getSettingEntries(null, null, null));
 
-			// assign provider to workspace
-			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {providerNull});
-			String[] retrievedIds = LanguageSettingsManager.getProviderAvailableIds();
-			// user defined providers are always before extension providers
-			assertEquals(PROVIDER_NULL, retrievedIds[0]);
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = providerNull.serialize(rootElement);
+			String xmlString = XmlUtil.toString(doc);
+			assertTrue(xmlString.contains(PROVIDER_NULL));
 		}
 		{
-			// serialize language settings of user defined providers (on workspace level)
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
-			LanguageSettingsExtensionManager.loadLanguageSettingsWorkspace();
-		}
-		
-		{
-			// read language settings of the provider
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_NULL);
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(PROVIDER_NULL, provider.getId());
-			assertNull(provider.getSettingEntries(null, null, null));
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
+			assertNull(retrieved);
+		}
+	}
+	
+	/**
+	 */
+	public void testNullConfiguration() throws Exception {
+		// provider/configuration/language/resource/settingEntry
+		Element elementProvider;
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		{
+			// create a provider and serialize its settings
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			provider.setSettingEntries(null, MOCK_RC, LANG_ID, original);
+			
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			
+			// verify that "configuration" element is collapsed and not saved in XML
+			String xmlString = XmlUtil.toString(doc);
+			String xmlTag = "configuration"; // LanguageSettingsSerializable.ELEM_CONFIGURATION;
+			assertFalse(xmlString.contains(xmlTag));
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			assertEquals(PROVIDER_0, provider.getId());
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, MOCK_RC, LANG_ID);
+			assertEquals(original.get(0), retrieved.get(0));
+		}
+	}
+
+	/**
+	 */
+	public void testNullLanguage() throws Exception {
+		// provider/configuration/language/resource/settingEntry
+		Element elementProvider;
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		{
+			// create a provider and serialize its settings
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			provider.setSettingEntries(MOCK_CFG, MOCK_RC, null, original);
+			
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			
+			// verify that "language" element is collapsed and not saved in XML
+			String xmlString = XmlUtil.toString(doc);
+			String xmlTag = "language"; // LanguageSettingsSerializable.ELEM_LANGUAGE;
+			assertFalse(xmlString.contains(xmlTag));
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			assertEquals(PROVIDER_0, provider.getId());
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(MOCK_CFG, MOCK_RC, null);
+			assertEquals(original.get(0), retrieved.get(0));
+		}
+	}
+
+	
+	/**
+	 */
+	public void testNullResource() throws Exception {
+		// provider/configuration/language/resource/settingEntry
+		Element elementProvider;
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		{
+			// create a provider and serialize its settings
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			provider.setSettingEntries(MOCK_CFG, null, LANG_ID, original);
+			
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			
+			// verify that "resource" element is collapsed and not saved in XML
+			String xmlString = XmlUtil.toString(doc);
+			String xmlTag = "resource"; // LanguageSettingsSerializable.ELEM_RESOURCE;
+			assertFalse(xmlString.contains(xmlTag));
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			assertEquals(PROVIDER_0, provider.getId());
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(MOCK_CFG, null, LANG_ID);
+			assertEquals(original.get(0), retrieved.get(0));
+		}
+	}
+	
+	/**
+	 */
+	public void testNullConfigurationLanguage() throws Exception {
+		// provider/configuration/language/resource/settingEntry
+		Element elementProvider;
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		{
+			// create a provider and serialize its settings
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			provider.setSettingEntries(null, MOCK_RC, null, original);
+			
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			
+			// verify that element is collapsed and not saved in XML
+			String xmlString = XmlUtil.toString(doc);
+			assertFalse(xmlString.contains("configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
+			assertFalse(xmlString.contains("language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			assertEquals(PROVIDER_0, provider.getId());
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, MOCK_RC, null);
+			assertEquals(original.get(0), retrieved.get(0));
+		}
+	}
+	
+	/**
+	 */
+	public void testNullConfigurationResource() throws Exception {
+		// provider/configuration/language/resource/settingEntry
+		Element elementProvider;
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		{
+			// create a provider and serialize its settings
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			provider.setSettingEntries(null, null, LANG_ID, original);
+			
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			
+			// verify that element is collapsed and not saved in XML
+			String xmlString = XmlUtil.toString(doc);
+			assertFalse(xmlString.contains("configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
+			assertFalse(xmlString.contains("resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			assertEquals(PROVIDER_0, provider.getId());
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, LANG_ID);
+			assertEquals(original.get(0), retrieved.get(0));
+		}
+	}
+	
+	/**
+	 */
+	public void testNullLanguageResource() throws Exception {
+		// provider/configuration/language/resource/settingEntry
+		Element elementProvider;
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		original.add(new CIncludePathEntry("path0", 0));
+		{
+			// create a provider and serialize its settings
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			provider.setSettingEntries(MOCK_CFG, null, null, original);
+			
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			
+			// verify that element is collapsed and not saved in XML
+			String xmlString = XmlUtil.toString(doc);
+			assertFalse(xmlString.contains("language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
+			assertFalse(xmlString.contains("resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			assertEquals(PROVIDER_0, provider.getId());
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(MOCK_CFG, null, null);
+			assertEquals(original.get(0), retrieved.get(0));
+		}
+	}
+	
+	/**
+	 */
+	public void testNullConfigurationLanguageResourceFlag() throws Exception {
+		// provider/configuration/language/resource/settingEntry
+		Element elementProvider;
+		List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
+		int flag = 0;
+		original.add(new CIncludePathEntry("path0", flag));
+		{
+			// create a provider and serialize its settings
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			provider.setSettingEntries(null, null, null, original);
+			
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			
+			// verify that element is collapsed and not saved in XML
+			String xmlString = XmlUtil.toString(doc);
+			assertFalse(xmlString.contains("configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
+			assertFalse(xmlString.contains("language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
+			assertFalse(xmlString.contains("resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
+			assertFalse(xmlString.contains("flag")); // LanguageSettingsSerializable.ELEM_FLAG;
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			assertEquals(PROVIDER_0, provider.getId());
+			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
+			assertEquals(original.get(0), retrieved.get(0));
 		}
 	}
 	
@@ -154,11 +362,9 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			// create a provider and serialize its settings
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
-			LanguageSettingsManager.setUserDefinedProviders(new ILanguageSettingsProvider[] {provider});
-			assertNotNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0));
 			
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_TEST);
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			elementProvider = provider.serialize(rootElement);
 		}
 		{
@@ -191,7 +397,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_TEST);
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			elementProvider = provider.serialize(rootElement);
 		}
 		{
@@ -223,7 +429,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_TEST);
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			elementProvider = provider.serialize(rootElement);
 		}
 		{
@@ -255,7 +461,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_TEST);
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			elementProvider = provider.serialize(rootElement);
 		}
 		{
@@ -287,7 +493,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_TEST);
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			elementProvider = provider.serialize(rootElement);
 		}
 		{
@@ -319,7 +525,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_TEST);
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			elementProvider = provider.serialize(rootElement);
 		}
 		{
@@ -353,7 +559,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_TEST);
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			elementProvider = provider.serialize(rootElement);
 		}
 		{
@@ -389,7 +595,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			
 			// serialize language settings to DOM
 			Document doc = XmlUtil.newDocument();
-			Element rootElement = doc.createElement(ELEM_TEST);
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
 			elementProvider = mockProvider.serialize(rootElement);
 		}
 		{

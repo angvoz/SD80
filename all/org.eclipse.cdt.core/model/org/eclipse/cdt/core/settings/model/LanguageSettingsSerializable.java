@@ -66,7 +66,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	}
 	
 	// TODO: look for refactoring this method
-	private void setSettingEntries(String cfgId, URI rcUri, String languageId, List<ICLanguageSettingEntry> entries) {
+	private void setSettingEntriesInternal(String cfgId, URI rcUri, String languageId, List<ICLanguageSettingEntry> entries) {
 		if (entries!=null) {
 			Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
 			if (cfgMap==null) {
@@ -100,7 +100,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
 		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
 		URI rcUri = rc!=null ? rc.getLocationURI() : null;
-		setSettingEntries(cfgId, rcUri, languageId, entries);
+		setSettingEntriesInternal(cfgId, rcUri, languageId, entries);
 	}
 	
 	@Override
@@ -135,9 +135,13 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 			// TODO: sourceAttachment fields need to be covered
 //							break;
 			}
-			Element elementFlag = XmlUtil.appendElement(elementSettingEntry, ELEM_FLAG, new String[] {
-					ATTR_VALUE, LanguageSettingEntriesSerializer.composeFlagsString(entry.getFlags())
-				});
+			int flags = entry.getFlags();
+			if (flags!=0) {
+				// Element elementFlag = 
+				XmlUtil.appendElement(elementSettingEntry, ELEM_FLAG, new String[] {
+						ATTR_VALUE, LanguageSettingEntriesSerializer.composeFlagsString(entry.getFlags())
+					});
+			}
 		}
 	}
 
@@ -159,25 +163,29 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 				ATTR_NAME, getName(),
 				ATTR_CLASS, getClass().getCanonicalName(),
 			});
+		Element currentLevel = elementProvider;
 		
 		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
 			String cfgId = entryCfg.getKey();
-			if (cfgId==null) {
-				cfgId = ""; //$NON-NLS-1$
+			if (cfgId!=null) {
+				Element elementConfiguration = XmlUtil.appendElement(elementProvider, ELEM_CONFIGURATION, new String[] {ATTR_ID, cfgId});
+				currentLevel = elementConfiguration;
 			}
-			Element elementConfiguration = XmlUtil.appendElement(elementProvider, ELEM_CONFIGURATION, new String[] {ATTR_ID, cfgId});
 			for (Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang : entryCfg.getValue().entrySet()) {
 				String langId = entryLang.getKey();
-				if (langId==null) {
-					langId = ""; //$NON-NLS-1$
+				if (langId!=null) {
+					Element elementLanguage = XmlUtil.appendElement(currentLevel, ELEM_LANGUAGE, new String[] {ATTR_ID, langId});
+					currentLevel = elementLanguage;
 				}
-				Element elementLanguage = XmlUtil.appendElement(elementConfiguration, ELEM_LANGUAGE, new String[] {ATTR_ID, langId});
 				for (Entry<URI, List<ICLanguageSettingEntry>> entryRc : entryLang.getValue().entrySet()) {
 					URI rcUri = entryRc.getKey();
-					String rcUriString = rcUri!=null ? rcUri.toString() : ""; //$NON-NLS-1$
+					String rcUriString = rcUri!=null ? rcUri.toString() : null;
 					
-					Element elementRc = XmlUtil.appendElement(elementLanguage, ELEM_RESOURCE, new String[] {ATTR_URI, rcUriString});
-					serializeSettingEntries(elementRc, entryRc.getValue());
+					if (rcUriString!=null) {
+						Element elementRc = XmlUtil.appendElement(currentLevel, ELEM_RESOURCE, new String[] {ATTR_URI, rcUriString});
+						currentLevel = elementRc;
+					}
+					serializeSettingEntries(currentLevel, entryRc.getValue());
 				}
 			}
 		}
@@ -237,66 +245,122 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 			this.setId(providerId);
 			this.setName(providerName);
 
-			NodeList cfgNodes = providerNode.getChildNodes();
-			for (int icfg=0;icfg<cfgNodes.getLength();icfg++) {
-				Node cfgNode = cfgNodes.item(icfg);
-				if(cfgNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_CONFIGURATION.equals(cfgNode.getNodeName()))
+			List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
+			NodeList nodes = providerNode.getChildNodes();
+			for (int i=0;i<nodes.getLength();i++) {
+				Node elementNode = nodes.item(i);
+				if(elementNode.getNodeType() != Node.ELEMENT_NODE)
 					continue;
-
-				String cfgId = XmlUtil.determineAttributeValue(cfgNode, ATTR_ID);
-				if (cfgId.length()==0) {
-					cfgId=null;
-				}
 				
-				NodeList langNodes = cfgNode.getChildNodes();
-				for (int ilang=0;ilang<langNodes.getLength();ilang++) {
-					Node langNode = langNodes.item(ilang);
-					if(langNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_LANGUAGE.equals(langNode.getNodeName()))
-						continue;
-
-					String langId = XmlUtil.determineAttributeValue(langNode, ATTR_ID);
-					if (langId.length()==0) {
-						langId=null;
-					}
-					
-					NodeList rcNodes = langNode.getChildNodes();
-					for (int irc=0;irc<rcNodes.getLength();irc++) {
-						Node rcNode = rcNodes.item(irc);
-						if(rcNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_RESOURCE.equals(rcNode.getNodeName()))
-							continue;
-						
-						String rcUriString = XmlUtil.determineAttributeValue(rcNode, ATTR_URI);
-						URI rcUri = null;
-						if (rcUriString.length()>0) {
-							try {
-								rcUri = new URI(rcUriString);
-							} catch (URISyntaxException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-								continue;
-							}
-						}
-
-						NodeList settingEntryNodes = rcNode.getChildNodes();
-						List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
-						for (int ientry=0;ientry<settingEntryNodes.getLength();ientry++) {
-							Node settingEntryNode = settingEntryNodes.item(ientry);
-							if(settingEntryNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_ENTRY.equals(settingEntryNode.getNodeName()))
-								continue;
-	
-							ICLanguageSettingEntry entry = loadSettingEntry(settingEntryNode);
-							if (entry!=null) {
-								settings.add(entry);
-							}
-						}
-						
-						// set settings
-						setSettingEntries(cfgId, rcUri, langId, settings);
+				if (ELEM_CONFIGURATION.equals(elementNode.getNodeName())) {
+					loadConfigurationElement(elementNode);
+				} else if (ELEM_LANGUAGE.equals(elementNode.getNodeName())) {
+					loadLanguageElement(elementNode, null);
+				} else if (ELEM_RESOURCE.equals(elementNode.getNodeName())) {
+					loadResourceElement(elementNode, null, null);
+				} else if (ELEM_ENTRY.equals(elementNode.getNodeName())) {
+					ICLanguageSettingEntry entry = loadSettingEntry(elementNode);
+					if (entry!=null) {
+						settings.add(entry);
 					}
 				}
 			}
+			// set settings
+			if (settings.size()>0) {
+				setSettingEntriesInternal(null, null, null, settings);
+			}
 		}
-	
+	}
+
+	private void loadConfigurationElement(Node parentNode) {
+		String cfgId = XmlUtil.determineAttributeValue(parentNode, ATTR_ID);
+		if (cfgId.length()==0) {
+			cfgId=null;
+		}
+		
+		List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
+		NodeList nodes = parentNode.getChildNodes();
+		for (int i=0;i<nodes.getLength();i++) {
+			Node elementNode = nodes.item(i);
+			if (elementNode.getNodeType()!=Node.ELEMENT_NODE)
+				continue;
+			if (ELEM_LANGUAGE.equals(elementNode.getNodeName())) {
+				loadLanguageElement(elementNode, cfgId);
+			} else if (ELEM_RESOURCE.equals(elementNode.getNodeName())) {
+				loadResourceElement(elementNode, cfgId, null);
+			} else if (ELEM_ENTRY.equals(elementNode.getNodeName())) {
+				ICLanguageSettingEntry entry = loadSettingEntry(elementNode);
+				if (entry!=null) {
+					settings.add(entry);
+				}
+			}
+		}
+		// set settings
+		if (settings.size()>0) {
+			setSettingEntriesInternal(cfgId, null, null, settings);
+		}
+	}
+
+	private void loadLanguageElement(Node parentNode, String cfgId) {
+		String langId = XmlUtil.determineAttributeValue(parentNode, ATTR_ID);
+		if (langId.length()==0) {
+			langId=null;
+		}
+		
+		List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
+		NodeList nodes = parentNode.getChildNodes();
+		for (int i=0;i<nodes.getLength();i++) {
+			Node elementNode = nodes.item(i);
+			if(elementNode.getNodeType() != Node.ELEMENT_NODE)
+				continue;
+			
+			if (ELEM_RESOURCE.equals(elementNode.getNodeName())) {
+				loadResourceElement(elementNode, cfgId, langId);
+			} else if (ELEM_ENTRY.equals(elementNode.getNodeName())) {
+				ICLanguageSettingEntry entry = loadSettingEntry(elementNode);
+				if (entry!=null) {
+					settings.add(entry);
+				}
+			}
+		}
+		// set settings
+		if (settings.size()>0) {
+			setSettingEntriesInternal(cfgId, null, langId, settings);
+		}
+	}
+
+	private void loadResourceElement(Node parentNode, String cfgId, String langId) {
+		String rcUriString = XmlUtil.determineAttributeValue(parentNode, ATTR_URI);
+		URI rcUri = null;
+		if (rcUriString.length()>0) {
+			try {
+				rcUri = new URI(rcUriString);
+			} catch (URISyntaxException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return;
+			}
+		}
+
+		List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
+		NodeList nodes = parentNode.getChildNodes();
+		for (int i=0;i<nodes.getLength();i++) {
+			Node elementNode = nodes.item(i);
+			if(elementNode.getNodeType() != Node.ELEMENT_NODE)
+				continue;
+			
+			if (ELEM_ENTRY.equals(elementNode.getNodeName())) {
+				ICLanguageSettingEntry entry = loadSettingEntry(elementNode);
+				if (entry!=null) {
+					settings.add(entry);
+				}
+			}
+		}
+		
+		// set settings
+		if (settings.size()>0) {
+			setSettingEntriesInternal(cfgId, rcUri, langId, settings);
+		}
 	}
 
 }

@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
@@ -203,6 +204,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		private String latestPC = null;
 		private RequestMonitor steppingRM = null;
 		private boolean isStepping = false;
+		private int countOfScheduledNotifications = 0 ;
 
 		public ExecutionDMC(ExecutionDMC parent, Map<String, Object> props, RunControlContext tcfContext) {
 			super(RunControl.this, parent == null ? new IDMContext[0] : new IDMContext[] { parent }, props);
@@ -321,8 +323,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			}
 		}
 
-		public void contextException(String msg) {
-			setIsSuspended(true);
+		protected void contextException(String msg) {
+	        assert getExecutor().isInExecutorThread();
+
+	        setIsSuspended(true);
 			synchronized (properties) {
 				properties.put(PROP_MESSAGE, msg);
 			}
@@ -332,8 +336,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					RunControl.this.getProperties());
 		}
 
-		public void contextSuspended(String pc, String reason, final Map<String, Object> params) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
+		protected void contextSuspended(String pc, String reason, final Map<String, Object> params) {
+	        assert getExecutor().isInExecutorThread();
+
+	        EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
 					new Object[] { pc, reason, params });
 			if (pc != null) {
 				// the PC from TCF agent is decimal string.
@@ -398,17 +404,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							bpService.removeAllTempBreakpoints(new RequestMonitor(getExecutor(), null));
 							
 						} else { 
-							// ignore suspend, say, due to breakpoint condition not met.
+							// ignore suspend if, say, breakpoint condition is not met.
 							RunControl.this.resume(dmc, new RequestMonitor(getExecutor(), null));
 						}
 					}
 				};
 				
-				// This needs be done in DSF dispatch thread.
-				getSession().getExecutor().execute(new Runnable() {
-					public void run() {
-						preprocessOnSuspend(dmc, latestPC, preprocessDrm);
-					}});
+				preprocessOnSuspend(dmc, latestPC, preprocessDrm);
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
@@ -499,26 +501,27 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			// Fire the resumed event here instead of in the doneCommand() below
-			// as otherwise an asynchronous suspend event may get in the way.
-			// 
-			contextResumed(true);
-
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
 					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME, 0, new DoneCommand() {
 
-						public void doneCommand(IToken token, Exception error) {
-							if (error == null) {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Resume command succeeded.");
-							} else {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Resume command failed.");
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-										"Resume failed.", null));
-							}
-							rm.done();
+						public void doneCommand(IToken token, final Exception error) {
+							getExecutor().execute(new Runnable() {
+								public void run() {
+									if (error == null) {
+										contextResumed(false);
+
+										EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+												"Resume command succeeded.");
+									} else {
+										EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
+												"Resume command failed.");
+										rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+												"Resume failed.", null));
+									}
+									rm.done();
+								}
+							});
 						}
 					});
 				}
@@ -533,42 +536,53 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 * 
 		 * @param rm
 		 */
-		public void resumeForStepping(final RequestMonitor rm) {
+		protected void resumeForStepping(final RequestMonitor rm) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
 
 			setStepping(true);
 
 			flushCache(this);
 
-			// Fire the resumed event here instead of in the doneCommand() below
-			// as otherwise an asynchronous suspend event may get in the way.
-			// 
-			contextResumed(true);
-
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
 					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME, 0, new DoneCommand() {
 
-						public void doneCommand(IToken token, Exception error) {
-							if (error == null) {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Resume command succeeded.");
-								// we'll make it as done when we get next
-								// suspend event.
-								assert steppingRM == null;
-								steppingRM = rm;
-							} else {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Resume command failed.");
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-										"Resume failed.", null));
-								rm.done();
-							}
+						public void doneCommand(IToken token, final Exception error) {
+							// do this in DSF executor thread.
+							getExecutor().execute(new Runnable() {
+								public void run() {
+									handleTCFResumeDoneForStepping("ResumeForStepping", error, rm);
+								}
+							});
 						}
 					});
 				}
 			});
+		
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		private void handleTCFResumeDoneForStepping(String command, Exception tcfError, RequestMonitor rm) {
+			assert getExecutor().isInExecutorThread();
+			
+			String msg = command;
+			if (tcfError == null) {
+				msg += " succeeded.";
+				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE, msg);
+				contextResumed(false);
+
+				// we'll mark it as done when we get next
+				// suspend event.
+				assert steppingRM == null;
+				steppingRM = rm;
+			} else {
+				msg += " failed.";
+				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE, msg);
+
+				setStepping(false);
+				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, msg, tcfError));
+				rm.done();
+			}
 		}
 
 		public void suspend(final RequestMonitor requestMonitor) {
@@ -676,16 +690,55 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			}
 		}
 
-		public void contextResumed(boolean sendEvent) {
-			for (ExecutionDMC e : getChildren()){
-				e.contextResumed(sendEvent);
-			}
+		protected void contextResumed(boolean fireResumeEventNow) {
+	        assert getExecutor().isInExecutorThread();
+
+	        if (children.size() > 0) {
+	        	// If it has kids (e.g. a process has threads), only need
+	        	// to mark the kids as resumed.
+		        for (ExecutionDMC e : children){
+					e.contextResumed(fireResumeEventNow);
+				}
+		        return;
+	        }
+	        
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-					new Object[] { this, sendEvent });
+					new Object[] { this, fireResumeEventNow });
+			
 			setIsSuspended(false);
-			if (sendEvent)
+			
+			if (fireResumeEventNow)
 				getSession().dispatchEvent(new ResumedEvent(this), RunControl.this.getProperties());
+			else
+				scheduleResumeEvent();
+
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		/** 
+		 * Schedule a task to run after some time which will
+		 * notify platform that the context is running.
+		 */
+		private void scheduleResumeEvent() {
+			countOfScheduledNotifications++;
+
+			final IExecutionDMContext dmc = this;
+			
+			Runnable notifyPlatformTask = new Runnable() {
+				public void run() {
+					/*
+					 * Notify platform the context is running.
+					 * 
+					 * But don't do that if another such task is scheduled
+					 * (namely current stepping is done within the 2 seconds and
+					 * another stepping/resume is underway).
+					 */
+					countOfScheduledNotifications--;
+					if (countOfScheduledNotifications == 0 && !isSuspended())
+						getSession().dispatchEvent(new ResumedEvent(dmc), RunControl.this.getProperties());
+				}};
+			
+			getExecutor().schedule(notifyPlatformTask, 2000, TimeUnit.MILLISECONDS);
 		}
 
 		/**
@@ -695,36 +748,25 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 * 
 		 * @param rm
 		 */
-		public void singleStep(final boolean stepInto, final RequestMonitor rm) {
+		protected void singleStep(final boolean stepInto, final RequestMonitor rm) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
 
 			setStepping(true);
 
 			flushCache(this);
 
-			contextResumed(true);
-
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
 					int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO
 							: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER;
 					tcfContext.resume(mode, 1, new DoneCommand() {
-
-						public void doneCommand(IToken token, Exception error) {
-							if (error == null) {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Single step command succeeded.");
-								// we'll make it as done when we get next
-								// suspend event.
-								assert steppingRM == null;
-								steppingRM = rm;
-							} else {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Single step command failed.");
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-										"singleStep() failed.", null));
-								rm.done();
-							}
+						public void doneCommand(IToken token, final Exception error) {
+							// do this in DSF executor thread.
+							getExecutor().execute(new Runnable() {
+								public void run() {
+									handleTCFResumeDoneForStepping("SingleStep", error, rm);
+								}
+							});
 						}
 					});
 				}
@@ -739,34 +781,24 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 * 
 		 * @param rm
 		 */
-		public void stepOut(final RequestMonitor rm) {
+		protected void stepOut(final RequestMonitor rm) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
 
 			setStepping(true);
 
 			flushCache(this);
 
-			contextResumed(true);
-
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
 					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OUT, 0, new DoneCommand() {
 
-						public void doneCommand(IToken token, Exception error) {
-							if (error == null) {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Step out command succeeded.");
-								// we'll make it as done when we get next
-								// suspend event.
-								assert steppingRM == null;
-								steppingRM = rm;
-							} else {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Step out command failed.");
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-										"stepOut() failed.", null));
-								rm.done();
-							}
+						public void doneCommand(IToken token, final Exception error) {
+							// do this in DSF executor thread.
+							getExecutor().execute(new Runnable() {
+								public void run() {
+									handleTCFResumeDoneForStepping("StepOut", error, rm);
+								}
+							});
 						}
 					});
 				}
@@ -774,15 +806,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
 
-		public void stepRange(final boolean stepInto, final IAddress rangeStart, final IAddress rangeEnd,
+		protected void stepRange(final boolean stepInto, final IAddress rangeStart, final IAddress rangeEnd,
 				final RequestMonitor rm) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
 
 			setStepping(true);
 
 			flushCache(this);
-
-			contextResumed(true);
 
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
@@ -794,21 +824,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 					tcfContext.resume(mode, 0, params, new DoneCommand() {
 
-						public void doneCommand(IToken token, Exception error) {
-							if (error == null) {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Step range command succeeded.");
-								// we'll make it as done when we get next
-								// suspend event.
-								assert steppingRM == null;
-								steppingRM = rm;
-							} else {
-								EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-										"Step range command failed.");
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-										"stepRange() failed.", null));
-								rm.done();
-							}
+						public void doneCommand(IToken token, final Exception error) {
+							// do this in DSF executor thread.
+							getExecutor().execute(new Runnable() {
+								public void run() {
+									handleTCFResumeDoneForStepping("StepRange", error, rm);
+								}
+							});
 						}
 					});
 				}
@@ -1038,7 +1060,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	private org.eclipse.tm.tcf.services.IRunControl tcfRunService;
 	private RootExecutionDMC rootExecutionDMC;
 	private final Map<String, ExecutionDMC> dmcsByID = new HashMap<String, ExecutionDMC>();
-
+	
 	public RunControl(DsfSession session) {
 		super(session, new String[] { 
 				IRunControl.class.getName(), 
@@ -1119,7 +1141,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 * should honor the suspend event and sent it up the ladder.
 	 * <p>
 	 * Subclass can override this method to add their own special preprocessing,
-	 * while calling super implementation to carry out the default.
+	 * while calling super implementation to carry out the default common.
 	 * <p>
 	 * This must be called in DSF executor thread.
 	 * 
@@ -1132,6 +1154,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 */
 	protected void preprocessOnSuspend(ExecutionDMC dmc, String pc,
 			DataRequestMonitor<Boolean> drm) {
+		
+		assert getExecutor().isInExecutorThread();
+		
 		Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 		Registers regService = getServicesTracker().getService(Registers.class);
 		String pcString;
@@ -1248,7 +1273,6 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					protected void handleSuccess() {
 						// Now step over the instruction
 						//
-						dmc.contextResumed(false);
 						dmc.singleStep(true, new RequestMonitor(getExecutor(), drm) {
 							@Override
 							protected void handleSuccess() {
@@ -1956,7 +1980,6 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					// The "step" is over
 					rm.done();
 				else {
-					dmc.setStepping(true);
 					dmc.singleStep(true, rm);
 				}
 			}
@@ -2019,6 +2042,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 	}
 
+	/*
+	 * NOTE: 
+	 * Methods in this listener are invoked in TCF dispatch thread.
+	 * When they call into DSF services/objects, make sure it's done in 
+	 * DSF executor thread so as to avoid possible race condition.
+	 */
 	private final org.eclipse.tm.tcf.services.IRunControl.RunControlListener runListener = new org.eclipse.tm.tcf.services.IRunControl.RunControlListener() {
 
 		public void containerResumed(String[] context_ids) {
@@ -2028,52 +2057,72 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				String[] suspended_ids) {
 		}
 
-		public void contextAdded(RunControlContext[] contexts) {
-			for (RunControlContext ctx : contexts) {
-				ExecutionDMC dmc = rootExecutionDMC;
-				String parentID = ctx.getParentID();
-				if (parentID != null)
-					dmc = dmcsByID.get(parentID);
-				if (dmc != null) {
-					dmc.contextAdded(ctx.getProperties(), ctx);
+		public void contextAdded(final RunControlContext[] contexts) {
+			getExecutor().execute(new Runnable() {
+				public void run() {
+					for (RunControlContext ctx : contexts) {
+						ExecutionDMC dmc = rootExecutionDMC;
+						String parentID = ctx.getParentID();
+						if (parentID != null)
+							dmc = dmcsByID.get(parentID);
+						if (dmc != null) {
+							dmc.contextAdded(ctx.getProperties(), ctx);
+						}
+					}
 				}
-			}
+			});
 		}
 
 		public void contextChanged(RunControlContext[] contexts) {
 		}
 
-		public void contextException(String context, String msg) {
-			ExecutionDMC dmc = getContext(context);
-			if (dmc != null)
-				dmc.contextException(msg);
+		public void contextException(final String context, final String msg) {
+			getExecutor().execute(new Runnable() {
+				public void run() {
+					ExecutionDMC dmc = getContext(context);
+					if (dmc != null)
+						dmc.contextException(msg);
+				}
+			});
 		}
 
-		public void contextRemoved(String[] context_ids) {
-			for (String contextID : context_ids) {
-				ExecutionDMC dmc = getContext(contextID);
-				assert dmc != null;
-				if (dmc != null)
-					dmc.detachFromDebugger();
-			}
+		public void contextRemoved(final String[] context_ids) {
+			getExecutor().execute(new Runnable() {
+				public void run() {
+					for (String contextID : context_ids) {
+						ExecutionDMC dmc = getContext(contextID);
+						assert dmc != null;
+						if (dmc != null)
+							dmc.detachFromDebugger();
+					}
+				}
+			});
 		}
 
-		public void contextResumed(String context) {
-			ExecutionDMC dmc = getContext(context);
-			if (dmc != null)
-				dmc.contextResumed(true);
+		public void contextResumed(final String context) {
+			getExecutor().execute(new Runnable() {
+				public void run() {
+					ExecutionDMC dmc = getContext(context);
+					if (dmc != null)
+						dmc.contextResumed(false);
+				}
+			});
 		}
 
 		public void contextSuspended(final String context, final String pc, final String reason,
 				final Map<String, Object> params) {
-			ExecutionDMC dmc = getContext(context);
-			if (dmc != null)
-				dmc.contextSuspended(pc, reason, params);
-			else {
-				EDCDebugger.getMessageLogger().logError(
-					MessageFormat.format("Unkown context [{0}] is reported in suspended event. Make sure TCF agent has reported contextAdded event first.", context), 
-					null);
-			}
+			getExecutor().execute(new Runnable() {
+				public void run() {
+					ExecutionDMC dmc = getContext(context);
+					if (dmc != null)
+						dmc.contextSuspended(pc, reason, params);
+					else {
+						EDCDebugger.getMessageLogger().logError(
+							MessageFormat.format("Unkown context [{0}] is reported in suspended event. Make sure TCF agent has reported contextAdded event first.", context), 
+							null);
+					}
+				}
+			});
 		}
 	};
 

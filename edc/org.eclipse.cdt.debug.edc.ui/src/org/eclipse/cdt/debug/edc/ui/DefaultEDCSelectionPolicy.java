@@ -96,7 +96,7 @@ public class DefaultEDCSelectionPolicy implements IModelSelectionPolicy {
 							try {
 								IRunControl runControl= servicesTracker.getService(IRunControl.class);
 								if (runControl != null) {
-									rm.setData(runControl.isSuspended(execContext));
+									rm.setData(runControl.isSuspended(execContext) || runControl.isStepping(execContext));
 								}
 							} finally {
 								servicesTracker.dispose();

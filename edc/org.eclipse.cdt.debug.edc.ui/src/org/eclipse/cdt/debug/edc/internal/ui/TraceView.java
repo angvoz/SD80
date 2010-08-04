@@ -117,7 +117,11 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 
 		public synchronized void onChannelClosed(Throwable error) {
 			if (error == null) {
-				channel.removeTraceListener(this);
+				// This will be called in dispose() when the view is closed.
+				// So don't do this here, otherwise the double "remove" may
+				// cause NPE in removeTraceListener()...08/03/10 
+				// channel.removeTraceListener(this);
+				
 				// TODO:
 				// This is a temporary fix until we properly manage the
 				// creation and destruction of the tabs.

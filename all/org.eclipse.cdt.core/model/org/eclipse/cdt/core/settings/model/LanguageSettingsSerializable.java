@@ -119,6 +119,64 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		return null;
 	}
 
+	/*
+	<provider id="provider.id">
+		<configuration id="cfg.id">
+			<language id="lang.id">
+				<resource uri="file://">
+					<settingEntry flags="" kind="includePath" name="path"/>
+				</resource>
+			</language>
+		</configuration>
+	</provider>
+	*/
+	// provider/configuration/language/resource/settingEntry
+	public Element serialize(Element parentElement) {
+		Element elementProvider = XmlUtil.appendElement(parentElement, ELEM_PROVIDER, new String[] {
+				ATTR_ID, getId(),
+				ATTR_NAME, getName(),
+				ATTR_CLASS, getClass().getCanonicalName(),
+			});
+		
+		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
+			serializeConfiguration(elementProvider, entryCfg);
+		}
+		return elementProvider;
+	}
+
+	private void serializeConfiguration(Element parentElement, Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg) {
+		String cfgId = entryCfg.getKey();
+		if (cfgId!=null) {
+			Element elementConfiguration = XmlUtil.appendElement(parentElement, ELEM_CONFIGURATION, new String[] {ATTR_ID, cfgId});
+			parentElement = elementConfiguration;
+		}
+		for (Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang : entryCfg.getValue().entrySet()) {
+			serializeLanguage(parentElement, entryLang);
+		}
+	}
+
+	private void serializeLanguage(Element parentElement, Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang) {
+		String langId = entryLang.getKey();
+		if (langId!=null) {
+			Element elementLanguage = XmlUtil.appendElement(parentElement, ELEM_LANGUAGE, new String[] {ATTR_ID, langId});
+			parentElement = elementLanguage;
+		}
+		for (Entry<URI, List<ICLanguageSettingEntry>> entryRc : entryLang.getValue().entrySet()) {
+			serializeResource(parentElement, entryRc);
+		}
+	}
+
+	private void serializeResource(Element parentElement, Entry<URI, List<ICLanguageSettingEntry>> entryRc) {
+		URI rcUri = entryRc.getKey();
+		String rcUriString = rcUri!=null ? rcUri.toString() : null;
+		
+		if (rcUriString!=null) {
+			Element elementRc = XmlUtil.appendElement(parentElement, ELEM_RESOURCE, new String[] {ATTR_URI, rcUriString});
+			parentElement = elementRc;
+		}
+		serializeSettingEntries(parentElement, entryRc.getValue());
+	}
+	
 	private void serializeSettingEntries(Element parentElement, List<ICLanguageSettingEntry> settingEntries) {
 		for (ICLanguageSettingEntry entry : settingEntries) {
 			Element elementSettingEntry = XmlUtil.appendElement(parentElement, ELEM_ENTRY, new String[] {
@@ -143,53 +201,6 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		}
 	}
 
-	/*
-	<provider id="provider.id">
-		<configuration id="cfg.id">
-			<language id="lang.id">
-				<resource uri="file://">
-					<settingEntry flags="" kind="includePath" name="path"/>
-				</resource>
-			</language>
-		</configuration>
-	</provider>
-	*/
-	// provider/configuration/language/resource/settingEntry
-	public Element serialize(Element parentElement) {
-		Element elementProvider = XmlUtil.appendElement(parentElement, ELEM_PROVIDER, new String[] {
-				ATTR_ID, getId(),
-				ATTR_NAME, getName(),
-				ATTR_CLASS, getClass().getCanonicalName(),
-			});
-		Element currentLevel = elementProvider;
-		
-		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
-			String cfgId = entryCfg.getKey();
-			if (cfgId!=null) {
-				Element elementConfiguration = XmlUtil.appendElement(elementProvider, ELEM_CONFIGURATION, new String[] {ATTR_ID, cfgId});
-				currentLevel = elementConfiguration;
-			}
-			for (Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang : entryCfg.getValue().entrySet()) {
-				String langId = entryLang.getKey();
-				if (langId!=null) {
-					Element elementLanguage = XmlUtil.appendElement(currentLevel, ELEM_LANGUAGE, new String[] {ATTR_ID, langId});
-					currentLevel = elementLanguage;
-				}
-				for (Entry<URI, List<ICLanguageSettingEntry>> entryRc : entryLang.getValue().entrySet()) {
-					URI rcUri = entryRc.getKey();
-					String rcUriString = rcUri!=null ? rcUri.toString() : null;
-					
-					if (rcUriString!=null) {
-						Element elementRc = XmlUtil.appendElement(currentLevel, ELEM_RESOURCE, new String[] {ATTR_URI, rcUriString});
-						currentLevel = elementRc;
-					}
-					serializeSettingEntries(currentLevel, entryRc.getValue());
-				}
-			}
-		}
-		return elementProvider;
-	}
-	
 	private ICLanguageSettingEntry loadSettingEntry(Node parentElement) {
 		String settingKind = XmlUtil.determineAttributeValue(parentElement, ATTR_KIND);
 		String settingName = XmlUtil.determineAttributeValue(parentElement, ATTR_NAME);

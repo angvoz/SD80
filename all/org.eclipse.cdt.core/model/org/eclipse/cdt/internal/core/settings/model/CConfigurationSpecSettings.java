@@ -13,15 +13,19 @@ package org.eclipse.cdt.internal.core.settings.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.IErrorParserNamed;
 import org.eclipse.cdt.core.settings.model.CExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICBuildSetting;
 import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
@@ -1008,8 +1012,24 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		ExtensionContainerFactory.updateReferencedProviderIds(fCfg, ids);
 	}
 	
+	/**
+	 * Adds list of {@link ILanguageSettingsProvider} to the specs.
+	 * Note that only unique IDs are accepted.
+	 * 
+	 * @param providers - list of providers to keep in the specs.
+	 */
 	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
-		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(providers);
+		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>();
+		Set<String> ids = new HashSet<String>();
+		for (ILanguageSettingsProvider provider : providers) {
+			String id = provider.getId();
+			if (!ids.contains(id)) {
+				fLanguageSettingsProviders.add(provider);
+				ids.add(id);
+			} else {
+				throw new IllegalArgumentException("Language Settings Providers must have unique ID. Duplicate ID="+id);
+			}
+		}
 		fIsModified = true;
 	}
 

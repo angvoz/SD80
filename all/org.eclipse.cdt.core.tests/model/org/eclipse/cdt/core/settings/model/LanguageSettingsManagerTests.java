@@ -747,7 +747,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	/**
 	 * TODO
 	 */
-	public void testConfigurationDescription_SerializeProviders() throws Exception {
+	public void testConfigurationDescription_UniqueProviders() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -757,6 +757,36 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
+		// attempt to add duplicate providers
+		MockProvider dupe1 = new MockProvider(PROVIDER_0, PROVIDER_NAME_1, null);
+		MockProvider dupe2 = new MockProvider(PROVIDER_0, PROVIDER_NAME_2, null);
+		
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+		providers.add(dupe1);
+		providers.add(dupe2);
+		
+		try {
+			cfgDescription.setLanguageSettingProviders(providers);
+			fail("cfgDescription.setLanguageSettingProviders() should not accept duplicate providers");
+		} catch (Exception e) {
+			// Exception is welcome here
+		}
+		
+	}
+	
+	/**
+	 * TODO
+	 */
+	public void testConfigurationDescription_SerializeProviders() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription writableProjDescription = CoreModel.getDefault().getProjectDescription(project, true);
+		
+		ICConfigurationDescription[] cfgDescriptions = writableProjDescription.getConfigurations();
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		
 		{
 			// ensure no test provider is set yet
 			List<String> ids = LanguageSettingsManager.getProviderIds(cfgDescription);

@@ -147,14 +147,6 @@ public class LanguageSettingsManager {
 		return false;
 	}
 	
-	public static void loadLanguageSettings(ICProjectDescription prjDescription) {
-		LanguageSettingsExtensionManager.loadLanguageSettings(prjDescription);
-	}
-
-	public static void serializeLanguageSettings(ICProjectDescription prjDescription) throws CoreException {
-		LanguageSettingsExtensionManager.serializeLanguageSettings(prjDescription);
-	}
-
 	/**
 	 * Set and store in workspace area user defined providers.
 	 *

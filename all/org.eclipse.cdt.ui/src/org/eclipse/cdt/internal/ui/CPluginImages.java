@@ -25,6 +25,8 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.ImageRegistry;
+import org.eclipse.jface.viewers.DecorationOverlayIcon;
+import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.swt.graphics.Image;
 import org.osgi.framework.Bundle;
 
@@ -390,6 +392,38 @@ public class CPluginImages {
 	public static final ImageDescriptor DESC_ELCL_NAVIGATE_BACKWARD = createUnManaged(T_ELCL, "backward_nav.gif"); //$NON-NLS-1$
 	public static final ImageDescriptor DESC_ELCL_NAVIGATE_FORWARD = createUnManaged(T_ELCL, "forward_nav.gif"); //$NON-NLS-1$
 	public static final ImageDescriptor DESC_ELCL_OPEN_DECLARATION = createUnManaged(T_ELCL, "goto_input.gif"); //$NON-NLS-1$
+
+	// AG
+    public static final String IMG_OVR_EDITED = NAME_PREFIX + "edited_ov.gif"; //$NON-NLS-1$
+    public static final ImageDescriptor DESC_OVR_EDITED= createManaged(T_OVR, IMG_OVR_EDITED);
+	/**
+	 * Retrieves an overlaid image descriptor from the repository of images.
+	 * If there is no image one will be created.
+	 * 
+	 * @param baseKey - key of the base image. Expected to be in repository.
+	 * @param overlayKey - key of overlay image. Expected to be in repository as well.
+	 * @param quadrant - location of overlay, one of those:
+	 *        {@link IDecoration#TOP_LEFT},
+	 *        {@link IDecoration#TOP_RIGHT},
+	 *        {@link IDecoration#BOTTOM_LEFT},
+	 *        {@link IDecoration#BOTTOM_RIGHT}
+	 * 
+	 * @return image overlaid with smaller image in the specified quadrant.
+	 */
+	public static Image getOverlaidImage(String baseKey, String overlayKey, int quadrant) {
+		String compositeKey = baseKey+'.'+overlayKey+'.'+quadrant;
+		Image result = imageRegistry.get(compositeKey);
+		if (result==null) {
+			ImageDescriptor overlayDescriptor = imageRegistry.getDescriptor(overlayKey);
+			if (overlayDescriptor==null) {
+				overlayDescriptor = ImageDescriptor.getMissingImageDescriptor();
+			}
+			ImageDescriptor compositeDescriptor = new DecorationOverlayIcon(imageRegistry.get(baseKey), overlayDescriptor, quadrant);
+			imageRegistry.put(compositeKey, compositeDescriptor);
+			result = imageRegistry.get(compositeKey);
+		}
+		return result;
+	}
 
 	private static ImageDescriptor createManaged(String prefix, String name) {
 		return createManaged(imageRegistry, prefix, name);

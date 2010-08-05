@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.IFontProvider;
 import org.eclipse.jface.viewers.ITableLabelProvider;
 import org.eclipse.jface.viewers.ITreeContentProvider;
@@ -621,28 +622,42 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				editedProvider = new EditedProvider(providerId, provider.getName());
 				editedProviders.put(providerId, editedProvider);
 				
+				
+				for (ICLanguageSetting languageSetting : ls) {
+					String langId = languageSetting.getLanguageId();
+					if (langId!=null) {
+						entries = provider.getSettingEntries(cfgDescription, rc, langId);
+						if (langId.equals(languageId)) {
+							if (entries==null) {
+								entries = new ArrayList<ICLanguageSettingEntry>();
+							}
+							entries.add(entry);
+						}
+						editedProvider.setSettingEntries(cfgDescription, rc, langId, entries);
+					}
+				}
+
+			} else {
 				entries = provider.getSettingEntries(cfgDescription, rc, languageId);
 				if (entries==null) {
 					entries = new ArrayList<ICLanguageSettingEntry>();
 				}
+					entries.add(entry);
 				editedProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
 			}
 			
-			entries = editedProvider.getSettingEntries(cfgDescription, rc, languageId);
-			entries.add(entry);
 			update();
 
-			TreeItem treeItem = findProviderItem(providerId);
-			if (treeItem!=null) {
-				table.select(treeItem);
-				table.showItem(treeItem.getItems()[0]);
-//				treeItem.setExpanded(true);
+			TreeItem providerItem = findProviderItem(providerId);
+			if (providerItem!=null) {
+				table.select(providerItem);
+				if (providerItem.getItems().length>0) {
+					table.showItem(providerItem.getItems()[0]);
+				}
 			}
-			treeItem = findEntryItem(providerId, entry);
-			if (treeItem!=null) {
-				table.select(treeItem);
-//				table.showItem(treeItem.getItems()[0]);
-//				treeItem.setExpanded(true);
+			TreeItem entryItem = findEntryItem(providerId, entry);
+			if (entryItem!=null) {
+				table.select(entryItem);
 			}
 			updateButtons();
 		}
@@ -929,8 +944,10 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 						ILanguageSettingsEditableProvider epro = (ILanguageSettingsEditableProvider)pro;
 						for (ICLanguageSetting languageSetting : ls) {
 							String languageId = languageSetting.getLanguageId();
-							List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(sd, rc, languageId);
-							epro.setSettingEntries(sd, rc, languageId, entries);
+							if (languageId!=null) {
+								List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(sd, rc, languageId);
+								epro.setSettingEntries(sd, rc, languageId, entries);
+							}
 						}
 					}
 				}
@@ -1002,10 +1019,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	}
 
 	// Extended label provider
-	private class LanguageSettingsContributorsLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*
-																										 * ,
-																										 * IColorProvider
-																										 */{
+	private class LanguageSettingsContributorsLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider */ {
 		public LanguageSettingsContributorsLabelProvider() {
 		}
 
@@ -1018,6 +1032,8 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			if (columnIndex > 0)
 				return null;
 			String imageKey = null;
+			String overlayKey = null;
+
 			if (element instanceof ILanguageSettingsProvider) {
 				if (((ILanguageSettingsProvider)element).getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProvider")) {
 					imageKey = CPluginImages.IMG_OBJS_USER;
@@ -1025,6 +1041,10 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 					imageKey = CPluginImages.IMG_OBJS_MBS;
 				} else {
 					imageKey = CPluginImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+				}
+				
+				if (element instanceof EditedProvider) {
+					overlayKey = CPluginImages.IMG_OVR_EDITED;
 				}
 			}
 			if (element instanceof ICLanguageSettingEntry) {
@@ -1062,8 +1082,12 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 					imageKey = CPluginImages.IMG_OBJS_FOLDER;
 			}
 
-			if (imageKey!=null)
+			if (imageKey!=null) {
+				if (overlayKey!=null) {
+					return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_LEFT);
+				}
 				return CPluginImages.get(imageKey);
+			}
 			return null;
 		}
 

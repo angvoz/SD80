@@ -907,7 +907,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 //			}
 			
 			List<ILanguageSettingsProvider> lsProviders = sd.getLanguageSettingProviders();
-			List<ILanguageSettingsProvider> ddProviders = sd.getLanguageSettingProviders();
+			List<ILanguageSettingsProvider> ddProviders = new ArrayList<ILanguageSettingsProvider>();
 			for (ILanguageSettingsProvider pro : lsProviders) {
 				EditedProvider editedProvider = editedProviders.get(pro.getId());
 

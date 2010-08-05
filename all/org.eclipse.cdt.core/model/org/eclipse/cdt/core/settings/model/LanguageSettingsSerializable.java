@@ -18,19 +18,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.IConfigurationElement;
-import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 
-public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
+public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider implements Cloneable {
 	public static final String ELEM_PROVIDER = "provider";
 	private static final String ATTR_ID = "id";
 
@@ -363,4 +361,58 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 		}
 	}
 
+	private Map<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> cloneStorage() {
+		Map<String, // cfgDescriptionId
+			Map<String, // languageId
+				Map<URI, // resource URI
+					List<ICLanguageSettingEntry>>>> storageClone = new HashMap<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>>();
+		Set<Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>>> entrySetCfg = fStorage.entrySet();
+		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : entrySetCfg) {
+			String cfgDescriptionId = entryCfg.getKey();
+			Map<String, Map<URI, List<ICLanguageSettingEntry>>> mapLang = entryCfg.getValue();
+			Map<String, Map<URI, List<ICLanguageSettingEntry>>> mapLangClone = new HashMap<String, Map<URI, List<ICLanguageSettingEntry>>>();
+			Set<Entry<String, Map<URI, List<ICLanguageSettingEntry>>>> entrySetLang = mapLang.entrySet();
+			for (Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang : entrySetLang) {
+				String langId = entryLang.getKey();
+				Map<URI, List<ICLanguageSettingEntry>> mapRc = entryLang.getValue();
+				Map<URI, List<ICLanguageSettingEntry>> mapRcClone = new HashMap<URI, List<ICLanguageSettingEntry>>();
+				Set<Entry<URI, List<ICLanguageSettingEntry>>> entrySetRc = mapRc.entrySet();
+				for (Entry<URI, List<ICLanguageSettingEntry>> entryRc : entrySetRc) {
+					URI rcURI = entryRc.getKey();
+					List<ICLanguageSettingEntry> lsEntries = entryRc.getValue();
+					List<ICLanguageSettingEntry> lsEntriesClone = new ArrayList<ICLanguageSettingEntry>(lsEntries);
+					mapRcClone.put(rcURI, lsEntriesClone);
+				}
+				mapLangClone.put(langId, mapRcClone);
+			}
+			storageClone.put(cfgDescriptionId, mapLangClone);
+		}
+		return storageClone;
+	}
+	
+	/* (non-Javadoc)
+	 * @see java.lang.Object#clone()
+	 */
+	@Override
+	public LanguageSettingsSerializable clone() throws CloneNotSupportedException {
+		LanguageSettingsSerializable clone = (LanguageSettingsSerializable)super.clone();
+		clone.fStorage = cloneStorage();
+		return clone;
+	}
+	
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof LanguageSettingsSerializable) {
+			LanguageSettingsSerializable that = (LanguageSettingsSerializable)o;
+			// FIXME? Or it is OK, the tests pass?
+			return this.fStorage.equals(that.fStorage);
+		}
+		return false;
+
+	}
+
+	
 }

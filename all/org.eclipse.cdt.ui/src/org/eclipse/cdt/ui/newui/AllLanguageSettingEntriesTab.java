@@ -19,15 +19,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
-import javax.naming.OperationNotSupportedException;
-
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.IFontProvider;
 import org.eclipse.jface.viewers.ITableLabelProvider;
@@ -69,7 +62,6 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingPathEntry;
 import org.eclipse.cdt.core.settings.model.ICMultiFolderDescription;
-import org.eclipse.cdt.core.settings.model.ICMultiItemsHolder;
 import org.eclipse.cdt.core.settings.model.ICMultiResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
@@ -77,12 +69,10 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
-import org.eclipse.cdt.ui.CUIPlugin;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
 import org.eclipse.cdt.internal.ui.language.UserLanguageSettingsProvider;
@@ -508,15 +498,14 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			IResource rc = getResource();
 			ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
 			if (rc != null) {
-				List<String> providerIds = LanguageSettingsManager.getProviderIds(cfgDescription);
-				for (String providerId : providerIds) {
+				List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
+				for (ILanguageSettingsProvider cfgProvider : cfgProviders) {
+					String providerId = cfgProvider.getId();
 					ILanguageSettingsProvider provider = editedProviders.get(providerId);
 					if (provider==null) {
-						provider = LanguageSettingsManager.getWorkspaceProvider(providerId);
+						provider = cfgProvider;
 					}
-					if (provider!=null) {
-						itemsList.add(provider);
-					}
+					itemsList.add(provider);
 				}
 			}
 		}
@@ -859,32 +848,46 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			}
 			
 			IResource rc = getResource();
-			ICProjectDescription prjDesc = getResDesc().getConfiguration().getProjectDescription();
-			ICConfigurationDescription[] cfgDescs = prjDesc.getConfigurations();
 
-			Set<Entry<String, EditedProvider>> epEntrySet = editedProviders.entrySet();
-			for (Entry<String, EditedProvider> epEntry : epEntrySet) {
-				String providerId = epEntry.getKey();
-				EditedProvider editedProvider = epEntry.getValue();
-				
-				ILanguageSettingsProvider pro = LanguageSettingsManager.getWorkspaceProvider(providerId);
-				if (pro instanceof ILanguageSettingsEditableProvider) {
-					ILanguageSettingsEditableProvider provider = (ILanguageSettingsEditableProvider)pro;
-					for (ICConfigurationDescription cfgDescription : cfgDescs) {
+			ICConfigurationDescription sd = src.getConfiguration();
+			ICConfigurationDescription dd = dst.getConfiguration();
+			
+//			ICProjectDescription prjDesc = getResDesc().getConfiguration().getProjectDescription();
+//			ICConfigurationDescription[] cfgDescs = prjDesc.getConfigurations();
+//			
+//			for (ICConfigurationDescription cfgDescription : cfgDescs) {
+//			}
+			
+			List<ILanguageSettingsProvider> lsProviders = sd.getLanguageSettingProviders();
+			for (ILanguageSettingsProvider pro : lsProviders) {
+				EditedProvider editedProvider = editedProviders.get(pro.getId());
+
+				if (editedProvider!=null) {
+					if (pro instanceof ILanguageSettingsEditableProvider) {
+						if (pro instanceof LanguageSettingsSerializable) {
+							LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
+							if (spro==LanguageSettingsManager.getWorkspaceProvider(spro.getId())) {
+								try {
+									pro = spro.clone();
+								} catch (CloneNotSupportedException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+							}
+						}
+						ILanguageSettingsEditableProvider epro = (ILanguageSettingsEditableProvider)pro;
 						for (ICLanguageSetting languageSetting : ls) {
 							String languageId = languageSetting.getLanguageId();
-							List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(cfgDescription, rc, languageId);
-							provider.setSettingEntries(cfgDescription, rc, languageId, entries);
+							List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(sd, rc, languageId);
+							epro.setSettingEntries(sd, rc, languageId, entries);
 						}
-//						try {
-//							LanguageSettingsManager.serialize(cfgDescription);
-//						} catch (CoreException e) {
-//							CUIPlugin.log(e);
-//						}
 					}
 				}
 			}
 			
+			dd.setLanguageSettingProviders(lsProviders);
+				
+
 		}
 	}
 

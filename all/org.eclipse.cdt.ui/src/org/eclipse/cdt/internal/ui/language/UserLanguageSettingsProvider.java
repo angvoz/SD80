@@ -20,4 +20,23 @@ import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
  *
  */
 public class UserLanguageSettingsProvider extends LanguageSettingsSerializable implements ILanguageSettingsEditableProvider {
+	
+	@Override
+	public int hashCode() {
+		return super.hashCode();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof UserLanguageSettingsProvider) {
+			return super.equals(o);
+		}
+		return false;
+	}
+
+	@Override
+	public UserLanguageSettingsProvider clone() throws CloneNotSupportedException {
+		return (UserLanguageSettingsProvider)super.clone();
+	}
+
 }

@@ -603,12 +603,41 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			LanguageSettingsSerializable loadedProvider = new LanguageSettingsSerializable(elementProvider);
 			
 			List<ICLanguageSettingEntry> retrieved = loadedProvider.getSettingEntries(null, null, null);
+			if (retrieved==null) {
+				String xml = XmlUtil.toString(elementProvider.getOwnerDocument());
+				/*
+				// This occasionally fails with following xml:
+				<?xml version="1.0" encoding="UTF-8"?>
+				<test>
+					<provider class="org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable" id="test.provider.0.id" name="test.provider.0.name">
+						<configuration id="test.configuration.id">
+							<entry kind="includePath" name="path2"/>
+							<entry kind="includePath" name="path0"/>
+						</configuration>
+					</provider>
+				</test>					 
+				 */
+				fail(xml);
+			}
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 			
 			List<ICLanguageSettingEntry> retrieved2 = loadedProvider.getSettingEntries(mockCfgDescription, null, null);
 			assertEquals(original2.get(0), retrieved2.get(0));
 			assertEquals(original2.size(), retrieved2.size());
+//			String xml = XmlUtil.toString(elementProvider.getOwnerDocument());
+			/*
+			// The correct xml looks like that:
+			<?xml version="1.0" encoding="UTF-8"?>
+			<test>
+				<provider class="org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable" id="test.provider.0.id" name="test.provider.0.name">
+					<entry kind="includePath" name="path0"/>
+					<configuration id="test.configuration.id">
+						<entry kind="includePath" name="path2"/>
+					</configuration>
+				</provider>
+			</test>
+			 */
 		}
 	}
 	
@@ -664,5 +693,53 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		}
 	}
 	
+	/**
+	 */
+	public void testEqualsAndClone() throws Exception {
+		List<ICLanguageSettingEntry> original1 = new ArrayList<ICLanguageSettingEntry>();
+		original1.add(new CMacroEntry("MACRO0", "value0",1));
+		original1.add(new CIncludePathEntry("path0", 1));
+		original1.add(new CIncludePathEntry("path1", 1));
+		
+		List<ICLanguageSettingEntry> original2 = new ArrayList<ICLanguageSettingEntry>();
+		original2.add(new CIncludePathEntry("path0", 1));
+		
+		// create a model provider
+		LanguageSettingsSerializable provider1 = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+		provider1.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, original1);
+		provider1.setSettingEntries(null, null, LANG_ID, original2);
+		
+		{
+			// clone provider
+			LanguageSettingsSerializable providerClone = provider1.clone();
+			assertNotSame(provider1, providerClone);
+			assertTrue(provider1.equals(providerClone));
+			assertTrue(provider1.getClass()==providerClone.getClass());
+			
+			List<ICLanguageSettingEntry> retrieved1 = providerClone.getSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID);
+			assertNotSame(original1, retrieved1);
+			assertEquals(original1.get(0), retrieved1.get(0));
+			assertEquals(original1.get(1), retrieved1.get(1));
+			assertEquals(original1.get(2), retrieved1.get(2));
+			assertEquals(original1.size(), retrieved1.size());
+	
+			List<ICLanguageSettingEntry> retrieved2 = providerClone.getSettingEntries(null, null, LANG_ID);
+			assertNotSame(original2, retrieved2);
+			assertEquals(original2.get(0), retrieved2.get(0));
+			assertEquals(original2.size(), retrieved2.size());
+		}
+		
+		{
+			// create another provider with the same data
+			LanguageSettingsSerializable provider2 = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			assertFalse(provider1.equals(provider2));
+			
+			provider2.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, original1);
+			assertFalse(provider1.equals(provider2));
+			provider2.setSettingEntries(null, null, LANG_ID, original2);
+			assertTrue(provider1.equals(provider2));
+		}
+	}
 
 }
+

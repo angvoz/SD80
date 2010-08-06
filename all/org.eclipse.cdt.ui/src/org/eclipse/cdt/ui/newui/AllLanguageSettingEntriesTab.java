@@ -328,10 +328,16 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		ICLanguageSettingEntry entry = getSelectedEntry();
 		boolean canAdd = provider instanceof ILanguageSettingsEditableProvider;
 		boolean canDelete = (provider instanceof ILanguageSettingsEditableProvider) && entry!=null;
+		boolean canReset = (provider instanceof ILanguageSettingsEditableProvider) && entry==null;
+		if (canReset) {
+			buttonSetText(BUTTON_DELETE, "Reset");
+		} else {
+			buttonSetText(BUTTON_DELETE, DEL_STR);
+		}
 
 		buttonSetEnabled(BUTTON_ADD, canAdd);
 		buttonSetEnabled(BUTTON_EDIT, false);
-		buttonSetEnabled(BUTTON_DELETE, canDelete);
+		buttonSetEnabled(BUTTON_DELETE, canDelete || canReset);
 		buttonSetEnabled(BUTTON_EXPORT_UNEXPORT, false);
 		buttonSetEnabled(BUTTON_MOVE_UP, false);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, false);
@@ -998,7 +1004,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 					if (pro instanceof ILanguageSettingsEditableProvider) {
 						if (pro instanceof LanguageSettingsSerializable) {
 							LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
-							if (spro==LanguageSettingsManager.getWorkspaceProvider(spro.getId())) {
+							if (LanguageSettingsManager.isWorkspaceProvider(spro)) {
 								try {
 									pro = spro.clone();
 									if (pro.getClass()!=spro.getClass())

@@ -134,7 +134,7 @@ public class LanguageSettingsManager {
 	
 	public static boolean isCustomizedResource(ICConfigurationDescription cfgDescription, IResource rc) {
 		for (ILanguageSettingsProvider provider: cfgDescription.getLanguageSettingProviders()) {
-			if (provider!=LanguageSettingsManager.getWorkspaceProvider(provider.getId())) {
+			if (!LanguageSettingsManager.isWorkspaceProvider(provider)) {
 				ICResourceDescription rcDescription = cfgDescription.getResourceDescription(rc.getProjectRelativePath(), false);
 				for (ICLanguageSetting languageSetting : getLanguageIds(rcDescription)) {
 					String languageId = languageSetting.getLanguageId();
@@ -175,12 +175,29 @@ public class LanguageSettingsManager {
 	}
 
 	/**
-	 * TODO
+	 * Get Language Settings Provider defined in the workspace. That includes user-defined
+	 * providers and after that providers defined as extensions via
+	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
+	 * That returns actual object, any modifications will affect any configuration
+	 * referring to the provider.
+	 * 
+	 * @param id - ID of provider to find.
+	 * @return the provider or {@code null} if provider is not defined.
 	 */
 	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
 		return LanguageSettingsExtensionManager.getWorkspaceProvider(id);
 	}
 
+	/**
+	 * Checks if the provider is defined on the workspace level. See {@link #getWorkspaceProvider(String)}.
+	 * 
+	 * @param provider - provider to check.
+	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
+	 */
+	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
+		return provider==getWorkspaceProvider(provider.getId());
+	}
+	
 	/**
 	 * Set and store default providers IDs to be used if provider list is empty.
 	 *

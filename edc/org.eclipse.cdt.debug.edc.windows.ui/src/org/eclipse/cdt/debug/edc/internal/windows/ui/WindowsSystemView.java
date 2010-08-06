@@ -130,18 +130,12 @@ public class WindowsSystemView extends SystemView {
 		setDataModel(new WindowsDataModel());
 		setViewModel(new WindowsViewModel());
 		getViewModel().buildViewModel();
-		createRootComosite(parent);
+		createRootComposite(parent);
 		createRefreshAction();
 		createAttachAction();
 		hookContextMenu();
 		contributeToActionBars();
 		getRefreshJob().schedule();
-	}
-
-	@Override
-	public void setFocus() {
-		// TODO Auto-generated method stub
-		
 	}
 
 	protected void doAttach(SystemVMContainer target) {

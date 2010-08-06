@@ -89,8 +89,12 @@ public class SystemVMContainer implements IAdaptable {
 			{
 				if (columnId == null)
 					return ((SystemVMContainer) element).getName();
-				else
-					return (String) ((SystemVMContainer) element).getProperties().get(columnId);
+				else {
+					Object obj = ((SystemVMContainer) element).getProperties().get(columnId);
+					if (obj != null) {
+						return obj.toString();
+					}
+				}
 			}
 			return null;
 		}

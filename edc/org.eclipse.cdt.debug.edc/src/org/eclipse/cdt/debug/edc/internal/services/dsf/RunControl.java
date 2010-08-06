@@ -1454,15 +1454,6 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		final IAddress stepToAddress = ((StackFrameDMC) frames[1]).getIPAddress();
 		
-		
-		boolean keepgoing = true;
-		if (!keepgoing) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-					"Cannot step out as no caller frame is available.", null));
-			rm.done();
-			return;
-		}
-		
 		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 
 		prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {

@@ -64,7 +64,6 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingPathEntry;
 import org.eclipse.cdt.core.settings.model.ICMultiFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICMultiResourceDescription;
-import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
@@ -76,7 +75,6 @@ import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
-import org.eclipse.cdt.internal.ui.language.UserLanguageSettingsProvider;
 import org.eclipse.cdt.internal.ui.newui.Messages;
 
 public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
@@ -1154,7 +1152,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 			if (imageKey!=null) {
 				if (overlayKey!=null) {
-					return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_LEFT);
+					return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
 				}
 				return CPluginImages.get(imageKey);
 			}

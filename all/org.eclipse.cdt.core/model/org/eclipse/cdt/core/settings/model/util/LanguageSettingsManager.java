@@ -134,12 +134,14 @@ public class LanguageSettingsManager {
 	
 	public static boolean isCustomizedResource(ICConfigurationDescription cfgDescription, IResource rc) {
 		for (ILanguageSettingsProvider provider: cfgDescription.getLanguageSettingProviders()) {
-			ICResourceDescription rcDescription = cfgDescription.getResourceDescription(rc.getProjectRelativePath(), false);
-			for (ICLanguageSetting languageSetting : getLanguageIds(rcDescription)) {
-				String languageId = languageSetting.getLanguageId();
-				List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
-				if (list!=null) {
-					return true;
+			if (provider!=LanguageSettingsManager.getWorkspaceProvider(provider.getId())) {
+				ICResourceDescription rcDescription = cfgDescription.getResourceDescription(rc.getProjectRelativePath(), false);
+				for (ICLanguageSetting languageSetting : getLanguageIds(rcDescription)) {
+					String languageId = languageSetting.getLanguageId();
+					List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
+					if (list!=null) {
+						return true;
+					}
 				}
 			}
 		}

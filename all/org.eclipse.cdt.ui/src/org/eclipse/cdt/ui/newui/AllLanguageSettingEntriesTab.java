@@ -327,11 +327,13 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	@Override
 	protected void updateButtons() {
 		ILanguageSettingsProvider provider = getSelectedProvider();
+		ICLanguageSettingEntry entry = getSelectedEntry();
 		boolean canAdd = provider instanceof ILanguageSettingsEditableProvider;
+		boolean canDelete = (provider instanceof ILanguageSettingsEditableProvider) && entry!=null;
 
 		buttonSetEnabled(BUTTON_ADD, canAdd);
 		buttonSetEnabled(BUTTON_EDIT, false);
-		buttonSetEnabled(BUTTON_DELETE, false);
+		buttonSetEnabled(BUTTON_DELETE, canDelete);
 		buttonSetEnabled(BUTTON_EXPORT_UNEXPORT, false);
 		buttonSetEnabled(BUTTON_MOVE_UP, false);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, false);
@@ -732,7 +734,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 //		}
 	}
 
-	private void performDelete(int n) {
+	private void performDelete(/*int n*/) {
 //		if (n == -1)
 //			return;
 //		fHadSomeModification = true;
@@ -751,8 +753,76 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 //			}
 //			changeIt(null, del);
 //		}
-//		update();
+		
+		ILanguageSettingsProvider provider = getSelectedProvider();
+		ICLanguageSettingEntry entry = getSelectedEntry();
 
+		if (entry != null) {
+			ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+			String providerId = provider.getId();
+			String languageId = lang.getLanguageId();
+			IResource rc = getResource();
+			
+			List<ICLanguageSettingEntry> entries;
+			EditedProvider editedProvider = editedProviders.get(providerId);
+			if (editedProvider==null) {
+				editedProvider = new EditedProvider(providerId, provider.getName());
+				editedProviders.put(providerId, editedProvider);
+				
+				
+				for (ICLanguageSetting languageSetting : ls) {
+					String langId = languageSetting.getLanguageId();
+					if (langId!=null) {
+						entries = provider.getSettingEntries(cfgDescription, rc, langId);
+						if (langId.equals(languageId)) {
+							if (entries!=null) {
+								entries.remove(entry);
+							}
+						}
+						editedProvider.setSettingEntries(cfgDescription, rc, langId, entries);
+					}
+				}
+
+			} else {
+				entries = provider.getSettingEntries(cfgDescription, rc, languageId);
+				if (entries!=null) {
+					entries.remove(entry);
+				}
+				editedProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
+			}
+			
+			update();
+
+			TreeItem providerItem = findProviderItem(providerId);
+			if (providerItem!=null) {
+				table.select(providerItem);
+				if (providerItem.getItems().length>0) {
+					table.showItem(providerItem.getItems()[0]);
+				}
+			}
+			updateButtons();
+		}
+	}
+
+	private ICLanguageSettingEntry getSelectedEntry() {
+		ICLanguageSettingEntry entry = null;
+		
+		TreeItem[] selItems = table.getSelection();
+		if (selItems.length==0) {
+			return null;
+		}
+		
+		for (TreeItem item : selItems) {
+			// TODO
+		}
+		
+		
+		TreeItem item = selItems[0];
+		Object itemData = item.getData();
+		if (itemData instanceof ICLanguageSettingEntry) {
+			entry = (ICLanguageSettingEntry)itemData;
+		}
+		return entry;
 	}
 
 	/**
@@ -775,9 +845,9 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 //		case BUTTON_EDIT:
 //			performEdit(n);
 //			break;
-//		case BUTTON_DELETE:
-//			performDelete(n);
-//			break;
+		case BUTTON_DELETE:
+			performDelete();
+			break;
 //		case BUTTON_EXPORT_UNEXPORT:
 //			if (n == -1)
 //				return;

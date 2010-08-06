@@ -173,7 +173,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertEquals(PROVIDER_0, retrievedIds[0]);
 			
 			// serialize language settings of user defined providers (on workspace level)
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
+			LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
 			// clear the provider
 			mockProvider.setSettingEntries(null, null, null, null);
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0);
@@ -224,7 +224,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 		
 		{
 			// serialize language settings of user defined providers (on workspace level)
-			LanguageSettingsExtensionManager.serializeLanguageSettings();
+			LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
 			// clear the provider
 			mockProvider.setSettingEntries(null, null, null, null);
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);

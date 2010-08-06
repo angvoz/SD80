@@ -195,7 +195,7 @@ public class LanguageSettingsManager {
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
 	 */
 	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
-		return provider==getWorkspaceProvider(provider.getId());
+		return LanguageSettingsExtensionManager.isWorkspaceProvider(provider);
 	}
 	
 	/**
@@ -254,7 +254,7 @@ public class LanguageSettingsManager {
 	}
 
 	public static void serializeWorkspaceProviders() throws CoreException {
-		LanguageSettingsExtensionManager.serializeLanguageSettings();
+		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
 	}
 
 	// FIXME: is there more straight way to get language id?

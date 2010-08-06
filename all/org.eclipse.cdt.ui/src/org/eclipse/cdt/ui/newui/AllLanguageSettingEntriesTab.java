@@ -183,6 +183,21 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			}
 			return entries;
 		}
+		
+	}
+	
+	/**
+	 * Shortcut for getting setting entries for current context.
+	 * 
+	 * @return list of setting entries for the current context.
+	 */
+	public List<ICLanguageSettingEntry> getSettingEntries(ILanguageSettingsProvider provider) {
+		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+		IResource rc = getResource();
+		String languageId = lang.getLanguageId();
+		if (languageId==null)
+			return null;
+		return provider.getSettingEntries(cfgDescription, rc, languageId);
 	}
 	
 	// providerId -> provider
@@ -326,9 +341,10 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	protected void updateButtons() {
 		ILanguageSettingsProvider provider = getSelectedProvider();
 		ICLanguageSettingEntry entry = getSelectedEntry();
+		boolean isProviderSelected = (entry==null) && (provider!=null);
 		boolean canAdd = provider instanceof ILanguageSettingsEditableProvider;
-		boolean canDelete = (provider instanceof ILanguageSettingsEditableProvider) && entry!=null;
-		boolean canReset = (provider instanceof ILanguageSettingsEditableProvider) && entry==null;
+		boolean canDelete = !isProviderSelected && (provider instanceof ILanguageSettingsEditableProvider);
+		boolean canReset = isProviderSelected && !LanguageSettingsManager.isWorkspaceProvider(provider);
 		if (canReset) {
 			buttonSetText(BUTTON_DELETE, "Reset");
 		} else {
@@ -644,7 +660,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				}
 
 			} else {
-				entries = provider.getSettingEntries(cfgDescription, rc, languageId);
+				entries = getSettingEntries(provider);
 				if (entries==null) {
 					entries = new ArrayList<ICLanguageSettingEntry>();
 				}
@@ -788,7 +804,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				}
 
 			} else {
-				entries = provider.getSettingEntries(cfgDescription, rc, languageId);
+				entries = getSettingEntries(provider);
 				if (entries!=null) {
 					entries.remove(entry);
 				}
@@ -805,6 +821,15 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				}
 			}
 			updateButtons();
+		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider) && getSettingEntries(provider)!=null) {
+			String languageId = lang.getLanguageId();
+			if (languageId!=null) {
+				ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+				IResource rc = getResource();
+				ILanguageSettingsEditableProvider epro = (ILanguageSettingsEditableProvider)provider;
+				epro.setSettingEntries(cfgDescription, rc, languageId, null);
+				update();
+			}
 		}
 	}
 
@@ -1059,16 +1084,11 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				return (Object[]) parentElement;
 			if (parentElement instanceof ILanguageSettingsProvider) {
 				ILanguageSettingsProvider lsProvider = (ILanguageSettingsProvider)parentElement;
-				String languageId = lang.getLanguageId();
-				if (languageId != null) {
-					ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
-					IResource rc = getResource();
-					List<ICLanguageSettingEntry> seList = lsProvider.getSettingEntries(cfgDescription, rc, languageId);
-					if (seList==null) {
-						return new Object[0];
-					}
-					return seList.toArray();
+				List<ICLanguageSettingEntry> seList = getSettingEntries(lsProvider);
+				if (seList==null) {
+					return new Object[0];
 				}
+				return seList.toArray();
 			}
 			return null;
 		}
@@ -1109,16 +1129,20 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			String overlayKey = null;
 
 			if (element instanceof ILanguageSettingsProvider) {
-				if (((ILanguageSettingsProvider)element).getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProvider")) {
+				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
+				if (provider.getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProvider")) {
 					imageKey = CPluginImages.IMG_OBJS_USER;
-				} else if (((ILanguageSettingsProvider)element).getId().equals("org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider")) {
+				} else if (provider.getId().equals("org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider")) {
 					imageKey = CPluginImages.IMG_OBJS_MBS;
 				} else {
 					imageKey = CPluginImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
 				}
 				
-				if (element instanceof EditedProvider) {
-					overlayKey = CPluginImages.IMG_OVR_EDITED;
+				if (!LanguageSettingsManager.isWorkspaceProvider(provider) && lang!=null) {
+					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
+					if (entries!=null) {
+						overlayKey = CPluginImages.IMG_OVR_SETTING;
+					}
 				}
 			}
 			if (element instanceof ICLanguageSettingEntry) {

@@ -109,7 +109,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		assertEquals(allIds.length, extensionIds.length);
 		
 		// serialize language settings of user defined providers (on workspace level)
-		LanguageSettingsExtensionManager.serializeLanguageSettings();
+		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
 		LanguageSettingsExtensionManager.loadLanguageSettingsWorkspace();
 		
 		// test passes if no exception was thrown

@@ -394,8 +394,9 @@ public class CPluginImages {
 	public static final ImageDescriptor DESC_ELCL_OPEN_DECLARATION = createUnManaged(T_ELCL, "goto_input.gif"); //$NON-NLS-1$
 
 	// AG FIXME DESC_OVR_SETTING = create(T_OVR, "setting_nav.gif"); //$NON-NLS-1$
-    public static final String IMG_OVR_EDITED = NAME_PREFIX + "setting_nav.gif"; //$NON-NLS-1$
-    public static final ImageDescriptor DESC_OVR_EDITED= createManaged(T_OVR, IMG_OVR_EDITED);
+    public static final String IMG_OVR_SETTING = NAME_PREFIX + "setting_nav.gif"; //$NON-NLS-1$
+    @SuppressWarnings("unused")
+	private static final ImageDescriptor DESC_OVR_SETTING_FIXME= createManaged(T_OVR, IMG_OVR_SETTING);
 	/**
 	 * Retrieves an overlaid image descriptor from the repository of images.
 	 * If there is no image one will be created.

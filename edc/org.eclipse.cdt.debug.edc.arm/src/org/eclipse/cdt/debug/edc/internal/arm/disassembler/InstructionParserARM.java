@@ -1036,17 +1036,17 @@ public class InstructionParserARM {
 			if (condString.length() == 0) {
 				condString = "\t";
 			}
-			instruction = mnemonic + condString + "\t" + getHexValue(offset);
 			isSoleDestination = false;
 			isSubroutineAddress = false;
 			jumpToAddr = address.add(offset);
+			instruction = mnemonic + condString + "\t" + getHexValue(jumpToAddr.getValue().intValue());
 			break;
 		case thumb_b2:
 			offset = getThumbBranchOffset11(opcode);
-			instruction = mnemonic + "\t\t" + getHexValue(offset);
 			isSoleDestination = true;
 			isSubroutineAddress = false;
 			jumpToAddr = address.add(offset);
+			instruction = mnemonic + "\t\t" + getHexValue(jumpToAddr.getValue().intValue());
 			break;
 		case thumb_bic:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
@@ -1057,14 +1057,15 @@ public class InstructionParserARM {
 		case thumb_blx1:
 			offset = getThumbBLOffset(opcode, opcode2);
 			int h = (opcode2 >> 11) & 3;
+			jumpToAddr = address.add(offset);
 			if (h == 3) {
-				instruction = "bl" + "\t\t" + getHexValue(offset);
+				instruction = "bl" + "\t\t" + getHexValue(jumpToAddr.getValue().intValue());
 			} else {
-				instruction = "blx" + "\t" + getHexValue(offset);
+				instruction = "blx" + "\t" + getHexValue(jumpToAddr.getValue().intValue());
 			}
 			isSoleDestination = true;
 			isSubroutineAddress = true;
-			jumpToAddr = address.add(offset);
+			
 			break;
 		case thumb_blx2:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 3);
@@ -1661,14 +1662,14 @@ public class InstructionParserARM {
 
 	private int getThumbBranchOffset8(int opcode) {
 		int offset = (opcode & 0xff);
-		offset = ((offset << 25) >> 24) + 4;
+		offset = (offset*2) + 4;
 		return offset;
 	}
 
 	private int getThumbBranchOffset11(int opcode) {
-		int offset = (opcode & 0x7ff);
-		offset = ((offset << 22) >> 21) + 4;
-		return offset;
+		short offset = (short) ((opcode << 5) & 0xffff);
+	
+		return offset / 16;
 	}
 
 	private String getThumbCondition(int opcode) {

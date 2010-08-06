@@ -11,8 +11,6 @@
 
 package org.eclipse.cdt.core.settings.model;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,7 +33,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	private static final String ELEM_CONFIGURATION = "configuration";
 	private static final String ELEM_LANGUAGE = "language";
 	private static final String ELEM_RESOURCE = "resource";
-	private static final String ATTR_URI = "uri";
+	private static final String ATTR_PROJECT_PATH = "project-relative-path";
 
 	private static final String ELEM_ENTRY = "entry";
 	private static final String ATTR_KIND = "kind";
@@ -48,8 +46,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	
 	private Map<String, // cfgDescriptionId
 				Map<String, // languageId
-					Map<URI, // resource URI
-						List<ICLanguageSettingEntry>>>> fStorage = new HashMap<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>>();
+					Map<String, // resource project path
+						List<ICLanguageSettingEntry>>>> fStorage = new HashMap<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>>();
 	
 	public LanguageSettingsSerializable() {
 		super();
@@ -64,26 +62,26 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 	
 	// TODO: look for refactoring this method
-	private void setSettingEntriesInternal(String cfgId, URI rcUri, String languageId, List<ICLanguageSettingEntry> entries) {
+	private void setSettingEntriesInternal(String cfgId, String rcProjectPath, String languageId, List<ICLanguageSettingEntry> entries) {
 		if (entries!=null) {
-			Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
+			Map<String, Map<String, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
 			if (cfgMap==null) {
-				cfgMap = new HashMap<String, Map<URI, List<ICLanguageSettingEntry>>>();
+				cfgMap = new HashMap<String, Map<String, List<ICLanguageSettingEntry>>>();
 				fStorage.put(cfgId, cfgMap);
 			}
-			Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
+			Map<String, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
 			if (langMap==null) {
-				langMap = new HashMap<URI, List<ICLanguageSettingEntry>>();
+				langMap = new HashMap<String, List<ICLanguageSettingEntry>>();
 				cfgMap.put(languageId, langMap);
 			}
-			langMap.put(rcUri, entries);
+			langMap.put(rcProjectPath, entries);
 		} else {
 			// do not keep nulls in the tables
-			Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
+			Map<String, Map<String, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
 			if (cfgMap!=null) {
-				Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
+				Map<String, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
 				if (langMap!=null) {
-					langMap.remove(rcUri);
+					langMap.remove(rcProjectPath);
 					if (langMap.size()==0) {
 						cfgMap.remove(languageId);
 					}
@@ -97,8 +95,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
 		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
-		URI rcUri = rc!=null ? rc.getLocationURI() : null;
-		setSettingEntriesInternal(cfgId, rcUri, languageId, entries);
+		String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
+		setSettingEntriesInternal(cfgId, rcProjectPath, languageId, entries);
 	}
 	
 	@Override
@@ -106,12 +104,12 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 			IResource rc, String languageId) {
 		
 		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
-		Map<String, Map<URI, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
+		Map<String, Map<String, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
 		if (cfgMap!=null) {
-			Map<URI, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
+			Map<String, List<ICLanguageSettingEntry>> langMap = cfgMap.get(languageId);
 			if (langMap!=null) {
-				URI rcUri = rc!=null ? rc.getLocationURI() : null;
-				List<ICLanguageSettingEntry> entries = langMap.get(rcUri);
+				String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
+				List<ICLanguageSettingEntry> entries = langMap.get(rcProjectPath);
 				return entries;
 			}
 		}
@@ -123,7 +121,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	<provider id="provider.id">
 		<configuration id="cfg.id">
 			<language id="lang.id">
-				<resource uri="file://">
+				<resource project-relative-path="/">
 					<settingEntry flags="" kind="includePath" name="path"/>
 				</resource>
 			</language>
@@ -138,40 +136,38 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				ATTR_CLASS, getClass().getCanonicalName(),
 			});
 		
-		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
+		for (Entry<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
 			serializeConfiguration(elementProvider, entryCfg);
 		}
 		return elementProvider;
 	}
 
-	private void serializeConfiguration(Element parentElement, Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg) {
+	private void serializeConfiguration(Element parentElement, Entry<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>> entryCfg) {
 		String cfgId = entryCfg.getKey();
 		if (cfgId!=null) {
 			Element elementConfiguration = XmlUtil.appendElement(parentElement, ELEM_CONFIGURATION, new String[] {ATTR_ID, cfgId});
 			parentElement = elementConfiguration;
 		}
-		for (Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang : entryCfg.getValue().entrySet()) {
+		for (Entry<String, Map<String, List<ICLanguageSettingEntry>>> entryLang : entryCfg.getValue().entrySet()) {
 			serializeLanguage(parentElement, entryLang);
 		}
 	}
 
-	private void serializeLanguage(Element parentElement, Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang) {
+	private void serializeLanguage(Element parentElement, Entry<String, Map<String, List<ICLanguageSettingEntry>>> entryLang) {
 		String langId = entryLang.getKey();
 		if (langId!=null) {
 			Element elementLanguage = XmlUtil.appendElement(parentElement, ELEM_LANGUAGE, new String[] {ATTR_ID, langId});
 			parentElement = elementLanguage;
 		}
-		for (Entry<URI, List<ICLanguageSettingEntry>> entryRc : entryLang.getValue().entrySet()) {
+		for (Entry<String, List<ICLanguageSettingEntry>> entryRc : entryLang.getValue().entrySet()) {
 			serializeResource(parentElement, entryRc);
 		}
 	}
 
-	private void serializeResource(Element parentElement, Entry<URI, List<ICLanguageSettingEntry>> entryRc) {
-		URI rcUri = entryRc.getKey();
-		String rcUriString = rcUri!=null ? rcUri.toString() : null;
-		
-		if (rcUriString!=null) {
-			Element elementRc = XmlUtil.appendElement(parentElement, ELEM_RESOURCE, new String[] {ATTR_URI, rcUriString});
+	private void serializeResource(Element parentElement, Entry<String, List<ICLanguageSettingEntry>> entryRc) {
+		String rcProjectPath = entryRc.getKey();
+		if (rcProjectPath!=null) {
+			Element elementRc = XmlUtil.appendElement(parentElement, ELEM_RESOURCE, new String[] {ATTR_PROJECT_PATH, rcProjectPath});
 			parentElement = elementRc;
 		}
 		serializeSettingEntries(parentElement, entryRc.getValue());
@@ -339,17 +335,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	private void loadResourceElement(Node parentNode, String cfgId, String langId) {
-		String rcUriString = XmlUtil.determineAttributeValue(parentNode, ATTR_URI);
-		URI rcUri = null;
-		if (rcUriString.length()>0) {
-			try {
-				rcUri = new URI(rcUriString);
-			} catch (URISyntaxException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				return;
-			}
-		}
+		String rcProjectPath = XmlUtil.determineAttributeValue(parentNode, ATTR_PROJECT_PATH);
 
 		List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
 		NodeList nodes = parentNode.getChildNodes();
@@ -368,31 +354,31 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		
 		// set settings
 		if (settings.size()>0) {
-			setSettingEntriesInternal(cfgId, rcUri, langId, settings);
+			setSettingEntriesInternal(cfgId, rcProjectPath, langId, settings);
 		}
 	}
 
-	private Map<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> cloneStorage() {
+	private Map<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>> cloneStorage() {
 		Map<String, // cfgDescriptionId
 			Map<String, // languageId
-				Map<URI, // resource URI
-					List<ICLanguageSettingEntry>>>> storageClone = new HashMap<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>>();
-		Set<Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>>> entrySetCfg = fStorage.entrySet();
-		for (Entry<String, Map<String, Map<URI, List<ICLanguageSettingEntry>>>> entryCfg : entrySetCfg) {
+				Map<String, // resource String
+					List<ICLanguageSettingEntry>>>> storageClone = new HashMap<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>>();
+		Set<Entry<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>>> entrySetCfg = fStorage.entrySet();
+		for (Entry<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>> entryCfg : entrySetCfg) {
 			String cfgDescriptionId = entryCfg.getKey();
-			Map<String, Map<URI, List<ICLanguageSettingEntry>>> mapLang = entryCfg.getValue();
-			Map<String, Map<URI, List<ICLanguageSettingEntry>>> mapLangClone = new HashMap<String, Map<URI, List<ICLanguageSettingEntry>>>();
-			Set<Entry<String, Map<URI, List<ICLanguageSettingEntry>>>> entrySetLang = mapLang.entrySet();
-			for (Entry<String, Map<URI, List<ICLanguageSettingEntry>>> entryLang : entrySetLang) {
+			Map<String, Map<String, List<ICLanguageSettingEntry>>> mapLang = entryCfg.getValue();
+			Map<String, Map<String, List<ICLanguageSettingEntry>>> mapLangClone = new HashMap<String, Map<String, List<ICLanguageSettingEntry>>>();
+			Set<Entry<String, Map<String, List<ICLanguageSettingEntry>>>> entrySetLang = mapLang.entrySet();
+			for (Entry<String, Map<String, List<ICLanguageSettingEntry>>> entryLang : entrySetLang) {
 				String langId = entryLang.getKey();
-				Map<URI, List<ICLanguageSettingEntry>> mapRc = entryLang.getValue();
-				Map<URI, List<ICLanguageSettingEntry>> mapRcClone = new HashMap<URI, List<ICLanguageSettingEntry>>();
-				Set<Entry<URI, List<ICLanguageSettingEntry>>> entrySetRc = mapRc.entrySet();
-				for (Entry<URI, List<ICLanguageSettingEntry>> entryRc : entrySetRc) {
-					URI rcURI = entryRc.getKey();
+				Map<String, List<ICLanguageSettingEntry>> mapRc = entryLang.getValue();
+				Map<String, List<ICLanguageSettingEntry>> mapRcClone = new HashMap<String, List<ICLanguageSettingEntry>>();
+				Set<Entry<String, List<ICLanguageSettingEntry>>> entrySetRc = mapRc.entrySet();
+				for (Entry<String, List<ICLanguageSettingEntry>> entryRc : entrySetRc) {
+					String rcProjectPath = entryRc.getKey();
 					List<ICLanguageSettingEntry> lsEntries = entryRc.getValue();
 					List<ICLanguageSettingEntry> lsEntriesClone = new ArrayList<ICLanguageSettingEntry>(lsEntries);
-					mapRcClone.put(rcURI, lsEntriesClone);
+					mapRcClone.put(rcProjectPath, lsEntriesClone);
 				}
 				mapLangClone.put(langId, mapRcClone);
 			}

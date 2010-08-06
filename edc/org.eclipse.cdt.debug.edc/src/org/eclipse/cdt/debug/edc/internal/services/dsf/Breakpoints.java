@@ -548,7 +548,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	}
 
 	/**
-	 * Set temporary breakpoint at give address. This is for cases such as
+	 * Set temporary breakpoint at given address. This is for cases such as
 	 * stepping and initial startup breakpoint (aka entry breakpoint).<br>
 	 * If a user or temporary breakpoint already exists at the address, no
 	 * temporary breakpoint will be set.

@@ -125,7 +125,8 @@ public class CPluginImages {
 	public static final String IMG_OBJS_INCLUDES_FOLDER_WORKSPACE = NAME_PREFIX + "wsp_includefolder.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_LANG_SETTINGS_PROVIDER = NAME_PREFIX + "ls_entries_provider.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_MBS = NAME_PREFIX + "mbs.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_USER = NAME_PREFIX + "person-me.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_USER = NAME_PREFIX + "person.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_USER_ME = NAME_PREFIX + "person-me.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_ORDER= NAME_PREFIX + "cp_order_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_EXCLUDSION_FILTER_ATTRIB= NAME_PREFIX + "exclusion_filter_attrib.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_SOURCE_ATTACH_ATTRIB = NAME_PREFIX + "source_attach_attrib.gif"; //$NON-NLS-1$
@@ -218,6 +219,7 @@ public class CPluginImages {
 	public static final ImageDescriptor DESC_OBJS_LANG_SETTINGS_PROVIDER= createManaged(T_OBJ, IMG_OBJS_LANG_SETTINGS_PROVIDER);
 	public static final ImageDescriptor DESC_OBJS_MBS= createManaged(T_OBJ, IMG_OBJS_MBS);
 	public static final ImageDescriptor DESC_OBJS_USER= createManaged(T_OBJ, IMG_OBJS_USER);
+	public static final ImageDescriptor DESC_OBJS_USER_ME= createManaged(T_OBJ, IMG_OBJS_USER_ME);
 	public static final ImageDescriptor DESC_OBJS_ORDER= createManaged(T_OBJ, IMG_OBJS_ORDER);
 	public static final ImageDescriptor DESC_OBJS_EXCLUSION_FILTER_ATTRIB = createManaged(T_OBJ, IMG_OBJS_EXCLUDSION_FILTER_ATTRIB);
 	public static final ImageDescriptor DESC_OBJS_SOURCE_ATTACH_ATTRIB= createManaged(T_OBJ, IMG_OBJS_SOURCE_ATTACH_ATTRIB);

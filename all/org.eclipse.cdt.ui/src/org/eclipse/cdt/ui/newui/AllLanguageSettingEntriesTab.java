@@ -1131,7 +1131,11 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			if (element instanceof ILanguageSettingsProvider) {
 				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
 				if (provider.getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProvider")) {
-					imageKey = CPluginImages.IMG_OBJS_USER;
+					if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+						imageKey = CPluginImages.IMG_OBJS_USER;
+					} else {
+						imageKey = CPluginImages.IMG_OBJS_USER_ME;
+					}
 				} else if (provider.getId().equals("org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider")) {
 					imageKey = CPluginImages.IMG_OBJS_MBS;
 				} else {

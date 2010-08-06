@@ -238,16 +238,10 @@ public class K9SystemView extends SystemView {
 		setDataModel(new K9DataModel());
 		setViewModel(new K9ViewModel());
 		getViewModel().buildViewModel();
-		createRootComosite(parent);
+		createRootComposite(parent);
 		setRefreshInterval(5000);		
 		createRefreshAction();
 		contributeToActionBars();
-	}
-
-	@Override
-	public void setFocus() {
-		// TODO Auto-generated method stub
-
 	}
 
 	public SystemDMContainer getAllDogs() {

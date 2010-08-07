@@ -292,24 +292,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		public StackFrameDMC(final IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
 			super(Stack.this, new IDMContext[] { executionDMC }, createFrameID(executionDMC, frameProperties), frameProperties);
 			this.executionDMC = executionDMC;
+
 			this.level = (Integer) frameProperties.get(LEVEL_INDEX);
 			this.moduleName = (String) frameProperties.get(MODULE_NAME);
-
-			Object base = frameProperties.get(BASE_ADDR);
-			if (base instanceof Integer)
-				this.baseAddress = new Addr64(base.toString());
-			if (base instanceof Long)
-				this.baseAddress = new Addr64(base.toString());
-			if (base instanceof String) // the string should be hex string
-				this.baseAddress = new Addr64((String) base, 16);
-
-			Object ipAddr = frameProperties.get(IP_ADDR);
-			if (ipAddr instanceof Integer)
-				this.ipAddress = new Addr64(ipAddr.toString());
-			if (ipAddr instanceof Long)
-				this.ipAddress = new Addr64(ipAddr.toString());
-			if (ipAddr instanceof String)
-				this.ipAddress = new Addr64((String) ipAddr, 16);
+			this.baseAddress = address(frameProperties.get(BASE_ADDR));
+			this.ipAddress = address(frameProperties.get(IP_ADDR));
 
 			boolean usingCachedProperties = false;
 			IEDCModules modules = dsfServicesTracker.getService(IEDCModules.class);
@@ -401,6 +388,20 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			typeEngine = new TypeEngine(dsfServicesTracker, debugInfoProvider);
 		}
 
+		private IAddress address(Object obj) {
+			if (obj instanceof Integer)
+				return new Addr64(obj.toString());
+			if (obj instanceof Long)
+				return new Addr64(obj.toString());
+			if (obj instanceof String) // the string should be hex string
+				return new Addr64((String) obj, 16);
+			return null;
+		}
+
+		private void setIPAddrPtr(IAddress ipAddrPtr) {
+			this.ipAddress = ipAddrPtr;
+		}
+
 		public IFunctionScope getFunctionScope() {
 			return functionScope;
 		}
@@ -471,8 +472,6 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					+ ((baseAddress == null) ? 0 : baseAddress.hashCode());
 			result = prime * result
 					+ ((executionDMC == null) ? 0 : executionDMC.hashCode());
-			result = prime * result
-					+ ((ipAddress == null) ? 0 : ipAddress.hashCode());
 			result = prime * result + level;
 			return result;
 		}
@@ -485,24 +484,23 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				return false;
 			if (getClass() != obj.getClass())
 				return false;
+
 			StackFrameDMC other = (StackFrameDMC) obj;
 			if (!getOuterType().equals(other.getOuterType()))
 				return false;
+
 			if (baseAddress == null) {
 				if (other.baseAddress != null)
 					return false;
 			} else if (!baseAddress.equals(other.baseAddress))
 				return false;
+
 			if (executionDMC == null) {
 				if (other.executionDMC != null)
 					return false;
 			} else if (!executionDMC.equals(other.executionDMC))
 				return false;
-			if (ipAddress == null) {
-				if (other.ipAddress != null)
-					return false;
-			} else if (!ipAddress.equals(other.ipAddress))
-				return false;
+
 			if (level != other.level)
 				return false;
 			return true;
@@ -575,6 +573,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 
 		public IVariableDMContext[] getLocals() {
+			return getLocals(/* boolean trustCache => */ true);
+		}
+
+		public IVariableDMContext[] getLocals(boolean trustCache) {
 			// may need to refresh the locals list because "Show All Variables"
 			// toggle has changed
 		    if (showAllVariablesEnabled == null) {
@@ -582,13 +584,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		    	showAllVariablesEnabled = scope.getBoolean(IEDCSymbols.SHOW_ALL_VARIABLES_ENABLED, false);
 		    }
 
-			Boolean enabled = showAllVariablesEnabled;
+			boolean enabled = showAllVariablesEnabled.booleanValue();
 			if (locals != null) {
 				IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
 				enabled = scope.getBoolean(IEDCSymbols.SHOW_ALL_VARIABLES_ENABLED, showAllVariablesEnabled);
 			}
 
-			if (locals == null || (locals != null && enabled != showAllVariablesEnabled)) {
+			if (locals == null || !trustCache || enabled != showAllVariablesEnabled) {
 				showAllVariablesEnabled = enabled;
 				locals = new ArrayList<VariableDMC>();
 				IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
@@ -956,7 +958,31 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getLocals(IFrameDMContext frameCtx, DataRequestMonitor<IVariableDMContext[]> rm) {
 		StackFrameDMC frameContext = (StackFrameDMC) frameCtx;
-		rm.setData(frameContext.getLocals());
+		IAddress contextIPAddress = frameContext.getIPAddress();
+
+		boolean trustLocalsCache = false;
+
+		// the frame context passed in may be "stale".  it may prove equal to the current frame,
+		// but if the instrPtrAddress is different, then the locals won't be collected properly
+		IFrameDMContext[] iFrames = getFramesForDMC(frameContext.getExecutionDMC(), 0, ALL_FRAMES);
+		for (IFrameDMContext iFrameDMC : iFrames) {
+			if (frameCtx == iFrameDMC) {
+				trustLocalsCache = true;
+				break;
+			}
+			if (frameContext.equals(iFrameDMC)) {
+				StackFrameDMC frameDMC = (StackFrameDMC)iFrameDMC;
+				IAddress stackFrameIPAddr = frameDMC.getIPAddress(); 
+				if (contextIPAddress.equals(stackFrameIPAddr)) {
+					trustLocalsCache = true;
+				} else {
+					frameContext.setIPAddrPtr(stackFrameIPAddr);
+				}
+				break;
+			}
+		}
+
+		rm.setData(frameContext.getLocals(trustLocalsCache));
 		rm.done();
 	}
 

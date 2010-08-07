@@ -576,6 +576,9 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return getLocals(/* boolean trustCache => */ true);
 		}
 
+		/**
+		 * @since 2.0
+		 */
 		public IVariableDMContext[] getLocals(boolean trustCache) {
 			// may need to refresh the locals list because "Show All Variables"
 			// toggle has changed

@@ -1793,10 +1793,10 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj", "k");
 		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x10970+2,
 				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj", "m");
-		// show all variables at end of function
+		// show all variables at end of function, but not variable of last for loop scope
 		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x10a2a,
-				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj", "m");
-		// but not past
+				"stackArray", "pstackArray", "value", "pheapArray", "objArray", "pobj");
+		// but not past, in case instruction stepping at end of function
 		addScopeVars("BlackFlag_gcce.sym", "dbg_pointers.cpp", "ptrToArray", null, 0x10a2a + 2);
 		
 		

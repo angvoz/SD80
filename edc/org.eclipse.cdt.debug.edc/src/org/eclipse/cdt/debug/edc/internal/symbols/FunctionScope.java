@@ -70,16 +70,13 @@ public class FunctionScope extends Scope implements IFunctionScope {
 		// don't #getScopeAtAddress() and go up the parent chain, but iterate them top-down.
 		
 		List<IVariable> scoped = new ArrayList<IVariable>();
-		
+
 		recurseGetScopedVariables(this, scoped, linkAddress);
 
 		return scoped;
 	}
 		
 	protected static void recurseGetScopedVariables(IScope scope, List<IVariable> scoped, IAddress linkAddress) {
-		if (!(scope.getLowAddress().compareTo(linkAddress) <= 0 && scope.getHighAddress().compareTo(linkAddress) >= 0))
-			return;
-		
 		long scopeOffset = linkAddress.add(scope.getLowAddress().getValue().negate()).getValue().longValue();
 
 		for (IVariable var : scope.getVariables()) {
@@ -88,16 +85,22 @@ public class FunctionScope extends Scope implements IFunctionScope {
 			}
 		}
 
-		if (scope instanceof IFunctionScope) {
+		boolean isFunctionScope = (scope instanceof IFunctionScope); 
+		if (isFunctionScope) {
 			for (IVariable var : ((FunctionScope) scope).getParameters()) {
 				if (scopeOffset >= var.getStartScope() && var.getLocationProvider().isLocationKnown(linkAddress)) {
 					scoped.add(var);
 				}
 			}
 		}
-		
+
 		for (IScope kid : scope.getChildren()) {
-			recurseGetScopedVariables(kid, scoped, linkAddress);
+			// notice this is > instead of >= like caller getScopedVariables() ...
+			// thus stepping out of scope to next instr won't result in scoped variables still being seen
+			if (kid.getLowAddress().compareTo(linkAddress) <= 0 && kid.getHighAddress().compareTo(linkAddress) > 0)
+				recurseGetScopedVariables(kid, scoped, linkAddress);
+			else if (isFunctionScope && linkAddress.compareTo(kid.getHighAddress()) == 0)
+				recurseGetScopedVariables(kid, scoped, kid.getHighAddress());
 		}
 	}
 

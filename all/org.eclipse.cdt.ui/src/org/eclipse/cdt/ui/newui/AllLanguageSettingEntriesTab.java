@@ -629,31 +629,26 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		if (ls != null) {
 			Arrays.sort(ls, CDTListComparator.getInstance());
 			for (ICLanguageSetting langSetting : ls) {
-				TreeItem t = new TreeItem(langTree, SWT.NONE);
 				String langId = langSetting.getLanguageId();
-				if (langId != null && !langId.equals(EMPTY_STR)) {
-					// Bug #178033: get language name via LangManager.
-					ILanguageDescriptor langDes = LanguageManager.getInstance().getLanguageDescriptor(
-							langId);
-					if (langDes == null)
-						langId = null;
-					else
-						langId = langDes.getName();
-				}
-				if (langId == null || langId.equals(EMPTY_STR))
-					langId = langSetting.getName();
+				if (langId==null || langId.length()==0)
+					continue;
+				
+				LanguageManager langManager = LanguageManager.getInstance();
+				ILanguageDescriptor langDes = langManager.getLanguageDescriptor(langId);
+				if (langDes == null)
+					continue;
+
+				langId = langDes.getName();
+				if (langId == null || langId.length()==0)
+					continue;
+				
+				TreeItem t = new TreeItem(langTree, SWT.NONE);
 				t.setText(0, langId);
 				t.setData(langSetting);
 				if (firstItem == null) {
 					firstItem = t;
 					lang = langSetting;
 				}
-				// FIXME temporary stub to make testing easier
-				if (langId != null && langId.startsWith("GNU C++")) {
-					firstItem = t;
-					lang = langSetting;
-				}
-
 			}
 
 			if (firstItem != null /*&& table != null*/) {

@@ -23,10 +23,12 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
 
-public class MBSLanguageSettingsProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsEditableProvider {
+//public class MBSLanguageSettingsProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsEditableProvider {
+public class MBSLanguageSettingsProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		

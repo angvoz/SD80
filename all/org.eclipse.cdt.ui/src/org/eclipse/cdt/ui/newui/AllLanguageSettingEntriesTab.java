@@ -31,8 +31,6 @@ import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.events.ControlEvent;
-import org.eclipse.swt.events.ControlListener;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.PaintEvent;
@@ -65,7 +63,6 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingPathEntry;
 import org.eclipse.cdt.core.settings.model.ICMultiFolderDescription;
-import org.eclipse.cdt.core.settings.model.ICMultiResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
@@ -73,7 +70,6 @@ import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
-import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
@@ -697,52 +693,6 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		}
 	}
 
-	private void changeIt(ICLanguageSettingEntry add, ICLanguageSettingEntry[] del) {
-//		List<ICLanguageSettingEntry> lsEntries = getSettingEntriesList(getKind());
-//		if (del != null) {
-//			for (ICLanguageSettingEntry d : del) {
-//				for (ICLanguageSettingEntry entry : lsEntries) {
-//					if (d.getName().equals(entry.getName())) {
-//						lsEntries.remove(entry);
-//						break;
-//					}
-//				}
-//			}
-//		}
-//		if (add != null)
-//			lsEntries.add(add);
-//		setSettingEntries(getKind(), lsEntries, toAllLang);
-	}
-
-	/**
-	 * Add and/or delete entries in the case of multi-configuration selection in the drop-down box.<br/>
-	 * Hint: {@code lang} keeps the selected language for each one of the selected configurations.
-	 * 
-	 * @param ent
-	 *            - entry to add
-	 * @param del
-	 *            - entry to delete
-	 */
-	private void performMulti(ICLanguageSettingEntry ent, ICLanguageSettingEntry del) {
-		MultiLanguageSetting ms = (MultiLanguageSetting) lang;
-		ICLanguageSetting[] langSettings = (ICLanguageSetting[]) ms.getItems();
-		ICLanguageSettingEntry[][] es = ms.getSettingEntriesM(getKind());
-		for (int i = 0; i < langSettings.length; i++) {
-			List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>(Arrays.asList(es[i]));
-			if (del != null) {
-				for (ICLanguageSettingEntry entry : entries) {
-					if (entry.getName().equals(del.getName())) {
-						entries.remove(entry);
-						break;
-					}
-				}
-			}
-			if (ent != null)
-				entries.add(ent);
-			langSettings[i].setSettingEntries(getKind(), entries);
-		}
-	}
-
 	private void performEdit(int n) {
 //		if (n == -1)
 //			return;
@@ -906,69 +856,6 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		}
 		table.setFocus();
 	}
-
-	/**
-	 * @return resolved ICLanguageSettingEntry
-	 */
-	private ICLanguageSettingEntry resolve(ICLanguageSettingEntry entry) {
-		ICLanguageSettingEntry[] entries = CDataUtil.resolveEntries(new ICLanguageSettingEntry[] { entry },
-				getResDesc().getConfiguration());
-		if (entries.length > 0)
-			return entries[0];
-		return entry;
-	}
-
-	private void deleteExportSetting(ICSettingEntry ent) {
-		// if (ent.isReadOnly() || ent.isBuiltIn()) continue;
-		ICConfigurationDescription cfg = getResDesc().getConfiguration();
-		ICExternalSetting[] extSettings = cfg.getExternalSettings();
-		if (!(extSettings == null || extSettings.length == 0)) {
-			for (ICExternalSetting extSetting : extSettings) {
-				ICSettingEntry[] entries = extSetting.getEntries(getKind());
-				if (entries == null || entries.length == 0)
-					continue;
-				for (int j = 0; j < entries.length; j++) {
-					if (entries[j].equalsByName(ent)) {
-						ICSettingEntry[] arr = new ICSettingEntry[entries.length - 1];
-						int index = 0;
-						for (int k = 0; k < entries.length; k++)
-							if (k != j)
-								arr[index++] = entries[k];
-						cfg.removeExternalSetting(extSetting);
-						cfg.createExternalSetting(extSetting.getCompatibleLanguageIds(),
-								extSetting.getCompatibleContentTypeIds(),
-								extSetting.getCompatibleExtensions(), arr);
-						return;
-					}
-				}
-			}
-		}
-	}
-
-//	/**
-//	 * Adds entry to all configurations
-//	 * 
-//	 * @param ent
-//	 *            - entry to add
-//	 */
-//	private void addToAll(ICLanguageSettingEntry ent) {
-//		ICResourceDescription curRcDes = page.getResDesc();
-//		String id = lang.getName(); // getLanguageId() sometimes returns null.
-//		for (ICConfigurationDescription cfgDes : page.getCfgsEditable()) {
-//			ICResourceDescription rcDes = page.getResDesc(cfgDes);
-//			if (rcDes == null)
-//				continue;
-//			if (!toAllCfgs && !(curRcDes.equals(rcDes)))
-//				continue;
-//			for (ICLanguageSetting l : getLangSetting(rcDes)) {
-//				if (toAllLang || id == l.getName() || (id != null && id.equals(l.getName()))) {
-//					List<ICLanguageSettingEntry> lst = l.getSettingEntriesList(getKind());
-//					lst.add(ent);
-//					l.setSettingEntries(getKind(), lst);
-//				}
-//			}
-//		}
-//	}
 
 	@Override
 	protected void performOK() {
@@ -1240,7 +1127,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	}
 	
 	// Extended label provider
-	private class LanguageSettingsContributorsLabelProvider extends LanguageSettingsContributorsBaseLabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider */ {
+	private class LanguageSettingsContributorsLabelProvider extends LanguageSettingsContributorsBaseLabelProvider {
 		@Override
 		protected String getOverlayKey(Object element, int columnIndex) {
 			String overlayKey = null;
@@ -1314,24 +1201,6 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				return true;
 		}
 		return false;
-	}
-
-	private void setSettingEntries(int kind, List<ICLanguageSettingEntry> incs, boolean toAll) {
-		if (page.isMultiCfg()) {
-			((ICMultiResourceDescription) getResDesc()).setSettingEntries(lang, kind, incs, toAll);
-		} else
-			lang.setSettingEntries(kind, incs);
-	}
-
-	private List<ICLanguageSettingEntry> getSettingEntriesList(int kind) {
-		if (page.isMultiCfg() && lang instanceof MultiLanguageSetting) {
-			ICLanguageSettingEntry[][] lses = ((MultiLanguageSetting) lang).getSettingEntriesM(kind);
-			Object[] res = CDTPrefUtil.getListForDisplay(lses, comp);
-			ICLanguageSettingEntry[] out = new ICLanguageSettingEntry[res.length];
-			System.arraycopy(res, 0, out, 0, res.length);
-			return Arrays.asList(out);
-		}
-		return lang.getSettingEntriesList(kind);
 	}
 
 	private ICLanguageSetting[] conv2LS(Object[] ob) {

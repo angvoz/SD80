@@ -1,15 +1,14 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Intel Corporation and others.
+ * Copyright (c) 2010 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Intel Corporation - initial API and implementation
- *     IBM Corporation
- *     Markus Schorn (Wind River Systems)
+ *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
+
 package org.eclipse.cdt.ui.newui;
 
 import java.util.ArrayList;
@@ -1257,7 +1256,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 //	}
 
 	public ICLanguageSettingEntry doAdd() {
-		IncludeDialog dlg = new IncludeDialog(usercomp.getShell(), IncludeDialog.NEW_DIR,
+		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), LanguageSettingEntryDialog.NEW_DIR,
 				Messages.IncludeTab_1, EMPTY_STR, getResDesc().getConfiguration(), 0);
 		if (dlg.open() && dlg.text1.trim().length() > 0) {
 			boolean toAllCfgs = dlg.check1;
@@ -1272,7 +1271,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	}
 
 	public ICLanguageSettingEntry doEdit(ICLanguageSettingEntry ent) {
-		IncludeDialog dlg = new IncludeDialog(usercomp.getShell(), IncludeDialog.OLD_DIR,
+		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), LanguageSettingEntryDialog.OLD_DIR,
 				Messages.IncludeTab_2, ent.getValue(), getResDesc().getConfiguration(),
 				(ent.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH));
 		if (dlg.open()) {

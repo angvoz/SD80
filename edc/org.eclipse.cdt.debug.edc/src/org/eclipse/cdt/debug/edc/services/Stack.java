@@ -573,13 +573,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 
 		public IVariableDMContext[] getLocals() {
-			return getLocals(/* boolean trustCache => */ true);
+			return getLocals(/* boolean useCachedVariables => */ true);
 		}
 
-		/**
-		 * @since 2.0
-		 */
-		public IVariableDMContext[] getLocals(boolean trustCache) {
+		private IVariableDMContext[] getLocals(boolean useCachedVariables) {
 			// may need to refresh the locals list because "Show All Variables"
 			// toggle has changed
 		    if (showAllVariablesEnabled == null) {
@@ -593,7 +590,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				enabled = scope.getBoolean(IEDCSymbols.SHOW_ALL_VARIABLES_ENABLED, showAllVariablesEnabled);
 			}
 
-			if (locals == null || !trustCache || enabled != showAllVariablesEnabled) {
+			if (locals == null || !useCachedVariables || enabled != showAllVariablesEnabled) {
 				showAllVariablesEnabled = enabled;
 				locals = new ArrayList<VariableDMC>();
 				IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);

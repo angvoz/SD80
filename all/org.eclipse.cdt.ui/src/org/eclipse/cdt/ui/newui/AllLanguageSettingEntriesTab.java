@@ -352,9 +352,11 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	 * @return
 	 */
 	int getExactIndex(List<ICLanguageSettingEntry> entries, ICLanguageSettingEntry entry) {
-		for (int i=0;i<entries.size();i++) {
-			if (entries.get(i)==entry)
-				return i;
+		if (entries!=null) {
+			for (int i=0;i<entries.size();i++) {
+				if (entries.get(i)==entry)
+					return i;
+			}
 		}
 		return -1;
 	}
@@ -371,12 +373,12 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		
 		boolean canAdd = isProviderEditable;
 		boolean canDelete = isProviderEditable && isEntrySelected;
-		boolean canReset = isProviderEditable && isProviderSelected
+		boolean canClear = isProviderEditable && isProviderSelected
 			&& !LanguageSettingsManager.isWorkspaceProvider(provider)
 			&& getSettingEntries(provider)!=null;
 		
 		if (isProviderSelected) {
-			buttonSetText(BUTTON_DELETE, "Reset");
+			buttonSetText(BUTTON_DELETE, "Clear");
 		} else {
 			buttonSetText(BUTTON_DELETE, DEL_STR);
 		}
@@ -395,7 +397,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 		buttonSetEnabled(BUTTON_ADD, canAdd);
 		buttonSetEnabled(BUTTON_EDIT, false);
-		buttonSetEnabled(BUTTON_DELETE, canDelete || canReset);
+		buttonSetEnabled(BUTTON_DELETE, canDelete || canClear);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
 		
@@ -489,7 +491,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	}
 
 	private Tree addTree2(Composite comp) {
-		final Tree tree2 = new Tree(comp, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
+		final Tree tree2 = new Tree(comp, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL /*| SWT.FULL_SELECTION*/);
 		tree2.setLayoutData(new GridData(GridData.FILL_VERTICAL));
 		tree2.setHeaderVisible(true);
 		

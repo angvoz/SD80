@@ -211,7 +211,7 @@ public class ARMStack extends Stack {
 			properties.put(IEDCDMContext.PROP_ID, context.getID() + "." + Integer.toString(frameCount));
 			properties.put(StackFrameDMC.LEVEL_INDEX, frameCount);
 			properties.put(StackFrameDMC.BASE_ADDR, baseAddress);
-			properties.put(StackFrameDMC.IP_ADDR, pcValue.getValue().longValue());
+			properties.put(StackFrameDMC.INSTRUCTION_PTR_ADDR, pcValue.getValue().longValue());
 			properties.put(StackFrameDMC.MODULE_NAME, moduleName);
 			frames.add(properties);
 

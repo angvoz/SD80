@@ -1257,7 +1257,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	public ICLanguageSettingEntry doAdd() {
 		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), LanguageSettingEntryDialog.NEW_DIR,
-				Messages.IncludeTab_1, EMPTY_STR, getResDesc().getConfiguration(), 0);
+				"Add Language Setting Entry", EMPTY_STR, getResDesc().getConfiguration(), 0);
 		if (dlg.open() && dlg.text1.trim().length() > 0) {
 			boolean toAllCfgs = dlg.check1;
 			boolean toAllLang = dlg.check3;

@@ -16,21 +16,29 @@ import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
+import org.eclipse.ui.ISharedImages;
+import org.eclipse.ui.PlatformUI;
 
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.ui.CDTUIImages;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
+import org.eclipse.cdt.internal.ui.ImageCombo;
 import org.eclipse.cdt.internal.ui.newui.Messages;
 
 /**
@@ -50,6 +58,8 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	private Button c_wsp;
 	private ICConfigurationDescription cfgd;
 	private boolean isWsp = false;
+	private ImageCombo comboEntryKind;
+	private Label comboEntryLabel;
 	
 	static final int NEW_FILE = 0;
 	static final int NEW_DIR  = 1;
@@ -74,6 +84,79 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		c.setLayout(new GridLayout(2, false));
 		GridData gd;
 		
+		Composite ccc = new Composite (c, SWT.NONE); 
+		gd = new GridData(GridData.FILL_HORIZONTAL);
+		gd.verticalAlignment = SWT.TOP;
+		ccc.setLayoutData(gd);
+		ccc.setLayout(new GridLayout(2, false));
+		comboEntryLabel = new Label (ccc, SWT.NONE);
+		comboEntryLabel.setText("Select Kind:");
+		comboEntryLabel.setImage(CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER));
+
+		comboEntryKind = new ImageCombo (ccc, SWT.DROP_DOWN | SWT.READ_ONLY | SWT.BORDER);
+		final String [] comboItems = {
+				"Include Directory",
+				"Predefined Preprocessor Macro",
+				"Include File",
+				"Preprocessor Macros File",
+				"Library Path",
+				"Library",
+		};
+		final Image[] comboImages = {
+				CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER),
+				CPluginImages.get(CPluginImages.IMG_OBJS_MACRO),
+				CPluginImages.get(CPluginImages.IMG_OBJS_TUNIT_HEADER),
+				CPluginImages.get(CPluginImages.IMG_OBJS_MACROS_FILE),
+				CPluginImages.get(CPluginImages.IMG_OBJS_LIBRARY_FOLDER),
+				CPluginImages.get(CPluginImages.IMG_OBJS_LIBRARY),
+		};
+		
+		for (int i = 0; i < comboItems.length; i++) {
+			comboEntryKind.add(comboItems[i], comboImages[i]);
+		}
+		comboEntryKind.setText(comboItems[0]);
+		
+		comboEntryKind.addSelectionListener(new SelectionListener() {
+			
+			public void widgetSelected(SelectionEvent e) {
+				int index = comboEntryKind.getSelectionIndex();
+				comboEntryLabel.setImage(comboImages[index]);
+			}
+			
+			public void widgetDefaultSelected(SelectionEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
+		
+		
+////		ToolBar toolBar = new ToolBar(c, SWT.HORIZONTAL | SWT.RIGHT | SWT.FLAT);
+//		ToolBar toolBar = new ToolBar(c, SWT.NONE);
+//		// add toolbar items
+//		{
+//			ToolItem includeItem = new ToolItem(toolBar, SWT.RADIO);
+////			includeItem.setDisabledImage(images.getImage(ISharedImages.IMG_ELCL_SYNCED_DISABLED));
+//			
+//			includeItem.setImage(CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER));
+//			includeItem.setToolTipText("Include Directory");
+//	//		addItem.addSelectionListener(getSelectionListener());
+//		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		Label l1 = new Label(c, SWT.NONE);
 		if ((mode & DIR_MASK) == DIR_MASK)
 			l1.setText(Messages.IncludeDialog_0); 
@@ -93,6 +176,8 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			public void modifyText(ModifyEvent e) {
 				setButtons();
 			}});
+		
+		text.setFocus();
 		
 // Checkboxes
 		Composite c1 = new Composite (c, SWT.NONE); 

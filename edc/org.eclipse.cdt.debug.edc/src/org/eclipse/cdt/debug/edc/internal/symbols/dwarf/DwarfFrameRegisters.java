@@ -82,7 +82,7 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 				IVariableLocation loc = getRegisterLocation(regnum);
 				if (loc == null)
 					throw EDCDebugger.newCoreException(MessageFormat.format(DwarfMessages.DwarfFrameRegisters_CannotReadRegister,
-							regnum, context.getIPAddress().toHexAddressString()));
+							regnum, context.getInstructionPtrAddress().toHexAddressString()));
 				value = loc.readValue(bytes);
 				cachedRegisters.put(regnum, value);
 			} catch (CoreException e) {
@@ -155,8 +155,8 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 		TreeMap<Entry, List<AbstractInstruction>> fdeInstrs = fde.getInstructions(provider); 
 		
 		Modules modules = tracker.getService(Modules.class);
-		ModuleDMC module = modules.getModuleByAddress(DMContexts.getAncestorOfType(context, ISymbolDMContext.class), context.getIPAddress());
-		long currentPC = module.toLinkAddress(context.getIPAddress()).getValue().longValue();
+		ModuleDMC module = modules.getModuleByAddress(DMContexts.getAncestorOfType(context, ISymbolDMContext.class), context.getInstructionPtrAddress());
+		long currentPC = module.toLinkAddress(context.getInstructionPtrAddress()).getValue().longValue();
 		
 		for (Map.Entry<Entry, List<AbstractInstruction>> instrEntry : fdeInstrs.entrySet()) {
 			Entry entry = instrEntry.getKey();
@@ -182,7 +182,7 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 			IVariableLocation loc = getRegisterLocation(regnum);
 			if (loc == null)
 				throw EDCDebugger.newCoreException(MessageFormat.format(DwarfMessages.DwarfFrameRegisters_CannotWriteRegister,
-						regnum, context.getIPAddress().toHexAddressString()));
+						regnum, context.getInstructionPtrAddress().toHexAddressString()));
 			loc.writeValue(bytes, value);
 			cachedRegisters.put(regnum, value);
 		} catch (CoreException e) {

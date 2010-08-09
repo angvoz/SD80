@@ -928,7 +928,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		
 		Modules modules = tracker.getService(Modules.class);
 		FrameDescriptionEntry currentFrameEntry = provider.findFrameDescriptionEntry(getLinkAddress(
-				exeDMC, modules, childFrame.getIPAddress()));
+				exeDMC, modules, childFrame.getInstructionPtrAddress()));
 		if (currentFrameEntry == null) 
 			return null;
 		

@@ -152,7 +152,7 @@ public class X86Stack extends Stack {
 				properties.put(IEDCDMContext.PROP_ID, Integer.toString(nextStackFrameID++));
 				properties.put(StackFrameDMC.LEVEL_INDEX, level);
 				properties.put(StackFrameDMC.BASE_ADDR, Long.valueOf(baseAddress));
-				properties.put(StackFrameDMC.IP_ADDR, Long.valueOf(instructionAddress));
+				properties.put(StackFrameDMC.INSTRUCTION_PTR_ADDR, Long.valueOf(instructionAddress));
 				if (module != null) properties.put(StackFrameDMC.MODULE_NAME, module.getName());
 				if (level == 0) properties.put(StackFrameDMC.IN_PROLOGUE, !isFramePushed);
 				properties.put(StackFrameDMC.PRESERVED_REGISTERS, preserved.getPreservedRegisters());

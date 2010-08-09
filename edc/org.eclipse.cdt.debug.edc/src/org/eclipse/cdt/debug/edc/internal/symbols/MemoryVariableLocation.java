@@ -118,7 +118,7 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 			if (frame == null) 
 				throw EDCDebugger.newCoreException(SymbolsMessages.MemoryVariableLocation_CannotFindFrame);
 			Modules modules = tracker.getService(Modules.class);
-			IAddress pcValue = frame.getIPAddress();
+			IAddress pcValue = frame.getInstructionPtrAddress();
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ModuleDMC module = modules.getModuleByAddress(symContext, pcValue);
 			theAddress = module.toRuntimeAddress(theAddress);

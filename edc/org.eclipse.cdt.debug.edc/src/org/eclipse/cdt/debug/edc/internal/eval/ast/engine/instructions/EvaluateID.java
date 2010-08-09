@@ -96,7 +96,7 @@ public class EvaluateID extends SimpleInstruction {
 			IVariableLocation valueLocation = null;
 			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getVariable().getLocationProvider();
-			IAddress pcValue = frame.getIPAddress();
+			IAddress pcValue = frame.getInstructionPtrAddress();
 			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
 			if (module != null && provider != null) {
 				valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));

@@ -1452,7 +1452,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		if (handleSteppingOutOfInLineFunctions(dmc, frames, rm))
 			return;
 
-		final IAddress stepToAddress = ((StackFrameDMC) frames[1]).getIPAddress();
+		final IAddress stepToAddress = ((StackFrameDMC) frames[1]).getInstructionPtrAddress();
 		
 		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 
@@ -1529,16 +1529,16 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		StackFrameDMC currentFrame = ((StackFrameDMC) frames[0]);
 		IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
 		IFunctionScope functionScope = symbolsService
-		.getFunctionAtAddress(dmc.getSymbolDMContext(), currentFrame.getIPAddress());
+		.getFunctionAtAddress(dmc.getSymbolDMContext(), currentFrame.getInstructionPtrAddress());
 		
 		if (functionScope != null)
 		{
 			IScope parentScope = functionScope.getParent();		
 			if (parentScope instanceof IFunctionScope && currentFrame.getModule() != null)
 			{
-				if (!currentFrame.getModule().toRuntimeAddress(functionScope.getLowAddress()).equals(currentFrame.getIPAddress()))
+				if (!currentFrame.getModule().toRuntimeAddress(functionScope.getLowAddress()).equals(currentFrame.getInstructionPtrAddress()))
 				{
-					stepAddressRange(dmc, false, currentFrame.getIPAddress(), 
+					stepAddressRange(dmc, false, currentFrame.getInstructionPtrAddress(), 
 									 currentFrame.getModule().toRuntimeAddress(functionScope.getHighAddress()),
 									 new RequestMonitor(getExecutor(), rm){
 

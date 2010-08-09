@@ -99,7 +99,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 		StackFrameData(StackFrameDMC dmc) {
 			level = dmc.getLevel();
-			address = dmc.getIPAddress();
+			address = dmc.getInstructionPtrAddress();
 			module = dmc.getModuleName();
 			file = dmc.getSourceFile(); // "" instead of null if no file.
 			lineNumber = dmc.getLineNumber();
@@ -246,7 +246,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		 */
 		public static final String ROOT_FRAME = "root_frame";
 		public static final String BASE_ADDR = "Base_address";
-		public static final String IP_ADDR = "Instruction_address";
+		/**
+		 * @since 2.0 - previously "IP_ADDR"
+		 */
+		public static final String INSTRUCTION_PTR_ADDR = "Instruction_address";
 		public static final String MODULE_NAME = "module_name";
 		public static final String SOURCE_FILE = "source_file";
 		public static final String FUNCTION_NAME = "function_name";
@@ -269,7 +272,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private final IEDCExecutionDMC executionDMC;
 		private final int level;
 		private IAddress baseAddress;
-		private IAddress ipAddress;
+		private IAddress instructionPtrAddress;
 
 		private String moduleName = "";
 		private String sourceFile = "";
@@ -296,13 +299,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			this.level = (Integer) frameProperties.get(LEVEL_INDEX);
 			this.moduleName = (String) frameProperties.get(MODULE_NAME);
 			this.baseAddress = address(frameProperties.get(BASE_ADDR));
-			this.ipAddress = address(frameProperties.get(IP_ADDR));
+			this.instructionPtrAddress = address(frameProperties.get(INSTRUCTION_PTR_ADDR));
 
 			boolean usingCachedProperties = false;
 			IEDCModules modules = dsfServicesTracker.getService(IEDCModules.class);
 			Map<IAddress, Map<String, Object>> cachedFrameProperties = new HashMap<IAddress, Map<String, Object>>();
 			if (modules != null) {
-				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 				if (module != null) {
 					IEDCSymbolReader reader = module.getSymbolReader();
 					if (reader != null)
@@ -316,7 +319,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 							if (cachedData != null)
 							{
 								cachedFrameProperties = cachedData;
-								Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(ipAddress));
+								Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(instructionPtrAddress));
 								if (cachedProperties != null)
 								{
 									if (cachedProperties.containsKey(SOURCE_FILE))
@@ -343,7 +346,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					// compute the source location
 					IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
 					
-					ILineEntry line = symbolsService.getLineEntryForAddress(executionDMC.getSymbolDMContext(), ipAddress);
+					ILineEntry line = symbolsService.getLineEntryForAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 					if (line != null) {
 						sourceFile = line.getFilePath().toOSString();
 						frameProperties.put(SOURCE_FILE, sourceFile);
@@ -352,7 +355,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					}
 
 					functionScope = symbolsService
-							.getFunctionAtAddress(executionDMC.getSymbolDMContext(), ipAddress);
+							.getFunctionAtAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 					if (functionScope != null) {
 						// ignore inlined functions
 						while (functionScope.getParent() instanceof IFunctionScope) {
@@ -368,7 +371,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			// get the type engine
 			IDebugInfoProvider debugInfoProvider = null;
 			if (modules != null) {
-				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 				if (module != null) {
 					IEDCSymbolReader symbolReader = module.getSymbolReader();
 					if (symbolReader != null)
@@ -379,7 +382,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						if (symbolReader.getSymbolFile() != null)
 						{
 							String cacheKey = symbolReader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
-							cachedFrameProperties.put(module.toLinkAddress(ipAddress), frameProperties);
+							cachedFrameProperties.put(module.toLinkAddress(instructionPtrAddress), frameProperties);
 							EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedFrameProperties, symbolReader.getModificationDate());				
 						}
 					}
@@ -398,8 +401,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return null;
 		}
 
-		private void setIPAddrPtr(IAddress ipAddrPtr) {
-			this.ipAddress = ipAddrPtr;
+		private void setInstructionPtrAddress(IAddress ipAddrPtr) {
+			this.instructionPtrAddress = ipAddrPtr;
 		}
 
 		public IFunctionScope getFunctionScope() {
@@ -434,8 +437,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return baseAddress;
 		}
 
-		public IAddress getIPAddress() {
-			return ipAddress;
+		/**
+		 * @since 2.0
+		 */
+		public IAddress getInstructionPtrAddress() {
+			return instructionPtrAddress;
 		}
 
 		public int getLevel() {
@@ -458,7 +464,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		@Override
 		public String toString() {
 			return "StackFrameDMC [baseAddress=" + baseAddress.toHexAddressString() + ", ipAddress="
-					+ ipAddress.toHexAddressString() + ", sourceFile=" + sourceFile
+					+ instructionPtrAddress.toHexAddressString() + ", sourceFile=" + sourceFile
 					+ ", functionName=" + functionName + ", lineNumber="
 					+ lineNumber + "]";
 		}
@@ -595,18 +601,18 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				locals = new ArrayList<VariableDMC>();
 				IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
 				IFunctionScope scope = symbolsService
-						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), ipAddress);
+						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 				if (scope != null) {
 					this.variableScope = scope;
 				}
 				
 				// TODO: we fetch ModuleDMC a whole lot; it could be saved in a StackFrameDMC
 				IEDCModules modulesService = getServicesTracker().getService(Modules.class);
-				IEDCModuleDMContext module = modulesService.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+				IEDCModuleDMContext module = modulesService.getModuleByAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 				
 				IAddress linkAddress = null;
 				if (module != null) {
-					linkAddress = module.toLinkAddress(ipAddress);
+					linkAddress = module.toLinkAddress(instructionPtrAddress);
 				}
 
 				while (scope != null) {
@@ -755,7 +761,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
 					if (executionDMC != null && symbolsService != null) {
 						IFunctionScope scope = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
-								ipAddress);
+								instructionPtrAddress);
 						while (scope != null) {
 							Collection<IEnumerator> localEnumerators = scope.getEnumerators();
 							for (IEnumerator enumerator : localEnumerators) {
@@ -795,11 +801,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				} else {
 					// see if symbolics can provide unwinding support
 					Modules modulesService = getServicesTracker().getService(Modules.class);
-					ModuleDMC module = modulesService.getModuleByAddress(executionDMC.getSymbolDMContext(), ipAddress);
+					ModuleDMC module = modulesService.getModuleByAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 					if (module != null) {
 						Symbols symbolsService = getServicesTracker().getService(Symbols.class);
 						IFrameRegisterProvider frameRegisterProvider = symbolsService.getFrameRegisterProvider(
-								executionDMC.getSymbolDMContext(), ipAddress);
+								executionDMC.getSymbolDMContext(), instructionPtrAddress);
 						if (frameRegisterProvider != null) {
 							try {
 								frameRegisters = frameRegisterProvider.getFrameRegisters(
@@ -958,12 +964,12 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	public void getLocals(IFrameDMContext frameCtx, DataRequestMonitor<IVariableDMContext[]> rm) {
 		StackFrameDMC frameContext = (StackFrameDMC) frameCtx;
-		IAddress contextIPAddress = frameContext.getIPAddress();
+		IAddress contextIPAddress = frameContext.getInstructionPtrAddress();
 
 		boolean useVariableCache = false;
 
 		// the frame context passed in may be "stale".  it may prove equal to the current frame,
-		// but if the instrPtrAddress is different, then the locals won't be collected properly
+		// but if the instruction ptr address is different, then the locals won't be collected properly
 		IFrameDMContext[] iFrames = getFramesForDMC(frameContext.getExecutionDMC(), 0, ALL_FRAMES);
 		for (IFrameDMContext iFrameDMC : iFrames) {
 			if (frameCtx == iFrameDMC) {
@@ -972,11 +978,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			}
 			if (frameContext.equals(iFrameDMC)) {
 				StackFrameDMC frameDMC = (StackFrameDMC)iFrameDMC;
-				IAddress stackFrameIPAddr = frameDMC.getIPAddress(); 
+				IAddress stackFrameIPAddr = frameDMC.getInstructionPtrAddress(); 
 				if (contextIPAddress.equals(stackFrameIPAddr)) {
 					useVariableCache = true;
 				} else {
-					frameContext.setIPAddrPtr(stackFrameIPAddr);
+					frameContext.setInstructionPtrAddress(stackFrameIPAddr);
 				}
 				break;
 			}

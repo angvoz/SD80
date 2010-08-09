@@ -265,8 +265,8 @@ public class Snapshot extends PlatformObject {
 			name.append(stackFrame.getLineNumber());
 		} else if (stackFrame.getModuleName() != null && stackFrame.getModuleName().length() != 0) {
 			name.append(stackFrame.getModuleName());
-		} else if (stackFrame.getIPAddress() != null) {
-			name.append(stackFrame.getIPAddress().toHexAddressString());
+		} else if (stackFrame.getInstructionPtrAddress() != null) {
+			name.append(stackFrame.getInstructionPtrAddress().toHexAddressString());
 		}
 
 		return name.toString();	

@@ -89,7 +89,7 @@ public class VariableWithValue extends OperandValue {
 				valueLocation = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_CannotLocateVariable);
 				return valueLocation;
 			}
-			IAddress pcValue = frame.getIPAddress();
+			IAddress pcValue = frame.getInstructionPtrAddress();
 			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
 			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
 			if (valueLocation == null) {

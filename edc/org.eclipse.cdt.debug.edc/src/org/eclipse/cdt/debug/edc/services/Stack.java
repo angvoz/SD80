@@ -960,21 +960,21 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		StackFrameDMC frameContext = (StackFrameDMC) frameCtx;
 		IAddress contextIPAddress = frameContext.getIPAddress();
 
-		boolean trustLocalsCache = false;
+		boolean useVariableCache = false;
 
 		// the frame context passed in may be "stale".  it may prove equal to the current frame,
 		// but if the instrPtrAddress is different, then the locals won't be collected properly
 		IFrameDMContext[] iFrames = getFramesForDMC(frameContext.getExecutionDMC(), 0, ALL_FRAMES);
 		for (IFrameDMContext iFrameDMC : iFrames) {
 			if (frameCtx == iFrameDMC) {
-				trustLocalsCache = true;
+				useVariableCache = true;
 				break;
 			}
 			if (frameContext.equals(iFrameDMC)) {
 				StackFrameDMC frameDMC = (StackFrameDMC)iFrameDMC;
 				IAddress stackFrameIPAddr = frameDMC.getIPAddress(); 
 				if (contextIPAddress.equals(stackFrameIPAddr)) {
-					trustLocalsCache = true;
+					useVariableCache = true;
 				} else {
 					frameContext.setIPAddrPtr(stackFrameIPAddr);
 				}
@@ -982,7 +982,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			}
 		}
 
-		rm.setData(frameContext.getLocals(trustLocalsCache));
+		rm.setData(frameContext.getLocals(useVariableCache));
 		rm.done();
 	}
 

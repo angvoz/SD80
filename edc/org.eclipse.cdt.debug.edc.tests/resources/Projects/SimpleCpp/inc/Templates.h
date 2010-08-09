@@ -11,7 +11,7 @@
 template <class T>
 class List {
 public:
-	List() : m_data(0), m_length(0) 
+	List() : m_data(0), m_length(0), m_max(0)
 	{
 	}
 	int length() {

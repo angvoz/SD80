@@ -115,6 +115,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			PROP_MESSAGE = "Message", 
 			PROP_SUSPEND_PC = "SuspendPC";
 
+	/*
+	 * See where this is used for more.
+	 */
+	private static final int RESUME_NOTIFICATION_DELAY = 1000;	// milliseconds
+	
 	// Whether module is being loaded (if true) or unloaded (if false)
 
 	public static class SuspendedEvent extends AbstractDMEvent<IExecutionDMContext> implements ISuspendedDMEvent {
@@ -509,7 +514,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							getExecutor().execute(new Runnable() {
 								public void run() {
 									if (error == null) {
-										contextResumed(false);
+										contextResumed(true);
 
 										EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
 												"Resume command succeeded.");
@@ -730,7 +735,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					 * Notify platform the context is running.
 					 * 
 					 * But don't do that if another such task is scheduled
-					 * (namely current stepping is done within the 2 seconds and
+					 * (namely current stepping is done within the RESUME_NOTIFICATION_DELAY and
 					 * another stepping/resume is underway).
 					 */
 					countOfScheduledNotifications--;
@@ -738,7 +743,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						getSession().dispatchEvent(new ResumedEvent(dmc), RunControl.this.getProperties());
 				}};
 			
-			getExecutor().schedule(notifyPlatformTask, 2000, TimeUnit.MILLISECONDS);
+			getExecutor().schedule(notifyPlatformTask, RESUME_NOTIFICATION_DELAY, TimeUnit.MILLISECONDS);
 		}
 
 		/**

@@ -1228,22 +1228,15 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		final ExecutionDMC dmc = (ExecutionDMC) context;
 
-		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
-		if (bpService.usesTCFBreakpointService()) {
-			dmc.resume(rm);
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
-					MessageFormat.format("resume() done on context {0}", dmc));
-		} else {
-			prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
+		prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
 
-				@Override
-				protected void handleSuccess() {
-					dmc.resume(rm);
-					EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
-							MessageFormat.format("resume() done on context {0}", dmc));
-				}
-			});
-		}
+			@Override
+			protected void handleSuccess() {
+				dmc.resume(rm);
+				EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
+						MessageFormat.format("resume() done on context {0}", dmc));
+			}
+		});
 	}
 
 	/**
@@ -1261,10 +1254,18 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		// If there is breakpoint at current PC, remove it => Single step =>
 		// Restore it.
 
+		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+		if (bpService.usesTCFBreakpointService()) {
+			// no need to do anything since the breakpoints service is expected to handle
+			// stepping past breakpoints since it's the one that sets them
+			drm.setData(false);
+			drm.done();
+			return;
+		}
+
 		String latestPC = dmc.getPC();
 
 		if (latestPC != null) {
-			final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 			final BreakpointDMData bp = bpService.findUserBreakpoint(new Addr64(latestPC, 16));
 			if (bp != null) {
 				bpService.disableBreakpoint(bp, new RequestMonitor(getExecutor(), drm) {
@@ -1961,9 +1962,6 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 */
 	private void stepIntoOneInstruction(final ExecutionDMC dmc, final RequestMonitor rm) {
 
-		// TODO what about protocols that supports stepping past breakpoints
-		// like TRK?
-
 		prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
 			@Override
 			protected void handleSuccess() {
@@ -2037,7 +2035,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 * NOTE: 
 	 * Methods in this listener are invoked in TCF dispatch thread.
 	 * When they call into DSF services/objects, make sure it's done in 
-	 * DSF executor thread so as to avoid possible race condition.
+	 * DSF executor thread so as to avoid possible racing condition.
 	 */
 	private final org.eclipse.tm.tcf.services.IRunControl.RunControlListener runListener = new org.eclipse.tm.tcf.services.IRunControl.RunControlListener() {
 

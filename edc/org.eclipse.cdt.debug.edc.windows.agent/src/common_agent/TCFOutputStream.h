@@ -70,7 +70,6 @@ public:
 	{
     	writeReplyHeader(token);
     	writeErrorReply(error, addNullObjects, message, serviceName);
-    	writeComplete();
 	}
 	
 	void writeBinaryData(char* buffer, int bufferSize);

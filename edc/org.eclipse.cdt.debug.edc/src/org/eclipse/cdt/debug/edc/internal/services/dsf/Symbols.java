@@ -92,6 +92,23 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 	}
 
 	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCSymbols#getFunctionAtAddress(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress)
+	 */
+	public String getSymbolNameAtAddress(ISymbolDMContext context, IAddress runtimeAddress) {
+		IEDCModules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, runtimeAddress);
+		if (module != null) {
+			IEDCSymbolReader reader = module.getSymbolReader();
+			if (reader != null) {
+				ISymbol symbol = reader.getSymbolAtAddress(module.toLinkAddress(runtimeAddress));
+				if (symbol != null)
+					return symbol.getName();
+			}
+		}
+		return null;
+	}
+
+	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCSymbols#getLineEntryForAddress(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress)
 	 */
 	public ILineEntry getLineEntryForAddress(ISymbolDMContext context, IAddress runtimeAddress) {

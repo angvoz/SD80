@@ -324,8 +324,27 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 								{
 									if (cachedProperties.containsKey(SOURCE_FILE))
 										frameProperties.put(SOURCE_FILE, cachedProperties.get(SOURCE_FILE));
-									if (cachedProperties.containsKey(FUNCTION_NAME))
-										frameProperties.put(FUNCTION_NAME, cachedProperties.get(FUNCTION_NAME));
+
+									boolean cachedPropertiesHasFunctionName = false;
+ 									if (cachedProperties.containsKey(FUNCTION_NAME))
+									{
+										Object fnObj = cachedProperties.get(FUNCTION_NAME);
+										if (fnObj != null 
+											&& fnObj instanceof String
+											&& !((String)fnObj).isEmpty())
+										{
+											frameProperties.put(FUNCTION_NAME, fnObj);
+											cachedPropertiesHasFunctionName = true;
+										}
+									}
+
+									if (!cachedPropertiesHasFunctionName)
+									{
+										setFunctionName(executionDMC, frameProperties,
+														getServicesTracker().getService(Symbols.class));
+										cachedProperties.put(FUNCTION_NAME, functionName);
+									}
+
 									if (cachedProperties.containsKey(LINE_NUMBER))
 										frameProperties.put(LINE_NUMBER, cachedProperties.get(LINE_NUMBER));
 									usingCachedProperties = true;
@@ -340,6 +359,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				this.sourceFile = (String) frameProperties.get(SOURCE_FILE);
 				this.functionName = (String) frameProperties.get(FUNCTION_NAME);
 				this.lineNumber = (Integer) frameProperties.get(LINE_NUMBER);
+			} else if (frameProperties.containsKey(FUNCTION_NAME)) {
+				this.functionName = (String) frameProperties.get(FUNCTION_NAME);
 			} else {
 				if (!usingCachedProperties)
 				{
@@ -354,16 +375,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						frameProperties.put(LINE_NUMBER, lineNumber);
 					}
 
-					functionScope = symbolsService
-							.getFunctionAtAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
-					if (functionScope != null) {
-						// ignore inlined functions
-						while (functionScope.getParent() instanceof IFunctionScope) {
-							functionScope = (IFunctionScope) functionScope.getParent();
-						}
-						functionName = functionScope.getName();
-						frameProperties.put(FUNCTION_NAME, functionName);
-					}
+					setFunctionName(executionDMC, frameProperties, symbolsService);
 				}
 			}
 			properties.putAll(frameProperties);
@@ -389,6 +401,28 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				}
 			}
 			typeEngine = new TypeEngine(dsfServicesTracker, debugInfoProvider);
+		}
+
+		private void setFunctionName(final IEDCExecutionDMC executionDMC,
+				Map<String, Object> frameProperties, IEDCSymbols symbolsService) {
+			functionScope
+			  = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
+					  								instructionPtrAddress);
+			if (functionScope != null) {
+				// ignore inlined functions
+				while (functionScope.getParent() instanceof IFunctionScope) {
+					functionScope = (IFunctionScope) functionScope.getParent();
+				}
+				functionName = functionScope.getName();
+			}
+			else
+			{
+				functionName
+				  = symbolsService.getSymbolNameAtAddress(executionDMC.getSymbolDMContext(),
+						  								  instructionPtrAddress);
+			}
+			
+			frameProperties.put(FUNCTION_NAME, functionName);
 		}
 
 		private IAddress address(Object obj) {

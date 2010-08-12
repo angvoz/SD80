@@ -35,6 +35,20 @@ public interface IEDCSymbols {
 	public IFunctionScope getFunctionAtAddress(ISymbolDMContext context,
 			IAddress runtimeAddress);
 
+
+	/**
+	 * Get the name of any arbitrary symbol at the given runtime address
+	 * 
+	 * @param context
+	 *            the context
+	 * @param runtimeAddress
+	 *            the runtime address
+	 * @return the name of the symbol the given address, or null if none found
+	 * @since 2.0
+	 */
+	public String getSymbolNameAtAddress(ISymbolDMContext context,
+			IAddress runtimeAddress);
+
 	/**
 	 * Get the line entry at the given runtime address
 	 * 

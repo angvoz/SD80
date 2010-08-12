@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
 import org.eclipse.cdt.debug.edc.internal.symbols.Symbol;
@@ -23,8 +24,8 @@ import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
 import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
-import org.eclipse.cdt.utils.coff.PE;
 import org.eclipse.cdt.utils.coff.Coff.SectionHeader;
+import org.eclipse.cdt.utils.coff.PE;
 import org.eclipse.core.runtime.IPath;
 
 /**
@@ -144,9 +145,12 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 		for (int i=0; i < rawSymbols.length; i++) {
 			org.eclipse.cdt.utils.coff.Coff.Symbol symbol = rawSymbols[i];
 
-			String symName = symbol.getName(peFile.getStringTable());
-			symbols.add(new Symbol(symName, new Addr32(symbol.n_value), 1));
-			
+			if (!(symbol.n_type == 0)) // Change to Coff.isNoSymbol for CDT 8.0.
+			{
+				String symName = symbol.getName(peFile.getStringTable());
+				symbols.add(new Symbol(symName, new Addr32(symbol.n_value), 1));
+			}
+
 			// skip auxiliary symbol record(s) if any as otherwise they may
 			// give us bogus match in any symbol table lookup.
 			if (symbol.n_numaux > 0) {
@@ -164,4 +168,28 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 	public ByteOrder getByteOrder() {
 		return isLE ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
 	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.exe.IExecutableSymbolicsReader#getSymbolAtAddress()
+	 */
+	@Override
+	public ISymbol getSymbolAtAddress(IAddress linkAddress) {
+		int insertion = Collections.binarySearch(symbols, linkAddress);
+		if (insertion >= 0) {
+			return symbols.get(insertion++);
+		}
+	
+		if (insertion == -1) {
+			return null;
+		}
+	
+		insertion = -insertion - 1;
+
+		if (insertion == symbols.size()) {
+			return null;
+		}
+
+		return symbols.get(insertion - 1);
+	}
+
 }

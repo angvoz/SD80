@@ -60,6 +60,7 @@ public class CPluginImages {
 	public static final String T_DLCL=  "dlcl16/"; //$NON-NLS-1$
 	public static final String T_ELCL=  "elcl16/"; //$NON-NLS-1$
 	public static final String T_TOOL= "tool16/"; //$NON-NLS-1$
+	public static final String T_ETOOL= "etool16/"; //$NON-NLS-1$
 	public static final String T_VIEW= "view16/"; //$NON-NLS-1$
 	public static final String T_OVR= "ovr16/"; //$NON-NLS-1$
 
@@ -136,6 +137,7 @@ public class CPluginImages {
 	public static final String IMG_OBJS_EXPORT_SETTINGS = NAME_PREFIX + "export_settings_wiz.gif"; //$NON-NLS-1$
 
 	public static final String IMG_OBJS_PROJECT=NAME_PREFIX + "prj_obj.gif"; //$NON-NLS-1$
+	public static final ImageDescriptor DESC_OBJS_PROJECT = createManaged(T_ETOOL, IMG_OBJS_PROJECT);
 
 	public static final String IMG_OBJS_INCCONT= NAME_PREFIX + "incc_obj.gif"; 			//$NON-NLS-1$
 

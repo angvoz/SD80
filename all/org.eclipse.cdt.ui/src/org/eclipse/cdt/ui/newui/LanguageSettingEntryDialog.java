@@ -21,21 +21,14 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.swt.widgets.ToolBar;
-import org.eclipse.swt.widgets.ToolItem;
-import org.eclipse.ui.ISharedImages;
-import org.eclipse.ui.PlatformUI;
 
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
-import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.ui.CDTUIImages;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
 import org.eclipse.cdt.internal.ui.ImageCombo;
@@ -56,10 +49,11 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	private Button b_ko;
 	private int mode;
 	private Button c_wsp;
+	private Button c_BuiltIn;
 	private ICConfigurationDescription cfgd;
 	private boolean isWsp = false;
-	private ImageCombo comboEntryKind;
-	private Label comboEntryLabel;
+	private ImageCombo comboKind;
+	private Label comboKindLabel;
 	
 	static final int NEW_FILE = 0;
 	static final int NEW_DIR  = 1;
@@ -80,29 +74,19 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	}
 
 	@Override
-	protected Control createDialogArea(Composite c) {
-		c.setLayout(new GridLayout(2, false));
+	protected Control createDialogArea(Composite parent) {
+		parent.setLayout(new GridLayout(4, false));
 		GridData gd;
 		
-		Composite ccc = new Composite (c, SWT.NONE); 
-		gd = new GridData(GridData.FILL_HORIZONTAL);
-		gd.verticalAlignment = SWT.TOP;
-		ccc.setLayoutData(gd);
-		ccc.setLayout(new GridLayout(2, false));
-		comboEntryLabel = new Label (ccc, SWT.NONE);
-		comboEntryLabel.setText("Select Kind:");
-		comboEntryLabel.setImage(CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER));
-
-		comboEntryKind = new ImageCombo (ccc, SWT.DROP_DOWN | SWT.READ_ONLY | SWT.BORDER);
-		final String [] comboItems = {
+		final String [] comboKindItems = {
 				"Include Directory",
-				"Predefined Preprocessor Macro",
+				"Preprocessor Macro",
 				"Include File",
 				"Preprocessor Macros File",
 				"Library Path",
 				"Library",
 		};
-		final Image[] comboImages = {
+		final Image[] comboKindImages = {
 				CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER),
 				CPluginImages.get(CPluginImages.IMG_OBJS_MACRO),
 				CPluginImages.get(CPluginImages.IMG_OBJS_TUNIT_HEADER),
@@ -111,65 +95,106 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 				CPluginImages.get(CPluginImages.IMG_OBJS_LIBRARY),
 		};
 		
-		for (int i = 0; i < comboItems.length; i++) {
-			comboEntryKind.add(comboItems[i], comboImages[i]);
-		}
-		comboEntryKind.setText(comboItems[0]);
+		// Icon and Title for the dialog itself
+		shell.setImage(comboKindImages[0]);
+		shell.setText("Add " + comboKindItems[0]);
 		
-		comboEntryKind.addSelectionListener(new SelectionListener() {
-			
+		// Composite for kind and its icon
+		Composite comp1 = new Composite (parent, SWT.NONE); 
+		gd = new GridData(GridData.FILL_HORIZONTAL);
+		gd.verticalAlignment = SWT.TOP;
+		gd.horizontalSpan = 5;
+		comp1.setLayoutData(gd);
+		comp1.setLayout(new GridLayout(5, false));
+		
+		// Icon for kind
+		comboKindLabel = new Label (comp1, SWT.NONE);
+		gd = new GridData(SWT.RIGHT);
+		gd.verticalAlignment = SWT.TOP;
+//		gd.horizontalSpan = 4;
+		comboKindLabel.setLayoutData(gd);
+		comboKindLabel.setText("Select Kind:");
+		comboKindLabel.setImage(comboKindImages[0]);
+
+		// Combo for the setting entry kind
+		comboKind = new ImageCombo(comp1, SWT.DROP_DOWN | SWT.READ_ONLY | SWT.BORDER);
+		for (int i = 0; i < comboKindItems.length; i++) {
+			comboKind.add(comboKindItems[i], comboKindImages[i]);
+		}
+		comboKind.setText(comboKindItems[0]);
+		
+		comboKind.addSelectionListener(new SelectionListener() {
 			public void widgetSelected(SelectionEvent e) {
-				int index = comboEntryKind.getSelectionIndex();
-				comboEntryLabel.setImage(comboImages[index]);
+				int index = comboKind.getSelectionIndex();
+				comboKindLabel.setImage(comboKindImages[index]);
+				shell.setText("Add " + comboKindItems[index]);
+				shell.setImage(comboKindImages[index]);
 			}
-			
 			public void widgetDefaultSelected(SelectionEvent e) {
-				// TODO Auto-generated method stub
+				widgetSelected(e);
+				
+			}
+		});
+		
+		final String [] pathCategories = {
+				"In Project",
+				"In Workspace",
+				"Filesystem",
+		};
+		final Image[] pathCategoryImages = {
+				CPluginImages.get(CPluginImages.IMG_OBJS_PROJECT),
+				CPluginImages.get(CPluginImages.IMG_WORKSPACE),
+				CPluginImages.get(CPluginImages.IMG_FILESYSTEM),
+		};
+		
+
+		//
+		// Icon for path category
+		final Label comboPathCategoryLabel = new Label (comp1, SWT.NONE);
+		gd = new GridData(GridData.GRAB_HORIZONTAL | GridData.HORIZONTAL_ALIGN_END);
+		gd.verticalAlignment = SWT.TOP;
+		gd.widthHint = 15;
+//		gd.horizontalSpan = 4;
+		comboPathCategoryLabel.setLayoutData(gd);
+		comboPathCategoryLabel.setText("");
+
+		// Combo for path category
+		final ImageCombo comboPathCategory = new ImageCombo(comp1, SWT.DROP_DOWN | SWT.READ_ONLY | SWT.BORDER);
+		for (int i = 0; i < pathCategories.length; i++) {
+			comboPathCategory.add(pathCategories[i], pathCategoryImages[i]);
+		}
+		comboPathCategory.setText(pathCategories[0]);
+		gd = new GridData(SWT.FILL, SWT.NONE, false, false);
+		gd.verticalAlignment = SWT.TOP;
+//		gd.widthHint = 15;
+		gd.horizontalSpan = 2;
+		comboPathCategory.setLayoutData(gd);
+		
+		comboPathCategory.addSelectionListener(new SelectionListener() {
+			public void widgetSelected(SelectionEvent e) {
+				int index = comboPathCategory.getSelectionIndex();
+				b_work.setImage(pathCategoryImages[index]);
+			}
+			public void widgetDefaultSelected(SelectionEvent e) {
+				widgetSelected(e);
 				
 			}
 		});
 		
 		
-////		ToolBar toolBar = new ToolBar(c, SWT.HORIZONTAL | SWT.RIGHT | SWT.FLAT);
-//		ToolBar toolBar = new ToolBar(c, SWT.NONE);
-//		// add toolbar items
-//		{
-//			ToolItem includeItem = new ToolItem(toolBar, SWT.RADIO);
-////			includeItem.setDisabledImage(images.getImage(ISharedImages.IMG_ELCL_SYNCED_DISABLED));
-//			
-//			includeItem.setImage(CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER));
-//			includeItem.setToolTipText("Include Directory");
-//	//		addItem.addSelectionListener(getSelectionListener());
-//		}
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		Label l1 = new Label(c, SWT.NONE);
+		Label l1 = new Label(comp1, SWT.NONE);
 		if ((mode & DIR_MASK) == DIR_MASK)
-			l1.setText(Messages.IncludeDialog_0); 
+			l1.setText("Dir:"); 
 		else
 			l1.setText(Messages.IncludeDialog_1); 
-		gd = new GridData(GridData.FILL_HORIZONTAL);
-		gd.horizontalSpan = 2;
+		gd = new GridData();
+//		gd.horizontalSpan = 2;
 		l1.setLayoutData(gd);
 		
-		text = new Text(c, SWT.SINGLE | SWT.BORDER);
-		gd = new GridData(GridData.FILL_HORIZONTAL);
+		text = new Text(comp1, SWT.SINGLE | SWT.BORDER);
+		gd = new GridData(GridData.FILL_HORIZONTAL | GridData.GRAB_HORIZONTAL);
 		gd.horizontalSpan = 2;
-		gd.widthHint = 300;
+		gd.widthHint = 200;
 		text.setLayoutData(gd);
 		if ((mode & OLD_MASK) == OLD_MASK) { text.setText(sdata); }
 		text.addModifyListener(new ModifyListener() {
@@ -179,23 +204,59 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		
 		text.setFocus();
 		
-// Checkboxes
-		Composite c1 = new Composite (c, SWT.NONE); 
+		//////////////////////////////////////////////////////////////
+		// TODO TODO TODO TODO TODO
+		//////////////////////////////////////////////////////////////
+		// Path button
+//		b_work = setupButton(comp1, "..."/*AbstractCPropertyTab.WORKSPACEBUTTON_NAME*/);
+		b_work = new Button(comp1, SWT.PUSH);
+		b_work.setText("...");
+		b_work.setImage(pathCategoryImages[0]);
+		b_work.setLayoutData(new GridData());
+		b_work.addSelectionListener(new SelectionAdapter() {
+	        @Override
+			public void widgetSelected(SelectionEvent event) {
+	        	buttonPressed(event);
+	    }});
+		
+		// Variables button
+//		b_vars = setupButton(comp1, AbstractCPropertyTab.VARIABLESBUTTON_NAME);
+		b_vars = new Button(comp1, SWT.PUSH);
+		b_vars.setText(AbstractCPropertyTab.VARIABLESBUTTON_NAME);
+		b_vars.setLayoutData(new GridData());
+		b_vars.addSelectionListener(new SelectionAdapter() {
+	        @Override
+			public void widgetSelected(SelectionEvent event) {
+	        	buttonPressed(event);
+	    }});
+
+
+		// Checkboxes
+		Composite c1 = new Composite (parent, SWT.NONE); 
 		gd = new GridData(GridData.FILL_HORIZONTAL);
 		gd.verticalAlignment = SWT.TOP;
+		gd.horizontalSpan = 4;
 		c1.setLayoutData(gd);
 		c1.setLayout(new GridLayout(1, false));
 		
+		c_BuiltIn = new Button(c1, SWT.CHECK);
+		c_BuiltIn.setText("Treat as Built-In (Ignore during build)"); 
+		gd = new GridData(GridData.FILL_HORIZONTAL);
+		if (((mode & OLD_MASK) == OLD_MASK) /*|| (cfgd instanceof ICMultiConfigDescription)*/) {
+			gd.heightHint = 1;
+			c_BuiltIn.setVisible(false);
+		}
+		c_BuiltIn.setLayoutData(gd);
+
 		b_add2confs = new Button(c1, SWT.CHECK);
 		b_add2confs.setText(Messages.IncludeDialog_2); 
 		gd = new GridData(GridData.FILL_HORIZONTAL);
-		if (((mode & OLD_MASK) == OLD_MASK) ||
-				(cfgd instanceof ICMultiConfigDescription)) {
+		if (((mode & OLD_MASK) == OLD_MASK) /*|| (cfgd instanceof ICMultiConfigDescription)*/) {
 			gd.heightHint = 1;
 			b_add2confs.setVisible(false);
 		}
 		b_add2confs.setLayoutData(gd);
-
+		
 		b_add2langs = new Button(c1, SWT.CHECK);
 		b_add2langs.setText(Messages.IncludeDialog_3); 
 		gd = new GridData(GridData.FILL_HORIZONTAL);
@@ -205,49 +266,53 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		}
 		b_add2langs.setLayoutData(gd);
 
-		c_wsp = new Button(c1, SWT.CHECK);
-		c_wsp.setText(Messages.ExpDialog_4); 
-		gd = new GridData(GridData.FILL_HORIZONTAL);
-		c_wsp.setLayoutData(gd);
-		c_wsp.setSelection(isWsp);
-		c_wsp.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				c_wsp.setImage(getWspImage(c_wsp.getSelection()));
-			}});
-		c_wsp.setImage(getWspImage(isWsp));
-
 // Buttons		
-		Composite c2 = new Composite (c, SWT.NONE); 
-		gd = new GridData(GridData.END);
-		c2.setLayoutData(gd);
-		c2.setLayout(new GridLayout(2, true));
+		Composite c3 = new Composite (parent, SWT.FILL); 
+		gd = new GridData(SWT.RIGHT, SWT.BOTTOM, false, false);
+		gd.horizontalSpan = 4;
+		gd.grabExcessVerticalSpace = true;
+		c3.setLayoutData(gd);
+		c3.setLayout(new GridLayout(4, false));
 		
-		new Label(c2, 0).setLayoutData(new GridData()); // placeholder
-		b_vars = setupButton(c2, AbstractCPropertyTab.VARIABLESBUTTON_NAME);
+		new Label(c3, 0).setLayoutData(new GridData(GridData.GRAB_HORIZONTAL)); // placeholder
 
-		new Label(c2, 0).setLayoutData(new GridData()); // placeholder
-		b_work = setupButton(c2, AbstractCPropertyTab.WORKSPACEBUTTON_NAME);
+//		b_ok = setupButton(c3, IDialogConstants.OK_LABEL);
+		b_ok = new Button(c3, SWT.PUSH);
+		b_ok.setText(IDialogConstants.OK_LABEL);
+		gd = new GridData();
+		gd.widthHint = b_vars.computeSize(SWT.DEFAULT,SWT.NONE).x;
+		b_ok.setLayoutData(gd);
+		b_ok.addSelectionListener(new SelectionAdapter() {
+	        @Override
+			public void widgetSelected(SelectionEvent event) {
+	        	buttonPressed(event);
+	    }});
 
-		new Label(c2, 0).setLayoutData(new GridData()); // placeholder
-		b_file = setupButton(c2, AbstractCPropertyTab.FILESYSTEMBUTTON_NAME);
-
-		b_ok = setupButton(c2, IDialogConstants.OK_LABEL);
-		b_ko = setupButton(c2, IDialogConstants.CANCEL_LABEL);
+//		b_ko = setupButton(c3, IDialogConstants.CANCEL_LABEL);
+		b_ko = new Button(c3, SWT.PUSH);
+		b_ko.setText(IDialogConstants.CANCEL_LABEL);
+		gd = new GridData();
+		gd.widthHint = b_vars.computeSize(SWT.DEFAULT,SWT.NONE).x;
+		b_ko.setLayoutData(gd);
+		b_ko.addSelectionListener(new SelectionAdapter() {
+	        @Override
+			public void widgetSelected(SelectionEvent event) {
+	        	buttonPressed(event);
+	    }});
 		
-		c.getShell().setDefaultButton(b_ok);
-		c.pack();
+		parent.getShell().setDefaultButton(b_ok);
+		parent.pack();
 		
-		// resize (bug #189333)
-		int x = b_ko.getBounds().width * 3 + 10;
-		int y = c.getBounds().width - 10; 
-		if (x > y) {
-			((GridData)(text.getLayoutData())).widthHint = x;
-			c.pack();
-		}
+//		// resize (bug #189333)
+//		int x = b_ko.getBounds().width * 3 + 10;
+//		int y = parent.getBounds().width - 10; 
+//		if (x > y) {
+//			((GridData)(text.getLayoutData())).widthHint = x;
+//			parent.pack();
+//		}
 		
 		setButtons();
-		return c;
+		return parent;
 	}	
 	
 	private void setButtons() {

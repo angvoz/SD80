@@ -21,9 +21,11 @@ import org.eclipse.cdt.debug.edc.internal.ui.views.SystemDataModel;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemVMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemView;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemViewModel;
+import org.eclipse.cdt.debug.edc.tests.EDCTestPlugin;
 import org.eclipse.cdt.internal.ui.util.StringMatcher;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.PresentationContext;
 import org.eclipse.swt.widgets.Composite;
 
@@ -234,12 +236,14 @@ public class K9SystemView extends SystemView {
 	
 	@Override
 	public void createPartControl(Composite parent) {
+		setRefreshInterval(5000);		
+		setPrefsNode(new InstanceScope().getNode(EDCTestPlugin.PLUGIN_ID));
+		loadSettings();
 		setPresentationContext(new PresentationContext(VIEW_ID));
 		setDataModel(new K9DataModel());
 		setViewModel(new K9ViewModel());
 		getViewModel().buildViewModel();
 		createRootComposite(parent);
-		setRefreshInterval(5000);		
 		createRefreshAction();
 		contributeToActionBars();
 	}

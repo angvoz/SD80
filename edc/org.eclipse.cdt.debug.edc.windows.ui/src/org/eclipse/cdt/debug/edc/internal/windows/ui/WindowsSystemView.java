@@ -29,6 +29,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationType;
@@ -127,12 +128,14 @@ public class WindowsSystemView extends SystemView {
 	@Override
 	public void createPartControl(Composite parent) {
 		setPresentationContext(new PresentationContext(VIEW_ID));
+		setPrefsNode(new InstanceScope().getNode(WindowsDebuggerUI.PLUGIN_ID));
+		loadSettings();
 		setDataModel(new WindowsDataModel());
 		setViewModel(new WindowsViewModel());
 		getViewModel().buildViewModel();
 		createRootComposite(parent);
 		createRefreshAction();
-		createAttachAction();
+		createDebugAction();
 		hookContextMenu();
 		contributeToActionBars();
 		getRefreshJob().schedule();

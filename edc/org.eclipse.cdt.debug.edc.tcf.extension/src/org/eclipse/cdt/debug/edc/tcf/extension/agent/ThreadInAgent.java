@@ -92,4 +92,21 @@ public class ThreadInAgent extends ContextInAgent implements IRegisterOwnerConte
 	public long getThreadID() {
 		return osID;
 	}
+
+	/**
+	 * @since 2.0
+	 */
+	public static String contextID2ThreadID(String contextID) {
+		String threadID = null;
+		if (contextID.contains("t"))
+		{
+			String[] contextPieces = contextID.split("[.]");
+			if (contextPieces.length > 1)
+			{
+				threadID = contextPieces[1];
+				threadID = threadID.substring(1, threadID.length());
+			}
+		}
+		return threadID;
+	}
 }

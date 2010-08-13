@@ -24,6 +24,7 @@ public class SystemDMContainer {
 	public static final String PROP_NAME = "Name";
 
 	protected Map<String, Object> properties = Collections.synchronizedMap(new HashMap<String, Object>());
+	public static final String PROP_CAN_DEBUG = "Can_Debug";
 
 	public SystemDMContainer() {
 		super();

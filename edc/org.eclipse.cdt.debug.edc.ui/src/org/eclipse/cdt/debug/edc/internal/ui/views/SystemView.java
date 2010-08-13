@@ -19,6 +19,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.PresentationContext;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.TreeModelViewer;
 import org.eclipse.jface.action.Action;
@@ -28,10 +29,10 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.Dialog;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.ViewerComparator;
-import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
@@ -39,6 +40,7 @@ import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.FillLayout;
@@ -53,13 +55,20 @@ import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.osgi.service.prefs.BackingStoreException;
 
 @SuppressWarnings("restriction")
 public abstract class SystemView extends ViewPart {
 
+	
+	public final static String PREF_REFRESH_INTERVAL = "refresh_interval";
+	public final static String PREF_SHOULD_AUTO_REFRESH = "should_auto_refresh";
+	
 	protected static final int DEFAULT_REFRESH_INTERVAL = 30000;
 	private PresentationContext presentationContext;
+	private boolean autoRefresh = false;
 	private int refreshInterval = DEFAULT_REFRESH_INTERVAL;
+	private IEclipsePreferences prefsNode;
 
 	private class RefreshJob extends Job {
 
@@ -70,11 +79,68 @@ public abstract class SystemView extends ViewPart {
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
 			IStatus result = refresh(monitor, true);
-			if (getRefreshInterval() > 0)
+			if (shouldAutoRefresh())
 				this.schedule(refreshInterval);
 			return result;
 		}
-	}
+	};
+
+	class ColumnSelectionAdapter extends SelectionAdapter {
+
+		private int selector;
+		private TreeModelViewer viewer;
+		private SystemVMContainer systemVMContainer;
+		private int currentSortDirection;
+
+		public ColumnSelectionAdapter(SystemVMContainer systemVMContainer, int selector, TreeModelViewer viewer) {
+			this.viewer = viewer;
+			this.setSelector(selector);
+			this.setSystemVMContainer(systemVMContainer);
+			this.currentSortDirection = viewer.getTree().getSortDirection();
+		}
+
+		public void widgetSelected(SelectionEvent e) {
+			viewer.setComparator(new ViewerComparator());
+			TreeColumn currentSortColumn = viewer.getTree().getSortColumn();
+			TreeColumn newSortColumn = (TreeColumn) e.getSource();
+			if (newSortColumn.equals(currentSortColumn))
+			{
+				if (currentSortDirection == SWT.UP)
+					viewer.getTree().setSortDirection(SWT.DOWN);
+				else
+					if (currentSortDirection == SWT.DOWN)
+						viewer.getTree().setSortDirection(SWT.UP);
+				currentSortDirection = viewer.getTree().getSortDirection();
+			}
+			else
+			{
+				viewer.getTree().setSortColumn((TreeColumn) e.getSource());
+			}
+			String[] sortProperties = (String[]) systemVMContainer.getProperties().get(SystemVMContainer.PROP_COLUMN_KEYS);
+			assert sortProperties != null;
+			currentSortDirection = viewer.getTree().getSortDirection();
+			systemVMContainer.getProperties().put(SystemVMContainer.PROP_SORT_PROPERTY, sortProperties[getSelector()]);
+			systemVMContainer.getProperties().put(SystemVMContainer.PROP_SORT_DIRECTION, currentSortDirection);
+			refreshViewModel();
+		}
+
+		public void setSelector(int selector) {
+			this.selector = selector;
+		}
+
+		public int getSelector() {
+			return selector;
+		}
+
+		public void setSystemVMContainer(SystemVMContainer systemVMContainer) {
+			this.systemVMContainer = systemVMContainer;
+		}
+
+		public SystemVMContainer getSystemVMContainer() {
+			return systemVMContainer;
+		}
+
+	};
 
 	private RefreshJob refreshjob;
 
@@ -86,7 +152,7 @@ public abstract class SystemView extends ViewPart {
 	private SystemViewModel viewModel;
 	private List<CTabItem> tabs = new ArrayList<CTabItem>();
 	private List<TreeModelViewer> viewers = new ArrayList<TreeModelViewer>();
-	private Action attachAction;
+	private Action debugAction;
 	private TreeModelViewer selectedViewer;
 
 	protected void createRootComposite(Composite parent) {
@@ -117,6 +183,18 @@ public abstract class SystemView extends ViewPart {
 			
 			viewers.add(viewer);
 			tab.setData("VIEWER", viewer);
+			
+	        TreeColumn[] columns = viewer.getTree().getColumns();
+	        if (columns.length > 0)
+	        {
+		        for (int i = 0; i < columns.length; i++) {
+		            TreeColumn treeColumn = columns[i];
+		            treeColumn.addSelectionListener(new ColumnSelectionAdapter(systemVMContainer, i, viewer));
+		        }
+		        viewer.getTree().setSortColumn(columns[0]);
+		        viewer.getTree().setSortDirection(SWT.DOWN);
+	        }
+
 		}
 
 		selectedViewer = viewers.get(0);
@@ -139,6 +217,15 @@ public abstract class SystemView extends ViewPart {
 				for (SystemVMContainer systemVMContainer : vmContainers) {
 					systemVMContainer.setImage(null); // This is dispose of any image
 				}
+			}
+		});
+	}
+
+	public void refreshViewModel() {
+		PlatformUI.getWorkbench().getDisplay().asyncExec(new Runnable() {
+			public void run() {
+				getViewModel().buildViewModel();
+				refreshViewers();
 			}
 		});
 	}
@@ -174,12 +261,7 @@ public abstract class SystemView extends ViewPart {
 				return new Status(Status.WARNING, EDCDebugUI.PLUGIN_ID, e.getMessage(), e);
 			}
 		
-		PlatformUI.getWorkbench().getDisplay().asyncExec(new Runnable() {
-			public void run() {
-				getViewModel().buildViewModel();
-				refreshViewers();
-			}
-		});
+		refreshViewModel();
 		
 		return Status.OK_STATUS;
 	}
@@ -192,7 +274,7 @@ public abstract class SystemView extends ViewPart {
 
 	public void setRefreshInterval(int refreshInterval) {
 		this.refreshInterval = refreshInterval;
-		if (getRefreshInterval() > 0)
+		if (shouldAutoRefresh())
 			getRefreshJob().schedule(refreshInterval);
 	}
 
@@ -257,18 +339,18 @@ public abstract class SystemView extends ViewPart {
 			public void run() {
 				
 				SystemRefreshOptionsDialog dialog = new SystemRefreshOptionsDialog(null);
-				dialog.setAutoRefresh(getRefreshInterval() > 0);
-				if (getRefreshInterval() == 0)
-					dialog.setRefreshInterval(DEFAULT_REFRESH_INTERVAL / 1000);
-				else
-					dialog.setRefreshInterval(getRefreshInterval() / 1000);
+				dialog.setAutoRefresh(shouldAutoRefresh());
+				dialog.setRefreshInterval(getRefreshInterval() / 1000);
 					
 				int result = dialog.open();
 				if (result == Dialog.OK) {
-					if (dialog.isAutoRefresh())
-						setRefreshInterval(dialog.getRefreshInterval() * 1000);							
-					else
-						setRefreshInterval(0);
+					setAutoRefresh(dialog.isAutoRefresh());
+					setRefreshInterval(dialog.getRefreshInterval() * 1000);							
+					try {
+						saveSettings();
+					} catch (BackingStoreException e) {
+						EDCDebugUI.logError("", e);
+					}
 				}
 			}
 		};
@@ -276,9 +358,22 @@ public abstract class SystemView extends ViewPart {
 		refreshSettingsAction.setText("Refresh Options...");
 		refreshSettingsAction.setToolTipText("Options for refreshing system information");
 	}
+	
+	public void saveSettings() throws BackingStoreException
+	{
+		getPrefsNode().putBoolean(PREF_SHOULD_AUTO_REFRESH, shouldAutoRefresh());
+		getPrefsNode().putInt(PREF_REFRESH_INTERVAL, getRefreshInterval());
+		getPrefsNode().flush();
+	}
 
-	public void createAttachAction() {
-		attachAction = new Action() {
+	public void loadSettings()
+	{
+		setAutoRefresh(getPrefsNode().getBoolean(PREF_SHOULD_AUTO_REFRESH, shouldAutoRefresh()));
+		setRefreshInterval(getPrefsNode().getInt(PREF_REFRESH_INTERVAL, getRefreshInterval()));
+	}
+	
+	public void createDebugAction() {
+		debugAction = new Action() {
 			public void run() {
 				try {
 					TreeModelViewer viewer = getSelectedViewer();
@@ -292,11 +387,11 @@ public abstract class SystemView extends ViewPart {
 				}
 			}
 		};
-		attachAction.setText("Debug");
-		attachAction.setToolTipText("Debug the selected process");
+		debugAction.setText("Debug");
+		debugAction.setToolTipText("Debug the selected process");
 	}
 
-	protected void doAttach(SystemVMContainer node) {
+	protected void doAttach(SystemVMContainer node) throws Exception {
 	}
 
 	protected void hookContextMenu() {
@@ -307,14 +402,32 @@ public abstract class SystemView extends ViewPart {
 				SystemView.this.fillContextMenu(manager);
 			}
 		});
-		TreeModelViewer viewer = getSelectedViewer();
-		Menu menu = menuMgr.createContextMenu(viewer.getControl());
-		viewer.getControl().setMenu(menu);
-		getSite().registerContextMenu(menuMgr, viewer);
+	
+		List<TreeModelViewer> allViewers = this.getViewers();
+		for (TreeModelViewer viewer : allViewers) {
+			Menu menu = menuMgr.createContextMenu(viewer.getControl());
+			viewer.getControl().setMenu(menu);
+			getSite().registerContextMenu(menuMgr, viewer);
+			viewer.addSelectionChangedListener(new ISelectionChangedListener() {
+				
+				public void selectionChanged(SelectionChangedEvent event) {
+					IStructuredSelection selection = (IStructuredSelection) event.getSelection();
+					SystemVMContainer vmContainer = (SystemVMContainer) selection.getFirstElement();
+					if (vmContainer != null)
+					{
+						Boolean canDebug = (Boolean) vmContainer.getProperties().get(SystemDMContainer.PROP_CAN_DEBUG);
+						debugAction.setEnabled(canDebug != null && canDebug.booleanValue());
+					}
+					else
+						debugAction.setEnabled(false);
+				}
+			});
+		}
+
 	}
 
 	private void fillContextMenu(IMenuManager manager) {
-		manager.add(attachAction);
+		manager.add(debugAction);
 	}
 
 	protected void contributeToActionBars() {
@@ -351,6 +464,22 @@ public abstract class SystemView extends ViewPart {
 	
 	public TreeModelViewer getSelectedViewer() {
 		return selectedViewer;
+	}
+
+	public void setPrefsNode(IEclipsePreferences prefsNode) {
+		this.prefsNode = prefsNode;
+	}
+
+	public IEclipsePreferences getPrefsNode() {
+		return prefsNode;
+	}
+
+	public void setAutoRefresh(boolean autoRefresh) {
+		this.autoRefresh = autoRefresh;
+	}
+
+	public boolean shouldAutoRefresh() {
+		return autoRefresh;
 	}
 
 }

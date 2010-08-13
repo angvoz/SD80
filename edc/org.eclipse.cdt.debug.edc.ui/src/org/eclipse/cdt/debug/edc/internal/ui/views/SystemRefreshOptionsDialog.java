@@ -16,6 +16,8 @@ import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
@@ -34,6 +36,7 @@ public class SystemRefreshOptionsDialog extends Dialog {
 	private boolean autoRefresh;
 	private int refreshInterval;
 	private Button btnAutomaticallyRefresh;
+	private String lastIntervalText;
 	
 
 	/**
@@ -67,6 +70,18 @@ public class SystemRefreshOptionsDialog extends Dialog {
 		intervalText = new Text(container, SWT.BORDER);
 		intervalText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		intervalText.setText(Integer.toString(getRefreshInterval()));
+		lastIntervalText = intervalText.getText();
+		intervalText.addModifyListener(new ModifyListener() {
+			
+			public void modifyText(ModifyEvent e) {
+				try {
+					Integer.parseInt(intervalText.getText());
+				} catch (NumberFormatException e2) {
+					intervalText.setText(lastIntervalText);
+				}
+				lastIntervalText = intervalText.getText();
+			}
+		});
 
 		getShell().setText("Refresh Options");
 		refreshImage = AbstractUIPlugin

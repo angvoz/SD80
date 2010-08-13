@@ -47,9 +47,10 @@ public class SystemVMContainer implements IAdaptable {
 	 */
 	public static final String PROP_NAME = "Name";
 
+	public static final String PROP_SORT_PROPERTY = "Sort_Property";
+	public static final String PROP_SORT_DIRECTION = "Sort_Direction";
 	public static final String PROP_COLUMN_KEYS = "Column_Keys";
 	public static final String PROP_COLUMN_NAMES = "Column_Names";
-
 	protected Map<String, Object> properties = Collections.synchronizedMap(new HashMap<String, Object>());
 
 	private final List<SystemVMContainer> children = Collections.synchronizedList(new ArrayList<SystemVMContainer>());
@@ -207,6 +208,10 @@ public class SystemVMContainer implements IAdaptable {
 		return children.size();	
 	}
 
+	public void clearChildren() {
+		children.clear();
+	}
+
 	public List<SystemVMContainer> getChildren() {
 		return Collections.unmodifiableList(children) ;
 	}
@@ -321,4 +326,15 @@ public class SystemVMContainer implements IAdaptable {
 		return image;
 	}
 
+	public void sortDMData(List<SystemDMContainer> dmData)
+	{
+		String sortProperty = (String) this.getProperties().get(SystemVMContainer.PROP_SORT_PROPERTY);
+		if (sortProperty != null)
+		{
+			Integer sortDirection = (Integer) this.getProperties().get(SystemVMContainer.PROP_SORT_DIRECTION);
+			assert sortDirection != null;
+			Collections.sort(dmData, new SystemDMComparator(sortProperty, sortDirection));
+		}
+		
+	}
 }

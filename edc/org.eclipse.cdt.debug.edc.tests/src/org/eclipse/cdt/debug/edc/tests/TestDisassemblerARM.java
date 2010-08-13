@@ -261,18 +261,18 @@ public class TestDisassemblerARM {
 		armOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		armOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
 		System.out.println("\n=================== ARM Branches ====================\n");
-		disassembleInst(0x00000004, "ea ff ff fe", new JumpToAddress(0x00000004, false, false),
-				"4:           ea ff ff fe                     b	0x0", armOptions);
-		disassembleInst(0x00000004, "eb ff ff fe", new JumpToAddress(0x00000004, false, true),
-				"4:           eb ff ff fe                     bl	0x0", armOptions);
-		disassembleInst(0x00000004, "fa ff ff fe", new JumpToAddress(0x00000004, true, true),
-				"4:           fa ff ff fe                     blx	0x0", armOptions);
-		disassembleInst(0x00000004, "e1 2f ff 30", new JumpToAddress("r0", false, true),
-				"4:           e1 2f ff 30                     blx	r0", armOptions);
-		disassembleInst(0x00000004, "e1 2f ff 10", new JumpToAddress("r0", false, false),
-				"4:           e1 2f ff 10                     bx	r0", armOptions);
-		disassembleInst(0x00000004, "e1 a0 f0 0e", new JumpToAddress("lr", false, false),
-				"4:           e1 a0 f0 0e                     mov	pc,lr", armOptions);
+		disassembleInst(0x00000000, "ea ff ff fe", new JumpToAddress(0x00000000, false, false),
+				"0:           ea ff ff fe                     b		0x0", armOptions);
+		disassembleInst(0x00000000, "eb ff ff fe", new JumpToAddress(0x00000000, false, true),
+				"0:           eb ff ff fe                     bl	0x0", armOptions);
+		disassembleInst(0x00000000, "fa ff ff fe", new JumpToAddress(0x00000000, true, true),
+				"0:           fa ff ff fe                     blx	0x0", armOptions);
+		disassembleInst(0x00000000, "e1 2f ff 30", new JumpToAddress("r0", false, true),
+				"0:           e1 2f ff 30                     blx	r0", armOptions);
+		disassembleInst(0x00000000, "e1 2f ff 10", new JumpToAddress("r0", false, false),
+				"0:           e1 2f ff 10                     bx	r0", armOptions);
+		disassembleInst(0x00000000, "e1 a0 f0 0e", new JumpToAddress("lr", false, false),
+				"0:           e1 a0 f0 0e                     mov	pc,lr", armOptions);
 	}
 
 	/**
@@ -314,18 +314,18 @@ public class TestDisassemblerARM {
 		thumbOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		thumbOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
 		System.out.println("\n=================== Thumb Branches ==================\n");
-		disassembleInst(0x00000004, "d0 fe", new JumpToAddress(0x00000004, false, false),
-				"4:           d0 fe                           beq	0x0", thumbOptions);
-		disassembleInst(0x00000004, "e7 fe", new JumpToAddress(0x00000004, true, false),
-				"4:           e7 fe                           b	0x0", thumbOptions);
-		disassembleInst(0x00000004, "f7 ff ff fe", new JumpToAddress(0x00000004, true, true),
-				"4:           f7 ff ff fe                     bl	0", thumbOptions);
-		disassembleInst(0x00000004, "f7 ff ef fe", new JumpToAddress(0x00000004, true, true),
-				"4:           f7 ff ef fe                     blx	0", thumbOptions);
-		disassembleInst(0x00000004, "47 80", new JumpToAddress("r0", true, true),
-				"4:           47 80                           blx	r0", thumbOptions);
-		disassembleInst(0x00000004, "46 f7", new JumpToAddress("lr", true, false),
-				"4:           46 f7                           cpy	pc,lr", thumbOptions);
+		disassembleInst(0x00000000, "d0 fe", new JumpToAddress(0x00000000, false, false),
+				"0:           d0 fe                           beq	0x0", thumbOptions);
+		disassembleInst(0x00000000, "e7 fe", new JumpToAddress(0x00000000, true, false),
+				"0:           e7 fe                           b		0x0", thumbOptions);
+		disassembleInst(0x00000000, "f7 ff ff fe", new JumpToAddress(0x00000000, true, true),
+				"0:           f7 ff ff fe                     bl	0", thumbOptions);
+		disassembleInst(0x00000000, "f7 ff ef fe", new JumpToAddress(0x00000000, true, true),
+				"0:           f7 ff ef fe                     blx	0", thumbOptions);
+		disassembleInst(0x00000000, "47 80", new JumpToAddress("r0", true, true),
+				"0:           47 80                           blx	r0", thumbOptions);
+		disassembleInst(0x00000000, "46 f7", new JumpToAddress("lr", true, false),
+				"0:           46 f7                           cpy	pc,lr", thumbOptions);
 	}
 
 	/**

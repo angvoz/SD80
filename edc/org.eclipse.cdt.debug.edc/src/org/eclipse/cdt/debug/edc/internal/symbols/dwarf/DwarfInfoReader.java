@@ -21,7 +21,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -359,8 +358,8 @@ public class DwarfInfoReader {
 					}
 				}
 			}
-		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
+		} catch (Throwable t) {
+			EDCDebugger.getMessageLogger().logError(null, t);
 		}
 
 		return fileIndex + setLength + 4;
@@ -564,9 +563,9 @@ public class DwarfInfoReader {
 					}
 				}
 			}
-		} catch (IOException e) {
+		} catch (Throwable t) {
 			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed1 
-					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, e);
+					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, t);
 		}
 		
 		// skip past the compile unit. note that the
@@ -649,8 +648,8 @@ public class DwarfInfoReader {
 				} else {
 					AttributeValue.skipAttributeValue(attr.form, in, addressSize);
 				}
-			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError(null, e);
+			} catch (Throwable t) {
+				EDCDebugger.getMessageLogger().logError(null, t);
 				break;
 			}
 		}
@@ -733,9 +732,9 @@ public class DwarfInfoReader {
 			Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(header.abbreviationOffset);
 
 			parseForAddresses(data, abbrevs, header, new Stack<Scope>());
-		} catch (IOException e) {
+		} catch (Throwable t) {
 			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed1 
-					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, e);
+					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, t);
 		}
 	}
 
@@ -778,9 +777,9 @@ public class DwarfInfoReader {
 			Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(header.abbreviationOffset);
 
 			parseForTypes(data, abbrevs, header, new Stack<Scope>());
-		} catch (IOException e) {
+		} catch (Throwable t) {
 			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed1 
-					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed2 + symbolFilePath, e);
+					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed2 + symbolFilePath, t);
 		}
 	}
 
@@ -884,9 +883,9 @@ public class DwarfInfoReader {
 				monitor.worked((int) ((fileIndex - oldIndex) / 1024));
 			}
 
-		} catch (IOException e) {
+		} catch (Throwable t) {
 			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseSectionSourceFilesFailed1 
-					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseSectionSourceFilesFailed2 + symbolFilePath, e);
+					+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseSectionSourceFilesFailed2 + symbolFilePath, t);
 		} finally {
 			monitor.done();
 		}
@@ -963,8 +962,8 @@ public class DwarfInfoReader {
 					leb128 = read_unsigned_leb128(data);
 				}
 			}
-		} catch (Exception e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
+		} catch (Throwable t) {
+			EDCDebugger.getMessageLogger().logError(null, t);
 		}
 	}
 
@@ -1075,7 +1074,7 @@ public class DwarfInfoReader {
 					if (opcode >= opcode_base) {
 						info_line += (((opcode - opcode_base) % line_range) + line_base);
 						info_address += (opcode - opcode_base) / line_range * minimum_instruction_length;
-						if (is_stmt) {
+						if (is_stmt && fileList.size() > 0) {
 							lineEntries.add(new LineEntry(fileList.get((int) info_file - 1), info_line, info_column,
 									new Addr32(info_address), null));
 						}
@@ -1129,7 +1128,7 @@ public class DwarfInfoReader {
 					} else {
 						switch (opcode) {
 						case DwarfConstants.DW_LNS_copy:
-							if (is_stmt) {
+							if (is_stmt && fileList.size() > 0) {
 								lineEntries.add(new LineEntry(fileList.get((int) info_file - 1), info_line,
 										info_column, new Addr32(info_address), null));
 							}
@@ -1174,8 +1173,8 @@ public class DwarfInfoReader {
 					}
 				}
 			}
-		} catch (IOException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
+		} catch (Throwable t) {
+			EDCDebugger.getMessageLogger().logError(null, t);
 		}
 
 		// sort by start address
@@ -1681,8 +1680,8 @@ public class DwarfInfoReader {
 					entries = entryMap.values();
 					locationEntriesByOffset.put(offset, entries);
 				}
-			} catch (Exception e) {
-				EDCDebugger.getMessageLogger().logError(null, e);
+			} catch (Throwable t) {
+				EDCDebugger.getMessageLogger().logError(null, t);
 			}
 		}
 
@@ -1810,8 +1809,8 @@ public class DwarfInfoReader {
 			
 			return list;
 			
-		} catch (BufferUnderflowException e) {
-			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_RangeReadFailed, e);
+		} catch (Throwable t) {
+			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_RangeReadFailed, t);
 			return null;
 		}
 	}
@@ -2028,9 +2027,9 @@ public class DwarfInfoReader {
 								attributes = new AttributeList(entry, buffer, providingCU.addressSize, getDebugStrings());
 							}
 						}
-					} catch (IOException e) {
+					} catch (Throwable t) {
 						EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed1 
-								+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, e);
+								+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseDebugInfoSectionFailed2 + symbolFilePath, t);
 					}
 				}
 			}
@@ -2974,8 +2973,8 @@ public class DwarfInfoReader {
 				}
 				
 				buffer.position(nextPosition);
-			} catch (IOException e) {
-				EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_FrameIndicesReadFailed, e);
+			} catch (Throwable t) {
+				EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_FrameIndicesReadFailed, t);
 				break;
 			}
 			

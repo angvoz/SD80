@@ -18,8 +18,6 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
@@ -27,7 +25,6 @@ import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
@@ -117,11 +114,7 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 			StackFrameDMC frame = DMContexts.getAncestorOfType(context, StackFrameDMC.class);
 			if (frame == null) 
 				throw EDCDebugger.newCoreException(SymbolsMessages.MemoryVariableLocation_CannotFindFrame);
-			Modules modules = tracker.getService(Modules.class);
-			IAddress pcValue = frame.getInstructionPtrAddress();
-			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
-			ModuleDMC module = modules.getModuleByAddress(symContext, pcValue);
-			theAddress = module.toRuntimeAddress(theAddress);
+			theAddress = frame.getModule().toRuntimeAddress(theAddress);
 		}
 		return theAddress;
 	}

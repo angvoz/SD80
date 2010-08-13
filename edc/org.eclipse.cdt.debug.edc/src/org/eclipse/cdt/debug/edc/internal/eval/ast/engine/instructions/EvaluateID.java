@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.text.MessageFormat;
 
-import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
@@ -27,9 +26,7 @@ import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.services.Stack.VariableDMC;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
-import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
@@ -94,12 +91,10 @@ public class EvaluateID extends SimpleInstruction {
 		// service may have been shutdown.
 		if (variable != null && modules != null) {
 			IVariableLocation valueLocation = null;
-			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getVariable().getLocationProvider();
-			IAddress pcValue = frame.getInstructionPtrAddress();
-			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
+			IEDCModuleDMContext module = frame.getModule();
 			if (module != null && provider != null) {
-				valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
+				valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(frame.getInstructionPtrAddress()));
 			}
 			if (valueLocation == null) {
 				// unhandled

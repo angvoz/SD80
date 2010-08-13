@@ -23,21 +23,20 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.MemoryStreamBuffer;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.RegisterOffsetVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.ValueVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.AttributeValue;
+import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IFrameRegisterProvider;
 import org.eclipse.cdt.debug.edc.services.IFrameRegisters;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IRangeList;
-import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IRangeList.Entry;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
@@ -926,9 +925,13 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		
 		IFrameRegisters childRegisters = childFrame.getFrameRegisters();
 		
-		Modules modules = tracker.getService(Modules.class);
-		FrameDescriptionEntry currentFrameEntry = provider.findFrameDescriptionEntry(getLinkAddress(
-				exeDMC, modules, childFrame.getInstructionPtrAddress()));
+		IAddress linkaddress = childFrame.getInstructionPtrAddress();
+		IEDCModuleDMContext module = childFrame.getModule();
+		if (module != null) {
+			linkaddress = module.toLinkAddress(linkaddress);
+		}
+
+		FrameDescriptionEntry currentFrameEntry = provider.findFrameDescriptionEntry(linkaddress);
 		if (currentFrameEntry == null) 
 			return null;
 		
@@ -942,21 +945,6 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 			ExecutionDMC exeDMC, StackFrameDMC stackFrame) throws CoreException {
 		StackFrameDMC childFrame = stackFrame.getCalledFrame();
 		return childFrame;
-	}
-
-	/**
-	 * @param modules
-	 * @param ipAddress
-	 * @param exeDMC 
-	 * @return
-	 */
-	private IAddress getLinkAddress(ExecutionDMC exeDMC, Modules modules, IAddress ipAddress) {
-		IAddress linkaddress = ipAddress;
-		ModuleDMC module = modules.getModuleByAddress(exeDMC.getSymbolDMContext(), ipAddress);
-		if (module != null) {
-			linkaddress = module.toLinkAddress(ipAddress);
-		}
-		return linkaddress;
 	}
 
 }

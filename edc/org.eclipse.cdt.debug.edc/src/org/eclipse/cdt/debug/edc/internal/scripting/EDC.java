@@ -25,6 +25,7 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.model.IBreakpoint;
 
 public class EDC {
@@ -50,6 +51,10 @@ public class EDC {
 		return DOMUtils.getDMContextProperties(DOMUtils.getSuspendedThreads(sessionId));
 	}
 
+	public static IBreakpoint[] getBreakpoints() {
+		return DebugPlugin.getDefault().getBreakpointManager().getBreakpoints();
+	}
+
 	public static IBreakpoint createAddressBreakpoint(long address, String condition) throws Exception {
 		Map<String, Object> attributes = new HashMap<String, Object>(10);
 		attributes.put(IBreakpoint.ID, EDCDebugger.PLUGIN_ID);
@@ -65,24 +70,26 @@ public class EDC {
 		return new CAddressBreakpoint(rootResource, attributes, true);
 	}
 
-	public static IBreakpoint createFunctionBreakpoint(String sourceFilePath, String functionName, String condition)
+	public static IBreakpoint createFunctionBreakpoint(IResource resource, String sourceFilePath, String functionName, int lineNumber, String condition)
 			throws Exception {
 		Map<String, Object> attributes = new HashMap<String, Object>(10);
 		attributes.put(IBreakpoint.ID, EDCDebugger.PLUGIN_ID);
 		attributes.put(IMarker.CHAR_START, -1);
 		attributes.put(IMarker.CHAR_END, -1);
-		attributes.put(IMarker.LINE_NUMBER, -1);
+		attributes.put(IMarker.LINE_NUMBER, lineNumber);
 		attributes.put(ICLineBreakpoint.FUNCTION, functionName);
 		attributes.put(ICBreakpoint.SOURCE_HANDLE, sourceFilePath);
 		attributes.put(IBreakpoint.ENABLED, true);
 		attributes.put(ICBreakpoint.IGNORE_COUNT, 0);
 		attributes.put(ICBreakpoint.CONDITION, condition);
 		attributes.put(ICBreakpointType.TYPE, ICBreakpointType.REGULAR);
-		IResource rootResource = ResourcesPlugin.getWorkspace().getRoot();
-		return new CFunctionBreakpoint(rootResource, attributes, true);
+		if (resource == null) {
+			resource = ResourcesPlugin.getWorkspace().getRoot();
+		}
+		return new CFunctionBreakpoint(resource, attributes, true);
 	}
 
-	public static IBreakpoint createLineBreakpoint(String sourceFilePath, int lineNumber, String condition)
+	public static IBreakpoint createLineBreakpoint(IResource resource, String sourceFilePath, int lineNumber, String condition)
 			throws Exception {
 		Map<String, Object> attributes = new HashMap<String, Object>(10);
 		attributes.put(IBreakpoint.ID, EDCDebugger.PLUGIN_ID);
@@ -94,7 +101,9 @@ public class EDC {
 		attributes.put(ICBreakpoint.IGNORE_COUNT, 0);
 		attributes.put(ICBreakpoint.CONDITION, condition);
 		attributes.put(ICBreakpointType.TYPE, ICBreakpointType.REGULAR);
-		IResource rootResource = ResourcesPlugin.getWorkspace().getRoot();
-		return new CLineBreakpoint(rootResource, attributes, true);
+		if (resource == null) {
+			resource = ResourcesPlugin.getWorkspace().getRoot();
+		}
+		return new CLineBreakpoint(resource, attributes, true);
 	}
 }

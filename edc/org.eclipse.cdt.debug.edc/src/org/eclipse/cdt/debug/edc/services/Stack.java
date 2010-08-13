@@ -382,21 +382,18 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 			// get the type engine
 			IDebugInfoProvider debugInfoProvider = null;
-			if (modules != null) {
-				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
-				if (module != null) {
-					IEDCSymbolReader symbolReader = module.getSymbolReader();
-					if (symbolReader != null)
+			if (module != null) {
+				IEDCSymbolReader symbolReader = module.getSymbolReader();
+				if (symbolReader != null)
+				{
+					if (symbolReader instanceof EDCSymbolReader) {
+						debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
+					}
+					if (symbolReader.getSymbolFile() != null)
 					{
-						if (symbolReader instanceof EDCSymbolReader) {
-							debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
-						}
-						if (symbolReader.getSymbolFile() != null)
-						{
-							String cacheKey = symbolReader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
-							cachedFrameProperties.put(module.toLinkAddress(instructionPtrAddress), frameProperties);
-							EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedFrameProperties, symbolReader.getModificationDate());				
-						}
+						String cacheKey = symbolReader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
+						cachedFrameProperties.put(module.toLinkAddress(instructionPtrAddress), frameProperties);
+						EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedFrameProperties, symbolReader.getModificationDate());				
 					}
 				}
 			}
@@ -640,10 +637,6 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					this.variableScope = scope;
 				}
 				
-				// TODO: we fetch ModuleDMC a whole lot; it could be saved in a StackFrameDMC
-				IEDCModules modulesService = getServicesTracker().getService(Modules.class);
-				IEDCModuleDMContext module = modulesService.getModuleByAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
-				
 				IAddress linkAddress = null;
 				if (module != null) {
 					linkAddress = module.toLinkAddress(instructionPtrAddress);
@@ -834,8 +827,6 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					frameRegisters = new CurrentFrameRegisters(executionDMC, registers);
 				} else {
 					// see if symbolics can provide unwinding support
-					Modules modulesService = getServicesTracker().getService(Modules.class);
-					ModuleDMC module = modulesService.getModuleByAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 					if (module != null) {
 						Symbols symbolsService = getServicesTracker().getService(Symbols.class);
 						IFrameRegisterProvider frameRegisterProvider = symbolsService.getFrameRegisterProvider(
@@ -1131,10 +1122,20 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			// Need to update the frames if there is no cached list for this
 			// context or if the cached list does not include all of the
 			// requested frames.
-			needsUpdate = frames == null ||
-			(frames.get(0).getLevel() > startIndex || 
-				frames.get(frames.size() - 1).getLevel() < endIndex) ||
-				(endIndex == ALL_FRAMES && !allFramesCached.get(context.getID()));
+			if (frames == null) {
+				// nothing in the cache so need to update
+				needsUpdate = true;
+			} else if (allFramesCached.get(context.getID())) {
+				// all frames are cached
+				needsUpdate = false;
+			} else if (endIndex == ALL_FRAMES) {
+				// some but not all frames cached
+				needsUpdate = true;
+			} else {
+				// some but not all requested frames cached
+				needsUpdate = (frames.get(0).getLevel() > startIndex || 
+						frames.get(frames.size() - 1).getLevel() < endIndex);
+			}
 		}
 		if (needsUpdate)
 			updateFrames(context, startIndex, endIndex);
@@ -1168,7 +1169,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			previous = frame;
 		}
 		stackFrames.put(context.getID(), frames);
-		allFramesCached.put(context.getID(), startIndex == 0 && endIndex == ALL_FRAMES);
+		
+		// all frames are cached if we request all frames, or if the returned number of frames was less than
+		// the requested max number of frames.  e.g. if we ask for 10 and they return 9, it's because there
+		// are only 9 frames.  so we have calculated all of them.
+		allFramesCached.put(context.getID(), startIndex == 0 && ((endIndex == ALL_FRAMES) || (frames.size() <= endIndex)));
 	}
 
 	protected abstract List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex);

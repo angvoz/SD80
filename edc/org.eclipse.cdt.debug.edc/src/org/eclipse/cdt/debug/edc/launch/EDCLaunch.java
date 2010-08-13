@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.launch;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -56,6 +57,7 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugException;
+import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchManager;
@@ -65,6 +67,7 @@ import org.eclipse.debug.core.model.ISourceLocator;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
 import org.eclipse.debug.core.sourcelookup.containers.DirectorySourceContainer;
 import org.eclipse.tm.tcf.protocol.IChannel;
+import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.Protocol;
 
 /**
@@ -481,6 +484,34 @@ public class EDCLaunch extends Launch {
 			locator.initializeFromMemento(memento, getActiveLaunchConfiguration());
 		}
 		return locator;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public static EDCLaunch[] findLaunchesUsingPeer(final IPeer ipeer) {
+		final List<EDCLaunch> results = new ArrayList<EDCLaunch>();
+		ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
+		final List<ILaunch> launchList = Arrays.asList(manager.getLaunches());
+
+		Protocol.invokeAndWait(new Runnable() {
+			public void run() {
+				for (ILaunch iLaunch : launchList) {
+					if (iLaunch instanceof EDCLaunch) {
+						EDCLaunch edcLaunch = (EDCLaunch) iLaunch;
+						List<IChannel> channels = launchChannels.get(edcLaunch);
+						for (IChannel iChannel : channels) {
+							if (iChannel.getRemotePeer().equals(ipeer)) {
+								results.add(edcLaunch);
+								break;
+							}
+						}
+					}
+				}
+			}
+		});
+		
+		return results.toArray(new EDCLaunch[results.size()]);
 	}
 
 }

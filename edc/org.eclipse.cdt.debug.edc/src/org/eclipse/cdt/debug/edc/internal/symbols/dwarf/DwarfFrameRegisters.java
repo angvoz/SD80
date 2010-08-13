@@ -18,8 +18,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.symbols.ValueVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.AbstractInstruction;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.AbstractRule;
@@ -27,10 +25,8 @@ import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvid
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.InstructionState;
 import org.eclipse.cdt.debug.edc.services.IFrameRegisters;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
-import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IRangeList.Entry;
-import org.eclipse.cdt.dsf.datamodel.DMContexts;
-import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
+import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
@@ -154,9 +150,7 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 		// Run through rules until we hit one past our range
 		TreeMap<Entry, List<AbstractInstruction>> fdeInstrs = fde.getInstructions(provider); 
 		
-		Modules modules = tracker.getService(Modules.class);
-		ModuleDMC module = modules.getModuleByAddress(DMContexts.getAncestorOfType(context, ISymbolDMContext.class), context.getInstructionPtrAddress());
-		long currentPC = module.toLinkAddress(context.getInstructionPtrAddress()).getValue().longValue();
+		long currentPC = context.getModule().toLinkAddress(context.getInstructionPtrAddress()).getValue().longValue();
 		
 		for (Map.Entry<Entry, List<AbstractInstruction>> instrEntry : fdeInstrs.entrySet()) {
 			Entry entry = instrEntry.getKey();

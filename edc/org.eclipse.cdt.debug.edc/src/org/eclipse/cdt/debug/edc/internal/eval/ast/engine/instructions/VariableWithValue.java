@@ -11,19 +11,14 @@
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 
-import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
-import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
-import org.eclipse.cdt.dsf.datamodel.DMContexts;
-import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
@@ -81,17 +76,14 @@ public class VariableWithValue extends OperandValue {
 
 	public IVariableLocation getValueLocation() {
 		if (valueLocation == null) {
-			IEDCModules modules = servicesTracker.getService(Modules.class);
-			ISymbolDMContext symContext = DMContexts.getAncestorOfType(frame, ISymbolDMContext.class);
 			ILocationProvider provider = variable.getLocationProvider();
 			if (provider == null) {
 				// ERROR
 				valueLocation = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_CannotLocateVariable);
 				return valueLocation;
 			}
-			IAddress pcValue = frame.getInstructionPtrAddress();
-			IEDCModuleDMContext module = modules.getModuleByAddress(symContext, pcValue);
-			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(pcValue));
+			IEDCModuleDMContext module = frame.getModule();
+			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(frame.getInstructionPtrAddress()));
 			if (valueLocation == null) {
 				// unhandled
 				valueLocation = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_CannotLocateVariable);

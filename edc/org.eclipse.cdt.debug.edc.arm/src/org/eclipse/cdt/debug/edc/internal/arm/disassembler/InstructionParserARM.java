@@ -321,10 +321,11 @@ public class InstructionParserARM {
 			if (condString.length() == 0) {
 				condString = "\t";
 			}
-			instruction = mnemonic + condString + "\t" + getHexValue(offset);
+			
 			isSoleDestination = false;
 			isSubroutineAddress = (opcodeIndex == OpcodeARM.Index.arm_bl);
 			jumpToAddr = address.add(offset);
+			instruction = mnemonic + condString + "\t" + getHexValue(jumpToAddr.getValue().intValue());
 			break;
 		case arm_bic:
 			instruction = mnemonic + getCondition(opcode) + "\t" + getRd(opcode) + "," + getRn(opcode) + ","
@@ -335,10 +336,10 @@ public class InstructionParserARM {
 			break;
 		case arm_blx1:
 			offset = getBranchOffset(opcode) | ((opcode >> 23) & 2);
-			instruction = mnemonic + "\t" + getHexValue(offset);
 			isSoleDestination = true;
 			isSubroutineAddress = true;
 			jumpToAddr = address.add(offset);
+			instruction = mnemonic + "\t" + getHexValue(jumpToAddr.getValue().intValue());
 			break;
 		case arm_blx2:
 			instruction = mnemonic + getCondition(opcode) + "\t" + getRm(opcode);
@@ -1661,15 +1662,16 @@ public class InstructionParserARM {
 	}
 
 	private int getThumbBranchOffset8(int opcode) {
-		int offset = (opcode & 0xff);
-		offset = (offset*2) + 4;
+		char offset = (char)(opcode & 0xff);
+	
+		offset = (char)(((offset*2) + 4) & 0xff);
 		return offset;
 	}
 
 	private int getThumbBranchOffset11(int opcode) {
 		short offset = (short) ((opcode << 5) & 0xffff);
 	
-		return offset / 16;
+		return (offset / 16) + 4;
 	}
 
 	private String getThumbCondition(int opcode) {

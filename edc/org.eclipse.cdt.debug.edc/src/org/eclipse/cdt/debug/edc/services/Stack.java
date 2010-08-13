@@ -331,7 +331,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 										Object fnObj = cachedProperties.get(FUNCTION_NAME);
 										if (fnObj != null 
 											&& fnObj instanceof String
-											&& !((String)fnObj).isEmpty())
+											&& ((String)fnObj).length() != 0)
 										{
 											frameProperties.put(FUNCTION_NAME, fnObj);
 											cachedPropertiesHasFunctionName = true;

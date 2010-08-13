@@ -85,6 +85,15 @@ public class ProcessInAgent extends ContextInAgent implements IRunControlContext
 
 	static public long contextID2ProcessID(String contextID) throws AgentException {
 		ContextInAgent c = ContextManager.findDebuggedContext(contextID);
+		
+		if (c == null && contextID.startsWith("p"))
+		{
+			String[] contextPieces = contextID.split("[.]");
+			String processID = contextPieces[0];
+			processID = processID.substring(1, processID.length());
+			return Long.parseLong(processID);
+		}
+		
 		if (c == null || !(c instanceof ProcessInAgent))
 			throw new AgentException("Invalid process context ID:" + contextID);
 

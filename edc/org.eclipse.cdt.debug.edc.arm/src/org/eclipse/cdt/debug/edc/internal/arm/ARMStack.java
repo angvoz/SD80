@@ -156,8 +156,8 @@ public class ARMStack extends Stack {
 			String moduleName = "Unknown";
 
 			// see if the PC is in an executable that we know about
-			IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
-			IEDCModuleDMContext module = modules.getModuleByAddress(context.getSymbolDMContext(), pcValue);
+			IEDCModuleDMContext module = getModule(context, pcValue);
+			
 			if (module != null) {
 				moduleName = module.getName();
 
@@ -223,9 +223,18 @@ public class ARMStack extends Stack {
 			}
 
 			if (functionStartAddress == null) {
-				// still don't know where the prolog is so no way to tell where
-				// the LR is saved on the stack (if at all)
-				break;
+				if (frameCount == 0) {
+					// still don't know where the prolog is for sure.  there may not be
+					// one at all.  assume that the currnet SP and LR are correct since we're
+					// at the first frame.
+					pcValue = lrValue;
+					frameCount++;
+					continue;
+				} else {
+					// still don't know where the prolog is so no way to tell where
+					// the LR is saved on the stack (if at all)
+					break;
+				}
 			}
 
 			// we need to parse the prolog to figure out where the LR was stored
@@ -259,6 +268,11 @@ public class ARMStack extends Stack {
 		}
 		
 		return frames;
+	}
+
+	protected IEDCModuleDMContext getModule(IEDCExecutionDMC context, IAddress address) {
+		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
+		return modules.getModuleByAddress(context.getSymbolDMContext(), address);
 	}
 
 	private IAddress findProlog(IEDCExecutionDMC context, IAddress pcValue, boolean thumbMode) {

@@ -259,7 +259,7 @@ public class ConsoleLogManager implements LogListener {
 
 	private boolean isChannelOpen() {
 		int state = ((AbstractChannel) channel).getState();
-		return state == IChannel.STATE_OPEN || state == IChannel.STATE_OPENNING;
+		return state == IChannel.STATE_OPEN || state == IChannel.STATE_OPENING;
 	}
 
 	public void appendText(final MessageConsole console, final String text, boolean eol) {

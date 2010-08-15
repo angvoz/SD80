@@ -20,8 +20,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.RootExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
@@ -35,6 +37,7 @@ import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
@@ -63,6 +66,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	private ISimpleRegisters 	tcfSimpleRegistersService = null;
 	protected org.eclipse.tm.tcf.services.IRegisters		tcfRegistersService = null;
 	
+	/**
+	 * Register value cache per execution context.
+	 * Keyed on context ID.
+	 */
 	private Map<String, Map<String, String>> registerValueCache = 
 		Collections.synchronizedMap(new HashMap<String, Map<String, String>>());
 
@@ -499,7 +506,18 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 		if (tcfRegistersService != null) {	// TCF IRegisters service available
 			final RegistersContext tcfReg = regDMC.getTCFContext();
-			final byte[] byteVal = MemoryUtils.convertHexStringToByteArray(regValue, tcfReg.getSize(), 2); 
+			byte[] bv = null;
+			try {
+				bv = MemoryUtils.convertHexStringToByteArray(regValue, tcfReg.getSize(), 2);
+			} catch (NumberFormatException e) {
+				Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error writing register.", e);
+				EDCDebugger.getMessageLogger().log(s);
+				rm.setStatus(s);
+				rm.done();
+				return;
+			}
+			
+			final byte[] byteVal = bv;
 			
 			TCFTask<Object> tcfTask = new TCFTask<Object>() {
 				public void run() {
@@ -897,6 +915,24 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	@DsfServiceEventHandler
 	public void eventDispatched(IResumedDMEvent e) {
 		flushCache(null);
+	}
+
+	/**
+	 * When a context (e.g. a thread) is killed/detached, we should forget
+	 * cached register info & values for it so that we can properly access
+	 * registers when we re-attach to it.
+	 * 
+	 * @since 2.0
+	 */
+	@DsfServiceEventHandler
+	public void eventDispatched(IExitedDMEvent e) {
+		IExecutionDMContext cxt = e.getDMContext();
+		if (cxt != null && cxt instanceof IEDCDMContext) {
+			String cxtID = ((IEDCDMContext)cxt).getID();
+			// It does not hurt if the context is not in the caches.
+			registerGroupsPerContext.remove(cxtID);
+			registerValueCache.remove(cxtID);
+		}
 	}
 
 	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) {

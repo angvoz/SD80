@@ -120,12 +120,16 @@ public class Processes extends AbstractEDCService implements IProcesses, IEventL
 			detachDebuggerFromProcess(p, crm);
 	}
 	
-	public void detachDebuggerFromProcess(final IDMContext dmc, final RequestMonitor rm) {
+	public void detachDebuggerFromProcess(final IDMContext exeDmc, final RequestMonitor rm) {
 		/*
 		 * 1. Remove all breakpoints for all modules in the process.
 		 * 2. Resume the process.
 		 * 3. Detach the process from agent and host debugger.
 		 */
+		
+		// Make sure detach from the process, not just a thread.
+		final IProcessDMContext dmc = DMContexts.getAncestorOfType(exeDmc, IProcessDMContext.class);
+
 		final BreakpointsMediator2 bmService = getServicesTracker().getService(BreakpointsMediator2.class);
 		if (bmService == null) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Failed to get BreakpointsMediator2 service."));
@@ -194,7 +198,7 @@ public class Processes extends AbstractEDCService implements IProcesses, IEventL
 	 * @param dmc
 	 * @param rm
 	 */
-	private void doDetachDebugger(final ExecutionDMC dmc, final RequestMonitor rm) {
+	protected void doDetachDebugger(final ExecutionDMC dmc, final RequestMonitor rm) {
 		// First detach agent so that the program won't die when the agent dies.
 		// Then detach host debugger.
 		//

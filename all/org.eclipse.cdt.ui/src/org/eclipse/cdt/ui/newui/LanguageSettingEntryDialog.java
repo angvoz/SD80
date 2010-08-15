@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.ui.newui;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
@@ -59,6 +60,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 //	private Button c_wsp;
 	private Button checkBoxBuiltIn;
 	private ICConfigurationDescription cfgd;
+	private IProject project;
 	private ImageCombo comboKind;
 	private Label labelComboKind;
 	private ImageCombo comboPathCategory;
@@ -120,6 +122,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		mode = _mode;
 		entryName = _data;
 		cfgd = _cfgd;
+		project = cfgd.getProjectDescription().getProject();
 	}
 
 	private int comboIndexToKind(int index) {
@@ -392,7 +395,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	
 	@Override
 	public void buttonPressed(SelectionEvent e) {
-		String s;
+		String s=null;
 		if (e.widget.equals(buttonOk)) { 
 			text1 = text.getText();
 			check1 = checkBoxAllCfgs.getSelection();
@@ -436,12 +439,59 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		} else if (e.widget.equals(buttonCancel)) {
 			shell.dispose();
 		} else if (e.widget.equals(buttonBrowse)) {
-			if ((mode & DIR_MASK)== DIR_MASK)
-				s = AbstractCPropertyTab.getWorkspaceDirDialog(shell, text.getText());
-			else 
-				s = AbstractCPropertyTab.getWorkspaceFileDialog(shell, text.getText());
+			boolean isDirectory = false;
+			boolean isFile = false;
+			switch (comboKind.getSelectionIndex()) {
+			case COMBO_INDEX_INCLUDE_PATH:
+			case COMBO_INDEX_LIBRARY_PATH:
+				isDirectory = true;
+				break;
+			case COMBO_INDEX_INCLUDE_FILE:
+			case COMBO_INDEX_MACRO_FILE:
+			case COMBO_INDEX_LIBRARY_FILE:
+				isFile = true;
+				break;
+			case COMBO_INDEX_MACRO:
+				break;
+			}
+			
+			
+			if (isDirectory) {
+				switch (comboPathCategory.getSelectionIndex()) {
+				case COMBO_PATH_INDEX_WORKSPACE:
+					s = AbstractCPropertyTab.getWorkspaceDirDialog(shell, text.getText());
+					break;
+				case COMBO_PATH_INDEX_PROJECT:
+					s = AbstractCPropertyTab.getProjectDirDialog(shell, text.getText(), project);
+					break;
+				case COMBO_PATH_INDEX_FILESYSTEM:
+					s = AbstractCPropertyTab.getFileSystemDirDialog(shell, text.getText());
+					break;
+				}
+			} else if (isFile) {
+				switch (comboPathCategory.getSelectionIndex()) {
+				case COMBO_PATH_INDEX_WORKSPACE:
+					s = AbstractCPropertyTab.getWorkspaceFileDialog(shell, text.getText());
+					break;
+				case COMBO_PATH_INDEX_PROJECT:
+					s = AbstractCPropertyTab.getProjectFileDialog(shell, text.getText(), project);
+					break;
+				case COMBO_PATH_INDEX_FILESYSTEM:
+					s = AbstractCPropertyTab.getFileSystemFileDialog(shell, text.getText());
+					break;
+				}
+			}
+			
+			
+//			if ((mode & DIR_MASK)== DIR_MASK)
+//				s = AbstractCPropertyTab.getWorkspaceDirDialog(shell, text.getText());
+//			else 
+//				s = AbstractCPropertyTab.getWorkspaceFileDialog(shell, text.getText());
 			if (s != null) {
 				s = strip_wsp(s);
+				if (comboPathCategory.getSelectionIndex()==COMBO_PATH_INDEX_PROJECT && s.startsWith("/"+project.getName()+"/")) {
+					s=s.substring(project.getName().length()+2);
+				}
 				text.setText(s);
 //				c_wsp.setSelection(true);
 //				c_wsp.setImage(getWspImage(c_wsp.getSelection()));

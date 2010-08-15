@@ -15,6 +15,7 @@ import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfCommandRunnable;
@@ -75,11 +76,11 @@ public class EDCDisconnectCommand implements IDisconnectHandler {
 
     	fExecutor.submit(new DsfCommandRunnable(fTracker, request.getElements()[0], request) { 
             @Override public void doExecute() {
-                IProcessDMContext processDMC = DMContexts.getAncestorOfType(getContext(), IProcessDMContext.class);
+                IDMContext exeDMC = getContext();
                 IProcesses procService = getProcessService();
 
                 if (procService != null) {
-                	procService.detachDebuggerFromProcess(processDMC, new RequestMonitor(fExecutor, null));
+                	procService.detachDebuggerFromProcess(exeDMC, new RequestMonitor(fExecutor, null));
                 }
             }
         });

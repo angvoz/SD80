@@ -124,6 +124,7 @@ public class CPluginImages {
 	public static final String IMG_OBJS_INCLUDES_FOLDER = NAME_PREFIX + "hfolder_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_QUOTE_INCLUDES_FOLDER = NAME_PREFIX + "hfolder_quote_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDES_FOLDER_SYSTEM = NAME_PREFIX + "fldr_sys_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_INCLUDES_FOLDER_PROJECT = NAME_PREFIX + "hproject.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDES_FOLDER_WORKSPACE = NAME_PREFIX + "wsp_includefolder.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_LANG_SETTINGS_PROVIDER = NAME_PREFIX + "ls_entries_provider.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_MBS = NAME_PREFIX + "mbs.gif"; //$NON-NLS-1$
@@ -219,6 +220,7 @@ public class CPluginImages {
 	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER);
 	public static final ImageDescriptor DESC_OBJS_QUOTE_INCLUDES_FOLDER= createManaged(T_OBJ, IMG_OBJS_QUOTE_INCLUDES_FOLDER);
 	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_SYSTEM  = createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_SYSTEM);
+	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_PROJECT= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_PROJECT);
 	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_WORKSPACE= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_WORKSPACE);
 	public static final ImageDescriptor DESC_OBJS_LANG_SETTINGS_PROVIDER= createManaged(T_OBJ, IMG_OBJS_LANG_SETTINGS_PROVIDER);
 	public static final ImageDescriptor DESC_OBJS_MBS= createManaged(T_OBJ, IMG_OBJS_MBS);

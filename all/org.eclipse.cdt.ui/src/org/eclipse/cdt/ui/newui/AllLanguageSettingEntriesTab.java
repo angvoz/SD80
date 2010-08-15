@@ -72,6 +72,7 @@ import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
+import org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntryImages;
 import org.eclipse.cdt.internal.ui.newui.Messages;
 
 public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
@@ -1004,6 +1005,13 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 		@Override
 		public Image getImage(Object element) {
+//			if (element instanceof ICLanguageSettingEntry) {
+//				ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
+//				int kind = le.getKind();
+//				boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
+//				boolean isProjectRelative = isWorkspacePath && !le.getName().startsWith("/");
+//				return LanguageSettingsEntryImages.getImage(kind, le.getFlags(), isProjectRelative);
+//			}
 			return getColumnImage(element, 0);
 		}
 		
@@ -1029,40 +1037,6 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				}
 				
 			}
-			if (element instanceof ICLanguageSettingEntry) {
-				ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-				int kind = le.getKind();
-				boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
-				boolean isBuiltin = (le.getFlags() & ICSettingEntry.BUILTIN) != 0;
-
-				switch (kind) {
-				case ICSettingEntry.INCLUDE_PATH:
-					if (isWorkspacePath)
-						imageKey = CPluginImages.IMG_OBJS_INCLUDES_FOLDER_WORKSPACE;
-					else if (isBuiltin)
-						imageKey = CPluginImages.IMG_OBJS_INCLUDES_FOLDER_SYSTEM;
-					else
-						imageKey = CPluginImages.IMG_OBJS_INCLUDES_FOLDER;
-					break;
-				case ICSettingEntry.INCLUDE_FILE:
-					imageKey = CPluginImages.IMG_OBJS_INCLUDES_CONTAINER;
-					break;
-				case ICSettingEntry.MACRO:
-					imageKey = CPluginImages.IMG_OBJS_MACRO;
-					break;
-				case ICSettingEntry.MACRO_FILE:
-					// TODO
-					break;
-				case ICSettingEntry.LIBRARY_PATH:
-					imageKey = CPluginImages.IMG_OBJS_LIBRARY_FOLDER;
-					break;
-				case ICSettingEntry.LIBRARY_FILE:
-					imageKey = CPluginImages.IMG_OBJS_LIBRARY;
-					break;
-				}
-				if (imageKey==null && le instanceof ICLanguageSettingPathEntry)
-					imageKey = CPluginImages.IMG_OBJS_FOLDER;
-			}
 			return imageKey;
 		}
 
@@ -1070,6 +1044,14 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			if (columnIndex > 0)
 				return null;
 			
+			if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
+				int kind = le.getKind();
+				boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
+				boolean isProjectRelative = isWorkspacePath && !le.getName().startsWith("/");
+				return LanguageSettingsEntryImages.getImage(kind, le.getFlags(), isProjectRelative);
+			}
+
 			String imageKey = getImageKey(element, columnIndex);
 			if (imageKey!=null) {
 				String overlayKey = getOverlayKey(element, columnIndex);
@@ -1258,14 +1240,8 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	public ICLanguageSettingEntry doAdd() {
 		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), LanguageSettingEntryDialog.NEW_DIR,
 				EMPTY_STR, EMPTY_STR, getResDesc().getConfiguration(), 0);
-		if (dlg.open() && dlg.text1.trim().length() > 0) {
-			boolean toAllCfgs = dlg.check1;
-			boolean toAllLang = dlg.check3;
-			int flags = 0;
-			if (dlg.check2) { // isWsp
-				flags = ICSettingEntry.VALUE_WORKSPACE_PATH;
-			}
-			return new CIncludePathEntry(dlg.text1, flags);
+		if (dlg.open()) {
+			return dlg.getEntries()[0];
 		}
 		return null;
 	}

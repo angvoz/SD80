@@ -481,7 +481,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		final RegisterDMC regDMC = (RegisterDMC) regCtx;
 		IExecutionDMContext exeDMC = DMContexts.getAncestorOfType(regDMC, IExecutionDMContext.class);
 		if (exeDMC == null || !(exeDMC instanceof IEDCDMContext)) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "No valid executionDMC for the register."));
+			Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "No valid executionDMC for the register.");
+			EDCDebugger.getMessageLogger().log(s);
+			rm.setStatus(s);
 			rm.done();
 			return;
 		}
@@ -507,7 +509,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 								generateRegisterChangedEvent(regDMC);
 							} else {
 								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
-										"Error writing register" , error));
+										"Error writing register.", error));
 							}
 							done(null);
 						}
@@ -520,6 +522,8 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			} catch (Throwable e) {
 				rm.setStatus(EDCDebugger.dsfRequestFailedStatus(null, e));
 			} finally {
+				if (rm.getStatus() != null)
+					EDCDebugger.getMessageLogger().log(rm.getStatus());
 				rm.done();
 			}
 		}
@@ -544,7 +548,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 								generateRegisterChangedEvent(regDMC);
 							} else {
 								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
-										"Error writing register", null));
+										"Error writing register.", error));
 							}
 							done(null);
 						}
@@ -611,6 +615,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			protected void handleError() {
 				// We pass this hex string instead of "unknown"
 				// so that callers won't run into exception.
+				EDCDebugger.getMessageLogger().log(getStatus());
 				regValue.append(REGISTER_VALUE_ERROR);
 			}
 		});
@@ -660,11 +665,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 						public void doneGet(IToken token, Exception error, byte[] value) {
 		
 							if (error != null) {
-								String errMsg = error.getLocalizedMessage(); 
-								if (error instanceof IErrorReport)
-									errMsg = (String)((IErrorReport)error).getAttributes().get(IErrorReport.ERROR_FORMAT);
-								
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, errMsg, null));
+								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, "Error reading register.", error));
 							}
 							else {
 								String strVal = MemoryUtils.convertByteArrayToHexString(value);
@@ -710,12 +711,8 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 						public void doneGet(IToken token, Exception error, String[] values) {
 		
 							if (error != null) {
-								String errMsg = error.getLocalizedMessage(); 
-								if (error instanceof IErrorReport)
-									errMsg = (String)((IErrorReport)error).getAttributes().get(IErrorReport.ERROR_FORMAT);
-								
 								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-										errMsg, null));
+										"Error reading register.", error));
 							}
 							else {
 								assert values.length == 1;
@@ -860,7 +857,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		try {
 			childIDs = getChildIDTask.get(15, TimeUnit.SECONDS);
 		} catch (Throwable e) {
-			EDCDebugger.getMessageLogger().logError("Fail to get TCF registers contexts for: " + parentID, e);
+			EDCDebugger.getMessageLogger().logError("Fail to get TCF context for: " + parentID, e);
 			return tcfRegContexts;
 		}
 		
@@ -882,7 +879,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			try {
 				rgc = getGroupContextTask.get(15, TimeUnit.SECONDS);
 			} catch (Throwable e) {
-				EDCDebugger.getMessageLogger().logError("Fail to get TCF regisgters context with ID: " + gid, e);
+				EDCDebugger.getMessageLogger().logError("Fail to get TCF context with ID: " + gid, e);
 			}
 			
 			if (rgc != null)

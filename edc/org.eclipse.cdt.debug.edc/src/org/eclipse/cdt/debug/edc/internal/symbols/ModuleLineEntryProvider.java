@@ -51,6 +51,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 
 		// use TreeMap so line number keys are sorted in ascending order
 		protected TreeMap<Integer, List<ILineEntry>> lineEntriesByLine = new TreeMap<Integer, List<ILineEntry>>();
+		protected TreeMap<IAddress, ILineEntry> lineEntriesByAddress = new TreeMap<IAddress, ILineEntry>();
 		
 		private IPath filePath;
 
@@ -86,7 +87,9 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			}
 			currentMappings.add(entry);
 			lineEntriesByLine.put(entry.getLineNumber(), currentMappings);		
-			
+
+			lineEntriesByAddress.put(entry.getLowAddress(), entry);		
+
 			sorted = false;
 		}
 		
@@ -150,13 +153,13 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 
 		public ILineEntry getNextLineEntry(ILineEntry lineEntry) {
 			if (lineEntry.getFilePath().equals(filePath)) {
-				SortedMap<Integer, List<ILineEntry>> subMap = lineEntriesByLine.tailMap(lineEntry.getLineNumber() + 1);
+				SortedMap<IAddress, ILineEntry> subMap = lineEntriesByAddress.tailMap(lineEntry.getLowAddress().add(1));
 				if (!subMap.isEmpty()) {
 					IFunctionScope function = ignoreInlineFunctions(compileUnitScope.getFunctionAtAddress(lineEntry.getLowAddress()));
 					if (function == null) {
 						return null;
 					}
-					for (ILineEntry nextEntry : subMap.get(subMap.firstKey())) {
+					for (ILineEntry nextEntry : subMap.values()) {
 						// return the entry at the next line if it's in the
 						// same function and has a higher address
 						IFunctionScope nextFunction = ignoreInlineFunctions(compileUnitScope.getFunctionAtAddress(nextEntry.getLowAddress()));

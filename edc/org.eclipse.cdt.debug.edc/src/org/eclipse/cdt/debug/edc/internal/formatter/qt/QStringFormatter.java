@@ -10,79 +10,75 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.formatter.qt;
 
-import java.text.MessageFormat;
+import java.util.Collections;
+import java.util.List;
 
-import org.eclipse.cdt.debug.edc.formatter.AbstractVariableConverter;
+import org.eclipse.cdt.debug.edc.formatter.AbstractCompositeFormatProvider;
 import org.eclipse.cdt.debug.edc.formatter.FormatUtils;
 import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableFormatProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
-import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
-import org.eclipse.cdt.dsf.debug.service.IExpressions;
+import org.eclipse.cdt.dsf.debug.service.IExpressions2;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IExpressions2.CastInfo;
 import org.eclipse.core.runtime.CoreException;
 
 public class QStringFormatter implements IVariableFormatProvider {
-	// TODO once the dwarf reader Bug 11422 -  EDC does not display the members of QString,
-	// replace this implementation with one like QByteArrayFormatter
-	
+
 	private static final String TYPE_NAME = "QString"; //$NON-NLS-1$
 
-	public class VariableConverter extends AbstractVariableConverter {
+	public static class FormatProvider extends AbstractCompositeFormatProvider {
 
-		private static final String EXPRESSION_FMT = 
-			"reinterpret_cast<wchar_t *>((reinterpret_cast<Data*>({0}{1}))->data)";
+		private static final String DATA_NAME = "data"; //$NON-NLS-1$
+		private static final String DATA_PATH = "d->data"; //$NON-NLS-1$
 
-		public VariableConverter(IType type, boolean forDetails) {
-			super(type, forDetails);
+		public FormatProvider(IType type, boolean forDetails) {
+			super(type, forDetails, getNameToFieldPaths());
 		}
 
-		@Override
-		protected String getDetailsValue(IExpressionDMContext variable) throws CoreException {
-			return getSummaryValue(variable);
+		private static List<NameToFieldPath> getNameToFieldPaths() {
+			return Collections.singletonList(new NameToFieldPath(DATA_NAME, DATA_PATH));
 		}
-
+		
 		@Override
-		protected String getSummaryValue(IExpressionDMContext variable) throws CoreException {
-			IEDCExpression variableExp = (IEDCExpression) variable;
-			IExpressions expressions = variableExp.getServiceTracker().getService(IExpressions.class);
-			String expressionString = MessageFormat.format(EXPRESSION_FMT, getDerefPrefix(variableExp.getEvaluatedType()), variableExp.getExpression());
-			IEDCExpression convertedExp = 
-				(IEDCExpression) expressions.createExpression(variableExp.getFrame(), expressionString);
-			IVariableValueConverter valueConverter = FormatUtils.getCustomValueConverter(convertedExp);
+		protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
+			IEDCExpression dataChild = 
+				(IEDCExpression) FormatUtils.findInCollectionByName(super.getChildren(variable), DATA_NAME);
+			IExpressions2 expressions2 = dataChild.getServiceTracker().getService(IExpressions2.class);
+			CastInfo castInfo = new CastInfo("wchar_t*"); //$NON-NLS-1$
+			IExpressionDMContext castedChild = expressions2.createCastedExpression(dataChild, castInfo);
+			return Collections.singletonList(castedChild);
+		}
+		
+		@Override
+		public String getValue(IExpressionDMContext variable) throws CoreException {
+			List<IExpressionDMContext> children = getChildren(variable);
+			IExpressionDMContext dataChild = children.get(0);
+			IVariableValueConverter valueConverter = FormatUtils.getCustomValueConverter(dataChild);
 			if (valueConverter != null)
-				return valueConverter.getValue(convertedExp);
-			return null;
-		}
-
-		private String getDerefPrefix(IType type) {
-			StringBuffer sb = new StringBuffer();
-			while (type instanceof IPointerType) {
-				type = ((IType) type).getType();
-				sb.append('*');
-			}
-			return sb.toString();
+				return valueConverter.getValue(dataChild);
+			return "";
 		}
 	}
 
 	public ITypeContentProvider getTypeContentProvider(IType type) {
+		// leave children unformatted
 		return null;
 	}
 
 	public IVariableValueConverter getVariableValueConverter(IType type) {
 		if (FormatUtils.checkClassOrInheritanceByName(type, TYPE_NAME)) {
-			return new VariableConverter(type, false);
+			return new FormatProvider(type, false);
 		}
 		return null;
 	}
 
 	public IVariableValueConverter getDetailValueConverter(IType type) {
 		if (FormatUtils.checkClassOrInheritanceByName(type, TYPE_NAME)) {
-			return new VariableConverter(type, true);
+			return new FormatProvider(type, true);
 		}
 		return null;
 	}
-
 }

@@ -209,8 +209,15 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		private String latestPC = null;
 		private RequestMonitor steppingRM = null;
 		private boolean isStepping = false;
+		
+		// See where this is used for more.
 		private int countOfScheduledNotifications = 0 ;
 
+		/**
+		 * Whether user chose to "terminate" or "disconnect" the context.
+		 */
+		private boolean isTerminatingThanDisconnecting = false;
+		
 		public ExecutionDMC(ExecutionDMC parent, Map<String, Object> props, RunControlContext tcfContext) {
 			super(RunControl.this, parent == null ? new IDMContext[0] : new IDMContext[] { parent }, props);
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
@@ -609,6 +616,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public void terminate(final RequestMonitor requestMonitor) {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+
+			isTerminatingThanDisconnecting = true;
+			
 			if (tcfContext != null) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
@@ -659,27 +669,41 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 
 		/**
-		 * Detach debugger from this context and all its children and grand-children.
-		 * This is to purge the context from debugger UI and internal storage.
+		 * Detach debugger from this context and all its children.
 		 */
-		public void detachFromDebugger(){
+		public void detach(){
+			isTerminatingThanDisconnecting = false;
+			/**
+			 * agent side detaching is invoked by Processes service.
+			 * Here we just purge the context.
+			 */
+			purgeFromDebugger();
+		}
+
+		/**
+		 * Purge this context and all its children and grand-children
+		 * from debugger UI and internal data cache.
+		 */
+		public void purgeFromDebugger(){
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE);
 
 			for (ExecutionDMC e : getChildren())
 				// recursively forget children first
-				e.detachFromDebugger();
+				e.purgeFromDebugger();
 
 			ExecutionDMC parent = getParent();
 			if (parent != null)
 				parent.removeChild(this);
 			
-			getSession().dispatchEvent(new ExitedEvent(this), RunControl.this.getProperties());
+			getSession().dispatchEvent(new ExitedEvent(this, isTerminatingThanDisconnecting), RunControl.this.getProperties());
 			
 			if (getRootDMC().getChildren().length == 0) 
 				// no more contexts under debug, fire exitedEvent for the rootDMC which
 				// will trigger shutdown of the debug session.
 				// See EDCLaunch.eventDispatched(IExitedDMEvent e).
-				getSession().dispatchEvent(new ExitedEvent(getRootDMC()), RunControl.this.getProperties());
+				// Whether the root is terminated or disconnected depends on whether 
+				// the last context is terminated or disconnected.
+				getSession().dispatchEvent(new ExitedEvent(getRootDMC(), isTerminatingThanDisconnecting), RunControl.this.getProperties());
 			
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
 		}
@@ -2029,11 +2053,16 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	}
 
 	public static class ExitedEvent extends AbstractDMEvent<IExecutionDMContext> implements IExitedDMEvent {
-
-		public ExitedEvent(IExecutionDMContext context) {
+		private boolean isTerminatedThanDisconnected;
+		
+		public ExitedEvent(IExecutionDMContext context, boolean isTerminatedThanDisconnected) {
 			super(context);
+			this.isTerminatedThanDisconnected = isTerminatedThanDisconnected;
 		}
 
+		public boolean isTerminatedThanDisconnected() {
+			return isTerminatedThanDisconnected;
+		}
 	}
 
 	/*
@@ -2087,7 +2116,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						ExecutionDMC dmc = getContext(contextID);
 						assert dmc != null;
 						if (dmc != null)
-							dmc.detachFromDebugger();
+							dmc.purgeFromDebugger();
 					}
 				}
 			});
@@ -2161,7 +2190,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 * See: {@link #terminateAllContexts(RequestMonitor)}
 	 */
 	private void detachAllContexts(){
-		getRootDMC().detachFromDebugger();
+		getRootDMC().detach();
 	}
 
 	/**

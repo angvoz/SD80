@@ -372,6 +372,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider;
 		
 		boolean canAdd = isProviderEditable;
+		boolean canEdit = isProviderEditable && isEntrySelected;
 		boolean canDelete = isProviderEditable && isEntrySelected;
 		boolean canClear = isProviderEditable && isProviderSelected
 			&& !LanguageSettingsManager.isWorkspaceProvider(provider)
@@ -396,7 +397,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		}
 
 		buttonSetEnabled(BUTTON_ADD, canAdd);
-		buttonSetEnabled(BUTTON_EDIT, false);
+		buttonSetEnabled(BUTTON_EDIT, canEdit);
 		buttonSetEnabled(BUTTON_DELETE, canDelete || canClear);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
@@ -695,7 +696,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		}
 	}
 
-	private void performEdit(int n) {
+	private void performEdit(ILanguageSettingsProvider provider, ICLanguageSettingEntry entry) {
 //		if (n == -1)
 //			return;
 //		ICLanguageSettingEntry old = (ICLanguageSettingEntry) (table.getItem(n).getData());
@@ -827,9 +828,12 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				performAdd(provider, settingEntry);
 			}
 			break;
-//		case BUTTON_EDIT:
-//			performEdit(n);
-//			break;
+		case BUTTON_EDIT:
+			if (provider instanceof ILanguageSettingsEditableProvider) {
+				ICLanguageSettingEntry settingEntry = doEdit(getSelectedEntry());
+				performEdit(provider, settingEntry);
+			}
+			break;
 		case BUTTON_DELETE:
 			performDelete();
 			break;
@@ -1238,8 +1242,9 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 //	}
 
 	public ICLanguageSettingEntry doAdd() {
-		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), LanguageSettingEntryDialog.NEW_DIR,
-				EMPTY_STR, EMPTY_STR, getResDesc().getConfiguration(), 0);
+		ICLanguageSettingEntry selectedEntry = getSelectedEntry();
+		ICConfigurationDescription cfgDecsription = getResDesc().getConfiguration();
+		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), cfgDecsription, selectedEntry, true);
 		if (dlg.open()) {
 			return dlg.getEntries()[0];
 		}
@@ -1247,14 +1252,11 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	}
 
 	public ICLanguageSettingEntry doEdit(ICLanguageSettingEntry ent) {
-		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), LanguageSettingEntryDialog.OLD_DIR,
-				Messages.IncludeTab_2, ent.getValue(), getResDesc().getConfiguration(),
-				(ent.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH));
+		ICLanguageSettingEntry selectedEntry = getSelectedEntry();
+		ICConfigurationDescription cfgDecsription = getResDesc().getConfiguration();
+		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), cfgDecsription, selectedEntry);
 		if (dlg.open()) {
-			int flags = 0;
-			if (dlg.check2)
-				flags = ICSettingEntry.VALUE_WORKSPACE_PATH;
-			return new CIncludePathEntry(dlg.text1, flags);
+			return dlg.getEntries()[0];
 		}
 		return null;
 	}

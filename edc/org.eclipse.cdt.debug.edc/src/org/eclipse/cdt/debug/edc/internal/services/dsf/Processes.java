@@ -223,7 +223,7 @@ public class Processes extends AbstractEDCService implements IProcesses, IEventL
 										// everything ok, now detach from host debugger,
 										// which will shutdown the debug session if the process
 										// is the last one.
-										dmc.detachFromDebugger();
+										dmc.detach();
 									}
 									rm.done();
 								}

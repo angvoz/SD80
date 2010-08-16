@@ -27,6 +27,7 @@ import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.launch.ShutdownSequence;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Processes;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExitedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.RootExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
@@ -89,6 +90,7 @@ public class EDCLaunch extends Launch {
 	private boolean isFirstLaunch = true;
 	private ILaunchConfiguration activeLaunchConfiguration;
 	private List<ILaunchConfiguration> affiliatedLaunchConfigurations = Collections.synchronizedList(new ArrayList<ILaunchConfiguration>());
+	private boolean isTerminatedThanDisconnected = false;
 
 	private static final Map<EDCLaunch, List<IChannel>> launchChannels = Collections
 			.synchronizedMap(new HashMap<EDCLaunch, List<IChannel>>());
@@ -181,9 +183,17 @@ public class EDCLaunch extends Launch {
 	@DsfServiceEventHandler
 	public void eventDispatched(IExitedDMEvent e) {
 		// Only shutdown the session if the RootDMC is exited, namely all processDMCs 
-		// are terminated.
-		if (e.getDMContext() instanceof RootExecutionDMC)
+		// are terminated or disconnected.
+		if (! (e instanceof ExitedEvent))
+			return;
+		
+		if (e.getDMContext() instanceof RootExecutionDMC) {
+			// The ExitedEvent tells us whether the last context in the launch
+			// is terminated or disconnected.
+			isTerminatedThanDisconnected = ((ExitedEvent)e).isTerminatedThanDisconnected();
+
 			shutdownSession(new RequestMonitor(ImmediateExecutor.getInstance(), null));
+		}
 	}
 
 	// /////////////////////////////////////////////////////////////////////////
@@ -202,6 +212,8 @@ public class EDCLaunch extends Launch {
 
 	@Override
 	public boolean isTerminated() {
+		// This return value is irrelevant to whether the session
+		// is terminated or disconnected.
 		return shutDown;
 	}
 
@@ -228,7 +240,9 @@ public class EDCLaunch extends Launch {
 
 	@Override
 	public boolean isDisconnected() {
-		return isTerminated();
+		// Indicates whether the launch (session) is terminated 
+		// by "disconnect" command.
+		return isTerminated() && ! isTerminatedThanDisconnected;
 	}
 
 	@Override

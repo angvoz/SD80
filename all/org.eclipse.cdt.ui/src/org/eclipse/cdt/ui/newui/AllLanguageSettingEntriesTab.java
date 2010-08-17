@@ -719,10 +719,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 //		}
 	}
 
-	private void performDelete(/*int n*/) {
-		ILanguageSettingsProvider provider = getSelectedProvider();
-		ICLanguageSettingEntry entry = getSelectedEntry();
-
+	private void performDelete(ILanguageSettingsProvider provider, ICLanguageSettingEntry entry) {
 		if (entry != null) {
 			List<ICLanguageSettingEntry> entriesOld = getSettingEntries(provider);
 			int pos = getExactIndex(entriesOld, entry);
@@ -813,35 +810,36 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	 */
 	@Override
 	public void buttonPressed(int buttonIndex) {
-//		ICLanguageSettingEntry old;
-//		int n = table.getSelectionIndex();
-//		int ids[] = table.getSelectionIndices();
-//
-		ILanguageSettingsProvider provider = getSelectedProvider();
-		ICLanguageSettingEntry entry = getSelectedEntry();
+		ILanguageSettingsProvider selectedProvider = getSelectedProvider();
+		ICLanguageSettingEntry selectedEntry = getSelectedEntry();
 		
 		ICLanguageSettingEntry old;
 		switch (buttonIndex) {
 		case BUTTON_ADD:
-			if (provider instanceof ILanguageSettingsEditableProvider) {
+			if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
 				ICLanguageSettingEntry settingEntry = doAdd();
-				performAdd(provider, settingEntry);
+				performAdd(selectedProvider, settingEntry);
 			}
 			break;
 		case BUTTON_EDIT:
-			if (provider instanceof ILanguageSettingsEditableProvider) {
+			if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
 				ICLanguageSettingEntry settingEntry = doEdit(getSelectedEntry());
-				performEdit(provider, settingEntry);
+				if (settingEntry!=null) {
+					performDelete(selectedProvider, getSelectedEntry());
+					performAdd(selectedProvider, settingEntry);
+				}
 			}
 			break;
 		case BUTTON_DELETE:
-			performDelete();
+			if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
+				performDelete(selectedProvider, getSelectedEntry());
+			}
 			break;
 		case BUTTON_MOVE_UP:
 		case BUTTON_MOVE_DOWN:
-			if (provider instanceof ILanguageSettingsEditableProvider) {
-				List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
-				int x = getExactIndex(entries, entry);
+			if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
+				List<ICLanguageSettingEntry> entries = getSettingEntries(selectedProvider);
+				int x = getExactIndex(entries, selectedEntry);
 				if (x < 0)
 					break;
 				if (buttonIndex == BUTTON_MOVE_DOWN)
@@ -853,7 +851,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				entries.add(x - 1, old);
 				entries.add(x, old2);
 	
-				setSettingEntries((ILanguageSettingsEditableProvider)provider, entries);
+				setSettingEntries((ILanguageSettingsEditableProvider)selectedProvider, entries);
 				update(buttonIndex == BUTTON_MOVE_UP ? -1 : 1);
 			}
 			break;
@@ -1243,8 +1241,8 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	public ICLanguageSettingEntry doAdd() {
 		ICLanguageSettingEntry selectedEntry = getSelectedEntry();
-		ICConfigurationDescription cfgDecsription = getResDesc().getConfiguration();
-		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), cfgDecsription, selectedEntry, true);
+		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), cfgDescription, selectedEntry, true);
 		if (dlg.open()) {
 			return dlg.getEntries()[0];
 		}

@@ -23,6 +23,7 @@ import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableFormatProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
@@ -41,8 +42,6 @@ public class QMapFormatter implements IVariableFormatProvider {
 		private static final String HEAD_PATH = "$unnamed$1.d->forward[0]"; //$NON-NLS-1$
 		private static final int SIZE_CHILD_INDEX = 0;
 		private static final int HEAD_CHILD_INDEX = 1;
-		private static final int NODE_KEY_INDEX = 0;
-		private static final int NODE_VALUE_INDEX = 1;
 		private static final int NODE_FORWARD_INDEX = 3;
 		private static final String FIRST_ELEMENT_SUFFIX = "[0]"; //$NON-NLS-1$
 		
@@ -51,6 +50,7 @@ public class QMapFormatter implements IVariableFormatProvider {
 		
 		private static final String DETAIL_FMT = "size={0} {1}"; //$NON-NLS-1$
 		private static final int STOP_LENGTH = 300;
+		private static final int SIZE_OF_PTR = 4;
 
 		private static Map<String, String> nameToFieldPathMap;
 		static {
@@ -126,16 +126,12 @@ public class QMapFormatter implements IVariableFormatProvider {
 		private int getKeyAndValueSize(IExpressions expressions, IFrameDMContext frame, String templateArgs, int listHeadValue) {
 			IEDCExpression castedMapNodeExpression = 
 				createCastedMapNodeExpression(expressions, frame, templateArgs, listHeadValue);
-			List<IExpressionDMContext> childrenOfNode = FormatUtils.getAllChildExpressions(castedMapNodeExpression);
-			IEDCExpression keyExp = (IEDCExpression) childrenOfNode.get(NODE_KEY_INDEX);
-			keyExp.evaluateExpression();
-			IType keyType = keyExp.getEvaluatedType();
-			int size = keyType.getByteSize();
-			IEDCExpression valueExp = (IEDCExpression) childrenOfNode.get(NODE_VALUE_INDEX);
-			valueExp.evaluateExpression();
-			IType valueType = valueExp.getEvaluatedType();
-			size += valueType.getByteSize();
-			return size;
+			castedMapNodeExpression.evaluateExpression();
+			IPointerType pointerType = (IPointerType) castedMapNodeExpression.getEvaluatedType();
+			IType mapNodeType = pointerType.getType();
+			int mapNodeSize = mapNodeType.getByteSize();
+			return mapNodeSize - (2 * SIZE_OF_PTR);
+			
 		}
 
 		private IEDCExpression createCastedMapNodeExpression(IExpressions expressions, IFrameDMContext frame, String templateArgs, int nodeValue) {

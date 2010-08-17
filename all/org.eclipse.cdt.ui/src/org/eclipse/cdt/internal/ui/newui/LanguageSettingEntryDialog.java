@@ -345,7 +345,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		gd.widthHint = comboPathWidth;
 		inputValue.setLayoutData(gd);
 		
-		if (entry!=null && kind==ICSettingEntry.MACRO) {
+		if (entry!=null && kind==ICSettingEntry.MACRO && !clearValue) {
 			inputValue.setFocus();
 			inputValue.setSelection(0, inputValue.getText().length());
 		}

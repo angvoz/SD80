@@ -72,6 +72,7 @@ import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
+import org.eclipse.cdt.internal.ui.newui.LanguageSettingEntryDialog;
 import org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntryImages;
 import org.eclipse.cdt.internal.ui.newui.Messages;
 

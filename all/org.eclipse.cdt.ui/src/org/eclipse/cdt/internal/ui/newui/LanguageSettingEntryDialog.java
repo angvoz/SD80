@@ -8,7 +8,7 @@
  * Contributors:
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.ui.newui;
+package org.eclipse.cdt.internal.ui.newui;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -37,11 +37,11 @@ import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
+import org.eclipse.cdt.ui.newui.AbstractPropertyDialog;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
 import org.eclipse.cdt.internal.ui.ImageCombo;
-import org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntryImages;
-import org.eclipse.cdt.internal.ui.newui.Messages;
 
 /**
  * @noextend This class is not intended to be subclassed by clients.
@@ -49,7 +49,7 @@ import org.eclipse.cdt.internal.ui.newui.Messages;
 public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	private static final String SLASH = "/"; //$NON-NLS-1$
 
-	private ICConfigurationDescription cfgDecsription;
+	private ICConfigurationDescription cfgDescription;
 	private IProject project;
 	private ICLanguageSettingEntry entry;
 	private boolean clearValue;
@@ -119,8 +119,8 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	
 	public LanguageSettingEntryDialog(Shell parent, ICConfigurationDescription cfgDescription, int kind) {
 		super(parent, "");
-		this.cfgDecsription = cfgDescription;
-		this.project = cfgDecsription.getProjectDescription().getProject();
+		this.cfgDescription = cfgDescription;
+		this.project = cfgDescription.getProjectDescription().getProject();
 		this.entry = null;
 		this.clearValue = true;
 		this.kind = kind;
@@ -132,8 +132,8 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	 */
 	public LanguageSettingEntryDialog(Shell parent, ICConfigurationDescription cfgDescription, ICLanguageSettingEntry entry, boolean clearValue) {
 		super(parent, "");
-		this.cfgDecsription = cfgDescription;
-		this.project = cfgDecsription.getProjectDescription().getProject();
+		this.cfgDescription = cfgDescription;
+		this.project = cfgDescription.getProjectDescription().getProject();
 		this.entry = entry;
 		this.kind = entry!=null ? entry.getKind() : ICSettingEntry.INCLUDE_PATH;
 		this.clearValue = clearValue;
@@ -590,7 +590,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 				inputName.setText(s);
 			}
 		} else if (e.widget.equals(buttonVars)) {
-			s = AbstractCPropertyTab.getVariableDialog(shell, cfgDecsription);
+			s = AbstractCPropertyTab.getVariableDialog(shell, cfgDescription);
 			if (s != null) inputName.insert(s);
 		}
 	}

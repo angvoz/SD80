@@ -848,12 +848,48 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	@Override
 	protected void performOK() {
-		@SuppressWarnings("unused")
-		int i=0;
+		// FIXME: for now only handles current configuration
+		ICResourceDescription rcDesc = getResDesc();
+		IResource rc = getResource();
+		ICConfigurationDescription cfgDescription = rcDesc.getConfiguration();
+		
+		List<ILanguageSettingsProvider> destProviders = new ArrayList<ILanguageSettingsProvider>();
+		List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+		for (ILanguageSettingsProvider pro : providers) {
+			EditedProvider editedProvider = editedProviders.get(pro.getId());
+
+			if (editedProvider!=null) {
+				if (pro instanceof ILanguageSettingsEditableProvider) {
+					if (pro instanceof LanguageSettingsSerializable) {
+						LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
+						if (LanguageSettingsManager.isWorkspaceProvider(spro)) {
+							try {
+								pro = spro.clone();
+								if (pro.getClass()!=spro.getClass())
+									throw new CloneNotSupportedException("Class " + spro.getClass() + " does not support cloning.");
+							} catch (CloneNotSupportedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+					ILanguageSettingsEditableProvider epro = (ILanguageSettingsEditableProvider)pro;
+					for (ICLanguageSetting languageSetting : ls) {
+						String languageId = languageSetting.getLanguageId();
+						if (languageId!=null) {
+							List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(cfgDescription, rc, languageId);
+							epro.setSettingEntries(cfgDescription, rc, languageId, entries);
+						}
+					}
+				}
+			}
+			destProviders.add(pro);
+		}
+		cfgDescription.setLanguageSettingProviders(destProviders);
 	}
 	
 	@Override
-	protected void performApply(ICResourceDescription src, ICResourceDescription dst) {
+	protected void performApply(ICResourceDescription srcRcDescription, ICResourceDescription destRcDescription) {
 		fHadSomeModification = false;
 		if (page.isMultiCfg()) {
 //			ICLanguageSetting[] sr = ls;
@@ -884,18 +920,13 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			
 			IResource rc = getResource();
 
-			ICConfigurationDescription sd = src.getConfiguration();
-			ICConfigurationDescription dd = dst.getConfiguration();
+			ICConfigurationDescription srcCfgDescription = srcRcDescription.getConfiguration();
+			ICConfigurationDescription destCfgDescription = destRcDescription.getConfiguration();
 			
-//			ICProjectDescription prjDesc = getResDesc().getConfiguration().getProjectDescription();
-//			ICConfigurationDescription[] cfgDescs = prjDesc.getConfigurations();
-//			
-//			for (ICConfigurationDescription cfgDescription : cfgDescs) {
-//			}
-			
-			List<ILanguageSettingsProvider> lsProviders = sd.getLanguageSettingProviders();
-			List<ILanguageSettingsProvider> ddProviders = new ArrayList<ILanguageSettingsProvider>();
-			for (ILanguageSettingsProvider pro : lsProviders) {
+			List<ILanguageSettingsProvider> destProviders = new ArrayList<ILanguageSettingsProvider>();
+
+			List<ILanguageSettingsProvider> srcProviders = srcCfgDescription.getLanguageSettingProviders();
+			for (ILanguageSettingsProvider pro : srcProviders) {
 				EditedProvider editedProvider = editedProviders.get(pro.getId());
 
 				if (editedProvider!=null) {
@@ -917,16 +948,16 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 						for (ICLanguageSetting languageSetting : ls) {
 							String languageId = languageSetting.getLanguageId();
 							if (languageId!=null) {
-								List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(sd, rc, languageId);
-								epro.setSettingEntries(sd, rc, languageId, entries);
+								List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(srcCfgDescription, rc, languageId);
+								epro.setSettingEntries(srcCfgDescription, rc, languageId, entries);
 							}
 						}
 					}
 				}
-				ddProviders.add(pro);
+				destProviders.add(pro);
 			}
 			
-			dd.setLanguageSettingProviders(ddProviders);
+			destCfgDescription.setLanguageSettingProviders(destProviders);
 				
 
 		}

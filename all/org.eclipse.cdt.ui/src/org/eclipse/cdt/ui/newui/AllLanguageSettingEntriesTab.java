@@ -113,6 +113,171 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
 	
+	private class LanguageSettingsContributorsContentProvider implements ITreeContentProvider {
+		public Object[] getElements(Object inputElement) {
+			return getChildren(inputElement);
+			
+		}
+	
+		public Object[] getChildren(Object parentElement) {
+			if (parentElement instanceof Object[])
+				return (Object[]) parentElement;
+			if (parentElement instanceof ILanguageSettingsProvider) {
+				ILanguageSettingsProvider lsProvider = (ILanguageSettingsProvider)parentElement;
+				List<ICLanguageSettingEntry> seList = getSettingEntriesConsolidated(lsProvider);
+				if (seList!=null) {
+					return seList.toArray();
+				}
+			}
+			return null;
+		}
+	
+		public Object getParent(Object element) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+	
+		public boolean hasChildren(Object element) {
+			// TODO Auto-generated method stub
+			Object[] children = getChildren(element);
+			return children!=null && children.length>0;
+		}
+	
+		public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
+		}
+	
+		public void dispose() {
+		}
+		
+	}
+
+	// Base label provider
+		public static class LanguageSettingsContributorsBaseLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider */ {
+			public LanguageSettingsContributorsBaseLabelProvider() {
+			}
+	
+			@Override
+			public Image getImage(Object element) {
+				return getColumnImage(element, 0);
+			}
+			
+			protected String getOverlayKey(Object element, int columnIndex) {
+				return null;
+			}
+	
+			protected String getImageKey(Object element, int columnIndex) {
+				String imageKey = null;
+	
+				if (element instanceof ILanguageSettingsProvider) {
+					ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
+					if (provider.getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProvider")) {
+						if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+							imageKey = CPluginImages.IMG_OBJS_USER;
+						} else {
+							imageKey = CPluginImages.IMG_OBJS_USER_ME;
+						}
+					} else if (provider.getId().equals("org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider")) {
+						imageKey = CPluginImages.IMG_OBJS_MBS;
+					} else {
+						imageKey = CPluginImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+					}
+					
+				}
+				return imageKey;
+			}
+	
+			public Image getColumnImage(Object element, int columnIndex) {
+				if (columnIndex > 0)
+					return null;
+				
+				if (element instanceof ICLanguageSettingEntry) {
+					ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
+					int kind = le.getKind();
+					boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
+					boolean isProjectRelative = isWorkspacePath && !le.getName().startsWith("/");
+					return LanguageSettingsEntryImages.getImage(kind, le.getFlags(), isProjectRelative);
+				}
+	
+				String imageKey = getImageKey(element, columnIndex);
+				if (imageKey!=null) {
+					String overlayKey = getOverlayKey(element, columnIndex);
+					if (overlayKey!=null) {
+						return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
+					}
+					return CPluginImages.get(imageKey);
+				}
+				return null;
+			}
+	
+			@Override
+			public String getText(Object element) {
+				return getColumnText(element, 0);
+			}
+	
+			public String getColumnText(Object element, int columnIndex) {
+				if (element instanceof Object[]) {
+					return "OOPS";
+				}
+				if (element instanceof ILanguageSettingsProvider) {
+					return ((ILanguageSettingsProvider)element).getName();
+				} else if (element instanceof ICLanguageSettingEntry) {
+					ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
+					if (columnIndex == 0) {
+						String s = le.getName();
+						if (le.getKind() == ICSettingEntry.MACRO) {
+							s = s+'='+le.getValue();
+						}
+	//					if (exported.contains(resolve(le)))
+	//						s = s + Messages.AbstractLangsListTab_3;
+						return s;
+					}
+					if (le.getKind() == ICSettingEntry.MACRO) {
+						switch (columnIndex) {
+						case 1:
+							return le.getValue();
+						}
+					}
+					return EMPTY_STR;
+				}
+				return (columnIndex == 0) ? element.toString() : EMPTY_STR;
+			}
+	
+			public Font getFont(Object element) {
+				if (!(element instanceof ICLanguageSettingEntry))
+					return null;
+				ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
+				if (le.isBuiltIn())
+					return null; // built in
+				if (le.isReadOnly()) // read only
+					return JFaceResources.getFontRegistry().getItalic(JFaceResources.DIALOG_FONT);
+				// normal
+				return JFaceResources.getFontRegistry().getBold(JFaceResources.DIALOG_FONT);
+			}
+		}
+
+	// Extended label provider
+	private class LanguageSettingsContributorsLabelProvider extends LanguageSettingsContributorsBaseLabelProvider {
+		@Override
+		protected String getOverlayKey(Object element, int columnIndex) {
+			String overlayKey = null;
+			if (element instanceof ILanguageSettingsProvider) {
+				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
+				if (!LanguageSettingsManager.isWorkspaceProvider(provider) && lang!=null) {
+					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
+					if (entries!=null) {
+						overlayKey = CPluginImages.IMG_OVR_SETTING;
+					}
+				}
+			}
+			return overlayKey;
+		}
+	
+		@Override
+		protected String getImageKey(Object element, int columnIndex) {
+			return super.getImageKey(element, columnIndex);
+		}
+	}
+
 	private class EditedProvider implements ILanguageSettingsEditableProvider {
 		private String id;
 		private String name;
@@ -188,11 +353,31 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	}
 	
 	/**
+	 * Shortcut for getting setting entries for current context. {@link LanguageSettingsManager}
+	 * will be checking parent resources if no settings defined for current resource.
+	 * 
+	 * @return list of setting entries for the current context.
+	 */
+	private List<ICLanguageSettingEntry> getSettingEntriesConsolidated(ILanguageSettingsProvider provider) {
+		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+		IResource rc = getResource();
+		String languageId = lang.getLanguageId();
+		if (languageId==null)
+			return null;
+		
+		List<ICLanguageSettingEntry> entries = provider.getSettingEntries(cfgDescription, rc, languageId);
+		if (entries==null) {
+			entries = LanguageSettingsManager.getSettingEntriesConsolidated(cfgDescription, provider.getId(), rc, languageId);
+		}
+		return entries;
+	}
+	
+	/**
 	 * Shortcut for getting setting entries for current context.
 	 * 
 	 * @return list of setting entries for the current context.
 	 */
-	public List<ICLanguageSettingEntry> getSettingEntries(ILanguageSettingsProvider provider) {
+	private List<ICLanguageSettingEntry> getSettingEntries(ILanguageSettingsProvider provider) {
 		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
 		IResource rc = getResource();
 		String languageId = lang.getLanguageId();
@@ -383,7 +568,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			&& getSettingEntries(provider)!=null;
 		
 		if (isProviderSelected) {
-			buttonSetText(BUTTON_DELETE, "Clear");
+			buttonSetText(BUTTON_DELETE, "Reset");
 		} else {
 			buttonSetText(BUTTON_DELETE, DEL_STR);
 		}
@@ -391,7 +576,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		boolean canMoveUp = false;
 		boolean canMoveDown = false;
 		if (isProviderEditable && isEntrySelected) {
-			List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
+			List<ICLanguageSettingEntry> entries = getSettingEntriesConsolidated(provider);
 			int index = getExactIndex(entries, entry);
 			int itemCount = entries.size();
 			int last=itemCount-1;
@@ -645,19 +830,20 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			String languageId = lang.getLanguageId();
 			IResource rc = getResource();
 			
-			List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
-			ICLanguageSettingEntry selectedEntry = getSelectedEntry();
-			int pos = getExactIndex(entries, selectedEntry)+1;
-			
 			EditedProvider editedProvider = editedProviders.get(providerId);
 			if (editedProvider==null) {
 				editedProvider = makeEditedProvider(provider, cfgDescription, rc);
 				editedProviders.put(providerId, editedProvider);
 			}
-			entries = getSettingEntries(editedProvider);
+
+			List<ICLanguageSettingEntry> entries = getSettingEntries(editedProvider);
 			if (entries==null) {
-				entries = new ArrayList<ICLanguageSettingEntry>();
+				entries = getSettingEntriesConsolidated(provider);
 			}
+			
+			ICLanguageSettingEntry selectedEntry = getSelectedEntry();
+			int pos = getExactIndex(entries, selectedEntry)+1;
+			
 			entries.add(pos, entry);
 			editedProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
 			
@@ -722,7 +908,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	private void performDelete(ILanguageSettingsProvider provider, ICLanguageSettingEntry entry) {
 		if (entry != null) {
-			List<ICLanguageSettingEntry> entriesOld = getSettingEntries(provider);
+			List<ICLanguageSettingEntry> entriesOld = getSettingEntriesConsolidated(provider);
 			int pos = getExactIndex(entriesOld, entry);
 			
 			ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
@@ -736,7 +922,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				editedProvider = makeEditedProvider(provider, cfgDescription, rc);
 				editedProviders.put(providerId, editedProvider);
 			}
-			entries = getSettingEntries(editedProvider);
+			entries = getSettingEntriesConsolidated(editedProvider);
 			if (entries!=null) {
 				entries.remove(entry);
 				editedProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
@@ -744,7 +930,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			
 			update();
 
-			List<ICLanguageSettingEntry> entriesNew = getSettingEntries(provider);
+			List<ICLanguageSettingEntry> entriesNew = getSettingEntriesConsolidated(provider);
 			ICLanguageSettingEntry nextEntry=null;
 			if (entriesNew!=null) {
 				if (pos>=entriesNew.size()) {
@@ -757,7 +943,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			
 			selectItem(providerId, nextEntry);
 			updateButtons();
-		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider) && getSettingEntries(provider)!=null) {
+		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider) && getSettingEntriesConsolidated(provider)!=null) {
 			String languageId = lang.getLanguageId();
 			if (languageId!=null) {
 				ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
@@ -777,9 +963,9 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			return null;
 		}
 		
-		for (TreeItem item : selItems) {
-			// TODO
-		}
+		// TODO multiple selection
+//		for (TreeItem item : selItems) {
+//		}
 		
 		
 		TreeItem item = selItems[0];
@@ -823,7 +1009,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		case BUTTON_MOVE_UP:
 		case BUTTON_MOVE_DOWN:
 			if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
-				List<ICLanguageSettingEntry> entries = getSettingEntries(selectedProvider);
+				List<ICLanguageSettingEntry> entries = getSettingEntriesConsolidated(selectedProvider);
 				int x = getExactIndex(entries, selectedEntry);
 				if (x < 0)
 					break;
@@ -995,173 +1181,6 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		
 		updateData(this.getResDesc());
 	}
-
-	private class LanguageSettingsContributorsContentProvider implements ITreeContentProvider {
-		public Object[] getElements(Object inputElement) {
-			return getChildren(inputElement);
-			
-		}
-
-		public Object[] getChildren(Object parentElement) {
-			if (parentElement instanceof Object[])
-				return (Object[]) parentElement;
-			if (parentElement instanceof ILanguageSettingsProvider) {
-				ILanguageSettingsProvider lsProvider = (ILanguageSettingsProvider)parentElement;
-				List<ICLanguageSettingEntry> seList = getSettingEntries(lsProvider);
-				if (seList==null) {
-					return new Object[0];
-				}
-				return seList.toArray();
-			}
-			return null;
-		}
-
-		public Object getParent(Object element) {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		public boolean hasChildren(Object element) {
-			// TODO Auto-generated method stub
-			Object[] children = getChildren(element);
-			return children!=null && children.length>0;
-		}
-
-		public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
-		}
-
-		public void dispose() {
-		}
-		
-	}
-
-	// Base label provider
-	public static class LanguageSettingsContributorsBaseLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider */ {
-		public LanguageSettingsContributorsBaseLabelProvider() {
-		}
-
-		@Override
-		public Image getImage(Object element) {
-			return getColumnImage(element, 0);
-		}
-		
-		protected String getOverlayKey(Object element, int columnIndex) {
-			return null;
-		}
-
-		protected String getImageKey(Object element, int columnIndex) {
-			String imageKey = null;
-
-			if (element instanceof ILanguageSettingsProvider) {
-				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
-				if (provider.getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProvider")) {
-					if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-						imageKey = CPluginImages.IMG_OBJS_USER;
-					} else {
-						imageKey = CPluginImages.IMG_OBJS_USER_ME;
-					}
-				} else if (provider.getId().equals("org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider")) {
-					imageKey = CPluginImages.IMG_OBJS_MBS;
-				} else {
-					imageKey = CPluginImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
-				}
-				
-			}
-			return imageKey;
-		}
-
-		public Image getColumnImage(Object element, int columnIndex) {
-			if (columnIndex > 0)
-				return null;
-			
-			if (element instanceof ICLanguageSettingEntry) {
-				ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-				int kind = le.getKind();
-				boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
-				boolean isProjectRelative = isWorkspacePath && !le.getName().startsWith("/");
-				return LanguageSettingsEntryImages.getImage(kind, le.getFlags(), isProjectRelative);
-			}
-
-			String imageKey = getImageKey(element, columnIndex);
-			if (imageKey!=null) {
-				String overlayKey = getOverlayKey(element, columnIndex);
-				if (overlayKey!=null) {
-					return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
-				}
-				return CPluginImages.get(imageKey);
-			}
-			return null;
-		}
-
-		@Override
-		public String getText(Object element) {
-			return getColumnText(element, 0);
-		}
-
-		public String getColumnText(Object element, int columnIndex) {
-			if (element instanceof Object[]) {
-				return "OOPS";
-			}
-			if (element instanceof ILanguageSettingsProvider) {
-				return ((ILanguageSettingsProvider)element).getName();
-			} else if (element instanceof ICLanguageSettingEntry) {
-				ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-				if (columnIndex == 0) {
-					String s = le.getName();
-					if (le.getKind() == ICSettingEntry.MACRO) {
-						s = s+'='+le.getValue();
-					}
-//					if (exported.contains(resolve(le)))
-//						s = s + Messages.AbstractLangsListTab_3;
-					return s;
-				}
-				if (le.getKind() == ICSettingEntry.MACRO) {
-					switch (columnIndex) {
-					case 1:
-						return le.getValue();
-					}
-				}
-				return EMPTY_STR;
-			}
-			return (columnIndex == 0) ? element.toString() : EMPTY_STR;
-		}
-
-		public Font getFont(Object element) {
-			if (!(element instanceof ICLanguageSettingEntry))
-				return null;
-			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			if (le.isBuiltIn())
-				return null; // built in
-			if (le.isReadOnly()) // read only
-				return JFaceResources.getFontRegistry().getItalic(JFaceResources.DIALOG_FONT);
-			// normal
-			return JFaceResources.getFontRegistry().getBold(JFaceResources.DIALOG_FONT);
-		}
-	}
-	
-	// Extended label provider
-	private class LanguageSettingsContributorsLabelProvider extends LanguageSettingsContributorsBaseLabelProvider {
-		@Override
-		protected String getOverlayKey(Object element, int columnIndex) {
-			String overlayKey = null;
-			if (element instanceof ILanguageSettingsProvider) {
-				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
-				if (!LanguageSettingsManager.isWorkspaceProvider(provider) && lang!=null) {
-					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
-					if (entries!=null) {
-						overlayKey = CPluginImages.IMG_OVR_SETTING;
-					}
-				}
-			}
-			return overlayKey;
-		}
-
-		@Override
-		protected String getImageKey(Object element, int columnIndex) {
-			return super.getImageKey(element, columnIndex);
-		}
-	}
-	
 
 	public ICLanguageSetting[] getLangSetting(ICResourceDescription rcDes) {
 		switch (rcDes.getType()) {

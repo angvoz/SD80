@@ -333,7 +333,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		// use provider returning null
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(
 					cfgDescription, PROVIDER_1, FILE_0, LANG_ID);
 			assertNotNull(retrieved);
 			assertEquals(0, retrieved.size());
@@ -361,7 +361,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		
 		// use provider returning null as item in array
 		{
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(
 					cfgDescription, PROVIDER_2, FILE_0, LANG_ID);
 			assertNotNull(retrieved);
 			assertEquals(1, retrieved.size());
@@ -412,14 +412,14 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// retrieve the entries for model configuration description
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(modelCfgDescription, PROVIDER_0, FILE_0, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(modelCfgDescription, PROVIDER_0, FILE_0, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
 		}
 		
 		{
 			// retrieve the entries for different configuration description
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(modelCfgDescription, PROVIDER_1, FILE_0, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(modelCfgDescription, PROVIDER_1, FILE_0, LANG_ID);
 			assertEquals(0, retrieved.size());
 		}
 	}
@@ -481,7 +481,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// retrieve the entries for provider-1
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, PROVIDER_1, FILE_0, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(cfgDescription, PROVIDER_1, FILE_0, LANG_ID);
 
 			assertNotSame(original1, retrieved);
 			assertEquals(original1.size(), retrieved.size());
@@ -494,7 +494,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		{
 			// retrieve the entries for provider-2
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, PROVIDER_2, FILE_0, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(cfgDescription, PROVIDER_2, FILE_0, LANG_ID);
 
 			assertNotSame(original2, retrieved);
 			assertEquals(original2.size(), retrieved.size());
@@ -702,7 +702,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries for a derived resource (in a subfolder)
 			IFile derived = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/resource");
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, PROVIDER_0, derived, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(cfgDescription, PROVIDER_0, derived, LANG_ID);
 			// taken from parent folder
 			assertEquals(original.get(0),retrieved.get(0));
 			assertEquals(original.size(), retrieved.size());
@@ -711,13 +711,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			// retrieve entries for not related resource
 			IFile notRelated = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/AnotherFolder/Subfolder/resource"));
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, PROVIDER_0, notRelated, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(cfgDescription, PROVIDER_0, notRelated, LANG_ID);
 			assertEquals(0, retrieved.size());
 		}
 
 		{
 			// test distinction between no settings and empty settings
-			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntries(cfgDescription, PROVIDER_0, emptySettingsPath, LANG_ID);
+			List<ICLanguageSettingEntry> retrieved = LanguageSettingsManager.getSettingEntriesConsolidated(cfgDescription, PROVIDER_0, emptySettingsPath, LANG_ID);
 			// NOT taken from parent folder
 			assertEquals(0, retrieved.size());
 		}

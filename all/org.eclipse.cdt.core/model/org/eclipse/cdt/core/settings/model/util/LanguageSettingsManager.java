@@ -48,7 +48,7 @@ public class LanguageSettingsManager {
 	 * Never returns {@code null} although individual providers return {@code null} if
 	 * no settings defined.
 	 */
-	public static List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, String providerId, IResource rc, String languageId) {
+	public static List<ICLanguageSettingEntry> getSettingEntriesConsolidated(ICConfigurationDescription cfgDescription, String providerId, IResource rc, String languageId) {
 		Assert.isNotNull(cfgDescription);
 
 		ILanguageSettingsProvider provider = getProvider(cfgDescription, providerId);
@@ -62,7 +62,7 @@ public class LanguageSettingsManager {
 		if (rc!=null) {
 			IResource parentFolder = rc.getParent();
 			if (parentFolder!=null) {
-				return getSettingEntries(cfgDescription, providerId, parentFolder, languageId);
+				return getSettingEntriesConsolidated(cfgDescription, providerId, parentFolder, languageId);
 			}
 		}
 		return new ArrayList<ICLanguageSettingEntry>(0);
@@ -86,7 +86,7 @@ public class LanguageSettingsManager {
 		if (provider==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
-		List<ICLanguageSettingEntry> list = getSettingEntries(cfgDescription, providerId, rc, languageId);
+		List<ICLanguageSettingEntry> list = getSettingEntriesConsolidated(cfgDescription, providerId, rc, languageId);
 		if (list==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
@@ -100,6 +100,8 @@ public class LanguageSettingsManager {
 		return newList;
 	}
 
+	// FIXME: consider removing, semantics are not well defined
+	@Deprecated
 	public static List<ICLanguageSettingEntry> getSettingEntriesReconciled(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
 		for (ILanguageSettingsProvider provider: cfgDescription.getLanguageSettingProviders()) {
@@ -138,9 +140,11 @@ public class LanguageSettingsManager {
 				ICResourceDescription rcDescription = cfgDescription.getResourceDescription(rc.getProjectRelativePath(), false);
 				for (ICLanguageSetting languageSetting : getLanguageIds(rcDescription)) {
 					String languageId = languageSetting.getLanguageId();
-					List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
-					if (list!=null) {
-						return true;
+					if (languageId!=null) {
+						List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
+						if (list!=null) {
+							return true;
+						}
 					}
 				}
 			}

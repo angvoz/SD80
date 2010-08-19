@@ -410,7 +410,7 @@ public class ExternalBuildRunner implements IBuildRunner {
 
 		if(clParserList.size() != 0){
 			return new ConsoleOutputSniffer(outputStream, errorStream,
-					clParserList.toArray(new IScannerInfoConsoleParser[clParserList.size()]));
+					clParserList.toArray(new IConsoleParser[clParserList.size()]));
 		}
 
 		return null;

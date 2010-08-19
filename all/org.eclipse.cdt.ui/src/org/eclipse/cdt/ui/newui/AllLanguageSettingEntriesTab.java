@@ -1009,7 +1009,14 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		case BUTTON_MOVE_UP:
 		case BUTTON_MOVE_DOWN:
 			if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
-				List<ICLanguageSettingEntry> entries = getSettingEntriesConsolidated(selectedProvider);
+				EditedProvider editedProvider = editedProviders.get(selectedProvider);
+				if (editedProvider==null) {
+					ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+					IResource rc = getResource();
+					editedProvider = makeEditedProvider(selectedProvider, cfgDescription, rc);
+					editedProviders.put(editedProvider.getId(), editedProvider);
+				}
+				List<ICLanguageSettingEntry> entries = getSettingEntriesConsolidated(editedProvider);
 				int x = getExactIndex(entries, selectedEntry);
 				if (x < 0)
 					break;
@@ -1022,8 +1029,10 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				entries.add(x - 1, old);
 				entries.add(x, old2);
 	
-				setSettingEntries((ILanguageSettingsEditableProvider)selectedProvider, entries);
+				setSettingEntries(editedProvider, entries);
 				update(buttonIndex == BUTTON_MOVE_UP ? -1 : 1);
+				selectItem(editedProvider.getId(), selectedEntry);
+				updateButtons();
 			}
 			break;
 		default:

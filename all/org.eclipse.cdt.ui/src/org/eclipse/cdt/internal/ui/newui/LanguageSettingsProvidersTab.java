@@ -8,7 +8,7 @@
  * Contributors:
  * Andrew Gvozdev (Quoin Inc.) - Regular expression error parsers
  *******************************************************************************/
-package org.eclipse.cdt.ui.newui;
+package org.eclipse.cdt.internal.ui.newui;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -61,6 +61,7 @@ import org.eclipse.cdt.ui.dialogs.ICOptionContainer;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.ui.dialogs.IInputStatusValidator;
 import org.eclipse.cdt.ui.dialogs.InputStatusDialog;
+import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
 
 import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;

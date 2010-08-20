@@ -9,7 +9,7 @@
  *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.ui.newui;
+package org.eclipse.cdt.internal.ui.newui;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,12 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
-import org.eclipse.jface.resource.JFaceResources;
-import org.eclipse.jface.viewers.IDecoration;
-import org.eclipse.jface.viewers.IFontProvider;
-import org.eclipse.jface.viewers.ITableLabelProvider;
 import org.eclipse.jface.viewers.ITreeContentProvider;
-import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
@@ -36,8 +31,6 @@ import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -68,11 +61,10 @@ import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
+import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
+import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
-import org.eclipse.cdt.internal.ui.newui.LanguageSettingEntryDialog;
-import org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntryImages;
-import org.eclipse.cdt.internal.ui.newui.Messages;
 
 public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	protected Tree treeEntries;
@@ -151,112 +143,8 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		
 	}
 
-	// Base label provider
-		public static class LanguageSettingsContributorsBaseLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider */ {
-			public LanguageSettingsContributorsBaseLabelProvider() {
-			}
-	
-			@Override
-			public Image getImage(Object element) {
-				return getColumnImage(element, 0);
-			}
-			
-			protected String getOverlayKey(Object element, int columnIndex) {
-				return null;
-			}
-	
-			protected String getImageKey(Object element, int columnIndex) {
-				String imageKey = null;
-	
-				if (element instanceof ILanguageSettingsProvider) {
-					ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
-					if (provider.getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProvider")) {
-						if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-							imageKey = CPluginImages.IMG_OBJS_USER;
-						} else {
-							imageKey = CPluginImages.IMG_OBJS_USER_ME;
-						}
-					} else if (provider.getId().equals("org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider")) {
-						imageKey = CPluginImages.IMG_OBJS_MBS;
-					} else {
-						imageKey = CPluginImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
-					}
-					
-				}
-				return imageKey;
-			}
-	
-			public Image getColumnImage(Object element, int columnIndex) {
-				if (columnIndex > 0)
-					return null;
-				
-				if (element instanceof ICLanguageSettingEntry) {
-					ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-					int kind = le.getKind();
-					boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
-					boolean isProjectRelative = isWorkspacePath && !le.getName().startsWith("/");
-					return LanguageSettingsEntryImages.getImage(kind, le.getFlags(), isProjectRelative);
-				}
-	
-				String imageKey = getImageKey(element, columnIndex);
-				if (imageKey!=null) {
-					String overlayKey = getOverlayKey(element, columnIndex);
-					if (overlayKey!=null) {
-						return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
-					}
-					return CPluginImages.get(imageKey);
-				}
-				return null;
-			}
-	
-			@Override
-			public String getText(Object element) {
-				return getColumnText(element, 0);
-			}
-	
-			public String getColumnText(Object element, int columnIndex) {
-				if (element instanceof Object[]) {
-					return "OOPS";
-				}
-				if (element instanceof ILanguageSettingsProvider) {
-					return ((ILanguageSettingsProvider)element).getName();
-				} else if (element instanceof ICLanguageSettingEntry) {
-					ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-					if (columnIndex == 0) {
-						String s = le.getName();
-						if (le.getKind() == ICSettingEntry.MACRO) {
-							s = s+'='+le.getValue();
-						}
-	//					if (exported.contains(resolve(le)))
-	//						s = s + Messages.AbstractLangsListTab_3;
-						return s;
-					}
-					if (le.getKind() == ICSettingEntry.MACRO) {
-						switch (columnIndex) {
-						case 1:
-							return le.getValue();
-						}
-					}
-					return EMPTY_STR;
-				}
-				return (columnIndex == 0) ? element.toString() : EMPTY_STR;
-			}
-	
-			public Font getFont(Object element) {
-				if (!(element instanceof ICLanguageSettingEntry))
-					return null;
-				ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-				if (le.isBuiltIn())
-					return null; // built in
-				if (le.isReadOnly()) // read only
-					return JFaceResources.getFontRegistry().getItalic(JFaceResources.DIALOG_FONT);
-				// normal
-				return JFaceResources.getFontRegistry().getBold(JFaceResources.DIALOG_FONT);
-			}
-		}
-
 	// Extended label provider
-	private class LanguageSettingsContributorsLabelProvider extends LanguageSettingsContributorsBaseLabelProvider {
+	private class LanguageSettingsContributorsResourceLabelProvider extends LanguageSettingsContributorsLabelProvider {
 		@Override
 		protected String getOverlayKey(Object element, int columnIndex) {
 			String overlayKey = null;
@@ -460,7 +348,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 		treeEntriesViewer = new TreeViewer(treeEntries);
 		treeEntriesViewer.setContentProvider(new LanguageSettingsContributorsContentProvider());
-		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider());
+		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsResourceLabelProvider());
 		treeEntriesViewer.setUseHashlookup(true);
 		
 		sashForm.setWeights(DEFAULT_SASH_WEIGHTS);

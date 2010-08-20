@@ -3733,7 +3733,7 @@
    <extension
          point="org.eclipse.cdt.ui.cPropertyTab">
      <tab
-           class="org.eclipse.cdt.ui.newui.AllLanguageSettingEntriesTab"
+           class="org.eclipse.cdt.internal.ui.newui.AllLanguageSettingEntriesTab"
            icon="icons/obj16/ls_entries.gif"
            name="%AllLanguageSettingEntries.name"
            weight="006"

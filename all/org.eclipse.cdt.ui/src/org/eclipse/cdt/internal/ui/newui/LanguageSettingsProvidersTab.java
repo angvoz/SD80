@@ -612,22 +612,11 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			ICConfigurationDescription sd = src.getConfiguration();
 			ICConfigurationDescription dd = dst.getConfiguration();
 			List<ILanguageSettingsProvider> newProviders = null;
-			String[] s = null;
 			
 			if (sd instanceof ICMultiConfigDescription) {
 				// FIXME
-//				String[][] ss = ((ICMultiConfigDescription)sd).getProviderIDs();
-//				s = CDTPrefUtil.getStrListForDisplay(ss);
-				s = new String[0];
 			} else {
-//				s = sd.getBuildSetting().getProviderIDs();
-				s = LanguageSettingsManager.getProviderIds(fCfgDesc).toArray(new String[0]);
 				newProviders = sd.getLanguageSettingProviders();
-			}
-			if (dd instanceof ICMultiConfigDescription) {
-				// FIXME
-//				((ICMultiConfigDescription)dd).setProviderIDs(s);
-			} else {
 				dd.setLanguageSettingProviders(newProviders);
 			}
 			initMapParsers();
@@ -651,7 +640,6 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 						providers[i] = (ILanguageSettingsProvider) items[i];
 					}
 	
-					// FIXME!!!!
 					Object[] checkedElements = fTableViewer.getCheckedElements();
 					String[] checkedProviderIds = new String[checkedElements.length];
 					for (int i=0;i<checkedElements.length;i++) {
@@ -672,18 +660,18 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 	private void saveChecked() {
 		if (fCfgDesc!=null) {
-			Object[] objs = fTableViewer.getCheckedElements();
-			String[] ids = new String[objs.length];
-			for (int i=0;i<objs.length;i++) {
-				ids[i] = ((ILanguageSettingsProvider)objs[i]).getId();
+			Object[] checked = fTableViewer.getCheckedElements();
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(checked.length);
+			for (Object elem : checked) {
+				providers.add((ILanguageSettingsProvider)elem);
+				
 			}
 
 			if (fCfgDesc instanceof ICMultiConfigDescription) {
 				// FIXME
 //				((ICMultiConfigDescription)fCfgDesc).setProviderIDs(ids);
 			} else {
-//				fCfgDesc.getBuildSetting().setProviderIDs(ids);
-				LanguageSettingsManager.setProviderIds(fCfgDesc, Arrays.asList(ids));
+				fCfgDesc.setLanguageSettingProviders(providers);
 			}
 		}
 	}

@@ -23,7 +23,7 @@ public class UserLanguageSettingsProvider extends LanguageSettingsSerializable i
 	
 	@Override
 	public int hashCode() {
-		return super.hashCode();
+		return super.hashCode()*13 + 1;
 	}
 
 	@Override

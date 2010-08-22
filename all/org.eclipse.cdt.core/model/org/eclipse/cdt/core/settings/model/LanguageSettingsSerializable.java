@@ -396,20 +396,46 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		clone.fStorage = cloneStorage();
 		return clone;
 	}
-	
-	/* (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
-	@Override
-	public boolean equals(Object o) {
-		if (o instanceof LanguageSettingsSerializable) {
-			LanguageSettingsSerializable that = (LanguageSettingsSerializable)o;
-			// FIXME? Or it is OK, the tests pass?
-			return this.fStorage.equals(that.fStorage);
-		}
-		return false;
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((getId() == null) ? 0 : getId().hashCode());
+		result = prime * result + ((getName() == null) ? 0 : getName().hashCode());
+		result = prime * result + ((fStorage == null) ? 0 : fStorage.hashCode());
+		result = prime * result + getClass().hashCode();
+		return result;
 	}
 
-	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		LanguageSettingsSerializable other = (LanguageSettingsSerializable) obj;
+		String id = getId();
+		String otherId = other.getId();
+		if (id == null) {
+			if (otherId != null)
+				return false;
+		} else if (!id.equals(otherId))
+			return false;
+		String name = getName();
+		String otherName = other.getName();
+		if (name == null) {
+			if (otherName != null)
+				return false;
+		} else if (!name.equals(otherName))
+			return false;
+		if (fStorage == null) {
+			if (other.fStorage != null)
+				return false;
+		} else if (!fStorage.equals(other.fStorage))
+			return false;
+		return true;
+	}
 }

@@ -10,14 +10,18 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.newui;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
@@ -98,7 +102,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	private CheckboxTableViewer fTableViewer;
 	private ICConfigurationDescription fCfgDesc;
 
-	private final Map<String, ILanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
+	private final Map<String, ILanguageSettingsProvider> fAvailableProvidersMap = new LinkedHashMap<String, ILanguageSettingsProvider>();
 	private final Map<String, ICOptionPage> fOptionsPageMap = new HashMap<String, ICOptionPage>();
 	private ICOptionPage fCurrentOptionsPage = null;
 
@@ -255,12 +259,26 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			public void dispose() {}
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 		});
-		fTableViewer.setLabelProvider(new LabelProvider() {
+		fTableViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider() {
+//		fTableViewer.setLabelProvider(new LabelProvider() {
+			
+			@Override
+			public Image getImage(Object element) {
+				if (element instanceof String) {
+					ILanguageSettingsProvider provider = fAvailableProvidersMap.get(element);
+					element = provider;
+				}
+				return super.getImage(element);
+			}
+			
 			@Override
 			public String getText(Object element) {
+				if (element instanceof ILanguageSettingsProvider) {
+					element = ((ILanguageSettingsProvider)element).getId();
+				}
 				if (element instanceof String) {
 					String id = (String)element;
-					ILanguageSettingsProvider provider = fAvailableProviders.get(id);
+					ILanguageSettingsProvider provider = fAvailableProvidersMap.get(id);
 					if (provider!=null) {
 						String name = provider.getName();
 						if (name!=null && name.length()>0) {
@@ -306,40 +324,62 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	}
 
 	private void initMapParsers() {
-		fAvailableProviders.clear();
+		fAvailableProvidersMap.clear();
 		fOptionsPageMap.clear();
 		for (String id : LanguageSettingsManager.getProviderAvailableIds()) {
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
-			fAvailableProviders.put(id, provider);
+			fAvailableProvidersMap.put(id, provider);
 			initializeOptionsPage(id);
 		}
 
-		String ids[];
+		List<ILanguageSettingsProvider> cfgProviders;
+		List<ILanguageSettingsProvider> availableProviders = new ArrayList<ILanguageSettingsProvider>();
 		if (fCfgDesc!=null) {
 			ICConfigurationDescription srcCfgDesc = fCfgDesc.getConfiguration();
-			if (srcCfgDesc instanceof ICMultiConfigDescription) {
-				// FIXME
-//				String[][] ss = ((ICMultiConfigDescription)srcCfgDesc).getProviderIDs();
-//				ids = CDTPrefUtil.getStrListForDisplay(ss);
-				ids = new String[0];
-			} else {
-//				ids = srcCfgDesc.getBuildSetting().getProviderIDs();
-				ids = LanguageSettingsManager.getProviderIds(fCfgDesc).toArray(new String[0]);
+			cfgProviders = srcCfgDesc.getLanguageSettingProviders();
+			for (ILanguageSettingsProvider provider : cfgProviders) {
+				fAvailableProvidersMap.put(provider.getId(), provider);
 			}
-			Set<String> setIds = new LinkedHashSet<String>(Arrays.asList(ids));
-			setIds.addAll(fAvailableProviders.keySet());
-			fTableViewer.setInput(setIds.toArray(new String[0]));
+			availableProviders = new ArrayList<ILanguageSettingsProvider>(cfgProviders);
+			Set<ILanguageSettingsProvider> allAvailableProvidersSet = new TreeSet<ILanguageSettingsProvider>(new Comparator<ILanguageSettingsProvider>() {
+				public int compare(ILanguageSettingsProvider prov1, ILanguageSettingsProvider prov2) {
+					return prov1.getId().compareTo(prov2.getId());
+				}
+			});
+			allAvailableProvidersSet.addAll(fAvailableProvidersMap.values());
+			for (ILanguageSettingsProvider provider : allAvailableProvidersSet) {
+				if (!availableProviders.contains(provider)) {
+					availableProviders.add(provider);
+				}
+			}
+//			if (srcCfgDesc instanceof ICMultiConfigDescription) {
+//				// FIXME
+////				String[][] ss = ((ICMultiConfigDescription)srcCfgDesc).getProviderIDs();
+////				ids = CDTPrefUtil.getStrListForDisplay(ss);
+//				fAvailableProviders.addAll(fAvailableProviders.values());
+//			} else {
+//				availableProviders = new LinkedHashSet<ILanguageSettingsProvider>(cfgProviders);
+//				Collection<ILanguageSettingsProvider> providers = fAvailableProviders.values();
+//				for (ILanguageSettingsProvider pro : providers) {
+//					String id = pro.getId();
+//					if (fCfgDesc.getL)
+//				}
+//			}
 		} else {
-			fTableViewer.setInput(fAvailableProviders.keySet().toArray(new String[0]));
-			ids = LanguageSettingsManager.getDefaultProviderIds();
+			String[] ids = LanguageSettingsManager.getDefaultProviderIds();
+			cfgProviders = new ArrayList<ILanguageSettingsProvider>();
+			for (String id : ids) {
+				cfgProviders.add(LanguageSettingsManager.getWorkspaceProvider(id));
+			}
 		}
-		fTableViewer.setCheckedElements(ids);
+		fTableViewer.setInput(availableProviders.toArray(new ILanguageSettingsProvider[0]));
+		fTableViewer.setCheckedElements(cfgProviders.toArray(new ILanguageSettingsProvider[0]));
 
 		displaySelectedOptionPage();
 	}
 
 	private void initializeOptionsPage(String id) {
-		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
+		ILanguageSettingsProvider provider = fAvailableProvidersMap.get(id);
 		if (provider!=null) {
 			String name = provider.getName();
 			if (name!=null && name.length()>0) {
@@ -365,8 +405,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (pos<0)
 			return;
 
-		String parserId = (String)fTable.getItem(pos).getData();
-		ICOptionPage optionsPage = fOptionsPageMap.get(parserId);
+		ILanguageSettingsProvider provider = (ILanguageSettingsProvider)fTable.getItem(pos).getData();
+		String providerId = provider.getId();
+		ICOptionPage optionsPage = fOptionsPageMap.get(providerId);
 		if (optionsPage != null) {
 			optionsPage.setVisible(true);
 		}
@@ -406,12 +447,12 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (n < 0 || (up && n == 0) || (!up && n+1 == fTable.getItemCount()))
 			return;
 
-		String id = (String)fTableViewer.getElementAt(n);
-		boolean checked = fTableViewer.getChecked(id);
-		fTableViewer.remove(id);
+		ILanguageSettingsProvider provider = (ILanguageSettingsProvider)fTableViewer.getElementAt(n);
+		boolean checked = fTableViewer.getChecked(provider);
+		fTableViewer.remove(provider);
 		n = up ? n-1 : n+1;
-		fTableViewer.insert(id, n);
-		fTableViewer.setChecked(id, checked);
+		fTableViewer.insert(provider, n);
+		fTableViewer.setChecked(provider, checked);
 		fTable.setSelection(n);
 
 		saveChecked();
@@ -431,7 +472,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					String message = MessageFormat.format("ErrorParsTab.error.IllegalCharacter",
 							new Object[] { LanguageSettingsManager.PROVIDER_DELIMITER });
 					status.setError(message);
-				} else if (fAvailableProviders.containsKey(makeId(newText))) {
+				} else if (fAvailableProvidersMap.containsKey(makeId(newText))) {
 					status.setError("ErrorParsTab.error.NonUniqueID");
 				}
 				return status;
@@ -449,10 +490,10 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			String newName = addDialog.getValue();
 			String newId = makeId(newName);
 			ILanguageSettingsProvider provider = new RegexProvider(newId, newName);
-			fAvailableProviders.put(newId, provider);
+			fAvailableProvidersMap.put(newId, provider);
 
-			fTableViewer.add(newId);
-			fTableViewer.setChecked(newId, true);
+			fTableViewer.add(provider);
+			fTableViewer.setChecked(provider, true);
 			fTable.setSelection(fTable.getItemCount()-1);
 
 			initializeOptionsPage(newId);
@@ -465,8 +506,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		int n = fTable.getSelectionIndex();
 		Assert.isTrue(n>=0);
 
-		String id = (String)fTableViewer.getElementAt(n);
-		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
+//		String id = (String)fTableViewer.getElementAt(n);
+//		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
+		ILanguageSettingsProvider provider = (ILanguageSettingsProvider) fTableViewer.getElementAt(n);
 
 		IInputStatusValidator inputValidator = new IInputStatusValidator() {
 			public IStatus isValid(String newText) {
@@ -491,7 +533,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 		if (addDialog.open() == Window.OK) {
 //			provider.setName(addDialog.getValue());
-			fTableViewer.refresh(id);
+			fTableViewer.refresh(provider);
 		}
 	}
 
@@ -543,7 +585,8 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		int count = fTable.getItemCount();
 		int last = count - 1;
 		boolean selected = pos >= 0 && pos <= last;
-		String id = (String)fTableViewer.getElementAt(pos);
+		ILanguageSettingsProvider provider = (ILanguageSettingsProvider)fTableViewer.getElementAt(pos);
+		String id = provider!=null ? provider.getId() : null;
 
 		buttonSetEnabled(BUTTON_ADD, isProvidersEditable());
 		buttonSetEnabled(BUTTON_EDIT, isProvidersEditable() && selected);
@@ -603,18 +646,17 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 				// Build Settings page
 				try {
 					ILanguageSettingsProvider[] providers = new ILanguageSettingsProvider[fTable.getItemCount()];
-					int i=0;
-					for (TableItem item : fTable.getItems()) {
-						if (item.getData() instanceof String) {
-							String id = (String) item.getData();
-							providers[i] = fAvailableProviders.get(id);
-							i++;
-						}
+					TableItem[] items = fTable.getItems();
+					for (int i=0;i<items.length;i++) {
+						providers[i] = (ILanguageSettingsProvider) items[i];
 					}
 	
+					// FIXME!!!!
 					Object[] checkedElements = fTableViewer.getCheckedElements();
 					String[] checkedProviderIds = new String[checkedElements.length];
-					System.arraycopy(checkedElements, 0, checkedProviderIds, 0, checkedElements.length);
+					for (int i=0;i<checkedElements.length;i++) {
+						checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
+					}
 	
 					LanguageSettingsManager.setUserDefinedProviders(providers);
 					LanguageSettingsManager.setDefaultProviderIds(checkedProviderIds);
@@ -632,7 +674,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (fCfgDesc!=null) {
 			Object[] objs = fTableViewer.getCheckedElements();
 			String[] ids = new String[objs.length];
-			System.arraycopy(objs, 0, ids, 0, objs.length);
+			for (int i=0;i<objs.length;i++) {
+				ids[i] = ((ILanguageSettingsProvider)objs[i]).getId();
+			}
 
 			if (fCfgDesc instanceof ICMultiConfigDescription) {
 				// FIXME

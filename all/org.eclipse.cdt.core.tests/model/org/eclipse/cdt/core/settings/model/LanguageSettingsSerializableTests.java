@@ -43,7 +43,8 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	private static final String LANG_ID_1 = "test.lang.id.1";
 	private static final String LANG_ID_2 = "test.lang.id.2";
 	private static final String PROVIDER_NULL = "test.provider.null.id";
-	private static final String PROVIDER_0 = "test.provider.0.id";
+	private static final String PROVIDER_1 = "test.provider.1.id";
+	private static final String PROVIDER_2 = "test.provider.2.id";
 	private static final String PROVIDER_NAME_NULL = "test.provider.null.name";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
 	
@@ -91,7 +92,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 		
 		// create a provider
-		LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+		LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 		// test setter and getter
 		mockProvider.setSettingEntries(null, MOCK_RC, LANG_ID, original);
 		List<ICLanguageSettingEntry> retrieved = mockProvider.getSettingEntries(null, MOCK_RC, LANG_ID);
@@ -151,7 +152,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, MOCK_RC, LANG_ID, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -166,7 +167,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, MOCK_RC, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
@@ -181,7 +182,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(MOCK_CFG, MOCK_RC, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -196,7 +197,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(MOCK_CFG, MOCK_RC, null);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
@@ -212,7 +213,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(MOCK_CFG, null, LANG_ID, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -227,7 +228,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(MOCK_CFG, null, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
@@ -242,7 +243,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, MOCK_RC, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -257,7 +258,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, MOCK_RC, null);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
@@ -272,7 +273,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, LANG_ID, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -287,7 +288,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, LANG_ID);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
@@ -302,7 +303,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(MOCK_CFG, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -317,7 +318,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(MOCK_CFG, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
@@ -333,7 +334,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", flag));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -350,7 +351,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
 		}
@@ -364,7 +365,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -374,7 +375,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -397,7 +398,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludeFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -407,7 +408,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -429,7 +430,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CMacroEntry("MACRO0", "value0",1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -439,7 +440,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -461,7 +462,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CMacroFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -471,7 +472,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -493,7 +494,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CLibraryPathEntry("name", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -503,7 +504,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -525,7 +526,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CLibraryFileEntry("name", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -535,7 +536,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			ICLanguageSettingEntry entry = retrieved.get(0);
@@ -559,7 +560,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original.add(new CIncludePathEntry("path1", 1));
 		{
 			// create a provider and serialize its settings
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			provider.setSettingEntries(null, null, null, original);
 			
 			Document doc = XmlUtil.newDocument();
@@ -569,7 +570,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			assertEquals(PROVIDER_0, provider.getId());
+			assertEquals(PROVIDER_1, provider.getId());
 			
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
@@ -593,7 +594,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// create a provider
 			LanguageSettingsSerializable mockProvider = null;
-			mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			mockProvider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			mockProvider.setSettingEntries(null, null, null, original);
 			mockProvider.setSettingEntries(mockCfgDescription, null, null, original2);
 			
@@ -660,7 +661,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// create a provider
 			LanguageSettingsSerializable mockProvider = null;
-			mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			mockProvider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			mockProvider.setSettingEntries(cfgDescription_1, null, null, original);
 			mockProvider.setSettingEntries(cfgDescription_2, null, null, original2);
 			
@@ -697,7 +698,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// create a provider
 			LanguageSettingsSerializable mockProvider = null;
-			mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			mockProvider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			mockProvider.setSettingEntries(cfgDescription, null, LANG_ID_1, original);
 			mockProvider.setSettingEntries(cfgDescription, null, LANG_ID_2, original2);
 			
@@ -744,7 +745,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// create a provider
 			LanguageSettingsSerializable mockProvider = null;
-			mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			mockProvider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			mockProvider.setSettingEntries(cfgDescription, rc1, null, original);
 			mockProvider.setSettingEntries(cfgDescription, rc2, null, original2);
 			
@@ -783,7 +784,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		assertNotNull(emptySettingsPath);
 
 		// Create provider
-		LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+		LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 
 		// store the entries in parent folder
 		final List<ICLanguageSettingEntry> original = new ArrayList<ICLanguageSettingEntry>();
@@ -833,7 +834,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		original2.add(new CIncludePathEntry("path0", 1));
 		
 		// create a model provider
-		LanguageSettingsSerializable provider1 = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+		LanguageSettingsSerializable provider1 = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 		provider1.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, original1);
 		provider1.setSettingEntries(null, null, LANG_ID, original2);
 		
@@ -859,13 +860,27 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		
 		{
 			// create another provider with the same data
-			LanguageSettingsSerializable provider2 = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable provider2 = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_0);
 			assertFalse(provider1.equals(provider2));
 			
 			provider2.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, original1);
 			assertFalse(provider1.equals(provider2));
 			provider2.setSettingEntries(null, null, LANG_ID, original2);
 			assertTrue(provider1.equals(provider2));
+			assertTrue(provider1.hashCode()==provider2.hashCode());
+			
+			// check different ID
+			provider2.setId(PROVIDER_2);
+			assertFalse(provider1.equals(provider2));
+			assertFalse(provider1.hashCode()==provider2.hashCode());
+		}
+		
+		{
+			// check that subclasses are not equal
+			LanguageSettingsSerializable providerSub1 = new LanguageSettingsSerializable() {};
+			LanguageSettingsSerializable providerSub2 = new LanguageSettingsSerializable() {};
+			assertFalse(providerSub1.equals(providerSub2));
+			assertFalse(providerSub1.hashCode()==providerSub2.hashCode());
 		}
 	}
 

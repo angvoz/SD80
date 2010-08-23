@@ -335,7 +335,7 @@
            class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProvidersTab"
            icon="icons/obj16/search.gif"
            name="%Language.settings.providers"
-           weight="080"
+           weight="008"
            parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_BuildSettings"/>
 
 	 <!-- Export settings page -->

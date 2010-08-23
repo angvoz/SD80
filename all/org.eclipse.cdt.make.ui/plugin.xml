@@ -2,6 +2,7 @@
 <?eclipse version="3.0"?>
 <plugin>
      <extension-point id="DiscoveryProfilePage" name="%DiscoveryProfilePage.name" schema="schema/DiscoveryProfilePage.exsd"/>
+     <extension-point id="LanguageSettingsProviderUI" name="%LanguageSettingsProviderUI.name" schema="schema/LanguageSettingsProviderUI.exsd"/>
 
    <extension
          point="org.eclipse.ui.popupMenus">

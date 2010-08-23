@@ -1176,7 +1176,14 @@ public class InstructionParserARM {
 		case thumb_pop:
 			bit = (opcode >> 8) & 1;
 			if (bit == 1) {
+				// This is an unconditional jump. 
 				regList = getThumbRegList(opcode, "pc");
+
+				isSoleDestination = true;
+				isSubroutineAddress = false;
+				// Though it's something like "pop (pc)", we just fake it
+				// as using Link Register, which is fine in practice.
+				addrExpression = JumpToAddress.EXPRESSION_LR;
 			} else {
 				regList = getThumbRegList(opcode, null);
 			}

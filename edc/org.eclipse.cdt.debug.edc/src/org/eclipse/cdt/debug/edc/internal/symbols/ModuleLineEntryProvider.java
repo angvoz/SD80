@@ -397,6 +397,8 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILineEntryProvider#getNextLineEntry(org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry)
 	 */
 	public ILineEntry getNextLineEntry(ILineEntry entry) {
+		if (entry == null)
+			return null;
 		List<FileLineEntryProvider> matches = pathToLineEntryMap.get(entry.getFilePath());
 		if (matches == null)
 			return null;

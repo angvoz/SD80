@@ -1,25 +1,22 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2009 Intel Corporation and others.
+ * Copyright (c) 2010, 2010 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Andrew Gvozdev (Quoin Inc.) - Regular expression error parsers
+ *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.newui;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -36,7 +33,6 @@ import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.ICheckStateListener;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
-import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
@@ -56,9 +52,9 @@ import com.ibm.icu.text.MessageFormat;
 
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.ICOptionContainer;
@@ -73,7 +69,7 @@ import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
 
 /**
  * FIXME: all references to error parsers
- * 
+ *
  * This class represents Error Parser Tab in Project Properties or workspace Preferences
  *
  * @noextend This class is not intended to be subclassed by clients.
@@ -107,7 +103,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	private ICOptionPage fCurrentOptionsPage = null;
 
 	private Composite fCompositeForOptionsPage;
-	
+
 	// FIXME dummy
 	private class RegexProvider implements ILanguageSettingsProvider {
 		public RegexProvider(String id, String name) {
@@ -140,27 +136,27 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 		public void performApply(IProgressMonitor monitor) throws CoreException {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void performDefaults() {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void setContainer(ICOptionContainer container) {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void createControl(Composite parent) {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void dispose() {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public Control getControl() {
@@ -195,27 +191,27 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 		public void performHelp() {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void setDescription(String description) {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void setImageDescriptor(ImageDescriptor image) {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void setTitle(String title) {
 			// TODO Auto-generated method stub
-			
+
 		}
 
 		public void setVisible(boolean visible) {
 			// TODO Auto-generated method stub
-			
+
 		}
 	}
 
@@ -261,32 +257,30 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		});
 		fTableViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider() {
 //		fTableViewer.setLabelProvider(new LabelProvider() {
-			
+
 			@Override
 			public Image getImage(Object element) {
-				if (element instanceof String) {
-					ILanguageSettingsProvider provider = fAvailableProvidersMap.get(element);
-					element = provider;
-				}
 				return super.getImage(element);
 			}
-			
+
 			@Override
 			public String getText(Object element) {
 				if (element instanceof ILanguageSettingsProvider) {
-					element = ((ILanguageSettingsProvider)element).getId();
+					return ((ILanguageSettingsProvider) element).getName();
+					// FIXME:
+					// return "ErrorParsTab.error.NonAccessibleID [" + id + "]";
 				}
-				if (element instanceof String) {
-					String id = (String)element;
-					ILanguageSettingsProvider provider = fAvailableProvidersMap.get(id);
-					if (provider!=null) {
-						String name = provider.getName();
-						if (name!=null && name.length()>0) {
-							return name;
-						}
-					}
-					return "ErrorParsTab.error.NonAccessibleID [" + id + "]";
-				}
+				// if (element instanceof String) {
+				// String id = (String)element;
+				// ILanguageSettingsProvider provider = fAvailableProvidersMap.get(id);
+				// if (provider!=null) {
+				// String name = provider.getName();
+				// if (name!=null && name.length()>0) {
+				// return name;
+				// }
+				// }
+				// return "ErrorParsTab.error.NonAccessibleID [" + id + "]";
+				// }
 				return OOPS;
 			}
 		});
@@ -600,7 +594,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 //		org.eclipse.cdt.managedbuilder.core.ManagedBuildManager.getConfigurationForDescription(cfgDescription);
 		return null;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#performApply(org.eclipse.cdt.core.settings.model.ICResourceDescription, org.eclipse.cdt.core.settings.model.ICResourceDescription)
 	 */
@@ -612,7 +606,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			ICConfigurationDescription sd = src.getConfiguration();
 			ICConfigurationDescription dd = dst.getConfiguration();
 			List<ILanguageSettingsProvider> newProviders = null;
-			
+
 			if (sd instanceof ICMultiConfigDescription) {
 				// FIXME
 			} else {
@@ -639,13 +633,13 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					for (int i=0;i<items.length;i++) {
 						providers[i] = (ILanguageSettingsProvider) items[i];
 					}
-	
+
 					Object[] checkedElements = fTableViewer.getCheckedElements();
 					String[] checkedProviderIds = new String[checkedElements.length];
 					for (int i=0;i<checkedElements.length;i++) {
 						checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
 					}
-	
+
 					LanguageSettingsManager.setUserDefinedProviders(providers);
 					LanguageSettingsManager.setDefaultProviderIds(checkedProviderIds);
 				} catch (BackingStoreException e) {
@@ -664,7 +658,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(checked.length);
 			for (Object elem : checked) {
 				providers.add((ILanguageSettingsProvider)elem);
-				
+
 			}
 
 			if (fCfgDesc instanceof ICMultiConfigDescription) {

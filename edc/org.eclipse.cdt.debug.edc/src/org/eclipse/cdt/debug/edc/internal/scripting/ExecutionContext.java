@@ -118,7 +118,12 @@ public class ExecutionContext {
 									if (getData()) {
 										ExecutionDMC context = runControlService.getContext(contextId);
 										runControlService.step(context, stepType, 
-												new RequestMonitor(session.getExecutor(), null));
+												new RequestMonitor(session.getExecutor(), null) {
+													@Override
+													protected void handleCompleted() {
+														ScriptingPlugin.setActivityDone(activity);
+													};
+												});
 									}
 								}
 							});

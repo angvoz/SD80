@@ -18,9 +18,15 @@ import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICBreakpointType;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
+import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CAddressBreakpoint;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CFunctionBreakpoint;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CLineBreakpoint;
+import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.Query;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
@@ -49,6 +55,10 @@ public class EDC {
 
 	public static Map<String, Object>[] getSuspendedThreads(String sessionId) throws Exception {
 		return DOMUtils.getDMContextProperties(DOMUtils.getSuspendedThreads(sessionId));
+	}
+
+	public static DsfServicesTracker getDsfServicesTracker(String sessionId) {
+		return new DsfServicesTracker(EDCDebugger.getDefault().getBundle().getBundleContext(), sessionId);
 	}
 
 	public static IBreakpoint[] getBreakpoints() {
@@ -105,5 +115,22 @@ public class EDC {
 			resource = ResourcesPlugin.getWorkspace().getRoot();
 		}
 		return new CLineBreakpoint(resource, attributes, true);
+	}
+
+	public static IEDCExpression createExpression(final String sessionId, final IDMContext frame, final String expr)
+		throws Exception {
+		Query<IEDCExpression> runnable = new Query<IEDCExpression>() {
+			@Override
+			protected void execute(DataRequestMonitor<IEDCExpression> rm) {
+				DsfServicesTracker servicesTracker = getDsfServicesTracker(sessionId);
+				Expressions expressionsService = servicesTracker.getService(Expressions.class);
+				IEDCExpression expression = (IEDCExpression) expressionsService.createExpression(frame, expr);
+				expression.evaluateExpression();
+				rm.setData(expression);
+				rm.done();
+			}
+		};
+		DsfSession.getSession(sessionId).getExecutor().execute(runnable);
+		return runnable.get();
 	}
 }

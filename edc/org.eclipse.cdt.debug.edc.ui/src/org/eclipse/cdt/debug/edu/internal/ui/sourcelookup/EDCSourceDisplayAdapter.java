@@ -75,6 +75,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorDescriptor;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IReusableEditor;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
@@ -393,7 +394,12 @@ public class EDCSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
                 public void run() {
                     if (!page.getWorkbenchWindow().getWorkbench().isClosing()) {
                         try {
-                            editor[0] = page.openEditor(input, id, false);
+                            editor[0] = page.openEditor(input, id, false, IWorkbenchPage.MATCH_ID);
+                            if (editor[0] instanceof IReusableEditor) {
+                            	IReusableEditor re = (IReusableEditor)editor[0];
+                            	if (! input.equals(re.getEditorInput()))
+                            		re.setInput(input);
+                            }
                         } catch (PartInitException e) {}
                     }
                 }

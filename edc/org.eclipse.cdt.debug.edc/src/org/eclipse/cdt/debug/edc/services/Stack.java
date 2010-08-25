@@ -27,8 +27,6 @@ import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
 import org.eclipse.cdt.debug.edc.internal.launch.CSourceLookup;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
@@ -407,9 +405,15 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					  								instructionPtrAddress);
 			if (functionScope != null) {
 				// ignore inlined functions
+				String orginalName = functionScope.getName();
+				boolean inlined = false;
 				while (functionScope.getParent() instanceof IFunctionScope) {
 					functionScope = (IFunctionScope) functionScope.getParent();
+					inlined = true;
 				}
+				if (inlined)
+					functionName = orginalName + " inlined at " + functionScope.getName();
+				else
 				functionName = functionScope.getName();
 			}
 			else

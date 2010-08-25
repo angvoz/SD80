@@ -105,10 +105,11 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 		}
 	}
 	
-	private void readSymbols(Elf elfFile) throws IOException {
+	protected void readSymbols(Elf elfFile) throws IOException {
 		// load the symbol table
 		elfFile.loadSymbols();
 		Set<IAddress> symbolAddressSet = new TreeSet<IAddress>();
+		
 		for (Elf.Symbol symbol : elfFile.getSymtabSymbols()) {
 			String name = symbol.toString();
 			// Multiple symbol entries for the same address are generated.
@@ -118,8 +119,7 @@ public class ElfExecutableSymbolicsReader extends BaseExecutableSymbolicsReader 
 				if (symbol.st_size != 0 || !symbolAddressSet.contains(symbol.st_value)) {
 					// need to get rid of labels with size 0
 					if (symbol.st_size != 0 || !name.startsWith("|")) {
-						Symbol sym = new Symbol(symbol.toString(), symbol.st_value, symbol.st_size);
-						symbols.add(sym);
+						symbols.add(new Symbol(symbol.toString(), symbol.st_value, symbol.st_size));
 						symbolAddressSet.add(symbol.st_value);
 					}
 				}

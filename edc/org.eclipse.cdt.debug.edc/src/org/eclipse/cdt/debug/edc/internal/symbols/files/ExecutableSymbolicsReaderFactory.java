@@ -38,17 +38,35 @@ public class ExecutableSymbolicsReaderFactory {
 	}
 
 	public static IExecutableSymbolicsReader createFor(IPath binaryFile) {
+		IExecutableSymbolicsReaderFactory provider = null;
+		String providerName = null;
+		int highestConfidence = IExecutableSymbolicsReaderFactory.NO_CONFIDENCE;
+
+		// find the extension with the highest confidence for this binary
 		for (Map.Entry<String, IExecutableSymbolicsReaderFactory> entry : providerMap.entrySet()) {
-			String name = entry.getKey();
-			IExecutableSymbolicsReaderFactory provider = entry.getValue();
+			IExecutableSymbolicsReaderFactory factory = entry.getValue();
+			try {
+				int confidence = factory.getConfidence(binaryFile);
+				if (confidence > highestConfidence) {
+					highestConfidence = confidence;
+					provider = factory;
+					providerName = entry.getKey();
+				}
+			} catch (Throwable t) {
+				EDCDebugger.getMessageLogger().logError("Executable reader " + entry.getKey() + " failed", t);
+			}
+		}
+
+		if (provider != null) {
 			try {
 				IExecutableSymbolicsReader reader = provider.createExecutableSymbolicsReader(binaryFile);
 				if (reader != null)
 					return reader;
 			} catch (Throwable t) {
-				EDCDebugger.getMessageLogger().logError("Executable reader " + name + " failed", t);
+				EDCDebugger.getMessageLogger().logError("Executable reader " + providerName + " failed", t);
 			}
 		}
+
 		return null;
 	}
 	

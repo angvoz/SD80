@@ -96,13 +96,6 @@ public abstract class BaseExecutableSymbolicsReader implements IExecutableSymbol
 		ISymbol symbol = symbols.get(insertion - 1);
 		if (linkAddress.compareTo(symbol.getAddress().add(symbol.getSize())) < 0) {
 			return symbol;
-		} else {
-			// symbol address may have the last bit set to indicate ARM's thumb
-			// mode, in which case the address is really addr - 1
-			symbol = symbols.get(insertion);
-			if (symbol.getAddress().compareTo(linkAddress.add(1)) == 0) {
-				return symbol;
-			}
 		}
 	
 		return null;

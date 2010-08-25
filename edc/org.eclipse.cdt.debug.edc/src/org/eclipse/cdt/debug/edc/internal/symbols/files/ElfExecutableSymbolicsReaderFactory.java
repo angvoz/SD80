@@ -25,14 +25,30 @@ import org.eclipse.core.runtime.IPath;
  * Factory for creating readers of symbolics in executables.
  */
 public class ElfExecutableSymbolicsReaderFactory implements IExecutableSymbolicsReaderFactory {
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReaderFactory#getConfidence(org.eclipse.core.runtime.IPath)
+	 */
+	public int getConfidence(IPath binaryFile) {
+		Elf elfFile = getElfFile(binaryFile);
+		if (elfFile == null) {
+			// treat the symbol file as an executable, if existing
+			IPath symbolFilePath = ExecutableSymbolicsReaderFactory.findSymbolicsFile(binaryFile);
+			if (symbolFilePath != null) {
+				elfFile = getElfFile(symbolFilePath);
+			}
+		}
+		return elfFile != null ? IExecutableSymbolicsReaderFactory.NORMAL_CONFIDENCE :
+			IExecutableSymbolicsReaderFactory.NO_CONFIDENCE;
+	}
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IExecutableSymbolicsReaderFactory#createExecutableSymbolicsReader(org.eclipse.core.runtime.IPath)
 	 */
 	public IExecutableSymbolicsReader createExecutableSymbolicsReader(
 			IPath binaryFile) {
-		IExecutableSymbolicsReader reader = null;
 
-		reader = detectExecutable(binaryFile);
+		IExecutableSymbolicsReader reader = detectExecutable(binaryFile);
 		if (reader == null) {
 			// treat the symbol file as an executable, if existing
 			IPath symbolFilePath = ExecutableSymbolicsReaderFactory.findSymbolicsFile(binaryFile);
@@ -45,6 +61,18 @@ public class ElfExecutableSymbolicsReaderFactory implements IExecutableSymbolics
 	}
 	
 	private IExecutableSymbolicsReader detectExecutable(IPath binaryFile) {
+		try {
+			Elf elfFile = getElfFile(binaryFile);
+			if (elfFile != null) {
+				return new ElfExecutableSymbolicsReader(binaryFile, elfFile);
+			}
+		} catch (IOException e) {
+			// this class elides actual I/O errors with format errors; ignore
+		}
+		return null;
+	}
+	
+	private Elf getElfFile(IPath binaryFile) {
 		try {
 			// quickly check the endianness (Elf repeats this)
 			FileInputStream fis = new FileInputStream(binaryFile.toOSString());
@@ -59,10 +87,12 @@ public class ElfExecutableSymbolicsReaderFactory implements IExecutableSymbolics
 			// If this constructor succeeds, it's ELF
 			Elf elf = new Elf(new BufferedRandomReadAccessFile(binaryFile.toOSString(), isle), 
 					binaryFile.toOSString(), 0);
-			return new ElfExecutableSymbolicsReader(binaryFile, elf);
+			return elf;
 		} catch (IOException e) {
 			// this class elides actual I/O errors with format errors; ignore
-			return null;
 		}
+
+		return null;
 	}
+
 }

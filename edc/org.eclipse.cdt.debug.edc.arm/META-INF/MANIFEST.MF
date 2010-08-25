@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: ARM Debug Support
-Bundle-SymbolicName: org.eclipse.cdt.debug.edc.arm
+Bundle-SymbolicName: org.eclipse.cdt.debug.edc.arm;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.eclipse.cdt.debug.edc.internal.arm.ARMPlugin
 Bundle-Vendor: Eclipse CDT

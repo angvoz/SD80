@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.arm.IARMSymbol;
 import org.eclipse.cdt.debug.edc.internal.HostOS;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
@@ -295,7 +296,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 			info.numberOfSymbols = i;
 	}
 	static {
-		setSymbolCount("BlackFlagMinGW.exe", 6988);
+		setSymbolCount("BlackFlagMinGW.exe", 2520);
 		setSymbolCount("BlackFlag_gcce.sym", 2372);
 		setSymbolCount("BlackFlag_linuxgcc.exe", 429);
 		setSymbolCount("BlackFlag_rvct.sym", 626);
@@ -1139,7 +1140,17 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 			Map<IAddress, ISymbol> zeroSymbols = new HashMap<IAddress, ISymbol>();
 			for (ISymbol symbol : symbols) {
 				if (symbol.getSize() == 0) {
-					assertFalse(symbol.getName(), zeroSymbols.containsKey(symbol.getAddress()));
+					// you may have more than one zero-sized symbol at the same address
+					// in ARM.  But they should not be the same mode, e.g. both ARM or
+					// both Thumb.
+					if (symbol instanceof IARMSymbol) {
+						IARMSymbol sameAddress = (IARMSymbol)zeroSymbols.get(symbol.getAddress());
+						if (sameAddress != null) {
+							assertFalse(((IARMSymbol)symbol).isThumbAddress() == sameAddress.isThumbAddress());
+						}
+					} else {
+						assertFalse(symbol.getName(), zeroSymbols.containsKey(symbol.getAddress()));
+					}
 					zeroSymbols.put(symbol.getAddress(), symbol);
 				}
 			}

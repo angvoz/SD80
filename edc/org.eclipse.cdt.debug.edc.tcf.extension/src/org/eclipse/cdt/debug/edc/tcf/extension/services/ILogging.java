@@ -48,6 +48,14 @@ public interface ILogging extends IService {
     	 */
     	void writeln(String msg);
 
+		/**
+		 * Callback to receive a log message with an implicit end line.
+		 * @param int severity - level @see IStatus
+		 * @param summary String - short description for main part of dialog
+		 * @param details String - detailed description for "Details>>" button
+		 * @since 2.0
+		 */
+		void dialog(int severity, String summary, String details);
     }
 
     /**

@@ -22,6 +22,9 @@ import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging.DoneAddListener;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging.DoneRemoveListener;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging.LogListener;
+import org.eclipse.cdt.debug.ui.CDebugUIPlugin;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.tm.tcf.core.AbstractChannel;
 import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.IToken;
@@ -247,12 +250,13 @@ public class ConsoleLogManager implements LogListener {
 			public void run() {
 				ILogging logging = ConsoleLogManager.this.channel.getRemoteService(ILogging.class);
 				assert logging != null;
-				logging.addListener(logId, ConsoleLogManager.this, new DoneAddListener() {
-					public void doneAddListener(IToken token, Exception error) {
-						if (error != null)
-							EDCDebugger.getMessageLogger().logError("Failed to add logging listener", error);
-					}
-				});
+				if (logging != null)
+					logging.addListener(logId, ConsoleLogManager.this, new DoneAddListener() {
+						public void doneAddListener(IToken token, Exception error) {
+							if (error != null)
+								EDCDebugger.getMessageLogger().logError("Failed to add logging listener", error);
+						}
+					});
 			}
 		});
 	}
@@ -284,6 +288,21 @@ public class ConsoleLogManager implements LogListener {
 		for (MessageConsole console : consoleStreamMappings.keySet()) {
 			appendText(console, msg, true);
 		}
+	}
+
+	/** @since 2.0 */
+	public void dialog(final int severity, final String summary, final String details) {
+		Exception e = new Exception("EDC debugger reports error \"" + details + "\"");
+		final Status status = new Status(severity, EDCDebugger.getUniqueIdentifier(), summary, e);
+		EDCDebugger.getMessageLogger().log(status);
+		CDebugUIPlugin.getStandardDisplay().asyncExec(new Runnable() {
+			public void run() {
+				ErrorDialog.openError( CDebugUIPlugin.getActiveWorkbenchShell(),
+									   "EDC Debug Monitor Message",	// title of dialog window
+									   "Raised by Debug Monitor",
+									   status);			// includes full message and exception details
+			}
+		});
 	}
 
 	static void removeManagersForChannel(IChannel channel) {

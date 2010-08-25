@@ -113,7 +113,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			PROP_CAN_TERMINATE = "CanTerminate", 
 			PROP_IS_SUSPENDED = "State",
 			PROP_MESSAGE = "Message", 
-			PROP_SUSPEND_PC = "SuspendPC";
+			PROP_SUSPEND_PC = "SuspendPC",
+			PROP_DISABLE_STEPPING = "DisableStepping";
 
 	/*
 	 * See where this is used for more.
@@ -254,6 +255,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public abstract boolean canDetach();
 		
+		public abstract boolean canStep();
+
 		public void loadSnapshot(Element element) throws Exception {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, element);
 			NodeList ecElements = element.getElementsByTagName(EXECUTION_CONTEXT);
@@ -371,6 +374,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			if (stateChangeReason == StateChangeReason.SHAREDLIB) {
 				handleModuleEvent(this, params);
 			} else {
+
+				properties.put(PROP_DISABLE_STEPPING, params.get(ProtocolConstants.PROP_DISABLE_STEPPING));
 
 				stateChangeDetails = (String) params.get(ProtocolConstants.PROP_SUSPEND_DETAIL);
 				
@@ -935,6 +940,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return true;
 		}
 
+		@Override
+		public boolean canStep() {
+			// can't step a process.
+			return false;
+		}
 	}
 
 	public class ThreadExecutionDMC extends ExecutionDMC implements IThreadDMContext, IDisassemblyDMContext {
@@ -1023,6 +1033,25 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return false;
 		}
 
+		@Override
+		public boolean canStep() {
+			if (isSuspended()) {
+				synchronized (properties) {
+					try {
+						Object obj = properties.get(PROP_DISABLE_STEPPING);
+						if (obj != null && obj instanceof Boolean) {
+							if (((Boolean)obj).booleanValue()) {
+								return false;
+							}
+						}
+					} catch (Exception e) {
+					}
+				}
+				return true;
+			}
+			
+			return false;
+		}
 	}
 
 	/**
@@ -1082,6 +1111,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		public boolean canDetach() {
 			return false;
 		}
+
+		@Override
+		public boolean canStep() {
+			return false;
+		}
 	}
 
 	private static final String EXECUTION_CONTEXTS = "execution_contexts";
@@ -1111,7 +1145,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	}
 
 	public void canStep(IExecutionDMContext context, StepType stepType, DataRequestMonitor<Boolean> rm) {
-		rm.setData(((ExecutionDMC) context).isSuspended() ? Boolean.TRUE : Boolean.FALSE);
+		rm.setData(((ExecutionDMC) context).canStep() ? Boolean.TRUE : Boolean.FALSE);
 		rm.done();
 	}
 
@@ -1134,8 +1168,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	public void getExecutionData(IExecutionDMContext dmc, DataRequestMonitor<IExecutionDMData> rm) {
 		if (dmc instanceof ExecutionDMC) {
 			ExecutionDMC exedmc = (ExecutionDMC) dmc;
-			rm.setData(new ExecutionData(exedmc.isSuspended() ? exedmc.getStateChangeReason()
-					: StateChangeReason.UNKNOWN, exedmc.getStateChangeDetails()));
+			if (exedmc.isSuspended()) {
+				rm.setData(new ExecutionData(exedmc.getStateChangeReason(), exedmc.getStateChangeDetails()));
+			} else {
+				rm.setData(new ExecutionData(StateChangeReason.UNKNOWN, null));
+			}
 		} else
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE,
 					"Given context: " + dmc + " is not a recognized execution context.", null)); //$NON-NLS-1$ //$NON-NLS-2$
@@ -1388,7 +1425,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				if (reader != null) {
 					IAddress linkAddress = module.toLinkAddress(pcAddress);
 					IModuleLineEntryProvider lineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();
-					ILineEntry line = lineEntryProvider.getLineEntryAtAddress(linkAddress);
+					ILineEntry line = lineEntryProvider.getLineEntryAtAddress(linkAddress, false);
 					if (line != null) {
 						// get runtime addresses of the line boundaries.
 						IAddress endAddr = module.toRuntimeAddress(line.getHighAddress());
@@ -1403,12 +1440,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						//   Note: Only do this if Step Over, if Step Into we use
 						//   the endAddr we already have, so if are stepping into inline
 						//   functions, this will work
-						if (stepType == StepType.STEP_OVER) {
-							ILineEntry nextLine = lineEntryProvider.getNextLineEntry(line);
+						//if (stepType == StepType.STEP_OVER) {
+							ILineEntry nextLine = lineEntryProvider.getNextLineEntry(lineEntryProvider.getLineEntryAtAddress(linkAddress, stepType == StepType.STEP_OVER));
 							if (nextLine != null) {
 								endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
 							}
-						}
+						//}
 
 						/*
 						 * It's possible that PC is larger than startAddr
@@ -1432,7 +1469,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						 * brings down the stepping speed.
 						 * ........................ 08/30/2009
 						 */
-						stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
+
+						if (pcAddress.equals(endAddr)) // We're at the end of the line for this function, time to step out.
+							stepOut(dmc, pcAddress, rm);
+						else
+							stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
 
 						EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
 								"source level stepping.");
@@ -1574,7 +1615,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 						@Override
 						protected void handleSuccess() {
-							step(dmc, StepType.STEP_OVER, new RequestMonitor(getExecutor(), new RequestMonitor(getExecutor(), rm)));
+							rm.done();
 						}});
 					return true;
 				}
@@ -1739,14 +1780,16 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				//
 				final List<IAddress> stopPoints = new ArrayList<IAddress>();
 				final List<IAddress> runToAndCheckPoints = new ArrayList<IAddress>();
+				boolean insertBPatRangeEnd = true;
 
 				for (IDisassembledInstruction inst : instList) {
 					final IAddress instAddr = inst.getAddress();
-
+					if (insertBPatRangeEnd == false)
+						insertBPatRangeEnd = true;
 					IJumpToAddress jta = inst.getJumpToAddress();
 					if (jta == null)
 						continue;
-
+					
 					// the instruction is a control-change instruction
 					//
 					if (!jta.isImmediate()) {
@@ -1833,6 +1876,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 								// Unconditional jump instruction
 								// ignore jump within the address range
 								if (!(startAddr.compareTo(jumpAddress) <= 0 && jumpAddress.compareTo(endAddr) < 0)) {
+									insertBPatRangeEnd = false;
 									stopPoints.add(jumpAddress);
 								}
 							}
@@ -1848,7 +1892,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				} // end of parsing instructions
 
 				// need a temp breakpoint at the "endAddr".
-				stopPoints.add(endAddr);
+				if (insertBPatRangeEnd)
+					stopPoints.add(endAddr);
 
 				if (runToAndCheckPoints.size() > 0) {
 					// Now do our two-phase stepping.

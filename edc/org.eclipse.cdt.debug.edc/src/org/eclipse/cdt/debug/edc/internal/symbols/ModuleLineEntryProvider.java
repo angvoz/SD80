@@ -88,12 +88,18 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			currentMappings.add(entry);
 			lineEntriesByLine.put(entry.getLineNumber(), currentMappings);		
 
-			lineEntriesByAddress.put(entry.getLowAddress(), entry);		
+			ILineEntry currentByAddress = lineEntriesByAddress.get(entry.getLowAddress());
+			
+			if (   currentByAddress == null
+				|| entry.getHighAddress().compareTo(currentByAddress.getHighAddress()) > 0) {
+				lineEntriesByAddress.put(entry.getLowAddress(), entry);
+			}
 
 			sorted = false;
 		}
-		
-		public ILineEntry getLineEntryAtAddress(IAddress linkAddress) {
+
+		public ILineEntry getLineEntryAtAddress(IAddress linkAddress, boolean collapseInlineFunctions) {
+			// NOTE: lineEntries can, and does, have multiple entries with the same low address
 			if (!sorted) {
 				// sort by start address for faster lookup by address
 				Collections.sort(lineEntries);
@@ -101,20 +107,75 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			}
 			
 			int insertion = Collections.binarySearch(lineEntries, linkAddress);
+			ILineEntry newEntry;
+			int newInsertion;
+
 			if (insertion >= 0) {
-				return lineEntries.get(insertion);
+				// line entry's low address exactly matches linkAddress, but if the line
+				// entry has an empty address range, see if a previous or subsequent
+				// line entry with the same start address has a nonempty range
+ 				ILineEntry entry = lineEntries.get(insertion);
+				
+				if (entry.getHighAddress().compareTo(entry.getLowAddress()) != 0)
+					return entry;
+				
+				if (insertion > 0) {
+					newInsertion = insertion - 1;
+					newEntry = lineEntries.get(newInsertion);
+					while (newEntry.getLowAddress().compareTo(entry.getLowAddress()) == 0) {
+						if (newEntry.getHighAddress().compareTo(newEntry.getLowAddress()) != 0) {
+							return newEntry;
+						}
+						if (--newInsertion < 0)
+							break;
+						newEntry = lineEntries.get(newInsertion);
+					}
+				}
+
+				if (insertion < lineEntries.size() - 1) {
+					newInsertion = insertion + 1;
+					newEntry = lineEntries.get(newInsertion);
+					while (newEntry.getLowAddress().compareTo(entry.getLowAddress()) == 0) {
+						if (newEntry.getHighAddress().compareTo(newEntry.getLowAddress()) != 0) {
+							return newEntry;
+						}
+						if (++newInsertion == lineEntries.size())
+							break;
+						newEntry = lineEntries.get(newInsertion);
+					}
+				}
+				
+				return entry;
 			}
 
 			if (insertion == -1) {
 				return null;
 			}
 
-			insertion = -insertion - 1;
+			// after a failed binary search, link address is > low address of -insertion-2
+			// so see if a previous entry with the same low address has a nonempty range
+			// that includes linkAddress
+			insertion = -insertion - 2;
 
-			ILineEntry entry = lineEntries.get(insertion - 1);
-			if (linkAddress.compareTo(entry.getHighAddress()) < 0) {
-				return entry;
+			ILineEntry entry = lineEntries.get(insertion);
+			
+			// low address of entry at insertion cannot match linkAddress
+			if (insertion > 0 && entry.getHighAddress().compareTo(entry.getLowAddress()) == 0) {
+				newInsertion = insertion - 1;
+				newEntry = lineEntries.get(newInsertion);
+				while (newEntry.getLowAddress().compareTo(entry.getLowAddress()) == 0) {
+					if (newEntry.getHighAddress().compareTo(newEntry.getLowAddress()) != 0) {
+						if (linkAddress.compareTo(newEntry.getHighAddress()) < 0)
+							return newEntry;
+					}
+					if (--newInsertion < 0)
+						break;
+					newEntry = lineEntries.get(newInsertion);
+				}
 			}
+			
+			if (linkAddress.compareTo(entry.getHighAddress()) < 0)
+				return entry;
 
 			return null;
 		}
@@ -161,10 +222,11 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 					}
 					for (ILineEntry nextEntry : subMap.values()) {
 						// return the entry at the next line if it's in the
-						// same function and has a higher address
+						// same function and has a higher address and is on a different line
 						IFunctionScope nextFunction = ignoreInlineFunctions(compileUnitScope.getFunctionAtAddress(nextEntry.getLowAddress()));
 						if (function.equals(nextFunction)) {
-							if (nextEntry.getLowAddress().compareTo(lineEntry.getHighAddress()) >= 0) {
+							if (nextEntry.getLineNumber() != lineEntry.getLineNumber() && 
+									nextEntry.getLowAddress().compareTo(lineEntry.getHighAddress()) >= 0) {
 								return nextEntry;
 							}
 						}
@@ -174,15 +236,32 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			return null;
 		}
 
-		private IFunctionScope ignoreInlineFunctions(IFunctionScope function) {
-			if (function == null)
-				return null;
+		public ILineEntry getLineEntryInFunction(IAddress linkAddress, IFunctionScope parentFunction) {
+			ILineEntry entry;
 			
-			while (function.getParent() instanceof IFunctionScope)
+			// get all line entries with low address <= linkAddress
+			SortedMap<IAddress, ILineEntry> subMap = lineEntriesByAddress.headMap(linkAddress, true);
+
+			if (subMap.isEmpty())
 			{
-				function = (IFunctionScope) function.getParent();
-			}			
-			return function;
+				// if no line entries have a low address <= linkAddress, but the address is
+				// definitely in the function, use the first entry
+				if (parentFunction.getLowAddress().compareTo(linkAddress) >= 0)
+					return lineEntriesByAddress.firstEntry().getValue();
+
+				return null;
+			}
+
+			// look for an entry that includes linkAddress; if linkAddress is in the gap between
+			// two lineEntriesByAddress entries, assume the gap is due to inlined functions' code
+			entry = subMap.get(subMap.lastKey());
+			
+			if (   entry.getHighAddress().compareTo(linkAddress) >= 0
+				|| subMap.size() < lineEntriesByAddress.size()) {
+				return entry;
+			}
+
+			return null;
 		}
 
 	}
@@ -372,7 +451,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILineEntryProvider#getLineEntryAtAddress(org.eclipse.cdt.core.IAddress)
 	 */
-	public ILineEntry getLineEntryAtAddress(IAddress linkAddress) {
+	public ILineEntry getLineEntryAtAddress(IAddress linkAddress, boolean collapseInlineFunctions) {
 		// scanning files can introduce new file providers; avoid ConcurrentModificationException
 		if (fileProviderArray == null) {
 			fileProviderArray = (FileLineEntryProvider[]) fileProviders.toArray(new FileLineEntryProvider[fileProviders.size()]);
@@ -383,12 +462,62 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			// (Don't use #getScopeAtAddress() since this preparses too much.)
 			if (provider.compileUnitScope.getLowAddress().compareTo(linkAddress) <= 0
 					&& provider.compileUnitScope.getHighAddress().compareTo(linkAddress) > 0) {
-				ILineEntry entry = provider.getLineEntryAtAddress(linkAddress);
+				ILineEntry entry = provider.getLineEntryAtAddress(linkAddress, collapseInlineFunctions);
 				if (entry != null)
+				{
+					if (collapseInlineFunctions)
+					{
+						// If the requested address is at the start of a function, we'll pretend
+						// not to be in an inlined function.
+						IFunctionScope function = provider.compileUnitScope.getFunctionAtAddress(linkAddress);
+						if (function != null) {
+							if (linkAddress.equals(function.getLowAddress()) && isInlinedFunction(function))
+							{
+									IFunctionScope parentFunction = ignoreInlineFunctions(function);
+									entry = getLineEntryInFunction(linkAddress, parentFunction);
+							} else if (!isInlinedFunction(function)) {
+								ILineEntry newEntry = getLineEntryInFunction(linkAddress, function);
+								if (newEntry != null && newEntry.getHighAddress().compareTo(linkAddress) < 0)
+									entry = newEntry;
+							}
+						}
+					}
 					return entry;
+				}
 			}
 		}
 		return null;
+	}
+
+
+	private ILineEntry getLineEntryInFunction(IAddress linkAddress,
+			IFunctionScope parentFunction) {
+		ILineEntry functionEntry = getLineEntryAtAddress(parentFunction.getLowAddress(), false);
+		if (functionEntry == null)
+			return null;
+		Collection<ILineEntryProvider> parentProviders = getLineEntryProvidersForFile(functionEntry.getFilePath());
+		for (ILineEntryProvider iLineEntryProvider : parentProviders) {
+			if (iLineEntryProvider instanceof FileLineEntryProvider)
+			{
+				ILineEntry entry = ((FileLineEntryProvider)iLineEntryProvider).getLineEntryInFunction(linkAddress, parentFunction);
+				if (entry != null)
+				{
+//					if (!(entry.getLowAddress().compareTo(linkAddress) <= 0
+//							&& entry.getHighAddress().compareTo(linkAddress) > 0))
+//						{
+//							System.out.println(linkAddress.toHexAddressString() + " : " + entry + " : " + parentFunction);
+//						}
+					return entry;
+				}
+			}
+		}
+		return null;
+	}
+
+
+
+	private boolean isInlinedFunction(IFunctionScope function) {
+		return function != null && function.getParent() instanceof IFunctionScope;
 	}
 
 
@@ -420,4 +549,16 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		}
 		return null;
 	}
+	
+	private static IFunctionScope ignoreInlineFunctions(IFunctionScope function) {
+		if (function == null)
+			return null;
+		
+		while (function.getParent() instanceof IFunctionScope)
+		{
+			function = (IFunctionScope) function.getParent();
+		}			
+		return function;
+	}
+	
 }

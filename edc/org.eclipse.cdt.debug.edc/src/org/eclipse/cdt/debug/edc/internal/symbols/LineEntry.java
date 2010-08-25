@@ -75,9 +75,9 @@ public class LineEntry implements ILineEntry {
 		StringBuilder builder = new StringBuilder();
 		builder.append("LineEntry ["); //$NON-NLS-1$
 		builder.append("lowAddress="); //$NON-NLS-1$
-		builder.append(lowAddress);
+		builder.append(lowAddress.toHexAddressString());
 		builder.append(", highAddress="); //$NON-NLS-1$
-		builder.append(highAddress);
+		builder.append(highAddress.toHexAddressString());
 		builder.append(", "); //$NON-NLS-1$
 		if (filePath != null) {
 			builder.append("path="); //$NON-NLS-1$

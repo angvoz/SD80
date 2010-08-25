@@ -102,22 +102,22 @@ public class TestExecutableReader extends BaseDwarfTestCase {
 		addSymbolAddr("BlackFlagMinGW.exe", "_main", true, 0x40663d);
 		addSymbolAddr("BlackFlagMinGW.exe", "_main", false, 0x40663d);
 		addSymbolAddr("BlackFlagMinGW.exe", "main", false, 0x40663d);
-		addSymbolAddr("BlackFlag_gcce.sym", "_Z7E32Mainv", true, 0x80a1);
-		addSymbolAddr("BlackFlag_gcce.sym", "E32Main", false, 0x80a1);
-		addSymbolAddr("BlackFlag_gcce.sym", "::E32Main", false, 0x80a1);
-		addSymbolAddr("BlackFlag_gcce.sym", "E32Main()", false, 0x80a1);
+		addSymbolAddr("BlackFlag_gcce.sym", "_Z7E32Mainv", true, 0x80a0);
+		addSymbolAddr("BlackFlag_gcce.sym", "E32Main", false, 0x80a0);
+		addSymbolAddr("BlackFlag_gcce.sym", "::E32Main", false, 0x80a0);
+		addSymbolAddr("BlackFlag_gcce.sym", "E32Main()", false, 0x80a0);
 		addSymbolAddr("BlackFlag_linuxgcc.exe", "main", false, 0x8048880);
-		addSymbolAddr("BlackFlag_rvct.sym", "_Z7E32Mainv", true, 0x849d);
-		addSymbolAddr("BlackFlag_rvct.sym", "E32Main", false, 0x849d);
-		addSymbolAddr("BlackFlag_rvct.sym", "E32Main()", false, 0x849d);
-		addSymbolAddr("BlackFlag_rvct.sym", "::E32Main()", false, 0x849d);
-		addSymbolAddr("BlackFlag_rvct.sym", "::E32Main", false, 0x849d);
+		addSymbolAddr("BlackFlag_rvct.sym", "_Z7E32Mainv", true, 0x849c);
+		addSymbolAddr("BlackFlag_rvct.sym", "E32Main", false, 0x849c);
+		addSymbolAddr("BlackFlag_rvct.sym", "E32Main()", false, 0x849c);
+		addSymbolAddr("BlackFlag_rvct.sym", "::E32Main()", false, 0x849c);
+		addSymbolAddr("BlackFlag_rvct.sym", "::E32Main", false, 0x849c);
 		addSymbolAddr("HelloWorld_rvct_2_2.exe.sym", "_E32Startup", true, 0x8000);
 		addSymbolAddr("HelloWorld_rvct_2_2.exe.sym", "_E32Startup", false, 0x8000);
 		addSymbolAddr("HelloWorld_rvct_2_2.exe.sym", "::_E32Startup", false, 0x8000);
-		addSymbolAddr("HelloWorld_rvct_4_0.exe.sym", "_Z7E32Mainv", true, 0x82eb);
-		addSymbolAddr("HelloWorld_rvct_4_0.exe.sym", "E32Main", false, 0x82eb);
-		addSymbolAddr("HelloWorld_rvct_4_0.exe.sym", "::E32Main()", false, 0x82eb);
+		addSymbolAddr("HelloWorld_rvct_4_0.exe.sym", "_Z7E32Mainv", true, 0x82ea);
+		addSymbolAddr("HelloWorld_rvct_4_0.exe.sym", "E32Main", false, 0x82ea);
+		addSymbolAddr("HelloWorld_rvct_4_0.exe.sym", "::E32Main()", false, 0x82ea);
 	}
 
 	

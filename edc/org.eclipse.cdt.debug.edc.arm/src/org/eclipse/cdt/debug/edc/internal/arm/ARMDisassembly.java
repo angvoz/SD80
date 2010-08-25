@@ -300,15 +300,16 @@ public class ARMDisassembly extends Disassembly {
 
 		while (start.add(counter).compareTo(end) < 0) {
 			RangeAndMode range = new RangeAndMode(null, null, false, false);
+
+			boolean thumbMode = ((TargetEnvironmentARM) getTargetEnvironmentService()).isThumbMode(exeDMC, start
+					.add(counter), false);
+			range.setThumbMode(thumbMode);
+			range.setStartAddress(start.add(counter));
+			
 			ILineEntry startEntry = symbolsService.getLineEntryForAddress(sym_dmc, start.add(counter));
 			if (startEntry != null) {
 				// figure out mode and end address
 				range.setHasSymbols(true);
-
-				boolean thumbMode = ((TargetEnvironmentARM) getTargetEnvironmentService()).isThumbMode(exeDMC, start
-						.add(counter), false);
-				range.setThumbMode(thumbMode);
-				range.setStartAddress(start.add(counter));
 				range.setEndAddress(end);
 
 				IEDCModuleDMContext module = modules.getModuleByAddress(sym_dmc, start.add(counter));
@@ -338,7 +339,6 @@ public class ARMDisassembly extends Disassembly {
 			} else {
 				// got source file but no symbols, search for the next line with
 				// symbols
-				range.setStartAddress(start.add(counter));
 				while (start.add(counter).compareTo(end) < 0) {
 					startEntry = symbolsService.getLineEntryForAddress(sym_dmc, start.add(counter));
 					if (startEntry != null) {

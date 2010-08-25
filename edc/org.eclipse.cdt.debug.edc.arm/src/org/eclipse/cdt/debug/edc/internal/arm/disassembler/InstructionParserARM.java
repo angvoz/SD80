@@ -28,6 +28,7 @@ import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
 import org.eclipse.cdt.debug.edc.internal.arm.ARMPlugin;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM.IDisassemblerOptionsARM;
+import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -1058,10 +1059,13 @@ public class InstructionParserARM {
 		case thumb_blx1:
 			offset = getThumbBLOffset(opcode, opcode2);
 			int h = (opcode2 >> 11) & 3;
-			jumpToAddr = address.add(offset);
+			
 			if (h == 3) {
+				jumpToAddr = address.add(offset);
 				instruction = "bl" + "\t\t" + getHexValue(jumpToAddr.getValue().intValue());
 			} else {
+				// Word align the result
+				jumpToAddr = new Addr64(address.add(offset).getValue().clearBit(1));
 				instruction = "blx" + "\t" + getHexValue(jumpToAddr.getValue().intValue());
 			}
 			isSoleDestination = true;
@@ -1188,6 +1192,7 @@ public class InstructionParserARM {
 				regList = getThumbRegList(opcode, null);
 			}
 			instruction = mnemonic + "\t" + regList;
+			
 			break;
 		case thumb_push:
 			bit = (opcode >> 8) & 1;
@@ -1669,9 +1674,9 @@ public class InstructionParserARM {
 	}
 
 	private int getThumbBranchOffset8(int opcode) {
-		char offset = (char)(opcode & 0xff);
+		int offset = (byte)(opcode & 0xff);
 	
-		offset = (char)(((offset*2) + 4) & 0xff);
+		offset = (offset*2) + 4;
 		return offset;
 	}
 

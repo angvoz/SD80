@@ -20,6 +20,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
+import org.eclipse.cdt.debug.edc.arm.IARMSymbol;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.AddressExpressionEvaluatorARM;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM;
@@ -214,9 +215,8 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			if (reader != null) {
 				// see if we can get the mode from the symbol tab.
 				ISymbol symbol = reader.getSymbolAtAddress(module.toLinkAddress(address));
-				if (symbol != null) {
-					// if the symbol address is odd then it's in thumb mode
-					if (symbol.getAddress().getValue().testBit(0)) {
+				if (symbol != null && symbol instanceof IARMSymbol) {
+					if (((IARMSymbol)symbol).isThumbAddress()) {
 						if (cachedValues != null) {
 							cachedValues.put(linkAddress, true);
 							ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());

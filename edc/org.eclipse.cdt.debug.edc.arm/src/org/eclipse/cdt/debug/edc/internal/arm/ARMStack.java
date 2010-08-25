@@ -40,9 +40,6 @@ public class ARMStack extends Stack {
 	private static final int MAX_FRAMES = 30;
 	private static final String FUNCTION_START_ADDRESS_CACHE = "_function_start_address";
 
-	// TODO need to figure out how register values for frames up the stack are
-	// accessed
-
 	/**
 	 * Container for spilled registers.
 	 */
@@ -228,12 +225,28 @@ public class ARMStack extends Stack {
 					// one at all.  assume that the currnet SP and LR are correct since we're
 					// at the first frame.
 					pcValue = lrValue;
+					if (pcValue.isZero()) {
+						break;
+					}
 					frameCount++;
 					continue;
 				} else {
-					// still don't know where the prolog is so no way to tell where
-					// the LR is saved on the stack (if at all)
-					break;
+					// if we're not in user mode, we're probably handling an exception.
+					// try crawling from user mode sp/lr since we've gone as far as we
+					// can go on the kernel side
+					if (spName.compareTo(ARMRegisters.SP) != 0) {
+						spValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.SP), 16);
+						pcValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.LR), 16);
+						if (pcValue.isZero()) {
+							break;
+						}
+						frameCount++;
+						continue;
+					} else {
+						// still don't know where the prolog is so no way to tell where
+						// the LR is saved on the stack (if at all)
+						break;
+					}
 				}
 			}
 
@@ -279,14 +292,16 @@ public class ARMStack extends Stack {
 		// read memory back from the PC so we can parse the instructions
 		IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
 
-		long bytesToRead = 128 * 4; // max 128 ARM instructions
+		int instructionSize = thumbMode ? 2 : 4;
+		
+		long bytesToRead = 128 * instructionSize; // max 128 instructions
 		
 		// for cases where the PC is small, only read back to 0x0
 		if (bytesToRead > pcValue.getValue().longValue()) {
 			bytesToRead = pcValue.getValue().longValue();
 		}
 		ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>();
-		IStatus status = memoryService.getMemory(context, pcValue.add(-bytesToRead), byteArray, (int)bytesToRead, 1);
+		IStatus status = memoryService.getMemory(context, pcValue.add(-bytesToRead).add(instructionSize), byteArray, (int)bytesToRead, 1);
 		if (!status.isOK()) {
 			return null;
 		}
@@ -294,15 +309,9 @@ public class ARMStack extends Stack {
 		List<BigInteger> instructions = new ArrayList<BigInteger>();
 		int index = 0;
 		while (index < bytesToRead) {
-			if (thumbMode) {
-				instructions.add(MemoryUtils.convertByteArrayToUnsignedLong(byteArray.subList(index, index + 2)
-						.toArray(new MemoryByte[2]), MemoryUtils.LITTLE_ENDIAN));
-				index += 2;
-			} else {
-				instructions.add(MemoryUtils.convertByteArrayToUnsignedLong(byteArray.subList(index, index + 4)
-						.toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN));
-				index += 4;
-			}
+			instructions.add(MemoryUtils.convertByteArrayToUnsignedLong(byteArray.subList(index, index + instructionSize)
+					.toArray(new MemoryByte[instructionSize]), MemoryUtils.LITTLE_ENDIAN));
+			index += instructionSize;
 		}
 
 		return thumbMode ? findThumbProlog(pcValue, instructions) : findArmProlog(pcValue, instructions);
@@ -313,11 +322,10 @@ public class ARMStack extends Stack {
 
 		// parse backwards
 		for (int i = instructions.size() - 1; i >= 0; i--) {
-			prologAddress = prologAddress.add(-4);
-
 			BigInteger instruction = instructions.get(i);
 
-			if (isStmfdInstruction(instruction)) {
+			// look for a stmfd instruction that saves the LR on the stack
+			if (isStmfdInstruction(instruction) && instruction.testBit(14)) {
 				return prologAddress;
 			}
 
@@ -335,6 +343,8 @@ public class ARMStack extends Stack {
 			if (instruction.longValue() == 0x0E1A0F0EL) {
 				break;
 			}
+
+			prologAddress = prologAddress.add(-4);
 		}
 
 		return null;
@@ -345,8 +355,6 @@ public class ARMStack extends Stack {
 
 		// parse backwards
 		for (int i = instructions.size() - 1; i >= 0; i--) {
-			prologAddress = prologAddress.add(-2);
-
 			BigInteger instruction = instructions.get(i);
 
 			if (isPushInstruction(instruction)) {
@@ -357,6 +365,8 @@ public class ARMStack extends Stack {
 			if ((instruction.intValue() & 0xFFF8L) == 0x4770L) {
 				break;
 			}
+
+			prologAddress = prologAddress.add(-2);
 		}
 
 		return null;

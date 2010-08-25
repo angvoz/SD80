@@ -45,7 +45,11 @@ public class LoggingProxy implements ILogging {
                 else if (name.equals("writeln")) {
                     assert args.length == 2;
 					writeln((String)args[0], (String)args[1]);
-                }
+				}
+				else if (name.equals("dialog")) {
+					assert args.length == 4;
+					dialog((String)args[0], (Integer)args[1], (String)args[2], (String)args[3]);
+				}
                 else {
                     throw new IOException("Logging service: unknown event: " + name);
                 }
@@ -143,17 +147,38 @@ public class LoggingProxy implements ILogging {
 		
 		return Collections.emptyList();
 	}
+
 	
+	private LogListener getFirstListener(String id) {
+		if (mapIdToListeners != null)
+		{
+			List<LogListener> listeners = mapIdToListeners.get(id);
+			if (listeners != null) {
+				return listeners.get(0);
+			}
+		}
+
+		return null;
+	}
+
 	public void write(String id, String msg) {
 		for (LogListener listener : getListeners(id)) {
 			listener.write(msg);
 		}
 	}
-	
+
 	public void writeln(String id, String msg) {
 		for (LogListener listener : getListeners(id)) {
 			listener.writeln(msg);
 		}
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging#dialog(String, int, String, String)
+	 */
+	/** @since 2.0 */
+	public void dialog(String id, int severity, String summary, String details) {
+		getFirstListener(id).dialog(severity, summary, details);
 	}
 
 	public String getName() {

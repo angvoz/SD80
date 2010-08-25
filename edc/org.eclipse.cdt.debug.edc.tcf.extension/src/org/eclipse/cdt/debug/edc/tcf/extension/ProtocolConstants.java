@@ -35,6 +35,12 @@ public interface ProtocolConstants {
 	static final String PROP_SUSPEND_DETAIL = "message"; // value type: string
 
 	/**
+	 * When set to true, stepping must be disabled for this context.
+	 * @since 2.0
+	 */
+	static final String PROP_DISABLE_STEPPING = "disable_stepping"; // value type: string
+
+	/**
 	 * Is the context (process, thread, etc) the foreground (a.k.a current) one in the
 	 * debugged OS.
 	 * @since 2.0

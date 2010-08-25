@@ -25,9 +25,11 @@ public interface ILineEntryProvider {
 	 * 
 	 * @param linkAddress
 	 *            the link address
+	 * @param collapseInlineFunctions TODO
 	 * @return the line table entry, or null if none found
+	 * @since 2.0
 	 */
-	ILineEntry getLineEntryAtAddress(IAddress linkAddress);
+	ILineEntry getLineEntryAtAddress(IAddress linkAddress, boolean collapseInlineFunctions);
 
 	/**
 	 * Get the list of line table entries for the given sequence of line

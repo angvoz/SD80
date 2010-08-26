@@ -2,7 +2,6 @@
 <?eclipse version="3.0"?>
 <plugin>
      <extension-point id="DiscoveryProfilePage" name="%DiscoveryProfilePage.name" schema="schema/DiscoveryProfilePage.exsd"/>
-     <extension-point id="LanguageSettingsProviderUI" name="%LanguageSettingsProviderUI.name" schema="schema/LanguageSettingsProviderUI.exsd"/>
 
    <extension
          point="org.eclipse.ui.popupMenus">
@@ -541,5 +540,16 @@
             %makeCompareFontDefinition.description
          </description>
       </fontDefinition>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.ui.LanguageSettingsProviderUI">
+      <providerUI
+            icon="icons/obj16/inspect_gear.gif"
+            id="org.eclipse.cdt.make.core.gcc.specs.detector">
+      </providerUI>
+      <providerUI
+            icon="icons/obj16/log_obj.gif"
+            id="org.eclipse.cdt.make.core.build.command.parser.gcc">
+      </providerUI>
    </extension>
 </plugin>

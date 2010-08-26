@@ -23,12 +23,10 @@ import java.util.TreeSet;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.layout.PixelConverter;
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.ICheckStateListener;
@@ -43,7 +41,6 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableItem;
 import org.osgi.service.prefs.BackingStoreException;
@@ -57,7 +54,6 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.CUIPlugin;
-import org.eclipse.cdt.ui.dialogs.ICOptionContainer;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.ui.dialogs.IInputStatusValidator;
 import org.eclipse.cdt.ui.dialogs.InputStatusDialog;
@@ -120,98 +116,6 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		public String getName() {
 			// TODO Auto-generated method stub
 			return null;
-		}
-	}
-
-	// FIXME dummy
-	private class RegexProviderOptionPage implements ICOptionPage {
-		public RegexProviderOptionPage(RegexProvider provider, boolean isProvidersEditable) {
-			// TODO Auto-generated method stub
-		}
-
-		public boolean isValid() {
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		public void performApply(IProgressMonitor monitor) throws CoreException {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void performDefaults() {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void setContainer(ICOptionContainer container) {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void createControl(Composite parent) {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void dispose() {
-			// TODO Auto-generated method stub
-
-		}
-
-		public Control getControl() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		public String getDescription() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		public String getErrorMessage() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		public Image getImage() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		public String getMessage() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		public String getTitle() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		public void performHelp() {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void setDescription(String description) {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void setImageDescriptor(ImageDescriptor image) {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void setTitle(String title) {
-			// TODO Auto-generated method stub
-
-		}
-
-		public void setVisible(boolean visible) {
-			// TODO Auto-generated method stub
-
 		}
 	}
 
@@ -377,10 +281,11 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (provider!=null) {
 			String name = provider.getName();
 			if (name!=null && name.length()>0) {
-				// RegexProvider has an Options page
-				if (provider instanceof RegexProvider) {
-					// allow to edit only for Build Settings Preference Page (where cfgd==null)
-					RegexProviderOptionPage optionsPage = new RegexProviderOptionPage((RegexProvider) provider, isProvidersEditable());
+				ICOptionPage optionsPage = LanguageSettingsProviderAssociation.getOptionsPage(id);
+				if (optionsPage==null) {
+					optionsPage = LanguageSettingsProviderAssociation.getOptionsPage(provider.getClass());
+				}
+				if (optionsPage!=null) {
 					fOptionsPageMap.put(id, optionsPage);
 					optionsPage.setContainer(page);
 					optionsPage.createControl(fCompositeForOptionsPage);
@@ -736,4 +641,10 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			}
 		}
 	}
+
+	@Override
+	protected boolean isIndexerAffected() {
+		return true;
+	}
+
 }

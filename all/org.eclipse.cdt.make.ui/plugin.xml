@@ -542,14 +542,15 @@
       </fontDefinition>
    </extension>
    <extension
-         point="org.eclipse.cdt.ui.LanguageSettingsProviderUI">
-      <providerUI
-            icon="icons/obj16/inspect_gear.gif"
-            id="org.eclipse.cdt.make.core.gcc.specs.detector">
-      </providerUI>
-      <providerUI
+         point="org.eclipse.cdt.ui.LanguageSettingsProviderAssociation">
+      <class-association
+            class="org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector"
+            icon="icons/obj16/inspect_system.gif"
+            page="org.eclipse.cdt.make.internal.ui.preferences.GCCBuiltinSpecsDetectorOptionPage">
+      </class-association>
+      <class-association
             icon="icons/obj16/log_obj.gif"
-            id="org.eclipse.cdt.make.core.build.command.parser.gcc">
-      </providerUI>
+            class="org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser">
+      </class-association>
    </extension>
 </plugin>

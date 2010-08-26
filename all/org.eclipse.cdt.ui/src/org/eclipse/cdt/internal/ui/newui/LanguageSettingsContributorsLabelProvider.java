@@ -1,16 +1,5 @@
 package org.eclipse.cdt.internal.ui.newui;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.eclipse.core.runtime.IConfigurationElement;
-import org.eclipse.core.runtime.IExtension;
-import org.eclipse.core.runtime.IExtensionPoint;
-import org.eclipse.core.runtime.IExtensionRegistry;
-import org.eclipse.core.runtime.Platform;
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -21,71 +10,11 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
-import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
 
 public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*implements IFontProvider, ITableLabelProvider , IColorProvider */ {
-	private static final String LANGUAGE_SETTINGS_PROVIDER_UI = "LanguageSettingsProviderUI"; //$NON-NLS-1$
-	private static final String ELEM_PROVIDER_UI = "providerUI"; //$NON-NLS-1$
-	private static final String ATTR_ID = "id"; //$NON-NLS-1$
-	private static final String ATTR_ICON = "icon"; //$NON-NLS-1$
-	private static final String ATTR_PAGE = "page"; //$NON-NLS-1$
-
-	static private Map<URL, Image> loadedIcons = null;
-	static private Map<String, Image> fImage = null;
-
-	public LanguageSettingsContributorsLabelProvider() {
-	}
-
-	private Image getIcon(IConfigurationElement config) {
-		ImageDescriptor idesc = null;
-		URL url = null;
-		try {
-			String iconName = config.getAttribute(ATTR_ICON);
-			if (iconName != null) {
-				URL pluginInstallUrl = Platform.getBundle(config.getDeclaringExtension().getContributor().getName()).getEntry("/"); //$NON-NLS-1$
-				url = new URL(pluginInstallUrl, iconName);
-				if (loadedIcons.containsKey(url))
-					return loadedIcons.get(url);
-				idesc = ImageDescriptor.createFromURL(url);
-			}
-		} catch (MalformedURLException exception) {}
-		if (idesc == null)
-			return null;
-		Image img = idesc.createImage();
-		loadedIcons.put(url, img);
-		return img;
-	}
-
-	private void loadImages() {
-		if (loadedIcons==null) loadedIcons = new HashMap<URL, Image>();
-		if (fImage==null) fImage = new HashMap<String, Image>();
-
-		IExtensionRegistry registry = Platform.getExtensionRegistry();
-		IExtensionPoint extension = registry.getExtensionPoint(CUIPlugin.PLUGIN_ID, LANGUAGE_SETTINGS_PROVIDER_UI);
-		if (extension != null) {
-			IExtension[] extensions = extension.getExtensions();
-			for (IExtension ext : extensions) {
-				try {
-					String extensionID = ext.getUniqueIdentifier();
-					for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
-						if (cfgEl.getName().equals(ELEM_PROVIDER_UI)) {
-							String id = cfgEl.getAttribute(ATTR_ID);
-							String strIcon = cfgEl.getAttribute(ATTR_ICON);
-							String strPage = cfgEl.getAttribute(ATTR_PAGE);
-							Image image =getIcon(cfgEl);
-							fImage.put(id, image);
-						}
-					}
-				} catch (Exception e) {
-					CUIPlugin.log("Cannot load LanguageSettingsProviderUI extension " + ext.getUniqueIdentifier(), e); //$NON-NLS-1$
-				}
-			}
-		}
-
-	}
 
 	@Override
 	public Image getImage(Object element) {
@@ -129,13 +58,13 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 			ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
 			String imageKey = getImageKey(element, columnIndex);
 			if (imageKey==null) {
-				if (loadedIcons==null || fImage==null) {
-					loadedIcons = new HashMap<URL, Image>();
-					fImage = new HashMap<String, Image>();
-					loadImages();
+				// try id-association
+				Image image = LanguageSettingsProviderAssociation.getImage(provider.getId());
+				if (image!=null) {
+					return image;
 				}
-
-				Image image = fImage.get(provider.getId());
+				// try class-association
+				image = LanguageSettingsProviderAssociation.getImage(provider.getClass());
 				if (image!=null) {
 					return image;
 				}

@@ -240,15 +240,14 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			ILineEntry entry;
 			
 			// get all line entries with low address <= linkAddress
-			SortedMap<IAddress, ILineEntry> subMap = lineEntriesByAddress.headMap(linkAddress, true);
+			SortedMap<IAddress, ILineEntry> subMap = lineEntriesByAddress.headMap(linkAddress.add(1));
 
 			if (subMap.isEmpty())
 			{
 				// if no line entries have a low address <= linkAddress, but the address is
 				// definitely in the function, use the first entry
 				if (parentFunction.getLowAddress().compareTo(linkAddress) >= 0)
-					return lineEntriesByAddress.firstEntry().getValue();
-
+					return lineEntriesByAddress.values().iterator().next();
 				return null;
 			}
 

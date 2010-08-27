@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints.BreakpointDMData;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.EDCAddressRange;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
@@ -219,6 +221,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 */
 		private boolean isTerminatingThanDisconnecting = false;
 		
+		private List<EDCAddressRange> disabledRanges = Collections.synchronizedList(new ArrayList<EDCAddressRange>());
+		
 		public ExecutionDMC(ExecutionDMC parent, Map<String, Object> props, RunControlContext tcfContext) {
 			super(RunControl.this, parent == null ? new IDMContext[0] : new IDMContext[] { parent }, props);
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
@@ -395,11 +399,6 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						
 						if (honorSuspend) { // do suspend
 
-							// Only after completion of those preprocessing do 
-							// we fire the event.
-							getSession().dispatchEvent(new SuspendedEvent(dmc, stateChangeReason, params),
-									RunControl.this.getProperties());
-
 							// All the following must be done in DSF dispatch
 							// thread to ensure data integrity.
 
@@ -420,6 +419,21 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 							bpService.removeAllTempBreakpoints(new RequestMonitor(getExecutor(), null));
 							
+							// check to see if we are in a disabled range
+							IAddress pcAddress = new Addr64(dmc.getPC(), 16);
+							EDCAddressRange disabledRange = dmc.getDisabledRange(pcAddress);
+							if (disabledRange != null)
+							{
+								stepAddressRange(dmc, false, pcAddress, disabledRange.getEndAddress(), new RequestMonitor(getExecutor(), null));
+							}
+							else
+							{
+								// Only after completion of those preprocessing do 
+								// we fire the event.
+								getSession().dispatchEvent(new SuspendedEvent(dmc, stateChangeReason, params),
+										RunControl.this.getProperties());
+							}
+							dmc.clearDisabledRanges();
 						} else { 
 							// ignore suspend if, say, breakpoint condition is not met.
 							RunControl.this.resume(dmc, new RequestMonitor(getExecutor(), null));
@@ -430,6 +444,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				preprocessOnSuspend(dmc, latestPC, preprocessDrm);
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		}
+
+		protected void clearDisabledRanges() {
+			disabledRanges.clear();
 		}
 
 		/**
@@ -886,6 +904,18 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 */
 		public boolean isStepping() {
 			return isStepping;
+		}
+
+		public void addDisabledRange(IAddress lowAddress, IAddress highAddress) {
+			disabledRanges.add(new EDCAddressRange(lowAddress, highAddress));
+		}
+
+		public EDCAddressRange getDisabledRange(IAddress address) {
+			for (EDCAddressRange dRange : disabledRanges) {
+				if (dRange.contains(address))
+					return dRange;
+			}
+			return null;
 		}
 
 	}
@@ -1445,6 +1475,19 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							if (nextLine != null) {
 								endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
 							}
+							if (stepType == StepType.STEP_OVER)
+							{ // Create a disabled range
+								Collection<ILineEntry> ranges = lineEntryProvider.getLineEntriesForLines(line.getFilePath(), line.getLineNumber(), line.getLineNumber());
+								if (ranges.size() > 1)
+								{
+									System.out.println(ranges);
+									for (ILineEntry iLineEntry : ranges) {
+										dmc.addDisabledRange(iLineEntry.getLowAddress(), iLineEntry.getHighAddress());
+									}
+								}
+							}
+							
+							
 						//}
 
 						/*

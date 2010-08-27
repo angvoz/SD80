@@ -110,6 +110,11 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		public String toString() {
 			return MessageFormat.format("[{0},{1})", startAddr.toHexAddressString(), endAddr.toHexAddressString());
 		}
+
+		public boolean contains(IAddress address) {
+			return getStartAddress().compareTo(address) <= 0
+			&& getEndAddress().compareTo(address) > 0;
+		}
 	}
 
 	public class ModuleDMC extends DMContext implements IEDCModuleDMContext, ISnapshotContributor,

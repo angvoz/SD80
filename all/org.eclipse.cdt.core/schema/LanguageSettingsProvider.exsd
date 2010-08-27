@@ -77,6 +77,13 @@
                </documentation>
             </annotation>
          </attribute>
+         <attribute name="parameter" type="string">
+            <annotation>
+               <documentation>
+                  A custom parameter to initialize provider. Used to deliver command for GCCBuiltinSpecsDetector for example.
+               </documentation>
+            </annotation>
+         </attribute>
       </complexType>
    </element>
 

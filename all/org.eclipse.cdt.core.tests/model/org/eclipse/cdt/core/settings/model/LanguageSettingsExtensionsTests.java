@@ -30,8 +30,10 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	// These should match corresponding entries defined in plugin.xml
 	private static final String DEFAULT_PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider";
 	private static final String DEFAULT_PROVIDER_NAME_EXT = "Test Plugin Language Settings Base Provider";
+	private static final String DEFAULT_PROVIDER_PARAMETER_EXT = "custom parameter";
 	private static final String PROVIDER_ID_EXT = "org.eclipse.cdt.core.tests.custom.language.settings.provider";
 	private static final String PROVIDER_NAME_EXT = "Test Plugin Language Settings Provider";
+	private static final String PROVIDER_PARAMETER_EXT = "custom parameter subclass";
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
 
@@ -93,6 +95,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		LanguageSettingsBaseProvider provider = (LanguageSettingsBaseProvider)providerExt;
 		assertEquals(DEFAULT_PROVIDER_ID_EXT, provider.getId());
 		assertEquals(DEFAULT_PROVIDER_NAME_EXT, provider.getName());
+		assertEquals(DEFAULT_PROVIDER_PARAMETER_EXT, provider.getCustomParameter());
 
 		// retrieve wrong language
 		assertNull(provider.getSettingEntries(null, FILE_0, LANG_ID));
@@ -130,18 +133,19 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		// get test plugin extension provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
 		assertNotNull(providerExt);
-		
+
 		assertTrue(providerExt instanceof TestClassLSBaseProvider);
 		TestClassLSBaseProvider provider = (TestClassLSBaseProvider)providerExt;
 		assertEquals(BASE_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
-		
+		assertEquals(PROVIDER_PARAMETER_EXT, provider.getCustomParameter());
+
 		// Test for null languages
 		assertNull(provider.getLanguageIds());
-		
+
 		// benchmarks matching extension point definition
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
 		entriesExt.add(new CIncludePathEntry("/usr/include/", ICSettingEntry.BUILTIN));
-		
+
 		// retrieve entries from extension point
 		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
 		for (int i=0;i<entriesExt.size();i++) {
@@ -149,7 +153,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		}
 		assertEquals(entriesExt.size(), retrieved.size());
 	}
-	
+
 	/**
 	 * Make sure extensions contributed through extension point are sorted by name.
 	 *
@@ -182,7 +186,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		assertEquals(PROVIDER_ID_EXT, providerExt.getId());
 		assertEquals(PROVIDER_NAME_EXT, providerExt.getName());
 	}
-	
+
 	/**
 	 * LanguageSettingsBaseProvider is not allowed to be configured twice.
 	 *
@@ -194,11 +198,11 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 		entries.add(new CIncludePathEntry("/usr/include/", 0));
 		// configure it
-		provider.configureProvider("id", "name", null, entries);
-		
+		provider.configureProvider("id", "name", null, entries, null);
+
 		try {
 			// attempt to configure it twice should fail
-			provider.configureProvider("id", "name", null, entries);
+			provider.configureProvider("id", "name", null, entries, null);
 			fail("LanguageSettingsBaseProvider is not allowed to be configured twice");
 		} catch (UnsupportedOperationException e) {
 		}

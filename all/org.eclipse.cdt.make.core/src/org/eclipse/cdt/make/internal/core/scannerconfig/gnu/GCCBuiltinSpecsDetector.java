@@ -22,68 +22,67 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.internal.core.scannerconfig.util.TraceUtil;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Status;
 
 public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 	private static final Pattern MACRO_PATTERN = Pattern.compile("#define (\\S*) *(.*)"); //$NON-NLS-1$
 	private static final Pattern MACRO_WITH_ARGS_PATTERN = Pattern.compile("#define (\\S*\\(.*?\\)) *(.*)"); //$NON-NLS-1$
 
-	
-	private static final String SPEC_FILE_NAME = "spec";
-	
-	//	private static final String GCC_SCANNER_INFO_COMMAND = "gcc -E -P -v -dD ${plugin_state_location}/${specs_file}"; //$NON-NLS-1$
-	private static final String GCC_SCANNER_INFO_COMMAND = "gcc -E -P -v -dD "; //$NON-NLS-1$
-	
+	private static final String SPEC_FILE_MACRO = "${spec_file}"; //$NON-NLS-1$
+	private static final String SPEC_FILE_BASE = "spec"; //$NON-NLS-1$
+
 	private static final String LANGUAGE_ID_ASSEMBLER = "org.eclipse.cdt.core.assembly";
 	private static final String LANGUAGE_ID_C = "org.eclipse.cdt.core.gcc";
 	private static final String LANGUAGE_ID_CPLUSPLUS = "org.eclipse.cdt.core.g++";
 
-	private String specFileName;
-	
+
 	private boolean expectingIncludes = false;
 	private int includeFlag = 0;
-	private java.io.File specFile;
-	
+	private java.io.File specFile = null;
+	private boolean isSpecFileAlreadyThere = false;
+
+	public String getSpecFileName(String languageId) {
+		String specFileName=null;
+		// TODO: figure out file extension from language id
+//			ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(getCurrentLanguage());
+		if (LANGUAGE_ID_CPLUSPLUS.equals(languageId)) {
+			specFileName = SPEC_FILE_BASE + ".cpp";
+		} else if (LANGUAGE_ID_C.equals(languageId)) {
+			specFileName = SPEC_FILE_BASE + ".c";
+		} else if (LANGUAGE_ID_ASSEMBLER.equals(languageId)) {
+			specFileName = SPEC_FILE_BASE + ".s";
+		}
+		return specFileName;
+	}
+
 	@Override
 	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
 		super.startup(cfgDescription, languageId);
 		includeFlag = 0;
 		expectingIncludes = false;
-		specFileName = null;
-		setCommand(null);
+		specFile = null;
 
-		// TODO: figure out file extension from language id
-//		ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(getCurrentLanguage());
-		if (LANGUAGE_ID_CPLUSPLUS.equals(getLanguage())) {
-			specFileName = SPEC_FILE_NAME + ".cpp";
-		} else if (LANGUAGE_ID_C.equals(getLanguage())) {
-			specFileName = SPEC_FILE_NAME + ".c";
-		} else if (LANGUAGE_ID_ASSEMBLER.equals(getLanguage())) {
-			specFileName = SPEC_FILE_NAME + ".s";
-		}
+		String cmd = customParameter;
+
+		String specFileName = getSpecFileName(languageId);
 		if (specFileName!=null) {
-			IProject project = cfgDescription.getProjectDescription().getProject();
-			IPath workingLocation = project.getWorkingLocation(MakeCorePlugin.PLUGIN_ID);
-			
+			IPath workingLocation = MakeCorePlugin.getWorkingDirectory();
+			IPath specFileLocation = workingLocation.append(specFileName);
+			cmd = cmd.replace(SPEC_FILE_MACRO, specFileLocation.toString());
+
+			specFile = new java.io.File(specFileLocation.toOSString());
+			isSpecFileAlreadyThere = specFile.exists();
 			try {
-				specFile = workingLocation.append(specFileName).toFile();
 				specFile.createNewFile();
 			} catch (IOException e) {
-				Status status = new Status(IStatus.ERROR, MakeCorePlugin.PLUGIN_ID, IStatus.ERROR,
-						"Error creating specs file ["+specFile+"]", e);
-				throw new CoreException(status);
+				MakeCorePlugin.log(e);
 			}
-			setCommand(GCC_SCANNER_INFO_COMMAND + specFile);
 		}
-		
-		
+		setCommand(cmd);
 	}
-	
+
 	@Override
 	public boolean processLine(String line) {
 		TraceUtil.outputTrace("GCCBuiltinSpecsDetector parsing line: [", line, "]"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -104,7 +103,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 			detectedSettingEntries.add(new CMacroEntry(name, value, ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
 			return true;
 		}
-		
+
 		// contribution of includes
 		if (line.equals("#include \"...\" search starts here:")) {
 			expectingIncludes = true;
@@ -135,16 +134,16 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 	@Override
 	public void shutdown() {
 		super.shutdown();
-		
+
 		includeFlag = 0;
 		expectingIncludes = false;
-		specFileName = null;
-		setCommand(null);
-		
-		if (specFile!=null) {
+
+		if (specFile!=null && !isSpecFileAlreadyThere) {
 			specFile.delete();
 			specFile = null;
 		}
+
+		setCommand(null);
 	}
 
 }

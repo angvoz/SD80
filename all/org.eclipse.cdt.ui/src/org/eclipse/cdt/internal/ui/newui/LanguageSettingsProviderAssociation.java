@@ -2,7 +2,9 @@ package org.eclipse.cdt.internal.ui.newui;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -32,46 +34,41 @@ public class LanguageSettingsProviderAssociation {
 	static private Map<URL, Image> loadedIcons = null;
 	static private Map<String, Image> fImagesById = null;
 	static private Map<String, Image> fImagesByClass = null;
-	static private Map<String, ICOptionPage> fPagesById = null;
-	static private Map<String, ICOptionPage> fPagesByClass = null;
+	static private List<String> fRegirestedIds = null;
+	static private List<String> fRegisteredClasses = null;
 
 	private static void loadExtensions() {
+		if (loadedIcons!=null) {
+			return;
+		}
 		if (loadedIcons==null) loadedIcons = new HashMap<URL, Image>();
 		if (fImagesById==null) fImagesById = new HashMap<String, Image>();
 		if (fImagesByClass==null) fImagesByClass = new HashMap<String, Image>();
-		if (fPagesById==null) fPagesById = new HashMap<String, ICOptionPage>();
-		if (fPagesByClass==null) fPagesByClass = new HashMap<String, ICOptionPage>();
+		if (fRegirestedIds==null) fRegirestedIds = new ArrayList<String>();
+		if (fRegisteredClasses==null) fRegisteredClasses = new ArrayList<String>();
 
 		IExtensionRegistry registry = Platform.getExtensionRegistry();
 		IExtensionPoint extension = registry.getExtensionPoint(CUIPlugin.PLUGIN_ID, LanguageSettingsProviderAssociation.LANGUAGE_SETTINGS_PROVIDER_UI);
 		if (extension != null) {
 			IExtension[] extensions = extension.getExtensions();
 			for (IExtension ext : extensions) {
-				try {
-					String extensionID = ext.getUniqueIdentifier();
-					for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
-						if (cfgEl.getName().equals(ELEM_ID_ASSOCIATION)) {
-							String id = cfgEl.getAttribute(ATTR_ID);
-							Image image =getIcon(cfgEl);
-							fImagesById.put(id, image);
-							String pageClass = cfgEl.getAttribute(ATTR_PAGE);
-							if (pageClass!=null && pageClass.trim().length()>0) {
-								ICOptionPage page = (ICOptionPage) cfgEl.createExecutableExtension(ATTR_PAGE);
-								fPagesById.put(id, page);
-							}
-						} else if (cfgEl.getName().equals(ELEM_CLASS_ASSOCIATION)) {
-							String clazz = cfgEl.getAttribute(ATTR_CLASS);
-							Image image =getIcon(cfgEl);
-							fImagesByClass.put(clazz, image);
-							String pageClass = cfgEl.getAttribute(ATTR_PAGE);
-							if (pageClass!=null && pageClass.trim().length()>0) {
-								ICOptionPage page = (ICOptionPage) cfgEl.createExecutableExtension(ATTR_PAGE);
-								fPagesByClass.put(clazz, page);
-							}
+				@SuppressWarnings("unused")
+				String extensionID = ext.getUniqueIdentifier();
+				for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
+					if (cfgEl.getName().equals(ELEM_ID_ASSOCIATION)) {
+						String id = cfgEl.getAttribute(ATTR_ID);
+						Image image =getIcon(cfgEl);
+						fImagesById.put(id, image);
+						fRegirestedIds.add(id);
+					} else if (cfgEl.getName().equals(ELEM_CLASS_ASSOCIATION)) {
+						String className = cfgEl.getAttribute(ATTR_CLASS);
+						Image image =getIcon(cfgEl);
+						fImagesByClass.put(className, image);
+						String pageClass = cfgEl.getAttribute(ATTR_PAGE);
+						if (pageClass!=null && pageClass.trim().length()>0) {
+							fRegisteredClasses.add(className);
 						}
 					}
-				} catch (Exception e) {
-					CUIPlugin.log("Cannot load LanguageSettingsProviderAssociation extension " + ext.getUniqueIdentifier(), e); //$NON-NLS-1$
 				}
 			}
 		}
@@ -105,11 +102,81 @@ public class LanguageSettingsProviderAssociation {
 		return fImagesById.get(id);
 	}
 
-	public static ICOptionPage getOptionsPage(String id) {
-		if (fPagesById==null) {
+	private static ICOptionPage createOptionsPageById(String providerId) {
+		if (fRegirestedIds==null) {
 			loadExtensions();
 		}
-		return fPagesById.get(id);
+		if (fRegirestedIds.contains(providerId)) {
+			IExtensionRegistry registry = Platform.getExtensionRegistry();
+			IExtensionPoint extension = registry.getExtensionPoint(CUIPlugin.PLUGIN_ID, LanguageSettingsProviderAssociation.LANGUAGE_SETTINGS_PROVIDER_UI);
+			if (extension != null) {
+				IExtension[] extensions = extension.getExtensions();
+				for (IExtension ext : extensions) {
+					try {
+						String extensionID = ext.getUniqueIdentifier();
+						for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
+							if (cfgEl.getName().equals(ELEM_ID_ASSOCIATION)) {
+								String id = cfgEl.getAttribute(ATTR_ID);
+								if (providerId.equals(id)) {
+									String pageClass = cfgEl.getAttribute(ATTR_PAGE);
+									if (pageClass!=null && pageClass.trim().length()>0) {
+										ICOptionPage page = (ICOptionPage) cfgEl.createExecutableExtension(ATTR_PAGE);
+										return page;
+									}
+								}
+							}
+//							else if (cfgEl.getName().equals(ELEM_CLASS_ASSOCIATION)) {
+//								String clazz = cfgEl.getAttribute(ATTR_CLASS);
+//								Image image =getIcon(cfgEl);
+//								fImagesByClass.put(clazz, image);
+//								String pageClass = cfgEl.getAttribute(ATTR_PAGE);
+//								if (pageClass!=null && pageClass.trim().length()>0) {
+//									ICOptionPage page = (ICOptionPage) cfgEl.createExecutableExtension(ATTR_PAGE);
+//									fRegisteredClasses.put(clazz, page);
+//								}
+//							}
+						}
+					} catch (Exception e) {
+						CUIPlugin.log("Cannot load LanguageSettingsProviderAssociation extension " + ext.getUniqueIdentifier(), e); //$NON-NLS-1$
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	private static ICOptionPage createOptionsPageByClass(String providerClassName) {
+		if (fRegisteredClasses==null) {
+			loadExtensions();
+		}
+		if (fRegisteredClasses.contains(providerClassName)) {
+			IExtensionRegistry registry = Platform.getExtensionRegistry();
+			IExtensionPoint extension = registry.getExtensionPoint(CUIPlugin.PLUGIN_ID, LanguageSettingsProviderAssociation.LANGUAGE_SETTINGS_PROVIDER_UI);
+			if (extension != null) {
+				IExtension[] extensions = extension.getExtensions();
+				for (IExtension ext : extensions) {
+					try {
+						@SuppressWarnings("unused")
+						String extensionID = ext.getUniqueIdentifier();
+						for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
+							if (cfgEl.getName().equals(ELEM_CLASS_ASSOCIATION)) {
+								String className = cfgEl.getAttribute(ATTR_CLASS);
+								if (providerClassName.equals(className)) {
+									String pageClass = cfgEl.getAttribute(ATTR_PAGE);
+									if (pageClass!=null && pageClass.trim().length()>0) {
+										ICOptionPage page = (ICOptionPage) cfgEl.createExecutableExtension(ATTR_PAGE);
+										return page;
+									}
+								}
+							}
+						}
+					} catch (Exception e) {
+						CUIPlugin.log("Cannot load LanguageSettingsProviderAssociation extension " + ext.getUniqueIdentifier(), e); //$NON-NLS-1$
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -133,18 +200,24 @@ public class LanguageSettingsProviderAssociation {
 
 	/**
 	 * Returns Language Settings Provider image registered for closest superclass.
-	 *
+	 * @param provider TODO
+	 * @param id TODO
 	 * @param clazz - class to find Language Settings Provider image.
 	 * @return image or {@code null}
 	 */
-	public static ICOptionPage getOptionsPage(Class<? extends ILanguageSettingsProvider> clazz) {
+	public static ICOptionPage createOptionsPage(ILanguageSettingsProvider provider) {
+		String id = provider.getId();
+		ICOptionPage optionsPage = createOptionsPageById(id);
+		if (optionsPage!=null) {
+			return optionsPage;
+		}
+
+		Class<? extends ILanguageSettingsProvider> clazz = provider.getClass();
 		for (Class<?> c=clazz;c!=null;c=c.getSuperclass()) {
 			String className = c.getCanonicalName();
-			Set<Entry<String, ICOptionPage>> entrySet = fPagesByClass.entrySet();
-			for (Entry<String, ICOptionPage> entry : entrySet) {
-				if (entry.getKey().equals(className)) {
-					return entry.getValue();
-				}
+			if (fRegisteredClasses.contains(className)) {
+				optionsPage = createOptionsPageByClass(className);
+				return optionsPage;
 			}
 		}
 		return null;

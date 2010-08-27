@@ -228,4 +228,12 @@
         </filesystem>
     </extension>
 
+   <extension point="org.eclipse.cdt.ui.LanguageSettingsProviderAssociation">
+      <id-association
+            id="org.eclipse.cdt.core.tests.custom.language.settings.provider"
+            icon="icons/dom_view/define_obj.gif"
+            page="org.eclipse.cdt.make.internal.ui.preferences.GCCBuiltinSpecsDetectorOptionPage">
+      </id-association>
+   </extension>
+
 </plugin>

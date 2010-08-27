@@ -187,13 +187,20 @@
       <provider
             class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCBuiltinSpecsDetector"
             id="org.eclipse.cdt.make.core.gcc.specs.detector"
-            name="GCC Builtin Settings Detector">
-         <language
-               id="org.eclipse.cdt.core.assembly">
-         </language>
+            name="GCC C Builtin Settings Detector"
+            parameter="gcc -E -P -v -dD ${spec_file}">
          <language
                id="org.eclipse.cdt.core.gcc">
          </language>
+      </provider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.core.LanguageSettingsProvider">
+      <provider
+            class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCBuiltinSpecsDetector"
+            id="org.eclipse.cdt.make.core.g++.specs.detector"
+            name="GCC C++ Builtin Settings Detector"
+            parameter="g++ -E -P -v -dD ${spec_file}">
          <language
                id="org.eclipse.cdt.core.g++">
          </language>

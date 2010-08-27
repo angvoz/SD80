@@ -18,6 +18,7 @@ import org.eclipse.cdt.core.errorparsers.RegexErrorParser;
 import org.eclipse.cdt.core.errorparsers.RegexErrorPattern;
 import org.eclipse.cdt.internal.ui.util.SWTUtil;
 import org.eclipse.cdt.internal.ui.util.TableLayoutComposite;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.DialogsMessages;
 import org.eclipse.cdt.ui.dialogs.RegularExpressionStatusDialog;
@@ -58,7 +59,6 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
@@ -95,7 +95,10 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	private Button[] fButtons = null;
 
 	private RegexErrorParser fErrorParser;
+	private AbstractBuiltinSpecsDetector fProvider;
 	private boolean fEditable;
+
+	private Text inputCommand;
 
 	/**
 	 * Provides generic implementation for overridden methods.
@@ -182,17 +185,11 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		}
 	}
 
-//	/**
-//	 * Constructor.
-//	 *
-//	 * @param errorparser - regex error parser for which to display options.
-//	 * @param editable - if error parser is editable and allowed to change its patterns
-//	 */
-//	public GCCBuiltinSpecsDetectorOptionPage(RegexErrorParser errorparser, boolean editable) {
-//		fErrorParser = errorparser;
-//		fEditable = editable;
-//	}
-
+	@Override
+	public void init(Object provider) {
+		// must be AbstractBuiltinSpecsDetector
+		fProvider = (AbstractBuiltinSpecsDetector) provider;
+	}
 	/*
 	 * (non-Javadoc)
 	 *
@@ -283,9 +280,9 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		}
 
 		{
-			Text text = ControlFactory.createTextField(composite, SWT.SINGLE | SWT.BORDER);
-			text.setText("g++ -E -P -v -dD ${plugin_state_location}/specs.cpp");
-			text.addModifyListener(new ModifyListener() {
+			inputCommand = ControlFactory.createTextField(composite, SWT.SINGLE | SWT.BORDER);
+			inputCommand.setText(fProvider.getCustomParameter());
+			inputCommand.addModifyListener(new ModifyListener() {
 
 				public void modifyText(ModifyEvent e) {
 					// TODO Auto-generated method stub
@@ -894,14 +891,9 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	 */
 	@Override
 	public void performApply(IProgressMonitor monitor) throws CoreException {
-		if (fErrorParser!=null && fEditable) {
-			fErrorParser.clearPatterns();
-			for (TableItem tableItem : fTable.getItems()) {
-				Object item = tableItem.getData();
-				if (item instanceof RegexErrorPattern) {
-					fErrorParser.addPattern((RegexErrorPattern)item);
-				}
-			}
+		if (fProvider!=null) {
+			String command = inputCommand.getText();
+			fProvider.setCustomParameter(command);
 		}
 	}
 

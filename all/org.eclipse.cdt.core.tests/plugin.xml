@@ -187,7 +187,8 @@
          point="org.eclipse.cdt.core.LanguageSettingsProvider">
       <provider
             id="org.eclipse.cdt.core.tests.language.settings.base.provider"
-            name="Test Plugin Language Settings Base Provider">
+            name="Test Plugin Language Settings Base Provider"
+            parameter="custom parameter">
          <language
                id="org.eclipse.cdt.core.tests.language.id">
          </language>
@@ -247,7 +248,8 @@
       <provider
             class="org.eclipse.cdt.core.settings.model.TestClassLSBaseProvider"
             id="org.eclipse.cdt.core.tests.language.settings.base.provider.subclass"
-            name="Test Plugin Base Provider Subclass">
+            name="Test Plugin Base Provider Subclass"
+            parameter="custom parameter subclass">
          <entry
                kind="includePath"
                name="/usr/include/">

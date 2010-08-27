@@ -54,6 +54,7 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.ui.dialogs.IInputStatusValidator;
 import org.eclipse.cdt.ui.dialogs.InputStatusDialog;
@@ -281,11 +282,11 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (provider!=null) {
 			String name = provider.getName();
 			if (name!=null && name.length()>0) {
-				ICOptionPage optionsPage = LanguageSettingsProviderAssociation.getOptionsPage(id);
-				if (optionsPage==null) {
-					optionsPage = LanguageSettingsProviderAssociation.getOptionsPage(provider.getClass());
-				}
+				ICOptionPage optionsPage = LanguageSettingsProviderAssociation.createOptionsPage(provider);
 				if (optionsPage!=null) {
+					if (optionsPage instanceof AbstractCOptionPage) {
+						((AbstractCOptionPage)optionsPage).init(provider);
+					}
 					fOptionsPageMap.put(id, optionsPage);
 					optionsPage.setContainer(page);
 					optionsPage.createControl(fCompositeForOptionsPage);

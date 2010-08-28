@@ -35,6 +35,7 @@ import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
@@ -115,18 +116,19 @@ public class ExternalBuildRunner implements IBuildRunner {
 						break;
 				}
 
-				
+
 				IPath workingDirectory = ManagedBuildManager.getBuildLocation(configuration, builder);
 				URI workingDirectoryURI = ManagedBuildManager.getBuildLocationURI(configuration, builder);
 
 				// Set the environment
 				String[] env = calcEnvironment(builder);
-				
+
 				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
 				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
 					runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
+					LanguageSettingsManager.serializeWorkspaceProviders();
 				}
-				
+
 				consoleHeader[1] = configuration.getName();
 				consoleHeader[2] = project.getName();
 				buf.append(NEWLINE);
@@ -219,12 +221,12 @@ public class ExternalBuildRunner implements IBuildRunner {
 //						// TODO Auto-generated catch block
 //						e.printStackTrace();
 //					}
-					
+
 					try {
 						// Do not allow the cancel of the refresh, since the builder is external
 						// to Eclipse, files may have been created/modified and we will be out-of-sync.
 						// The caveat is for huge projects, it may take sometimes at every build.
-						
+
 						// TODO should only refresh output folders
 						project.refreshLocal(IResource.DEPTH_INFINITE, null);
 					} catch (CoreException e) {
@@ -332,15 +334,15 @@ public class ExternalBuildRunner implements IBuildRunner {
 				envMap.put(var.getName(), var.getValue());
 			}
 		}
-		
+
 		// Add variables from build info
 		Map<String, String> builderEnv = builder.getExpandedEnvironment();
 		if (builderEnv != null)
 			envMap.putAll(builderEnv);
-		
+
 		return envMap;
 	}
-	
+
 	protected static String[] getEnvStrings(Map<String, String> env) {
 		// Convert into env strings
 		List<String> strings= new ArrayList<String>(env.size());
@@ -349,10 +351,10 @@ public class ExternalBuildRunner implements IBuildRunner {
 			buffer.append('=').append(entry.getValue());
 			strings.add(buffer.toString());
 		}
-		
+
 		return strings.toArray(new String[strings.size()]);
 	}
-	
+
 	private ConsoleOutputSniffer createBuildOutputSniffer(OutputStream outputStream,
 			OutputStream errorStream,
 			IProject project,
@@ -391,7 +393,7 @@ public class ExternalBuildRunner implements IBuildRunner {
 		if(clParserList.size() == 0){
 			contributeToConsoleParserList(project, map, new CfgInfoContext(cfg), workingDirectory, markerGenerator, collector, clParserList);
 		}
-		
+
 		ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
 		List<ILanguageSettingsProvider> lsProviders = cfgDescription.getLanguageSettingProviders();
 		for (ILanguageSettingsProvider lsProvider : lsProviders) {
@@ -482,11 +484,11 @@ public class ExternalBuildRunner implements IBuildRunner {
 				}
 			}
 		}
-		
+
 		// AG: FIXME
 //		LanguageSettingsManager.serialize(cfgDescription);
 	}
-	
+
 	protected String[] calcEnvironment(IBuilder builder) throws CoreException{
 		HashMap<String, String> envMap = new HashMap<String, String>();
 		if (builder.appendEnvironment()) {

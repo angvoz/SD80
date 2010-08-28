@@ -3732,6 +3732,13 @@
       </provider>
    </extension>
    <extension
+         point="org.eclipse.cdt.ui.LanguageSettingsProviderAssociation">
+      <id-association
+            id="org.eclipse.cdt.ui.user.LanguageSettingsProvider"
+            icon="icons/obj16/person-me.gif">
+      </id-association>
+   </extension>
+   <extension
          point="org.eclipse.cdt.ui.cPropertyTab">
      <tab
            class="org.eclipse.cdt.internal.ui.newui.AllLanguageSettingEntriesTab"

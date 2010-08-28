@@ -116,16 +116,18 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 			includeFlag = 0;
 		} else if (expectingIncludes) {
 			line.trim();
+			IPath path = new Path(line);
+			// TODO - Cygwin and remote scenario
 			java.io.File file = new java.io.File(line);
 			if (file.exists() && file.isDirectory()) {
 				// get rid of relative portions "../"
 				try {
-					IPath path = new Path(file.getCanonicalPath());
-					detectedSettingEntries.add(new CIncludePathEntry(path, includeFlag));
+					path = new Path(file.getCanonicalPath());
 				} catch (IOException e) {
 					MakeCorePlugin.log(e);
 				}
 			}
+			detectedSettingEntries.add(new CIncludePathEntry(path, includeFlag));
 		}
 
 		return true;

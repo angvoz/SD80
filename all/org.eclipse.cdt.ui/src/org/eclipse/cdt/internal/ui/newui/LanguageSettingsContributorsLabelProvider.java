@@ -9,7 +9,6 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
@@ -28,16 +27,16 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 	protected String getImageKey(Object element, int columnIndex) {
 		String imageKey = null;
 
-		ILanguageSettingsProvider provider = (ILanguageSettingsProvider) element;
-		if (provider.getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProvider")) {
-			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-				imageKey = CPluginImages.IMG_OBJS_USER;
-			} else {
-				imageKey = CPluginImages.IMG_OBJS_USER_ME;
-			}
-		} else if (provider.getId().equals("org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider")) {
-			imageKey = CPluginImages.IMG_OBJS_MBS;
-		}
+//		ILanguageSettingsProvider provider = (ILanguageSettingsProvider) element;
+//		if (provider.getId().equals("org.eclipse.cdt.ui.user.LanguageSettingsProviderXXX")) {
+//			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+//				imageKey = CPluginImages.IMG_OBJS_USER;
+//			} else {
+//				imageKey = CPluginImages.IMG_OBJS_USER_ME;
+//			}
+//		} else if (provider.getId().equals("org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider")) {
+//			imageKey = CPluginImages.IMG_OBJS_MBS;
+//		}
 
 		return imageKey;
 	}
@@ -56,28 +55,28 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 
 		if (element instanceof ILanguageSettingsProvider) {
 			ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
-			String imageKey = getImageKey(element, columnIndex);
-			if (imageKey==null) {
-				// try id-association
-				Image image = LanguageSettingsProviderAssociation.getImage(provider.getId());
-				if (image!=null) {
-					return image;
-				}
-				// try class-association
-				image = LanguageSettingsProviderAssociation.getImage(provider.getClass());
-				if (image!=null) {
-					return image;
-				}
+			// try id-association
+			Image image = LanguageSettingsProviderAssociation.getImage(provider.getId());
+			if (image!=null) {
+				return image;
+			}
+			// try class-association
+			image = LanguageSettingsProviderAssociation.getImage(provider.getClass());
+			if (image!=null) {
+				return image;
+			}
 
-				imageKey = CPluginImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+			String imageKey = CPluginImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+			final String TEST_PLUGIN_ID="org.eclipse.cdt.core.tests"; //$NON-NLS-1$
+			if (provider.getId().startsWith(TEST_PLUGIN_ID)) {
+				imageKey = CPluginImages.IMG_OBJS_CDT_TESTING;
 			}
-			if (imageKey != null) {
-				String overlayKey = getOverlayKey(element, columnIndex);
-				if (overlayKey != null) {
-					return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
-				}
-				return CPluginImages.get(imageKey);
+
+			String overlayKey = getOverlayKey(element, columnIndex);
+			if (overlayKey != null) {
+				return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
 			}
+			return CPluginImages.get(imageKey);
 		}
 		return null;
 	}

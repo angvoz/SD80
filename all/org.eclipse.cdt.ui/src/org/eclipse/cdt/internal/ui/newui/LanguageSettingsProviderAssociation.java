@@ -125,16 +125,6 @@ public class LanguageSettingsProviderAssociation {
 									}
 								}
 							}
-//							else if (cfgEl.getName().equals(ELEM_CLASS_ASSOCIATION)) {
-//								String clazz = cfgEl.getAttribute(ATTR_CLASS);
-//								Image image =getIcon(cfgEl);
-//								fImagesByClass.put(clazz, image);
-//								String pageClass = cfgEl.getAttribute(ATTR_PAGE);
-//								if (pageClass!=null && pageClass.trim().length()>0) {
-//									ICOptionPage page = (ICOptionPage) cfgEl.createExecutableExtension(ATTR_PAGE);
-//									fRegisteredClasses.put(clazz, page);
-//								}
-//							}
 						}
 					} catch (Exception e) {
 						CUIPlugin.log("Cannot load LanguageSettingsProviderAssociation extension " + ext.getUniqueIdentifier(), e); //$NON-NLS-1$

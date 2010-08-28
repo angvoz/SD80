@@ -4,13 +4,13 @@
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
  *  http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  *  Contributors:
  *     IBM Corporation - initial API and implementation
  *     QNX Software System
  *     Markus Schorn (Wind River Systems)
  *     Anton Leherbauer (Wind River Systems)
- *     Sergey Prigogin (Google) 
+ *     Sergey Prigogin (Google)
  *     Dmitry Kozlov (CodeSourcery)
  *     Tomasz Wesolowski
  *******************************************************************************/
@@ -50,7 +50,7 @@ public class CPluginImages {
 		} catch (MalformedURLException e) {
 			CUIPlugin.log(e);
 		}
-	}	
+	}
 	private static final String NAME_PREFIX= CUIPlugin.PLUGIN_ID + '.';
 	private static final int NAME_PREFIX_LENGTH= NAME_PREFIX.length();
 
@@ -90,7 +90,7 @@ public class CPluginImages {
 	public static final String IMG_OBJS_PROTECTED_FIELD= NAME_PREFIX + "field_protected_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_PRIVATE_FIELD= NAME_PREFIX + "field_private_obj.gif";	 //$NON-NLS-1$
 	public static final String IMG_OBJS_KEYWORD= NAME_PREFIX + "keyword_obj.gif";	 //$NON-NLS-1$
-	
+
 	public static final String IMG_OBJS_DECLARATION= NAME_PREFIX + "cdeclaration_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_VAR_DECLARATION= NAME_PREFIX + "var_declaration_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDE= NAME_PREFIX + "include_obj.gif"; //$NON-NLS-1$
@@ -127,9 +127,7 @@ public class CPluginImages {
 	public static final String IMG_OBJS_INCLUDES_FOLDER_PROJECT = NAME_PREFIX + "hproject.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDES_FOLDER_WORKSPACE = NAME_PREFIX + "wsp_includefolder.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_LANG_SETTINGS_PROVIDER = NAME_PREFIX + "ls_entries_provider.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_MBS = NAME_PREFIX + "mbs.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_USER = NAME_PREFIX + "person.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_USER_ME = NAME_PREFIX + "person-me.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_CDT_TESTING = NAME_PREFIX + "flask.png"; //$NON-NLS-1$
 	public static final String IMG_OBJS_ORDER= NAME_PREFIX + "cp_order_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_EXCLUDSION_FILTER_ATTRIB= NAME_PREFIX + "exclusion_filter_attrib.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_SOURCE_ATTACH_ATTRIB = NAME_PREFIX + "source_attach_attrib.gif"; //$NON-NLS-1$
@@ -156,7 +154,7 @@ public class CPluginImages {
 
 	// unknown type
 	public static final String IMG_OBJS_UNKNOWN = NAME_PREFIX + "unknown_obj.gif"; //$NON-NLS-1$
-	
+
 	public static final ImageDescriptor DESC_BUILD_CONSOLE = createManaged(T_VIEW, IMG_VIEW_BUILD);
 	public static final ImageDescriptor IMG_SAVE_CONSOLE_DESC = null; // not used
 
@@ -178,7 +176,7 @@ public class CPluginImages {
 	public static final ImageDescriptor DESC_OBJS_PUBLIC_FIELD= createManaged(T_OBJ, IMG_OBJS_PUBLIC_FIELD);
 	public static final ImageDescriptor DESC_OBJS_PROTECTED_FIELD= createManaged(T_OBJ, IMG_OBJS_PROTECTED_FIELD);
 	public static final ImageDescriptor DESC_OBJS_PRIVATE_FIELD= createManaged(T_OBJ, IMG_OBJS_PRIVATE_FIELD);
-	public static final ImageDescriptor DESC_OBJS_KEYWORD= createManaged(T_OBJ, IMG_OBJS_KEYWORD);			
+	public static final ImageDescriptor DESC_OBJS_KEYWORD= createManaged(T_OBJ, IMG_OBJS_KEYWORD);
 
 	public static final ImageDescriptor DESC_OBJS_CLASS_ALT= createManaged(T_OBJ, IMG_OBJS_CLASS_ALT);
 	public static final ImageDescriptor DESC_OBJS_STRUCT_ALT= createManaged(T_OBJ, IMG_OBJS_STRUCT_ALT);
@@ -223,9 +221,6 @@ public class CPluginImages {
 	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_PROJECT= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_PROJECT);
 	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_WORKSPACE= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_WORKSPACE);
 	public static final ImageDescriptor DESC_OBJS_LANG_SETTINGS_PROVIDER= createManaged(T_OBJ, IMG_OBJS_LANG_SETTINGS_PROVIDER);
-	public static final ImageDescriptor DESC_OBJS_MBS= createManaged(T_OBJ, IMG_OBJS_MBS);
-	public static final ImageDescriptor DESC_OBJS_USER= createManaged(T_OBJ, IMG_OBJS_USER);
-	public static final ImageDescriptor DESC_OBJS_USER_ME= createManaged(T_OBJ, IMG_OBJS_USER_ME);
 	public static final ImageDescriptor DESC_OBJS_ORDER= createManaged(T_OBJ, IMG_OBJS_ORDER);
 	public static final ImageDescriptor DESC_OBJS_EXCLUSION_FILTER_ATTRIB = createManaged(T_OBJ, IMG_OBJS_EXCLUDSION_FILTER_ATTRIB);
 	public static final ImageDescriptor DESC_OBJS_SOURCE_ATTACH_ATTRIB= createManaged(T_OBJ, IMG_OBJS_SOURCE_ATTACH_ATTRIB);
@@ -233,7 +228,7 @@ public class CPluginImages {
 	public static final ImageDescriptor DESC_OBJS_EXPORT_SETTINGS = createManaged(T_OBJ, IMG_OBJS_EXPORT_SETTINGS);
 	public static final ImageDescriptor DESC_OVR_PATH_INHERIT= create(T_OVR, "path_inherit_co.gif"); //$NON-NLS-1$
 	public static final ImageDescriptor DESC_OVR_FOCUS= create(T_OVR, "focus_ovr.gif"); //$NON-NLS-1$
-	
+
 	public static final ImageDescriptor DESC_OBJS_OVERRIDES = create(T_OBJ, "over_co.gif"); //$NON-NLS-1$
 	public static final ImageDescriptor DESC_OBJS_IMPLEMENTS = create(T_OBJ, "implm_co.gif"); //$NON-NLS-1$
 	public static final ImageDescriptor DESC_OBJS_SHADOWS= create(T_OBJ, "shad_co.gif"); //$NON-NLS-1$
@@ -262,7 +257,7 @@ public class CPluginImages {
 	public static final String IMG_TOOL_GOTO_PREV_ERROR= NAME_PREFIX + "prev_error_nav.gif"; //$NON-NLS-1$
 	public static final String IMG_TOOL_GOTO_NEXT_ERROR= NAME_PREFIX + "next_error_nav.gif"; //$NON-NLS-1$
 	public static final String IMG_EDIT_PROPERTIES= NAME_PREFIX + "prop_edt.gif";	 //$NON-NLS-1$
-    
+
 	public static final String IMG_ACTION_HIDE_FIELDS= NAME_PREFIX + "fields_co.gif"; //$NON-NLS-1$
 	public static final String IMG_ACTION_SHOW_PUBLIC= NAME_PREFIX + "public_co.gif"; //$NON-NLS-1$
 	public static final String IMG_ACTION_HIDE_STATIC= NAME_PREFIX + "static_co.gif"; //$NON-NLS-1$
@@ -289,14 +284,14 @@ public class CPluginImages {
 	public static final String IMG_LCL_SUB_TYPE_HIERARCHY= NAME_PREFIX + "sub_co.gif"; //$NON-NLS-1$
 	public static final String IMG_LCL_SUPER_TYPE_HIERARCHY= NAME_PREFIX + "super_co.gif"; //$NON-NLS-1$
 	public static final String IMG_LCL_SHOW_INHERITED_MEMBERS= NAME_PREFIX + "inher_co.gif"; //$NON-NLS-1$
-	
+
 	public static final String IMG_FILESYSTEM= NAME_PREFIX + "filesyst.gif"; //$NON-NLS-1$
 	public static final String IMG_WORKSPACE = NAME_PREFIX + "workspace.gif"; //$NON-NLS-1$
 	public static final ImageDescriptor DESC_FILESYSTEM = createManaged(T_OBJ, IMG_FILESYSTEM);
 	public static final ImageDescriptor DESC_WORKSPACE  = createManaged(T_OBJ, IMG_WORKSPACE);
-	
+
 	public static final ImageDescriptor DESC_OBJS_TEMPLATE= createManaged(T_OBJ, IMG_OBJS_TEMPLATE);
-	
+
 	public static final ImageDescriptor DESC_OVR_STATIC= create(T_OVR, "static_co.gif"); //$NON-NLS-1$
 	public static final ImageDescriptor DESC_OVR_CONSTANT= create(T_OVR, "c_ovr.gif"); //$NON-NLS-1$
 	public static final ImageDescriptor DESC_OVR_VOLATILE= create(T_OVR, "volatile_co.gif"); //$NON-NLS-1$
@@ -340,29 +335,29 @@ public class CPluginImages {
 	public static final String IMG_OBJS_SEARCH_DECL = NAME_PREFIX + "search_decl_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_SEARCH_LINE = NAME_PREFIX + "searchm_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_CSEARCH     = NAME_PREFIX + "csearch_obj.gif"; //$NON-NLS-1$
-	
+
 	public static final String IMG_OBJS_SEARCHFOLDER = NAME_PREFIX + "fldr_obj.gif";  //$NON-NLS-1$
 	public static final String IMG_OBJS_SEARCHPROJECT = NAME_PREFIX + "cprojects.gif";  //$NON-NLS-1$
-	
+
 	public static final ImageDescriptor DESC_OBJS_SEARCH_DECL = createManaged(T_OBJ, IMG_OBJS_SEARCH_DECL);
 	public static final ImageDescriptor DESC_OBJS_SEARCH_REF  = createManaged(T_OBJ, IMG_OBJS_SEARCH_REF);
 	public static final ImageDescriptor DESC_OBJS_SEARCH_LINE = createManaged(T_OBJ, IMG_OBJS_SEARCH_LINE);
 	public static final ImageDescriptor DESC_OBJS_CSEARCH     = createManaged(T_OBJ, IMG_OBJS_CSEARCH);
-	
+
 	public static final ImageDescriptor DESC_OBJS_SEARCHHIERPROJECT = createManaged(T_OBJ,IMG_OBJS_SEARCHPROJECT);
 	public static final ImageDescriptor DESC_OBJS_SEARCHHIERFODLER = createManaged(T_OBJ,IMG_OBJS_SEARCHFOLDER);
-	
+
 	// refactoring
 	public static final String IMG_OBJS_REFACTORING_FATAL= NAME_PREFIX + "fatalerror_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_REFACTORING_ERROR= NAME_PREFIX + "error_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_REFACTORING_WARNING= NAME_PREFIX + "warning_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_REFACTORING_INFO= NAME_PREFIX + "info_obj.gif"; 	//$NON-NLS-1$
 
-	public static final ImageDescriptor DESC_REFACTORING_FATAL= createManaged( T_OBJ, IMG_OBJS_REFACTORING_FATAL); 
-	public static final ImageDescriptor DESC_REFACTORING_ERROR= createManaged( T_OBJ, IMG_OBJS_REFACTORING_ERROR); 
-	public static final ImageDescriptor DESC_REFACTORING_WARNING= createManaged( T_OBJ, IMG_OBJS_REFACTORING_WARNING); 
-	public static final ImageDescriptor DESC_REFACTORING_INFO= createManaged ( T_OBJ, IMG_OBJS_REFACTORING_INFO); 	
-		
+	public static final ImageDescriptor DESC_REFACTORING_FATAL= createManaged( T_OBJ, IMG_OBJS_REFACTORING_FATAL);
+	public static final ImageDescriptor DESC_REFACTORING_ERROR= createManaged( T_OBJ, IMG_OBJS_REFACTORING_ERROR);
+	public static final ImageDescriptor DESC_REFACTORING_WARNING= createManaged( T_OBJ, IMG_OBJS_REFACTORING_WARNING);
+	public static final ImageDescriptor DESC_REFACTORING_INFO= createManaged ( T_OBJ, IMG_OBJS_REFACTORING_INFO);
+
 	public static final ImageDescriptor DESC_WIZBAN_REFACTOR_FIELD= create(T_WIZBAN, "fieldrefact_wiz.gif");	//$NON-NLS-1$
 	public static final ImageDescriptor DESC_WIZBAN_REFACTOR_METHOD= create(T_WIZBAN, "methrefact_wiz.gif");	//$NON-NLS-1$
 	public static final ImageDescriptor DESC_WIZBAN_REFACTOR_TYPE= create(T_WIZBAN, "typerefact_wiz.gif"); 	//$NON-NLS-1$
@@ -405,10 +400,62 @@ public class CPluginImages {
     public static final String IMG_OVR_SETTING = NAME_PREFIX + "setting_nav.gif"; //$NON-NLS-1$
     @SuppressWarnings("unused")
 	private static final ImageDescriptor DESC_OVR_SETTING_FIXME= createManaged(T_OVR, IMG_OVR_SETTING);
+    @SuppressWarnings("unused")
+	private static final ImageDescriptor DESC_OBJS_CDT_TESTING= createManaged(T_OBJ, IMG_OBJS_CDT_TESTING);
+
 	/**
 	 * Retrieves an overlaid image descriptor from the repository of images.
 	 * If there is no image one will be created.
-	 * 
+	 *
+     * The decoration overlay for the base image will use the array of
+     * provided overlays. The indices of the array correspond to the values
+     * of the 5 overlay constants defined on {@link IDecoration}
+     * ({@link IDecoration#TOP_LEFT}, {@link IDecoration#TOP_RIGHT},
+     * {@link IDecoration#BOTTOM_LEFT}, {@link IDecoration#BOTTOM_RIGHT}
+     * or {@link IDecoration#UNDERLAY})
+     *
+     * @param baseKey the base image key
+     * @param overlayKeys the keys for the overlay images
+     */
+	public static Image getOverlaidImage(String baseKey, String[] overlayKeys) {
+		String suffix=""; //$NON-NLS-1$
+		for (int i=0;i<5;i++) {
+			String overlayKey=""; //$NON-NLS-1$
+			if (overlayKeys.length<i && overlayKeys[i]!=null) {
+				overlayKey=overlayKeys[i];
+			}
+			suffix=suffix+'.'+overlayKey;
+		}
+		if (!suffix.equals(".....")) { //$NON-NLS-1$
+			suffix=""; //$NON-NLS-1$
+		}
+		String compositeKey=baseKey+suffix;
+
+		Image result = imageRegistry.get(compositeKey);
+		if (result==null) {
+			result = imageRegistry.get(baseKey);
+			ImageDescriptor[] overlayDescriptors = new ImageDescriptor[5];
+			for (int i=0;i<4;i++) {
+				String key = overlayKeys[i];
+				if (key!=null) {
+					ImageDescriptor overlayDescriptor = imageRegistry.getDescriptor(key);
+					if (overlayDescriptor==null) {
+						overlayDescriptor = ImageDescriptor.getMissingImageDescriptor();
+					}
+					overlayDescriptors[i] = overlayDescriptor;
+				}
+			}
+			ImageDescriptor compositeDescriptor = new DecorationOverlayIcon(result, overlayDescriptors);
+			imageRegistry.put(compositeKey, compositeDescriptor);
+			result = imageRegistry.get(compositeKey);
+		}
+		return result;
+	}
+
+	/**
+	 * Retrieves an overlaid image descriptor from the repository of images.
+	 * If there is no image one will be created.
+	 *
 	 * @param baseKey - key of the base image. Expected to be in repository.
 	 * @param overlayKey - key of overlay image. Expected to be in repository as well.
 	 * @param quadrant - location of overlay, one of those:
@@ -416,42 +463,33 @@ public class CPluginImages {
 	 *        {@link IDecoration#TOP_RIGHT},
 	 *        {@link IDecoration#BOTTOM_LEFT},
 	 *        {@link IDecoration#BOTTOM_RIGHT}
-	 * 
+	 *
 	 * @return image overlaid with smaller image in the specified quadrant.
 	 */
 	public static Image getOverlaidImage(String baseKey, String overlayKey, int quadrant) {
-		String compositeKey = baseKey+'.'+overlayKey+'.'+quadrant;
-		Image result = imageRegistry.get(compositeKey);
-		if (result==null) {
-			ImageDescriptor overlayDescriptor = imageRegistry.getDescriptor(overlayKey);
-			if (overlayDescriptor==null) {
-				overlayDescriptor = ImageDescriptor.getMissingImageDescriptor();
-			}
-			ImageDescriptor compositeDescriptor = new DecorationOverlayIcon(imageRegistry.get(baseKey), overlayDescriptor, quadrant);
-			imageRegistry.put(compositeKey, compositeDescriptor);
-			result = imageRegistry.get(compositeKey);
-		}
-		return result;
+		String[] overlayKeys = new String[4];
+		overlayKeys[quadrant]=overlayKey;
+		return getOverlaidImage(baseKey, overlayKeys);
 	}
 
 	private static ImageDescriptor createManaged(String prefix, String name) {
 		return createManaged(imageRegistry, prefix, name);
 	}
-	
+
 	private static ImageDescriptor createManaged(ImageRegistry registry, String prefix, String name) {
 		ImageDescriptor result= ImageDescriptor.createFromURL(makeIconFileURL(prefix, name.substring(NAME_PREFIX_LENGTH)));
 		registry.put(name, result);
 		return result;
 	}
-	
+
 	public static Image get(String key) {
 		return imageRegistry.get(key);
 	}
-	
+
 	private static ImageDescriptor create(String prefix, String name) {
 		return ImageDescriptor.createFromURL(makeIconFileURL(prefix, name));
 	}
-	
+
 	/*
 	 * Creates an image descriptor for the given prefix and name in the JDT UI bundle. The path can
 	 * contain variables like $NL$.
@@ -463,7 +501,7 @@ public class CPluginImages {
 		IPath path= ICONS_PATH.append(prefix).append(name);
 		return createImageDescriptor(CUIPlugin.getDefault().getBundle(), path, useMissingImageDescriptor);
 	}
-	
+
 	/*
 	 * Creates an image descriptor for the given prefix and name in the JDT UI bundle. The path can
 	 * contain variables like $NL$.
@@ -472,7 +510,7 @@ public class CPluginImages {
 	private static ImageDescriptor createUnManaged(String prefix, String name) {
 		return create(prefix, name, true);
 	}
-	
+
 	private static URL makeIconFileURL(String prefix, String name) {
 		StringBuffer buffer= new StringBuffer(prefix);
 		buffer.append(name);
@@ -483,7 +521,7 @@ public class CPluginImages {
 			return null;
 		}
 	}
-	
+
 	/*
 	 * Creates an image descriptor for the given path in a bundle. The path can contain variables
 	 * like $NL$.
@@ -505,18 +543,18 @@ public class CPluginImages {
 	/**
 	 * Sets the three image descriptors for enabled, disabled, and hovered to an action. The actions
 	 * are retrieved from the *tool16 folders.
-	 * 
+	 *
 	 * @param action	the action
 	 * @param iconName	the icon name
 	 */
 	public static void setToolImageDescriptors(IAction action, String iconName) {
 		setImageDescriptors(action, T_TOOL, iconName);
 	}
-	
+
 	/**
 	 * Sets the three image descriptors for enabled, disabled, and hovered to an action. The actions
 	 * are retrieved from the *lcl16 folders.
-	 * 
+	 *
 	 * @param action	the action
 	 * @param iconName	the icon name
 	 */
@@ -526,7 +564,7 @@ public class CPluginImages {
 
 	/**
 	 * Sets all available image descriptors for the given action.
-	 */	
+	 */
 	public static void setImageDescriptors(IAction action, String type, String relPath) {
 	    if (relPath.startsWith(NAME_PREFIX))
 	        relPath= relPath.substring(NAME_PREFIX_LENGTH);
@@ -540,10 +578,10 @@ public class CPluginImages {
 		//ImageDescriptor desc = getImageRegistry().getDescriptor(relPath);
 		//if(desc == null) {
 		//	desc = createManaged(T + "c" + type, relPath);
-		//}	
+		//}
 		//action.setImageDescriptor(desc);
 	}
-	
+
 	/**
 	 * Helper method to access the image registry from the CUIPlugin class.
 	 */

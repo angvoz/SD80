@@ -11,8 +11,6 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 
-import org.eclipse.cdt.internal.ui.CPluginImages;
-
 public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*implements IFontProvider, ITableLabelProvider , IColorProvider */ {
 
 	@Override
@@ -66,17 +64,17 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 				return image;
 			}
 
-			String imageKey = CPluginImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+			String imageKey = LanguageSettingsImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
 			final String TEST_PLUGIN_ID="org.eclipse.cdt.core.tests"; //$NON-NLS-1$
 			if (provider.getId().startsWith(TEST_PLUGIN_ID)) {
-				imageKey = CPluginImages.IMG_OBJS_CDT_TESTING;
+				imageKey = LanguageSettingsImages.IMG_OBJS_CDT_TESTING;
 			}
 
 			String overlayKey = getOverlayKey(element, columnIndex);
 			if (overlayKey != null) {
-				return CPluginImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
+				return LanguageSettingsImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
 			}
-			return CPluginImages.get(imageKey);
+			return LanguageSettingsImages.get(imageKey);
 		}
 		return null;
 	}

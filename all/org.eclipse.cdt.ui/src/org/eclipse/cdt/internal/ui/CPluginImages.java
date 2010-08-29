@@ -25,8 +25,6 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.ImageRegistry;
-import org.eclipse.jface.viewers.DecorationOverlayIcon;
-import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.swt.graphics.Image;
 import org.osgi.framework.Bundle;
 
@@ -124,10 +122,10 @@ public class CPluginImages {
 	public static final String IMG_OBJS_INCLUDES_FOLDER = NAME_PREFIX + "hfolder_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_QUOTE_INCLUDES_FOLDER = NAME_PREFIX + "hfolder_quote_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDES_FOLDER_SYSTEM = NAME_PREFIX + "fldr_sys_obj.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_INCLUDES_FOLDER_PROJECT = NAME_PREFIX + "hproject.gif"; //$NON-NLS-1$
+//	public static final String IMG_OBJS_INCLUDES_FOLDER_PROJECT = NAME_PREFIX + "hproject.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDES_FOLDER_WORKSPACE = NAME_PREFIX + "wsp_includefolder.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_LANG_SETTINGS_PROVIDER = NAME_PREFIX + "ls_entries_provider.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_CDT_TESTING = NAME_PREFIX + "flask.png"; //$NON-NLS-1$
+//	public static final String IMG_OBJS_LANG_SETTINGS_PROVIDER = NAME_PREFIX + "ls_entries_provider.gif"; //$NON-NLS-1$
+//	public static final String IMG_OBJS_CDT_TESTING = NAME_PREFIX + "flask.png"; //$NON-NLS-1$
 	public static final String IMG_OBJS_ORDER= NAME_PREFIX + "cp_order_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_EXCLUDSION_FILTER_ATTRIB= NAME_PREFIX + "exclusion_filter_attrib.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_SOURCE_ATTACH_ATTRIB = NAME_PREFIX + "source_attach_attrib.gif"; //$NON-NLS-1$
@@ -135,8 +133,8 @@ public class CPluginImages {
 	public static final String IMG_OBJS_IMPORT_SETTINGS = NAME_PREFIX + "import_settings_wiz.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_EXPORT_SETTINGS = NAME_PREFIX + "export_settings_wiz.gif"; //$NON-NLS-1$
 
-	public static final String IMG_OBJS_PROJECT=NAME_PREFIX + "prj_obj.gif"; //$NON-NLS-1$
-	public static final ImageDescriptor DESC_OBJS_PROJECT = createManaged(T_ETOOL, IMG_OBJS_PROJECT);
+//	public static final String IMG_OBJS_PROJECT=NAME_PREFIX + "prj_obj.gif"; //$NON-NLS-1$
+//	public static final ImageDescriptor DESC_OBJS_PROJECT = createManaged(T_ETOOL, IMG_OBJS_PROJECT);
 
 	public static final String IMG_OBJS_INCCONT= NAME_PREFIX + "incc_obj.gif"; 			//$NON-NLS-1$
 
@@ -218,9 +216,9 @@ public class CPluginImages {
 	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER);
 	public static final ImageDescriptor DESC_OBJS_QUOTE_INCLUDES_FOLDER= createManaged(T_OBJ, IMG_OBJS_QUOTE_INCLUDES_FOLDER);
 	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_SYSTEM  = createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_SYSTEM);
-	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_PROJECT= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_PROJECT);
+//	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_PROJECT= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_PROJECT);
 	public static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_WORKSPACE= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_WORKSPACE);
-	public static final ImageDescriptor DESC_OBJS_LANG_SETTINGS_PROVIDER= createManaged(T_OBJ, IMG_OBJS_LANG_SETTINGS_PROVIDER);
+//	public static final ImageDescriptor DESC_OBJS_LANG_SETTINGS_PROVIDER= createManaged(T_OBJ, IMG_OBJS_LANG_SETTINGS_PROVIDER);
 	public static final ImageDescriptor DESC_OBJS_ORDER= createManaged(T_OBJ, IMG_OBJS_ORDER);
 	public static final ImageDescriptor DESC_OBJS_EXCLUSION_FILTER_ATTRIB = createManaged(T_OBJ, IMG_OBJS_EXCLUDSION_FILTER_ATTRIB);
 	public static final ImageDescriptor DESC_OBJS_SOURCE_ATTACH_ATTRIB= createManaged(T_OBJ, IMG_OBJS_SOURCE_ATTACH_ATTRIB);
@@ -400,77 +398,75 @@ public class CPluginImages {
     public static final String IMG_OVR_SETTING = NAME_PREFIX + "setting_nav.gif"; //$NON-NLS-1$
     @SuppressWarnings("unused")
 	private static final ImageDescriptor DESC_OVR_SETTING_FIXME= createManaged(T_OVR, IMG_OVR_SETTING);
-    @SuppressWarnings("unused")
-	private static final ImageDescriptor DESC_OBJS_CDT_TESTING= createManaged(T_OBJ, IMG_OBJS_CDT_TESTING);
 
-	/**
-	 * Retrieves an overlaid image descriptor from the repository of images.
-	 * If there is no image one will be created.
-	 *
-     * The decoration overlay for the base image will use the array of
-     * provided overlays. The indices of the array correspond to the values
-     * of the 5 overlay constants defined on {@link IDecoration}
-     * ({@link IDecoration#TOP_LEFT}, {@link IDecoration#TOP_RIGHT},
-     * {@link IDecoration#BOTTOM_LEFT}, {@link IDecoration#BOTTOM_RIGHT}
-     * or {@link IDecoration#UNDERLAY})
-     *
-     * @param baseKey the base image key
-     * @param overlayKeys the keys for the overlay images
-     */
-	public static Image getOverlaidImage(String baseKey, String[] overlayKeys) {
-		String suffix=""; //$NON-NLS-1$
-		for (int i=0;i<5;i++) {
-			String overlayKey=""; //$NON-NLS-1$
-			if (overlayKeys.length<i && overlayKeys[i]!=null) {
-				overlayKey=overlayKeys[i];
-			}
-			suffix=suffix+'.'+overlayKey;
-		}
-		if (!suffix.equals(".....")) { //$NON-NLS-1$
-			suffix=""; //$NON-NLS-1$
-		}
-		String compositeKey=baseKey+suffix;
-
-		Image result = imageRegistry.get(compositeKey);
-		if (result==null) {
-			result = imageRegistry.get(baseKey);
-			ImageDescriptor[] overlayDescriptors = new ImageDescriptor[5];
-			for (int i=0;i<4;i++) {
-				String key = overlayKeys[i];
-				if (key!=null) {
-					ImageDescriptor overlayDescriptor = imageRegistry.getDescriptor(key);
-					if (overlayDescriptor==null) {
-						overlayDescriptor = ImageDescriptor.getMissingImageDescriptor();
-					}
-					overlayDescriptors[i] = overlayDescriptor;
-				}
-			}
-			ImageDescriptor compositeDescriptor = new DecorationOverlayIcon(result, overlayDescriptors);
-			imageRegistry.put(compositeKey, compositeDescriptor);
-			result = imageRegistry.get(compositeKey);
-		}
-		return result;
-	}
-
-	/**
-	 * Retrieves an overlaid image descriptor from the repository of images.
-	 * If there is no image one will be created.
-	 *
-	 * @param baseKey - key of the base image. Expected to be in repository.
-	 * @param overlayKey - key of overlay image. Expected to be in repository as well.
-	 * @param quadrant - location of overlay, one of those:
-	 *        {@link IDecoration#TOP_LEFT},
-	 *        {@link IDecoration#TOP_RIGHT},
-	 *        {@link IDecoration#BOTTOM_LEFT},
-	 *        {@link IDecoration#BOTTOM_RIGHT}
-	 *
-	 * @return image overlaid with smaller image in the specified quadrant.
-	 */
-	public static Image getOverlaidImage(String baseKey, String overlayKey, int quadrant) {
-		String[] overlayKeys = new String[4];
-		overlayKeys[quadrant]=overlayKey;
-		return getOverlaidImage(baseKey, overlayKeys);
-	}
+//	/**
+//	 * Retrieves an overlaid image descriptor from the repository of images.
+//	 * If there is no image one will be created.
+//	 *
+//     * The decoration overlay for the base image will use the array of
+//     * provided overlays. The indices of the array correspond to the values
+//     * of the 5 overlay constants defined on {@link IDecoration}
+//     * ({@link IDecoration#TOP_LEFT}, {@link IDecoration#TOP_RIGHT},
+//     * {@link IDecoration#BOTTOM_LEFT}, {@link IDecoration#BOTTOM_RIGHT}
+//     * or {@link IDecoration#UNDERLAY})
+//     *
+//     * @param baseKey the base image key
+//     * @param overlayKeys the keys for the overlay images
+//     */
+//	public static Image getOverlaidImage(String baseKey, String[] overlayKeys) {
+//		String suffix=""; //$NON-NLS-1$
+//		for (int i=0;i<5;i++) {
+//			String overlayKey=""; //$NON-NLS-1$
+//			if (overlayKeys.length<i && overlayKeys[i]!=null) {
+//				overlayKey=overlayKeys[i];
+//			}
+//			suffix=suffix+'.'+overlayKey;
+//		}
+//		if (!suffix.equals(".....")) { //$NON-NLS-1$
+//			suffix=""; //$NON-NLS-1$
+//		}
+//		String compositeKey=baseKey+suffix;
+//
+//		Image result = imageRegistry.get(compositeKey);
+//		if (result==null) {
+//			result = imageRegistry.get(baseKey);
+//			ImageDescriptor[] overlayDescriptors = new ImageDescriptor[5];
+//			for (int i=0;i<4;i++) {
+//				String key = overlayKeys[i];
+//				if (key!=null) {
+//					ImageDescriptor overlayDescriptor = imageRegistry.getDescriptor(key);
+//					if (overlayDescriptor==null) {
+//						overlayDescriptor = ImageDescriptor.getMissingImageDescriptor();
+//					}
+//					overlayDescriptors[i] = overlayDescriptor;
+//				}
+//			}
+//			ImageDescriptor compositeDescriptor = new DecorationOverlayIcon(result, overlayDescriptors);
+//			imageRegistry.put(compositeKey, compositeDescriptor);
+//			result = imageRegistry.get(compositeKey);
+//		}
+//		return result;
+//	}
+//
+//	/**
+//	 * Retrieves an overlaid image descriptor from the repository of images.
+//	 * If there is no image one will be created.
+//	 *
+//	 * @param baseKey - key of the base image. Expected to be in repository.
+//	 * @param overlayKey - key of overlay image. Expected to be in repository as well.
+//	 * @param quadrant - location of overlay, one of those:
+//	 *        {@link IDecoration#TOP_LEFT},
+//	 *        {@link IDecoration#TOP_RIGHT},
+//	 *        {@link IDecoration#BOTTOM_LEFT},
+//	 *        {@link IDecoration#BOTTOM_RIGHT}
+//	 *
+//	 * @return image overlaid with smaller image in the specified quadrant.
+//	 */
+//	public static Image getOverlaidImage(String baseKey, String overlayKey, int quadrant) {
+//		String[] overlayKeys = new String[4];
+//		overlayKeys[quadrant]=overlayKey;
+//		return getOverlaidImage(baseKey, overlayKeys);
+//	}
 
 	private static ImageDescriptor createManaged(String prefix, String name) {
 		return createManaged(imageRegistry, prefix, name);

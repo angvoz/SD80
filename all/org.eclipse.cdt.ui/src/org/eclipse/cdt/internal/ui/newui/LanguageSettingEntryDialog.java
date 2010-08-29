@@ -40,7 +40,6 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.AbstractPropertyDialog;
 
-import org.eclipse.cdt.internal.ui.CPluginImages;
 import org.eclipse.cdt.internal.ui.ImageCombo;
 
 /**
@@ -65,14 +64,14 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	private Button buttonBrowse;
 	private Button buttonVars;
 	private Button checkBoxBuiltIn;
-	
+
 	private Button checkBoxAllCfgs;
 	private Button checkBoxAllLangs;
 
 	private Button buttonOk;
 	private Button buttonCancel;
-	
-	
+
+
 	private static final int COMBO_INDEX_INCLUDE_PATH = 0;
 	private static final int COMBO_INDEX_MACRO = 1;
 	private static final int COMBO_INDEX_INCLUDE_FILE = 2;
@@ -89,34 +88,34 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			"Library",
 	};
 	final private Image[] comboKindImages = {
-			CPluginImages.get(CPluginImages.IMG_OBJS_INCLUDES_FOLDER),
-			CPluginImages.get(CPluginImages.IMG_OBJS_MACRO),
-			CPluginImages.get(CPluginImages.IMG_OBJS_TUNIT_HEADER),
-			CPluginImages.get(CPluginImages.IMG_OBJS_MACROS_FILE),
-			CPluginImages.get(CPluginImages.IMG_OBJS_LIBRARY_FOLDER),
-			CPluginImages.get(CPluginImages.IMG_OBJS_LIBRARY),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_INCLUDES_FOLDER),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_MACRO),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_TUNIT_HEADER),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_MACROS_FILE),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_LIBRARY_FOLDER),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_LIBRARY),
 	};
-	
+
 	private static final int COMBO_PATH_INDEX_PROJECT = 0;
 	private static final int COMBO_PATH_INDEX_WORKSPACE = 1;
 	private static final int COMBO_PATH_INDEX_FILESYSTEM = 2;
-	
+
 	final private String [] pathCategories = {
 			"Project-Relative",
 			"Workspace Path",
 			"Filesystem",
 	};
 	final private Image[] pathCategoryImages = {
-			CPluginImages.get(CPluginImages.IMG_OBJS_PROJECT),
-			CPluginImages.get(CPluginImages.IMG_WORKSPACE),
-			CPluginImages.get(CPluginImages.IMG_FILESYSTEM),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_PROJECT),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_WORKSPACE),
+			LanguageSettingsImages.get(LanguageSettingsImages.IMG_FILESYSTEM),
 	};
-	
 
-	
+
+
 	private ICLanguageSettingEntry[] entries;
 	private Composite comp1;
-	
+
 	public LanguageSettingEntryDialog(Shell parent, ICConfigurationDescription cfgDescription, int kind) {
 		super(parent, "");
 		this.cfgDescription = cfgDescription;
@@ -145,7 +144,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	public LanguageSettingEntryDialog(Shell parent, ICConfigurationDescription cfgDescription, ICLanguageSettingEntry entry) {
 		this(parent, cfgDescription, entry, false);
 	}
-	
+
 	private int comboIndexToKind(int index) {
 		int kind=0;
 		switch (index) {
@@ -195,20 +194,20 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		}
 		return index;
 	}
-	
+
 	@Override
 	protected Control createDialogArea(Composite parent) {
 		parent.setLayout(new GridLayout(4, false));
 		GridData gd;
-		
+
 		// Composite comp1
-		comp1 = new Composite (parent, SWT.NONE); 
+		comp1 = new Composite (parent, SWT.NONE);
 		gd = new GridData(GridData.FILL_HORIZONTAL);
 		gd.verticalAlignment = SWT.TOP;
 		gd.horizontalSpan = 7;
 		comp1.setLayoutData(gd);
 		comp1.setLayout(new GridLayout(7, false));
-		
+
 		// Icon for kind
 		iconComboKind = new Label (comp1, SWT.NONE);
 		gd = new GridData();
@@ -225,7 +224,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			comboKind.add(comboKindItems[i], comboKindImages[i]);
 		}
 		comboKind.setText(comboKindItems[kindToComboIndex]);
-		
+
 		comboKind.addSelectionListener(new SelectionListener() {
 			public void widgetSelected(SelectionEvent e) {
 				updateImages();
@@ -233,11 +232,11 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			}
 			public void widgetDefaultSelected(SelectionEvent e) {
 				widgetSelected(e);
-				
+
 			}
 		});
 		comboKind.setEnabled(clearValue);
-		
+
 
 		//
 		// Icon for path category
@@ -264,14 +263,14 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 					pcindex = COMBO_PATH_INDEX_PROJECT;
 				}
 			}
-			
+
 		}
 		comboPathCategory.setText(pathCategories[pcindex]);
 		gd = new GridData(SWT.FILL, SWT.NONE, false, false);
 		gd.verticalAlignment = SWT.TOP;
 		gd.horizontalSpan = 4;
 		comboPathCategory.setLayoutData(gd);
-		
+
 		comboPathCategory.addSelectionListener(new SelectionListener() {
 			public void widgetSelected(SelectionEvent e) {
 				updateImages();
@@ -279,16 +278,16 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			}
 			public void widgetDefaultSelected(SelectionEvent e) {
 				widgetSelected(e);
-				
+
 			}
 		});
-		
+
 		// Dir/File/Name label
 		labelInput = new Label(comp1, SWT.NONE);
-		labelInput.setText("Dir:"); 
+		labelInput.setText("Dir:");
 		gd = new GridData();
 		labelInput.setLayoutData(gd);
-		
+
 		// Dir/File/Name input
 		inputName = new Text(comp1, SWT.SINGLE | SWT.BORDER);
 		if (entry!=null && !clearValue) {
@@ -302,13 +301,13 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			public void modifyText(ModifyEvent e) {
 				setButtons();
 			}});
-		
+
 		inputName.setFocus();
 		inputName.setSelection(0, inputName.getText().length());
-		
+
 		// Value label
 		checkBoxValue = new Label(comp1, SWT.NONE);
-		checkBoxValue.setText("Value:"); 
+		checkBoxValue.setText("Value:");
 		gd = new GridData();
 		checkBoxValue.setLayoutData(gd);
 
@@ -323,7 +322,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 				buttonPressed(event);
 			}
 		});
-		
+
 		// Variables button
 		buttonVars = new Button(comp1, SWT.PUSH);
 		buttonVars.setText(AbstractCPropertyTab.VARIABLESBUTTON_NAME);
@@ -344,20 +343,20 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		gd = new GridData(SWT.FILL, SWT.NONE, false, false);
 		gd.widthHint = comboPathWidth;
 		inputValue.setLayoutData(gd);
-		
+
 		if (entry!=null && kind==ICSettingEntry.MACRO && !clearValue) {
 			inputValue.setFocus();
 			inputValue.setSelection(0, inputValue.getText().length());
 		}
 
 		// Checkboxes
-		Composite compCheckboxes = new Composite (parent, SWT.NONE); 
+		Composite compCheckboxes = new Composite (parent, SWT.NONE);
 		gd = new GridData(GridData.FILL_HORIZONTAL);
 		gd.verticalAlignment = SWT.TOP;
 		gd.horizontalSpan = 4;
 		compCheckboxes.setLayoutData(gd);
 		compCheckboxes.setLayout(new GridLayout(1, false));
-		
+
 		// Checkbox "Built-In"
 		checkBoxBuiltIn = new Button(compCheckboxes, SWT.CHECK);
 		checkBoxBuiltIn.setText("Treat as Built-In (Ignore during build)");
@@ -365,45 +364,45 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		gd = new GridData(GridData.FILL_HORIZONTAL);
 		checkBoxBuiltIn.setLayoutData(gd);
 		checkBoxBuiltIn.addSelectionListener(new SelectionListener() {
-			
+
 			public void widgetSelected(SelectionEvent e) {
 				updateImages();
 				setButtons();
 			}
-			
+
 			public void widgetDefaultSelected(SelectionEvent e) {
 				widgetSelected(e);
 			}
 		});
-		
+
 		// Separator
 		@SuppressWarnings("unused")
 		Label separator = new Label(compCheckboxes, SWT.SEPARATOR | SWT.HORIZONTAL | SWT.SHADOW_NONE);
 
 		// Checkbox "All configurations"
 		checkBoxAllCfgs = new Button(compCheckboxes, SWT.CHECK);
-		checkBoxAllCfgs.setText(Messages.IncludeDialog_2); 
+		checkBoxAllCfgs.setText(Messages.IncludeDialog_2);
 		gd = new GridData(GridData.FILL_HORIZONTAL);
 		checkBoxAllCfgs.setLayoutData(gd);
 		checkBoxAllCfgs.setEnabled(false);
 		checkBoxAllCfgs.setToolTipText("Not implemented yet");
-		
+
 		// Checkbox "All languages"
 		checkBoxAllLangs = new Button(compCheckboxes, SWT.CHECK);
-		checkBoxAllLangs.setText(Messages.IncludeDialog_3); 
+		checkBoxAllLangs.setText(Messages.IncludeDialog_3);
 		gd = new GridData(GridData.FILL_HORIZONTAL);
 		checkBoxAllLangs.setLayoutData(gd);
 		checkBoxAllLangs.setEnabled(false);
 		checkBoxAllLangs.setToolTipText("Not implemented yet");
 
 		// Buttons
-		Composite compButtons = new Composite (parent, SWT.FILL); 
+		Composite compButtons = new Composite (parent, SWT.FILL);
 		gd = new GridData(SWT.RIGHT, SWT.BOTTOM, false, false);
 		gd.horizontalSpan = 4;
 		gd.grabExcessVerticalSpace = true;
 		compButtons.setLayoutData(gd);
 		compButtons.setLayout(new GridLayout(4, false));
-		
+
 		 // placeholder
 		Label placeholder = new Label(compButtons, 0);
 		placeholder.setLayoutData(new GridData(GridData.GRAB_HORIZONTAL));
@@ -433,15 +432,15 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 				buttonPressed(event);
 			}
 		});
-		
+
 		parent.getShell().setDefaultButton(buttonOk);
 		parent.pack();
-		
+
 		updateImages();
 		setButtons();
 		return parent;
-	}	
-	
+	}
+
 	private void setButtons() {
 		int kindSelectionIndex = comboKind.getSelectionIndex();
 		boolean isMacroSelected = kindSelectionIndex==COMBO_INDEX_MACRO;
@@ -471,7 +470,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		default:
 			labelInput.setText("Name:");
 		}
-		
+
 		inputValue.setEnabled(isMacroSelected);
 
 		int indexPathKind = comboPathCategory.getSelectionIndex();
@@ -486,23 +485,23 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			buttonOk.setEnabled((isProjectSelected && !path.startsWith(SLASH)) ||
 					(isWorkspaceSelected && path.startsWith(SLASH)) || isFilesystemSelected);
 		}
-		
+
 		buttonVars.setEnabled(isFilesystemSelected);
-		
+
 		comp1.layout(true);
 	}
-	
+
 	@Override
 	public void buttonPressed(SelectionEvent e) {
 		String s=null;
-		if (e.widget.equals(buttonOk)) { 
+		if (e.widget.equals(buttonOk)) {
 			String name = inputName.getText();
 			text1 = name;
 			String value = inputValue.getText();
 			check1 = checkBoxAllCfgs.getSelection();
 			check3 = checkBoxAllLangs.getSelection();
 			result = true;
-			
+
 			int flagBuiltIn = checkBoxBuiltIn.getSelection() ? ICSettingEntry.BUILTIN : 0;
 			int indexPathKind = comboPathCategory.getSelectionIndex();
 			boolean isProjectPath = indexPathKind==COMBO_PATH_INDEX_PROJECT;
@@ -534,9 +533,9 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			default:
 				result = false;
 			}
-			
+
 			entries = new ICLanguageSettingEntry[] {entry};
-			shell.dispose(); 
+			shell.dispose();
 		} else if (e.widget.equals(buttonCancel)) {
 			shell.dispose();
 		} else if (e.widget.equals(buttonBrowse)) {
@@ -555,7 +554,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			case COMBO_INDEX_MACRO:
 				break;
 			}
-			
+
 			if (isDirectory) {
 				switch (comboPathCategory.getSelectionIndex()) {
 				case COMBO_PATH_INDEX_WORKSPACE:
@@ -581,7 +580,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 					break;
 				}
 			}
-			
+
 			if (s != null) {
 				s = strip_wsp(s);
 				if (comboPathCategory.getSelectionIndex()==COMBO_PATH_INDEX_PROJECT && s.startsWith(SLASH+project.getName()+SLASH)) {
@@ -594,26 +593,26 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			if (s != null) inputName.insert(s);
 		}
 	}
-	
+
 	public ICLanguageSettingEntry[] getEntries() {
 		return entries;
 	}
-	
+
 	private void updateImages() {
 		int indexEntryKind = comboKind.getSelectionIndex();
 		int indexPathKind = comboPathCategory.getSelectionIndex();
 		shell.setText("Add " + comboKindItems[indexEntryKind]);
-		
+
 		int kind = comboIndexToKind(indexEntryKind);
 		int flagBuiltin = checkBoxBuiltIn.getSelection() ? ICSettingEntry.BUILTIN : 0;
 		boolean isWorkspacePath = indexPathKind==COMBO_PATH_INDEX_PROJECT || indexPathKind==COMBO_PATH_INDEX_WORKSPACE;
 		int flagWorkspace = isWorkspacePath ? ICSettingEntry.VALUE_WORKSPACE_PATH : 0;
 		int flags = flagBuiltin | flagWorkspace;
 		Image image = LanguageSettingsImages.getImage(kind, flags, indexPathKind==COMBO_PATH_INDEX_PROJECT);
-		
+
 		iconComboKind.setImage(image);
 		shell.setImage(image);
-		
+
 		buttonBrowse.setImage(pathCategoryImages[indexPathKind]);
 	}
 

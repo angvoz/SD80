@@ -50,7 +50,7 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 			int kind = le.getKind();
 			boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
 			boolean isProjectRelative = isWorkspacePath && !le.getName().startsWith("/");
-			return LanguageSettingsEntryImages.getImage(kind, le.getFlags(), isProjectRelative);
+			return LanguageSettingsImages.getImage(kind, le.getFlags(), isProjectRelative);
 		}
 
 		if (element instanceof ILanguageSettingsProvider) {

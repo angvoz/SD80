@@ -609,7 +609,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		boolean isWorkspacePath = indexPathKind==COMBO_PATH_INDEX_PROJECT || indexPathKind==COMBO_PATH_INDEX_WORKSPACE;
 		int flagWorkspace = isWorkspacePath ? ICSettingEntry.VALUE_WORKSPACE_PATH : 0;
 		int flags = flagBuiltin | flagWorkspace;
-		Image image = LanguageSettingsEntryImages.getImage(kind, flags, indexPathKind==COMBO_PATH_INDEX_PROJECT);
+		Image image = LanguageSettingsImages.getImage(kind, flags, indexPathKind==COMBO_PATH_INDEX_PROJECT);
 		
 		iconComboKind.setImage(image);
 		shell.setImage(image);

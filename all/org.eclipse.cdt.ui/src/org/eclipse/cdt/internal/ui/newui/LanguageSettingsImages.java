@@ -7,7 +7,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 
 import org.eclipse.cdt.internal.ui.CPluginImages;
 
-public class LanguageSettingsEntryImages {
+public class LanguageSettingsImages {
 
 	public static Image getImage(int kind, int flags, boolean isProjectRelative) {
 		String imageKey = getImageKey(kind, flags, isProjectRelative);

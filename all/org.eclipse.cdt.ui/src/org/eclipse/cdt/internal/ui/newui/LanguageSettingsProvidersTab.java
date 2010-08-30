@@ -242,7 +242,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			availableProviders = new ArrayList<ILanguageSettingsProvider>(cfgProviders);
 			Set<ILanguageSettingsProvider> allAvailableProvidersSet = new TreeSet<ILanguageSettingsProvider>(new Comparator<ILanguageSettingsProvider>() {
 				public int compare(ILanguageSettingsProvider prov1, ILanguageSettingsProvider prov2) {
-					return prov1.getId().compareTo(prov2.getId());
+					return prov1.getName().compareTo(prov2.getName());
 				}
 			});
 			allAvailableProvidersSet.addAll(fAvailableProvidersMap.values());

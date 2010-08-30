@@ -1,6 +1,5 @@
 package org.eclipse.cdt.internal.ui.newui;
 
-import java.net.MalformedURLException;
 import java.net.URL;
 
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -15,91 +14,55 @@ import org.eclipse.cdt.ui.CUIPlugin;
 public class LanguageSettingsImages {
 	// The images registry
 	private static ImageRegistry imageRegistry = new ImageRegistry(CUIPlugin.getStandardDisplay());
-	// Subdirectory (under the package containing this class) where 16 color images are
-	private static URL fgIconBaseURL;
+	private static URL fBaseURL = CUIPlugin.getDefault().getBundle().getEntry("/"); //$NON-NLS-1$
 
-	static {
+	public static final String IMG_OBJS_INCLUDES_FOLDER = "icons/obj16/hfolder_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_INCLUDES_FOLDER_SYSTEM = "icons/obj16/fldr_sys_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_INCLUDES_FOLDER_PROJECT = "icons/obj16/hproject.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_INCLUDES_FOLDER_WORKSPACE = "icons/obj16/wsp_includefolder.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_LANG_SETTINGS_PROVIDER = "icons/obj16/ls_entries_provider.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_TUNIT_HEADER= "icons/obj16/h_file_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_MACRO= "icons/obj16/define_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_MACROS_FILE= "icons/obj16/macros_file.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_LIBRARY_FOLDER=  "icons/obj16/fldr_lib_obj.gif"; // $NON-NLS-1$  //$NON-NLS-1$
+	public static final String IMG_OBJS_LIBRARY= "icons/obj16/lib_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_UNKNOWN_TYPE= "icons/obj16/unknown_type_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_CDT_TESTING = "icons/obj16/flask.png"; //$NON-NLS-1$
+	public static final String IMG_OBJS_PROJECT = "icons/etool16/prj_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_FILESYSTEM = "icons/obj16/filesyst.gif"; //$NON-NLS-1$
+	public static final String IMG_WORKSPACE = "icons/obj16/workspace.gif"; //$NON-NLS-1$
+
+	public static final String IMG_OVR_SETTING = "icons/ovr16/setting_nav.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_GLOBAL = "icons/ovr16/global_ovr.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_CONFIGURATION = "icons/ovr16/cfg_ovr.gif"; //$NON-NLS-1$
+
+
+	private static URL makeIconFileURL(String path) {
 		try {
-			fgIconBaseURL= new URL(CUIPlugin.getDefault().getBundle().getEntry("/"), "icons/" ); //$NON-NLS-1$ //$NON-NLS-2$
-		} catch (MalformedURLException e) {
-			CUIPlugin.log(e);
-		}
-	}
-
-	private static final String NAME_PREFIX = CUIPlugin.PLUGIN_ID + '.';
-	private static final int NAME_PREFIX_LENGTH = NAME_PREFIX.length();
-
-	private static final String T_OBJ= "obj16/"; //$NON-NLS-1$
-	private static final String T_ETOOL= "etool16/"; //$NON-NLS-1$
-
-	public static final String IMG_OBJS_INCLUDES_FOLDER = NAME_PREFIX + "hfolder_obj.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER);
-
-	public static final String IMG_OBJS_INCLUDES_FOLDER_SYSTEM = NAME_PREFIX + "fldr_sys_obj.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_SYSTEM  = createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_SYSTEM);
-
-	public static final String IMG_OBJS_INCLUDES_FOLDER_PROJECT = NAME_PREFIX + "hproject.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_PROJECT= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_PROJECT);
-
-	public static final String IMG_OBJS_INCLUDES_FOLDER_WORKSPACE = NAME_PREFIX + "wsp_includefolder.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_INCLUDES_FOLDER_WORKSPACE= createManaged(T_OBJ, IMG_OBJS_INCLUDES_FOLDER_WORKSPACE);
-
-	public static final String IMG_OBJS_LANG_SETTINGS_PROVIDER = NAME_PREFIX + "ls_entries_provider.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_LANG_SETTINGS_PROVIDER= createManaged(T_OBJ, IMG_OBJS_LANG_SETTINGS_PROVIDER);
-
-	public static final String IMG_OBJS_TUNIT_HEADER= NAME_PREFIX + "h_file_obj.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_TUNIT_HEADER= createManaged(T_OBJ, IMG_OBJS_TUNIT_HEADER);
-
-	public static final String IMG_OBJS_MACRO= NAME_PREFIX + "define_obj.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_MACRO= createManaged(T_OBJ, IMG_OBJS_MACRO);
-
-	public static final String IMG_OBJS_MACROS_FILE= NAME_PREFIX + "macros_file.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_MACROS_FILE= createManaged(T_OBJ, IMG_OBJS_MACROS_FILE);
-
-	public static final String IMG_OBJS_LIBRARY_FOLDER=  NAME_PREFIX + "fldr_lib_obj.gif"; // $NON-NLS-1$  //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_LIBRARY_FOLDER= createManaged(T_OBJ, IMG_OBJS_LIBRARY_FOLDER);
-
-	public static final String IMG_OBJS_LIBRARY= NAME_PREFIX + "lib_obj.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_LIBRARY= createManaged(T_OBJ, IMG_OBJS_LIBRARY);
-
-	public static final String IMG_OBJS_UNKNOWN_TYPE= NAME_PREFIX + "unknown_type_obj.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_UNKNOWN_TYPE= createManaged(T_OBJ, IMG_OBJS_UNKNOWN_TYPE);
-
-	public static final String IMG_OBJS_CDT_TESTING = NAME_PREFIX + "flask.png"; //$NON-NLS-1$
-    @SuppressWarnings("unused")
-	private static final ImageDescriptor DESC_OBJS_CDT_TESTING= createManaged(T_OBJ, IMG_OBJS_CDT_TESTING);
-
-	public static final String IMG_OBJS_PROJECT=NAME_PREFIX + "prj_obj.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_OBJS_PROJECT = createManaged(T_ETOOL, IMG_OBJS_PROJECT);
-
-	public static final String IMG_FILESYSTEM= NAME_PREFIX + "filesyst.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_FILESYSTEM = createManaged(T_OBJ, IMG_FILESYSTEM);
-	public static final String IMG_WORKSPACE = NAME_PREFIX + "workspace.gif"; //$NON-NLS-1$
-	private static final ImageDescriptor DESC_WORKSPACE  = createManaged(T_OBJ, IMG_WORKSPACE);
-
-	private static ImageDescriptor createManaged(String prefix, String name) {
-		return createManaged(imageRegistry, prefix, name);
-	}
-
-	private static URL makeIconFileURL(String prefix, String name) {
-		StringBuffer buffer= new StringBuffer(prefix);
-		buffer.append(name);
-		try {
-			return new URL(fgIconBaseURL, buffer.toString());
-		} catch (MalformedURLException e) {
+			return new URL(fBaseURL, path);
+		} catch (Exception e) {
 			CUIPlugin.log(e);
 			return null;
 		}
 	}
 
-	private static ImageDescriptor createManaged(ImageRegistry registry, String prefix, String name) {
-		ImageDescriptor result= ImageDescriptor.createFromURL(makeIconFileURL(prefix, name.substring(NAME_PREFIX_LENGTH)));
-		registry.put(name, result);
+	private static ImageDescriptor createManaged(ImageRegistry registry, String projectRelativePath) {
+		URL url = makeIconFileURL(projectRelativePath);
+		ImageDescriptor result= ImageDescriptor.createFromURL(url);
+		String key = url.toString();
+		registry.put(key, result);
 		return result;
 	}
 
 	public static Image get(String key) {
-		return imageRegistry.get(key);
+		URL url = makeIconFileURL(key);
+		key = url.toString();
+		Image image = imageRegistry.get(key);
+		if (image==null) {
+			createManaged(imageRegistry, key);
+			image = imageRegistry.get(key);
+		}
+		return image;
 	}
 	/**
 	 * Retrieves an overlaid image descriptor from the repository of images.
@@ -119,24 +82,28 @@ public class LanguageSettingsImages {
 		String suffix=""; //$NON-NLS-1$
 		for (int i=0;i<5;i++) {
 			String overlayKey=""; //$NON-NLS-1$
-			if (overlayKeys.length<i && overlayKeys[i]!=null) {
+			if (i<overlayKeys.length && overlayKeys[i]!=null) {
 				overlayKey=overlayKeys[i];
 			}
 			suffix=suffix+'.'+overlayKey;
 		}
-		if (!suffix.equals(".....")) { //$NON-NLS-1$
-			suffix=""; //$NON-NLS-1$
+		if (suffix.equals(".....")) { //$NON-NLS-1$
+			Image result = get(baseKey);
+			return result;
 		}
 		String compositeKey=baseKey+suffix;
 
 		Image result = imageRegistry.get(compositeKey);
 		if (result==null) {
-			result = imageRegistry.get(baseKey);
+			result = get(baseKey);
 			ImageDescriptor[] overlayDescriptors = new ImageDescriptor[5];
 			for (int i=0;i<4;i++) {
-				String key = overlayKeys[i];
-				if (key!=null) {
-					ImageDescriptor overlayDescriptor = imageRegistry.getDescriptor(key);
+				String overlayKey = overlayKeys[i];
+				if (overlayKey!=null) {
+					Image overlay = get(overlayKey);
+					URL url = makeIconFileURL(overlayKey);
+					String urlKey = url.toString();
+					ImageDescriptor overlayDescriptor = imageRegistry.getDescriptor(urlKey);
 					if (overlayDescriptor==null) {
 						overlayDescriptor = ImageDescriptor.getMissingImageDescriptor();
 					}
@@ -190,39 +157,39 @@ public class LanguageSettingsImages {
 	private static String getImageKey(int kind, int flag, boolean isProjectRelative) {
 		String imageKey = null;
 
-			boolean isWorkspacePath = (flag & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
-			boolean isBuiltin = (flag & ICSettingEntry.BUILTIN) != 0;
+		boolean isWorkspacePath = (flag & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
+		boolean isBuiltin = (flag & ICSettingEntry.BUILTIN) != 0;
 
-			switch (kind) {
-			case ICSettingEntry.INCLUDE_PATH:
-				if (isWorkspacePath)
-					if (isProjectRelative)
-						imageKey = IMG_OBJS_INCLUDES_FOLDER_PROJECT;
-					else
-						imageKey = IMG_OBJS_INCLUDES_FOLDER_WORKSPACE;
-				else if (isBuiltin)
-					imageKey = IMG_OBJS_INCLUDES_FOLDER_SYSTEM;
+		switch (kind) {
+		case ICSettingEntry.INCLUDE_PATH:
+			if (isWorkspacePath)
+				if (isProjectRelative)
+					imageKey = IMG_OBJS_INCLUDES_FOLDER_PROJECT;
 				else
-					imageKey = IMG_OBJS_INCLUDES_FOLDER;
-				break;
-			case ICSettingEntry.INCLUDE_FILE:
-				imageKey = IMG_OBJS_TUNIT_HEADER;
-				break;
-			case ICSettingEntry.MACRO:
-				imageKey = IMG_OBJS_MACRO;
-				break;
-			case ICSettingEntry.MACRO_FILE:
-				imageKey = IMG_OBJS_MACROS_FILE;
-				break;
-			case ICSettingEntry.LIBRARY_PATH:
-				imageKey = IMG_OBJS_LIBRARY_FOLDER;
-				break;
-			case ICSettingEntry.LIBRARY_FILE:
-				imageKey = IMG_OBJS_LIBRARY;
-				break;
-			}
-			if (imageKey==null)
-				imageKey = IMG_OBJS_UNKNOWN_TYPE;
+					imageKey = IMG_OBJS_INCLUDES_FOLDER_WORKSPACE;
+			else if (isBuiltin)
+				imageKey = IMG_OBJS_INCLUDES_FOLDER_SYSTEM;
+			else
+				imageKey = IMG_OBJS_INCLUDES_FOLDER;
+			break;
+		case ICSettingEntry.INCLUDE_FILE:
+			imageKey = IMG_OBJS_TUNIT_HEADER;
+			break;
+		case ICSettingEntry.MACRO:
+			imageKey = IMG_OBJS_MACRO;
+			break;
+		case ICSettingEntry.MACRO_FILE:
+			imageKey = IMG_OBJS_MACROS_FILE;
+			break;
+		case ICSettingEntry.LIBRARY_PATH:
+			imageKey = IMG_OBJS_LIBRARY_FOLDER;
+			break;
+		case ICSettingEntry.LIBRARY_FILE:
+			imageKey = IMG_OBJS_LIBRARY;
+			break;
+		}
+		if (imageKey==null)
+			imageKey = IMG_OBJS_UNKNOWN_TYPE;
 		return imageKey;
 	}
 

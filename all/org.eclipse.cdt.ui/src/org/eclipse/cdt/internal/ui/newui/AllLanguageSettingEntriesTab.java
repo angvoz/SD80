@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
+import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
@@ -64,8 +65,6 @@ import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
-
-import org.eclipse.cdt.internal.ui.CPluginImages;
 
 public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	protected Tree treeEntries;
@@ -147,18 +146,19 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	// Extended label provider
 	private class LanguageSettingsContributorsResourceLabelProvider extends LanguageSettingsContributorsLabelProvider {
 		@Override
-		protected String getOverlayKey(Object element, int columnIndex) {
-			String overlayKey = null;
+		protected String[] getOverlayKeys(Object element, int columnIndex) {
 			if (element instanceof ILanguageSettingsProvider) {
+				String[] overlayKeys = new String[5];
 				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
 				if (!LanguageSettingsManager.isWorkspaceProvider(provider) && lang!=null) {
 					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
 					if (entries!=null) {
-						overlayKey = CPluginImages.IMG_OVR_SETTING;
+						overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_SETTING;
 					}
 				}
+				return overlayKeys;
 			}
-			return overlayKey;
+			return null;
 		}
 
 		@Override

@@ -32,8 +32,8 @@ public class LanguageSettingsProviderAssociation {
 	private static final String ATTR_PAGE = "page"; //$NON-NLS-1$
 
 	static private Map<URL, Image> loadedIcons = null;
-	static private Map<String, Image> fImagesById = null;
-	static private Map<String, Image> fImagesByClass = null;
+	static private Map<String, URL> fImagesUrlById = null;
+	static private Map<String, URL> fImagesByClass = null;
 	static private List<String> fRegirestedIds = null;
 	static private List<String> fRegisteredClasses = null;
 
@@ -42,8 +42,8 @@ public class LanguageSettingsProviderAssociation {
 			return;
 		}
 		if (loadedIcons==null) loadedIcons = new HashMap<URL, Image>();
-		if (fImagesById==null) fImagesById = new HashMap<String, Image>();
-		if (fImagesByClass==null) fImagesByClass = new HashMap<String, Image>();
+		if (fImagesUrlById==null) fImagesUrlById = new HashMap<String, URL>();
+		if (fImagesByClass==null) fImagesByClass = new HashMap<String, URL>();
 		if (fRegirestedIds==null) fRegirestedIds = new ArrayList<String>();
 		if (fRegisteredClasses==null) fRegisteredClasses = new ArrayList<String>();
 
@@ -58,12 +58,14 @@ public class LanguageSettingsProviderAssociation {
 					if (cfgEl.getName().equals(ELEM_ID_ASSOCIATION)) {
 						String id = cfgEl.getAttribute(ATTR_ID);
 						Image image =getIcon(cfgEl);
-						fImagesById.put(id, image);
+						URL url = getIconUrl(cfgEl);
+						fImagesUrlById.put(id, url);
 						fRegirestedIds.add(id);
 					} else if (cfgEl.getName().equals(ELEM_CLASS_ASSOCIATION)) {
 						String className = cfgEl.getAttribute(ATTR_CLASS);
 						Image image =getIcon(cfgEl);
-						fImagesByClass.put(className, image);
+						URL url = getIconUrl(cfgEl);
+						fImagesByClass.put(className, url);
 						String pageClass = cfgEl.getAttribute(ATTR_PAGE);
 						if (pageClass!=null && pageClass.trim().length()>0) {
 							fRegisteredClasses.add(className);
@@ -95,11 +97,31 @@ public class LanguageSettingsProviderAssociation {
 		return img;
 	}
 
-	public static Image getImage(String id) {
-		if (fImagesById==null) {
+	private static URL getIconUrl(IConfigurationElement config) {
+		ImageDescriptor idesc = null;
+		URL url = null;
+		try {
+			String iconName = config.getAttribute(ATTR_ICON);
+			if (iconName != null) {
+				URL pluginInstallUrl = Platform.getBundle(config.getDeclaringExtension().getContributor().getName()).getEntry("/"); //$NON-NLS-1$
+				url = new URL(pluginInstallUrl, iconName);
+				if (loadedIcons.containsKey(url))
+					return url;
+				idesc = ImageDescriptor.createFromURL(url);
+			}
+		} catch (MalformedURLException exception) {}
+		if (idesc == null)
+			return null;
+		Image img = idesc.createImage();
+		loadedIcons.put(url, img);
+		return url;
+	}
+
+	public static URL getImageUrl(String id) {
+		if (fImagesUrlById==null) {
 			loadExtensions();
 		}
-		return fImagesById.get(id);
+		return fImagesUrlById.get(id);
 	}
 
 	private static ICOptionPage createOptionsPageById(String providerId) {
@@ -175,11 +197,11 @@ public class LanguageSettingsProviderAssociation {
 	 * @param clazz - class to find Language Settings Provider image.
 	 * @return image or {@code null}
 	 */
-	public static Image getImage(Class<? extends ILanguageSettingsProvider> clazz) {
+	public static URL getImage(Class<? extends ILanguageSettingsProvider> clazz) {
 		for (Class<?> c=clazz;c!=null;c=c.getSuperclass()) {
 			String className = c.getCanonicalName();
-			Set<Entry<String, Image>> entrySet = fImagesByClass.entrySet();
-			for (Entry<String, Image> entry : entrySet) {
+			Set<Entry<String, URL>> entrySet = fImagesByClass.entrySet();
+			for (Entry<String, URL> entry : entrySet) {
 				if (entry.getKey().equals(className)) {
 					return entry.getValue();
 				}

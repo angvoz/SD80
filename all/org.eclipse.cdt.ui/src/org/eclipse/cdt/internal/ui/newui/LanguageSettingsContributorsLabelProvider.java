@@ -1,5 +1,7 @@
 package org.eclipse.cdt.internal.ui.newui;
 
+import java.net.URL;
+
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -9,6 +11,7 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 
 public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*implements IFontProvider, ITableLabelProvider , IColorProvider */ {
@@ -18,7 +21,15 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 		return getColumnImage(element, 0);
 	}
 
-	protected String getOverlayKey(Object element, int columnIndex) {
+	protected String[] getOverlayKeys(Object element, int columnIndex) {
+		if (element instanceof ILanguageSettingsProvider) {
+			String[] overlayKeys = new String[5];
+			ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
+			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_GLOBAL;
+			}
+			return overlayKeys;
+		}
 		return null;
 	}
 
@@ -53,26 +64,26 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 
 		if (element instanceof ILanguageSettingsProvider) {
 			ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
+			String imageKey = null;
 			// try id-association
-			Image image = LanguageSettingsProviderAssociation.getImage(provider.getId());
-			if (image!=null) {
-				return image;
-			}
+			URL url = LanguageSettingsProviderAssociation.getImageUrl(provider.getId());
 			// try class-association
-			image = LanguageSettingsProviderAssociation.getImage(provider.getClass());
-			if (image!=null) {
-				return image;
+			if (url==null) {
+				url = LanguageSettingsProviderAssociation.getImage(provider.getClass());
 			}
-
-			String imageKey = LanguageSettingsImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+			if (url!=null) {
+				imageKey = url.toString();
+			} else {
+				imageKey = LanguageSettingsImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+			}
 			final String TEST_PLUGIN_ID="org.eclipse.cdt.core.tests"; //$NON-NLS-1$
 			if (provider.getId().startsWith(TEST_PLUGIN_ID)) {
 				imageKey = LanguageSettingsImages.IMG_OBJS_CDT_TESTING;
 			}
 
-			String overlayKey = getOverlayKey(element, columnIndex);
-			if (overlayKey != null) {
-				return LanguageSettingsImages.getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
+			String[] overlayKeys = getOverlayKeys(element, columnIndex);
+			if (overlayKeys != null) {
+				return LanguageSettingsImages.getOverlaidImage(imageKey, overlayKeys);
 			}
 			return LanguageSettingsImages.get(imageKey);
 		}

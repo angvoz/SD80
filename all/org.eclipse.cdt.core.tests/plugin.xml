@@ -262,7 +262,7 @@
             id="org.eclipse.cdt.core.tests.language.settings"
             name="Test Plugin Setting Entries UI Tester">
          <language
-               id="org.eclipse.cdt.core.g++">
+               id="org.eclipse.cdt.core.gcc">
          </language>
          <entry
                kind="includePath"

@@ -187,16 +187,27 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 				if (!PathUtils.isCaseSensitive() && filePath.toOSString().compareToIgnoreCase(path.toOSString()) != 0)
 					return Collections.emptyList();			
 			}
-			
-			List<ILineEntry> entries = new ArrayList<ILineEntry>();
 
-			List<ILineEntry> startMappings = lineEntriesByLine.get(startLineNumber);
+			int lntSize = lineEntries.size();
+			int endLine
+			  = (endLineNumber != -1) ? endLineNumber : lineEntries.get(lntSize-1).getLineNumber();
+
+			List<ILineEntry> entries = new ArrayList<ILineEntry>(), startMappings;
+			
+			/* in case the caller has requested something other than a single line,
+			 * make certain this doesn't fail if the the caller passes a
+			 * startLineNumber that doesn't have a direct mapping in the LNT
+			 */
+			for (; null == (startMappings = lineEntriesByLine.get(startLineNumber))
+				   && startLineNumber < endLine
+				 ; ++startLineNumber) {}
+
 			if (startMappings != null) {
 				if (startLineNumber == endLineNumber) {
 					entries.addAll(startMappings);
 				} else if (endLineNumber == -1) {
 					// return the entries for the rest of the file
-					entries = lineEntries.subList(lineEntries.indexOf(startMappings.get(0)), lineEntries.size());
+					entries = lineEntries.subList(lineEntries.indexOf(startMappings.get(0)), lntSize);
 				} else {
 					List<ILineEntry> endMappings = lineEntriesByLine.get(endLineNumber);
 					if (endMappings != null) {
@@ -204,7 +215,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 								.indexOf(endMappings.get(endMappings.size() - 1)) + 1);
 					} else {
 						// no mapping for end line #. just go to the end of the file
-						entries = lineEntries.subList(lineEntries.indexOf(startMappings.get(0)), lineEntries.size());
+						entries = lineEntries.subList(lineEntries.indexOf(startMappings.get(0)), lntSize);
 					}
 				}
 			}

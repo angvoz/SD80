@@ -51,7 +51,7 @@ const char* ProcessService::GetName() {
 /*
  * This will return a context, running or debugged one.
  */
-void ProcessService::command_get_context(char * token, Channel * c) {
+void ProcessService::command_get_context(const char * token, Channel * c) {
 	LogTrace("ProcessService::command_get_context", "token: %s", token);
 	TCFChannel channel(c);
 
@@ -87,7 +87,7 @@ static void RemoveAndDeleteContext(const ContextID& contextID) {
 	delete ContextManager::removeContext(contextID);
 }
 
-void ProcessService::command_get_children(char * token, Channel * c) {
+void ProcessService::command_get_children(const char * token, Channel * c) {
     char id[256];
     int attached_only;
 
@@ -166,7 +166,7 @@ void ProcessService::command_get_children(char * token, Channel * c) {
     write_stream(&c->out, MARKER_EOM);
 }
 
-void ProcessService::command_attach(char * token, Channel * c) {
+void ProcessService::command_attach(const char * token, Channel * c) {
 	LogTrace("ProcessService::command_attach", "token: %s", token);
 	TCFChannel channel(c);
 	std::string id = channel.readString();
@@ -189,7 +189,7 @@ void ProcessService::command_attach(char * token, Channel * c) {
 
 }
 
-void ProcessService::command_detach(char * token, Channel * c) {
+void ProcessService::command_detach(const char * token, Channel * c) {
 	LogTrace("ProcessService::command_detach", "token: %s", token);
 	TCFChannel channel(c);
 	std::string id = channel.readString();
@@ -208,13 +208,13 @@ void ProcessService::command_detach(char * token, Channel * c) {
 			AgentActionParams(token, c), context->GetOSID()));
 }
 
-void ProcessService::command_terminate(char * token, Channel * c) {
+void ProcessService::command_terminate(const char * token, Channel * c) {
 }
 
-void ProcessService::command_signal(char * token, Channel * c) {
+void ProcessService::command_signal(const char * token, Channel * c) {
 }
 
-void ProcessService::command_get_environment(char * token, Channel * c) {
+void ProcessService::command_get_environment(const char * token, Channel * c) {
 	char ** p = environ;
 
 	TCFChannel channel(c);
@@ -252,7 +252,7 @@ std::wstring json_read_string(Channel * c) {
 	return result;
 }
 
-void ProcessService::command_start(char * token, Channel * c) {
+void ProcessService::command_start(const char * token, Channel * c) {
 	TCFChannel channel(c);
 	std::string directory = channel.readString();
 	channel.readZero();

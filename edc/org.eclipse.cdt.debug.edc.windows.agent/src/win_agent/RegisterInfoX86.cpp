@@ -20,7 +20,7 @@ std::list<RegisterGroupInfo*>& RegisterInfoX86::getRegisterGroupInfo() {
 	return sRegisterGroupInfos;
 }
 	
-RegisterInfo* RegisterInfoX86::setupRegister(Properties& commProps, char* name, char* role) {
+RegisterInfo* RegisterInfoX86::setupRegister(Properties& commProps, const char* name, const char* role) {
 	Properties props;
 	props[PROP_NAME] = new PropertyValue(name);
 	if (role != NULL)

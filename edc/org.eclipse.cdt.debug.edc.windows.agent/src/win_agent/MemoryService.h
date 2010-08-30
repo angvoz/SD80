@@ -23,10 +23,10 @@ public:
 
 	const char* GetName();
 
-	static void command_get_context(char * token, Channel * c);
-	static void command_get_children(char * token, Channel * c);
-	static void command_set(char * token, Channel * c);
-	static void command_get(char * token, Channel * c);
-	static void command_fill(char * token, Channel * c);
+	static void command_get_context(const char * token, Channel * c);
+	static void command_get_children(const char * token, Channel * c);
+	static void command_set(const char * token, Channel * c);
+	static void command_get(const char * token, Channel * c);
+	static void command_fill(const char * token, Channel * c);
 };
 #endif

@@ -123,12 +123,12 @@ public:
 
 	const char* GetName();
 
-	static void command_get_context(char * token, Channel * c);
-	static void command_get_children(char * token, Channel * c);
-	static void command_get_state(char * token, Channel * c);
-	static void command_resume(char * token, Channel * c);
-	static void command_suspend(char * token, Channel * c);
-	static void command_terminate(char * token, Channel * c);
+	static void command_get_context(const char * token, Channel * c);
+	static void command_get_children(const char * token, Channel * c);
+	static void command_get_state(const char * token, Channel * c);
+	static void command_resume(const char * token, Channel * c);
+	static void command_suspend(const char * token, Channel * c);
+	static void command_terminate(const char * token, Channel * c);
 };
 
 #endif

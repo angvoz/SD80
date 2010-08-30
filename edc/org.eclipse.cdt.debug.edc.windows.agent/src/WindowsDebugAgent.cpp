@@ -91,13 +91,13 @@ _CRTIMP void __cdecl __MINGW_NOTHROW _assert (const char* error, const char* fil
 
 int main(int argc, char* argv[]) {
 #ifdef _DEBUG
-	char* log_name = "C:\\WindowsDebugAgentLog.txt";
+	static const char* log_name = "C:\\WindowsDebugAgentLog.txt";
     log_mode = LOG_EVENTS | LOG_CHILD | LOG_WAITPID | LOG_CONTEXT | LOG_PROTOCOL | LOG_ASYNCREQ;
     open_log_file(log_name);
 #endif
 
 	try {
-	char * url = "TCP:";
+	static const char * url = "TCP:";
 	PeerServer * ps = NULL;
 	ini_mdep();
 	ini_trace();

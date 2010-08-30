@@ -21,8 +21,8 @@ public:
 
 	const char* GetName();
 
-	static void command_get(char * token, Channel * c);
-	static void command_set(char * token, Channel * c);
+	static void command_get(const char * token, Channel * c);
+	static void command_set(const char * token, Channel * c);
 };
 
 #endif /* #define SIMPLEREGISTERSERVICE_H_ */

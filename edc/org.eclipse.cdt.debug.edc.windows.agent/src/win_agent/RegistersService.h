@@ -21,15 +21,15 @@ public:
 
 	const char* GetName();
 
-	static void command_get_context(char * token, Channel * c);
-	static void command_get_children(char * token, Channel * c);
-	static void command_get(char * token, Channel * c);
-	static void command_set(char * token, Channel * c);
+	static void command_get_context(const char * token, Channel * c);
+	static void command_get_children(const char * token, Channel * c);
+	static void command_get(const char * token, Channel * c);
+	static void command_set(const char * token, Channel * c);
 
 	/* Commands not supported/needed for now.
-	static void command_getm(char * token, Channel * c);
-	static void command_setm(char * token, Channel * c);
-	static void command_search(char * token, Channel * c);
+	static void command_getm(const char * token, Channel * c);
+	static void command_setm(const char * token, Channel * c);
+	static void command_search(const char * token, Channel * c);
 	*/
 };
 

@@ -74,7 +74,7 @@ const char* RegistersService::GetName() {
 	return sServiceName;
 }
 
-void RegistersService::command_get_context(char * token, Channel * c) {
+void RegistersService::command_get_context(const char * token, Channel * c) {
 	LogTrace("RegistersService::command_get_context", "token: %s", token);
 	TCFChannel channel(c);
 	std::string id = channel.readString();
@@ -97,7 +97,7 @@ void RegistersService::command_get_context(char * token, Channel * c) {
 
 }
 
-void RegistersService::command_get_children(char * token, Channel * c) {
+void RegistersService::command_get_children(const char * token, Channel * c) {
 	LogTrace("RunControl::command_get_children", "token: %s", token);
 	TCFChannel channel(c);
 
@@ -179,7 +179,7 @@ WinThread* getThreadForRegisterContext(Context* regCxt) {
 /*
  * register values are passed as hex-string in big-endian
  */
-void RegistersService::command_get(char * token, Channel * c) {
+void RegistersService::command_get(const char * token, Channel * c) {
 	TCFChannel channel(c);
 	std::string regCxtID = channel.readString();
 	channel.readZero();
@@ -220,7 +220,7 @@ void RegistersService::command_get(char * token, Channel * c) {
 
 /*
  */
-void RegistersService::command_set(char * token, Channel * c) {
+void RegistersService::command_set(const char * token, Channel * c) {
 	TCFChannel channel(c);
 
 	std::string regCxtID = channel.readString();

@@ -34,11 +34,11 @@ const char* MemoryService::GetName() {
 	return sServiceName;
 }
 
-void MemoryService::command_get_children(char * token, Channel * c) {
+void MemoryService::command_get_children(const char * token, Channel * c) {
 
 }
 
-void MemoryService::command_set(char * token, Channel * c) {
+void MemoryService::command_set(const char * token, Channel * c) {
 	LogTrace("Memory::command_set", "token: %s", token);
 	TCFChannel channel(c);
 	std::string id = channel.readString();
@@ -81,18 +81,18 @@ void MemoryService::command_set(char * token, Channel * c) {
 	delete[] memBuffer;
 }
 
-void MemoryService::command_get(char * token, Channel * c) {
+void MemoryService::command_get(const char * token, Channel * c) {
 	LogTrace("Memory::command_get", "token: %s", token);
 	TCFChannel channel(c);
 	std::string id = channel.readString();
 	channel.readZero();
 	unsigned long address = channel.readULong();
 	channel.readZero();
-	long wordSize = channel.readLong();
+	/* long wordSize = */ channel.readLong();
 	channel.readZero();
 	long size = channel.readLong();
 	channel.readZero();
-	long mode = channel.readLong();
+	/* long mode = */ channel.readLong();
 	channel.readZero();
 	channel.readComplete();
 
@@ -130,7 +130,7 @@ void MemoryService::command_get(char * token, Channel * c) {
 	}
 }
 
-void MemoryService::command_fill(char * token, Channel * c) {
+void MemoryService::command_fill(const char * token, Channel * c) {
 	LogTrace("Memory::command_fill", "token: %s", token);
 	TCFChannel channel(c);
 	std::string id = channel.readString();

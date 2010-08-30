@@ -26,7 +26,7 @@ public:
 private:
 	static std::list<RegisterGroupInfo*> sRegisterGroupInfos;
 	
-	static RegisterInfo* setupRegister(Properties& commProps, char* name, char* role);
+	static RegisterInfo* setupRegister(Properties& commProps, const char* name, const char* role);
 	
 	static RegisterGroupInfo* setupRegGroup_Basic();
 	/*

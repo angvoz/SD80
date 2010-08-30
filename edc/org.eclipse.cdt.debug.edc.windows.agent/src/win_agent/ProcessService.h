@@ -25,12 +25,12 @@ public:
 
 	const char* GetName();
 
-	static void command_get_context(char *, Channel *);
-	static void command_get_children(char *, Channel *);
-	static void command_attach(char *, Channel *);
-	static void command_detach(char *, Channel *);
-	static void command_terminate(char *, Channel *);
-	static void command_signal(char *, Channel *);
-	static void command_get_environment(char *, Channel *);
-	static void command_start(char *, Channel *);
+	static void command_get_context(const char *, Channel *);
+	static void command_get_children(const char *, Channel *);
+	static void command_attach(const char *, Channel *);
+	static void command_detach(const char *, Channel *);
+	static void command_terminate(const char *, Channel *);
+	static void command_signal(const char *, Channel *);
+	static void command_get_environment(const char *, Channel *);
+	static void command_start(const char *, Channel *);
 };

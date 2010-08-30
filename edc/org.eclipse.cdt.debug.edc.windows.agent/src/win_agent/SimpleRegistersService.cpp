@@ -37,7 +37,7 @@ const char* SimpleRegistersService::GetName() {
 /*
  * register values are passed as hex-string in big-endian
  */
-void SimpleRegistersService::command_get(char * token, Channel * c) {
+void SimpleRegistersService::command_get(const char * token, Channel * c) {
 	TCFChannel channel(c);
 	std::vector<std::string> registerIDs;
 
@@ -116,7 +116,7 @@ void SimpleRegistersService::command_get(char * token, Channel * c) {
 /*
  * register values are passed as hex-string in big-endian
  */
-void SimpleRegistersService::command_set(char * token, Channel * c) {
+void SimpleRegistersService::command_set(const char * token, Channel * c) {
 	TCFChannel channel(c);
 	std::vector<std::string> registerIDs;
 	std::vector<std::string> registerValues;

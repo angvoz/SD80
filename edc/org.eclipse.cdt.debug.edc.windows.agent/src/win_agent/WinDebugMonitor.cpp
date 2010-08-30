@@ -347,7 +347,7 @@ void WinDebugMonitor::Attach(unsigned long pid, ContextAttachCallBack * done, vo
 	// TODO: implement
 }
 
-static char * win32_debug_event_name(int event) {
+static const char * win32_debug_event_name(int event) {
 	switch (event) {
 	case CREATE_PROCESS_DEBUG_EVENT:
 		return "CREATE_PROCESS_DEBUG_EVENT";

@@ -45,7 +45,7 @@ const char * LoggingService::GetWindowsConsoleID() {
 	return sWindowsConsoleID;
 }
 
-void LoggingService::command_addListener(char * token, Channel * c) {
+void LoggingService::command_addListener(const char * token, Channel * c) {
 
 	TCFChannel tcf(c);
 	std::string id = tcf.readString();
@@ -59,7 +59,7 @@ void LoggingService::command_addListener(char * token, Channel * c) {
 }
 
 
-void LoggingService::command_removeListener(char * token, Channel * c) {
+void LoggingService::command_removeListener(const char * token, Channel * c) {
 	TCFChannel tcf(c);
 	std::string id = tcf.readString();
 	tcf.readZero();
@@ -70,7 +70,7 @@ void LoggingService::command_removeListener(char * token, Channel * c) {
 	sendOK(token, c);
 }
 
-void LoggingService::sendOK(char * token, Channel * c)
+void LoggingService::sendOK(const char * token, Channel * c)
 {
 	// Send OK message
 	TCFChannel tcf(c);

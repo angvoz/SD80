@@ -65,7 +65,7 @@ std::string AgentUtils::makeUTF8String(const std::wstring& wstring) {
 	int bufferLength = 1024;
 	char* buffer = new char[bufferLength];
 #ifdef WIN32
-	int result = WideCharToMultiByte(CP_UTF8, 0, wstring.c_str(), -1, buffer,
+	/* int result = */WideCharToMultiByte(CP_UTF8, 0, wstring.c_str(), -1, buffer,
 			bufferLength, NULL, NULL);
 #else
 	assert(false);

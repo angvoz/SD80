@@ -35,7 +35,7 @@ typedef struct Protocol Protocol;
 typedef struct ReplyHandlerInfo ReplyHandlerInfo;
 
 typedef void (*ProtocolMessageHandler)(Channel *, char **, int);
-typedef void (*ProtocolCommandHandler)(char *, Channel *);
+typedef void (*ProtocolCommandHandler)(const char *, Channel *);
 typedef void (*ProtocolEventHandler)(Channel *);
 
 typedef void (*ProtocolMessageHandler2)(Channel *, char **, int, void * client_data);

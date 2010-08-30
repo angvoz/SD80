@@ -22,10 +22,10 @@ public:
 
 	const char* GetName();
 
-	static void command_addListener(char * token, Channel * c);
-	static void command_removeListener(char * token, Channel * c);
+	static void command_addListener(const char * token, Channel * c);
+	static void command_removeListener(const char * token, Channel * c);
 
-	static void sendOK(char * token, Channel * c);
+	static void sendOK(const char * token, Channel * c);
 	static void WriteLoggingMessage(Channel *channel, std::string str, const char *consoleID);
 	static const char * GetWindowsConsoleID();
 

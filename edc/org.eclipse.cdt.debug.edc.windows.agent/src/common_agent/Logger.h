@@ -16,7 +16,7 @@ class LogTrace {
 public:
 
 	LogTrace(const char* traceName);
-	LogTrace(const char* traceName, char * fmt, ...);
+	LogTrace(const char* traceName, const char * fmt, ...);
 	~LogTrace();
 
 private:
@@ -36,9 +36,9 @@ public:
 
 	static Logger& getLogger(const char* name);
 
-	void Log(int level, const char* msg);
+	void Log(int level, const std::string& msg);
 
-	void Log(int level, char * fmt, ...);
+	void Log(int level, const char * fmt, ...);
 
 private:
 

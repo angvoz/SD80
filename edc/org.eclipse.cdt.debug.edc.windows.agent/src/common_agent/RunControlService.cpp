@@ -38,7 +38,7 @@ const char* RunControlService::GetName() {
 	return sServiceName;
 }
 
-void RunControlService::command_get_context(char * token, Channel * c) {
+void RunControlService::command_get_context(const char * token, Channel * c) {
 	LogTrace("RunControl::command_get_context", "token: %s", token);
 	TCFChannel channel(c);
 	std::string id = channel.readString();
@@ -59,7 +59,7 @@ void RunControlService::command_get_context(char * token, Channel * c) {
 	channel.writeComplete();
 }
 
-void RunControlService::command_get_children(char * token, Channel * c) {
+void RunControlService::command_get_children(const char * token, Channel * c) {
 	LogTrace("RunControl::command_get_children", "token: %s", token);
 	TCFChannel channel(c);
 
@@ -93,11 +93,11 @@ void RunControlService::command_get_children(char * token, Channel * c) {
 	channel.writeComplete();
 }
 
-void RunControlService::command_get_state(char * token, Channel * c) {
+void RunControlService::command_get_state(const char * token, Channel * c) {
 	LogTrace("RunControl::command_get_state", "token: %s", token);
 }
 
-void RunControlService::command_resume(char * token, Channel * c) {
+void RunControlService::command_resume(const char * token, Channel * c) {
 	LogTrace("RunControl::command_resume", "token: %s", token);
 
 	TCFChannel channel(c);
@@ -130,7 +130,7 @@ void RunControlService::command_resume(char * token, Channel * c) {
 	}
 }
 
-void RunControlService::command_suspend(char * token, Channel * c) {
+void RunControlService::command_suspend(const char * token, Channel * c) {
 	LogTrace("RunControl::command_suspend", "token: %s", token);
 	TCFChannel channel(c);
 
@@ -154,7 +154,7 @@ void RunControlService::command_suspend(char * token, Channel * c) {
 	}
 }
 
-void RunControlService::command_terminate(char * token, Channel * c) {
+void RunControlService::command_terminate(const char * token, Channel * c) {
 	LogTrace("RunControl::command_terminate", "token: %s", token);
 
 	TCFChannel channel(c);

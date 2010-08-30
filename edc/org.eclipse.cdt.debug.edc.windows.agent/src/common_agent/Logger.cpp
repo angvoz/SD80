@@ -37,11 +37,11 @@ Logger& Logger::getLogger(const char* name) {
 	return *defaultLogger;
 }
 
-void Logger::Log(int level, const char* msg) {
-	Log(level, "%s", msg);
+void Logger::Log(int level, const std::string& msg) {
+	Log(level, "%s", msg.c_str());
 }
 
-void Logger::Log(int level, char * fmt, ...) {
+void Logger::Log(int level, const char* fmt, ...) {
 	char tmpbuf[1000];
 	va_list ap;
 	va_start(ap, fmt);
@@ -54,10 +54,10 @@ LogTrace::LogTrace(const char* traceName) {
 	this->traceName = traceName;
 	std::string tracemsg(traceName);
 	tracemsg += "\tentry\t";
-	Logger::getLogger().Log(Logger::LOG_NORMAL, tracemsg.c_str());
+	Logger::getLogger().Log(Logger::LOG_NORMAL, tracemsg);
 }
 
-LogTrace::LogTrace(const char* traceName, char * fmt, ...) {
+LogTrace::LogTrace(const char* traceName, const char * fmt, ...) {
 	char tmpbuf[1000];
 	this->traceName = traceName;
 	std::string format(traceName);
@@ -74,5 +74,5 @@ LogTrace::~LogTrace() {
 	this->traceName = traceName;
 	std::string tracemsg(traceName);
 	tracemsg += "\texit";
-	Logger::getLogger().Log(Logger::LOG_NORMAL, tracemsg.c_str());
+	Logger::getLogger().Log(Logger::LOG_NORMAL, tracemsg);
 }

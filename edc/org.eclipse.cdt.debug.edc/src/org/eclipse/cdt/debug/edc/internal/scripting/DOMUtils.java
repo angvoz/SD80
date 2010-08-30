@@ -15,18 +15,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
+import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.tm.tcf.services.IRunControl;
 
 public class DOMUtils {
@@ -135,6 +140,33 @@ public class DOMUtils {
 			contextPropsList.add(context.getProperties());
 		}
 		return contextPropsList.toArray(new Map[contextPropsList.size()]);
+	}
+
+	public static IFunctionScope getFunctionAtAddress(String sessionId,
+			String runtimeAddressIdentifier) throws Exception {
+		
+		final IFunctionScope[] result = new IFunctionScope[] { null };
+		final IAddress runtimeAddress = new Addr64(runtimeAddressIdentifier, 16);
+
+		for (final ExecutionDMC context : getContexts(sessionId)) {
+			if (context instanceof ISymbolDMContext)
+			{
+				final DsfSession session = DsfSession.getSession(sessionId);
+				session.getExecutor().submit(new DsfRunnable() {
+					public void run() {
+						DsfServicesTracker servicesTracker = DOMUtils.getDsfServicesTracker(session);
+						IEDCSymbols edcSymbols = servicesTracker.getService(IEDCSymbols.class);
+						if (edcSymbols != null) {
+							result[0] = edcSymbols.getFunctionAtAddress((ISymbolDMContext) context, runtimeAddress);
+						}
+					}
+
+				}).get();
+			}
+			if (result[0] != null)
+				break;
+		}
+		return result[0];
 	}
 
 }

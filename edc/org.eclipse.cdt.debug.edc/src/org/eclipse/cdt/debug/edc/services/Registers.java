@@ -540,7 +540,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			} catch (Throwable e) {
 				rm.setStatus(EDCDebugger.dsfRequestFailedStatus(null, e));
 			} finally {
-				if (rm.getStatus() != null)
+				if (!rm.isSuccess())
 					EDCDebugger.getMessageLogger().log(rm.getStatus());
 				rm.done();
 			}

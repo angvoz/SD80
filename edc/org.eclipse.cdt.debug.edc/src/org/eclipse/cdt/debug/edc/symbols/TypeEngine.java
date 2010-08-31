@@ -48,6 +48,7 @@ import org.eclipse.core.runtime.CoreException;
  * This class manages the {@link IType} instances relevant to a given target.
  * @noextend This class is not intended to be subclassed by clients.
  */
+@SuppressWarnings("deprecation")
 public class TypeEngine {
 	private Map<Integer, Integer> typeSizeMap;
 	private Map<Object, IType> typeMap = new HashMap<Object, IType>();

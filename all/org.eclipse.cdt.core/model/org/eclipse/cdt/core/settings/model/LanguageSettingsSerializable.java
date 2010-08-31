@@ -42,17 +42,17 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	private static final String ATTR_VALUE = "value";
 
 	private static final String ELEM_FLAG = "flag";
-	
-	
+
+
 	private Map<String, // cfgDescriptionId
 				Map<String, // languageId
 					Map<String, // resource project path
 						List<ICLanguageSettingEntry>>>> fStorage = new HashMap<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>>();
-	
+
 	public LanguageSettingsSerializable() {
 		super();
 	}
-	
+
 	public LanguageSettingsSerializable(String id, String name) {
 		super(id, name);
 	}
@@ -60,7 +60,14 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	public LanguageSettingsSerializable(Element elementProvider) {
 		load(elementProvider);
 	}
-	
+
+	/**
+	 * @return {@code true} if the provider does not keep any settings yet or {@code false} if there are some.
+	 */
+	public boolean isEmpty() {
+		return fStorage.isEmpty();
+	}
+
 	// TODO: look for refactoring this method
 	private void setSettingEntriesInternal(String cfgId, String rcProjectPath, String languageId, List<ICLanguageSettingEntry> entries) {
 		if (entries!=null) {
@@ -92,17 +99,17 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 			}
 		}
 	}
-	
+
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
 		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
 		String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
 		setSettingEntriesInternal(cfgId, rcProjectPath, languageId, entries);
 	}
-	
+
 	@Override
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
 			IResource rc, String languageId) {
-		
+
 		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
 		Map<String, Map<String, List<ICLanguageSettingEntry>>> cfgMap = fStorage.get(cfgId);
 		if (cfgMap!=null) {
@@ -113,7 +120,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				return entries;
 			}
 		}
-		
+
 		return null;
 	}
 
@@ -135,7 +142,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				ATTR_NAME, getName(),
 				ATTR_CLASS, getClass().getCanonicalName(),
 			});
-		
+
 		for (Entry<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
 			serializeConfiguration(elementProvider, entryCfg);
 		}
@@ -172,7 +179,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		}
 		serializeSettingEntries(parentElement, entryRc.getValue());
 	}
-	
+
 	private void serializeSettingEntries(Element parentElement, List<ICLanguageSettingEntry> settingEntries) {
 		for (ICLanguageSettingEntry entry : settingEntries) {
 			Element elementSettingEntry = XmlUtil.appendElement(parentElement, ELEM_ENTRY, new String[] {
@@ -180,7 +187,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 					ATTR_NAME, entry.getName(),
 				});
 			switch(entry.getKind()) {
-			case ICLanguageSettingEntry.MACRO:
+			case ICSettingEntry.MACRO:
 				elementSettingEntry.setAttribute(ATTR_VALUE, entry.getValue());
 				break;
 //						case ICLanguageSettingEntry.LIBRARY_FILE:
@@ -189,7 +196,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 			}
 			int flags = entry.getFlags();
 			if (flags!=0) {
-				// Element elementFlag = 
+				// Element elementFlag =
 				XmlUtil.appendElement(elementSettingEntry, ELEM_FLAG, new String[] {
 						ATTR_VALUE, LanguageSettingEntriesSerializer.composeFlagsString(entry.getFlags())
 					});
@@ -200,20 +207,20 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	private ICLanguageSettingEntry loadSettingEntry(Node parentElement) {
 		String settingKind = XmlUtil.determineAttributeValue(parentElement, ATTR_KIND);
 		String settingName = XmlUtil.determineAttributeValue(parentElement, ATTR_NAME);
-		
+
 		NodeList flagNodes = parentElement.getChildNodes();
 		int flags = 0;
 		for (int i=0;i<flagNodes.getLength();i++) {
 			Node flagNode = flagNodes.item(i);
 			if(flagNode.getNodeType() != Node.ELEMENT_NODE || !ELEM_FLAG.equals(flagNode.getNodeName()))
 				continue;
-			
+
 			String settingFlags = XmlUtil.determineAttributeValue(flagNode, ATTR_VALUE);
 			int bitFlag = LanguageSettingEntriesSerializer.composeFlags(settingFlags);
 			flags |= bitFlag;
 
 		}
-	
+
 		ICLanguageSettingEntry entry = null;
 		switch (LanguageSettingEntriesSerializer.stringToKind(settingKind)) {
 		case ICSettingEntry.INCLUDE_PATH:
@@ -238,12 +245,12 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		}
 		return entry;
 	}
-	
-	
+
+
 	// provider/configuration/language/resource/settingEntry
 	public void load(Element providerNode) {
 		fStorage.clear();
-	
+
 		if (providerNode!=null) {
 			String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
 			String providerName = XmlUtil.determineAttributeValue(providerNode, ATTR_NAME);
@@ -256,7 +263,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				Node elementNode = nodes.item(i);
 				if(elementNode.getNodeType() != Node.ELEMENT_NODE)
 					continue;
-				
+
 				if (ELEM_CONFIGURATION.equals(elementNode.getNodeName())) {
 					loadConfigurationElement(elementNode);
 				} else if (ELEM_LANGUAGE.equals(elementNode.getNodeName())) {
@@ -282,7 +289,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		if (cfgId.length()==0) {
 			cfgId=null;
 		}
-		
+
 		List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
 		NodeList nodes = parentNode.getChildNodes();
 		for (int i=0;i<nodes.getLength();i++) {
@@ -311,14 +318,14 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		if (langId.length()==0) {
 			langId=null;
 		}
-		
+
 		List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
 		NodeList nodes = parentNode.getChildNodes();
 		for (int i=0;i<nodes.getLength();i++) {
 			Node elementNode = nodes.item(i);
 			if(elementNode.getNodeType() != Node.ELEMENT_NODE)
 				continue;
-			
+
 			if (ELEM_RESOURCE.equals(elementNode.getNodeName())) {
 				loadResourceElement(elementNode, cfgId, langId);
 			} else if (ELEM_ENTRY.equals(elementNode.getNodeName())) {
@@ -343,7 +350,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 			Node elementNode = nodes.item(i);
 			if(elementNode.getNodeType() != Node.ELEMENT_NODE)
 				continue;
-			
+
 			if (ELEM_ENTRY.equals(elementNode.getNodeName())) {
 				ICLanguageSettingEntry entry = loadSettingEntry(elementNode);
 				if (entry!=null) {
@@ -351,7 +358,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				}
 			}
 		}
-		
+
 		// set settings
 		if (settings.size()>0) {
 			setSettingEntriesInternal(cfgId, rcProjectPath, langId, settings);
@@ -386,7 +393,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		}
 		return storageClone;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#clone()
 	 */

@@ -95,9 +95,13 @@ public class LanguageSettingsExtensionManager {
 	private static Object serializingLock = new Object();
 
 	static {
-//		loadUserDefinedProviders();
 		loadDefaultProviderIds();
 		loadProviderExtensions();
+		try {
+			loadLanguageSettingsWorkspace();
+		} catch (CoreException e) {
+			CCorePlugin.log("Error loading workspace language settings providers", e); //$NON-NLS-1$
+		}
 	}
 
 
@@ -461,8 +465,27 @@ public class LanguageSettingsExtensionManager {
 
 	public static void serializeLanguageSettingsWorkspace() throws CoreException {
 		URI uriLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
+		List<LanguageSettingsSerializable> serializableExtensionProviders = new ArrayList<LanguageSettingsSerializable>();
+		for (ILanguageSettingsProvider provider : fExtensionProviders.values()) {
+			if (provider instanceof LanguageSettingsSerializable) {
+				// serialize only modified ones
+				LanguageSettingsSerializable ser = (LanguageSettingsSerializable)provider;
+				if (!ser.isEmpty()) {
+					serializableExtensionProviders.add(ser);
+				}
+			}
+		}
+		if (fUserDefinedProviders!=null) {
+			for (ILanguageSettingsProvider provider : fUserDefinedProviders.values()) {
+				// serialize all user defined providers
+				if (provider instanceof LanguageSettingsSerializable) {
+					LanguageSettingsSerializable ser = (LanguageSettingsSerializable)provider;
+					serializableExtensionProviders.add(ser);
+				}
+			}
+		}
 		try {
-			if (fUserDefinedProviders==null) {
+			if (serializableExtensionProviders.isEmpty()) {
 				java.io.File file = new java.io.File(uriLocation);
 				synchronized (serializingLock) {
 					file.delete();
@@ -474,10 +497,8 @@ public class LanguageSettingsExtensionManager {
 			Element rootElement = XmlUtil.appendElement(doc, ELEM_PLUGIN);
 			Element elementExtension = XmlUtil.appendElement(rootElement, ELEM_EXTENSION, new String[] {ATTR_POINT, PROVIDER_EXTENSION_FULL_ID});
 
-			for (ILanguageSettingsProvider provider : fUserDefinedProviders.values()) {
-				if (provider instanceof LanguageSettingsSerializable) {
-					((LanguageSettingsSerializable) provider).serialize(elementExtension);
-				}
+			for (LanguageSettingsSerializable provider : serializableExtensionProviders) {
+				provider.serialize(elementExtension);
 			}
 
 			synchronized (serializingLock) {
@@ -512,7 +533,13 @@ public class LanguageSettingsExtensionManager {
 				Element providerNode = (Element)providerNodes.item(i);
 				String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
 				if (providerId!=null) {
-					ILanguageSettingsProvider provider = fUserDefinedProviders.get(providerId);
+					ILanguageSettingsProvider provider = null;
+					if (fUserDefinedProviders!=null) {
+						provider = fUserDefinedProviders.get(providerId);
+					}
+					if (provider==null) {
+						provider = getWorkspaceProvider(providerId);
+					}
 					if (provider instanceof LanguageSettingsSerializable) {
 						((LanguageSettingsSerializable)provider).load(providerNode);
 					}

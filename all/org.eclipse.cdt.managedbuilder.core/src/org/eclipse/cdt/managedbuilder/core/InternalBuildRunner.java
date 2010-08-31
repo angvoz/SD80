@@ -26,6 +26,7 @@ import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.managedbuilder.buildmodel.BuildDescriptionManager;
 import org.eclipse.cdt.managedbuilder.buildmodel.IBuildDescription;
@@ -50,7 +51,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 
 /**
  * The build runner for the internal builder.
- * 
+ *
  * @author dschaefer
  * @since 8.0
  */
@@ -71,18 +72,18 @@ public class InternalBuildRunner implements IBuildRunner {
 	private static final String NOTHING_BUILT = "ManagedMakeBuilder.message.no.build";	//$NON-NLS-1$
 	private static final String BUILD_ERROR = "ManagedMakeBuilder.message.error";	//$NON-NLS-1$
 
-	
+
 	// TODO: same function is present in CommandBuilder and BuildProcessManager
 	private String[] mapToStringArray(Map<String, String> map){
 		if(map == null)
 			return null;
-		
+
 		List<String> list = new ArrayList<String>();
-		
+
 		for (Entry<String, String> entry : map.entrySet()) {
 			list.add(entry.getKey() + '=' + entry.getValue());
 		}
-		
+
 		return list.toArray(new String[list.size()]);
 	}
 
@@ -133,10 +134,11 @@ public class InternalBuildRunner implements IBuildRunner {
 			if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
 				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
 				runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
+				LanguageSettingsManager.serializeWorkspaceProviders();
 			}
 
-			
-			
+
+
 			consoleOutStream = console.getOutputStream();
 			String[] consoleHeader = new String[3];
 			if(buildIncrementaly)
@@ -279,7 +281,7 @@ public class InternalBuildRunner implements IBuildRunner {
 		}
 		return false;
 	}
-	
+
 	// TODO: same copy in ExternalBuildRunner
 	private void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
 			String[] env, IConsole console, IProgressMonitor monitor) throws CoreException {
@@ -307,7 +309,7 @@ public class InternalBuildRunner implements IBuildRunner {
 				}
 			}
 		}
-		
+
 		// AG: FIXME
 //		LanguageSettingsManager.serialize(cfgDescription);
 	}

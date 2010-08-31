@@ -12,6 +12,8 @@
 package org.eclipse.cdt.make.internal.core.scannerconfig.gnu;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,6 +45,10 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 	private java.io.File specFile = null;
 	private boolean isSpecFileAlreadyThere = false;
 
+	protected List<CIncludePathEntry> detectedIncludes = null;
+	protected List<CMacroEntry> detectedDefines = null;
+
+
 	public String getSpecFileName(String languageId) {
 		String specFileName=null;
 		// TODO: figure out file extension from language id
@@ -60,6 +66,9 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 	@Override
 	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
 		super.startup(cfgDescription, languageId);
+		detectedIncludes = new ArrayList<CIncludePathEntry>();
+		detectedDefines = new ArrayList<CMacroEntry>();
+
 		includeFlag = 0;
 		expectingIncludes = false;
 		specFile = null;
@@ -93,14 +102,14 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		if (matcher.matches()) {
 			String name = matcher.group(1);
 			String value = matcher.group(2);
-			detectedSettingEntries.add(new CMacroEntry(name, value, ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
+			detectedDefines.add(new CMacroEntry(name, value, ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
 			return true;
 		}
 		matcher = MACRO_PATTERN.matcher(line);
 		if (matcher.matches()) {
 			String name = matcher.group(1);
 			String value = matcher.group(2);
-			detectedSettingEntries.add(new CMacroEntry(name, value, ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
+			detectedDefines.add(new CMacroEntry(name, value, ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
 			return true;
 		}
 
@@ -127,7 +136,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 					MakeCorePlugin.log(e);
 				}
 			}
-			detectedSettingEntries.add(new CIncludePathEntry(path, includeFlag));
+			detectedIncludes.add(new CIncludePathEntry(path, includeFlag));
 		}
 
 		return true;
@@ -135,8 +144,6 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 
 	@Override
 	public void shutdown() {
-		super.shutdown();
-
 		includeFlag = 0;
 		expectingIncludes = false;
 
@@ -146,6 +153,11 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		}
 
 		setCommand(null);
+
+		// That places Includes first, then Defines, then other if any
+		detectedSettingEntries.addAll(0, detectedDefines);
+		detectedSettingEntries.addAll(0, detectedIncludes);
+		super.shutdown();
 	}
 
 }

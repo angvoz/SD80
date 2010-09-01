@@ -150,10 +150,18 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			if (element instanceof ILanguageSettingsProvider) {
 				String[] overlayKeys = new String[5];
 				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
-				if (!LanguageSettingsManager.isWorkspaceProvider(provider) && lang!=null) {
+				if (lang!=null) {
 					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
 					if (entries!=null) {
-						overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_SETTING;
+						if (provider instanceof ILanguageSettingsEditableProvider || provider instanceof LanguageSettingsSerializable) {
+							overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_SETTING;
+						}
+					} else {
+						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesConsolidated(provider);
+						if (entriesParent!=null && entriesParent.size()>0) {
+							overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_PARENT;
+						}
+
 					}
 				}
 				return overlayKeys;

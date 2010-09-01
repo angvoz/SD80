@@ -101,6 +101,9 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		assertEquals(original.get(0), retrieved.get(0));
 		assertEquals(original.size(), retrieved.size());
 		assertFalse(mockProvider.isEmpty());
+		// test clear()
+		mockProvider.clear();
+		assertTrue(mockProvider.isEmpty());
 	}
 
 	/**

@@ -26,7 +26,7 @@ public abstract class AbstractBuildCommandParser extends LanguageSettingsSeriali
 
 	private ICConfigurationDescription currentCfgDescription = null;
 	private IProject currentProject;
-	
+
 
 	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
 		currentCfgDescription = cfgDescription;
@@ -36,23 +36,27 @@ public abstract class AbstractBuildCommandParser extends LanguageSettingsSeriali
 	public ICConfigurationDescription getConfigurationDescription() {
 		return currentCfgDescription;
 	}
-	
+
 	public IProject getProject() {
 		return currentProject;
 	}
-	
+
 	/**
 	 * This method is expected to populate this.settingEntries with specific values
 	 * parsed from supplied lines.
 	 */
 	public abstract boolean processLine(String line);
-	
+
 	public void shutdown() {
 	}
 
 	protected void setSettingEntries(List<ICLanguageSettingEntry> entries, String fileName) {
 		IProject project = getProject();
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		// FIXME
+		if (fileName.startsWith("../")) {
+			fileName = fileName.substring("../".length());
+		}
 		IResource rc = project.findMember(fileName);
 		if (rc!=null) {
 			ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(rc.getProjectRelativePath(), true);

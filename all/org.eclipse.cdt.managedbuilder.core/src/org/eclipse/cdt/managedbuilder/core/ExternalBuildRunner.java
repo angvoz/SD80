@@ -126,7 +126,6 @@ public class ExternalBuildRunner implements IBuildRunner {
 				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
 				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
 					runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
-					LanguageSettingsManager.serializeWorkspaceProviders();
 				}
 
 				consoleHeader[1] = configuration.getName();
@@ -269,6 +268,9 @@ public class ExternalBuildRunner implements IBuildRunner {
 				consoleOut.close();
 				consoleErr.close();
 				cos.close();
+				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
+					LanguageSettingsManager.serializeWorkspaceProviders();
+				}
 			}
 		} catch (Exception e) {
 			ManagedBuilderCorePlugin.log(e);

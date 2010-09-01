@@ -68,6 +68,10 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		return fStorage.isEmpty();
 	}
 
+	public void clear() {
+		fStorage.clear();
+	}
+
 	// TODO: look for refactoring this method
 	private void setSettingEntriesInternal(String cfgId, String rcProjectPath, String languageId, List<ICLanguageSettingEntry> entries) {
 		if (entries!=null) {

@@ -26,7 +26,8 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 			String[] overlayKeys = new String[5];
 			ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
 			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_GLOBAL;
+//				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_GLOBAL;
+				overlayKeys[IDecoration.BOTTOM_RIGHT] = LanguageSettingsImages.IMG_OVR_LINK;
 			}
 			return overlayKeys;
 		}

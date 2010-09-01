@@ -20,11 +20,12 @@ import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
@@ -90,7 +91,7 @@ public class LanguageSettingsManager {
 		if (list==null) {
 			return new ArrayList<ICLanguageSettingEntry>(0);
 		}
-		
+
 		ArrayList<ICLanguageSettingEntry> newList = new ArrayList<ICLanguageSettingEntry>(list.size());
 		for (ICLanguageSettingEntry entry : list) {
 			if (entry!=null && entry.getKind()==kind && !containsEntry(newList, entry.getName())) {
@@ -133,10 +134,12 @@ public class LanguageSettingsManager {
 
 		return null;
 	}
-	
+
 	public static boolean isCustomizedResource(ICConfigurationDescription cfgDescription, IResource rc) {
 		for (ILanguageSettingsProvider provider: cfgDescription.getLanguageSettingProviders()) {
-			if (!LanguageSettingsManager.isWorkspaceProvider(provider)) {
+			// FIXME
+//			if (!LanguageSettingsManager.isWorkspaceProvider(provider)) {
+			if (provider instanceof ILanguageSettingsEditableProvider || provider instanceof LanguageSettingsSerializable) {
 				ICResourceDescription rcDescription = cfgDescription.getResourceDescription(rc.getProjectRelativePath(), false);
 				for (ICLanguageSetting languageSetting : getLanguageIds(rcDescription)) {
 					String languageId = languageSetting.getLanguageId();
@@ -149,10 +152,10 @@ public class LanguageSettingsManager {
 				}
 			}
 		}
-		
+
 		return false;
 	}
-	
+
 	/**
 	 * Set and store in workspace area user defined providers.
 	 *
@@ -184,7 +187,7 @@ public class LanguageSettingsManager {
 	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
 	 * That returns actual object, any modifications will affect any configuration
 	 * referring to the provider.
-	 * 
+	 *
 	 * @param id - ID of provider to find.
 	 * @return the provider or {@code null} if provider is not defined.
 	 */
@@ -194,14 +197,14 @@ public class LanguageSettingsManager {
 
 	/**
 	 * Checks if the provider is defined on the workspace level. See {@link #getWorkspaceProvider(String)}.
-	 * 
+	 *
 	 * @param provider - provider to check.
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
 	 */
 	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
 		return LanguageSettingsExtensionManager.isWorkspaceProvider(provider);
 	}
-	
+
 	/**
 	 * Set and store default providers IDs to be used if provider list is empty.
 	 *
@@ -233,7 +236,7 @@ public class LanguageSettingsManager {
 		}
 		cfgDescription.setLanguageSettingProviders(providers);
 	}
-	
+
 	/**
 	 * TODO
 	 */
@@ -244,7 +247,7 @@ public class LanguageSettingsManager {
 		}
 		return ids;
 	}
-	
+
 	/**
 	 * TODO
 	 */
@@ -291,7 +294,7 @@ public class LanguageSettingsManager {
 				}
 			}
 		}
-		
+
 		return null;
 	}
 

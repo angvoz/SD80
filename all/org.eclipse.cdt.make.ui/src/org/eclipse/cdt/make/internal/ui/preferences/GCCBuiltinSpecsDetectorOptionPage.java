@@ -29,7 +29,6 @@ import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.Dialog;
-import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.layout.PixelConverter;
 import org.eclipse.jface.text.FindReplaceDocumentAdapterContentProposalProvider;
 import org.eclipse.jface.viewers.ArrayContentProvider;
@@ -306,36 +305,29 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		}
 
 		{
-			Button button = new Button(composite, SWT.PUSH);
+			final Button button = new Button(composite, SWT.PUSH);
 			button.setFont(parent.getFont());
-			button.setText("Run now");
+			String text = fProvider.isEmpty() ? "Run now" : "Clear";
+			button.setText(text);
 //			button.addSelectionListener(this);
 			GridData data = new GridData();
 			data.horizontalSpan = 2;
 //			data.horizontalAlignment = GridData.BEGINNING;
+//			data.widthHint = 60;
 			button.setLayoutData(data);
 			button.addSelectionListener(new SelectionAdapter() {
 
 				@Override
 				public void widgetSelected(SelectionEvent evt) {
-//					handleAddr2LineButtonSelected();
-					//updateLaunchConfigurationDialog();
-					InputDialog dialog = new InputDialog(composite.getShell(),
-							"Enter include path:",
-							"Enter include path:",
-							"/usr/include/",
-							null
-						);
-
-//					if (dialog.open()==Window.OK) {
-//						ICLanguageSettingEntry entry = new CIncludePathEntry(dialog.getValue(), ICSettingEntry.BUILTIN);
-////						performAdd(entry);
-//						lang.setSettingEntries(ICLanguageSettingEntry.INCLUDE_PATH,
-//								new ICLanguageSettingEntry[] {entry}
-//							);
-//						IProject project = getResDesc().getConfiguration().getProjectDescription().getProject();
-//						DiscoveredScannerInfoStore.getInstance().clearDiscoveredScannerConfigStore(project);
-//					}
+					if (fProvider.isEmpty()) {
+						// TODO
+					} else {
+						fProvider.clear();
+						button.setEnabled(false);
+					}
+					String text = fProvider.isEmpty() ? "Run now" : "Clear";
+					button.setText(text);
+					button.pack();
 				}
 
 			});

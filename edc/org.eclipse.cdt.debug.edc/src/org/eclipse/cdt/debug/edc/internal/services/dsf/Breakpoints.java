@@ -633,14 +633,28 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		final Map<String, Object> properties = new HashMap<String, Object>(props);
 
 		if (usesTCFBreakpointService()) {
-			IBreakpointsTargetDMContext exedmc = DMContexts.getAncestorOfType(exeDMC, IBreakpointsTargetDMContext.class);
-
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ID, Long.toString(id));
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ENABLED, true);
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_TYPE,
 					org.eclipse.tm.tcf.services.IBreakpoints.TYPE_AUTO);
 			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_LOCATION, address.toString());
-			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_CONTEXTIDS, new String[] { ((IEDCDMContext)exedmc).getID() });
+
+
+			// Pass "contexts" for which the BP is supposed to work.
+			// NOTE: EDC extension to TCF: 
+			//  TCF only define "IBreakpoints.PROP_CONTEXTIDS" as a array of IDs. 
+			//  In EDC, it's required the first element in the array be IBreakpointsTargetDMContext
+			//  which is usually (but not always) a process. This makes EDC backward compatible with
+			//  some existing TCF agents.
+			IBreakpointsTargetDMContext bpTargetDMC = DMContexts.getAncestorOfType(exeDMC, IBreakpointsTargetDMContext.class);
+			// pass "exeDMC" as a context if it's different from bpTargetDMC, say, if "exeDMC" is a thread and
+			// the "bpTargetDMC" is the owner process. This allows for thread-specific BP if agent supports it.
+			String[] contexts;
+			if (! exeDMC.equals(bpTargetDMC))
+				contexts = new String[] {((IEDCDMContext)bpTargetDMC).getID(), ((IEDCDMContext)exeDMC).getID()};
+			else 
+				contexts = new String[] {((IEDCDMContext)bpTargetDMC).getID()};
+			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_CONTEXTIDS, contexts);
 
 			getTargetEnvironmentService().updateBreakpointProperties(exeDMC, address, properties);
 

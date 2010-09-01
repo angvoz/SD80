@@ -18,13 +18,14 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.ui.IconAndMessageAndDetailsDialog;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging.DoneAddListener;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging.DoneRemoveListener;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ILogging.LogListener;
 import org.eclipse.cdt.debug.ui.CDebugUIPlugin;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.tm.tcf.core.AbstractChannel;
 import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.IToken;
@@ -290,17 +291,31 @@ public class ConsoleLogManager implements LogListener {
 		}
 	}
 
+
+	private static String severityString(final int severity) {
+		String result;
+		switch (severity) {
+			case IStatus.INFO:		result = "INFO";	break;
+			case IStatus.WARNING:	result = "WARNING";	break;
+			case IStatus.ERROR:
+			default:	// shouldn't be receiving anything but what's above
+				result = "ERROR";
+		}
+		return result;
+	}
+
 	/** @since 2.0 */
 	public void dialog(final int severity, final String summary, final String details) {
-		Exception e = new Exception("EDC debugger reports error \"" + details + "\"");
-		final Status status = new Status(severity, EDCDebugger.getUniqueIdentifier(), summary, e);
-		EDCDebugger.getMessageLogger().log(status);
+		String edcId = EDCDebugger.getUniqueIdentifier();
+		EDCDebugger.getMessageLogger().log(new Status(severity, edcId, "EDC debugger: " + summary));
+
 		CDebugUIPlugin.getStandardDisplay().asyncExec(new Runnable() {
 			public void run() {
-				ErrorDialog.openError( CDebugUIPlugin.getActiveWorkbenchShell(),
-									   "EDC Debug Monitor Message",	// title of dialog window
-									   "Raised by Debug Monitor",
-									   status);			// includes full message and exception details
+				(new IconAndMessageAndDetailsDialog(severity, summary, 
+													"EDC debugger reports "
+													+ severityString(severity)
+													+ ":\n\n" + details))
+				.open();
 			}
 		});
 	}

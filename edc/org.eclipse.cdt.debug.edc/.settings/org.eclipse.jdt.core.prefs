@@ -1,4 +1,4 @@
-#Thu May 06 09:17:55 CDT 2010
+#Thu Sep 02 10:23:35 CDT 2010
 eclipse.preferences.version=1
 org.eclipse.jdt.core.compiler.codegen.targetPlatform=1.5
 org.eclipse.jdt.core.compiler.compliance=1.5
@@ -38,7 +38,7 @@ org.eclipse.jdt.core.compiler.problem.nullReference=error
 org.eclipse.jdt.core.compiler.problem.overridingPackageDefaultMethod=error
 org.eclipse.jdt.core.compiler.problem.parameterAssignment=ignore
 org.eclipse.jdt.core.compiler.problem.possibleAccidentalBooleanAssignment=ignore
-org.eclipse.jdt.core.compiler.problem.potentialNullReference=ignore
+org.eclipse.jdt.core.compiler.problem.potentialNullReference=error
 org.eclipse.jdt.core.compiler.problem.rawTypeReference=error
 org.eclipse.jdt.core.compiler.problem.redundantNullCheck=ignore
 org.eclipse.jdt.core.compiler.problem.redundantSuperinterface=ignore

@@ -17,10 +17,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ConsoleOutputStream;
 import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.IMarkerGenerator;
+import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICModelMarker;
+import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
@@ -328,6 +333,11 @@ public class InternalBuildRunner implements IBuildRunner {
 
 		// AG: FIXME
 //		LanguageSettingsManager.serialize(cfgDescription);
+		// AG: FIXME - rather send event that ls settings changed
+		IProject project = cfgDescription.getProjectDescription().getProject();
+		ICProject icProject = CoreModel.getDefault().create(project);
+		ICElement[] tuSelection = new ICElement[] {icProject};
+		CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
 	}
 
 }

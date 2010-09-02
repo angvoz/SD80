@@ -29,7 +29,11 @@ import org.eclipse.cdt.core.IConsoleParser;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariableManager;
+import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICModelMarker;
+import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
@@ -490,6 +494,11 @@ public class ExternalBuildRunner implements IBuildRunner {
 
 		// AG: FIXME
 //		LanguageSettingsManager.serialize(cfgDescription);
+		// AG: FIXME - rather send event that ls settings changed
+		IProject project = cfgDescription.getProjectDescription().getProject();
+		ICProject icProject = CoreModel.getDefault().create(project);
+		ICElement[] tuSelection = new ICElement[] {icProject};
+		CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
 	}
 
 	protected String[] calcEnvironment(IBuilder builder) throws CoreException{

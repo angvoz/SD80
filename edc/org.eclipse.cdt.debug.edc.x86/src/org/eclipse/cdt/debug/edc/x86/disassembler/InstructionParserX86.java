@@ -1153,7 +1153,9 @@ public class InstructionParserX86 {
 				break;
 			}
 
-			operand += names[regID];
+			if (names != null) {
+				operand += names[regID];
+			}
 
 		} catch (Exception e) { // out-of-bound, etc.
 			e.printStackTrace(); // for debug

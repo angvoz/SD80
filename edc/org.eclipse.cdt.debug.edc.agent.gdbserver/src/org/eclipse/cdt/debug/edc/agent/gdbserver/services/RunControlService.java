@@ -115,14 +115,15 @@ public class RunControlService implements IRunControl {
 	}
 
 	private void getContext(IToken token, String contextID) throws IOException {
-		Object err = null;
-
 		ContextInAgent context = ContextManager.findDebuggedContext(contextID);
 
 		if (context == null)
-			err = AgentUtils.makeErrorReport(IErrorReport.TCF_ERROR_OTHER, "Context ID is invalid: " + contextID);
+			
 
-		fChannel.sendResult(token, JSON.toJSONSequence(new Object[] { err, context.getProperties() }));
+		fChannel.sendResult(token, JSON.toJSONSequence(new Object[] { 
+				context == null ? AgentUtils.makeErrorReport(IErrorReport.TCF_ERROR_OTHER, "Context ID is invalid: " + contextID) : null, 
+				context == null ? null : context.getProperties()
+		}));
 	}
 
 	private void resume(IToken token, final String contextID, int mode, int count) throws IOException {

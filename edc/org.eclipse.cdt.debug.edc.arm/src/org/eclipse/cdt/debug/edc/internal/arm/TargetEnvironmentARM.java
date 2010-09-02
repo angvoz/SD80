@@ -206,7 +206,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 				if (functionStartAddress.getValue().testBit(0)) {
 					if (cachedValues != null) {
 						cachedValues.put(linkAddress, true);
-						ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());
+						ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader != null ? reader.getModificationDate() : 0);
 					}
 					return true;
 				}

@@ -75,8 +75,12 @@ public class GdbserverAgentDescriptor implements ITCFAgentLauncher {
 			throw e;
 		}
 
-		if (!path.toFile().exists())
+		if (path == null) {
+			throw new Exception("GdbserverAgent.jar not found");
+		}
+		else if (!path.toFile().exists()) {
 			throw new Exception("GdbserverAgent.jar file does not exist at " + path.toOSString());
+		}
 
 		final CommandLauncher launcher = new CommandLauncher();
 		String[] cmdarray = new String[] { "-jar", path.toOSString() };

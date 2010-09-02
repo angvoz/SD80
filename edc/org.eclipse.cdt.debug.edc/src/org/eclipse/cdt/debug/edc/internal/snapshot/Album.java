@@ -477,7 +477,9 @@ public class Album extends PlatformObject implements IAlbum {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		} finally {
 			try {
-				zipOut.close();
+				if (zipOut != null) {
+					zipOut.close();
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -548,7 +550,9 @@ public class Album extends PlatformObject implements IAlbum {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		} finally {
 			try {
-				zipOut.close();
+				if (zipOut != null) {
+					zipOut.close();
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

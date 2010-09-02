@@ -173,22 +173,21 @@ public class ARMStack extends Stack {
 							functionStartAddress = module.toRuntimeAddress(cachedAddress);	
 					}
 
-				}
-				
-				if (functionStartAddress == null)
-				{
-					// see if we have symbolics for the module
-					IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
-					IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
-					if (scope != null) {
-						// ignore inlined functions
-						while (scope.getParent() instanceof IFunctionScope)
-							scope = (IFunctionScope) scope.getParent();
-						functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
-						// put it in the cache
-						if (cachedMapping != null) {
-							cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
-							ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());
+					if (functionStartAddress == null)
+					{
+						// see if we have symbolics for the module
+						IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
+						IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
+						if (scope != null) {
+							// ignore inlined functions
+							while (scope.getParent() instanceof IFunctionScope)
+								scope = (IFunctionScope) scope.getParent();
+							functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
+							// put it in the cache
+							if (cachedMapping != null) {
+								cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
+								ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());
+							}
 						}
 					}
 				}

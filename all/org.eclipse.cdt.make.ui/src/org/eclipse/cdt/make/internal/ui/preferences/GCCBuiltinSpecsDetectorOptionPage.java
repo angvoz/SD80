@@ -188,6 +188,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	public void init(Object provider) {
 		// must be AbstractBuiltinSpecsDetector
 		fProvider = (AbstractBuiltinSpecsDetector) provider;
+//		fEditable = isEditable;
 	}
 	/*
 	 * (non-Javadoc)
@@ -197,8 +198,9 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	@Override
 	public void createControl(Composite parent) {
 //		Composite optionsPageComposite = new Composite(composite, SWT.NULL);
+		fEditable = parent.isEnabled();
 		Group group = new Group(parent, SWT.SHADOW_ETCHED_IN);
-		group.setText("Language Settings Provider Options");
+		group.setText("Builtin Specs Detector Options");
 
 		GridLayout gridLayout = new GridLayout(2, true);
 		gridLayout.makeColumnsEqualWidth = false;
@@ -216,6 +218,13 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		composite.setLayout(layout);
 		composite.setLayoutData(new GridData(GridData.FILL_BOTH));
 		Dialog.applyDialogFont(composite);
+
+		if (!fEditable) {
+			parent.setEnabled(true); // so the link works
+			createLinkToPreferences(composite);
+		}
+
+
 
 
 		Group groupRun = new Group(composite, SWT.SHADOW_ETCHED_IN);
@@ -238,6 +247,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			gd.horizontalSpan = 3;
 			b1.setLayoutData(gd);
 			b1.setSelection(true);
+			b1.setEnabled(fEditable);
 //			b1.addSelectionListener(new SelectionAdapter() {
 //				@Override
 //				public void widgetSelected(SelectionEvent e) {
@@ -252,6 +262,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		{
 			Button b2 = new Button(groupRun, SWT.RADIO);
 			b2.setText("Activate on every build"); //$NON-NLS-1$
+			b2.setEnabled(false);
 			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 			gd.horizontalSpan = 3;
 			b2.setLayoutData(gd);
@@ -273,6 +284,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			GridData gd = new GridData();
 			gd.horizontalSpan = 2;
 			label.setLayoutData(gd);
+			label.setEnabled(fEditable);
 //		Label newLabel = new Label(composite, SWT.NONE);
 ////		((GridData) newLabel.getLayoutData()).horizontalSpan = 1;
 //		newLabel.setText("Command to get compiler specs:");
@@ -281,6 +293,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		{
 			inputCommand = ControlFactory.createTextField(composite, SWT.SINGLE | SWT.BORDER);
 			inputCommand.setText(fProvider.getCustomParameter());
+			inputCommand.setEnabled(fEditable);
 			inputCommand.addModifyListener(new ModifyListener() {
 
 				public void modifyText(ModifyEvent e) {
@@ -292,6 +305,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 
 		{
 			Button button = ControlFactory.createPushButton(composite, "Browse...");
+			button.setEnabled(fEditable);
 			button.addSelectionListener(new SelectionAdapter() {
 
 				@Override
@@ -307,7 +321,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		{
 			final Button button = new Button(composite, SWT.PUSH);
 			button.setFont(parent.getFont());
-			String text = fProvider.isEmpty() ? "Run now" : "Clear";
+			String text = fProvider.isEmpty() ? "Run Now (TODO)" : "Clear";
 			button.setText(text);
 //			button.addSelectionListener(this);
 			GridData data = new GridData();
@@ -315,6 +329,9 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //			data.horizontalAlignment = GridData.BEGINNING;
 //			data.widthHint = 60;
 			button.setLayoutData(data);
+			// TODO
+			button.setEnabled(fEditable && !fProvider.isEmpty());
+
 			button.addSelectionListener(new SelectionAdapter() {
 
 				@Override
@@ -323,9 +340,10 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 						// TODO
 					} else {
 						fProvider.clear();
-						button.setEnabled(false);
 					}
-					String text = fProvider.isEmpty() ? "Run now" : "Clear";
+					// TODO
+					button.setEnabled(fEditable && !fProvider.isEmpty());
+					String text = fProvider.isEmpty() ? "Run Now (TODO)" : "Clear";
 					button.setText(text);
 					button.pack();
 				}
@@ -393,7 +411,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		Assert.isTrue(!fEditable);
 
 		Link link = new Link(parent, SWT.NONE);
-		link.setText(DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage);
+		link.setText(DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Go to Discovery Tab.");
 
 		link.addListener(SWT.Selection, new Listener() {
 			public void handleEvent(Event event) {

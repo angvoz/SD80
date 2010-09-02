@@ -474,7 +474,7 @@ public class ExternalBuildRunner implements IBuildRunner {
 		for (ILanguageSettingsProvider lsProvider : cfgDescription.getLanguageSettingProviders()) {
 			if (lsProvider instanceof AbstractBuiltinSpecsDetector) {
 				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
-					for (String languageId : languageIds) {
+				for (String languageId : languageIds) {
 					if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
 						try {
 							detector.startup(cfgDescription, languageId);

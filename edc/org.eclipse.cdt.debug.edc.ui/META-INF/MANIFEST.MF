@@ -26,10 +26,14 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.core.filesystem;bundle-version="1.3.0"
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
-Export-Package: org.eclipse.cdt.debug.edc.internal.ui;x-internal:=true,
- org.eclipse.cdt.debug.edc.internal.ui.actions;x-internal:=true,
- org.eclipse.cdt.debug.edc.internal.ui.launch;x-friends:="org.eclipse.cdt.debug.edc.windows,org.eclipse.cdt.debug.edc.windows.ui,org.eclipse.cdt.debug.edc.linux.x86",
- org.eclipse.cdt.debug.edc.internal.ui.views;x-internal:=true,
+Export-Package: org.eclipse.cdt.debug.edc.internal.ui;x-friends:="org.eclipse.cdt.debug.edc.tests",
+ org.eclipse.cdt.debug.edc.internal.ui.actions;x-friends:="org.eclipse.cdt.debug.edc.tests",
+ org.eclipse.cdt.debug.edc.internal.ui.launch;
+  x-friends:="org.eclipse.cdt.debug.edc.windows,
+   org.eclipse.cdt.debug.edc.windows.ui,
+   org.eclipse.cdt.debug.edc.linux.x86,
+   org.eclipse.cdt.debug.edc.tests",
+ org.eclipse.cdt.debug.edc.internal.ui.views;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.ui,
  org.eclipse.cdt.debug.edc.ui.console,
  org.eclipse.cdt.debug.edu.internal.ui.sourcelookup;x-internal:=true

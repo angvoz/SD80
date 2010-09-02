@@ -70,6 +70,7 @@ public class RegistersService implements IRegisters {
 			} catch (NoSuchMethodException e) {
 				// Command not supported yet.
 				fChannel.rejectCommand(token);
+				return;
 			}
 
 			try {
@@ -181,7 +182,7 @@ public class RegistersService implements IRegisters {
 			
 			fChannel.sendResult(token, JSON.toJSONSequence(new Object[] {
 					context == null ? AgentUtils.makeErrorReport(IErrorReport.TCF_ERROR_OTHER, "Invalid context id: " + contextID) : null, 
-					context.getProperties()}));
+					context == null ? null : context.getProperties()}));
 		}
 
 		@SuppressWarnings("unused")	// implicitly used

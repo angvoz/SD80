@@ -2,12 +2,15 @@ package org.eclipse.cdt.internal.ui.newui;
 
 import java.net.URL;
 
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.ImageRegistry;
 import org.eclipse.jface.viewers.DecorationOverlayIcon;
 import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.swt.graphics.Image;
 
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingPathEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CUIPlugin;
 
@@ -32,6 +35,8 @@ public class LanguageSettingsImages {
 	public static final String IMG_FILESYSTEM = "icons/obj16/filesyst.gif"; //$NON-NLS-1$
 	public static final String IMG_WORKSPACE = "icons/obj16/workspace.gif"; //$NON-NLS-1$
 
+	public static final String IMG_OVR_WARNING = "icons/ovr16/warning_co.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_ERROR = "icons/ovr16/error_co.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_SETTING = "icons/ovr16/setting_nav.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_GLOBAL = "icons/ovr16/global_ovr.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_LINK = "icons/ovr16/link_ovr.gif"; //$NON-NLS-1$
@@ -143,16 +148,43 @@ public class LanguageSettingsImages {
 	public static Image getImage(int kind, int flags, boolean isProjectRelative) {
 		String imageKey = getImageKey(kind, flags, isProjectRelative);
 		if (imageKey!=null) {
-			String overlayKey = getOverlayKey(kind, flags, isProjectRelative);
-			if (overlayKey!=null) {
-				return getOverlaidImage(imageKey, overlayKey, IDecoration.TOP_RIGHT);
-			}
+//			String overlayKey = getErrorOverlayKey(kind, flags, isProjectRelative);
+//			if (overlayKey!=null) {
+//				return getOverlaidImage(imageKey, overlayKey, IDecoration.BOTTOM_LEFT);
+//			}
 			return get(imageKey);
 		}
 		return null;
 	}
 
-	private static String getOverlayKey(Object element, int columnIndex, boolean isProjectRelative) {
+//	public static Image getImage(int kind, int flags, boolean isProjectRelative) {
+	public static Image getImage(ICLanguageSettingEntry entry) {
+		int kind = entry.getKind();
+		boolean isWorkspacePath = (entry.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
+		String path = entry.getName();
+		boolean isProjectRelative = isWorkspacePath && !path.startsWith("/");
+		int flags = entry.getFlags();
+		String imageKey = getImageKey(kind, flags, isProjectRelative);
+		if (imageKey!=null) {
+			if (entry instanceof ICLanguageSettingPathEntry) {
+				boolean exists = true;
+				boolean resolved = (flags & ICSettingEntry.RESOLVED) ==  ICSettingEntry.RESOLVED;
+				if (isWorkspacePath) {
+					// TODO: Hmm, MBS supplies unresolved entries having location=null
+					if (resolved) {
+						IPath location = ((ICLanguageSettingPathEntry) entry).getLocation();
+						exists = location!=null && location.toFile().exists();
+					}
+				} else {
+					java.io.File file = new java.io.File(path);
+					exists = file.exists();
+				}
+				if (!exists) {
+					return getOverlaidImage(imageKey, IMG_OVR_WARNING, IDecoration.BOTTOM_LEFT);
+				}
+			}
+			return get(imageKey);
+		}
 		return null;
 	}
 

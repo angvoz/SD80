@@ -11,11 +11,13 @@
 
 package org.eclipse.cdt.make.core.scannerconfig;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.settings.model.CIncludeFileEntry;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
@@ -24,6 +26,17 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.URIUtil;
 
 public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 	// TODO better algorithm to figure out the file
@@ -47,19 +60,20 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			new LibraryPathOptionParser("-L\\s*([^\\s\"']*)", "$1"),
 			new LibraryFileOptionParser("-l\\s*([^\\s\"']*)", "lib$1.a"),
 	};
-	
-	
+	private ErrorParserManager errorParserManager = null;
+
+
 	private abstract class OptionParser {
 		protected final Pattern pattern;
 		protected final String patternStr;
-		
+
 		public OptionParser(String pattern) {
 			this.patternStr = pattern;
 			this.pattern = Pattern.compile(pattern);
 		}
-		
+
 		public abstract ICLanguageSettingEntry createEntry(Matcher matcher);
-		
+
 		/**
 		 * TODO: explain
 		 */
@@ -67,7 +81,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			String option = input.replaceFirst("("+patternStr+").*", "$1");
 			return option;
 		}
-		
+
 		protected ICLanguageSettingEntry parse(String input) {
 			String option = extractOption(input);
 			Matcher matcher = pattern.matcher(option);
@@ -76,17 +90,17 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			}
 			return null;
 		}
-		
+
 		protected String parseStr(Matcher matcher, String str) {
 			if (str!=null)
 				return matcher.replaceAll(str);
 			return null;
 		}
 	}
-	
+
 	private class IncludePathOptionParser extends OptionParser {
 		private String nameExpression;
-		
+
 		public IncludePathOptionParser(String pattern, String nameExpression) {
 			super(pattern);
 			this.nameExpression = nameExpression;
@@ -94,14 +108,32 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 		@Override
 		public ICLanguageSettingEntry createEntry(Matcher matcher) {
 			String name = parseStr(matcher, nameExpression);
+			if (errorParserManager!=null) {
+				IPath path = new Path(name);
+				URI uri = null;
+				if (!path.isAbsolute()) {
+					URI cwd = errorParserManager.getWorkingDirectoryURI();
+					uri = URIUtil.append(cwd, path.toString());
+				} else {
+					uri = errorParserManager.toURI(path);
+				}
+
+				IWorkspace workspace = ResourcesPlugin.getWorkspace();
+				IWorkspaceRoot root = workspace.getRoot();
+				IContainer[] folders = root.findContainersForLocationURI(uri);
+				if (folders.length>0) {
+					IFolder folder = (IFolder)folders[0];
+					return new CIncludePathEntry(folder, ICSettingEntry.READONLY);
+				}
+			}
 			return new CIncludePathEntry(name, ICSettingEntry.READONLY);
 		}
-		
+
 	}
-	
+
 	private class IncludeFileOptionParser extends OptionParser {
 		private String nameExpression;
-		
+
 		public IncludeFileOptionParser(String pattern, String nameExpression) {
 			super(pattern);
 			this.nameExpression = nameExpression;
@@ -109,15 +141,20 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 		@Override
 		public ICLanguageSettingEntry createEntry(Matcher matcher) {
 			String name = parseStr(matcher, nameExpression);
+			IFile file = errorParserManager.findFileName(name);
+			if (file!=null) {
+				new CIncludeFileEntry(file, ICSettingEntry.READONLY);
+			}
+
 			return new CIncludeFileEntry(name, ICSettingEntry.READONLY);
 		}
-		
+
 	}
-	
+
 	private class MacroOptionParser extends OptionParser {
 		private String nameExpression;
 		private String valueExpression;
-		
+
 		public MacroOptionParser(String pattern, String nameExpression, String valueExpression) {
 			super(pattern);
 			this.nameExpression = nameExpression;
@@ -129,12 +166,12 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			String value = parseStr(matcher, valueExpression);
 			return new CMacroEntry(name, value, ICSettingEntry.READONLY);
 		}
-		
+
 	}
-	
+
 	private class MacroFileOptionParser extends OptionParser {
 		private String nameExpression;
-		
+
 		public MacroFileOptionParser(String pattern, String nameExpression) {
 			super(pattern);
 			this.nameExpression = nameExpression;
@@ -144,12 +181,12 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			String name = parseStr(matcher, nameExpression);
 			return new CMacroFileEntry(name, ICSettingEntry.READONLY);
 		}
-		
+
 	}
-	
+
 	private class LibraryPathOptionParser extends OptionParser {
 		private String nameExpression;
-		
+
 		public LibraryPathOptionParser(String pattern, String nameExpression) {
 			super(pattern);
 			this.nameExpression = nameExpression;
@@ -159,12 +196,12 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			String name = parseStr(matcher, nameExpression);
 			return new CLibraryPathEntry(name, ICSettingEntry.READONLY);
 		}
-		
+
 	}
-	
+
 	private class LibraryFileOptionParser extends OptionParser {
 		private String nameExpression;
-		
+
 		public LibraryFileOptionParser(String pattern, String nameExpression) {
 			super(pattern);
 			this.nameExpression = nameExpression;
@@ -174,14 +211,15 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			String name = parseStr(matcher, nameExpression);
 			return new CLibraryFileEntry(name, ICSettingEntry.READONLY);
 		}
-		
+
 	}
-	
+
 	@Override
-	public boolean processLine(String line) {
+	public boolean processLine(String line, ErrorParserManager epm) {
+		errorParserManager = epm;
 		String fileName = null;
 		Matcher fileMatcher = PATTERN_FILE.matcher(line);
-		
+
 		if (fileMatcher.matches()) {
 			fileName = fileMatcher.group(PATTERN_FILE_GROUP);
 		} else {
@@ -190,29 +228,39 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 				fileName = fileMatcher.group(PATTERN_FILE_QUOTED_GROUP);
 			}
 		}
-		if (fileName==null) {
-			return false;
-		}
-		
-		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
-		Matcher optionMatcher = PATTERN_OPTIONS.matcher(line);
-		while (optionMatcher.find()) {
-			String option = optionMatcher.group(0);
-			
-			for (OptionParser optionParser : optionParsers) {
-				ICLanguageSettingEntry entry = optionParser.parse(option);
-				if (entry!=null) {
-					entries.add(entry);
-					break;
-				}
+
+		IResource file = null;
+		if (fileName!=null) {
+			// TODO: move to AbstractBuildCommandParser
+			if (epm!=null) {
+				file = epm.findFileName(fileName);
+			} else {
+				IProject project = getProject();
+				file = project.findMember(fileName);
 			}
 		}
-		if (entries.size()>0) {
-			setSettingEntries(entries, fileName);
-		} else {
-			setSettingEntries(null, fileName);
+
+		if (file!=null) {
+			List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+			Matcher optionMatcher = PATTERN_OPTIONS.matcher(line);
+			while (optionMatcher.find()) {
+				String option = optionMatcher.group(0);
+
+				for (OptionParser optionParser : optionParsers) {
+					ICLanguageSettingEntry entry = optionParser.parse(option);
+					if (entry!=null) {
+						entries.add(entry);
+						break;
+					}
+				}
+			}
+			if (entries.size()>0) {
+				setSettingEntries(entries, file);
+			} else {
+				setSettingEntries(null, file);
+			}
 		}
-		return true;
+		return false;
 	}
 
 }

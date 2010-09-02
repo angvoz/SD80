@@ -13,6 +13,8 @@ package org.eclipse.cdt.make.core.scannerconfig;
 
 import java.util.List;
 
+import org.eclipse.cdt.core.ErrorParserManager;
+import org.eclipse.cdt.core.IErrorParser;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
@@ -22,7 +24,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 
 public abstract class AbstractBuildCommandParser extends LanguageSettingsSerializable implements
-		ILanguageSettingsOutputScanner {
+		ILanguageSettingsOutputScanner, IErrorParser {
 
 	private ICConfigurationDescription currentCfgDescription = null;
 	private IProject currentProject;
@@ -41,23 +43,22 @@ public abstract class AbstractBuildCommandParser extends LanguageSettingsSeriali
 		return currentProject;
 	}
 
+	public final boolean processLine(String line) {
+		return processLine(line, null);
+	}
+
 	/**
 	 * This method is expected to populate this.settingEntries with specific values
 	 * parsed from supplied lines.
 	 */
-	public abstract boolean processLine(String line);
+	public abstract boolean processLine(String line, ErrorParserManager epm);
 
 	public void shutdown() {
 	}
 
-	protected void setSettingEntries(List<ICLanguageSettingEntry> entries, String fileName) {
+	protected void setSettingEntries(List<ICLanguageSettingEntry> entries, IResource rc) {
 		IProject project = getProject();
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
-		// FIXME
-		if (fileName.startsWith("../")) {
-			fileName = fileName.substring("../".length());
-		}
-		IResource rc = project.findMember(fileName);
 		if (rc!=null) {
 			ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(rc.getProjectRelativePath(), true);
 			String languageId = ls.getLanguageId();

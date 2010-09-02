@@ -663,8 +663,9 @@ public class LanguageSettingsExtensionManager {
 	public static void loadLanguageSettings(ICProjectDescription prjDescription) {
 		IProject project = prjDescription.getProject();
 		IFile file = project.getFile(STORAGE_PROJECT_LANGUAGE_SETTINGS);
+		// AG: FIXME not sure about that one
+		// Causes java.lang.IllegalArgumentException: Attempted to beginRule: P/cdt312, does not match outer scope rule: org.eclipse.cdt.internal.ui.text.c.hover.CSourceHover$SingletonRule@6f34fb
 		try {
-			// AG: FIXME not sure about that one
 			file.refreshLocal(IResource.DEPTH_ZERO, null);
 		} catch (CoreException e) {
 			// ignore failure

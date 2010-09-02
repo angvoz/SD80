@@ -192,7 +192,7 @@ public class ExternalBuildRunner implements IBuildRunner {
 				OutputStream consoleOut = stdout;
 				OutputStream consoleErr = stderr;
 				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
-					ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, project, configuration, workingDirectory, markerGenerator, null);
+					ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, project, configuration, workingDirectory, markerGenerator, null, epm);
 					if (sniffer!=null) {
 						consoleOut = sniffer.getOutputStream();
 						consoleErr = sniffer.getErrorStream();
@@ -363,7 +363,8 @@ public class ExternalBuildRunner implements IBuildRunner {
 			IConfiguration cfg,
 			IPath workingDirectory,
 			IMarkerGenerator markerGenerator,
-			IScannerInfoCollector collector){
+			IScannerInfoCollector collector,
+			ErrorParserManager epm){
 		ICfgScannerConfigBuilderInfo2Set container = CfgScannerConfigProfileManager.getCfgScannerConfigBuildInfo(cfg);
 		Map<CfgInfoContext, IScannerConfigBuilderInfo2> map = container.getInfoMap();
 		List<IConsoleParser> clParserList = new ArrayList<IConsoleParser>();
@@ -413,8 +414,8 @@ public class ExternalBuildRunner implements IBuildRunner {
 		}
 
 		if(clParserList.size() != 0){
-			return new ConsoleOutputSniffer(outputStream, errorStream,
-					clParserList.toArray(new IConsoleParser[clParserList.size()]));
+			IConsoleParser[] parsers = clParserList.toArray(new IConsoleParser[clParserList.size()]);
+			return new ConsoleOutputSniffer(outputStream, errorStream, parsers, epm);
 		}
 
 		return null;

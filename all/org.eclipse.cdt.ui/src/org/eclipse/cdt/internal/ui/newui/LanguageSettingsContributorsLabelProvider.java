@@ -57,10 +57,7 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 
 		if (element instanceof ICLanguageSettingEntry) {
 			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			int kind = le.getKind();
-			boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
-			boolean isProjectRelative = isWorkspacePath && !le.getName().startsWith("/");
-			return LanguageSettingsImages.getImage(kind, le.getFlags(), isProjectRelative);
+			return LanguageSettingsImages.getImage(le);
 		}
 
 		if (element instanceof ILanguageSettingsProvider) {

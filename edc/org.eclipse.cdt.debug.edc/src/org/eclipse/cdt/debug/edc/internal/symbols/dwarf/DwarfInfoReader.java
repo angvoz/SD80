@@ -629,12 +629,12 @@ public class DwarfInfoReader {
 				    		baseAndScopedNames.baseName = name;
 				    		baseAndScopedNames.nameWithScope = name;
 				    	} else {
-				    		IUnmangler unmangler = null;
-				    		if (exeReader instanceof BaseExecutableSymbolicsReader)
-				    			unmangler = ((BaseExecutableSymbolicsReader)exeReader).getUnmangler();
-				    		try {
-				    			baseAndScopedNames.nameWithScope = unmangler.unmangle(unmangler.undecorate(name));
-				    		} catch(UnmanglingException ue) {
+				    		if (exeReader instanceof BaseExecutableSymbolicsReader) {
+				    			IUnmangler unmangler = ((BaseExecutableSymbolicsReader)exeReader).getUnmangler();
+					    		try {
+					    			baseAndScopedNames.nameWithScope = unmangler.unmangle(unmangler.undecorate(name));
+					    		} catch(UnmanglingException ue) {
+					    		}
 				    		}
 				    	}
 				    	name = null;

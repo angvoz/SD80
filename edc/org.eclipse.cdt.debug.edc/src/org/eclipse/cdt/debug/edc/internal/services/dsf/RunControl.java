@@ -1452,6 +1452,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			//
 			if (module != null) {
 				IEDCSymbolReader reader = module.getSymbolReader();
+				assert pcAddress != null;
 				if (reader != null) {
 					IAddress linkAddress = module.toLinkAddress(pcAddress);
 					IModuleLineEntryProvider lineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();

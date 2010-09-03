@@ -30,8 +30,10 @@ import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
+import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.managedbuilder.buildmodel.BuildDescriptionManager;
@@ -253,6 +255,8 @@ public class InternalBuildRunner implements IBuildRunner {
 				epmOutputStream = null;
 				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
 					LanguageSettingsManager.serializeWorkspaceProviders();
+					ICProjectDescription prjDescription = CCorePlugin.getDefault().getProjectDescription(project, false);
+					LanguageSettingsExtensionManager.serializeLanguageSettings(prjDescription);
 				}
 
 				// Generate any error markers that the build has discovered

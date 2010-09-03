@@ -33,6 +33,7 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
@@ -54,6 +55,7 @@ import org.w3c.dom.NodeList;
 
 public class LanguageSettingsExtensionManager {
 	private static final String STORAGE_WORKSPACE_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
+	private static final String SETTINGS_FOLDER_NAME = ".settings"; //$NON-NLS-1$
 	private static final String STORAGE_PROJECT_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
 	private static final String PREFERENCE_PROVIDER_DEFAULT_IDS = "lang.settings.provider.default.ids"; //$NON-NLS-1$
 	private static final String NONE = ""; //$NON-NLS-1$
@@ -581,6 +583,15 @@ public class LanguageSettingsExtensionManager {
 		}
 	}
 
+	private static IFile getStorage(IProject project) throws CoreException {
+		IFolder folder = project.getFolder(SETTINGS_FOLDER_NAME);
+		if (!folder.exists()) {
+			folder.create(true, true, null);
+		}
+		IFile storage = folder.getFile(STORAGE_PROJECT_LANGUAGE_SETTINGS);
+		return storage;
+	}
+
 	public static void serializeLanguageSettings(ICProjectDescription prjDescription) throws CoreException {
 		IProject project = prjDescription.getProject();
 		try {
@@ -588,13 +599,14 @@ public class LanguageSettingsExtensionManager {
 			Element rootElement = XmlUtil.appendElement(doc, ELEM_PROJECT);
 			serializeLanguageSettings(rootElement, prjDescription);
 
-			IFile file = project.getFile(STORAGE_PROJECT_LANGUAGE_SETTINGS);
+			IFile file = getStorage(project);
 			synchronized (serializingLock){
 				XmlUtil.serializeXml(doc, file);
 			}
 
 		} catch (Exception e) {
 			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);
+			CCorePlugin.log(s);
 			throw new CoreException(s);
 		}
 	}

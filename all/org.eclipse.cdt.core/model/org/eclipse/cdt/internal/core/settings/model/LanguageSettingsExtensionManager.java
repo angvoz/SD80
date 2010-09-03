@@ -185,7 +185,8 @@ public class LanguageSettingsExtensionManager {
 					ILanguageSettingsProvider provider = null;
 					for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
 						if (cfgEl.getName().equals(ELEM_PROVIDER)) {
-							provider = createExecutableProvider(cfgEl);
+							provider = createExecutableExtension(cfgEl);
+							configureExecutableProvider(provider, cfgEl);
 							providers.add(provider);
 						}
 					}
@@ -204,17 +205,28 @@ public class LanguageSettingsExtensionManager {
 	}
 
 	/**
-	 * Creates (FIXME wrong: empty non-configured) provider as executable extension from extension point definition.
-	 * If "class" attribute is empty TODO is created.
+	 * Creates empty non-configured provider as executable extension from extension point definition.
+	 * If "class" attribute is empty {@link LanguageSettingsBaseProvider} is created.
 	 *
-	 * @param initialId - nominal ID of provider
-	 * @param initialName - nominal name of provider
 	 * @param ce - configuration element with provider definition
 	 * @return new non-configured provider
 	 * @throws CoreException in case of failure
 	 */
-	private static ILanguageSettingsProvider createExecutableProvider(IConfigurationElement ce) throws CoreException {
+	private static ILanguageSettingsProvider createExecutableExtension(IConfigurationElement ce) throws CoreException {
 		String ceClass = ce.getAttribute(ATTR_CLASS);
+		ILanguageSettingsProvider provider = null;
+		if (ceClass==null || ceClass.trim().length()==0 || ceClass.equals(LanguageSettingsBaseProvider.class.getCanonicalName())) {
+			provider = new LanguageSettingsBaseProvider();
+		} else {
+			provider = (ILanguageSettingsProvider)ce.createExecutableExtension(ATTR_CLASS);
+		}
+
+		return provider;
+	}
+
+
+	private static void configureExecutableProvider(ILanguageSettingsProvider provider,
+			IConfigurationElement ce) {
 		String ceId = determineAttributeValue(ce, ATTR_ID);
 		String ceName = determineAttributeValue(ce, ATTR_NAME);
 		String ceParameter = determineAttributeValue(ce, ATTR_PARAMETER);
@@ -252,21 +264,12 @@ public class LanguageSettingsExtensionManager {
 			}
 		}
 
-		ILanguageSettingsProvider provider = null;
-		if (ceClass!=null && !ceClass.equals(LanguageSettingsBaseProvider.class.getCanonicalName())) {
-			Object base = ce.createExecutableExtension(ATTR_CLASS);
-			if (base instanceof LanguageSettingsBaseProvider) {
-				((LanguageSettingsBaseProvider) base).configureProvider(ceId, ceName, languages, entries, ceParameter);
-			} else if (base instanceof AbstractExecutableExtensionBase) {
-				((AbstractExecutableExtensionBase) base).setId(ceId);
-				((AbstractExecutableExtensionBase) base).setName(ceName);
-			}
-			provider = (ILanguageSettingsProvider)base;
+		if (provider instanceof LanguageSettingsBaseProvider) {
+			((LanguageSettingsBaseProvider) provider).configureProvider(ceId, ceName, languages, entries, ceParameter);
+		} else if (provider instanceof AbstractExecutableExtensionBase) {
+			((AbstractExecutableExtensionBase) provider).setId(ceId);
+			((AbstractExecutableExtensionBase) provider).setName(ceName);
 		}
-		if (provider==null) {
-			provider = new LanguageSettingsBaseProvider(ceId, ceName, languages, entries, ceParameter);
-		}
-		return provider;
 	}
 
 	/**
@@ -291,12 +294,18 @@ public class LanguageSettingsExtensionManager {
 			if (extension != null) {
 				IExtension[] extensions = extension.getExtensions();
 				for (IExtension ext : extensions) {
+					@SuppressWarnings("unused")
 					String extensionID = ext.getUniqueIdentifier();
-					String oldStyleId = extensionID;
-					String oldStyleName = ext.getLabel();
 					for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
 						if (cfgEl.getName().equals(ELEM_PROVIDER) && className.equals(cfgEl.getAttribute(ATTR_CLASS))) {
-							return createExecutableProvider(cfgEl);
+							ILanguageSettingsProvider provider = createExecutableExtension(cfgEl);
+							if (provider instanceof AbstractExecutableExtensionBase) {
+								String ceId = determineAttributeValue(cfgEl, ATTR_ID);
+								String ceName = determineAttributeValue(cfgEl, ATTR_NAME);
+								((AbstractExecutableExtensionBase) provider).setId(ceId);
+								((AbstractExecutableExtensionBase) provider).setName(ceName);
+							}
+							return provider;
 						}
 					}
 				}

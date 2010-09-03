@@ -167,9 +167,43 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			assertTrue(xmlString.contains(CUSTOM_PARAMETER));
 		}
 		{
-			// re-load and check language settings of the newly loaded provider
+			// re-load and check custom parameter of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
 			assertEquals(CUSTOM_PARAMETER, provider.getCustomParameter());
+		}
+	}
+
+	/**
+	 */
+	public void testLanguages() throws Exception {
+		List<String> expectedLanguageIds = new ArrayList<String>();
+		expectedLanguageIds.add(LANG_ID);
+		expectedLanguageIds.add(LANG_ID_1);
+
+		Element elementProvider;
+		{
+			// create provider with custom parameter
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
+			provider.setLanguageIds(expectedLanguageIds);
+			List<String> actualIds = provider.getLanguageIds();
+			assertEquals(LANG_ID, actualIds.get(0));
+			assertEquals(LANG_ID_1, actualIds.get(1));
+			assertEquals(2, actualIds.size());
+
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			String xmlString = XmlUtil.toString(doc);
+			assertTrue(xmlString.contains(LANG_ID));
+			assertTrue(xmlString.contains(LANG_ID_1));
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			List<String> actualIds = provider.getLanguageIds();
+			assertEquals(expectedLanguageIds.get(0), actualIds.get(0));
+			assertEquals(expectedLanguageIds.get(1), actualIds.get(1));
+			assertEquals(expectedLanguageIds.size(), actualIds.size());
 		}
 	}
 

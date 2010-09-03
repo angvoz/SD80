@@ -30,6 +30,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	public static final String ELEM_PROVIDER = "provider";
 	private static final String ATTR_ID = "id";
 
+	private static final String ELEM_LANGUAGE_SCOPE = "language-scope";
 	private static final String ELEM_CONFIGURATION = "configuration";
 	private static final String ELEM_LANGUAGE = "language";
 	private static final String ELEM_RESOURCE = "resource";
@@ -67,6 +68,10 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	 */
 	public boolean isEmpty() {
 		return fStorage.isEmpty();
+	}
+
+	public void setLanguageIds(List <String> languages) {
+		this.languages = new ArrayList<String>(languages);
 	}
 
 	public void setCustomParameter(String customParameter) {
@@ -135,6 +140,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 
 	/*
 	<provider id="provider.id" ...>
+		<language-scope id="lang.id"/>
 		<configuration id="cfg.id">
 			<language id="lang.id">
 				<resource project-relative-path="/">
@@ -153,6 +159,11 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				ATTR_PARAMETER, getCustomParameter(),
 			});
 
+		if (languages!=null) {
+			for (String langId : languages) {
+				XmlUtil.appendElement(elementProvider, ELEM_LANGUAGE_SCOPE, new String[] {ATTR_ID, langId});
+			}
+		}
 		for (Entry<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
 			serializeConfiguration(elementProvider, entryCfg);
 		}
@@ -260,6 +271,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	// provider/configuration/language/resource/entry
 	public void load(Element providerNode) {
 		fStorage.clear();
+		languages = null;
 
 		if (providerNode!=null) {
 			String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
@@ -276,7 +288,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				if(elementNode.getNodeType() != Node.ELEMENT_NODE)
 					continue;
 
-				if (ELEM_CONFIGURATION.equals(elementNode.getNodeName())) {
+				if (ELEM_LANGUAGE_SCOPE.equals(elementNode.getNodeName())) {
+					loadLanguageScopeElement(elementNode);
+				} else if (ELEM_CONFIGURATION.equals(elementNode.getNodeName())) {
 					loadConfigurationElement(elementNode);
 				} else if (ELEM_LANGUAGE.equals(elementNode.getNodeName())) {
 					loadLanguageElement(elementNode, null);
@@ -294,6 +308,15 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				setSettingEntriesInternal(null, null, null, settings);
 			}
 		}
+	}
+
+	private void loadLanguageScopeElement(Node parentNode) {
+		if (languages==null) {
+			languages = new ArrayList<String>();
+		}
+		String id = XmlUtil.determineAttributeValue(parentNode, ATTR_ID);
+		languages.add(id);
+
 	}
 
 	private void loadConfigurationElement(Node parentNode) {

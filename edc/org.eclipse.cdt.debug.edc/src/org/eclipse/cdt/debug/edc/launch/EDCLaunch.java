@@ -318,16 +318,22 @@ public class EDCLaunch extends Launch {
 			}
 		});
 		executor.execute(shutdownSeq);
-		if (isSnapshotLaunch()) {
-			try {
+
+		try {
+			ILaunchConfiguration activeLaunchConfig = getLaunchConfiguration();
+
+			if (activeLaunchConfig.getAttribute(IEDCLaunchConfigurationConstants.ATTR_IS_ONE_USE, false))
+				activeLaunchConfig.delete();
+
+			if (isSnapshotLaunch()) {
 				// delete launch configuration
 				ILaunchConfiguration lc = SnapshotUtils.findExistingLaunchForAlbum(album);
 				if (lc != null){
 					lc.delete();
 				}
-			} catch (Throwable e) {
-				EDCDebugger.getMessageLogger().logError(null, e);
 			}
+		} catch (Throwable e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
 		}
 	}
 
@@ -465,15 +471,6 @@ public class EDCLaunch extends Launch {
 	/**
 	 * @since 2.0
 	 */
-	public ILaunchConfiguration getActiveLaunchConfiguration() {
-		if (activeLaunchConfiguration == null)
-			activeLaunchConfiguration = getLaunchConfiguration();
-		return activeLaunchConfiguration;
-	}
-
-	/**
-	 * @since 2.0
-	 */
 	public void setFirstLaunch(boolean isFirstLaunch) {
 		this.isFirstLaunch = isFirstLaunch;
 	}
@@ -491,11 +488,11 @@ public class EDCLaunch extends Launch {
 	public ISourceLocator createSourceLocator()
 			throws CoreException {
 		DsfSourceLookupDirector locator = new DsfSourceLookupDirector(session);
-		String memento = getActiveLaunchConfiguration().getAttribute(ILaunchConfiguration.ATTR_SOURCE_LOCATOR_MEMENTO, (String) null);
+		String memento = getLaunchConfiguration().getAttribute(ILaunchConfiguration.ATTR_SOURCE_LOCATOR_MEMENTO, (String) null);
 		if (memento == null) {
-			locator.initializeDefaults(getActiveLaunchConfiguration());
+			locator.initializeDefaults(getLaunchConfiguration());
 		} else {
-			locator.initializeFromMemento(memento, getActiveLaunchConfiguration());
+			locator.initializeFromMemento(memento, getLaunchConfiguration());
 		}
 		return locator;
 	}
@@ -514,10 +511,13 @@ public class EDCLaunch extends Launch {
 					if (iLaunch instanceof EDCLaunch) {
 						EDCLaunch edcLaunch = (EDCLaunch) iLaunch;
 						List<IChannel> channels = launchChannels.get(edcLaunch);
-						for (IChannel iChannel : channels) {
-							if (iChannel.getRemotePeer().equals(ipeer)) {
-								results.add(edcLaunch);
-								break;
+						if (channels != null)
+						{
+							for (IChannel iChannel : channels) {
+								if (iChannel.getRemotePeer().equals(ipeer)) {
+									results.add(edcLaunch);
+									break;
+								}
 							}
 						}
 					}
@@ -526,6 +526,13 @@ public class EDCLaunch extends Launch {
 		});
 		
 		return results.toArray(new EDCLaunch[results.size()]);
+	}
+
+	@Override
+	public ILaunchConfiguration getLaunchConfiguration() {
+		if (activeLaunchConfiguration == null)
+			activeLaunchConfiguration = super.getLaunchConfiguration();
+		return activeLaunchConfiguration;
 	}
 
 }

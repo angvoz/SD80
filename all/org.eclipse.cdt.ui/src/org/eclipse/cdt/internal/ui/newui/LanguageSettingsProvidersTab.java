@@ -224,7 +224,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 						// Local provider instance chosen
 						if (oldProvider instanceof LanguageSettingsSerializable) {
 							try {
+								// TODO: add new method to LanguageSettingsSerializable to avoid cloning data
 								newProvider = ((LanguageSettingsSerializable)oldProvider).clone();
+								((LanguageSettingsSerializable)newProvider).clear();
 							} catch (CloneNotSupportedException e) {
 								CUIPlugin.log("Exception trying to clone workspace provider "+id, e);
 								return;

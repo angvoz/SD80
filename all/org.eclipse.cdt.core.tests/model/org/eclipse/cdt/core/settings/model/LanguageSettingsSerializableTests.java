@@ -860,18 +860,23 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	/**
 	 */
 	public void testEqualsAndClone() throws Exception {
-		List<ICLanguageSettingEntry> original1 = new ArrayList<ICLanguageSettingEntry>();
-		original1.add(new CMacroEntry("MACRO0", "value0",1));
-		original1.add(new CIncludePathEntry("path0", 1));
-		original1.add(new CIncludePathEntry("path1", 1));
+		List<ICLanguageSettingEntry> sampleEntries_1 = new ArrayList<ICLanguageSettingEntry>();
+		sampleEntries_1.add(new CMacroEntry("MACRO0", "value0",1));
+		sampleEntries_1.add(new CIncludePathEntry("path0", 1));
+		sampleEntries_1.add(new CIncludePathEntry("path1", 1));
 
-		List<ICLanguageSettingEntry> original2 = new ArrayList<ICLanguageSettingEntry>();
-		original2.add(new CIncludePathEntry("path0", 1));
+		List<ICLanguageSettingEntry> sampleEntries_2 = new ArrayList<ICLanguageSettingEntry>();
+		sampleEntries_2.add(new CIncludePathEntry("path0", 1));
+
+		List<String> sampleLanguages = new ArrayList<String>();
+		sampleLanguages.add(LANG_ID);
 
 		// create a model provider
 		LanguageSettingsSerializable provider1 = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
-		provider1.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, original1);
-		provider1.setSettingEntries(null, null, LANG_ID, original2);
+		provider1.setLanguageIds(sampleLanguages);
+		provider1.setCustomParameter(CUSTOM_PARAMETER);
+		provider1.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, sampleEntries_1);
+		provider1.setSettingEntries(null, null, LANG_ID, sampleEntries_2);
 
 		{
 			// clone provider
@@ -879,28 +884,41 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			assertNotSame(provider1, providerClone);
 			assertTrue(provider1.equals(providerClone));
 			assertTrue(provider1.getClass()==providerClone.getClass());
+			assertEquals(provider1.getCustomParameter(), providerClone.getCustomParameter());
+			assertEquals(provider1.getLanguageIds().get(0), providerClone.getLanguageIds().get(0));
 
 			List<ICLanguageSettingEntry> retrieved1 = providerClone.getSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID);
-			assertNotSame(original1, retrieved1);
-			assertEquals(original1.get(0), retrieved1.get(0));
-			assertEquals(original1.get(1), retrieved1.get(1));
-			assertEquals(original1.get(2), retrieved1.get(2));
-			assertEquals(original1.size(), retrieved1.size());
+			assertNotSame(sampleEntries_1, retrieved1);
+			assertEquals(sampleEntries_1.get(0), retrieved1.get(0));
+			assertEquals(sampleEntries_1.get(1), retrieved1.get(1));
+			assertEquals(sampleEntries_1.get(2), retrieved1.get(2));
+			assertEquals(sampleEntries_1.size(), retrieved1.size());
 
 			List<ICLanguageSettingEntry> retrieved2 = providerClone.getSettingEntries(null, null, LANG_ID);
-			assertNotSame(original2, retrieved2);
-			assertEquals(original2.get(0), retrieved2.get(0));
-			assertEquals(original2.size(), retrieved2.size());
+			assertNotSame(sampleEntries_2, retrieved2);
+			assertEquals(sampleEntries_2.get(0), retrieved2.get(0));
+			assertEquals(sampleEntries_2.size(), retrieved2.size());
 		}
 
 		{
 			// create another provider with the same data
 			LanguageSettingsSerializable provider2 = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
 			assertFalse(provider1.equals(provider2));
+			assertFalse(provider1.hashCode()==provider2.hashCode());
 
-			provider2.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, original1);
+			provider2.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, sampleEntries_1);
 			assertFalse(provider1.equals(provider2));
-			provider2.setSettingEntries(null, null, LANG_ID, original2);
+			assertFalse(provider1.hashCode()==provider2.hashCode());
+
+			provider2.setSettingEntries(null, null, LANG_ID, sampleEntries_2);
+			assertFalse(provider1.equals(provider2));
+			assertFalse(provider1.hashCode()==provider2.hashCode());
+
+			provider2.setLanguageIds(sampleLanguages);
+			assertFalse(provider1.equals(provider2));
+			assertFalse(provider1.hashCode()==provider2.hashCode());
+
+			provider2.setCustomParameter(CUSTOM_PARAMETER);
 			assertTrue(provider1.equals(provider2));
 			assertTrue(provider1.hashCode()==provider2.hashCode());
 

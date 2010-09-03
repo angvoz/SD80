@@ -445,6 +445,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		int result = 1;
 		result = prime * result + ((getId() == null) ? 0 : getId().hashCode());
 		result = prime * result + ((getName() == null) ? 0 : getName().hashCode());
+		result = prime * result + ((languages == null) ? 0 : languages.hashCode());
+		result = prime * result + ((customParameter == null) ? 0 : customParameter.hashCode());
 		result = prime * result + ((fStorage == null) ? 0 : fStorage.hashCode());
 		result = prime * result + getClass().hashCode();
 		return result;
@@ -459,6 +461,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		if (getClass() != obj.getClass())
 			return false;
 		LanguageSettingsSerializable other = (LanguageSettingsSerializable) obj;
+
 		String id = getId();
 		String otherId = other.getId();
 		if (id == null) {
@@ -466,6 +469,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				return false;
 		} else if (!id.equals(otherId))
 			return false;
+
 		String name = getName();
 		String otherName = other.getName();
 		if (name == null) {
@@ -473,6 +477,19 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				return false;
 		} else if (!name.equals(otherName))
 			return false;
+
+		if (languages == null) {
+			if (other.languages != null)
+				return false;
+		} else if (!languages.equals(other.languages))
+			return false;
+
+		if (customParameter == null) {
+			if (other.customParameter != null)
+				return false;
+		} else if (!customParameter.equals(other.customParameter))
+			return false;
+
 		if (fStorage == null) {
 			if (other.fStorage != null)
 				return false;

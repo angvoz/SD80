@@ -69,6 +69,10 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		return fStorage.isEmpty();
 	}
 
+	public void setCustomParameter(String customParameter) {
+		this.customParameter = customParameter;
+	}
+
 	public void clear() {
 		fStorage.clear();
 	}

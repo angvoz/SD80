@@ -18,9 +18,10 @@ import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.core.resources.IResource;
 
 public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
-	private List<String> languages = null;
+	protected List<String> languages = null;
+	protected String customParameter = null;
+
 	private List<ICLanguageSettingEntry> entries = null;
-	private String customParameter = null;
 
 	public LanguageSettingsBaseProvider() {
 	}
@@ -85,10 +86,6 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 
 	public String getCustomParameter() {
 		return customParameter;
-	}
-
-	public void setCustomParameter(String customParameter) {
-		this.customParameter = customParameter;
 	}
 
 }

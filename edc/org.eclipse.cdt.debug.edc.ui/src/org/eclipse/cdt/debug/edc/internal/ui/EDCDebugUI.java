@@ -10,6 +10,9 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui;
 
+import org.eclipse.cdt.core.model.CModelException;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.edc.MessageLogger;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
@@ -17,20 +20,26 @@ import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumEventListener;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SnapshotView;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.ui.CDebugUIPlugin;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.cdt.ui.CElementLabelProvider;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.viewers.ILabelProvider;
+import org.eclipse.jface.window.Window;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.eclipse.ui.progress.UIJob;
@@ -168,6 +177,39 @@ public class EDCDebugUI extends AbstractUIPlugin {
 	
 	public static IStatus dsfRequestFailedStatus(String message, Throwable exception) {
 		return new Status(IStatus.ERROR, PLUGIN_ID, IDsfStatusConstants.REQUEST_FAILED, message, exception);
+	}
+
+	protected Shell getShell() {
+		CDebugUIPlugin.getDefault();
+		IWorkbenchWindow w = CDebugUIPlugin.getActiveWorkbenchWindow();
+		if (w != null) {
+			return w.getShell();
+		}
+		return null;
+	}
+
+	public ICProject chooseCProject() {
+		try {
+			ICProject projects[] = CoreModel.getDefault().getCModel().getCProjects();
+			
+			if (projects.length == 0)
+				return null;
+			if (projects.length == 1)
+				return projects[1];
+
+			ILabelProvider labelProvider = new CElementLabelProvider();
+			ElementListSelectionDialog dialog = new ElementListSelectionDialog(getShell(), labelProvider);
+			dialog.setTitle("Project Selection");
+			dialog.setMessage("Choose Project");
+			dialog.setElements(projects);
+
+			if (dialog.open() == Window.OK) {
+				return (ICProject)dialog.getFirstResult();
+			}
+		} catch (CModelException e) {
+			EDCDebugUI.getMessageLogger().logError(null, e); //$NON-NLS-1$			
+		}
+		return null;
 	}
 
 }

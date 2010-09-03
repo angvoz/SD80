@@ -30,6 +30,7 @@ import org.eclipse.jface.layout.PixelConverter;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.ICheckStateListener;
+import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.window.Window;
@@ -166,13 +167,19 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 		});
 		fTableViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider() {
-//		fTableViewer.setLabelProvider(new LabelProvider() {
-
 			@Override
 			public Image getImage(Object element) {
 				return super.getImage(element);
 			}
 
+			@Override
+			protected String[] getOverlayKeys(Object element, int columnIndex) {
+				String[] overlayKeys = super.getOverlayKeys(element, columnIndex);
+				if (!fTableViewer.getChecked(element)) {
+					overlayKeys[IDecoration.TOP_LEFT] = null;
+				}
+				return overlayKeys;
+			}
 			@Override
 			public String getText(Object element) {
 				if (element instanceof ILanguageSettingsProvider) {
@@ -198,6 +205,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		fTableViewer.addCheckStateListener(new ICheckStateListener() {
 			public void checkStateChanged(CheckStateChangedEvent e) {
 				saveChecked();
+//				fTableViewer.update(e.getElement(), null);
 			}});
 
 		// Buttons

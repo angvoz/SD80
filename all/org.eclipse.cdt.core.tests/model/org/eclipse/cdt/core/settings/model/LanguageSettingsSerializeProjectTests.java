@@ -817,7 +817,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			// write to project description
 			CoreModel.getDefault()
 				.setProjectDescription(project, writableProjDescription);
-			IFile xmlStorageFile = project.getFile("language.settings.xml");
+			IFile xmlStorageFile = project.getFile(".settings/language.settings.xml");
 			assertTrue(xmlStorageFile.exists());
 			xmlStorageFileLocation = xmlStorageFile.getLocation().toOSString();
 		}

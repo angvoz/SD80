@@ -55,7 +55,7 @@ import org.w3c.dom.NodeList;
 
 public class LanguageSettingsExtensionManager {
 	private static final String STORAGE_WORKSPACE_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
-	private static final String SETTINGS_FOLDER_NAME = ".settings"; //$NON-NLS-1$
+	private static final String SETTINGS_FOLDER_NAME = ".settings/"; //$NON-NLS-1$
 	private static final String STORAGE_PROJECT_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
 	private static final String PREFERENCE_PROVIDER_DEFAULT_IDS = "lang.settings.provider.default.ids"; //$NON-NLS-1$
 	private static final String NONE = ""; //$NON-NLS-1$
@@ -674,7 +674,7 @@ public class LanguageSettingsExtensionManager {
 
 	public static void loadLanguageSettings(ICProjectDescription prjDescription) {
 		IProject project = prjDescription.getProject();
-		IFile file = project.getFile(STORAGE_PROJECT_LANGUAGE_SETTINGS);
+		IFile file = project.getFile(SETTINGS_FOLDER_NAME+STORAGE_PROJECT_LANGUAGE_SETTINGS);
 		// AG: FIXME not sure about that one
 		// Causes java.lang.IllegalArgumentException: Attempted to beginRule: P/cdt312, does not match outer scope rule: org.eclipse.cdt.internal.ui.text.c.hover.CSourceHover$SingletonRule@6f34fb
 		try {

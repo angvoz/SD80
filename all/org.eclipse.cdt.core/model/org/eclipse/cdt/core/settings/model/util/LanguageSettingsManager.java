@@ -267,30 +267,32 @@ public class LanguageSettingsManager {
 	// FIXME: is there more straight way to get language id?
 	public static String[] getLanguageIds(ICConfigurationDescription cfgDescription, IResource resource) {
 		ICResourceDescription rcDes = null;
-		if(resource.getType() != IResource.PROJECT){
-			IPath rcPath = resource.getProjectRelativePath();
+		IPath rcPath = resource.getProjectRelativePath();
+		if(resource.getType() == IResource.PROJECT){
+			rcDes = cfgDescription.getRootFolderDescription();
+		} else {
 			rcDes = cfgDescription.getResourceDescription(rcPath, false);
+		}
 
-			if(rcDes.getType() == ICSettingBase.SETTING_FILE){
-				ICLanguageSetting setting = ((ICFileDescription)rcDes).getLanguageSetting();
+		if(rcDes.getType() == ICSettingBase.SETTING_FILE){
+			ICLanguageSetting setting = ((ICFileDescription)rcDes).getLanguageSetting();
+			return new String[] {setting.getLanguageId()};
+		} else {
+			if(resource.getType() == IResource.FILE) {
+				ICLanguageSetting setting = ((ICFolderDescription)rcDes).getLanguageSettingForFile(rcPath.lastSegment());
 				return new String[] {setting.getLanguageId()};
 			} else {
-				if(resource.getType() == IResource.FILE) {
-					ICLanguageSetting setting = ((ICFolderDescription)rcDes).getLanguageSettingForFile(rcPath.lastSegment());
-					return new String[] {setting.getLanguageId()};
-				} else {
-					ICLanguageSetting settings[] = ((ICFolderDescription)rcDes).getLanguageSettings();
-					if(settings==null || settings.length==0){
-						ICFolderDescription foDes = cfgDescription.getRootFolderDescription();
-						settings = foDes.getLanguageSettings();
+				ICLanguageSetting settings[] = ((ICFolderDescription)rcDes).getLanguageSettings();
+				if(settings==null || settings.length==0){
+					ICFolderDescription foDes = cfgDescription.getRootFolderDescription();
+					settings = foDes.getLanguageSettings();
+				}
+				if(settings!=null){
+					String[] ids = new String[settings.length];
+					for (int i=0;i<settings.length;i++) {
+						ids[i] = settings[i].getLanguageId();
 					}
-					if(settings!=null){
-						String[] ids = new String[settings.length];
-						for (int i=0;i<settings.length;i++) {
-							ids[i] = settings[i].getLanguageId();
-						}
-						return ids;
-					}
+					return ids;
 				}
 			}
 		}

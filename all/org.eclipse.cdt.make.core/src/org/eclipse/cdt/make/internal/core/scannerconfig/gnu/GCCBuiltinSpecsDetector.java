@@ -73,7 +73,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		expectingIncludes = false;
 		specFile = null;
 
-		String cmd = customParameter;
+		String cmd = getCustomParameter();
 
 		String specFileName = getSpecFileName(languageId);
 		if (specFileName!=null) {

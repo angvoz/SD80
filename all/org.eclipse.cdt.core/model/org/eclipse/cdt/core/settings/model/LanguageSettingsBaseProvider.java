@@ -20,7 +20,7 @@ import org.eclipse.core.resources.IResource;
 public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 	private List<String> languages = null;
 	private List<ICLanguageSettingEntry> entries = null;
-	protected String customParameter = null;
+	private String customParameter = null;
 
 	public LanguageSettingsBaseProvider() {
 	}

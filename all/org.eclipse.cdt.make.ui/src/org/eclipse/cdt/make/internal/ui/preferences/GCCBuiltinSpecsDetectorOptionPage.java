@@ -292,7 +292,8 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 
 		{
 			inputCommand = ControlFactory.createTextField(composite, SWT.SINGLE | SWT.BORDER);
-			inputCommand.setText(fProvider.getCustomParameter());
+			String customParameter = fProvider.getCustomParameter();
+			inputCommand.setText(customParameter!=null ? customParameter : "");
 			inputCommand.setEnabled(fEditable);
 			inputCommand.addModifyListener(new ModifyListener() {
 

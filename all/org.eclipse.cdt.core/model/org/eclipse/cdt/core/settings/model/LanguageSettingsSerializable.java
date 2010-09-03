@@ -39,6 +39,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	private static final String ATTR_KIND = "kind";
 	private static final String ATTR_NAME = "name";
 	private static final String ATTR_CLASS = "class";
+	private static final String ATTR_PARAMETER = "parameter";
 	private static final String ATTR_VALUE = "value";
 
 	private static final String ELEM_FLAG = "flag";
@@ -129,7 +130,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	/*
-	<provider id="provider.id">
+	<provider id="provider.id" ...>
 		<configuration id="cfg.id">
 			<language id="lang.id">
 				<resource project-relative-path="/">
@@ -145,6 +146,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				ATTR_ID, getId(),
 				ATTR_NAME, getName(),
 				ATTR_CLASS, getClass().getCanonicalName(),
+				ATTR_PARAMETER, getCustomParameter(),
 			});
 
 		for (Entry<String, Map<String, Map<String, List<ICLanguageSettingEntry>>>> entryCfg : fStorage.entrySet()) {
@@ -258,8 +260,10 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		if (providerNode!=null) {
 			String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
 			String providerName = XmlUtil.determineAttributeValue(providerNode, ATTR_NAME);
+			String providerParameter = XmlUtil.determineAttributeValue(providerNode, ATTR_PARAMETER);
 			this.setId(providerId);
 			this.setName(providerName);
+			this.setCustomParameter(providerParameter);
 
 			List<ICLanguageSettingEntry> settings = new ArrayList<ICLanguageSettingEntry>();
 			NodeList nodes = providerNode.getChildNodes();

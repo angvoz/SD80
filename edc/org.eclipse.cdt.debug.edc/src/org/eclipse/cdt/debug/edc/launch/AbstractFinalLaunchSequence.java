@@ -517,7 +517,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 */
 	protected void launchProcess(final ILaunch launch, final IProcesses ps, final RequestMonitor requestMonitor) {
 		try {
-			ILaunchConfiguration cfg = ((EDCLaunch) launch).getActiveLaunchConfiguration();
+			ILaunchConfiguration cfg = launch.getLaunchConfiguration();
 
 			// Get absolute program path.
 			ICProject cproject = LaunchUtils.getCProject(cfg);

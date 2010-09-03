@@ -134,13 +134,13 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		<configuration id="cfg.id">
 			<language id="lang.id">
 				<resource project-relative-path="/">
-					<settingEntry flags="" kind="includePath" name="path"/>
+					<entry flags="" kind="includePath" name="path"/>
 				</resource>
 			</language>
 		</configuration>
 	</provider>
 	*/
-	// provider/configuration/language/resource/settingEntry
+	// provider/configuration/language/resource/entry
 	public Element serialize(Element parentElement) {
 		Element elementProvider = XmlUtil.appendElement(parentElement, ELEM_PROVIDER, new String[] {
 				ATTR_ID, getId(),
@@ -253,7 +253,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 
-	// provider/configuration/language/resource/settingEntry
+	// provider/configuration/language/resource/entry
 	public void load(Element providerNode) {
 		fStorage.clear();
 

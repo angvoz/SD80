@@ -141,9 +141,11 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 		@Override
 		public ICLanguageSettingEntry createEntry(Matcher matcher) {
 			String name = parseStr(matcher, nameExpression);
-			IFile file = errorParserManager.findFileName(name);
-			if (file!=null) {
-				new CIncludeFileEntry(file, ICSettingEntry.READONLY);
+			if (errorParserManager!=null) {
+				IFile file = errorParserManager.findFileName(name);
+				if (file!=null) {
+					return new CIncludeFileEntry(file, ICSettingEntry.READONLY);
+				}
 			}
 
 			return new CIncludeFileEntry(name, ICSettingEntry.READONLY);

@@ -16,6 +16,7 @@ import java.util.Map;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.edc.MessageLogger;
 import org.eclipse.cdt.debug.edc.launch.ChooseProcessItem;
+import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.launch.LaunchUtils;
 import org.eclipse.cdt.debug.edc.ui.ChooseProcessDialog;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
@@ -105,7 +106,7 @@ public class WindowsDebugger extends Plugin {
 
 	public void launchProcess(final ILaunch launch, final IProcesses ps, final RequestMonitor requestMonitor) {
 		try {
-			ILaunchConfiguration cfg = launch.getLaunchConfiguration();
+			ILaunchConfiguration cfg = ((EDCLaunch) launch).getLaunchConfiguration();
 
 			// Get absolute program path.
 			ICProject cproject = LaunchUtils.getCProject(cfg);

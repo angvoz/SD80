@@ -30,7 +30,6 @@ import org.eclipse.jface.layout.PixelConverter;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.ICheckStateListener;
-import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.window.Window;
@@ -175,9 +174,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			@Override
 			protected String[] getOverlayKeys(Object element, int columnIndex) {
 				String[] overlayKeys = super.getOverlayKeys(element, columnIndex);
-				if (!fTableViewer.getChecked(element)) {
-					overlayKeys[IDecoration.TOP_LEFT] = null;
-				}
+//				if (!fTableViewer.getChecked(element)) {
+//					overlayKeys[IDecoration.TOP_LEFT] = null;
+//				}
 				return overlayKeys;
 			}
 			@Override
@@ -204,8 +203,8 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 		fTableViewer.addCheckStateListener(new ICheckStateListener() {
 			public void checkStateChanged(CheckStateChangedEvent e) {
-				saveChecked();
-//				fTableViewer.update(e.getElement(), null);
+				saveChecked(e.getElement());
+				fTableViewer.update(e.getElement(), null);
 			}});
 
 		// Buttons
@@ -247,10 +246,13 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 						providers.remove(oldProvider);
 						providers.add(pos, newProvider);
 						fCfgDesc.setLanguageSettingProviders(providers);
+						initMapProviders();
+						fTable.setSelection(pos);
 						initializeOptionsPage(id);
 						displaySelectedOptionPage();
 						updateButtons();
-						updateData(getResDesc());
+//						updateData(getResDesc());
+						fTableViewer.update(newProvider, null);
 					}
 				}
 
@@ -279,11 +281,11 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		// init data
 		ICResourceDescription resDecs = getResDesc();
 		fCfgDesc = resDecs!=null ? resDecs.getConfiguration() : null;
-		initMapParsers();
+		initMapProviders();
 		updateData(getResDesc());
 	}
 
-	private void initMapParsers() {
+	private void initMapProviders() {
 		fAvailableProvidersMap.clear();
 		fOptionsPageMap.clear();
 		for (String id : LanguageSettingsManager.getProviderAvailableIds()) {
@@ -436,7 +438,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		fTableViewer.setChecked(provider, checked);
 		fTable.setSelection(n);
 
-		saveChecked();
+		saveChecked(null);
 	}
 
 	private String makeId(String name) {
@@ -532,7 +534,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (n>=0)
 			fTable.setSelection(n);
 
-		saveChecked();
+		saveChecked(null);
 	}
 
 	/* (non-Javadoc)
@@ -543,7 +545,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		ICConfigurationDescription oldCfgDesc = fCfgDesc;
 		fCfgDesc = resDecs!=null ? resDecs.getConfiguration() : null;
 //		if (oldCfgDesc!=fCfgDesc) {
-			initMapParsers();
+			initMapProviders();
 //		}
 		displaySelectedOptionPage();
 		updateButtons();
@@ -578,9 +580,12 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 
 		if (page.isForProject()) {
-			fCheckBoxGlobal.setSelection(provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider));
-			fCheckBoxGlobal.setEnabled(fTableViewer.getChecked(provider) &&
-					(provider instanceof LanguageSettingsSerializable || provider instanceof ILanguageSettingsEditableProvider));
+			boolean isChecked = fTableViewer.getChecked(provider);
+			boolean canClone = provider instanceof LanguageSettingsSerializable || provider instanceof ILanguageSettingsEditableProvider;
+			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
+//			boolean select = (isChecked && isGlobal) || !canClone;
+			fCheckBoxGlobal.setSelection(isGlobal);
+			fCheckBoxGlobal.setEnabled(isChecked && canClone);
 		}
 	}
 
@@ -608,7 +613,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 				newProviders = sd.getLanguageSettingProviders();
 				dd.setLanguageSettingProviders(newProviders);
 			}
-			initMapParsers();
+			initMapProviders();
 		}
 	}
 
@@ -643,16 +648,27 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
 				}
 			}
-			initMapParsers();
+			initMapProviders();
 //		}
 	}
 
-	private void saveChecked() {
+	private void saveChecked(Object selectedElement) {
 		if (page.isForProject()) {
 			Object[] checked = fTableViewer.getCheckedElements();
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(checked.length);
 			for (Object elem : checked) {
-				providers.add((ILanguageSettingsProvider)elem);
+				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)elem;
+//				if (provider==selectedElement && provider instanceof LanguageSettingsSerializable && LanguageSettingsManager.isWorkspaceProvider(provider)) {
+//					try {
+//						provider = ((LanguageSettingsSerializable)provider).clone();
+//						((LanguageSettingsSerializable)provider).clear();
+//						selectedElement = provider;
+//					} catch (Exception e) {
+//						// Log error but use workspace provider in this case
+//						CUIPlugin.log("Error cloning provider "+provider.getName()+ ", class = "+provider.getClass(), e);
+//					}
+//				}
+				providers.add(provider);
 
 			}
 
@@ -661,6 +677,8 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 //				((ICMultiConfigDescription)fCfgDesc).setProviderIDs(ids);
 			} else {
 				fCfgDesc.setLanguageSettingProviders(providers);
+//				updateData(getResDesc());
+				fTableViewer.update(selectedElement, null);
 			}
 		}
 	}
@@ -712,7 +730,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 				fCfgDesc.setLanguageSettingProviders(null);
 			}
 		}
-		initMapParsers();
+		initMapProviders();
 		updateButtons();
 	}
 

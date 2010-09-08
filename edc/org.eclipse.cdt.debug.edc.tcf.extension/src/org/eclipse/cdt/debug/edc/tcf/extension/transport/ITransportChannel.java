@@ -22,6 +22,15 @@ import java.io.IOException;
 public interface ITransportChannel {
 
 	/**
+	 * Tell if the transport channel is open.  This can be used to distinguish
+	 * "not connected" IOExceptions from actual I/O exceptions.
+	 * 
+	 * @return true if the channel was successfully opened and not closed
+	 * @since 2.0
+	 */
+	public boolean isOpen();
+
+	/**
 	 * Open the transport channel.
 	 * 
 	 * @throws IOException

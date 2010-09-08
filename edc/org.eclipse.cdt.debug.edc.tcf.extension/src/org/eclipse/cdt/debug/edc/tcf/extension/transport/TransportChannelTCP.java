@@ -41,6 +41,13 @@ public class TransportChannelTCP implements ITransportChannel {
 		this.port = port;
 	}
 
+	/**
+	 * @since 2.0
+	 */
+	public boolean isOpen() {
+		return socket != null && !closed;
+	}
+	
 	public void open() throws IOException {
 		socket = new Socket(host, port);
 		socket.setTcpNoDelay(true);

@@ -42,7 +42,7 @@ import org.osgi.service.prefs.BackingStoreException;
  */
 public class LanguageSettingsManager {
 	public static final String PROVIDER_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
-	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user";
+	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user.LanguageSettingsProvider";
 	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager.PROVIDER_DELIMITER;
 
 	/**

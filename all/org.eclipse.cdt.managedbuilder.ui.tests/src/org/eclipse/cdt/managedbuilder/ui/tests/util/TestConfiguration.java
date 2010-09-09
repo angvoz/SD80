@@ -39,11 +39,11 @@ import org.osgi.framework.Version;
 public class TestConfiguration implements IConfiguration {
 
 	IToolChain toolchain;
-	
+
 	public TestConfiguration(IToolChain tc) {
 		toolchain = tc;
 	}
-	
+
 	public boolean buildsFileType(String srcExt) {
 		// TODO Auto-generated method stub
 		return false;
@@ -177,6 +177,11 @@ public class TestConfiguration implements IConfiguration {
 	}
 
 	public String[] getErrorParserList() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public String getDefaultLanguageSettingsProvidersIds() {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -546,7 +551,7 @@ public class TestConfiguration implements IConfiguration {
 
 	public void setBuildArtefactType(String id) throws BuildException {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	public ICSourceEntry[] getSourceEntries() {
@@ -556,7 +561,7 @@ public class TestConfiguration implements IConfiguration {
 
 	public void setSourceEntries(ICSourceEntry[] entries) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 }

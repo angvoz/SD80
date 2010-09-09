@@ -11,12 +11,15 @@
 package org.eclipse.cdt.managedbuilder.ui.wizards;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 import org.eclipse.cdt.core.CCProjectNature;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.managedbuilder.core.IBuilder;
 import org.eclipse.cdt.managedbuilder.core.IToolChain;
@@ -51,7 +54,7 @@ import org.eclipse.ui.actions.WorkspaceModifyOperation;
 public class NewMakeProjFromExisting extends Wizard implements IImportWizard, INewWizard {
 
 	NewMakeProjFromExistingPage page;
-	
+
 	public void init(IWorkbench workbench, IStructuredSelection selection) {
 		setWindowTitle(Messages.NewMakeProjFromExisting_0);
 	}
@@ -68,13 +71,13 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 		final String locationStr = page.getLocation();
 		final boolean isCPP = page.isCPP();
 		final IToolChain toolChain = page.getToolChain();
-		
+
 		IRunnableWithProgress op = new WorkspaceModifyOperation() {
 			@Override
 			protected void execute(IProgressMonitor monitor) throws CoreException, InvocationTargetException,
 					InterruptedException {
 				monitor.beginTask(Messages.NewMakeProjFromExisting_1, 10);
-				
+
 				// Create Project
 				try {
 					IWorkspace workspace = ResourcesPlugin.getWorkspace();
@@ -109,17 +112,22 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 					IBuilder builder = config.getEditableBuilder();
 					builder.setManagedBuildOn(false);
 					CConfigurationData data = config.getConfigurationData();
-					projDesc.createConfiguration(ManagedBuildManager.CFG_DATA_PROVIDER_ID, data);
+					ICConfigurationDescription cfgDes = projDesc.createConfiguration(ManagedBuildManager.CFG_DATA_PROVIDER_ID, data);
+
+					List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
+					cfgDes.setLanguageSettingProviders(providers);
+
 					monitor.worked(1);
 					
 					pdMgr.setProjectDescription(project, projDesc);
 				} catch (Throwable e) {
 					ManagedBuilderUIPlugin.log(e);
 				}
+
 				monitor.done();
 			}
 		};
-			
+
 		try {
 			getContainer().run(true, true, op);
 		} catch (InvocationTargetException e) {

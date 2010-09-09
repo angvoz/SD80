@@ -15,14 +15,14 @@ import org.eclipse.cdt.core.settings.model.extension.CTargetPlatformData;
 import org.eclipse.cdt.managedbuilder.core.IBuilder;
 import org.eclipse.cdt.managedbuilder.core.IConfiguration;
 import org.eclipse.cdt.managedbuilder.core.IFolderInfo;
-import org.eclipse.cdt.managedbuilder.core.IOutputType;
 import org.eclipse.cdt.managedbuilder.core.IOptionPathConverter;
+import org.eclipse.cdt.managedbuilder.core.IOutputType;
 import org.eclipse.cdt.managedbuilder.core.IResourceInfo;
 import org.eclipse.cdt.managedbuilder.core.ITargetPlatform;
 import org.eclipse.cdt.managedbuilder.core.ITool;
 import org.eclipse.cdt.managedbuilder.core.IToolChain;
-import org.eclipse.cdt.managedbuilder.internal.core.HoldsOptions;
 import org.eclipse.cdt.managedbuilder.envvar.IConfigurationEnvironmentVariableSupplier;
+import org.eclipse.cdt.managedbuilder.internal.core.HoldsOptions;
 import org.eclipse.cdt.managedbuilder.macros.IConfigurationBuildMacroSupplier;
 import org.osgi.framework.Version;
 
@@ -48,7 +48,7 @@ public class TestToolchain extends HoldsOptions implements IToolChain {
 	@Override
 	public void setVersion(Version version) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	public IConfigurationBuildMacroSupplier getBuildMacroSupplier() {
@@ -260,7 +260,7 @@ public class TestToolchain extends HoldsOptions implements IToolChain {
 	@Override
 	public String getId() {
 		return id;
-	
+
 	}
 
 	@Override
@@ -270,7 +270,7 @@ public class TestToolchain extends HoldsOptions implements IToolChain {
 	}
 
 	private String id = null;
-	
+
 	public void setID(String id)
 	{
 		this.id = id;
@@ -319,7 +319,12 @@ public class TestToolchain extends HoldsOptions implements IToolChain {
 		// TODO Auto-generated method stub
 		return false;
 	}
-	
-	
-	
+
+	public String getDefaultLanguageSettingsProvidersIds() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
+
 }

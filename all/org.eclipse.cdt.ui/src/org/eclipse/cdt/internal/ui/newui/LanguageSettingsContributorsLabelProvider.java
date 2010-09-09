@@ -26,8 +26,15 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 			String[] overlayKeys = new String[5];
 			ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
 			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_GLOBAL;
+//				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_GLOBAL;
+//				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_REFERENCE;
+//				overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_PARENT;
 //				overlayKeys[IDecoration.BOTTOM_RIGHT] = LanguageSettingsImages.IMG_OVR_LINK;
+			} else {
+//				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_CONFIGURATION;
+//				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_INDEXED;
+				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_PROJECT;
+//				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_CONTEXT;
 			}
 			return overlayKeys;
 		}

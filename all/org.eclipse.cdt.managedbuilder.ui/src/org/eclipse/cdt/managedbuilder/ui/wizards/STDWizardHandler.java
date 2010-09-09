@@ -11,9 +11,13 @@
  *******************************************************************************/
 package org.eclipse.cdt.managedbuilder.ui.wizards;
 
+import java.util.List;
+
 import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.managedbuilder.core.IBuilder;
 import org.eclipse.cdt.managedbuilder.core.IConfiguration;
@@ -37,13 +41,13 @@ import org.eclipse.swt.widgets.Composite;
 public class STDWizardHandler extends MBSWizardHandler {
 
 	public STDWizardHandler(Composite p, IWizard w) {
-		super(Messages.StdBuildWizard_0, p, w); 
+		super(Messages.StdBuildWizard_0, p, w);
 	}
 
 	@Override
 	public void addTc(IToolChain tc) {
 		if (tc == null) {
-			full_tcs.put(Messages.StdProjectTypeHandler_0, null); 
+			full_tcs.put(Messages.StdProjectTypeHandler_0, null);
 		} else {
 			if (tc.isAbstract() || tc.isSystemObject()) return;
 		// 	unlike CWizardHandler, we don't check for configs
@@ -58,9 +62,9 @@ public class STDWizardHandler extends MBSWizardHandler {
 	public void createProject(IProject project, boolean defaults, boolean onFinish, IProgressMonitor monitor)  throws CoreException {
 		try {
 			monitor.beginTask("", 100);//$NON-NLS-1$
-		
+
 			setProjectDescription(project, defaults, onFinish, monitor);
-			
+
 			doTemplatesPostProcess(project);
 			doCustom(project);
 			monitor.worked(30);
@@ -95,28 +99,32 @@ public class STDWizardHandler extends MBSWizardHandler {
 	    		}
 	    		bld.setManagedBuildOn(false);
 	    	} else {
-	    		System.out.println(Messages.StdProjectTypeHandler_3); 
+	    		System.out.println(Messages.StdProjectTypeHandler_3);
 	    	}
 	    	cfg.setArtifactName(mProj.getDefaultArtifactName());
 	    	CConfigurationData data = cfg.getConfigurationData();
-	    	des.createConfiguration(ManagedBuildManager.CFG_DATA_PROVIDER_ID, data);
+	    	ICConfigurationDescription cfgDes = des.createConfiguration(ManagedBuildManager.CFG_DATA_PROVIDER_ID, data);
+
+			List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(cfg);
+			cfgDes.setLanguageSettingProviders(providers);
+
 	    	monitor.worked(work);
 	    }
 	    mngr.setProjectDescription(project, des);
     }
-	public boolean canCreateWithoutToolchain() { return true; } 
-	
+	public boolean canCreateWithoutToolchain() { return true; }
+
 	@Override
 	public void convertProject(IProject proj, IProgressMonitor monitor) throws CoreException {
 	    setProjectDescription(proj, true, true, monitor);
 	}
-	
+
 	/**
 	 * If no toolchains selected by user, use default toolchain
 	 */
 	@Override
 	public IToolChain[] getSelectedToolChains() {
-		if (full_tcs.size() == 0 || table.getSelection().length == 0) 
+		if (full_tcs.size() == 0 || table.getSelection().length == 0)
 			return new IToolChain[] { null };
 		else
 			return super.getSelectedToolChains();

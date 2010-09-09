@@ -39,9 +39,14 @@ public class LanguageSettingsImages {
 	public static final String IMG_OVR_ERROR = "icons/ovr16/error_co.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_SETTING = "icons/ovr16/setting_nav.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_GLOBAL = "icons/ovr16/global_ovr.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_IMPORT = "icons/ovr16/import_co.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_LINK = "icons/ovr16/link_ovr.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_CONFIGURATION = "icons/ovr16/cfg_ovr.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_PARENT = "icons/ovr16/path_inherit_co.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_INDEXED = "icons/ovr16/indexedFile.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_REFERENCE = "icons/ovr16/referencedby_co.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_PROJECT = "icons/ovr16/project_co.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_CONTEXT = "icons/ovr16/overlay-has-context.gif"; //$NON-NLS-1$
 
 
 	private static URL makeIconFileURL(String path) {

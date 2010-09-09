@@ -248,6 +248,8 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			b1.setLayoutData(gd);
 			b1.setSelection(true);
 			b1.setEnabled(fEditable);
+			// FIXME: not available yet
+			b1.setEnabled(false);
 //			b1.addSelectionListener(new SelectionAdapter() {
 //				@Override
 //				public void widgetSelected(SelectionEvent e) {

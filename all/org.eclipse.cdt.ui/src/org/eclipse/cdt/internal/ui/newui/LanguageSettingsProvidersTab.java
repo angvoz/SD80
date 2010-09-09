@@ -354,7 +354,17 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 
 	private void initializeOptionsPage(String id) {
-		List<ILanguageSettingsProvider> providers = fCfgDesc.getLanguageSettingProviders();
+		List<ILanguageSettingsProvider> providers;
+		if (page.isForPrefs()) {
+			providers = new ArrayList<ILanguageSettingsProvider>();
+			String[] availableIds = LanguageSettingsManager.getProviderAvailableIds();
+			for (String providerId : availableIds) {
+				ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(providerId);
+				providers.add(provider);
+			}
+		} else {
+			providers = fCfgDesc.getLanguageSettingProviders();
+		}
 		ILanguageSettingsProvider provider = null;
 		for (ILanguageSettingsProvider pr : providers) {
 			if (id.equals(pr.getId())) {

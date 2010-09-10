@@ -30,8 +30,10 @@ import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.protocol.Protocol;
+import org.eclipse.tm.tcf.protocol.Protocol.ChannelOpenListener;
 import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IProcesses.ProcessContext;
 import org.osgi.framework.BundleContext;
@@ -63,6 +65,7 @@ public class WindowsDebugger extends Plugin {
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
 		plugin = this;
+		installAdditionalServiceProxies();
 	}
 
 	/*
@@ -204,4 +207,20 @@ public class WindowsDebugger extends Plugin {
 		}
 		return selectedProcessItem[0];
 	}
+	
+	private void installAdditionalServiceProxies() {
+		Protocol.invokeLater(new Runnable() {
+			public void run() {
+				Protocol.addChannelOpenListener(new ChannelOpenListener() {
+					public void onChannelOpen(IChannel channel) {
+						// windows os data service
+						if (channel.getRemoteService(IWindowsOSData.NAME) != null)
+							channel.setServiceProxy(IWindowsOSData.class, new WindowsOSDataProxy(channel));
+						//
+					}
+				});
+			}
+		});
+	}
+
 }

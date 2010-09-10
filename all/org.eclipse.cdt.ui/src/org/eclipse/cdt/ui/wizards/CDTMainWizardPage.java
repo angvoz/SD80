@@ -163,7 +163,12 @@ import org.eclipse.cdt.internal.ui.newui.Messages;
 			checkBoxTryNewSD.setLayoutData(gd);
 
 			// restore settings from preferences
-			checkBoxTryNewSD.setSelection(CDTPrefUtil.getBool(CDTPrefUtil.KEY_NEWSD));
+			boolean isTryNewSD = true;
+			boolean contains = CUIPlugin.getDefault().getPreferenceStore().contains(CDTPrefUtil.KEY_NEWSD);
+			if (contains) {
+				isTryNewSD = CDTPrefUtil.getBool(CDTPrefUtil.KEY_NEWSD);
+			}
+			checkBoxTryNewSD.setSelection(isTryNewSD);
 	    }
 
 	    @Override

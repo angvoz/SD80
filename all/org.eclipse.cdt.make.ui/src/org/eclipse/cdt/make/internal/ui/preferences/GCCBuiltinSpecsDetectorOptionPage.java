@@ -11,8 +11,6 @@
 
 package org.eclipse.cdt.make.internal.ui.preferences;
 
-import org.eclipse.cdt.core.ErrorParserManager;
-import org.eclipse.cdt.core.IErrorParserNamed;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.errorparsers.RegexErrorParser;
 import org.eclipse.cdt.core.errorparsers.RegexErrorPattern;
@@ -421,11 +419,11 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 				// Use event.text to tell which link was used
 				PreferencesUtil.createPreferenceDialogOn(parent.getShell(), WORKSPACE_PREFERENCE_PAGE, null, null).open();
 
-				IErrorParserNamed errorParser = ErrorParserManager.getErrorParserCopy(fErrorParser.getId());
-				if (errorParser instanceof RegexErrorParser)
-					fErrorParser = (RegexErrorParser) errorParser;
-				else
-					fErrorParser = null;
+//				IErrorParserNamed errorParser = ErrorParserManager.getErrorParserCopy(fErrorParser.getId());
+//				if (errorParser instanceof RegexErrorParser)
+//					fErrorParser = (RegexErrorParser) errorParser;
+//				else
+//					fErrorParser = null;
 
 				initializeTable();
 			}

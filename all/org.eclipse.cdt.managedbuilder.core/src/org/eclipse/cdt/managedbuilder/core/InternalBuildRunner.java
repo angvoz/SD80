@@ -326,6 +326,11 @@ public class InternalBuildRunner implements IBuildRunner {
 					if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
 						try {
 							detector.startup(cfgDescription, languageId);
+							// FIXME: workingDirectory should be deterministic
+							if (!workingDirectory.toFile().exists()) {
+								IProject project = cfgDescription.getProjectDescription().getProject();
+								workingDirectory = project.getLocation();
+							}
 							detector.run(workingDirectory, env, console, monitor);
 						} catch (Exception e) {
 							ManagedBuilderCorePlugin.log(e);

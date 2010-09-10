@@ -19,6 +19,7 @@ import java.util.Map;
 import org.eclipse.cdt.managedbuilder.core.IToolChain;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
 import org.eclipse.cdt.managedbuilder.internal.ui.Messages;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -81,9 +82,14 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 		gd.horizontalSpan = 2;
 		checkBoxTryNewSD.setLayoutData(gd);
 
-		// restore settings from preferences
-		checkBoxTryNewSD.setSelection(CDTPrefUtil.getBool(CDTPrefUtil.KEY_NEWSD));
 
+		// restore settings from preferences
+		boolean isTryNewSD = true;
+		boolean contains = CUIPlugin.getDefault().getPreferenceStore().contains(CDTPrefUtil.KEY_NEWSD);
+		if (contains) {
+			isTryNewSD = CDTPrefUtil.getBool(CDTPrefUtil.KEY_NEWSD);
+		}
+		checkBoxTryNewSD.setSelection(isTryNewSD);
 
 		setControl(comp);
 	}

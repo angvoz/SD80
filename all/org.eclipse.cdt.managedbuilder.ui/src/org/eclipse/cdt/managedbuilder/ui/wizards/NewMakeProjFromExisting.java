@@ -14,6 +14,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfileManager;
 import org.eclipse.cdt.core.CCProjectNature;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CoreModel;
@@ -73,6 +74,7 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 		final String locationStr = page.getLocation();
 		final boolean isCPP = page.isCPP();
 		final IToolChain toolChain = page.getToolChain();
+		final boolean isTryingNewSD = page.isTryingNewSD();
 
 		IRunnableWithProgress op = new WorkspaceModifyOperation() {
 			@Override
@@ -116,13 +118,9 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 					CConfigurationData data = config.getConfigurationData();
 					ICConfigurationDescription cfgDes = projDesc.createConfiguration(ManagedBuildManager.CFG_DATA_PROVIDER_ID, data);
 
+					if (isTryingNewSD) {
+						CfgScannerConfigProfileManager.disableScannerDiscovery(config);
 
-//					List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
-//					cfgDes.setLanguageSettingProviders(providers);
-
-//					if (startingPage instanceof CDTMainWizardPage) {
-//						CDTMainWizardPage mainWizardPage = (CDTMainWizardPage)startingPage;
-					if (page.isTryingNewSD()) {
 						List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
 						cfgDes.setLanguageSettingProviders(providers);
 					} else {
@@ -131,7 +129,6 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 						providers.add(provider);
 						cfgDes.setLanguageSettingProviders(providers);
 					}
-//					}
 
 
 					monitor.worked(1);
@@ -139,6 +136,17 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 					pdMgr.setProjectDescription(project, projDesc);
 				} catch (Throwable e) {
 					ManagedBuilderUIPlugin.log(e);
+				}
+
+				// FIXME if scanner discovery is empty it is "fixed" deeply inside setProjectDescription(), taking the easy road here for the moment
+				if (isTryingNewSD) {
+					ICProjectDescriptionManager mngr = CoreModel.getDefault().getProjectDescriptionManager();
+					ICProjectDescription des = mngr.getProjectDescription(project);
+					boolean isChanged = CfgScannerConfigProfileManager.disableScannerDiscovery(des);
+
+					if (isChanged) {
+						mngr.setProjectDescription(project, des);
+					}
 				}
 
 				monitor.done();

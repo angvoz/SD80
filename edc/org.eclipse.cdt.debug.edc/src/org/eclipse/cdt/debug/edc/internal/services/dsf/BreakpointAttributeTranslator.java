@@ -20,10 +20,9 @@ import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICWatchpoint;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
+import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
-import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator2;
@@ -39,13 +38,10 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.model.IBreakpoint;
-import org.eclipse.debug.core.model.ISourceLocator;
 
 public class BreakpointAttributeTranslator implements IBreakpointAttributeTranslator2 {
 
@@ -244,7 +240,7 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 			Modules modulesService = dsfServicesTracker.getService(Modules.class);
 			ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
 
-			file = getCompilationPath(file);	// but symbol reader has done opposite conversion ?
+			file = EDCLaunch.getLaunchForSession(dsfSession.getId()).getCompilationPath(file);
 
 			modulesService.calcAddressInfo(sym_dmc, file, line, 0, 
 					new DataRequestMonitor<AddressRange[]>(dsfSession.getExecutor(), drm) {
@@ -355,19 +351,5 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 		return canUpdateAttributes(null, attrDelta);
 	}
 
-	private String getCompilationPath(String sourceHandle) {
-		IPath path = Path.EMPTY;
-		if (Path.EMPTY.isValidPath(sourceHandle)) {
-			sourceHandle = PathUtils.convertPathToNative(sourceHandle);
-			ISourceLocator sl = targetEnvService.getLaunch().getSourceLocator();
-			if (sl instanceof CSourceLookupDirector) {
-				path = ((CSourceLookupDirector) sl).getCompilationPath(sourceHandle);
-			}
-			if (path == null) {
-				path = PathUtils.findExistingPathIfCaseSensitive(new Path(sourceHandle));
-			}
-		}
-		return path.toOSString();
-	}
 }
  

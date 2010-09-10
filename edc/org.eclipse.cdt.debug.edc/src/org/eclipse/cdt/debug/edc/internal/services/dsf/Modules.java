@@ -34,6 +34,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.RuntimeSection;
 import org.eclipse.cdt.debug.edc.internal.symbols.Section;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
+import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
@@ -727,6 +728,8 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		}
 		
 		ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+
+		sourceFile = EDCLaunch.getLaunchForSession(getSession().getId()).getCompilationPath(sourceFile);
 
 		calcAddressInfo(symCtx, sourceFile, lineNumber, 0, 
 				new DataRequestMonitor<AddressRange[]>(getExecutor(), drm) {

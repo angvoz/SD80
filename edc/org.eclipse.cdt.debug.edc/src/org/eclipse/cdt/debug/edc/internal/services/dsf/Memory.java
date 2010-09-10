@@ -187,6 +187,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 			protected void handleSuccess() {
 				// hide breakpoints inserted in the memory by debugger
 				MemoryByte[] data = getData();
+
 				Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
 				bpService.removeBreakpointFromMemoryBuffer(address.add(offset), data);
 

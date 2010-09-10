@@ -19,11 +19,13 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
@@ -32,6 +34,7 @@ import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.tm.tcf.services.IRunControl;
 
 public class DOMUtils {
@@ -167,6 +170,11 @@ public class DOMUtils {
 				break;
 		}
 		return result[0];
+	}
+	
+	public static IEDCSymbolReader getSymbolReader(IPath modulePath)
+	{
+		return Symbols.getSymbolReader(modulePath);
 	}
 
 }

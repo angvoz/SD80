@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CAddressBreakpoint;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CFunctionBreakpoint;
@@ -32,6 +33,7 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.model.IBreakpoint;
 
@@ -68,6 +70,10 @@ public class EDC {
 
 	public static IFunctionScope getFunctionAtAddress(String sessionId, String addressIdentifier) throws Exception {
 		return DOMUtils.getFunctionAtAddress(sessionId, addressIdentifier);
+	}
+
+	public static IEDCSymbolReader getSymbolReader(String modulePath) {
+		return DOMUtils.getSymbolReader(new Path(modulePath));
 	}
 
 	public static IBreakpoint createAddressBreakpoint(long address, String condition) throws Exception {

@@ -72,7 +72,11 @@ public class ArraySubscript extends CompoundInstruction {
 		if (arrayElementType == null)
 			throw EDCDebugger.newCoreException(ASTEvalMessages.ArraySubscript_MustSubscriptArray);
 		
-		byteSize = arrayElementType.getByteSize();
+		if (variableType instanceof IArrayType)
+			byteSize = variableType.getByteSize();
+		else
+			byteSize = arrayElementType.getByteSize();
+			
 
 		IVariableLocation varLocation = variableOperand.getValueLocation();
 		if (varLocation == null) {

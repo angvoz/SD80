@@ -85,39 +85,40 @@ public class LineEntryMapper {
 		for (ILineEntryProvider fileProvider : fileProviders) {
 			
 			Collection<ILineEntry> entries = fileProvider.getLineEntriesForLines(sourceFile, startLine, endLine);
-			if (!entries.isEmpty()) {			
-				if (addrRanges == null)
-					addrRanges = new ArrayList<EDCAddressRange>();
-				
-				for (ILineEntry entry : entries) {
-	
-					int entryLine = entry.getLineNumber();
-	
-					if (entryLine < bestLine) {
-						addrRanges.clear();
-						bestLine = entryLine;
-					} 
-					else if (bestLine == toEOF) {
-						bestLine = entryLine;
-					}
-					else if (entryLine > bestLine) {
-						break;	// assume entries sorted; go onto the next fileProvider
-					}
-					// else (entryLine == bestLine) // implied
-	
-					/*
-					 * when there is more than one line mapping for the source line,
-					 * see if it makes sense to merge the line entries into the same
-					 * address range, or keep different address ranges. examples of
-					 * when this might happen are when there are multiple logical
-					 * code segments for the same source line, but in different
-					 * columns. in this case it makes sense to merge these into one
-					 * address range. for templates and inline functions however,
-					 * the column will be the same. for these cases it makes sense
-					 * to keep the address ranges separate.
-					 */
-					IPath entryPath = entry.getFilePath();
-					int entryColumn = entry.getColumnNumber();
+			if (addrRanges == null && !entries.isEmpty())
+				addrRanges = new ArrayList<EDCAddressRange>();
+			
+			for (ILineEntry entry : entries) {
+
+				int entryLine = entry.getLineNumber();
+
+				if (entryLine < bestLine && addrRanges != null) {
+					addrRanges.clear();
+					bestLine = entryLine;
+				} 
+				else if (bestLine == toEOF) {
+					bestLine = entryLine;
+				}
+				else if (entryLine > bestLine) {
+					break;	// assume entries sorted; go onto the next fileProvider
+				}
+				// else (entryLine == bestLine) // implied
+
+				/*
+				 * when there is more than one line mapping for the source line,
+				 * see if it makes sense to merge the line entries into the same
+				 * address range, or keep different address ranges. examples of
+				 * when this might happen are when there are multiple logical
+				 * code segments for the same source line, but in different
+				 * columns. in this case it makes sense to merge these into one
+				 * address range. for templates and inline functions however,
+				 * the column will be the same. for these cases it makes sense
+				 * to keep the address ranges separate.
+				 */
+				IPath entryPath = entry.getFilePath();
+				int entryColumn = entry.getColumnNumber();
+				if (addrRanges != null)
+				{
 					if (addrRanges.isEmpty() || !entryPath.equals(lastFile) || lastColumn == entryColumn) {
 						addrRanges.add(new EDCAddressRange(entry.getLowAddress(), entry.getHighAddress()));
 					} else {
@@ -125,9 +126,9 @@ public class LineEntryMapper {
 						range.setEndAddress(entry.getHighAddress());
 						addrRanges.add(range);
 					}
-					lastColumn = entryColumn;
-					lastFile = entryPath;
 				}
+				lastColumn = entryColumn;
+				lastFile = entryPath;
 			}
 		}
 		

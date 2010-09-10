@@ -29,6 +29,7 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.templateengine.process.ProcessFailureException;
 import org.eclipse.cdt.internal.ui.wizards.ICDTCommonProjectWizard;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
@@ -596,8 +597,18 @@ public class MBSWizardHandler extends CWizardHandler {
 			if (cfgFirst == null) // select at least first configuration
 				cfgFirst = cfgDes;
 
-			List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
-			cfgDes.setLanguageSettingProviders(providers);
+			if (startingPage instanceof CDTMainWizardPage) {
+				CDTMainWizardPage mainWizardPage = (CDTMainWizardPage)startingPage;
+				if (mainWizardPage.isTryingNewSD()) {
+					List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
+					cfgDes.setLanguageSettingProviders(providers);
+				} else {
+					ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(ManagedBuildManager.MBS_LANGUAGE_SETTINGS_PROVIDER);
+					List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+					providers.add(provider);
+					cfgDes.setLanguageSettingProviders(providers);
+				}
+			}
 
 			monitor.worked(work);
 		}

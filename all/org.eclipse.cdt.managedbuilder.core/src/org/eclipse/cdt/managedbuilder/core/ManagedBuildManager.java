@@ -151,7 +151,7 @@ import org.w3c.dom.ProcessingInstruction;
  */
 public class ManagedBuildManager extends AbstractCExtension {
 
-	private static final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
+	public static final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
 //	private static final QualifiedName buildInfoProperty = new QualifiedName(ManagedBuilderCorePlugin.getUniqueIdentifier(), "managedBuildInfo");	//$NON-NLS-1$
 	private static final String ROOT_NODE_NAME = "ManagedProjectBuildInfo";	//$NON-NLS-1$
 	public  static final String SETTINGS_FILE_NAME = ".cdtbuild";	//$NON-NLS-1$

@@ -4,7 +4,7 @@
  *  are made available under the terms of the Eclipse Public License v1.0
  *  which accompanies this distribution, and is available at
  *  http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  *  Contributors:
  *  Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
@@ -74,6 +74,7 @@ public class Messages extends NLS {
 	public static String CDTCommonProjectWizard_creatingProject;
 	public static String CDTMainWizardPage_0;
 	public static String CDTMainWizardPage_1;
+	public static String CDTMainWizardPage_TrySD80;
 	public static String CLocationOutputTab_0;
 	public static String CLocationSourceTab_0;
 	public static String CLocationTab_0;

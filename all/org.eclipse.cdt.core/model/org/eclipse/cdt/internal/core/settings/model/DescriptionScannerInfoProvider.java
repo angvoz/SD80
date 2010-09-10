@@ -34,8 +34,11 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
 
 public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICProjectDescriptionListener {
 	private IProject fProject;
@@ -69,16 +72,18 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 			updateProjCfgInfo(CProjectDescriptionManager.getInstance().getProjectDescription(fProject, false));
 
 		if (fCfgDes==null) {
-			CCorePlugin.log("Error getting scanner info: fCfgDes==null");
+			Status status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Error getting scanner info: fCfgDes==null");
+			CCorePlugin.log(new CoreException(status));
 			return INEXISTENT_SCANNER_INFO;
 		}
-		
+
 		String[] languageIds = LanguageSettingsManager.getLanguageIds(fCfgDes, resource);
 		if (languageIds==null || languageIds.length==0) {
-			CCorePlugin.log("Error getting ScannerInfo: Not able to retrieve language id for resource " + resource);
+			Status status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Error getting ScannerInfo: Not able to retrieve language id for resource " + resource);
+			CCorePlugin.log(new CoreException(status));
 			return INEXISTENT_SCANNER_INFO;
 		}
-		
+
 		// TODO: is there really a use case for resource being not IFile?
 		String languageId = languageIds[0]; // Legacy logic
 
@@ -92,23 +97,23 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 				includePathSystemEntries.add(entry);
 			}
 		}
-		
+
 		String[] includePathsSystem = getValues(includePathSystemEntries);
 
 		String[] includePathsLocal = new String[includePathLocalEntries.size()];
 		for (int i=0; i<includePathLocalEntries.size();i++) {
 			includePathsLocal[i] = includePathLocalEntries.get(i).getName();
 		}
-		
+
 		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_FILE);
 		String[] includeFiles = getValues(includeFileEntries);
-		
+
 		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO_FILE);
 		String[] macroFiles = getValues(macroFileEntries);
-		
+
 		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO);
 		Map<String, String> definedSymbols = getMacroValues(macroEntries);
-		
+
 		return new ExtendedScannerInfo(definedSymbols, includePathsSystem, macroFiles, includeFiles, includePathsLocal);
 	}
 
@@ -180,7 +185,7 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 	public void handleEvent(CProjectDescriptionEvent event) {
 		if(!event.getProject().equals(fProject))
 			return;
-		
+
 		//TODO: check delta and notify listeners
 
 		updateProjCfgInfo(event.getNewCProjectDescription());

@@ -33,6 +33,7 @@ import org.eclipse.cdt.internal.ui.workingsets.WorkingSetConfigurationManager;
 public class CDTPrefUtil {
 	// boolean keys (KEY_NO-s are to be inverted !)
 	public static final String KEY_NOSUPP  = "wizard.show.unsupported.disable";  //$NON-NLS-1$
+	public static final String KEY_NEWSD  = "wizard.try.new.sd.enable";  //$NON-NLS-1$
 	public static final String KEY_OTHERS  = "wizard.group.others.enable";  //$NON-NLS-1$
 	public static final String KEY_NOMNG   = "properties.manage.config.disable"; //$NON-NLS-1$
 	public static final String KEY_DTREE   = "properties.data.hierarchy.enable"; //$NON-NLS-1$
@@ -50,28 +51,28 @@ public class CDTPrefUtil {
 		public static final int POSITION_SAVE_SIZE = 0;
 	    public static final int POSITION_SAVE_NONE = 2;
 	    public static final int POSITION_SAVE_BOTH = 3;
-	
+
 	public static final String KEY_DISC_NAMES  = "properties.discovery.naming"; //$NON-NLS-1$
 		public static final int DISC_NAMING_UNIQUE_OR_BOTH = 0;
 		public static final int DISC_NAMING_UNIQUE_OR_IDS = 1;
 		public static final int DISC_NAMING_ALWAYS_BOTH = 2;
 		public static final int DISC_NAMING_ALWAYS_IDS = 3;
 		public static final int DISC_NAMING_DEFAULT = DISC_NAMING_UNIQUE_OR_BOTH;
-	
+
 	public static final String KEY_DMODE = "properties.multi.displ.mode"; //$NON-NLS-1$
 		public static final int DMODE_CONJUNCTION = 1;
 		public static final int DMODE_DISJUNCTION = 2;
-		
+
 	public static final String KEY_WMODE = "properties.multi.write.mode"; //$NON-NLS-1$
 		public static final int WMODE_MODIFY  = 4;
 		public static final int WMODE_REPLACE = 8;
-		
+
 	public static final String NULL = "NULL"; //$NON-NLS-1$
 	private static final IPreferenceStore pref = CUIPlugin.getDefault().getPreferenceStore();
 	private static final String DELIMITER = " "; //$NON-NLS-1$
 	public static final String CONFSETDEL = "\f"; //$NON-NLS-1$
 	private static LinkedList<String> preferredTCs = null;
-	
+
 	public static final Object[] EMPTY_ARRAY = new Object[0];
 
 	// low-level methods
@@ -87,34 +88,34 @@ public class CDTPrefUtil {
 		preferredTCs = new LinkedList<String>(Arrays.asList(getStr(KEY_PREFTC).split(DELIMITER)));
 	}
 	public static List<String> getPreferredTCs() {
-		if (preferredTCs == null) readPreferredTCs(); 
-		return preferredTCs; 
+		if (preferredTCs == null) readPreferredTCs();
+		return preferredTCs;
 	}
-	public static void delPreferredTC(String s) { 
-		if (preferredTCs == null) readPreferredTCs(); 
-		preferredTCs.remove(s); 
+	public static void delPreferredTC(String s) {
+		if (preferredTCs == null) readPreferredTCs();
+		preferredTCs.remove(s);
 	}
 	public static void addPreferredTC(String s) {
-		if (preferredTCs == null) readPreferredTCs(); 
-		if (!preferredTCs.contains(s)) preferredTCs.add(s); 
+		if (preferredTCs == null) readPreferredTCs();
+		if (!preferredTCs.contains(s)) preferredTCs.add(s);
 	}
 	public static void cleanPreferredTCs() {
 		setStr(KEY_PREFTC, IPreferenceStore.STRING_DEFAULT_DEFAULT);
-		readPreferredTCs(); 
+		readPreferredTCs();
 	}
 	public static void savePreferredTCs() {
-		if (preferredTCs == null) return; 
+		if (preferredTCs == null) return;
 		Iterator<String> it = preferredTCs.iterator();
-		StringBuilder b = new StringBuilder(); 
+		StringBuilder b = new StringBuilder();
 		while (it.hasNext()) {
 			String s = it.next();
-			if (s == null) continue; 
+			if (s == null) continue;
 			b.append(s);
 			b.append(DELIMITER);
 		}
 		setStr(KEY_PREFTC, b.toString().trim());
 	}
-	
+
 	@SuppressWarnings("fallthrough")
 	public static String getDMode() {
 		String s = null;
@@ -123,15 +124,15 @@ public class CDTPrefUtil {
 			setInt(KEY_DMODE, DMODE_CONJUNCTION);
 			// fallthrough
 		case DMODE_CONJUNCTION:
-			s = Messages.EnvironmentTab_17;  
+			s = Messages.EnvironmentTab_17;
 			break;
 		case DMODE_DISJUNCTION:
-			s = Messages.EnvironmentTab_18;  
+			s = Messages.EnvironmentTab_18;
 			break;
 		}
-		return Messages.EnvironmentTab_19 + s;  
+		return Messages.EnvironmentTab_19 + s;
 	}
-	
+
 	@SuppressWarnings("fallthrough")
 	public static String getWMode() {
 		String s = null;
@@ -140,47 +141,47 @@ public class CDTPrefUtil {
 			setInt(KEY_WMODE, WMODE_MODIFY);
 			// fallthrough
 		case WMODE_MODIFY:
-			s = Messages.EnvironmentTab_24;  
+			s = Messages.EnvironmentTab_24;
 			break;
 		case WMODE_REPLACE:
-			s = Messages.EnvironmentTab_21;  
+			s = Messages.EnvironmentTab_21;
 			break;
 		}
-		return Messages.EnvironmentTab_22 + s;  
+		return Messages.EnvironmentTab_22 + s;
 	}
-	
+
 	public static void spinDMode() {
-		setInt(KEY_DMODE, 
+		setInt(KEY_DMODE,
 				((getInt(KEY_DMODE) == DMODE_CONJUNCTION) ?
 						DMODE_DISJUNCTION :
 						DMODE_CONJUNCTION));
 	}
 
 	public static void spinWMode() {
-		setInt(KEY_WMODE, 
-				((getInt(KEY_WMODE) == WMODE_MODIFY) ? 
-						WMODE_REPLACE : 
+		setInt(KEY_WMODE,
+				((getInt(KEY_WMODE) == WMODE_MODIFY) ?
+						WMODE_REPLACE :
 						WMODE_MODIFY));
 	}
 
 	public static final String[] getStrListForDisplay(String[][] input) {
 		return getStrListForDisplay(input, getInt(KEY_DMODE));
 	}
-	
+
 	private static final String[] getStrListForDisplay(String[][] input, int mode) {
 		Object[] ob = getListForDisplay(input, getInt(KEY_DMODE), null);
 		String[] ss = new String[ob.length];
 		System.arraycopy(ob, 0, ss, 0, ob.length);
 		return ss;
 	}
-	
+
 	public static final Object[] getListForDisplay(Object[][] input, Comparator<Object> cmp) {
 		return getListForDisplay(input, getInt(KEY_DMODE), cmp);
 	}
 	/**
 	 * Utility method forms string list
 	 * according to current list display mode
-	 * 
+	 *
 	 * @param input - array of string arrays
 	 * @return
 	 */
@@ -194,11 +195,11 @@ public class CDTPrefUtil {
 		}
 
 		Object[] s1 = input[0];
-		if (s1 == null || 
+		if (s1 == null ||
 			s1.length == 0)
 			return EMPTY_ARRAY;
-		if (getInt(KEY_DMODE) == DMODE_CONJUNCTION) 
-		{ 
+		if (getInt(KEY_DMODE) == DMODE_CONJUNCTION)
+		{
 			ArrayList<Object> lst = new ArrayList<Object>();
 			for (int i=0; i<s1.length; i++) {
 				if (s1[i] == null)
@@ -233,7 +234,7 @@ public class CDTPrefUtil {
 		Arrays.sort(s1, cmp);
 		return s1;
 	}
-	
+
 	/**
 	 * @deprecated Use the {@link WorkingSetConfigurationManager} class, instead.
 	 */
@@ -241,15 +242,15 @@ public class CDTPrefUtil {
 	public static List<String> readConfigSets() {
 		return new LinkedList<String>(Arrays.asList(getStr(KEY_CONFSET).split(CONFSETDEL)));
 	}
-	
+
 	/**
 	 * @deprecated Use the {@link WorkingSetConfigurationManager} class, instead.
 	 */
 	@Deprecated
 	public static void saveConfigSets(List<String> out) {
-		StringBuilder b = new StringBuilder(); 
+		StringBuilder b = new StringBuilder();
 		for (String s : out) {
-			if (s == null) continue; 
+			if (s == null) continue;
 			b.append(s);
 			b.append(CONFSETDEL);
 		}

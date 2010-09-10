@@ -11,6 +11,7 @@
 package org.eclipse.cdt.managedbuilder.ui.wizards;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.cdt.core.CCProjectNature;
@@ -21,6 +22,7 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
+import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.managedbuilder.core.IBuilder;
 import org.eclipse.cdt.managedbuilder.core.IToolChain;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
@@ -114,8 +116,23 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 					CConfigurationData data = config.getConfigurationData();
 					ICConfigurationDescription cfgDes = projDesc.createConfiguration(ManagedBuildManager.CFG_DATA_PROVIDER_ID, data);
 
-					List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
-					cfgDes.setLanguageSettingProviders(providers);
+
+//					List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
+//					cfgDes.setLanguageSettingProviders(providers);
+
+//					if (startingPage instanceof CDTMainWizardPage) {
+//						CDTMainWizardPage mainWizardPage = (CDTMainWizardPage)startingPage;
+					if (page.isTryingNewSD()) {
+						List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
+						cfgDes.setLanguageSettingProviders(providers);
+					} else {
+						ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(ManagedBuildManager.MBS_LANGUAGE_SETTINGS_PROVIDER);
+						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+						providers.add(provider);
+						cfgDes.setLanguageSettingProviders(providers);
+					}
+//					}
+
 
 					monitor.worked(1);
 					

@@ -280,7 +280,10 @@ public class LanguageSettingsManager {
 		} else {
 			if(resource.getType() == IResource.FILE) {
 				ICLanguageSetting setting = ((ICFolderDescription)rcDes).getLanguageSettingForFile(rcPath.lastSegment());
-				return new String[] {setting.getLanguageId()};
+				if (setting!=null) {
+					// FIXME: there is a bug in in AbstractIndexerTask.parseFilesUpFront(). It should not parse C++ files for pure C project
+					return new String[] {setting.getLanguageId()};
+				}
 			} else {
 				ICLanguageSetting settings[] = ((ICFolderDescription)rcDes).getLanguageSettings();
 				if(settings==null || settings.length==0){

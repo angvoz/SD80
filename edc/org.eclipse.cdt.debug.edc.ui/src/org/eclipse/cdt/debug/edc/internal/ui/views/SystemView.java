@@ -10,8 +10,15 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui.views;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugUI;
 import org.eclipse.cdt.internal.ui.util.StringMatcher;
@@ -63,10 +70,11 @@ public abstract class SystemView extends ViewPart {
 	
 	public final static String PREF_REFRESH_INTERVAL = "refresh_interval";
 	public final static String PREF_SHOULD_AUTO_REFRESH = "should_auto_refresh";
+	public final static String PREF_ROOT_VM_PROPERTIES = "root_vm_properties";
 	
 	protected static final int DEFAULT_REFRESH_INTERVAL = 30000;
 	private PresentationContext presentationContext;
-	private boolean autoRefresh = false;
+	private boolean autoRefresh = true;
 	private int refreshInterval = DEFAULT_REFRESH_INTERVAL;
 	private IEclipsePreferences prefsNode;
 
@@ -122,6 +130,11 @@ public abstract class SystemView extends ViewPart {
 			systemVMContainer.getProperties().put(SystemVMContainer.PROP_SORT_PROPERTY, sortProperties[getSelector()]);
 			systemVMContainer.getProperties().put(SystemVMContainer.PROP_SORT_DIRECTION, currentSortDirection);
 			refreshViewModel();
+			try {
+				saveSettings();
+			} catch (Exception e1) {
+				EDCDebugUI.logError("", e1);
+			}
 		}
 
 		public void setSelector(int selector) {
@@ -183,16 +196,25 @@ public abstract class SystemView extends ViewPart {
 			
 			viewers.add(viewer);
 			tab.setData("VIEWER", viewer);
-			
+	
+
 	        TreeColumn[] columns = viewer.getTree().getColumns();
 	        if (columns.length > 0)
 	        {
-		        for (int i = 0; i < columns.length; i++) {
+				String[] columnKeys = (String[]) systemVMContainer.getProperties().get(SystemVMContainer.PROP_COLUMN_KEYS);
+				String sortProperty = (String) systemVMContainer.getProperties().get(SystemVMContainer.PROP_SORT_PROPERTY);
+				Integer sortDirection = (Integer) systemVMContainer.getProperties().get(SystemVMContainer.PROP_SORT_DIRECTION);
+
+				for (int i = 0; i < columns.length; i++) {
 		            TreeColumn treeColumn = columns[i];
-		            treeColumn.addSelectionListener(new ColumnSelectionAdapter(systemVMContainer, i, viewer));
+		            ColumnSelectionAdapter columnSelectionAdapter = new ColumnSelectionAdapter(systemVMContainer, i, viewer);
+		            treeColumn.addSelectionListener(columnSelectionAdapter);
+		            if (columnKeys[i].equals(sortProperty))
+		            {
+				        viewer.getTree().setSortColumn(treeColumn);
+				        viewer.getTree().setSortDirection(sortDirection);
+		            }
 		        }
-		        viewer.getTree().setSortColumn(columns[0]);
-		        viewer.getTree().setSortDirection(SWT.DOWN);
 	        }
 
 		}
@@ -348,7 +370,7 @@ public abstract class SystemView extends ViewPart {
 					setRefreshInterval(dialog.getRefreshInterval() * 1000);							
 					try {
 						saveSettings();
-					} catch (BackingStoreException e) {
+					} catch (Exception e) {
 						EDCDebugUI.logError("", e);
 					}
 				}
@@ -359,17 +381,51 @@ public abstract class SystemView extends ViewPart {
 		refreshSettingsAction.setToolTipText("Options for refreshing system information");
 	}
 	
-	public void saveSettings() throws BackingStoreException
+	public void saveSettings() throws BackingStoreException, IOException
 	{
 		getPrefsNode().putBoolean(PREF_SHOULD_AUTO_REFRESH, shouldAutoRefresh());
 		getPrefsNode().putInt(PREF_REFRESH_INTERVAL, getRefreshInterval());
+
+		List<Map<String,Object>> rootContainerProperties = new ArrayList<Map<String,Object>>();
+		for (SystemVMContainer systemVMContainer : viewModel.getRootContainers()) {
+			Map<String, Object> vmProps = systemVMContainer.getProperties();
+			Map<String,Object> props = new HashMap<String, Object>();
+			if (vmProps.containsKey(SystemVMContainer.PROP_SORT_PROPERTY))
+				props.put(SystemVMContainer.PROP_SORT_PROPERTY, vmProps.get(SystemVMContainer.PROP_SORT_PROPERTY));
+			if (vmProps.containsKey(SystemVMContainer.PROP_SORT_DIRECTION))
+				props.put(SystemVMContainer.PROP_SORT_DIRECTION, vmProps.get(SystemVMContainer.PROP_SORT_DIRECTION));
+			rootContainerProperties.add(props);
+		};
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		ObjectOutputStream oos = new ObjectOutputStream(baos);
+		oos.writeObject(rootContainerProperties);
+		baos.close();
+		getPrefsNode().putByteArray(PREF_ROOT_VM_PROPERTIES, baos.toByteArray());
 		getPrefsNode().flush();
 	}
 
+	@SuppressWarnings("unchecked")
 	public void loadSettings()
 	{
 		setAutoRefresh(getPrefsNode().getBoolean(PREF_SHOULD_AUTO_REFRESH, shouldAutoRefresh()));
 		setRefreshInterval(getPrefsNode().getInt(PREF_REFRESH_INTERVAL, getRefreshInterval()));
+		byte[] prefData = getPrefsNode().getByteArray(PREF_ROOT_VM_PROPERTIES, null);
+		if (prefData != null)
+		{
+			ByteArrayInputStream bais = new ByteArrayInputStream(prefData);
+			ObjectInputStream ois;
+			try {
+				ois = new ObjectInputStream(bais);
+				List<Map<String,Object>> rootContainerProperties = (List<Map<String,Object>>) ois.readObject();
+				int vmIndex = 0;
+				for (Map<String, Object> map : rootContainerProperties) {
+					SystemVMContainer rootVM = viewModel.getRootContainers().get(vmIndex++);
+					rootVM.getProperties().putAll(map);
+				}
+			} catch (Exception e) {
+				EDCDebugUI.logError("", e);
+			}
+		}
 	}
 	
 	public void createDebugAction() {

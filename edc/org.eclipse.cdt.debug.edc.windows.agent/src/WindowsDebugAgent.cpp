@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include "ProcessService.h"
+#include "WindowsOSDataService.h"
 #include "RunControlService.h"
 #include "SimpleRegistersService.h"
 #include "RegistersService.h"
@@ -113,7 +114,7 @@ int main(int argc, char* argv[]) {
 	
 	new ProcessService(proto);
 	new RunControlService(proto);
-//	new SimpleRegistersService(proto);
+	new WindowsOSDataService(proto);
 	new RegistersService(proto);
 	new MemoryService(proto);
 	new LoggingService(proto);

@@ -11,16 +11,16 @@
 class DeepCopy
 {
  public:
-	DeepCopy(char * pN);
+	DeepCopy(const char * pN);
   	DeepCopy(DeepCopy& p);
-  	void SetString(char * pN);
+  	void SetString(const char * pN);
  	~DeepCopy();
  private:
 	char * pName;
 };
 
 //DeepCopy constructor
-DeepCopy::DeepCopy(char * pN)
+DeepCopy::DeepCopy(const char * pN)
 {
 	pName = new char[12];
 	for (int i=0; i<12; i++)
@@ -37,7 +37,7 @@ DeepCopy::DeepCopy(DeepCopy& p)
 	return;
 } //copy constructor
 
-void DeepCopy::SetString(char * pN)
+void DeepCopy::SetString(const char * pN)
 {
 	for (int i=0; i<12; i++)
 		pName[i] = pN[i];

@@ -10,7 +10,9 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.tests;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import org.eclipse.cdt.debug.edc.internal.HostOS;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
@@ -198,12 +200,13 @@ public class SymbolReader {
 
 		// test line entry interface
 		IPath stackCrawlFilePath = null;
+		List<IPath> matchingFiles = new ArrayList<IPath>();
 		for (String src : reader.getSourceFiles() ) {
 			if (src.endsWith("dbg_stack_crawl.cpp")) {
-				stackCrawlFilePath = PathUtils.createPath(src);
-				break;
+				matchingFiles.add(PathUtils.createPath(src));
 			}
 		}
+		stackCrawlFilePath = matchingFiles.get(matchingFiles.size() - 1);
 		Assert.assertNotNull(stackCrawlFilePath);
 		Collection<ILineEntryProvider> lineEntryProviders = reader.getModuleScope().getModuleLineEntryProvider().getLineEntryProvidersForFile(
 				stackCrawlFilePath);

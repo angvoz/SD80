@@ -307,7 +307,7 @@ public class TestDisassemblerARM {
 				"42 88", "cmp	r0,r1",
 				"45 48", "cmp	r0,r9",
 				"B6 67", "cpsie	aif",
-				"46 48", "cpy	r0,r9",
+				"46 48", "mov	r0,r9",
 				"40 48", "eor	r0,r1",
 				"C8 0E", "ldmia	r0!,{r1,r2,r3}",
 				"68 48", "ldr	r0,[r1,#0x4]",
@@ -381,7 +381,7 @@ public class TestDisassemblerARM {
 		disassembleInst(0x00000000, "47 80", new JumpToAddress("r0", true, true),
 				"0:           47 80                           blx	r0", thumbOptions);
 		disassembleInst(0x00000000, "46 f7", new JumpToAddress("lr", true, false),
-				"0:           46 f7                           cpy	pc,lr", thumbOptions);
+				"0:           46 f7                           mov	pc,lr", thumbOptions);
 	}
 
 	/**

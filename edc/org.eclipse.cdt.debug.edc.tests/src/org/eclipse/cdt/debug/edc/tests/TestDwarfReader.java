@@ -627,6 +627,8 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				return; // yup
 			if (checkType instanceof ITemplateParam)
 				return; // no inherent size
+			if (checkType instanceof IArrayBoundType)
+				return; // no inherent size
 			fail(name + " has zero size");
 		}
 		if (idx % 1000 == 0) System.out.print(".");

@@ -11,17 +11,21 @@
 package org.eclipse.cdt.debug.edc.internal.windows.ui;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.IEDCConstants;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemDMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemVMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemView;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemViewModel;
 import org.eclipse.cdt.debug.edc.internal.ui.views.TCFDataModel;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
+import org.eclipse.cdt.debug.edc.windows.IWindowsOSData;
 import org.eclipse.cdt.internal.ui.util.StringMatcher;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -38,6 +42,8 @@ import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.PresentationContext;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.tm.tcf.protocol.IPeer;
+import org.eclipse.tm.tcf.protocol.IToken;
+import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IProcesses.ProcessContext;
 
 @SuppressWarnings("restriction")
@@ -48,6 +54,9 @@ public class WindowsSystemView extends SystemView {
 	public class WindowsDataModel extends TCFDataModel{
 
 		private SystemDMContainer processes = new SystemDMContainer();
+		private SystemDMContainer threads = new SystemDMContainer();
+		private Map<Integer,SystemDMContainer> processesByID = new HashMap<Integer, SystemDMContainer>();
+		private Map<Integer,IProcesses.ProcessContext> processContextsByOSID = new HashMap<Integer, IProcesses.ProcessContext>();
 		private int contextCountdown;
 
 		public WindowsDataModel() {
@@ -70,20 +79,26 @@ public class WindowsSystemView extends SystemView {
 
 		@Override
 		protected void receiveContextIDs(String parentID, String[] context_ids) {
-			contextCountdown = context_ids.length;
-			for (int i = 0; i < context_ids.length; i++) {
-				try {
+			try {
+				contextCountdown = context_ids.length;
+				for (int i = 0; i < context_ids.length; i++) {
 					getProcessContextInfo(context_ids[i]);
-				} catch (CoreException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
 				}
+				getThreadInfo();
+			} catch (CoreException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 
 		@Override
 		protected void receiveContextInfo(ProcessContext context) {
-			new SystemDMContainer(getProcesses(), context.getProperties());
+			if (context != null)
+			{
+				String osid = (String) context.getProperties().get(IWindowsOSData.PROP_OS_ID);
+				processesByID.put(Integer.parseInt(osid), new SystemDMContainer(getProcesses(), context.getProperties()));
+				processContextsByOSID.put(Integer.parseInt(osid), context);
+			}
 			setBuildComplete(--contextCountdown <= 0);
 		}
 
@@ -91,32 +106,82 @@ public class WindowsSystemView extends SystemView {
 			return processes;
 		}
 
+		private void getThreadInfo() throws CoreException {
+			final TCFServiceManager tcfServiceManager = (TCFServiceManager)EDCDebugger.getDefault().getServiceManager();
+	        final IWindowsOSData symbianDataService = (IWindowsOSData) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IWindowsOSData.NAME);
+	        if (symbianDataService != null)
+	        {
+	        	contextCountdown++;
+	        	symbianDataService.getThreads(new IWindowsOSData.DoneGetThreads() {
+					
+					public void doneGetThreads(IToken token, Exception error,
+							List<Map<String, Object>> threads) {
+						if (threads != null)
+						{
+			            	for (Map<String, Object> props : threads) {
+                                Integer threadID = (Integer) props.get(ProtocolConstants.PROP_OS_ID);
+			                    new SystemDMContainer(getThreads(), threadID.toString(), props);						
+			                    Integer processID = (Integer) props.get(IWindowsOSData.PROP_OWNING_PROCESS_OS_ID);
+			                    if (processID != null && processesByID.containsKey(processID))
+			                    	new SystemDMContainer(processesByID.get(processID), threadID.toString(), props);						
+			            	}
+						}
+					    setBuildComplete(--contextCountdown <= 0);
+					}
+				});
+	        }
+		}
+
+		public SystemDMContainer getThreads() {
+			return threads;
+		}
+
 	}
 
 	public class WindowsViewModel extends SystemViewModel {
 
 		private List<SystemVMContainer> rootVMContainers = new ArrayList<SystemVMContainer>();
+        private SystemVMContainer overview;
 
-		@Override
-		public void buildViewModel() {
-			rootVMContainers = new ArrayList<SystemVMContainer>();
-			rootVMContainers.add(getOverviewVMContainer());
+		public WindowsViewModel() {
+			super();
+            rootVMContainers = new ArrayList<SystemVMContainer>();
+            createOverviewContainer();
+		}
+		
+        @Override
+        public void buildViewModel() {
+               buildOverviewVMContainer();
+        }
+
+		
+		private void createOverviewContainer() {
+            overview = new SystemVMContainer(null, "Overview");
+            overview.getProperties().put(SystemVMContainer.PROP_ID, getPresentationContext().getId() + "_overview");
+            rootVMContainers.add(overview);
 		}
 
-		private SystemVMContainer getOverviewVMContainer() {
-			SystemVMContainer root = new SystemVMContainer(null, "Overview");
-			root.getProperties().put(SystemVMContainer.PROP_ID, getPresentationContext().getId() + "_overview");
-			SystemVMContainer processesVMC = new SystemVMContainer(root, "Processes");
+        private void buildOverviewVMContainer() {
+            
+            overview.clearChildren();
 
-			StringMatcher  matcher = getFilterMatcher();
+            List<SystemDMContainer> processes = ((WindowsDataModel) getDataModel()).getProcesses().getChildren();
+            if (processes.size() > 0) {
+                    SystemVMContainer processesVMC = new SystemVMContainer(overview, "Processes");
 
-			for (SystemDMContainer process : ((WindowsDataModel) getDataModel()).getProcesses().getChildren()) {
-				if (matcher.match(process.getName()))
-					new SystemVMContainer(processesVMC, process);
-			}
+                    StringMatcher  matcher = getFilterMatcher();
 
-			return root;
-		}
+                    for (SystemDMContainer process : processes) {
+                            if (matcher.match(process.getName())) {
+                                    SystemVMContainer processVMC = new SystemVMContainer(processesVMC, process);
+                                    List<SystemDMContainer> threads = process.getChildren();
+                                    for (SystemDMContainer threadDMContainer : threads) {
+                                            new SystemVMContainer(processVMC, threadDMContainer);
+                                    }
+                            }
+                    }
+            }
+    }
 
 		@Override
 		public List<SystemVMContainer> getRootContainers() {
@@ -129,10 +194,10 @@ public class WindowsSystemView extends SystemView {
 	public void createPartControl(Composite parent) {
 		setPresentationContext(new PresentationContext(VIEW_ID));
 		setPrefsNode(new InstanceScope().getNode(WindowsDebuggerUI.PLUGIN_ID));
-		loadSettings();
 		setDataModel(new WindowsDataModel());
 		setViewModel(new WindowsViewModel());
 		getViewModel().buildViewModel();
+		loadSettings();
 		createRootComposite(parent);
 		createRefreshAction();
 		createDebugAction();

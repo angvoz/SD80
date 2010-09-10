@@ -45,7 +45,6 @@ public class SystemRefreshOptionsDialog extends Dialog {
 	 */
 	public SystemRefreshOptionsDialog(Shell parentShell) {
 		super(parentShell);
-		setShellStyle(SWT.DIALOG_TRIM);
 	}
 
 	/**

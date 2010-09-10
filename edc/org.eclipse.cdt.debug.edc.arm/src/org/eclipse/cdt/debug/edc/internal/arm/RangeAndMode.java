@@ -58,5 +58,12 @@ public class RangeAndMode {
 	public IAddress getEndAddress() {
 		return endAddress;
 	}
+	
+	@Override
+	public String toString() {
+		return "start = " + (startAddress != null ? startAddress.toHexAddressString() : "null")
+			 + ", end = " + (endAddress   != null ? endAddress.toHexAddressString()   : "null")
+			 + (thumbMode ? ", thumb" : "") + (hasSymbols ? ", symbols" : ", no symbols");
+	}
 
 }

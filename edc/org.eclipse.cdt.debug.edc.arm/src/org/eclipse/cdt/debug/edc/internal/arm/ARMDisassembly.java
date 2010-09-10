@@ -37,53 +37,69 @@ import org.eclipse.cdt.dsf.debug.service.IInstruction;
 import org.eclipse.cdt.dsf.debug.service.IMemory;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IMixedInstruction;
-import org.eclipse.cdt.dsf.debug.service.IModules;
-import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.model.MemoryByte;
 
 public class ARMDisassembly extends Disassembly {
 
-	boolean thumbMode = false;
+	boolean currentlyProcessingThumbMode = false;
 
 	public ARMDisassembly(DsfSession session) {
 		super(session);
 	}
 
+	/**
+	 * overrides the default implmentation in order to first break the
+	 * whole range into a collection of ranges with the defining
+	 * characteristic being whether the range is ARM or Thumb mode
+	 */
 	@Override
 	public void getInstructions(final IDisassemblyDMContext context, BigInteger startAddress, BigInteger endAddress,
 			final DataRequestMonitor<IInstruction[]> drm) {
+
+		// FIXME: ignoring null startAddress and null endAddress semantics
+
 		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
 		if (disassembler == null) {
-			drm.setStatus(new Status(IStatus.ERROR, ARMPlugin.PLUGIN_ID, REQUEST_FAILED,
-					"No disassembler is available yet.", null));
+			drm.setStatus(statusNoDisassembler());
 			drm.done();
 			return;
 		}
 
-		long size = endAddress.longValue() - startAddress.longValue() + 16;
+		DsfServicesTracker services = getServicesTracker();
+		if (services == null) // could be null if async invoked as or after debug session ends
+			return;
 
-		IMemory memoryService = getServicesTracker().getService(IMemory.class);
+		IMemory memoryService = services.getService(IMemory.class);
+		if (memoryService == null) // could be null if async invoked as or after debug session ends
+			return;
+
+		long size = endAddress.longValue() - startAddress.longValue() + 16;
 
 		final IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(context, IMemoryDMContext.class);
 		final IAddress start = new Addr64(startAddress);
 		final IAddress end = new Addr64(endAddress);
 
-		memoryService.getMemory(mem_dmc, start, 0, 1, (int) size, new DataRequestMonitor<MemoryByte[]>(getExecutor(),
-				drm) {
-
+		memoryService.getMemory(mem_dmc, start, 0, 1, (int) size,
+								new DataRequestMonitor<MemoryByte[]>(getExecutor(),	drm) {
 			@Override
 			protected void handleSuccess() {
 				MemoryByte[] memBytes = getData();
 				final byte[] bytes = new byte[memBytes.length];
-				for (int i = 0; i < memBytes.length; i++)
+				for (int i = 0; i < memBytes.length; i++) {
+					// check each byte
+					if (!memBytes[i].isReadable()) {
+						drm.setStatus(statusCannotReadMemory(start.add(i).getValue().toString(16)));
+						drm.done();
+						return;
+					}
 					bytes[i] = memBytes[i].getValue();
+				}
 
 				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
 
@@ -106,28 +122,23 @@ public class ARMDisassembly extends Disassembly {
 				
 				// for each range disassemble it
 				for (RangeAndMode rangeAndMode : fullRange) {
-					if (rangeAndMode.isThumbMode())
-						thumbMode = true;
+					currentlyProcessingThumbMode = rangeAndMode.isThumbMode();
+
+					if (currentlyProcessingThumbMode)
+						options.put("DisassemblerMode", 2);//$NON-NLS-1$
 					else
-						thumbMode = false;
-	
-					if (thumbMode)
-						options.put("DisassemblerMode", 2);
-					else
-						options.put("DisassemblerMode", 1);
+						options.put("DisassemblerMode", 1);//$NON-NLS-1$
 	
 					if (getTargetEnvironmentService().isLittleEndian(null))
-						options.put("EndianMode", 2);
+						options.put("EndianMode", 2);//$NON-NLS-1$
 	
 					try {
 						int rangeOffs = rangeAndMode.getStartAddress().getValue().subtract(start.getValue()).intValue();
-						ByteBuffer rangeBytes = ByteBuffer.wrap(codeBuf.array(), 
-								rangeOffs, codeBuf.capacity() - rangeOffs);
-						List<IDisassembledInstruction> insts = disassembler.disassembleInstructions(
-								rangeAndMode.getStartAddress(), 
-								rangeAndMode.getEndAddress(), 
-								rangeBytes,
-								options);
+						ByteBuffer rangeBytes
+						  = ByteBuffer.wrap(codeBuf.array(), rangeOffs, codeBuf.capacity() - rangeOffs);
+						List<IDisassembledInstruction> insts
+						  = disassembler.disassembleInstructions(rangeAndMode.getStartAddress(), rangeAndMode.getEndAddress(), 
+								  								 rangeBytes, options);
 	
 						for (int i = 0; i < insts.size(); i++) {
 							result.add(new EDCInstruction(insts.get(i)));
@@ -145,16 +156,38 @@ public class ARMDisassembly extends Disassembly {
 
 	}
 
+	/**
+	 * overrides the default implmentation in order to first break the
+	 * whole range into a collection of ranges with the primary
+	 * characteristic being whether the range is ARM or Thumb mode;
+	 * also takes advantage of the RangeAndMode list to further break
+	 * the whole range into chunks based upon whether they have symbols
+	 * and then also into ranges with function boundaries.
+	 */
 	@Override
 	public void getMixedInstructions(IDisassemblyDMContext context, BigInteger startAddress, BigInteger endAddress,
 			final DataRequestMonitor<IMixedInstruction[]> drm) {
 
-		// These are absolute runtime addresses.
-		final IAddress start = new Addr64(startAddress);
-		final IAddress end = new Addr64(endAddress);
+		// FIXME: ignoring null startAddress and null endAddress semantics
 
-		IEDCSymbols symbolsService = getServicesTracker().getService(IEDCSymbols.class);
+		DsfServicesTracker services = getServicesTracker();
+		if (services == null) // could be null if async invoked as or after debug session ends
+			return;
+
+		IEDCSymbols symbolsService = services.getService(IEDCSymbols.class);
+		if (symbolsService == null) // could be null if async invoked as or after debug session ends
+			return;
+
+		IEDCModules modulesService = services.getService(IEDCModules.class);
+		if (modulesService == null) // could be null if async invoked as or after debug session ends
+			return;
+
+		// These are absolute runtime addresses.
 		final ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+		final IAddress end = new Addr64(endAddress);
+		final IAddress start
+		  = this.getStartAddressForLineEntryContainingAddress(symbolsService, modulesService, sym_dmc,
+				  											  new Addr64(startAddress), end);
 
 		// figure out the range and mode for the whole range first
 		List<RangeAndMode> fullRange = getModeAndRange(context, start, end);
@@ -171,123 +204,52 @@ public class ARMDisassembly extends Disassembly {
 
 		crm.setDoneCount(fullRange.size());
 		// for each range disassemble it
-		for (int i = 0; i < fullRange.size(); i++) {
-			if (fullRange.get(i).isThumbMode())
-				thumbMode = true;
-			else
-				thumbMode = false;
+		for (RangeAndMode range : fullRange) {
+			currentlyProcessingThumbMode = range.isThumbMode();
+			IAddress rangeStart = range.getStartAddress(), rangeEnd = range.getEndAddress();
 
-			if (fullRange.get(i).hasSymbols()) {
+			if (range.hasSymbols()) {
 				// there is source for this range
-				final List<ILineEntry> codeLines = symbolsService.getLineEntriesForAddressRange(sym_dmc, start, end);
-				if (codeLines == null || codeLines.isEmpty()) {
+				final List<ILineEntry> codeLines
+				  = symbolsService.getLineEntriesForAddressRange(sym_dmc, rangeStart, rangeEnd);
+				if (codeLines != null && !codeLines.isEmpty()) {
+					final IEDCModuleDMContext module = modulesService.getModuleByAddress(sym_dmc, rangeStart);
 
-					getInstructions(context, fullRange.get(i).getStartAddress().getValue(), fullRange.get(i)
-							.getEndAddress().getValue(), new DataRequestMonitor<IInstruction[]>(getExecutor(), crm) {
-
+					// Get absolute runtime address of the line
+					startAddress = module.toRuntimeAddress(codeLines.get(0).getLowAddress()).getValue();
+					getInstructions(context, startAddress, rangeEnd.getValue(),
+									new DataRequestMonitor<IInstruction[]>(getExecutor(), crm) {
 						@Override
 						protected void handleSuccess() {
-							result.add(new EDCMixedInstruction("unknown", 0, getData()));
+							mixSource(result, module, codeLines, getData());
 							crm.done();
 						}
 					});
 
-					return;
-
+					continue;
 				}
-
-				ILineEntry startEntry = symbolsService.getLineEntryForAddress(sym_dmc, start);
-				ILineEntry endEntry = symbolsService.getLineEntryForAddress(sym_dmc, end);
-
-				final String srcFile = startEntry != null ? startEntry.getFilePath().toOSString() : endEntry
-						.getFilePath().toOSString();
-
-				IEDCModules modulesService = getServicesTracker().getService(IEDCModules.class);
-				final IEDCModuleDMContext module = modulesService.getModuleByAddress(sym_dmc, start);
-
-				// Get absolute runtime address of the line
-				startAddress = module.toRuntimeAddress(codeLines.get(0).getLowAddress()).getValue();
-				getInstructions(context, startAddress, fullRange.get(i).getEndAddress().getValue(),
-						new DataRequestMonitor<IInstruction[]>(getExecutor(), crm) {
-
-							@Override
-							protected void handleSuccess() {
-								IInstruction[] instructions = getData();
-								int instsCnt = instructions.length;
-
-								int lineCnt = codeLines.size();
-								List<IInstruction> instsForLine = new ArrayList<IInstruction>();
-
-								int k = 0;
-								for (int i = 0; i < lineCnt && k < instsCnt; i++) {
-									// Now map the instructions to source lines
-									// to generate
-									// MixedInstructions.
-									instsForLine.clear();
-									ILineEntry line = codeLines.get(i);
-
-									while (k < instsCnt
-											&& module.toLinkAddress(new Addr64(instructions[k].getAdress())).compareTo(
-													line.getHighAddress()) < 0) {
-										instsForLine.add(instructions[k]);
-										k++;
-									}
-
-									result.add(new EDCMixedInstruction(srcFile, line.getLineNumber(), instsForLine
-											.toArray(new IInstruction[instsForLine.size()])));
-								}
-								crm.done();
-							}
-						});
-			} else {
-				// startAddress has no source
-				getInstructions(context, startAddress, endAddress, new DataRequestMonitor<IInstruction[]>(
-						getExecutor(), drm) {
-					@Override
-					protected void handleSuccess() {
-						result.add(new EDCMixedInstruction("unknown", 0, getData()));
-						crm.done();
-					}
-				});
-
 			}
 
+			// no source for this range, just get the disassembly for it
+			getInstructions(context, rangeStart.getValue(), rangeEnd.getValue(),
+							new DataRequestMonitor<IInstruction[]>(getExecutor(), crm) {
+				@Override
+				protected void handleSuccess() {
+					result.add(new EDCMixedInstruction("unknown", 0, getData()));//$NON-NLS-1$
+					crm.done();
+				}
+			});
 		}
 	}
 
-	@Override
-	public void getMixedInstructions(final IDisassemblyDMContext context, final String filename, final int linenum,
-			final int lines, final DataRequestMonitor<IMixedInstruction[]> drm) {
-
-		// FIXME: ignoring "lines" semantics
-		
-		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
-		if (disassembler == null) {
-			drm.setStatus(new Status(IStatus.ERROR, ARMPlugin.PLUGIN_ID, REQUEST_FAILED,
-					"No disassembler is available yet.", null));
-			drm.done();
-			return;
-		}
-
-		IModules modulesService = getServicesTracker().getService(IModules.class);
-
-		ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
-
-		modulesService.calcAddressInfo(sym_dmc, filename, linenum, 0, new DataRequestMonitor<AddressRange[]>(
-				getExecutor(), drm) {
-
-			@Override
-			protected void handleSuccess() {
-				AddressRange[] addr_ranges = getData();
-
-				IAddress start = addr_ranges[0].getStartAddress();
-				IAddress end = start.add(lines * 4); // kind of arbitrary end
-														// address hint.
-				getMixedInstructions(context, start.getValue(), end.getValue(), drm);
-			}
-		});
-	}
-
+	/**
+	 * take a range of addresses and break it into a list of RangeAndMode entries,
+	 * with the attributes {[boolean ThumbMode] [boolean hasSymbols]}
+	 * @param context execution context for determining ThumbMode and symbols content
+	 * @param start
+	 * @param end
+	 * @return List of RangeAndMode entries with ThumbMode and hasSymbols attributes
+	 */
 	private List<RangeAndMode> getModeAndRange(IDisassemblyDMContext context, IAddress start, IAddress end) {
 		IExecutionDMContext exeDMC = DMContexts.getAncestorOfType(context, IExecutionDMContext.class);
 		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
@@ -301,11 +263,11 @@ public class ARMDisassembly extends Disassembly {
 		while (start.add(counter).compareTo(end) < 0) {
 			RangeAndMode range = new RangeAndMode(null, null, false, false);
 
-			boolean thumbMode = ((TargetEnvironmentARM) getTargetEnvironmentService()).isThumbMode(exeDMC, start
-					.add(counter), false);
+			boolean thumbMode = ((TargetEnvironmentARM)getTargetEnvironmentService())
+								.isThumbMode(exeDMC, start.add(counter), false);
 			range.setThumbMode(thumbMode);
 			range.setStartAddress(start.add(counter));
-			
+
 			ILineEntry startEntry = symbolsService.getLineEntryForAddress(sym_dmc, start.add(counter));
 			if (startEntry != null) {
 				// figure out mode and end address
@@ -331,14 +293,13 @@ public class ARMDisassembly extends Disassembly {
 					}
 				}
 
-				counter = counter
-						+ (range.getEndAddress().getValue().intValue() - range.getStartAddress().getValue().intValue());
+				counter += (range.getEndAddress().getValue().intValue() - range.getStartAddress().getValue().intValue());
 
 				result.add(range);
 
 			} else {
-				// got source file but no symbols, search for the next line with
-				// symbols
+				// got source file but no symbols;
+				// search for the next line with symbols
 				while (start.add(counter).compareTo(end) < 0) {
 					startEntry = symbolsService.getLineEntryForAddress(sym_dmc, start.add(counter));
 					if (startEntry != null) {

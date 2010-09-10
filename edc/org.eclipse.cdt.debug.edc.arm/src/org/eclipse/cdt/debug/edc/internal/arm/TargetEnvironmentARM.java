@@ -247,7 +247,8 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			}
 		}
 
-		// TODO we have no other way of finding the mode, so check the pref
+		// TODO we have no other way of finding the mode, so check the pref?  we'd need a pref for EDC ARM
+		// debugger for default mode (arm/thumb) when the mode cannot be determined.
 
 		return false;
 	}

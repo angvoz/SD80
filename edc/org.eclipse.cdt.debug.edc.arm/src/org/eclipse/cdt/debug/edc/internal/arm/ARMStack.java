@@ -150,6 +150,7 @@ public class ARMStack extends Stack {
 		// keep going until we reach the maximum number of frames
 		while (frameCount <= endIndex) {
 			IAddress functionStartAddress = null;
+			IAddress functionEndAddress = null;
 			String moduleName = "Unknown";
 
 			// see if the PC is in an executable that we know about
@@ -173,21 +174,23 @@ public class ARMStack extends Stack {
 							functionStartAddress = module.toRuntimeAddress(cachedAddress);	
 					}
 
-					if (functionStartAddress == null)
-					{
-						// see if we have symbolics for the module
-						IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
-						IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
-						if (scope != null) {
-							// ignore inlined functions
-							while (scope.getParent() instanceof IFunctionScope)
-								scope = (IFunctionScope) scope.getParent();
-							functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
-							// put it in the cache
-							if (cachedMapping != null) {
-								cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
-								ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());
-							}
+				}
+				
+				if (functionStartAddress == null)
+				{
+					// see if we have symbolics for the module
+					IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
+					IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
+					if (scope != null) {
+						// ignore inlined functions
+						while (scope.getParent() instanceof IFunctionScope)
+							scope = (IFunctionScope) scope.getParent();
+						functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
+						functionEndAddress = module.toRuntimeAddress(scope.getHighAddress());
+						// put it in the cache
+						if (cachedMapping != null && reader != null) {
+							cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
+							ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());
 						}
 					}
 				}
@@ -249,6 +252,22 @@ public class ARMStack extends Stack {
 				}
 			}
 
+			// When we single step over the instruction that modifies SP, we can't use spilled registers 
+			// to calculate next stack frame correctly, since we will still be in the same function 
+			// but will get an SP for a different one. The test case looks like this:
+			// add sp, 0xXX
+			// pop (pc)
+			// When stopped at pop(pc) we can't use SP to calculate stack crawl, have to use LR
+			// If PC is on the last statement, use LR to calculate first stack frame
+			if (frameCount == 0 && thumbMode && functionEndAddress != null && functionEndAddress.compareTo(pcValue.add(2)) == 0){
+				pcValue = lrValue;
+				if (pcValue.isZero()) {
+					break;
+				}
+				frameCount++;
+				continue;
+			}
+			
 			// we need to parse the prolog to figure out where the LR was stored
 			// on the stack
 			ARMSpilledRegisters spilledRegs = parseProlog(context, functionStartAddress, pcValue, spValue, lrValue,
@@ -303,6 +322,12 @@ public class ARMStack extends Stack {
 		IStatus status = memoryService.getMemory(context, pcValue.add(-bytesToRead).add(instructionSize), byteArray, (int)bytesToRead, 1);
 		if (!status.isOK()) {
 			return null;
+		}
+
+		// check each byte
+		for (int i = 0; i < byteArray.size(); i++) {
+			if (!byteArray.get(i).isReadable())
+				return null;
 		}
 
 		List<BigInteger> instructions = new ArrayList<BigInteger>();
@@ -384,6 +409,12 @@ public class ARMStack extends Stack {
 			IStatus status = memoryService.getMemory(context, prologAddress, byteArray, bytesToRead, 1);
 			if (!status.isOK()) {
 				return null;
+			}
+
+			// check each byte
+			for (int i = 0; i < byteArray.size(); i++) {
+				if (!byteArray.get(i).isReadable())
+					return null;
 			}
 
 			List<BigInteger> instructions = new ArrayList<BigInteger>();
@@ -554,6 +585,12 @@ public class ARMStack extends Stack {
 				return null;
 			}
 
+			// check each byte
+			for (int i = 0; i < byteArray.size(); i++) {
+				if (!byteArray.get(i).isReadable())
+					return null;
+			}
+
 			spilledRegs.LR = new Addr64(MemoryUtils.convertByteArrayToUnsignedLong(
 					byteArray.toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN));
 		}
@@ -711,7 +748,19 @@ public class ARMStack extends Stack {
 							IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
 							ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>(4);
 							IStatus status = memoryService.getMemory(context, dataAddr, byteArray, 4, 1);
-							if (status.isOK()) {
+							
+							boolean validRead = status.isOK();
+							if (validRead) {
+								// check each byte
+								for (int i = 0; i < byteArray.size(); i++) {
+									if (!byteArray.get(i).isReadable()) {
+										validRead = false;
+										break;
+									}
+								}
+							}
+
+							if (validRead) {
 								// note that we must treat this as a signed int
 								int sourceRegValue = MemoryUtils.convertByteArrayToInt(byteArray.toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN);
 
@@ -752,6 +801,12 @@ public class ARMStack extends Stack {
 			IStatus status = memoryService.getMemory(context, spilledRegs.LRAddress, byteArray, 4, 1);
 			if (!status.isOK()) {
 				return null;
+			}
+
+			// check each byte
+			for (int i = 0; i < byteArray.size(); i++) {
+				if (!byteArray.get(i).isReadable())
+					return null;
 			}
 
 			spilledRegs.LR = new Addr64(MemoryUtils.convertByteArrayToUnsignedLong(

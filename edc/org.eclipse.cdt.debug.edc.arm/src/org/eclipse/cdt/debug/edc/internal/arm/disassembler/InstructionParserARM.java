@@ -171,7 +171,7 @@ public class InstructionParserARM {
 				opcode += (b3 & 0xff);
 				mnemonics = parseARMOpcode(opcode);
 			} else {
-				if (endianMode == BIG_ENDIAN_MODE) {
+				if (endianMode == BIG_ENDIAN_MODE && (codeBuffer.remaining() > 1)) {
 					b0 = codeBuffer.get();
 					b1 = codeBuffer.get();
 				} else {
@@ -182,7 +182,7 @@ public class InstructionParserARM {
 				opcode += (b1 & 0xff);
 				// Thumb BL and BLX instructions consist of 2 16-bit Thumb
 				// instructions
-				if (isThumbBL(opcode)) {
+				if (isThumbBL(opcode) && (codeBuffer.remaining() > 1)) {
 					if (endianMode == BIG_ENDIAN_MODE) {
 						b2 = codeBuffer.get();
 						b3 = codeBuffer.get();
@@ -1170,6 +1170,14 @@ public class InstructionParserARM {
 			break;
 		case thumb_mov2:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
+			break;
+		case thumb_mov3:
+			instruction = mnemonic + "\t" + getThumbRegHigh(opcode, 0, 7) + "," + getThumbRegHigh(opcode, 3, 6);
+			if (getThumbRegHigh(opcode, 0, 7).equals("pc")) {
+				isSoleDestination = true;
+				isSubroutineAddress = false;
+				addrExpression = getThumbRegHigh(opcode, 3, 6);
+			}	
 			break;
 		case thumb_mul:
 		case thumb_mvn:

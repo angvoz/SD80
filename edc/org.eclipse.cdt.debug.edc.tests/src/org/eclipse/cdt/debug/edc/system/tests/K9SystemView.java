@@ -238,11 +238,11 @@ public class K9SystemView extends SystemView {
 	public void createPartControl(Composite parent) {
 		setRefreshInterval(5000);		
 		setPrefsNode(new InstanceScope().getNode(EDCTestPlugin.PLUGIN_ID));
-		loadSettings();
 		setPresentationContext(new PresentationContext(VIEW_ID));
 		setDataModel(new K9DataModel());
 		setViewModel(new K9ViewModel());
 		getViewModel().buildViewModel();
+		loadSettings();
 		createRootComposite(parent);
 		createRefreshAction();
 		contributeToActionBars();

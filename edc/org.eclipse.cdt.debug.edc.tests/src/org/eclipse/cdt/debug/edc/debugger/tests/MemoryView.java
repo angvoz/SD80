@@ -71,9 +71,13 @@ public class MemoryView extends BaseLaunchTest {
 				IStatus memGetStatus = mem.getMemory(executionDMC, addr32, buf, data.length, 1);
 
 				if (memGetStatus.isOK()) {
-					for (int i = 0; (i < buf.size()) && (i < data.length); i++)
+					for (int i = 0; (i < buf.size()) && (i < data.length); i++) {
+						// check each byte
+						if (!buf.get(i).isReadable())
+							return false;
 						if (data[i] != buf.get(i).getValue())
 							return false;
+					}
 				} else
 					return false;
 

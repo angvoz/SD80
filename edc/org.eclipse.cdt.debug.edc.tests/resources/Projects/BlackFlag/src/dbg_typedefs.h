@@ -97,6 +97,6 @@ extern bitfield_type gbitfield;
 extern union_type gunion;
 extern enum enum_type genum;
 extern int garray[40];
-extern char *gstring;
+extern const char *gstring;
 
 #endif

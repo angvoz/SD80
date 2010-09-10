@@ -35,6 +35,6 @@ bitfield_type gbitfield;
 union_type gunion;
 enum enum_type genum;
 int garray[40];
-char *gstring;
+const char *gstring;
 
 

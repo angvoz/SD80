@@ -105,8 +105,19 @@ public class X86Stack extends Stack {
 				ArrayList<MemoryByte> memBuffer = new ArrayList<MemoryByte>();
 				IStatus memGetStatus = memoryService.getMemory(context, new Addr64(Long.toString(eipValue)), memBuffer, 4,
 						1);
-				if (memGetStatus.isOK()) {
+				
+				boolean validRead = memGetStatus.isOK();
+				if (validRead) {
+					// check each byte
+					for (int i = 0; i < memBuffer.size(); i++) {
+						if (!memBuffer.get(i).isReadable()) {
+							validRead = false;
+							break;
+						}
+					}
+				}
 
+				if (validRead) {
 					byte op1 = memBuffer.get(0).getValue();
 					byte op2 = memBuffer.size() > 1 ? memBuffer.get(1).getValue() : 0;
 					
@@ -186,6 +197,13 @@ public class X86Stack extends Stack {
 		IStatus status = memoryService.getMemory(context, new Addr64(Long.toString(addr)), memBuffer, 4, 1);
 		if (!status.isOK())
 			return 0;
+
+		// check each byte
+		for (int i = 0; i < memBuffer.size(); i++) {
+			if (!memBuffer.get(i).isReadable())
+				return 0;
+		}
+
 		return MemoryUtils.convertByteArrayToUnsignedLong(
 				memBuffer.subList(0, 4).toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN)
 				.longValue();

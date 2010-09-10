@@ -129,8 +129,13 @@ public class AddressExpressionEvaluatorX86 implements IAddressExpressionEvaluato
 				throw new CoreException(st);
 
 			byte[] bytes = new byte[memBuffer.size()];
-			for (int i = 0; i < bytes.length; i++)
+			for (int i = 0; i < bytes.length; i++) {
+				// check each byte
+				if (!memBuffer.get(i).isReadable())
+					throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, 
+							("Cannot read memory at 0x" + memAddr.add(i).getValue().toString(16))));
 				bytes[i] = memBuffer.get(i).getValue();
+			}
 
 			ret = new Addr64(new BigInteger(bytes));
 		}

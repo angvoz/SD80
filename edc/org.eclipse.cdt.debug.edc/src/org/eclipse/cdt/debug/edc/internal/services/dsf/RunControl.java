@@ -125,12 +125,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	
 	// Whether module is being loaded (if true) or unloaded (if false)
 
-	public static class SuspendedEvent extends AbstractDMEvent<IExecutionDMContext> implements ISuspendedDMEvent {
+	public abstract static class DMCSuspendedEvent extends AbstractDMEvent<IExecutionDMContext> {
 
 		private final StateChangeReason reason;
 		private final Map<String, Object> params;
 
-		public SuspendedEvent(IExecutionDMContext dmc, StateChangeReason reason, Map<String, Object> params) {
+		public DMCSuspendedEvent(IExecutionDMContext dmc, StateChangeReason reason, Map<String, Object> params) {
 			super(dmc);
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
 					new Object[] { dmc, reason, params });
@@ -145,11 +145,33 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		public Map<String, Object> getParams() {
 			return params;
 		}
+		
+	}
+	
+	public static class SuspendedEvent extends DMCSuspendedEvent implements ISuspendedDMEvent {
+
+		public SuspendedEvent(IExecutionDMContext dmc,
+				StateChangeReason reason, Map<String, Object> params) {
+			super(dmc, reason, params);
+		}
+
 	}
 
-	public static class ResumedEvent extends AbstractDMEvent<IExecutionDMContext> implements IResumedDMEvent {
+	public static class ContainerSuspendedEvent extends DMCSuspendedEvent implements IContainerSuspendedDMEvent {
 
-		public ResumedEvent(IExecutionDMContext dmc) {
+		public ContainerSuspendedEvent(IExecutionDMContext dmc,
+				StateChangeReason reason, Map<String, Object> params) {
+			super(dmc, reason, params);
+		}
+
+		public IExecutionDMContext[] getTriggeringContexts() {
+			return new IExecutionDMContext[]{getDMContext()};
+		}
+	}
+
+	public abstract static class DMCResumedEvent extends AbstractDMEvent<IExecutionDMContext> {
+
+		public DMCResumedEvent(IExecutionDMContext dmc) {
 			super(dmc);
 		}
 
@@ -157,6 +179,24 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return StateChangeReason.USER_REQUEST;
 		}
 	}
+
+	public static class ResumedEvent extends DMCResumedEvent implements IResumedDMEvent {
+
+		public ResumedEvent(IExecutionDMContext dmc) {
+			super(dmc);
+		}
+	}
+
+	public static class ContainerResumedEvent extends DMCResumedEvent implements IContainerResumedDMEvent {
+
+		public ContainerResumedEvent(IExecutionDMContext dmc) {
+			super(dmc);
+		}
+
+		public IExecutionDMContext[] getTriggeringContexts() {
+			return new IExecutionDMContext[]{getDMContext()};
+		}
+}
 
 	private static StateChangeReason toDsfStateChangeReason(String tcfReason) {
 		if (tcfReason == null)
@@ -351,7 +391,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			}
 			stateChangeReason = StateChangeReason.EXCEPTION;
 			getSession().dispatchEvent(
-					new SuspendedEvent(this, StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
+					createSuspendedEvent(StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
 					RunControl.this.getProperties());
 		}
 
@@ -430,7 +470,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							{
 								// Only after completion of those preprocessing do 
 								// we fire the event.
-								getSession().dispatchEvent(new SuspendedEvent(dmc, stateChangeReason, params),
+								getSession().dispatchEvent(dmc.createSuspendedEvent(stateChangeReason, params),
 										RunControl.this.getProperties());
 							}
 							dmc.clearDisabledRanges();
@@ -760,7 +800,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			setIsSuspended(false);
 			
 			if (fireResumeEventNow)
-				getSession().dispatchEvent(new ResumedEvent(this), RunControl.this.getProperties());
+				getSession().dispatchEvent(this.createResumedEvent(), RunControl.this.getProperties());
 			else
 				scheduleResumeEvent();
 
@@ -774,7 +814,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		private void scheduleResumeEvent() {
 			countOfScheduledNotifications++;
 
-			final IExecutionDMContext dmc = this;
+			final ExecutionDMC dmc = this;
 			
 			Runnable notifyPlatformTask = new Runnable() {
 				public void run() {
@@ -787,7 +827,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					 */
 					countOfScheduledNotifications--;
 					if (countOfScheduledNotifications == 0 && !isSuspended())
-						getSession().dispatchEvent(new ResumedEvent(dmc), RunControl.this.getProperties());
+						getSession().dispatchEvent(dmc.createResumedEvent(), RunControl.this.getProperties());
 				}};
 			
 			getExecutor().schedule(notifyPlatformTask, RESUME_NOTIFICATION_DELAY, TimeUnit.MILLISECONDS);
@@ -918,6 +958,14 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return null;
 		}
 
+		protected DMCSuspendedEvent createSuspendedEvent(StateChangeReason reason, Map<String, Object> properties) {
+			return new SuspendedEvent(this, reason, properties);
+		}
+
+		protected DMCResumedEvent createResumedEvent() {
+			return new ResumedEvent(this);
+		}
+
 	}
 
 	public class ProcessExecutionDMC extends ExecutionDMC implements IContainerDMContext, IProcessDMContext,
@@ -1005,7 +1053,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			}
 			
 			getSession().dispatchEvent(
-					new SuspendedEvent(this, StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
+					createSuspendedEvent(StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
 					RunControl.this.getProperties());
 
 		}
@@ -1102,6 +1150,16 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				Map<String, Object> properties, RunControlContext tcfContext) {
 			super(parent, properties, tcfContext);
 			assert !(Boolean)properties.get(PROP_IS_CONTAINER);
+		}
+
+		@Override
+		protected DMCSuspendedEvent createSuspendedEvent(StateChangeReason reason, Map<String, Object> properties) {
+			return new ContainerSuspendedEvent(this, reason, properties);
+		}
+
+		@Override
+		protected DMCResumedEvent createResumedEvent() {
+			return new ContainerResumedEvent(this);
 		}
 
 		@Override
@@ -1481,9 +1539,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 								Collection<ILineEntry> ranges = lineEntryProvider.getLineEntriesForLines(line.getFilePath(), line.getLineNumber(), line.getLineNumber());
 								if (ranges.size() > 1)
 								{
-									System.out.println(ranges);
 									for (ILineEntry iLineEntry : ranges) {
-										dmc.addDisabledRange(iLineEntry.getLowAddress(), iLineEntry.getHighAddress());
+										dmc.addDisabledRange(module.toRuntimeAddress(iLineEntry.getLowAddress()), module.toRuntimeAddress(iLineEntry.getHighAddress()));
 									}
 								}
 							}
@@ -1514,7 +1571,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						 * ........................ 08/30/2009
 						 */
 
-						if (pcAddress.equals(endAddr)) // We're at the end of the line for this function, time to step out.
+						if (pcAddress.equals(endAddr) || (stepType == StepType.STEP_OVER && nextLine == null)) // We're at the end of the line for this function, time to step out.
 							stepOut(dmc, pcAddress, rm);
 						else
 							stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
@@ -1709,8 +1766,18 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			protected void handleSuccess() {
 				MemoryByte[] data = getData();
 				final byte[] bytes = new byte[data.length];
-				for (int i = 0; i < data.length; i++)
+
+				for (int i = 0; i < data.length; i++) {
+					// check each byte
+					if (!data[i].isReadable()) {
+						rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+									("Cannot read memory at 0x" + pcAddress.add(i).getValue().toString(16)),
+									null));
+						rm.done();
+						return;
+					}
 					bytes[i] = data[i].getValue();
+				}
 
 				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
 
@@ -1804,8 +1871,16 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			protected void handleSuccess() {
 				MemoryByte[] data = getData();
 				final byte[] bytes = new byte[data.length];
-				for (int i = 0; i < data.length; i++)
+				for (int i = 0; i < data.length; i++) {
+					// check each byte
+					if (!data[i].isReadable()) {
+						rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+									("Cannot read " + (data.length - i) + " bytes at 0x" + startAddr.add(i).getValue().toString(16)), null));
+						rm.done();
+						return;
+					}
 					bytes[i] = data[i].getValue();
+				}
 
 				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
 
@@ -1881,7 +1956,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 										rm.done();
 										return;
 									}
-									stopPoints.add(addr);
+									// don't add an address if we already have it
+									if (!stopPoints.contains(addr))
+										stopPoints.add(addr);
 
 								}
 							}
@@ -1895,7 +1972,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							 * the remaining instructions in the range and then
 							 * do our two-phase stepping (see below)
 							 */
-							runToAndCheckPoints.add(instAddr);
+							if (!runToAndCheckPoints.contains(instAddr))
+								runToAndCheckPoints.add(instAddr);
 						}
 					} else { // "jta" is immediate address.
 
@@ -1904,7 +1982,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						if (jta.isSoleDestination()) {
 							if (jta.isSubroutineAddress()) {
 								// is subroutine call
-								if (stepIn) {
+								if (stepIn && !stopPoints.contains(jumpAddress)) {
 									stopPoints.add(jumpAddress);
 									// no need to check remaining instructions
 									// !! Wrong. Control may jump over (skip)this instruction
@@ -1921,13 +1999,15 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 								// ignore jump within the address range
 								if (!(startAddr.compareTo(jumpAddress) <= 0 && jumpAddress.compareTo(endAddr) < 0)) {
 									insertBPatRangeEnd = false;
-									stopPoints.add(jumpAddress);
+									if (!stopPoints.contains(jumpAddress))
+										stopPoints.add(jumpAddress);
 								}
 							}
 						} else {
 							// conditional jump
 							// ignore jump within the address range
-							if (!(startAddr.compareTo(jumpAddress) <= 0 && jumpAddress.compareTo(endAddr) < 0))
+							if (!(startAddr.compareTo(jumpAddress) <= 0 && jumpAddress.compareTo(endAddr) < 0) 
+														&& !stopPoints.contains(jumpAddress))
 							{
 								stopPoints.add(jumpAddress);
 							}
@@ -1936,7 +2016,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				} // end of parsing instructions
 
 				// need a temp breakpoint at the "endAddr".
-				if (insertBPatRangeEnd)
+				if (insertBPatRangeEnd && !stopPoints.contains(endAddr))
 					stopPoints.add(endAddr);
 
 				if (runToAndCheckPoints.size() > 0) {
@@ -2496,7 +2576,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		else {
 			// fire a suspendEvent so that PC arrow can be updated in UI.
 			getSession().dispatchEvent(
-					new SuspendedEvent(context, StateChangeReason.USER_REQUEST, new HashMap<String, Object>()),
+					((ExecutionDMC) context).createSuspendedEvent(StateChangeReason.USER_REQUEST, new HashMap<String, Object>()),
 					RunControl.this.getProperties());
 			
 			rm.done();

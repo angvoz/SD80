@@ -92,6 +92,13 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 					SymbolsMessages.MemoryVariableLocation_CannotReadAddrFormat, theAddress.toHexAddressString()));
 		}
 
+		// check each byte
+		for (int i = 0; i < memBuffer.size(); i++) {
+			if (!memBuffer.get(i).isReadable())
+				throw EDCDebugger.newCoreException(MessageFormat.format(
+					SymbolsMessages.MemoryVariableLocation_CannotReadAddrFormat, theAddress.add(i).getValue().toString(16)));
+		}
+
 		return MemoryUtils.convertByteArrayToUnsignedLong(
 				memBuffer.toArray(new MemoryByte[varSize]), getEndian());
 	}

@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.formatter;
 
 import java.math.BigInteger;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -132,7 +133,8 @@ public class FormatUtils {
 		return subExpression;
 	}
 	
-	public static String getFormattedString(IExpressionDMContext variable, IAddress address, int length, int charSize) {
+	public static String getFormattedString(IExpressionDMContext variable, IAddress address, int length, int charSize)
+	 		throws CoreException {
 		IEDCExpression expression = (IEDCExpression) variable;
 		StackFrameDMC frame = (StackFrameDMC) expression.getFrame();
 		IEDCMemory memory = frame.getDsfServicesTracker().getService(Memory.class);
@@ -142,6 +144,12 @@ public class FormatUtils {
 		IStatus status = memory.getMemory(frame.getExecutionDMC(), address, buffer, length * charSize, 1);
 		if (status.isOK()) {
 			for (int i = 0; i < length * charSize; i++) {
+				// make sure each byte is okay
+				if (!buffer.get(i).isReadable())
+					throw EDCDebugger.newCoreException(
+							MessageFormat.format(EDCFormatterMessages.FormatUtils_CannotReadMemory,
+										address.add(i).getValue().toString(16)));
+
 				char c = (char) (buffer.get(i).getValue() & 0xff);
 				if (charSize > 1) {
 					char c2 = (char) (buffer.get(++i).getValue() << 8);
@@ -165,6 +173,14 @@ public class FormatUtils {
 			ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>();
 			IStatus status = memory.getMemory(frame.getExecutionDMC(), address, buffer, charSize, 1);
 			if (status.isOK()) {
+				// make sure each byte is okay
+				for (int i = 0; i < buffer.size(); i++) {
+					if (!buffer.get(i).isReadable())
+						throw EDCDebugger.newCoreException(
+								MessageFormat.format(EDCFormatterMessages.FormatUtils_CannotReadMemory,
+										address.add(i).getValue().toString(16)));
+				}
+
 				char c = (char) buffer.get(0).getValue();
 				if (charSize > 1) {
 					char c2 = (char) (buffer.get(1).getValue() << 8);
@@ -179,7 +195,9 @@ public class FormatUtils {
 				// Error in reading memory, bail out.  If we got more than one character,
 				// use ellipsis, else fail.
 				if (sb.length() == 0)
-					throw EDCDebugger.newCoreException(EDCFormatterMessages.FormatUtils_CannotReadMemory + address.getValue().toString(16));
+					throw EDCDebugger.newCoreException(
+							MessageFormat.format(EDCFormatterMessages.FormatUtils_CannotReadMemory,
+									address.getValue().toString(16)));
 				maximumLength = 0;
 				break;
 			}

@@ -19,8 +19,6 @@ import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.service.IDsfService;
-import org.eclipse.debug.core.ILaunch;
-import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.tm.tcf.services.IRegisters;
 
 /**
@@ -164,31 +162,6 @@ public interface ITargetEnvironment extends IDsfService {
 	 *         available yet for the target.
 	 */
 	public IAddressExpressionEvaluator getAddressExpressionEvaluator();
-
-	/**
-	 * Get the {@link ILaunch} object for the debug session.
-	 * 
-	 * @return ILaunch object
-	 */
-	public ILaunch getLaunch();
-	
-	/**
-	 * Get launch configuration for the debug session this service is linked to.
-	 * 
-	 * @return {@link ILaunchConfiguration} object. Cannot be null.
-	 */
-	public ILaunchConfiguration getLaunchConfiguration();
-
-	/**
-	 * get the "stop on starup at" point (aka Entry breakpoint) from user
-	 * preference. The point can be a symbol (a function name or a assembly
-	 * symbol) or an absolute runtime address in string format (hexidecimal
-	 * begining with "0x" or decimal).<br>
-	 * 
-	 * @return a string. null if no such preference is available from UI/user or
-	 *         "stop on startup" is not requested.
-	 */
-	public String getStartupStopAtPoint();
 
 	/**
 	 * Get minimum size of a memory block that is read and stored in memory

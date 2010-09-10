@@ -418,9 +418,8 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			}
 		}
 		
-		// FIXME: drive letter nastiness
 		for (Map.Entry<IPath, List<FileLineEntryProvider>> entry : pathToLineEntryMap.entrySet()) {
-			if (entry.getKey().setDevice(null).equals(sourceFile.setDevice(null))) {
+			if (entry.getKey().equals(sourceFile)) {
 				cus = entry.getValue();
 				return Collections.unmodifiableCollection(cus);
 			}
@@ -511,14 +510,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			{
 				ILineEntry entry = ((FileLineEntryProvider)iLineEntryProvider).getLineEntryInFunction(linkAddress, parentFunction);
 				if (entry != null)
-				{
-//					if (!(entry.getLowAddress().compareTo(linkAddress) <= 0
-//							&& entry.getHighAddress().compareTo(linkAddress) > 0))
-//						{
-//							System.out.println(linkAddress.toHexAddressString() + " : " + entry + " : " + parentFunction);
-//						}
 					return entry;
-				}
 			}
 		}
 		return null;

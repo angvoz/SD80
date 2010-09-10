@@ -29,6 +29,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleLoadedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleUnloadedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
@@ -623,7 +624,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			disableBreakpoint(bp, crm);
 	}
 
-	private void createBreakpoint(final IExecutionDMContext exeDMC, IAddress address, Map<String, Object> props,
+	private void createBreakpoint(final IExecutionDMContext exeDMC, final IAddress address, Map<String, Object> props,
 			final DataRequestMonitor<BreakpointDMData> drm) {
 
 		final long id = getNewBreakpointID();
@@ -673,8 +674,17 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 				protected void handleSuccess() {
 					MemoryByte[] org_inst = getData();
 					final byte[] org_inst_bytes = new byte[org_inst.length];
-					for (int i = 0; i < org_inst.length; i++)
+					for (int i = 0; i < org_inst.length; i++) {
+						// make sure each byte is okay
+						if (!org_inst[i].isReadable()) {
+							drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+										("Cannot read memory at 0x" + address.add(i).getValue().toString(16)),
+										null));
+							drm.done();
+							return;
+						}
 						org_inst_bytes[i] = org_inst[i].getValue();
+					}
 
 					drm.setData(new BreakpointDMData(id, bp_dmc, bp_addrs, org_inst_bytes, properties));
 					drm.done();
@@ -917,7 +927,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			return;
 		}
 
-		String startupStopAt = getTargetEnvironmentService().getStartupStopAtPoint();
+		String startupStopAt = EDCLaunch.getLaunchForSession(getSession().getId()).getStartupStopAtPoint();
 
 		if (startupStopAt == null) {
 			rm.done();

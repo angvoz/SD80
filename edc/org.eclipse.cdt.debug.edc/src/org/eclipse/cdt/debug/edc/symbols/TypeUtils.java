@@ -225,13 +225,18 @@ public class TypeUtils {
 			return getFullTypeName(((IPointerType) type).getType()) + " *"; //$NON-NLS-1$
 		if (type instanceof IArrayType) {
 			IArrayType arrayType = (IArrayType) type;
-			String returnType = getFullTypeName(arrayType.getType());
 
-			IArrayBoundType[] bounds = arrayType.getBounds();
-			for (IArrayBoundType bound : bounds) {
-				returnType += "[" + bound.getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
-			}
-			return returnType;
+			IType subtype = null;
+			String dimensions = "";
+			do {
+				for (IArrayBoundType bound : arrayType.getBounds())
+					dimensions += "[" + bound.getBoundCount() + "]"; //$NON-NLS-1$ //$NON-NLS-2$
+				subtype = TypeUtils.getStrippedType(arrayType.getType());
+				if (subtype instanceof IArrayType)
+					arrayType = (IArrayType)subtype;
+			} while (subtype instanceof IArrayType);
+
+			return getFullTypeName(arrayType.getType()) + dimensions;
 		}
 		if (type instanceof IArrayDimensionType) {
 			IArrayDimensionType arrayDimensionType = (IArrayDimensionType) type;

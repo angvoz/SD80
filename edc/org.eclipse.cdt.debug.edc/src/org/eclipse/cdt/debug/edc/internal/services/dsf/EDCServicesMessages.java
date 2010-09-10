@@ -27,6 +27,10 @@ public class EDCServicesMessages extends NLS {
 
 	public static String Expressions_SyntaxError;
 
+	public static String Disassembly_CannotReadMemoryAt;
+	
+	public static String Disassembly_NoDisassemblerYet;
+
 	static {
 		// initialize resource bundle
 		NLS.initializeMessages(BUNDLE_NAME, EDCServicesMessages.class);

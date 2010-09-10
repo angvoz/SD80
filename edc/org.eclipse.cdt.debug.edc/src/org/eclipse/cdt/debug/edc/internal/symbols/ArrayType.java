@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 
 public class ArrayType extends MayBeQualifiedType implements IArrayType {
 
@@ -64,8 +66,10 @@ public class ArrayType extends MayBeQualifiedType implements IArrayType {
 		if (byteSize == 0) {
 			if (bounds.size() > 0) {
 				updateByteSizeFromSubType();
-				for (IArrayBoundType bound : bounds) {
-					byteSize *= bound.getElementCount();
+				IType subtype = TypeUtils.getStrippedType(getType());
+				if (subtype instanceof IArrayType) {
+					for (IArrayBoundType bound : ((IArrayType)subtype).getBounds())
+						byteSize *= bound.getBoundCount();
 				}
 			}
 		}

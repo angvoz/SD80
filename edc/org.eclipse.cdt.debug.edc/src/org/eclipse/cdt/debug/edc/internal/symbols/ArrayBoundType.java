@@ -30,7 +30,7 @@ public class ArrayBoundType extends Type implements IArrayBoundType {
 	private long dimensionIndex = 0;
 
 	public ArrayBoundType(IScope scope, long arrayBound) {
-		super("", scope, 4, null); //$NON-NLS-1$
+		super("", scope, 0, null); //$NON-NLS-1$
 
 		if (arrayBound < 1) {
 			this.bound = 0;

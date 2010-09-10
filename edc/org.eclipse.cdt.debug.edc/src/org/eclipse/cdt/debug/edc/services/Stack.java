@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -131,6 +132,20 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 		public String getModule() {
 			return module;
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return
+				this == other
+				|| (other != null && other instanceof StackFrameData
+					&& getAddress().equals(((StackFrameData)other).getAddress())
+					&& getFunction().equals(((StackFrameData)other).getFunction())
+					&& getLevel() == ((StackFrameData)other).getLevel()
+					&& getFile().equals(((StackFrameData)other).getFile())
+					&& getLine() == ((StackFrameData)other).getLine()
+					&& getColumn() == ((StackFrameData)other).getColumn()
+					&& getModule().equals(((StackFrameData)other).getModule()));
 		}
 	}
 
@@ -283,6 +298,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				.synchronizedMap(new HashMap<String, VariableDMC>());
 		private final Map<String, EnumeratorDMC> enumeratorsByName = Collections
 				.synchronizedMap(new HashMap<String, EnumeratorDMC>());
+		private final Map<String, IVariable> thisPtrs = Collections
+				.synchronizedMap(new LinkedHashMap<String, IVariable>());
 		private IFunctionScope functionScope;
 		private IFrameRegisters frameRegisters;
 		public StackFrameDMC calledFrame;
@@ -634,6 +651,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			if (locals == null || !useCachedVariables || enabled != showAllVariablesEnabled) {
 				showAllVariablesEnabled = enabled;
 				locals = new ArrayList<VariableDMC>();
+				thisPtrs.clear();
 				IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
 				IFunctionScope scope = symbolsService
 						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
@@ -650,8 +668,15 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					Collection<IVariable> scopedVariables = scope.getScopedVariables(linkAddress);
 					for (IVariable variable : scopedVariables) {
 						VariableDMC var = new VariableDMC(Stack.this, this, variable);
-						locals.add(var);
-						localsByName.put(var.getName(), var);
+						String name = variable.getName();
+						// because of inlined functions, debugger information may indicate that
+						// more than one "this" pointer is live at one time
+						if (name != null && name.equals("this")) {
+							thisPtrs.put(variable.getScope().getName(), variable);
+						} else {
+							locals.add(var);
+							localsByName.put(name, var);
+						}
 					}
 
 					// if requesting to show all variables, add file-scope globals too
@@ -700,7 +725,48 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					scope = (IFunctionScope) scope.getParent();
 				}
 			}
-			return locals.toArray(new VariableDMC[locals.size()]);
+			
+			// start with "this" pointers, if any
+			VariableDMC[] localsArray = new VariableDMC[(thisPtrs.isEmpty() ? 0 : 1) + locals.size()];
+			int i = 0;
+			if (!thisPtrs.isEmpty())
+				localsArray[i++] = new VariableDMC(Stack.this, this, getOuterThis());
+			// TODO For now, turn off ability to see multiple this pointers
+			// of the form "this$ScopeName"
+//			for (IVariable variable : thisPtrs.values()) {
+//				VariableDMC var = new VariableDMC(Stack.this, this, variable);
+//				var.setName("this$" + variable.getScope().getName());
+//				localsArray[i++] = var;
+//			}
+			for (VariableDMC var : locals)
+				localsArray[i++] = var;
+			return localsArray;
+		}
+		
+		/**
+		 * From a list of "this" pointers in scope, return the one from the outermost scope
+		 * @return this pointer from the outermost scope
+		 */
+		private IVariable getOuterThis() {
+			if (thisPtrs.isEmpty())
+				return null;
+			
+			if (thisPtrs.size() == 1)
+				return thisPtrs.values().iterator().next();
+
+			IVariable outer = null;
+			for (IVariable variable : thisPtrs.values()) {
+				if (outer == null)
+					outer = variable;
+				else {
+					IScope outerScope    = outer.getScope();
+					IScope variableScope = variable.getScope();
+					if (   variableScope.getLowAddress().compareTo(outerScope.getLowAddress()) < 0
+						|| variableScope.getHighAddress().compareTo(outerScope.getHighAddress()) > 0)
+						outer = variable;
+				}
+			}
+			return outer;
 		}
 
 		/**
@@ -711,6 +777,9 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		 * @return variable or enumerator, if found; otherwise, null
 		 */
 		public IVariableEnumeratorContext findVariableOrEnumeratorByName(String name, boolean localsOnly) {
+			if (name == null)
+				return null;
+
 			if (locals == null)
 				getLocals();
 
@@ -727,6 +796,24 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			variableOrEnumerator = enumeratorsByName.get(name);
 			if (variableOrEnumerator != null)
 				return variableOrEnumerator;
+			
+			if (name.equals("this")) {
+				if (thisPtrs.isEmpty())
+					return null;
+				return new VariableDMC(Stack.this, this, getOuterThis());
+			}
+
+			// TODO For now, turn off ability to see multiple this pointers
+			// of the form "this$ScopeName"
+//			if (name.startsWith("this$")) {
+//				// return the one with the right scope
+//				if (thisPtrs.isEmpty())
+//					return null;
+//				IVariable variable = thisPtrs.get(name.substring("this$".length()));
+//				if (variable == null)
+//					return null;
+//				return new VariableDMC(Stack.this, this, variable);
+//			}
 
 			if (localsOnly || this.getVariableScope() == null)
 				return null;

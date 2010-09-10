@@ -535,4 +535,42 @@ public class EDCLaunch extends Launch {
 		return activeLaunchConfiguration;
 	}
 
+	/**
+	 * @since 2.0
+	 */
+	public String getCompilationPath(String filename) {
+		// TODO Use the source lookup service
+		IPath path = Path.EMPTY;
+		if (Path.EMPTY.isValidPath(filename)) {
+			filename = PathUtils.convertPathToNative(filename);
+			ISourceLocator sl = getSourceLocator();
+			if (sl instanceof CSourceLookupDirector) {
+				path = ((CSourceLookupDirector) sl).getCompilationPath(filename);
+			}
+			if (path == null) {
+				path = PathUtils.findExistingPathIfCaseSensitive(new Path(filename));
+			}
+		}
+		return path.toOSString();
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public String getStartupStopAtPoint() {
+		String ret = null;
+		try {
+			if (getLaunchConfiguration().getAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN,
+					false)) {
+				ret = getLaunchConfiguration().getAttribute(
+						ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL,
+						ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_SYMBOL_DEFAULT);
+			}
+		} catch (CoreException e) {
+			// ignore
+		}
+
+		return ret;
+	}
+
 }

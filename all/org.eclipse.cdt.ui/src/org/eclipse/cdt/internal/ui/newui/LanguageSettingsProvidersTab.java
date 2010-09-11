@@ -641,7 +641,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					ILanguageSettingsProvider[] providers = new ILanguageSettingsProvider[fTable.getItemCount()];
 					TableItem[] items = fTable.getItems();
 					for (int i=0;i<items.length;i++) {
-						providers[i] = (ILanguageSettingsProvider) items[i];
+						providers[i] = (ILanguageSettingsProvider) items[i].getData();
 					}
 
 					Object[] checkedElements = fTableViewer.getCheckedElements();

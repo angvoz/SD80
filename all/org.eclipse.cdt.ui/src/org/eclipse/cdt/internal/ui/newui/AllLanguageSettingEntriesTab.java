@@ -406,6 +406,8 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				update();
 			}
 		});
+		showBIButton.setSelection(true);
+		showBIButton.setEnabled(false);
 
 		lb2 = new Label(usercomp, SWT.BORDER | SWT.CENTER);
 		lb2.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));

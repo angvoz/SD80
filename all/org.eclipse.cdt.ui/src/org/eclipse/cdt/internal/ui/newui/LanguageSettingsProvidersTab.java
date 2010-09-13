@@ -688,7 +688,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			} else {
 				fCfgDesc.setLanguageSettingProviders(providers);
 //				updateData(getResDesc());
-				fTableViewer.update(selectedElement, null);
+				if (selectedElement!=null) {
+					fTableViewer.update(selectedElement, null);
+				}
 			}
 		}
 	}

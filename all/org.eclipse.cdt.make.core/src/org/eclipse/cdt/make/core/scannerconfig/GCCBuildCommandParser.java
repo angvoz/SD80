@@ -40,9 +40,11 @@ import org.eclipse.core.runtime.URIUtil;
 
 public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 	// TODO better algorithm to figure out the file
-	private static final Pattern PATTERN_FILE = Pattern.compile("((gcc)|(g\\+\\+)).*\\s([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?[\r\n]*");
+	// TODO test cases for boost bjam syntax with white spaces and quotes
+	//    "g++"  -ftemplate-depth-128 -O0 -fno-inline -Wall -g -mthreads  -DBOOST_ALL_NO_LIB=1 -DBOOST_PYTHON_SOURCE -DBOOST_PYTHON_STATIC_LIB  -I"." -I"c:\Python25\Include" -c -o "bin.v2\libs\python\build\gcc-mingw-3.4.5\debug\link-static\threading-multi\numeric.o" "libs\python\src\numeric.cpp"
+	private static final Pattern PATTERN_FILE = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?[\r\n]*");
 	private static final int PATTERN_FILE_GROUP = 4;
-	private static final Pattern PATTERN_FILE_QUOTED = Pattern.compile("((gcc)|(g\\+\\+)).*\\s(['\"])(.*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))\\4(\\s.*)?[\r\n]*");
+	private static final Pattern PATTERN_FILE_QUOTED = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s(['\"])(.*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))\\4(\\s.*)?[\r\n]*");
 	private static final int PATTERN_FILE_QUOTED_GROUP = 5;
 	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s]+)))?");
 
@@ -61,7 +63,8 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			new LibraryFileOptionParser("-l\\s*([^\\s\"']*)", "lib$1.a"),
 	};
 	private ErrorParserManager errorParserManager = null;
-
+	private IResource sourceFile = null;
+	private String parsedSourceFileName = null;
 
 	private abstract class OptionParser {
 		protected final Pattern pattern;
@@ -111,8 +114,31 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			if (errorParserManager!=null) {
 				IPath path = new Path(name);
 				URI uri = null;
+				URI cwd = null;
 				if (!path.isAbsolute()) {
-					URI cwd = errorParserManager.getWorkingDirectoryURI();
+					if (sourceFile!=null && parsedSourceFileName!=null) {
+						IPath parsedSrcPath = new Path(parsedSourceFileName);
+						if (!parsedSrcPath.isAbsolute()) {
+							// try to figure CWD from file currently compiling (if found in workspace)
+							// consider "gcc -I./relative/to/build/dir -c relative/src/file.cpp"
+							IPath absPath = sourceFile.getLocation();
+							int absSegmentsCount = absPath.segmentCount();
+							int relSegmentsCount = parsedSrcPath.segmentCount();
+							if (absSegmentsCount>=relSegmentsCount) {
+								IPath ending = absPath.removeFirstSegments(absSegmentsCount-relSegmentsCount);
+								ending = ending.setDevice(parsedSrcPath.getDevice());
+								if (ending.equals(parsedSrcPath)) {
+									IPath cwdPath = absPath.removeLastSegments(relSegmentsCount);
+									cwd = errorParserManager.toURI(cwdPath);
+								}
+							}
+						}
+					}
+
+					if (cwd==null) {
+						// backing to ErrorParserManager if CWD not found
+						cwd = errorParserManager.getWorkingDirectoryURI();
+					}
 					uri = URIUtil.append(cwd, path.toString());
 				} else {
 					uri = errorParserManager.toURI(path);
@@ -122,8 +148,12 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 				IWorkspaceRoot root = workspace.getRoot();
 				IContainer[] folders = root.findContainersForLocationURI(uri);
 				if (folders.length>0) {
-					IFolder folder = (IFolder)folders[0];
-					return new CIncludePathEntry(folder, ICSettingEntry.READONLY);
+					IContainer container = folders[0];
+					if (container instanceof IFolder) {
+						return new CIncludePathEntry((IFolder)container, ICSettingEntry.READONLY);
+					} else {
+						return new CIncludePathEntry(container.getLocation(), ICSettingEntry.READONLY);
+					}
 				}
 			}
 			return new CIncludePathEntry(name, ICSettingEntry.READONLY);
@@ -219,30 +249,35 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 	@Override
 	public boolean processLine(String line, ErrorParserManager epm) {
 		errorParserManager = epm;
-		String fileName = null;
-		Matcher fileMatcher = PATTERN_FILE.matcher(line);
+		sourceFile = null;
+		parsedSourceFileName = null;
+//		Matcher fileMatcher = PATTERN_FILE.matcher(line);
+//		Matcher fileMatcher = PATTERN_FILE.matcher(line);
+//		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s      ([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?[\r\n]*");
+//		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s['\"]?([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))['\"]?((\\s.*)|())[\r\n]*");
+		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s['\"]?([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))['\"]?((\\s.*)|())[\r\n]*");
+		Matcher fileMatcher = PATTERN.matcher(line);
 
 		if (fileMatcher.matches()) {
-			fileName = fileMatcher.group(PATTERN_FILE_GROUP);
+			parsedSourceFileName = fileMatcher.group(PATTERN_FILE_GROUP);
 		} else {
 			fileMatcher = PATTERN_FILE_QUOTED.matcher(line);
 			if (fileMatcher.matches()) {
-				fileName = fileMatcher.group(PATTERN_FILE_QUOTED_GROUP);
+				parsedSourceFileName = fileMatcher.group(PATTERN_FILE_QUOTED_GROUP);
 			}
 		}
 
-		IResource file = null;
-		if (fileName!=null) {
+		if (parsedSourceFileName!=null) {
 			// TODO: move to AbstractBuildCommandParser
 			if (epm!=null) {
-				file = epm.findFileName(fileName);
+				sourceFile = epm.findFileName(parsedSourceFileName);
 			} else {
 				IProject project = getProject();
-				file = project.findMember(fileName);
+				sourceFile = project.findMember(parsedSourceFileName);
 			}
 		}
 
-		if (file!=null) {
+		if (sourceFile!=null) {
 			List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 			Matcher optionMatcher = PATTERN_OPTIONS.matcher(line);
 			while (optionMatcher.find()) {
@@ -257,9 +292,9 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 				}
 			}
 			if (entries.size()>0) {
-				setSettingEntries(entries, file);
+				setSettingEntries(entries, sourceFile);
 			} else {
-				setSettingEntries(null, file);
+				setSettingEntries(null, sourceFile);
 			}
 		}
 		return false;

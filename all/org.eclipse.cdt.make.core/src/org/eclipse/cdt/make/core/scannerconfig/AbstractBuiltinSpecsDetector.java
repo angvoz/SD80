@@ -53,12 +53,22 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		return command;
 	}
 
+	public void setRunOnce(boolean once) {
+		runOnce = once;
+	}
+
+	public boolean isRunOnce() {
+		return runOnce;
+	}
+
 	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
 		currentCfgDescription = cfgDescription;
 		currentLanguageId = languageId;
 		currentProject = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
 		detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
-		setSettingEntries(cfgDescription, currentProject, currentLanguageId, null);
+		if (!runOnce) {
+			setSettingEntries(cfgDescription, currentProject, currentLanguageId, null);
+		}
 	}
 
 	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {

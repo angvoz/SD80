@@ -238,43 +238,34 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		groupRun.setLayoutData(gdRun);
 
 		{
-			Button b1 = new Button(groupRun, SWT.RADIO);
+			final Button b1 = new Button(groupRun, SWT.RADIO);
 			b1.setText("Run only once"); //$NON-NLS-1$
 			//		    b1.setToolTipText(UIMessages.getString("EnvironmentTab.3")); //$NON-NLS-1$
 			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 			gd.horizontalSpan = 3;
 			b1.setLayoutData(gd);
-			b1.setSelection(true);
+			b1.setSelection(fProvider.isRunOnce());
 			b1.setEnabled(fEditable);
-			// FIXME: not available yet
-			b1.setEnabled(false);
-//			b1.addSelectionListener(new SelectionAdapter() {
-//				@Override
-//				public void widgetSelected(SelectionEvent e) {
-//					if (cfgd != null)
-//						ce.setAppendEnvironment(true, cfgd);
-//					else
-//						vars.setAppendContributedEnvironment(true);
-//					updateData();
-//				}});
+			b1.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					fProvider.setRunOnce(b1.getSelection());
+				}});
 
 		}
 		{
-			Button b2 = new Button(groupRun, SWT.RADIO);
+			final Button b2 = new Button(groupRun, SWT.RADIO);
 			b2.setText("Activate on every build"); //$NON-NLS-1$
-			b2.setEnabled(false);
+			b2.setSelection(!fProvider.isRunOnce());
+			b2.setEnabled(fEditable);
 			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 			gd.horizontalSpan = 3;
 			b2.setLayoutData(gd);
-//			b2.addSelectionListener(new SelectionAdapter() {
-//				@Override
-//				public void widgetSelected(SelectionEvent e) {
-//					if (cfgd != null)
-//						ce.setAppendEnvironment(false, cfgd);
-//					else
-//						vars.setAppendContributedEnvironment(false);
-//					updateData();
-//				}});
+			b2.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					fProvider.setRunOnce(!b2.getSelection());
+				}});
 
 		}
 

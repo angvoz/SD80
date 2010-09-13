@@ -98,6 +98,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	}
 
 	public void testAbstractBuiltinSpecsDetector_StartupShutdown() throws Exception {
+		// Define mock detector
 		AbstractBuiltinSpecsDetector detector = new AbstractBuiltinSpecsDetector() {
 			@Override
 			public boolean processLine(String line) {
@@ -106,17 +107,10 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			}
 
 		};
-		detector.startup(null, null);
-		{
-			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertNull(entries);
-		}
-		detector.processLine("#define MACRO VALUE");
-		detector.shutdown();
-		{
-			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertEquals(1, entries.size());
-		}
+
+		// Test startup/shutdown on running with each build
+		detector.setRunOnce(false);
+		assertEquals(false, detector.isRunOnce());
 
 		detector.startup(null, null);
 		{
@@ -130,6 +124,33 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			assertEquals(1, entries.size());
 		}
 
+		detector.startup(null, null);
+		{
+			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+			assertNull(entries);
+		}
+		detector.processLine("#define MACRO VALUE");
+		detector.shutdown();
+		{
+			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+			assertEquals(1, entries.size());
+		}
+
+		// Test startup on running once
+		detector.setRunOnce(true);
+		assertEquals(true, detector.isRunOnce());
+
+		detector.startup(null, null);
+		{
+			// Should not clear entries
+			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+			assertEquals(1, entries.size());
+		}
+		detector.shutdown();
+		{
+			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+			assertEquals(1, entries.size());
+		}
 	}
 
 	public void testGCCBuiltinSpecsDetector_NoValue() throws Exception {

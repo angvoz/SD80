@@ -189,18 +189,18 @@
             id="org.eclipse.cdt.make.core.gcc.specs.detector"
             name="GCC C Builtin Settings Detector"
             parameter="gcc -E -P -v -dD ${spec_file}">
-         <language
+         <language-scope
                id="org.eclipse.cdt.core.gcc">
-         </language>
+         </language-scope>
       </provider>
       <provider
             class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCBuiltinSpecsDetector"
             id="org.eclipse.cdt.make.core.g++.specs.detector"
             name="GCC C++ Builtin Settings Detector"
             parameter="g++ -E -P -v -dD ${spec_file}">
-         <language
+         <language-scope
                id="org.eclipse.cdt.core.g++">
-         </language>
+         </language-scope>
       </provider>
    </extension>
    <extension
@@ -210,18 +210,18 @@
             id="org.eclipse.cdt.make.core.cygwin.gcc.specs.detector"
             name="Cygwin GCC C Builtin Settings Detector"
             parameter="sh -c &quot;gcc -E -P -v -dD ${spec_file}&quot;">
-         <language
+         <language-scope
                id="org.eclipse.cdt.core.gcc">
-         </language>
+         </language-scope>
       </provider>
       <provider
             class="org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCBuiltinSpecsDetector"
             id="org.eclipse.cdt.make.core.cygwin.g++.specs.detector"
             name="Cygwin GCC C++ Builtin Settings Detector"
             parameter="sh -c &quot;g++ -E -P -v -dD ${spec_file}&quot;">
-         <language
+         <language-scope
                id="org.eclipse.cdt.core.g++">
-         </language>
+         </language-scope>
       </provider>
    </extension>
    <extension

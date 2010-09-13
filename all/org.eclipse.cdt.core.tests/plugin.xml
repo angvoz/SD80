@@ -189,9 +189,9 @@
             id="org.eclipse.cdt.core.tests.language.settings.base.provider"
             name="Test Plugin Language Settings Base Provider"
             parameter="custom parameter">
-         <language
+         <language-scope
                id="org.eclipse.cdt.core.tests.language.id">
-         </language>
+         </language-scope>
          <entry
                kind="includePath"
                name="/usr/include/">
@@ -261,9 +261,9 @@
       <provider
             id="org.eclipse.cdt.core.tests.language.settings"
             name="Test Plugin Setting Entries UI Tester">
-         <language
+         <language-scope
                id="org.eclipse.cdt.core.gcc">
-         </language>
+         </language-scope>
          <entry
                kind="includePath"
                name="/test/include/path">

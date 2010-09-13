@@ -80,7 +80,7 @@ public class LanguageSettingsExtensionManager {
 	private static final String ATTR_NAME = "name"; //$NON-NLS-1$
 	private static final String ATTR_PARAMETER = "parameter"; //$NON-NLS-1$
 
-	private static final String ELEM_LANGUAGE = "language"; //$NON-NLS-1$
+	private static final String ELEM_LANGUAGE_SCOPE = "language-scope"; //$NON-NLS-1$
 
 	private static final String ELEM_ENTRY = "entry"; //$NON-NLS-1$
 	private static final String ELEM_FLAG = "flag"; //$NON-NLS-1$
@@ -233,7 +233,7 @@ public class LanguageSettingsExtensionManager {
 		List<String> languages = null;
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 
-		for (IConfigurationElement ceLang : ce.getChildren(ELEM_LANGUAGE)) {
+		for (IConfigurationElement ceLang : ce.getChildren(ELEM_LANGUAGE_SCOPE)) {
 			String langId = determineAttributeValue(ceLang, ATTR_ID);
 			if (langId.trim().length()>0) {
 				if (languages==null) {

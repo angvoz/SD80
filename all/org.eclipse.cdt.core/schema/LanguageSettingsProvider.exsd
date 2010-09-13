@@ -50,7 +50,7 @@
    <element name="provider">
       <complexType>
          <sequence>
-            <element ref="language" minOccurs="0" maxOccurs="unbounded"/>
+            <element ref="language-scope" minOccurs="0" maxOccurs="unbounded"/>
             <element ref="entry" minOccurs="0" maxOccurs="unbounded"/>
          </sequence>
          <attribute name="class" type="string">
@@ -87,7 +87,7 @@
       </complexType>
    </element>
 
-   <element name="language">
+   <element name="language-scope">
       <complexType>
          <attribute name="id" type="string" use="required">
             <annotation>

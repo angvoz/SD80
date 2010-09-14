@@ -35,6 +35,7 @@ import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.debug.internal.core.breakpoints.BreakpointProblems;
@@ -133,8 +134,8 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 
 	private org.eclipse.tm.tcf.services.IBreakpoints tcfBreakpointService;
 
-	// Whether startup breakpoint is set for this debug session.
-	private boolean startupBreakpointResolved = false;
+	// Module in which startup breakpoint is installed for the debug session.
+	private ModuleDMC startupBreakpointModule = null;
 
 	private ISourceLocator sourceLocator;
 
@@ -921,15 +922,23 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 * @param rm
 	 */
 	protected void setStartupBreakpoint(ModuleDMC module, RequestMonitor rm) {
-		if (startupBreakpointResolved) {
+		if (startupBreakpointModule != null) {
 			// already set in a module, no need to try it for any other module
 			rm.done();
 			return;
 		}
 
 		String startupStopAt = EDCLaunch.getLaunchForSession(getSession().getId()).getStartupStopAtPoint();
-
+		// Is this even requested by user ?
 		if (startupStopAt == null) {
+			rm.done();
+			return;
+		}
+
+		// Ask target environment whether it wants us to try installing
+		// startup breakpoint in the module.
+		ITargetEnvironment te = getTargetEnvironmentService();
+		if (! te.needStartupBreakpointInExecutable(module.getName())) {
 			rm.done();
 			return;
 		}
@@ -985,22 +994,11 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			rm.done();
 		} else {
 			// The breakpoint is resolved in the module.
-			startupBreakpointResolved = true;
+			startupBreakpointModule = module;
 
 			IExecutionDMContext exe_dmc = DMContexts.getAncestorOfType(module, IExecutionDMContext.class);
 			setTempBreakpoint(exe_dmc, iaddr, rm);
 		}
-	}
-
-	/**
-	 * get the "stop on starup at" point from user preference. The point can be
-	 * a symbol (e.g. a function name) or an absolute integer address in string
-	 * format.<br>
-	 * 
-	 * @return a string. null if no such preference is available from UI.
-	 */
-	protected String getStartupStopAtPoint() {
-		return null;
 	}
 
 	@DsfServiceEventHandler
@@ -1013,6 +1011,15 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		ModuleUnloadedEvent event = (ModuleUnloadedEvent) e;
 		final ExecutionDMC executionDMC = (ExecutionDMC)event.getExecutionDMC();
 		final ModuleDMC module = (ModuleDMC) e.getUnloadedModuleContext();
+
+		/*
+		 * If module containing startup break is unloaded, mark the startup
+		 * break as gone so that we can reinstall it the next time the module is
+		 * loaded again in the same debug session.
+		 */
+		if (startupBreakpointModule != null &&
+			startupBreakpointModule.equals(module))
+			startupBreakpointModule = null;
 		
 		final boolean requireResume	= requireResume(module);
 		

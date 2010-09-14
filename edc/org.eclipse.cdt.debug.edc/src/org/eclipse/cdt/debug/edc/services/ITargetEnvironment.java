@@ -164,6 +164,20 @@ public interface ITargetEnvironment extends IDsfService {
 	public IAddressExpressionEvaluator getAddressExpressionEvaluator();
 
 	/**
+	 * In some target environments, user may specify two or more executables
+	 * (including things like DLL) to debug in one debug session. This API
+	 * allows the target environment to tell EDC in which executable(s) it wants
+	 * EDC to try to set startup breakpoint.
+	 * 
+	 * @param exeName
+	 *            a name with or without path.
+	 * @return true if the environment wants EDC to try setting startup
+	 *         breakpoint in the executable. False otherwise.
+	 * @since 2.0
+	 */
+	public boolean needStartupBreakpointInExecutable(String exeName);
+	
+	/**
 	 * Get minimum size of a memory block that is read and stored in memory
 	 * cache. For instance, if the size is 64 bytes, then for a memory read
 	 * request that requests 4 bytes, the debugger will read and cache 64 bytes.

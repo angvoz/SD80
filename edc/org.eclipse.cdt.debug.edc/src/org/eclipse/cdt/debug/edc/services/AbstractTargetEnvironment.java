@@ -66,4 +66,13 @@ public abstract class AbstractTargetEnvironment extends AbstractEDCService imple
 
 		return ret;
 	}
+
+	/**
+	 * @since 2.0
+	 */
+	public boolean needStartupBreakpointInExecutable(String exeName) {
+		// By default EDC will try to install startup breakpoint in
+		// any loaded module until it succeeds.
+		return true;
+	}
 }

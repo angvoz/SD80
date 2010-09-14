@@ -3744,7 +3744,7 @@
            class="org.eclipse.cdt.internal.ui.newui.AllLanguageSettingEntriesTab"
            icon="icons/obj16/ls_entries.gif"
            name="%AllLanguageSettingEntries.name"
-           weight="006"
+           weight="050"
            helpId="FIXME cdt_u_prop_pns_inc"
            parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
            tooltip="%AllLanguageSettingEntries.tooltip"/>

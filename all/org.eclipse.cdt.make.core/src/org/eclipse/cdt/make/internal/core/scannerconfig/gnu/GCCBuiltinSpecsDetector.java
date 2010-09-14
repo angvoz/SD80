@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
@@ -156,9 +157,20 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 
 		setCommand(null);
 
+		if (detectedSettingEntries==null) {
+			detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
+		}
 		// That places Includes first, then Defines, then other if any
-		detectedSettingEntries.addAll(0, detectedDefines);
-		detectedSettingEntries.addAll(0, detectedIncludes);
+		if (detectedDefines!=null) {
+			detectedSettingEntries.addAll(0, detectedDefines);
+		}
+		detectedDefines = null;
+
+		if (detectedIncludes!=null) {
+			detectedSettingEntries.addAll(0, detectedIncludes);
+		}
+		detectedIncludes = null;
+
 		super.shutdown();
 	}
 

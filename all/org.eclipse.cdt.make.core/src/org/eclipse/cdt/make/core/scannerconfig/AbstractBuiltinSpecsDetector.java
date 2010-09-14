@@ -94,9 +94,10 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	public abstract boolean processLine(String line);
 
 	public void shutdown() {
-		if (detectedSettingEntries.size()>0) {
+		if (detectedSettingEntries!=null && detectedSettingEntries.size()>0) {
 			setSettingEntries(currentCfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
 		}
+		detectedSettingEntries = null;
 	}
 
 	/**

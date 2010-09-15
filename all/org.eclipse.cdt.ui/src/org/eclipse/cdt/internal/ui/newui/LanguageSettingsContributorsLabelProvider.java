@@ -3,7 +3,6 @@ package org.eclipse.cdt.internal.ui.newui;
 import java.net.URL;
 
 import org.eclipse.jface.resource.JFaceResources;
-import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
@@ -33,8 +32,9 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 			} else {
 //				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_CONFIGURATION;
 //				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_INDEXED;
-				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_PROJECT;
 //				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_CONTEXT;
+
+//				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_PROJECT;
 			}
 			return overlayKeys;
 		}

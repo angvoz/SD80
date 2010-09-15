@@ -66,6 +66,8 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		currentLanguageId = languageId;
 		currentProject = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
 		detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
+		command = customParameter;
+
 		if (!runOnce) {
 			setSettingEntries(cfgDescription, currentProject, currentLanguageId, null);
 		}

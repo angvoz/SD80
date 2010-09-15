@@ -11,6 +11,8 @@
 
 package org.eclipse.cdt.make.core.scannerconfig;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +28,7 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -75,7 +78,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			this.pattern = Pattern.compile(pattern);
 		}
 
-		public abstract ICLanguageSettingEntry createEntry(Matcher matcher);
+		public abstract ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager);
 
 		/**
 		 * TODO: explain
@@ -85,11 +88,11 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			return option;
 		}
 
-		protected ICLanguageSettingEntry parse(String input) {
+		protected ICLanguageSettingEntry parse(String input, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String option = extractOption(input);
 			Matcher matcher = pattern.matcher(option);
 			if (matcher.matches()) {
-				return createEntry(matcher);
+				return createEntry(matcher, sourceFile, parsedSourceFileName, errorParserManager);
 			}
 			return null;
 		}
@@ -109,40 +112,46 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher) {
+		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
-			if (errorParserManager!=null) {
-				IPath path = new Path(name);
-				URI uri = null;
-				URI cwd = null;
-				if (!path.isAbsolute()) {
-					if (sourceFile!=null && parsedSourceFileName!=null) {
-						IPath parsedSrcPath = new Path(parsedSourceFileName);
-						if (!parsedSrcPath.isAbsolute()) {
-							// try to figure CWD from file currently compiling (if found in workspace)
-							// consider "gcc -I./relative/to/build/dir -c relative/src/file.cpp"
-							IPath absPath = sourceFile.getLocation();
-							int absSegmentsCount = absPath.segmentCount();
-							int relSegmentsCount = parsedSrcPath.segmentCount();
-							if (absSegmentsCount>=relSegmentsCount) {
-								IPath ending = absPath.removeFirstSegments(absSegmentsCount-relSegmentsCount);
-								ending = ending.setDevice(parsedSrcPath.getDevice());
-								if (ending.equals(parsedSrcPath)) {
-									IPath cwdPath = absPath.removeLastSegments(relSegmentsCount);
-									cwd = errorParserManager.toURI(cwdPath);
-								}
+			IPath path = new Path(name);
+			URI uri = null;
+			URI cwd = null;
+			if (!path.isAbsolute()) {
+				if (sourceFile!=null && parsedSourceFileName!=null) {
+					IPath parsedSrcPath = new Path(parsedSourceFileName);
+					if (!parsedSrcPath.isAbsolute()) {
+						// try to figure CWD from file currently compiling (if found in workspace)
+						// consider "gcc -I./relative/to/build/dir -c relative/src/file.cpp"
+						IPath absPath = sourceFile.getLocation();
+						int absSegmentsCount = absPath.segmentCount();
+						int relSegmentsCount = parsedSrcPath.segmentCount();
+						if (absSegmentsCount>=relSegmentsCount) {
+							IPath ending = absPath.removeFirstSegments(absSegmentsCount-relSegmentsCount);
+							ending = ending.setDevice(parsedSrcPath.getDevice());
+							if (ending.equals(parsedSrcPath)) {
+								IPath cwdPath = absPath.removeLastSegments(relSegmentsCount);
+								// FIXME errorParserManager.toURI(cwdPath);
+								// FIXME why errorParserManager is null?
+								cwd = org.eclipse.core.filesystem.URIUtil.toURI(cwdPath);
 							}
 						}
 					}
-
-					if (cwd==null) {
-						// backing to ErrorParserManager if CWD not found
-						cwd = errorParserManager.getWorkingDirectoryURI();
-					}
-					uri = URIUtil.append(cwd, path.toString());
-				} else {
-					uri = errorParserManager.toURI(path);
 				}
+
+				if (cwd==null && errorParserManager!=null) {
+					// backing to ErrorParserManager if CWD not found
+					cwd = errorParserManager.getWorkingDirectoryURI();
+				}
+				if (cwd!=null) {
+					uri = URIUtil.append(cwd, path.toString());
+				}
+			} else {
+				// FIXME errorParserManager.toURI(path);
+				// FIXME why errorParserManager is null?
+				uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
+			}
+			if (uri!=null) {
 
 				IWorkspace workspace = ResourcesPlugin.getWorkspace();
 				IWorkspaceRoot root = workspace.getRoot();
@@ -153,6 +162,17 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 						return new CIncludePathEntry((IFolder)container, ICSettingEntry.READONLY);
 					} else {
 						return new CIncludePathEntry(container.getLocation(), ICSettingEntry.READONLY);
+					}
+				}
+
+				File file = new java.io.File(uri);
+				if (file.exists()) {
+					IPath includePath;
+					try {
+						includePath = new Path(file.getCanonicalPath());
+						return new CIncludePathEntry(includePath, ICSettingEntry.READONLY);
+					} catch (IOException e) {
+						MakeCorePlugin.log(e);
 					}
 				}
 			}
@@ -169,7 +189,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher) {
+		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			if (errorParserManager!=null) {
 				IFile file = errorParserManager.findFileName(name);
@@ -193,7 +213,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			this.valueExpression = valueExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher) {
+		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			String value = parseStr(matcher, valueExpression);
 			return new CMacroEntry(name, value, ICSettingEntry.READONLY);
@@ -209,7 +229,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher) {
+		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			return new CMacroFileEntry(name, ICSettingEntry.READONLY);
 		}
@@ -224,7 +244,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher) {
+		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			return new CLibraryPathEntry(name, ICSettingEntry.READONLY);
 		}
@@ -239,7 +259,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher) {
+		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			return new CLibraryFileEntry(name, ICSettingEntry.READONLY);
 		}
@@ -284,7 +304,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 				String option = optionMatcher.group(0);
 
 				for (OptionParser optionParser : optionParsers) {
-					ICLanguageSettingEntry entry = optionParser.parse(option);
+					ICLanguageSettingEntry entry = optionParser.parse(option, sourceFile, parsedSourceFileName, errorParserManager);
 					if (entry!=null) {
 						entries.add(entry);
 						break;

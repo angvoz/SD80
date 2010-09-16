@@ -65,6 +65,7 @@ public class LanguageSettingsExtensionManager {
 	 */
 	public final static String PROVIDER_EXTENSION_FULL_ID = "org.eclipse.cdt.core.LanguageSettingsProvider"; //$NON-NLS-1$
 	public final static String PROVIDER_EXTENSION_SIMPLE_ID = "LanguageSettingsProvider"; //$NON-NLS-1$
+	private static final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
 
 	private static final String ELEM_PLUGIN = "plugin"; //$NON-NLS-1$
 	private static final String ELEM_EXTENSION = "extension"; //$NON-NLS-1$
@@ -704,6 +705,18 @@ public class LanguageSettingsExtensionManager {
 			}
 
 			if (doc!=null) {
+			}
+
+		} else {
+			// Already existing legacy projects
+			ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
+			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+				if (cfgDescription!=null) {
+					List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(2);
+					ILanguageSettingsProvider userProvider = getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
+					providers.add(userProvider);
+					cfgDescription.setLanguageSettingProviders(providers);
+				}
 			}
 
 		}

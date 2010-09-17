@@ -23,7 +23,7 @@ public class WaitForResult<V> implements Future<V> {
 	private boolean canceled;
 	private boolean done;
 	private V data;
-	private Throwable exception;
+	private volatile Throwable exception;
 
 	/* (non-Javadoc)
 	 * @see java.util.concurrent.Future#cancel(boolean)

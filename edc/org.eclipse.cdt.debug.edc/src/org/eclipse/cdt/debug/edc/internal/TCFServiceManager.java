@@ -20,16 +20,19 @@ import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
+import org.eclipse.cdt.debug.edc.ITCFConnectionListener;
 import org.eclipse.cdt.debug.edc.ITCFServiceManager;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.tm.tcf.core.AbstractPeer;
 import org.eclipse.tm.tcf.protocol.IChannel;
@@ -65,6 +68,8 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	private static final String EXTENSION_POINT_NAME = "tcfAgentLauncher";
 
 	private List<ITCFAgentLauncher> launchedtcfAgentLaunchers;
+	
+	private ListenerList peerChannelListeners = new ListenerList();
 
 	static {
 		// Record local host IP addresses--not only numeric IP addresses but
@@ -248,8 +253,6 @@ public class TCFServiceManager implements ITCFServiceManager  {
 
 						IChannel.IChannelListener listener = new IChannel.IChannelListener() {
 							public void onChannelOpened() {
-								channel.removeChannelListener(this);
-
 								if (null != channel.getRemoteService(serviceName)) {
 									// If the peer is on this machine, add it. If the
 									// peer is on another machine, then whether we add
@@ -257,10 +260,15 @@ public class TCFServiceManager implements ITCFServiceManager  {
 									if (isLocalAgent || !localAgentsOnly)
 										runningCandidates2.add(peer);
 								}
+								
+								fireConnectionOpened(peer, channel);
+								
 								done(this); // argument is do-not-care
 							}
 
 							public void onChannelClosed(Throwable error) {
+								fireConnectionClosed(peer, channel, error);
+								channel.removeChannelListener(this);
 							}
 
 							public void congestionLevel(int level) {
@@ -308,7 +316,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 		return localIPAddresses.contains(ipHost);
 	}
 
-	private IChannel getOpenChannel(final IPeer peer) throws CoreException {
+	public IChannel findOrCreateChannelForPeer(final IPeer peer) throws CoreException {
 		IChannel channel = null;
 
 		// First check if there is existing open channel to the peer.
@@ -335,9 +343,14 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	
 						public void onChannelOpened() {
 							waitForChannel.setData(newChannel);
+							
+							fireConnectionOpened(peer, newChannel);
 						}
 	
 						public void onChannelClosed(Throwable error) {
+						    waitForChannel.handleException(error);
+						    fireConnectionClosed(peer, newChannel, error);
+						    newChannel.removeChannelListener(this);
 						}
 	
 						public void congestionLevel(int level) {
@@ -352,6 +365,9 @@ public class TCFServiceManager implements ITCFServiceManager  {
 
 		try {
 			channel = waitForChannel.get(15, TimeUnit.SECONDS);
+		} catch (ExecutionException e) {
+			throw EDCDebugger.newCoreException("Failed to open channel for " + peer.getID(), e);
+		    
 		} catch (Exception e) {
 			throw EDCDebugger.newCoreException("Time out getting open channel for peer.", e);
 		}
@@ -401,7 +417,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	public IService getPeerService(final IPeer peer, final String serviceName) throws CoreException {
 		final WaitForResult<IService> waitForService = new WaitForResult<IService>();
 
-		final IChannel channel = getOpenChannel(peer);
+		final IChannel channel = findOrCreateChannelForPeer(peer);
 
 		Protocol.invokeAndWait(new Runnable() {
 			public void run() {
@@ -557,5 +573,46 @@ public class TCFServiceManager implements ITCFServiceManager  {
 			}
 		}
 		launchedtcfAgentLaunchers.clear();
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.ITCFServiceManager#addChannelPeerListener(org.eclipse.cdt.debug.edc.ITCFConnectionListener)
+	 */
+	public void addConnectionListener(ITCFConnectionListener listener) {
+		peerChannelListeners.add(listener);
+	}
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.ITCFServiceManager#removeChannelPeerListener(org.eclipse.cdt.debug.edc.ITCFConnectionListener)
+	 */
+	public void removeConnectionListener(ITCFConnectionListener listener) {
+		peerChannelListeners.remove(listener);
+	}
+	
+	protected void fireConnectionOpened(final IPeer peer, final IChannel channel) {
+		Protocol.invokeLater(new Runnable() {
+			public void run() {
+				for (Object o : peerChannelListeners.getListeners()) {
+					try {
+						((ITCFConnectionListener) o).peerChannelOpened(peer, channel);
+					} catch (Throwable t) {
+						EDCDebugger.getMessageLogger().logError("Exception thrown from connection listener", t);
+					}
+				}
+			}
+		});
+	}
+	
+	protected void fireConnectionClosed(final IPeer peer, final IChannel channel, final Throwable exception) {
+		Protocol.invokeLater(new Runnable() {
+			public void run() {
+				for (Object o : peerChannelListeners.getListeners()) {
+					try {
+						((ITCFConnectionListener) o).peerChannelClosed(peer, channel, exception);
+					} catch (Throwable t) {
+						EDCDebugger.getMessageLogger().logError("Exception thrown from connection listener", t);
+					}
+				}
+			}
+		});
 	}
 }

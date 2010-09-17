@@ -18,6 +18,7 @@ import java.util.Map;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
+import org.eclipse.cdt.debug.edc.ITCFConnectionListener;
 import org.eclipse.cdt.debug.edc.ITCFServiceManager;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
@@ -31,6 +32,7 @@ import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.SimpleRegistersProxy;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
+import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -127,6 +129,69 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 		public void execute(final RequestMonitor requestMonitor) {
 			findPeer(requestMonitor);
 			requestMonitor.done();
+		}
+	};
+
+	/**
+	 * This step registers a listener that detects when the connection goes down.
+	 * It invokes #handleConnectionClosed(), which by default terminates the 
+	 * launch.
+	 * @since 2.0
+	 */
+	protected Step initDetectConnectionErrorStep = new Step() {
+		
+		class TCFConnectionListener implements ITCFConnectionListener {
+
+			private IChannel myPeerChannel;
+			
+			public void peerChannelOpened(IPeer peer, IChannel channel) {
+				if (peer == getTCFPeer()) {
+					myPeerChannel = channel;
+				}
+			}
+
+			public void peerChannelClosed(IPeer peer, IChannel channel,
+					Throwable error) {
+				if (peer == getTCFPeer() && channel == myPeerChannel) {
+					try {
+						handleConnectionClosed(channel, error);
+					} finally {
+						EDCDebugger.getDefault().getServiceManager().removeConnectionListener(this);
+					}
+				}
+			}
+		}
+		
+		final TCFConnectionListener peerListener = new TCFConnectionListener();
+		
+		@Override
+		public String getTaskName() {
+			return "Init connection error listener";
+		}
+
+		@Override
+		public void execute(final RequestMonitor requestMonitor) {
+			
+			// ensure we detect connection issues
+			IPeer thePeer = getTCFPeer();
+			if (thePeer != null) {
+				EDCDebugger.getDefault().getServiceManager().addConnectionListener(peerListener);
+				IChannel channel = EDCDebugger.getDefault().getServiceManager().getChannelForPeer(thePeer);
+				if (channel != null && channel.getState() == IChannel.STATE_OPEN) {
+					peerListener.peerChannelOpened(thePeer, channel);
+				}
+			}
+			
+			requestMonitor.done();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.eclipse.cdt.dsf.concurrent.Sequence.Step#rollBack(org.eclipse.cdt.dsf.concurrent.RequestMonitor)
+		 */
+		@Override
+		public void rollBack(RequestMonitor rm) {
+			EDCDebugger.getDefault().getServiceManager().removeConnectionListener(peerListener);
+			super.rollBack(rm);
 		}
 	};
 
@@ -805,4 +870,20 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	 * @since 2.0
 	 */
 	abstract protected boolean useLocalAgentOnly();
+	
+	/**
+	 * Default handler for connection errors that terminates the launch.
+	 * This runs on the dispatch thread.
+	 * @param channel the channel associated with the peer
+	 * @param error error, possibly <code>null</code>
+	 * @since 2.0
+	 */
+	protected void handleConnectionClosed(IChannel channel, Throwable error) {
+		if (launch != null && !launch.isTerminated()) {
+			if (error != null) {
+				EDCDebugger.getMessageLogger().logError("Connection lost; terminating debug session", error);
+			}
+			launch.shutdownSession(new RequestMonitor(ImmediateExecutor.getInstance(), null));
+		}
+	}
 }

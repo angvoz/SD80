@@ -45,13 +45,21 @@ public interface ITransportChannel {
 	public void close() throws IOException;
 
 	/**
-	 * Read one byte
+	 * Read one byte.  A value -1 means end of stream.
 	 * 
 	 * @return
 	 * @throws IOException
 	 */
 	public int get() throws IOException;
 
+	/**
+	 * Read one block of bytes from the input.  This may block
+	 * and return one or more bytes, or time out after a short time
+	 * and return an empty message (length=0).  A <code>null</code> message 
+	 * means end of stream.
+	 * @return array of bytes, or <code>null</code>
+	 * @throws IOException
+	 */
 	public byte[] getBytes() throws IOException;
 
 	/**

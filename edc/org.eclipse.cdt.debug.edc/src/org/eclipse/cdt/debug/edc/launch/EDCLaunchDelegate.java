@@ -135,8 +135,8 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 						throw (CoreException) cause;
 				}
 
-				throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.REQUEST_FAILED,
-						"Error in final launch sequence.", e1.getCause())); //$NON-NLS-1$
+				IStatus errorStatus = EDCDebugger.getMessageLogger().createStatus(IStatus.ERROR, null, e1.getCause());
+				throw new DebugException(errorStatus);
 			} finally {
 				if (!succeed) {
 					Query<Object> launchShutdownQuery = new Query<Object>() {

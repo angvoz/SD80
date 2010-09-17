@@ -106,8 +106,9 @@ public abstract class MessageLogger {
 	 * @param mainMessage
 	 * @param exception
 	 * @return new or existing IStatus
+	 * @since 2.0
 	 */
-	private IStatus createStatus(int severity, String mainMessage, Throwable exception) {
+	public IStatus createStatus(int severity, String mainMessage, Throwable exception) {
 		String pluginID = getPluginID();
 		IStatus status;
 

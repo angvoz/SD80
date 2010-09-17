@@ -101,7 +101,21 @@ public class TransportChannelTCP implements ITransportChannel {
 	}
 
 	public byte[] getBytes() throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		checkClosed();
+		
+		int avail = inp.available();
+		if (avail <= 0) avail = 256;	// not implemented or will block 
+		
+		byte[] result = new byte[avail];
+		int ret = inp.read(result);
+		if (ret < 0)
+			return null;
+		
+		if (ret < result.length) {
+			byte[] shortResult = new byte[ret];
+			System.arraycopy(result, 0, shortResult, 0, ret);
+			result = shortResult;
+		}
+		return result;
 	}
 }

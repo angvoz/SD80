@@ -394,12 +394,18 @@ public class EDCSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
                 public void run() {
                     if (!page.getWorkbenchWindow().getWorkbench().isClosing()) {
                         try {
-                            editor[0] = page.openEditor(input, id, false, IWorkbenchPage.MATCH_ID);
-                            if (editor[0] instanceof IReusableEditor) {
-                            	IReusableEditor re = (IReusableEditor)editor[0];
-                            	if (! input.equals(re.getEditorInput()))
-                            		re.setInput(input);
+                        	if (input instanceof CSourceNotFoundEditorInput)
+                        	{ 	// Don't open additional source not found editors if
+                        		// there is one to reuse.
+                                editor[0] = page.openEditor(input, id, false, IWorkbenchPage.MATCH_ID);
+                                if (editor[0] instanceof IReusableEditor) {
+                                	IReusableEditor re = (IReusableEditor)editor[0];
+                                	if (! input.equals(re.getEditorInput()))
+                                		re.setInput(input);
+                                }
                             }
+                        	else
+                        		editor[0] = page.openEditor(input, id, false);
                         } catch (PartInitException e) {}
                     }
                 }

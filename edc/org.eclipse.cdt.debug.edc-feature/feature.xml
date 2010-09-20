@@ -22,35 +22,6 @@
       <update label="%updateSiteName" url="http://download.eclipse.org/tools/cdt/releases/helios"/>
    </url>
 
-   <requires>
-      <import plugin="org.eclipse.core.runtime"/>
-      <import plugin="org.eclipse.debug.core" version="3.4.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.debug.core" version="5.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.launch" version="5.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.core" version="5.1.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.dsf" version="2.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.dsf.ui" version="2.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.debug.edc.tcf.extension" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.jface" version="3.5.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.ui" version="3.5.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.scripting" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.core.filesystem"/>
-      <import plugin="org.eclipse.tm.tcf.core"/>
-      <import plugin="org.eclipse.debug.ui" version="3.5.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.debug.edc" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.launch" version="6.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.debug.edc.ui" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.tm.tcf.core" version="0.3.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.tm.tcf" version="0.3.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.ui" version="3.4.1" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.debug.ui" version="3.4.1" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.cdt.debug.ui" version="5.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.ui.console" version="3.4.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.core.expressions"/>
-      <import plugin="org.eclipse.cdt.debug.edc.windows" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.tm.tcf" version="0.2.0" match="greaterOrEqual"/>
-   </requires>
-
    <plugin
          id="org.eclipse.cdt.debug.edc"
          download-size="0"

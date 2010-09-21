@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugUI;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
@@ -96,7 +97,13 @@ public class DefaultEDCSelectionPolicy implements IModelSelectionPolicy {
 							try {
 								IRunControl runControl= servicesTracker.getService(IRunControl.class);
 								if (runControl != null) {
-									rm.setData(runControl.isSuspended(execContext) || runControl.isStepping(execContext));
+									boolean isSticky = runControl.isSuspended(execContext) || runControl.isStepping(execContext);
+									if (execContext instanceof IEDCExecutionDMC) {
+										IEDCExecutionDMC edcDMC = (IEDCExecutionDMC)execContext;
+										if (! edcDMC.wantFocusInUI())
+											isSticky = false; 
+									}
+									rm.setData(isSticky);
 								}
 							} finally {
 								servicesTracker.dispose();

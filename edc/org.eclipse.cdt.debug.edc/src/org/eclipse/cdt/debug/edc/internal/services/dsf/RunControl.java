@@ -295,6 +295,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			}
 		}
 
+		public boolean wantFocusInUI() {
+			Boolean wantFocus = (Boolean)properties.get(ProtocolConstants.PROP_WANT_FOCUS_IN_UI);
+			if (wantFocus == null)
+				wantFocus = true;	// default if unknown (not set by debug agent).
+			return wantFocus;
+		}
+
 		public abstract ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext);
 
 		public abstract boolean canDetach();
@@ -420,6 +427,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			} else {
 
 				properties.put(PROP_DISABLE_STEPPING, params.get(ProtocolConstants.PROP_DISABLE_STEPPING));
+				properties.put(ProtocolConstants.PROP_WANT_FOCUS_IN_UI, params.get(ProtocolConstants.PROP_WANT_FOCUS_IN_UI));
 
 				stateChangeDetails = (String) params.get(ProtocolConstants.PROP_SUSPEND_DETAIL);
 				

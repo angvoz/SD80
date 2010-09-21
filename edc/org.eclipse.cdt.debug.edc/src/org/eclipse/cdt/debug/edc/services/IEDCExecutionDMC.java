@@ -19,5 +19,15 @@ public interface IEDCExecutionDMC extends IExecutionDMContext,IMemoryDMContext, 
 	public boolean isSuspended();
 	
 	public ISymbolDMContext getSymbolDMContext();
-	
+
+	/**
+	 * Does the context (usually a thread) want to be auto-selected/focused in
+	 * Eclipse Debug View on suspend ? When this is true, EDC will try to honor
+	 * it, but not guaranteed. If multiple contexts ask for focus, EDC will
+	 * choose one based on some other standards. See where this is invoked for
+	 * more.
+	 * 
+	 * @since 2.0
+	 */
+	public boolean wantFocusInUI();
 }

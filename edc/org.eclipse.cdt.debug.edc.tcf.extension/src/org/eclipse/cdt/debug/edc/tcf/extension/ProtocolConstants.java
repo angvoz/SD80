@@ -45,7 +45,14 @@ public interface ProtocolConstants {
 	 * debugged OS.
 	 * @since 2.0
 	 */
-	static final String PROP_IS_FOREGROUND = "is_foreground"; // value type: boolean
+	static final String PROP_IS_FOREGROUND = "IsForeground"; // value type: boolean
+
+	/**
+	 * Does a thread context want to be auto-selected/focused in Eclipse Debug View 
+	 * on suspend ? When this is true, EDC will try to honor it, but not guaranteed.
+	 * @since 2.0
+	 */
+	static final String PROP_WANT_FOCUS_IN_UI = "WantFocusInUI"; // value type: boolean
 
 	/*
 	 * These are properties that a TCF agent should report with module (a

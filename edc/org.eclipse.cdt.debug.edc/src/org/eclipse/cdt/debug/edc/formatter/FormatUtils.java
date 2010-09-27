@@ -339,4 +339,20 @@ public class FormatUtils {
 	public static int getMaxNumberOfChildren() {
 		return 200; // this seems like a good default
 	}
+	
+	/**
+	 * Evaluates the expression and throws a CoreException if there is an evaluation error
+	 * @param expression
+	 * @throws CoreException
+	 * @since 2.0
+	 */
+	public static void evaluateExpression(IEDCExpression expression) throws CoreException {
+		expression.evaluateExpression();
+		IStatus status = expression.getEvaluationError();
+		if ((status != null && !status.isOK()) || expression.getEvaluatedValue() == null) {
+			Throwable t = status != null ? status.getException() : null;
+			throw EDCDebugger.newDebugException("Error evaluating expression: " + expression.getExpression(), t);
+		}
+		
+	}
 }

@@ -44,8 +44,8 @@ public class QListFormatter implements IVariableFormatProvider {
 		private static final int BEGIN_CHILD_INDEX = 0;
 		private static final int END_CHILD_INDEX = 1;
 		private static final int ARRAY_CHILD_INDEX = 2;
+		private static final String DETAIL_SIZE_FMT = "size={0}"; //$NON-NLS-1$
 		private static final String DETAIL_FMT = "size={0} {1}"; //$NON-NLS-1$
-		private static final String DETAIL_EMPTY = "size=0"; //$NON-NLS-1$
 
 		private static Map<String, String> nameToFieldPathMap;
 		
@@ -56,8 +56,6 @@ public class QListFormatter implements IVariableFormatProvider {
 			nameToFieldPathMap.put(ARRAY_NAME, ARRAY_PATH);
 		}
 		
-		private boolean isEmpty;
-
 		public FormatProvider(IType type, boolean forDetails) {
 			super(type, forDetails, getNameToFieldPaths());
 		}
@@ -71,6 +69,27 @@ public class QListFormatter implements IVariableFormatProvider {
 		}
 		
 		@Override
+		public int getChildCount(IExpressionDMContext variable) throws CoreException {
+			List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
+			for (IExpressionDMContext child : super.getChildren(variable)) {
+				String name = ((IEDCExpression) child).getName();
+				if (nameToFieldPathMap.containsKey(name))
+					children.add(child);
+			}
+			// cast the array child to right type and size
+			IEDCExpression beginChild = (IEDCExpression) children.get(BEGIN_CHILD_INDEX);
+			FormatUtils.evaluateExpression(beginChild);
+			int begin = beginChild.getEvaluatedValue().intValue();
+			IEDCExpression endChild = (IEDCExpression) children.get(END_CHILD_INDEX);
+			FormatUtils.evaluateExpression(endChild);
+			int end = endChild.getEvaluatedValue().intValue();
+			int size = end - begin;
+			if (size < 0 || (size > 0x1000000)) // sanity
+				throw EDCDebugger.newCoreException("Uninitialized");
+			return size;
+		}
+		
+		@Override
 		protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
 			for (IExpressionDMContext child : super.getChildren(variable)) {
@@ -80,10 +99,10 @@ public class QListFormatter implements IVariableFormatProvider {
 			}
 			// cast the array child to right type and size
 			IEDCExpression beginChild = (IEDCExpression) children.get(BEGIN_CHILD_INDEX);
-			beginChild.evaluateExpression();
+			FormatUtils.evaluateExpression(beginChild);
 			int begin = beginChild.getEvaluatedValue().intValue();
 			IEDCExpression endChild = (IEDCExpression) children.get(END_CHILD_INDEX);
-			endChild.evaluateExpression();
+			FormatUtils.evaluateExpression(endChild);
 			int end = endChild.getEvaluatedValue().intValue();
 			int size = end - begin;
 			if (size < 0 || (size > 0x1000000)) // sanity
@@ -93,7 +112,6 @@ public class QListFormatter implements IVariableFormatProvider {
 			int numItems = Math.min(size, FormatUtils.getMaxNumberOfChildren());
 			if (numItems == 0) {
 				children.remove(ARRAY_CHILD_INDEX);
-				isEmpty = true;
 			}
 			else {
 				CastInfo castInfo = new CastInfo(FormatUtils.getTemplateTypeName(TYPE_NAME, type), begin, numItems);
@@ -105,9 +123,12 @@ public class QListFormatter implements IVariableFormatProvider {
 		
 		@Override
 		public String getValue(IExpressionDMContext variable) throws CoreException {
+			int count = getChildCount(variable);
+			return MessageFormat.format(DETAIL_SIZE_FMT, count);
+		}
+
+		protected String getFullStringValue(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = getChildren(variable);
-			if (isEmpty)
-				return DETAIL_EMPTY;
 			IExpressionDMContext arrayChild = children.get(ARRAY_CHILD_INDEX);
 			IVariableValueConverter valueConverter = FormatUtils.getCustomValueConverter(arrayChild);
 			if (valueConverter != null) {

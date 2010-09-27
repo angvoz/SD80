@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.formatter;
 
 import java.util.List;
 
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
@@ -80,7 +81,8 @@ public class DefaultArrayFormatter implements IVariableFormatProvider {
 
 	public static boolean handlesType(IType type) {
 		IType unqualifiedType = FormatUtils.getUnqualifiedTypeRemovePointers(type);
-		return unqualifiedType instanceof IArrayType;
+		return unqualifiedType instanceof IArrayType
+			|| unqualifiedType instanceof IArrayDimensionType;
 	}
 
 	public ITypeContentProvider getTypeContentProvider(IType type) {

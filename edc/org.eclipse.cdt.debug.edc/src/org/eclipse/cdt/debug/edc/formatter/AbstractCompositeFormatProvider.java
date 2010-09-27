@@ -54,6 +54,14 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 		List<IExpressionDMContext> childExpressions = getChildren(variable);
 		return childExpressions.iterator();
 	}
+	
+	/**
+	 * @since 2.0
+	 */
+	public int getChildCount(IExpressionDMContext variable) throws CoreException {
+		List<IExpressionDMContext> childExpressions = getChildren(variable);
+		return childExpressions.size();
+	}
 
 	protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
 		List<IExpressionDMContext> childExpressions = new ArrayList<IExpressionDMContext>();

@@ -47,6 +47,7 @@ public class QLinkedListFormatter implements IVariableFormatProvider {
 		private static final String NODE_CAST_FMT = 
 			"reinterpret_cast<QLinkedListNode<{0}>*>({1})"; //$NON-NLS-1$
 		
+		private static final String DETAIL_SIZE_FMT = "size={0}"; //$NON-NLS-1$
 		private static final String DETAIL_FMT = "size={0} {1}"; //$NON-NLS-1$
 		private static final int STOP_LENGTH = 300;
 
@@ -70,11 +71,23 @@ public class QLinkedListFormatter implements IVariableFormatProvider {
 		}
 		
 		@Override
+		public int getChildCount(IExpressionDMContext variable) throws CoreException {
+			List<IExpressionDMContext> childContexts = super.getChildren(variable);
+			IEDCExpression sizeChild = (IEDCExpression) childContexts.get(SIZE_CHILD_INDEX);
+			FormatUtils.evaluateExpression(sizeChild);
+			
+			int size = sizeChild.getEvaluatedValue().intValue();
+			if (size < 0 || size > 0x1000000) // sanity
+				throw EDCDebugger.newCoreException("Uninitialized");
+			return size;
+		}
+		
+		@Override
 		protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = new ArrayList<IExpressions.IExpressionDMContext>();
 			List<IExpressionDMContext> childContexts = super.getChildren(variable);
 			IEDCExpression sizeChild = (IEDCExpression) childContexts.get(SIZE_CHILD_INDEX);
-			sizeChild.evaluateExpression();
+			FormatUtils.evaluateExpression(sizeChild);
 			children.add(sizeChild);
 			
 			int size = sizeChild.getEvaluatedValue().intValue();
@@ -88,8 +101,8 @@ public class QLinkedListFormatter implements IVariableFormatProvider {
 			return children;
 		}
 
-		private List<IEDCExpression> getElementsFromListHead(IExpressions expressions, IEDCExpression listHead) {
-			listHead.evaluateExpression();
+		private List<IEDCExpression> getElementsFromListHead(IExpressions expressions, IEDCExpression listHead) throws CoreException {
+			FormatUtils.evaluateExpression(listHead);
 			int listHeadValue = listHead.getEvaluatedValue().intValue();
 			IFrameDMContext frame = ((IEDCExpression) listHead).getFrame();
 			String templateTypeName = FormatUtils.getTemplateTypeName(TYPE_NAME, type);
@@ -113,21 +126,26 @@ public class QLinkedListFormatter implements IVariableFormatProvider {
 			return elements;
 		}
 
-		private IEDCExpression getNextNode(IExpressions expressions, IFrameDMContext frame, String templateTypeName, IExpressionDMContext node) {
-			((IEDCExpression) node).evaluateExpression();
+		private IEDCExpression getNextNode(IExpressions expressions, IFrameDMContext frame, String templateTypeName, IExpressionDMContext node) throws CoreException {
+			FormatUtils.evaluateExpression((IEDCExpression) node);
 			List<IExpressionDMContext> nodeFields = FormatUtils.getAllChildExpressions(node);
 			IEDCExpression nextNode = (IEDCExpression) nodeFields.get(NODE_NEXT_CHILD_INDEX);
 			// make a copy based on value of the pointer to avoid ever longer expressions n->n->n->...
-			nextNode.evaluateExpression();
+			FormatUtils.evaluateExpression(nextNode);
 			String expression = MessageFormat.format(NODE_CAST_FMT, templateTypeName,
 						"0x" + Integer.toHexString(nextNode.getEvaluatedValue().intValue())); //$NON-NLS-1$
 			nextNode = (IEDCExpression) expressions.createExpression(frame, expression);
-			nextNode.evaluateExpression();
+			FormatUtils.evaluateExpression(nextNode);
 			return nextNode;
 		}
 		
 		@Override
 		public String getValue(IExpressionDMContext variable) throws CoreException {
+			int count = getChildCount(variable);
+			return MessageFormat.format(DETAIL_SIZE_FMT, count);
+		}
+
+		protected String getFullStringValue(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = getChildren(variable);
 			IEDCExpression sizeExp = (IEDCExpression) children.get(SIZE_CHILD_INDEX);
 			StringBuilder sb = new StringBuilder("["); //$NON-NLS-1$

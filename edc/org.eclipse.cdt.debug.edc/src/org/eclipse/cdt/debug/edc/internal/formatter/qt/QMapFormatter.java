@@ -48,6 +48,7 @@ public class QMapFormatter implements IVariableFormatProvider {
 		private static final String NODE_CAST_FMT = 
 			"reinterpret_cast<QMapNode<{0}>*>({1})"; //$NON-NLS-1$
 		
+		private static final String DETAIL_SIZE_FMT = "size={0}"; //$NON-NLS-1$
 		private static final String DETAIL_FMT = "size={0} {1}"; //$NON-NLS-1$
 		private static final int STOP_LENGTH = 300;
 		private static final int SIZE_OF_PTR = 4;
@@ -72,11 +73,23 @@ public class QMapFormatter implements IVariableFormatProvider {
 		}
 		
 		@Override
+		public int getChildCount(IExpressionDMContext variable) throws CoreException {
+			List<IExpressionDMContext> childContexts = super.getChildren(variable);
+			IEDCExpression sizeChild = (IEDCExpression) childContexts.get(SIZE_CHILD_INDEX);
+			FormatUtils.evaluateExpression(sizeChild);
+			
+			int size = sizeChild.getEvaluatedValue().intValue();
+			if (size < 0 || size > 0x1000000) // sanity
+				throw EDCDebugger.newCoreException("Uninitialized");
+			return size;
+		}
+		
+		@Override
 		protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = new ArrayList<IExpressions.IExpressionDMContext>();
 			List<IExpressionDMContext> childContexts = super.getChildren(variable);
 			IEDCExpression sizeChild = (IEDCExpression) childContexts.get(SIZE_CHILD_INDEX);
-			sizeChild.evaluateExpression();
+			FormatUtils.evaluateExpression(sizeChild);
 			children.add(sizeChild);
 			
 			int size = sizeChild.getEvaluatedValue().intValue();
@@ -90,8 +103,8 @@ public class QMapFormatter implements IVariableFormatProvider {
 			return children;
 		}
 
-		private List<IEDCExpression> getElementsFromMapHead(IExpressions expressions, IEDCExpression listHead, int size) {
-			listHead.evaluateExpression();
+		private List<IEDCExpression> getElementsFromMapHead(IExpressions expressions, IEDCExpression listHead, int size) throws CoreException {
+			FormatUtils.evaluateExpression(listHead);
 			int listHeadValue = listHead.getEvaluatedValue().intValue();
 			IFrameDMContext frame = ((IEDCExpression) listHead).getFrame();
 			String templateArgs = FormatUtils.getTemplateTypeName(TYPE_NAME, type);
@@ -114,19 +127,19 @@ public class QMapFormatter implements IVariableFormatProvider {
 			return elements;
 		}
 		
-		private IEDCExpression getNextNode(IExpressions expressions, IFrameDMContext frame, String templateArgs, IEDCExpression mapNode, int keyValueSize) {
+		private IEDCExpression getNextNode(IExpressions expressions, IFrameDMContext frame, String templateArgs, IEDCExpression mapNode, int keyValueSize) throws CoreException {
 			List<IExpressionDMContext> childExpressions = FormatUtils.getAllChildExpressions(mapNode);
 			IEDCExpression forwardExp = (IEDCExpression) childExpressions.get(NODE_FORWARD_INDEX);
 			forwardExp = (IEDCExpression) expressions.createExpression(frame, forwardExp.getExpression() + FIRST_ELEMENT_SUFFIX);
-			forwardExp.evaluateExpression();
+			FormatUtils.evaluateExpression(forwardExp);
 			int forwardVal = forwardExp.getEvaluatedValue().intValue();
 			return createCastedMapNodeExpression(expressions, frame, templateArgs, forwardVal - keyValueSize);
 		}
 
-		private int getKeyAndValueSize(IExpressions expressions, IFrameDMContext frame, String templateArgs, int listHeadValue) {
+		private int getKeyAndValueSize(IExpressions expressions, IFrameDMContext frame, String templateArgs, int listHeadValue) throws CoreException {
 			IEDCExpression castedMapNodeExpression = 
 				createCastedMapNodeExpression(expressions, frame, templateArgs, listHeadValue);
-			castedMapNodeExpression.evaluateExpression();
+			FormatUtils.evaluateExpression(castedMapNodeExpression);
 			IPointerType pointerType = (IPointerType) castedMapNodeExpression.getEvaluatedType();
 			IType mapNodeType = pointerType.getType();
 			int mapNodeSize = mapNodeType.getByteSize();
@@ -134,17 +147,22 @@ public class QMapFormatter implements IVariableFormatProvider {
 			
 		}
 
-		private IEDCExpression createCastedMapNodeExpression(IExpressions expressions, IFrameDMContext frame, String templateArgs, int nodeValue) {
+		private IEDCExpression createCastedMapNodeExpression(IExpressions expressions, IFrameDMContext frame, String templateArgs, int nodeValue) throws CoreException {
 			IEDCExpression nextNode;
 			String expression = MessageFormat.format(NODE_CAST_FMT, templateArgs,
 						"0x" + Integer.toHexString(nodeValue)); //$NON-NLS-1$
 			nextNode = (IEDCExpression) expressions.createExpression(frame, expression);
-			nextNode.evaluateExpression();
+			FormatUtils.evaluateExpression(nextNode);
 			return nextNode;
 		}
 		
 		@Override
 		public String getValue(IExpressionDMContext variable) throws CoreException {
+			int count = getChildCount(variable);
+			return MessageFormat.format(DETAIL_SIZE_FMT, count);
+		}
+
+		protected String getFullStringValue(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = getChildren(variable);
 			IEDCExpression sizeExp = (IEDCExpression) children.get(SIZE_CHILD_INDEX);
 			StringBuilder sb = new StringBuilder("["); //$NON-NLS-1$

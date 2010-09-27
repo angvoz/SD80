@@ -54,6 +54,7 @@ public class QSetQHashFormatter implements IVariableFormatProvider {
 		private static final String HASH_NODE_CAST_FMT = 
 			"reinterpret_cast<QHashNode<{0}>*>({1})"; //$NON-NLS-1$
 		private static final String DUMMY_VALUE_TYPE_ADD = ", QHashDummyValue"; //$NON-NLS-1$
+		private static final String DETAIL_SIZE_FMT = "size={0}"; //$NON-NLS-1$
 		private static final String DETAIL_FMT = "size={0} {1}"; //$NON-NLS-1$
 		private static final int STOP_LENGTH = 300;
 
@@ -83,6 +84,28 @@ public class QSetQHashFormatter implements IVariableFormatProvider {
 		}
 		
 		@Override
+		public int getChildCount(IExpressionDMContext variable)throws CoreException {
+			List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
+			for (IExpressionDMContext child : super.getChildren(variable)) {
+				String name = ((IEDCExpression) child).getName();
+				if (nameToFieldPathMap.containsKey(name))
+					children.add(child);
+			}
+			// test sanity and cast the buckets child to numBuckets size and remove them as children
+			IEDCExpression sanityTestChild = (IEDCExpression) children.remove(SANITY_TEST_CHILD_INDEX);
+			FormatUtils.evaluateExpression(sanityTestChild);
+			int shouldBeZero = sanityTestChild.getEvaluatedValue().intValue();
+			if (shouldBeZero != 0)
+				throw EDCDebugger.newCoreException("uninitialized");
+			IEDCExpression sizeExp = (IEDCExpression) children.get(SIZE_CHILD_INDEX);
+			FormatUtils.evaluateExpression(sizeExp);
+			int size = sizeExp.getEvaluatedValue().intValue();
+			if (size < 0 || size > 0x1000000) // sanity
+				throw EDCDebugger.newCoreException("Uninitialized");
+			return size;
+		}
+		
+		@Override
 		protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
 			for (IExpressionDMContext child : super.getChildren(variable)) {
@@ -94,11 +117,11 @@ public class QSetQHashFormatter implements IVariableFormatProvider {
 			IEDCExpression sanityTestChild = (IEDCExpression) children.remove(SANITY_TEST_CHILD_INDEX);
 			IEDCExpression bucketsChild = (IEDCExpression) children.remove(BUCKETS_CHILD_INDEX);
 			IEDCExpression numBucketsChild = (IEDCExpression) children.remove(NUM_BUCKETS_CHILD_INDEX);
-			sanityTestChild.evaluateExpression();
+			FormatUtils.evaluateExpression(sanityTestChild);
 			int shouldBeZero = sanityTestChild.getEvaluatedValue().intValue();
 			if (shouldBeZero != 0)
 				throw EDCDebugger.newCoreException("uninitialized");
-			numBucketsChild.evaluateExpression();
+			FormatUtils.evaluateExpression(numBucketsChild);
 			int numBuckets = numBucketsChild.getEvaluatedValue().intValue();
 			if (numBuckets > 0) {
 				IExpressions2 expressions2 = bucketsChild.getServiceTracker().getService(IExpressions2.class);
@@ -125,7 +148,7 @@ public class QSetQHashFormatter implements IVariableFormatProvider {
 			return children;
 		}
 
-		private List<IEDCExpression> getHashNodesFromBucket(IExpressions expressions, IExpressionDMContext nodeChild) {
+		private List<IEDCExpression> getHashNodesFromBucket(IExpressions expressions, IExpressionDMContext nodeChild) throws CoreException {
 			List<IEDCExpression> hashNodes = new ArrayList<IEDCExpression>();
 			IEDCExpression nextExp = getNextExpression(nodeChild);
 			while (nextExp != null) {
@@ -138,18 +161,18 @@ public class QSetQHashFormatter implements IVariableFormatProvider {
 							nextExp.getEvaluatedLocation().toString());
 				IEDCExpression hashNodeChild = 
 					(IEDCExpression) expressions.createExpression(((IEDCExpression) nodeChild).getFrame(), expression);
-				hashNodeChild.evaluateExpression();
+				FormatUtils.evaluateExpression(hashNodeChild);
 				hashNodes.add(hashNodeChild);
 				nextExp = getNextExpression(nextExp);
 			}
 			return hashNodes;
 		}
 
-		private IEDCExpression getNextExpression(IExpressionDMContext nodeChild) {
-			((IEDCExpression) nodeChild).evaluateExpression();
+		private IEDCExpression getNextExpression(IExpressionDMContext nodeChild) throws CoreException {
+			FormatUtils.evaluateExpression((IEDCExpression) nodeChild);
 			List<IExpressionDMContext> nodeFields = FormatUtils.getAllChildExpressions(nodeChild);
 			IEDCExpression nextExp = (IEDCExpression) nodeFields.get(NODE_NEXT_CHILD_INDEX);
-			nextExp.evaluateExpression();
+			FormatUtils.evaluateExpression(nextExp);
 			Number nextValue = nextExp.getEvaluatedValue();
 			if (nextValue.intValue() != 0)
 				return nextExp;
@@ -158,6 +181,11 @@ public class QSetQHashFormatter implements IVariableFormatProvider {
 		
 		@Override
 		public String getValue(IExpressionDMContext variable) throws CoreException {
+			int count = getChildCount(variable);
+			return MessageFormat.format(DETAIL_SIZE_FMT, count);
+		}
+
+		protected String getFullStringValue(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = getChildren(variable);
 			IEDCExpression sizeExp = (IEDCExpression) children.get(SIZE_CHILD_INDEX);
 			StringBuilder sb = new StringBuilder("["); //$NON-NLS-1$

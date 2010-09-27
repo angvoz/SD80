@@ -111,10 +111,10 @@ public class QVariantFormatter implements IVariableFormatProvider {
 			List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
 			List<IExpressionDMContext> childContexts = super.getChildren(variable);
 			IEDCExpression typeChild = (IEDCExpression) childContexts.get(TYPE_CHILD_INDEX);
-			typeChild.evaluateExpression();
+			FormatUtils.evaluateExpression(typeChild);
 			children.add(typeChild);
 			IEDCExpression isSharedChild = (IEDCExpression) childContexts.get(ISSHARED_CHILD_INDEX);
-			isSharedChild.evaluateExpression();
+			FormatUtils.evaluateExpression(isSharedChild);
 			Number isSharedValue = isSharedChild.getEvaluatedValue();
 			isShared = isSharedValue.intValue() != 0;
 			IEDCExpression dataChild = (IEDCExpression) childContexts.get(isShared ? SHARED_DATA_CHILD_INDEX : DATA_CHILD_INDEX);
@@ -127,7 +127,7 @@ public class QVariantFormatter implements IVariableFormatProvider {
 				CastInfo castInfo = new CastInfo(typeString);
 				dataChild = (IEDCExpression) expressions2.createCastedExpression(dataChild, castInfo);
 			}
-			dataChild.evaluateExpression();
+			FormatUtils.evaluateExpression(dataChild);
 			children.add(dataChild);
 			return children;
 		}

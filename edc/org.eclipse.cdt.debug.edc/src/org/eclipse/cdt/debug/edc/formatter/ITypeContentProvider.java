@@ -31,4 +31,13 @@ public interface ITypeContentProvider {
 	 * @throws CoreException on errors
 	 */
 	Iterator<IExpressionDMContext> getChildIterator(IExpressionDMContext variable) throws CoreException;
+	
+	/**
+	 * Return the number of children
+	 * @param variable IExpressionDMContext
+	 * @return int
+	 * @throws CoreException on errors
+	 * @since 2.0
+	 */
+	int getChildCount(IExpressionDMContext variable) throws CoreException;
 }

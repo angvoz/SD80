@@ -48,9 +48,9 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 			return sb.toString();
 		}
 
-		private boolean hasNullLocation(IExpressionDMContext variable) {
+		private boolean hasNullLocation(IExpressionDMContext variable) throws CoreException {
 			if (variable instanceof IEDCExpression) {
-				((IEDCExpression) variable).evaluateExpression();
+				FormatUtils.evaluateExpression((IEDCExpression) variable);
 				IVariableLocation loc = ((IEDCExpression) variable).getEvaluatedLocation();
 				if (loc instanceof IMemoryVariableLocation) {
 					if (((IMemoryVariableLocation) loc).getAddress().isZero()) {
@@ -102,7 +102,13 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 					if (unqualifiedType instanceof ICompositeType) {
 						unqualifiedType = TypeUtils.getStrippedType(evaluatedType);
 						StringBuilder childPrefixSB = new StringBuilder(prefix);
-						childPrefixSB.append(childExpression.getName());
+						String name = childExpression.getName();
+						if (name.startsWith("*")) {
+							childPrefixSB.append('(');
+							childPrefixSB.append(name);
+							childPrefixSB.append(')');
+						} else
+							childPrefixSB.append(name);
 						childPrefixSB.append(FormatUtils.getFieldAccessor(unqualifiedType));
 						if (curDepth < MAX_DEPTH)
 							addVariableFields(childPrefixSB.toString(), sb, child, ++curDepth);

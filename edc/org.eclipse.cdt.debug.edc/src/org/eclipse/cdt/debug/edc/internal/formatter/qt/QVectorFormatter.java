@@ -42,8 +42,8 @@ public class QVectorFormatter implements IVariableFormatProvider {
 		private static final String ARRAY_PATH = "$unnamed$1.p->array"; //$NON-NLS-1$
 		private static final int SIZE_CHILD_INDEX = 0;
 		private static final int ARRAY_CHILD_INDEX = 1;
+		private static final String DETAIL_SIZE_FMT = "size={0}"; //$NON-NLS-1$
 		private static final String DETAIL_FMT = "size={0} {1}"; //$NON-NLS-1$
-		private static final String DETAIL_EMPTY = "size=0"; //$NON-NLS-1$
 
 		private static Map<String, String> nameToFieldPathMap;
 		
@@ -52,8 +52,6 @@ public class QVectorFormatter implements IVariableFormatProvider {
 			nameToFieldPathMap.put(SIZE_NAME, SIZE_PATH);
 			nameToFieldPathMap.put(ARRAY_NAME, ARRAY_PATH);
 		}
-
-		private boolean isEmpty;
 
 		public FormatProvider(IType type, boolean forDetails) {
 			super(type, forDetails, getNameToFieldPaths());
@@ -68,6 +66,23 @@ public class QVectorFormatter implements IVariableFormatProvider {
 		}
 		
 		@Override
+		public int getChildCount(IExpressionDMContext variable) throws CoreException {
+			List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
+			for (IExpressionDMContext child : super.getChildren(variable)) {
+				String name = ((IEDCExpression) child).getName();
+				if (nameToFieldPathMap.containsKey(name))
+					children.add(child);
+			}
+			// cast the array child if size > 1
+			IEDCExpression sizeChild = (IEDCExpression) children.get(SIZE_CHILD_INDEX);
+			FormatUtils.evaluateExpression(sizeChild);
+			int size = sizeChild.getEvaluatedValue().intValue();
+			if (size < 0 || size > 0x1000000) // sanity
+				throw EDCDebugger.newCoreException("Uninitialized");
+			return size;
+		}
+		
+		@Override
 		protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
 			for (IExpressionDMContext child : super.getChildren(variable)) {
@@ -77,13 +92,12 @@ public class QVectorFormatter implements IVariableFormatProvider {
 			}
 			// cast the array child if size > 1
 			IEDCExpression sizeChild = (IEDCExpression) children.get(SIZE_CHILD_INDEX);
-			sizeChild.evaluateExpression();
+			FormatUtils.evaluateExpression(sizeChild);
 			int size = sizeChild.getEvaluatedValue().intValue();
 			if (size < 0 || size > 0x1000000) // sanity
 				throw EDCDebugger.newCoreException("Uninitialized");
 			if (size == 0) {
 				children.remove(ARRAY_CHILD_INDEX);
-				isEmpty = true;
 			}
 			else if (size > 1) {
 				IEDCExpression arrayChild = (IEDCExpression) children.get(ARRAY_CHILD_INDEX);
@@ -97,9 +111,12 @@ public class QVectorFormatter implements IVariableFormatProvider {
 		
 		@Override
 		public String getValue(IExpressionDMContext variable) throws CoreException {
+			int count = getChildCount(variable);
+			return MessageFormat.format(DETAIL_SIZE_FMT, count);
+		}
+
+		protected String getFullStringValue(IExpressionDMContext variable) throws CoreException {
 			List<IExpressionDMContext> children = getChildren(variable);
-			if (isEmpty)
-				return DETAIL_EMPTY;
 			IExpressionDMContext arrayChild = children.get(ARRAY_CHILD_INDEX);
 			IVariableValueConverter valueConverter = FormatUtils.getCustomValueConverter(arrayChild);
 			if (valueConverter != null) {

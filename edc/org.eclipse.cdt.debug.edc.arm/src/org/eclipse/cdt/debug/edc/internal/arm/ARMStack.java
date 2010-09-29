@@ -96,9 +96,9 @@ public class ARMStack extends Stack {
 
 	@SuppressWarnings({ "restriction", "unchecked" })
 	@Override
-	protected List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
+	protected List<EdcStackFrame> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
 
-		ArrayList<Map<String, Object>> frames = new ArrayList<Map<String, Object>>();
+		ArrayList<EdcStackFrame> frames = new ArrayList<EdcStackFrame>();
 		
 		Registers registersService = getServicesTracker().getService(Registers.class);
 		IAddress pcValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.PC), 16);
@@ -212,7 +212,7 @@ public class ARMStack extends Stack {
 			properties.put(StackFrameDMC.BASE_ADDR, baseAddress);
 			properties.put(StackFrameDMC.INSTRUCTION_PTR_ADDR, pcValue.getValue().longValue());
 			properties.put(StackFrameDMC.MODULE_NAME, moduleName);
-			frames.add(properties);
+			frames.add(new EdcStackFrame(properties));
 
 			if (functionStartAddress == null) {
 				// either module at address not known or we don't have symbols

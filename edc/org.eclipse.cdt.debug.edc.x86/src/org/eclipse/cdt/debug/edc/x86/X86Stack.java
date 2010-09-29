@@ -26,7 +26,6 @@ import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack;
-import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.IStatus;
@@ -52,7 +51,7 @@ public class X86Stack extends Stack {
 	static int nextStackFrameID = 100;
 
 	public X86Stack(DsfSession session) {
-		super(session, new String[] { IStack.class.getName(), Stack.class.getName(), X86Stack.class.getName() });
+		super(session, new String[] { X86Stack.class.getName() });
 	}
 
 	/**

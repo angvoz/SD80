@@ -16,7 +16,6 @@ import java.util.List;
 
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.Registers;
-import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 
@@ -34,8 +33,7 @@ public class X86Registers extends Registers {
 			"GS", "FS", "ES", "DS", "EIP", "CS", "EFL", "SS" };
 
 	public X86Registers(DsfSession session) {
-		super(session, new String[] { IRegisters.class.getName(), Registers.class.getName(),
-				X86Registers.class.getName() });
+		super(session, new String[] { X86Registers.class.getName() });
 	}
 
 	@Override

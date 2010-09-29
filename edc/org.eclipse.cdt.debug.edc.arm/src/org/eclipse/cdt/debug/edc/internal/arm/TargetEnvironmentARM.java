@@ -70,7 +70,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 	private HashMap<IPath, ARMElf> readerToArmElfMap;
 
 	public TargetEnvironmentARM(DsfSession session, ILaunch launch) {
-		super(session, new String[] { ITargetEnvironment.class.getName(), TargetEnvironmentARM.class.getName() },
+		super(session, new String[] { TargetEnvironmentARM.class.getName() },
 				launch);
 		readerToArmElfMap = new HashMap<IPath, ARMElf>();
 	}

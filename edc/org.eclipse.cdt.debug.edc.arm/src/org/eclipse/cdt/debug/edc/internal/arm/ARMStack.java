@@ -91,7 +91,7 @@ public class ARMStack extends Stack {
 	}
 
 	public ARMStack(DsfSession session) {
-		super(session, new String[] { IStack.class.getName(), Stack.class.getName(), ARMStack.class.getName() });
+		super(session, new String[] { ARMStack.class.getName() });
 	}
 
 	@SuppressWarnings({ "restriction", "unchecked" })

@@ -18,7 +18,6 @@ import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.Registers;
-import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.service.DsfSession;
 
 public class ARMRegisters extends Registers {
@@ -175,8 +174,7 @@ public class ARMRegisters extends Registers {
 	private final Map<String, List<String>> registerGroups = new HashMap<String, List<String>>();
 
 	public ARMRegisters(DsfSession session) {
-		super(session, new String[] { IRegisters.class.getName(), Registers.class.getName(),
-				ARMRegisters.class.getName() });
+		super(session, new String[] { ARMRegisters.class.getName() });
 
 		registerGroups.put(USER_MODE_REGISTERS, getUserModeRegisterNames());
 

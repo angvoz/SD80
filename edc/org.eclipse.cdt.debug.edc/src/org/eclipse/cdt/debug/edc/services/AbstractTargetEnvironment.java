@@ -28,13 +28,15 @@ public abstract class AbstractTargetEnvironment extends AbstractEDCService imple
 	 * @param session
 	 * @param classNames
 	 *            the type names the service will be registered under. See
-	 *            AbstractDsfService#register for details. This argument 
-	 *            will be blindly passed to that method.
+	 *            AbstractDsfService#register for details. We tack on
+	 *            ITargetEnvironment if not provided.
+	 * 
 	 * @param launch
 	 *            must be non-null
 	 */
 	public AbstractTargetEnvironment(DsfSession session, String[] classNames, ILaunch launch) {
-		super(session, classNames);
+		super(session,
+				massageClassNames(classNames, new String[] {ITargetEnvironment.class.getName()}));
 		assert launch != null;
 		this.launch = launch;
 	}

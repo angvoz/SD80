@@ -113,7 +113,7 @@ public abstract class DebugServicesFactory extends AbstractDsfDebugServicesFacto
 
 	@Override
 	protected IDisassembly createDisassemblyService(DsfSession session) {
-		return new Disassembly(session);
+		return new Disassembly(session, new String[0]);
 	}
 
 	@Override

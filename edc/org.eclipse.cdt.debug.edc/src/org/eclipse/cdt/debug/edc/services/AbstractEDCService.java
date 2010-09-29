@@ -10,7 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.services;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Hashtable;
+import java.util.List;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
@@ -70,5 +73,28 @@ public abstract class AbstractEDCService extends AbstractDsfService {
 
 	public ITargetEnvironment getTargetEnvironmentService() {
 		return targetEnvironmentService;
+	}
+
+	/**
+	 * Add implicit service class names
+	 * 
+	 * @param classNames
+	 *            the class names our derivative gave us. Must not be null, but
+	 *            can be empty.
+	 * @param implicitClassNames
+	 *            the implicit class names that should be specified. Must not be
+	 *            null, but can be empty.
+	 * @return a new collection of class names that is [classNames] plus any
+	 *         missing implicit ones. The implicit ones will appear first in the
+	 *         list
+	 */
+	/*package*/ static String[] massageClassNames(String[] classNames, String[] implicitClassNames) {
+		List<String> newClassNames = new ArrayList<String>(Arrays.asList(implicitClassNames));
+		for (String className : classNames) {
+			if (!newClassNames.contains(className)) {
+				newClassNames.add(className);
+			}
+		}
+		return newClassNames.toArray(new String[newClassNames.size()]);
 	}
 }

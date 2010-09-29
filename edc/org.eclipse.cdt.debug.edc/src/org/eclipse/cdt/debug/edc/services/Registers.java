@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.services;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +46,7 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.debug.core.model.IRegister;
 import org.eclipse.tm.tcf.protocol.IErrorReport;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.IToken;
@@ -308,8 +310,16 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		}
 	}
 
+	/**
+	 * @param classNames
+	 *            the type names the service will be registered under. See
+	 *            AbstractDsfService#register for details. We tack on base DSF's
+	 *            IRegisters and this class to the list if missing.
+	 */
 	public Registers(DsfSession session, String[] classNames) {
-		super(session, classNames);
+		super(session, 
+				massageClassNames(classNames,
+						new String[] {IRegisters.class.getName(), Registers.class.getName()}));
 	}
 
 	/**

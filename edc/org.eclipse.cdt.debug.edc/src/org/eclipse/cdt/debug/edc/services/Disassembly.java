@@ -47,8 +47,17 @@ import org.eclipse.debug.core.model.MemoryByte;
 
 public class Disassembly extends AbstractEDCService implements IDisassembly {
 
-	public Disassembly(DsfSession session) {
-		super(session, new String[] { IDisassembly.class.getName(), Disassembly.class.getName() });
+	/**
+	 * @param classNames
+	 *            the type names the service will be registered under. See
+	 *            AbstractDsfService#register for details. We tack on base DSF's
+	 *            IDisassembly and this class to the list if not provided.
+	 * @since 2.0
+	 */
+	public Disassembly(DsfSession session, String[] classNames) {
+		super(session,
+				massageClassNames(classNames, 
+						new String[] { IDisassembly.class.getName(), Disassembly.class.getName() }));
 	}
 
 	/**

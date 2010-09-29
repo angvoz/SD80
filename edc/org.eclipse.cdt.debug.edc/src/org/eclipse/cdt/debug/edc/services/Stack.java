@@ -1024,8 +1024,16 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 	}
 
+	/**
+	 * @param classNames
+	 *            the type names the service will be registered under. See
+	 *            AbstractDsfService#register for details. We tack on base DSF's
+	 *            IStack and this class to the list if not provided.
+	 */
 	public Stack(DsfSession session, String[] classNames) {
-		super(session, classNames);
+		super(session, 
+				massageClassNames(classNames, 
+						new String[] { IStack.class.getName(), Stack.class.getName() }));
 	}
 
 	public static String createFrameID(IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {

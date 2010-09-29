@@ -14,16 +14,16 @@ package org.eclipse.cdt.debug.edc.disassembler;
 import java.math.BigInteger;
 import java.util.StringTokenizer;
 
-import org.eclipse.cdt.dsf.debug.service.IInstruction;
+import org.eclipse.cdt.dsf.debug.service.AbstractInstruction;
 
-public class EDCInstruction implements IInstruction {
+public class EDCInstruction extends AbstractInstruction {
 
 	private final IDisassembledInstruction instruction;
 
 	public EDCInstruction(IDisassembledInstruction instruction) {
 		this.instruction = instruction;
 	}
-
+	
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -96,6 +96,15 @@ public class EDCInstruction implements IInstruction {
 		return null;
 	}
 
+	/**
+	 * @since 2.0
+	 */
+	@Override
+    public Integer getSize() {
+		return instruction.getSize();
+	}
+
+	
 	@Override
 	public String toString() {
 		return instruction.toString();

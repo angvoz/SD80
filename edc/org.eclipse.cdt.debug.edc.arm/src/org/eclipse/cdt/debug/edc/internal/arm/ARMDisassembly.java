@@ -50,7 +50,7 @@ public class ARMDisassembly extends Disassembly {
 	boolean currentlyProcessingThumbMode = false;
 
 	public ARMDisassembly(DsfSession session) {
-		super(session);
+		super(session, new String[] {ARMDisassembly.class.getName()});
 	}
 
 	/**

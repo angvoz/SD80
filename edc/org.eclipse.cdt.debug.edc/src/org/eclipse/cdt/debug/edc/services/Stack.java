@@ -1256,10 +1256,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 	private void updateFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
 		ArrayList<StackFrameDMC> frames = new ArrayList<StackFrameDMC>();
-		List<Map<String, Object>> frameProperties = computeStackFrames(context, startIndex, endIndex);
+		List<EdcStackFrame> edcFrames = computeStackFrames(context, startIndex, endIndex);
 		StackFrameDMC previous = null;
-		for (Map<String, Object> props : frameProperties) {
-			StackFrameDMC frame = new StackFrameDMC(context, props);
+		for (EdcStackFrame edcFrame : edcFrames) {
+			StackFrameDMC frame = new StackFrameDMC(context, edcFrame.props);
 			if (previous != null) {
 				frame.calledFrame = previous;
 				// note: don't store "callerFrame" since this is missing if only a partial stack was fetched
@@ -1275,7 +1275,33 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		allFramesCached.put(context.getID(), startIndex == 0 && ((endIndex == ALL_FRAMES) || (frames.size() <= endIndex)));
 	}
 
-	protected abstract List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex);
+	/**
+	 * A stack frame described as one or more of the following properties, plus
+	 * any additional custom ones.
+	 * 
+	 * <ul>
+	 * <li>{@link StackFrameDMC#LEVEL_INDEX}
+	 * <li>{@link StackFrameDMC#ROOT_FRAME}
+	 * <li>{@link StackFrameDMC#BASE_ADDR}
+	 * <li>{@link StackFrameDMC#INSTRUCTION_PTR_ADDR}
+	 * <li>{@link StackFrameDMC#MODULE_NAME}
+	 * <li>{@link StackFrameDMC#SOURCE_FILE}
+	 * <li>{@link StackFrameDMC#FUNCTION_NAME}
+	 * <li>{@link StackFrameDMC#LINE_NUMBER}
+	 * <li>{@link StackFrameDMC#IN_PROLOGUE}
+	 * <li>{@link StackFrameDMC#PRESERVED_REGISTERS}
+	 * </ul>
+	 * 
+	 * @since 2.0
+	 */
+	public class EdcStackFrame {
+		public EdcStackFrame(Map<String, Object> props) { 
+			this.props = props; 
+		}
+		public Map<String, Object> props;
+	}
+	
+	protected abstract List<EdcStackFrame> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex);
 
 	public void loadFramesForContext(IEDCExecutionDMC exeDmc, Element allFrames) throws Exception {
 		flushCache(null);

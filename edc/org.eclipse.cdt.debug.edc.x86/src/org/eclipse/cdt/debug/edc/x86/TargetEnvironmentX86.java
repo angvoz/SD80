@@ -41,7 +41,7 @@ public class TargetEnvironmentX86 extends AbstractTargetEnvironment implements I
 	private HashMap<Integer, Integer> basicTypeSizes = null;
 
 	public TargetEnvironmentX86(DsfSession session, ILaunch launch) {
-		super(session, new String[] { ITargetEnvironment.class.getName(), TargetEnvironmentX86.class.getName() },
+		super(session, new String[] { TargetEnvironmentX86.class.getName() },
 				launch);
 	}
 

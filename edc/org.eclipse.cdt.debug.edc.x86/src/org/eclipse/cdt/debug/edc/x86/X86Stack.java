@@ -70,9 +70,9 @@ public class X86Stack extends Stack {
 	 * out of range of ESP, we must quit here.)  
 	 */
 	@Override
-	protected List<Map<String, Object>> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
+	protected List<EdcStackFrame> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
 
-		ArrayList<Map<String, Object>> frames = new ArrayList<Map<String, Object>>();
+		ArrayList<EdcStackFrame> frames = new ArrayList<EdcStackFrame>();
 
 		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
 		IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
@@ -166,7 +166,7 @@ public class X86Stack extends Stack {
 				if (module != null) properties.put(StackFrameDMC.MODULE_NAME, module.getName());
 				if (level == 0) properties.put(StackFrameDMC.IN_PROLOGUE, !isFramePushed);
 				properties.put(StackFrameDMC.PRESERVED_REGISTERS, preserved.getPreservedRegisters());
-				frames.add(properties);
+				frames.add(new EdcStackFrame(properties));
 				
 				// avoid recursive loop
 				if (level > 0 && baseAddress == previousBaseAddress) {

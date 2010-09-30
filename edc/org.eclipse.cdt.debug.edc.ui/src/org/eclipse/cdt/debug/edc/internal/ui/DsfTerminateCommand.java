@@ -72,7 +72,14 @@ public class DsfTerminateCommand implements ITerminateHandler {
 							null) {
 						@Override
 						protected void handleCompleted() {
-							request.setEnabled(getData());
+							if (isSuccess()) {
+								Boolean result = getData();
+								assert result != null : "successful request should provide a result"; 
+								request.setEnabled(result != null ? result : false);
+							}
+							else {
+								request.setEnabled(false);
+							}
 							request.done();
 						}
 					});

@@ -22,18 +22,18 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugException;
-import org.eclipse.osgi.framework.debug.FrameworkDebugOptions;
+import org.eclipse.osgi.service.debug.DebugOptions;
 import org.eclipse.osgi.service.debug.DebugTrace;
 import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.Protocol;
 import org.eclipse.tm.tcf.protocol.Protocol.ChannelOpenListener;
 import org.osgi.framework.BundleContext;
+import org.osgi.util.tracker.ServiceTracker;
 
 /**
  * The activator class controls the plug-in life cycle
  */
 
-@SuppressWarnings("restriction")
 public class EDCDebugger extends Plugin {
 
 	// The plug-in ID
@@ -42,11 +42,18 @@ public class EDCDebugger extends Plugin {
 	// The shared instance
 	private static EDCDebugger plugin;
 
-	private DebugTrace trace;
+	/** Platform facility used to trace. Lock {@link #traceLock} before accessing. */
+	private volatile DebugTrace trace;
+	
+	/** Serializes access to {@link #trace} */
+	private final String traceLock = new String("trace lock");
 
     private ITCFServiceManager tcfServiceManager;
     
     private PersistentCache cache;
+
+    /** This plugin, once activated */
+	private BundleContext context;
 	
 	/**
 	 * The constructor
@@ -60,6 +67,7 @@ public class EDCDebugger extends Plugin {
 	@Override
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
+		this.context = context;
 		plugin = this;
 
 		// Validate our plugin ID constant 
@@ -125,8 +133,21 @@ public class EDCDebugger extends Plugin {
 	}
 
 	public DebugTrace getTrace() {
-		if (trace == null)
-			trace = FrameworkDebugOptions.getDefault().newDebugTrace(getBundle().getSymbolicName());
+		synchronized (traceLock) {
+			if (trace == null) {
+				if (context == null) {
+					return null;	// Sorry, can't help. Bundle hasn't been activated yet
+				}
+				
+				ServiceTracker tracker = new ServiceTracker(context, DebugOptions.class.getName(), null);
+				tracker.open();
+				DebugOptions debugOptions = (DebugOptions)tracker.getService();
+				if (debugOptions != null) {
+					trace = debugOptions.newDebugTrace(getBundle().getSymbolicName());
+				}
+				tracker.close();
+			}
+		}
 		return trace;
 	}
 

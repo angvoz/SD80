@@ -306,9 +306,15 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private TypeEngine typeEngine;
 		private IEDCModuleDMContext module;
 
+		/**
+		 * @since 2.0
+		 */
 		@SuppressWarnings("unchecked")
-		public StackFrameDMC(final IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
-			super(Stack.this, new IDMContext[] { executionDMC }, createFrameID(executionDMC, frameProperties), frameProperties);
+		public StackFrameDMC(final IEDCExecutionDMC executionDMC, EdcStackFrame edcFrame) {
+			super(Stack.this, new IDMContext[] { executionDMC }, createFrameID(executionDMC, edcFrame), edcFrame.props);
+			
+			Map<String, Object> frameProperties = edcFrame.props;
+			
 			this.executionDMC = executionDMC;
 
 			this.level = (Integer) frameProperties.get(LEVEL_INDEX);
@@ -1036,8 +1042,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						new String[] { IStack.class.getName(), Stack.class.getName() }));
 	}
 
-	public static String createFrameID(IEDCExecutionDMC executionDMC, Map<String, Object> frameProperties) {
-		int level = (Integer) frameProperties.get(StackFrameDMC.LEVEL_INDEX);
+	/**
+	 * @since 2.0
+	 */
+	public static String createFrameID(IEDCExecutionDMC executionDMC, EdcStackFrame edcFrame) {
+		int level = (Integer) edcFrame.props.get(StackFrameDMC.LEVEL_INDEX);
 		String parentID = executionDMC.getID();
 		return parentID + ".frame[" + level + "]";
 	}
@@ -1259,7 +1268,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		List<EdcStackFrame> edcFrames = computeStackFrames(context, startIndex, endIndex);
 		StackFrameDMC previous = null;
 		for (EdcStackFrame edcFrame : edcFrames) {
-			StackFrameDMC frame = new StackFrameDMC(context, edcFrame.props);
+			StackFrameDMC frame = new StackFrameDMC(context, edcFrame);
 			if (previous != null) {
 				frame.calledFrame = previous;
 				// note: don't store "callerFrame" since this is missing if only a partial stack was fetched
@@ -1322,7 +1331,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			// we expect level==0 to be the top, but it used to be 1
 			properties.put(StackFrameDMC.LEVEL_INDEX, i);
 			
-			StackFrameDMC frameDMC = new StackFrameDMC(exeDmc, properties);
+			StackFrameDMC frameDMC = new StackFrameDMC(exeDmc, new EdcStackFrame(properties));
 			frameDMC.loadSnapshot(groupElement);
 			if (previousFrameDMC != null) {
 				frameDMC.calledFrame = previousFrameDMC;

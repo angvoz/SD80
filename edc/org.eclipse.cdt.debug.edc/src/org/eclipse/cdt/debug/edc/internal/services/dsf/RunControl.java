@@ -103,17 +103,18 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	public static final String EXECUTION_CONTEXT_MODULES = "execution_context_modules";
 	public static final String EXECUTION_CONTEXT_FRAMES = "execution_context_frames";
 	/**
-	 * Context property names.
+	 * Context property names. Properties that are optional but have default
+	 * implicit values are indicated below
 	 */
 	public static final String 
 			PROP_PARENT_ID = "ParentID", 
-			PROP_IS_CONTAINER = "IsContainer",
-			PROP_HAS_STATE = "HasState", 
-			PROP_CAN_RESUME = "CanResume", 
+			PROP_IS_CONTAINER = "IsContainer",	 // default = true
+			PROP_HAS_STATE = "HasState",
+			PROP_CAN_RESUME = "CanResume",       // default = true
 			PROP_CAN_COUNT = "CanCount",
-			PROP_CAN_SUSPEND = "CanSuspend", 
-			PROP_CAN_TERMINATE = "CanTerminate", 
-			PROP_IS_SUSPENDED = "State",
+			PROP_CAN_SUSPEND = "CanSuspend",     // default = true
+			PROP_CAN_TERMINATE = "CanTerminate", // default = false
+			PROP_IS_SUSPENDED = "State",         // default = false		 
 			PROP_MESSAGE = "Message", 
 			PROP_SUSPEND_PC = "SuspendPC",
 			PROP_DISABLE_STEPPING = "DisableStepping";
@@ -350,11 +351,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public boolean isSuspended() {
 			synchronized (properties) {
-				Boolean suspended = (Boolean) properties.get(PROP_IS_SUSPENDED);
-				if (suspended != null)
-					return suspended;
+				return RunControl.getProperty(properties, PROP_IS_SUSPENDED, false);
 			}
-			return false;
 		}
 
 		public StateChangeReason getStateChangeReason() {
@@ -527,14 +525,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		public Boolean canTerminate() {
 			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE);
-			Boolean result = false;
+			boolean result = false;
 			synchronized (properties) {
-				try {
-					result = (Boolean) properties.get(PROP_CAN_TERMINATE);
-				} catch (Exception e) {
-					EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-							"Error in canTerminate", e);
-				}
+				result = RunControl.getProperty(properties, PROP_CAN_TERMINATE, result);
 			}
 			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE, result);
 			return result;
@@ -1123,17 +1116,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		public boolean canStep() {
 			if (isSuspended()) {
 				synchronized (properties) {
-					try {
-						Object obj = properties.get(PROP_DISABLE_STEPPING);
-						if (obj != null && obj instanceof Boolean) {
-							if (((Boolean)obj).booleanValue()) {
-								return false;
-							}
-						}
-					} catch (Exception e) {
-					}
+					return !RunControl.getProperty(properties, PROP_DISABLE_STEPPING, false);
 				}
-				return true;
 			}
 			
 			return false;
@@ -1157,7 +1141,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		public BareDeviceExecutionDMC(ExecutionDMC parent,
 				Map<String, Object> properties, RunControlContext tcfContext) {
 			super(parent, properties, tcfContext);
-			assert !(Boolean)properties.get(PROP_IS_CONTAINER);
+			assert !RunControl.getProperty(properties, PROP_IS_CONTAINER, true);
 		}
 
 		@Override
@@ -1185,12 +1169,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		@Override
 		public ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext) {
-			Boolean isContainer = (Boolean)(properties.get(PROP_IS_CONTAINER));
 			ExecutionDMC newDMC;
 			// If the new context being added under root is a container context,
 			// we treat it as a Process, otherwise a bare device program context.
 			//
-			if (isContainer == null || Boolean.TRUE.equals(isContainer))
+			if (RunControl.getProperty(properties, PROP_IS_CONTAINER, true))
 				newDMC = new ProcessExecutionDMC(this, properties, tcfContext);
 			else
 				newDMC = new BareDeviceExecutionDMC(this, properties, tcfContext);
@@ -2624,5 +2607,14 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 */
 	static public boolean isNonContainer(IDMContext dmc) {
 		return ! (dmc instanceof IContainerDMContext);
+	}
+	
+	/**
+	 * Utility method for getting a context property using a default value
+	 * if missing
+	 */
+	private static boolean getProperty(Map<String, Object> properties, String name, boolean defaultValue) {
+		Boolean b = (Boolean)properties.get(name);
+		return (b == null ? defaultValue : b);
 	}
 }

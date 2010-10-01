@@ -55,6 +55,9 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		// TODO: figure out file extension from language id
 //			ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(getCurrentLanguage());
 //		CContentTypes.getContentType(project, filename);
+//		final IContentTypeManager ctm = Platform.getContentTypeManager();
+//		final IContentType ctbin = ctm.getContentType(CCorePlugin.CONTENT_TYPE_CXXSOURCE);
+//		final IContentType[] cts= ctm.findContentTypesFor(baseFileName.toString());
 
 		if (LANGUAGE_ID_CPLUSPLUS.equals(languageId)) {
 			specFileName = SPEC_FILE_BASE + ".cpp";

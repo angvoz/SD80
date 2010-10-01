@@ -127,7 +127,8 @@ public class ExternalBuildRunner implements IBuildRunner {
 				URI workingDirectoryURI = ManagedBuildManager.getBuildLocationURI(configuration, builder);
 
 				// Set the environment
-				String[] env = calcEnvironment(builder);
+				Map<String, String> envMap = getEnvironment(builder);
+				String[] env = getEnvStrings(envMap);
 
 				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
 				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
@@ -173,9 +174,6 @@ public class ExternalBuildRunner implements IBuildRunner {
 				// Print the command for visual interaction.
 				launcher.showCommand(true);
 
-				// Set the environment
-				Map<String, String> envMap = getEnvironment(builder);
-				String[] env = getEnvStrings(envMap);
 				String[] buildArguments = targets;
 
 				String[] newArgs = CommandLineUtil.argumentsToArray(builder.getBuildArguments());
@@ -262,7 +260,7 @@ public class ExternalBuildRunner implements IBuildRunner {
 					consoleErr.write(buf.toString().getBytes());
 					consoleErr.flush();
 				}
-				
+
 				buf = new StringBuffer(NEWLINE);
 				buf.append(ManagedMakeMessages.getResourceString("ManagedMakeBuilder.message.build.finished")).append(NEWLINE); //$NON-NLS-1$
 				consoleOut.write(buf.toString().getBytes());
@@ -503,29 +501,6 @@ public class ExternalBuildRunner implements IBuildRunner {
 		ICProject icProject = CoreModel.getDefault().create(project);
 		ICElement[] tuSelection = new ICElement[] {icProject};
 		CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
-	}
-
-	protected String[] calcEnvironment(IBuilder builder) throws CoreException{
-		HashMap<String, String> envMap = new HashMap<String, String>();
-		if (builder.appendEnvironment()) {
-			ICConfigurationDescription cfgDes = ManagedBuildManager.getDescriptionForConfiguration(builder.getParent().getParent());
-			IEnvironmentVariableManager mngr = CCorePlugin.getDefault().getBuildEnvironmentManager();
-			IEnvironmentVariable[] vars = mngr.getVariables(cfgDes, true);
-			for (IEnvironmentVariable var : vars) {
-				envMap.put(var.getName(), var.getValue());
-			}
-		}
-		// Add variables from build info
-		Map<String, String> builderEnv = builder.getExpandedEnvironment();
-		if(builderEnv != null)
-			envMap.putAll(builderEnv);
-		List<String> strings= new ArrayList<String>(envMap.size());
-		for (Entry<String, String> entry : envMap.entrySet()) {
-			StringBuffer buffer= new StringBuffer(entry.getKey());
-			buffer.append('=').append(entry.getValue());
-			strings.add(buffer.toString());
-		}
-		return strings.toArray(new String[strings.size()]);
 	}
 
 }

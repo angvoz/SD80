@@ -57,6 +57,15 @@ public interface IVariable {
 	 * @return offset in bytes (0 means the lifetime is the same as the parent scope)
 	 */
 	long getStartScope();
+	
+	/**
+	 * Whether a variable was explicitly declared in the source, rather than generated
+	 * by a tool such as a compiler
+	 *  
+	 * @return whether the variable was explicitly declared 
+	 * @since 2.0
+	 */
+	boolean isDeclared();
 
 	/**
 	 * 

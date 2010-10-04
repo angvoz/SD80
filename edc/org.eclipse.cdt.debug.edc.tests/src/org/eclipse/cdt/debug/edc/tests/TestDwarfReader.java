@@ -53,11 +53,11 @@ import org.eclipse.cdt.debug.edc.internal.symbols.InheritanceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.SubroutineType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.PublicNameInfo;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfInfoReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.LocationEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.LocationExpression;
-import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.PublicNameInfo;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.LocationList;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
@@ -1123,7 +1123,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		IScope scope = type.getScope();
 		assertTrue(scope instanceof ICompileUnitScope);
 		IPath path = ((ICompileUnitScope) scope).getFilePath();
-		assertTrue(path.toString(), path.lastSegment().equals("dbg_multipleinheritance.cpp"));
+		assertTrue(path.toString(), path.lastSegment().equals("dbg_multipleInheritance.cpp"));
 	}
 	
 	/**

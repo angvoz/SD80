@@ -132,7 +132,10 @@ public class JumpToAddress implements IJumpToAddress {
 
 	@Override
 	public String toString() {
-		return "JumpToAddress [address=" + address + ", expression=" + expression + ", isSoleDestination="
-				+ isSoleDestination + ", isSubroutineAddress=" + isSubroutineAddress + "]";
+		return "JumpToAddress [address="
+			 + ((address != null) ? address.toHexAddressString() : "null")
+			 + ", expression=" + expression
+			 + ", isSoleDestination=" + isSoleDestination
+			 + ", isSubroutineAddress=" + isSubroutineAddress + "]";
 	}
 }

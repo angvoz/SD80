@@ -33,6 +33,8 @@ import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusAdapter;
 import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.KeyAdapter;
+import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -207,6 +209,16 @@ public class ChooseProcessDialog extends TrayDialog {
 			public void modifyText(ModifyEvent e) {
 				FilterItems();
 				clearFilterToolBar.getControl().setVisible(filterText.getText().length() > 0);
+			}
+		});
+		
+		filterText.addKeyListener(new KeyAdapter() {
+			
+			public void keyPressed(KeyEvent e) {
+				if (e.keyCode == SWT.ARROW_DOWN) {
+					e.doit = false;
+					viewer.getControl().setFocus();
+				}
 			}
 		});
 		clearFilterToolBar = new ToolBarManager(SWT.FLAT | SWT.HORIZONTAL);

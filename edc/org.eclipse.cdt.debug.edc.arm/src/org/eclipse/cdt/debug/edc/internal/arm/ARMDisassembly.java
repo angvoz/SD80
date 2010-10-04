@@ -11,17 +11,17 @@
 package org.eclipse.cdt.debug.edc.internal.arm;
 
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.disassembler.EDCInstruction;
+import org.eclipse.cdt.debug.edc.disassembler.EDCInstructionFunctionInfo;
 import org.eclipse.cdt.debug.edc.disassembler.EDCMixedInstruction;
-import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
+import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM.IDisassemblerOptionsARM;
 import org.eclipse.cdt.debug.edc.services.Disassembly;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
@@ -47,16 +47,16 @@ import org.eclipse.debug.core.model.MemoryByte;
 
 public class ARMDisassembly extends Disassembly {
 
-	boolean currentlyProcessingThumbMode = false;
-
 	public ARMDisassembly(DsfSession session) {
 		super(session, new String[] {ARMDisassembly.class.getName()});
 	}
 
 	/**
-	 * overrides the default implmentation in order to first break the
-	 * whole range into a collection of ranges with the defining
-	 * characteristic being whether the range is ARM or Thumb mode
+	 * overrides the default implementation in order to first break the
+	 * whole requested range into a collection of ranges whose primary
+	 * characteristic is whether the range is ARM or Thumb mode; this
+	 * acts as a cache for each range so the disassembler doesn't have
+	 * to perform a full look-up for every byte it disassembles.
 	 */
 	@Override
 	public void getInstructions(final IDisassemblyDMContext context, BigInteger startAddress, BigInteger endAddress,
@@ -64,14 +64,31 @@ public class ARMDisassembly extends Disassembly {
 
 		// FIXME: ignoring null startAddress and null endAddress semantics
 
-		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
+		getInstructions(context, new Addr64(startAddress), new Addr64(endAddress), null, drm);
+	}
+
+	/**
+	 * private version of getInstructions() that takes a pre-calculated RangeAndMode
+	 * @param context
+	 * @param start
+	 * @param end
+	 * @param preCalculatedRangeAndMode
+	 * 			non-null arg will be used; null arg will forces use of result of getModeAndRange(startAddress, endAddress)
+	 * @param drm
+	 * @see getInstructions(IDisassemblyDMContext, BigInteger, BigInteger, DataRequestMonitor<IInstruction[]>)
+	 */
+	private void getInstructions(final IDisassemblyDMContext context, final IAddress start, final IAddress end,
+			final RangeAndMode preCalculatedRangeAndMode, final DataRequestMonitor<IInstruction[]> drm) {
+
+		final TargetEnvironmentARM envARM = (TargetEnvironmentARM)getTargetEnvironmentService();
+		final IDisassembler disassembler = (envARM != null ) ? envARM.getDisassembler() : null;
 		if (disassembler == null) {
 			drm.setStatus(statusNoDisassembler());
 			drm.done();
 			return;
 		}
 
-		DsfServicesTracker services = getServicesTracker();
+		final DsfServicesTracker services = getServicesTracker();
 		if (services == null) // could be null if async invoked as or after debug session ends
 			return;
 
@@ -79,34 +96,34 @@ public class ARMDisassembly extends Disassembly {
 		if (memoryService == null) // could be null if async invoked as or after debug session ends
 			return;
 
-		long size = endAddress.longValue() - startAddress.longValue() + 16;
+		int size = start.distanceTo(end).intValue() + 16;
 
 		final IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(context, IMemoryDMContext.class);
-		final IAddress start = new Addr64(startAddress);
-		final IAddress end = new Addr64(endAddress);
 
-		memoryService.getMemory(mem_dmc, start, 0, 1, (int) size,
+		final List<RangeAndMode> fullRange;
+		if (preCalculatedRangeAndMode != null) {
+			// the caller (likely getMixedInstructions() already determined the range
+			(fullRange = new ArrayList<RangeAndMode>(1)).add(preCalculatedRangeAndMode);
+		} else {
+			// figure out the range and mode for the whole range first
+			fullRange = getModeAndRange(context, start, end);
+		}
+
+		// use the adjusted start in case getModeAndRange() backed up for alignment
+		final IAddress actualStart;
+		if (fullRange.size() > 0) {
+			actualStart = fullRange.get(0).getStartAddress();			
+		} else {
+			actualStart = start;
+		}
+
+		memoryService.getMemory(mem_dmc, actualStart, 0, 1, size,
 								new DataRequestMonitor<MemoryByte[]>(getExecutor(),	drm) {
 			@Override
 			protected void handleSuccess() {
-				MemoryByte[] memBytes = getData();
-				final byte[] bytes = new byte[memBytes.length];
-				for (int i = 0; i < memBytes.length; i++) {
-					// check each byte
-					if (!memBytes[i].isReadable()) {
-						drm.setStatus(statusCannotReadMemory(start.add(i).getValue().toString(16)));
-						drm.done();
-						return;
-					}
-					bytes[i] = memBytes[i].getValue();
-				}
-
-				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
+				List<MemoryByte> memBytes = Arrays.asList(getData());
 
 				Map<String, Object> options = new HashMap<String, Object>();
-
-				// figure out the range and mode for the whole range first
-				List<RangeAndMode> fullRange = getModeAndRange(context, start, end);
 
 				final List<IInstruction> result = new ArrayList<IInstruction>();
 				final CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), drm) {
@@ -119,45 +136,35 @@ public class ARMDisassembly extends Disassembly {
 				};
 
 				crm.setDoneCount(fullRange.size());
-				
+
+// always true, and compiler is generating false-positive null-check warning for envARM
+//				if (envARM.isLittleEndian(null))
+					options.put(IDisassemblerOptionsARM.ENDIAN_MODE, 2);
+
 				// for each range disassemble it
 				for (RangeAndMode rangeAndMode : fullRange) {
-					currentlyProcessingThumbMode = rangeAndMode.isThumbMode();
+					options.put(IDisassemblerOptionsARM.DISASSEMBLER_MODE,
+								rangeAndMode.isThumbMode() ? 2 : 1);
 
-					if (currentlyProcessingThumbMode)
-						options.put("DisassemblerMode", 2);//$NON-NLS-1$
-					else
-						options.put("DisassemblerMode", 1);//$NON-NLS-1$
-	
-					if (getTargetEnvironmentService().isLittleEndian(null))
-						options.put("EndianMode", 2);//$NON-NLS-1$
-	
+					IAddress rStart = rangeAndMode.getStartAddress();
+					int rOff = actualStart.distanceTo(rStart).intValue();
+					int rLen = actualStart.distanceTo(rangeAndMode.getEndAddress()).intValue();
 					try {
-						int rangeOffs = rangeAndMode.getStartAddress().getValue().subtract(start.getValue()).intValue();
-						ByteBuffer rangeBytes
-						  = ByteBuffer.wrap(codeBuf.array(), rangeOffs, codeBuf.capacity() - rangeOffs);
-						List<IDisassembledInstruction> insts
-						  = disassembler.disassembleInstructions(rangeAndMode.getStartAddress(), rangeAndMode.getEndAddress(), 
-								  								 rangeBytes, options);
-	
-						for (int i = 0; i < insts.size(); i++) {
-							result.add(new EDCInstruction(insts.get(i)));
-						}
-	
-						crm.done();
+						result.addAll(
+						  fillDisassemblyViewInstructions(memBytes.subList(rOff, rLen),
+			  											  rStart, context,
+			  											  disassembler, options));
 					} catch (CoreException e) {
 						crm.setStatus(e.getStatus());
-						crm.done();
-						break;
 					}
+					crm.done();
 				}
 			}
 		});
-
 	}
 
 	/**
-	 * overrides the default implmentation in order to first break the
+	 * overrides the default implementation in order to first break the
 	 * whole range into a collection of ranges with the primary
 	 * characteristic being whether the range is ARM or Thumb mode;
 	 * also takes advantage of the RangeAndMode list to further break
@@ -165,8 +172,8 @@ public class ARMDisassembly extends Disassembly {
 	 * and then also into ranges with function boundaries.
 	 */
 	@Override
-	public void getMixedInstructions(IDisassemblyDMContext context, BigInteger startAddress, BigInteger endAddress,
-			final DataRequestMonitor<IMixedInstruction[]> drm) {
+	public void getMixedInstructions(IDisassemblyDMContext context, BigInteger startAddress,
+			BigInteger endAddress, final DataRequestMonitor<IMixedInstruction[]> drm) {
 
 		// FIXME: ignoring null startAddress and null endAddress semantics
 
@@ -183,11 +190,11 @@ public class ARMDisassembly extends Disassembly {
 			return;
 
 		// These are absolute runtime addresses.
-		final ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
-		final IAddress end = new Addr64(endAddress);
-		final IAddress start
-		  = this.getStartAddressForLineEntryContainingAddress(symbolsService, modulesService, sym_dmc,
-				  											  new Addr64(startAddress), end);
+		ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+		IAddress end = new Addr64(endAddress);
+		IAddress start
+		  = getStartAddressForLineEntryContainingAddress(symbolsService, modulesService, sym_dmc,
+			  											 new Addr64(startAddress), end);
 
 		// figure out the range and mode for the whole range first
 		List<RangeAndMode> fullRange = getModeAndRange(context, start, end);
@@ -204,24 +211,26 @@ public class ARMDisassembly extends Disassembly {
 
 		crm.setDoneCount(fullRange.size());
 		// for each range disassemble it
-		for (RangeAndMode range : fullRange) {
-			currentlyProcessingThumbMode = range.isThumbMode();
-			IAddress rangeStart = range.getStartAddress(), rangeEnd = range.getEndAddress();
+		for (final RangeAndMode rangeAndMode : fullRange) {
+			IAddress rangeStart = rangeAndMode.getStartAddress();
+			IAddress rangeEnd = rangeAndMode.getEndAddress();
 
-			if (range.hasSymbols()) {
+			if (rangeAndMode.hasSymbols()) {
 				// there is source for this range
 				final List<ILineEntry> codeLines
 				  = symbolsService.getLineEntriesForAddressRange(sym_dmc, rangeStart, rangeEnd);
 				if (codeLines != null && !codeLines.isEmpty()) {
-					final IEDCModuleDMContext module = modulesService.getModuleByAddress(sym_dmc, rangeStart);
+					final IEDCModuleDMContext module
+					  = modulesService.getModuleByAddress(sym_dmc, rangeStart);
 
 					// Get absolute runtime address of the line
-					startAddress = module.toRuntimeAddress(codeLines.get(0).getLowAddress()).getValue();
-					getInstructions(context, startAddress, rangeEnd.getValue(),
+					start = module.toRuntimeAddress(codeLines.get(0).getLowAddress());
+					getInstructions(context, start, rangeEnd, rangeAndMode,
 									new DataRequestMonitor<IInstruction[]>(getExecutor(), crm) {
 						@Override
 						protected void handleSuccess() {
-							mixSource(result, module, codeLines, getData());
+							mixSource(result, rangeAndMode.getFunctionInfo(), module,
+									  codeLines, getData());
 							crm.done();
 						}
 					});
@@ -231,7 +240,7 @@ public class ARMDisassembly extends Disassembly {
 			}
 
 			// no source for this range, just get the disassembly for it
-			getInstructions(context, rangeStart.getValue(), rangeEnd.getValue(),
+			getInstructions(context, rangeStart, rangeEnd, rangeAndMode,
 							new DataRequestMonitor<IInstruction[]>(getExecutor(), crm) {
 				@Override
 				protected void handleSuccess() {
@@ -242,50 +251,76 @@ public class ARMDisassembly extends Disassembly {
 		}
 	}
 
+	private static IAddress alignBack(IAddress addr, boolean thumbMode) {
+		if (addr == null)
+			throw new IllegalArgumentException();
+		int rem = addr.getValue().intValue() % (thumbMode ? 2 : 4);
+		return (rem != 0) ? addr.add(-rem) : addr;
+	}
+
+	private static IAddress alignForward(IAddress addr, boolean thumbMode) {
+		if (addr == null)
+			throw new IllegalArgumentException();
+		int mod = (thumbMode ? 2 : 4);
+		int rem = addr.getValue().intValue() % mod;
+		return (rem != 0) ? addr.add(mod-rem) : addr;
+	}
+
 	/**
 	 * take a range of addresses and break it into a list of RangeAndMode entries,
-	 * with the attributes {[boolean ThumbMode] [boolean hasSymbols]}
+	 * with the attributes {startAddr, endAddr, [boolean ThumbMode], [boolean hasSymbols] [functionInfo]}
+	 * <br><b>NOTE:</b> first address of first item in value returned
+	 * may be before start address passed in
 	 * @param context execution context for determining ThumbMode and symbols content
-	 * @param start
-	 * @param end
+	 * @param start address to start checking, inclusive
+	 * @param end address at end of range to check, exclusive
 	 * @return List of RangeAndMode entries with ThumbMode and hasSymbols attributes
 	 */
 	private List<RangeAndMode> getModeAndRange(IDisassemblyDMContext context, IAddress start, IAddress end) {
 		IExecutionDMContext exeDMC = DMContexts.getAncestorOfType(context, IExecutionDMContext.class);
 		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
+		TargetEnvironmentARM env = (TargetEnvironmentARM)getTargetEnvironmentService();
 
 		final List<RangeAndMode> result = new ArrayList<RangeAndMode>();
 
-		int counter = 0;
 		IEDCSymbols symbolsService = getServicesTracker().getService(IEDCSymbols.class);
 		final ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
 
+		boolean thumbMode = (env != null) ? env.isThumbMode(exeDMC, start, false) : false;
+		start = alignBack(start, thumbMode);	// align back so the requested address is included
+
+		int counter = 0;
 		while (start.add(counter).compareTo(end) < 0) {
-			RangeAndMode range = new RangeAndMode(null, null, false, false);
+			IAddress preAlignedRangeStart = start.add(counter);
+			thumbMode = (env != null) ? env.isThumbMode(exeDMC, preAlignedRangeStart, false) : false;
+			IAddress rangeStart = alignForward(preAlignedRangeStart, thumbMode);
+			counter += preAlignedRangeStart.distanceTo(rangeStart).intValue();
 
-			boolean thumbMode = ((TargetEnvironmentARM)getTargetEnvironmentService())
-								.isThumbMode(exeDMC, start.add(counter), false);
-			range.setThumbMode(thumbMode);
-			range.setStartAddress(start.add(counter));
+			ILineEntry startEntry = symbolsService.getLineEntryForAddress(sym_dmc, rangeStart);
 
-			ILineEntry startEntry = symbolsService.getLineEntryForAddress(sym_dmc, start.add(counter));
-			if (startEntry != null) {
+			RangeAndMode range = new RangeAndMode(rangeStart, null, thumbMode, (startEntry != null));
+
+			if (range.hasSymbols()) {
 				// figure out mode and end address
-				range.setHasSymbols(true);
 				range.setEndAddress(end);
 
-				IEDCModuleDMContext module = modules.getModuleByAddress(sym_dmc, start.add(counter));
+				IEDCModuleDMContext module = modules.getModuleByAddress(sym_dmc, rangeStart);
 				if (module != null) {
 					IEDCSymbolReader reader = module.getSymbolReader();
 					if (reader != null) {
-						IScope scope = reader.getModuleScope().getScopeAtAddress(module.toLinkAddress(start.add(counter)));
+						IScope scope = reader.getModuleScope().getScopeAtAddress(module.toLinkAddress(rangeStart));
 						while (scope != null && !(scope instanceof IFunctionScope)) {
 							scope = scope.getParent();
 						}
 
 						if (scope != null) {
-							IAddress functionEndAddress = module.toRuntimeAddress(((IFunctionScope) scope)
-									.getHighAddress());
+							IFunctionScope function = (IFunctionScope)scope;
+							IAddress functionEndAddress
+							  = module.toRuntimeAddress(function.getHighAddress());
+							EDCInstructionFunctionInfo info
+							  = new EDCInstructionFunctionInfo(scope.getName(),
+									  						   function.getLowAddress());
+							range.setFunctionInfo(info);
 							if (functionEndAddress.compareTo(end) < 0) {
 								range.setEndAddress(functionEndAddress);
 							}
@@ -293,10 +328,7 @@ public class ARMDisassembly extends Disassembly {
 					}
 				}
 
-				counter += (range.getEndAddress().getValue().intValue() - range.getStartAddress().getValue().intValue());
-
-				result.add(range);
-
+				counter += rangeStart.distanceTo(range.getEndAddress()).intValue();
 			} else {
 				// got source file but no symbols;
 				// search for the next line with symbols
@@ -306,14 +338,16 @@ public class ARMDisassembly extends Disassembly {
 						range.setEndAddress(start.add(counter));
 						break;
 					}
+					// even in ARM mode, always just count forward 2, in case next thumbMode section
+					// somehow strangely but legally starts on a non-4byte boundary.
+					// will re-align next ARM section above as necessary.
 					counter = counter + 2;
 				}
 				if (range.getEndAddress() == null)
 					range.setEndAddress(end);
-
-				result.add(range);
 			}
 
+			result.add(range);
 		}
 		return result;
 	}

@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.arm;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.disassembler.EDCInstructionFunctionInfo;
 
 public class RangeAndMode {
 
@@ -20,11 +21,14 @@ public class RangeAndMode {
 	private boolean thumbMode;
 	private boolean hasSymbols;
 
+	private EDCInstructionFunctionInfo wholeFunctionInfo;
+
 	public RangeAndMode(IAddress start, IAddress end, boolean thumb, boolean symbols) {
-		this.setStartAddress(start);
-		this.setEndAddress(end);
-		this.setThumbMode(thumb);
-		this.setHasSymbols(symbols);
+		startAddress = start;
+		endAddress = end;
+		thumbMode = thumb;
+		hasSymbols = symbols;
+		wholeFunctionInfo = null;
 	}
 
 	public void setThumbMode(boolean thumbMode) {
@@ -58,7 +62,15 @@ public class RangeAndMode {
 	public IAddress getEndAddress() {
 		return endAddress;
 	}
-	
+
+	public EDCInstructionFunctionInfo getFunctionInfo() {
+		return wholeFunctionInfo;
+	}
+
+	public void setFunctionInfo(EDCInstructionFunctionInfo wholeFunctionInfo) {
+		this.wholeFunctionInfo = wholeFunctionInfo;
+	}
+
 	@Override
 	public String toString() {
 		return "start = " + (startAddress != null ? startAddress.toHexAddressString() : "null")

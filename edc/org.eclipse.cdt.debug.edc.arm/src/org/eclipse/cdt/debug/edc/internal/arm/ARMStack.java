@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.MemoryUtils;
@@ -29,6 +31,8 @@ import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
@@ -37,6 +41,9 @@ import org.eclipse.debug.core.model.MemoryByte;
 
 public class ARMStack extends Stack {
 
+	/** IModuleDMContext attribute: list of IAddress which are known or suspected to be thumb */
+	public static final String THUMB_ADDRESSES = "thumbAddresses";
+	
 	private static final int MAX_FRAMES = 30;
 	private static final String FUNCTION_START_ADDRESS_CACHE = "_function_start_address";
 
@@ -147,10 +154,11 @@ public class ARMStack extends Stack {
 		if (endIndex == ALL_FRAMES)
 			endIndex = MAX_FRAMES;
 
+		Set<IAddress> thumbAddresses = null;
+
 		// keep going until we reach the maximum number of frames
 		while (frameCount <= endIndex) {
 			IAddress functionStartAddress = null;
-			IAddress functionEndAddress = null;
 			String moduleName = "Unknown";
 
 			// see if the PC is in an executable that we know about
@@ -158,6 +166,12 @@ public class ARMStack extends Stack {
 			
 			if (module != null) {
 				moduleName = module.getName();
+				
+				thumbAddresses = (Set<IAddress>) module.getProperty(THUMB_ADDRESSES);
+				if (thumbAddresses == null) {
+					thumbAddresses = new TreeSet<IAddress>();
+					module.setProperty(THUMB_ADDRESSES, thumbAddresses);
+				}
 
 				IEDCSymbolReader reader = module.getSymbolReader();
 				String cacheKey = null;
@@ -186,11 +200,30 @@ public class ARMStack extends Stack {
 						while (scope.getParent() instanceof IFunctionScope)
 							scope = (IFunctionScope) scope.getParent();
 						functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
-						functionEndAddress = module.toRuntimeAddress(scope.getHighAddress());
 						// put it in the cache
 						if (cachedMapping != null && reader != null) {
 							cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
 							ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());
+						}
+					}
+				} 
+			} else {
+				// null module; hang thumb addresses off process context
+
+				IDMContext[] parents = context.getParents();
+				if (parents != null) {
+					IEDCDMContext rootProcessDMC = null;
+					for (int i = parents.length-1 ; i >= 0; i--) {
+						if (parents[i] instanceof IEDCDMContext && parents[i] instanceof IProcessDMContext) {
+							rootProcessDMC = (IEDCDMContext) parents[i];
+							break;
+						}
+					}
+					if (rootProcessDMC != null) {
+						thumbAddresses = (Set<IAddress>) rootProcessDMC.getProperty(THUMB_ADDRESSES);
+						if (thumbAddresses == null) {
+							thumbAddresses = new TreeSet<IAddress>();
+							rootProcessDMC.setProperty(THUMB_ADDRESSES, thumbAddresses);
 						}
 					}
 				}
@@ -201,6 +234,9 @@ public class ARMStack extends Stack {
 
 			// mask off the thumb bit
 			pcValue = new Addr64(pcValue.getValue().clearBit(0)); 
+			
+			if (thumbAddresses != null && thumbMode)
+				thumbAddresses.add(pcValue);
 
 			// add this frame
 			long baseAddress = functionStartAddress == null ? pcValue.getValue().longValue() : functionStartAddress
@@ -252,25 +288,10 @@ public class ARMStack extends Stack {
 				}
 			}
 
-			// When we single step over the instruction that modifies SP, we can't use spilled registers 
-			// to calculate next stack frame correctly, since we will still be in the same function 
-			// but will get an SP for a different one. The test case looks like this:
-			// add sp, 0xXX
-			// pop (pc)
-			// When stopped at pop(pc) we can't use SP to calculate stack crawl, have to use LR
-			// If PC is on the last statement, use LR to calculate first stack frame
-			if (frameCount == 0 && thumbMode && functionEndAddress != null && functionEndAddress.compareTo(pcValue.add(2)) == 0){
-				pcValue = lrValue;
-				if (pcValue.isZero()) {
-					break;
-				}
-				frameCount++;
-				continue;
-			}
-			
 			// we need to parse the prolog to figure out where the LR was stored
 			// on the stack
-			ARMSpilledRegisters spilledRegs = parseProlog(context, functionStartAddress, pcValue, spValue, lrValue,
+			ARMSpilledRegisters spilledRegs = parseProlog(context, functionStartAddress, 
+					pcValue, spValue, lrValue,
 					thumbMode);
 			if (spilledRegs == null) {
 				break;
@@ -350,6 +371,11 @@ public class ARMStack extends Stack {
 
 			// look for a stmfd instruction that saves the LR on the stack
 			if (isStmfdInstruction(instruction) && instruction.testBit(14)) {
+				return prologAddress;
+			}
+			
+			// look for a str instruction that saves the LR on the stack
+			if (isStrLrToStackInstruction(instruction)) {
 				return prologAddress;
 			}
 
@@ -434,7 +460,7 @@ public class ARMStack extends Stack {
 			// look for prolog instructions. if found, figure out the LR and SP
 			// values and return
 			ARMSpilledRegisters spilledRegs = thumbMode ? parseThumbProlog(context, instructions, spValue, prologAddress)
-					: parseArmProlog(context, instructions, spValue, prologAddress);
+					: parseArmProlog(context, instructions, spValue, lrValue, prologAddress);
 
 			if (spilledRegs != null) {
 				return spilledRegs;
@@ -456,7 +482,7 @@ public class ARMStack extends Stack {
 	}
 
 	private ARMSpilledRegisters parseArmProlog(IEDCExecutionDMC context, List<BigInteger> instructions, 
-			IAddress spValue, IAddress pcAddress) {
+			IAddress spValue, IAddress lrValue, IAddress pcAddress) {
 		ARMSpilledRegisters spilledRegs = new ARMSpilledRegisters();
 
 		IAddress currentSP = spValue;
@@ -555,10 +581,18 @@ public class ARMStack extends Stack {
 						// update the LR and SP as well
 						if (spilledRegs.LRAddress != null) {
 							spilledRegs.LRAddress = spilledRegs.LRAddress.add(shifter_operand);
+						} else {
+							// SP is modified, but LR is not spilled
+							if (spilledRegs.LR == null) {
+								// set it to the real LR so we can spill the SP
+								spilledRegs.LR = lrValue;
+							}
 						}
 
 						if (spilledRegs.SP != null) {
 							spilledRegs.SP = spilledRegs.SP.add(shifter_operand);
+						} else {
+							spilledRegs.SP = currentSP.add(shifter_operand);
 						}
 					}
 				}
@@ -573,6 +607,9 @@ public class ARMStack extends Stack {
 				
 				spilledRegs.realStartOfFunctionAddress = pcAddress;
 				
+			} else if (isStrLrToStackInstruction(instruction)) {
+				// get the location where the LR is stored and set it
+				getLRAddrOnStack(context, instruction.intValue(), spValue, spilledRegs);
 			}
 		}
 
@@ -834,8 +871,51 @@ public class ARMStack extends Stack {
 
 		return false;
 	}
+	
+	private boolean isStrLrToStackInstruction(BigInteger instruction) {
+		// is this a str instruction with LR the source and SP the destination?
+		// TODO: handle case where SP is in the Rm field of the str instruction
+		if (   ((instruction.longValue() & 0x04000000L) == 0x04000000L)
+			&& ((instruction.longValue() & 0x08500000L) == 0x0L)
+			&& ((instruction.longValue() & 0x0000F000L) == 0x0000E000L)
+			&& ((instruction.longValue() & 0x000F0000L) == 0x000D0000L)) {
+			return true;
+		}
+		return false;
+	}
 
 	private boolean isSWIInstruction(BigInteger instruction) {
 		return (instruction.longValue() & 0xFF000000L) == 0xEF000000L;
+	}
+	
+	// Get LR value from str instruction with an SP-relative destination
+	private void getLRAddrOnStack(IEDCExecutionDMC context, int instruction, IAddress spValue, ARMSpilledRegisters spilledRegs) {
+		int regOffset = (instruction >> 25) & 1;
+		int addOffset = (instruction >> 23) & 1;
+		int updateSP  = (instruction >> 21) & 1;
+
+		// TODO: handle offset in register (non-immediate) cases
+		IAddress lrAddress = new Addr64(spValue.getValue());
+		if (regOffset == 0) {
+			// offset is add/subtract 12-bit immediate, not in register
+			// Note: the code assumes the str condition passes
+			if (updateSP == 1) {
+				// SP contains the address of LR +/- the offset, so adjust it
+				if (addOffset == 1) {
+					spValue = spValue.add(-(instruction & 0xfff));
+				} else {
+					spValue = spValue.add(instruction & 0xfff);
+				}
+			} else {
+				if (addOffset == 1) {
+					lrAddress = lrAddress.add(instruction & 0xfff);
+				} else {
+					lrAddress = lrAddress.add(-(instruction & 0xfff));
+				}
+			}
+		}
+		
+		spilledRegs.LRAddress = lrAddress;
+		spilledRegs.SP = new Addr64(spValue.getValue());
 	}
 }

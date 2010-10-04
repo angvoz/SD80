@@ -34,28 +34,14 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.IMemento;
 
 @SuppressWarnings("restriction")
-public class SystemVMContainer implements IAdaptable {
+public class SystemVMContainer implements IAdaptable, ISystemVMContainer {
 
 	private static int nextID = 100;
-	/**
-	 * Context property id.
-	 */
-	public static final String PROP_ID = "ID";
-
-	/**
-	 * Context property name.
-	 */
-	public static final String PROP_NAME = "Name";
-
-	public static final String PROP_SORT_PROPERTY = "Sort_Property";
-	public static final String PROP_SORT_DIRECTION = "Sort_Direction";
-	public static final String PROP_COLUMN_KEYS = "Column_Keys";
-	public static final String PROP_COLUMN_NAMES = "Column_Names";
 	protected Map<String, Object> properties = Collections.synchronizedMap(new HashMap<String, Object>());
 
 	private final List<SystemVMContainer> children = Collections.synchronizedList(new ArrayList<SystemVMContainer>());
 
-	private SystemVMContainer parent;
+	private ISystemVMContainer parent;
 
 	private SystemDMContainer dmContainer;
 
@@ -66,13 +52,13 @@ public class SystemVMContainer implements IAdaptable {
 		@Override
 		protected boolean isEqual(Object element, IMemento memento,
 				IPresentationContext context) throws CoreException {
-			return memento.getString(PROP_NAME).equals(((SystemVMContainer) element).getName());
+			return memento.getString(PROP_NAME).equals(((ISystemVMContainer) element).getName());
 		}
 
 		@Override
 		protected boolean encodeElement(Object element, IMemento memento,
 				IPresentationContext context) throws CoreException {
-			memento.putString(PROP_NAME, ((SystemVMContainer) element).getName());
+			memento.putString(PROP_NAME, ((ISystemVMContainer) element).getName());
 			return true;
 		}
 		
@@ -86,12 +72,12 @@ public class SystemVMContainer implements IAdaptable {
 		throws CoreException {
 			Object element = elementPath.getLastSegment();
 			Object root = elementPath.getFirstSegment();
-			if (element instanceof SystemVMContainer && root instanceof SystemVMContainer)
+			if (element instanceof ISystemVMContainer && root instanceof ISystemVMContainer)
 			{
 				if (columnId == null)
-					return ((SystemVMContainer) element).getName();
+					return ((ISystemVMContainer) element).getName();
 				else {
-					Object obj = ((SystemVMContainer) element).getProperties().get(columnId);
+					Object obj = ((ISystemVMContainer) element).getProperties().get(columnId);
 					if (obj != null) {
 						return obj.toString();
 					}
@@ -109,9 +95,9 @@ public class SystemVMContainer implements IAdaptable {
 		public IColumnPresentation createColumnPresentation(
 				IPresentationContext context, Object element) {
 
-			final String[] columnKeys = (String[]) getProperties().get(SystemVMContainer.PROP_COLUMN_KEYS);
+			final String[] columnKeys = (String[]) getProperties().get(ISystemVMContainer.PROP_COLUMN_KEYS);
 			@SuppressWarnings("unchecked")
-			final Map<String, String> columnNames = (Map<String, String>) getProperties().get(SystemVMContainer.PROP_COLUMN_NAMES);
+			final Map<String, String> columnNames = (Map<String, String>) getProperties().get(ISystemVMContainer.PROP_COLUMN_NAMES);
 
 			if (columnKeys == null)
 				return null;
@@ -144,7 +130,7 @@ public class SystemVMContainer implements IAdaptable {
 				}
 
 				public String getId() {
-					return (String) getProperties().get(SystemVMContainer.PROP_ID);
+					return (String) getProperties().get(ISystemVMContainer.PROP_ID);
 				}
 
 				public boolean isOptional() {
@@ -156,9 +142,9 @@ public class SystemVMContainer implements IAdaptable {
 
 		public String getColumnPresentationId(IPresentationContext context,
 				Object element) {
-			if (element instanceof SystemVMContainer)
+			if (element instanceof ISystemVMContainer)
 			{
-				return (String)getProperties().get(SystemVMContainer.PROP_ID);
+				return (String)getProperties().get(ISystemVMContainer.PROP_ID);
 			}
 			return null;
 		}
@@ -170,9 +156,9 @@ public class SystemVMContainer implements IAdaptable {
 		protected Object[] getChildren(Object parent, int index, int length,
 				IPresentationContext context, IViewerUpdate monitor)
 		throws CoreException {
-			if (parent instanceof SystemVMContainer)
+			if (parent instanceof ISystemVMContainer)
 			{
-				List<SystemVMContainer> children = ((SystemVMContainer) parent).getChildren();
+				List<SystemVMContainer> children = ((ISystemVMContainer) parent).getChildren();
 				return children.subList(index, index + length).toArray();
 			}
 			return null;
@@ -182,8 +168,8 @@ public class SystemVMContainer implements IAdaptable {
 		protected int getChildCount(Object element,
 				IPresentationContext context, IViewerUpdate monitor)
 		throws CoreException {
-			if (element instanceof SystemVMContainer)
-				return ((SystemVMContainer) element).getChildCount();
+			if (element instanceof ISystemVMContainer)
+				return ((ISystemVMContainer) element).getChildCount();
 			return 0;
 		}
 
@@ -195,6 +181,9 @@ public class SystemVMContainer implements IAdaptable {
 
 	};
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.ui.views.ISystemVMContainer#getProperties()
+	 */
 	public Map<String, Object> getProperties() {
 		return properties;
 	}
@@ -203,7 +192,7 @@ public class SystemVMContainer implements IAdaptable {
 		this.properties = properties;
 	}
 
-	int getChildCount()
+	public int getChildCount()
 	{
 		return children.size();	
 	}
@@ -212,6 +201,9 @@ public class SystemVMContainer implements IAdaptable {
 		children.clear();
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.ui.views.ISystemVMContainer#getChildren()
+	 */
 	public List<SystemVMContainer> getChildren() {
 		return Collections.unmodifiableList(children) ;
 	}
@@ -241,12 +233,12 @@ public class SystemVMContainer implements IAdaptable {
 
 	public SystemVMContainer(SystemVMContainer parent, String name, Map<String, Object> props) {
 		this(parent, props);
-		properties.put(SystemVMContainer.PROP_NAME, name);
+		properties.put(ISystemVMContainer.PROP_NAME, name);
 	}
 
 	public SystemVMContainer(SystemVMContainer parent, String name) {
 		this(parent, (Map<String, Object>)null);
-		properties.put(SystemVMContainer.PROP_NAME, name);
+		properties.put(ISystemVMContainer.PROP_NAME, name);
 	}
 
 	public SystemVMContainer(SystemVMContainer parent, SystemDMContainer dmContainer) {
@@ -258,6 +250,9 @@ public class SystemVMContainer implements IAdaptable {
 		children.add(systemDMC);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.ui.views.ISystemVMContainer#getName()
+	 */
 	public String getName()
 	{
 		String name = (String) properties.get(PROP_NAME);
@@ -287,11 +282,14 @@ public class SystemVMContainer implements IAdaptable {
 		return properties.toString();
 	}
 
-	public void setParent(SystemVMContainer parent) {
+	public void setParent(ISystemVMContainer parent) {
 		this.parent = parent;
 	}
 
-	public SystemVMContainer getParent() {
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.ui.views.ISystemVMContainer#getParent()
+	 */
+	public ISystemVMContainer getParent() {
 		return parent;
 	}
 
@@ -322,19 +320,38 @@ public class SystemVMContainer implements IAdaptable {
 		this.image = image;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.ui.views.ISystemVMContainer#getImage()
+	 */
 	public Image getImage() {
 		return image;
 	}
 
 	public void sortDMData(List<SystemDMContainer> dmData)
 	{
-		String sortProperty = (String) this.getProperties().get(SystemVMContainer.PROP_SORT_PROPERTY);
+		String sortProperty = (String) this.getProperties().get(ISystemVMContainer.PROP_SORT_PROPERTY);
 		if (sortProperty != null)
 		{
-			Integer sortDirection = (Integer) this.getProperties().get(SystemVMContainer.PROP_SORT_DIRECTION);
+			Integer sortDirection = (Integer) this.getProperties().get(ISystemVMContainer.PROP_SORT_DIRECTION);
 			assert sortDirection != null;
 			Collections.sort(dmData, new SystemDMComparator(sortProperty, sortDirection));
 		}
 		
+	}
+
+	public IElementMementoProvider getElementMementoProvider() {
+		return elementMementoProvider;
+	}
+
+	public IElementLabelProvider getElementLabelProvider() {
+		return elementLabelProvider;
+	}
+
+	public IColumnPresentationFactory getColumnPresentationFactory() {
+		return columnPresentationFactory;
+	}
+
+	public IElementContentProvider getElementContextProvider() {
+		return elementContextProvider;
 	}
 }

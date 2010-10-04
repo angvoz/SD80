@@ -45,7 +45,7 @@ public class SystemDMContainer {
 	public SystemDMContainer(SystemDMContainer parent, String name,
 			Map<String, Object> props) {
    		this(parent, props);
-   		properties.put(SystemVMContainer.PROP_NAME, name);
+   		properties.put(ISystemVMContainer.PROP_NAME, name);
   	}
 
 	protected int getChildCount() {

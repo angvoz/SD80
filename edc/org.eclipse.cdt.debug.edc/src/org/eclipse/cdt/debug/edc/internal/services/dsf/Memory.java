@@ -17,7 +17,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
@@ -99,8 +99,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 
 	public void fillMemory(IMemoryDMContext context, IAddress address, long offset, int word_size, int count,
 			byte[] pattern, final RequestMonitor rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { address.toHexAddressString(), offset, word_size, count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { address.toHexAddressString(), offset, word_size, count }); }
 
 		// Validate the context
 		if (context == null) {
@@ -147,13 +146,12 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		getMemoryCache(context).setMemory(tcfMemoryService, context, address, offset, word_size, count * length,
 				buffer, rm);
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	public void getMemory(final IMemoryDMContext context, final IAddress address, final long offset,
 			final int word_size, final int count, final DataRequestMonitor<MemoryByte[]> drm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { address.toHexAddressString(), offset, word_size, count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { address.toHexAddressString(), offset, word_size, count }); }
 
 		// Validate the context
 		if (context == null) {
@@ -200,13 +198,12 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 			System.out.println("Time since stepping start: " + 
 				((System.currentTimeMillis() - RunControl.getSteppingStartTime()) / 1000.0));
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	public void setMemory(final IMemoryDMContext context, final IAddress address, final long offset,
 			final int word_size, final int count, final byte[] buffer, final RequestMonitor rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { address.toHexAddressString(), offset, word_size, count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { address.toHexAddressString(), offset, word_size, count }); }
 
 		// Validate the context
 		if (context == null) {
@@ -252,11 +249,11 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 			getSession().dispatchEvent(new MemoryChangedEvent(context, addresses), getProperties());
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	public void flushCache(IDMContext context) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE, new Object[] { context });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { context }); }
 
 		if (isSnapshot())
 			return;
@@ -280,7 +277,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 			}
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	/* (non-Javadoc)
@@ -288,8 +285,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 	 */
 	public IStatus getMemory(IEDCExecutionDMC context, IAddress address, final ArrayList<MemoryByte> memBuffer, int count,
 			int word_size) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { address.toHexAddressString(), count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { address.toHexAddressString(), count }); }
 
 		final IStatus[] ret = new IStatus[] { Status.OK_STATUS };
 
@@ -307,13 +303,12 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 			}
 		});
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE, ret[0]);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(ret[0]); }
 		return ret[0];
 	}
 	
 	public IStatus setMemory(IMemoryDMContext context, IAddress address, int word_size, int count, byte[] buffer) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { address.toHexAddressString(), count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { address.toHexAddressString(), count }); }
 
 		final IStatus[] ret = new IStatus[] { Status.OK_STATUS };
 
@@ -326,36 +321,36 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 			}
 		});
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE, ret[0]);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(ret[0]); }
 		return ret[0];
 	}
 
 	public void tcfServiceReady(IService service) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE, new Object[] { service });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { service }); }
 		tcfMemoryService = (org.eclipse.tm.tcf.services.IMemory) service;
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	@DsfServiceEventHandler
 	public void eventDispatched(ISuspendedDMEvent e) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE, new Object[] { e.getClass() });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { e.getClass() }); }
 		flushCache(e.getDMContext());
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	@DsfServiceEventHandler
 	public void eventDispatched(IResumedDMEvent e) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE, new Object[] { e.getClass() });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { e.getClass() }); }
 		if (e.getReason() != StateChangeReason.STEP) {
 			flushCache(e.getDMContext());
 		}
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	@DsfServiceEventHandler
 	public void eventDispatched(IExpressionChangedDMEvent e) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE, new Object[] { e.getClass() });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { e.getClass() }); }
 
 		// Get the context and expression service handle
 		final IExpressionDMContext context = e.getDMContext();
@@ -395,7 +390,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 			});
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	private static final String MEMORY_CONTEXT = "memory_context";

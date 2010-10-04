@@ -24,7 +24,7 @@ import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICWatchpoint;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleLoadedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleUnloadedEvent;
@@ -380,16 +380,15 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 * @return null if not found.
 	 */
 	public BreakpointDMData findUserBreakpoint(IAddress addr) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE,
-				"Find user breakpoint at " + addr.toHexAddressString());
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( "Find user breakpoint at " + addr.toHexAddressString()); }
 
 		for (BreakpointDMData bp : userBreakpoints.values())
 			if (bp.getAddresses()[0].equals(addr)) {
-				EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE, bp.toString());
+				if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit( bp.toString()); }
 				return bp;
 			}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE, "not found.");
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) {EDCTrace.traceExit( "not found.");}
 		return null;
 	}
 
@@ -401,17 +400,16 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 * @return null if not found.
 	 */
 	public BreakpointDMData findTempBreakpoint(IAddress addr) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE,
-				"Find temp breakpoint at " + addr.toHexAddressString());
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( "Find temp breakpoint at " + addr.toHexAddressString()); }
 
 		for (BreakpointDMData bp : tempBreakpoints) {
 			if (bp.getAddresses()[0].equals(addr)) {
-				EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE, bp.toString());
+				if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit( bp.toString()); }
 				return bp;
 			}
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE, "not found.");
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit( "not found."); }
 		return null;
 	}
 
@@ -427,8 +425,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 *            range.
 	 */
 	public void removeBreakpointFromMemoryBuffer(IAddress startAddr, MemoryByte[] memBuffer) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE,
-				"remove bp in memory area:" + startAddr.toHexAddressString() + "," + memBuffer.length);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( "remove bp in memory area:" + startAddr.toHexAddressString() + "," + memBuffer.length); }
 
 		// If the breakpoint is actually set by TCF agent, we have to assume
 		// that the TCF agent would do this breakpoint removing for us as
@@ -451,17 +448,16 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 					memBuffer[bpOffset + i].setValue(orgInst[i]);
 				}
 
-				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
-						"breakpoint removed at offset " + bpOffset);
+				if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.trace( "breakpoint removed at offset " + bpOffset); }
 			}
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	public void insertBreakpoint(IBreakpointsTargetDMContext context, Map<String, Object> attributes,
 			DataRequestMonitor<IBreakpointDMContext> drm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE, new Object[] { attributes });
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( new Object[] { attributes }); }
 
 		// Validate the context
 		if (context == null) {
@@ -493,7 +489,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			drm.done();
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	/**
@@ -507,7 +503,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 */
 	private void addBreakpoint(final IBreakpointsTargetDMContext context, final Map<String, Object> attributes,
 			final DataRequestMonitor<IBreakpointDMContext> drm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE, new Object[] { attributes });
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( new Object[] { attributes }); }
 
 		IExecutionDMContext exe_dmc = DMContexts.getAncestorOfType(context, IExecutionDMContext.class);
 		String bpAddr = (String)attributes.get(RUNTIME_ADDRESS);
@@ -538,7 +534,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			}
 		});
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	public ISourceLocator getSourceLocator() {
@@ -561,15 +557,13 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 */
 	public void setTempBreakpoint(final IExecutionDMContext context, final IAddress address, final RequestMonitor rm) {
 
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE,
-				"set temp breakpoint at " + address.toHexAddressString());
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( "set temp breakpoint at " + address.toHexAddressString()); }
 
 		// If a breakpoint (user-set or temp) exists at the address, we are
 		// done.
 		if (findBreakpoint(address) != null) {
 			rm.done();
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE,
-					"A breakpoint exists at " + address.toHexAddressString());
+			if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit( "A breakpoint exists at " + address.toHexAddressString()); }
 			return;
 		}
 
@@ -586,8 +580,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 						tempBreakpoints.add(bp_data);
 						rm.done();
 
-						EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE,
-								"A temp breakpoint successfully set at " + address.toHexAddressString());
+						if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit( "A temp breakpoint successfully set at " + address.toHexAddressString()); }
 					}
 				});
 			}
@@ -601,8 +594,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 */
 	public void removeAllTempBreakpoints(final RequestMonitor rm) {
 
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE,
-				"remove " + tempBreakpoints.size() + " temp breakpoint.");
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( "remove " + tempBreakpoints.size() + " temp breakpoint."); }
 
 		if (tempBreakpoints.size() == 0) {
 			rm.done();
@@ -701,8 +693,8 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 * @param rm
 	 */
 	public void enableBreakpoint(final BreakpointDMData bp, final RequestMonitor rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE, bp);
-
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( bp); }
+		
 		if (usesTCFBreakpointService()) {
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
@@ -738,7 +730,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 					new Hashtable<String, Object>(bp.getProperties()));
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	private synchronized long getNewBreakpointID() {
@@ -748,7 +740,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	public void removeBreakpoint(final IBreakpointDMContext dmc, RequestMonitor rm) {
 		// Remove user breakpoint.
 		//
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE, new Object[] { dmc });
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( new Object[] { dmc }); }
 
 		if (!(dmc instanceof BreakpointDMContext)) {
 			// not our breakpoint, should not happen
@@ -774,7 +766,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			}
 		});
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	/**
@@ -784,7 +776,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 * @param rm
 	 */
 	public void disableBreakpoint(final BreakpointDMData bp, final RequestMonitor rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE, new Object[] { bp });
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( new Object[] { bp }); } 
 
 		if (!usesTCFBreakpointService()) {
 			final Memory memoryService = getServicesTracker().getService(Memory.class);
@@ -806,7 +798,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			});
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	public void updateBreakpoint(IBreakpointDMContext dmc, Map<String, Object> delta, RequestMonitor rm) {
@@ -837,7 +829,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 
 	@DsfServiceEventHandler
 	public void eventHandler_installBreakpointsForModule(ModuleLoadedDMEvent e) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE, new Object[] { e });
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( new Object[] { e }); }
 
 		// A new module (including main exe) is loaded. Install breakpoints for
 		// it.
@@ -873,7 +865,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 					} else
 						msg += status.getMessage();
 
-					EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE, msg);
+					if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.trace( msg); }
 				}
 
 				// We should do these regardless of whether installing
@@ -887,8 +879,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 						// as it's expected the startup bp not resolvable in all
 						// modules.
 						//
-						EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
-								"resume process after module load event ...");
+						if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.trace( "resume process after module load event ..."); }
 						if (requireResume)
 							((ExecutionDMC) executionDMC).resume(new RequestMonitor(getExecutor(), null));
 					}
@@ -896,7 +887,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			}
 		});
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	/**
@@ -1003,8 +994,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 
 	@DsfServiceEventHandler
 	public void eventHandler_uninstallBreakpointsForModule(ModuleUnloadedDMEvent e) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.BREAKPOINTS_TRACE,
-				new Object[] { e.getClass().getName(), e });
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceEntry( new Object[] { e.getClass().getName(), e }); }
 
 		// An existing module (including main exe) is unloaded. Uninstall
 		// breakpoints for it.
@@ -1031,21 +1021,19 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			protected void handleFailure() {
 				// super will just log the error.
 				super.handleFailure();
-				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
-						"uninstalling breakpoints failed");
+				if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.trace( "uninstalling breakpoints failed"); }
 			}
 
 			@Override
 			protected void handleSuccess() {
 				super.handleSuccess();
-				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.BREAKPOINTS_TRACE,
-						"breakpoints uninstalled and resume process...");
+				if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.trace( "breakpoints uninstalled and resume process..."); }
 				if (requireResume)
 					executionDMC.resume(new RequestMonitor(getExecutor(), null));
 			}
 		});
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.BREAKPOINTS_TRACE);
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	protected void addBreakpointProblemMarker(final ICBreakpoint breakpoint, final String description, final int severity) {

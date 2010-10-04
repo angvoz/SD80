@@ -74,7 +74,9 @@ public class EDCDebugger extends Plugin {
 		if (!getBundle().getSymbolicName().equals(PLUGIN_ID)) {
 			throw new IllegalStateException("PLUGIN_ID constant is not correct"); //$NON-NLS-1$
 		}
-
+		
+		EDCTrace.init();
+		
 		installChannelListener();
 	}
 

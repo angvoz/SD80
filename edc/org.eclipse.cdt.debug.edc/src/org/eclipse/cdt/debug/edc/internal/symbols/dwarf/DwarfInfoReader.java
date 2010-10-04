@@ -34,7 +34,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.MemoryStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.ArrayBoundType;
@@ -206,10 +206,10 @@ public class DwarfInfoReader {
 
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
-				traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceInitialParseFor + symbolFilePath);
+				if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.traceEntry(DwarfMessages.DwarfInfoReader_TraceInitialParseFor + symbolFilePath); }
 				parseCUDebugInfo(monitor);
 				parsePublicNames();
-				traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceFinishedInitialParse);
+				if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.traceExit(DwarfMessages.DwarfInfoReader_TraceFinishedInitialParse); }
 				return Status.OK_STATUS;
 			}
 		};
@@ -231,7 +231,7 @@ public class DwarfInfoReader {
 	 *            info, we don't.
 	 */
 	public void parseForAddresses(boolean includeCUWithoutCode) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceAddressParseFor + symbolFilePath);
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.traceEntry(DwarfMessages.DwarfInfoReader_TraceAddressParseFor + symbolFilePath); }
 		for (DwarfCompileUnit compileUnit : provider.compileUnits) {
 			if (DEBUG) {
 				// For internal check. 
@@ -247,7 +247,7 @@ public class DwarfInfoReader {
 				parseCompilationUnitForAddresses(compileUnit);
 			}
 		}
-		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceFinishedAddressParse);
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.traceExit(DwarfMessages.DwarfInfoReader_TraceFinishedAddressParse); }
 		
 		moduleScope.fixupRanges(Addr32.ZERO);
 
@@ -704,8 +704,7 @@ public class DwarfInfoReader {
 		if (header == null)
 			return;
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceAddressParse1
-				+ Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceAddressParse2 + header.scope.getFilePath());
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.trace(DwarfMessages.DwarfInfoReader_TraceAddressParse1 + Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceAddressParse2 + header.scope.getFilePath()); }
 		
 		IStreamBuffer buffer = debugInfoSection.getBuffer();
 		
@@ -749,8 +748,7 @@ public class DwarfInfoReader {
 		if (header == null)
 			return;
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceTypeParse1
-				+ Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceTypeParse2 + header.scope.getFilePath());
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.trace(DwarfMessages.DwarfInfoReader_TraceTypeParse1 + Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceTypeParse2 + header.scope.getFilePath()); }
 		
 		IStreamBuffer buffer = debugInfoSection.getBuffer();
 		
@@ -784,9 +782,9 @@ public class DwarfInfoReader {
 	}
 
 	public void quickParseDebugInfo(IProgressMonitor monitor) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceQuickParse + symbolFilePath);
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.traceEntry(DwarfMessages.DwarfInfoReader_TraceQuickParse + symbolFilePath); }
 		doQuickParseDebugInfo(monitor);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceFinishedQuickParse);
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.traceExit(DwarfMessages.DwarfInfoReader_TraceFinishedQuickParse); }
 	}
 	
 	/**
@@ -1202,8 +1200,7 @@ public class DwarfInfoReader {
 			Stack<Scope> nestingStack)
 			throws IOException {
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceScopeAddressParse1
-				+ header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceScopeAddressParse2 + Long.toHexString(header.debugInfoOffset));
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.trace(DwarfMessages.DwarfInfoReader_TraceScopeAddressParse1 + header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceScopeAddressParse2 + Long.toHexString(header.debugInfoOffset)); }
 
 		while (in.remaining() > 0) {
 			long offset = in.position() + currentCUHeader.debugInfoOffset;
@@ -1286,8 +1283,7 @@ public class DwarfInfoReader {
 			Stack<Scope> nestingStack)
 			throws IOException {
 
-		trace(IEDCTraceOptions.SYMBOL_READER_TRACE, DwarfMessages.DwarfInfoReader_TraceParseTypes1
-				+ header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceParseTypes2 + Long.toHexString(header.debugInfoOffset));
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.trace(DwarfMessages.DwarfInfoReader_TraceParseTypes1 + header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceParseTypes2 + Long.toHexString(header.debugInfoOffset)); }
 		
 		Stack<IType> typeStack = new Stack<IType>();
 		typeToParentMap = new HashMap<IType, IType>();
@@ -2262,7 +2258,7 @@ public class DwarfInfoReader {
 	}
 
 	private void processSubroutineType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		SubroutineType type = new SubroutineType(currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
@@ -2270,11 +2266,11 @@ public class DwarfInfoReader {
 		
 		// TODO: associate parameters with this type in child tag parse
 		
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 	
 	private void processClassType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 		
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
@@ -2283,11 +2279,11 @@ public class DwarfInfoReader {
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 	
 	private void processStructType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
@@ -2296,11 +2292,11 @@ public class DwarfInfoReader {
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processUnionType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
@@ -2390,11 +2386,11 @@ public class DwarfInfoReader {
 			registerType(offset, fieldType, false);
 		}
 
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processInheritance(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		ICompositeType compositeType = null;
 		compositeType = getCompositeParent();
@@ -2433,11 +2429,11 @@ public class DwarfInfoReader {
 			compositeType.addInheritance(type);
 		
 		registerType(offset, type, hasChildren);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processField(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		
@@ -2493,11 +2489,11 @@ public class DwarfInfoReader {
 		if (compositeType != null)
 			compositeType.addField(type);
 		registerType(offset, type, hasChildren);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processTemplateTypeParam(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		IType paramType = getTypeOrReference(attributeList.getAttribute(DwarfConstants.DW_AT_type), currentCUHeader);
@@ -2511,7 +2507,7 @@ public class DwarfInfoReader {
 		if (compositeType != null)
 			compositeType.addTemplateParam(type);
 		registerType(offset, type, hasChildren);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 	
 	private ICompositeType getCompositeParent() {
@@ -2528,7 +2524,7 @@ public class DwarfInfoReader {
 	}
 
 	private void processArrayType(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
@@ -2536,7 +2532,7 @@ public class DwarfInfoReader {
 		ArrayType type = new ArrayType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private IArrayType getArrayParent() {
@@ -2550,7 +2546,7 @@ public class DwarfInfoReader {
 	}
 
 	private void processArrayBoundType(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		long arrayBound = 0;
 		if (attributeList.getAttribute(DwarfConstants.DW_AT_upper_bound) != null)
@@ -2565,11 +2561,11 @@ public class DwarfInfoReader {
 
 		registerType(offset, type, hasChildren);
 		
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processReferenceType(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
@@ -2580,11 +2576,11 @@ public class DwarfInfoReader {
 		ReferenceType type = new ReferenceType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processPointerType(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
@@ -2596,29 +2592,29 @@ public class DwarfInfoReader {
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processConstType(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		ConstType type = new ConstType(currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processVolatileType(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		VolatileType type = new VolatileType(currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processEnumType(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
@@ -2627,7 +2623,7 @@ public class DwarfInfoReader {
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private Enumeration getEnumerationParent() {
@@ -2641,7 +2637,7 @@ public class DwarfInfoReader {
 	}
 	
 	private void processEnumerator(long offset, AttributeList attributeList) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		long value = attributeList.getAttributeValueAsSignedLong(DwarfConstants.DW_AT_const_value);
@@ -2654,11 +2650,11 @@ public class DwarfInfoReader {
 		((Enumeration) enumeration).addEnumerator(enumerator);
 		((Scope)((Enumeration) enumeration).getScope()).addEnumerator(enumerator);
 
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, enumerator);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(enumerator); }
 	}
 
 	private void processTypeDef(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 
@@ -2666,11 +2662,11 @@ public class DwarfInfoReader {
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processBasicType(long offset, AttributeList attributeList, boolean hasChildren) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, offset);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
@@ -2767,11 +2763,11 @@ public class DwarfInfoReader {
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
 		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
-		traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
 
 	private void processVariable(long offset, AttributeList attributeList, boolean isParameter) {
-		traceEntry(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, attributeList);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(attributeList); }
 
 		AttributeValue locationAttribute = attributeList.getAttribute(DwarfConstants.DW_AT_location);
 		ILocationProvider locationProvider = getLocationProvider(locationAttribute);
@@ -2844,7 +2840,7 @@ public class DwarfInfoReader {
 				variables.add(variable);
 			}
 
-			traceExit(IEDCTraceOptions.SYMBOL_READER_VERBOSE_TRACE, variable);
+			if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(variable); }
 		}
 	}
 
@@ -2917,24 +2913,6 @@ public class DwarfInfoReader {
 			}
 			
 			out.close();
-		}
-	}
-
-	private void trace(final String option, final Object methodArgument) {
-		if (EDCDebugger.getDefault() != null) {
-			EDCDebugger.getDefault().getTrace().trace(option, methodArgument.toString());
-		}
-	}
-
-	private void traceEntry(final String option, final Object methodArgument) {
-		if (EDCDebugger.getDefault() != null) {
-			EDCDebugger.getDefault().getTrace().traceEntry(option, methodArgument);
-		}
-	}
-
-	private void traceExit(final String option, final Object methodArgument) {
-		if (EDCDebugger.getDefault() != null) {
-			EDCDebugger.getDefault().getTrace().traceExit(option, methodArgument);
 		}
 	}
 

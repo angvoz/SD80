@@ -24,7 +24,7 @@ import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InstructionSequence;
@@ -231,7 +231,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getFormattedValue(org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext)
 		 */
 		public FormattedValueDMData getFormattedValue(FormattedValueDMContext dmc) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.VARIABLE_VALUE_TRACE, dmc);
+			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.traceEntry(dmc); }
 			evaluateExpression();
 			String result = ""; //$NON-NLS-1$
 
@@ -325,7 +325,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				
 				
 			}
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.VARIABLE_VALUE_TRACE, result);
+			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.traceExit(result); }
 			return new FormattedValueDMData(result);
 		}
 

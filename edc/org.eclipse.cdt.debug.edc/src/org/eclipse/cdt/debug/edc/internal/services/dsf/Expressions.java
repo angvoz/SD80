@@ -208,6 +208,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				// for a reference to a plain type, use the location in the variable with value
 				if (TypeUtils.getStrippedType(valueType) instanceof IReferenceType) {
 					IType pointedTo = TypeUtils.getStrippedType(valueType).getType();
+					pointedTo = TypeUtils.getStrippedType(pointedTo);
 					if (pointedTo instanceof ICPPBasicType || pointedTo instanceof IPointerType ||
 						pointedTo instanceof IEnumeration) {
 						valueLocation = variableValue.getValueLocation();
@@ -240,7 +241,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			} else if (value != null) {
 				result = value.toString();
 				
-				IType unqualifiedType = TypeUtils.getStrippedType(valueType);
+				IType unqualifiedType = TypeUtils.getUnRefStrippedType(valueType);
 				
 				String temp = null;
 				String formatID = dmc.getFormatID();
@@ -274,7 +275,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 							}
 							break;
 						}
-					} else if (valueType instanceof IAggregate || valueType instanceof IPointerType) {
+					} else if (unqualifiedType instanceof IAggregate || unqualifiedType instanceof IPointerType) {
 						// show addresses for aggregates and pointers as hex in natural format
 						temp = toHexString(value);
 					} 
@@ -988,7 +989,48 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				return;
 			}
 		}
+
+		if (!(exprContext instanceof IEDCExpression)) {
+			rm.setData(0);
+			rm.done();
+			return;
+		}
+
+		IEDCExpression expr = (IEDCExpression) exprContext;
+
+		// if expression has no evaluated value, then it has not yet been evaluated
+		if (expr.getEvaluatedValue() == null && expr.getEvaluatedValueString() != null) {
+			expr.evaluateExpression();
+		}
+
+		IType exprType = TypeUtils.getStrippedType(expr.getEvaluatedType());
 		
+		// to expand it, it must either be a pointer, a reference to an aggregate,
+		// or an aggregate
+		boolean pointerType = exprType instanceof IPointerType;
+		boolean referenceType = exprType instanceof IReferenceType;
+		IType pointedTo = null;
+		if (referenceType)
+			pointedTo = TypeUtils.getStrippedType(((IReferenceType) exprType).getType());
+		
+		if (!(exprType instanceof IAggregate) && !pointerType &&
+			!(referenceType && (pointedTo instanceof IAggregate))) {
+			rm.setData(0);
+			rm.done();
+			return;
+		}
+		
+		ITypeContentProvider customProvider = 
+			FormatExtensionManager.instance().getTypeContentProvider(exprType);
+		if (customProvider != null) {
+			try {
+				rm.setData(customProvider.getChildCount(expr));
+				rm.done();
+				return;
+			} catch (Throwable e) {
+			}
+		}
+
 		// TODO: maybe cache these subexpressions; they are just requested again in #getSubExpressions()
 		getSubExpressions(exprContext, new DataRequestMonitor<IExpressions.IExpressionDMContext[]>(
 				getExecutor(), rm) {
@@ -1238,10 +1280,14 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		else*/ if (exprType instanceof ICompositeType) {
 			// an artifact of following a pointer to a structure is that the
 			// name starts with '*'
-			if (expression.startsWith("*")) //$NON-NLS-1$
-				expression = expression.substring(1) + "->"; //$NON-NLS-1$
-			else
+			if (expression.startsWith("*")) { //$NON-NLS-1$
+				if (expression.startsWith("**"))
+					expression = "(" + expression.substring(1) + ")->"; //$NON-NLS-1$
+				else
+					expression = expression.substring(1) + "->"; //$NON-NLS-1$
+			} else {
 				expression = expression + '.'; //$NON-NLS-1$
+			}
 
 			// for each field, evaluate an expression, then shorten the name
 			ICompositeType compositeType = (ICompositeType) exprType;
@@ -1321,27 +1367,6 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		}
 
 		return (IEDCExpression[]) exprList.toArray(new IEDCExpression[exprList.size()]);
-		
-		/*
-		IEDCExpression[] children = new IEDCExpression[exprList.size()];
-		for (int i = 0; i < exprList.size(); i++) {
-			final IEDCExpression child = exprList.get(i);
-			children[i] = child;
-
-			// if needed, shorten the displayed name or expression associated
-			// with a child (and use uncasted variant)
-			String childName = child.getExpression();
-			if (childName.contains(".") || childName.contains("->")) { //$NON-NLS-1$ //$NON-NLS-2$
-				child.setProperty(IEDCExpression.EXPRESSION_PROP, childName);
-				if (childName.contains(".")) //$NON-NLS-1$
-					childName = childName.substring(childName.lastIndexOf(".") + 1); //$NON-NLS-1$
-				if (childName.contains("->")) //$NON-NLS-1$
-					childName = childName.substring(childName.lastIndexOf("->") + 2); //$NON-NLS-1$
-				child.setName(childName);
-			}
-		}
-		return children;
-		*/
 	}
 
 	@Immutable
@@ -1496,7 +1521,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 	}
 
 	private IVariableValueConverter getCustomValueConverter(IEDCExpression exprDMC) {
-		IType exprType = TypeUtils.getStrippedType(exprDMC.getEvaluatedType());
+		IType exprType = TypeUtils.getUnRefStrippedType(exprDMC.getEvaluatedType());
 		return FormatExtensionManager.instance().getVariableValueConverter(exprType);
 	}
 

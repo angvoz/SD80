@@ -24,11 +24,6 @@ public interface IEDCLaunchConfigurationConstants {
 	/**
 	 * @since 2.0
 	 */
-	public static final String ATTR_ATTACH_CONTEXT_ID = "org.eclipse.cdt.debug.edc.attachContextID"; //$NON-NLS-1$
-
-	/**
-	 * @since 2.0
-	 */
 	public static final String ATTR_ATTACH_CONTEXT_NAME = "org.eclipse.cdt.debug.edc.attachContextName"; //$NON-NLS-1$
 
 	/**

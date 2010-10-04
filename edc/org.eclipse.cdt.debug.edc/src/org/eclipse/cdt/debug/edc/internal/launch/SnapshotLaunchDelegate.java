@@ -140,4 +140,10 @@ public class SnapshotLaunchDelegate extends EDCLaunchDelegate {
 		return false;
 	}
 
+	@Override
+	public EDCLaunch createLaunch(ILaunchConfiguration configuration,
+			String mode) {
+		return new SnapshotLaunch(configuration, mode, null, getDebugModelID());
+	}
+
 }

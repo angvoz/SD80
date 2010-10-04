@@ -30,8 +30,8 @@ public class SnapshotLaunchSequence extends AbstractFinalLaunchSequence {
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
 			try {
-				int snapIndex = launch.getAlbum().getCurrentSnapshotIndex();
-				launch.getAlbum().openSnapshot(snapIndex);
+				int snapIndex = getLaunch().getAlbum().getCurrentSnapshotIndex();
+				getLaunch().getAlbum().openSnapshot(snapIndex);
 				requestMonitor.done();
 			} catch (Exception e) {
 				requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,

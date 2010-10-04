@@ -42,6 +42,7 @@ import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
 import org.eclipse.cdt.dsf.concurrent.ThreadSafe;
+import org.eclipse.cdt.dsf.debug.model.DsfLaunch;
 import org.eclipse.cdt.dsf.debug.model.DsfMemoryBlockRetrieval;
 import org.eclipse.cdt.dsf.debug.service.IDsfDebugServicesFactory;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
@@ -52,17 +53,18 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchManager;
-import org.eclipse.debug.core.Launch;
 import org.eclipse.debug.core.model.IMemoryBlockRetrieval;
 import org.eclipse.debug.core.model.ISourceLocator;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
@@ -75,7 +77,7 @@ import org.eclipse.tm.tcf.protocol.Protocol;
  * The only object in the model that implements the traditional interfaces.
  */
 @ThreadSafe
-public class EDCLaunch extends Launch {
+abstract public class EDCLaunch extends DsfLaunch {
 	private DefaultDsfExecutor executor;
 	private final DsfSession session;
 	private DsfServicesTracker tracker;
@@ -85,6 +87,7 @@ public class EDCLaunch extends Launch {
 	private DsfMemoryBlockRetrieval memRetrieval;
 	private IDsfDebugServicesFactory serviceFactory;
 	private final String debugModelID;
+	private String description;
 	private Album album;
 	private boolean snapshotSupportInitialized;
 	private boolean isFirstLaunch = true;
@@ -219,13 +222,52 @@ public class EDCLaunch extends Launch {
 
 	@Override
 	public void terminate() throws DebugException {
-        getDsfExecutor().execute(new Runnable() {
-            public void run() {
-                RunControl runControlService = tracker.getService(RunControl.class);
-                if (runControlService != null)
-                	runControlService.terminateAllContexts(null);
-            }
-        });
+		// Step one, tell the run control service to terminate everything
+		getDsfExecutor().execute(new Runnable() {
+			public void run() {
+				RunControl runControlService = tracker
+						.getService(RunControl.class);
+				if (runControlService != null)
+					runControlService.terminateAllContexts(null);
+			}
+		});
+
+		// Step two, wait for termination to happen
+		// While the platform javadoc for ILaunch.Terminate says it may be
+		// blocking or non-blocking, clients (like the Terminate & Relaunch
+		// command) expect it to be blocking and not return until 
+		// termination is complete.
+		Job waitForTerminate = new Job("Waiting for launch to terminate") {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				monitor.beginTask("Waiting for termination",
+						IProgressMonitor.UNKNOWN);
+				try {
+					while (!EDCLaunch.this.isTerminated()) {
+						Thread.sleep(500);
+						if (monitor.isCanceled())
+							return Status.CANCEL_STATUS;
+						monitor.worked(1);
+					}
+				} catch (InterruptedException e) {
+					EDCDebugger.getMessageLogger().logError(null, e);
+				}
+				finally {
+					monitor.done();
+				}
+
+				return Status.OK_STATUS;
+			}
+		};
+
+		waitForTerminate.schedule();
+		try {
+			waitForTerminate.join();
+		} catch (InterruptedException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
+
 	}
 
 	// ITerminate
@@ -571,6 +613,22 @@ public class EDCLaunch extends Launch {
 		}
 
 		return ret;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public String getDescription() {
+		if (description == null)
+			return getLaunchConfiguration().getName();
+		return description;
 	}
 
 }

@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.launch.ServicesLaunchSequence;
@@ -85,10 +87,12 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 
 				edcLaunch.getSession().getExecutor().execute(servicesLaunchSequence);
 				try {
-					servicesLaunchSequence.get();
+					getOrCancelSequence(servicesLaunchSequence, subMon1);
 				} catch (InterruptedException e1) {
 					throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.INTERNAL_ERROR,
 							"Interrupted Exception in dispatch thread.\n" + e1.getLocalizedMessage(), e1)); //$NON-NLS-1$
+				} catch (CancellationException e) {
+					throw new CoreException(Status.CANCEL_STATUS);
 				} catch (ExecutionException e1) {
 					throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.REQUEST_FAILED,
 							"Error in services launch sequence.", e1.getCause())); //$NON-NLS-1$
@@ -120,25 +124,32 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 			edcLaunch.getSession().getExecutor().execute(finalLaunchSequence);
 			boolean succeed = false;
 			try {
-				finalLaunchSequence.get();
+				getOrCancelSequence(finalLaunchSequence, subMon2);
 				succeed = true;
 			} catch (InterruptedException e1) {
-				throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.INTERNAL_ERROR,
-						"Interrupted Exception in dispatch thread.\n" + e1.getLocalizedMessage(), e1)); //$NON-NLS-1$
+				IStatus exceptionStatus = new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, DebugException.INTERNAL_ERROR,
+						"Interrupted Exception in dispatch thread.\n" + e1.getLocalizedMessage(), e1);
+				if (edcLaunch.isFirstLaunch())
+					throw new DebugException(exceptionStatus); //$NON-NLS-1$
+				else
+					EDCDebugger.getMessageLogger().log(exceptionStatus);
 			} catch (CancellationException e) {
-				throw new CoreException(Status.CANCEL_STATUS);
+				if (edcLaunch.isFirstLaunch())
+					throw new CoreException(Status.CANCEL_STATUS);
 			} catch (ExecutionException e1) {
 				Throwable cause = e1.getCause();
 				if (cause instanceof CoreException) {
 					IStatus s = ((CoreException) cause).getStatus();
-					if (s.getSeverity() == IStatus.CANCEL)
+					if (s.getSeverity() == IStatus.CANCEL && edcLaunch.isFirstLaunch())
 						throw (CoreException) cause;
 				}
-
 				IStatus errorStatus = EDCDebugger.getMessageLogger().createStatus(IStatus.ERROR, null, e1.getCause());
-				throw new DebugException(errorStatus);
+				if (edcLaunch.isFirstLaunch())
+					throw new DebugException(errorStatus);
+				else
+					EDCDebugger.getMessageLogger().log(errorStatus);
 			} finally {
-				if (!succeed) {
+				if (!succeed && edcLaunch.isFirstLaunch()) {
 					Query<Object> launchShutdownQuery = new Query<Object>() {
 						@Override
 						protected void execute(DataRequestMonitor<Object> rm) {
@@ -151,6 +162,7 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 					// Wait for the shutdown to finish. The Query.get() method is a
 					// synchronous call which blocks until the query completes.
 					try {
+						// not cancellable
 						launchShutdownQuery.get();
 					} catch (InterruptedException e) {
 						throw new DebugException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID,
@@ -172,6 +184,30 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 		}
 	}
 
+	/**
+	 * Wait for a sequence to finish, periodically checking whether
+	 * it has been cancelled. 
+	 * @param sequence
+	 * @param monitor
+	 * @return the value of the sequence
+	 * @throws ExecutionException 
+	 * @throws InterruptedException
+	 * @throws CancellationException  
+	 */
+	private Object getOrCancelSequence(Sequence sequence,
+			IProgressMonitor monitor) throws InterruptedException, ExecutionException {
+		while (!monitor.isCanceled()) {
+			try {
+				return sequence.get(1, TimeUnit.SECONDS);
+			} catch (TimeoutException e) {
+				// fine, keep looping
+			}
+		}
+		// cancelled
+		sequence.cancel(true);  /* flag is ignored */
+		throw new CancellationException();
+	}
+
 	@Override
 	public ILaunch getLaunch(ILaunchConfiguration configuration, String mode) throws CoreException {
 		// Need to configure the source locator before creating the launch
@@ -182,7 +218,7 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 		EDCLaunch launch = findExistingLaunch(configuration, mode);
 		if (launch == null)
 		{
-			launch = new EDCLaunch(configuration, mode, null, getDebugModelID());
+			launch = createLaunch(configuration, mode);
 			launch.initialize();
 			launch.setSourceLocator(launch.createSourceLocator());
 		}
@@ -197,13 +233,19 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 		return launch;
 	}
 
+	/**
+	 * @since 2.0
+	 */
+	abstract public EDCLaunch createLaunch(ILaunchConfiguration configuration,
+			String mode);
+
 	private EDCLaunch findExistingLaunch(ILaunchConfiguration configuration,
 			String mode) {
         ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
         List<ILaunch> launchList = Arrays.asList(manager.getLaunches());
         
         for (ILaunch iLaunch : launchList) {		
-        	if (iLaunch instanceof EDCLaunch)
+        	if (!iLaunch.isTerminated() && iLaunch instanceof EDCLaunch)
         	{
         		EDCLaunch edcLaunch = (EDCLaunch) iLaunch;
         		if (DsfSession.isSessionActive(edcLaunch.getSession().getId())

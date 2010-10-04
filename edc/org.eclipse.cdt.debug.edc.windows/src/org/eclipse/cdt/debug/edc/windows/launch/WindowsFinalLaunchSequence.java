@@ -58,7 +58,7 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 			CSourceLookup sourceLookup = tracker.getService(CSourceLookup.class);
 			ISourceLookupDMContext sourceLookupDmc = (ISourceLookupDMContext) (runControlService.getRootDMC());
 			try {
-				sourceLookup.addSourceLookupDirector(sourceLookupDmc, (CSourceLookupDirector) launch.createSourceLocator());
+				sourceLookup.addSourceLookupDirector(sourceLookupDmc, (CSourceLookupDirector) getLaunch().createSourceLocator());
 			} catch (CoreException e) {
 				WindowsDebugger.getMessageLogger().logError(null, e);
 			}
@@ -75,8 +75,21 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 			TCFServiceManager tcfServiceManager = (TCFServiceManager) EDCDebugger.getDefault().getServiceManager();
 			IChannel channel = tcfServiceManager.getChannelForPeer(getTCFPeer());
 
-			launch.getSession().registerModelAdapter(IRestart.class,
-					new RestartCommand(launch.getSession(), launch, channel));
+			getLaunch().getSession().registerModelAdapter(IRestart.class,
+					new RestartCommand(getLaunch().getSession(), getLaunch(), channel));
+			requestMonitor.done();
+		}
+	};
+
+	/**
+	 * @since 2.0
+	 */
+	protected Step initLaunchDescriptionStep = new Step() {
+
+		@Override
+		public void execute(final RequestMonitor requestMonitor) {
+			String targetDescription = getTCFPeer().getAttributes().get("Description");
+			WindowsFinalLaunchSequence.this.getLaunch().setDescription(targetDescription);
 			requestMonitor.done();
 		}
 	};
@@ -101,6 +114,7 @@ public class WindowsFinalLaunchSequence extends AbstractFinalLaunchSequence {
 		{
 			steps.add(trackerStep);
 			steps.add(initFindPeerStep);
+			steps.add(initLaunchDescriptionStep);
 			steps.add(initRunControlStep);
 			steps.add(initLoggingStep);
 			steps.add(initRestartStep);

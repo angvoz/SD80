@@ -78,4 +78,13 @@ public class WindowsLaunchDelegate extends EDCLaunchDelegate {
 		return false;
 	}
 
+	/**
+	 * @since 2.0
+	 */
+	@Override
+	public EDCLaunch createLaunch(ILaunchConfiguration configuration,
+			String mode) {
+		return new WindowsLaunch(configuration, mode, null, getDebugModelID());
+	}
+
 }

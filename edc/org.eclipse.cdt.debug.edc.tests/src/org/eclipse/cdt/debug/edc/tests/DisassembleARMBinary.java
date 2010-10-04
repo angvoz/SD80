@@ -56,7 +56,7 @@ public class DisassembleARMBinary {
 	
 	@BeforeClass
 	public static void beforeClass() {
-		sDisassembler = new DisassemblerARM();
+		sDisassembler = new DisassemblerARM(null);
 
 		sSectionsToDisassemble = new String[] { ".init", ".plt", ".text", ".fini" };
 
@@ -182,7 +182,7 @@ public class DisassembleARMBinary {
 
 		while (codeBuffer.hasRemaining()) {
 			try {
-				inst = sDisassembler.disassembleOneInstruction(address, codeBuffer, sOptions);
+				inst = sDisassembler.disassembleOneInstruction(address, codeBuffer, sOptions, null);
 				instSize += inst.getSize();
 
 				fOutputFileStream.println(inst.getMnemonics());

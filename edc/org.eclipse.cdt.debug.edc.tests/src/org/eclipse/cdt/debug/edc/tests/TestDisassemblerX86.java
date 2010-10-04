@@ -49,7 +49,7 @@ public class TestDisassemblerX86 {
 		sOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		sOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
 
-		sDisassembler = new DisassemblerX86();
+		sDisassembler = new DisassemblerX86(null);
 	}
 
 //	@Before
@@ -535,7 +535,7 @@ public class TestDisassemblerX86 {
 
 		List<IDisassembledInstruction> output = null;
 		try {
-			output = sDisassembler.disassembleInstructions(addr, addr.add(codeBuf.capacity()), codeBuf, sOptions);
+			output = sDisassembler.disassembleInstructions(addr, addr.add(codeBuf.capacity()), codeBuf, sOptions, null);
 		} catch (CoreException e) {
 			Assert.fail(e.getLocalizedMessage());
 		}

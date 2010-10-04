@@ -52,7 +52,7 @@ public class DisassembleX86Binary {
 
 	@BeforeClass
 	public static void beforeClass() {
-		sDisassembler = new DisassemblerX86();
+		sDisassembler = new DisassemblerX86(null);
 
 		sSectionsToDisassemble = new String[] { ".init", ".plt", ".text", ".fini" };
 
@@ -156,7 +156,7 @@ public class DisassembleX86Binary {
 
 		while (codeBuffer.hasRemaining()) {
 			try {
-				inst = sDisassembler.disassembleOneInstruction(address, codeBuffer, sOptions);
+				inst = sDisassembler.disassembleOneInstruction(address, codeBuffer, sOptions, null);
 				instSize += inst.getSize();
 
 				fOutputFileStream.println(inst.getMnemonics());

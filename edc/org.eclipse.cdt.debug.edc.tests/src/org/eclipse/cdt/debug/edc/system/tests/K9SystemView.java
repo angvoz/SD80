@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.eclipse.cdt.debug.edc.internal.ui.views.ISystemVMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemDMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemDataModel;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemVMContainer;
@@ -120,7 +121,7 @@ public class K9SystemView extends SystemView {
 
 		public SystemVMContainer getOverviewVMContainer() {
 			SystemVMContainer root = new SystemVMContainer(null, "Overview");
-			root.getProperties().put(SystemVMContainer.PROP_ID, getPresentationContext().getId() + "_overview");
+			root.getProperties().put(ISystemVMContainer.PROP_ID, getPresentationContext().getId() + "_overview");
 			SystemVMContainer breeds = new SystemVMContainer(root, "Breeds");
 			SystemVMContainer dogs = new SystemVMContainer(root, "Dogs");
 
@@ -154,13 +155,13 @@ public class K9SystemView extends SystemView {
 		public SystemVMContainer getBreedsVMContainer() {
 			SystemVMContainer root = new SystemVMContainer(null, "Breeds");
 
-			root.getProperties().put(SystemVMContainer.PROP_ID, getPresentationContext().getId() + "_breeds");
-			String[] column_keys = new String[] { SystemVMContainer.PROP_NAME, "COUNT" };
+			root.getProperties().put(ISystemVMContainer.PROP_ID, getPresentationContext().getId() + "_breeds");
+			String[] column_keys = new String[] { ISystemVMContainer.PROP_NAME, "COUNT" };
 			Map<String, String> column_names = new HashMap<String, String>();
-			column_names.put(SystemVMContainer.PROP_NAME, "Description");
+			column_names.put(ISystemVMContainer.PROP_NAME, "Description");
 			column_names.put("COUNT", "Count");
-			root.getProperties().put(SystemVMContainer.PROP_COLUMN_KEYS, column_keys);
-			root.getProperties().put(SystemVMContainer.PROP_COLUMN_NAMES, column_names);
+			root.getProperties().put(ISystemVMContainer.PROP_COLUMN_KEYS, column_keys);
+			root.getProperties().put(ISystemVMContainer.PROP_COLUMN_NAMES, column_names);
 
 			
 			Map<String, SystemVMContainer> breedVMContainers = new HashMap<String, SystemVMContainer>();
@@ -181,7 +182,7 @@ public class K9SystemView extends SystemView {
 				}
 			}
 			
-			for (SystemVMContainer breedContainer : breedVMContainers.values())
+			for (ISystemVMContainer breedContainer : breedVMContainers.values())
 			{
 				breedContainer.getProperties().put("COUNT", Integer.toString(breedContainer.getChildren().size()));
 			}
@@ -191,14 +192,14 @@ public class K9SystemView extends SystemView {
 
 		public SystemVMContainer getDogsVMContainer() {
 			SystemVMContainer root = new SystemVMContainer(null, "Dogs");
-			root.getProperties().put(SystemVMContainer.PROP_ID, getPresentationContext().getId() + "_dogs");
+			root.getProperties().put(ISystemVMContainer.PROP_ID, getPresentationContext().getId() + "_dogs");
 
-			String[] column_keys = new String[] { SystemVMContainer.PROP_NAME, "STATUS" };
+			String[] column_keys = new String[] { ISystemVMContainer.PROP_NAME, "STATUS" };
 			Map<String, String> column_names = new HashMap<String, String>();
-			column_names.put(SystemVMContainer.PROP_NAME, "Description");
+			column_names.put(ISystemVMContainer.PROP_NAME, "Description");
 			column_names.put("STATUS", "Status");
-			root.getProperties().put(SystemVMContainer.PROP_COLUMN_KEYS, column_keys);
-			root.getProperties().put(SystemVMContainer.PROP_COLUMN_NAMES, column_names);
+			root.getProperties().put(ISystemVMContainer.PROP_COLUMN_KEYS, column_keys);
+			root.getProperties().put(ISystemVMContainer.PROP_COLUMN_NAMES, column_names);
 
 			
 			StringMatcher  matcher = getFilterMatcher();
@@ -213,14 +214,14 @@ public class K9SystemView extends SystemView {
 
 		public SystemVMContainer getToysVMContainer() {
 			SystemVMContainer root = new SystemVMContainer(null, "Toys");
-			root.getProperties().put(SystemVMContainer.PROP_ID, getPresentationContext().getId() + "_toys");
+			root.getProperties().put(ISystemVMContainer.PROP_ID, getPresentationContext().getId() + "_toys");
 
-			String[] column_keys = new String[] { SystemVMContainer.PROP_NAME, "REMAINING" };
+			String[] column_keys = new String[] { ISystemVMContainer.PROP_NAME, "REMAINING" };
 			Map<String, String> column_names = new HashMap<String, String>();
-			column_names.put(SystemVMContainer.PROP_NAME, "Description");
+			column_names.put(ISystemVMContainer.PROP_NAME, "Description");
 			column_names.put("REMAINING", "Remaining");
-			root.getProperties().put(SystemVMContainer.PROP_COLUMN_KEYS, column_keys);
-			root.getProperties().put(SystemVMContainer.PROP_COLUMN_NAMES, column_names);
+			root.getProperties().put(ISystemVMContainer.PROP_COLUMN_KEYS, column_keys);
+			root.getProperties().put(ISystemVMContainer.PROP_COLUMN_NAMES, column_names);
 		
 			StringMatcher  matcher = getFilterMatcher();
 

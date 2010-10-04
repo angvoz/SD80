@@ -14,6 +14,7 @@ import java.util.List;
 
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemDMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemVMContainer;
+import org.eclipse.cdt.debug.edc.internal.ui.views.SystemViewInput;
 import org.eclipse.cdt.debug.edc.system.tests.K9SystemView.K9ViewModel;
 import org.eclipse.cdt.internal.ui.util.StringMatcher;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.TreeModelViewer;
@@ -51,9 +52,9 @@ public class K9SystemViewTest {
 		List<TreeModelViewer> k9Viewers = k9View.getViewers();
 		List<SystemVMContainer> rootContainers = k9View.getViewModel().getRootContainers();
 		for (int i = 0; i < rootContainers.size(); i++) {
-			Assert.assertEquals(rootContainers.get(i), k9Viewers.get(i).getInput());
+			Assert.assertTrue(k9Viewers.get(i).getInput() instanceof SystemViewInput);
+			Assert.assertEquals(rootContainers.get(i), ((SystemViewInput)k9Viewers.get(i).getInput()).getContainer());
 		}
-
 	}
 
 	@Test

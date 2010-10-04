@@ -86,8 +86,21 @@ public abstract class SystemView extends ViewPart {
 		
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
-			IStatus result = refresh(monitor, true);
-			if (shouldAutoRefresh())
+			
+			final Boolean[] shouldRefresh = new Boolean[]{selectedViewer != null};
+			if (shouldRefresh[0]){
+				PlatformUI.getWorkbench().getDisplay().syncExec(new Runnable() {
+					public void run() {
+						shouldRefresh[0] = selectedViewer.getTree().isVisible();
+					}
+				});
+			}
+
+			IStatus result = Status.OK_STATUS;
+			if (shouldRefresh[0])
+				result = refresh(monitor, true);
+			
+			if (shouldAutoRefresh() && selectedViewer != null)
 				this.schedule(refreshInterval);
 			return result;
 		}
@@ -97,10 +110,10 @@ public abstract class SystemView extends ViewPart {
 
 		private int selector;
 		private TreeModelViewer viewer;
-		private SystemVMContainer systemVMContainer;
+		private ISystemVMContainer systemVMContainer;
 		private int currentSortDirection;
 
-		public ColumnSelectionAdapter(SystemVMContainer systemVMContainer, int selector, TreeModelViewer viewer) {
+		public ColumnSelectionAdapter(ISystemVMContainer systemVMContainer, int selector, TreeModelViewer viewer) {
 			this.viewer = viewer;
 			this.setSelector(selector);
 			this.setSystemVMContainer(systemVMContainer);
@@ -124,11 +137,11 @@ public abstract class SystemView extends ViewPart {
 			{
 				viewer.getTree().setSortColumn((TreeColumn) e.getSource());
 			}
-			String[] sortProperties = (String[]) systemVMContainer.getProperties().get(SystemVMContainer.PROP_COLUMN_KEYS);
+			String[] sortProperties = (String[]) systemVMContainer.getProperties().get(ISystemVMContainer.PROP_COLUMN_KEYS);
 			assert sortProperties != null;
 			currentSortDirection = viewer.getTree().getSortDirection();
-			systemVMContainer.getProperties().put(SystemVMContainer.PROP_SORT_PROPERTY, sortProperties[getSelector()]);
-			systemVMContainer.getProperties().put(SystemVMContainer.PROP_SORT_DIRECTION, currentSortDirection);
+			systemVMContainer.getProperties().put(ISystemVMContainer.PROP_SORT_PROPERTY, sortProperties[getSelector()]);
+			systemVMContainer.getProperties().put(ISystemVMContainer.PROP_SORT_DIRECTION, currentSortDirection);
 			refreshViewModel();
 			try {
 				saveSettings();
@@ -145,11 +158,11 @@ public abstract class SystemView extends ViewPart {
 			return selector;
 		}
 
-		public void setSystemVMContainer(SystemVMContainer systemVMContainer) {
+		public void setSystemVMContainer(ISystemVMContainer systemVMContainer) {
 			this.systemVMContainer = systemVMContainer;
 		}
 
-		public SystemVMContainer getSystemVMContainer() {
+		public ISystemVMContainer getSystemVMContainer() {
 			return systemVMContainer;
 		}
 
@@ -171,6 +184,14 @@ public abstract class SystemView extends ViewPart {
 	protected void createRootComposite(Composite parent) {
 		parent.setLayout(new GridLayout(1, false));
 
+		parent.addDisposeListener(new DisposeListener() {
+			
+			public void widgetDisposed(DisposeEvent e) {
+				getRefreshJob().cancel();
+				selectedViewer = null;
+			}
+		});
+		
 		createFilterTextBox(parent);
 
 		CTabFolder tabFolder = new CTabFolder(parent, SWT.BORDER);
@@ -192,7 +213,7 @@ public abstract class SystemView extends ViewPart {
 			final TreeModelViewer viewer = (new TreeModelViewer(
 					(Composite) tab.getControl(), SWT.VIRTUAL | SWT.FULL_SELECTION, getPresentationContext()));
 			
-			viewer.setInput(systemVMContainer);
+			viewer.setInput(new SystemViewInput(systemVMContainer));
 			
 			viewers.add(viewer);
 			tab.setData("VIEWER", viewer);
@@ -201,9 +222,9 @@ public abstract class SystemView extends ViewPart {
 	        TreeColumn[] columns = viewer.getTree().getColumns();
 	        if (columns.length > 0)
 	        {
-				String[] columnKeys = (String[]) systemVMContainer.getProperties().get(SystemVMContainer.PROP_COLUMN_KEYS);
-				String sortProperty = (String) systemVMContainer.getProperties().get(SystemVMContainer.PROP_SORT_PROPERTY);
-				Integer sortDirection = (Integer) systemVMContainer.getProperties().get(SystemVMContainer.PROP_SORT_DIRECTION);
+				String[] columnKeys = (String[]) systemVMContainer.getProperties().get(ISystemVMContainer.PROP_COLUMN_KEYS);
+				String sortProperty = (String) systemVMContainer.getProperties().get(ISystemVMContainer.PROP_SORT_PROPERTY);
+				Integer sortDirection = (Integer) systemVMContainer.getProperties().get(ISystemVMContainer.PROP_SORT_DIRECTION);
 
 				for (int i = 0; i < columns.length; i++) {
 		            TreeColumn treeColumn = columns[i];
@@ -241,15 +262,12 @@ public abstract class SystemView extends ViewPart {
 				}
 			}
 		});
+		
 	}
 
 	public void refreshViewModel() {
-		PlatformUI.getWorkbench().getDisplay().asyncExec(new Runnable() {
-			public void run() {
-				getViewModel().buildViewModel();
-				refreshViewers();
-			}
-		});
+		getViewModel().buildViewModel();
+		refreshViewers();
 	}
 
 	@Override
@@ -290,14 +308,23 @@ public abstract class SystemView extends ViewPart {
 
 	protected void refreshViewers() {
 		for (int i = 0; i < viewers.size(); i++) {
-			viewers.get(i).setInput(getViewModel().getRootContainers().get(i));
+			final TreeModelViewer viewer = viewers.get(i);
+			final SystemVMContainer input = getViewModel().getRootContainers().get(i);
+			PlatformUI.getWorkbench().getDisplay().asyncExec(new Runnable() {
+				public void run() {
+					if (viewer.getTree().isDisposed())
+						return;
+					// Disable the tree to prevent problem when the input is changes while scrolling
+					viewer.getTree().setEnabled(false);
+					viewer.setInput(new SystemViewInput(input));
+					viewer.getTree().setEnabled(true);
+				}
+			});
 		}
 	}
 
 	public void setRefreshInterval(int refreshInterval) {
 		this.refreshInterval = refreshInterval;
-		if (shouldAutoRefresh())
-			getRefreshJob().schedule(refreshInterval);
 	}
 
 	public int getRefreshInterval() {
@@ -373,6 +400,10 @@ public abstract class SystemView extends ViewPart {
 					} catch (Exception e) {
 						EDCDebugUI.logError("", e);
 					}
+					if (shouldAutoRefresh())
+						getRefreshJob().schedule(getRefreshInterval());
+					else
+						getRefreshJob().cancel();
 				}
 			}
 		};
@@ -387,13 +418,13 @@ public abstract class SystemView extends ViewPart {
 		getPrefsNode().putInt(PREF_REFRESH_INTERVAL, getRefreshInterval());
 
 		List<Map<String,Object>> rootContainerProperties = new ArrayList<Map<String,Object>>();
-		for (SystemVMContainer systemVMContainer : viewModel.getRootContainers()) {
+		for (ISystemVMContainer systemVMContainer : viewModel.getRootContainers()) {
 			Map<String, Object> vmProps = systemVMContainer.getProperties();
 			Map<String,Object> props = new HashMap<String, Object>();
-			if (vmProps.containsKey(SystemVMContainer.PROP_SORT_PROPERTY))
-				props.put(SystemVMContainer.PROP_SORT_PROPERTY, vmProps.get(SystemVMContainer.PROP_SORT_PROPERTY));
-			if (vmProps.containsKey(SystemVMContainer.PROP_SORT_DIRECTION))
-				props.put(SystemVMContainer.PROP_SORT_DIRECTION, vmProps.get(SystemVMContainer.PROP_SORT_DIRECTION));
+			if (vmProps.containsKey(ISystemVMContainer.PROP_SORT_PROPERTY))
+				props.put(ISystemVMContainer.PROP_SORT_PROPERTY, vmProps.get(ISystemVMContainer.PROP_SORT_PROPERTY));
+			if (vmProps.containsKey(ISystemVMContainer.PROP_SORT_DIRECTION))
+				props.put(ISystemVMContainer.PROP_SORT_DIRECTION, vmProps.get(ISystemVMContainer.PROP_SORT_DIRECTION));
 			rootContainerProperties.add(props);
 		};
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -419,7 +450,7 @@ public abstract class SystemView extends ViewPart {
 				List<Map<String,Object>> rootContainerProperties = (List<Map<String,Object>>) ois.readObject();
 				int vmIndex = 0;
 				for (Map<String, Object> map : rootContainerProperties) {
-					SystemVMContainer rootVM = viewModel.getRootContainers().get(vmIndex++);
+					ISystemVMContainer rootVM = viewModel.getRootContainers().get(vmIndex++);
 					rootVM.getProperties().putAll(map);
 				}
 			} catch (Exception e) {
@@ -468,7 +499,7 @@ public abstract class SystemView extends ViewPart {
 				
 				public void selectionChanged(SelectionChangedEvent event) {
 					IStructuredSelection selection = (IStructuredSelection) event.getSelection();
-					SystemVMContainer vmContainer = (SystemVMContainer) selection.getFirstElement();
+					ISystemVMContainer vmContainer = (ISystemVMContainer) selection.getFirstElement();
 					if (vmContainer != null)
 					{
 						Boolean canDebug = (Boolean) vmContainer.getProperties().get(SystemDMContainer.PROP_CAN_DEBUG);

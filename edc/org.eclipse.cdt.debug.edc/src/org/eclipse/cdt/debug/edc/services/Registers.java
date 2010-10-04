@@ -26,6 +26,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.RootExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
@@ -432,7 +433,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		rm.setData(new IRegisterGroupDMContext[0]);
 		for (IDMContext context : parents) {
 			if (RunControl.isNonContainer(context)) {
-				rm.setData(getGroupsForContext((IEDCExecutionDMC) context));
+				if (context instanceof IEDCExecutionDMC)
+					rm.setData(getGroupsForContext((IEDCExecutionDMC) context));
+				else if (context instanceof StackFrameDMC)
+					rm.setData(getGroupsForContext(((StackFrameDMC) context).getExecutionDMC()));
 			}
 		}
 

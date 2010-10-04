@@ -15,15 +15,20 @@ import java.math.BigInteger;
 import java.util.StringTokenizer;
 
 import org.eclipse.cdt.dsf.debug.service.AbstractInstruction;
+import org.eclipse.cdt.dsf.debug.service.IInstruction;
 
 public class EDCInstruction extends AbstractInstruction {
 
 	private final IDisassembledInstruction instruction;
+	private String functionName;
+	private int offset;
 
 	public EDCInstruction(IDisassembledInstruction instruction) {
 		this.instruction = instruction;
+		functionName = null;
+		offset = 0;
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -56,14 +61,26 @@ public class EDCInstruction extends AbstractInstruction {
 		return ret;
 	}
 
+	/** @since 2.0 */
+	public void setFunctionName(String functionName) {
+		this.functionName = functionName;
+	}
+
 	/*
 	 * (non-Javadoc)
 	 * 
 	 * @see org.eclipse.cdt.dsf.debug.service.IInstruction#getFuntionName()
 	 */
 	public String getFuntionName() {
-		// TODO add later
-		return null;
+		return functionName;
+	}
+	/**
+	 * not a true override; the name is "misspelled" in {@link IInstruction}
+	 * @since 2.0
+	 * @see org.eclipse.cdt.dsf.debug.service.IInstruction#getFuntionName()
+	 */
+	public String getFunctionName() {
+		return functionName;
 	}
 
 	/*
@@ -76,14 +93,18 @@ public class EDCInstruction extends AbstractInstruction {
 		return instruction.getMnemonics();
 	}
 
+	/** @since 2.0 */
+	public void setOffset(int offset) {
+		this.offset = offset;
+	}
+
 	/*
 	 * (non-Javadoc)
 	 * 
 	 * @see org.eclipse.cdt.dsf.debug.service.IInstruction#getOffset()
 	 */
 	public long getOffset() {
-		// TODO Auto-generated method stub
-		return 0;
+		return offset;
 	}
 
 	/*
@@ -97,13 +118,15 @@ public class EDCInstruction extends AbstractInstruction {
 	}
 
 	/**
+	 * needed for DisassemblyBackendDsf#insertDisassembly() ;
+	 * for HEAD see the first reference; for CDT_7_0, see the second reference
+	 * @see org.eclipse.cdt.dsf.debug.service.IInstruction#getSize()
+	 * @see org.eclipse.cdt.dsf.debug.internal.provisional.service.IInstructionWithSize#getSize()
 	 * @since 2.0
 	 */
-	@Override
-    public Integer getSize() {
-		return instruction.getSize();
+	public Integer getSize() {
+		return (Integer)instruction.getSize();
 	}
-
 	
 	@Override
 	public String toString() {

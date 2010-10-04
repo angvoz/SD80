@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -49,6 +50,12 @@ public interface IDisassembler {
 		 * show symbol in the address in disassembler output.
 		 */
 		public final static String MNEMONICS_SHOW_SYMBOL = "ShowSymbol";
+
+		/**
+		 * address being disassembled is PC
+		 * @since 2.0
+		 */
+		public static final String ADDRESS_IS_PC = "AddressIsPC";
 	}
 
 	/**
@@ -60,13 +67,15 @@ public interface IDisassembler {
 	 *            memory bytes containing instructions.
 	 * @param options
 	 *            disassembler options.
-	 * 
-	 * @return a {@link DisassembledInstruction} object, null if no valid
+	 * @param dmc
+	 * 			  for context specific needs of the implementor (may be null)
+	 * @return a {@link IDisassembledInstruction} object, null if no valid
 	 *         instruction at the beginning of the code_bytes.
 	 * @throws CoreException
+	 * @since 2.0
 	 */
 	public IDisassembledInstruction disassembleOneInstruction(IAddress address, ByteBuffer code_bytes,
-			Map<String, Object> options) throws CoreException;
+			Map<String, Object> options, IDisassemblyDMContext dmc) throws CoreException;
 
 	/**
 	 * Disassemble a block of memory.
@@ -79,10 +88,13 @@ public interface IDisassembler {
 	 *            memory bytes
 	 * @param options
 	 *            disassembler options.
+	 * @param dmc
+	 * 			  for context specific needs of the implementor (may be null)
 	 * 
-	 * @return a list of {@link DisassembledInstruction} objects.
+	 * @return a list of {@link IDisassembledInstruction} objects.
 	 * @throws CoreException
+	 * @since 2.0
 	 */
 	public List<IDisassembledInstruction> disassembleInstructions(IAddress start_address, IAddress end_address,
-			ByteBuffer code_bytes, Map<String, Object> options) throws CoreException;
+			ByteBuffer code_bytes, Map<String, Object> options, IDisassemblyDMContext dmc) throws CoreException;
 }

@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: TCF Debug Ui Plug-in
+Bundle-Name: EDC Debug Ui Plug-in
 Bundle-SymbolicName: org.eclipse.cdt.debug.edc.ui;singleton:=true
 Bundle-Version: 2.0.0.qualifier
 Bundle-Activator: org.eclipse.cdt.debug.edc.internal.ui.EDCDebugUI

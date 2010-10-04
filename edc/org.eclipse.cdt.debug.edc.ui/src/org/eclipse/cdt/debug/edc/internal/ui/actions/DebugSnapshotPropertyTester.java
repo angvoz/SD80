@@ -13,6 +13,7 @@ package org.eclipse.cdt.debug.edc.internal.ui.actions;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.core.expressions.PropertyTester;
@@ -32,6 +33,7 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 		
 		boolean isEDCSession = false;
 		boolean isSnapshotSession = false;
+		boolean previousAvailable = false;
 
 		if (receiver instanceof IWorkbenchPart) {
 			Object selection = getContextSelectionForPart((IWorkbenchPart) receiver);
@@ -52,6 +54,9 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 			IDMContext context = testContext.getDMContext();
 			if (context instanceof IEDCDMContext) {
 				isEDCSession = true;
+				IAlbum album = Album.getAlbumBySession(sessionID);
+				IAlbum albumRecording = Album.getRecordingForSession(sessionID);
+				previousAvailable = album != null || albumRecording != null;
 			}
 		}
 		
@@ -62,7 +67,7 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 		} else if (property.equals("isSnapshotSession")) {
 			return isSnapshotSession;
 		} else if (property.equals("isPreviousSnapshotAvailable")) {
-			return true;
+			return previousAvailable;
 		}
 
 		return false;

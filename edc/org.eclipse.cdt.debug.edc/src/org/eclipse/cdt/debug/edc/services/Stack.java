@@ -26,7 +26,7 @@ import java.util.Map;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.launch.CSourceLookup;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
@@ -1064,14 +1064,14 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	}
 
 	public void getFrameData(IFrameDMContext frameDmc, DataRequestMonitor<IFrameDMData> rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, frameDmc);
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceEntry(frameDmc); }
 		rm.setData(new StackFrameData((StackFrameDMC) frameDmc));
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceExit(rm.getData()); }
 		rm.done();
 	}
 
 	public void getFrames(IDMContext execContext, DataRequestMonitor<IFrameDMContext[]> rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, execContext);
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceEntry(execContext); }
 
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(execContext, ExecutionDMC.class);
 		if (execDmc != null)
@@ -1086,7 +1086,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			rm.setData(getFramesForDMC((ExecutionDMC) execContext, 0, ALL_FRAMES));
 			if (rm.getData().length == 0)
 				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execDmc, null)); //$NON-NLS-1$
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceExit(rm.getData()); }
 			rm.done();
 		}
 		else {
@@ -1126,7 +1126,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	}
 
 	public void getStackDepth(IDMContext dmc, int maxDepth, DataRequestMonitor<Integer> rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, new Object[] { dmc, maxDepth });
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceEntry(new Object[] { dmc, maxDepth }); }
 		
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(dmc, ExecutionDMC.class);
 		if (execDmc != null)
@@ -1146,7 +1146,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			if (rm.getData() == 0)
 				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execDmc, null)); //$NON-NLS-1$
 
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceExit(rm.getData()); }
 			rm.done();
 		}
 		else {
@@ -1156,7 +1156,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	}
 
 	public void getTopFrame(IDMContext execContext, DataRequestMonitor<IFrameDMContext> rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE, execContext);
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceEntry(execContext); }
 		
 		IFrameDMContext[] frames = getFramesForDMC((ExecutionDMC) execContext, 0, 0);
 		if (frames.length == 0) {
@@ -1166,7 +1166,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return;
 		}
 		rm.setData(frames[0]);
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceExit(rm.getData()); }
 		rm.done();
 	}
 
@@ -1189,8 +1189,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	 * @see org.eclipse.cdt.dsf.debug.service.IStack#getFrames(org.eclipse.cdt.dsf.datamodel.IDMContext, int, int, org.eclipse.cdt.dsf.concurrent.DataRequestMonitor)
 	 */
 	public void getFrames(IDMContext execContext, int startIndex, int endIndex, DataRequestMonitor<IFrameDMContext[]> rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE,
-				new Object[] { execContext, startIndex, endIndex });
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceEntry(new Object[] { execContext, startIndex, endIndex }); }
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(execContext, ExecutionDMC.class);
 		if (execDmc != null)
 		{
@@ -1204,19 +1203,18 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			rm.setData(getFramesForDMC((ExecutionDMC) execContext, startIndex, endIndex));
 			if (rm.getData().length == 0)
 				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execContext, null)); //$NON-NLS-1$
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceExit(rm.getData()); }
 			rm.done();
 		}
 		else {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
 			rm.done();
 		}
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, rm.getData());
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceExit(rm.getData()); }
 	}
 
 	public IFrameDMContext[] getFramesForDMC(IEDCExecutionDMC context, int startIndex, int endIndex) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.STACK_TRACE,
-				new Object[] { context, startIndex, endIndex });
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceEntry(new Object[] { context, startIndex, endIndex }); }
 
 		if (!context.isSuspended() || 
 			! RunControl.isNonContainer(context))	// no frames for container context. 
@@ -1258,7 +1256,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				}
 			}
 			IFrameDMContext[] result = frames.toArray(new IFrameDMContext[frames.size()]);
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.STACK_TRACE, result);
+			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.traceExit(result); }
 			return result;
 		}
 	}

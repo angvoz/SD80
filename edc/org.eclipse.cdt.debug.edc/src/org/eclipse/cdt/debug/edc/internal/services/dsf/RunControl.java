@@ -27,7 +27,7 @@ import org.eclipse.cdt.debug.edc.JumpToAddress;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints.BreakpointDMData;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.EDCAddressRange;
@@ -133,8 +133,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public DMCSuspendedEvent(IExecutionDMContext dmc, StateChangeReason reason, Map<String, Object> params) {
 			super(dmc);
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-					new Object[] { dmc, reason, params });
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(new Object[] { dmc, reason, params }); }
 			this.reason = reason;
 			this.params = params;
 		}
@@ -266,8 +265,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		public ExecutionDMC(ExecutionDMC parent, Map<String, Object> props, RunControlContext tcfContext) {
 			super(RunControl.this, parent == null ? new IDMContext[0] : new IDMContext[] { parent }, props);
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-					new Object[] { parent, properties });
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(new Object[] { parent, properties }); }
 			this.parentExecutionDMC = parent;
 			this.tcfContext = tcfContext;
 			if (props != null) {
@@ -275,7 +273,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			}
 			if (parent != null)
 				parent.addChild(this);
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		private void addChild(ExecutionDMC executionDMC) {
@@ -310,7 +308,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		public abstract boolean canStep();
 
 		public void loadSnapshot(Element element) throws Exception {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, element);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(element); } 
 			NodeList ecElements = element.getElementsByTagName(EXECUTION_CONTEXT);
 			int numcontexts = ecElements.getLength();
 			for (int i = 0; i < numcontexts; i++) {
@@ -329,7 +327,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				}
 
 			}
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
@@ -403,8 +401,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		protected void contextSuspended(String pc, String reason, final Map<String, Object> params) {
 	        assert getExecutor().isInExecutorThread();
 
-	        EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-					new Object[] { pc, reason, params });
+	        if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(new Object[] { pc, reason, params }); }
 			if (pc != null) {
 				// the PC from TCF agent is decimal string.
 				// convert it to hex string.
@@ -489,7 +486,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				
 				preprocessOnSuspend(dmc, latestPC, preprocessDrm);
 			}
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		protected void clearDisabledRanges() {
@@ -524,12 +521,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 		
 		public Boolean canTerminate() {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(); }
 			boolean result = false;
 			synchronized (properties) {
 				result = RunControl.getProperty(properties, PROP_CAN_TERMINATE, result);
 			}
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE, result);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(result); }
 			return result;
 		}
 
@@ -541,7 +538,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 *            succeeds.
 		 */
 		public boolean supportsStepMode(StepType type) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
 
 			int mode = 0;
 			switch (type) {
@@ -573,7 +570,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 *            succeeds.
 		 */
 		public void resume(final RequestMonitor rm) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
 
 			flushCache(this);
 
@@ -586,12 +583,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 								public void run() {
 									if (error == null) {
 										contextResumed(true);
-
-										EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-												"Resume command succeeded.");
+										if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.trace("Resume command succeeded."); }
 									} else {
-										EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE,
-												"Resume command failed.");
+										if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.trace("Resume command failed."); }
 										rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
 												"Resume failed.", null));
 									}
@@ -602,7 +596,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					});
 				}
 			});
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		/**
@@ -613,7 +607,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 * @param rm
 		 */
 		protected void resumeForStepping(final RequestMonitor rm) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
 
 			setStepping(true);
 
@@ -635,7 +629,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				}
 			});
 		
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		private void handleTCFResumeDoneForStepping(String command, Exception tcfError, RequestMonitor rm) {
@@ -644,7 +638,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			String msg = command;
 			if (tcfError == null) {
 				msg += " succeeded.";
-				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE, msg);
+				if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.trace(msg); }
 				contextResumed(false);
 
 				// we'll mark it as done when we get next
@@ -653,7 +647,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				steppingRM = rm;
 			} else {
 				msg += " failed.";
-				EDCDebugger.getDefault().getTrace().trace(IEDCTraceOptions.RUN_CONTROL_TRACE, msg);
+				if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.trace(msg); }
 
 				setStepping(false);
 				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, msg, tcfError));
@@ -662,24 +656,24 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 
 		public void suspend(final RequestMonitor requestMonitor) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
 			Protocol.invokeLater(new Runnable() {
 				public void run() {
 					tcfContext.suspend(new DoneCommand() {
 
 						public void doneCommand(IToken token, Exception error) {
-							EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+							if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
 							requestMonitor.done();
-							EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+							if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 						}
 					});
 				}
 			});
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		public void terminate(final RequestMonitor requestMonitor) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
 
 			isTerminatingThanDisconnecting = true;
 			
@@ -689,15 +683,14 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						tcfContext.terminate(new DoneCommand() {
 
 							public void doneCommand(IToken token, Exception error) {
-								EDCDebugger.getDefault().getTrace()
-										.traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this);
+								if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
 								if (error != null) {
 									requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, 
 											"terminate() failed.", error));
 								}
 								
 								requestMonitor.done();
-								EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+								if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 							}
 						});
 					}
@@ -706,7 +699,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				// Snapshots, for e.g., don't have a TCF RunControlContext, so just remove all the contexts recursively
 				detachAllContexts();
 			}
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		protected ExecutionDMC getParent() {
@@ -749,7 +742,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 * from debugger UI and internal data cache.
 		 */
 		public void purgeFromDebugger(){
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(); }
 
 			for (ExecutionDMC e : getChildren())
 				// recursively forget children first
@@ -769,7 +762,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				// the last context is terminated or disconnected.
 				getSession().dispatchEvent(new ExitedEvent(getRootDMC(), isTerminatingThanDisconnecting), RunControl.this.getProperties());
 			
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		/**
@@ -795,8 +788,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		        return;
 	        }
 	        
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-					new Object[] { this, fireResumeEventNow });
+	        if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(new Object[] { this, fireResumeEventNow }); }
 			
 			setIsSuspended(false);
 			
@@ -805,7 +797,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			else
 				scheduleResumeEvent();
 
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		/** 
@@ -842,7 +834,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 * @param rm
 		 */
 		protected void singleStep(final boolean stepInto, final RequestMonitor rm) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this.getName()); }
 
 			setStepping(true);
 
@@ -864,7 +856,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					});
 				}
 			});
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		/**
@@ -875,7 +867,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		 * @param rm
 		 */
 		protected void stepOut(final RequestMonitor rm) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this.getName()); }
 
 			setStepping(true);
 
@@ -896,12 +888,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					});
 				}
 			});
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		protected void stepRange(final boolean stepInto, final IAddress rangeStart, final IAddress rangeEnd,
 				final RequestMonitor rm) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, this.getName());
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this.getName()); }
 
 			setStepping(true);
 
@@ -928,7 +920,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					});
 				}
 			});
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
 		/**
@@ -978,10 +970,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		@Override
 		public ExecutionDMC contextAdded(Map<String, Object> properties, RunControlContext tcfContext) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE, properties);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(properties); }
 			ThreadExecutionDMC newDMC = new ThreadExecutionDMC(this, properties, tcfContext);
 			getSession().dispatchEvent(new StartedEvent(newDMC), RunControl.this.getProperties());
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE, newDMC);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(newDMC); }
 			return newDMC;
 		}
 
@@ -1030,10 +1022,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public ThreadExecutionDMC(ExecutionDMC parent, Map<String, Object> properties, RunControlContext tcfContext) {
 			super(parent, properties, tcfContext);
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-					new Object[] { parent, properties });
-			;
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { 
+				EDCTrace.traceEntry(new Object[] { parent, properties }); }
+				EDCTrace.traceExit();
 		}
 
 		public ISymbolDMContext getSymbolDMContext() {
@@ -1362,8 +1353,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	}
 
 	public void resume(IExecutionDMContext context, final RequestMonitor rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-				MessageFormat.format("resume context {0}", context));
+		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(MessageFormat.format("resume context {0}", context)); }
 
 		if (!(context instanceof ExecutionDMC)) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, MessageFormat.format(
@@ -1378,8 +1368,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			@Override
 			protected void handleSuccess() {
 				dmc.resume(rm);
-				EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
-						MessageFormat.format("resume() done on context {0}", dmc));
+				if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(MessageFormat.format("resume() done on context {0}", dmc)); }
 			}
 		});
 	}
@@ -1458,8 +1447,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	}
 	
 	public void step(IExecutionDMContext context, StepType stepType, final RequestMonitor rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-				MessageFormat.format("{0} context {1}", stepType, context));
+		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(MessageFormat.format("{0} context {1}", stepType, context)); }
 
 		if (!(context instanceof ExecutionDMC)) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, MessageFormat.format(
@@ -1567,8 +1555,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						else
 							stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
 
-						EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE,
-								"source level stepping.");
+						if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit("source level stepping."); }
 						return;
 					}
 				}
@@ -1590,13 +1577,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		else if (stepType == StepType.INSTRUCTION_STEP_RETURN)
 			stepOut(dmc, pcAddress, rm);
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.RUN_CONTROL_TRACE);
+		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	private void stepOut(final ExecutionDMC dmc, IAddress pcAddress, final RequestMonitor rm) {
 
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-				"Step out from address " + pcAddress.toHexAddressString());
+		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry("Step out from address " + pcAddress.toHexAddressString()); }
 
 		if (dmc.supportsStepMode(StepType.STEP_RETURN)) {
 			dmc.stepOut(rm);
@@ -1726,8 +1712,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 */
 	private void stepOverOneInstruction(final ExecutionDMC dmc, final IAddress pcAddress, final RequestMonitor rm) {
 
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.RUN_CONTROL_TRACE,
-				"address " + pcAddress.toHexAddressString());
+		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry("address " + pcAddress.toHexAddressString()); }
 
 		if (dmc.supportsStepMode(StepType.INSTRUCTION_STEP_OVER)) {
 			dmc.singleStep(false, rm);
@@ -1829,10 +1814,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	private void stepAddressRange(final ExecutionDMC dmc, final boolean stepIn, final IAddress startAddr,
 			final IAddress endAddr, final RequestMonitor rm) {
 
-		EDCDebugger.getDefault().getTrace().traceEntry(
-				IEDCTraceOptions.RUN_CONTROL_TRACE,
-				MessageFormat.format("address range [{0},{1})", startAddr.toHexAddressString(), endAddr
-						.toHexAddressString()));
+		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(MessageFormat.format("address range [{0},{1})", startAddr.toHexAddressString(), endAddr.toHexAddressString())); }
 
 		if (dmc.supportsStepMode(stepIn ? StepType.STEP_INTO : StepType.STEP_OVER)) {
 			dmc.stepRange(stepIn, startAddr, endAddr, rm);

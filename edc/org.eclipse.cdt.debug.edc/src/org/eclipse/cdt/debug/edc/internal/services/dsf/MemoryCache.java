@@ -21,7 +21,7 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.IAddressFactory;
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
@@ -134,8 +134,7 @@ public class MemoryCache implements ISnapshotContributor {
      * to service the request
      */
 	private LinkedList<MemoryBlock> getListOfMissingBlocks(IAddress reqBlockStart, int count) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { reqBlockStart.toHexAddressString(), count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { reqBlockStart.toHexAddressString(), count }); }
 		LinkedList<MemoryBlock> list = new LinkedList<MemoryBlock>();
 
 		ListIterator<MemoryBlock> it = memoryBlockList.listIterator();
@@ -193,7 +192,7 @@ public class MemoryCache implements ISnapshotContributor {
 			list.add(newBlock);
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE, list);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(list); }
 		return list;
 	}
 
@@ -221,8 +220,7 @@ public class MemoryCache implements ISnapshotContributor {
 	 * @return The cached memory content
 	 */
 	private MemoryByte[] getMemoryBlockFromCache(IAddress reqBlockStart, int count) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { reqBlockStart.toHexAddressString(), count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { reqBlockStart.toHexAddressString(), count }); }
 
 		MemoryByte[] resultBlock = new MemoryByte[count];
 
@@ -261,7 +259,7 @@ public class MemoryCache implements ISnapshotContributor {
 			}
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE, resultBlock);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(resultBlock); }
 		return resultBlock;
 	}
 
@@ -274,8 +272,7 @@ public class MemoryCache implements ISnapshotContributor {
 	 * @param modBlock
 	 */
 	private void updateMemoryCache(IAddress modBlockStart, int count, MemoryByte[] modBlock) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { modBlockStart.toHexAddressString(), count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { modBlockStart.toHexAddressString(), count }); }
 		IAddress modBlockEnd = modBlockStart.add(count);
 		ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
 
@@ -317,7 +314,7 @@ public class MemoryCache implements ISnapshotContributor {
 			}
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 		return;
 	}
 
@@ -335,8 +332,7 @@ public class MemoryCache implements ISnapshotContributor {
 	 */
 	public void getMemory(final IMemory tcfMemoryService, final IMemoryDMContext context, final IAddress address,
 			final int word_size, final int count, final DataRequestMonitor<MemoryByte[]> drm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { context, address.toHexAddressString(), word_size, count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { context, address.toHexAddressString(), word_size, count }); }
 
 		// determine number of read requests to issue
 		final LinkedList<MemoryBlock> missingBlocks = getListOfMissingBlocks(address, count);
@@ -370,7 +366,7 @@ public class MemoryCache implements ISnapshotContributor {
 		}
 		drm.setData(getMemoryBlockFromCache(address, count));
 		drm.done();
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	private MemoryContext getTCFMemoryContext(final IMemory tcfMemoryService, final String contextID) throws IOException {
@@ -421,8 +417,7 @@ public class MemoryCache implements ISnapshotContributor {
 	private MemoryByte[] readBlock(final IMemory tcfMemoryService, final IMemoryDMContext context,
 			final IAddress address, final int word_size, final int count) throws IOException {
 
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { context, address.toHexAddressString(), word_size, count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { context, address.toHexAddressString(), word_size, count }); }
 
 		final MemoryContext tcfMC = getTCFMemoryContext(tcfMemoryService, ((IEDCDMContext)context).getID());
 		
@@ -478,7 +473,7 @@ public class MemoryCache implements ISnapshotContributor {
 			throw e;
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 		return result;
 	}
 
@@ -498,8 +493,7 @@ public class MemoryCache implements ISnapshotContributor {
 	public void setMemory(IMemory tcfMemoryService, IMemoryDMContext context, final IAddress address,
 			final long offset, final int word_size, final int count, byte[] buffer, final RequestMonitor rm) {
 
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { context, address.toHexAddressString(), offset, word_size, count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { context, address.toHexAddressString(), offset, word_size, count }); }
 
 		try {
 			writeBlock(tcfMemoryService, context, address, offset, word_size, count, buffer);
@@ -513,7 +507,7 @@ public class MemoryCache implements ISnapshotContributor {
 		}
 		rm.done();
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	/**
@@ -524,8 +518,7 @@ public class MemoryCache implements ISnapshotContributor {
 	 * @return
 	 */
 	private boolean blockIsCached(IAddress modBlockStart, int count) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { modBlockStart.toHexAddressString(), count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { modBlockStart.toHexAddressString(), count }); }
 		boolean cacheFound = false;
 
 		IAddress modBlockEnd = modBlockStart.add(count);
@@ -564,7 +557,7 @@ public class MemoryCache implements ISnapshotContributor {
 			}
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE, cacheFound);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(cacheFound); }
 		return cacheFound;
 	}
 
@@ -583,8 +576,7 @@ public class MemoryCache implements ISnapshotContributor {
 	private void writeBlock(final IMemory tcfMemoryService, final IMemoryDMContext context, final IAddress address,
 			final long offset, final int word_size, final int count, final byte[] buffer) throws IOException {
 
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { context, address.toHexAddressString(), offset, word_size, count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { context, address.toHexAddressString(), offset, word_size, count }); }
 
 		final TCFTask<MemoryByte[]> tcfTask = new TCFTask<MemoryByte[]>(TIMEOUT) {
 
@@ -620,7 +612,7 @@ public class MemoryCache implements ISnapshotContributor {
 			throw e;
 		}
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 	}
 
 	private final Map<String, MemoryContext>	tcfMemoryContexts;
@@ -649,8 +641,7 @@ public class MemoryCache implements ISnapshotContributor {
 		// blocks if necessary
 		@Override
 		public boolean add(MemoryBlock block) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-					new Object[] { block.fAddress.toHexAddressString(), block.fLength });
+			if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { block.fAddress.toHexAddressString(), block.fLength }); }
 
 			// If the list is empty, just store the block
 			if (isEmpty()) {
@@ -675,7 +666,7 @@ public class MemoryCache implements ISnapshotContributor {
 			addLast(block);
 			compact(size() - 1);
 
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+			if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 			return true;
 		}
 
@@ -683,7 +674,7 @@ public class MemoryCache implements ISnapshotContributor {
 		// Note: Merge is not performed if resulting block size would exceed
 		// MAXINT
 		private void compact(int index) {
-			EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE, new Object[] { index });
+			if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { index }); }
 
 			MemoryBlock newBlock = get(index);
 
@@ -723,7 +714,7 @@ public class MemoryCache implements ISnapshotContributor {
 				}
 			}
 
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+			if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 	}
 
@@ -741,8 +732,7 @@ public class MemoryCache implements ISnapshotContributor {
 	 */
 	public boolean refreshMemory(IMemory tcfMemoryService, IMemoryDMContext context, IAddress address, int offset,
 			int word_size, int count, RequestMonitor rm) {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.MEMORY_TRACE,
-				new Object[] { context, address.toHexAddressString(), offset, count });
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceEntry(new Object[] { context, address.toHexAddressString(), offset, count }); }
 
 		boolean modified = false;
 		// Check if we already cache part of this memory area (which means it
@@ -779,7 +769,7 @@ public class MemoryCache implements ISnapshotContributor {
 		}
 		rm.done();
 
-		EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.MEMORY_TRACE);
+		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
 		return modified;
 	}
 

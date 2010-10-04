@@ -16,7 +16,7 @@ import java.text.MessageFormat;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.IEDCTraceOptions;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
@@ -161,14 +161,13 @@ public class OperandValue {
 
 	private Number getBasicTypeValue(IType varType, IVariableLocation location)
 		throws CoreException {
-		EDCDebugger.getDefault().getTrace().traceEntry(IEDCTraceOptions.VARIABLE_VALUE_TRACE,
-				new Object[] { varType, location });
+		if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.traceEntry(new Object[] { varType, location }); }
 		Number result = null;
 		try {
 			result = doGetBasicTypeValue(varType, location);
 			return result;
 		} finally {
-			EDCDebugger.getDefault().getTrace().traceExit(IEDCTraceOptions.VARIABLE_VALUE_TRACE, result);
+			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.traceExit(result); }
 		}
 	}
 

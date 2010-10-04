@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.edc.IJumpToAddress;
 import org.eclipse.cdt.debug.edc.JumpToAddress;
 import org.eclipse.cdt.debug.edc.disassembler.AssemblyFormatter;
+import org.eclipse.cdt.debug.edc.disassembler.CodeBufferUnderflowException;
 import org.eclipse.cdt.debug.edc.disassembler.DisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
@@ -123,7 +123,8 @@ public class InstructionParserARM {
 	 *         {@link DisassembledInstruction} object.
 	 * @throws CoreException
 	 */
-	public DisassembledInstruction disassemble(Map<String, Object> options) throws CoreException {
+	public DisassembledInstruction disassemble(Map<String, Object> options)
+      throws CoreException {
 		initialize();
 
 		parsed = true;
@@ -196,7 +197,7 @@ public class InstructionParserARM {
 				mnemonics = parseThumbOpcode(opcode, opcode2);
 			}
 		} catch (BufferUnderflowException e) {
-			err = ARMPlugin.newCoreException("Error: end of code buffer reached.", e);
+			throw new CodeBufferUnderflowException(e);
 		}
 
 		// Now we are done with parsing.
@@ -248,7 +249,7 @@ public class InstructionParserARM {
 	}
 
 	private void fillInJumpToAddress() {
-		IJumpToAddress jta = null;
+		JumpToAddress jta = null;
 		if (jumpToAddr != null) {
 			jta = new JumpToAddress(jumpToAddr, isSoleDestination, isSubroutineAddress);
 		} else if (addrExpression != null) {
@@ -289,8 +290,13 @@ public class InstructionParserARM {
 				instruction = "umlal" + getCondition(opcode) + getS(opcode) + "\t" + getRdLo(opcode) + ","
 						+ getRdHi(opcode) + "," + getRm(opcode) + "," + getRs(opcode);
 			} else {
-				instruction = "adc" + getCondition(opcode) + getS(opcode) + "\t" + getRd(opcode) + "," + getRn(opcode)
+				condString = getCondition(opcode);
+				temp = getRd(opcode);
+				instruction = "adc" + condString + getS(opcode) + "\t" + temp + "," + getRn(opcode)
 						+ "," + getShifterOperand(opcode);
+
+				if (temp.equals("pc"))
+					setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			}
 			break;
 		case arm_add:
@@ -300,8 +306,13 @@ public class InstructionParserARM {
 				instruction = "umull" + getCondition(opcode) + getS(opcode) + "\t" + getRdLo(opcode) + ","
 						+ getRdHi(opcode) + "," + getRm(opcode) + "," + getRs(opcode);
 			} else {
-				instruction = "add" + getCondition(opcode) + getS(opcode) + "\t" + getRd(opcode) + "," + getRn(opcode)
+				condString = getCondition(opcode);
+				temp = getRd(opcode);
+				instruction = "add" + condString + getS(opcode) + "\t" + temp + "," + getRn(opcode)
 						+ "," + getShifterOperand(opcode);
+
+				if (temp.equals("pc"))
+					setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			}
 			break;
 		case arm_and:
@@ -319,14 +330,10 @@ public class InstructionParserARM {
 		case arm_bl:
 			offset = getBranchOffset(opcode);
 			condString = getCondition(opcode);
-			if (condString.length() == 0) {
-				condString = "\t";
-			}
-			
-			isSoleDestination = false;
-			isSubroutineAddress = (opcodeIndex == OpcodeARM.Index.arm_bl);
-			jumpToAddr = address.add(offset);
-			instruction = mnemonic + condString + "\t" + getHexValue(jumpToAddr.getValue().intValue());
+			isSoleDestination = (condString.length() == 0); // true if unconditional b or bl
+			isSubroutineAddress = (opcodeIndex == OpcodeARM.Index.arm_bl); // only bl is a subroutine call
+			jumpToAddr = address.add(offset); // immediate address known
+			instruction = mnemonic + condString + "\t" + jumpToAddr.toHexAddressString();
 			break;
 		case arm_bic:
 			instruction = mnemonic + getCondition(opcode) + "\t" + getRd(opcode) + "," + getRn(opcode) + ","
@@ -337,26 +344,23 @@ public class InstructionParserARM {
 			break;
 		case arm_blx1:
 			offset = getBranchOffset(opcode) | ((opcode >> 23) & 2);
-			isSoleDestination = true;
+			isSoleDestination = true; // no condition
 			isSubroutineAddress = true;
-			jumpToAddr = address.add(offset);
-			instruction = mnemonic + "\t" + getHexValue(jumpToAddr.getValue().intValue());
+			jumpToAddr = address.add(offset); // immediate address known
+			instruction = mnemonic + "\t" + jumpToAddr.toHexAddressString();
 			break;
 		case arm_blx2:
 			instruction = mnemonic + getCondition(opcode) + "\t" + getRm(opcode);
-			isSoleDestination = false;
+			isSoleDestination = (condString.length() == 0); // true if unconditional blx
 			isSubroutineAddress = true;
-			addrExpression = getRm(opcode);
+			addrExpression = getRm(opcode); // branches to the address in Rm register
 			break;
 		case arm_bx:
 			condString = getCondition(opcode);
-			if (condString.length() == 0) {
-				condString = "\t";
-			}
 			instruction = mnemonic + condString + "\t" + getRm(opcode);
-			isSoleDestination = false;
+			isSoleDestination = (condString.length() == 0); // true if unconditional bx
 			isSubroutineAddress = false;
-			addrExpression = getRm(opcode);
+			addrExpression = getRm(opcode); // branches to the address in Rm register
 			break;
 		case arm_cdp:
 		case arm_cdp2:
@@ -403,16 +407,24 @@ public class InstructionParserARM {
 		case arm_ldm1:
 		case arm_ldm2:
 		case arm_ldm3:
-			instruction = mnemonic + getCondition(opcode) + getAddrMode4(opcode) + "\t" + getRn(opcode) + getW(opcode)
-					+ "," + getRegList(opcode) + getUserMode(opcode);
+			temp = getRegList(opcode);
+			condString = getCondition(opcode);
+			instruction = mnemonic + condString + getAddrMode4(opcode) + "\t" + getRn(opcode) + getW(opcode)
+					+ "," + temp + getUserMode(opcode);
+			if (temp.contains("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_ldr:
 		case arm_ldrt:
+			temp = getRd(opcode);
+			condString = getCondition(opcode);
 			if (p == 0 && w == 1) {
-				instruction = "ldr" + getCondition(opcode) + "t" + "\t" + getRd(opcode) + "," + getAddrMode2(opcode);
+				instruction = "ldr" + condString + "t" + "\t" + temp + "," + getAddrMode2(opcode);
 			} else {
-				instruction = "ldr" + getCondition(opcode) + "\t" + getRd(opcode) + "," + getAddrMode2(opcode);
-			}
+				instruction = "ldr" + condString + "\t" + temp + "," + getAddrMode2(opcode);			}
+			
+			if (temp.equals("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_ldrb:
 		case arm_ldrbt:
@@ -420,26 +432,46 @@ public class InstructionParserARM {
 			if (condition == 0xf) {
 				instruction = "pld" + "\t" + getAddrMode2(opcode);
 			} else {
+				temp = getRd(opcode);
+				condString = getCondition(opcode);
 				if (p == 0 && w == 1) {
-					instruction = "ldr" + getCondition(opcode) + "bt" + "\t" + getRd(opcode) + ","
-							+ getAddrMode2(opcode);
+					instruction
+					= "ldr" + condString + "bt" + "\t" + temp + "," + getAddrMode2(opcode);
 				} else {
-					instruction = "ldr" + getCondition(opcode) + "b" + "\t" + getRd(opcode) + ","
+					instruction = "ldr" + condString + "b" + "\t" + temp + ","
 							+ getAddrMode2(opcode);
 				}
+				if (temp.equals("pc"))
+					setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			}
 			break;
 		case arm_ldrd:
-			instruction = "ldr" + getCondition(opcode) + "d" + "\t" + getRd(opcode) + "," + getAddrMode3(opcode);
+			temp = getRd(opcode);
+			condString = getCondition(opcode);
+			instruction = "ldr" + condString + "d" + "\t" + temp + "," + getAddrMode3(opcode);
+			if (temp.equals("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_ldrh:
-			instruction = "ldr" + getCondition(opcode) + "h" + "\t" + getRd(opcode) + "," + getAddrMode3(opcode);
+			temp = getRd(opcode);
+			condString = getCondition(opcode);
+			instruction = "ldr" + condString + "h" + "\t" + temp + "," + getAddrMode3(opcode);
+			if (temp.equals("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_ldrsb:
-			instruction = "ldr" + getCondition(opcode) + "sb" + "\t" + getRd(opcode) + "," + getAddrMode3(opcode);
+			temp = getRd(opcode);
+			condString = getCondition(opcode);
+			instruction = "ldr" + condString + "sb" + "\t" + temp + "," + getAddrMode3(opcode);
+			if (temp.equals("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_ldrsh:
-			instruction = "ldr" + getCondition(opcode) + "sh" + "\t" + getRd(opcode) + "," + getAddrMode3(opcode);
+			temp = getRd(opcode);
+			condString = getCondition(opcode);
+			instruction = "ldr" + condString + "sh" + "\t" + temp + "," + getAddrMode3(opcode);
+			if (temp.equals("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_mcr:
 		case arm_mcr2:
@@ -469,12 +501,11 @@ public class InstructionParserARM {
 			break;
 		case arm_mov:
 			shifterOperand = getShifterOperand(opcode);
-			instruction = mnemonic + getCondition(opcode) + getS(opcode) + "\t" + getRd(opcode) + "," + shifterOperand;
-			if (getRd(opcode).equals("pc") && isRegister(shifterOperand)) {
-				isSoleDestination = false;
-				isSubroutineAddress = false;
-				addrExpression = shifterOperand;
-			}
+			condString = getCondition(opcode);
+			temp = getRd(opcode);
+			instruction = mnemonic + condString + getS(opcode) + "\t" + temp + "," + shifterOperand;
+			if (temp.equals("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_mrc:
 		case arm_mrc2:
@@ -615,8 +646,12 @@ public class InstructionParserARM {
 			instruction = "str" + getCondition(opcode) + "h" + "\t" + getRd(opcode) + "," + getAddrMode3(opcode);
 			break;
 		case arm_sub:
-			instruction = mnemonic + getCondition(opcode) + getS(opcode) + "\t" + getRd(opcode) + "," + getRn(opcode)
+			condString = getCondition(opcode);
+			temp = getRd(opcode);
+			instruction = mnemonic + condString + getS(opcode) + "\t" + temp + "," + getRn(opcode)
 					+ "," + getShifterOperand(opcode);
+			if (temp.equals("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_swi:
 			instruction = mnemonic + getCondition(opcode) + "\t" + getImmediate24(opcode);
@@ -651,7 +686,11 @@ public class InstructionParserARM {
 			instruction = mnemonic + " " + temp + "\t" + "#" + (opcode & 0x1f);
 			break;
 		case arm_cpy:
-			instruction = mnemonic + getCondition(opcode) + "\t" + getRd(opcode) + "," + getRm(opcode);
+			condString = getCondition(opcode);
+			temp = getRd(opcode);
+			instruction = mnemonic + condString + "\t" + temp + "," + getRm(opcode);
+			if (temp.equals("pc"))
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 		case arm_pkhbt:
 			if (((opcode >> 7) & 0x1f) != 0)
@@ -993,31 +1032,53 @@ public class InstructionParserARM {
 
 		String instruction = "";
 		String regList = "";
+		String regOp = "";
 		int offset;
 		int bit;
 		switch (opcodeIndex) {
 		case thumb_adc:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
+			regOp = getThumbReg(opcode, 0);
+			instruction = mnemonic + "\t" + regOp + "," + getThumbReg(opcode, 3);
+			if (regOp.equals("pc"))
+				setDefaultPCJumpProperties(true);
 			break;
 		case thumb_add1:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + ","
-					+ getThumbImmediate3(opcode);
+			regOp = getThumbReg(opcode, 0);
+			instruction
+			  = mnemonic + "\t" + regOp + "," + getThumbReg(opcode, 3) + "," + getThumbImmediate3(opcode);
+			if (regOp.equals("pc"))
+				setDefaultPCJumpProperties(true);
 			break;
 		case thumb_add2:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + "," + getThumbImmediate8(opcode, 1);
+			regOp = getThumbReg(opcode, 8);
+			instruction = mnemonic + "\t" + regOp + "," + getThumbImmediate8(opcode, 1);
+			if (regOp.equals("pc"))
+				setDefaultPCJumpProperties(true);
 			break;
 		case thumb_add3:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + ","
-					+ getThumbReg(opcode, 6);
+			regOp = getThumbReg(opcode, 0);
+			instruction
+			  = mnemonic + "\t" + regOp + "," + getThumbReg(opcode, 3) + "," + getThumbReg(opcode, 6);
+			if (regOp.equals("pc"))
+				setDefaultPCJumpProperties(true);
 			break;
 		case thumb_add4:
-			instruction = mnemonic + "\t" + getThumbRegHigh(opcode, 0, 7) + "," + getThumbRegHigh(opcode, 3, 6);
+			regOp = getThumbRegHigh(opcode, 0, 7);
+			instruction = mnemonic + "\t" + regOp + "," + getThumbRegHigh(opcode, 3, 6);
+			if (regOp.equals("pc"))
+				setDefaultPCJumpProperties(true);
 			break;
 		case thumb_add5:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + ",pc," + getThumbImmediate8(opcode, 4);
+			regOp = getThumbReg(opcode, 8);
+			instruction = mnemonic + "\t" + regOp + ",pc," + getThumbImmediate8(opcode, 4);
+			if (regOp.equals("pc"))
+				setDefaultPCJumpProperties(true);
 			break;
 		case thumb_add6:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + ",sp," + getThumbImmediate8(opcode, 4);
+			regOp = getThumbReg(opcode, 8);
+			instruction = mnemonic + "\t" + regOp + ",sp," + getThumbImmediate8(opcode, 4);
+			if (regOp.equals("pc"))
+				setDefaultPCJumpProperties(true);
 			break;
 		case thumb_add7:
 			instruction = mnemonic + "\tsp," + getThumbImmediate7(opcode, 4);
@@ -1035,20 +1096,17 @@ public class InstructionParserARM {
 		case thumb_b1:
 			offset = getThumbBranchOffset8(opcode);
 			String condString = getThumbCondition(opcode);
-			if (condString.length() == 0) {
-				condString = "\t";
-			}
-			isSoleDestination = false;
+			isSoleDestination = condString.length() == 0; // true if unconditional
 			isSubroutineAddress = false;
 			jumpToAddr = address.add(offset);
-			instruction = mnemonic + condString + "\t" + getHexValue(jumpToAddr.getValue().intValue());
+			instruction = mnemonic + condString + "\t" + jumpToAddr.toHexAddressString();
 			break;
 		case thumb_b2:
 			offset = getThumbBranchOffset11(opcode);
 			isSoleDestination = true;
 			isSubroutineAddress = false;
 			jumpToAddr = address.add(offset);
-			instruction = mnemonic + "\t\t" + getHexValue(jumpToAddr.getValue().intValue());
+			instruction = mnemonic + "\t" + jumpToAddr.toHexAddressString();
 			break;
 		case thumb_bic:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
@@ -1062,11 +1120,11 @@ public class InstructionParserARM {
 			
 			if (h == 3) {
 				jumpToAddr = address.add(offset);
-				instruction = "bl" + "\t\t" + getHexValue(jumpToAddr.getValue().intValue());
+				instruction = "bl" + "\t" + jumpToAddr.toHexAddressString();
 			} else {
 				// Word align the result
 				jumpToAddr = new Addr64(address.add(offset).getValue().clearBit(1));
-				instruction = "blx" + "\t" + getHexValue(jumpToAddr.getValue().intValue());
+				instruction = "blx" + "\t" + jumpToAddr.toHexAddressString();
 			}
 			isSoleDestination = true;
 			isSubroutineAddress = true;
@@ -1079,7 +1137,7 @@ public class InstructionParserARM {
 			addrExpression = getThumbReg(opcode, 3);
 			break;
 		case thumb_bx:
-			instruction = mnemonic + "\t\t" + getThumbRegHigh(opcode, 3,6);
+			instruction = mnemonic + "\t" + getThumbRegHigh(opcode, 3,6);
 			isSoleDestination = true;
 			isSubroutineAddress = false;
 			addrExpression = getThumbRegHigh(opcode, 3, 6);
@@ -1100,8 +1158,9 @@ public class InstructionParserARM {
 			instruction = mnemonic + getThumbEffect(opcode) + "\t" + getThumbIFlags(opcode);
 			break;
 		case thumb_cpy:
-			instruction = mnemonic + "\t" + getThumbRegHigh(opcode, 0, 7) + "," + getThumbRegHigh(opcode, 3, 6);
-			if (getThumbRegHigh(opcode, 0, 7).equals("pc")) {
+			regOp = getThumbRegHigh(opcode, 0, 7);
+			instruction = mnemonic + "\t" + regOp + "," + getThumbRegHigh(opcode, 3, 6);
+			if (regOp.equals("pc")) {
 				isSoleDestination = true;
 				isSubroutineAddress = false;
 				addrExpression = getThumbRegHigh(opcode, 3, 6);
@@ -1126,54 +1185,58 @@ public class InstructionParserARM {
 			break;
 		case thumb_ldr4:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + ",[sp," + getThumbImmediate8(opcode, 4) + "]";
+			if (getThumbReg(opcode, 8).equals("pc")) {
+				isSoleDestination = true;
+				isSubroutineAddress = false;
+				addrExpression = getThumbImmediate8(opcode, 4);
+			}	
 			break;
 		case thumb_ldrb1:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
 					+ getThumbImmediate5(opcode, 1) + "]";
 			break;
-		case thumb_ldrb2:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
-					+ getThumbReg(opcode, 6) + "]";
-			break;
 		case thumb_ldrh1:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
 					+ getThumbImmediate5(opcode, 2) + "]";
 			break;
+		case thumb_ldrb2:
 		case thumb_ldrh2:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
-					+ getThumbReg(opcode, 6) + "]";
-			break;
 		case thumb_ldrsb:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
-					+ getThumbReg(opcode, 6) + "]";
-			break;
 		case thumb_ldrsh:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
 					+ getThumbReg(opcode, 6) + "]";
 			break;
 		case thumb_lsl1:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + ","
-					+ getThumbImmediate5(opcode, 1);
-			break;
-		case thumb_lsl2:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			break;
 		case thumb_lsr1:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + ","
 					+ getThumbImmediate5(opcode, 1);
 			break;
+		case thumb_lsl2:
 		case thumb_lsr2:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
 			break;
 		case thumb_mov1:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + "," + getThumbImmediate8(opcode, 1);
+			regOp = getThumbReg(opcode, 8);
+			instruction = mnemonic + "\t" + regOp + "," + getThumbImmediate8(opcode, 1);
+			if (regOp.equals("pc")) {
+				isSoleDestination = true;
+				isSubroutineAddress = false;
+				addrExpression = getThumbImmediate8(opcode, 1);
+			}	
 			break;
 		case thumb_mov2:
-			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
+			regOp = getThumbReg(opcode, 0);
+			instruction = mnemonic + "\t" + regOp + "," + getThumbReg(opcode, 3);
+			if (regOp.equals("pc")) {
+				isSoleDestination = true;
+				isSubroutineAddress = false;
+				addrExpression = getThumbReg(opcode, 3);
+			}	
 			break;
 		case thumb_mov3:
-			instruction = mnemonic + "\t" + getThumbRegHigh(opcode, 0, 7) + "," + getThumbRegHigh(opcode, 3, 6);
-			if (getThumbRegHigh(opcode, 0, 7).equals("pc")) {
+			regOp = getThumbRegHigh(opcode, 0, 7);
+			instruction = mnemonic + "\t" + regOp + "," + getThumbRegHigh(opcode, 3, 6);
+			if (regOp.equals("pc")) {
 				isSoleDestination = true;
 				isSubroutineAddress = false;
 				addrExpression = getThumbRegHigh(opcode, 3, 6);
@@ -1191,11 +1254,7 @@ public class InstructionParserARM {
 				// This is an unconditional jump. 
 				regList = getThumbRegList(opcode, "pc");
 
-				isSoleDestination = true;
-				isSubroutineAddress = false;
-				// Though it's something like "pop (pc)", we just fake it
-				// as using Link Register, which is fine in practice.
-				addrExpression = JumpToAddress.EXPRESSION_LR;
+				setDefaultPCJumpProperties(true);
 			} else {
 				regList = getThumbRegList(opcode, null);
 			}
@@ -1283,12 +1342,13 @@ public class InstructionParserARM {
 		return instruction;
 	}
 
-	private boolean isRegister(String expression) {
-		if ((expression.startsWith("r") && expression.length() < 4) || expression.equals("sp")
-				|| expression.equals("lr") || expression.equals("pc")) {
-			return true;
-		}
-		return false;
+	private void setDefaultPCJumpProperties(boolean soleDestination) {
+		isSoleDestination = soleDestination;
+		isSubroutineAddress = false;
+
+		// Though it's something like establishing the PC with an address,
+		// we just fake itas using Link Register, which is fine in practice.
+		addrExpression = JumpToAddress.EXPRESSION_LR;
 	}
 
 	private boolean isThumbBL(int opcode) {

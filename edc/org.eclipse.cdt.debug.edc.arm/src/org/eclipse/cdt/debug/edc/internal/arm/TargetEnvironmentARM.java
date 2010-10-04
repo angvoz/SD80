@@ -17,6 +17,8 @@ import java.math.BigInteger;
 import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
@@ -25,6 +27,7 @@ import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.AddressExpressionEvaluatorARM;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM;
 import org.eclipse.cdt.debug.edc.services.AbstractTargetEnvironment;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
@@ -37,6 +40,7 @@ import org.eclipse.cdt.debug.edc.symbols.ISymbol;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.ILaunch;
@@ -120,7 +124,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 	 */
 	public IDisassembler getDisassembler() {
 		if (disassembler == null) {
-			disassembler = new DisassemblerARM();
+			disassembler = new DisassemblerARM(this);
 		}
 
 		return disassembler;
@@ -160,12 +164,9 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 
 		if (useCPSR) {
 			// bit 5 of the CPSR tells us the current processor mode. this is
-			// the
-			// most reliable way of getting the processor mode, but only works
-			// when
-			// we're getting the mode for the PC address (or very close to it).
-			// other
-			// addresses could be in either mode.
+			// the most reliable way of getting the processor mode, but only
+			// works when we're getting the mode for the PC address (or very
+			// close to it).  other addresses could be in either mode.
 			Registers registersService = getServicesTracker().getService(Registers.class);
 			return new BigInteger(registersService.getRegisterValue(exeDMC, ARMRegisters.CPSR), 16).testBit(5);
 		}
@@ -174,11 +175,24 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 		if (address.getValue().testBit(0)) {
 			return true;
 		}
-
+		
+		// if the address is question is two-byte aligned then it must be thumb
+		if (address.getValue().testBit(1)) {
+			return true;
+		}
+		
 		// see if the PC is in an executable that we know about
 		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
 		IEDCModuleDMContext module = modules.getModuleByAddress(exeDMC.getSymbolDMContext(), address);
 		if (module != null) {
+			
+			// first, see if we have cached info from earlier stack crawls
+			Set<IAddress> thumbAddresses = (Set<IAddress>) module.getProperty(ARMStack.THUMB_ADDRESSES);
+			if (thumbAddresses != null) {
+				if (thumbAddresses.contains(address))
+					return true;
+			}
+			
 			IEDCSymbolReader reader = module.getSymbolReader();
 			IAddress linkAddress = module.toLinkAddress(address);
 			
@@ -245,8 +259,27 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 					}
 				}
 			}
+		} else {
+			// no module?  try the rootmost execution DMC
+	
+			IDMContext[] parents = context.getParents();
+			if (parents != null) {
+				IEDCDMContext rootProcessDMC = null;
+				for (int i = parents.length-1 ; i >= 0; i--) {
+					if (parents[i] instanceof IEDCDMContext && parents[i] instanceof IProcessDMContext) {
+						rootProcessDMC = (IEDCDMContext) parents[i];
+						break;
+					}
+				}
+				if (rootProcessDMC != null) {
+					Set<IAddress> thumbAddresses
+					  = (Set<IAddress>) rootProcessDMC.getProperty(ARMStack.THUMB_ADDRESSES);
+					if (thumbAddresses != null && thumbAddresses.contains(address))
+						return true;
+				}
+			}
 		}
-
+		
 		// TODO we have no other way of finding the mode, so check the pref?  we'd need a pref for EDC ARM
 		// debugger for default mode (arm/thumb) when the mode cannot be determined.
 

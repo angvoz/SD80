@@ -25,12 +25,14 @@ import java.util.Map;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IJumpToAddress;
 import org.eclipse.cdt.debug.edc.JumpToAddress;
+import org.eclipse.cdt.debug.edc.disassembler.CodeBufferUnderflowException;
 import org.eclipse.cdt.debug.edc.disassembler.DisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.x86.disassembler.DisassemblerX86.IDisassemblerOptionsX86;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
 
 /**
  * Single instruction disassembler for x86.
@@ -199,8 +201,15 @@ public class InstructionParserX86 {
 				mnemonics = parseOpcode(1, b1);
 
 		} catch (BufferUnderflowException e) {
-			err = EDCDebugger.newCoreException("Error: end of code buffer reached.", e);
+			throw new CodeBufferUnderflowException(e);
+		} catch (CodeBufferUnderflowException e) {
+			throw e;
 		} catch (CoreException e) {
+			IStatus s = e.getStatus();
+			Throwable t = (s != null) ? s.getException() : null;
+			if (t instanceof BufferUnderflowException) {
+				throw new CodeBufferUnderflowException(t);
+			}
 			err = e;
 		}
 
@@ -718,12 +727,19 @@ public class InstructionParserX86 {
 		} catch (InvocationTargetException e) {
 			Throwable cause = e.getCause();
 
-			cause.printStackTrace(); // TODO should we log this to the error
-			// log?
-
+			// BufferUnderflowException is fairly common, because x86 by nature is
+			// hard to feed the right number of bytes to disassemble.  even if the
+			// parser recognized ahead of time that a buffer was running out, some
+			// exceptional return would still be forced.  so BufferUnderflow is
+			// an appropriate response.
+			//
+			// ... just don't log or report it to printStackTrace() every time!
 			if (cause instanceof BufferUnderflowException)
-				throw EDCDebugger.newCoreException("End of code buffer reached.", (Exception) cause);
-			else if (cause instanceof CoreException)
+				throw new CodeBufferUnderflowException(e);
+
+			EDCDebugger.getMessageLogger().logError(null, e);
+
+			if (cause instanceof CoreException)
 				throw (CoreException) cause;
 			else {
 				String ex = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getName();

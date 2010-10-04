@@ -17,6 +17,8 @@ import java.util.Map;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.disassembler.AbstractDisassembler;
 import org.eclipse.cdt.debug.edc.disassembler.DisassembledInstruction;
+import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
+import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -29,10 +31,20 @@ public class DisassemblerX86 extends AbstractDisassembler {
 		// Integer
 	}
 
+	public DisassemblerX86(ITargetEnvironment env) {
+		super(env);
+	}
+
 	public DisassembledInstruction disassembleOneInstruction(IAddress address, ByteBuffer codeBytes,
 			Map<String, Object> options) throws CoreException {
 		InstructionParserX86 parser = new InstructionParserX86(address, codeBytes);
 		return parser.disassemble(options);
+	}
+
+	public DisassembledInstruction disassembleOneInstruction(IAddress address, ByteBuffer codeBytes,
+										Map<String, Object> options, IDisassemblyDMContext dmc)
+	  throws CoreException {
+		return disassembleOneInstruction(address, codeBytes, options);
 	}
 
 }

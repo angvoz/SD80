@@ -26,6 +26,7 @@ import org.eclipse.cdt.debug.edc.IJumpToAddress;
 import org.eclipse.cdt.debug.edc.JumpToAddress;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
@@ -36,12 +37,14 @@ import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
+import org.eclipse.cdt.debug.edc.services.Disassembly;
 import org.eclipse.cdt.debug.edc.services.IDSFServiceUsingTCF;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
+import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Registers.RegisterGroupDMC;
 import org.eclipse.cdt.debug.edc.services.Stack;
@@ -426,12 +429,14 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 				stateChangeDetails = (String) params.get(ProtocolConstants.PROP_SUSPEND_DETAIL);
 				
+				// TODO This is not what the stateChangeDetails is for, we need an extended thread description
+				// and is "foreground" really the right term?
+				
 				// Show the context is foreground one, if possible.
 				//
 				Boolean isForeground = (Boolean)params.get(ProtocolConstants.PROP_IS_FOREGROUND);
-				if (isForeground == null)
-					isForeground = false;
-				stateChangeDetails += isForeground ? " [foreground]" : "";
+				if (isForeground != null)
+					stateChangeDetails += isForeground ? " [foreground]" : "";
 				
 				final ExecutionDMC dmc = this;
 
@@ -1550,10 +1555,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						 * ........................ 08/30/2009
 						 */
 
-						if (pcAddress.equals(endAddr) || (stepType == StepType.STEP_OVER && nextLine == null)) // We're at the end of the line for this function, time to step out.
-							stepOut(dmc, pcAddress, rm);
-						else
-							stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
+						stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
 
 						if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit("source level stepping."); }
 						return;
@@ -1719,10 +1721,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return;
 		}
 
-		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
+		ITargetEnvironment env = getTargetEnvironmentService();
+		final IDisassembler disassembler = (env != null) ? env.getDisassembler() : null;
 		if (disassembler == null) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-					"No disassembler is available yet.", null));
+			rm.setStatus(Disassembly.statusNoDisassembler());
 			rm.done();
 			return;
 		}
@@ -1732,36 +1734,27 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		// We need to get the instruction at the PC. We have to
 		// retrieve memory bytes for longest instruction.
-		int maxInstLength = getTargetEnvironmentService().getLongestInstructionLength();
+		@SuppressWarnings("null") // (env == null) -> (disassembler == null) -> return above
+		int maxInstLength = env.getLongestInstructionLength();
 
 		// Note this memory read will give us memory bytes with
 		// debugger breakpoints removed, which is just what we want.
-		memoryService.getMemory(mem_dmc, pcAddress, 0, 1, maxInstLength, new DataRequestMonitor<MemoryByte[]>(
-				getExecutor(), rm) {
+		memoryService.getMemory(mem_dmc, pcAddress, 0, 1, maxInstLength,
+								new DataRequestMonitor<MemoryByte[]>(getExecutor(), rm) {
 			@Override
 			protected void handleSuccess() {
-				MemoryByte[] data = getData();
-				final byte[] bytes = new byte[data.length];
-
-				for (int i = 0; i < data.length; i++) {
-					// check each byte
-					if (!data[i].isReadable()) {
-						rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-									("Cannot read memory at 0x" + pcAddress.add(i).getValue().toString(16)),
-									null));
-						rm.done();
-						return;
-					}
-					bytes[i] = data[i].getValue();
+				ByteBuffer codeBuf = Disassembly.translateMemoryBytes(getData(), pcAddress, rm);
+				if (codeBuf == null) {
+					return;	// rm status set in checkMemoryBytes()
 				}
 
-				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
-
-				IDisassembledInstruction inst;
-
+				IDisassemblyDMContext dis_dmc
+				  = DMContexts.getAncestorOfType(dmc, IDisassemblyDMContext.class);
 				Map<String, Object> options = new HashMap<String, Object>();
+				options.put(IDisassemblerOptions.ADDRESS_IS_PC, 1);
+				IDisassembledInstruction inst;
 				try {
-					inst = disassembler.disassembleOneInstruction(pcAddress, codeBuf, options);
+					inst = disassembler.disassembleOneInstruction(pcAddress, codeBuf, options, dis_dmc);
 				} catch (CoreException e) {
 					rm.setStatus(e.getStatus());
 					rm.done();
@@ -1783,8 +1776,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							// breakpoint at next instruction and resume ...
 							//
 							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
-							bpService.setTempBreakpoint(dmc, nextInstructionAddress, new RequestMonitor(getExecutor(),
-									rm) {
+							bpService.setTempBreakpoint(dmc, nextInstructionAddress,
+														new RequestMonitor(getExecutor(), rm) {
 								@Override
 								protected void handleSuccess() {
 									dmc.resumeForStepping(rm);
@@ -1821,10 +1814,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return;
 		}
 
-		final IDisassembler disassembler = getTargetEnvironmentService().getDisassembler();
+		ITargetEnvironment env = getTargetEnvironmentService();
+		final IDisassembler disassembler = (env != null) ? env.getDisassembler() : null;
 		if (disassembler == null) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-					"No disassembler is available yet.", null));
+			rm.setStatus(Disassembly.statusNoDisassembler());
 			rm.done();
 			return;
 		}
@@ -1838,30 +1831,25 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		// Note this memory read will give us memory bytes with
 		// debugger breakpoints removed, which is just what we want.
-		memoryService.getMemory(mem_dmc, startAddr, 0, 1, memSize, new DataRequestMonitor<MemoryByte[]>(getExecutor(),
-				rm) {
+		memoryService.getMemory(mem_dmc, startAddr, 0, 1, memSize,
+								new DataRequestMonitor<MemoryByte[]>(getExecutor(), rm) {
 			@Override
 			protected void handleSuccess() {
-				MemoryByte[] data = getData();
-				final byte[] bytes = new byte[data.length];
-				for (int i = 0; i < data.length; i++) {
-					// check each byte
-					if (!data[i].isReadable()) {
-						rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-									("Cannot read " + (data.length - i) + " bytes at 0x" + startAddr.add(i).getValue().toString(16)), null));
-						rm.done();
-						return;
-					}
-					bytes[i] = data[i].getValue();
+				ByteBuffer codeBuf = Disassembly.translateMemoryBytes(getData(), startAddr, rm);
+				if (codeBuf == null) {
+					return;	// rm status set in checkMemoryBytes()
 				}
 
-				ByteBuffer codeBuf = ByteBuffer.wrap(bytes);
-
-				List<IDisassembledInstruction> instList;
+				IDisassemblyDMContext dis_dmc
+				  = DMContexts.getAncestorOfType(dmc, IDisassemblyDMContext.class);
 
 				Map<String, Object> options = new HashMap<String, Object>();
+
+				List<IDisassembledInstruction> instList;
 				try {
-					instList = disassembler.disassembleInstructions(startAddr, endAddr, codeBuf, options);
+					instList
+					  = disassembler.disassembleInstructions(startAddr, endAddr, codeBuf,
+							  								 options, dis_dmc);
 				} catch (CoreException e) {
 					rm.setStatus(e.getStatus());
 					rm.done();
@@ -1905,35 +1893,33 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 								//
 								stepIntoOneInstruction(dmc, rm);
 								return;
-							} else { // others
-								// evaluate the address expression
+							}
+							// evaluate the address expression
 
-								if (!jta.isSubroutineAddress() || stepIn)
-								{
-									IAddressExpressionEvaluator evaluator = getTargetEnvironmentService()
-									.getAddressExpressionEvaluator();
-									if (evaluator == null) {
-										rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-												"No evaluator for address expression yet.", null));
-										rm.done();
-										return;
-									}
-
-									Registers regService = getServicesTracker().getService(Registers.class);
-
-									IAddress addr;
-									try {
-										addr = evaluator.evaluate(dmc, expr, regService, memoryService);
-									} catch (CoreException e) {
-										rm.setStatus(e.getStatus());
-										rm.done();
-										return;
-									}
-									// don't add an address if we already have it
-									if (!stopPoints.contains(addr))
-										stopPoints.add(addr);
-
+							if (!jta.isSubroutineAddress() || stepIn)
+							{
+								IAddressExpressionEvaluator evaluator = getTargetEnvironmentService()
+								.getAddressExpressionEvaluator();
+								if (evaluator == null) {
+									rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+											"No evaluator for address expression yet.", null));
+									rm.done();
+									return;
 								}
+
+								Registers regService = getServicesTracker().getService(Registers.class);
+
+								IAddress addr;
+								try {
+									addr = evaluator.evaluate(dmc, expr, regService, memoryService);
+								} catch (CoreException e) {
+									rm.setStatus(e.getStatus());
+									rm.done();
+									return;
+								}
+								// don't add an address if we already have it
+								if (!stopPoints.contains(addr))
+									stopPoints.add(addr);
 							}
 						} else {
 							// we must run to this instruction first

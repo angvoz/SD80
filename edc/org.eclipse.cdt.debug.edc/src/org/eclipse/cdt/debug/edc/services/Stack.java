@@ -680,8 +680,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						if (name != null && name.equals("this")) {
 							thisPtrs.put(variable.getScope().getName(), variable);
 						} else {
-							locals.add(var);
-							localsByName.put(name, var);
+							// now that we've screened out compiler generated "this" variables,
+							// get rid of other compiler generated variables
+							// TODO: Allow user to choose whether to show compiler generated variables
+							if (var.getVariable().isDeclared()) {
+								locals.add(var);
+								localsByName.put(name, var);
+							}
 						}
 					}
 
@@ -834,9 +839,16 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				if (variableScope instanceof IModuleScope) {
 					Collection<IVariable> variables = ((IModuleScope)variableScope).getVariablesByName(name, true);
 					if (variables.size() > 0) {
-						Object[] variableArray = variables.toArray();
-						if (variableArray[0] instanceof IVariable)
-							variableOrEnumerator = new VariableDMC(Stack.this, this, (IVariable)variableArray[0]);
+						// list may contain non-global variables, so return the first global
+						for (Object varObject : variables) {
+							if (varObject instanceof IVariable) {
+								IVariable variable = (IVariable)varObject;
+								if (variable.getScope() instanceof IModuleScope) {
+									variableOrEnumerator = new VariableDMC(Stack.this, this, variable);
+									break;
+								}
+							}
+						}
 					}
 					// module scope has no parent with variables
 					break;

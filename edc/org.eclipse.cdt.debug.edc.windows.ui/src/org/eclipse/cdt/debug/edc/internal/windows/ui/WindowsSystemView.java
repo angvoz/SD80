@@ -19,6 +19,7 @@ import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.IEDCConstants;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.TCFServiceManager;
+import org.eclipse.cdt.debug.edc.internal.ui.views.ISystemVMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemDMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemVMContainer;
 import org.eclipse.cdt.debug.edc.internal.ui.views.SystemView;
@@ -157,7 +158,7 @@ public class WindowsSystemView extends SystemView {
 		
 		private void createOverviewContainer() {
             overview = new SystemVMContainer(null, "Overview");
-            overview.getProperties().put(SystemVMContainer.PROP_ID, getPresentationContext().getId() + "_overview");
+            overview.getProperties().put(ISystemVMContainer.PROP_ID, getPresentationContext().getId() + "_overview");
             rootVMContainers.add(overview);
 		}
 

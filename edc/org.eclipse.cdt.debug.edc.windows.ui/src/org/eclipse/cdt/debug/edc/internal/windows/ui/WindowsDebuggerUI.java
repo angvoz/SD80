@@ -22,7 +22,7 @@ import org.osgi.framework.BundleContext;
 public class WindowsDebuggerUI extends AbstractUIPlugin {
 
 	// The plug-in ID
-	public static final String PLUGIN_ID = "org.eclipse.cdt.debug.edc.window.ui";
+	public static final String PLUGIN_ID = "org.eclipse.cdt.debug.edc.windows.ui";
 
 	// The shared instance
 	private static WindowsDebuggerUI plugin;

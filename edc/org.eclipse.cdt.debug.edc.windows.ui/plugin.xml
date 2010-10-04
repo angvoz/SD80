@@ -124,4 +124,27 @@
       </view>
    </extension>
 
+   <extension
+         point="org.eclipse.core.runtime.adapters">
+      <factory
+            adaptableType="org.eclipse.cdt.debug.edc.windows.launch.WindowsLaunch"
+            class="org.eclipse.cdt.debug.edc.internal.windows.ui.WindowsAdapterFactory">
+         <adapter
+               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider">
+         </adapter>
+         <adapter
+               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementLabelProvider">
+         </adapter>
+         <adapter
+               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory">
+         </adapter>
+         <adapter
+               type="org.eclipse.debug.ui.contexts.ISuspendTrigger">
+         </adapter>
+         <adapter
+               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IColumnPresentationFactory">
+         </adapter>
+      </factory>
+   </extension>
+
 </plugin>

@@ -59,7 +59,7 @@ public class TargetEnvironmentX86 extends AbstractTargetEnvironment implements I
 
 	public IDisassembler getDisassembler() {
 		if (disassembler == null)
-			disassembler = new DisassemblerX86();
+			disassembler = new DisassemblerX86(this);
 
 		return disassembler;
 	}

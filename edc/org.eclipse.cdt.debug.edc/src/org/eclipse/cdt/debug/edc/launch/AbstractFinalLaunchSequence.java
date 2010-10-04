@@ -61,7 +61,8 @@ import org.eclipse.tm.tcf.util.TCFTask;
 
 public abstract class AbstractFinalLaunchSequence extends Sequence {
 
-	protected EDCLaunch launch;
+	private EDCLaunch launch;
+
 	protected DsfServicesTracker tracker;
 	protected List<Step> steps = new ArrayList<Step>();
 
@@ -130,6 +131,36 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			findPeer(requestMonitor);
 			requestMonitor.done();
 		}
+	};
+
+	/**
+	 * @since 2.0
+	 */
+	protected Step rememberTCFChannelStep = new StepWithProgress() {
+
+		@Override
+		public String getTaskName() {
+			return "Remember TCF Channel";
+		}
+
+		@Override
+		public void execute(RequestMonitor rm, IProgressMonitor pm) {
+			try {
+				IPeer peer = getTCFPeer();
+				assert peer != null : "initFindPeerStep must be run prior to this one";
+	
+				ITCFServiceManager tcfServiceManager = EDCDebugger.getDefault().getServiceManager();
+				IChannel channel = tcfServiceManager.getChannelForPeer(peer);
+				if (channel == null)
+					assert channel != null : "No open channel found to the peer";
+				else
+					launch.usingTCFChannel(channel);
+			}
+			finally {
+				rm.done();
+			}
+		}
+
 	};
 
 	/**
@@ -771,6 +802,21 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 	}
 
 	/**
+	 * @throws CoreException 
+	 * @since 2.0
+	 */
+	protected ProcessContext getProcessContextByName(String contextName,
+			IProcesses ps) throws CoreException {
+		final String[] contextIDs = getProcessList(ps);
+		for (String contextID : contextIDs) {
+			ProcessContext context = getProcessContext(contextID, ps);
+			if (context.getName().equals(contextName))
+				return context;
+		}
+		return null;
+	}
+
+	/**
 	 * Get list of running processes from the target.
 	 * 
 	 * @param service
@@ -886,4 +932,12 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			launch.shutdownSession(new RequestMonitor(ImmediateExecutor.getInstance(), null));
 		}
 	}
+	
+	/**
+	 * @since 2.0
+	 */
+	public EDCLaunch getLaunch() {
+		return launch;
+	}
+
 }

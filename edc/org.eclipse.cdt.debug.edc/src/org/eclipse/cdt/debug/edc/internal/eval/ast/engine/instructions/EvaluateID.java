@@ -11,12 +11,15 @@
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.text.MessageFormat;
+import java.util.List;
 
+import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
@@ -32,7 +35,8 @@ import org.eclipse.core.runtime.CoreException;
 
 public class EvaluateID extends SimpleInstruction {
 
-	private final String name;
+	private String name;
+	private final ICPPASTQualifiedName qualifiedName;
 
 	/**
 	 * Constructor for ID (number + variable name) evaluate instruction
@@ -44,10 +48,11 @@ public class EvaluateID extends SimpleInstruction {
 
 		if (idExpression.getName() instanceof ICPPASTQualifiedName) {
 			// the name has the form namespace::...::variable
-			final ICPPASTQualifiedName qualifiedName = (ICPPASTQualifiedName) idExpression.getName();
+			qualifiedName = (ICPPASTQualifiedName) idExpression.getName();
 			lookupName = qualifiedName.getLastName();
 		} else {
 			lookupName = idExpression.getName();
+			qualifiedName = null;
 		}
 
 		name = new String(lookupName.getLookupKey());
@@ -61,6 +66,7 @@ public class EvaluateID extends SimpleInstruction {
 	 */
 	public EvaluateID(String name) {
 		this.name = name;
+		this.qualifiedName = null;
 	}
 
 	/**
@@ -109,12 +115,31 @@ public class EvaluateID extends SimpleInstruction {
 
 		if (enumerator != null) {
 			// TODO: map IEnumerator to an IEnumeration and use the real type
-			pushNewValue(fInterpreter.getTypeEngine().getIntegerTypeOfSize(4, true), 
+			pushNewValue(fInterpreter.getTypeEngine().getIntegerTypeOfSize(4, true),
 					enumerator.getEnumerator().getValue());
 			return;
 		}
 
-		// did not find a variable or an enumerator to match the expression
+		// match against function names visible in the module
+		Symbols symbolsService = servicesTracker.getService(Symbols.class);
+		if (symbolsService != null) {
+			IEDCModuleDMContext module = frame.getModule();
+			if (module != null) {
+				String searchName = name;
+				if (qualifiedName != null)
+					searchName = qualifiedName.getRawSignature();
+				List<IAddress> addresses = symbolsService.getFunctionAddress(module, searchName);
+				if (addresses.size() > 0) {
+					pushNewValue(fInterpreter.getTypeEngine().getIntegerTypeOfSize(4, false),
+							addresses.get(0).getValue().longValue());
+					return;
+				}
+				// show the whole qualified name in the exception message
+				name = searchName;
+			}
+		}
+
+		// did not find a variable, enumerator, or function to match the expression
 		throw EDCDebugger.newCoreException(
 				MessageFormat.format(ASTEvalMessages.EvaluateID_VariableNotFound, name));
 	}

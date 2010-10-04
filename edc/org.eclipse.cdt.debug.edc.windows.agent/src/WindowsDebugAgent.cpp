@@ -125,6 +125,14 @@ int main(int argc, char* argv[]) {
 	peer_server_addprop(ps, loc_strdup("DebugSupport"), loc_strdup(
 			"Win32 Debug API"));
 
+	LPTSTR lpNameBuffer = NULL;
+	DWORD lpnSize = 0;
+	GetComputerName(lpNameBuffer, &lpnSize);
+	lpNameBuffer = new char[++lpnSize];
+	GetComputerName(lpNameBuffer, &lpnSize);
+	peer_server_addprop(ps, loc_strdup("Description"), loc_strdup(lpNameBuffer));
+	delete [] lpNameBuffer;
+
 	if (ps == NULL) {
 			LogTrace("invalid server URL");
 		exit(1);

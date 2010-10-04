@@ -14,8 +14,10 @@ package org.eclipse.cdt.debug.edc.internal;
 import org.eclipse.core.runtime.Platform;
 
 /**
- * Tracing of EDC code based on standard tracing mechanism in eclipse; see
- * http://wiki.eclipse.org/FAQ_How_do_I_use_the_platform_debug_tracing_facility%3F
+ * Tracing of EDC code based on standard tracing mechanism in eclipse;
+ * <br>see
+ * <a href=http://wiki.eclipse.org/FAQ_How_do_I_use_the_platform_debug_tracing_facility%3F>
+ * How do I use the Platform debug tracing facility?</a>
  */
 public class EDCTrace {
 

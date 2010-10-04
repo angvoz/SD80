@@ -611,25 +611,6 @@
             id="org.eclipse.cdt.debug.edc.TraceView">
       </view>
    </extension>
-   <extension
-         point="org.eclipse.core.runtime.adapters">
-      <factory
-            adaptableType="org.eclipse.cdt.debug.edc.launch.EDCLaunch"
-            class="org.eclipse.cdt.debug.edc.ui.EDCAdapterFactory">
-         <adapter
-               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider">
-         </adapter>
-         <adapter
-               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory">
-         </adapter>
-         <adapter
-               type="org.eclipse.debug.ui.contexts.ISuspendTrigger">
-         </adapter>
-         <adapter
-               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IColumnPresentationFactory">
-         </adapter>
-      </factory>
-   </extension>
 
    <extension
          point="org.eclipse.ui.console.consoleFactories">

@@ -53,6 +53,7 @@ import org.eclipse.debug.core.model.IDebugModelProvider;
 import org.eclipse.debug.core.sourcelookup.ISourceLookupDirector;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IColumnPresentationFactory;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider;
+import org.eclipse.debug.internal.ui.viewers.model.provisional.IElementLabelProvider;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IModelSelectionPolicyFactory;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerInputProvider;
@@ -67,7 +68,7 @@ import org.eclipse.debug.ui.sourcelookup.ISourceDisplay;
  */
 @ThreadSafe
 @SuppressWarnings( { "restriction" })
-public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
+abstract public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 
 	@Immutable
 	class SessionAdapterSet {
@@ -90,6 +91,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 		final DefaultRefreshAllTarget fRefreshAllTarget;
 
 		final EDCDebugTextHover fDebugTextHover;
+		final IElementLabelProvider fLaunchLabelProvider;
 		
 		SessionAdapterSet(final EDCLaunch launch) {
 			fLaunch = launch;
@@ -154,6 +156,8 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
             session.registerModelAdapter(ICEditorTextHover.class, fDebugTextHover);
             
             session.registerModelAdapter(IViewerInputProvider.class, fViewModelAdapter);
+            
+            fLaunchLabelProvider = (IElementLabelProvider) createLabelProvider();
 		}
 
 		void dispose() {
@@ -264,9 +268,11 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 				fgLaunchAdapterSets.put(launch, adapterSet);
 			}
 		}
-
+		
 		// Returns the adapter type for the launch object.
-		if (adapterType.equals(IElementContentProvider.class))
+		if (adapterType.equals(IElementLabelProvider.class))
+			return adapterSet.fLaunchLabelProvider;
+		else if (adapterType.equals(IElementContentProvider.class))
 			return adapterSet.fViewModelAdapter;
 		else if (adapterType.equals(IModelProxyFactory.class))
 			return adapterSet.fViewModelAdapter;
@@ -280,7 +286,7 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 
 	@SuppressWarnings("rawtypes")
 	public Class[] getAdapterList() {
-		return new Class[] { IElementContentProvider.class, IModelProxyFactory.class, ISuspendTrigger.class,
+		return new Class[] { IElementLabelProvider.class, IElementContentProvider.class, IModelProxyFactory.class, ISuspendTrigger.class,
 				IColumnPresentationFactory.class };
 	}
 
@@ -302,5 +308,10 @@ public class EDCAdapterFactory implements IAdapterFactory, ILaunchesListener2 {
 
 	public void launchesChanged(ILaunch[] launches) {
 	}
+	
+    /**
+	 * @since 2.0
+	 */
+    abstract protected Object createLabelProvider();
 
 }

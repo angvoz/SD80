@@ -195,7 +195,7 @@ public class EDCDebugUI extends AbstractUIPlugin {
 			if (projects.length == 0)
 				return null;
 			if (projects.length == 1)
-				return projects[1];
+				return projects[0];
 
 			ILabelProvider labelProvider = new CElementLabelProvider();
 			ElementListSelectionDialog dialog = new ElementListSelectionDialog(getShell(), labelProvider);

@@ -431,13 +431,19 @@ public class MemoryCache implements ISnapshotContributor {
 				tcfMC.get(tcfAddress, word_size, buffer, 0, count * word_size, 0, new DoneMemory() {
 
 					public void doneMemory(IToken token, MemoryError error) {
-						if (error == null || !(error instanceof IMemory.ErrorOffset)) {
+						if (error == null) {
 							MemoryByte[] res = new MemoryByte[buffer.length];
 							for (int i = 0; i < buffer.length; i++) {
 								res[i] = new MemoryByte(buffer[i]);
 							}
 							done(res);
 						} else if (error instanceof IMemory.ErrorOffset) {
+							//TODO just return an error for now.  the commented out
+							// code below is OK, but due to other issues with caching
+							// the bad bytes of the block, we need to return an error
+							// here and not cache the good or bad bytes.
+							error(error);
+/*
 							IMemory.ErrorOffset errorOffset = (ErrorOffset) error;
 							MemoryByte[] res = new MemoryByte[buffer.length];
 							
@@ -454,12 +460,12 @@ public class MemoryCache implements ISnapshotContributor {
 								if ((st & IMemory.ErrorOffset.BYTE_INVALID) != 0)
 									flags &= ~(MemoryByte.READABLE + MemoryByte.WRITABLE);
 								if ((st & IMemory.ErrorOffset.BYTE_UNKNOWN) != 0)
-									flags = 0;
-								
+									flags &= ~(MemoryByte.READABLE + MemoryByte.WRITABLE);
+
 								res[i] = new MemoryByte(buffer[i], flags);
 							}
 							done(res);
-						} else {
+*/						} else {
 							error(error);
 						}
 					}

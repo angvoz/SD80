@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
 import org.eclipse.cdt.debug.edc.internal.formatter.FormatExtensionManager;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
@@ -278,7 +279,9 @@ public class FormatUtils {
 	public static IVariableValueConverter getCustomValueConverter(IExpressionDMContext variable) {
 		IEDCExpression variableDMC = (IEDCExpression) variable;
 		variableDMC.evaluateExpression();
-		IType type = TypeUtils.getStrippedType(variableDMC.getEvaluatedType());
+		IType type = TypeUtils.getUnRefStrippedType(variableDMC.getEvaluatedType());
+		if (type instanceof IArrayDimensionType)
+			type = ((IArrayDimensionType)type).getArrayType();
 		return FormatExtensionManager.instance().getVariableValueConverter(type);
 	}
 	

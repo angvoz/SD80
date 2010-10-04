@@ -191,6 +191,9 @@ public class LocationExpression implements ILocationProvider {
 						IVariableLocation framePtrLoc = functionScope.getFrameBaseLocation().getLocation(tracker,
 								context, forLinkAddress);
 						if (framePtrLoc != null) {
+							if (framePtrLoc instanceof InvalidVariableLocation)
+								return framePtrLoc;
+
 							// first resolve the frame base value and then add
 							// the offset
 							if (framePtrLoc instanceof IRegisterVariableLocation) {

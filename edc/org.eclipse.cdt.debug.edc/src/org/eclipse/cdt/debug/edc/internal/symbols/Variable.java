@@ -23,12 +23,14 @@ public class Variable implements IVariable {
 	protected IType type;
 	protected ILocationProvider locationProvider;
 	protected long startScope;
+	protected boolean isDeclared;
 	
-	public Variable(String name, IScope scope, IType type, ILocationProvider locationProvider) {
+	public Variable(String name, IScope scope, IType type, ILocationProvider locationProvider, boolean isDeclared) {
 		this.name = name;
 		this.scope = scope;
 		this.type = type;
 		this.locationProvider = locationProvider;
+		this.isDeclared = isDeclared;
 	}
 
 	/* (non-Javadoc)
@@ -39,15 +41,24 @@ public class Variable implements IVariable {
 		locationProvider = null;
 		scope = null;
 	}
-	
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IVariable#getName()
+	 */
 	public String getName() {
 		return name;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IVariable#getScope()
+	 */
 	public IScope getScope() {
 		return scope;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IVariable#getType()
+	 */
 	public IType getType() {
 		if (type instanceof IForwardTypeReference)
 			type = ((IForwardTypeReference) type).getReferencedType();
@@ -55,6 +66,9 @@ public class Variable implements IVariable {
 		return type;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IVariable#getLocationProvider()
+	 */
 	public ILocationProvider getLocationProvider() {
 		return locationProvider;
 	}
@@ -69,6 +83,14 @@ public class Variable implements IVariable {
 	public long getStartScope() {
 		return startScope;
 	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.IVariable#isDeclared()
+	 */
+	public boolean isDeclared() {
+		return isDeclared;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

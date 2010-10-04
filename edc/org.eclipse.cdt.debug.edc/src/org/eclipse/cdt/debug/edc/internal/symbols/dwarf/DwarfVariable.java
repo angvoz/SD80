@@ -18,8 +18,8 @@ import org.eclipse.cdt.debug.edc.symbols.IType;
 public class DwarfVariable extends Variable {
 
 	public DwarfVariable(String name, IScope scope, ILocationProvider locationProvider, 
-			IType type) {
-		super(name, scope, null, locationProvider);
+			IType type, boolean isDeclared) {
+		super(name, scope, null, locationProvider, isDeclared);
 
 		this.type = type;
 	}

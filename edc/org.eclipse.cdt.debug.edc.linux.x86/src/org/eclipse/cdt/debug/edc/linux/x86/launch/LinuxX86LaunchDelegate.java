@@ -51,4 +51,10 @@ public class LinuxX86LaunchDelegate extends EDCLaunchDelegate {
 		return false;
 	}
 
+	@Override
+	public EDCLaunch createLaunch(ILaunchConfiguration configuration,
+			String mode) {
+		return new LinuxLaunch(configuration, mode, null, getDebugModelID());
+	}
+
 }

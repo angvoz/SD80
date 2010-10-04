@@ -68,7 +68,10 @@ public class ArraySubscript extends CompoundInstruction {
 		IType arrayElementType;
 		int byteSize;
 
-		arrayElementType = TypeUtils.getStrippedType(variableType.getType());
+		if (variableType instanceof IArrayDimensionType)
+			arrayElementType = TypeUtils.getStrippedType(((IArrayDimensionType) variableType).getArrayType().getType());
+		else
+			arrayElementType = TypeUtils.getStrippedType(variableType.getType());
 		if (arrayElementType == null)
 			throw EDCDebugger.newCoreException(ASTEvalMessages.ArraySubscript_MustSubscriptArray);
 		

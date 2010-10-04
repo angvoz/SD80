@@ -589,7 +589,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	}
 	
 	protected void fireConnectionOpened(final IPeer peer, final IChannel channel) {
-		Protocol.invokeLater(new Runnable() {
+		Protocol.invokeAndWait(new Runnable() {
 			public void run() {
 				for (Object o : peerChannelListeners.getListeners()) {
 					try {
@@ -603,7 +603,7 @@ public class TCFServiceManager implements ITCFServiceManager  {
 	}
 	
 	protected void fireConnectionClosed(final IPeer peer, final IChannel channel, final Throwable exception) {
-		Protocol.invokeLater(new Runnable() {
+		Protocol.invokeAndWait(new Runnable() {
 			public void run() {
 				for (Object o : peerChannelListeners.getListeners()) {
 					try {

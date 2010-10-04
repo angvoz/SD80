@@ -50,7 +50,6 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
-import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
 import org.eclipse.cdt.debug.edc.internal.symbols.InheritanceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.LexicalBlockScope;
@@ -379,7 +378,7 @@ public class DwarfInfoReader {
 	 */
 	private void parseCUDebugInfo(IProgressMonitor monitor) {
 
-		if (debugInfoSection == null) {	// no dwarf data.
+		if (debugInfoSection == null) {	// no Dwarf data.
 			return;
 		}
 		
@@ -793,7 +792,7 @@ public class DwarfInfoReader {
 	 */
 	private void doQuickParseDebugInfo(IProgressMonitor monitor) {
 		
-		if (debugInfoSection == null) {	// no dwarf data.
+		if (debugInfoSection == null) {	// no Dwarf data.
 			return;
 		}
 		
@@ -984,9 +983,14 @@ public class DwarfInfoReader {
 				/*
 				 * Read line table header:
 				 * 
-				 * total_length: 4 bytes (excluding itself) version: 2 prologue
-				 * length: 4 minimum_instruction_len: 1 default_is_stmt: 1
-				 * line_base: 1 line_range: 1 opcode_base: 1
+				 * total_length: 4 bytes (excluding itself)
+				 * version: 2
+				 * prologue length: 4
+				 * minimum_instruction_len: 1
+				 * default_is_stmt: 0 or 1
+				 * line_base: 1
+				 * line_range: 1
+				 * opcode_base: 1
 				 * standard_opcode_lengths: (value of opcode_base)
 				 */
 
@@ -999,7 +1003,7 @@ public class DwarfInfoReader {
 				@SuppressWarnings("unused")
 				int prologue_length = data.getInt();
 				int minimum_instruction_length = data.get() & 0xff;
-				boolean is_stmt = data.get() > 0;
+				boolean default_is_stmt = data.get() > 0;
 				int line_base = data.get();  // signed
 				int line_range = data.get() & 0xff;
 
@@ -1056,11 +1060,12 @@ public class DwarfInfoReader {
 					leb128 = read_unsigned_leb128(data);
 				}
 
-				int info_line = 1;
 				long info_address = 0;
-				int info_flags = 0;
 				long info_file = 1;
+				int info_line = 1;
 				int info_column = 0;
+				boolean is_stmt = default_is_stmt;
+				int info_flags = 0;
 				@SuppressWarnings("unused")
 				long info_ISA = 0;
 
@@ -1107,11 +1112,12 @@ public class DwarfInfoReader {
 							}
 
 							// it also resets the state machine
+							info_address = 0;
 							info_file = 1;
 							info_line = 1;
-							info_address = 0;
-							info_flags = 0;
 							info_column = 0;
+							is_stmt = default_is_stmt;
+							info_flags = 0;
 							info_ISA = 0;
 							break;
 
@@ -2060,7 +2066,7 @@ public class DwarfInfoReader {
 
 		CompilationUnitHeader otherCU = null;
 
-		boolean isArtifical = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_artificial) > 0;
+		boolean isArtificial = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_artificial) > 0;
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		if (name.length() == 0) {
@@ -2072,7 +2078,7 @@ public class DwarfInfoReader {
 				otherCU = deref.header;
 				AttributeList attributes = deref.attributeList;
 				name = attributes.getAttributeValueAsString(DwarfConstants.DW_AT_name);
-				isArtifical |= attributes.getAttributeValueAsInt(DwarfConstants. DW_AT_artificial) > 0;
+				isArtificial |= attributes.getAttributeValueAsInt(DwarfConstants. DW_AT_artificial) > 0;
 				if (name.length() == 0) {
 					deref = getDereferencedAttributes(attributes, DwarfConstants.DW_AT_specification); 
 					if (deref != null) {
@@ -2081,7 +2087,7 @@ public class DwarfInfoReader {
 						otherCU = deref.header;
 						attributes = deref.attributeList;
 						name = attributes.getAttributeValueAsString(DwarfConstants.DW_AT_name);
-						isArtifical |= attributes.getAttributeValueAsInt(DwarfConstants. DW_AT_artificial) > 0;
+						isArtificial |= attributes.getAttributeValueAsInt(DwarfConstants. DW_AT_artificial) > 0;
 					}
 				}
 			}
@@ -2121,7 +2127,7 @@ public class DwarfInfoReader {
 		// (some "ignored inlined" functions in GCC).  We want to keep track of their scope
 		// (though not store them in the CU), because child tag parses expect to find a parent into 
 		// which to write their formal parameters and locals.
-		if (!function.getLowAddress().isZero() && !function.getHighAddress().isZero() && !isArtifical) {
+		if (!function.getLowAddress().isZero() && !function.getHighAddress().isZero() && !isArtificial) {
 			// find the declaration location
 			int declLine = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_decl_line);
 			int declColumn = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_decl_column);
@@ -2310,9 +2316,10 @@ public class DwarfInfoReader {
 		 * For an anonymous union, which has members accessible by methods in a class, ARM RVCT
 		 * does not create an unnamed class member so you know the offset of the union's members.
 		 * Instead, it just gives the anonymous union's type a name of the form "__C" followed
-		 * by a number. And it places the union's DWARF info after all class member info.
+		 * by a number. And it places the union's DWARF info after all class member and inherited
+		 * member DWARF info.
 		 * 
-		 * When you have 2 named members and 2 anonymous unions in this order:
+		 * E.g., when you have 2 named members and 2 anonymous unions in this order:
 		 * 		4-byte union <anonymous 1>
 		 * 		4-byte long  long1
 		 * 		4-byte union <anonymous 2>
@@ -2337,7 +2344,7 @@ public class DwarfInfoReader {
 								(name.charAt(3) != '-') && (Long.parseLong(name.substring(3)) > -1);
 		} catch (NumberFormatException nfe) {}
 
-		// if needed, create an "unnamed" member with the correct member offset
+		// if needed, create an "unnamed" member field with an offset to be determined later
 		if (isRVCTAnonymousUnion && getCompositeParent(typeToParentMap.get(currentParentType)) != null) {
 			ICompositeType compositeType = getCompositeParent(typeToParentMap.get(currentParentType));
 
@@ -2347,39 +2354,16 @@ public class DwarfInfoReader {
 			if (compositeType instanceof ClassType)
 				accessibility = ICompositeType.ACCESS_PRIVATE;
 
-			// sort composite fields by offsets
-			IField[] fields = compositeType.getFields();
-			if (fields.length > 1) {
-				boolean sorted;
-				int passCnt = 1;
-				do {
-					sorted = true;
-					for (int i = 0; i < fields.length - passCnt; i++) {
-						if (fields[i].getFieldOffset() > fields[i + 1].getFieldOffset()) {
-							IField temp = fields[i];
-							fields[i] = fields[i + 1];
-							fields[i + 1] = temp;
-							sorted = false;
-						}
-					}
-					passCnt++;
-				} while (!sorted && passCnt < fields.length);
-			}
-
-			// find the offset for the anonymous union's data - between other members or at the end
-			long fieldOffset = 0;
-			for (int i = 0; i < fields.length; i++) {
-				if (fieldOffset < fields[i].getFieldOffset())
-					break;
-				fieldOffset = fields[i].getFieldOffset() + fields[i].getByteSize();
-			}
-
 			// empty field names confuse the expressions service
 			String fieldName = "$unnamed$" + (compositeType.fieldCount() + 1); //$NON-NLS-1$
 
-			FieldType fieldType = new FieldType(fieldName, currentParentScope, compositeType, fieldOffset, 0, 0,
+			// since we're generating a field, give it a -1 offset. We cannot tell the real
+			// offset until we determine offsets of all previously defined members - which
+			// may include inherited types not yet read in Dwarf info
+			FieldType fieldType = new FieldType(fieldName, currentParentScope, compositeType, -1, 0, 0,
 					byteSize, accessibility, null);
 			fieldType.setType(type);
+
 			// add the member to the deepest nested (last added) compositeNesting
 			// member
 			compositeType.addField(fieldType);
@@ -2774,7 +2758,7 @@ public class DwarfInfoReader {
 		if (locationProvider == null) {
 			// No location means either this is a placeholder (in a subprogram declaration) 
 			// or it may have been optimized out.  See section
-			// 2.6 of the dwarf3 spec. for now we're ignoring it but we may be able
+			// 2.6 of the Dwarf3 spec. for now we're ignoring it but we may be able
 			// to show it in the view with some special decoration to indicate that
 			// it's been optimized out
 			
@@ -2782,6 +2766,7 @@ public class DwarfInfoReader {
 			provider.functionsByOffset.put(offset, attributeList);
 			return;
 		}
+
 		// variables can have abstract origins with most of their contents
 		CompilationUnitHeader otherCU = currentCUHeader;
 		AttributeList otherAttributes = attributeList;
@@ -2803,11 +2788,13 @@ public class DwarfInfoReader {
 			boolean global = (otherAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_external) == 1);
 
 			long startScope = attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_start_scope);
+			boolean isDeclared = otherAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_artificial) <= 0;
 			
 			DwarfVariable variable = new DwarfVariable(name, 
 							global ? moduleScope : currentParentScope, 
 							locationProvider,
-							type);
+							type,
+							isDeclared);
 
 			variable.setStartScope(startScope);
 			
@@ -2927,7 +2914,7 @@ public class DwarfInfoReader {
 		IStreamBuffer buffer = frameSection.getBuffer();
 		buffer.position(0);
 		
-		int addressSize = 4;	// TODO: 64-bit DWARF
+		int addressSize = 4;	// TODO: 64-bit Dwarf
 		long cie_id = addressSize == 4 ? 0xffffffff : ~0L;
 		
 		// in the first pass, just get a mapping of PC ranges to FDEs,

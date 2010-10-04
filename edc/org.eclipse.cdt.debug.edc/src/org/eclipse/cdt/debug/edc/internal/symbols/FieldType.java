@@ -17,7 +17,7 @@ import org.eclipse.cdt.debug.edc.symbols.IScope;
 public class FieldType extends Type implements IField {
 
 	private final ICompositeType compositeType;
-	private final long fieldOffset;
+	private long fieldOffset;
 	private final int bitSize;
 	private final int bitOffset;
 	private final int accessibility;
@@ -51,6 +51,10 @@ public class FieldType extends Type implements IField {
 
 	public ICompositeType getCompositeTypeOwner() {
 		return this.compositeType;
+	}
+
+	public void setFieldOffset(long offset) {
+		this.fieldOffset = offset;
 	}
 
 	/* (non-Javadoc)

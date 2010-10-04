@@ -34,6 +34,17 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 	protected ArrayList<ITemplateParam> templateParams = null;
 	boolean nameIncludesTemplateParams = false;
 
+	/**
+	 * fields of anonymous union types, with unknown offsets
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfInfoReader#processUnionType()
+	 */
+	protected ArrayList<IField> unknownOffsetFields = null;
+
+	protected static class OffsetAndLength {
+		public long offset;
+		public long length;
+	}
+
 	public CompositeType(String name, IScope scope, int key, int byteSize, Map<Object, Object> properties, String prefix) {
 		super(name, scope, byteSize, properties);
 		this.baseName = name;
@@ -46,14 +57,23 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 	}
 
 	public int fieldCount() {
+		if (unknownOffsetFields != null)
+			setAnonymousUnionOffsets();
 		return fields.size();
 	}
 
 	public void addField(IField field) {
-		fields.add(field);
+		if (field.getFieldOffset() < 0) {
+			if (unknownOffsetFields == null)
+				unknownOffsetFields = new ArrayList<IField>();
+			unknownOffsetFields.add(field);
+		} else
+			fields.add(field);
 	}
 
 	public IField[] getFields() {
+		if (unknownOffsetFields != null)
+			setAnonymousUnionOffsets();
 		ArrayList<IField> fieldList = new ArrayList<IField>(fields);
 		
 		return fieldList.toArray(new IField[fields.size()]);
@@ -147,6 +167,8 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 		// try for a fast exit: match against the non-inherited fields and names of
 		// composites we're inheriting from
 		if (nameQualifiers.size() == 0) {
+			if (unknownOffsetFields != null)
+				setAnonymousUnionOffsets();
 			for (int i = 0; i < fields.size(); i++) {
 				if (((FieldType) fields.get(i)).getName().equals(baseFieldName)) {
 					IField[] foundFields = new IField[1];
@@ -313,5 +335,64 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 		}
 
 		return matches;
+	}
+
+	/**
+	 * Fields with unknown offsets may be between other members or at the end
+	 */
+	private void setAnonymousUnionOffsets() {
+		OffsetAndLength[] offsetSizes = new OffsetAndLength[fields.size() + inheritanceCount()];
+		int count = 0;
+		if (fields.size() > 0) {
+			for ( ; count < fields.size(); count++) {
+				offsetSizes[count] = new OffsetAndLength();
+				offsetSizes[count].offset = fields.get(count).getFieldOffset();
+				offsetSizes[count].length = fields.get(count).getByteSize();
+			}
+		}
+		
+		if (inheritances != null) {
+			for (IInheritance inheritance : inheritances) {
+				offsetSizes[count] = new OffsetAndLength();
+				offsetSizes[count].offset = inheritance.getFieldsOffset();
+				offsetSizes[count].length = inheritance.getType().getByteSize();
+				count++;
+			}
+		}
+
+		// sort by offsets
+		if (offsetSizes.length > 1) {
+			boolean sorted;
+			int passCnt = 1;
+			do {
+				sorted = true;
+				for (int i = 0; i < offsetSizes.length - passCnt; i++) {
+					if (offsetSizes[i].offset > offsetSizes[i + 1].offset) {
+						OffsetAndLength temp = offsetSizes[i];
+						offsetSizes[i] = offsetSizes[i + 1];
+						offsetSizes[i + 1] = temp;
+						sorted = false;
+					}
+				}
+				passCnt++;
+			} while (!sorted && passCnt < offsetSizes.length);
+		}
+
+		// find the offset for each anonymous union's data - between other members or at the end
+		int i = 0;
+		long fieldOffset = 0;
+		for (IField unknownOffsetField : unknownOffsetFields) {
+			for ( ; i < offsetSizes.length; i++) {
+				if (fieldOffset < offsetSizes[i].offset)
+					break;
+				fieldOffset = offsetSizes[i].offset + offsetSizes[i].length;
+			}
+			unknownOffsetField.setFieldOffset(fieldOffset);
+			if (i >= offsetSizes.length)
+				fieldOffset += unknownOffsetField.getByteSize();
+			fields.add(unknownOffsetField);
+		}
+
+		unknownOffsetFields = null;
 	}
 }

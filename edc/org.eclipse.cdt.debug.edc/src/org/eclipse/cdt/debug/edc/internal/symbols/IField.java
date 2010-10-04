@@ -28,6 +28,9 @@ public interface IField extends IType {
 	
 	public int getAccessibility();
 
+	// member offset may need to be computed
+	public void setFieldOffset(long offset);
+
 	/**
 	 * Returns the composite type that owns the field.
 	 */

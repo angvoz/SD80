@@ -722,4 +722,37 @@ public class LanguageSettingsExtensionManager {
 		}
 	}
 
+	// AG FIXME
+	/**
+	 * @param msg
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	public static void logInfo(String msg) {
+		Exception e = new Exception(msg);
+		IStatus status = new Status(IStatus.INFO, CCorePlugin.PLUGIN_ID, msg, e);
+		CCorePlugin.log(status);
+	}
+
+	// AG FIXME
+	/**
+	 * @param msg
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	public static void logWarning(String msg) {
+		Exception e = new Exception(msg);
+		IStatus status = new Status(IStatus.WARNING, CCorePlugin.PLUGIN_ID, msg, e);
+		CCorePlugin.log(status);
+	}
+
+	// AG FIXME
+	/**
+	 * @param msg
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	public static void logError(String msg) {
+		Exception e = new Exception(msg);
+		IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, msg, e);
+		CCorePlugin.log(status);
+	}
+
 }

@@ -73,6 +73,7 @@ import org.eclipse.cdt.internal.core.model.CModelStatus;
 import org.eclipse.cdt.internal.core.model.PathEntry;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.IInternalCCfgInfo;
+import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.utils.cdtvariables.CdtVariableResolver;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFolder;
@@ -2037,12 +2038,28 @@ public class PathEntryTranslator {
 			exportedSettings.addAll(Arrays.asList(setting.getEntries()));
 		}
 
+		final IProject prj = project;
 		final int kinds[] = KindBasedStore.getLanguageEntryKinds();
 		rcDatas.accept(new IPathSettingsContainerVisitor(){
 
 			public boolean visit(PathSettingsContainer container) {
 				CResourceData data = (CResourceData)container.getValue();
 				if (data != null) {
+					// AG FIXME
+					{
+						String kindsStr="";
+						for (int kind : kinds) {
+							String kstr = LanguageSettingEntriesSerializer.kindToString(kind);
+							if (kindsStr.length()==0) {
+								kindsStr = kstr;
+							} else {
+								kindsStr += "|" + kstr;
+							}
+						}
+						String log_msg = "path="+prj+"/"+data.getPath()+", kind=["+kindsStr+"]"+" (PathEntryTranslator.collectEntries())";
+						LanguageSettingsExtensionManager.logInfo(log_msg);
+					}
+
 					PathEntryCollector child = cr.createChild(container.getPath());
 					for (int kind : kinds) {
 						List<ICLanguageSettingEntry> list = new ArrayList<ICLanguageSettingEntry>();
@@ -2071,7 +2088,7 @@ public class PathEntryTranslator {
 		if (lDatas==null || lDatas.length==0) {
 			return false;
 		}
-		
+
 		IPath workspacePath = data.getPath();
 		IProject project = des.getProjectDescription().getProject();
 		IResource rc;
@@ -2080,12 +2097,21 @@ public class PathEntryTranslator {
 		} else {
 			rc = ResourcesPlugin.getWorkspace().getRoot().findMember(workspacePath);
 		}
+
+//		// AG FIXME
+//		String log_msg = "rc="+rc+", kind=["+LanguageSettingEntriesSerializer.kindToString(kind)+"]"+" (PathEntryTranslator.collectEntries())";
+//		if (rc instanceof IFile) {
+//			LanguageSettingsExtensionManager.logInfo(log_msg);
+//		} else {
+//			LanguageSettingsExtensionManager.logWarning(log_msg);
+//		}
+
 		for (CLanguageData lData : lDatas) {
 			list.addAll(LanguageSettingsManager.getSettingEntriesReconciled(des, rc, lData.getLanguageId(), kind));
 		}
 		return list.size()>0;
 	}
-	
+
 	public static IPathEntry[] getPathEntries(IProject project, ICConfigurationDescription cfg, int flags){
 		PathEntryCollector cr = collectEntries(project, cfg);
 		return cr.getEntries(flags, cfg);

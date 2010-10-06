@@ -9,7 +9,7 @@
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.internal.core.settings.model;
+package org.eclipse.cdt.internal.core.language.settings.providers;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -53,7 +53,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-public class LanguageSettingsExtensionManager {
+public class LanguageSettingsExtensionManager_TBD {
 	private static final String STORAGE_WORKSPACE_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
 	private static final String SETTINGS_FOLDER_NAME = ".settings/"; //$NON-NLS-1$
 	private static final String STORAGE_PROJECT_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfoChangeListener;
@@ -29,7 +30,7 @@ import org.eclipse.cdt.core.settings.model.ICMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionListener;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -71,9 +72,9 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 
 		// AG FIXME
 		if (resource instanceof IFile) {
-			LanguageSettingsExtensionManager.logInfo("rc="+resource+" (Tracing DescriptionScannerInfoProvider.getScannerInformation())");
+			LanguageSettingsExtensionManager_TBD.logInfo("rc="+resource+" (Tracing DescriptionScannerInfoProvider.getScannerInformation())");
 		} else {
-			LanguageSettingsExtensionManager.logError("rc="+resource+" (Tracing DescriptionScannerInfoProvider.getScannerInformation())");
+			LanguageSettingsExtensionManager_TBD.logError("rc="+resource+" (Tracing DescriptionScannerInfoProvider.getScannerInformation())");
 		}
 
 		if(!fInited)
@@ -85,7 +86,7 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 			return INEXISTENT_SCANNER_INFO;
 		}
 
-		String[] languageIds = LanguageSettingsManager.getLanguageIds(fCfgDes, resource);
+		String[] languageIds = LanguageSettingsManager_TBD.getLanguageIds(fCfgDes, resource);
 		if (languageIds==null || languageIds.length==0) {
 			Status status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Error getting ScannerInfo: Not able to retrieve language id for resource " + resource);
 			CCorePlugin.log(new CoreException(status));
@@ -95,7 +96,7 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 		// TODO: is there really a use case for resource being not IFile?
 		String languageId = languageIds[0]; // Legacy logic
 
-		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_PATH);
+		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsManager_TBD.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_PATH);
 		List<ICLanguageSettingEntry> includePathSystemEntries = new ArrayList<ICLanguageSettingEntry>(includePathEntries.size());
 		List<ICLanguageSettingEntry> includePathLocalEntries = new ArrayList<ICLanguageSettingEntry>(includePathEntries.size());
 		for (ICLanguageSettingEntry entry : includePathEntries) {
@@ -113,13 +114,13 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 			includePathsLocal[i] = includePathLocalEntries.get(i).getName();
 		}
 
-		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_FILE);
+		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsManager_TBD.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_FILE);
 		String[] includeFiles = getValues(includeFileEntries);
 
-		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO_FILE);
+		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsManager_TBD.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO_FILE);
 		String[] macroFiles = getValues(macroFileEntries);
 
-		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsManager.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO);
+		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsManager_TBD.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO);
 		Map<String, String> definedSymbols = getMacroValues(macroEntries);
 
 		return new ExtendedScannerInfo(definedSymbols, includePathsSystem, macroFiles, includeFiles, includePathsLocal);

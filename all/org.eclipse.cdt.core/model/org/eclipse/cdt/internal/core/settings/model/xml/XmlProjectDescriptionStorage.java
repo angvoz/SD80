@@ -34,22 +34,22 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingsStorage;
 import org.eclipse.cdt.core.settings.model.ICStorageElement;
 import org.eclipse.cdt.core.settings.model.extension.ICProjectConverter;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.envvar.ContributedEnvironment;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.cdt.internal.core.settings.model.AbstractCProjectDescriptionStorage;
 import org.eclipse.cdt.internal.core.settings.model.CProjectDescription;
 import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
 import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionStorageManager;
 import org.eclipse.cdt.internal.core.settings.model.ExceptionFactory;
 import org.eclipse.cdt.internal.core.settings.model.ICProjectDescriptionStorageType;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.settings.model.ICProjectDescriptionStorageType.CProjectDescriptionStorageTypeProxy;
 import org.eclipse.cdt.internal.core.settings.model.SettingsContext;
 import org.eclipse.cdt.internal.core.settings.model.SettingsModelMessages;
@@ -172,7 +172,7 @@ public class XmlProjectDescriptionStorage extends AbstractCProjectDescriptionSto
 				serializingLock.acquire();
 				projectModificaitonStamp = serialize(fDes.getProject(), ICProjectDescriptionStorageType.STORAGE_FILE_NAME, fElement);
 				((ContributedEnvironment) CCorePlugin.getDefault().getBuildEnvironmentManager().getContributedEnvironment()).serialize(fDes);
-				LanguageSettingsExtensionManager.serializeLanguageSettings(fDes);
+				LanguageSettingsExtensionManager_TBD.serializeLanguageSettings(fDes);
 			} finally {
 				serializingLock.release();
 				Job.getJobManager().removeJobChangeListener(notifyJobCanceller);				
@@ -484,7 +484,7 @@ public class XmlProjectDescriptionStorage extends AbstractCProjectDescriptionSto
 				// Update the modification stamp
 				projectModificaitonStamp = getModificationStamp(project.getFile(ICProjectDescriptionStorageType.STORAGE_FILE_NAME));
 				CProjectDescription des = new CProjectDescription(project, new XmlStorage(storage), storage, true, false);
-				LanguageSettingsExtensionManager.loadLanguageSettings(des);
+				LanguageSettingsExtensionManager_TBD.loadLanguageSettings(des);
 				try {
 					setThreadLocalProjectDesc(des);
 					des.loadDatas();

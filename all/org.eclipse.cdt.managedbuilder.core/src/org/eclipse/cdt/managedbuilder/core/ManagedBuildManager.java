@@ -49,6 +49,7 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.AbstractCExtension;
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.CoreModelUtil;
 import org.eclipse.cdt.core.parser.IScannerInfo;
@@ -62,8 +63,7 @@ import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.XmlStorageUtil;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildPropertyManager;
 import org.eclipse.cdt.managedbuilder.envvar.IEnvironmentBuildPathsChangeListener;
@@ -4800,12 +4800,12 @@ public class ManagedBuildManager extends AbstractCExtension {
 				}
 				providersIdsStr = providersIdsStr.replaceAll("\\$\\{Toolchain\\}", toolchainProvidersIds);
 			}
-			List<String> providersIds = Arrays.asList(providersIdsStr.split(String.valueOf(LanguageSettingsManager.PROVIDER_DELIMITER)));
+			List<String> providersIds = Arrays.asList(providersIdsStr.split(String.valueOf(LanguageSettingsManager_TBD.PROVIDER_DELIMITER)));
 			for (String id : providersIds) {
 				ILanguageSettingsProvider provider = null;
 				if (id.startsWith("*")) {
 					id = id.substring(1);
-					provider = LanguageSettingsExtensionManager.getWorkspaceProvider(id);
+					provider = LanguageSettingsExtensionManager_TBD.getWorkspaceProvider(id);
 				} else if (id.startsWith("-")) {
 					id = id.substring(1);
 					for (ILanguageSettingsProvider pr : providers) {
@@ -4817,7 +4817,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 						}
 					}
 				} else {
-					provider = LanguageSettingsExtensionManager.getWorkspaceProvider(id);
+					provider = LanguageSettingsExtensionManager_TBD.getWorkspaceProvider(id);
 					if (provider instanceof LanguageSettingsSerializable) {
 						try {
 							provider = ((LanguageSettingsSerializable)provider).clone();
@@ -4835,13 +4835,13 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 		if (providers.isEmpty()) {
 			// Add MBS provider for unsuspecting toolchains (backward compatibility)
-			ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
+			ILanguageSettingsProvider provider = LanguageSettingsExtensionManager_TBD.getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
 			providers.add(provider);
 		}
 
 		// FIXME: ability to remove PROVIDER_UI_USER
-		if (!isProviderThere(providers, LanguageSettingsManager.PROVIDER_UI_USER)) {
-			ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getWorkspaceProvider(LanguageSettingsManager.PROVIDER_UI_USER);
+		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
+			ILanguageSettingsProvider provider = LanguageSettingsExtensionManager_TBD.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
 			try {
 				provider = ((LanguageSettingsSerializable)provider).clone();
 			} catch (CloneNotSupportedException e) {

@@ -17,10 +17,10 @@ import java.util.List;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -67,7 +67,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	@Override
 	protected void tearDown() throws Exception {
 //		ResourceHelper.cleanUp();
-		LanguageSettingsManager.setUserDefinedProviders(null);
+		LanguageSettingsManager_TBD.setUserDefinedProviders(null);
 	}
 
 	/**
@@ -111,14 +111,14 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	 */
 	public void testNoProviders() throws Exception {
 		// nullify user defined providers
-		LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(null);
-		String[] allIds = LanguageSettingsManager.getProviderAvailableIds();
-		String[] extensionIds = LanguageSettingsManager.getProviderExtensionIds();
+		LanguageSettingsExtensionManager_TBD.setUserDefinedProvidersInternal(null);
+		String[] allIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
+		String[] extensionIds = LanguageSettingsManager_TBD.getProviderExtensionIds();
 		assertEquals(allIds.length, extensionIds.length);
 
 		// serialize language settings of user defined providers (on workspace level)
-		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
-		LanguageSettingsExtensionManager.loadLanguageSettingsWorkspace();
+		LanguageSettingsExtensionManager_TBD.serializeLanguageSettingsWorkspace();
+		LanguageSettingsExtensionManager_TBD.loadLanguageSettingsWorkspace();
 
 		// test passes if no exception was thrown
 	}

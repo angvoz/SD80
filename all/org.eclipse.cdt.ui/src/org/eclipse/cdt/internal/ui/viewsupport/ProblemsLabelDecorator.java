@@ -29,6 +29,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.ui.texteditor.MarkerUtilities;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICElement;
@@ -38,7 +39,6 @@ import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.CElementImageDescriptor;
 import org.eclipse.cdt.ui.CUIPlugin;
 
@@ -388,7 +388,7 @@ public class ProblemsLabelDecorator implements ILabelDecorator, ILightweightLabe
 			if (cfgDescription != null) {
 				IPath path = rc.getProjectRelativePath();
 				ICResourceDescription rcDescription = cfgDescription.getResourceDescription(path, true);
-				boolean isLSCustomized = LanguageSettingsManager.isCustomizedResource(cfgDescription, rc);
+				boolean isLSCustomized = LanguageSettingsManager_TBD.isCustomizedResource(cfgDescription, rc);
 				if (rcDescription != null || isLSCustomized)
 					result |= TICK_CONFIGURATION;
 			}

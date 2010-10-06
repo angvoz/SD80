@@ -26,6 +26,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.cdtvariables.CdtVariableException;
 import org.eclipse.cdt.core.cdtvariables.ICdtVariable;
 import org.eclipse.cdt.core.cdtvariables.ICdtVariableManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.CoreModelUtil;
@@ -68,12 +69,12 @@ import org.eclipse.cdt.internal.core.CharOperation;
 import org.eclipse.cdt.internal.core.cdtvariables.CoreVariableSubstitutor;
 import org.eclipse.cdt.internal.core.cdtvariables.DefaultVariableContextInfo;
 import org.eclipse.cdt.internal.core.cdtvariables.ICoreVariableContextInfo;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.cdt.internal.core.model.APathEntry;
 import org.eclipse.cdt.internal.core.model.CModelStatus;
 import org.eclipse.cdt.internal.core.model.PathEntry;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescriptionCache;
 import org.eclipse.cdt.internal.core.settings.model.IInternalCCfgInfo;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.utils.cdtvariables.CdtVariableResolver;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFolder;
@@ -2057,7 +2058,7 @@ public class PathEntryTranslator {
 							}
 						}
 						String log_msg = "path="+prj+"/"+data.getPath()+", kind=["+kindsStr+"]"+" (PathEntryTranslator.collectEntries())";
-						LanguageSettingsExtensionManager.logInfo(log_msg);
+						LanguageSettingsExtensionManager_TBD.logInfo(log_msg);
 					}
 
 					PathEntryCollector child = cr.createChild(container.getPath());
@@ -2107,7 +2108,7 @@ public class PathEntryTranslator {
 //		}
 
 		for (CLanguageData lData : lDatas) {
-			list.addAll(LanguageSettingsManager.getSettingEntriesReconciled(des, rc, lData.getLanguageId(), kind));
+			list.addAll(LanguageSettingsManager_TBD.getSettingEntriesReconciled(des, rc, lData.getLanguageId(), kind));
 		}
 		return list.size()>0;
 	}

@@ -17,13 +17,13 @@ import java.util.List;
 import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfileManager;
 import org.eclipse.cdt.core.CCProjectNature;
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.managedbuilder.core.IBuilder;
 import org.eclipse.cdt.managedbuilder.core.IToolChain;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
@@ -124,7 +124,7 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 						List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
 						cfgDes.setLanguageSettingProviders(providers);
 					} else {
-						ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(ManagedBuildManager.MBS_LANGUAGE_SETTINGS_PROVIDER);
+						ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getWorkspaceProvider(ManagedBuildManager.MBS_LANGUAGE_SETTINGS_PROVIDER);
 						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 						providers.add(provider);
 						cfgDes.setLanguageSettingProviders(providers);

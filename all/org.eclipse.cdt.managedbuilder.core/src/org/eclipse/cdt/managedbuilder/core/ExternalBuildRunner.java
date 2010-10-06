@@ -30,6 +30,7 @@ import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariableManager;
 import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICModelMarker;
@@ -40,9 +41,8 @@ import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerConfigBuilderInfo2;
@@ -273,9 +273,9 @@ public class ExternalBuildRunner implements IBuildRunner {
 				consoleErr.close();
 				cos.close();
 				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
-					LanguageSettingsManager.serializeWorkspaceProviders();
+					LanguageSettingsManager_TBD.serializeWorkspaceProviders();
 					ICProjectDescription prjDescription = CCorePlugin.getDefault().getProjectDescription(project, false);
-					LanguageSettingsExtensionManager.serializeLanguageSettings(prjDescription);
+					LanguageSettingsExtensionManager_TBD.serializeLanguageSettings(prjDescription);
 				}
 			}
 		} catch (Exception e) {

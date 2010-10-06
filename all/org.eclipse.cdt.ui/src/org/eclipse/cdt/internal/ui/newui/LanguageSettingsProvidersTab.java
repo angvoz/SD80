@@ -49,6 +49,7 @@ import org.osgi.service.prefs.BackingStoreException;
 
 import com.ibm.icu.text.MessageFormat;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
@@ -56,7 +57,6 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
@@ -226,7 +226,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					String id = oldProvider.getId();
 					if (fCheckBoxGlobal.getSelection()) {
 						// Global provider reference chosen
-						newProvider = LanguageSettingsManager.getWorkspaceProvider(id);
+						newProvider = LanguageSettingsManager_TBD.getWorkspaceProvider(id);
 					} else {
 						// Local provider instance chosen
 						if (oldProvider instanceof LanguageSettingsSerializable) {
@@ -288,8 +288,8 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	private void initMapProviders() {
 		fAvailableProvidersMap.clear();
 		fOptionsPageMap.clear();
-		for (String id : LanguageSettingsManager.getProviderAvailableIds()) {
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
+		for (String id : LanguageSettingsManager_TBD.getProviderAvailableIds()) {
+			ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getWorkspaceProvider(id);
 			fAvailableProvidersMap.put(id, provider);
 			initializeOptionsPage(id);
 		}
@@ -340,10 +340,10 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					availableProviders.add(provider);
 				}
 			}
-			String[] ids = LanguageSettingsManager.getDefaultProviderIds();
+			String[] ids = LanguageSettingsManager_TBD.getDefaultProviderIds();
 			cfgProviders = new ArrayList<ILanguageSettingsProvider>();
 			for (String id : ids) {
-				cfgProviders.add(LanguageSettingsManager.getWorkspaceProvider(id));
+				cfgProviders.add(LanguageSettingsManager_TBD.getWorkspaceProvider(id));
 			}
 		}
 		fTableViewer.setInput(availableProviders.toArray(new ILanguageSettingsProvider[0]));
@@ -357,9 +357,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		List<ILanguageSettingsProvider> providers;
 		if (page.isForPrefs()) {
 			providers = new ArrayList<ILanguageSettingsProvider>();
-			String[] availableIds = LanguageSettingsManager.getProviderAvailableIds();
+			String[] availableIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
 			for (String providerId : availableIds) {
-				ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(providerId);
+				ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getWorkspaceProvider(providerId);
 				providers.add(provider);
 			}
 		} else {
@@ -461,9 +461,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 				StatusInfo status = new StatusInfo();
 				if (newText.trim().length() == 0) {
 					status.setError("ErrorParsTab.error.NonEmptyName");
-				} else if (newText.indexOf(LanguageSettingsManager.PROVIDER_DELIMITER)>=0) {
+				} else if (newText.indexOf(LanguageSettingsManager_TBD.PROVIDER_DELIMITER)>=0) {
 					String message = MessageFormat.format("ErrorParsTab.error.IllegalCharacter",
-							new Object[] { LanguageSettingsManager.PROVIDER_DELIMITER });
+							new Object[] { LanguageSettingsManager_TBD.PROVIDER_DELIMITER });
 					status.setError(message);
 				} else if (fAvailableProvidersMap.containsKey(makeId(newText))) {
 					status.setError("ErrorParsTab.error.NonUniqueID");
@@ -509,9 +509,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 				StatusInfo status = new StatusInfo();
 				if (newText.trim().length() == 0) {
 					status.setError("ErrorParsTab.error.NonEmptyName");
-				} else if (newText.indexOf(LanguageSettingsManager.PROVIDER_DELIMITER)>=0) {
+				} else if (newText.indexOf(LanguageSettingsManager_TBD.PROVIDER_DELIMITER)>=0) {
 					String message = MessageFormat.format("ErrorParsTab.error.IllegalCharacter",
-							new Object[] { LanguageSettingsManager.PROVIDER_DELIMITER });
+							new Object[] { LanguageSettingsManager_TBD.PROVIDER_DELIMITER });
 					status.setError(message);
 				}
 				return status;
@@ -562,7 +562,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	}
 
 	private static boolean isExtensionId(String id) {
-		for (String extId : LanguageSettingsManager.getProviderExtensionIds()) {
+		for (String extId : LanguageSettingsManager_TBD.getProviderExtensionIds()) {
 			if (extId.equals(id)) {
 				return true;
 			}
@@ -592,7 +592,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (page.isForProject()) {
 			boolean isChecked = fTableViewer.getChecked(provider);
 			boolean canClone = provider instanceof LanguageSettingsSerializable || provider instanceof ILanguageSettingsEditableProvider;
-			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
+			boolean isGlobal = provider!=null && LanguageSettingsManager_TBD.isWorkspaceProvider(provider);
 //			boolean select = (isChecked && isGlobal) || !canClone;
 			fCheckBoxGlobal.setSelection(isGlobal);
 			fCheckBoxGlobal.setEnabled(isChecked && canClone);
@@ -650,8 +650,8 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 						checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
 					}
 
-					LanguageSettingsManager.setUserDefinedProviders(providers);
-					LanguageSettingsManager.setDefaultProviderIds(checkedProviderIds);
+					LanguageSettingsManager_TBD.setUserDefinedProviders(providers);
+					LanguageSettingsManager_TBD.setDefaultProviderIds(checkedProviderIds);
 				} catch (BackingStoreException e) {
 					CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
 				} catch (CoreException e) {
@@ -710,7 +710,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 //	 *     not for Preference New CDT Project Wizard/Makefile Project.
 //	 */
 	private boolean isProviderCustomizable(ILanguageSettingsProvider provider) {
-		return page.isForPrefs() || !LanguageSettingsManager.isWorkspaceProvider(provider);
+		return page.isForPrefs() || !LanguageSettingsManager_TBD.isWorkspaceProvider(provider);
 	}
 
 	/* (non-Javadoc)
@@ -725,8 +725,8 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					"ErrorParsTab.message.ConfirmReset")) {
 
 				try {
-					LanguageSettingsManager.setUserDefinedProviders(null);
-					LanguageSettingsManager.setDefaultProviderIds(null);
+					LanguageSettingsManager_TBD.setUserDefinedProviders(null);
+					LanguageSettingsManager_TBD.setDefaultProviderIds(null);
 				} catch (BackingStoreException e) {
 					CUIPlugin.log("ErrorParsTab.error.OnRestoring", e);
 				} catch (CoreException e) {

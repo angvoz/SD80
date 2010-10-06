@@ -44,6 +44,7 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.model.util.CDTListComparator;
@@ -62,7 +63,6 @@ import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 
@@ -250,7 +250,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	}
 
 	/**
-	 * Shortcut for getting setting entries for current context. {@link LanguageSettingsManager}
+	 * Shortcut for getting setting entries for current context. {@link LanguageSettingsManager_TBD}
 	 * will be checking parent resources if no settings defined for current resource.
 	 *
 	 * @return list of setting entries for the current context.
@@ -264,7 +264,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 		List<ICLanguageSettingEntry> entries = provider.getSettingEntries(cfgDescription, rc, languageId);
 		if (entries==null) {
-			entries = LanguageSettingsManager.getSettingEntriesConsolidated(cfgDescription, provider.getId(), rc, languageId);
+			entries = LanguageSettingsManager_TBD.getSettingEntriesConsolidated(cfgDescription, provider.getId(), rc, languageId);
 		}
 		return entries;
 	}
@@ -463,7 +463,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		boolean canEdit = isProviderEditable && isEntrySelected;
 		boolean canDelete = isProviderEditable && isEntrySelected;
 		boolean canClear = isProviderEditable && isProviderSelected
-			&& !LanguageSettingsManager.isWorkspaceProvider(provider)
+			&& !LanguageSettingsManager_TBD.isWorkspaceProvider(provider)
 			&& getSettingEntries(provider)!=null;
 
 		if (isProviderSelected) {
@@ -849,7 +849,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 			selectItem(providerId, nextEntry);
 			updateButtons();
-		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider) && getSettingEntriesConsolidated(provider)!=null) {
+		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager_TBD.isWorkspaceProvider(provider) && getSettingEntriesConsolidated(provider)!=null) {
 			String languageId = lang.getLanguageId();
 			if (languageId!=null) {
 				ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
@@ -963,7 +963,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				if (pro instanceof ILanguageSettingsEditableProvider) {
 					if (pro instanceof LanguageSettingsSerializable) {
 						LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
-						if (LanguageSettingsManager.isWorkspaceProvider(spro)) {
+						if (LanguageSettingsManager_TBD.isWorkspaceProvider(spro)) {
 							try {
 								pro = spro.clone();
 								if (pro.getClass()!=spro.getClass())
@@ -1034,7 +1034,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 					if (pro instanceof ILanguageSettingsEditableProvider) {
 						if (pro instanceof LanguageSettingsSerializable) {
 							LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
-							if (LanguageSettingsManager.isWorkspaceProvider(spro)) {
+							if (LanguageSettingsManager_TBD.isWorkspaceProvider(spro)) {
 								try {
 									pro = spro.clone();
 									if (pro.getClass()!=spro.getClass())

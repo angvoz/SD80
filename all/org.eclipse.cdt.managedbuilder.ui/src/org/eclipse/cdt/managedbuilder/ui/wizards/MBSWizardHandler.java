@@ -24,13 +24,13 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfileManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.templateengine.process.ProcessFailureException;
 import org.eclipse.cdt.internal.ui.wizards.ICDTCommonProjectWizard;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
@@ -611,7 +611,7 @@ public class MBSWizardHandler extends CWizardHandler {
 				List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
 				cfgDes.setLanguageSettingProviders(providers);
 			} else {
-				ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(ManagedBuildManager.MBS_LANGUAGE_SETTINGS_PROVIDER);
+				ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getWorkspaceProvider(ManagedBuildManager.MBS_LANGUAGE_SETTINGS_PROVIDER);
 				List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 				providers.add(provider);
 				cfgDes.setLanguageSettingProviders(providers);

@@ -7,10 +7,10 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 
 public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*implements IFontProvider, ITableLabelProvider , IColorProvider */ {
@@ -24,7 +24,7 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 		if (element instanceof ILanguageSettingsProvider) {
 			String[] overlayKeys = new String[5];
 			ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
-			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+			if (LanguageSettingsManager_TBD.isWorkspaceProvider(provider)) {
 //				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_GLOBAL;
 //				overlayKeys[IDecoration.TOP_LEFT] = LanguageSettingsImages.IMG_OVR_REFERENCE;
 //				overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_PARENT;

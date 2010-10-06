@@ -9,7 +9,7 @@
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.core.settings.model.util;
+package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -26,7 +26,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
-import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -40,10 +40,10 @@ import org.osgi.service.prefs.BackingStoreException;
  * Duplicate entries are filtered where only first entry is preserved.
  *
  */
-public class LanguageSettingsManager {
+public class LanguageSettingsManager_TBD {
 	public static final String PROVIDER_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
 	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user.LanguageSettingsProvider";
-	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager.PROVIDER_DELIMITER;
+	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager_TBD.PROVIDER_DELIMITER;
 
 	/**
 	 * Never returns {@code null} although individual providers return {@code null} if
@@ -163,7 +163,7 @@ public class LanguageSettingsManager {
 	 * @throws CoreException in case of problems
 	 */
 	public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
-		LanguageSettingsExtensionManager.setUserDefinedProviders(providers);
+		LanguageSettingsExtensionManager_TBD.setUserDefinedProviders(providers);
 	}
 
 	/**
@@ -171,14 +171,14 @@ public class LanguageSettingsManager {
 	 * from workspace
 	 */
 	public static String[] getProviderAvailableIds() {
-		return LanguageSettingsExtensionManager.getProviderAvailableIds();
+		return LanguageSettingsExtensionManager_TBD.getProviderAvailableIds();
 	}
 
 	/**
 	 * @return IDs of language settings providers of LanguageSettingProvider extension point.
 	 */
 	public static String[] getProviderExtensionIds() {
-		return LanguageSettingsExtensionManager.getProviderExtensionIds();
+		return LanguageSettingsExtensionManager_TBD.getProviderExtensionIds();
 	}
 
 	/**
@@ -192,7 +192,7 @@ public class LanguageSettingsManager {
 	 * @return the provider or {@code null} if provider is not defined.
 	 */
 	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
-		return LanguageSettingsExtensionManager.getWorkspaceProvider(id);
+		return LanguageSettingsExtensionManager_TBD.getWorkspaceProvider(id);
 	}
 
 	/**
@@ -202,7 +202,7 @@ public class LanguageSettingsManager {
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
 	 */
 	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
-		return LanguageSettingsExtensionManager.isWorkspaceProvider(provider);
+		return LanguageSettingsExtensionManager_TBD.isWorkspaceProvider(provider);
 	}
 
 	/**
@@ -212,14 +212,14 @@ public class LanguageSettingsManager {
 	 * @throws BackingStoreException in case of problem with storing
 	 */
 	public static void setDefaultProviderIds(String[] ids) throws BackingStoreException {
-		LanguageSettingsExtensionManager.setDefaultProviderIds(ids);
+		LanguageSettingsExtensionManager_TBD.setDefaultProviderIds(ids);
 	}
 
 	/**
 	 * @return default providers IDs to be used if provider list is empty.
 	 */
 	public static String[] getDefaultProviderIds() {
-		return LanguageSettingsExtensionManager.getDefaultProviderIds();
+		return LanguageSettingsExtensionManager_TBD.getDefaultProviderIds();
 	}
 
 	/**
@@ -261,7 +261,7 @@ public class LanguageSettingsManager {
 	}
 
 	public static void serializeWorkspaceProviders() throws CoreException {
-		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
+		LanguageSettingsExtensionManager_TBD.serializeLanguageSettingsWorkspace();
 	}
 
 	// FIXME: is there more straight way to get language id?

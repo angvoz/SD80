@@ -16,6 +16,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.cdtvariables.ICdtVariable;
 import org.eclipse.cdt.core.cdtvariables.ICdtVariablesContributor;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.settings.model.CConfigurationStatus;
 import org.eclipse.cdt.core.settings.model.ICBuildSetting;
 import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
@@ -46,7 +47,6 @@ import org.eclipse.cdt.core.settings.model.extension.CTargetPlatformData;
 import org.eclipse.cdt.core.settings.model.extension.impl.CDefaultConfigurationData;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.CSettingEntryFactory;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.util.PathSettingsContainer;
 import org.eclipse.cdt.internal.core.cdtvariables.CdtVariableManager;
 import org.eclipse.cdt.internal.core.cdtvariables.StorableCdtVariables;

@@ -47,6 +47,8 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	private static final String PROVIDER_NAME_WSP = "test.provider.workspace.name";
 	private static final String ELEM_TEST = "test";
 
+	private static CoreModel coreModel = CoreModel.getDefault();
+
 	class MockConfigurationDescription extends CProjectDescriptionTestHelper.DummyCConfigurationDescription {
 		List<ILanguageSettingsProvider> providers;
 		public MockConfigurationDescription(String id) {
@@ -133,7 +135,6 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	}
 
 	private ICConfigurationDescription[] getConfigurationDescriptions(IProject project) {
-		CoreModel coreModel = CoreModel.getDefault();
 		ICProjectDescriptionManager mngr = coreModel.getProjectDescriptionManager();
 		// project description
 		ICProjectDescription projectDescription = mngr.getProjectDescription(project);
@@ -840,7 +841,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		{
 			// get project descriptions
-			ICProjectDescription writableProjDescription = CoreModel.getDefault().getProjectDescription(project);
+			ICProjectDescription writableProjDescription = coreModel.getProjectDescription(project);
 			assertNotNull(writableProjDescription);
 			ICConfigurationDescription[] cfgDescriptions = writableProjDescription.getConfigurations();
 			assertEquals(1, cfgDescriptions.length);
@@ -856,14 +857,13 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertEquals(1, storedProviders.size());
 
 			// write to project description
-			CoreModel.getDefault()
-				.setProjectDescription(project, writableProjDescription);
+			coreModel.setProjectDescription(project, writableProjDescription);
 			IFile xmlStorageFile = project.getFile(".settings/language.settings.xml");
 			assertTrue(xmlStorageFile.exists());
 			xmlStorageFileLocation = xmlStorageFile.getLocation().toOSString();
 		}
 		{
-			CoreModel.getDefault().getProjectDescription(project);
+			coreModel.getProjectDescription(project);
 			ICConfigurationDescription cfgDescription = getFirstConfigurationDescription(project);
 			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
 			assertEquals(1, providers.size());
@@ -888,10 +888,22 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		{
 			// clear configuration
-			ICProjectDescription writableProjDescription = CoreModel.getDefault().getProjectDescription(project);
-			ICConfigurationDescription cfgDescription = getFirstConfigurationDescription(project);
+			ICProjectDescription writableProjDescription = coreModel.getProjectDescription(project);
+			ICConfigurationDescription[] cfgDescriptions = writableProjDescription.getConfigurations();
+			assertEquals(1, cfgDescriptions.length);
+			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+			assertNotNull(cfgDescription);
+
 			cfgDescription.setLanguageSettingProviders(new ArrayList<ILanguageSettingsProvider>());
-			CoreModel.getDefault().setProjectDescription(project, writableProjDescription);
+			coreModel.setProjectDescription(project, writableProjDescription);
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			assertEquals(0, providers.size());
+		}
+		{
+			// re-check if it really took it
+			ICConfigurationDescription cfgDescription = getFirstConfigurationDescription(project);
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			assertEquals(0, providers.size());
 		}
 		{
 			// close the project
@@ -900,7 +912,6 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 		{
 			// open to double-check the data is not kept in some other kind of cache
 			project.open(null);
-			CoreModel.getDefault().getProjectDescription(project);
 			ICConfigurationDescription cfgDescription = getFirstConfigurationDescription(project);
 			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
 			assertEquals(0, providers.size());
@@ -911,10 +922,12 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 		{
 			// Move storage back
 			java.io.File xmlFile = new java.io.File(xmlStorageFileLocation);
+			xmlFile.delete();
+			assertFalse("File "+xmlFile+ " still exist", xmlFile.exists());
 			java.io.File xmlFileOut = new java.io.File(xmlOutOfTheWay);
 			xmlFileOut.renameTo(xmlFile);
-			assertTrue(xmlFile.exists());
-			assertFalse(xmlFileOut.exists());
+			assertTrue("File "+xmlFile+ " does not exist", xmlFile.exists());
+			assertFalse("File "+xmlFileOut+ " still exist", xmlFileOut.exists());
 		}
 
 		{

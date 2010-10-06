@@ -509,6 +509,17 @@ public class SnapshotUtils extends PlatformObject {
 		return false;
 	}
 	
+	static public boolean isSnapshotLaunchConfig(ILaunchConfiguration launchConfiguration)
+	{
+		try {
+			String albumFile = launchConfiguration.getAttribute(IEDCLaunchConfigurationConstants.ATTR_ALBUM_FILE, "");
+			return albumFile.length() > 0;
+		} catch (CoreException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
+		return false;
+	}
+	
 	static public ILaunchConfiguration findExistingLaunchForAlbum(IAlbum album) {
 		ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
 		ILaunchConfigurationType launchType = lm.getLaunchConfigurationType(album.getLaunchTypeID());

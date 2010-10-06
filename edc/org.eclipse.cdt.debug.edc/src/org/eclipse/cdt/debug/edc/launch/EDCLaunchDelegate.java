@@ -20,6 +20,7 @@ import java.util.concurrent.TimeoutException;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.launch.ServicesLaunchSequence;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotLaunchSequence;
+import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
@@ -241,17 +242,20 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 
 	private EDCLaunch findExistingLaunch(ILaunchConfiguration configuration,
 			String mode) {
-        ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
-        List<ILaunch> launchList = Arrays.asList(manager.getLaunches());
-        
-        for (ILaunch iLaunch : launchList) {		
-        	if (!iLaunch.isTerminated() && iLaunch instanceof EDCLaunch)
-        	{
-        		EDCLaunch edcLaunch = (EDCLaunch) iLaunch;
-        		if (DsfSession.isSessionActive(edcLaunch.getSession().getId())
-        				&& isSameTarget(edcLaunch, configuration, mode))
-        			return edcLaunch;
-         	}
+		if (!SnapshotUtils.isSnapshotLaunchConfig(configuration)) // Snapshot launches never join existing ones.
+		{ 
+	        ILaunchManager manager = DebugPlugin.getDefault().getLaunchManager();
+	        List<ILaunch> launchList = Arrays.asList(manager.getLaunches());
+	        
+	        for (ILaunch iLaunch : launchList) {		
+	        	if (!iLaunch.isTerminated() && iLaunch instanceof EDCLaunch)
+	        	{
+	        		EDCLaunch edcLaunch = (EDCLaunch) iLaunch;
+	        		if (DsfSession.isSessionActive(edcLaunch.getSession().getId())
+	        				&& isSameTarget(edcLaunch, configuration, mode))
+	        			return edcLaunch;
+	         	}
+			}
 		}
 		return null;
 	}

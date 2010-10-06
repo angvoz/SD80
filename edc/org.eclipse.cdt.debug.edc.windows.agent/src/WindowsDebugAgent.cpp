@@ -128,6 +128,8 @@ int main(int argc, char* argv[]) {
 	LPTSTR lpNameBuffer = NULL;
 	DWORD lpnSize = 0;
 	GetComputerName(lpNameBuffer, &lpnSize);
+	if (lpnSize == 0) // On Win XP this may return zero even if there is a valid name
+		lpnSize = 1024;
 	lpNameBuffer = new char[++lpnSize];
 	GetComputerName(lpNameBuffer, &lpnSize);
 	peer_server_addprop(ps, loc_strdup("Description"), loc_strdup(lpNameBuffer));

@@ -275,7 +275,8 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 //		Matcher fileMatcher = PATTERN_FILE.matcher(line);
 //		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s      ([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?[\r\n]*");
 //		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s['\"]?([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))['\"]?((\\s.*)|())[\r\n]*");
-		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s['\"]?([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))['\"]?((\\s.*)|())[\r\n]*");
+//		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s['\"]?([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))['\"]?((\\s.*)|())[\r\n]*");
+		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))((\\s.*)|())[\r\n]*");
 		Matcher fileMatcher = PATTERN.matcher(line);
 
 		if (fileMatcher.matches()) {

@@ -159,7 +159,8 @@ public class SystemVMContainer implements IAdaptable, ISystemVMContainer {
 			if (parent instanceof ISystemVMContainer)
 			{
 				List<SystemVMContainer> children = ((ISystemVMContainer) parent).getChildren();
-				return children.subList(index, index + length).toArray();
+				if (index < children.size() && ((index + length) <= children.size()))
+					return children.subList(index, index + length).toArray();
 			}
 			return null;
 		}

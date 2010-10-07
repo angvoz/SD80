@@ -564,7 +564,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				break;
 			}
 
-			return tcfContext.canResume(mode);
+			if (tcfContext != null)
+				return tcfContext.canResume(mode);
+			else
+				return false;
 		}
 
 		/**
@@ -579,28 +582,43 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			Protocol.invokeLater(new Runnable() {
-				public void run() {
-					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME, 0, new DoneCommand() {
+			if (tcfContext != null) {
+				Protocol.invokeLater(new Runnable() {
+					public void run() {
+						tcfContext
+								.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME,
+										0, new DoneCommand() {
 
-						public void doneCommand(IToken token, final Exception error) {
-							getExecutor().execute(new Runnable() {
-								public void run() {
-									if (error == null) {
-										contextResumed(true);
-										if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.trace("Resume command succeeded."); }
-									} else {
-										if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.trace("Resume command failed."); }
-										rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-												"Resume failed.", null));
-									}
-									rm.done();
-								}
-							});
-						}
-					});
-				}
-			});
+											public void doneCommand(
+													IToken token,
+													final Exception error) {
+												getExecutor().execute(
+														new Runnable() {
+															public void run() {
+																if (error == null) {
+																	contextResumed(true);
+																	if (EDCTrace.RUN_CONTROL_TRACE_ON) {
+																		EDCTrace.trace("Resume command succeeded.");
+																	}
+																} else {
+																	if (EDCTrace.RUN_CONTROL_TRACE_ON) {
+																		EDCTrace.trace("Resume command failed.");
+																	}
+																	rm.setStatus(new Status(
+																			IStatus.ERROR,
+																			EDCDebugger.PLUGIN_ID,
+																			REQUEST_FAILED,
+																			"Resume failed.",
+																			null));
+																}
+																rm.done();
+															}
+														});
+											}
+										});
+					}
+				});
+			}
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
@@ -618,22 +636,30 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			Protocol.invokeLater(new Runnable() {
-				public void run() {
-					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME, 0, new DoneCommand() {
+			if (tcfContext != null) {
+				Protocol.invokeLater(new Runnable() {
+					public void run() {
+						tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME,
+										0, new DoneCommand() {
 
-						public void doneCommand(IToken token, final Exception error) {
-							// do this in DSF executor thread.
-							getExecutor().execute(new Runnable() {
-								public void run() {
-									handleTCFResumeDoneForStepping("ResumeForStepping", error, rm);
-								}
-							});
-						}
-					});
-				}
-			});
-		
+											public void doneCommand(
+													IToken token,
+													final Exception error) {
+												// do this in DSF executor thread.
+												getExecutor().execute(
+														new Runnable() {
+															public void run() {
+																handleTCFResumeDoneForStepping(
+																		"ResumeForStepping",
+																		error,
+																		rm);
+															}
+														});
+											}
+										});
+					}
+				});
+			}
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
@@ -662,18 +688,25 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public void suspend(final RequestMonitor requestMonitor) {
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
-			Protocol.invokeLater(new Runnable() {
-				public void run() {
-					tcfContext.suspend(new DoneCommand() {
+			if (tcfContext != null) {
+				Protocol.invokeLater(new Runnable() {
+					public void run() {
+						tcfContext.suspend(new DoneCommand() {
 
-						public void doneCommand(IToken token, Exception error) {
-							if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
-							requestMonitor.done();
-							if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
-						}
-					});
-				}
-			});
+							public void doneCommand(IToken token,
+									Exception error) {
+								if (EDCTrace.RUN_CONTROL_TRACE_ON) {
+									EDCTrace.traceEntry(this);
+								}
+								requestMonitor.done();
+								if (EDCTrace.RUN_CONTROL_TRACE_ON) {
+									EDCTrace.traceExit();
+								}
+							}
+						});
+					}
+				});
+			}
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
@@ -845,22 +878,25 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			Protocol.invokeLater(new Runnable() {
-				public void run() {
-					int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO
-							: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER;
-					tcfContext.resume(mode, 1, new DoneCommand() {
-						public void doneCommand(IToken token, final Exception error) {
-							// do this in DSF executor thread.
-							getExecutor().execute(new Runnable() {
-								public void run() {
-									handleTCFResumeDoneForStepping("SingleStep", error, rm);
-								}
-							});
-						}
-					});
-				}
-			});
+			if (tcfContext != null)
+			{
+				Protocol.invokeLater(new Runnable() {
+					public void run() {
+						int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO
+								: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER;
+						tcfContext.resume(mode, 1, new DoneCommand() {
+							public void doneCommand(IToken token, final Exception error) {
+								// do this in DSF executor thread.
+								getExecutor().execute(new Runnable() {
+									public void run() {
+										handleTCFResumeDoneForStepping("SingleStep", error, rm);
+									}
+								});
+							}
+						});
+					}
+				});
+			}
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
@@ -878,21 +914,31 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			Protocol.invokeLater(new Runnable() {
-				public void run() {
-					tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OUT, 0, new DoneCommand() {
+			if (tcfContext != null) {
+				Protocol.invokeLater(new Runnable() {
+					public void run() {
+						tcfContext
+								.resume(org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OUT,
+										0, new DoneCommand() {
 
-						public void doneCommand(IToken token, final Exception error) {
-							// do this in DSF executor thread.
-							getExecutor().execute(new Runnable() {
-								public void run() {
-									handleTCFResumeDoneForStepping("StepOut", error, rm);
-								}
-							});
-						}
-					});
-				}
-			});
+											public void doneCommand(
+													IToken token,
+													final Exception error) {
+												// do this in DSF executor thread.
+												getExecutor().execute(
+														new Runnable() {
+															public void run() {
+																handleTCFResumeDoneForStepping(
+																		"StepOut",
+																		error,
+																		rm);
+															}
+														});
+											}
+										});
+					}
+				});
+			}
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
@@ -904,27 +950,31 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			Protocol.invokeLater(new Runnable() {
-				public void run() {
-					int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO_RANGE
-							: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER_RANGE;
-					Map<String, Object> params = new HashMap<String, Object>();
-					params.put("RANGE_START", rangeStart.getValue());
-					params.put("RANGE_END", rangeEnd.getValue());
+			if (tcfContext != null) {
+				Protocol.invokeLater(new Runnable() {
+					public void run() {
+						int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO_RANGE
+								: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER_RANGE;
+						Map<String, Object> params = new HashMap<String, Object>();
+						params.put("RANGE_START", rangeStart.getValue());
+						params.put("RANGE_END", rangeEnd.getValue());
 
-					tcfContext.resume(mode, 0, params, new DoneCommand() {
+						tcfContext.resume(mode, 0, params, new DoneCommand() {
 
-						public void doneCommand(IToken token, final Exception error) {
-							// do this in DSF executor thread.
-							getExecutor().execute(new Runnable() {
-								public void run() {
-									handleTCFResumeDoneForStepping("StepRange", error, rm);
-								}
-							});
-						}
-					});
-				}
-			});
+							public void doneCommand(IToken token,
+									final Exception error) {
+								// do this in DSF executor thread.
+								getExecutor().execute(new Runnable() {
+									public void run() {
+										handleTCFResumeDoneForStepping(
+												"StepRange", error, rm);
+									}
+								});
+							}
+						});
+					}
+				});
+			}
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 

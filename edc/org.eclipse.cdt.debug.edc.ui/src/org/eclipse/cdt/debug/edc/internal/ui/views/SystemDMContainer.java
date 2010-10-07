@@ -38,6 +38,7 @@ public class SystemDMContainer {
 
 	public SystemDMContainer(SystemDMContainer parent, Map<String, Object> props) {
 		this(props);
+		assert parent != null;
 		parent.addChild(this);
 		this.setParent(parent);
 	}

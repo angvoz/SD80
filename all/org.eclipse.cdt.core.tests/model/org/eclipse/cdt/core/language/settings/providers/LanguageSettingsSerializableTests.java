@@ -9,7 +9,7 @@
  *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.core.settings.model;
+package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +17,15 @@ import java.util.List;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
+import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper;
+import org.eclipse.cdt.core.settings.model.CIncludeFileEntry;
+import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
+import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
+import org.eclipse.cdt.core.settings.model.CLibraryPathEntry;
+import org.eclipse.cdt.core.settings.model.CMacroEntry;
+import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
@@ -226,8 +233,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 			// verify that "configuration" element is collapsed and not saved in XML
 			String xmlString = XmlUtil.toString(doc);
-			String xmlTag = "configuration"; // LanguageSettingsSerializable.ELEM_CONFIGURATION;
-			assertFalse(xmlString.contains(xmlTag));
+			assertFalse(xmlString.contains("<configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
 		}
 		{
 			// re-load and check language settings of the newly loaded provider
@@ -256,8 +262,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 			// verify that "language" element is collapsed and not saved in XML
 			String xmlString = XmlUtil.toString(doc);
-			String xmlTag = "language"; // LanguageSettingsSerializable.ELEM_LANGUAGE;
-			assertFalse(xmlString.contains(xmlTag));
+			assertFalse(xmlString.contains("<language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
 		}
 		{
 			// re-load and check language settings of the newly loaded provider
@@ -287,8 +292,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 			// verify that "resource" element is collapsed and not saved in XML
 			String xmlString = XmlUtil.toString(doc);
-			String xmlTag = "resource"; // LanguageSettingsSerializable.ELEM_RESOURCE;
-			assertFalse(xmlString.contains(xmlTag));
+			assertFalse(xmlString.contains("<resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
 		}
 		{
 			// re-load and check language settings of the newly loaded provider
@@ -317,8 +321,8 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 			// verify that element is collapsed and not saved in XML
 			String xmlString = XmlUtil.toString(doc);
-			assertFalse(xmlString.contains("configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
-			assertFalse(xmlString.contains("language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
+			assertFalse(xmlString.contains("<configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
+			assertFalse(xmlString.contains("<language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
 		}
 		{
 			// re-load and check language settings of the newly loaded provider
@@ -347,8 +351,8 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 			// verify that element is collapsed and not saved in XML
 			String xmlString = XmlUtil.toString(doc);
-			assertFalse(xmlString.contains("configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
-			assertFalse(xmlString.contains("resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
+			assertFalse(xmlString.contains("<configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
+			assertFalse(xmlString.contains("<resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
 		}
 		{
 			// re-load and check language settings of the newly loaded provider
@@ -377,8 +381,8 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 			// verify that element is collapsed and not saved in XML
 			String xmlString = XmlUtil.toString(doc);
-			assertFalse(xmlString.contains("language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
-			assertFalse(xmlString.contains("resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
+			assertFalse(xmlString.contains("<language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
+			assertFalse(xmlString.contains("<resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
 		}
 		{
 			// re-load and check language settings of the newly loaded provider
@@ -408,10 +412,10 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 			// verify that element is collapsed and not saved in XML
 			String xmlString = XmlUtil.toString(doc);
-			assertFalse(xmlString.contains("configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
-			assertFalse(xmlString.contains("language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
-			assertFalse(xmlString.contains("resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
-			assertFalse(xmlString.contains("flag")); // LanguageSettingsSerializable.ELEM_FLAG;
+			assertFalse(xmlString.contains("<configuration")); // LanguageSettingsSerializable.ELEM_CONFIGURATION;
+			assertFalse(xmlString.contains("<language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
+			assertFalse(xmlString.contains("<resource")); // LanguageSettingsSerializable.ELEM_RESOURCE;
+			assertFalse(xmlString.contains("<flag")); // LanguageSettingsSerializable.ELEM_FLAG;
 		}
 		{
 			// re-load and check language settings of the newly loaded provider

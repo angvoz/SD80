@@ -9,18 +9,11 @@
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.core.settings.model;
+package org.eclipse.cdt.core.language.settings.providers;
 
-import java.util.List;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 
-import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
-import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.core.resources.IResource;
 
-public class TestClassLanguageSettingsProvider extends AbstractExecutableExtensionBase
-		implements ILanguageSettingsProvider {
+public class TestClassLanguageSettingsBaseProvider extends LanguageSettingsBaseProvider {
 
-	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-		return null;
-	}
 }

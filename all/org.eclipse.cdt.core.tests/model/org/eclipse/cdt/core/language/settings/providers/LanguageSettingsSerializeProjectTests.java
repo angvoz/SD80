@@ -9,7 +9,7 @@
  *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.core.settings.model;
+package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +24,14 @@ import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper;
+import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper.DummyCConfigurationDescription;
+import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper.DummyCProjectDescription;
+import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
+import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
@@ -490,7 +498,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 			assertNotNull(cfgDescription);
 
-			LanguageSettingsSerializable serializableProvider = new TestClassSerializableLanguageSettingsProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable serializableProvider = new TestClassLanguageSettingsSerializableProvider(PROVIDER_0, PROVIDER_NAME_0);
 			serializableProvider.setSettingEntries(null, null, null, original);
 
 			ArrayList<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
@@ -518,7 +526,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertNotNull(providers);
 			assertEquals(1, providers.size());
 			ILanguageSettingsProvider provider = providers.get(0);
-			assertTrue(provider instanceof TestClassSerializableLanguageSettingsProvider);
+			assertTrue(provider instanceof TestClassLanguageSettingsSerializableProvider);
 
 			List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, null, null);
 			assertEquals(original.get(0), retrieved.get(0));
@@ -645,7 +653,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertNotNull(cfgDescription);
 
 			// populate with provider overriding the extension (must be SerializableLanguageSettingsProvider or a class from another extension)
-			ILanguageSettingsProvider providerOverride = new TestClassSerializableLanguageSettingsProvider(idExt, PROVIDER_NAME_0);
+			ILanguageSettingsProvider providerOverride = new TestClassLanguageSettingsSerializableProvider(idExt, PROVIDER_NAME_0);
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 			providers.add(providerOverride);
 			cfgDescription.setLanguageSettingProviders(providers);
@@ -674,7 +682,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertEquals(1, providers.size());
 			ILanguageSettingsProvider provider = providers.get(0);
 			assertNotNull(provider);
-			assertTrue(provider instanceof TestClassSerializableLanguageSettingsProvider);
+			assertTrue(provider instanceof TestClassLanguageSettingsSerializableProvider);
 			assertEquals(idExt, provider.getId());
 			assertEquals(PROVIDER_NAME_0, provider.getName());
 		}
@@ -704,7 +712,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertNotNull(cfgDescription);
 
 			// populate with provider overriding both workspace provider and extension
-			ILanguageSettingsProvider providerOverride = new TestClassSerializableLanguageSettingsProvider(idExt, PROVIDER_NAME_0);
+			ILanguageSettingsProvider providerOverride = new TestClassLanguageSettingsSerializableProvider(idExt, PROVIDER_NAME_0);
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 			providers.add(providerOverride);
 			cfgDescription.setLanguageSettingProviders(providers);
@@ -732,7 +740,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertEquals(1, providers.size());
 			ILanguageSettingsProvider provider = providers.get(0);
 			assertNotNull(provider);
-			assertTrue(provider instanceof TestClassSerializableLanguageSettingsProvider);
+			assertTrue(provider instanceof TestClassLanguageSettingsSerializableProvider);
 			assertEquals(idExt, provider.getId());
 			assertEquals(PROVIDER_NAME_0, provider.getName());
 		}
@@ -773,7 +781,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 				LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 				mockProvider.setSettingEntries(null, null, null, original_41);
 				// 4.2
-				LanguageSettingsSerializable mockProvider2 = new TestClassSerializableLanguageSettingsProvider(PROVIDER_2, PROVIDER_NAME_2);
+				LanguageSettingsSerializable mockProvider2 = new TestClassLanguageSettingsSerializableProvider(PROVIDER_2, PROVIDER_NAME_2);
 				mockProvider2.setSettingEntries(null, null, null, original_42);
 
 				ArrayList<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
@@ -824,7 +832,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			// 4.2
 			{
 				ILanguageSettingsProvider provider3 = providers.get(3);
-				assertTrue(provider3 instanceof TestClassSerializableLanguageSettingsProvider);
+				assertTrue(provider3 instanceof TestClassLanguageSettingsSerializableProvider);
 				List<ICLanguageSettingEntry> retrieved = provider3.getSettingEntries(null, null, null);
 				assertEquals(original_42.get(0), retrieved.get(0));
 				assertEquals(original_42.size(), retrieved.size());

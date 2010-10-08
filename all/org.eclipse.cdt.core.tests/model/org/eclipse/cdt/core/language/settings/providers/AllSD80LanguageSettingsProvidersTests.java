@@ -13,10 +13,6 @@ package org.eclipse.cdt.core.language.settings.providers;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
-import org.eclipse.cdt.core.settings.model.LanguageSettingsExtensionsTests;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsManagerTests;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializableTests;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializeProjectTests;
 
 public class AllSD80LanguageSettingsProvidersTests {
 	public static void main(String[] args) {

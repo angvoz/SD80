@@ -10,6 +10,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.settings.model;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsExtensionsTests;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManagerTests;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializableTests;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializeProjectTests;
+
 import junit.framework.Test;
 import junit.framework.TestSuite;
 

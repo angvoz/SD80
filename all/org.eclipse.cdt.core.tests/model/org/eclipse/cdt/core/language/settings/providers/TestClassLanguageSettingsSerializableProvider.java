@@ -9,11 +9,17 @@
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.core.settings.model;
+package org.eclipse.cdt.core.language.settings.providers;
 
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 
 
-public class TestClassLSBaseProvider extends LanguageSettingsBaseProvider {
-
+public class TestClassLanguageSettingsSerializableProvider extends LanguageSettingsSerializable {
+	public TestClassLanguageSettingsSerializableProvider() {
+		super();
+	}
+	
+	public TestClassLanguageSettingsSerializableProvider(String id, String name) {
+		super(id, name);
+	}
 }

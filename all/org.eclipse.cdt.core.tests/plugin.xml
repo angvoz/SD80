@@ -236,17 +236,17 @@
                name="/macro/file.mac">
          </entry>
       </provider>      <provider
-            class="org.eclipse.cdt.core.settings.model.TestClassLanguageSettingsProvider"
+            class="org.eclipse.cdt.core.language.settings.providers.TestClassLanguageSettingsProvider"
             id="org.eclipse.cdt.core.tests.custom.language.settings.provider"
             name="Test Plugin Language Settings Provider">
       </provider>
       <provider
-            class="org.eclipse.cdt.core.settings.model.TestClassSerializableLanguageSettingsProvider"
+            class="org.eclipse.cdt.core.language.settings.providers.TestClassLanguageSettingsSerializableProvider"
             id="org.eclipse.cdt.core.tests.custom.serializable.language.settings.provider"
             name="Test Plugin Serializable Language Settings Provider">
       </provider>
       <provider
-            class="org.eclipse.cdt.core.settings.model.TestClassLSBaseProvider"
+            class="org.eclipse.cdt.core.language.settings.providers.TestClassLanguageSettingsBaseProvider"
             id="org.eclipse.cdt.core.tests.language.settings.base.provider.subclass"
             name="Test Plugin Base Provider Subclass"
             parameter="custom parameter subclass">

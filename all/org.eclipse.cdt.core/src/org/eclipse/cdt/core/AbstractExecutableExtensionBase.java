@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2009 Andrew Gvozdev (Quoin Inc.) and others.
+ * Copyright (c) 2009, 2010 Andrew Gvozdev (Quoin Inc.) and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,7 +12,7 @@
 package org.eclipse.cdt.core;
 
 /**
- * Helper abstract class serving as a base for creating a carcass of executable class
+ * Helper abstract class serving as a base for creating a frame of executable class
  * defined as an extension in plugin.xml.
  *
  */
@@ -75,8 +75,9 @@ public abstract class AbstractExecutableExtensionBase {
 	/**
 	 * Method toString() for debugging purposes.
 	 */
+	@SuppressWarnings("nls")
 	@Override
 	public String toString() {
-		return "id="+fId+", name="+fName;  //$NON-NLS-1$//$NON-NLS-2$
+		return "id="+fId+", name="+fName;
 	}
 }

@@ -13,7 +13,6 @@ package org.eclipse.cdt.internal.core.language.settings.providers;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,9 +44,6 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.preferences.IEclipsePreferences;
-import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.osgi.service.prefs.BackingStoreException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -57,8 +53,6 @@ public class LanguageSettingsExtensionManager {
 	private static final String STORAGE_WORKSPACE_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
 	private static final String SETTINGS_FOLDER_NAME = ".settings/"; //$NON-NLS-1$
 	private static final String STORAGE_PROJECT_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
-	private static final String PREFERENCE_PROVIDER_DEFAULT_IDS = "lang.settings.provider.default.ids"; //$NON-NLS-1$
-	private static final String NONE = ""; //$NON-NLS-1$
 	public static final char PROVIDER_DELIMITER = ';';
 	/**
 	 * Name of the extension point for contributing language settings
@@ -93,12 +87,10 @@ public class LanguageSettingsExtensionManager {
 	private static final LinkedHashMap<String, ILanguageSettingsProvider> fExtensionProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
 	private static final LinkedHashMap<String, ILanguageSettingsProvider> fAvailableProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
 	private static LinkedHashMap<String, ILanguageSettingsProvider> fUserDefinedProviders = null;
-	private static List<String> fDefaultProviderIds = null;
 
 	private static Object serializingLock = new Object();
 
 	static {
-		loadDefaultProviderIds();
 		loadProviderExtensions();
 		try {
 			loadLanguageSettingsWorkspace();
@@ -106,24 +98,6 @@ public class LanguageSettingsExtensionManager {
 			CCorePlugin.log("Error loading workspace language settings providers", e); //$NON-NLS-1$
 		}
 	}
-
-
-	/**
-	 * Load workspace default provider IDs to be used if no providers specified.
-	 *
-	 * @noreference This method is not intended to be referenced by clients.
-	 */
-	synchronized public static void loadDefaultProviderIds() {
-		fDefaultProviderIds = null;
-		IEclipsePreferences preferences = new InstanceScope().getNode(CCorePlugin.PLUGIN_ID);
-		String ids = preferences.get(PREFERENCE_PROVIDER_DEFAULT_IDS, NONE);
-		if (ids.equals(NONE)) {
-			return;
-		}
-
-		fDefaultProviderIds = Arrays.asList(ids.split(String.valueOf(PROVIDER_DELIMITER)));
-	}
-
 
 	/**
 	 * Load provider contributed extensions.
@@ -361,22 +335,6 @@ public class LanguageSettingsExtensionManager {
 	}
 
 	/**
-	 * Save the list of default providers in preferences.
-	 *
-	 * @throws BackingStoreException in case of problem storing
-	 */
-	public static void serializeDefaultProviderIds() throws BackingStoreException {
-		IEclipsePreferences preferences = new InstanceScope().getNode(CCorePlugin.PLUGIN_ID);
-		String ids = NONE;
-		if (fDefaultProviderIds!=null) {
-			ids = toDelimitedString(fDefaultProviderIds.toArray(new String[0]));
-		}
-
-		preferences.put(PREFERENCE_PROVIDER_DEFAULT_IDS, ids);
-		preferences.flush();
-	}
-
-	/**
 	 * Set and store in workspace area user defined providers.
 	 *
 	 * @param providers - array of user defined providers
@@ -413,6 +371,7 @@ public class LanguageSettingsExtensionManager {
 	 * @return available providers IDs which include contributed through extension + user defined ones
 	 * from workspace
 	 */
+	@Deprecated
 	public static String[] getProviderAvailableIds() {
 		return fAvailableProviders.keySet().toArray(new String[0]);
 	}
@@ -420,48 +379,10 @@ public class LanguageSettingsExtensionManager {
 	/**
 	 * @return IDs of language settings providers of LanguageSettingProvider extension point.
 	 */
+	@Deprecated
 	public static String[] getProviderExtensionIds() {
 		return fExtensionProviders.keySet().toArray(new String[0]);
 	}
-
-
-	/**
-	 * Set and store default providers IDs to be used if provider list is empty.
-	 *
-	 * @param ids - default providers IDs
-	 * @throws BackingStoreException in case of problem with storing
-	 */
-	public static void setDefaultProviderIds(String[] ids) throws BackingStoreException {
-		setDefaultProviderIdsInternal(ids);
-//		serializeDefaultProviderIds();
-	}
-
-	/**
-	 * Set default providers IDs in internal list.
-	 *
-	 * @noreference This method is not intended to be referenced by clients.
-	 * Use {@link #setDefaultProviderIds(String[])}.
-	 *
-	 * @param ids - default providers IDs
-	 */
-	public static void setDefaultProviderIdsInternal(String[] ids) {
-		if (ids==null) {
-			fDefaultProviderIds = null;
-		} else {
-			fDefaultProviderIds = new ArrayList<String>(Arrays.asList(ids));
-		}
-	}
-
-	/**
-	 * @return default providers IDs to be used if provider list is empty.
-	 */
-	public static String[] getDefaultProviderIds() {
-		if (fDefaultProviderIds==null) {
-			return fAvailableProviders.keySet().toArray(new String[0]);
-		}
-		return fDefaultProviderIds.toArray(new String[0]);
-	}
-
 
 	/**
 	 * TODO: refactor with ErrorParserManager
@@ -727,6 +648,7 @@ public class LanguageSettingsExtensionManager {
 	 * @param msg
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
+	@Deprecated
 	public static void logInfo(String msg) {
 		Exception e = new Exception(msg);
 		IStatus status = new Status(IStatus.INFO, CCorePlugin.PLUGIN_ID, msg, e);
@@ -738,6 +660,7 @@ public class LanguageSettingsExtensionManager {
 	 * @param msg
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
+	@Deprecated
 	public static void logWarning(String msg) {
 		Exception e = new Exception(msg);
 		IStatus status = new Status(IStatus.WARNING, CCorePlugin.PLUGIN_ID, msg, e);
@@ -749,6 +672,7 @@ public class LanguageSettingsExtensionManager {
 	 * @param msg
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
+	@Deprecated
 	public static void logError(String msg) {
 		Exception e = new Exception(msg);
 		IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, msg, e);

@@ -26,7 +26,6 @@ import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSetting
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
-import org.osgi.service.prefs.BackingStoreException;
 
 /**
  * TODO
@@ -77,6 +76,8 @@ public class LanguageSettingsManager_TBD {
 	 * @return available providers IDs which include contributed through extension + user defined ones
 	 * from workspace
 	 */
+	@Deprecated
+	// TODO replace with getWorkspaceProviders()
 	public static String[] getProviderAvailableIds() {
 		return LanguageSettingsExtensionManager.getProviderAvailableIds();
 	}
@@ -84,6 +85,7 @@ public class LanguageSettingsManager_TBD {
 	/**
 	 * @return IDs of language settings providers of LanguageSettingProvider extension point.
 	 */
+	@Deprecated
 	public static String[] getProviderExtensionIds() {
 		return LanguageSettingsExtensionManager.getProviderExtensionIds();
 	}
@@ -110,25 +112,6 @@ public class LanguageSettingsManager_TBD {
 	 */
 	public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
 		LanguageSettingsExtensionManager.setUserDefinedProviders(providers);
-	}
-
-	/**
-	 * Set and store default providers IDs to be used if provider list is empty.
-	 *
-	 * @param ids - default providers IDs
-	 * @throws BackingStoreException in case of problem with storing
-	 */
-	@Deprecated
-	public static void setDefaultProviderIds(String[] ids) throws BackingStoreException {
-		LanguageSettingsExtensionManager.setDefaultProviderIds(ids);
-	}
-
-	/**
-	 * @return default providers IDs to be used if provider list is empty.
-	 */
-	@Deprecated
-	public static String[] getDefaultProviderIds() {
-		return LanguageSettingsExtensionManager.getDefaultProviderIds();
 	}
 
 	/**

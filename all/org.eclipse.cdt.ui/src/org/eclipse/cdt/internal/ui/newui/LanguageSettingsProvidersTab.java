@@ -45,7 +45,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableItem;
-import org.osgi.service.prefs.BackingStoreException;
 
 import com.ibm.icu.text.MessageFormat;
 
@@ -341,11 +340,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					availableProviders.add(provider);
 				}
 			}
-			String[] ids = LanguageSettingsManager_TBD.getDefaultProviderIds();
 			cfgProviders = new ArrayList<ILanguageSettingsProvider>();
-			for (String id : ids) {
-				cfgProviders.add(LanguageSettingsManager.getWorkspaceProvider(id));
-			}
 		}
 		fTableViewer.setInput(availableProviders.toArray(new ILanguageSettingsProvider[0]));
 		fTableViewer.setCheckedElements(cfgProviders.toArray(new ILanguageSettingsProvider[0]));
@@ -562,14 +557,14 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		updateButtons();
 	}
 
-	private static boolean isExtensionId(String id) {
-		for (String extId : LanguageSettingsManager_TBD.getProviderExtensionIds()) {
-			if (extId.equals(id)) {
-				return true;
-			}
-		}
-		return false;
-	}
+//	private static boolean isExtensionId(String id) {
+//		for (String extId : LanguageSettingsManager_TBD.getProviderExtensionIds()) {
+//			if (extId.equals(id)) {
+//				return true;
+//			}
+//		}
+//		return false;
+//	}
 
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.ui.newui.AbstractCPropertyTab#updateButtons()
@@ -652,9 +647,6 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					}
 
 					LanguageSettingsManager_TBD.setUserDefinedProviders(providers);
-					LanguageSettingsManager_TBD.setDefaultProviderIds(checkedProviderIds);
-				} catch (BackingStoreException e) {
-					CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
 				} catch (CoreException e) {
 					CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
 				}
@@ -727,9 +719,6 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 
 				try {
 					LanguageSettingsManager_TBD.setUserDefinedProviders(null);
-					LanguageSettingsManager_TBD.setDefaultProviderIds(null);
-				} catch (BackingStoreException e) {
-					CUIPlugin.log("ErrorParsTab.error.OnRestoring", e);
 				} catch (CoreException e) {
 					CUIPlugin.log("ErrorParsTab.error.OnRestoring", e);
 				}

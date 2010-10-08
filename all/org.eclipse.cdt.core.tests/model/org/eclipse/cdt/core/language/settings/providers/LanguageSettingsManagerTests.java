@@ -19,13 +19,8 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
-import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper;
-import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper.DummyCConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -33,7 +28,6 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -235,98 +229,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 			String all = toDelimitedString(LanguageSettingsManager_TBD.getProviderAvailableIds());
 			String extensions = toDelimitedString(LanguageSettingsManager_TBD.getProviderExtensionIds());
 			assertFalse(all.equals(extensions));
-		}
-	}
-
-	/**
-	 * Test setting/retrieval of default provider IDs preferences.
-	 *
-	 * @throws Exception...
-	 */
-	public void testDefaultProviderIds() throws Exception {
-		final String[] availableProviderIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
-		assertNotNull(availableProviderIds);
-		LanguageSettingsManager_TBD.getDefaultProviderIds();
-
-		// preconditions
-		{
-			String[] defaultProviderIds = LanguageSettingsManager_TBD.getDefaultProviderIds();
-			assertNotNull(defaultProviderIds);
-			assertEquals(toDelimitedString(availableProviderIds), toDelimitedString(defaultProviderIds));
-		}
-		// setDefaultProviderIds
-		{
-			String[] newDefaultProviderIds = {
-					"org.eclipse.cdt.core.test.language.settings.provider0",
-					"org.eclipse.cdt.core.test.language.settings.provider1",
-					"org.eclipse.cdt.core.test.language.settings.provider2",
-			};
-			LanguageSettingsManager_TBD.setDefaultProviderIds(newDefaultProviderIds);
-			String[] defaultProviderIds = LanguageSettingsManager_TBD.getDefaultProviderIds();
-			assertNotNull(defaultProviderIds);
-			assertEquals(toDelimitedString(newDefaultProviderIds), toDelimitedString(defaultProviderIds));
-		}
-
-		// reset
-		{
-			LanguageSettingsManager_TBD.setDefaultProviderIds(null);
-			String[] defaultProviderIds = LanguageSettingsManager_TBD.getDefaultProviderIds();
-			assertNotNull(defaultProviderIds);
-			assertEquals(toDelimitedString(availableProviderIds), toDelimitedString(defaultProviderIds));
-		}
-	}
-
-	/**
-	 * Check that default provider IDs are stored properly.
-	 *
-	 * @throws Exception...
-	 */
-	public void testSerializeDefaultProviderIds() throws Exception {
-		final String[] testingDefaultProviderIds = {
-				"org.eclipse.cdt.core.test.language.settings.provider0",
-				"org.eclipse.cdt.core.test.language.settings.provider1",
-				"org.eclipse.cdt.core.test.language.settings.provider2",
-		};
-		final String TESTING_IDS = toDelimitedString(testingDefaultProviderIds);
-		final String DEFAULT_IDS = toDelimitedString(LanguageSettingsManager_TBD.getDefaultProviderIds());
-
-		{
-			// setDefaultProviderIds
-			LanguageSettingsExtensionManager.setDefaultProviderIdsInternal(testingDefaultProviderIds);
-
-			String[] defaultProviderIds = LanguageSettingsManager_TBD.getDefaultProviderIds();
-			assertNotNull(defaultProviderIds);
-			assertEquals(TESTING_IDS, toDelimitedString(defaultProviderIds));
-
-			// serialize them
-			LanguageSettingsExtensionManager.serializeDefaultProviderIds();
-		}
-
-		{
-			// Remove from internal list
-			LanguageSettingsExtensionManager.setDefaultProviderIdsInternal(null);
-			assertEquals(DEFAULT_IDS, toDelimitedString(LanguageSettingsManager_TBD.getDefaultProviderIds()));
-		}
-
-		{
-			// Re-load from persistent storage and check it out
-			LanguageSettingsExtensionManager.loadDefaultProviderIds();
-
-			String[] defaultProviderIds = LanguageSettingsManager_TBD.getDefaultProviderIds();
-			assertNotNull(defaultProviderIds);
-			assertEquals(TESTING_IDS, toDelimitedString(defaultProviderIds));
-		}
-
-		{
-			// Reset IDs and serialize
-			LanguageSettingsExtensionManager.setDefaultProviderIdsInternal(null);
-			LanguageSettingsExtensionManager.serializeDefaultProviderIds();
-
-			// Check that default IDs are loaded
-			LanguageSettingsExtensionManager.loadDefaultProviderIds();
-			String[] defaultProviderIds = LanguageSettingsManager_TBD.getDefaultProviderIds();
-			assertNotNull(defaultProviderIds);
-			assertEquals(DEFAULT_IDS, toDelimitedString(defaultProviderIds));
 		}
 	}
 

@@ -22,7 +22,6 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
-import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;

@@ -11,6 +11,8 @@
 
 package org.eclipse.cdt.core.settings.model;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
+
 
 public class TestClassLSBaseProvider extends LanguageSettingsBaseProvider {
 

@@ -11,6 +11,8 @@
 
 package org.eclipse.cdt.core.settings.model;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
+
 
 public class TestClassSerializableLanguageSettingsProvider extends LanguageSettingsSerializable {
 	public TestClassSerializableLanguageSettingsProvider() {

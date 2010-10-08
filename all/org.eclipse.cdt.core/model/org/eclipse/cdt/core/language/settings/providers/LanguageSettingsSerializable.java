@@ -9,7 +9,7 @@
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.core.settings.model;
+package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,6 +18,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.eclipse.cdt.core.settings.model.CIncludeFileEntry;
+import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
+import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
+import org.eclipse.cdt.core.settings.model.CLibraryPathEntry;
+import org.eclipse.cdt.core.settings.model.CMacroEntry;
+import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.resources.IResource;

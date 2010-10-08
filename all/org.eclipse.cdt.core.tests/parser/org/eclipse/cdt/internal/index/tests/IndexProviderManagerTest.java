@@ -706,14 +706,9 @@ class MockConfig implements ICConfigurationDescription {
 
 	public void setReadOnly(boolean readOnly, boolean keepModify) {}
 
-	public void setLanguageSettingProviders(
-			List<ILanguageSettingsProvider> providers) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {}
 
 	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 }

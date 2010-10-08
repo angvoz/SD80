@@ -584,12 +584,13 @@ public class MultiConfigDescription extends MultiItemsHolder implements
 	}
 
 	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
-		// TODO Auto-generated method stub
-		
+		if (DEBUG)
+			System.out.println("Bad multi access: MultiConfigDescription.setLanguageSettingProviders()"); //$NON-NLS-1$
 	}
 
 	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
-		// TODO Auto-generated method stub
+		if (DEBUG)
+			System.out.println("Bad multi access: MultiConfigDescription.getLanguageSettingProviders()"); //$NON-NLS-1$
 		return null;
 	}
 

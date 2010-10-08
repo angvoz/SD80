@@ -13,6 +13,7 @@ package org.eclipse.cdt.core.settings.model;
 
 import java.util.List;
 
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.core.resources.IResource;
 
 /**

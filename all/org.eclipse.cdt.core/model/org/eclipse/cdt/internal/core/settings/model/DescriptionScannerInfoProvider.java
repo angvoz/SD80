@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfo;
@@ -96,7 +97,7 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 		// TODO: is there really a use case for resource being not IFile?
 		String languageId = languageIds[0]; // Legacy logic
 
-		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsManager_TBD.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_PATH);
+		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsManager.getSettingEntriesByKind(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_PATH);
 		List<ICLanguageSettingEntry> includePathSystemEntries = new ArrayList<ICLanguageSettingEntry>(includePathEntries.size());
 		List<ICLanguageSettingEntry> includePathLocalEntries = new ArrayList<ICLanguageSettingEntry>(includePathEntries.size());
 		for (ICLanguageSettingEntry entry : includePathEntries) {
@@ -114,13 +115,13 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 			includePathsLocal[i] = includePathLocalEntries.get(i).getName();
 		}
 
-		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsManager_TBD.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_FILE);
+		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsManager.getSettingEntriesByKind(fCfgDes, resource, languageId, ICSettingEntry.INCLUDE_FILE);
 		String[] includeFiles = getValues(includeFileEntries);
 
-		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsManager_TBD.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO_FILE);
+		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsManager.getSettingEntriesByKind(fCfgDes, resource, languageId, ICSettingEntry.MACRO_FILE);
 		String[] macroFiles = getValues(macroFileEntries);
 
-		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsManager_TBD.getSettingEntriesReconciled(fCfgDes, resource, languageId, ICSettingEntry.MACRO);
+		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsManager.getSettingEntriesByKind(fCfgDes, resource, languageId, ICSettingEntry.MACRO);
 		Map<String, String> definedSymbols = getMacroValues(macroEntries);
 
 		return new ExtendedScannerInfo(definedSymbols, includePathsSystem, macroFiles, includeFiles, includePathsLocal);

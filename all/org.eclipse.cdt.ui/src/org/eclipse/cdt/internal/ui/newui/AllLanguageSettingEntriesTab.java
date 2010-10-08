@@ -44,6 +44,8 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
@@ -59,7 +61,6 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
-import org.eclipse.cdt.core.settings.model.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
@@ -116,7 +117,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				return (Object[]) parentElement;
 			if (parentElement instanceof ILanguageSettingsProvider) {
 				ILanguageSettingsProvider lsProvider = (ILanguageSettingsProvider)parentElement;
-				List<ICLanguageSettingEntry> seList = getSettingEntriesConsolidated(lsProvider);
+				List<ICLanguageSettingEntry> seList = getSettingEntriesUpResourceTree(lsProvider);
 				if (seList!=null) {
 					return seList.toArray();
 				}
@@ -157,7 +158,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 							overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_SETTING;
 						}
 					} else {
-						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesConsolidated(provider);
+						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesUpResourceTree(provider);
 						if (entriesParent!=null && entriesParent.size()>0) {
 							overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_PARENT;
 						}
@@ -255,17 +256,14 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	 *
 	 * @return list of setting entries for the current context.
 	 */
-	private List<ICLanguageSettingEntry> getSettingEntriesConsolidated(ILanguageSettingsProvider provider) {
+	private List<ICLanguageSettingEntry> getSettingEntriesUpResourceTree(ILanguageSettingsProvider provider) {
 		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
 		IResource rc = getResource();
 		String languageId = lang.getLanguageId();
 		if (languageId==null)
 			return null;
 
-		List<ICLanguageSettingEntry> entries = provider.getSettingEntries(cfgDescription, rc, languageId);
-		if (entries==null) {
-			entries = LanguageSettingsManager_TBD.getSettingEntriesConsolidated(cfgDescription, provider.getId(), rc, languageId);
-		}
+		List<ICLanguageSettingEntry> entries = LanguageSettingsManager.getSettingEntriesUpResourceTree(provider, cfgDescription, rc, languageId);
 		return entries;
 	}
 
@@ -475,7 +473,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		boolean canMoveUp = false;
 		boolean canMoveDown = false;
 		if (isProviderEditable && isEntrySelected) {
-			List<ICLanguageSettingEntry> entries = getSettingEntriesConsolidated(provider);
+			List<ICLanguageSettingEntry> entries = getSettingEntriesUpResourceTree(provider);
 			int index = getExactIndex(entries, entry);
 			int itemCount = entries.size();
 			int last=itemCount-1;
@@ -744,7 +742,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 			List<ICLanguageSettingEntry> entries = getSettingEntries(editedProvider);
 			if (entries==null) {
-				entries = getSettingEntriesConsolidated(provider);
+				entries = getSettingEntriesUpResourceTree(provider);
 			}
 
 			ICLanguageSettingEntry selectedEntry = getSelectedEntry();
@@ -814,7 +812,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	private void performDelete(ILanguageSettingsProvider provider, ICLanguageSettingEntry entry) {
 		if (entry != null) {
-			List<ICLanguageSettingEntry> entriesOld = getSettingEntriesConsolidated(provider);
+			List<ICLanguageSettingEntry> entriesOld = getSettingEntriesUpResourceTree(provider);
 			int pos = getExactIndex(entriesOld, entry);
 
 			ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
@@ -828,7 +826,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				editedProvider = makeEditedProvider(provider, cfgDescription, rc);
 				editedProviders.put(providerId, editedProvider);
 			}
-			entries = getSettingEntriesConsolidated(editedProvider);
+			entries = getSettingEntriesUpResourceTree(editedProvider);
 			if (entries!=null) {
 				entries.remove(entry);
 				editedProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
@@ -836,7 +834,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 			update();
 
-			List<ICLanguageSettingEntry> entriesNew = getSettingEntriesConsolidated(provider);
+			List<ICLanguageSettingEntry> entriesNew = getSettingEntriesUpResourceTree(provider);
 			ICLanguageSettingEntry nextEntry=null;
 			if (entriesNew!=null) {
 				if (pos>=entriesNew.size()) {
@@ -849,7 +847,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 			selectItem(providerId, nextEntry);
 			updateButtons();
-		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager_TBD.isWorkspaceProvider(provider) && getSettingEntriesConsolidated(provider)!=null) {
+		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager_TBD.isWorkspaceProvider(provider) && getSettingEntriesUpResourceTree(provider)!=null) {
 			String languageId = lang.getLanguageId();
 			if (languageId!=null) {
 				ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
@@ -922,7 +920,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 					editedProvider = makeEditedProvider(selectedProvider, cfgDescription, rc);
 					editedProviders.put(editedProvider.getId(), editedProvider);
 				}
-				List<ICLanguageSettingEntry> entries = getSettingEntriesConsolidated(editedProvider);
+				List<ICLanguageSettingEntry> entries = getSettingEntriesUpResourceTree(editedProvider);
 				int x = getExactIndex(entries, selectedEntry);
 				if (x < 0)
 					break;

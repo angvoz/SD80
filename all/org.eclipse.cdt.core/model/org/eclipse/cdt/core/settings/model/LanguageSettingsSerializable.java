@@ -108,9 +108,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	@Override
-	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
-			IResource rc, String languageId) {
-
+	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		Map<String, List<ICLanguageSettingEntry>> langMap = fStorage.get(languageId);
 		if (langMap!=null) {
 			String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;

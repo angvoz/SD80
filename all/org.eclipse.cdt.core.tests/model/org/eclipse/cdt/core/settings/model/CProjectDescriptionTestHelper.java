@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.cdtvariables.ICdtVariablesContributor;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
@@ -145,7 +146,7 @@ public class CProjectDescriptionTestHelper {
 		}
 
 		public void setSessionProperty(QualifiedName name, Object value) {
-			
+
 		}
 
 		public ICConfigurationDescription getDefaultSettingConfiguration() {
@@ -162,7 +163,7 @@ public class CProjectDescriptionTestHelper {
 
 		public void setCdtProjectCreated() {
 		}
-		
+
 	}
 
 	public static class DummyCConfigurationDescription implements ICConfigurationDescription {
@@ -388,6 +389,6 @@ public class CProjectDescriptionTestHelper {
 		public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
 			return null;
 		}
-		
+
 	}
 }

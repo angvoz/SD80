@@ -20,7 +20,7 @@ import junit.framework.TestSuite;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -111,14 +111,14 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	 */
 	public void testNoProviders() throws Exception {
 		// nullify user defined providers
-		LanguageSettingsExtensionManager_TBD.setUserDefinedProvidersInternal(null);
+		LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(null);
 		String[] allIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
 		String[] extensionIds = LanguageSettingsManager_TBD.getProviderExtensionIds();
 		assertEquals(allIds.length, extensionIds.length);
 
 		// serialize language settings of user defined providers (on workspace level)
-		LanguageSettingsExtensionManager_TBD.serializeLanguageSettingsWorkspace();
-		LanguageSettingsExtensionManager_TBD.loadLanguageSettingsWorkspace();
+		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
+		LanguageSettingsExtensionManager.loadLanguageSettingsWorkspace();
 
 		// test passes if no exception was thrown
 	}

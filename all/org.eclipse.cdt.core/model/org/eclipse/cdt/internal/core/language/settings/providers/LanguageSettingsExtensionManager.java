@@ -53,7 +53,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-public class LanguageSettingsExtensionManager_TBD {
+public class LanguageSettingsExtensionManager {
 	private static final String STORAGE_WORKSPACE_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$
 	private static final String SETTINGS_FOLDER_NAME = ".settings/"; //$NON-NLS-1$
 	private static final String STORAGE_PROJECT_LANGUAGE_SETTINGS = "language.settings.xml"; //$NON-NLS-1$

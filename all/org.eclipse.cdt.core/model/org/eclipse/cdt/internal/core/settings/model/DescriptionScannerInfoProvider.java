@@ -31,7 +31,7 @@ import org.eclipse.cdt.core.settings.model.ICMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionListener;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -73,9 +73,9 @@ public class DescriptionScannerInfoProvider implements IScannerInfoProvider, ICP
 
 		// AG FIXME
 		if (resource instanceof IFile) {
-			LanguageSettingsExtensionManager_TBD.logInfo("rc="+resource+" (Tracing DescriptionScannerInfoProvider.getScannerInformation())");
+			LanguageSettingsExtensionManager.logInfo("rc="+resource+" (Tracing DescriptionScannerInfoProvider.getScannerInformation())");
 		} else {
-			LanguageSettingsExtensionManager_TBD.logError("rc="+resource+" (Tracing DescriptionScannerInfoProvider.getScannerInformation())");
+			LanguageSettingsExtensionManager.logError("rc="+resource+" (Tracing DescriptionScannerInfoProvider.getScannerInformation())");
 		}
 
 		if(!fInited)

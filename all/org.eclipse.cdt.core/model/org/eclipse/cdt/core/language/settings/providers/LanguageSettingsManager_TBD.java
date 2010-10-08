@@ -23,7 +23,7 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.LanguageSettingsSerializable;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -39,7 +39,7 @@ import org.osgi.service.prefs.BackingStoreException;
 public class LanguageSettingsManager_TBD {
 	public static final String PROVIDER_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
 	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user.LanguageSettingsProvider";
-	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager_TBD.PROVIDER_DELIMITER;
+	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager.PROVIDER_DELIMITER;
 
 	private static ICLanguageSetting[] getLanguageIds(ICResourceDescription rcDescription) {
 		if (rcDescription instanceof ICFileDescription) {
@@ -79,14 +79,14 @@ public class LanguageSettingsManager_TBD {
 	 * from workspace
 	 */
 	public static String[] getProviderAvailableIds() {
-		return LanguageSettingsExtensionManager_TBD.getProviderAvailableIds();
+		return LanguageSettingsExtensionManager.getProviderAvailableIds();
 	}
 
 	/**
 	 * @return IDs of language settings providers of LanguageSettingProvider extension point.
 	 */
 	public static String[] getProviderExtensionIds() {
-		return LanguageSettingsExtensionManager_TBD.getProviderExtensionIds();
+		return LanguageSettingsExtensionManager.getProviderExtensionIds();
 	}
 
 	/**
@@ -96,11 +96,11 @@ public class LanguageSettingsManager_TBD {
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
 	 */
 	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
-		return LanguageSettingsExtensionManager_TBD.isWorkspaceProvider(provider);
+		return LanguageSettingsExtensionManager.isWorkspaceProvider(provider);
 	}
 
 	public static void serializeWorkspaceProviders() throws CoreException {
-		LanguageSettingsExtensionManager_TBD.serializeLanguageSettingsWorkspace();
+		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
 	}
 
 	/**
@@ -110,7 +110,7 @@ public class LanguageSettingsManager_TBD {
 	 * @throws CoreException in case of problems
 	 */
 	public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
-		LanguageSettingsExtensionManager_TBD.setUserDefinedProviders(providers);
+		LanguageSettingsExtensionManager.setUserDefinedProviders(providers);
 	}
 
 	/**
@@ -121,7 +121,7 @@ public class LanguageSettingsManager_TBD {
 	 */
 	@Deprecated
 	public static void setDefaultProviderIds(String[] ids) throws BackingStoreException {
-		LanguageSettingsExtensionManager_TBD.setDefaultProviderIds(ids);
+		LanguageSettingsExtensionManager.setDefaultProviderIds(ids);
 	}
 
 	/**
@@ -129,7 +129,7 @@ public class LanguageSettingsManager_TBD {
 	 */
 	@Deprecated
 	public static String[] getDefaultProviderIds() {
-		return LanguageSettingsExtensionManager_TBD.getDefaultProviderIds();
+		return LanguageSettingsExtensionManager.getDefaultProviderIds();
 	}
 
 	/**

@@ -6,7 +6,7 @@ import java.util.List;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 
@@ -81,7 +81,7 @@ public class LanguageSettingsManager {
 	 * @return the provider or {@code null} if provider is not defined.
 	 */
 	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
-		return LanguageSettingsExtensionManager_TBD.getWorkspaceProvider(id);
+		return LanguageSettingsExtensionManager.getWorkspaceProvider(id);
 	}
 
 }

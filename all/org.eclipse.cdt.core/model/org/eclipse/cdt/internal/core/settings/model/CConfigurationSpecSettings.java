@@ -27,7 +27,7 @@ import java.util.Map.Entry;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IErrorParserNamed;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.CExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICBuildSetting;
 import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
@@ -856,7 +856,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 	
 	private void decodeLanguageSettingProviders(ICStorageElement element) throws CoreException {
 		String id = element.getAttribute(PROJECT_EXTENSION_ATTR_ID);
-		ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getWorkspaceProvider(id);
+		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
 		if (provider!=null) {
 			fLanguageSettingsProviders.add(provider);
 		}

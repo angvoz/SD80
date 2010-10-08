@@ -90,21 +90,7 @@ public class LanguageSettingsManager_TBD {
 	}
 
 	/**
-	 * Get Language Settings Provider defined in the workspace. That includes user-defined
-	 * providers and after that providers defined as extensions via
-	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
-	 * That returns actual object, any modifications will affect any configuration
-	 * referring to the provider.
-	 *
-	 * @param id - ID of provider to find.
-	 * @return the provider or {@code null} if provider is not defined.
-	 */
-	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
-		return LanguageSettingsExtensionManager_TBD.getWorkspaceProvider(id);
-	}
-
-	/**
-	 * Checks if the provider is defined on the workspace level. See {@link #getWorkspaceProvider(String)}.
+	 * Checks if the provider is defined on the workspace level. See {@link LanguageSettingsManager#getWorkspaceProvider(String)}.
 	 *
 	 * @param provider - provider to check.
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
@@ -153,7 +139,7 @@ public class LanguageSettingsManager_TBD {
 	public static void setProviderIds(ICConfigurationDescription cfgDescription, List<String> ids) {
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());
 		for (String id : ids) {
-			ILanguageSettingsProvider provider = getWorkspaceProvider(id);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
 			if (provider!=null) {
 				providers.add(provider);
 			}

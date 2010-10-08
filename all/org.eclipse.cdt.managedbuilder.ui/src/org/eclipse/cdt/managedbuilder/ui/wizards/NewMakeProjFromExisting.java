@@ -18,7 +18,7 @@ import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfil
 import org.eclipse.cdt.core.CCProjectNature;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
@@ -124,7 +124,7 @@ public class NewMakeProjFromExisting extends Wizard implements IImportWizard, IN
 						List<ILanguageSettingsProvider> providers = ManagedBuildManager.getLanguageSettingsProviders(config);
 						cfgDes.setLanguageSettingProviders(providers);
 					} else {
-						ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getWorkspaceProvider(ManagedBuildManager.MBS_LANGUAGE_SETTINGS_PROVIDER);
+						ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(ManagedBuildManager.MBS_LANGUAGE_SETTINGS_PROVIDER);
 						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 						providers.add(provider);
 						cfgDes.setLanguageSettingProviders(providers);

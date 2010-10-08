@@ -144,7 +144,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertNotNull(availableProviderIds);
 		assertTrue(availableProviderIds.length>0);
 		final String firstId = LanguageSettingsManager_TBD.getProviderAvailableIds()[0];
-		final ILanguageSettingsProvider firstProvider = LanguageSettingsManager_TBD.getWorkspaceProvider(firstId);
+		final ILanguageSettingsProvider firstProvider = LanguageSettingsManager.getWorkspaceProvider(firstId);
 		assertNotNull(firstProvider);
 		assertEquals(firstId, firstProvider.getId());
 		final String firstName = firstProvider.getName();
@@ -159,10 +159,10 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(false, all.contains(PROVIDER_1));
 			assertEquals(true, all.contains(firstId));
 
-			assertNull(LanguageSettingsManager_TBD.getWorkspaceProvider(PROVIDER_1));
+			assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1));
 			assertFalse(LanguageSettingsManager_TBD.isWorkspaceProvider(mockProvider1));
 
-			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager_TBD.getWorkspaceProvider(firstId);
+			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
 			assertNotNull(retrieved2);
 			assertEquals(firstProvider, retrieved2);
 		}
@@ -179,13 +179,13 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(true, all.contains(PROVIDER_1));
 			assertEquals(true, all.contains(firstId));
 
-			ILanguageSettingsProvider retrieved1 = LanguageSettingsManager_TBD.getWorkspaceProvider(PROVIDER_1);
+			ILanguageSettingsProvider retrieved1 = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1);
 			assertNotNull(retrieved1);
 			assertEquals(PROVIDER_NAME_1, retrieved1.getName());
 			assertEquals(mockProvider1, retrieved1);
 			assertTrue(LanguageSettingsManager_TBD.isWorkspaceProvider(mockProvider1));
 
-			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager_TBD.getWorkspaceProvider(firstId);
+			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
 			assertNotNull(retrieved2);
 			assertEquals(firstNewName, retrieved2.getName());
 			assertEquals(mockProvider2, retrieved2);
@@ -198,9 +198,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(false, all.contains(PROVIDER_1));
 			assertEquals(true, all.contains(firstId));
 
-			assertNull(LanguageSettingsManager_TBD.getWorkspaceProvider(PROVIDER_1));
+			assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1));
 
-			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager_TBD.getWorkspaceProvider(firstId);
+			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
 			assertNotNull(retrieved2);
 			assertEquals(firstProvider, retrieved2);
 		}

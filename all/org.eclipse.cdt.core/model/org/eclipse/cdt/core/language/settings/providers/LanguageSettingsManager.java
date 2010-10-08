@@ -6,6 +6,7 @@ import java.util.List;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 
@@ -67,6 +68,20 @@ public class LanguageSettingsManager {
 		}
 	
 		return entries;
+	}
+
+	/**
+	 * Get Language Settings Provider defined in the workspace. That includes user-defined
+	 * providers and after that providers defined as extensions via
+	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
+	 * That returns actual object, any modifications will affect any configuration
+	 * referring to the provider.
+	 *
+	 * @param id - ID of provider to find.
+	 * @return the provider or {@code null} if provider is not defined.
+	 */
+	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
+		return LanguageSettingsExtensionManager_TBD.getWorkspaceProvider(id);
 	}
 
 }

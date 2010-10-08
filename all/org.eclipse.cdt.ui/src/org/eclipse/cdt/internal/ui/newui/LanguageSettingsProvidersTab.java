@@ -50,6 +50,7 @@ import org.osgi.service.prefs.BackingStoreException;
 import com.ibm.icu.text.MessageFormat;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
@@ -226,7 +227,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 					String id = oldProvider.getId();
 					if (fCheckBoxGlobal.getSelection()) {
 						// Global provider reference chosen
-						newProvider = LanguageSettingsManager_TBD.getWorkspaceProvider(id);
+						newProvider = LanguageSettingsManager.getWorkspaceProvider(id);
 					} else {
 						// Local provider instance chosen
 						if (oldProvider instanceof LanguageSettingsSerializable) {
@@ -289,7 +290,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		fAvailableProvidersMap.clear();
 		fOptionsPageMap.clear();
 		for (String id : LanguageSettingsManager_TBD.getProviderAvailableIds()) {
-			ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getWorkspaceProvider(id);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
 			fAvailableProvidersMap.put(id, provider);
 			initializeOptionsPage(id);
 		}
@@ -343,7 +344,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			String[] ids = LanguageSettingsManager_TBD.getDefaultProviderIds();
 			cfgProviders = new ArrayList<ILanguageSettingsProvider>();
 			for (String id : ids) {
-				cfgProviders.add(LanguageSettingsManager_TBD.getWorkspaceProvider(id));
+				cfgProviders.add(LanguageSettingsManager.getWorkspaceProvider(id));
 			}
 		}
 		fTableViewer.setInput(availableProviders.toArray(new ILanguageSettingsProvider[0]));
@@ -359,7 +360,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 			providers = new ArrayList<ILanguageSettingsProvider>();
 			String[] availableIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
 			for (String providerId : availableIds) {
-				ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getWorkspaceProvider(providerId);
+				ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(providerId);
 				providers.add(provider);
 			}
 		} else {

@@ -19,6 +19,7 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -89,7 +90,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		}
 
 		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager_TBD.getWorkspaceProvider(DEFAULT_PROVIDER_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(DEFAULT_PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
 
 		assertTrue(providerExt instanceof LanguageSettingsBaseProvider);
@@ -132,7 +133,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionBaseProviderSubclass() throws Exception {
 		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager_TBD.getWorkspaceProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
 		assertNotNull(providerExt);
 
 		assertTrue(providerExt instanceof TestClassLSBaseProvider);
@@ -166,7 +167,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			String lastName="";
 			// providers created from extensions are to be sorted by names
 			for (String id : ids) {
-				String name = LanguageSettingsManager_TBD.getWorkspaceProvider(id).getName();
+				String name = LanguageSettingsManager.getWorkspaceProvider(id).getName();
 				assertTrue(lastName.compareTo(name)<=0);
 				lastName = name;
 			}
@@ -180,7 +181,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionsNameId() throws Exception {
 		// get test plugin extension non-default provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager_TBD.getWorkspaceProvider(PROVIDER_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
 		assertTrue(providerExt instanceof TestClassLanguageSettingsProvider);
 

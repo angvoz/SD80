@@ -119,23 +119,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
-	 * @param ids - array of error parser IDs
-	 * @return error parser IDs delimited with error parser delimiter ";"
-	 * @since 5.2
-	 */
-	private static String toDelimitedString(String[] ids) {
-		String result=""; //$NON-NLS-1$
-		for (String id : ids) {
-			if (result.length()==0) {
-				result = id;
-			} else {
-				result += ";" + id;
-			}
-		}
-		return result;
-	}
-
-	/**
 	 * Test setting/retrieval of providers and their IDs.
 	 *
 	 * @throws Exception...
@@ -541,7 +524,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	/**
 	 */
-	public void testConfigurationDescription_ReconciledProviders() throws Exception {
+	public void testConfigurationDescription_ConflictingProviders() throws Exception {
 		final ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 
 		// contribute the entries
@@ -647,24 +630,26 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testConfigurationDescription_ProviderIds() throws Exception {
 		final ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
+		ILanguageSettingsProvider workspaceProvider = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_ID_EXT);
 
 		{
 			// ensure no test provider is set yet
-			List<String> ids = LanguageSettingsManager_TBD.getProviderIds(cfgDescription);
-			assertFalse(ids.contains(PROVIDER_ID_EXT));
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			assertEquals(0, providers.size());
 		}
 
 		{
 			// set test provider
-			List<String> ids = new ArrayList<String>();
-			ids.add(PROVIDER_ID_EXT);
-			LanguageSettingsManager_TBD.setProviderIds(cfgDescription, ids);
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+			assertNotNull(workspaceProvider);
+			providers.add(workspaceProvider);
+			cfgDescription.setLanguageSettingProviders(providers);
 		}
 
 		{
 			// check that test provider got there
-			List<String> ids = LanguageSettingsManager_TBD.getProviderIds(cfgDescription);
-			assertTrue(ids.contains(PROVIDER_ID_EXT));
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			assertEquals(providers.get(0), workspaceProvider);
 		}
 	}
 
@@ -711,21 +696,23 @@ public class LanguageSettingsManagerTests extends TestCase {
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
 
+		ILanguageSettingsProvider workspaceProvider = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_ID_EXT);
+		assertNotNull(workspaceProvider);
 		{
 			// ensure no test provider is set yet
-			List<String> ids = LanguageSettingsManager_TBD.getProviderIds(cfgDescription);
-			assertFalse(ids.contains(PROVIDER_ID_EXT));
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			assertEquals(0, providers.size());
 		}
 		{
 			// set test provider
-			List<String> ids = new ArrayList<String>();
-			ids.add(PROVIDER_ID_EXT);
-			LanguageSettingsManager_TBD.setProviderIds(cfgDescription, ids);
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+			providers.add(workspaceProvider);
+			cfgDescription.setLanguageSettingProviders(providers);
 		}
 		{
 			// check that test provider got there
-			List<String> ids = LanguageSettingsManager_TBD.getProviderIds(cfgDescription);
-			assertTrue(ids.contains(PROVIDER_ID_EXT));
+			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			assertEquals(workspaceProvider, providers.get(0));
 		}
 
 		{
@@ -743,8 +730,8 @@ public class LanguageSettingsManagerTests extends TestCase {
 			ICConfigurationDescription loadedCfgDescription = loadedCfgDescriptions[0];
 			assertTrue(cfgDescription instanceof CConfigurationDescription);
 
-			List<String> ids = LanguageSettingsManager_TBD.getProviderIds(loadedCfgDescription);
-			assertTrue(ids.contains(PROVIDER_ID_EXT));
+			List<ILanguageSettingsProvider> loadedProviders = loadedCfgDescription.getLanguageSettingProviders();
+			assertEquals(workspaceProvider, loadedProviders.get(0));
 		}
 
 	}

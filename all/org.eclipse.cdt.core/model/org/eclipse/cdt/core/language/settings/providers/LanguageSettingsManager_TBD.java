@@ -11,7 +11,6 @@
 
 package org.eclipse.cdt.core.language.settings.providers;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -84,33 +83,6 @@ public class LanguageSettingsManager_TBD {
 	 */
 	public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
 		LanguageSettingsProvidersSerializer.setUserDefinedProviders(providers);
-	}
-
-	/**
-	 * TODO .
-	 */
-	@Deprecated
-	public static void setProviderIds(ICConfigurationDescription cfgDescription, List<String> ids) {
-		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(ids.size());
-		for (String id : ids) {
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
-			if (provider!=null) {
-				providers.add(provider);
-			}
-		}
-		cfgDescription.setLanguageSettingProviders(providers);
-	}
-
-	/**
-	 * TODO: migrate test cases
-	 */
-	@Deprecated
-	public static List<String> getProviderIds(ICConfigurationDescription cfgDescription) {
-		List<String> ids = new ArrayList<String>();
-		for (ILanguageSettingsProvider provider : cfgDescription.getLanguageSettingProviders()) {
-			ids.add(provider.getId());
-		}
-		return ids;
 	}
 
 	// FIXME: get rid of using that in DescriptionScannerInfoProvider

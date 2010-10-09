@@ -308,6 +308,13 @@ public class LanguageSettingsExtensionManager {
 	}
 
 	/**
+	 * @return ordered set of providers defined in the workspace which include contributed through extension + user defined ones
+	 */
+	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
+		return new ArrayList<ILanguageSettingsProvider>(fAvailableProviders.values());
+	}
+
+	/**
 	 * Checks if the provider is defined on the workspace level. See {@link #getWorkspaceProvider(String)}.
 	 *
 	 * @param provider - provider to check.
@@ -365,23 +372,6 @@ public class LanguageSettingsExtensionManager {
 			}
 		}
 		recalculateAvailableProviders();
-	}
-
-	/**
-	 * @return available providers IDs which include contributed through extension + user defined ones
-	 * from workspace
-	 */
-	@Deprecated
-	public static String[] getProviderAvailableIds() {
-		return fAvailableProviders.keySet().toArray(new String[0]);
-	}
-
-	/**
-	 * @return IDs of language settings providers of LanguageSettingProvider extension point.
-	 */
-	@Deprecated
-	public static String[] getProviderExtensionIds() {
-		return fExtensionProviders.keySet().toArray(new String[0]);
 	}
 
 	/**

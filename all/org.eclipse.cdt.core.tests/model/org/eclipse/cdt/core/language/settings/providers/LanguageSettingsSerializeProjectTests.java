@@ -12,21 +12,13 @@
 package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper;
-import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper.DummyCConfigurationDescription;
-import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper.DummyCProjectDescription;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
@@ -174,9 +166,6 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 		original.add(new CIncludePathEntry("path0", 0));
 
 		{
-			// ID should not be in the list of workspace providers
-			List<String> oldAvailableIds = Arrays.asList(LanguageSettingsManager_TBD.getProviderAvailableIds());
-			assertTrue(oldAvailableIds.contains(EXTENSION_SERIALIZABLE_PROVIDER_ID));
 			// get the provider
 			LanguageSettingsSerializable provider = (LanguageSettingsSerializable) LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			assertNotNull(provider);
@@ -219,17 +208,16 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		{
 			// ID should not be in the list of workspace providers
-			List<String> oldAvailableIds = Arrays.asList(LanguageSettingsManager_TBD.getProviderAvailableIds());
-			assertFalse(oldAvailableIds.contains(PROVIDER_0));
+			assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0));
 			// create a provider
 			LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 			mockProvider.setSettingEntries(null, null, null, original);
 
 			// assign provider to workspace
 			LanguageSettingsManager_TBD.setUserDefinedProviders(new ILanguageSettingsProvider[] {mockProvider});
-			String[] retrievedIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
+			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
 			// user defined providers are always before extension providers
-			assertEquals(PROVIDER_0, retrievedIds[0]);
+			assertEquals(PROVIDER_0, workspaceProviders.get(0).getId());
 
 			// serialize language settings of user defined providers (on workspace level)
 			LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
@@ -260,8 +248,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		{
 			// ID should be in the list of workspace providers
-			List<String> oldAvailableIds = Arrays.asList(LanguageSettingsManager_TBD.getProviderAvailableIds());
-			assertTrue(oldAvailableIds.contains(EXTENSION_PROVIDER_ID));
+			assertNotNull(LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID));
 			ILanguageSettingsProvider oldProvider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
 			assertTrue(oldProvider instanceof LanguageSettingsBaseProvider);
 		}
@@ -273,9 +260,9 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 			// assign provider to workspace
 			LanguageSettingsManager_TBD.setUserDefinedProviders(new ILanguageSettingsProvider[] {mockProvider});
-			String[] retrievedIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
+			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
 			// user defined providers are always before extension providers
-			assertEquals(EXTENSION_PROVIDER_ID, retrievedIds[0]);
+			assertEquals(EXTENSION_PROVIDER_ID, providers.get(0).getId());
 			// doublecheck it got there
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
 			assertTrue(provider instanceof MockProvider);

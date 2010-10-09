@@ -73,24 +73,6 @@ public class LanguageSettingsManager_TBD {
 	}
 
 	/**
-	 * @return available providers IDs which include contributed through extension + user defined ones
-	 * from workspace
-	 */
-	@Deprecated
-	// TODO replace with getWorkspaceProviders()
-	public static String[] getProviderAvailableIds() {
-		return LanguageSettingsExtensionManager.getProviderAvailableIds();
-	}
-
-	/**
-	 * @return IDs of language settings providers of LanguageSettingProvider extension point.
-	 */
-	@Deprecated
-	public static String[] getProviderExtensionIds() {
-		return LanguageSettingsExtensionManager.getProviderExtensionIds();
-	}
-
-	/**
 	 * Checks if the provider is defined on the workspace level. See {@link LanguageSettingsManager#getWorkspaceProvider(String)}.
 	 *
 	 * @param provider - provider to check.

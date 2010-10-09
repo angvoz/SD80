@@ -12,7 +12,6 @@
 package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -141,33 +140,36 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 *
 	 * @throws Exception...
 	 */
-	public void testAvailableProviders() throws Exception {
-		// Sanity conditions and common variables
-		final String[] availableProviderIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
-		assertNotNull(availableProviderIds);
-		assertTrue(availableProviderIds.length>0);
-		final String firstId = LanguageSettingsManager_TBD.getProviderAvailableIds()[0];
-		final ILanguageSettingsProvider firstProvider = LanguageSettingsManager.getWorkspaceProvider(firstId);
+	public void testWorkspaceProviders() throws Exception {
+		// Common variables
+		List<ILanguageSettingsProvider> availableProviders = LanguageSettingsManager.getWorkspaceProviders();
+		assertNotNull(availableProviders);
+		assertTrue(availableProviders.size()>0);
+
+		ILanguageSettingsProvider firstProvider = availableProviders.get(0);
 		assertNotNull(firstProvider);
-		assertEquals(firstId, firstProvider.getId());
-		final String firstName = firstProvider.getName();
+		String firstId = firstProvider.getId();
+		String firstName = firstProvider.getName();
 
 		// Define mock providers
 		ILanguageSettingsProvider mockProvider1 = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null);
-		final String firstNewName = firstName + " new";
+		String firstNewName = firstName + " new";
 		ILanguageSettingsProvider mockProvider2 = new MockProvider(firstId, firstNewName, null);
+
 		// Preconditions
 		{
-			List<String> all = Arrays.asList(LanguageSettingsManager_TBD.getProviderAvailableIds());
-			assertEquals(false, all.contains(PROVIDER_1));
-			assertEquals(true, all.contains(firstId));
+			
+			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
+			assertFalse(workspaceProviders.contains(mockProvider1));
+			assertFalse(workspaceProviders.contains(mockProvider2));
 
 			assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1));
 			assertFalse(LanguageSettingsManager_TBD.isWorkspaceProvider(mockProvider1));
 
-			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
-			assertNotNull(retrieved2);
-			assertEquals(firstProvider, retrieved2);
+			ILanguageSettingsProvider provider2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
+			assertNotNull(provider2);
+			assertEquals(firstProvider, provider2);
+			assertTrue(workspaceProviders.contains(provider2));
 		}
 
 		// set available providers
@@ -178,9 +180,10 @@ public class LanguageSettingsManagerTests extends TestCase {
 					// override extension with another one
 					mockProvider2,
 			});
-			List<String> all = Arrays.asList(LanguageSettingsManager_TBD.getProviderAvailableIds());
-			assertEquals(true, all.contains(PROVIDER_1));
-			assertEquals(true, all.contains(firstId));
+			
+			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
+			assertTrue(workspaceProviders.contains(mockProvider1));
+			assertTrue(workspaceProviders.contains(mockProvider2));
 
 			ILanguageSettingsProvider retrieved1 = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1);
 			assertNotNull(retrieved1);
@@ -196,16 +199,17 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// reset available providers
 		{
 			LanguageSettingsManager_TBD.setUserDefinedProviders(null);
-
-			List<String> all = Arrays.asList(LanguageSettingsManager_TBD.getProviderAvailableIds());
-			assertEquals(false, all.contains(PROVIDER_1));
-			assertEquals(true, all.contains(firstId));
+			
+			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
+			assertFalse(workspaceProviders.contains(mockProvider1));
+			assertFalse(workspaceProviders.contains(mockProvider2));
 
 			assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1));
 
-			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
-			assertNotNull(retrieved2);
-			assertEquals(firstProvider, retrieved2);
+			ILanguageSettingsProvider provider2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
+			assertNotNull(provider2);
+			assertEquals(firstProvider, provider2);
+			assertTrue(workspaceProviders.contains(provider2));
 		}
 	}
 
@@ -216,20 +220,19 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testUserDefinedProviders() throws Exception {
 		// reset providers
-		{
-			LanguageSettingsManager_TBD.setUserDefinedProviders(null);
-			String all = toDelimitedString(LanguageSettingsManager_TBD.getProviderAvailableIds());
-			String extensions = toDelimitedString(LanguageSettingsManager_TBD.getProviderExtensionIds());
-			assertEquals(all, extensions);
-		}
-		{
-			LanguageSettingsManager_TBD.setUserDefinedProviders(new ILanguageSettingsProvider[] {
-					new MockProvider(PROVIDER_0, PROVIDER_NAME_0, null),
-			});
-			String all = toDelimitedString(LanguageSettingsManager_TBD.getProviderAvailableIds());
-			String extensions = toDelimitedString(LanguageSettingsManager_TBD.getProviderExtensionIds());
-			assertFalse(all.equals(extensions));
-		}
+		LanguageSettingsManager_TBD.setUserDefinedProviders(null);
+		int size = LanguageSettingsManager.getWorkspaceProviders().size();
+		assertTrue(size > 0);
+		assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0));
+		
+		LanguageSettingsManager_TBD.setUserDefinedProviders(new ILanguageSettingsProvider[] {
+				new MockProvider(PROVIDER_0, PROVIDER_NAME_0, null),
+		});
+		assertNotNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0));
+
+		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getWorkspaceProviders();
+		assertEquals(size+1, allProviders.size());
+		assertEquals(PROVIDER_0, allProviders.get(0).getId());
 	}
 
 	/**

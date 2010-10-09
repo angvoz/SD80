@@ -84,4 +84,8 @@ public class LanguageSettingsManager {
 		return LanguageSettingsExtensionManager.getWorkspaceProvider(id);
 	}
 
+	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
+		return LanguageSettingsExtensionManager.getWorkspaceProviders();
+	}
+	
 }

@@ -120,9 +120,6 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	public void testNoProviders() throws Exception {
 		// nullify user defined providers
 		LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(null);
-		String[] allIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
-		String[] extensionIds = LanguageSettingsManager_TBD.getProviderExtensionIds();
-		assertEquals(allIds.length, extensionIds.length);
 
 		// serialize language settings of user defined providers (on workspace level)
 		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();

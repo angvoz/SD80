@@ -12,16 +12,11 @@
 package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.settings.model.CIncludeFileEntry;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
@@ -90,11 +85,11 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtension() throws Exception {
 		{
-			List<String> ids = Arrays.asList(LanguageSettingsManager_TBD.getProviderExtensionIds());
-			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", ids.contains(DEFAULT_PROVIDER_ID_EXT));
-		}
-		{
-			List<String> ids = Arrays.asList(LanguageSettingsManager_TBD.getProviderAvailableIds());
+			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
+			List<String> ids = new ArrayList<String>();
+			for (ILanguageSettingsProvider provider : providers) {
+				ids.add(provider.getId());
+			}
 			assertTrue("extension " + DEFAULT_PROVIDER_ID_EXT + " not found", ids.contains(DEFAULT_PROVIDER_ID_EXT));
 		}
 
@@ -172,13 +167,14 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionsSorting() throws Exception {
 		{
-			String[] ids = LanguageSettingsManager_TBD.getProviderExtensionIds();
+			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
 			String lastName="";
-			// providers created from extensions are to be sorted by names
-			for (String id : ids) {
-				String name = LanguageSettingsManager.getWorkspaceProvider(id).getName();
-				assertTrue(lastName.compareTo(name)<=0);
-				lastName = name;
+			for (ILanguageSettingsProvider provider : providers) {
+				if (LanguageSettingsManager_TBD.isWorkspaceProvider(provider)) {
+					String name = provider.getName();
+					assertTrue(lastName.compareTo(name)<=0);
+					lastName = name;
+				}
 			}
 		}
 	}

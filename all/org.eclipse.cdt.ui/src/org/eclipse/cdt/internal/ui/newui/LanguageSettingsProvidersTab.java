@@ -288,8 +288,9 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	private void initMapProviders() {
 		fAvailableProvidersMap.clear();
 		fOptionsPageMap.clear();
-		for (String id : LanguageSettingsManager_TBD.getProviderAvailableIds()) {
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
+		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getWorkspaceProviders();
+		for (ILanguageSettingsProvider provider : allProviders) {
+			String id = provider.getId();
 			fAvailableProvidersMap.put(id, provider);
 			initializeOptionsPage(id);
 		}
@@ -352,12 +353,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 	private void initializeOptionsPage(String id) {
 		List<ILanguageSettingsProvider> providers;
 		if (page.isForPrefs()) {
-			providers = new ArrayList<ILanguageSettingsProvider>();
-			String[] availableIds = LanguageSettingsManager_TBD.getProviderAvailableIds();
-			for (String providerId : availableIds) {
-				ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(providerId);
-				providers.add(provider);
-			}
+			providers = LanguageSettingsManager.getWorkspaceProviders();
 		} else {
 			providers = fCfgDesc.getLanguageSettingProviders();
 		}

@@ -28,7 +28,7 @@ import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -119,11 +119,11 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	 */
 	public void testNoProviders() throws Exception {
 		// nullify user defined providers
-		LanguageSettingsExtensionManager.setUserDefinedProvidersInternal(null);
+		LanguageSettingsProvidersSerializer.setUserDefinedProvidersInternal(null);
 
 		// serialize language settings of user defined providers (on workspace level)
-		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
-		LanguageSettingsExtensionManager.loadLanguageSettingsWorkspace();
+		LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
+		LanguageSettingsProvidersSerializer.loadLanguageSettingsWorkspace();
 
 		// test passes if no exception was thrown
 	}

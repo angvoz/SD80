@@ -69,7 +69,7 @@ import org.eclipse.cdt.internal.core.CharOperation;
 import org.eclipse.cdt.internal.core.cdtvariables.CoreVariableSubstitutor;
 import org.eclipse.cdt.internal.core.cdtvariables.DefaultVariableContextInfo;
 import org.eclipse.cdt.internal.core.cdtvariables.ICoreVariableContextInfo;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsLogger;
 import org.eclipse.cdt.internal.core.model.APathEntry;
 import org.eclipse.cdt.internal.core.model.CModelStatus;
 import org.eclipse.cdt.internal.core.model.PathEntry;
@@ -2058,7 +2058,7 @@ public class PathEntryTranslator {
 							}
 						}
 						String log_msg = "path="+prj+"/"+data.getPath()+", kind=["+kindsStr+"]"+" (PathEntryTranslator.collectEntries())";
-						LanguageSettingsExtensionManager.logInfo(log_msg);
+						LanguageSettingsLogger.logInfo(log_msg);
 					}
 
 					PathEntryCollector child = cr.createChild(container.getPath());

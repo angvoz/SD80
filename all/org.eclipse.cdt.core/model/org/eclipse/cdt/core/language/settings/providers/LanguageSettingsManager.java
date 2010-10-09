@@ -6,7 +6,7 @@ import java.util.List;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 
@@ -81,11 +81,11 @@ public class LanguageSettingsManager {
 	 * @return the provider or {@code null} if provider is not defined.
 	 */
 	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
-		return LanguageSettingsExtensionManager.getWorkspaceProvider(id);
+		return LanguageSettingsProvidersSerializer.getWorkspaceProvider(id);
 	}
 
 	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
-		return LanguageSettingsExtensionManager.getWorkspaceProviders();
+		return LanguageSettingsProvidersSerializer.getWorkspaceProviders();
 	}
 
 	/**
@@ -95,7 +95,7 @@ public class LanguageSettingsManager {
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
 	 */
 	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
-		return LanguageSettingsExtensionManager.isWorkspaceProvider(provider);
+		return LanguageSettingsProvidersSerializer.isWorkspaceProvider(provider);
 	}
 	
 }

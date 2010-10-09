@@ -34,6 +34,7 @@ import org.eclipse.cdt.internal.core.settings.model.ScannerInfoProviderProxy;
 import org.eclipse.cdt.internal.core.settings.model.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager_TBD;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsLogger;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -101,9 +102,9 @@ public class ScannerProvider extends AbstractCExtension implements IScannerInfoP
 	public IScannerInfo getScannerInformation(IResource resource) {
 		// AG FIXME
 		if (resource instanceof IFile) {
-			LanguageSettingsExtensionManager.logInfo("rc="+resource+" (ScannerProvider.getScannerInformation())");
+			LanguageSettingsLogger.logInfo("rc="+resource+" (ScannerProvider.getScannerInformation())");
 		} else {
-			LanguageSettingsExtensionManager.logWarning("rc="+resource+" (ScannerProvider.getScannerInformation())");
+			LanguageSettingsLogger.logWarning("rc="+resource+" (ScannerProvider.getScannerInformation())");
 		}
 
 		IPath resPath = resource.getFullPath();

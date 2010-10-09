@@ -22,7 +22,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -37,7 +37,7 @@ import org.eclipse.core.runtime.IPath;
 public class LanguageSettingsManager_TBD {
 	public static final String PROVIDER_UNKNOWN = "org.eclipse.cdt.projectmodel.4.0.0";
 	public static final String PROVIDER_UI_USER = "org.eclipse.cdt.ui.user.LanguageSettingsProvider";
-	public static final char PROVIDER_DELIMITER = LanguageSettingsExtensionManager.PROVIDER_DELIMITER;
+	public static final char PROVIDER_DELIMITER = LanguageSettingsProvidersSerializer.PROVIDER_DELIMITER;
 
 	private static ICLanguageSetting[] getLanguageIds(ICResourceDescription rcDescription) {
 		if (rcDescription instanceof ICFileDescription) {
@@ -73,7 +73,7 @@ public class LanguageSettingsManager_TBD {
 	}
 
 	public static void serializeWorkspaceProviders() throws CoreException {
-		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
+		LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
 	}
 
 	/**
@@ -83,7 +83,7 @@ public class LanguageSettingsManager_TBD {
 	 * @throws CoreException in case of problems
 	 */
 	public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
-		LanguageSettingsExtensionManager.setUserDefinedProviders(providers);
+		LanguageSettingsProvidersSerializer.setUserDefinedProviders(providers);
 	}
 
 	/**

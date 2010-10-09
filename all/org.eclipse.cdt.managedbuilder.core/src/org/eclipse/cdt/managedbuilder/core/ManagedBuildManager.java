@@ -63,7 +63,7 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.XmlStorageUtil;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildPropertyManager;
 import org.eclipse.cdt.managedbuilder.envvar.IEnvironmentBuildPathsChangeListener;
@@ -4805,7 +4805,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 				ILanguageSettingsProvider provider = null;
 				if (id.startsWith("*")) {
 					id = id.substring(1);
-					provider = LanguageSettingsExtensionManager.getWorkspaceProvider(id);
+					provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(id);
 				} else if (id.startsWith("-")) {
 					id = id.substring(1);
 					for (ILanguageSettingsProvider pr : providers) {
@@ -4817,7 +4817,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 						}
 					}
 				} else {
-					provider = LanguageSettingsExtensionManager.getWorkspaceProvider(id);
+					provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(id);
 					if (provider instanceof LanguageSettingsSerializable) {
 						try {
 							provider = ((LanguageSettingsSerializable)provider).clone();
@@ -4835,13 +4835,13 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 		if (providers.isEmpty()) {
 			// Add MBS provider for unsuspecting toolchains (backward compatibility)
-			ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
+			ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
 			providers.add(provider);
 		}
 
 		// FIXME: ability to remove PROVIDER_UI_USER
 		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
-			ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
+			ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
 			try {
 				provider = ((LanguageSettingsSerializable)provider).clone();
 			} catch (CloneNotSupportedException e) {

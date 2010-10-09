@@ -17,7 +17,6 @@ import java.util.List;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper;
 import org.eclipse.cdt.core.settings.model.CIncludeFileEntry;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
@@ -26,6 +25,7 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.testplugin.CModelMock;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
@@ -45,7 +45,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	private static final String CFG_ID = "test.configuration.id";
 	private static final String CFG_ID_1 = "test.configuration.id.1";
 	private static final String CFG_ID_2 = "test.configuration.id.2";
-	private static final ICConfigurationDescription MOCK_CFG = new CProjectDescriptionTestHelper.DummyCConfigurationDescription(CFG_ID);
+	private static final ICConfigurationDescription MOCK_CFG = new CModelMock.DummyCConfigurationDescription(CFG_ID);
 	private static final IResource MOCK_RC = ResourcesPlugin.getWorkspace().getRoot();
 	private static final String LANG_ID = "test.lang.id";
 	private static final String LANG_ID_1 = "test.lang.id.1";

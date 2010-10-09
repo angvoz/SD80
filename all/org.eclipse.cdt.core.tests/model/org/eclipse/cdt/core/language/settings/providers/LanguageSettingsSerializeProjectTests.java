@@ -18,12 +18,12 @@ import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
+import org.eclipse.cdt.core.testplugin.CModelMock;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
@@ -53,7 +53,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 	private static CoreModel coreModel = CoreModel.getDefault();
 
-	class MockConfigurationDescription extends CProjectDescriptionTestHelper.DummyCConfigurationDescription {
+	class MockConfigurationDescription extends CModelMock.DummyCConfigurationDescription {
 		List<ILanguageSettingsProvider> providers;
 		public MockConfigurationDescription(String id) {
 			super(id);
@@ -69,7 +69,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			return providers;
 		}
 	}
-	class MockProjectDescription extends CProjectDescriptionTestHelper.DummyCProjectDescription {
+	class MockProjectDescription extends CModelMock.DummyCProjectDescription {
 		ICConfigurationDescription[] cfgDescriptions;
 
 		public MockProjectDescription(ICConfigurationDescription[] cfgDescriptions) {

@@ -9,7 +9,7 @@
  *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.core.model.tests;
+package org.eclipse.cdt.core.testplugin;
 
 import java.util.List;
 import java.util.Map;
@@ -39,7 +39,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.QualifiedName;
 
-public class CProjectDescriptionTestHelper {
+public class CModelMock {
 
 	/**
 	 * Dummy implementation of ICProjectDescription for testing.
@@ -183,6 +183,11 @@ public class CProjectDescriptionTestHelper {
 
 	}
 
+	/**
+	 * Dummy implementation of ICConfigurationDescription for testing.
+	 * Feel free to override the methods you are interested to mock.
+	 *
+	 */
 	public static class DummyCConfigurationDescription implements ICConfigurationDescription {
 		private String id;
 

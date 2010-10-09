@@ -19,13 +19,13 @@ import junit.framework.TestSuite;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.testplugin.CModelMock;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.core.resources.IFile;
@@ -52,7 +52,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	private static final String PROVIDER_NAME_1 = "test.provider.1.name";
 	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
 
-	class MockConfigurationDescription extends CProjectDescriptionTestHelper.DummyCConfigurationDescription {
+	class MockConfigurationDescription extends CModelMock.DummyCConfigurationDescription {
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 		public MockConfigurationDescription(String id) {
 			super(id);

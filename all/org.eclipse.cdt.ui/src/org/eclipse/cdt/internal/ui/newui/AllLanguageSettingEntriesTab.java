@@ -461,7 +461,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		boolean canEdit = isProviderEditable && isEntrySelected;
 		boolean canDelete = isProviderEditable && isEntrySelected;
 		boolean canClear = isProviderEditable && isProviderSelected
-			&& !LanguageSettingsManager_TBD.isWorkspaceProvider(provider)
+			&& !LanguageSettingsManager.isWorkspaceProvider(provider)
 			&& getSettingEntries(provider)!=null;
 
 		if (isProviderSelected) {
@@ -847,7 +847,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 			selectItem(providerId, nextEntry);
 			updateButtons();
-		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager_TBD.isWorkspaceProvider(provider) && getSettingEntriesUpResourceTree(provider)!=null) {
+		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider) && getSettingEntriesUpResourceTree(provider)!=null) {
 			String languageId = lang.getLanguageId();
 			if (languageId!=null) {
 				ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
@@ -961,7 +961,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 				if (pro instanceof ILanguageSettingsEditableProvider) {
 					if (pro instanceof LanguageSettingsSerializable) {
 						LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
-						if (LanguageSettingsManager_TBD.isWorkspaceProvider(spro)) {
+						if (LanguageSettingsManager.isWorkspaceProvider(spro)) {
 							try {
 								pro = spro.clone();
 								if (pro.getClass()!=spro.getClass())
@@ -1032,7 +1032,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 					if (pro instanceof ILanguageSettingsEditableProvider) {
 						if (pro instanceof LanguageSettingsSerializable) {
 							LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
-							if (LanguageSettingsManager_TBD.isWorkspaceProvider(spro)) {
+							if (LanguageSettingsManager.isWorkspaceProvider(spro)) {
 								try {
 									pro = spro.clone();
 									if (pro.getClass()!=spro.getClass())

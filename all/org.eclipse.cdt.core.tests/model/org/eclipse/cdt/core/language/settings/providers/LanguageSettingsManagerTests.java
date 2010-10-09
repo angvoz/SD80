@@ -164,7 +164,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertFalse(workspaceProviders.contains(mockProvider2));
 
 			assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_1));
-			assertFalse(LanguageSettingsManager_TBD.isWorkspaceProvider(mockProvider1));
+			assertFalse(LanguageSettingsManager.isWorkspaceProvider(mockProvider1));
 
 			ILanguageSettingsProvider provider2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
 			assertNotNull(provider2);
@@ -189,7 +189,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertNotNull(retrieved1);
 			assertEquals(PROVIDER_NAME_1, retrieved1.getName());
 			assertEquals(mockProvider1, retrieved1);
-			assertTrue(LanguageSettingsManager_TBD.isWorkspaceProvider(mockProvider1));
+			assertTrue(LanguageSettingsManager.isWorkspaceProvider(mockProvider1));
 
 			ILanguageSettingsProvider retrieved2 = LanguageSettingsManager.getWorkspaceProvider(firstId);
 			assertNotNull(retrieved2);

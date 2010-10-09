@@ -72,16 +72,6 @@ public class LanguageSettingsManager_TBD {
 		return false;
 	}
 
-	/**
-	 * Checks if the provider is defined on the workspace level. See {@link LanguageSettingsManager#getWorkspaceProvider(String)}.
-	 *
-	 * @param provider - provider to check.
-	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
-	 */
-	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
-		return LanguageSettingsExtensionManager.isWorkspaceProvider(provider);
-	}
-
 	public static void serializeWorkspaceProviders() throws CoreException {
 		LanguageSettingsExtensionManager.serializeLanguageSettingsWorkspace();
 	}

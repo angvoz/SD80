@@ -154,19 +154,19 @@ public class LanguageSettingsExtensionManager {
 		if (extension != null) {
 			IExtension[] extensions = extension.getExtensions();
 			for (IExtension ext : extensions) {
-				try {
-					String extensionID = ext.getUniqueIdentifier();
-					String extensionName = ext.getLabel();
-					ILanguageSettingsProvider provider = null;
-					for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
+				ILanguageSettingsProvider provider = null;
+				for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
+					String id=null;
+					try {
 						if (cfgEl.getName().equals(ELEM_PROVIDER)) {
+							id = determineAttributeValue(cfgEl, ATTR_ID);
 							provider = createExecutableExtension(cfgEl);
 							configureExecutableProvider(provider, cfgEl);
 							providers.add(provider);
 						}
+					} catch (Exception e) {
+						CCorePlugin.log("Cannot load LanguageSettingsProvider extension id=" + id, e); //$NON-NLS-1$
 					}
-				} catch (Exception e) {
-					CCorePlugin.log("Cannot load LanguageSettingsProvider extension " + ext.getUniqueIdentifier(), e); //$NON-NLS-1$
 				}
 			}
 		}

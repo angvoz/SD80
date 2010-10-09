@@ -21,7 +21,6 @@ import junit.framework.TestSuite;
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.LanguageManager;
-import org.eclipse.cdt.core.model.tests.CProjectDescriptionTestHelper;
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 import org.eclipse.cdt.core.settings.model.CIncludeFileEntry;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
@@ -46,23 +45,6 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 	private static final IFile FAKE_FILE = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String PROVIDER_ID = "test.provider.id";
 	private static final String PROVIDER_NAME = "test.provider.name";
-
-	class MockConfigurationDescription extends CProjectDescriptionTestHelper.DummyCConfigurationDescription {
-		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
-		public MockConfigurationDescription(String id) {
-			super(id);
-		}
-
-		@Override
-		public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
-			this.providers = new ArrayList<ILanguageSettingsProvider>(providers);
-		}
-
-		@Override
-		public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
-			return providers;
-		}
-	}
 
 	private class MockProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
 		private final List<ICLanguageSettingEntry> entries;

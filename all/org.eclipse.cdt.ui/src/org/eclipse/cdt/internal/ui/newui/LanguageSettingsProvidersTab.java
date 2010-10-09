@@ -584,7 +584,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 		if (page.isForProject()) {
 			boolean isChecked = fTableViewer.getChecked(provider);
 			boolean canClone = provider instanceof LanguageSettingsSerializable || provider instanceof ILanguageSettingsEditableProvider;
-			boolean isGlobal = provider!=null && LanguageSettingsManager_TBD.isWorkspaceProvider(provider);
+			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
 //			boolean select = (isChecked && isGlobal) || !canClone;
 			fCheckBoxGlobal.setSelection(isGlobal);
 			fCheckBoxGlobal.setEnabled(isChecked && canClone);
@@ -699,7 +699,7 @@ public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
 //	 *     not for Preference New CDT Project Wizard/Makefile Project.
 //	 */
 	private boolean isProviderCustomizable(ILanguageSettingsProvider provider) {
-		return page.isForPrefs() || !LanguageSettingsManager_TBD.isWorkspaceProvider(provider);
+		return page.isForPrefs() || !LanguageSettingsManager.isWorkspaceProvider(provider);
 	}
 
 	/* (non-Javadoc)

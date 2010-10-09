@@ -170,7 +170,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
 			String lastName="";
 			for (ILanguageSettingsProvider provider : providers) {
-				if (LanguageSettingsManager_TBD.isWorkspaceProvider(provider)) {
+				if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
 					String name = provider.getName();
 					assertTrue(lastName.compareTo(name)<=0);
 					lastName = name;

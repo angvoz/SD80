@@ -4,6 +4,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 
+@Deprecated
 public class LanguageSettingsLogger {
 
 	// AG FIXME

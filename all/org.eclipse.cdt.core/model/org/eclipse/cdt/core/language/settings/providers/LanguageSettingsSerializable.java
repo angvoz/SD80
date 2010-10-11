@@ -36,22 +36,22 @@ import org.w3c.dom.NodeList;
 
 
 public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider implements Cloneable {
-	public static final String ELEM_PROVIDER = "provider";
-	private static final String ATTR_ID = "id";
+	public static final String ELEM_PROVIDER = "provider"; //$NON-NLS-1$
+	private static final String ATTR_ID = "id"; //$NON-NLS-1$
 
-	private static final String ELEM_LANGUAGE_SCOPE = "language-scope";
-	private static final String ELEM_LANGUAGE = "language";
-	private static final String ELEM_RESOURCE = "resource";
-	private static final String ATTR_PROJECT_PATH = "project-relative-path";
+	private static final String ELEM_LANGUAGE_SCOPE = "language-scope"; //$NON-NLS-1$
+	private static final String ELEM_LANGUAGE = "language"; //$NON-NLS-1$
+	private static final String ELEM_RESOURCE = "resource"; //$NON-NLS-1$
+	private static final String ATTR_PROJECT_PATH = "project-relative-path"; //$NON-NLS-1$
 
-	private static final String ELEM_ENTRY = "entry";
-	private static final String ATTR_KIND = "kind";
-	private static final String ATTR_NAME = "name";
-	private static final String ATTR_CLASS = "class";
-	private static final String ATTR_PARAMETER = "parameter";
-	private static final String ATTR_VALUE = "value";
+	private static final String ELEM_ENTRY = "entry"; //$NON-NLS-1$
+	private static final String ATTR_KIND = "kind"; //$NON-NLS-1$
+	private static final String ATTR_NAME = "name"; //$NON-NLS-1$
+	private static final String ATTR_CLASS = "class"; //$NON-NLS-1$
+	private static final String ATTR_PARAMETER = "parameter"; //$NON-NLS-1$
+	private static final String ATTR_VALUE = "value"; //$NON-NLS-1$
 
-	private static final String ELEM_FLAG = "flag";
+	private static final String ELEM_FLAG = "flag"; //$NON-NLS-1$
 
 
 	private Map<String, // languageId
@@ -111,7 +111,6 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
-		String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
 		String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
 		setSettingEntriesInternal(rcProjectPath, languageId, entries);
 	}

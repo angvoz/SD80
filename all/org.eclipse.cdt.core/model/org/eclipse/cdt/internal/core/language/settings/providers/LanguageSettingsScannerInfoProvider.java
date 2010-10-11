@@ -31,6 +31,7 @@ import org.eclipse.cdt.core.settings.model.ICMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
+import org.eclipse.cdt.internal.core.settings.model.SettingsModelMessages;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -42,6 +43,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.osgi.util.NLS;
 
 /**
  * Implementation of {@link IScannerInfoProvider} backed by the list of
@@ -99,9 +101,8 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 			languageId = getLanguageIdForContainer(cfgDescription, (IContainer) resource);
 		}
 		if (languageId==null) {
-			IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Error getting ScannerInfo: Not able to retrieve language id for resource " + resource);
-			CoreException e = new CoreException(status);
-			CCorePlugin.log( "Error getting ScannerInfo: Not able to retrieve language id for resource " + resource, e);
+			String msg = NLS.bind(SettingsModelMessages.getString("LanguageSettingsScannerInfoProvider.UnableToDetermineLanguage"), resource.toString()); //$NON-NLS-1$
+			CCorePlugin.log(new CoreException(new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, msg)));
 		}
 		return languageId;
 	}

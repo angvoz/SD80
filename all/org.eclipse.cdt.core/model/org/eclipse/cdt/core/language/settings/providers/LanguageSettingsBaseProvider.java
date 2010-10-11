@@ -17,6 +17,7 @@ import java.util.List;
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.internal.core.settings.model.SettingsModelMessages;
 import org.eclipse.core.resources.IResource;
 
 /**
@@ -111,7 +112,7 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 	 */
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
 		if (this.entries!=null)
-			throw new UnsupportedOperationException("LanguageSettingsBaseProvider can be configured only once");
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsBaseProvider.CanBeConfiguredOnlyOnce")); //$NON-NLS-1$
 
 		setId(id);
 		setName(name);

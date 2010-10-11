@@ -110,10 +110,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
 		entriesExt.add(new CIncludePathEntry("/usr/include/",
 				ICSettingEntry.BUILTIN
-				| ICSettingEntry.READONLY
-				| ICSettingEntry.LOCAL
 				| ICSettingEntry.VALUE_WORKSPACE_PATH
-				| ICSettingEntry.RESOLVED
 				| ICSettingEntry.UNDEFINED
 		));
 		entriesExt.add(new CMacroEntry("TEST_DEFINE", "100", 0));

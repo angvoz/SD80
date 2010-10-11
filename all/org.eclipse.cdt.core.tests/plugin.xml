@@ -204,16 +204,7 @@
                   value="BUILTIN">
             </flag>
             <flag
-                  value="READONLY">
-            </flag>
-            <flag
-                  value="LOCAL">
-            </flag>
-            <flag
                   value="VALUE_WORKSPACE_PATH">
-            </flag>
-            <flag
-                  value="RESOLVED">
             </flag>
             <flag
                   value="UNDEFINED">

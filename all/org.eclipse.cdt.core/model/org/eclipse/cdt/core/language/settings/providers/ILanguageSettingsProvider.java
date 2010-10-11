@@ -13,6 +13,7 @@ package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.List;
 
+import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
@@ -53,7 +54,8 @@ public interface ILanguageSettingsProvider {
 	 * 
 	 * @param cfgDescription - configuration description.
 	 * @param rc - resource such as file or folder.
-	 * @param languageId - language id.
+	 * @param languageId - language id
+	 *     (see {@link LanguageManager#getLanguageForFile(org.eclipse.core.resources.IFile, ICConfigurationDescription)}).
 	 * 
 	 * @return the list of setting entries.
 	 */

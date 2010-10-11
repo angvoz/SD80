@@ -25,6 +25,7 @@ import org.eclipse.cdt.debug.edc.formatter.ITypeContentProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.EDCTrace;
+import org.eclipse.cdt.debug.edc.internal.NumberFormatUtils;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvaluationEngine;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.IArrayDimensionType;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InstructionSequence;
@@ -73,16 +74,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 
 public class Expressions extends AbstractEDCService implements IExpressions2 {
-
-	private static final String HEX_PREFIX = "0x"; //$NON-NLS-1$
-
-	private static final String OCTAL_PREFIX = "0"; //$NON-NLS-1$
-
-	private static final String BINARY_PREFIX = "0b"; //$NON-NLS-1$
-
-	private static final String SINGLE_QUOTE = "'"; //$NON-NLS-1$
-
-	private static final String DECIMAL_SUFFIX = " (Decimal)"; //$NON-NLS-1$
 
 	public abstract class BaseEDCExpressionDMC extends DMContext implements IEDCExpression {
 		protected String expression;
@@ -249,21 +240,21 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				// the non-natural formats have expected representations in other
 				// parts of DSF, so be strict about what we return
 				if (formatID.equals(IFormattedValues.HEX_FORMAT)) {
-					temp = toHexString(value);
+					temp = NumberFormatUtils.toHexString(value);
 				} else if (formatID.equals(IFormattedValues.OCTAL_FORMAT)) {
-					temp = toOctalString(value);
+					temp = NumberFormatUtils.toOctalString(value);
 				} else if (formatID.equals(IFormattedValues.BINARY_FORMAT)) {
-					temp = asBinary(value);
+					temp = NumberFormatUtils.asBinary(value);
 				} else if (formatID.equals(IFormattedValues.NATURAL_FORMAT)) {
 					// convert non-integer types to original representation
 					if (unqualifiedType instanceof ICPPBasicType) {
 						ICPPBasicType basicType = (ICPPBasicType) unqualifiedType;
 						switch (basicType.getBaseType()) {
 						case ICPPBasicType.t_char:
-							temp = toCharString(value);
+							temp = NumberFormatUtils.toCharString(value, valueType);
 							break;
 						case ICPPBasicType.t_wchar_t:
-							temp = toCharString(value);
+							temp = NumberFormatUtils.toCharString(value, valueType);
 							break;
 						case ICPPBasicType.t_bool:
 							temp = Boolean.toString(value.longValue() != 0);
@@ -271,13 +262,13 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 						default:
 							// account for other debug formats
 							if (basicType.getName().equals("wchar_t")) { //$NON-NLS-1$
-								temp = toCharString(value);
+								temp = NumberFormatUtils.toCharString(value, valueType);
 							}
 							break;
 						}
 					} else if (unqualifiedType instanceof IAggregate || unqualifiedType instanceof IPointerType) {
 						// show addresses for aggregates and pointers as hex in natural format
-						temp = toHexString(value);
+						temp = NumberFormatUtils.toHexString(value);
 					} 
 					
 					// TODO: add type suffix if the value cannot fit in
@@ -328,160 +319,6 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			}
 			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.traceExit(result); }
 			return new FormattedValueDMData(result);
-		}
-
-		private String toHexString(Number number) {
-			String str = null;
-			if (number instanceof Integer)
-				str = Integer.toHexString((Integer) number);
-			else if (number instanceof Long)
-				str = Long.toHexString((Long) number);
-			else if (number instanceof BigInteger)
-				str = ((BigInteger) number).toString(16);
-			else if (number instanceof Float)
-				str = Float.toHexString((Float) number);
-			else if (number instanceof Double)
-				str = Double.toHexString((Double) number);
-			if (str != null && !str.startsWith(Expressions.HEX_PREFIX))
-				return Expressions.HEX_PREFIX + str;
-			return str;
-		}
-
-		private String toOctalString(Number number) {
-			String str = null;
-			if (number instanceof Integer)
-				str = Integer.toOctalString((Integer) number);
-			else if (number instanceof Long)
-				str = Long.toOctalString((Long) number);
-			else if (number instanceof BigInteger)
-				str = ((BigInteger) number).toString(8);
-			if (str != null && !str.startsWith(Expressions.OCTAL_PREFIX))
-				str = Expressions.OCTAL_PREFIX + str;
-			if (str == null && (number instanceof Float || number instanceof Double))
-				str = number.toString() + Expressions.DECIMAL_SUFFIX;
-			return str;
-		}
-
-		private String asBinary(Number number) {
-			String str = null;
-			if (number instanceof Integer)
-				str = Integer.toBinaryString((Integer) number);
-			else if (number instanceof Long)
-				str = Long.toBinaryString((Long) number);
-			else if (number instanceof BigInteger)
-				str = ((BigInteger) number).toString(2);
-			if (str != null && !str.startsWith(Expressions.BINARY_PREFIX))
-				str = Expressions.BINARY_PREFIX + str;
-			if (str == null && (number instanceof Float || number instanceof Double))
-				str = number.toString() + Expressions.DECIMAL_SUFFIX;
-			return str;
-		}
-
-		private String toCharString(Number number) {
-			int intValue = number.intValue();
-			String charVal = null;
-			if (intValue < 128) {
-				switch ((char) intValue) {
-					case 0:
-						charVal = ("\\0"); //$NON-NLS-1$
-						break;
-					case '\b':
-						charVal = ("\\b"); //$NON-NLS-1$
-						break;
-					case '\f':
-						charVal = ("\\f"); //$NON-NLS-1$
-						break;
-					case '\n':
-						charVal = ("\\n"); //$NON-NLS-1$
-						break;
-					case '\r':
-						charVal = ("\\r"); //$NON-NLS-1$
-						break;
-					case '\t':
-						charVal = ("\\t"); //$NON-NLS-1$
-						break;
-					case '\'':
-						charVal = ("\\'"); //$NON-NLS-1$
-						break;
-					case '\"':
-						charVal = ("\\\""); //$NON-NLS-1$
-						break;
-					case '\\':
-						charVal = ("\\\\"); //$NON-NLS-1$
-						break;
-					case 0xb:
-						charVal = ("\\v"); //$NON-NLS-1$
-						break;
-				}
-			}
-
-			// Show the numeric value (decimal for char, since it's short, and hex for wchar_t)
-			// then the character value.  Note that at the system font may not be able to show
-			// all characters in the variables/expressions view, which is why we show the 
-			// more meaningful numeric value before the possibly "boxy" character representation.
-			//
-			// Also, we assume wchar_t == Unicode.
-			boolean isWchart = (valueType instanceof ICPPBasicType 
-				&& ((ICPPBasicType) valueType).getBaseType() == ICPPBasicType.t_wchar_t)
-				 || valueType.getName().equals("wchar_t"); //$NON-NLS-1$
-			
-			StringBuilder info = new StringBuilder();
-		
-			if (isWchart) {
-				info.append(HEX_PREFIX);
-				if (valueType.getByteSize() == 2)
-					info.append(String.format("%04X", intValue)); //$NON-NLS-1$
-				else
-					info.append(String.format("%08X", intValue)); //$NON-NLS-1$
-				info.append(" (L"); //$NON-NLS-1$
-			} else {
-				info.append("" + intValue); //$NON-NLS-1$
-				info.append(" ("); //$NON-NLS-1$
-			}
-
-			if (charVal == null) {
-				// treat chars as unsigned for getting the char representation
-				String fmt = "\\U%08X"; //$NON-NLS-1$
-				switch (valueType.getByteSize()) {
-				case 1:
-					fmt = "\\%03o"; //$NON-NLS-1$
-					intValue &= 0xff; break;
-				case 2:
-					fmt = "\\u%04X"; //$NON-NLS-1$
-					intValue &= 0xffff; break;
-				case 4:
-					// note: may still be too large to be legal
-					fmt = "\\U%08X"; //$NON-NLS-1$
-					intValue &= 0xffffffff; break;
-				}
-				
-				boolean gotRepr = false;
-				try {
-					if (!Character.isISOControl(intValue)) {
-						char[] chars = Character.toChars(intValue);
-						info.append(asStringQuoted(new String(chars)));
-						gotRepr = true;
-					}
-				} catch (IllegalArgumentException e) {
-					// some character values are negative or outside the UCS range;
-					// these throw exceptions
-				}
-				if (!gotRepr) {
-					info.append(asStringQuoted(String.format(fmt, intValue)));
-				}
-			} else {
-				info.append(asStringQuoted(charVal));
-			}
-			info.append(')');
-			
-			return info.toString();
-		}
-
-		private String asStringQuoted(String val) {
-			StringBuilder sb = new StringBuilder(Expressions.SINGLE_QUOTE);
-			sb.append(val);
-			sb.append(Expressions.SINGLE_QUOTE);
-			return sb.toString();
 		}
 
 		/* (non-Javadoc)
@@ -1387,7 +1224,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		IType exprType = TypeUtils.getStrippedType(expressionDMC.getEvaluatedType());
 
 		// first try to get value by format as BigInteger
-		Number number = parseIntegerByFormat(expressionValue, formatId);
+		Number number = NumberFormatUtils.parseIntegerByFormat(expressionValue, formatId);
         if (number == null) {
        		IEDCExpression temp = (IEDCExpression) createExpression(expressionDMC.getFrame(), expressionValue);
        		temp.evaluateExpression();
@@ -1424,42 +1261,6 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		}
         
 		rm.done();
-	}
-
-	private BigInteger parseIntegerByFormat(String expressionValue, String formatId) {
-		int radix = 10;
-		if (HEX_FORMAT.equals(formatId)) {
-			if (expressionValue.startsWith(Expressions.HEX_PREFIX)) 
-				expressionValue = expressionValue.substring(Expressions.HEX_PREFIX.length());
-			radix = 16;
-		} else if (OCTAL_FORMAT.equals(formatId)) {
-			if (expressionValue.startsWith(Expressions.OCTAL_PREFIX)) 
-				expressionValue = expressionValue.substring(Expressions.OCTAL_PREFIX.length()); 
-			radix = 8;
-		} else if (BINARY_FORMAT.equals(formatId)) {
-			if (expressionValue.startsWith(Expressions.BINARY_PREFIX)) 
-				expressionValue = expressionValue.substring(Expressions.BINARY_PREFIX.length()); 
-			radix = 2;
-		} else if (NATURAL_FORMAT.equals(formatId)) {
-			if (expressionValue.startsWith(Expressions.BINARY_PREFIX)) {
-				expressionValue = expressionValue.substring(Expressions.BINARY_PREFIX.length());
-				radix = 2;
-			} else if (expressionValue.startsWith(Expressions.OCTAL_PREFIX)) { 
-				expressionValue = expressionValue.substring(Expressions.OCTAL_PREFIX.length());
-				radix = 8;
-			} else if (expressionValue.startsWith(Expressions.HEX_PREFIX)) { 
-				expressionValue = expressionValue.substring(Expressions.HEX_PREFIX.length());
-				radix = 16;
-			} 
-			// else, decimal
-		}
-        try {
-        	return new BigInteger(expressionValue, radix);
-        } catch (NumberFormatException e) {
-        	// just return null
-        }
-        
-        return null;
 	}
 
 	public void getAvailableFormats(IFormattedDataDMContext formattedDataContext, DataRequestMonitor<String[]> rm) {

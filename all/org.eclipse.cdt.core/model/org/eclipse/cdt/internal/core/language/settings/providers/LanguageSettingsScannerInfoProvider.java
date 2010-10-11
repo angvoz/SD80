@@ -1,3 +1,14 @@
+/*******************************************************************************
+ * Copyright (c) 2010, 2010 Andrew Gvozdev (Quoin Inc.) and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
+ *******************************************************************************/
+
 package org.eclipse.cdt.internal.core.language.settings.providers;
 
 import java.util.HashMap;
@@ -32,6 +43,12 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 
+/**
+ * Implementation of {@link IScannerInfoProvider} backed by the list of
+ * language settings providers of "default settings configuration"
+ * (see {@link ICProjectDescription#getDefaultSettingConfiguration()}).
+ *
+ */
 public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider {
 	private static final ExtendedScannerInfo DUMMY_SCANNER_INFO = new ExtendedScannerInfo();
 

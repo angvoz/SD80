@@ -78,7 +78,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	public void setLanguageIds(List <String> languages) {
-		this.languages = new ArrayList<String>(languages);
+		this.languageScope = new ArrayList<String>(languages);
 	}
 
 	public void setCustomParameter(String customParameter) {
@@ -147,8 +147,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				ATTR_PARAMETER, getCustomParameter(),
 			});
 
-		if (languages!=null) {
-			for (String langId : languages) {
+		if (languageScope!=null) {
+			for (String langId : languageScope) {
 				XmlUtil.appendElement(elementProvider, ELEM_LANGUAGE_SCOPE, new String[] {ATTR_ID, langId});
 			}
 		}
@@ -248,7 +248,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	// provider/configuration/language/resource/entry
 	public void load(Element providerNode) {
 		fStorage.clear();
-		languages = null;
+		languageScope = null;
 
 		if (providerNode!=null) {
 			String providerId = XmlUtil.determineAttributeValue(providerNode, ATTR_ID);
@@ -286,11 +286,11 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	private void loadLanguageScopeElement(Node parentNode) {
-		if (languages==null) {
-			languages = new ArrayList<String>();
+		if (languageScope==null) {
+			languageScope = new ArrayList<String>();
 		}
 		String id = XmlUtil.determineAttributeValue(parentNode, ATTR_ID);
-		languages.add(id);
+		languageScope.add(id);
 
 	}
 
@@ -390,7 +390,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		int result = 1;
 		result = prime * result + ((getId() == null) ? 0 : getId().hashCode());
 		result = prime * result + ((getName() == null) ? 0 : getName().hashCode());
-		result = prime * result + ((languages == null) ? 0 : languages.hashCode());
+		result = prime * result + ((languageScope == null) ? 0 : languageScope.hashCode());
 		result = prime * result + ((customParameter == null) ? 0 : customParameter.hashCode());
 		result = prime * result + ((fStorage == null) ? 0 : fStorage.hashCode());
 		result = prime * result + getClass().hashCode();
@@ -423,10 +423,10 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		} else if (!name.equals(otherName))
 			return false;
 
-		if (languages == null) {
-			if (other.languages != null)
+		if (languageScope == null) {
+			if (other.languageScope != null)
 				return false;
-		} else if (!languages.equals(other.languages))
+		} else if (!languageScope.equals(other.languageScope))
 			return false;
 
 		if (customParameter == null) {

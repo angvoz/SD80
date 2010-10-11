@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2009 Andrew Gvozdev (Quoin Inc.) and others.
+ * Copyright (c) 2009, 2010 Andrew Gvozdev (Quoin Inc.) and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -19,66 +19,115 @@ import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.core.resources.IResource;
 
+/**
+ * {@code LanguageSettingsBaseProvider} is a basic implementation of {@link ILanguageSettingsProvider}
+ * defined in {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
+ * 
+ * This implementation supports "static" list of entries for languages specified in
+ * the extension point. 
+ */
 public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBase implements ILanguageSettingsProvider {
-	protected List<String> languages = null;
+	/** Language scope, i.e. list of languages the entries will be provided for. */
+	protected List<String> languageScope = null;
+
+	/** Custom parameter. Intended for providers extending this class. */
 	protected String customParameter = null;
 
+	/** List of entries defined by this provider. */
 	private List<ICLanguageSettingEntry> entries = null;
 
+	/**
+	 * Default constructor.
+	 */
 	public LanguageSettingsBaseProvider() {
 	}
 
 	/**
-	 * TODO
+	 * Constructor. Creates an "empty" provider.
+	 * 
+	 * @param id - id of the provider.
+	 * @param name - name of the provider to be presented to a user.
 	 */
 	public LanguageSettingsBaseProvider(String id, String name) {
 		super(id, name);
 	}
 
-	protected static List<ICLanguageSettingEntry> cloneList(List<ICLanguageSettingEntry> entries) {
-		return entries!=null ? new ArrayList<ICLanguageSettingEntry>(entries) : null;
-	}
 	/**
-	 * TODO
-	 * languages can be null: in that case all languages qualify.
+	 * Constructor.
+	 * 
+	 * @param id - id of the provider.
+	 * @param name - name of the provider to be presented to a user.
+	 * @param languages - list of languages the {@code entries} provided for.
+	 *    {@code languages} can be {@code null}, in this case the {@code entries}
+	 *    are provided for any language.
+	 * @param entries - the list of language settings entries this provider provides.
+	 *    If {@code null} is passed, the provider creates an empty list.
 	 */
 	public LanguageSettingsBaseProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries) {
 		super(id, name);
-		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
+		this.languageScope = languages!=null ? new ArrayList<String>(languages) : null;
 		this.entries = cloneList(entries);
 	}
 
 	/**
-	 * TODO
-	 * languages can be null: in that case all languages qualify.
+	 * Constructor.
+	 * 
+	 * @param id - id of the provider.
+	 * @param name - name of the provider to be presented to a user.
+	 * @param languages - list of languages the {@code entries} provided for.
+	 *    {@code languages} can be {@code null}, in this case the {@code entries}
+	 *    are provided for any language.
+	 * @param entries - the list of language settings entries this provider provides.
+	 *    If {@code null} is passed, the provider creates an empty list.
+	 * @param customParameter - a custom parameter as the means to customize
+	 *    providers extending this class.
 	 */
 	public LanguageSettingsBaseProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
 		super(id, name);
-		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
+		this.languageScope = languages!=null ? new ArrayList<String>(languages) : null;
 		this.entries = cloneList(entries);
 		this.customParameter = customParameter;
 	}
 
-	public List<String> getLanguageIds() {
-		return languages!=null ? new ArrayList<String>(languages) : null;
-	}
-
+	/**
+	 * A method to configure the provider. The initialization of provider from
+	 * the extension point is done in 2 steps. First, the class is created as
+	 * an executable extension using the default provider. Then this method is
+	 * used to configure the provider.
+	 * 
+	 * It is not allowed to reconfigure the provider.
+	 * 
+	 * @param id - id of the provider.
+	 * @param name - name of the provider to be presented to a user.
+	 * @param languages - list of languages the {@code entries} provided for.
+	 *    {@code languages} can be {@code null}, in this case the {@code entries}
+	 *    are provided for any language.
+	 * @param entries - the list of language settings entries this provider provides.
+	 *    If {@code null} is passed, the provider creates an empty list.
+	 * @param customParameter - a custom parameter as the means to customize
+	 *    providers extending this class from extension definition in {@code plugin.xml}.
+	 * 
+	 * @throws UnsupportedOperationException if an attempt to reconfigure provider is made.
+	 */
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
 		if (this.entries!=null)
 			throw new UnsupportedOperationException("LanguageSettingsBaseProvider can be configured only once");
 
 		setId(id);
 		setName(name);
-		this.languages = languages!=null ? new ArrayList<String>(languages) : null;
+		this.languageScope = languages!=null ? new ArrayList<String>(languages) : null;
 		this.entries = cloneList(entries);
 		this.customParameter = customParameter;
 	}
 
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider#getSettingEntries(org.eclipse.cdt.core.settings.model.ICConfigurationDescription, org.eclipse.core.resources.IResource, java.lang.String)
+	 */
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-		if (languages==null) {
+		if (languageScope==null) {
 			return cloneList(entries);
 		}
-		for (String lang : languages) {
+		for (String lang : languageScope) {
 			if (lang.equals(languageId)) {
 				return cloneList(entries);
 			}
@@ -86,8 +135,26 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 		return null;
 	}
 
+	/**
+	 * @return the list of languages this provider provides for.
+	 */
+	public List<String> getLanguageIds() {
+		return languageScope!=null ? new ArrayList<String>(languageScope) : null;
+	}
+
+	/**
+	 * @return the custom parameter defined in the extension in {@code plugin.xml}.
+	 */
 	public String getCustomParameter() {
 		return customParameter;
+	}
+
+	/**
+	 * @param entries
+	 * @return copy of the list of the entries.
+	 */
+	private List<ICLanguageSettingEntry> cloneList(List<ICLanguageSettingEntry> entries) {
+		return entries!=null ? new ArrayList<ICLanguageSettingEntry>(entries) : null;
 	}
 
 }

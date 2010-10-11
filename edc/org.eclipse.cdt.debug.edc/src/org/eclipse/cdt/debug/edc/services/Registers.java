@@ -10,9 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.services;
 
-import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -21,10 +20,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
+import org.eclipse.cdt.debug.edc.internal.NumberFormatUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.RootExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
@@ -47,8 +45,6 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.debug.core.model.IRegister;
-import org.eclipse.tm.tcf.protocol.IErrorReport;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.services.IRegisters.RegistersContext;
@@ -496,7 +492,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 				new RequestMonitor(getExecutor(), null));
 	}
 
-	public void writeRegister(IRegisterDMContext regCtx, String regValue, String formatId, final RequestMonitor rm) {
+	public void writeRegister(IRegisterDMContext regCtx, String regValue, String formatID, final RequestMonitor rm) {
 		assert (regCtx instanceof RegisterDMC);
 		
 		final RegisterDMC regDMC = (RegisterDMC) regCtx;
@@ -511,6 +507,14 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 		final String exeDMCID = ((IEDCDMContext) exeDMC).getID();
 		final String regDMCID = regDMC.getID();
+		
+		// Put the incoming value into hex
+		if (formatID.equals(IFormattedValues.OCTAL_FORMAT) || formatID.equals(IFormattedValues.BINARY_FORMAT) ||
+				formatID.equals(IFormattedValues.DECIMAL_FORMAT))
+		{
+			BigInteger bigRegValue = NumberFormatUtils.parseIntegerByFormat(regValue, formatID);
+			regValue = bigRegValue.toString(16);
+		}
 
 		// Update cached register values
 		Map<String, String> exeDMCRegisters = registerValueCache.get(exeDMCID);
@@ -599,7 +603,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	}
 
 	public void getAvailableFormats(IFormattedDataDMContext dmc, DataRequestMonitor<String[]> rm) {
-		rm.setData(new String[] { IFormattedValues.HEX_FORMAT });
+        rm.setData(new String[] { HEX_FORMAT, DECIMAL_FORMAT, OCTAL_FORMAT, BINARY_FORMAT, NATURAL_FORMAT });
 		rm.done();
 	}
 
@@ -780,14 +784,25 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		getSession().dispatchEvent(new RegisterChangedDMEvent(dmc), getProperties());
 	}
 
-	private void getRegisterDataValue(RegisterDMC registerDMC, String formatID,
+	private void getRegisterDataValue(RegisterDMC registerDMC, final String formatID,
 			final DataRequestMonitor<FormattedValueDMData> rm) {
 
 		getRegisterValue(registerDMC, new DataRequestMonitor<String>(getExecutor(), rm) {
 
 			@Override
 			protected void handleSuccess() {
-				rm.setData(new FormattedValueDMData(getData()));
+				String registerValueAsHexString = getData();
+				String formattedValue = registerValueAsHexString;
+				BigInteger bigIntValue = new BigInteger(registerValueAsHexString, 16);
+				
+				if (formatID.equals(IFormattedValues.OCTAL_FORMAT))
+					formattedValue = NumberFormatUtils.toOctalString(bigIntValue);
+				if (formatID.equals(IFormattedValues.BINARY_FORMAT))
+					formattedValue = NumberFormatUtils.asBinary(bigIntValue);
+				if (formatID.equals(IFormattedValues.DECIMAL_FORMAT))
+					formattedValue = bigIntValue.toString();
+				
+				rm.setData(new FormattedValueDMData(formattedValue));
 				rm.done();
 			}
 		});

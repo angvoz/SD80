@@ -96,7 +96,7 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 	}
 
 	/**
-	 * TODO
+	 * Test cases when some objects are null
 	 *
 	 * @throws Exception...
 	 */
@@ -153,7 +153,7 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 	}
 
 	/**
-	 * TODO
+	 * Test empty scanner info
 	 *
 	 * @throws Exception...
 	 */
@@ -179,11 +179,11 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 		assertEquals(0, info.getLocalIncludePath().length);
 	}
 	/**
-	 * TODO
+	 * Test regular cases
 	 *
 	 * @throws Exception...
 	 */
-	public void testScannerInfoProvider() throws Exception {
+	public void testRegular() throws Exception {
 		// create a project
 		IProject project = ResourceHelper.createCDTProjectWithConfig(getName());
 		IFile file = ResourceHelper.createFile(project, "file.c");

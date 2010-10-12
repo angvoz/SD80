@@ -73,13 +73,13 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		}
 
 		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsManager.getSettingEntriesByKind(cfgDescription, resource, languageId, ICSettingEntry.INCLUDE_PATH);
-		String[] includePaths = getLocations(includePathEntries, project);
+		String[] includePaths = convertToLocations(includePathEntries, project);
 
 		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsManager.getSettingEntriesByKind(cfgDescription, resource, languageId, ICSettingEntry.INCLUDE_FILE);
-		String[] includeFiles = getLocations(includeFileEntries, project);
+		String[] includeFiles = convertToLocations(includeFileEntries, project);
 
 		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsManager.getSettingEntriesByKind(cfgDescription, resource, languageId, ICSettingEntry.MACRO_FILE);
-		String[] macroFiles = getLocations(macroFileEntries, project);
+		String[] macroFiles = convertToLocations(macroFileEntries, project);
 
 		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsManager.getSettingEntriesByKind(cfgDescription, resource, languageId, ICSettingEntry.MACRO);
 		Map<String, String> definedMacros = new HashMap<String, String>();
@@ -98,7 +98,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		if (resource instanceof IFile) {
 			languageId = getLanguageIdForFile(cfgDescription, resource);
 		} else if (resource instanceof IContainer) { // IResource can be either IFile or IContainer
-			languageId = getLanguageIdForContainer(cfgDescription, (IContainer) resource);
+			languageId = getLanguageIdForFolder(cfgDescription, (IContainer) resource);
 		}
 		if (languageId==null) {
 			String msg = NLS.bind(SettingsModelMessages.getString("LanguageSettingsScannerInfoProvider.UnableToDetermineLanguage"), resource.toString()); //$NON-NLS-1$
@@ -119,7 +119,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		return null;
 	}
 
-	private String getLanguageIdForContainer(ICConfigurationDescription cfgDescription, IContainer resource) {
+	private String getLanguageIdForFolder(ICConfigurationDescription cfgDescription, IContainer resource) {
 		// TODO: That is wacky but that's how legacy stuff works
 		String languageId = null;
 
@@ -144,7 +144,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	}
 
 	// FIXME
-	private String[] getLocations(List<ICLanguageSettingEntry> pathEntries, IProject project){
+	private String[] convertToLocations(List<ICLanguageSettingEntry> pathEntries, IProject project){
 		String locations[] = new String[pathEntries.size()];
 		int num = 0;
 		for (ICLanguageSettingEntry entry : pathEntries) {
@@ -153,7 +153,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 			if(pathStr == null)
 				continue;
 			//TODO: obtain location from pathEntries when entries are resolved
-			IPath path = new Path(pathStr);//p.getLocation();
+			IPath path = new Path(pathStr);//pathEntry.getLocation();
 			if(pathEntry.isValueWorkspacePath()){
 				IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 				IResource rc = root.findMember(path);

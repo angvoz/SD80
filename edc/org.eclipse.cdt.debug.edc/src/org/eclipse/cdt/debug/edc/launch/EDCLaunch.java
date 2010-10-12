@@ -108,7 +108,7 @@ abstract public class EDCLaunch extends DsfLaunch {
 
 		// Create the dispatch queue to be used by debugger control and services
 		// that belong to this launch
-		final DefaultDsfExecutor dsfExecutor = new DefaultDsfExecutor(ownerID);
+		final DefaultDsfExecutor dsfExecutor = new DefaultDsfExecutor("DSF executor - " + ownerID); //$NON-NLS-1$
 		dsfExecutor.prestartCoreThread();
 		executor = dsfExecutor;
 		session = DsfSession.startSession(executor, ownerID);

@@ -11,12 +11,14 @@
 
 package org.eclipse.cdt.internal.core.language.settings.providers;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
+import org.eclipse.cdt.core.cdtvariables.CdtVariableException;
+import org.eclipse.cdt.core.cdtvariables.ICdtVariableManager;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
@@ -36,8 +38,6 @@ import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -72,16 +72,24 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 			return DUMMY_SCANNER_INFO;
 		}
 
-		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsManager.getSettingEntriesByKind(cfgDescription, resource, languageId, ICSettingEntry.INCLUDE_PATH);
-		String[] includePaths = convertToLocations(includePathEntries, project);
+		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
+				resource, languageId, ICSettingEntry.INCLUDE_PATH, false);
+		String[] includePaths = convertToLocations(includePathEntries, cfgDescription);
 
-		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsManager.getSettingEntriesByKind(cfgDescription, resource, languageId, ICSettingEntry.INCLUDE_FILE);
-		String[] includeFiles = convertToLocations(includeFileEntries, project);
+		List<ICLanguageSettingEntry> includePathLocalEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
+				resource, languageId, ICSettingEntry.INCLUDE_PATH, true);
+		String[] includePathsLocal = convertToLocations(includePathLocalEntries, cfgDescription);
+		
+		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
+				resource, languageId, ICSettingEntry.INCLUDE_FILE);
+		String[] includeFiles = convertToLocations(includeFileEntries, cfgDescription);
 
-		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsManager.getSettingEntriesByKind(cfgDescription, resource, languageId, ICSettingEntry.MACRO_FILE);
-		String[] macroFiles = convertToLocations(macroFileEntries, project);
+		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
+				resource, languageId, ICSettingEntry.MACRO_FILE);
+		String[] macroFiles = convertToLocations(macroFileEntries, cfgDescription);
 
-		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsManager.getSettingEntriesByKind(cfgDescription, resource, languageId, ICSettingEntry.MACRO);
+		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
+				resource, languageId, ICSettingEntry.MACRO);
 		Map<String, String> definedMacros = new HashMap<String, String>();
 		for (ICLanguageSettingEntry entry : macroEntries) {
 			ICMacroEntry macroEntry = (ICMacroEntry)entry;
@@ -90,7 +98,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 			definedMacros.put(name, value);
 		}
 
-		return new ExtendedScannerInfo(definedMacros, includePaths, macroFiles, includeFiles);
+		return new ExtendedScannerInfo(definedMacros, includePaths, macroFiles, includeFiles, includePathsLocal);
 	}
 
 	private String getLanguageId(ICConfigurationDescription cfgDescription, IResource resource) {
@@ -143,39 +151,54 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		return languageId;
 	}
 
-	// FIXME
-	private String[] convertToLocations(List<ICLanguageSettingEntry> pathEntries, IProject project){
-		String locations[] = new String[pathEntries.size()];
-		int num = 0;
+	private IPath expandVariables(IPath path, ICConfigurationDescription cfgDescription) {
+		ICdtVariableManager varManager = CCorePlugin.getDefault().getCdtVariableManager();
+		String pathStr = path.toString();
+		try {
+			pathStr = varManager.resolveValue(pathStr, "", null, cfgDescription); //$NON-NLS-1$
+		} catch (CdtVariableException e) {
+			// Swallow exceptions but also log them
+			CCorePlugin.log(e);
+		}
+		IPath resolvedLoc = new Path(pathStr);
+		return resolvedLoc;
+	}
+
+	/**
+	 * Convert the path entries to absolute file system locations represented as String array.
+	 * Resolve the entries which are not resolved.
+	 * 
+	 * @param pathEntries - language settings path entries.
+	 * @param cfgDescription - configuration description for resolving entries.
+	 * @return array of the locations.
+	 */
+	private String[] convertToLocations(List<ICLanguageSettingEntry> pathEntries, ICConfigurationDescription cfgDescription){
+		List<String> locations = new ArrayList<String>(pathEntries.size());
 		for (ICLanguageSettingEntry entry : pathEntries) {
-			ICLanguageSettingPathEntry pathEntry = (ICLanguageSettingPathEntry)entry;
-			String pathStr = pathEntry.getValue();
-			if(pathStr == null)
-				continue;
-			//TODO: obtain location from pathEntries when entries are resolved
-			IPath path = new Path(pathStr);//pathEntry.getLocation();
-			if(pathEntry.isValueWorkspacePath()){
-				IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-				IResource rc = root.findMember(path);
-				if(rc != null){
-					path = rc.getLocation();
+			ICLanguageSettingPathEntry entryPath = (ICLanguageSettingPathEntry)entry;
+			IPath loc = null;
+			if (entryPath.isResolved()) {
+				loc = entryPath.getLocation();
+				if (loc!=null) {
+					locations.add(loc.toOSString());
 				}
-			} else if (!path.isAbsolute()) {
-				IPath projLocation = project != null ? project.getLocation() : null;
-				if(projLocation != null)
-					path = projLocation.append(path);
+			} else {
+				loc = LanguageSettingsExtensionManager.resolveEntry(entryPath, cfgDescription);
+			if (loc!=null) {
+				locations.add(loc.toOSString());
+					// add relative paths again for indexer to resolve from source file location
+					IPath unresolvedPath = entryPath.getLocation();
+					if (!unresolvedPath.isAbsolute()) {
+						IPath expandedPath = expandVariables(unresolvedPath, cfgDescription);
+						if (!expandedPath.isAbsolute()) {
+							locations.add(expandedPath.toOSString());
+						}
+					}
+				}
 			}
-			if(path != null)
-				locations[num++] = path.toOSString();
 		}
 
-		if(num < pathEntries.size()){
-			String tmp[] = new String[num];
-			System.arraycopy(locations, 0, tmp, 0, num);
-			locations = tmp;
-		}
-
-		return locations;
+		return locations.toArray(new String[locations.size()]);
 	}
 
 	public void subscribe(IResource resource, IScannerInfoChangeListener listener) {

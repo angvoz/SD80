@@ -74,7 +74,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
-//		ResourceHelper.cleanUp();
+		ResourceHelper.cleanUp();
 		LanguageSettingsManager_TBD.setUserDefinedProviders(null);
 	}
 

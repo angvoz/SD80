@@ -20,13 +20,17 @@ import java.util.TreeSet;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.cdtvariables.CdtVariableException;
+import org.eclipse.cdt.core.cdtvariables.ICdtVariableManager;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingPathEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -34,6 +38,8 @@ import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 
 /**
@@ -299,6 +305,10 @@ public class LanguageSettingsExtensionManager {
 		return new ArrayList<ICLanguageSettingEntry>(0);
 	}
 
+	private static boolean checkBit(int flags, int bit) {
+		return (flags & bit) == bit;
+	}
+	
 	/**
 	 * Returns the list of setting entries of a certain kind (such as include paths)
 	 * for the given configuration description, resource and language. This is a
@@ -315,7 +325,7 @@ public class LanguageSettingsExtensionManager {
 	 * 
 	 * @return the list of setting entries.
 	 */
-	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
+	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind, boolean isLocal) {
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 		List<String> alreadyAdded = new ArrayList<String>();
 	
@@ -329,7 +339,9 @@ public class LanguageSettingsExtensionManager {
 					// Only first entry is considered
 					// Entry flagged as "UNDEFINED" prevents adding entry with the same name down the line
 					if (isRightKind && !alreadyAdded.contains(entryName)) {
-						if ((entry.getFlags() & ICSettingEntry.UNDEFINED) == 0) {
+						int flags = entry.getFlags();
+						if (checkBit(flags, ICSettingEntry.LOCAL) == isLocal) {
+							if (!checkBit(flags, ICSettingEntry.UNDEFINED)) {
 							entries.add(entry);
 						}
 						alreadyAdded.add(entryName);
@@ -337,8 +349,83 @@ public class LanguageSettingsExtensionManager {
 				}
 			}
 		}
+		}
 	
 		return entries;
 	}
 
+	/**
+	 * Returns the list of setting entries of a certain kind (such as include paths)
+	 * for the given configuration description, resource and language. This is a
+	 * combined list for all providers taking into account settings of parent folder
+	 * if settings for the given resource are not defined. The list does not include
+	 * entries marked with flag {@link ICSettingEntry#LOCAL}.
+	 * 
+	 * @param cfgDescription - configuration description.
+	 * @param rc - resource such as file or folder.
+	 * @param languageId - language id.
+	 * @param kind - kind of language settings entries, such as
+	 *     {@link ICSettingEntry#INCLUDE_PATH} etc. This is a binary flag
+	 *     and it is possible to specify composite kind.
+	 *     Use {@link ICSettingEntry#ALL} to get all kinds.
+	 * 
+	 * @return the list of setting entries.
+	 */
+	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
+		return getSettingEntriesByKind(cfgDescription, rc, languageId, kind, /* isLocal */ false);
+	}
+
+
+	/**
+	 * Get build working directory for the provided configuration. Returns
+	 * project location if none defined.
+	 */
+	private static IPath getBuildCWD(ICConfigurationDescription cfgDescription) {
+		IPath buildCWD = cfgDescription.getBuildSetting().getBuilderCWD();
+		if (buildCWD==null) {
+			IProject project = cfgDescription.getProjectDescription().getProject();
+			buildCWD = project.getLocation();
+		}
+		return buildCWD;
+	}
+
+	/**
+	 * Resolve {@link ICLanguageSettingPathEntry} to file system location in a configuration context.
+	 * Resolving includes replacing build/environment variables with values, making relative path absolute etc.
+	 * 
+	 * @param entry - entry to resolve.
+	 * @param cfgDescription - the configuration context.
+	 * @return resolved entry as a file system location.
+	 */
+	public static IPath resolveEntry(ICLanguageSettingPathEntry entry, ICConfigurationDescription cfgDescription) {
+		IPath loc = entry.getLocation();
+		if(loc != null) {
+			// Substitute build/environment variables
+			ICdtVariableManager varManager = CCorePlugin.getDefault().getCdtVariableManager();
+			String locStr = loc.toString();
+			try {
+				locStr = varManager.resolveValue(locStr, "", null, cfgDescription); //$NON-NLS-1$
+			} catch (CdtVariableException e) {
+				// Swallow exceptions but also log them
+				CCorePlugin.log(e);
+			}
+			loc = new Path(locStr);
+			if (loc.isAbsolute() && loc.getDevice()==null) {
+				// prepend device (C:) for Windows
+				IPath buildCWD = getBuildCWD(cfgDescription);
+				loc = loc.setDevice(buildCWD.getDevice());
+			}
+			if (!loc.isAbsolute()) {
+				// consider relative path to be from build working directory
+				IPath buildCWD = getBuildCWD(cfgDescription);
+				loc = buildCWD.append(loc);
+			}
+			if (loc!=null && !loc.toFile().canRead()) {
+				// discard non-accessible locations
+				loc = null;
+			}
+		}
+		return loc;
+	}
+	
 }

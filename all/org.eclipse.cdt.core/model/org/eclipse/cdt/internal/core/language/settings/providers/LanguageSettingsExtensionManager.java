@@ -26,7 +26,6 @@ import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvide
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingPathEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
@@ -322,8 +321,11 @@ public class LanguageSettingsExtensionManager {
 	 *     {@link ICSettingEntry#INCLUDE_PATH} etc. This is a binary flag
 	 *     and it is possible to specify composite kind.
 	 *     Use {@link ICSettingEntry#ALL} to get all kinds.
+	 * @param isLocal - {@code true} if "local" entries should be provided and
+	 *     {@code false} for "system" entries. This makes sense for include paths where
+	 *     [#include "..."] is "local" and [#include <...>] is system.
 	 * 
-	 * @return the list of setting entries.
+	 * @return the list of setting entries found.
 	 */
 	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind, boolean isLocal) {
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
@@ -342,13 +344,13 @@ public class LanguageSettingsExtensionManager {
 						int flags = entry.getFlags();
 						if (checkBit(flags, ICSettingEntry.LOCAL) == isLocal) {
 							if (!checkBit(flags, ICSettingEntry.UNDEFINED)) {
-							entries.add(entry);
+								entries.add(entry);
+							}
+							alreadyAdded.add(entryName);
 						}
-						alreadyAdded.add(entryName);
 					}
 				}
 			}
-		}
 		}
 	
 		return entries;
@@ -399,37 +401,33 @@ public class LanguageSettingsExtensionManager {
 	 * @return resolved file system location.
 	 */
 	public static String resolveEntry(String location, ICConfigurationDescription cfgDescription) {
-			// Substitute build/environment variables
-			ICdtVariableManager varManager = CCorePlugin.getDefault().getCdtVariableManager();
-			try {
+		// Substitute build/environment variables
+		ICdtVariableManager varManager = CCorePlugin.getDefault().getCdtVariableManager();
+		try {
 			location = varManager.resolveValue(location, "", null, cfgDescription); //$NON-NLS-1$
-			} catch (CdtVariableException e) {
-				// Swallow exceptions but also log them
-				CCorePlugin.log(e);
-			}
+		} catch (CdtVariableException e) {
+			// Swallow exceptions but also log them
+			CCorePlugin.log(e);
+		}
 		// use OS file separators (i.e. '\' on Windows)
 		if (java.io.File.separatorChar != '/') {
 			location = location.replace('/', java.io.File.separatorChar);
 		}
-		
+
 		// note that we avoid using org.eclipse.core.runtime.Path for manipulations being careful
 		// to preserve "../" segments and not let collapsing them which is not correct for symbolic links.
 		Path locPath = new Path(location);
-		if (locPath.isAbsolute() && locPath.getDevice()==null) {
-				// prepend device (C:) for Windows
-				IPath buildCWD = getBuildCWD(cfgDescription);
-			location = buildCWD.getDevice()+location;
-			}
-		if (!locPath.isAbsolute()) {
-				// consider relative path to be from build working directory
-				IPath buildCWD = getBuildCWD(cfgDescription);
-			location = buildCWD.toOSString()+locPath;
-			}
-		if (!new java.io.File(location).canRead()) {
-				// discard non-accessible locations
-			location = null;
-			}
-		return location;
+		if (locPath.isAbsolute() && locPath.getDevice() == null) {
+			// prepend device (C:) for Windows
+			IPath buildCWD = getBuildCWD(cfgDescription);
+			location = buildCWD.getDevice() + location;
 		}
+		if (!locPath.isAbsolute()) {
+			// consider relative path to be from build working directory
+			IPath buildCWD = getBuildCWD(cfgDescription);
+			location = buildCWD.toOSString() + locPath;
+		}
+		return location;
+	}
 	
 }

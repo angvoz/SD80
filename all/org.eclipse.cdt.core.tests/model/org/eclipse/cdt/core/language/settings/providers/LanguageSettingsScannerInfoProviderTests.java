@@ -57,6 +57,7 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 			this.entries = entries;
 		}
 
+		@Override
 		public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 			return entries;
 		}
@@ -661,42 +662,6 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 	}
 	
 	/**
-	 * Test if the resource exists.
-	 */
-	public void testExistence() throws Exception {
-		// create a project
-		IProject project = ResourceHelper.createCDTProjectWithConfig(getName());
-		IPath nonexistingPath = project.getLocation().append("DoesNotExist");
-		
-		// get project/configuration descriptions
-		ICProjectDescription prjDescription = CProjectDescriptionManager.getInstance().getProjectDescription(project, false);
-		assertNotNull(prjDescription);
-		ICConfigurationDescription cfgDescription = prjDescription.getDefaultSettingConfiguration();
-		assertNotNull(cfgDescription);
-		
-		// create sample file
-		IFile file = ResourceHelper.createFile(project, "file.c");
-		
-		// contribute the entries
-		CIncludePathEntry incRelativeEntry = new CIncludePathEntry(nonexistingPath, 0);
-		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
-		entries.add(incRelativeEntry);
-		
-		// add provider to the configuration
-		ILanguageSettingsProvider provider = new MockProvider(PROVIDER_ID, PROVIDER_NAME, entries);
-		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
-		providers.add(provider);
-		cfgDescription.setLanguageSettingProviders(providers);
-		
-		// test the entries received from the scannerInfoProvider
-		LanguageSettingsScannerInfoProvider scannerInfoProvider = new LanguageSettingsScannerInfoProvider();
-		ExtendedScannerInfo info = scannerInfoProvider.getScannerInformation(file);
-		String[] actualIncludePaths = info.getIncludePaths();
-		
-		assertEquals(0, actualIncludePaths.length);
-	}
-	
-	/**
 	 * Test from parent folder's entries.
 	 */
 	public void testParentFolder() throws Exception {
@@ -709,6 +674,7 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 				this.entries = entries;
 			}
 
+			@Override
 			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 				if (this.rc.equals(rc))
 					return entries;

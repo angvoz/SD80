@@ -158,6 +158,7 @@ If there is a need to configure a provider, attribute parameter could be used in
                   &quot;name&quot; attribute maps to path for the entries representing a path to a folder or file and to name for &lt;samp&gt;macro&lt;/samp&gt; kind representing name-value pair. For example:
 &lt;br&gt;&quot;&lt;samp&gt;/usr/include/&lt;/samp&gt;&quot;
 &lt;br&gt;&quot;&lt;samp&gt;MACRO&lt;/samp&gt;&quot; (for &lt;samp&gt;#define MACRO value&lt;/samp&gt;)
+&lt;br&gt;Note that relative paths are treated as rooted in build working directory (when applicable).
                </documentation>
             </annotation>
          </attribute>
@@ -183,7 +184,9 @@ If there is a need to configure a provider, attribute parameter could be used in
             <annotation>
                <documentation>
                   A value of the flag. Corresponds to &lt;samp&gt;ICSettingEntry&lt;/samp&gt; flags, see JavaDoc there for more details. Here is an excerpt from the Javadoc  for the flags intended to be used with this extension point (the others might be not supported):
- &lt;br&gt;- &lt;samp&gt;BUILTIN&lt;/samp&gt; : Indicates settings built in a tool (compiler) itself. That kind of settings are not passed as options to a compiler but indexer or other clients might need them.
+  &lt;br&gt;- &lt;samp&gt;BUILTIN&lt;/samp&gt; : Indicates settings built in a tool (compiler) itself. That kind of settings are not passed as options to a compiler but indexer or other clients might need them.
+  &lt;br&gt;- &lt;samp&gt;LOCAL&lt;/samp&gt; : Applicable for &lt;samp&gt;includePath&lt;/samp&gt; only which could be local (#include &quot;...&quot;) or system (#include &lt;...&gt;). If an &lt;samp&gt;includePath&lt;/samp&gt; is not marked as &lt;samp&gt;LOCAL&lt;/samp&gt; it is treated as system.
+  &lt;br&gt;- &lt;samp&gt;RESOLVED&lt;/samp&gt; : Indicates that the entries do not need to be resolved such as expansion of environment variables, normalizing the path against build working directory etc.
   &lt;br&gt;- &lt;samp&gt;VALUE_WORKSPACE_PATH&lt;/samp&gt; : is used to indicate that the entry is a resource managed by eclipse in the workspace. The path is rooted in the workspace root.
   &lt;br&gt;- &lt;samp&gt;UNDEFINED&lt;/samp&gt; : indicates that the entry should not be defined, corresponds to &lt;samp&gt;-U&lt;/samp&gt; option of gcc compiler. If this flag is defined it will negate entries with the same name (and kind) for all providers down the list.
                </documentation>
@@ -191,6 +194,10 @@ If there is a need to configure a provider, attribute parameter could be used in
             <simpleType>
                <restriction base="string">
                   <enumeration value="BUILTIN">
+                  </enumeration>
+                  <enumeration value="LOCAL">
+                  </enumeration>
+                  <enumeration value="RESOLVED">
                   </enumeration>
                   <enumeration value="VALUE_WORKSPACE_PATH">
                   </enumeration>
@@ -246,11 +253,11 @@ For those cases where contributed settings entries (representing the compiler op
          <meta.section type="copyright"/>
       </appInfo>
       <documentation>
-         Copyright (c) 2009, 2010 Andrew Gvozdev (Quoin Inc.) and others.&lt;br/&gt;
-All rights reserved. This program and the accompanying materials&lt;br/&gt;
-are made available under the terms of the Eclipse Public License v1.0&lt;br/&gt;
-which accompanies this distribution, and is available at&lt;br/&gt;
-http://www.eclipse.org/legal/epl-v10.html&lt;br/&gt;
+         Copyright (c) 2009, 2010 Andrew Gvozdev (Quoin Inc.) and others.
+All rights reserved. This program and the accompanying materials
+are made available under the terms of the Eclipse Public License v1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
       </documentation>
    </annotation>
 

@@ -166,6 +166,58 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	}
 
 	/**
+	 * Get build working directory for the provided configuration. Returns
+	 * project location if none defined.
+	 */
+	private static IPath getBuildCWD(ICConfigurationDescription cfgDescription) {
+		IPath buildCWD = cfgDescription.getBuildSetting().getBuilderCWD();
+		if (buildCWD==null) {
+			IProject project = cfgDescription.getProjectDescription().getProject();
+			buildCWD = project.getLocation();
+		}
+		buildCWD = buildCWD.addTrailingSeparator();
+		return buildCWD;
+	}
+
+	/**
+	 * Resolve location to file system location in a configuration context.
+	 * Resolving includes replacing build/environment variables with values, making relative path absolute etc.
+	 * 
+	 * @param location - location to resolve. If relative, it is taken to be rooted in build working directory.
+	 * @param cfgDescription - the configuration context.
+	 * @return resolved file system location.
+	 */
+	private static String resolveEntry(String location, ICConfigurationDescription cfgDescription) {
+		// Substitute build/environment variables
+		ICdtVariableManager varManager = CCorePlugin.getDefault().getCdtVariableManager();
+		try {
+			location = varManager.resolveValue(location, "", null, cfgDescription); //$NON-NLS-1$
+		} catch (CdtVariableException e) {
+			// Swallow exceptions but also log them
+			CCorePlugin.log(e);
+		}
+		// use OS file separators (i.e. '\' on Windows)
+		if (java.io.File.separatorChar != '/') {
+			location = location.replace('/', java.io.File.separatorChar);
+		}
+	
+		// note that we avoid using org.eclipse.core.runtime.Path for manipulations being careful
+		// to preserve "../" segments and not let collapsing them which is not correct for symbolic links.
+		Path locPath = new Path(location);
+		if (locPath.isAbsolute() && locPath.getDevice() == null) {
+			// prepend device (C:) for Windows
+			IPath buildCWD = getBuildCWD(cfgDescription);
+			location = buildCWD.getDevice() + location;
+		}
+		if (!locPath.isAbsolute()) {
+			// consider relative path to be from build working directory
+			IPath buildCWD = getBuildCWD(cfgDescription);
+			location = buildCWD.toOSString() + locPath;
+		}
+		return location;
+	}
+
+	/**
 	 * Convert the path entries to absolute file system locations represented as String array.
 	 * Resolve the entries which are not resolved.
 	 * 
@@ -187,7 +239,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 				if (entryPath.isResolved()) {
 					locations.add(locStr);
 				} else {
-					locStr = LanguageSettingsExtensionManager.resolveEntry(locStr, cfgDescription);
+					locStr = resolveEntry(locStr, cfgDescription);
 					if (locStr!=null) {
 						locations.add(locStr);
 						// add relative paths again for indexer to resolve from source file location

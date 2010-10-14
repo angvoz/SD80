@@ -20,8 +20,6 @@ import java.util.TreeSet;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.cdtvariables.CdtVariableException;
-import org.eclipse.cdt.core.cdtvariables.ICdtVariableManager;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -29,7 +27,6 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -37,8 +34,6 @@ import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IExtensionRegistry;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 
 /**
@@ -375,59 +370,6 @@ public class LanguageSettingsExtensionManager {
 	 */
 	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		return getSettingEntriesByKind(cfgDescription, rc, languageId, kind, /* isLocal */ false);
-	}
-
-
-	/**
-	 * Get build working directory for the provided configuration. Returns
-	 * project location if none defined.
-	 */
-	private static IPath getBuildCWD(ICConfigurationDescription cfgDescription) {
-		IPath buildCWD = cfgDescription.getBuildSetting().getBuilderCWD();
-		if (buildCWD==null) {
-			IProject project = cfgDescription.getProjectDescription().getProject();
-			buildCWD = project.getLocation();
-		}
-		buildCWD = buildCWD.addTrailingSeparator();
-		return buildCWD;
-	}
-
-	/**
-	 * Resolve location to file system location in a configuration context.
-	 * Resolving includes replacing build/environment variables with values, making relative path absolute etc.
-	 * 
-	 * @param location - location to resolve. If relative, it is taken to be rooted in build working directory.
-	 * @param cfgDescription - the configuration context.
-	 * @return resolved file system location.
-	 */
-	public static String resolveEntry(String location, ICConfigurationDescription cfgDescription) {
-		// Substitute build/environment variables
-		ICdtVariableManager varManager = CCorePlugin.getDefault().getCdtVariableManager();
-		try {
-			location = varManager.resolveValue(location, "", null, cfgDescription); //$NON-NLS-1$
-		} catch (CdtVariableException e) {
-			// Swallow exceptions but also log them
-			CCorePlugin.log(e);
-		}
-		// use OS file separators (i.e. '\' on Windows)
-		if (java.io.File.separatorChar != '/') {
-			location = location.replace('/', java.io.File.separatorChar);
-		}
-
-		// note that we avoid using org.eclipse.core.runtime.Path for manipulations being careful
-		// to preserve "../" segments and not let collapsing them which is not correct for symbolic links.
-		Path locPath = new Path(location);
-		if (locPath.isAbsolute() && locPath.getDevice() == null) {
-			// prepend device (C:) for Windows
-			IPath buildCWD = getBuildCWD(cfgDescription);
-			location = buildCWD.getDevice() + location;
-		}
-		if (!locPath.isAbsolute()) {
-			// consider relative path to be from build working directory
-			IPath buildCWD = getBuildCWD(cfgDescription);
-			location = buildCWD.toOSString() + locPath;
-		}
-		return location;
 	}
 	
 }

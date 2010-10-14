@@ -24,6 +24,8 @@ import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.parser.ExtendedScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfoChangeListener;
 import org.eclipse.cdt.core.parser.IScannerInfoProvider;
+import org.eclipse.cdt.core.settings.model.ACPathEntry;
+import org.eclipse.cdt.core.settings.model.ACSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
@@ -176,22 +178,26 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		List<String> locations = new ArrayList<String>(pathEntries.size());
 		for (ICLanguageSettingEntry entry : pathEntries) {
 			ICLanguageSettingPathEntry entryPath = (ICLanguageSettingPathEntry)entry;
-			IPath loc = null;
-			if (entryPath.isResolved()) {
-				loc = entryPath.getLocation();
+			if (((ACPathEntry)entryPath).isValueWorkspacePath()) {
+				IPath loc = entryPath.getLocation();
 				if (loc!=null) {
 					locations.add(loc.toOSString());
 				}
 			} else {
-				loc = LanguageSettingsExtensionManager.resolveEntry(entryPath, cfgDescription);
-			if (loc!=null) {
-				locations.add(loc.toOSString());
-					// add relative paths again for indexer to resolve from source file location
-					IPath unresolvedPath = entryPath.getLocation();
-					if (!unresolvedPath.isAbsolute()) {
-						IPath expandedPath = expandVariables(unresolvedPath, cfgDescription);
-						if (!expandedPath.isAbsolute()) {
-							locations.add(expandedPath.toOSString());
+				String locStr = entryPath.getName();
+				if (entryPath.isResolved()) {
+					locations.add(locStr);
+				} else {
+					locStr = LanguageSettingsExtensionManager.resolveEntry(locStr, cfgDescription);
+					if (locStr!=null) {
+						locations.add(locStr);
+						// add relative paths again for indexer to resolve from source file location
+						IPath unresolvedPath = entryPath.getLocation();
+						if (!unresolvedPath.isAbsolute()) {
+							IPath expandedPath = expandVariables(unresolvedPath, cfgDescription);
+							if (!expandedPath.isAbsolute()) {
+								locations.add(expandedPath.toOSString());
+							}
 						}
 					}
 				}

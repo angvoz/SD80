@@ -522,7 +522,7 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 		assertEquals(relativeFolderProjName.getLocation(), new Path(actualIncludePaths[2]));
 		assertEquals(new Path(prjName), new Path(actualIncludePaths[3]));
 		
-		// if marked RESOLVED only relative path stays which is not checked for existence
+		// if marked RESOLVED only that path stays
 		assertEquals(new Path("${ProjName}"+markedResolved), new Path(actualIncludePaths[4]));
 		
 		assertEquals(5, actualIncludePaths.length);
@@ -548,6 +548,8 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 		String relativePath_dotdot_slash = "../";
 		String relativePath_dotdot_slash_path = "../include";
 		IFolder relativeFolder_dotdot_slash_path = ResourceHelper.createFolder(project, "include");
+		String locationPath_dotdot_path = buildCWD.toString()+"/../include2";
+		IFolder incFolder_dotdot_slash_path = ResourceHelper.createFolder(project, "include2"); // "/ProjPath/buildDir/../include2"
 
 		// get project/configuration descriptions
 		ICProjectDescription prjDescription = CProjectDescriptionManager.getInstance().getProjectDescription(project, false);
@@ -563,6 +565,7 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 		CIncludePathEntry incRelativeEntry_dot_slash_path = new CIncludePathEntry(new Path(relativePath_dot_slash_path), 0);
 		CIncludePathEntry incRelativeEntry_dotdot = new CIncludePathEntry(new Path(relativePath_dotdot), 0);
 		CIncludePathEntry incRelativeEntry_dotdot_slash_path = new CIncludePathEntry(new Path(relativePath_dotdot_slash_path), 0);
+		CIncludePathEntry incEntry_dotdot_path = new CIncludePathEntry(locationPath_dotdot_path, 0);
 		// use LOCAL flag not to clash with plain dot entries
 		CIncludePathEntry incRelativeEntry_dotdot_slash = new CIncludePathEntry(new Path(relativePath_dotdot_slash), ICSettingEntry.LOCAL);
 		CIncludePathEntry incRelativeEntry_dot_slash = new CIncludePathEntry(new Path(relativePath_dot_slash), ICSettingEntry.LOCAL);
@@ -574,6 +577,7 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 		entries.add(incRelativeEntry_dotdot);
 		entries.add(incRelativeEntry_dotdot_slash);
 		entries.add(incRelativeEntry_dotdot_slash_path);
+		entries.add(incEntry_dotdot_path);
 		
 		// add provider to the configuration
 		ILanguageSettingsProvider provider = new MockProvider(PROVIDER_ID, PROVIDER_NAME, entries);
@@ -604,7 +608,9 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 		assertEquals(expectedLocation_dotdot_slash_path, new Path(actualIncludePaths[6]));
 		assertEquals(new Path(relativePath_dotdot_slash_path), new Path(actualIncludePaths[7]));
 		assertTrue(actualIncludePaths[7].startsWith(".."));
-		assertEquals(8, actualIncludePaths.length);
+		assertEquals(new Path(locationPath_dotdot_path), new Path(actualIncludePaths[8]));
+		assertTrue(actualIncludePaths[8].contains(".."));
+		assertEquals(9, actualIncludePaths.length);
 
 		assertEquals(expectedLocation_dot_slash, new Path(actualLocalIncludePaths[0]));
 		assertEquals(new Path(relativePath_dot_slash), new Path(actualLocalIncludePaths[1]));

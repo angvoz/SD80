@@ -386,46 +386,50 @@ public class LanguageSettingsExtensionManager {
 			IProject project = cfgDescription.getProjectDescription().getProject();
 			buildCWD = project.getLocation();
 		}
+		buildCWD = buildCWD.addTrailingSeparator();
 		return buildCWD;
 	}
 
 	/**
-	 * Resolve {@link ICLanguageSettingPathEntry} to file system location in a configuration context.
+	 * Resolve location to file system location in a configuration context.
 	 * Resolving includes replacing build/environment variables with values, making relative path absolute etc.
 	 * 
-	 * @param entry - entry to resolve.
+	 * @param location - location to resolve. If relative, it is taken to be rooted in build working directory.
 	 * @param cfgDescription - the configuration context.
-	 * @return resolved entry as a file system location.
+	 * @return resolved file system location.
 	 */
-	public static IPath resolveEntry(ICLanguageSettingPathEntry entry, ICConfigurationDescription cfgDescription) {
-		IPath loc = entry.getLocation();
-		if(loc != null) {
+	public static String resolveEntry(String location, ICConfigurationDescription cfgDescription) {
 			// Substitute build/environment variables
 			ICdtVariableManager varManager = CCorePlugin.getDefault().getCdtVariableManager();
-			String locStr = loc.toString();
 			try {
-				locStr = varManager.resolveValue(locStr, "", null, cfgDescription); //$NON-NLS-1$
+			location = varManager.resolveValue(location, "", null, cfgDescription); //$NON-NLS-1$
 			} catch (CdtVariableException e) {
 				// Swallow exceptions but also log them
 				CCorePlugin.log(e);
 			}
-			loc = new Path(locStr);
-			if (loc.isAbsolute() && loc.getDevice()==null) {
+		// use OS file separators (i.e. '\' on Windows)
+		if (java.io.File.separatorChar != '/') {
+			location = location.replace('/', java.io.File.separatorChar);
+		}
+		
+		// note that we avoid using org.eclipse.core.runtime.Path for manipulations being careful
+		// to preserve "../" segments and not let collapsing them which is not correct for symbolic links.
+		Path locPath = new Path(location);
+		if (locPath.isAbsolute() && locPath.getDevice()==null) {
 				// prepend device (C:) for Windows
 				IPath buildCWD = getBuildCWD(cfgDescription);
-				loc = loc.setDevice(buildCWD.getDevice());
+			location = buildCWD.getDevice()+location;
 			}
-			if (!loc.isAbsolute()) {
+		if (!locPath.isAbsolute()) {
 				// consider relative path to be from build working directory
 				IPath buildCWD = getBuildCWD(cfgDescription);
-				loc = buildCWD.append(loc);
+			location = buildCWD.toOSString()+locPath;
 			}
-			if (loc!=null && !loc.toFile().canRead()) {
+		if (!new java.io.File(location).canRead()) {
 				// discard non-accessible locations
-				loc = null;
+			location = null;
 			}
+		return location;
 		}
-		return loc;
-	}
 	
 }

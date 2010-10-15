@@ -39,7 +39,7 @@ public class DsfTerminateCommand implements ITerminateHandler {
 		fTracker.dispose();
 	}
 
-	// Run control may not be avilable after a connection is terminated and shut
+	// Run control may not be available after a connection is terminated and shut
 	// down.
 	public void canExecute(final IEnabledStateRequest request) {
 		if (request.getElements().length != 1 || !(request.getElements()[0] instanceof IDMVMContext)) {

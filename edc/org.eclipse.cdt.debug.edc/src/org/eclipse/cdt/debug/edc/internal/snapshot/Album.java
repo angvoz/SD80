@@ -148,7 +148,7 @@ public class Album extends PlatformObject implements IAlbum {
     /**
      * Listener for state changes on albums
      */
-	protected static List<ISnapshotAlbumEventListener> listeners = new ArrayList<ISnapshotAlbumEventListener>();
+	protected static List<ISnapshotAlbumEventListener> listeners = Collections.synchronizedList(new ArrayList<ISnapshotAlbumEventListener>());
 
 	private static Map<String, Album> albumsBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());
 	private static Map<String, Album> albumsRecordingBySessionID = Collections.synchronizedMap(new HashMap<String, Album>());	
@@ -174,7 +174,7 @@ public class Album extends PlatformObject implements IAlbum {
 			}
 
 			if (album != null) {
-				for (ISnapshotAlbumEventListener l : listeners) {
+				for (ISnapshotAlbumEventListener l : new ArrayList<ISnapshotAlbumEventListener>(listeners)) {
 					l.snapshotSessionEnded(album, session);
 				}
 			}
@@ -593,7 +593,7 @@ public class Album extends PlatformObject implements IAlbum {
 					Snapshot snapshot = snapshotList.get(index);
 					snapshot.open(session);
 					// Fire the event
-					for (ISnapshotAlbumEventListener l : listeners) {
+					for (ISnapshotAlbumEventListener l : new ArrayList<ISnapshotAlbumEventListener>(listeners)) {
 						l.snapshotOpened(snapshot);
 					}
 				}
@@ -975,33 +975,18 @@ public class Album extends PlatformObject implements IAlbum {
 			album.setRecordingSessionID(sessionId);
 		}
 		final Album finalAlbum = album;
-		final Snapshot[] newSnapshot = new Snapshot[1];
 		playSnapshotSound();
 
-		Query<Boolean> query = new Query<Boolean>() {
-
-			@Override
-			protected void execute(DataRequestMonitor<Boolean> rm) {
-				newSnapshot[0]= finalAlbum.createSnapshot(session, stackFrame, monitor);
-				rm.setData(true);
-				rm.done();
+		session.getExecutor().execute(new DsfRunnable() {
+			public void run() {
+				Snapshot newSnapshot = finalAlbum.createSnapshot(session, stackFrame, monitor);
+				// Fire the event to anyone listening
+				for (ISnapshotAlbumEventListener l : new ArrayList<ISnapshotAlbumEventListener>(listeners)) {
+					l.snapshotCreated(finalAlbum, newSnapshot, session, stackFrame);
+				}
 			}
-		};
-
-		session.getExecutor().execute(query);
-
-		try {
-			query.get();
-		} catch (InterruptedException exc) {
-			Thread.currentThread().interrupt();
-		} catch (java.util.concurrent.ExecutionException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
-		}
+		});
 		
-		// Fire the event to anyone listening
-		for (ISnapshotAlbumEventListener l : listeners) {
-			l.snapshotCreated(album, newSnapshot[0], session, stackFrame);
-		}
 	}
 
 	protected static void playSnapshotSound() {
@@ -1199,19 +1184,14 @@ public class Album extends PlatformObject implements IAlbum {
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	public static void addSnapshotAlbumEventListener(ISnapshotAlbumEventListener listener) {
-		synchronized (listener) {
-			listeners.add(listener);
-		}	
-		
+		listeners.add(listener);
 	}
 	
 	/**
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	public static void removeSnapshotAlbumEventListener(ISnapshotAlbumEventListener listener) {
-		synchronized (listener) {
-			listeners.remove(listener);
-		}
+		listeners.remove(listener);
 	}
 
 	public static void captureSnapshotForSession(final DsfSession session,

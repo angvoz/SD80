@@ -81,8 +81,10 @@ abstract public class EDCLaunch extends DsfLaunch {
 	private DefaultDsfExecutor executor;
 	private final DsfSession session;
 	private DsfServicesTracker tracker;
-	private boolean initialized = false;
-	private boolean shutDown = false;
+	private boolean initialized;
+	private boolean shutDown;
+	private boolean isLaunching;
+	private boolean isTerminating;
 
 	private DsfMemoryBlockRetrieval memRetrieval;
 	private IDsfDebugServicesFactory serviceFactory;
@@ -190,12 +192,19 @@ abstract public class EDCLaunch extends DsfLaunch {
 		if (! (e instanceof ExitedEvent))
 			return;
 		
-		if (e.getDMContext() instanceof RootExecutionDMC) {
-			// The ExitedEvent tells us whether the last context in the launch
-			// is terminated or disconnected.
-			isTerminatedThanDisconnected = ((ExitedEvent)e).isTerminatedThanDisconnected();
-
-			shutdownSession(new RequestMonitor(ImmediateExecutor.getInstance(), null));
+		// Synchronize here in case a launch delegate is trying to do more
+		// launching at the same time.
+		synchronized (this)
+		{
+			if (e.getDMContext() instanceof RootExecutionDMC && !isLaunching()) {
+				// Don't terminate the launch if a delegate has already started
+				// using it for new activity.
+				// The ExitedEvent tells us whether the last context in the launch
+				// is terminated or disconnected.
+				setTerminating(true);
+				isTerminatedThanDisconnected = ((ExitedEvent)e).isTerminatedThanDisconnected();
+				shutdownSession(new RequestMonitor(ImmediateExecutor.getInstance(), null));
+			}
 		}
 	}
 
@@ -222,6 +231,7 @@ abstract public class EDCLaunch extends DsfLaunch {
 
 	@Override
 	public void terminate() throws DebugException {
+		setTerminating(true);
 		// Step one, tell the run control service to terminate everything
 		getDsfExecutor().execute(new Runnable() {
 			public void run() {
@@ -232,12 +242,7 @@ abstract public class EDCLaunch extends DsfLaunch {
 			}
 		});
 
-		// Step two, wait for termination to happen
-		// While the platform javadoc for ILaunch.Terminate says it may be
-		// blocking or non-blocking, clients (like the Terminate & Relaunch
-		// command) expect it to be blocking and not return until 
-		// termination is complete.
-		Job waitForTerminate = new Job("Waiting for launch to terminate") {
+		Job waitForTerminate = new Job("Waiting for " + getDescription() + " to terminate") {
 
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
@@ -316,7 +321,7 @@ abstract public class EDCLaunch extends DsfLaunch {
 	 *            The request monitor invoked when the shutdown is complete.
 	 */
 	@ConfinedToDsfExecutor("getSession().getExecutor()")
-	public void shutdownSession(final RequestMonitor rm) {
+	public void shutdownSession(final RequestMonitor rm) {		
 		if (shutDown) {
 			rm.done();
 			return;
@@ -616,6 +621,13 @@ abstract public class EDCLaunch extends DsfLaunch {
 	}
 
 	/**
+	 * Set a short description for this launch.
+	 * The default is the name of the initial launch
+	 * configuration but usually somewhere in the
+	 * initial launch sequence a description of the
+	 * debug target can be gathered, either from the
+	 * TCF peer attributes or from the connection
+	 * settings.
 	 * @since 2.0
 	 */
 	public void setDescription(String description) {
@@ -623,12 +635,54 @@ abstract public class EDCLaunch extends DsfLaunch {
 	}
 
 	/**
+	 * Returns a short description of the launch.
+	 * Used as the label for the launch in the
+	 * Debug view. 
 	 * @since 2.0
 	 */
 	public String getDescription() {
 		if (description == null)
 			return getLaunchConfiguration().getName();
 		return description;
+	}
+
+	/**
+	 * Once a launch has been selected for use by a launch delegate
+	 * the launching flag is set so clients can know the launch is
+	 * in use. Once the launch process completes this launching flag
+	 * will be reset.
+	 * @since 2.0
+	 */
+	public void setLaunching(boolean isLaunching) {
+		this.isLaunching = isLaunching;
+	}
+
+	/**
+	 * Returns true if this launch being used by a delegate
+	 * for new launch activity.
+	 * @since 2.0
+	 */
+	public boolean isLaunching() {
+		return isLaunching;
+	}
+
+	/**
+	 * When the termination process begins this is called to flag
+	 * the launch so clients can know it is shutting down.
+	 * @since 2.0
+	 */
+	public void setTerminating(boolean isTerminating) {
+		this.isTerminating = isTerminating;
+	}
+
+	/**
+	 * Returns true if this launch is in the process of terminating.
+	 * Termination is asynchronous and clients can call this to see
+	 * if termination is in progress.
+	 * @since 2.0
+	 */
+	public boolean isTerminating() {
+		return isTerminating;
 	}
 
 }

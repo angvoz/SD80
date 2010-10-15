@@ -13,10 +13,13 @@ package org.eclipse.cdt.debug.edc.tests;
 import java.io.File;
 import java.net.URL;
 
+import org.eclipse.cdt.debug.edc.MessageLogger;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Plugin;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
@@ -116,4 +119,23 @@ public class EDCTestPlugin extends AbstractUIPlugin {
 
 		return f.getAbsolutePath();
 	}
+
+	public static MessageLogger getMessageLogger() {
+		return new MessageLogger() {
+			@Override
+			public String getPluginID() {
+				return PLUGIN_ID;
+			}
+
+			@Override
+			public Plugin getPlugin() {
+				return plugin;
+			}
+		};
+	}
+
+	public static void logError(String message, Throwable t) {
+		getMessageLogger().log(IStatus.ERROR, message, t);
+	}
+
 }

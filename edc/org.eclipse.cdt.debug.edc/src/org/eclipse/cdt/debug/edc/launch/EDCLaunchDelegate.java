@@ -179,6 +179,8 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 					// just running, so go ahead and shutdown the session
 					edcLaunch.shutdownSession(new RequestMonitor(ImmediateExecutor.getInstance(), null));
 				}
+				
+				edcLaunch.setLaunching(false);
 			}
 		} finally {
 			monitor.done();
@@ -251,9 +253,18 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 	        	if (!iLaunch.isTerminated() && iLaunch instanceof EDCLaunch)
 	        	{
 	        		EDCLaunch edcLaunch = (EDCLaunch) iLaunch;
-	        		if (DsfSession.isSessionActive(edcLaunch.getSession().getId())
-	        				&& isSameTarget(edcLaunch, configuration, mode))
-	        			return edcLaunch;
+	        		// The launch may be in the process of terminating. Test for that but
+	        		// first synchronize around the launch so it can't begin termination
+	        		// while we are checking here.
+	        		synchronized (edcLaunch)
+	        		{
+		        		if (!edcLaunch.isTerminating() && DsfSession.isSessionActive(edcLaunch.getSession().getId())
+		        				&& isSameTarget(edcLaunch, configuration, mode))
+		        		{
+		        			edcLaunch.setLaunching(true);
+		        			return edcLaunch;
+		        		}
+	        		}
 	         	}
 			}
 		}

@@ -21,13 +21,16 @@ import java.util.Set;
 import org.eclipse.cdt.debug.edc.internal.HostOS;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.internal.snapshot.ISnapshotAlbumEventListener;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
+import org.eclipse.cdt.debug.edc.tests.EDCTestPlugin;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
-import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
-import org.eclipse.cdt.dsf.concurrent.Query;
+import org.eclipse.cdt.debug.edc.tests.TestUtils.Condition;
+import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -40,10 +43,13 @@ import org.w3c.dom.NodeList;
 
 public class SnapshotTests extends BaseLaunchTest {
 
+	private boolean testComplete;
+
 	@Test
 	public void testSnapshot() throws Exception {
 		if (!HostOS.IS_WIN32)
 			return;
+		testComplete = false;
 		EDCLaunch launch = createLaunch();
 		assertNotNull(launch);
 		final DsfSession session = waitForSession(launch);
@@ -52,29 +58,49 @@ public class SnapshotTests extends BaseLaunchTest {
 		assertNotNull(executionDMC);
 		ExecutionDMC threadDMC = TestUtils.waitForSuspendedThread(session);
 		Assert.assertNotNull(threadDMC);
-
 		
+		Album.addSnapshotAlbumEventListener(new ISnapshotAlbumEventListener() {
+			
+			public void snapshotSessionEnded(Album album, DsfSession session) {}
+			
+			public void snapshotOpened(Snapshot snapshot) {}
+			
+			public void snapshotCreated(Album album, Snapshot snapshot,
+					final DsfSession session, StackFrameDMC stackFrame) {
+				assertTrue(album.isRecording());
+				assertEquals(1, album.getSnapshots().size());
+				try {
+					assertAlbumStructureCorrect(album);
+				} catch (Exception e) {
+					EDCTestPlugin.logError(null, e);
+				}
+				final Snapshot snap = album.getSnapshots().get(0);
+				assertNotNull(snap);
+				
+				session.getExecutor().execute(new DsfRunnable() {
+					
+					public void run() {
+						snap.open(session); // parse snapshot data in album (.dsa)
+						try {
+							assertSnapshotStructureCorrect(snap);
+						} catch (Exception e) {
+							EDCTestPlugin.logError(null, e);
+							}
+						testComplete = true;
+					}
+				});
+			}
+		});
+
 		Album.createSnapshotForSession(session, null, new NullProgressMonitor());
-		Album album = Album.getRecordingForSession(session.getId());
-		assertTrue(album.isRecording());
-		assertEquals(1, album.getSnapshots().size());
-		assertAlbumStructureCorrect(album);
-		final Snapshot snap = album.getSnapshots().get(0);
-		assertNotNull(snap);
-
-		Query<Boolean> query = new Query<Boolean>() {
-
-			@Override
-			protected void execute(DataRequestMonitor<Boolean> rm) {
-				snap.open(session); // parse snapshot data in album (.dsa)
-				rm.setData(true);
-				rm.done();
-			}};
-
-			session.getExecutor().execute(query);
-			query.get();
-
-		assertSnapshotStructureCorrect(snap);
+		
+		TestUtils.wait(new Condition() {
+			
+			public boolean isConditionValid() {
+				return testComplete;
+			}
+		});
+		
 	}
 
 	private void assertAlbumStructureCorrect(Album album) throws Exception {

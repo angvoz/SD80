@@ -13,6 +13,7 @@ package org.eclipse.cdt.internal.core.language.settings.providers;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -55,8 +56,8 @@ import org.eclipse.osgi.util.NLS;
 public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider {
 	private static final ExtendedScannerInfo DUMMY_SCANNER_INFO = new ExtendedScannerInfo();
 
-	public ExtendedScannerInfo getScannerInformation(IResource resource) {
-		IProject project = resource.getProject();
+	public ExtendedScannerInfo getScannerInformation(IResource rc) {
+		IProject project = rc.getProject();
 		if (project==null)
 			return DUMMY_SCANNER_INFO;
 
@@ -68,29 +69,44 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		if (cfgDescription==null)
 			return DUMMY_SCANNER_INFO;
 
-		String languageId = getLanguageId(cfgDescription, resource);
-		if (languageId==null) {
+		List<String> languageIds = getLanguageIds(cfgDescription, rc);
+		if (languageIds==null || languageIds.size()==0) {
 			return DUMMY_SCANNER_INFO;
 		}
 
-		List<ICLanguageSettingEntry> includePathEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
-				resource, languageId, ICSettingEntry.INCLUDE_PATH, false);
+		LinkedHashSet<ICLanguageSettingEntry> includePathEntries = new LinkedHashSet<ICLanguageSettingEntry>();
+		LinkedHashSet<ICLanguageSettingEntry> includePathLocalEntries = new LinkedHashSet<ICLanguageSettingEntry>();
+		LinkedHashSet<ICLanguageSettingEntry> includeFileEntries = new LinkedHashSet<ICLanguageSettingEntry>();
+		LinkedHashSet<ICLanguageSettingEntry> macroFileEntries = new LinkedHashSet<ICLanguageSettingEntry>();
+		LinkedHashSet<ICLanguageSettingEntry> macroEntries = new LinkedHashSet<ICLanguageSettingEntry>();
+
+		for (String langId : languageIds) {
+			List<ICLanguageSettingEntry> incSys = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, langId,
+					ICSettingEntry.INCLUDE_PATH, /* isLocal */ false);
+			includePathEntries.addAll(incSys);
+
+			List<ICLanguageSettingEntry> incLocal = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, langId,
+					ICSettingEntry.INCLUDE_PATH, /* isLocal */ true);
+			includePathLocalEntries.addAll(incLocal);
+
+			List<ICLanguageSettingEntry> incFiles = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, langId,
+					ICSettingEntry.INCLUDE_FILE);
+			includeFileEntries.addAll(incFiles);
+
+			List<ICLanguageSettingEntry> macroFiles = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, langId,
+					ICSettingEntry.MACRO_FILE);
+			macroFileEntries.addAll(macroFiles);
+
+			List<ICLanguageSettingEntry> macros = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, langId,
+					ICSettingEntry.MACRO);
+			macroEntries.addAll(macros);
+		}
+
 		String[] includePaths = convertToLocations(includePathEntries, cfgDescription);
-
-		List<ICLanguageSettingEntry> includePathLocalEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
-				resource, languageId, ICSettingEntry.INCLUDE_PATH, true);
 		String[] includePathsLocal = convertToLocations(includePathLocalEntries, cfgDescription);
-		
-		List<ICLanguageSettingEntry> includeFileEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
-				resource, languageId, ICSettingEntry.INCLUDE_FILE);
 		String[] includeFiles = convertToLocations(includeFileEntries, cfgDescription);
-
-		List<ICLanguageSettingEntry> macroFileEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
-				resource, languageId, ICSettingEntry.MACRO_FILE);
 		String[] macroFiles = convertToLocations(macroFileEntries, cfgDescription);
 
-		List<ICLanguageSettingEntry> macroEntries = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription,
-				resource, languageId, ICSettingEntry.MACRO);
 		Map<String, String> definedMacros = new HashMap<String, String>();
 		for (ICLanguageSettingEntry entry : macroEntries) {
 			ICMacroEntry macroEntry = (ICMacroEntry)entry;
@@ -102,21 +118,26 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		return new ExtendedScannerInfo(definedMacros, includePaths, macroFiles, includeFiles, includePathsLocal);
 	}
 
-	private String getLanguageId(ICConfigurationDescription cfgDescription, IResource resource) {
-		String languageId = null;
+	private List<String> getLanguageIds(ICConfigurationDescription cfgDescription, IResource resource) {
+		List<String> languageIds = null;
 		if (resource instanceof IFile) {
-			languageId = getLanguageIdForFile(cfgDescription, resource);
+			languageIds = new ArrayList<String>(1);
+			String langId = getLanguageIdForFile(cfgDescription, resource);
+			if (langId!=null) {
+				languageIds.add(langId);
+			}
 		} else if (resource instanceof IContainer) { // IResource can be either IFile or IContainer
-			languageId = getLanguageIdForFolder(cfgDescription, (IContainer) resource);
+			languageIds = getLanguageIdsForFolder(cfgDescription, (IContainer) resource);
 		}
-		if (languageId==null) {
+		if (languageIds==null || languageIds.size()==0) {
 			String msg = NLS.bind(SettingsModelMessages.getString("LanguageSettingsScannerInfoProvider.UnableToDetermineLanguage"), resource.toString()); //$NON-NLS-1$
 			CCorePlugin.log(new CoreException(new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, msg)));
 		}
-		return languageId;
+		return languageIds;
 	}
 
 	private String getLanguageIdForFile(ICConfigurationDescription cfgDescription, IResource resource) {
+		// For files using LanguageManager
 		try {
 			ILanguage language = LanguageManager.getInstance().getLanguageForFile((IFile) resource, cfgDescription);
 			if (language!=null) {
@@ -128,28 +149,33 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		return null;
 	}
 
-	private String getLanguageIdForFolder(ICConfigurationDescription cfgDescription, IContainer resource) {
-		// TODO: That is wacky but that's how legacy stuff works
-		String languageId = null;
+	private List<String> getLanguageIdsForFolder(ICConfigurationDescription cfgDescription, IContainer resource) {
+		// For folders using MBS. That will take language ID from input type of applicable tools in the toolchain.
+		List<String> languageIds = new ArrayList<String>();
 
 		ICFolderDescription rcDes = null;
-		if(resource.getType() == IResource.PROJECT){
-			rcDes = cfgDescription.getRootFolderDescription();
-		} else {
+		ICLanguageSetting[] langSettings = null;
+		if (resource.getType() == IResource.FOLDER) { // but not for IResource.PROJECT
 			IPath rcPath = resource.getProjectRelativePath();
 			rcDes = (ICFolderDescription) cfgDescription.getResourceDescription(rcPath, false);
+			langSettings = rcDes.getLanguageSettings();
+		}
+		if (langSettings==null || langSettings.length==0) {
+			// not found or IResource.PROJECT
+			ICFolderDescription rootDes = cfgDescription.getRootFolderDescription();
+			langSettings = rootDes.getLanguageSettings();
 		}
 
-		ICLanguageSetting settings[] = rcDes.getLanguageSettings();
-		if(settings==null || settings.length==0){
-			ICFolderDescription foDes = cfgDescription.getRootFolderDescription();
-			settings = foDes.getLanguageSettings();
-		}
-		if(settings!=null && settings.length>0) {
-			languageId = settings[0].getLanguageId();
+		if (langSettings!=null) {
+			for (ICLanguageSetting ls : langSettings) {
+				String langId = ls.getLanguageId();
+				if (langId!=null && !languageIds.contains(langId)) {
+					languageIds.add(langId);
+				}
+			}
 		}
 
-		return languageId;
+		return languageIds;
 	}
 
 	private IPath expandVariables(IPath path, ICConfigurationDescription cfgDescription) {
@@ -182,7 +208,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	/**
 	 * Resolve location to file system location in a configuration context.
 	 * Resolving includes replacing build/environment variables with values, making relative path absolute etc.
-	 * 
+	 *
 	 * @param location - location to resolve. If relative, it is taken to be rooted in build working directory.
 	 * @param cfgDescription - the configuration context.
 	 * @return resolved file system location.
@@ -200,7 +226,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		if (java.io.File.separatorChar != '/') {
 			location = location.replace('/', java.io.File.separatorChar);
 		}
-	
+
 		// note that we avoid using org.eclipse.core.runtime.Path for manipulations being careful
 		// to preserve "../" segments and not let collapsing them which is not correct for symbolic links.
 		Path locPath = new Path(location);
@@ -220,12 +246,12 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	/**
 	 * Convert the path entries to absolute file system locations represented as String array.
 	 * Resolve the entries which are not resolved.
-	 * 
+	 *
 	 * @param pathEntries - language settings path entries.
 	 * @param cfgDescription - configuration description for resolving entries.
 	 * @return array of the locations.
 	 */
-	private String[] convertToLocations(List<ICLanguageSettingEntry> pathEntries, ICConfigurationDescription cfgDescription){
+	private String[] convertToLocations(LinkedHashSet<ICLanguageSettingEntry> pathEntries, ICConfigurationDescription cfgDescription){
 		List<String> locations = new ArrayList<String>(pathEntries.size());
 		for (ICLanguageSettingEntry entry : pathEntries) {
 			ICLanguageSettingPathEntry entryPath = (ICLanguageSettingPathEntry)entry;

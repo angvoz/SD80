@@ -380,8 +380,27 @@ public interface ICConfigurationDescription extends ICSettingContainer, ICSettin
 	
 	CConfigurationStatus getConfigurationStatus();
 	
-	// AG
+	/**
+	 * Sets the list of language settings providers. Language settings providers are
+	 * used to supply language settings {@link ICLanguageSettingEntry} such as include paths
+	 * or preprocessor macros.
+	 * 
+	 * @param providers the list of providers to assign to the configuration description.
+	 * 
+	 * @since 6.0
+	 */
 	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers);
+	
+	/**
+	 * Returns the list of language settings providers. Language settings providers are
+	 * used to supply language settings {@link ICLanguageSettingEntry} such as include paths
+	 * or preprocessor macros.
+	 * 
+	 * @return the list of providers to assign to the configuration description. This
+	 * returns a copy of the internal list.
+	 * 
+	 * @since 6.0
+	 */
 	public List<ILanguageSettingsProvider> getLanguageSettingProviders();
 
 }

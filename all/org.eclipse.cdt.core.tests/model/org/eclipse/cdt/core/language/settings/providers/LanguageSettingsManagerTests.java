@@ -27,6 +27,7 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.testplugin.CModelMock;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -123,7 +124,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testConfigurationDescription_Providers() throws Exception {
 		ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
-	
+
 		// set providers
 		ILanguageSettingsProvider provider1 = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null);
 		ILanguageSettingsProvider provider2 = new MockProvider(PROVIDER_2, PROVIDER_NAME_2, null);
@@ -131,7 +132,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		providers.add(provider1);
 		providers.add(provider2);
 		cfgDescription.setLanguageSettingProviders(providers);
-	
+
 		// get providers
 		List<ILanguageSettingsProvider> actual = cfgDescription.getLanguageSettingProviders();
 		assertEquals(provider1, actual.get(0));
@@ -148,26 +149,26 @@ public class LanguageSettingsManagerTests extends TestCase {
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
 		ICProjectDescription writableProjDescription = CoreModel.getDefault().getProjectDescription(project, true);
-	
+
 		ICConfigurationDescription[] cfgDescriptions = writableProjDescription.getConfigurations();
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
-	
+
 		// attempt to add duplicate providers
 		MockProvider dupe1 = new MockProvider(PROVIDER_0, PROVIDER_NAME_1, null);
 		MockProvider dupe2 = new MockProvider(PROVIDER_0, PROVIDER_NAME_2, null);
-	
+
 		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 		providers.add(dupe1);
 		providers.add(dupe2);
-	
+
 		try {
 			cfgDescription.setLanguageSettingProviders(providers);
 			fail("cfgDescription.setLanguageSettingProviders() should not accept duplicate providers");
 		} catch (Exception e) {
 			// Exception is welcome here
 		}
-	
+
 	}
 
 	/**
@@ -338,15 +339,15 @@ public class LanguageSettingsManagerTests extends TestCase {
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
 		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
 		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
-	
+
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		assertTrue(cfgDescription instanceof CConfigurationDescription);
-	
+
 		final IFolder parentFolder = ResourceHelper.createFolder(project, "/ParentFolder/");
 		assertNotNull(parentFolder);
 		final IFile emptySettingsPath = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/empty");
 		assertNotNull(emptySettingsPath);
-	
+
 		// store the entries in parent folder
 		final List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 		entries.add(new CIncludePathEntry("path0", 0));
@@ -362,11 +363,11 @@ public class LanguageSettingsManagerTests extends TestCase {
 				}
 				return null;
 			}
-	
+
 		};
 		providers.add(provider);
 		cfgDescription.setLanguageSettingProviders(providers);
-	
+
 		{
 			// retrieve entries for a derived resource (in a subfolder)
 			IFile derived = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/resource");
@@ -376,7 +377,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(entries.get(0),actual.get(0));
 			assertEquals(entries.size(), actual.size());
 		}
-	
+
 		{
 			// retrieve entries for not related resource
 			IFile notRelated = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/AnotherFolder/Subfolder/resource"));
@@ -384,7 +385,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 				.getSettingEntriesUpResourceTree(provider, cfgDescription, notRelated, LANG_ID);
 			assertEquals(0, actual.size());
 		}
-	
+
 		{
 			// test distinction between no settings and empty settings
 			List<ICLanguageSettingEntry> actual = LanguageSettingsManager
@@ -450,6 +451,72 @@ public class LanguageSettingsManagerTests extends TestCase {
 			.getSettingEntriesByKind(cfgDescription, FILE_0, LANG_ID, ICSettingEntry.INCLUDE_PATH);
 		assertEquals(1, includes.size());
 		assertEquals(entries.get(0),includes.get(0));
+	}
+
+	/**
+	 * Check handling of {@link ICSettingEntry#UNDEFINED} flag.
+	 */
+	public void testEntriesByKind_Undefined() throws Exception {
+		ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
+
+		// contribute the entries
+		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		entries.add(new CIncludePathEntry("path", ICSettingEntry.UNDEFINED));
+		entries.add(new CIncludePathEntry("path", 0));
+
+		ILanguageSettingsProvider provider0 = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, entries);
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+		providers.add(provider0);
+		cfgDescription.setLanguageSettingProviders(providers);
+
+		// retrieve entries by kind, no entries should be returned
+		List<ICLanguageSettingEntry> includes = LanguageSettingsManager
+			.getSettingEntriesByKind(cfgDescription, FILE_0, LANG_ID, ICSettingEntry.INCLUDE_PATH);
+		assertEquals(0, includes.size());
+	}
+
+	/**
+	 * Check handling of local vs. system entries, see {@link ICSettingEntry#LOCAL} flag.
+	 */
+	public void testEntriesByKind_LocalAndSystem() throws Exception {
+		ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
+
+		// contribute the entries
+		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		CIncludePathEntry localIncludeEntry = new CIncludePathEntry("path-local", ICSettingEntry.LOCAL);
+		CIncludePathEntry systemIncludeEntry = new CIncludePathEntry("path-system", 0);
+		entries.add(localIncludeEntry);
+		entries.add(systemIncludeEntry);
+
+		ILanguageSettingsProvider provider0 = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, entries);
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+		providers.add(provider0);
+		cfgDescription.setLanguageSettingProviders(providers);
+
+		{
+			// retrieve local entries
+			List<ICLanguageSettingEntry> includes = LanguageSettingsExtensionManager
+				.getLocalSettingEntriesByKind(cfgDescription, FILE_0, LANG_ID, ICSettingEntry.INCLUDE_PATH);
+			assertEquals(localIncludeEntry, includes.get(0));
+			assertEquals(1, includes.size());
+		}
+
+		{
+			// retrieve system entries
+			List<ICLanguageSettingEntry> includes = LanguageSettingsExtensionManager
+				.getSystemSettingEntriesByKind(cfgDescription, FILE_0, LANG_ID, ICSettingEntry.INCLUDE_PATH);
+			assertEquals(systemIncludeEntry, includes.get(0));
+			assertEquals(1, includes.size());
+		}
+
+		{
+			// retrieve both local and system
+			List<ICLanguageSettingEntry> includes = LanguageSettingsExtensionManager
+				.getSettingEntriesByKind(cfgDescription, FILE_0, LANG_ID, ICSettingEntry.INCLUDE_PATH);
+			assertEquals(entries.get(0), includes.get(0));
+			assertEquals(entries.get(1), includes.get(1));
+			assertEquals(2, includes.size());
+		}
 	}
 
 	/**
@@ -569,7 +636,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 		// Preconditions
 		{
-			
+
 			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
 			assertFalse(workspaceProviders.contains(mockProvider1));
 			assertFalse(workspaceProviders.contains(mockProvider2));
@@ -591,7 +658,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 					// override extension with another one
 					mockProvider2,
 			});
-			
+
 			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
 			assertTrue(workspaceProviders.contains(mockProvider1));
 			assertTrue(workspaceProviders.contains(mockProvider2));
@@ -610,7 +677,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// reset available providers
 		{
 			LanguageSettingsManager_TBD.setUserDefinedProviders(null);
-			
+
 			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
 			assertFalse(workspaceProviders.contains(mockProvider1));
 			assertFalse(workspaceProviders.contains(mockProvider2));
@@ -635,7 +702,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		int size = LanguageSettingsManager.getWorkspaceProviders().size();
 		assertTrue(size > 0);
 		assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0));
-		
+
 		LanguageSettingsManager_TBD.setUserDefinedProviders(new ILanguageSettingsProvider[] {
 				new MockProvider(PROVIDER_0, PROVIDER_NAME_0, null),
 		});

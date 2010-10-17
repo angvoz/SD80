@@ -302,7 +302,7 @@ public class LanguageSettingsExtensionManager {
 	private static boolean checkBit(int flags, int bit) {
 		return (flags & bit) == bit;
 	}
-	
+
 	/**
 	 * Returns the list of setting entries of a certain kind (such as include paths)
 	 * for the given configuration description, resource and language. This is a
@@ -316,13 +316,16 @@ public class LanguageSettingsExtensionManager {
 	 *     {@link ICSettingEntry#INCLUDE_PATH} etc. This is a binary flag
 	 *     and it is possible to specify composite kind.
 	 *     Use {@link ICSettingEntry#ALL} to get all kinds.
+	 * @param checkLocality - specifies if parameter {@code isLocal} should be considered.
 	 * @param isLocal - {@code true} if "local" entries should be provided and
 	 *     {@code false} for "system" entries. This makes sense for include paths where
 	 *     [#include "..."] is "local" and [#include <...>] is system.
 	 * 
 	 * @return the list of setting entries found.
 	 */
-	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind, boolean isLocal) {
+	private static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription,
+			IResource rc, String languageId, int kind, boolean checkLocality, boolean isLocal) {
+
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 		List<String> alreadyAdded = new ArrayList<String>();
 	
@@ -337,7 +340,8 @@ public class LanguageSettingsExtensionManager {
 					// Entry flagged as "UNDEFINED" prevents adding entry with the same name down the line
 					if (isRightKind && !alreadyAdded.contains(entryName)) {
 						int flags = entry.getFlags();
-						if (checkBit(flags, ICSettingEntry.LOCAL) == isLocal) {
+						boolean isRightLocal = !checkLocality || (checkBit(flags, ICSettingEntry.LOCAL) == isLocal);
+						if (isRightLocal) {
 							if (!checkBit(flags, ICSettingEntry.UNDEFINED)) {
 								entries.add(entry);
 							}
@@ -355,8 +359,8 @@ public class LanguageSettingsExtensionManager {
 	 * Returns the list of setting entries of a certain kind (such as include paths)
 	 * for the given configuration description, resource and language. This is a
 	 * combined list for all providers taking into account settings of parent folder
-	 * if settings for the given resource are not defined. The list does not include
-	 * entries marked with flag {@link ICSettingEntry#LOCAL}.
+	 * if settings for the given resource are not defined. For include paths both
+	 * local (#include "...") and system (#include <...>) entries are returned.
 	 * 
 	 * @param cfgDescription - configuration description.
 	 * @param rc - resource such as file or folder.
@@ -369,7 +373,47 @@ public class LanguageSettingsExtensionManager {
 	 * @return the list of setting entries.
 	 */
 	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
-		return getSettingEntriesByKind(cfgDescription, rc, languageId, kind, /* isLocal */ false);
+		return getSettingEntriesByKind(cfgDescription, rc, languageId, kind, /* checkLocality */ false, /* isLocal */ false);
 	}
-	
+
+	/**
+	 * Returns the list of "system" (such as [#include <...>]) setting entries of a certain kind 
+	 * for the given configuration description, resource and language. This is a
+	 * combined list for all providers taking into account settings of parent folder
+	 * if settings for the given resource are not defined.
+	 * 
+	 * @param cfgDescription - configuration description.
+	 * @param rc - resource such as file or folder.
+	 * @param languageId - language id.
+	 * @param kind - kind of language settings entries, such as
+	 *     {@link ICSettingEntry#INCLUDE_PATH} etc. This is a binary flag
+	 *     and it is possible to specify composite kind.
+	 *     Use {@link ICSettingEntry#ALL} to get all kinds.
+	 * 
+	 * @return the list of setting entries.
+	 */
+	public static List<ICLanguageSettingEntry> getSystemSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
+		return getSettingEntriesByKind(cfgDescription, rc, languageId, kind, /* checkLocality */ true, /* isLocal */ false);
+	}
+
+	/**
+	 * Returns the list of "local" (such as [#include "..."]) setting entries of a certain kind 
+	 * for the given configuration description, resource and language. This is a
+	 * combined list for all providers taking into account settings of parent folder
+	 * if settings for the given resource are not defined.
+	 * 
+	 * @param cfgDescription - configuration description.
+	 * @param rc - resource such as file or folder.
+	 * @param languageId - language id.
+	 * @param kind - kind of language settings entries, such as
+	 *     {@link ICSettingEntry#INCLUDE_PATH} etc. This is a binary flag
+	 *     and it is possible to specify composite kind.
+	 *     Use {@link ICSettingEntry#ALL} to get all kinds.
+	 * 
+	 * @return the list of setting entries.
+	 */
+	public static List<ICLanguageSettingEntry> getLocalSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
+		return getSettingEntriesByKind(cfgDescription, rc, languageId, kind, /* checkLocality */ true, /* isLocal */ true);
+	}
+
 }

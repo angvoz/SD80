@@ -81,12 +81,12 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		LinkedHashSet<ICLanguageSettingEntry> macroEntries = new LinkedHashSet<ICLanguageSettingEntry>();
 
 		for (String langId : languageIds) {
-			List<ICLanguageSettingEntry> incSys = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, langId,
-					ICSettingEntry.INCLUDE_PATH, /* isLocal */ false);
+			List<ICLanguageSettingEntry> incSys = LanguageSettingsExtensionManager.getSystemSettingEntriesByKind(cfgDescription, rc, langId,
+					ICSettingEntry.INCLUDE_PATH);
 			includePathEntries.addAll(incSys);
 
-			List<ICLanguageSettingEntry> incLocal = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, langId,
-					ICSettingEntry.INCLUDE_PATH, /* isLocal */ true);
+			List<ICLanguageSettingEntry> incLocal = LanguageSettingsExtensionManager.getLocalSettingEntriesByKind(cfgDescription, rc, langId,
+					ICSettingEntry.INCLUDE_PATH);
 			includePathLocalEntries.addAll(incLocal);
 
 			List<ICLanguageSettingEntry> incFiles = LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, langId,

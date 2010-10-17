@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Andrew Gvozdev and others.
+ * Copyright (c) 2009, 2010 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -43,8 +43,12 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
 
+	// These are made up
+	private static final String PROVIDER_0 = "test.provider.0.id";
+	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
+
 	/**
 	 * Constructor.
 	 * @param name - name of the test.
@@ -107,7 +111,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		assertNull(provider.getSettingEntries(null, FILE_0, LANG_ID));
 
 		// benchmarks matching extension point definition
-		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
+		List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
 		entriesExt.add(new CIncludePathEntry("/usr/include/",
 				ICSettingEntry.BUILTIN
 				| ICSettingEntry.LOCAL
@@ -122,11 +126,11 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		entriesExt.add(new CMacroFileEntry("/macro/file.mac", 0));
 
 		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
+		List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
 		for (int i=0;i<entriesExt.size();i++) {
-			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
+			assertEquals("i="+i, entriesExt.get(i), actual.get(i));
 		}
-		assertEquals(entriesExt.size(), retrieved.size());
+		assertEquals(entriesExt.size(), actual.size());
 	}
 
 	/**
@@ -148,15 +152,15 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		assertNull(provider.getLanguageIds());
 
 		// benchmarks matching extension point definition
-		final List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
+		List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
 		entriesExt.add(new CIncludePathEntry("/usr/include/", ICSettingEntry.BUILTIN));
 
 		// retrieve entries from extension point
-		List<ICLanguageSettingEntry> retrieved = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
+		List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, FILE_0, LANG_ID_EXT);
 		for (int i=0;i<entriesExt.size();i++) {
-			assertEquals("i="+i, entriesExt.get(i), retrieved.get(i));
+			assertEquals("i="+i, entriesExt.get(i), actual.get(i));
 		}
-		assertEquals(entriesExt.size(), retrieved.size());
+		assertEquals(entriesExt.size(), actual.size());
 	}
 
 	/**
@@ -194,11 +198,45 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	}
 
 	/**
+	 * Basic test for LanguageSettingsBaseProvider.
+	 */
+	public void testBaseProvider() throws Exception {
+		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		entries.add(new CIncludePathEntry("path0", 0));
+		List<String> languages = new ArrayList<String>(2);
+		languages.add("bogus.language.id");
+		languages.add(LANG_ID);
+
+		// add default provider
+		LanguageSettingsBaseProvider provider = new LanguageSettingsBaseProvider(
+				PROVIDER_0, PROVIDER_NAME_0, languages, entries);
+
+		{
+			// attempt to get entries for wrong language
+			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, FILE_0, "wrong.lang.id");
+			assertNull(actual);
+		}
+
+		{
+			// retrieve the entries
+			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, FILE_0, LANG_ID);
+			assertEquals(entries.get(0), actual.get(0));
+			assertNotSame(entries, actual);
+			// retrieve languages
+			List<String> actualLanguageIds = provider.getLanguageIds();
+			for (String languageId: languages) {
+				assertTrue(actualLanguageIds.contains(languageId));
+			}
+			assertEquals(languages.size(), actualLanguageIds.size());
+		}
+	}
+
+	/**
 	 * LanguageSettingsBaseProvider is not allowed to be configured twice.
 	 *
 	 * @throws Exception...
 	 */
-	public void testBaseProvider() throws Exception {
+	public void testBaseProviderConfigure() throws Exception {
 		// create LanguageSettingsBaseProvider
 		LanguageSettingsBaseProvider provider = new LanguageSettingsBaseProvider();
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
@@ -213,5 +251,4 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		} catch (UnsupportedOperationException e) {
 		}
 	}
-
 }

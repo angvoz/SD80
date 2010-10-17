@@ -57,7 +57,7 @@ public interface ILanguageSettingsProvider {
 	 * @param languageId - language id
 	 *     (see {@link LanguageManager#getLanguageForFile(org.eclipse.core.resources.IFile, ICConfigurationDescription)}).
 	 * 
-	 * @return the list of setting entries.
+	 * @return the list of setting entries or {@code null} if no settings defined.
 	 */
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId);
 }

@@ -25,6 +25,7 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
@@ -84,8 +85,6 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 
 	/**
 	 * Check that regular ICLanguageSettingsProvider extension defined in plugin.xml is accessible.
-	 *
-	 * @throws Exception...
 	 */
 	public void testExtension() throws Exception {
 		{
@@ -100,6 +99,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		// get test plugin extension provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(DEFAULT_PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
+		assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
 
 		assertTrue(providerExt instanceof LanguageSettingsBaseProvider);
 		LanguageSettingsBaseProvider provider = (LanguageSettingsBaseProvider)providerExt;
@@ -107,7 +107,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		assertEquals(DEFAULT_PROVIDER_NAME_EXT, provider.getName());
 		assertEquals(DEFAULT_PROVIDER_PARAMETER_EXT, provider.getCustomParameter());
 
-		// retrieve wrong language
+		// attempt to get entries for wrong language
 		assertNull(provider.getSettingEntries(null, FILE_0, LANG_ID));
 
 		// benchmarks matching extension point definition
@@ -135,8 +135,6 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 
 	/**
 	 * Check that subclassed LanguageSettingsBaseProvider extension defined in plugin.xml is accessible.
-	 *
-	 * @throws Exception...
 	 */
 	public void testExtensionBaseProviderSubclass() throws Exception {
 		// get test plugin extension provider
@@ -165,8 +163,6 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 
 	/**
 	 * Make sure extensions contributed through extension point are sorted by name.
-	 *
-	 * @throws Exception...
 	 */
 	public void testExtensionsSorting() throws Exception {
 		{
@@ -184,8 +180,6 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 
 	/**
 	 * Make sure extensions contributed through extension point created with proper ID/name.
-	 *
-	 * @throws Exception...
 	 */
 	public void testExtensionsNameId() throws Exception {
 		// get test plugin extension non-default provider
@@ -233,8 +227,6 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 
 	/**
 	 * LanguageSettingsBaseProvider is not allowed to be configured twice.
-	 *
-	 * @throws Exception...
 	 */
 	public void testBaseProviderConfigure() throws Exception {
 		// create LanguageSettingsBaseProvider

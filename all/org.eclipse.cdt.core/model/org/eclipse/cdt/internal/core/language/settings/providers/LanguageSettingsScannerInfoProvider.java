@@ -121,9 +121,9 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	private List<String> getLanguageIds(ICConfigurationDescription cfgDescription, IResource resource) {
 		List<String> languageIds = null;
 		if (resource instanceof IFile) {
-			languageIds = new ArrayList<String>(1);
 			String langId = getLanguageIdForFile(cfgDescription, resource);
 			if (langId!=null) {
+				languageIds = new ArrayList<String>(1);
 				languageIds.add(langId);
 			}
 		} else if (resource instanceof IContainer) { // IResource can be either IFile or IContainer
@@ -150,12 +150,12 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	}
 
 	private List<String> getLanguageIdsForFolder(ICConfigurationDescription cfgDescription, IContainer resource) {
-		// For folders using MBS. That will take language ID from input type of applicable tools in the toolchain.
+		// Using MBS for folders. That will take language ID from input type of applicable tools in the toolchain.
 		List<String> languageIds = new ArrayList<String>();
 
 		ICFolderDescription rcDes = null;
 		ICLanguageSetting[] langSettings = null;
-		if (resource.getType() == IResource.FOLDER) { // but not for IResource.PROJECT
+		if (resource.getType() == IResource.FOLDER) { // but not IResource.PROJECT
 			IPath rcPath = resource.getProjectRelativePath();
 			rcDes = (ICFolderDescription) cfgDescription.getResourceDescription(rcPath, false);
 			langSettings = rcDes.getLanguageSettings();
@@ -247,13 +247,13 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	 * Convert the path entries to absolute file system locations represented as String array.
 	 * Resolve the entries which are not resolved.
 	 *
-	 * @param pathEntries - language settings path entries.
+	 * @param entriesPath - language settings path entries.
 	 * @param cfgDescription - configuration description for resolving entries.
 	 * @return array of the locations.
 	 */
-	private String[] convertToLocations(LinkedHashSet<ICLanguageSettingEntry> pathEntries, ICConfigurationDescription cfgDescription){
-		List<String> locations = new ArrayList<String>(pathEntries.size());
-		for (ICLanguageSettingEntry entry : pathEntries) {
+	private String[] convertToLocations(LinkedHashSet<ICLanguageSettingEntry> entriesPath, ICConfigurationDescription cfgDescription){
+		List<String> locations = new ArrayList<String>(entriesPath.size());
+		for (ICLanguageSettingEntry entry : entriesPath) {
 			ICLanguageSettingPathEntry entryPath = (ICLanguageSettingPathEntry)entry;
 			if (((ACPathEntry)entryPath).isValueWorkspacePath()) {
 				IPath loc = entryPath.getLocation();

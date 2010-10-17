@@ -59,6 +59,9 @@ public class LanguageSettingsExtensionManager {
 
 	private static final LinkedHashMap<String, ILanguageSettingsProvider> fExtensionProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
 
+	/**
+	 * Providers loaded initially via static initializer.
+	 */
 	static {
 		try {
 			loadProviderExtensions();
@@ -75,8 +78,8 @@ public class LanguageSettingsExtensionManager {
 		// sort by name - for the providers taken from platform extensions
 		Set<ILanguageSettingsProvider> sortedProviders = new TreeSet<ILanguageSettingsProvider>(
 				new Comparator<ILanguageSettingsProvider>() {
-					public int compare(ILanguageSettingsProvider contr1, ILanguageSettingsProvider contr2) {
-						return contr1.getName().compareTo(contr2.getName());
+					public int compare(ILanguageSettingsProvider pr1, ILanguageSettingsProvider pr2) {
+						return pr1.getName().compareTo(pr2.getName());
 					}
 				}
 		);
@@ -111,7 +114,7 @@ public class LanguageSettingsExtensionManager {
 							configureExecutableProvider(provider, cfgEl);
 							providers.add(provider);
 						}
-					} catch (Exception e) {
+					} catch (Throwable e) {
 						CCorePlugin.log("Cannot load LanguageSettingsProvider extension id=" + id, e); //$NON-NLS-1$
 					}
 				}

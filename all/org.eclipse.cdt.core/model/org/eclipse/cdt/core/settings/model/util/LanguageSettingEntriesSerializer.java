@@ -59,7 +59,7 @@ public class LanguageSettingEntriesSerializer {
 	public static final String LOCAL = "LOCAL"; //$NON-NLS-1$
 	public static final String VALUE_WORKSPACE_PATH = "VALUE_WORKSPACE_PATH"; //$NON-NLS-1$
 	public static final String RESOLVED = "RESOLVED"; //$NON-NLS-1$
-	public static final String UNDEFINED = "UNDEFINED"; //$NON-NLS-1$
+	private static final String UNDEFINED = "UNDEFINED"; //$NON-NLS-1$
 
 	public static final String FLAGS_SEPARATOR = "|"; //$NON-NLS-1$
 

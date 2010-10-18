@@ -31,6 +31,8 @@ import org.eclipse.core.resources.IResource;
  * {@link LanguageSettingsBaseProvider} which could be used out of the box or
  * extended. See extension point schema description LanguageSettingsProvider.exsd
  * for more details.
+ * 
+ * @since 6.0
  */
 public interface ILanguageSettingsProvider {
 	/**

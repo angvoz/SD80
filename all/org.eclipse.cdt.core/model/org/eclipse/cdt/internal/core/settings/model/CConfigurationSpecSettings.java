@@ -13,19 +13,15 @@ package org.eclipse.cdt.internal.core.settings.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.IErrorParserNamed;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.CExternalSetting;
@@ -48,6 +44,7 @@ import org.eclipse.cdt.internal.core.envvar.EnvironmentVariableManager;
 import org.eclipse.cdt.utils.envvar.StorableEnvironment;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.QualifiedName;
+import org.eclipse.osgi.util.NLS;
 
 /**
  * CConfigurationSpecSettings impelements ICSettingsStorage
@@ -96,6 +93,8 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 //	private CConfigBasedDescriptor fDescriptor;
 //	private Map fExternalSettingsProviderMap;
 
+	private List<ILanguageSettingsProvider> fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(0);
+
 	private class DeltaSet {
 		public Set<ICConfigExtensionReference> extSet;
 		public Set<String> idSet;
@@ -105,8 +104,6 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		}
 	}
 
-	private List<ILanguageSettingsProvider> fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(0);
-	
 	public CConfigurationSpecSettings(ICConfigurationDescription des, ICStorageElement storage) throws CoreException{
 		fCfg = des;
 		fRootStorageElement = storage;
@@ -1027,7 +1024,8 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 				fLanguageSettingsProviders.add(provider);
 				ids.add(id);
 			} else {
-				throw new IllegalArgumentException("Language Settings Providers must have unique ID. Duplicate ID="+id);
+				String msg = NLS.bind(SettingsModelMessages.getString("CConfigurationSpecSettings.MustHaveUniqueID"), id); //$NON-NLS-1$
+				throw new IllegalArgumentException(msg);
 			}
 		}
 		fIsModified = true;

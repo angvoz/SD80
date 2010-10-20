@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -52,9 +52,19 @@ import org.eclipse.debug.core.model.MemoryByte;
  */
 public class FormatUtils {
 	
+	/** The Constant CLASS. */
 	private final static String CLASS = "class " ; //$NON-NLS-1$
+	
+	/** The Constant STRUCT. */
 	private final static String STRUCT = "struct "; //$NON-NLS-1$
 
+	/**
+	 * Check type by name.
+	 *
+	 * @param type the type
+	 * @param baseName the base name
+	 * @return true, if successful
+	 */
 	public static boolean checkTypeByName(IType type, String baseName) {
 		if (type == null)
 			return false;
@@ -74,6 +84,13 @@ public class FormatUtils {
 		return checkName(baseType.getName(), baseName);
 	}
 	
+	/**
+	 * Check name.
+	 *
+	 * @param typeName the type name
+	 * @param baseName the base name
+	 * @return true, if successful
+	 */
 	public static boolean checkName(String typeName, String baseName) {
 		String checkName = typeName;
 		if (typeName.startsWith(CLASS))
@@ -123,6 +140,14 @@ public class FormatUtils {
 	}
 
 	
+	/**
+	 * Creates the sub expression.
+	 *
+	 * @param variable the variable
+	 * @param name the name
+	 * @param subExpressionStr the sub expression str
+	 * @return the IExpressionDMContext for the sub expression.
+	 */
 	public static IExpressionDMContext createSubExpression(IExpressionDMContext variable, String name, String subExpressionStr) {
 		IEDCExpression parentExpr = (IEDCExpression) variable;
 		IExpressions expressions = parentExpr.getServiceTracker().getService(IExpressions.class);
@@ -134,6 +159,16 @@ public class FormatUtils {
 		return subExpression;
 	}
 	
+	/**
+	 * Gets the formatted string.
+	 *
+	 * @param variable the variable
+	 * @param address the address
+	 * @param length the length
+	 * @param charSize the char size
+	 * @return the formatted string
+	 * @throws CoreException the core exception
+	 */
 	public static String getFormattedString(IExpressionDMContext variable, IAddress address, int length, int charSize)
 	 		throws CoreException {
 		IEDCExpression expression = (IEDCExpression) variable;
@@ -162,6 +197,16 @@ public class FormatUtils {
 		return sb.toString();
 	}
 	
+	/**
+	 * Gets the formatted null term string.
+	 *
+	 * @param variable the variable
+	 * @param address the address
+	 * @param charSize the char size
+	 * @param maximumLength the maximum length
+	 * @return the formatted null term string
+	 * @throws CoreException the core exception
+	 */
 	public static String getFormattedNullTermString(IExpressionDMContext variable, 
 			IAddress address, int charSize,
 			int maximumLength) throws CoreException {
@@ -209,6 +254,13 @@ public class FormatUtils {
 		return sb.toString();
 	}
 
+	/**
+	 * Find in collection by name.
+	 *
+	 * @param collection the collection
+	 * @param name the name
+	 * @return the i expression dm context
+	 */
 	public static IExpressionDMContext findInCollectionByName(Collection<IExpressionDMContext> collection, String name) {
 		for (IExpressionDMContext context : collection) {
 			if (((IEDCExpression) context).getName().equals(name))
@@ -218,6 +270,12 @@ public class FormatUtils {
 		return null;
 	}
 
+	/**
+	 * Gets the all child expressions.
+	 *
+	 * @param variable the variable
+	 * @return the all child expressions
+	 */
 	public static List<IExpressionDMContext> getAllChildExpressions(IExpressionDMContext variable) {
 		
 		IEDCExpression variableDMC = (IEDCExpression) variable;
@@ -230,16 +288,39 @@ public class FormatUtils {
 		return kids;
 	}
 
+	/**
+	 * Gets the field accessor.
+	 *
+	 * @param type the type
+	 * @return the field accessor
+	 */
 	public static String getFieldAccessor(IType type) {
 		if (type instanceof IPointerType)
 			return "->"; //$NON-NLS-1$
 		return "."; //$NON-NLS-1$
 	}
 	
+	/**
+	 * Gets the member value.
+	 *
+	 * @param variable the variable
+	 * @param type the type
+	 * @param memberName the member name
+	 * @return the member value
+	 */
 	public static String getMemberValue(IExpressionDMContext variable, IType type, String memberName) {
 		return getMemberValue(variable, type, memberName, IExpressions.NATURAL_FORMAT);
 	}
 
+	/**
+	 * Gets the member value.
+	 *
+	 * @param variable the variable
+	 * @param type the type
+	 * @param memberName the member name
+	 * @param format the format
+	 * @return the member value
+	 */
 	public static String getMemberValue(IExpressionDMContext variable, IType type, String memberName, String format) {
 		IExpressions expressions = ((IEDCExpression)variable).getServiceTracker().getService(IExpressions.class);
 		if (expressions == null)
@@ -252,6 +333,10 @@ public class FormatUtils {
 	}
 
 	/**
+	 * Gets the variable value.
+	 *
+	 * @param variable the variable
+	 * @return the variable value
 	 * @since 2.0
 	 */
 	public static String getVariableValue(IExpressionDMContext variable) {
@@ -259,6 +344,11 @@ public class FormatUtils {
 	}
 
 	/**
+	 * Gets the variable value.
+	 *
+	 * @param variable the variable
+	 * @param format the format
+	 * @return the variable value
 	 * @since 2.0
 	 */
 	public static String getVariableValue(IExpressionDMContext variable, String format) {
@@ -269,6 +359,12 @@ public class FormatUtils {
 		return formattedValue.getFormattedValue();
 	}
 	
+	/**
+	 * Gets the unqualified type remove pointers.
+	 *
+	 * @param type the type
+	 * @return the unqualified type remove pointers
+	 */
 	public static IType getUnqualifiedTypeRemovePointers(IType type) {
 		IType unqualifiedType = TypeUtils.getStrippedType(type);
 		while (unqualifiedType instanceof IPointerType)
@@ -276,6 +372,12 @@ public class FormatUtils {
 		return unqualifiedType;
 	}
 
+	/**
+	 * Gets the custom value converter.
+	 *
+	 * @param variable the variable
+	 * @return the custom value converter
+	 */
 	public static IVariableValueConverter getCustomValueConverter(IExpressionDMContext variable) {
 		IEDCExpression variableDMC = (IEDCExpression) variable;
 		variableDMC.evaluateExpression();
@@ -302,6 +404,11 @@ public class FormatUtils {
 	}
 
 	/**
+	 * Gets the template type name.
+	 *
+	 * @param typeName the type name
+	 * @param type the type
+	 * @return the template type name
 	 * @since 2.0
 	 */
 	public static String getTemplateTypeName(String typeName, IType type) {
@@ -325,6 +432,11 @@ public class FormatUtils {
 	}
 	
 	/**
+	 * Gets the formatted value.
+	 *
+	 * @param variable the variable
+	 * @return the formatted value
+	 * @throws CoreException the core exception
 	 * @since 2.0
 	 */
 	public static String getFormattedValue(IExpressionDMContext variable) throws CoreException {
@@ -337,6 +449,9 @@ public class FormatUtils {
 	}
 
 	/**
+	 * Gets the max number of children.
+	 *
+	 * @return the max number of children
 	 * @since 2.0
 	 */
 	public static int getMaxNumberOfChildren() {
@@ -344,9 +459,10 @@ public class FormatUtils {
 	}
 	
 	/**
-	 * Evaluates the expression and throws a CoreException if there is an evaluation error
-	 * @param expression
-	 * @throws CoreException
+	 * Evaluates the expression and throws a CoreException if there is an evaluation error.
+	 *
+	 * @param expression the expression
+	 * @throws CoreException the core exception
 	 * @since 2.0
 	 */
 	public static void evaluateExpression(IEDCExpression expression) throws CoreException {

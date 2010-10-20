@@ -328,7 +328,7 @@ public class Disassembly extends AbstractEDCService implements IDisassembly {
 	}
 
 	/**
-	 * creates the array of instructions to be used to fill the disassembly view.
+	 * Creates the array of instructions to be used to fill the disassembly view.
 	 * for a range containing any unreadable instructions, it will create a
 	 * fake instruction consisting of the address, the entire unreadable range,
 	 * and a message to fill in the mnemonics section about the unreadable range.

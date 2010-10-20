@@ -20,7 +20,7 @@ import org.eclipse.cdt.debug.edc.symbols.IScope;
 
 
 /**
- * information for an instruction, line, or block that can be used
+ * Information for an instruction, line, or block that can be used
  * when constructing EDCInstruction objects to collect and pass to
  * DisassemblyBackendDsf for display in the disassembly view.
  * @author kirk.beitz@nokia.com

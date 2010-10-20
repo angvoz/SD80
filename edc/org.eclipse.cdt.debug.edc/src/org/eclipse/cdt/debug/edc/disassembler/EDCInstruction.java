@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -61,7 +61,12 @@ public class EDCInstruction extends AbstractInstruction {
 		return ret;
 	}
 
-	/** @since 2.0 */
+	/**
+	 * Sets the function name, if any, for this instruction..
+	 *
+	 * @param functionName the new function name
+	 * @since 2.0
+	 */
 	public void setFunctionName(String functionName) {
 		this.functionName = functionName;
 	}
@@ -93,7 +98,12 @@ public class EDCInstruction extends AbstractInstruction {
 		return instruction.getMnemonics();
 	}
 
-	/** @since 2.0 */
+	/**
+	 * Sets the offset for this instruction.
+	 *
+	 * @param offset the new offset
+	 * @since 2.0
+	 */
 	public void setOffset(int offset) {
 		this.offset = offset;
 	}
@@ -118,7 +128,7 @@ public class EDCInstruction extends AbstractInstruction {
 	}
 
 	/**
-	 * needed for DisassemblyBackendDsf#insertDisassembly() ;
+	 * Needed for DisassemblyBackendDsf#insertDisassembly() ;
 	 * for HEAD see the first reference; for CDT_7_0, see the second reference
 	 * @see org.eclipse.cdt.dsf.debug.service.IInstruction#getSize()
 	 * @see org.eclipse.cdt.dsf.debug.internal.provisional.service.IInstructionWithSize#getSize()

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -30,14 +30,14 @@ public abstract class AbstractDisassembler implements IDisassembler {
 	private final ITargetEnvironment targetEnvironment;
 
 	/**
-	 * disasllow constructor without passing ITargetEnvironment
+	 * Don't allow constructor without passing ITargetEnvironment
 	 * @see org.eclipse.cdt.debug.edc.AbstractDisassembler#disassemblerAbstractDisassembler(ITargetEnvironment)
 	 */
 	@SuppressWarnings("unused")
 	private AbstractDisassembler() { targetEnvironment = null; }
 
 	/**
-	 * since a disassembler is generally created within the implementor of 
+	 * Since a disassembler is generally created within the implementor of 
 	 * {@link ITargetEnvironment#getDisassembler()}, this constructor together
 	 * with the private default constructor forces the implementation to pass
 	 * it's own "this" pointer for use in later disassembler processing.
@@ -48,14 +48,25 @@ public abstract class AbstractDisassembler implements IDisassembler {
 	}
 
 	/**
-	 * protected getter
+	 * Returns the ITargetEnvironment used by the disassembler.
 	 * @since 2.0
 	 */
 	protected ITargetEnvironment getTargetEnvironment() {
 		return targetEnvironment;
 	}
 
-	/** @since 2.0 */
+	/**
+	 * Translates the raw memory in the buffer into a list of disassembled instructions.
+	 *
+	 * @param startAddress the start address
+	 * @param endAddress the end address
+	 * @param codeBuffer the code buffer
+	 * @param options the options, often target environment specific, that are used for disassembly
+	 * @param dmc the disassembly context
+	 * @return the list of disassembled instructions
+	 * @throws CoreException the core exception
+	 * @since 2.0
+	 */
 	public List<IDisassembledInstruction> disassembleInstructions(IAddress startAddress, IAddress endAddress,
 				ByteBuffer codeBuffer, Map<String, Object> options, IDisassemblyDMContext dmc)
 			throws CoreException {

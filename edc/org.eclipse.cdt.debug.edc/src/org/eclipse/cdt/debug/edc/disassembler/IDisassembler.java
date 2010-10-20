@@ -39,20 +39,20 @@ public interface IDisassembler {
 		// Following are sub-options when GetMnemonics is true.
 		//
 		/**
-		 * show address of the instruction in disassembler output.
+		 * Show address of the instruction in disassembler output.
 		 */
 		public final static String MNEMONICS_SHOW_ADDRESS = "ShowAddresses";
 		/**
-		 * show original bytes of the instruction in disassembler output.
+		 * Show original bytes of the instruction in disassembler output.
 		 */
 		public final static String MNEMONICS_SHOW_BYTES = "ShowBytes";
 		/**
-		 * show symbol in the address in disassembler output.
+		 * Show symbol in the address in disassembler output.
 		 */
 		public final static String MNEMONICS_SHOW_SYMBOL = "ShowSymbol";
 
 		/**
-		 * address being disassembled is PC
+		 * Indicates that the address being disassembled is the PC
 		 * @since 2.0
 		 */
 		public static final String ADDRESS_IS_PC = "AddressIsPC";

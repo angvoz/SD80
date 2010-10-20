@@ -10,8 +10,13 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.snapshot;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,6 +35,8 @@ import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.launch.IEDCLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
@@ -75,6 +82,7 @@ public class SnapshotUtils extends PlatformObject {
 	private static final String LONG_ATTRIBUTE = "longAttribute"; //$NON-NLS-1$
 	private static final String BIG_INTEGER_ATTRIBUTE = "bigIntegerAttribute"; //$NON-NLS-1$
 	private static final String STRING_ATTRIBUTE = "stringAttribute"; //$NON-NLS-1$
+	private static final String SERIALIZED_ATTRIBUTE = "serializedAttribute"; //$NON-NLS-1$
 
 	@SuppressWarnings("unchecked")
 	static public Element makeXMLFromProperties(Document doc, Map<String, Object> properties) {
@@ -90,30 +98,37 @@ public class SnapshotUtils extends PlatformObject {
 				}
 				Element element = null;
 				String valueString = null;
-				if (value instanceof String) {
-					valueString = (String) value;
-					element = createKeyValueElement(doc, STRING_ATTRIBUTE, key, valueString);
-				} else if (value instanceof Integer) {
-					valueString = ((Integer) value).toString();
-					element = createKeyValueElement(doc, INT_ATTRIBUTE, key, valueString);
-				} else if (value instanceof Long) {
-					valueString = ((Long) value).toString();
-					element = createKeyValueElement(doc, LONG_ATTRIBUTE, key, valueString);
-				} else if (value instanceof BigInteger) {
-					valueString = ((BigInteger) value).toString();
-					element = createKeyValueElement(doc, BIG_INTEGER_ATTRIBUTE, key, valueString);
-				} else if (value instanceof Boolean) {
-					valueString = ((Boolean) value).toString();
-					element = createKeyValueElement(doc, BOOLEAN_ATTRIBUTE, key, valueString);
-				} else if (value instanceof List<?>) {
-					element = createListElement(doc, LIST_ATTRIBUTE, key, (List<Object>) value);
-				} else if (value instanceof Map<?,?>) {
-					element = createMapElement(doc, MAP_ATTRIBUTE, key, (Map<Object, Object>) value);
-				} else if (value instanceof Set<?>) {
-					element = createSetElement(doc, SET_ATTRIBUTE, key, (Set<Object>) value);
-				} else {
-					EDCDebugger.getMessageLogger().logError("Unsupported data type " + value.getClass(), null);
-					continue;
+				try {
+					if (value instanceof String) {
+						valueString = (String) value;
+						element = createKeyValueElement(doc, STRING_ATTRIBUTE, key, valueString);
+					} else if (value instanceof Integer) {
+						valueString = ((Integer) value).toString();
+						element = createKeyValueElement(doc, INT_ATTRIBUTE, key, valueString);
+					} else if (value instanceof Long) {
+						valueString = ((Long) value).toString();
+						element = createKeyValueElement(doc, LONG_ATTRIBUTE, key, valueString);
+					} else if (value instanceof BigInteger) {
+						valueString = ((BigInteger) value).toString();
+						element = createKeyValueElement(doc, BIG_INTEGER_ATTRIBUTE, key, valueString);
+					} else if (value instanceof Boolean) {
+						valueString = ((Boolean) value).toString();
+						element = createKeyValueElement(doc, BOOLEAN_ATTRIBUTE, key, valueString);
+					} else if (value instanceof List<?>) {
+						element = createListElement(doc, LIST_ATTRIBUTE, key, (List<Object>) value);
+					} else if (value instanceof Map<?,?>) {
+						element = createMapElement(doc, MAP_ATTRIBUTE, key, (Map<Object, Object>) value);
+					} else if (value instanceof HashSet<?>) {
+						element = createSetElement(doc, SET_ATTRIBUTE, key, (Set<Object>) value);
+					}
+				} catch (Exception e) { // Don't do anything here, we'll try to handle it as
+					// as serialized object. 
+				}
+				if (element == null)
+				{
+					try {
+						element = createSerializedElement(doc, SERIALIZED_ATTRIBUTE, key, value);
+					} catch (IOException e) {EDCDebugger.getMessageLogger().logError("Error adding to snapshot: " + value.toString(), e);};
 				}
 				rootElement.appendChild(element);
 			}
@@ -187,6 +202,13 @@ public class SnapshotUtils extends PlatformObject {
 		return setElement;
 	}
 
+	static protected Element createSerializedElement(Document doc, String elementType, String key, Object value) throws IOException {
+		Element element = doc.createElement(elementType);
+		element.setAttribute(KEY, key);
+		element.appendChild(doc.createTextNode(serializeObjectToString(value)));
+		return element;
+	}
+
 	/**
 	 * Creates a new <code>Element</code> for the specified
 	 * <code>java.util.Map</code>
@@ -254,6 +276,8 @@ public class SnapshotUtils extends PlatformObject {
 							setMapAttribute(element, properties);
 						} else if (nodeName.equalsIgnoreCase(SET_ATTRIBUTE)) {
 							setSetAttribute(element, properties);
+						} else if (nodeName.equalsIgnoreCase(SERIALIZED_ATTRIBUTE)) {
+							setSerializedAttribute(element, properties);
 						} else {
 							EDCDebugger.getMessageLogger().logError("Unsupported element: " + nodeName, null);
 						}
@@ -306,6 +330,21 @@ public class SnapshotUtils extends PlatformObject {
 	 */
 	static protected void setLongAttribute(Element element, Map<String, Object> properties) throws CoreException {
 		properties.put(element.getAttribute(KEY), new Long(element.getAttribute(VALUE)));
+	}
+
+	/**
+	 * Loads a serialized <code>Object</code> from the specified element into the local
+	 * attribute mapping
+	 * 
+	 * @param element
+	 *            the element to load from
+	 * @throws CoreException
+	 * @throws IOException 
+	 * @throws ClassNotFoundException 
+	 * @throws DecoderException 
+	 */
+	static protected void setSerializedAttribute(Element element, Map<String, Object> properties) throws CoreException, IOException, ClassNotFoundException, DecoderException {
+		properties.put(element.getAttribute(KEY), createSerializedObjectFromString(element.getFirstChild().getTextContent()));
 	}
 
 	/**
@@ -587,5 +626,29 @@ public class SnapshotUtils extends PlatformObject {
 		}
 	}
 
+	private static String serializeObjectToString(Object value) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		ObjectOutputStream oos = new ObjectOutputStream(baos);
+		oos.writeObject(value);
+		return new String(new Hex().encode(baos.toByteArray()));
+	}
+
+	private static Object createSerializedObjectFromString(String objectValue) throws DecoderException, IOException, ClassNotFoundException {
+		final ClassLoader classLoader = EDCDebugger.getDefault().getClass().getClassLoader();
+		ByteArrayInputStream bais = new ByteArrayInputStream(Hex.decodeHex(objectValue.toCharArray()));
+		ObjectInputStream ois = new ObjectInputStream(bais) {
+
+			@Override
+			protected Class<?> resolveClass(ObjectStreamClass desc)
+			throws IOException, ClassNotFoundException {
+				String name = desc.getName();
+				try {
+					return classLoader.loadClass(name);
+				} catch (ClassNotFoundException e) {
+					return super.resolveClass(desc);
+				}
+			}};
+		return ois.readObject();
+	}
 
 }

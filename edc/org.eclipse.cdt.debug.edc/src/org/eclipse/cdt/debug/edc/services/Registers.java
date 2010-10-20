@@ -36,6 +36,7 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
@@ -424,44 +425,37 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	}
 
 	public void getRegisterGroups(IDMContext ctx, DataRequestMonitor<IRegisterGroupDMContext[]> rm) {
-		IDMContext[] parents = ctx.getParents();
-
-		rm.setData(new IRegisterGroupDMContext[0]);
-		for (IDMContext context : parents) {
-			if (RunControl.isNonContainer(context)) {
-				if (context instanceof IEDCExecutionDMC)
-					rm.setData(getGroupsForContext((IEDCExecutionDMC) context));
-				else if (context instanceof StackFrameDMC)
-					rm.setData(getGroupsForContext(((StackFrameDMC) context).getExecutionDMC()));
-			}
+		IEDCExecutionDMC execDmc = DMContexts.getAncestorOfType(ctx, IEDCExecutionDMC.class);
+		if (execDmc != null && RunControl.isNonContainer(execDmc)) {
+			rm.setData(getGroupsForContext(execDmc));
+			rm.done();
+			return;
 		}
 
+		StackFrameDMC frameDmc = DMContexts.getAncestorOfType(ctx, StackFrameDMC.class);
+		if (frameDmc != null) {
+			rm.setData(getGroupsForContext(frameDmc.getExecutionDMC()));
+			rm.done();
+			return;
+		}
+		
+		rm.setData(new IRegisterGroupDMContext[0]);
 		rm.done();
 	}
 
 	public void getRegisters(IDMContext ctx, DataRequestMonitor<IRegisterDMContext[]> rm) {
+		RegisterGroupDMC groupContext = DMContexts.getAncestorOfType(ctx, RegisterGroupDMC.class);
+		IEDCExecutionDMC executionContext = DMContexts.getAncestorOfType(ctx, IEDCExecutionDMC.class);
 
-		IDMContext[] parents = ctx.getParents();
-
-		RegisterGroupDMC groupContext = null;
-		IEDCExecutionDMC executionContext = null;
-
-		for (IDMContext context : parents) {
-			if (context instanceof RegisterGroupDMC) {
-				groupContext = (RegisterGroupDMC) context;
-			}
-			if (context instanceof IEDCExecutionDMC) {
-				executionContext = (IEDCExecutionDMC) context;
-			}
-		}
-
-		RegisterDMC[] allRegisters = new RegisterDMC[0];
+		RegisterDMC[] allRegisters;
 		if (groupContext != null && executionContext != null) {
 			allRegisters = groupContext.getRegisters();
 		}
+		else {
+			allRegisters = new RegisterDMC[0];
+		}
 
 		rm.setData(allRegisters);
-
 		rm.done();
 	}
 

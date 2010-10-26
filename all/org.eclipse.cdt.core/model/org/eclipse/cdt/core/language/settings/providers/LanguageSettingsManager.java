@@ -13,12 +13,17 @@ package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.List;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.internal.core.LocalProjectScope;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.osgi.service.prefs.Preferences;
 
 /**
  * A collection of utility methods to manage language settings providers.
@@ -27,6 +32,14 @@ import org.eclipse.core.resources.IResource;
  * @since 6.0
  */
 public class LanguageSettingsManager {
+	/**
+	 * @noreference This field is temporary and not intended to be referenced by clients.
+	 */
+	public static String USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE = "enabled"; //$NON-NLS-1$
+	public static boolean USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT = true;
+	
+	private static final String PREFERENCES_QUALIFIER = CCorePlugin.PLUGIN_ID;
+	private static final String LANGUAGE_SETTINGS_PROVIDERS_NODE = "languageSettingsProviders"; //$NON-NLS-1$
 
 	/**
 	 * Returns the list of setting entries of the given provider
@@ -101,5 +114,15 @@ public class LanguageSettingsManager {
 	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
 		return LanguageSettingsProvidersSerializer.isWorkspaceProvider(provider);
 	}
-	
+
+	/**
+	 * @return logging preferences for a given project or for the workspace.
+	 * @param project to get logging preferences for; or null for the workspace.
+	 */
+	public static Preferences getPreferences(IProject project) {
+		if (project == null)
+			return new InstanceScope().getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);
+		else
+			return new LocalProjectScope(project).getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);
+	}
 }

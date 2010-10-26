@@ -43,6 +43,8 @@ import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
+import org.osgi.service.prefs.BackingStoreException;
+import org.osgi.service.prefs.Preferences;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
@@ -64,6 +66,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 
@@ -72,7 +75,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	protected TreeViewer treeEntriesViewer;
 	protected Tree treeLanguages;
 	protected TreeColumn columnLanguages;
-	protected Button showBIButton;
+	protected Button builtInCheckBox;
 //	protected boolean toAllCfgs = false;
 //	protected boolean toAllLang = false;
 	protected Label lb1, lb2;
@@ -103,8 +106,9 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	};
 
 	private static final Comparator<Object> comp = CDTListComparator.getInstance();
-
 	private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
+	private Button disableProvidersCheckBox;
+
 
 	private class LanguageSettingsContributorsContentProvider implements ITreeContentProvider {
 		public Object[] getElements(Object inputElement) {
@@ -396,16 +400,15 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			}
 		});
 
-		showBIButton = setupCheck(usercomp,
-				Messages.AbstractLangsListTab_0, 1, GridData.FILL_HORIZONTAL);
-		showBIButton.addSelectionListener(new SelectionAdapter() {
+		builtInCheckBox = setupCheck(usercomp, Messages.AbstractLangsListTab_0, 1, GridData.FILL_HORIZONTAL);
+		builtInCheckBox.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				update();
 			}
 		});
-		showBIButton.setSelection(true);
-		showBIButton.setEnabled(false);
+		builtInCheckBox.setSelection(true);
+		builtInCheckBox.setEnabled(false);
 
 		lb2 = new Label(usercomp, SWT.BORDER | SWT.CENTER);
 		lb2.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -418,7 +421,21 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			}
 		});
 
-//		additionalTableSet();
+		if (page.isForProject()) {
+			disableProvidersCheckBox = setupCheck(usercomp, "Disable Language Settings Providers (revert to CDT 7.0 functionality)", 2, GridData.FILL_HORIZONTAL);
+			disableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					enableControls(!disableProvidersCheckBox.getSelection());
+				}
+			});
+			
+			Preferences prefs = LanguageSettingsManager.getPreferences(page.getProject());
+			disableProvidersCheckBox.setSelection(prefs.getBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT));
+			
+		}
+		
+		//		additionalTableSet();
 		initButtons(BUTTONS);
 		updateData(getResDesc());
 
@@ -426,6 +443,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		// TODO
 		// ImportExportWizardButtons.addWizardLaunchButtons(usercomp, page.getElement());
 
+		enableControls(!disableProvidersCheckBox.getSelection());
 	}
 
 	/**
@@ -947,11 +965,22 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	@Override
 	protected void performOK() {
+		if (page.isForProject() && disableProvidersCheckBox!=null) {
+			Preferences prefs = LanguageSettingsManager.getPreferences(page.getProject());
+			prefs.putBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, disableProvidersCheckBox.getSelection());
+			try {
+				prefs.flush();
+			} catch (BackingStoreException e) {
+				CUIPlugin.log(e);
+			}
+		}
+		
+
 		// FIXME: for now only handles current configuration
 		ICResourceDescription rcDesc = getResDesc();
 		IResource rc = getResource();
 		ICConfigurationDescription cfgDescription = rcDesc.getConfiguration();
-
+		
 		List<ILanguageSettingsProvider> destProviders = new ArrayList<ILanguageSettingsProvider>();
 		List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
 		for (ILanguageSettingsProvider pro : providers) {
@@ -1194,6 +1223,24 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			return dlg.getEntries()[0];
 		}
 		return null;
+	}
+
+	private void enableControls(boolean enable) {
+//		builtInCheckBox.setEnabled(enable);
+		sashForm.setEnabled(enable);
+		treeLanguages.setEnabled(enable);
+		treeEntries.setEnabled(enable);
+		buttoncomp.setEnabled(enable);
+		
+		if (enable) {
+			update();
+		} else {
+			buttonSetEnabled(BUTTON_ADD, enable);
+			buttonSetEnabled(BUTTON_EDIT, enable);
+			buttonSetEnabled(BUTTON_DELETE, enable);
+			buttonSetEnabled(BUTTON_MOVE_UP, enable);
+			buttonSetEnabled(BUTTON_MOVE_DOWN, enable);
+		}
 	}
 
 }

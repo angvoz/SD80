@@ -201,6 +201,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		private final IAddress[] addresses;
 		private final byte[] originalInstruction;
 		private Map<String, Object> properties;
+		private int hitCount;
 
 		public BreakpointDMData(long id, IBreakpointDMContext context, IAddress[] addresses,
 				Map<String, Object> properties) {
@@ -209,8 +210,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			this.context = context;
 			this.addresses = addresses;
 			this.originalInstruction = null;
-			this.properties = new HashMap<String, Object>(properties); // make a
-																		// copy
+			this.properties = new HashMap<String, Object>(properties); // make a  copy
 		}
 
 		public BreakpointDMData(long id, IBreakpointDMContext context, IAddress[] addresses,
@@ -323,6 +323,15 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 					s += ":line " + getLineNumber();
 			}
 			return "Breakpoint@" + s;
+		}
+
+		public void incrementHitCount() {
+			hitCount++;
+		}
+		
+		public int getHitCount()
+		{
+			return hitCount;
 		}
 	}
 
@@ -1117,7 +1126,8 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	public void evaluateBreakpointCondition(IExecutionDMContext context, final BreakpointDMData bp, final DataRequestMonitor<Boolean> drm) {
 		final String expr = bp.getCondition();
 		if (expr == null || expr.length() == 0) {
-			drm.setData(true);
+			bp.incrementHitCount();
+			drm.setData(bp.getHitCount() > bp.getIgnoreCount());
 			drm.done();
 			return;
 		}
@@ -1130,7 +1140,8 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			protected void handleCompleted() {
 				if (!isSuccess()) { // fail to get frame, namely cannot
 									// evaluate the condition
-					drm.setData(true);
+					bp.incrementHitCount();
+					drm.setData(bp.getHitCount() > bp.getIgnoreCount());
 					drm.done();
 				} else {
 					Expressions exprService = getServicesTracker().getService(Expressions.class);
@@ -1147,8 +1158,15 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 						reportBreakpointProblem(bp.getContext(), "Breakpoint condition failed to resolve to boolean: " + vstr);
 					else // remove any problem marker
 						reportBreakpointProblem(bp.getContext(), "");
-						
-					drm.setData(!vstr.equals("false")); //$NON-NLS-1$
+					
+					if (!vstr.equals("false"))
+					{
+						bp.incrementHitCount();
+						drm.setData(bp.getHitCount() > bp.getIgnoreCount());
+					}
+					else
+						drm.setData(false); //$NON-NLS-1$
+
 					drm.done();
 				}
 			}

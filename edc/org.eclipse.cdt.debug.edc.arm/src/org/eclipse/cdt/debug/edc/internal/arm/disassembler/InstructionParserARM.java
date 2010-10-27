@@ -15,7 +15,6 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +23,7 @@ import org.eclipse.cdt.debug.edc.JumpToAddress;
 import org.eclipse.cdt.debug.edc.disassembler.AssemblyFormatter;
 import org.eclipse.cdt.debug.edc.disassembler.CodeBufferUnderflowException;
 import org.eclipse.cdt.debug.edc.disassembler.DisassembledInstruction;
-import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
+import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
 import org.eclipse.cdt.debug.edc.internal.arm.ARMPlugin;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM.IDisassemblerOptionsARM;
@@ -44,6 +43,7 @@ public class InstructionParserARM {
 	private List<Integer> prefixes = new ArrayList<Integer>();
 	private List<Integer> prefixesUsed = new ArrayList<Integer>();
 
+	private int endianMode = LITTLE_ENDIAN_MODE;
 	private int disassemblerMode = DISASSEMBLER_MODE_THUMB;
 	private Map<String, Object> disassemblerOptions = null;
 
@@ -68,13 +68,6 @@ public class InstructionParserARM {
 	 */
 	private DisassembledInstruction result = null;
 
-	/**
-	 * Whether the instruction has been parsed/disassembled. If this flag is
-	 * true but the fResult is null, the given byte buffer does not contain
-	 * valid instruction.
-	 */
-	private boolean parsed = false;
-
 	private boolean isSoleDestination;
 	private boolean isSubroutineAddress;
 	private IAddress jumpToAddr;
@@ -90,9 +83,7 @@ public class InstructionParserARM {
 		this.startPosition = codeBuffer.position();
 	}
 
-	private void initialize() {
-		// reset position
-		codeBuffer.position(startPosition);
+	private void initialize(Map<String, Object> options) {
 		prefixes.clear();
 		prefixesUsed.clear();
 		isSoleDestination = false;
@@ -100,16 +91,19 @@ public class InstructionParserARM {
 		jumpToAddr = null;
 		addrExpression = null;
 		result = new DisassembledInstruction(); // start new
-	}
 
-	public IDisassembledInstruction getResult() throws CoreException {
-		if (!parsed) {
-			// Default: ARM disassembler mode.
-			Map<String, Object> options = new HashMap<String, Object>();
-			options.put(IDisassemblerOptionsARM.DISASSEMBLER_MODE, DISASSEMBLER_MODE_ARM);
-			disassemble(options);
-		}
-		return result;
+		// Make sure the code buffer is in big-endian
+		if (codeBuffer.order() == ByteOrder.LITTLE_ENDIAN)
+			codeBuffer.order(ByteOrder.BIG_ENDIAN);
+
+		disassemblerOptions = options;
+
+		Object mode = options.get(IDisassemblerOptionsARM.ENDIAN_MODE);
+		endianMode = (mode != null) ? ((Integer) mode).intValue() : LITTLE_ENDIAN_MODE;
+
+		mode = options.get(IDisassemblerOptionsARM.DISASSEMBLER_MODE);
+		disassemblerMode
+		  = (mode != null) ? ((Integer) mode).intValue() : DISASSEMBLER_MODE_THUMB;
 	}
 
 	/**
@@ -125,76 +119,16 @@ public class InstructionParserARM {
 	 */
 	public DisassembledInstruction disassemble(Map<String, Object> options)
       throws CoreException {
-		initialize();
-
-		parsed = true;
-		disassemblerOptions = options;
-
-		// Make sure the code buffer is in big-endian
-		if (codeBuffer.order() == ByteOrder.LITTLE_ENDIAN)
-			codeBuffer.order(ByteOrder.BIG_ENDIAN);
-
-		Object mode = options.get(IDisassemblerOptionsARM.ENDIAN_MODE);
-		int endianMode = LITTLE_ENDIAN_MODE;
-		if (mode != null) {
-			endianMode = ((Integer) mode).intValue();
-		}
-
-		mode = options.get(IDisassemblerOptionsARM.DISASSEMBLER_MODE);
-		if (mode != null)
-			disassemblerMode = ((Integer) mode).intValue();
-		else
-			// Assume Thumb if couldn't get mode from symbolics
-			disassemblerMode = 2;
+		initialize(options);
 
 		String mnemonics = null;
 		CoreException err = null;
 
-		byte b0, b1, b2, b3;
-		int opcode = 0;
-		int opcode2 = 0;
 		try {
 			if (disassemblerMode == DISASSEMBLER_MODE_ARM) {
-				if (endianMode == BIG_ENDIAN_MODE) {
-					b0 = codeBuffer.get();
-					b1 = codeBuffer.get();
-					b2 = codeBuffer.get();
-					b3 = codeBuffer.get();
-				} else {
-					b3 = codeBuffer.get();
-					b2 = codeBuffer.get();
-					b1 = codeBuffer.get();
-					b0 = codeBuffer.get();
-				}
-				opcode += (b0 & 0xff) << 24;
-				opcode += (b1 & 0xff) << 16;
-				opcode += (b2 & 0xff) << 8;
-				opcode += (b3 & 0xff);
-				mnemonics = parseARMOpcode(opcode);
+				mnemonics = parseARMOpcode();
 			} else {
-				if (endianMode == BIG_ENDIAN_MODE && (codeBuffer.remaining() > 1)) {
-					b0 = codeBuffer.get();
-					b1 = codeBuffer.get();
-				} else {
-					b1 = codeBuffer.get();
-					b0 = codeBuffer.get();
-				}
-				opcode += (b0 & 0xff) << 8;
-				opcode += (b1 & 0xff);
-				// Thumb BL and BLX instructions consist of 2 16-bit Thumb
-				// instructions
-				if (isThumbBL(opcode) && (codeBuffer.remaining() > 1)) {
-					if (endianMode == BIG_ENDIAN_MODE) {
-						b2 = codeBuffer.get();
-						b3 = codeBuffer.get();
-					} else {
-						b3 = codeBuffer.get();
-						b2 = codeBuffer.get();
-					}
-					opcode2 += (b2 & 0xff) << 8;
-					opcode2 += (b3 & 0xff);
-				}
-				mnemonics = parseThumbOpcode(opcode, opcode2);
+				mnemonics = parseThumbOpcode();
 			}
 		} catch (BufferUnderflowException e) {
 			throw new CodeBufferUnderflowException(e);
@@ -258,7 +192,22 @@ public class InstructionParserARM {
 		result.setJumpToAddress(jta);
 	}
 
-	private String parseARMOpcode(int opcode) {
+	private String parseARMOpcode() {
+		byte b0, b1, b2, b3;
+		if (endianMode == BIG_ENDIAN_MODE) {
+			b0 = codeBuffer.get();
+			b1 = codeBuffer.get();
+			b2 = codeBuffer.get();
+			b3 = codeBuffer.get();
+		} else {
+			b3 = codeBuffer.get();
+			b2 = codeBuffer.get();
+			b1 = codeBuffer.get();
+			b0 = codeBuffer.get();
+		}
+		int opcode
+		  = ((b0 & 0xff) << 24) + ((b1 & 0xff) << 16) + ((b2 & 0xff) << 8) + ((b3 & 0xff));
+
 		OpcodeARM.Index opcodeIndex = OpcodeARM.Index.invalid;
 		String mnemonic = "";
 
@@ -1011,13 +960,23 @@ public class InstructionParserARM {
 					+ getVFPSReg(opcode, 0, 5);
 			break;
 		default:
-			instruction = "invalid opcode";
+			instruction = IDisassembler.INVALID_OPCODE;
 			break;
 		}
 		return instruction;
 	}
 
-	private String parseThumbOpcode(int opcode, int opcode2) {
+	private String parseThumbOpcode() throws BufferUnderflowException {
+		byte b0, b1;
+		if (endianMode == BIG_ENDIAN_MODE && (codeBuffer.remaining() > 1)) {
+			b0 = codeBuffer.get();
+			b1 = codeBuffer.get();
+		} else {
+			b1 = codeBuffer.get();
+			b0 = codeBuffer.get();
+		}
+		int opcode = ((b0 & 0xff) << 8) + (b1 & 0xff);
+
 		OpcodeARM.Index opcodeIndex = OpcodeARM.Index.invalid;
 		String mnemonic = "";
 
@@ -1115,17 +1074,31 @@ public class InstructionParserARM {
 			instruction = mnemonic + "\t" + getThumbImmediate8(opcode, 1);
 			break;
 		case thumb_blx1:
-			offset = getThumbBLOffset(opcode, opcode2);
-			int h = (opcode2 >> 11) & 3;
-			
-			if (h == 3) {
-				jumpToAddr = address.add(offset);
-				instruction = "bl" + "\t" + jumpToAddr.toHexAddressString();
+			// Thumb BL and BLX instructions consist of 2 16-bit Thumb instructions
+
+			if (endianMode == BIG_ENDIAN_MODE) {
+				b0 = codeBuffer.get();	// allow to throw BufferUnderflowException
+				b1 = codeBuffer.get();	// allow to throw BufferUnderflowException
 			} else {
-				// Word align the result
-				jumpToAddr = new Addr64(address.add(offset).getValue().clearBit(1));
-				instruction = "blx" + "\t" + jumpToAddr.toHexAddressString();
+				b1 = codeBuffer.get();	// allow to throw BufferUnderflowException
+				b0 = codeBuffer.get();	// allow to throw BufferUnderflowException
 			}
+
+			{ // scope for opcode2 & h (switch/case lexical only; no cleanup necessary)
+				int opcode2 = ((b0 & 0xff) << 8) + (b1 & 0xff);
+				offset = getThumbBLOffset(opcode, opcode2);
+				int h = (opcode2 >> 11) & 3;
+				
+				if (h == 3) {
+					jumpToAddr = address.add(offset);
+					instruction = "bl" + "\t" + jumpToAddr.toHexAddressString();
+				} else {
+					// Word align the result
+					jumpToAddr = new Addr64(address.add(offset).getValue().clearBit(1));
+					instruction = "blx" + "\t" + jumpToAddr.toHexAddressString();
+				}
+			} // end of scope surrounding opcode2 & h within case
+
 			isSoleDestination = true;
 			isSubroutineAddress = true;
 			
@@ -1336,7 +1309,7 @@ public class InstructionParserARM {
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
 			break;
 		default:
-			instruction = "invalid opcode";
+			instruction = IDisassembler.INVALID_OPCODE;
 			break;
 		}
 		return instruction;
@@ -1347,17 +1320,8 @@ public class InstructionParserARM {
 		isSubroutineAddress = false;
 
 		// Though it's something like establishing the PC with an address,
-		// we just fake itas using Link Register, which is fine in practice.
+		// we just fake it as using Link Register, which is fine in practice.
 		addrExpression = JumpToAddress.EXPRESSION_LR;
-	}
-
-	private boolean isThumbBL(int opcode) {
-		int h = (opcode >> 12) & 0xf;
-		if (h == 0xf) {
-			return true;
-		} else {
-			return false;
-		}
 	}
 
 	private String getAddrMode2(int opcode) {

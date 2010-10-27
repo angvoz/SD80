@@ -122,9 +122,13 @@ public class ExternalBuildRunner implements IBuildRunner {
 						break;
 				}
 
-
-				IPath workingDirectory = ManagedBuildManager.getBuildLocation(configuration, builder);
 				URI workingDirectoryURI = ManagedBuildManager.getBuildLocationURI(configuration, builder);
+				final String pathFromURI = EFSExtensionManager.getDefault().getPathFromURI(workingDirectoryURI);
+				if(pathFromURI == null) {
+					throw new CoreException(new Status(IStatus.ERROR, ManagedBuilderCorePlugin.PLUGIN_ID, ManagedMakeMessages.getString("ManagedMakeBuilder.message.error"), null)); //$NON-NLS-1$
+				}
+				
+				IPath workingDirectory = new Path(pathFromURI);
 
 				// Set the environment
 				Map<String, String> envMap = getEnvironment(builder);
@@ -155,14 +159,6 @@ public class ExternalBuildRunner implements IBuildRunner {
 				IMarker[] markers = project.findMarkers(ICModelMarker.C_MODEL_PROBLEM_MARKER, true, IResource.DEPTH_INFINITE);
 				if (markers != null)
 					workspace.deleteMarkers(markers);
-
-				URI workingDirectoryURI = ManagedBuildManager.getBuildLocationURI(configuration, builder);
-				final String pathFromURI = EFSExtensionManager.getDefault().getPathFromURI(workingDirectoryURI);
-				if(pathFromURI == null) {
-					throw new CoreException(new Status(IStatus.ERROR, ManagedBuilderCorePlugin.PLUGIN_ID, ManagedMakeMessages.getString("ManagedMakeBuilder.message.error"), null)); //$NON-NLS-1$
-				}
-				
-				IPath workingDirectory = new Path(pathFromURI);
 
 				String[] targets = getTargets(kind, builder);
 				if (targets.length != 0 && targets[targets.length - 1].equals(builder.getCleanBuildTarget()))

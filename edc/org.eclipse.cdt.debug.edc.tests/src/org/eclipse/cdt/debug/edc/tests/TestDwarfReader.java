@@ -188,7 +188,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 	}
 	static {
 		setVariableCount("BlackFlagMinGW.exe", 52);
-		setVariableCount("BlackFlag_gcce.sym", 91);
+		setVariableCount("BlackFlag_gcce.sym", 105);
 		setVariableCount("BlackFlag_linuxgcc.exe", 48);
 		setVariableCount("BlackFlag_rvct.sym", 61);
 		setVariableCount("HelloWorld_rvct_2_2.exe.sym", 1);
@@ -705,10 +705,12 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 	@Test
 	public void testSpecificTypes1a() throws Exception {
 		IEDCSymbolReader symbolReader = Symbols.getSymbolReader(getFile("BlackFlag_rvct.sym"));
-		List<ICompileUnitScope> cuList = getCompileUnitsFor(symbolReader, "dbg_multipleinheritance.cpp");
-		assertNotNull(cuList);
+		List<ICompileUnitScope> cuList = getCompileUnitsFor(symbolReader, "dbg_multipleInheritance.cpp");
+		if (cuList.isEmpty())
+			cuList = getCompileUnitsFor(symbolReader, "dbg_multipleinheritance.cpp");
+		assertFalse(cuList.isEmpty());
 		List<ICompileUnitScope> cuhList = getCompileUnitsFor(symbolReader, "dbg_multipleInheritance.h");
-		assertNotNull(cuhList);
+		assertFalse(cuhList.isEmpty());
 		
 		// multipleInheritance
 		IFunctionScope function = null;
@@ -807,7 +809,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		IScope classScope = ((IPointerType)type).getType().getScope();
 		assertTrue(classScope instanceof ICompileUnitScope);
 		IPath path = ((ICompileUnitScope) classScope).getFilePath();
-		assertTrue(path.toString(), path.lastSegment().equals("dbg_multipleInheritance.h"));
+		assertTrue(path.toString(), path.lastSegment().equalsIgnoreCase("dbg_multipleInheritance.h"));
 
 		// the pointer type is declared in a function (either "show3", due to "this", or the one we looked in)
 		assertTrue(type.getScope() instanceof IFunctionScope);
@@ -815,7 +817,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		IScope fileScope = type.getScope().getParent();
 		assertTrue(fileScope instanceof ICompileUnitScope);
 		path = ((ICompileUnitScope) fileScope).getFilePath();
-		assertTrue(path.toString(), path.lastSegment().equals("dbg_multipleinheritance.cpp"));
+		assertTrue(path.toString(), path.lastSegment().equalsIgnoreCase("dbg_multipleInheritance.cpp"));
 	}
 	
 
@@ -826,10 +828,12 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 	@Test
 	public void testSpecificTypes2() throws Exception {
 		IEDCSymbolReader symbolReader = Symbols.getSymbolReader(getFile("BlackFlag_rvct.sym"));
-		List<ICompileUnitScope> cuList = getCompileUnitsFor(symbolReader, "dbg_multipleinheritance.cpp");
-		assertNotNull(cuList);
+		List<ICompileUnitScope> cuList = getCompileUnitsFor(symbolReader, "dbg_multipleInheritance.cpp");
+		if (cuList.isEmpty())
+			cuList = getCompileUnitsFor(symbolReader, "dbg_multipleinheritance.cpp");
+		assertFalse(cuList.isEmpty());
 		List<ICompileUnitScope> cuhList = getCompileUnitsFor(symbolReader, "dbg_multipleInheritance.h");
-		assertNotNull(cuhList);
+		assertFalse(cuhList.isEmpty());
 		
 		// Base2::show2
 		IFunctionScope function = null;
@@ -1123,7 +1127,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		IScope scope = type.getScope();
 		assertTrue(scope instanceof ICompileUnitScope);
 		IPath path = ((ICompileUnitScope) scope).getFilePath();
-		assertTrue(path.toString(), path.lastSegment().equals("dbg_multipleInheritance.cpp"));
+		assertTrue(path.toString(), path.lastSegment().equalsIgnoreCase("dbg_multipleInheritance.cpp"));
 	}
 	
 	/**
@@ -1166,13 +1170,15 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 	public void testSpecificTypes4a() throws Exception {
 		IEDCSymbolReader symbolReader = Symbols.getSymbolReader(getFile("BlackFlag_rvct.sym"));
 		
-		List<ICompileUnitScope> scopes = getCompileUnitsFor(symbolReader, "dbg_multipleinheritance.cpp");
-		assertNotNull(scopes);
+		List<ICompileUnitScope> scopes = getCompileUnitsFor(symbolReader, "dbg_multipleInheritance.cpp");
+		if (scopes.isEmpty())
+			scopes = getCompileUnitsFor(symbolReader, "dbg_multipleinheritance.cpp");
+		assertFalse(scopes.isEmpty());
 		/*
 		if (Symbols.useNewReader())
 			// TODO: along with other filepath lookup issues:
-			// what happens here is, there are three CUs for dbg_multipleinheritance.cpp,
-			// but one has no DW_AT_comp_dir.  All of their names are \BlackFlags\SRC\dbg_multipleinheritance.cpp,
+			// what happens here is, there are three CUs for dbg_multipleInheritance.cpp,
+			// but one has no DW_AT_comp_dir.  All of their names are \BlackFlags\SRC\dbg_multipleInheritance.cpp,
 			// which (once canonicalized) looks like an absolute path in Linux, thus comes in as
 			// three distinct CUs for the same path.  In Win32, though, the comp dir is prepended
 			// in two cases, since the name is not considered absolute.
@@ -1246,14 +1252,14 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		IScope classScope = ((IPointerType)type).getType().getScope();
 		assertTrue(classScope instanceof ICompileUnitScope);
 		IPath path = ((ICompileUnitScope) classScope).getFilePath();
-		assertTrue(path.toString(), path.lastSegment().equals("dbg_multipleInheritance.h"));
+		assertTrue(path.toString(), path.lastSegment().equalsIgnoreCase("dbg_multipleInheritance.h"));
 
 		// the pointer type is declared in a function
 		assertTrue(type.getScope() instanceof IFunctionScope);
 		IScope fileScope = type.getScope().getParent();
 		assertTrue(fileScope instanceof ICompileUnitScope);
 		path = ((ICompileUnitScope) fileScope).getFilePath();
-		assertTrue(path.toString(), path.lastSegment().equals("dbg_multipleinheritance.cpp"));
+		assertTrue(path.toString(), path.lastSegment().equalsIgnoreCase("dbg_multipleInheritance.cpp"));
 	}
 	
 	/**

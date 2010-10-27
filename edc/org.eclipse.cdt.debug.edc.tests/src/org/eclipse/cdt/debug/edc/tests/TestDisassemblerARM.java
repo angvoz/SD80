@@ -19,6 +19,7 @@ import java.util.StringTokenizer;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IJumpToAddress;
 import org.eclipse.cdt.debug.edc.JumpToAddress;
+import org.eclipse.cdt.debug.edc.disassembler.CodeBufferUnderflowException;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembledInstruction;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler.IDisassemblerOptions;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM;
@@ -278,6 +279,15 @@ public class TestDisassemblerARM {
 	}
 
 	/**
+	 * Test if ARM instruction parser raises CodeBufferUnderflow
+	 */
+	@Test
+	public void testArmBufferUnderflow() {
+		System.out.println("\n============= ARM CodeBufferUnderflow ===============\n");
+		catchCodeBufferUnderflowException(0x0, "ea ff", armOptions);
+	}	
+
+	/**
 	 * Test for Thumb instructions.
 	 */
 	@Test
@@ -387,6 +397,15 @@ public class TestDisassemblerARM {
 	}
 
 	/**
+	 * Test if thumb instruction parser raises CodeBufferUnderflow
+	 */
+	@Test
+	public void testThumbBufferUnderflow() {
+		System.out.println("\n============ Thumb CodeBufferUnderflow ==============\n");
+		catchCodeBufferUnderflowException(0x0, "f7 ff", thumbOptions);
+	}	
+
+	/**
 	 * Convert hex string into byte array.
 	 */
 	private static byte[] getByteArray(String byteHexString) {
@@ -440,6 +459,29 @@ public class TestDisassemblerARM {
 		}
 
 		System.out.println(output.getMnemonics());
+	}
+
+	/**
+	 * Disassemble a single instruction and verify the output.
+	 */
+	private void catchCodeBufferUnderflowException(long address, String code,
+			Map<String, Object> options) {
+		if (options == null)
+			options = armOptions;
+
+		IAddress addr = new Addr32(address);
+		ByteBuffer codeBuf = ByteBuffer.wrap(getByteArray(code));
+
+		InstructionParserARM disa = new InstructionParserARM(addr, codeBuf);
+
+		try {
+			disa.disassemble(options);
+			Assert.fail("expected disa.disassemble() to throw CodeBufferUnderflowException");
+		} catch (CodeBufferUnderflowException e) {
+			System.out.println("properly caught CodeBufferUnderflowException");
+		} catch (CoreException e) {
+			Assert.fail(e.getLocalizedMessage());
+		}
 	}
 
 	/**

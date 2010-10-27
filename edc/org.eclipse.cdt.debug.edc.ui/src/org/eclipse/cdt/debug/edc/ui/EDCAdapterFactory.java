@@ -194,6 +194,7 @@ abstract public class EDCAdapterFactory implements IAdapterFactory, ILaunchesLis
 			fSuspendCommand.dispose();
 			fResumeCommand.dispose();
 			fSuspendTrigger.dispose();
+			fTerminateCommand.dispose();
 		}
 	}
 

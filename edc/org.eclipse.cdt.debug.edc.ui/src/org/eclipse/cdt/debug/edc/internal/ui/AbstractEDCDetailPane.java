@@ -15,13 +15,13 @@ import org.eclipse.cdt.dsf.debug.ui.viewmodel.variable.SyncVariableDataAccess;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.commands.operations.IUndoContext;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.debug.internal.ui.actions.ActionMessages;
+import org.eclipse.debug.internal.ui.actions.variables.details.DetailPaneAssignValueAction;
+import org.eclipse.debug.internal.ui.actions.variables.details.DetailPaneMaxLengthAction;
+import org.eclipse.debug.internal.ui.actions.variables.details.DetailPaneWordWrapAction;
 import org.eclipse.debug.internal.ui.preferences.IDebugPreferenceConstants;
 import org.eclipse.debug.internal.ui.views.variables.details.AbstractDetailPane;
 import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.debug.ui.IDebugView;
-import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
@@ -47,7 +47,6 @@ import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusAdapter;
 import org.eclipse.swt.events.FocusEvent;
-import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -61,68 +60,9 @@ import org.eclipse.ui.operations.RedoActionHandler;
 import org.eclipse.ui.operations.UndoActionHandler;
 import org.eclipse.ui.texteditor.IAbstractTextEditorHelpContextIds;
 import org.eclipse.ui.texteditor.ITextEditorActionConstants;
-import org.osgi.service.prefs.BackingStoreException;
 
 @SuppressWarnings("restriction")
 public abstract class AbstractEDCDetailPane extends AbstractDetailPane implements IPropertyChangeListener {
-
-	public class SetValueAction  extends Action {
-		
-		@Override
-		public void run() {
-			Point selectedRange = viewer.getSelectedRange();
-			String value = null;
-			if (selectedRange.y == 0) {
-				value = viewer.getDocument().get();
-			} else {
-				try {
-					value = viewer.getDocument().get(selectedRange.x, selectedRange.y);
-				} catch (BadLocationException e) {
-					EDCDebugUI.logError(null, e);
-				}
-			}
-			
-			setValue((IStructuredSelection) currentSelection, value);
-		}
-		
-		private void setValue(IStructuredSelection selection, String value) {
-			Job setValueJob = createSetValueJob(selection, value);
-			if (setValueJob != null)
-				setValueJob.schedule();
-		}
-
-		@Override
-		public boolean isEnabled() {
-			return isEditingEnabled(currentSelection);
-		}
-		
-		@Override
-		public String getActionDefinitionId() {
-			return IWorkbenchCommandConstants.FILE_SAVE;
-		}
-	}
-
-	public class WordWrapAction extends Action {
-
-		public WordWrapAction() {
-			super(ActionMessages.DetailPaneWordWrapAction_0, IAction.AS_CHECK_BOX);
-			setEnabled(true);
-			
-			boolean prefSetting = getWordWrapPreference();
-			viewer.getTextWidget().setWordWrap(prefSetting);
-			setChecked(prefSetting);
-		}
-		
-		public void run() {
-			viewer.getTextWidget().setWordWrap(isChecked());
-			EDCDebugUI.getDefault().getPreferenceStore().setValue(WORD_WRAP_ACTION, isChecked());
-			try {
-				new InstanceScope().getNode(EDCDebugUI.PLUGIN_ID).flush();
-			} catch (BackingStoreException e) {
-				EDCDebugUI.logError(null, e);
-			}
-		}
-	}
 	
 	protected static final String COPY_ACTION = ActionFactory.COPY.getId();
 	protected static final String CUT_ACTION = ActionFactory.CUT.getId();
@@ -130,7 +70,8 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 	protected static final String SELECT_ALL_ACTION = IDebugView.SELECT_ALL_ACTION;
 	protected static final String WORD_WRAP_ACTION = IDebugPreferenceConstants.PREF_DETAIL_PANE_WORD_WRAP;
 	protected static final String SET_VALUE_ACTION = "setValue"; //$NON-NLS-1$
-	
+	protected static final String MAX_LENGTH_ACTION = IDebugUIConstants.PREF_MAX_DETAIL_LENGTH;
+
 	protected SourceViewer viewer;
 	protected Document document;
 	protected IStructuredSelection currentSelection = StructuredSelection.EMPTY;
@@ -297,6 +238,7 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		menu.add(getAction(SELECT_ALL_ACTION));
 		menu.add(new Separator());
 		menu.add(getAction(WORD_WRAP_ACTION));
+		menu.add(getAction(MAX_LENGTH_ACTION));
 	}
 
 	protected void createActions() {
@@ -323,13 +265,11 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		setSelectionDependantAction(COPY_ACTION);
 		setSelectionDependantAction(CUT_ACTION);
 		updateSelectionDependentActions();
-		
-		IAction action = new WordWrapAction();
-		setAction(WORD_WRAP_ACTION, action);
-		
-		action = new SetValueAction();
-		setAction(SET_VALUE_ACTION, action);
-		
+
+		setAction(WORD_WRAP_ACTION,  new DetailPaneWordWrapAction(viewer));
+		setAction(MAX_LENGTH_ACTION, new DetailPaneMaxLengthAction(viewer.getControl().getShell()));
+		setAction(SET_VALUE_ACTION,  new DetailPaneAssignValueAction(viewer, getViewSite()));
+
 		createUndoRedoActions();
 	}
 
@@ -340,8 +280,9 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		} else if (propertyName.equals(WORD_WRAP_ACTION)) {
 			viewer.getTextWidget().setWordWrap(getWordWrapPreference());
 			getAction(WORD_WRAP_ACTION).setChecked(getWordWrapPreference());
+		} else if (propertyName.equals(MAX_LENGTH_ACTION)) {
+			viewer.getTextWidget().redraw();
 		}
-		
 	}
 
 	private boolean getWordWrapPreference() {

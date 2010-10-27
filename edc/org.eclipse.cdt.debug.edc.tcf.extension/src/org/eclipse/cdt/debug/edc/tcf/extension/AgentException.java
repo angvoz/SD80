@@ -22,14 +22,14 @@ public class AgentException extends Exception {
 
 	private static final long serialVersionUID = 8073163639364456392L;
 
-	private String fMessage = null;
+	private final String fMessage;
 
 	/**
 	 * @param fMessage
 	 */
 	public AgentException(String message) {
 		super(message);
-		this.fMessage = message;
+		fMessage = null;
 	}
 
 	/**
@@ -37,7 +37,7 @@ public class AgentException extends Exception {
 	 */
 	public AgentException(Throwable cause) {
 		super(cause);
-		fMessage = cause.getMessage();
+		fMessage = null;
 	}
 
 	/**
@@ -46,12 +46,11 @@ public class AgentException extends Exception {
 	 */
 	public AgentException(String message, Throwable cause) {
 		super(message, cause);
-		if (cause != null)
-			this.fMessage = message + "\n=>Underlying cause: " + cause.getMessage();
+		fMessage = (cause != null) ? message + "\n=>Underlying cause: " + cause.getMessage() : null;
 	}
 
 	@Override
 	public String getMessage() {
-		return fMessage;
+		return (fMessage != null) ? fMessage : super.getMessage();
 	}
 }

@@ -21,6 +21,8 @@ import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.IErrorReport;
 import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.protocol.JSON;
+import org.eclipse.tm.tcf.services.IMemory;
+import org.eclipse.tm.tcf.services.IMemory.ErrorOffset;
 
 /**
  * @author LWang
@@ -172,5 +174,33 @@ public class AgentUtils {
 		m = ba[1];
 		ba[1] = ba[2];
 		ba[2] = m;
+	}
+
+	/**
+	 * create a {@link HashMap}&lt;{@link String}, {@link Object}>
+	 * representing a memory range conforming to TCF 
+	 * <code>
+	 * org.eclipse.tm.internal.tcf.services.remote.MemoryProxy.MemoryErrorReport
+	 * </code>
+	 * requirements necessary to create its internal <code>MemoryProxy.Range</code>
+	 * when receiving the response from the TCF agent employing this function.
+	 * 
+	 * @param addr address of range
+	 * @param size number of bytes in range
+	 * @param msg null if range is valid, non-null string containing error message if invalid
+	 * @return {@link HashMap} with contents conforming to TCF MemoryProxy requirements
+	 * @since 2.0
+	 */
+	public static Map<String, Object> memoryRange(int addr, int size, int stat, String msg) {
+		// remainder is good
+		Map<String, Object> range = new HashMap<String, Object>(4);
+		range.put(ErrorOffset.RANGE_KEY_ADDR, addr);
+		range.put(ErrorOffset.RANGE_KEY_SIZE, size);
+		range.put(ErrorOffset.RANGE_KEY_STAT, stat);
+		if (msg != null) {
+			range.put(ErrorOffset.RANGE_KEY_MSG,
+					  makeErrorReport(IErrorReport.SEVERITY_WARNING, msg));
+		}
+		return range;
 	}
 }

@@ -16,6 +16,8 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.symbols.IInvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 public class InvalidVariableLocation implements IInvalidVariableLocation {
@@ -79,5 +81,13 @@ public class InvalidVariableLocation implements IInvalidVariableLocation {
 
 	public void writeValue(int bytes, BigInteger value) throws CoreException {
 		throw EDCDebugger.newCoreException(SymbolsMessages.InvalidVariableLocation_CannotWriteInvalidLocation);
+	}
+
+	public IDMContext getContext() {
+		return null;
+	}
+
+	public DsfServicesTracker getServicesTracker() {
+		return null;
 	}
 }

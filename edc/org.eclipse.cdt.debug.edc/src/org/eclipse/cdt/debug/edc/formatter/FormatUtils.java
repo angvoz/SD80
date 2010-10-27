@@ -215,29 +215,35 @@ public class FormatUtils {
 		IEDCMemory memory = frame.getDsfServicesTracker().getService(Memory.class);
 		
 		StringBuilder sb = new StringBuilder();
-		while (maximumLength-- > 0) {
-			ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>();
-			IStatus status = memory.getMemory(frame.getExecutionDMC(), address, buffer, charSize, 1);
+		ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>(64);// typical size of cache block
+		OUTER:while (maximumLength > 0) {
+			int amount = Math.min(maximumLength, 64);// typical size of cache block
+			IStatus status = memory.getMemory(frame.getExecutionDMC(), address, buffer, amount, charSize);
 			if (status.isOK()) {
 				// make sure each byte is okay
-				for (int i = 0; i < buffer.size(); i++) {
+				for (int i = 0; i < buffer.size() && maximumLength > 0; ++i, --maximumLength) {
 					if (!buffer.get(i).isReadable())
-						throw EDCDebugger.newCoreException(
-								MessageFormat.format(EDCFormatterMessages.FormatUtils_CannotReadMemory,
-										address.add(i).getValue().toString(16)));
+					{
+						if (i == 0)	// partial memory read success
+							throw EDCDebugger.newCoreException(
+									MessageFormat.format(EDCFormatterMessages.FormatUtils_CannotReadMemory,
+											address.add(i).getValue().toString(16)));
+						maximumLength = 0;
+						break OUTER;
+					}
+					char c = (char) buffer.get(i).getValue();
+					if (charSize > 1) {
+						char c2 = (char) (buffer.get(++i).getValue() << 8);
+						c |= c2;
+					}
+					if (c == '\0')
+						break OUTER;
+					sb.append(c);
+					address = address.add(charSize);
 				}
-
-				char c = (char) buffer.get(0).getValue();
-				if (charSize > 1) {
-					char c2 = (char) (buffer.get(1).getValue() << 8);
-					c |= c2;
-				}
-				if (c == '\0')
-					break;
-				sb.append(c);
-				address = address.add(charSize);
-			}
-			else {
+			} else if (amount > 1) {
+				maximumLength = Math.min(maximumLength, 64) / 2;
+			} else {
 				// Error in reading memory, bail out.  If we got more than one character,
 				// use ellipsis, else fail.
 				if (sb.length() == 0)
@@ -247,6 +253,7 @@ public class FormatUtils {
 				maximumLength = 0;
 				break;
 			}
+			buffer.clear();
 		}
 		if (maximumLength <= 0)
 			sb.append("..."); //$NON-NLS-1$

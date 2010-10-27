@@ -438,12 +438,7 @@ public class MemoryCache implements ISnapshotContributor {
 							}
 							done(res);
 						} else if (error instanceof IMemory.ErrorOffset) {
-							//TODO just return an error for now.  the commented out
-							// code below is OK, but due to other issues with caching
-							// the bad bytes of the block, we need to return an error
-							// here and not cache the good or bad bytes.
-							error(error);
-/*
+							boolean someStatusKnown = false;
 							IMemory.ErrorOffset errorOffset = (ErrorOffset) error;
 							MemoryByte[] res = new MemoryByte[buffer.length];
 							
@@ -453,19 +448,26 @@ public class MemoryCache implements ISnapshotContributor {
 								byte flags = MemoryByte.ENDIANESS_KNOWN | MemoryByte.READABLE | MemoryByte.WRITABLE;
 								
 								int st = errorOffset.getStatus(i);
-								if ((st & IMemory.ErrorOffset.BYTE_CANNOT_READ) != 0)
-									flags &= ~MemoryByte.READABLE;
-								if ((st & IMemory.ErrorOffset.BYTE_CANNOT_WRITE) != 0)
-									flags &= ~MemoryByte.WRITABLE;
-								if ((st & IMemory.ErrorOffset.BYTE_INVALID) != 0)
-									flags &= ~(MemoryByte.READABLE + MemoryByte.WRITABLE);
-								if ((st & IMemory.ErrorOffset.BYTE_UNKNOWN) != 0)
-									flags &= ~(MemoryByte.READABLE + MemoryByte.WRITABLE);
-
+								if ((st & IMemory.ErrorOffset.BYTE_UNKNOWN) != 0) {
+									flags = 0;
+								} else {
+									someStatusKnown = true;
+									if ((st & IMemory.ErrorOffset.BYTE_INVALID) != 0) {
+										flags &= ~(MemoryByte.READABLE + MemoryByte.WRITABLE);
+									} else {
+										if ((st & IMemory.ErrorOffset.BYTE_CANNOT_READ) != 0)
+											flags &= ~MemoryByte.READABLE;
+										if ((st & IMemory.ErrorOffset.BYTE_CANNOT_WRITE) != 0)
+											flags &= ~MemoryByte.WRITABLE;
+									}
+								}
 								res[i] = new MemoryByte(buffer[i], flags);
 							}
-							done(res);
-*/						} else {
+							if (someStatusKnown)
+								done(res);
+							else
+								error(error);
+						} else {
 							error(error);
 						}
 					}

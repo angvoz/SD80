@@ -157,4 +157,12 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 					SymbolsMessages.MemoryVariableLocation_CannotWriteAddrFormat, theAddress.toHexAddressString()), status.getException());
 		}
 	}
+
+	public IDMContext getContext() {
+		return context;
+	}
+
+	public DsfServicesTracker getServicesTracker() {
+		return tracker;
+	}
 }

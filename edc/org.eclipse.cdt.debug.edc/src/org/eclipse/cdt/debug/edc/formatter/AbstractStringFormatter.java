@@ -19,6 +19,8 @@ import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 
 /**
  * Base class for string formatters.
@@ -63,7 +65,7 @@ public abstract class AbstractStringFormatter implements IVariableFormatProvider
 			if (expressionDMC.getEvaluatedType() instanceof IArrayType) {
 				long boundLength = ((IArrayType)expressionDMC.getEvaluatedType()).getBound(0).getBoundCount();
 				if (boundLength > 0) {
-					maximumLength = (int) Math.min(boundLength, 4096);
+					maximumLength = (int) Math.min(boundLength, maximumLength);
 				}
 			}
 			
@@ -104,7 +106,8 @@ public abstract class AbstractStringFormatter implements IVariableFormatProvider
 	 * @return size in characters
 	 */
 	protected int getMaximumLength() {
-		return 256;
+		IEclipsePreferences scope = new InstanceScope().getNode("org.eclipse.debug.ui");
+		return scope.getInt("org.eclipse.debug.ui.max_detail_length", 256);
 	}
 	
 	public ITypeContentProvider getTypeContentProvider(IType type) {

@@ -85,7 +85,15 @@ public class RegisterVariableLocation implements IRegisterVariableLocation {
 	public IAddress getAddress() {
 		return null;
 	}
-
+	
+	public IDMContext getContext() {
+		return context;
+	}
+	
+	public DsfServicesTracker getServicesTracker()
+	{
+		return tracker;
+	}
 	public void writeValue(int bytes, BigInteger value) throws CoreException {
 		if (context instanceof StackFrameDMC)
 			((StackFrameDMC)context).getFrameRegisters().writeRegister(id, bytes, value);

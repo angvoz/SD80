@@ -50,6 +50,8 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.model.MemoryByte;
+import org.eclipse.tm.tcf.services.IMemory.MemoryError;
+
 
 public class Disassembly extends AbstractEDCService implements IDisassembly {
 
@@ -168,14 +170,34 @@ public class Disassembly extends AbstractEDCService implements IDisassembly {
 		if (memoryService == null) // could be null if async invoked as or after debug session ends
 			return;
 
-		long size = endAddress.longValue() - startAddress.longValue() + 16;
+		final int size = endAddress.intValue() - startAddress.intValue() + 16;
 
 		final IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(context, IMemoryDMContext.class);
 		final IAddress start = new Addr64(startAddress);
 
-		memoryService.getMemory(mem_dmc, start, 0, 1, (int) size,
+		memoryService.getMemory(mem_dmc, start, 0, 1, size,
 								new DataRequestMonitor<MemoryByte[]>(getExecutor(), drm) {
+			/**
+			 * overridden to create a non-error status plus pseudoInstruction data-set
+			 * in the DRM requested by DisassemblyBackendDsf, where a DRM.status of
+			 * ERROR is turned into an "invalid" block in its document map.  Such
+			 * blocks are repeatedly re-requested ... causing scrolling oddities & performance issues.
+			 * @see failedMemoryDsfPseudoInstructions
+			 */
 			@Override
+			protected void handleError() {
+				IStatus s = getStatus();
+		    	Throwable e = s.getException();
+		    	if (e instanceof MemoryError && s.getMessage().contains("Fail to read memory")) {
+					drm.setData(failedMemoryDsfPseudoInstructions(start, size, s.getMessage()));
+					drm.done();
+				} else {
+					super.handleError();
+		        }
+		        
+		    }
+
+		    @Override
 			protected void handleSuccess() {
 				List<MemoryByte> memBytes = Arrays.asList(getData());
 				Map<String, Object> options = new HashMap<String, Object>();
@@ -319,12 +341,78 @@ public class Disassembly extends AbstractEDCService implements IDisassembly {
 		});
 	}
 
-	private EDCInstruction pseudoInstruction(IAddress address, int size, String pseudoMnemonic) {
+	private static EDCInstruction pseudoInstruction(IAddress address, int size, String pseudoMnemonic) {
 		DisassembledInstruction pseudoInstruction = new DisassembledInstruction();
 		pseudoInstruction.setAddress(address);
 		pseudoInstruction.setSize(size);
 		pseudoInstruction.setMnemonics(pseudoMnemonic);
 		return new EDCInstruction(pseudoInstruction);
+	}
+
+	/**
+	 * used in failedMemoryDsfPseudoInstructions() below as chunk boundary for
+	 * each of the pseudoInstructions in a larger chunk of retrieved memory.
+	 */
+	private static final int asmFence = 0x20;
+
+	/**
+	 * this utility function creates pseudo-mnemonics indicating failed memory
+	 * read. it was refactored from memoryService.getMemory().handleError() so
+	 * that it could be utilized by subclass override getInstructions() methods
+	 * making the same memoryService.getMemory() call.
+	 * <p>
+	 * <i>background:</i>
+	 * <p>
+	 * as of 2010.oct.01, EDC memoryService no longer caches blocks of memory that
+	 * cannot be read (a correct change, given that this was blocking the caching
+	 * of good memory on the boundaries of such blocks, causing other problems).
+	 * <p>
+	 * when this change was made, Disassembly#fillDisassemblyViewInstructions()
+	 * stopped getting reached through memoryService.getMemory().handleSuccess() .
+	 * therefore, actual bad blocks of memory were not getting filled with pseudo
+	 * mnemonics indicating bad memory .  in other words, when "Fail to read memory"
+	 * errors from TCF caused invocation of memoryService.getMemory().handleFailure()
+	 * ... and thus eventually also handleError() ... the result was that
+	 * DsfBackendDisassembly would fill the DisassemblyDocument with "invalid"
+	 * sections based upon address but no size.  it's algorithm then later attempts
+	 * to fill any missing/invalid sections corresponding with the document.  this
+	 * results in a visual anomaly where "Unable to retrieve disassembly" would be
+	 * populated in the DisassemblyView one block at a time, until there would be a 
+	 * large, mostly useless portion of the document view populated with the same
+	 * message repeated once for every byte the user had attempted to scroll to.
+	 * <p>
+	 * the handleError() override implementations that call this utility function
+	 * solve the problem whereby DisassemblyBackendDsf interprets DRM.status as
+	 * "invalid" sections in its the DisassemblyDocument it is associated with.
+	 * <p>
+	 * the point of this re-factored code is to create "fences" on regular
+	 * boundaries so that chunks of failed memory always get placed on similar
+	 * boundaries, thus drastically ameliorating the occurrence of small "invalid"
+	 * chunks in the DisassemblyDocument map between chunks of pseudoInstructions
+	 * that DisassemblyBackendDsf considers "valid".
+	 * <p>
+	 * in user terms, this means that scrolling in the view is more consistent
+	 * and even, with better performance thanks to fewer attempts to re-retrieve
+	 * memory for small "invalid" sections in its map at the boundaries of
+	 * previously inserted pseudo-instructions.
+	 * 
+	 * @param size size of the chunk to break up
+	 * @param start location of memory chunk
+	 * @param msg message from the target agent
+	 * @return array containing 1 or more pseudo-instructions, mostly on asmFence boundaries
+	 * @since 2.0
+	 */
+	protected static IInstruction[] failedMemoryDsfPseudoInstructions(
+			IAddress start, final int size, String msg) {
+		ArrayList<IInstruction> pseudoInstr = new ArrayList<IInstruction>();
+		int offset = 0, chunkSize = Math.min(size, asmFence - start.getValue().intValue() % asmFence);
+		do {
+			pseudoInstr.add(pseudoInstruction(start.add(offset), chunkSize,
+											  msg + "..[length=" + chunkSize + ']'));
+			offset += chunkSize;
+			chunkSize = Math.min(asmFence, size-offset);
+		} while (offset < size);
+		return pseudoInstr.toArray(new IInstruction[pseudoInstr.size()]);
 	}
 
 	/**
@@ -341,9 +429,10 @@ public class Disassembly extends AbstractEDCService implements IDisassembly {
 	 * @throws CoreException can be thrown by disassembleInstructions().
 	 * @since 2.0
 	 */
-	protected ArrayList<IInstruction> fillDisassemblyViewInstructions(final List<MemoryByte> memBytes,
-			final IAddress start, final IDisassemblyDMContext context,
-			final IDisassembler disassembler, Map<String, Object> options)
+	protected ArrayList<IInstruction> fillDisassemblyViewInstructions(
+			final List<MemoryByte> memBytes, final IAddress start,
+			final IDisassemblyDMContext context, final IDisassembler disassembler,
+			Map<String, Object> options)
 			throws CoreException {
 		ArrayList<IInstruction> ret = new ArrayList<IInstruction>();
 		for (int offset = 0, last = memBytes.size(); offset < last ;) {
@@ -370,7 +459,7 @@ public class Disassembly extends AbstractEDCService implements IDisassembly {
 					}
 					offset += codeBufSize;
 				}
-			} else {
+			} else {	// this will only occur when the target supports partial bad blocks
 				ret.add(pseudoInstruction(block, codeBufSize,
 										  cantReadMemory(block.toHexAddressString(),
 			  					   						 ((Integer)codeBufSize).toString())));

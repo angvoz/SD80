@@ -14,6 +14,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ConstType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ITypedef;
 import org.eclipse.cdt.debug.edc.internal.symbols.VolatileType;
 import org.eclipse.cdt.debug.edc.symbols.IType;
@@ -59,13 +60,14 @@ public class DefaultCStringFormatter extends AbstractStringFormatter {
 
 	/**
 	 * Get the basic unit type pointed to by a string (reducing, e.g.,
-	 * "const char *const" to "char").  Also, handle typedefs to char (e.g. "gchar").
+	 * "const char *const" to "char").  Also, handle typedefs (e.g. "gchar") and
+	 * references (char &) to char.
 	 * @param type
 	 * @return basic unit type or <code>null</code> if not a pointer to basic type
 	 */
 	protected IType getBasePointedType(IType type) {
 		// remove upper qualifiers
-		while (type instanceof ConstType || type instanceof VolatileType || type instanceof ITypedef)
+		while (type instanceof ConstType || type instanceof VolatileType || type instanceof ITypedef || type instanceof IReferenceType)
 			type = type.getType();
 		
 		// make sure it's a single pointer or a single-dimension array
@@ -77,7 +79,7 @@ public class DefaultCStringFormatter extends AbstractStringFormatter {
 			return null;
 		
 		// remove inner qualifiers
-		while (type instanceof ConstType || type instanceof VolatileType || type instanceof ITypedef)
+		while (type instanceof ConstType || type instanceof VolatileType || type instanceof ITypedef || type instanceof IReferenceType)
 			type = type.getType();
 		if (!(type instanceof ICPPBasicType))
 			return null;

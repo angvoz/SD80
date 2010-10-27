@@ -29,6 +29,10 @@ import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
+import org.eclipse.cdt.debug.edc.symbols.VariableLocationFactory;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -99,15 +103,19 @@ public class OperandValue {
 				result = getBasicTypeValue(varType, location);
 			else if (varType instanceof IReferenceType) {
 				result = getBasicTypeValue(varType, location);
-				/*
-				IType pointedTo = TypeUtils.getStrippedType(varType).getType();
-				if (pointedTo instanceof ICPPBasicType || pointedTo instanceof IPointerType ||
-					pointedTo instanceof IEnumeration) {
-					// use result as the new location
-					IVariableLocation newLocation = VariableLocationFactory.createMemoryVariableLocation(servicesTracker, frame, result);
-					setValueLocation(newLocation);
-					result = getBasicTypeValue(pointedTo, newLocation);
-				}*/
+				
+				// use result as the location of the referenced variable's value
+				if (location != null && location.getContext() != null && location.getServicesTracker() != null) {
+					IDMContext context = location.getContext();
+					DsfServicesTracker servicesTracker = location.getServicesTracker();
+					IType pointedTo = TypeUtils.getStrippedType(varType).getType();
+					if (pointedTo instanceof ICPPBasicType || pointedTo instanceof IPointerType ||
+						pointedTo instanceof IEnumeration) {
+						IVariableLocation newLocation = VariableLocationFactory.createMemoryVariableLocation(servicesTracker, context, result);
+						setValueLocation(newLocation);
+						result = getBasicTypeValue(pointedTo, newLocation);
+					}
+				}
 			} else if (varType instanceof IAggregate)
 				result = getAggregateTypeValue((IAggregate) varType, location);
 			else if (varType instanceof IQualifierType || varType instanceof TypedefType)

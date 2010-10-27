@@ -657,6 +657,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			if (locals == null || !useCachedVariables || enabled != showAllVariablesEnabled) {
 				showAllVariablesEnabled = enabled;
 				locals = new ArrayList<VariableDMC>();
+				localsByName.clear();
 				thisPtrs.clear();
 				IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
 				IFunctionScope scope = symbolsService
@@ -684,6 +685,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 							// get rid of other compiler generated variables
 							// TODO: Allow user to choose whether to show compiler generated variables
 							if (var.getVariable().isDeclared()) {
+								VariableDMC haveLocal = localsByName.get(name);
+								if (haveLocal != null) {
+									localsByName.remove(name);
+									locals.remove(haveLocal);
+								}
 								locals.add(var);
 								localsByName.put(name, var);
 							}
@@ -722,8 +728,14 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 								if (globals != null) {
 									for (IVariable variable : globals) {
 										VariableDMC var = new VariableDMC(Stack.this, this, variable);
+										String name = var.getName();
+										VariableDMC haveLocal = localsByName.get(name);
+										if (haveLocal != null) {
+											localsByName.remove(name);
+											locals.remove(haveLocal);
+										}
 										locals.add(var);
-										localsByName.put(var.getName(), var);
+										localsByName.put(name, var);
 									}
 								}
 							}
@@ -786,8 +798,9 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		 * @param name name of the variable or enumerator
 		 * @param localsOnly whether to restrict search to local variables and enumerators only
 		 * @return variable or enumerator, if found; otherwise, null
+		 * @since 2.0
 		 */
-		public IVariableEnumeratorContext findVariableOrEnumeratorByName(String name, boolean localsOnly) {
+		public IVariableEnumeratorContext findVariableOrEnumeratorByName(String name, String qualifiedName, boolean localsOnly) {
 			if (name == null)
 				return null;
 
@@ -796,6 +809,12 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 			// quickly check for a local variable or enumerator
 			IVariableEnumeratorContext variableOrEnumerator;
+			
+			if (qualifiedName != null) {
+				variableOrEnumerator = localsByName.get(qualifiedName);
+				if (variableOrEnumerator != null)
+					return variableOrEnumerator;
+			}
 
 			variableOrEnumerator = localsByName.get(name);
 			if (variableOrEnumerator != null)
@@ -803,6 +822,12 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 			if (enumerators == null)
 				getEnumerators();
+			
+			if (qualifiedName != null) {
+				variableOrEnumerator = enumeratorsByName.get(qualifiedName);
+				if (variableOrEnumerator != null)
+					return variableOrEnumerator;
+			}
 			
 			variableOrEnumerator = enumeratorsByName.get(name);
 			if (variableOrEnumerator != null)
@@ -837,7 +862,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				// At the module level, match against globals across the entire symbol
 				// file, even for big symbol files.
 				if (variableScope instanceof IModuleScope) {
-					Collection<IVariable> variables = ((IModuleScope)variableScope).getVariablesByName(name, true);
+					Collection<IVariable> variables = ((IModuleScope)variableScope).getVariablesByName(qualifiedName != null ? qualifiedName : name, true);
 					if (variables.size() > 0) {
 						// list may contain non-global variables, so return the first global
 						for (Object varObject : variables) {
@@ -850,12 +875,18 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 							}
 						}
 					}
-					// module scope has no parent with variables
+					// module scope has no matching global variables
 					break;
 				}
 
 				for (IVariable scopeVariable : variableScope.getVariables()) {
-					if (scopeVariable.getName().equals(name)) {
+					String scopeVariableName = scopeVariable.getName();
+					if (qualifiedName != null && scopeVariableName.equals(qualifiedName)) {
+						variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
+						break;
+					}
+
+					if (scopeVariableName.equals(name)) {
 						variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
 						break;
 					}
@@ -864,7 +895,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				if (variableOrEnumerator == null && variableScope instanceof IFunctionScope) {
 					IFunctionScope functionScope = (IFunctionScope)variableScope;
 					for (IVariable scopeVariable : functionScope.getParameters()) {
-						if (scopeVariable.getName().equals(name)) {
+						String scopeVariableName = scopeVariable.getName();
+						if (qualifiedName != null && scopeVariableName.equals(qualifiedName)) {
+							variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
+							break;
+						}
+
+						if (scopeVariableName.equals(name)) {
 							variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
 							break;
 						}
@@ -873,7 +910,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 				if (variableOrEnumerator == null) {
 					for (IEnumerator scopeEnumerator : variableScope.getEnumerators()) {
-						if (scopeEnumerator.getName().equals(name)) {
+						String scopeEnumeratorName = scopeEnumerator.getName();
+						if (qualifiedName != null && scopeEnumeratorName.equals(qualifiedName)) {
+							variableOrEnumerator = new EnumeratorDMC(this, scopeEnumerator);
+							break;
+						}
+
+						if (scopeEnumeratorName.equals(name)) {
 							variableOrEnumerator = new EnumeratorDMC(this, scopeEnumerator);
 							break;
 						}

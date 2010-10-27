@@ -195,16 +195,6 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				}
 				if (!(value instanceof IInvalidVariableLocation))
 					hasChildren = true;
-			} else {
-				// for a reference to a plain type, use the location in the variable with value
-				if (TypeUtils.getStrippedType(valueType) instanceof IReferenceType) {
-					IType pointedTo = TypeUtils.getStrippedType(valueType).getType();
-					pointedTo = TypeUtils.getStrippedType(pointedTo);
-					if (pointedTo instanceof ICPPBasicType || pointedTo instanceof IPointerType ||
-						pointedTo instanceof IEnumeration) {
-						valueLocation = variableValue.getValueLocation();
-					}
-				}
 			}
 
 			// if the location evaluates to NotLive, the types and values do
@@ -851,7 +841,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			pointedTo = TypeUtils.getStrippedType(((IReferenceType) exprType).getType());
 		
 		if (!(exprType instanceof IAggregate) && !pointerType &&
-			!(referenceType && (pointedTo instanceof IAggregate))) {
+			!(referenceType && (pointedTo instanceof IAggregate || pointedTo instanceof IPointerType))) {
 			rm.setData(0);
 			rm.done();
 			return;
@@ -917,11 +907,13 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		boolean pointerType = exprType instanceof IPointerType;
 		boolean referenceType = exprType instanceof IReferenceType;
 		IType pointedTo = null;
-		if (referenceType)
+		if (referenceType) {
 			pointedTo = TypeUtils.getStrippedType(((IReferenceType) exprType).getType());
+			exprType = pointedTo;
+		}
 		
 		if (!(exprType instanceof IAggregate) && !pointerType &&
-			!(referenceType && (pointedTo instanceof IAggregate))) {
+			!(referenceType && (pointedTo instanceof IAggregate || pointedTo instanceof IPointerType))) {
 			rm.setData(new IEDCExpression[0]);
 			rm.done();
 			return;
@@ -1007,7 +999,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 	 */
 	public IEDCExpression[] getLogicalSubExpressions(IEDCExpression expr) {
 
-		IType exprType = TypeUtils.getStrippedType(expr.getEvaluatedType());
+		IType exprType = TypeUtils.getUnRefStrippedType(expr.getEvaluatedType());
 		
 		// cast to array?
 		CastInfo castInfo = expr.getCastInfo();

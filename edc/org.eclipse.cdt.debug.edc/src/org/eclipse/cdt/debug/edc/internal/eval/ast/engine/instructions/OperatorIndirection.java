@@ -49,7 +49,7 @@ public class OperatorIndirection extends CompoundInstruction {
 	public void execute() throws CoreException {
 		OperandValue operand = popValue();
 
-		IType opType = TypeUtils.getStrippedType(operand.getValueType());
+		IType opType = TypeUtils.getUnRefStrippedType(operand.getValueType());
 		
 		if (operand.getStringValue() != null) {
 			// read first char of a string constant

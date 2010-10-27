@@ -989,53 +989,67 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		List<IVariable> result;
 
 		ensureParsedInitially();
-		
-		// match against public variable names, which the initial parse populated
-		if (publicVariables.size() > 0) {
-			if (name != null) {
-				DwarfInfoReader reader = new DwarfInfoReader(this);
-				List<PublicNameInfo> nameMatches = publicVariables.get(name);
 
-				if (nameMatches != null) {
-					// parse the compilation units that have matches
-					if (nameMatches.size() == 1) { // quick usual case
-						reader.parseCompilationUnitForAddresses(nameMatches.get(0).cuHeader.scope);
-					} else {
-						ArrayList<DwarfCompileUnit> cuList = new ArrayList<DwarfCompileUnit>(); 
-	
-						for (PublicNameInfo info : nameMatches) {
-							if (!cuList.contains(info.cuHeader.scope)) {
-								cuList.add(info.cuHeader.scope);
-							}
-						}
-	
-						for (DwarfCompileUnit cu : cuList) {
-							reader.parseCompilationUnitForAddresses(cu);
-						}
-					}
-				} else {
-					// not a public name, so parse all compilation units looking for variables
-					if (!globalsOnly)
-						ensureParsedForVariables();
-				}
-			} else {
+		if (name == null) {
+			if (publicVariables.size() > 0) {
 				// name is null, so parse all compilation units looking for variables
 				if (globalsOnly)
 					ensureParsedForGlobalVariables();
 				else
 					ensureParsedForVariables();
 			}
-		}
-
-		if (name != null) {
-			result = variablesByName.get(name);
-			if (result == null)
-				return new ArrayList<IVariable>(0);
-		} else {
+			
 			result = new ArrayList<IVariable>(variablesByName.size()); // at least this big
 			for (List<IVariable> variables : variablesByName.values())
 				result.addAll(variables);
+
+			return Collections.unmodifiableCollection(result);
 		}
+
+		String baseName = name;
+		int baseNameStart = name.lastIndexOf("::"); //$NON-NLS-1$
+		if (baseNameStart != -1)
+			baseName = name.substring(baseNameStart + 2);
+
+		// match against public variable names, which the initial parse populated
+		if (publicVariables.size() > 0) {
+			DwarfInfoReader reader = new DwarfInfoReader(this);
+			List<PublicNameInfo> nameMatches = publicVariables.get(baseName);
+
+			if (nameMatches != null) {
+				// parse the compilation units that have matches
+				if (nameMatches.size() == 1) { // quick usual case
+					reader.parseCompilationUnitForAddresses(nameMatches.get(0).cuHeader.scope);
+				} else {
+					ArrayList<DwarfCompileUnit> cuList = new ArrayList<DwarfCompileUnit>(); 
+
+					for (PublicNameInfo info : nameMatches) {
+						if (!cuList.contains(info.cuHeader.scope)) {
+							cuList.add(info.cuHeader.scope);
+						}
+					}
+
+					for (DwarfCompileUnit cu : cuList) {
+						reader.parseCompilationUnitForAddresses(cu);
+					}
+				}
+			} else {
+				// not a public name, so parse all compilation units looking for variables
+				if (!globalsOnly)
+					ensureParsedForVariables();
+			}
+		}
+
+		result = variablesByName.get(name);
+
+		// check against unqualified name because RVCT 2.x did not include namespace
+		// info for globals that are inside namespaces
+		if (result == null && baseNameStart != -1)
+			result = variablesByName.get(baseName);
+			
+		if (result == null)
+			return new ArrayList<IVariable>(0);
+
 		return Collections.unmodifiableCollection(result);
 	}
 

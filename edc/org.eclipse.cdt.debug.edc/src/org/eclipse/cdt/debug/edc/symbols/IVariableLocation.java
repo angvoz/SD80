@@ -13,6 +13,8 @@ package org.eclipse.cdt.debug.edc.symbols;
 import java.math.BigInteger;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -55,4 +57,18 @@ public interface IVariableLocation {
 	 * @return address or <code>null</code>
 	 */
 	IAddress getAddress();
+	
+	/**
+	 * Get the context for the location, if the location has a context
+	 * @return context or <code>null</code>
+	 * @since 2.0
+	 */
+	public IDMContext getContext();
+
+	/**
+	 * Get the services tracker for the location, if the location has a services tracker
+	 * @return services tracker or <code>null</code>
+	 * @since 2.0
+	 */
+	public DsfServicesTracker getServicesTracker();
 }

@@ -16,6 +16,8 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.symbols.IValueVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -67,5 +69,13 @@ public class ValueVariableLocation implements IValueVariableLocation {
 
 	public void writeValue(int bytes, BigInteger value) throws CoreException {
 		throw EDCDebugger.newCoreException(SymbolsMessages.ValueVariableLocation_CannotModifyDerivedValue);
+	}
+
+	public IDMContext getContext() {
+		return null;
+	}
+
+	public DsfServicesTracker getServicesTracker() {
+		return null;
 	}
 }

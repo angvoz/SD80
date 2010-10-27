@@ -73,6 +73,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.P
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.CommonInformationEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.FrameDescriptionEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.BaseExecutableSymbolicsReader;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.UnmanglerEABI;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.UnmanglingException;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
@@ -152,6 +153,10 @@ public class DwarfInfoReader {
 	private DwarfFileHelper fileHelper;
 
 	private RangeList codeRanges;
+	
+	private ICPPBasicType voidType = null;
+	
+	private UnmanglerEABI unmangler = new UnmanglerEABI();
 
 	/**
 	 * Create a reader for the provider.  This constructor and any methods 
@@ -325,6 +330,16 @@ public class DwarfInfoReader {
 				AbbreviationEntry entry = abbrevs.get(new Long(code));
 				
 				if (entry != null && name.length() > 0) {
+					// if the name is mangled, demangle it
+					if (name.startsWith("_Z")) {
+						if (unmangler == null)
+							unmangler = new UnmanglerEABI();
+						try {
+							name = unmangler.unmangle(name);
+						} catch (UnmanglingException ue) {
+						}
+					}
+
 					String baseName = name;
 					int baseStart = name.lastIndexOf("::"); //$NON-NLS-1$
 					if (baseStart != -1)
@@ -2279,6 +2294,26 @@ public class DwarfInfoReader {
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 		
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+
+		// if the name is mangled, demangle it
+		if (name.startsWith("_Z")) {
+			if (unmangler == null)
+				unmangler = new UnmanglerEABI();
+			try {
+				name = unmangler.unmangle(name);
+			} catch (UnmanglingException ue) {
+			}
+		}
+		
+		// GCC may put the template parameter of an inherited class at the end of the name,
+		// so strip that off
+		// TODO: support template parameters at end of name or as separate DW_TAG_template_value_param
+		if (name.endsWith(">")) {
+			int templateStart = name.indexOf("<");
+			if (templateStart != -1)
+				name = name.substring(0, templateStart);
+		}
+
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
 
 		ClassType type = new ClassType(name, currentParentScope, byteSize, null);
@@ -2291,8 +2326,18 @@ public class DwarfInfoReader {
 	private void processStructType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
-		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
+		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+
+		// if the name is mangled, demangle it
+		if (name.startsWith("_Z")) {
+			if (unmangler == null)
+				unmangler = new UnmanglerEABI();
+			try {
+				name = unmangler.unmangle(name);
+			} catch (UnmanglingException ue) {
+			}
+		}
 
 		StructType type = new StructType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
@@ -2304,8 +2349,18 @@ public class DwarfInfoReader {
 	private void processUnionType(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
-		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
+		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+
+		// if the name is mangled, demangle it
+		if (name.startsWith("_Z")) {
+			if (unmangler == null)
+				unmangler = new UnmanglerEABI();
+			try {
+				name = unmangler.unmangle(name);
+			} catch (UnmanglingException ue) {
+			}
+		}
 
 		UnionType type = new UnionType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
@@ -2573,7 +2628,7 @@ public class DwarfInfoReader {
 			byteSize = currentCUHeader.addressSize;
 		
 		PointerType type = new PointerType(name, currentParentScope, byteSize, null);
-		type.setType(getTypeOrReference(attributeList, currentCUHeader));
+		type.setType(getTypeOrReferenceOrVoid(attributeList));
 		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
@@ -2583,7 +2638,7 @@ public class DwarfInfoReader {
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		ConstType type = new ConstType(currentParentScope, null);
-		type.setType(getTypeOrReference(attributeList, currentCUHeader));
+		type.setType(getTypeOrReferenceOrVoid(attributeList));
 		registerType(offset, type, hasChildren);
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
 	}
@@ -2592,9 +2647,26 @@ public class DwarfInfoReader {
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		VolatileType type = new VolatileType(currentParentScope, null);
-		type.setType(getTypeOrReference(attributeList, currentCUHeader));
+		type.setType(getTypeOrReferenceOrVoid(attributeList));
 		registerType(offset, type, hasChildren);
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(type); }
+	}
+	
+	// for void pointers, GCC will produce qualifiers and pointers without types or references,
+	// so create a void to be qualified or pointed to
+	private IType getTypeOrReferenceOrVoid(AttributeList attributeList) {
+		IType typeOrReference = getTypeOrReference(attributeList, currentCUHeader);
+		if (typeOrReference != null)
+			return typeOrReference;
+		
+		if (moduleScope != null && voidType == null) {
+			voidType = new CPPBasicType("void", moduleScope, IBasicType.t_void, 0, 0, null);
+		}
+
+		if (voidType != null)
+			return voidType;
+
+		return new CPPBasicType("void", currentParentScope, IBasicType.t_void, 0, 0, null);
 	}
 
 	private void processEnumType(long offset, AttributeList attributeList, boolean hasChildren) {
@@ -2641,6 +2713,16 @@ public class DwarfInfoReader {
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceEntry(offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+
+		// if the name is mangled, demangle it
+		if (name.startsWith("_Z")) {
+			if (unmangler == null)
+				unmangler = new UnmanglerEABI();
+			try {
+				name = unmangler.unmangle(name);
+			} catch (UnmanglingException ue) {
+			}
+		}
 
 		TypedefType type = new TypedefType(name, currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
@@ -2772,8 +2854,11 @@ public class DwarfInfoReader {
 		AttributeList otherAttributes = attributeList;
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		if (name.length() == 0) {
-			// no name. see if we can get it from the origin
-			DereferencedAttributes deref = getDereferencedAttributes(attributeList, DwarfConstants.DW_AT_abstract_origin); 
+			// no name.
+			// if there is a DW_AT_specification or DW_AT_abstract_origin attribute, use it to get variable attributes
+			DereferencedAttributes deref = getDereferencedAttributes(attributeList, DwarfConstants.DW_AT_specification);
+			if (deref == null)
+				deref = getDereferencedAttributes(attributeList, DwarfConstants.DW_AT_abstract_origin);
 			if (deref != null) {
 				// this should either have a name or point to another
 				// declaration
@@ -2782,11 +2867,32 @@ public class DwarfInfoReader {
 				name = otherAttributes.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 			}
 		}
-		
+
+		boolean global = (otherAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_external) == 1);
+
+		// if the name is mangled, demangle it
+		if (name.startsWith("_Z")) {
+			if (unmangler == null)
+				unmangler = new UnmanglerEABI();
+			try {
+				name = unmangler.unmangle(name);
+			} catch (UnmanglingException ue) {
+			}
+		} else if (global) {
+			// GCCE uses DW_AT_MIPS_linkage_name for the mangled name of an externally visible variable
+			String mangledName = otherAttributes.getAttributeValueAsString(DwarfConstants.DW_AT_MIPS_linkage_name);
+			if (mangledName.startsWith("_Z")) {
+				if (unmangler == null)
+					unmangler = new UnmanglerEABI();
+				try {
+					name = unmangler.unmangle(mangledName);
+				} catch (UnmanglingException ue) {
+				}
+			}
+		}
+
 		IType type = getTypeOrReference(otherAttributes.getAttribute(DwarfConstants.DW_AT_type), otherCU);
 		if (type != null) {
-			boolean global = (otherAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_external) == 1);
-
 			long startScope = attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_start_scope);
 			boolean isDeclared = otherAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_artificial) <= 0;
 			

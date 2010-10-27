@@ -87,7 +87,7 @@ public class EvaluateID extends SimpleInstruction {
 		IEDCModules modules = servicesTracker.getService(IEDCModules.class);
 
 		// check by name for a variable or enumerator
-		IVariableEnumeratorContext variableOrEnumerator = frame.findVariableOrEnumeratorByName(name, false);
+		IVariableEnumeratorContext variableOrEnumerator = frame.findVariableOrEnumeratorByName(name, qualifiedName != null ? qualifiedName.getRawSignature() : null, false);
 		VariableDMC variable = variableOrEnumerator instanceof VariableDMC ?
 									(VariableDMC)variableOrEnumerator : null;
 		EnumeratorDMC enumerator = variableOrEnumerator instanceof EnumeratorDMC ?

@@ -85,10 +85,10 @@ public class LocationExpression implements ILocationProvider {
 						break;
 						
 					case DwarfConstants.DW_OP_addr: /* Constant address. */
-						// this is not a runtime address
+						// this is a runtime address
 						long addrValue = DwarfInfoReader.readAddress(location, addressSize);
 						opStack[opStackPtr++] = new MemoryVariableLocation(tracker, context, 
-								BigInteger.valueOf(addrValue), false);
+								BigInteger.valueOf(addrValue), true);
 						break;
 
 					case DwarfConstants.DW_OP_deref: {

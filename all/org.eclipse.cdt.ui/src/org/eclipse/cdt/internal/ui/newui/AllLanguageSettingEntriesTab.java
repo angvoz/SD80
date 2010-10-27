@@ -431,7 +431,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 			});
 			
 			Preferences prefs = LanguageSettingsManager.getPreferences(page.getProject());
-			disableProvidersCheckBox.setSelection(prefs.getBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT));
+			disableProvidersCheckBox.setSelection(!prefs.getBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT));
 			
 		}
 		
@@ -443,7 +443,8 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		// TODO
 		// ImportExportWizardButtons.addWizardLaunchButtons(usercomp, page.getElement());
 
-		enableControls(!disableProvidersCheckBox.getSelection());
+		if (disableProvidersCheckBox!=null)
+			enableControls(!disableProvidersCheckBox.getSelection());
 	}
 
 	/**
@@ -967,7 +968,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	protected void performOK() {
 		if (page.isForProject() && disableProvidersCheckBox!=null) {
 			Preferences prefs = LanguageSettingsManager.getPreferences(page.getProject());
-			prefs.putBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, disableProvidersCheckBox.getSelection());
+			prefs.putBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, !disableProvidersCheckBox.getSelection());
 			try {
 				prefs.flush();
 			} catch (BackingStoreException e) {

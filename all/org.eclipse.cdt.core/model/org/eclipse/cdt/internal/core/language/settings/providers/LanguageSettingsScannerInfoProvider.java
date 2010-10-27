@@ -57,6 +57,9 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	private static final ExtendedScannerInfo DUMMY_SCANNER_INFO = new ExtendedScannerInfo();
 
 	public ExtendedScannerInfo getScannerInformation(IResource rc) {
+		// AG FIXME
+		LanguageSettingsLogger.logScannerInfoProvider(rc, this);
+		
 		IProject project = rc.getProject();
 		if (project==null)
 			return DUMMY_SCANNER_INFO;

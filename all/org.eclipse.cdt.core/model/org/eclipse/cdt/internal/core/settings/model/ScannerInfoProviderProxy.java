@@ -16,12 +16,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfoChangeListener;
 import org.eclipse.cdt.core.parser.IScannerInfoProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsScannerInfoProvider;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.osgi.service.prefs.Preferences;
 
 public class ScannerInfoProviderProxy extends AbstractCExtensionProxy implements IScannerInfoProvider, IScannerInfoChangeListener{
 	private Map<IProject, List<IScannerInfoChangeListener>> listeners;
@@ -33,6 +36,13 @@ public class ScannerInfoProviderProxy extends AbstractCExtensionProxy implements
 	}
 
 	public IScannerInfo getScannerInformation(IResource resource) {
+		Preferences pref = LanguageSettingsManager.getPreferences(getProject());
+		if (pref.getBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT)) {
+			LanguageSettingsScannerInfoProvider lsProvider = new LanguageSettingsScannerInfoProvider();
+			return lsProvider.getScannerInformation(resource);
+		}
+		
+		
 		providerRequested();
 		return fProvider.getScannerInformation(resource);
 	}

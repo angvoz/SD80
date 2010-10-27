@@ -2082,7 +2082,9 @@ public class PathEntryTranslator {
 		if(data instanceof CFolderData){
 			lDatas = ((CFolderData)data).getLanguageDatas();
 		} else if(data instanceof CFileData){
-			lDatas = new CLanguageData[] {((CFileData)data).getLanguageData()};
+			CLanguageData lData = ((CFileData)data).getLanguageData();
+			if (lData!=null)
+				lDatas = new CLanguageData[] {lData};
 		} else {
 			CCorePlugin.log("Unexpected type " + data.getClass().getName());
 		}

@@ -43,7 +43,10 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.debug.core.model.MemoryByte;
+import org.eclipse.tm.tcf.services.IMemory.MemoryError;
+
 
 public class ARMDisassembly extends Disassembly {
 
@@ -96,8 +99,6 @@ public class ARMDisassembly extends Disassembly {
 		if (memoryService == null) // could be null if async invoked as or after debug session ends
 			return;
 
-		int size = start.distanceTo(end).intValue() + 16;
-
 		final IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(context, IMemoryDMContext.class);
 
 		final List<RangeAndMode> fullRange;
@@ -117,8 +118,29 @@ public class ARMDisassembly extends Disassembly {
 			actualStart = start;
 		}
 
+		final int size = actualStart.distanceTo(end).intValue() + 16;
+		
 		memoryService.getMemory(mem_dmc, actualStart, 0, 1, size,
 								new DataRequestMonitor<MemoryByte[]>(getExecutor(),	drm) {
+			/**
+			 * overridden to create a non-error status plus pseudoInstruction data-set
+			 * in the DRM requested by DisassemblyBackendDsf, where a DRM.status of
+			 * ERROR is turned into an "invalid" block in its document map.  Such
+			 * blocks are repeatedly re-requested ... causing scrolling oddities & performance issues.
+			 * @see Disassembly#failedMemoryDsfPseudoInstructions
+			 */
+			@Override
+		    protected void handleError() {
+				IStatus s = getStatus();
+		    	Throwable e = s.getException();
+		    	if (e instanceof MemoryError && s.getMessage().contains("Fail to read memory.")) {
+					drm.setData(failedMemoryDsfPseudoInstructions(actualStart, size, s.getMessage()));
+					drm.done();
+				} else {
+					super.handleError();
+		        }
+		    }
+
 			@Override
 			protected void handleSuccess() {
 				List<MemoryByte> memBytes = Arrays.asList(getData());
@@ -143,17 +165,15 @@ public class ARMDisassembly extends Disassembly {
 
 				// for each range disassemble it
 				for (RangeAndMode rangeAndMode : fullRange) {
-					options.put(IDisassemblerOptionsARM.DISASSEMBLER_MODE,
-								rangeAndMode.isThumbMode() ? 2 : 1);
-
 					IAddress rStart = rangeAndMode.getStartAddress();
 					int rOff = actualStart.distanceTo(rStart).intValue();
 					int rLen = actualStart.distanceTo(rangeAndMode.getEndAddress()).intValue();
 					try {
 						result.addAll(
-						  fillDisassemblyViewInstructions(memBytes.subList(rOff, rLen),
-			  											  rStart, context,
-			  											  disassembler, options));
+						  fillDisassemblyViewInstructions(rangeAndMode.isThumbMode(),
+														  memBytes.subList(rOff, rLen),
+														  rStart, context,
+														  disassembler, options));
 					} catch (CoreException e) {
 						crm.setStatus(e.getStatus());
 					}
@@ -249,6 +269,43 @@ public class ARMDisassembly extends Disassembly {
 				}
 			});
 		}
+	}
+
+	/**
+	 * pseudo-override of {@link Disassembly#fillDisassemblyViewInstructions},
+	 * with the additional up-front boolean isThumbMode
+	 */
+	private ArrayList<IInstruction> fillDisassemblyViewInstructions(boolean isThumbMode,
+			final List<MemoryByte> memBytes,
+			final IAddress start, final IDisassemblyDMContext context,
+			final IDisassembler disassembler, Map<String, Object> options)
+			throws CoreException {
+		options.put(IDisassemblerOptionsARM.DISASSEMBLER_MODE, isThumbMode ? 2 : 1);
+
+		ArrayList<IInstruction> result
+		  = super.fillDisassemblyViewInstructions(memBytes, start, context, disassembler, options);
+
+		/*
+		 * nok.bz.12231: DSF-disassembly will occasionally request a block at a
+		 * location that has no symbols and happens to start at the 2nd byte of
+		 * the 2-byte BL/BLX ; this has only been observed when scrolling up or
+		 * jumping to a location, and in such a case, if we just throw the 1st
+		 * instruction away, the next scroll/jump will normally acquire a block
+		 * starting further away and properly disassemble the BL/BLX.
+		 * 
+		 * safety checks before throwing away an invalid opcode:
+		 * - only check if there are at least 2 instructions (thus preventing a
+		 *   loop when DSF-disassembly is forced to collect only 1 instruction)
+		 * - if 2nd instruction is not an invalid opcode (thus preventing a loop 
+		 *   of empty retrievals when a block contains only invalid instructions)
+		 */
+
+		if (isThumbMode && result.size() >= 2
+			&& result.get(0).getInstruction().contains(IDisassembler.INVALID_OPCODE)
+			&& !result.get(1).getInstruction().contains(IDisassembler.INVALID_OPCODE)) {
+			result.remove(0);
+		}
+		return result;
 	}
 
 	private static IAddress alignBack(IAddress addr, boolean thumbMode) {

@@ -24,8 +24,11 @@ import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsScannerInfoProvider;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.osgi.service.prefs.Preferences;
 
+/**
+ * TODO fProvider is going to be deprecated in favor of {@link LanguageSettingsScannerInfoProvider}.
+ *
+ */
 public class ScannerInfoProviderProxy extends AbstractCExtensionProxy implements IScannerInfoProvider, IScannerInfoChangeListener{
 	private Map<IProject, List<IScannerInfoChangeListener>> listeners;
 	private IScannerInfoProvider fProvider;
@@ -36,13 +39,11 @@ public class ScannerInfoProviderProxy extends AbstractCExtensionProxy implements
 	}
 
 	public IScannerInfo getScannerInformation(IResource resource) {
-		Preferences pref = LanguageSettingsManager.getPreferences(getProject());
-		if (pref.getBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT)) {
+		if (LanguageSettingsManager.isLanguageSettingsProvidersEnabled(getProject())) {
 			LanguageSettingsScannerInfoProvider lsProvider = new LanguageSettingsScannerInfoProvider();
 			return lsProvider.getScannerInformation(resource);
 		}
-		
-		
+		// Legacy logic
 		providerRequested();
 		return fProvider.getScannerInformation(resource);
 	}

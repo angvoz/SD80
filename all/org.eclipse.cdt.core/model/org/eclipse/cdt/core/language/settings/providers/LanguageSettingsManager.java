@@ -23,6 +23,7 @@ import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSetting
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.osgi.service.prefs.BackingStoreException;
 import org.osgi.service.prefs.Preferences;
 
 /**
@@ -116,13 +117,39 @@ public class LanguageSettingsManager {
 	}
 
 	/**
-	 * @return logging preferences for a given project or for the workspace.
-	 * @param project to get logging preferences for; or null for the workspace.
+	 * TODO
 	 */
-	public static Preferences getPreferences(IProject project) {
+	private static Preferences getPreferences(IProject project) {
 		if (project == null)
 			return new InstanceScope().getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);
 		else
 			return new LocalProjectScope(project).getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);
+	}
+
+	/**
+	 * @noreference This method is temporary and not intended to be referenced by clients.
+	 * 
+	 * @param project TODO
+	 * @return TODO
+	 */
+	public static boolean isLanguageSettingsProvidersEnabled(IProject project) {
+		Preferences pref = LanguageSettingsManager.getPreferences(project);
+		return pref.getBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT);
+	}
+	
+	/**
+	 * @noreference This method is temporary and not intended to be referenced by clients.
+	 * 
+	 * @param project TODO
+	 * @param value  TODO
+	 */
+	public static void setLanguageSettingsProvidersEnabled(IProject project, boolean value) {
+		Preferences pref = LanguageSettingsManager.getPreferences(project);
+		pref.putBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, value);
+		try {
+			pref.flush();
+		} catch (BackingStoreException e) {
+			CCorePlugin.log(e);
+		}
 	}
 }

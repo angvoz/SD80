@@ -43,8 +43,6 @@ import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
-import org.osgi.service.prefs.BackingStoreException;
-import org.osgi.service.prefs.Preferences;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
@@ -66,7 +64,6 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
-import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 
@@ -107,7 +104,7 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	private static final Comparator<Object> comp = CDTListComparator.getInstance();
 	private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
-	private Button disableProvidersCheckBox;
+	private Button enableProvidersCheckBox;
 
 
 	private class LanguageSettingsContributorsContentProvider implements ITreeContentProvider {
@@ -422,16 +419,15 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		});
 
 		if (page.isForProject()) {
-			disableProvidersCheckBox = setupCheck(usercomp, "Disable Language Settings Providers (revert to CDT 7.0 functionality)", 2, GridData.FILL_HORIZONTAL);
-			disableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
+			enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD80, 2, GridData.FILL_HORIZONTAL);
+			enableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
-					enableControls(!disableProvidersCheckBox.getSelection());
+					enableControls(enableProvidersCheckBox.getSelection());
 				}
 			});
 			
-			Preferences prefs = LanguageSettingsManager.getPreferences(page.getProject());
-			disableProvidersCheckBox.setSelection(!prefs.getBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT));
+			enableProvidersCheckBox.setSelection(LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject()));
 			
 		}
 		
@@ -443,8 +439,8 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 		// TODO
 		// ImportExportWizardButtons.addWizardLaunchButtons(usercomp, page.getElement());
 
-		if (disableProvidersCheckBox!=null)
-			enableControls(!disableProvidersCheckBox.getSelection());
+		if (enableProvidersCheckBox!=null)
+			enableControls(enableProvidersCheckBox.getSelection());
 	}
 
 	/**
@@ -966,14 +962,8 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 
 	@Override
 	protected void performOK() {
-		if (page.isForProject() && disableProvidersCheckBox!=null) {
-			Preferences prefs = LanguageSettingsManager.getPreferences(page.getProject());
-			prefs.putBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, !disableProvidersCheckBox.getSelection());
-			try {
-				prefs.flush();
-			} catch (BackingStoreException e) {
-				CUIPlugin.log(e);
-			}
+		if (page.isForProject() && enableProvidersCheckBox!=null) {
+			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
 		}
 		
 

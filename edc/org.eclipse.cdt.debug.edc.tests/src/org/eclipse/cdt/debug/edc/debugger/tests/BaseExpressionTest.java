@@ -38,9 +38,13 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 	protected IType signedCharType;
 	protected IType wcharType;
 	protected IType shortType;
-	protected IType signedShortType;
+	protected IType unsignedShortType;
 	protected IType intType;
+	protected IType unsignedIntType;
 	protected IType longType;
+	protected IType unsignedLongType;
+	protected IType longLongType;
+	protected IType unsignedLongLongType;
 	protected IType floatType;
 	protected IType doubleType;
 	protected IType longDoubleType;
@@ -62,16 +66,26 @@ public abstract class BaseExpressionTest extends SimpleDebuggerTest {
 		wcharType = typeEngine.getCharacterType(typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_WCHAR_T));
 
 		signedCharType = typeEngine.getBasicType(ICPPBasicType.t_char, ICPPBasicType.IS_SIGNED + ICPPBasicType.IS_SHORT, 
-				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_CHAR));
+				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_CHAR_SIGNED));
 
 		boolType = typeEngine.getBasicType(ICPPBasicType.t_bool, 0, typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_BOOL));
 		
 		shortType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_SIGNED + ICPPBasicType.IS_SHORT, 
 				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_SHORT));
+		unsignedShortType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_UNSIGNED + ICPPBasicType.IS_SHORT, 
+				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_SHORT_UNSIGNED));
 		intType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_SIGNED, 
 				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_INT));
+		unsignedIntType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_UNSIGNED, 
+				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_INT_UNSIGNED));
 		longType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_SIGNED + ICPPBasicType.IS_LONG, 
 				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_LONG));
+		unsignedLongType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_UNSIGNED + ICPPBasicType.IS_LONG, 
+				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_LONG_UNSIGNED));
+		longLongType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_SIGNED + ICPPBasicType.IS_LONG_LONG, 
+				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_LONG_LONG));
+		unsignedLongLongType = typeEngine.getBasicType(ICPPBasicType.t_int, ICPPBasicType.IS_UNSIGNED + ICPPBasicType.IS_LONG_LONG, 
+				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_LONG_LONG_UNSIGNED));
 		floatType = typeEngine.getBasicType(ICPPBasicType.t_float, 0, 
 				typeEngine.getTypeSize(TypeUtils.BASIC_TYPE_FLOAT));
 		doubleType = typeEngine.getBasicType(ICPPBasicType.t_double, 0, 

@@ -60,6 +60,120 @@ public class ExpressionsBasicTypes extends BaseExpressionTest {
 		checkExpr(doubleType, "234.567", "234.567"); // double
 		checkExpr(longDoubleType, "234.567", "234.567L"); // double
 		//checkExpr(doubleType, "234.567", "234.567"); // double
+		
+		// check types of decimal, hex and octal constants
+		checkExpr(intType, "1", "1"); // int
+		checkExpr(intType,              "2147483647", "2147483647");   // int
+		checkExpr(intType,              "-2147483647", "-2147483647"); // int
+		checkExpr(longLongType,         "2147483648", "2147483648");   // long long
+		checkExpr(longLongType,         "4294967295", "4294967295");   // long long
+		checkExpr(longLongType,        "-4294967296", "-4294967296");  // long long
+		checkExpr(longLongType,         "4294967295", "4294967295");   // long long
+		checkExpr(longLongType,         "4294967296", "4294967296");   // long long
+		checkExpr(unsignedIntType,      "2147483647", "2147483647u");  // unsigned int
+		checkExpr(unsignedIntType,      "4294967295", "4294967295u");  // unsigned int
+		checkExpr(unsignedLongLongType, "4294967296", "4294967296u");  // unsigned long long
+		checkExpr(unsignedIntType,      "4294967295", "4294967295U");  // unsigned int
+		checkExpr(unsignedLongLongType, "4294967296", "4294967296U");  // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "4294967295ul"); // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "4294967296ul"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "4294967295Ul"); // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "4294967296Ul"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "4294967295uL"); // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "4294967296uL"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "4294967295UL"); // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "4294967296UL"); // unsigned long long
+		checkExpr(longLongType,         "4294967296", "4294967296ll"); // long long
+		checkExpr(longLongType,         "4294967295", "4294967295LL"); // long long
+		checkExpr(longLongType,  "9223372036854775807",  "9223372036854775807");   // long long
+		checkExpr(longLongType,  "9223372036854775808",  "9223372036854775808");   // unsigned long long
+		checkExpr(longLongType, "18446744073709551615", "18446744073709551615");   // unsigned long long
+		checkExpr(longLongType,  "9223372036854775807",  "9223372036854775807ll"); // long long
+		checkExpr(longLongType,  "9223372036854775808",  "9223372036854775808ll"); // unsigned long long
+		checkExpr(longLongType, "18446744073709551615", "18446744073709551615ll"); // unsigned long long
+		checkExpr(longLongType,  "9223372036854775807",  "9223372036854775807LL"); // long long
+		checkExpr(longLongType,  "9223372036854775808",  "9223372036854775808LL"); // unsigned long long
+		checkExpr(longLongType, "18446744073709551615", "18446744073709551615LL"); // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775807",  "9223372036854775807ull"); // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808",  "9223372036854775808Ull"); // unsigned long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "18446744073709551615ull"); // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775807",  "9223372036854775807uLL"); // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808",  "9223372036854775808ULL"); // unsigned long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "18446744073709551615uLL"); // unsigned long long
+		
+		checkExpr(intType,              "2147483647", "0x7fffffff");    // int
+		checkExpr(unsignedIntType,      "2147483648", "0x80000000");    // unsigned int
+		checkExpr(unsignedIntType,      "4294967295", "0xffffffff");    // unsigned int
+		checkExpr(longLongType,         "4294967296", "0x100000000");   // long long
+		checkExpr(unsignedIntType,      "4294967295", "0xffffffffu");   // unsigned int
+		checkExpr(unsignedLongLongType, "4294967296", "0x100000000u");  // unsigned long long
+		checkExpr(unsignedIntType,      "4294967295", "0xffffffffU");   // unsigned int
+		checkExpr(unsignedLongLongType, "4294967296", "0x100000000U");  // unsigned long long
+		checkExpr(longType,             "2147483647", "0x7fffffffl");   // long
+		checkExpr(unsignedLongType,     "2147483648", "0x80000000l");   // unsigned long
+		checkExpr(unsignedLongType,     "4294967295", "0xffffffffl");   // unsigned long
+		checkExpr(longLongType,         "4294967296", "0x100000000l");  // long long
+		checkExpr(longType,             "2147483647", "0x7fffffffL");   // long
+		checkExpr(unsignedLongType,     "2147483648", "0x80000000L");   // unsigned long
+		checkExpr(unsignedLongType,     "4294967295", "0xffffffffL");   // unsigned long
+		checkExpr(longLongType,         "4294967296", "0x100000000L");  // long long
+		checkExpr(unsignedLongType,     "4294967295", "0xfffffffful");  // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "0x100000000ul"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "0xffffffffUl");  // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "0x100000000Ul"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "0xffffffffuL");  // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "0x100000000uL"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "0xffffffffUL");  // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "0x100000000UL"); // unsigned long long
+		checkExpr(longLongType,          "9223372036854775807", "0x7fffffffffffffffll");  // long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808", "0x8000000000000000ll");  // long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "0xffffffffffffffffll");  // unsigned long long
+		checkExpr(longLongType,          "9223372036854775807", "0x7fffffffffffffffLL");  // long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808", "0x8000000000000000LL");  // long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "0xffffffffffffffffLL");  // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775807", "0x7fffffffffffffffUll"); // long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808", "0x8000000000000000ull"); // long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "0xffffffffffffffffUll"); // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775807", "0x7fffffffffffffffuLL"); // long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808", "0x8000000000000000ULL"); // long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "0xffffffffffffffffuLL"); // unsigned long long
+
+		checkExpr(intType,              "2147483647", "017777777777");   // int
+		checkExpr(unsignedIntType,      "2147483648", "020000000000");   // unsigned int
+		checkExpr(unsignedIntType,      "4294967295", "037777777777");   // unsigned int
+		checkExpr(longLongType,         "4294967296", "040000000000");   // long long
+		checkExpr(unsignedIntType,      "4294967295", "037777777777u");  // unsigned int
+		checkExpr(unsignedLongLongType, "4294967296", "040000000000u");  // unsigned long long
+		checkExpr(unsignedIntType,      "4294967295", "037777777777U");  // unsigned int
+		checkExpr(unsignedLongLongType, "4294967296", "040000000000U");  // unsigned long long
+		checkExpr(longType,             "2147483647", "017777777777l");  // long
+		checkExpr(unsignedLongType,     "2147483648", "020000000000l");  // unsigned long
+		checkExpr(unsignedLongType,     "4294967295", "037777777777l");  // unsigned long
+		checkExpr(longLongType,         "4294967296", "040000000000l");  // long long
+		checkExpr(longType,             "2147483647", "017777777777L");  // long
+		checkExpr(unsignedLongType,     "2147483648", "020000000000L");  // unsigned long
+		checkExpr(unsignedLongType,     "4294967295", "037777777777L");  // unsigned long
+		checkExpr(longLongType,         "4294967296", "040000000000L");  // long long
+		checkExpr(unsignedLongType,     "4294967295", "037777777777ul"); // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "040000000000ul"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "037777777777Ul"); // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "040000000000Ul"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "037777777777uL"); // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "040000000000uL"); // unsigned long long
+		checkExpr(unsignedLongType,     "4294967295", "037777777777UL"); // unsigned long
+		checkExpr(unsignedLongLongType, "4294967296", "040000000000UL"); // unsigned long long
+		checkExpr(longLongType,          "9223372036854775807",  "0777777777777777777777ll");  // long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808", "01000000000000000000000ll");  // unsigned long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "01777777777777777777777ll");  // unsigned long long
+		checkExpr(longLongType,          "9223372036854775807",  "0777777777777777777777LL");  // long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808", "01000000000000000000000LL");  // unsigned long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "01777777777777777777777LL");  // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775807",  "0777777777777777777777Ull"); // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808", "01000000000000000000000Ull"); // unsigned long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "01777777777777777777777ull"); // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775807",  "0777777777777777777777uLL"); // unsigned long long
+		checkExpr(unsignedLongLongType,  "9223372036854775808", "01000000000000000000000uLL"); // unsigned long long
+		checkExpr(unsignedLongLongType, "18446744073709551615", "01777777777777777777777ULL"); // unsigned long long
 
 		// logical operations
 

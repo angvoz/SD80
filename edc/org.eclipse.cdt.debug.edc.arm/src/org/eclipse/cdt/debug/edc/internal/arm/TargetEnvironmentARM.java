@@ -311,10 +311,16 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 		if (this.basicTypeSizes == null) {
 			this.basicTypeSizes = new HashMap<Integer, Integer>();
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_CHAR, 1);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_CHAR_SIGNED, 1);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_CHAR_UNSIGNED, 1);
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_SHORT, 2);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_SHORT_UNSIGNED, 2);
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_INT, 4);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_INT_UNSIGNED, 4);
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_LONG, 4);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_LONG_UNSIGNED, 4);
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_LONG_LONG, 8);
+			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_LONG_LONG_UNSIGNED, 8);
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_FLOAT, 4);
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_FLOAT_COMPLEX, 8);
 			this.basicTypeSizes.put(TypeUtils.BASIC_TYPE_DOUBLE, 8);

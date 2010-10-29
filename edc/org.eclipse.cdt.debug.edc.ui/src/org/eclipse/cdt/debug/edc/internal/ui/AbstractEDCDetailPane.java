@@ -15,13 +15,19 @@ import org.eclipse.cdt.dsf.debug.ui.viewmodel.variable.SyncVariableDataAccess;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.commands.operations.IUndoContext;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.debug.internal.ui.actions.variables.details.DetailPaneAssignValueAction;
+import org.eclipse.debug.internal.ui.DebugUIPlugin;
+import org.eclipse.debug.internal.ui.actions.ActionMessages;
 import org.eclipse.debug.internal.ui.actions.variables.details.DetailPaneMaxLengthAction;
 import org.eclipse.debug.internal.ui.actions.variables.details.DetailPaneWordWrapAction;
 import org.eclipse.debug.internal.ui.preferences.IDebugPreferenceConstants;
+import org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerUpdate;
+import org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerUpdateListener;
+import org.eclipse.debug.internal.ui.viewers.model.provisional.TreeModelViewer;
+import org.eclipse.debug.internal.ui.views.variables.VariablesView;
 import org.eclipse.debug.internal.ui.views.variables.details.AbstractDetailPane;
 import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.debug.ui.IDebugView;
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
@@ -44,14 +50,17 @@ import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.FocusAdapter;
 import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IWorkbenchCommandConstants;
+import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.console.actions.TextViewerAction;
@@ -60,10 +69,52 @@ import org.eclipse.ui.operations.RedoActionHandler;
 import org.eclipse.ui.operations.UndoActionHandler;
 import org.eclipse.ui.texteditor.IAbstractTextEditorHelpContextIds;
 import org.eclipse.ui.texteditor.ITextEditorActionConstants;
+import org.osgi.service.prefs.BackingStoreException;
 
 @SuppressWarnings("restriction")
-public abstract class AbstractEDCDetailPane extends AbstractDetailPane implements IPropertyChangeListener {
-	
+public abstract class AbstractEDCDetailPane extends AbstractDetailPane implements IPropertyChangeListener, IViewerUpdateListener {
+
+	public class SetValueAction  extends Action {
+
+		public SetValueAction() {
+			super();
+			setText("Set Value");
+		}
+
+		@Override
+		public void run() {
+			Point selectedRange = viewer.getSelectedRange();
+			String value = null;
+			if (selectedRange.y == 0) {
+				value = viewer.getDocument().get();
+			} else {
+				try {
+					value = viewer.getDocument().get(selectedRange.x, selectedRange.y);
+				} catch (BadLocationException e) {
+					EDCDebugUI.logError(null, e);
+				}
+			}
+			
+			setValue((IStructuredSelection) currentSelection, value);
+		}
+		
+		private void setValue(IStructuredSelection selection, String value) {
+			Job setValueJob = createSetValueJob(selection, value);
+			if (setValueJob != null)
+				setValueJob.schedule();
+		}
+
+		@Override
+		public boolean isEnabled() {
+			return isEditingEnabled(currentSelection);
+		}
+		
+		@Override
+		public String getActionDefinitionId() {
+			return IWorkbenchCommandConstants.FILE_SAVE;
+		}
+	}
+
 	protected static final String COPY_ACTION = ActionFactory.COPY.getId();
 	protected static final String CUT_ACTION = ActionFactory.CUT.getId();
 	protected static final String PASTE_ACTION = ActionFactory.PASTE.getId();
@@ -71,7 +122,7 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 	protected static final String WORD_WRAP_ACTION = IDebugPreferenceConstants.PREF_DETAIL_PANE_WORD_WRAP;
 	protected static final String SET_VALUE_ACTION = "setValue"; //$NON-NLS-1$
 	protected static final String MAX_LENGTH_ACTION = IDebugUIConstants.PREF_MAX_DETAIL_LENGTH;
-
+	
 	protected SourceViewer viewer;
 	protected Document document;
 	protected IStructuredSelection currentSelection = StructuredSelection.EMPTY;
@@ -106,7 +157,7 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 			hookViewer();
 			createContextMenu();
 			createActions();
-			EDCDebugUI.getDefault().getPreferenceStore().addPropertyChangeListener(this);
+			DebugUIPlugin.getDefault().getPreferenceStore().addPropertyChangeListener(this);
 			JFaceResources.getFontRegistry().addListener(this);
 		}
 		
@@ -157,7 +208,9 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 	}
 	
 	public void redisplay() {
-		display(currentSelection);
+		IStructuredSelection reset = currentSelection;
+		currentSelection = null;	// forces redisplay
+		display(reset);
 	}
 
 	private void clearSourceViewer() {
@@ -213,6 +266,14 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 				
 			}
 		});
+
+		// listen for changes to items in the variable view
+		IWorkbenchPart part = getWorkbenchPartSite().getPart();
+		if (part instanceof VariablesView) {
+			Viewer variablesViewer = ((VariablesView)part).getViewer();
+			if (variablesViewer instanceof TreeModelViewer)
+				((TreeModelViewer)variablesViewer).addViewerUpdateListener(this);
+		}
 	}
 
 	protected void createContextMenu() {
@@ -227,7 +288,6 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		viewer.getTextWidget().setMenu(menu);
 	
 		getViewSite().registerContextMenu(IDebugUIConstants.VARIABLE_VIEW_DETAIL_ID, menuMgr, viewer.getSelectionProvider());
-	
 	}
 
 	protected void fillContextMenu(IMenuManager menu) {
@@ -237,6 +297,7 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		menu.add(getAction(PASTE_ACTION));
 		menu.add(getAction(SELECT_ALL_ACTION));
 		menu.add(new Separator());
+		menu.add(getAction(SET_VALUE_ACTION));
 		menu.add(getAction(WORD_WRAP_ACTION));
 		menu.add(getAction(MAX_LENGTH_ACTION));
 	}
@@ -266,9 +327,10 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		setSelectionDependantAction(CUT_ACTION);
 		updateSelectionDependentActions();
 
+		setAction(SET_VALUE_ACTION,  new SetValueAction());
+
 		setAction(WORD_WRAP_ACTION,  new DetailPaneWordWrapAction(viewer));
 		setAction(MAX_LENGTH_ACTION, new DetailPaneMaxLengthAction(viewer.getControl().getShell()));
-		setAction(SET_VALUE_ACTION,  new DetailPaneAssignValueAction(viewer, getViewSite()));
 
 		createUndoRedoActions();
 	}
@@ -281,12 +343,12 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 			viewer.getTextWidget().setWordWrap(getWordWrapPreference());
 			getAction(WORD_WRAP_ACTION).setChecked(getWordWrapPreference());
 		} else if (propertyName.equals(MAX_LENGTH_ACTION)) {
-			viewer.getTextWidget().redraw();
+			redisplay();
 		}
 	}
 
 	private boolean getWordWrapPreference() {
-		return EDCDebugUI.getDefault().getPreferenceStore().getBoolean(WORD_WRAP_ACTION);
+		return DebugUIPlugin.getDefault().getPreferenceStore().getBoolean(WORD_WRAP_ACTION);
 	}
 
 	protected boolean isEditingEnabled(IStructuredSelection selection) {
@@ -299,9 +361,17 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 		if (viewer != null && viewer.getControl() != null) viewer.getControl().dispose();
 		
 		if (isInView()){
-			EDCDebugUI.getDefault().getPreferenceStore().removePropertyChangeListener(this);
+			// the listener to changes in the VariablesView
+			IWorkbenchPart part = getWorkbenchPartSite().getPart();
+			if (part instanceof VariablesView) {
+				Viewer viewer = ((VariablesView)part).getViewer();
+				if (part instanceof TreeModelViewer)
+					((TreeModelViewer)viewer).removeViewerUpdateListener(this);
+			}
+
+			DebugUIPlugin.getDefault().getPreferenceStore().removePropertyChangeListener(this);
 			JFaceResources.getFontRegistry().removeListener(this);
-			
+
 			disposeUndoRedoAction(ITextEditorActionConstants.UNDO);
 			disposeUndoRedoAction(ITextEditorActionConstants.REDO);
 		}
@@ -352,5 +422,34 @@ public abstract class AbstractEDCDetailPane extends AbstractDetailPane implement
 	protected static SyncVariableDataAccess createSyncVariableDataAccess(IFormattedDataDMContext context) {
 		DsfSession session = DsfSession.getSession(context.getSessionId());
 		return new SyncVariableDataAccess(session);
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.debug.internal.ui.viewers.model.provisional.viewers.IViewerUpdateListener#updateStarted(org.eclipse.debug.internal.ui.viewers.provisional.IAsynchronousRequestMonitor)
+	 */
+	public void updateStarted(IViewerUpdate update) {
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.debug.internal.ui.viewers.model.provisional.viewers.IViewerUpdateListener#updateComplete(org.eclipse.debug.internal.ui.viewers.provisional.IAsynchronousRequestMonitor)
+	 */
+	public void updateComplete(IViewerUpdate update) {
+//		IStatus status = update.getStatus();
+//		if (!update.isCanceled()
+//				&& (status == null || status.isOK())
+//				&& update.getElement().equals(currentSelection.getFirstElement()))
+//			redisplay();
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.debug.internal.ui.viewers.model.provisional.viewers.IViewerUpdateListener#viewerUpdatesBegin()
+	 */
+	public synchronized void viewerUpdatesBegin() {}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.debug.internal.ui.viewers.model.provisional.viewers.IViewerUpdateListener#viewerUpdatesComplete()
+	 */
+	public synchronized void viewerUpdatesComplete() {
+		redisplay();
 	}
 }

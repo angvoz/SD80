@@ -24,7 +24,10 @@ public class WindowsAdapterFactory extends EDCAdapterFactory {
 					if (element != null && element instanceof WindowsLaunch)
 					{
 						WindowsLaunch wLaunch = (WindowsLaunch) element;
-						iLabelUpdate.setLabel(wLaunch.getDescription(), 0);
+						String description = wLaunch.getDescription();
+						if (wLaunch.isTerminated())
+							description = "<terminated>" + wLaunch.getDescription();
+						iLabelUpdate.setLabel(description, 0);
 						iLabelUpdate.setImageDescriptor(LAUNCH_NODE_IMGDESC, 0);
 					}
 					iLabelUpdate.done();

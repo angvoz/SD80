@@ -40,8 +40,8 @@ public class ExpressionsCasting extends BaseExpressionTest {
 		checkExpr(signedCharType, "98 ('b')", "(signed char) 98");
 		checkExpr(wcharType, "0x3039 (L'\u3039')", "(wchar_t) 0x3039");
 		checkExpr(signedCharType, "1 ('\\001')", "(char)0x10001"); 
-		checkExpr(signedShortType, "1", "(short)0x10001"); 
-		checkExpr(signedShortType, "-1", "(short)(signed char)0xff"); 
+		checkExpr(shortType, "1", "(short)0x10001"); 
+		checkExpr(shortType, "-1", "(short)(signed char)0xff"); 
 		
 		// cast of value is just a cast
 		checkExpr(floatType, "1.42606336E9", "(float)0x55000000");

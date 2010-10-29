@@ -575,6 +575,9 @@ abstract public class EDCLaunch extends DsfLaunch {
 		return results.toArray(new EDCLaunch[results.size()]);
 	}
 
+	/**
+	 * @since 2.0
+	 */
 	@Override
 	public ILaunchConfiguration getLaunchConfiguration() {
 		if (activeLaunchConfiguration == null)

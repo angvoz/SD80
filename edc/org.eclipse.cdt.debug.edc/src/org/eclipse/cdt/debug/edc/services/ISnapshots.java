@@ -10,6 +10,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.services;
 
-public interface ISnapshots {
+import org.eclipse.cdt.dsf.service.IDsfService;
+
+public interface ISnapshots extends IDsfService {
 
 }

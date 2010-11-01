@@ -2596,7 +2596,7 @@ public class DwarfInfoReader {
 		IArrayType array = getArrayParent();
 		if (array == null)
 			throw new IllegalStateException();
-		((IArrayType) array).addBound(type);
+		array.addBound(type);
 
 		registerType(offset, type, hasChildren);
 		
@@ -2703,8 +2703,8 @@ public class DwarfInfoReader {
 		Enumeration enumeration = getEnumerationParent();
 		if (enumeration == null)
 			throw new IllegalStateException();
-		((Enumeration) enumeration).addEnumerator(enumerator);
-		((Scope)((Enumeration) enumeration).getScope()).addEnumerator(enumerator);
+		enumeration.addEnumerator(enumerator);
+		((Scope)enumeration.getScope()).addEnumerator(enumerator);
 
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.traceExit(enumerator); }
 	}

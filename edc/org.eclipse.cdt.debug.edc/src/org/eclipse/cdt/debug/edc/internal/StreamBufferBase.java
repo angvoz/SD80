@@ -141,7 +141,7 @@ public abstract class StreamBufferBase implements IStreamBuffer {
 			
 			int left = (int) Math.min(sourceLimit - position, length);
 			if (left > 0) {
-				System.arraycopy(buffer, (int) (position - sourceOffset), dst, (int) offset, left);
+				System.arraycopy(buffer, (int) (position - sourceOffset), dst, offset, left);
 				offset += left;
 				position += left;
 				length -= left;

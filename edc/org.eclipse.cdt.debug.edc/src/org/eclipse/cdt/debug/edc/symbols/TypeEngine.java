@@ -396,9 +396,6 @@ public class TypeEngine {
 				// fall through to check type != null 
 			}
 		}
-// Asked Ed to check this pointless (always true) check		
-//		} else if (declSpec instanceof IASTDeclSpecifier) {
-//		}
 		
 		if (type == null) {
 			throw EDCDebugger.newCoreException(SymbolsMessages.TypeEngine_CannotResolveType + typeSignature);

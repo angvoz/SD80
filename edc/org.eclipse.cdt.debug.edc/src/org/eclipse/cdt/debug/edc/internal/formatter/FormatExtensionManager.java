@@ -185,7 +185,7 @@ public class FormatExtensionManager implements IVariableFormatManager {
 
 	public String[] getVariableFormatProviderIds() {
 		Set<String> keySet = formatProviders.keySet();
-		return (String[]) keySet.toArray(new String[keySet.size()]);
+		return keySet.toArray(new String[keySet.size()]);
 	}
 	
 	public String getFormatProviderLabel(String id) {

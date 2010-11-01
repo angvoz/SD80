@@ -463,7 +463,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	public ILineEntry getLineEntryAtAddress(IAddress linkAddress, boolean collapseInlineFunctions) {
 		// scanning files can introduce new file providers; avoid ConcurrentModificationException
 		if (fileProviderArray == null) {
-			fileProviderArray = (FileLineEntryProvider[]) fileProviders.toArray(new FileLineEntryProvider[fileProviders.size()]);
+			fileProviderArray = fileProviders.toArray(new FileLineEntryProvider[fileProviders.size()]);
 		}
 		for (FileLineEntryProvider provider : fileProviderArray) {
 			// Narrow down the search to avoid iterating potentially hundreds of duplicates of the same file 
@@ -535,8 +535,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			return null;
 		
 		// possible concurrent access if we read new files while searching
-		FileLineEntryProvider[] matchArray = (FileLineEntryProvider[]) matches
-				.toArray(new FileLineEntryProvider[matches.size()]);
+		FileLineEntryProvider[] matchArray = matches.toArray(new FileLineEntryProvider[matches.size()]);
 		
 		for (FileLineEntryProvider provider : matchArray) {
 			// Narrow down the search to avoid iterating potentially hundreds of duplicates of the same file 

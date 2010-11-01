@@ -130,7 +130,7 @@ public class DefaultCompositeFormatter implements IVariableFormatProvider {
 		}
 
 		private void addSimpleChild(String prefix, StringBuilder sb, IEDCExpression childExpression) {
-			IExpressions expressions = ((IEDCExpression) childExpression).getServiceTracker().getService(IExpressions.class);
+			IExpressions expressions = childExpression.getServiceTracker().getService(IExpressions.class);
 			if (expressions == null)
 				return;
 			

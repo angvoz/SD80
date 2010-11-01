@@ -208,7 +208,7 @@ public class ZipFileUtils {
 		ZipFile zipFile = new ZipFile(zipFileName);
 		Enumeration<? extends ZipEntry> zipEntries = zipFile.entries();
 		while (zipEntries.hasMoreElements()) {
-			zipContents.add(((ZipEntry) zipEntries.nextElement()));
+			zipContents.add(zipEntries.nextElement());
 		}
 		
 		return zipContents;

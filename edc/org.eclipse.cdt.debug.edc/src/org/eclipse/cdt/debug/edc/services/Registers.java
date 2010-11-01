@@ -103,7 +103,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		public RegisterGroupDMC(Registers service, IEDCExecutionDMC executionDmc,
 								Map<String, Object> props) {
 			super(service, new IDMContext[] { executionDmc }, props);
-			exeContext = (IEDCExecutionDMC) executionDmc;
+			exeContext = executionDmc;
 			properties.put(PROP_EXECUTION_CONTEXT_ID, exeContext.getID());
 		}
 

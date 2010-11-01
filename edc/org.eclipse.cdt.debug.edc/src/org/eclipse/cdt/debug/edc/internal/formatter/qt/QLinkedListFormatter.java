@@ -104,7 +104,7 @@ public class QLinkedListFormatter implements IVariableFormatProvider {
 		private List<IEDCExpression> getElementsFromListHead(IExpressions expressions, IEDCExpression listHead) throws CoreException {
 			FormatUtils.evaluateExpression(listHead);
 			int listHeadValue = listHead.getEvaluatedValue().intValue();
-			IFrameDMContext frame = ((IEDCExpression) listHead).getFrame();
+			IFrameDMContext frame = listHead.getFrame();
 			String templateTypeName = FormatUtils.getTemplateTypeName(TYPE_NAME, type);
 			List<IEDCExpression> elements = new ArrayList<IEDCExpression>();
 			IEDCExpression nextNode = getNextNode(expressions, frame, templateTypeName, listHead);

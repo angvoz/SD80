@@ -1025,8 +1025,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				}
 			}
 
-			return (IEDCExpression[]) arrayChildren
-					.toArray(new IEDCExpression[arrayChildren.size()]);
+			return arrayChildren.toArray(new IEDCExpression[arrayChildren.size()]);
 		} 
 		
 		if (exprType instanceof IPointerType) {
@@ -1195,7 +1194,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			exprList.add(expr);
 		}
 
-		return (IEDCExpression[]) exprList.toArray(new IEDCExpression[exprList.size()]);
+		return exprList.toArray(new IEDCExpression[exprList.size()]);
 	}
 
 	@Immutable

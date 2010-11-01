@@ -75,20 +75,17 @@ public class TypeUtils {
 
 	// return the type with no typedefs, consts, or volatiles
 	public static IType getStrippedType(IType type) {
-		if (!(type instanceof IType))
-			return null;
-
 		if (type instanceof IForwardTypeReference)
 			type = ((IForwardTypeReference) type).getReferencedType();
 		
 		while (type instanceof ITypedef || type instanceof IQualifierType) {
-			type = ((IType) type).getType();
+			type = type.getType();
 			
 			if (type instanceof IForwardTypeReference)
 				type = ((IForwardTypeReference) type).getReferencedType();
 		}
 
-		return (IType) type;
+		return type;
 	}
 
 	/**
@@ -96,20 +93,17 @@ public class TypeUtils {
 	 * @since 2.0
 	 */
 	public static IType getUnRefStrippedType(IType type) {
-		if (!(type instanceof IType))
-			return null;
-
 		if (type instanceof IForwardTypeReference)
 			type = ((IForwardTypeReference) type).getReferencedType();
 		
 		while (type instanceof ITypedef || type instanceof IQualifierType || type instanceof IReferenceType) {
-			type = ((IType) type).getType();
+			type = type.getType();
 			
 			if (type instanceof IForwardTypeReference)
 				type = ((IForwardTypeReference) type).getReferencedType();
 		}
 
-		return (IType) type;
+		return type;
 	}
 	
 	// return base type with no typedefs, consts, volatiles, or pointer types
@@ -136,21 +130,18 @@ public class TypeUtils {
 
 	// return base type with no consts, volatiles, pointer types, or array types - but preserving typedefs
 	public static IType getBaseTypePreservingTypedef(IType type) {
-		if (!(type instanceof IType))
-			return null;
-
 		if (type instanceof IForwardTypeReference)
 			type = ((IForwardTypeReference) type).getReferencedType();
 		
 		while (type instanceof IQualifierType 
 				|| type instanceof IPointerType || type instanceof IArrayType) {
-			type = ((IType) type).getType();
+			type = type.getType();
 			
 			if (type instanceof IForwardTypeReference)
 				type = ((IForwardTypeReference) type).getReferencedType();
 		}
 		
-		return (IType) type;
+		return type;
 	}
 
 	// shift, mask, and extend an extracted bit-field

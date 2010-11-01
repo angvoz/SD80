@@ -116,7 +116,7 @@ public class Disassembly extends AbstractEDCService implements IDisassembly {
 			// check each byte
 			if (!memBytes[i].isReadable()) {
 				rm.setStatus(statusCannotReadMemory(start.add(i).toHexAddressString(), 
-													((Integer)(memBytes.length-i))));
+													memBytes.length-i));
 				rm.done();
 				return null;
 			}

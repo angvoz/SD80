@@ -135,7 +135,7 @@ public class EDCInstruction extends AbstractInstruction {
 	 * @since 2.0
 	 */
 	public Integer getSize() {
-		return (Integer)instruction.getSize();
+		return instruction.getSize();
 	}
 	
 	@Override

@@ -264,7 +264,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			switch (actualForm) {
 			case DwarfConstants.DW_FORM_addr:
 			case DwarfConstants.DW_FORM_ref_addr:
-				obj = (Long) DwarfInfoReader.readAddress(in, addressSize);
+				obj = DwarfInfoReader.readAddress(in, addressSize);
 				break;
 
 			case DwarfConstants.DW_FORM_block: {
@@ -394,7 +394,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		 */
 		public static void skipAttributeValue(short form, IStreamBuffer in,
 				byte addressSize) throws IOException {
-			switch ((int) form) {
+			switch (form) {
 			case DwarfConstants.DW_FORM_addr:
 			case DwarfConstants.DW_FORM_ref_addr:
 				in.position(in.position() + addressSize);
@@ -1110,10 +1110,10 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 				DwarfInfoReader reader = new DwarfInfoReader(this);
 				reader.quickParseDebugInfo(monitor);
 				assert referencedFiles.size() > 0;
-				EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) new HashSet<String>(referencedFiles), symbolFileLastModified);
+				EDCDebugger.getDefault().getCache().putCachedData(cacheKey, new HashSet<String>(referencedFiles), symbolFileLastModified);
 			}
 			else
-				referencedFiles = (Set<String>) cachedFiles;
+				referencedFiles = cachedFiles;
 		}
 
 		return referencedFiles.toArray(new String[referencedFiles.size()]);

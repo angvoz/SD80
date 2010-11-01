@@ -106,7 +106,7 @@ public class QMapFormatter implements IVariableFormatProvider {
 		private List<IEDCExpression> getElementsFromMapHead(IExpressions expressions, IEDCExpression listHead, int size) throws CoreException {
 			FormatUtils.evaluateExpression(listHead);
 			int listHeadValue = listHead.getEvaluatedValue().intValue();
-			IFrameDMContext frame = ((IEDCExpression) listHead).getFrame();
+			IFrameDMContext frame = listHead.getFrame();
 			String templateArgs = FormatUtils.getTemplateTypeName(TYPE_NAME, type);
 			int keyValueSize = getKeyAndValueSize(expressions, frame, templateArgs, listHeadValue);
 			List<IEDCExpression> elements = new ArrayList<IEDCExpression>();

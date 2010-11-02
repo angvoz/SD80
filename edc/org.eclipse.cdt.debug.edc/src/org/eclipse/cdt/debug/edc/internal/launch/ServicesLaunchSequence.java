@@ -117,7 +117,7 @@ public class ServicesLaunchSequence extends Sequence {
 	new Step() {
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
-			ISourceLookupDMContext sourceLookupDmc = (ISourceLookupDMContext) (runControlService.getRootDMC());
+			ISourceLookupDMContext sourceLookupDmc = runControlService.getRootDMC();
 			sourceLookup.addSourceLookupDirector(sourceLookupDmc, (CSourceLookupDirector) launch.getSourceLocator());
 			requestMonitor.done();
 		}

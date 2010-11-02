@@ -36,6 +36,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
@@ -256,19 +257,59 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 	        		// The launch may be in the process of terminating. Test for that but
 	        		// first synchronize around the launch so it can't begin termination
 	        		// while we are checking here.
-	        		synchronized (edcLaunch)
+
+	        		if (DsfSession.isSessionActive(edcLaunch.getSession().getId())
+	        				&& isSameTarget(edcLaunch, configuration, mode))
 	        		{
-		        		if (!edcLaunch.isTerminating() && DsfSession.isSessionActive(edcLaunch.getSession().getId())
-		        				&& isSameTarget(edcLaunch, configuration, mode))
+	        			if (edcLaunch.isTerminating())
+	        				this.waitForLaunchToTerminate(edcLaunch);
+		        		synchronized (edcLaunch)
 		        		{
-		        			edcLaunch.setLaunching(true);
-		        			return edcLaunch;
+		        			if (!edcLaunch.isTerminating())
+		        			{
+			        			edcLaunch.setLaunching(true);
+			        			return edcLaunch;
+		        			}
 		        		}
 	        		}
 	         	}
 			}
 		}
 		return null;
+	}
+
+	private void waitForLaunchToTerminate(final EDCLaunch edcLaunch) {
+
+		Job waitForTerminate = new Job("Waiting for " + edcLaunch.getDescription() + " to terminate") {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				monitor.beginTask("Waiting for termination",
+						IProgressMonitor.UNKNOWN);
+				try {
+					while (!edcLaunch.isTerminated()) {
+						Thread.sleep(500);
+						if (monitor.isCanceled())
+							return Status.CANCEL_STATUS;
+						monitor.worked(1);
+					}
+				} catch (InterruptedException e) {
+					EDCDebugger.getMessageLogger().logError(null, e);
+				}
+				finally {
+					monitor.done();
+				}
+
+				return Status.OK_STATUS;
+			}
+		};
+
+		waitForTerminate.schedule();
+		try {
+			waitForTerminate.join();
+		} catch (InterruptedException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
 	}
 
 	abstract public String getDebugModelID();

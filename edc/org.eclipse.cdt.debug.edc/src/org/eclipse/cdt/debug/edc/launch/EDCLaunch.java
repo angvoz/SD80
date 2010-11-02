@@ -322,11 +322,10 @@ abstract public class EDCLaunch extends DsfLaunch {
 	 */
 	@ConfinedToDsfExecutor("getSession().getExecutor()")
 	public void shutdownSession(final RequestMonitor rm) {		
-		if (shutDown) {
+		if (shutDown || executor == null) {
 			rm.done();
 			return;
 		}
-		shutDown = true;
 
 		Sequence shutdownSeq = new ShutdownSequence(getDsfExecutor(), session.getId(), new RequestMonitor(session
 				.getExecutor(), rm) {
@@ -359,6 +358,8 @@ abstract public class EDCLaunch extends DsfLaunch {
 				} catch (Throwable e) {
 					EDCDebugger.getMessageLogger().logError(null, e);
 				}
+
+				shutDown = true;
 
 				rm.setStatus(getStatus());
 				rm.done();

@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.arm;
 
-import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +20,7 @@ import java.util.TreeSet;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.MemoryUtils;
+import org.eclipse.cdt.debug.edc.internal.PersistentCache;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCMemory;
@@ -31,9 +31,11 @@ import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
-import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.IStatus;
@@ -46,6 +48,7 @@ public class ARMStack extends Stack {
 	
 	private static final int MAX_FRAMES = 30;
 	private static final String FUNCTION_START_ADDRESS_CACHE = "_function_start_address";
+	private static final String FUNCTION_END_ADDRESS_CACHE = "_function_end_address";
 
 	/**
 	 * Container for spilled registers.
@@ -72,14 +75,11 @@ public class ARMStack extends Stack {
 		 * Address of the link register on the stack
 		 */
 		public IAddress LRAddress;
-		
+
 		/**
 		 * Address where prolog is finished
 		 */
-		public IAddress realStartOfFunctionAddress;
-		
-		public ARMSpilledRegisters() {
-		}
+		public IAddress firstInstructionAfterProlog;
 
 		public boolean isValid() {
 			// as long as the LR and SP are set then we're OK
@@ -95,13 +95,32 @@ public class ARMStack extends Stack {
 			}
 			return map;
 		}
-	}
 
+		public IAddress fillLRFromStack(IEDCExecutionDMC context) {
+			// get the real value of the link register
+			IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
+			ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>(4);
+			IStatus status = memoryService.getMemory(context, LRAddress, byteArray, 4, 1);
+			if (!status.isOK()) {
+				return null;
+			}
+
+			// check each byte
+			for (int i = 0; i < byteArray.size(); i++) {
+				if (!byteArray.get(i).isReadable())
+					return null;
+			}
+
+			LR = new Addr64(MemoryUtils.convertByteArrayToUnsignedLong(byteArray.toArray(new MemoryByte[4]),
+																	   MemoryUtils.LITTLE_ENDIAN));
+			return LR;
+		}
+	}
+	
 	public ARMStack(DsfSession session) {
 		super(session, new String[] { ARMStack.class.getName() });
 	}
 
-	@SuppressWarnings({ "restriction", "unchecked" })
 	@Override
 	protected List<EdcStackFrame> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
 
@@ -156,9 +175,12 @@ public class ARMStack extends Stack {
 
 		Set<IAddress> thumbAddresses = null;
 
-		// keep going until we reach the maximum number of frames
-		while (frameCount <= endIndex) {
+		IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
+		PersistentCache armPluginCache = ARMPlugin.getDefault().getCache();
+
+		do {
 			IAddress functionStartAddress = null;
+			IAddress functionEndAddress = null;
 			String moduleName = "Unknown";
 
 			// see if the PC is in an executable that we know about
@@ -166,47 +188,32 @@ public class ARMStack extends Stack {
 			
 			if (module != null) {
 				moduleName = module.getName();
-				
-				thumbAddresses = (Set<IAddress>) module.getProperty(THUMB_ADDRESSES);
+
+				{ @SuppressWarnings("unchecked")
+					Set<IAddress> s = (Set<IAddress>)module.getProperty(THUMB_ADDRESSES);
+					thumbAddresses = s;
+				}
 				if (thumbAddresses == null) {
 					thumbAddresses = new TreeSet<IAddress>();
 					module.setProperty(THUMB_ADDRESSES, thumbAddresses);
 				}
 
 				IEDCSymbolReader reader = module.getSymbolReader();
-				String cacheKey = null;
-				Map<IAddress, IAddress> cachedMapping = new HashMap<IAddress, IAddress>();
 				if (reader != null && reader.getSymbolFile() != null)
 				{
-					cacheKey = reader.getSymbolFile().toOSString() + FUNCTION_START_ADDRESS_CACHE;
-					// Check the persistent cache
-					cachedMapping = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
-					if (cachedMapping != null)
-					{
-						IAddress cachedAddress = cachedMapping.get(module.toLinkAddress(pcValue));
-						if (cachedAddress != null)
-							functionStartAddress = module.toRuntimeAddress(cachedAddress);	
-					}
+					String symbolFileOSString = reader.getSymbolFile().toOSString();
+					long modDate = reader.getModificationDate();
 
-				}
-				
-				if (functionStartAddress == null)
-				{
-					// see if we have symbolics for the module
-					IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
-					IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
-					if (scope != null) {
-						// ignore inlined functions
-						while (scope.getParent() instanceof IFunctionScope)
-							scope = (IFunctionScope) scope.getParent();
-						functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());
-						// put it in the cache
-						if (cachedMapping != null && reader != null) {
-							cachedMapping.put(module.toLinkAddress(pcValue), scope.getLowAddress());
-							ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedMapping, reader.getModificationDate());
-						}
+					functionStartAddress
+					  = getFunctionStartAddress(pcValue, context, symbols, armPluginCache,
+												module, symbolFileOSString, modDate);
+
+					if (frameCount == 0) {
+						functionEndAddress
+						  = getFunctionEndAddress(pcValue, context, symbols, armPluginCache,
+												  module, symbolFileOSString, modDate);
 					}
-				} 
+				}
 			} else {
 				// null module; hang thumb addresses off process context
 
@@ -220,7 +227,10 @@ public class ARMStack extends Stack {
 						}
 					}
 					if (rootProcessDMC != null) {
-						thumbAddresses = (Set<IAddress>) rootProcessDMC.getProperty(THUMB_ADDRESSES);
+						{ @SuppressWarnings("unchecked")
+							Set<IAddress> s = (Set<IAddress>) rootProcessDMC.getProperty(THUMB_ADDRESSES);
+							thumbAddresses = s;
+						}
 						if (thumbAddresses == null) {
 							thumbAddresses = new TreeSet<IAddress>();
 							rootProcessDMC.setProperty(THUMB_ADDRESSES, thumbAddresses);
@@ -229,8 +239,9 @@ public class ARMStack extends Stack {
 				}
 			}
 
-			boolean thumbMode = ((TargetEnvironmentARM) getTargetEnvironmentService()).isThumbMode(context, pcValue,
-					frameCount == 0);
+			boolean thumbMode
+			  = ((TargetEnvironmentARM)getTargetEnvironmentService()).isThumbMode(context, pcValue,
+																				  frameCount == 0);
 
 			// mask off the thumb bit
 			pcValue = new Addr64(pcValue.getValue().clearBit(0)); 
@@ -239,8 +250,9 @@ public class ARMStack extends Stack {
 				thumbAddresses.add(pcValue);
 
 			// add this frame
-			long baseAddress = functionStartAddress == null ? pcValue.getValue().longValue() : functionStartAddress
-					.getValue().longValue();
+			long baseAddress = functionStartAddress == null
+								? pcValue.getValue().longValue()
+								: functionStartAddress.getValue().longValue();
 
 			properties = new HashMap<String, Object>();
 			properties.put(IEDCDMContext.PROP_ID, context.getID() + "." + Integer.toString(frameCount));
@@ -257,63 +269,82 @@ public class ARMStack extends Stack {
 				functionStartAddress = findProlog(context, pcValue, thumbMode);
 			}
 
-			if (functionStartAddress == null) {
-				if (frameCount == 0) {
-					// still don't know where the prolog is for sure.  there may not be
-					// one at all.  assume that the currnet SP and LR are correct since we're
-					// at the first frame.
-					pcValue = lrValue;
-					if (pcValue.isZero()) {
-						break;
-					}
-					frameCount++;
-					continue;
-				} else {
-					// if we're not in user mode, we're probably handling an exception.
-					// try crawling from user mode sp/lr since we've gone as far as we
-					// can go on the kernel side
-					if (spName.compareTo(ARMRegisters.SP) != 0) {
-						spValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.SP), 16);
-						pcValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.LR), 16);
-						if (pcValue.isZero()) {
-							break;
-						}
-						frameCount++;
-						continue;
-					} else {
-						// still don't know where the prolog is so no way to tell where
-						// the LR is saved on the stack (if at all)
-						break;
+			if (functionStartAddress != null) {
+				ARMSpilledRegisters spilledRegs = null;
+	
+				/*
+				 * This first test is for epilog; when instruction stepping
+				 * (or hitting a breakpoint) in thumb epilog, the PC could
+				 * be in the middle of a multi-instr mod to the SP.
+				 *
+				 * The test case looks like this:
+				 *		add sp,#0xXXX
+				 *		add sp,#0xXXX
+				 *		pop (rX,RX,...,pc)
+				 *
+				 * so, instead of relying on parsed prolog, parse the epilog
+				 * to find out where it's popping the PC from on the stack,
+				 * and re-adjust the live SP and other preserved registers along the way.
+				 */
+				if (frameCount == 0 && thumbMode && functionEndAddress != null && module != null) {
+					ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+					final List<ILineEntry> code
+					  = symbols.getLineEntriesForAddressRange(sym_dmc, functionStartAddress, functionEndAddress);
+					IAddress lastAddrBeforeEpilog
+					  = (code.size() == 0 ? null : module.toRuntimeAddress(code.get(code.size()-1).getLowAddress()));
+					if (lastAddrBeforeEpilog != null && pcValue.compareTo(lastAddrBeforeEpilog) > 0) {
+						spilledRegs = parseThumbEpilog(context, pcValue, spValue, functionEndAddress);
 					}
 				}
-			}
+	
+				// if spilledRegs is still null, thumb epilog parsing
+				// didn't occur.  the prolog still needs to be parsed
+				// to figure out where the LR was stored on the stack
+				if (spilledRegs == null)
+					spilledRegs = parseProlog(context, functionStartAddress, pcValue, spValue, lrValue, thumbMode);
 
-			// we need to parse the prolog to figure out where the LR was stored
-			// on the stack
-			ARMSpilledRegisters spilledRegs = parseProlog(context, functionStartAddress, 
-					pcValue, spValue, lrValue,
-					thumbMode);
-			if (spilledRegs == null) {
+				// parsing prolog also failed ... run away, run away!
+				if (spilledRegs == null)
+					break;
+	
+				// remember spilled registers in case debug info is missing
+				properties.put(StackFrameDMC.PRESERVED_REGISTERS, spilledRegs.getPreservedRegisters());
+				// identify whether we're not yet inside a new frame
+				if (frameCount == 0 && (spilledRegs.firstInstructionAfterProlog == null 
+						|| pcValue.compareTo(spilledRegs.firstInstructionAfterProlog) < 0)) {
+					properties.put(StackFrameDMC.IN_PROLOGUE, true);
+				}
+				
+				pcValue = spilledRegs.LR;
+				spValue = spilledRegs.SP;
+
+			} else if (frameCount == 0) {
+				// still don't know where the prolog is for sure.  there may not be
+				// one at all.  assume that the currnet SP and LR are correct since we're
+				// at the first frame.
+				pcValue = lrValue;
+
+			} else if (spName.compareTo(ARMRegisters.SP) != 0) {
+				// if we're not in user mode, we're probably handling an exception.
+				// try crawling from user mode sp/lr since we've gone as far as we
+				// can go on the kernel side
+				
+				spValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.SP), 16);
+				pcValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.LR), 16);
+
+			} else {
+				// still don't know where the prolog is so no way to tell where
+				// the LR is saved on the stack (if at all)
 				break;
 			}
 
-			// remember spilled registers in case debug info is missing
-			properties.put(StackFrameDMC.PRESERVED_REGISTERS, spilledRegs.getPreservedRegisters());
-			
-			// identify whether we're not yet inside a new frame
-			if (frameCount == 0 && (spilledRegs.realStartOfFunctionAddress == null 
-					|| pcValue.compareTo(spilledRegs.realStartOfFunctionAddress) < 0)) {
-				properties.put(StackFrameDMC.IN_PROLOGUE, true);
-			}
-			
-			if (spilledRegs.LR.isZero()) {
+			if (pcValue.isZero())
 				break;
-			}
 
-			spValue = spilledRegs.SP;
-			pcValue = spilledRegs.LR;
 			frameCount++;
-		}
+
+		// keep going until we reach the maximum number of frames
+		} while (frameCount < endIndex);
 
 		if (properties != null) {
 			properties.put(StackFrameDMC.ROOT_FRAME, true);
@@ -322,9 +353,79 @@ public class ARMStack extends Stack {
 		return frames;
 	}
 
+	private class AddressMapping extends HashMap<IAddress, IAddress> {
+		private static final long serialVersionUID = -4200139520138410612L;
+	}
+
+	private IAddress getFunctionEndAddress(IAddress pcValue,
+				IEDCExecutionDMC context, IEDCSymbols symbols, PersistentCache pCache,
+				IEDCModuleDMContext module, String keyPrefix, long modDate) {
+		// Check the persistent cache
+		String key = keyPrefix + FUNCTION_END_ADDRESS_CACHE;
+		AddressMapping cachedMapping = pCache.getCachedData(key, AddressMapping.class, modDate);
+		IAddress addr = getRuntimeAddressFromCache(pcValue, module, cachedMapping);
+
+		if (addr == null) {
+			IFunctionScope scope = getNonInlineFunctionAtAddress(context, pcValue, symbols);
+			if (scope != null) {
+				addr = getAndCacheRuntimeAddress(pcValue, scope.getHighAddress(), key,
+												 cachedMapping, pCache, module, modDate);
+			}
+		}
+		return addr;
+	}
+
+	private IAddress getFunctionStartAddress(IAddress pcValue,
+				IEDCExecutionDMC context, IEDCSymbols symbols, PersistentCache pCache,
+				IEDCModuleDMContext module, String keyPrefix, long modDate) {
+		// Check the persistent cache
+		String key = keyPrefix + FUNCTION_START_ADDRESS_CACHE;
+		AddressMapping cachedMapping = pCache.getCachedData(key, AddressMapping.class, modDate);
+		IAddress addr = getRuntimeAddressFromCache(pcValue, module, cachedMapping);
+
+		if (addr == null) {
+			IFunctionScope scope = getNonInlineFunctionAtAddress(context, pcValue, symbols);
+			if (scope != null) {
+				addr = getAndCacheRuntimeAddress(pcValue, scope.getLowAddress(), key,
+												 cachedMapping, pCache, module, modDate);
+			}
+		}
+		return addr;
+	}
+
+	private IAddress getAndCacheRuntimeAddress(IAddress pcValueRuntimeAddress,
+			IAddress mapLinkAddress, String cacheKey, AddressMapping cachedMapping,
+			PersistentCache armPluginCache, IEDCModuleDMContext module, long modDate) {
+		// put it in the cache
+		if (cachedMapping == null)
+			cachedMapping = new AddressMapping();
+		cachedMapping.put(module.toLinkAddress(pcValueRuntimeAddress), mapLinkAddress);
+		armPluginCache.putCachedData(cacheKey, cachedMapping, modDate);
+		return module.toRuntimeAddress(mapLinkAddress);
+	}
+
 	protected IEDCModuleDMContext getModule(IEDCExecutionDMC context, IAddress address) {
 		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
 		return modules.getModuleByAddress(context.getSymbolDMContext(), address);
+	}
+
+	private static IFunctionScope getNonInlineFunctionAtAddress(
+			IEDCExecutionDMC context, IAddress pcValue, IEDCSymbols symbols) {
+		IFunctionScope scope = symbols.getFunctionAtAddress(context.getSymbolDMContext(), pcValue);
+		while (scope != null && scope.getParent() instanceof IFunctionScope)
+			scope = (IFunctionScope) scope.getParent();
+		return scope;
+	}
+
+	private static IAddress getRuntimeAddressFromCache(IAddress pcValueRuntimeAddress,
+			IEDCModuleDMContext module, AddressMapping mapping) {
+		if (mapping != null)
+		{
+			IAddress mapLinkAddress = mapping.get(module.toLinkAddress(pcValueRuntimeAddress));
+			if (mapLinkAddress != null)
+				return module.toRuntimeAddress(mapLinkAddress);
+		}
+		return null;
 	}
 
 	private IAddress findProlog(IEDCExecutionDMC context, IAddress pcValue, boolean thumbMode) {
@@ -459,8 +560,9 @@ public class ARMStack extends Stack {
 
 			// look for prolog instructions. if found, figure out the LR and SP
 			// values and return
-			ARMSpilledRegisters spilledRegs = thumbMode ? parseThumbProlog(context, instructions, spValue, prologAddress)
-					: parseArmProlog(context, instructions, spValue, lrValue, prologAddress);
+			ARMSpilledRegisters spilledRegs
+			  = thumbMode ? parseThumbProlog(context, instructions, spValue, prologAddress)
+						  : parseArmProlog(context, instructions, spValue, lrValue, prologAddress);
 
 			if (spilledRegs != null) {
 				return spilledRegs;
@@ -548,7 +650,7 @@ public class ARMStack extends Stack {
 					}
 				}
 
-				spilledRegs.realStartOfFunctionAddress = pcAddress;
+				spilledRegs.firstInstructionAfterProlog = pcAddress;
 			} else if ((instruction.longValue() & 0x01E00000L) == 0x00400000L
 					&& (instruction.longValue() & 0x0C000000L) == 0x00000000L) {
 				// sub instruction - does it modify the SP?
@@ -596,7 +698,7 @@ public class ARMStack extends Stack {
 						}
 					}
 				}
-				spilledRegs.realStartOfFunctionAddress = pcAddress;
+				spilledRegs.firstInstructionAfterProlog = pcAddress;
 				
 			} else if (isSWIInstruction(instruction)) {
 				// get the user mode LR and SP. note that the ones we've already
@@ -605,7 +707,7 @@ public class ARMStack extends Stack {
 				spilledRegs.SP = new Addr64(registersService.getRegisterValue(context, ARMRegisters.SP), 16);
 				spilledRegs.LR = new Addr64(registersService.getRegisterValue(context, ARMRegisters.LR), 16);
 				
-				spilledRegs.realStartOfFunctionAddress = pcAddress;
+				spilledRegs.firstInstructionAfterProlog = pcAddress;
 				
 			} else if (isStrLrToStackInstruction(instruction)) {
 				// get the location where the LR is stored and set it
@@ -614,22 +716,7 @@ public class ARMStack extends Stack {
 		}
 
 		if (spilledRegs.LRAddress != null && spilledRegs.LR == null) {
-			// get the real value of the link register
-			IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
-			ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>(4);
-			IStatus status = memoryService.getMemory(context, spilledRegs.LRAddress, byteArray, 4, 1);
-			if (!status.isOK()) {
-				return null;
-			}
-
-			// check each byte
-			for (int i = 0; i < byteArray.size(); i++) {
-				if (!byteArray.get(i).isReadable())
-					return null;
-			}
-
-			spilledRegs.LR = new Addr64(MemoryUtils.convertByteArrayToUnsignedLong(
-					byteArray.toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN));
+			spilledRegs.fillLRFromStack(context);
 		}
 
 		if (spilledRegs.isValid()) {
@@ -639,8 +726,101 @@ public class ARMStack extends Stack {
 		return null;
 	}
 
-	private ARMSpilledRegisters parseThumbProlog(IEDCExecutionDMC context, List<BigInteger> instructions, IAddress spValue,
-			IAddress prologAddress) {
+	/**
+	 * @param context
+	 * @param pcValue
+	 * @param spValue
+	 * @return
+	 */
+	private ARMSpilledRegisters parseThumbEpilog(final IEDCExecutionDMC context, IAddress pcValue,
+			IAddress spValue, final IAddress functionEndAddress) {
+		if (context == null || pcValue == null || spValue == null)
+			throw new IllegalArgumentException("null argument passed to parseThumbProlog");
+
+		IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
+
+		// get the instruction before the PC to see if SP is already changed
+		pcValue = pcValue.add(-2);
+		int bytesToRead = (functionEndAddress != null) ? pcValue.distanceTo(functionEndAddress).intValue() : 16;
+		bytesToRead -= bytesToRead % 2;	// get only an even amount
+		ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>(bytesToRead);
+
+		IStatus status = memoryService.getMemory(context, pcValue, byteArray, bytesToRead, 1);
+		if (!status.isOK()) {
+			return null;
+		}
+
+		// don't bother parsing rest of epilog if SP hasn't changed, yet.
+		// just return null and rely on caller to parse current epilog
+		BigInteger priorInstruction
+		  = MemoryUtils.convertByteArrayToUnsignedLong(
+					byteArray.subList(0, 2).toArray(new MemoryByte[2]),
+					MemoryUtils.LITTLE_ENDIAN);
+		if (!(isAdd7ChangesSP(priorInstruction) || isSub4ChangesSP(priorInstruction)
+				   || isAdd4WithSPDestination(priorInstruction)))
+			return null;
+
+		List<BigInteger> instructions = new ArrayList<BigInteger>();
+
+		// check each byte
+		for (int i = 2; i < byteArray.size(); i++) {
+			if (!byteArray.get(i).isReadable())
+				break;
+			if (i % 2 == 0)
+				instructions.add(
+						MemoryUtils.convertByteArrayToUnsignedLong(
+								byteArray.subList(i, i + 2).toArray(new MemoryByte[2]),
+								MemoryUtils.LITTLE_ENDIAN));
+		}
+
+		ARMSpilledRegisters spilledRegs = new ARMSpilledRegisters();
+
+		for (BigInteger instruction : instructions) {
+			if (isPopInstruction(instruction)) {
+				// pop instruction. figure out how many registers were being stored
+				BigInteger regBits = instruction.and(BigInteger.valueOf(0x01FFL));
+
+				// save off R0-R7 if needed
+				for (int i = 0; i <= 7; i++) {
+					if (regBits.testBit(i)) {
+						spilledRegs.registers[i] = spValue;
+						spValue = spValue.add(4);
+					}
+				}
+
+				// the location of the pushed LR, popped into PC
+				if (instruction.testBit(8)) {
+					spilledRegs.LRAddress = spValue;
+					spValue = spValue.add(4);
+				}
+
+			} else if (isAdd7ChangesSP(instruction) || isSub4ChangesSP(instruction)) {
+				BigInteger immed_7 = instruction.and(BigInteger.valueOf(0x007FL)).shiftLeft(2);
+				if (isSub4ChangesSP(instruction))
+					immed_7 = immed_7.negate();
+
+				spValue = spValue.add(immed_7);
+
+			} else {
+				return null;
+			}
+		}
+
+		spilledRegs.SP = spValue;
+		
+		if (spilledRegs.LRAddress != null) {
+			spilledRegs.fillLRFromStack(context);
+		}
+
+		if (spilledRegs.isValid()) {
+			return spilledRegs;
+		}
+
+		return null;
+	}
+
+	private ARMSpilledRegisters parseThumbProlog(IEDCExecutionDMC context, List<BigInteger> instructions,
+			IAddress spValue, IAddress prologAddress) {
 
 		ARMSpilledRegisters spilledRegs = new ARMSpilledRegisters();
 
@@ -697,11 +877,12 @@ public class ARMStack extends Stack {
 					spilledRegs.SP = currentSP.add(4 * regCount);
 				}
 
-				spilledRegs.realStartOfFunctionAddress = pcAddress;
+				spilledRegs.firstInstructionAfterProlog = pcAddress;
 
-			} else if ((instruction.intValue() & 0xFF80L) == 0xB080L) {
-				// sub (4) which changes the SP
+			} else if (isSub4ChangesSP(instruction) || isAdd7ChangesSP(instruction)) {
 				BigInteger immed_7 = instruction.and(BigInteger.valueOf(0x007FL)).shiftLeft(2);
+				if (isAdd7ChangesSP(instruction))
+					immed_7 = immed_7.negate();
 				for (int i = 0; i < spilledRegs.registers.length; i++) {
 					IAddress address = spilledRegs.registers[i];
 					if (address != null) {
@@ -718,32 +899,10 @@ public class ARMStack extends Stack {
 				if (spilledRegs.SP != null) {
 					spilledRegs.SP = spilledRegs.SP.add(immed_7);
 				}
-				
-				spilledRegs.realStartOfFunctionAddress = pcAddress;
 
-			} else if ((instruction.intValue() & 0xFF80L) == 0xB000L) {
-				// add (7) which changes the SP
-				BigInteger immed_7 = instruction.and(BigInteger.valueOf(0x007FL)).shiftLeft(2).negate();
-				for (int i = 0; i < spilledRegs.registers.length; i++) {
-					IAddress address = spilledRegs.registers[i];
-					if (address != null) {
-						// register was spilled so update its location
-						spilledRegs.registers[i] = address.add(immed_7);
-					}
-				}
+				spilledRegs.firstInstructionAfterProlog = pcAddress;
 
-				// update the LR and SP as well
-				if (spilledRegs.LRAddress != null) {
-					spilledRegs.LRAddress = spilledRegs.LRAddress.add(immed_7);
-				}
-
-				if (spilledRegs.SP != null) {
-					spilledRegs.SP = spilledRegs.SP.add(immed_7);
-				}
-				
-				spilledRegs.realStartOfFunctionAddress = pcAddress;
-
-			} else if ((instruction.intValue() & 0xFF87L) == 0x4485L) {
+			} else if (isAdd4WithSPDestination(instruction)) {
 				// add (4) with the SP as the destination register
 				// get the source register number
 				int sourceReg = instruction.shiftRight(3).and(BigInteger.valueOf(0x000F)).intValue();
@@ -820,7 +979,7 @@ public class ARMStack extends Stack {
 								}
 							}
 
-							spilledRegs.realStartOfFunctionAddress = instAddr.add(2);
+							spilledRegs.firstInstructionAfterProlog = instAddr.add(2);
 
 							break;
 						}
@@ -832,22 +991,7 @@ public class ARMStack extends Stack {
 		}
 
 		if (spilledRegs.LRAddress != null && spilledRegs.LR == null) {
-			// get the real value of the link register
-			IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
-			ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>(4);
-			IStatus status = memoryService.getMemory(context, spilledRegs.LRAddress, byteArray, 4, 1);
-			if (!status.isOK()) {
-				return null;
-			}
-
-			// check each byte
-			for (int i = 0; i < byteArray.size(); i++) {
-				if (!byteArray.get(i).isReadable())
-					return null;
-			}
-
-			spilledRegs.LR = new Addr64(MemoryUtils.convertByteArrayToUnsignedLong(
-					byteArray.toArray(new MemoryByte[4]), MemoryUtils.LITTLE_ENDIAN));
+			spilledRegs.fillLRFromStack(context);
 		}
 
 		if (spilledRegs.isValid()) {
@@ -855,6 +999,18 @@ public class ARMStack extends Stack {
 		}
 
 		return null;
+	}
+
+	private boolean isAdd4WithSPDestination(BigInteger instruction) {
+		return (instruction.intValue() & 0xFF87L) == 0x4485L;
+	}
+	
+	private boolean isAdd7ChangesSP(BigInteger instruction) {
+		return (instruction.intValue() & 0xFF80L) == 0xB000L;
+	}
+
+	private boolean isPopInstruction(BigInteger instruction) {
+		return (instruction.intValue() & 0xFE00L) == 0xBC00L;
 	}
 
 	private boolean isPushInstruction(BigInteger instruction) {
@@ -870,6 +1026,10 @@ public class ARMStack extends Stack {
 		}
 
 		return false;
+	}
+
+	private boolean isSub4ChangesSP(BigInteger instruction) {
+		return (instruction.intValue() & 0xFF80L) == 0xB080L;
 	}
 	
 	private boolean isStrLrToStackInstruction(BigInteger instruction) {

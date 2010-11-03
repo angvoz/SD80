@@ -213,9 +213,9 @@ public abstract class Scope implements IScope {
 			builder.append(rangeList);
 		} else {
 			builder.append("lowAddress="); //$NON-NLS-1$
-			builder.append(lowAddress.toHexAddressString());
+			builder.append(lowAddress != null ? lowAddress.toHexAddressString() : "null");
 			builder.append(", highAddress="); //$NON-NLS-1$
-			builder.append(highAddress.toHexAddressString());
+			builder.append(highAddress != null ? highAddress.toHexAddressString() : "null");
 		}
 		builder.append(", "); //$NON-NLS-1$
 		if (name != null) {

@@ -225,6 +225,8 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 		if (expression == null)
 			return false;
 		IVariableValueConverter customConverter = getCustomConverter(expression);
+		if (customConverter == null)
+			return false;
 		return customConverter.canEditValue();
 	}
 	

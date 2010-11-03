@@ -567,9 +567,10 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 				System.out.println("Initial: " + types.size());
 				
 				// this should trigger expansion of subtypes
-				int idx = 0;
+				int idx = 1;
 				for (IType type : types) {
 					doTestType(idx, type);
+					idx++;
 				}
 				
 				types = symbolReader.getModuleScope().getTypes();
@@ -589,7 +590,6 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 	 */
 	private void doTestType(int idx, IType type) {
 		String name = getTypeName(type);
-		idx++;
 		if (type.getByteSize() == 0) {
 			IType checkType = type;
 			while (checkType != null) {
@@ -606,10 +606,10 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 			if (checkType instanceof SubroutineType || checkType instanceof InheritanceType)
 				return; // this is allowed
 			
-			//System.out.println(name);
-			
-			if (checkType instanceof FieldType)
-				checkType = ((FieldType) checkType).getType();
+			if (checkType instanceof FieldType) {
+				doTestType(idx, ((FieldType) checkType).getType());
+				return;
+			}
 			if (checkType instanceof ICompositeType) 
 				return; // this is allowed, even though the spec says it should be here.
 						// we can't fix it up, because even if we sum up the field sizes, we can't predict the extra space used by alignment

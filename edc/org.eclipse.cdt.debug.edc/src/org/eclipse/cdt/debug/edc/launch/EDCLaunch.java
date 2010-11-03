@@ -53,13 +53,11 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
@@ -241,38 +239,6 @@ abstract public class EDCLaunch extends DsfLaunch {
 					runControlService.terminateAllContexts(null);
 			}
 		});
-
-		Job waitForTerminate = new Job("Waiting for " + getDescription() + " to terminate") {
-
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				monitor.beginTask("Waiting for termination",
-						IProgressMonitor.UNKNOWN);
-				try {
-					while (!EDCLaunch.this.isTerminated()) {
-						Thread.sleep(500);
-						if (monitor.isCanceled())
-							return Status.CANCEL_STATUS;
-						monitor.worked(1);
-					}
-				} catch (InterruptedException e) {
-					EDCDebugger.getMessageLogger().logError(null, e);
-				}
-				finally {
-					monitor.done();
-				}
-
-				return Status.OK_STATUS;
-			}
-		};
-
-		waitForTerminate.schedule();
-		try {
-			waitForTerminate.join();
-		} catch (InterruptedException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
-		}
-
 	}
 
 	// ITerminate

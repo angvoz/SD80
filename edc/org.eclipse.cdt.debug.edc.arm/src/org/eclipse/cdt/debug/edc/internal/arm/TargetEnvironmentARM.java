@@ -18,7 +18,6 @@ import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
@@ -157,7 +156,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 		return aeEvaluator;
 	}
 
-	@SuppressWarnings({ "restriction", "unchecked" })
+	@SuppressWarnings("unchecked")
 	public boolean isThumbMode(IDMContext context, IAddress address, boolean useCPSR) {
 
 		IEDCExecutionDMC exeDMC = DMContexts.getAncestorOfType(context, IEDCExecutionDMC.class);

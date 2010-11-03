@@ -111,10 +111,9 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		}
 
 		// Validate the word size
-		// NOTE: We only accept 1 byte words for this implementation
-		if (word_size != 1) {
+		if (word_size < 1) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, NOT_SUPPORTED,
-					"Word size not supported (!= 1)", null)); //$NON-NLS-1$
+					"Word size not supported (< 1)", null)); //$NON-NLS-1$
 			rm.done();
 			return;
 		}
@@ -143,7 +142,8 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		}
 
 		// All is clear: go for it
-		getMemoryCache(context).setMemory(tcfMemoryService, context, address, offset, word_size, count * length,
+		// NOTE: We normalize word_size and count*length to read 1-byte words for this implementation
+		getMemoryCache(context).setMemory(tcfMemoryService, context, address, offset, 1, count * length * word_size,
 				buffer, rm);
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.traceExit(); }
@@ -162,10 +162,9 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		}
 
 		// Validate the word size
-		// NOTE: We only accept 1 byte words for this implementation
-		if (word_size != 1) {
+		if (word_size < 1) {
 			drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, NOT_SUPPORTED,
-					"Word size not supported (!= 1)", null)); //$NON-NLS-1$
+					"Word size not supported (< 1)", null)); //$NON-NLS-1$
 			drm.done();
 			return;
 		}
@@ -179,7 +178,8 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		}
 
 		// everything ok
-		getMemoryCache(context).getMemory(tcfMemoryService, context, address.add(offset), word_size, count,
+		// NOTE: We normalize word_size and count to read 1-byte words for this implementation
+		getMemoryCache(context).getMemory(tcfMemoryService, context, address.add(offset), 1, count * word_size,
 				new DataRequestMonitor<MemoryByte[]>(ImmediateExecutor.getInstance(), drm) {
 			@Override
 			protected void handleSuccess() {

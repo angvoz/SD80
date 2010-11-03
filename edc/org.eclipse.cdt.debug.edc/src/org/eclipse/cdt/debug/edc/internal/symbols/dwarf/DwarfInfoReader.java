@@ -81,6 +81,7 @@ import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
+import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.symbols.IRangeList;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
@@ -1843,14 +1844,20 @@ public class DwarfInfoReader {
 	private void setupAddresses(AttributeList attributeList, Scope scope) {
 		
 		// get the high and low pc from the attributes list
-		AttributeValue value;
-		value = attributeList.getAttribute(DwarfConstants.DW_AT_high_pc);
+		AttributeValue value
+		  = attributeList.getAttribute(DwarfConstants.DW_AT_high_pc);
 		if (value != null) {
 			IAddress low = new Addr32(attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_low_pc));
 			IAddress high = new Addr32(attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_high_pc));
 			if (low.compareTo(high) > 0) {
+				// relying on the following to confirm that this is an RVCT inline DWARF generation bug
+				if (scope instanceof DwarfFunctionScope && scope.getParent() instanceof DwarfFunctionScope) {
+					high = getInlineHighAddressFromModuleLineEntryProvider(scope, low);
+					if (high == null)
+						high = low;	// at least prevent ecl.bz Bug 329324 from happening
+
 				// wow, RVCT, you're neat... I think you mean, point to the high PC of the parent
-				if (scope.getParent() != null && scope.getParent().getHighAddress() != null) {
+				} else if (scope.getParent() != null && scope.getParent().getHighAddress() != null) {
 					high = scope.getParent().getHighAddress();
 					// may still be bogus, check again next
 				} 
@@ -1908,6 +1915,80 @@ public class DwarfInfoReader {
 		// no code, apparently
 		scope.setLowAddress(new Addr32(0));
 		scope.setHighAddress(new Addr32(0));
+	}
+
+	/**
+	 * for cases where the compiler generates an incorrect high-address,
+	 * the line entry provider can give information about the current and
+	 * subsequent lines within an inline.
+	 * <br>
+	 * caveats: this is not meant to handle nested broken inlines.  the
+	 * algorithm assumes
+	 * - an outer inline nesting another inline will use set of ranges, not a high-low
+	 * - an inline function will likely be in another file
+	 * - if not, it will likely be prior to the function that inlines it
+	 * - and if not, it will likely be more than 32 lines after the function that inlines it
+	 * @param scope
+	 * @param low
+	 * @return high address if determined, or null if prerequisites for finding it aren't met.
+	 */
+	private IAddress getInlineHighAddressFromModuleLineEntryProvider(Scope scope, IAddress low) {
+		IScope lookingForModule = scope.getParent();
+		while (lookingForModule != null && !(lookingForModule instanceof DwarfModuleScope)) {
+			lookingForModule = lookingForModule.getParent();
+		}
+		if (lookingForModule == null)
+			return null;
+
+		DwarfModuleScope moduleScope = (DwarfModuleScope)lookingForModule;
+		IModuleLineEntryProvider lineEntryProvider = moduleScope.getModuleLineEntryProvider();
+		if (lineEntryProvider == null)
+			return null;
+
+		IAddress high = null;
+		ILineEntry entry = lineEntryProvider.getLineEntryAtAddress(low, false);
+		if (entry == null)
+			return null;
+
+		IPath actualPath = entry.getFilePath(), otherPath = null;
+		int actualLine = entry.getLineNumber();
+		int thisLine = actualLine, lastLine = 0; 		// XXX false positive on uninitialized variable below causes needless initialization of lastLine = 0
+		boolean jumpedBack = false, jumpedAway = false;
+		do {
+			high = entry.getHighAddress();
+			if (!jumpedAway && otherPath == null)
+				lastLine = thisLine;
+			entry = lineEntryProvider.getNextLineEntry(entry);
+			if (entry == null)
+				break;
+			if (otherPath != null) {
+				if (!entry.getFilePath().equals(otherPath))
+					break;
+			} else if (!entry.getFilePath().equals(actualPath))	{// easiest test for done with inline
+				otherPath = entry.getFilePath();
+			} else {
+				thisLine = entry.getLineNumber();
+				if (!jumpedBack && !jumpedAway) {
+					if (thisLine < actualLine) {
+						jumpedBack = true;
+					} else if (thisLine > lastLine + 32) {	// XXX false positive here causes needless init of lastLine = 0 above
+						jumpedAway = true;
+					}
+				} else if (jumpedBack) {
+					if (thisLine > actualLine) // jumped back ahead; done
+						break;
+				} else if (jumpedAway) {
+					if (thisLine < actualLine) { // supercedes jumpAway test
+						jumpedAway = false;
+						jumpedBack = true;
+					} else if (thisLine < lastLine) {
+						break;
+					}
+				}					
+			}
+		} while (entry != null);
+
+		return high;
 	}
 
 	/**

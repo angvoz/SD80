@@ -858,6 +858,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			// efficiently check enclosing scopes for a variable or enumerator
 			IScope variableScope = this.getVariableScope().getParent();
 
+			// to find file scope variables, we may need to check several compile units
+			// associated with one file
+			ArrayList<IScope> scopes = new ArrayList<IScope>();
+
 			while (variableOrEnumerator == null && variableScope != null) {
 				// At the module level, match against globals across the entire symbol
 				// file, even for big symbol files.
@@ -879,22 +883,30 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					break;
 				}
 
-				for (IVariable scopeVariable : variableScope.getVariables()) {
-					String scopeVariableName = scopeVariable.getName();
-					if (qualifiedName != null && scopeVariableName.equals(qualifiedName)) {
-						variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
-						break;
-					}
+				scopes.clear();
 
-					if (scopeVariableName.equals(name)) {
-						variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
-						break;
+				if (variableScope instanceof ICompileUnitScope) {
+					// there may be several compile units for a file
+
+					// find the module scope parent of the compile unit
+					IScope parent = variableScope.getParent();
+					while (parent != null && !(parent instanceof IModuleScope))
+						parent = parent.getParent();
+
+					// find all compile units for the file
+					if (parent != null) {
+						IPath currentFile = ((ICompileUnitScope)variableScope).getFilePath();
+						if (currentFile != null)
+							for (ICompileUnitScope cu : ((IModuleScope)parent).getCompileUnitsForFile(currentFile))
+								scopes.add(cu);
 					}
 				}
 
-				if (variableOrEnumerator == null && variableScope instanceof IFunctionScope) {
-					IFunctionScope functionScope = (IFunctionScope)variableScope;
-					for (IVariable scopeVariable : functionScope.getParameters()) {
+				if (scopes.isEmpty())
+					scopes.add(variableScope);
+
+				for (IScope scope : scopes) {
+					for (IVariable scopeVariable : scope.getVariables()) {
 						String scopeVariableName = scopeVariable.getName();
 						if (qualifiedName != null && scopeVariableName.equals(qualifiedName)) {
 							variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
@@ -906,19 +918,35 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 							break;
 						}
 					}
-				}
 
-				if (variableOrEnumerator == null) {
-					for (IEnumerator scopeEnumerator : variableScope.getEnumerators()) {
-						String scopeEnumeratorName = scopeEnumerator.getName();
-						if (qualifiedName != null && scopeEnumeratorName.equals(qualifiedName)) {
-							variableOrEnumerator = new EnumeratorDMC(this, scopeEnumerator);
-							break;
+					if (variableOrEnumerator == null && scope instanceof IFunctionScope) {
+						IFunctionScope functionScope = (IFunctionScope)scope;
+						for (IVariable scopeVariable : functionScope.getParameters()) {
+							String scopeVariableName = scopeVariable.getName();
+							if (qualifiedName != null && scopeVariableName.equals(qualifiedName)) {
+								variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
+								break;
+							}
+
+							if (scopeVariableName.equals(name)) {
+								variableOrEnumerator = new VariableDMC(Stack.this, this, scopeVariable);
+								break;
+							}
 						}
+					}
 
-						if (scopeEnumeratorName.equals(name)) {
-							variableOrEnumerator = new EnumeratorDMC(this, scopeEnumerator);
-							break;
+					if (variableOrEnumerator == null) {
+						for (IEnumerator scopeEnumerator : scope.getEnumerators()) {
+							String scopeEnumeratorName = scopeEnumerator.getName();
+							if (qualifiedName != null && scopeEnumeratorName.equals(qualifiedName)) {
+								variableOrEnumerator = new EnumeratorDMC(this, scopeEnumerator);
+								break;
+							}
+
+							if (scopeEnumeratorName.equals(name)) {
+								variableOrEnumerator = new EnumeratorDMC(this, scopeEnumerator);
+								break;
+							}
 						}
 					}
 				}

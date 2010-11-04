@@ -12,7 +12,9 @@ package org.eclipse.cdt.debug.edc.launch;
 
 import org.eclipse.cdt.debug.edc.internal.launch.CSourceLookup;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Noop;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.INoop;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Processes;
@@ -55,6 +57,11 @@ public abstract class DebugServicesFactory extends AbstractDsfDebugServicesFacto
 		}
 		if (Snapshots.class.isAssignableFrom(clazz)) {
 			return (V)createSnapshotsService(session);
+		}
+		
+		// Used for testing
+		if (INoop.class.isAssignableFrom(clazz)) {
+			return (V) new Noop(session);
 		}
 
 		return super.createService(clazz, session, optionalArguments);

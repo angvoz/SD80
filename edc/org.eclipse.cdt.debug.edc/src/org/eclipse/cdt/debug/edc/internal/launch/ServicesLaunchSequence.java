@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.internal.launch;
 
 import org.eclipse.cdt.debug.edc.internal.services.dsf.BreakpointAttributeTranslator;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Breakpoints;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.INoop;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Snapshots;
@@ -162,7 +163,15 @@ public class ServicesLaunchSequence extends Sequence {
 			launch.getServiceFactory().createService(Snapshots.class, session).initialize(
 					requestMonitor);
 		}
-	} };
+	},
+
+	// Used for testing
+	new Step() {
+		@Override
+		public void execute(RequestMonitor requestMonitor) {
+			launch.getServiceFactory().createService(INoop.class, session).initialize(requestMonitor);
+		}
+	}};
 
 	DsfSession session;
 	EDCLaunch launch;

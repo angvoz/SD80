@@ -17,6 +17,7 @@ Require-Bundle: org.eclipse.core.runtime,
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
 Export-Package: org.eclipse.cdt.debug.edc,
+ org.eclipse.cdt.debug.edc.acpm,
  org.eclipse.cdt.debug.edc.disassembler,
  org.eclipse.cdt.debug.edc.formatter,
  org.eclipse.cdt.debug.edc.internal;
@@ -27,6 +28,7 @@ Export-Package: org.eclipse.cdt.debug.edc,
    org.eclipse.cdt.debug.edc.linux.x86,
    org.eclipse.cdt.debug.edc.x86,
    org.eclipse.cdt.debug.edc.arm",
+ org.eclipse.cdt.debug.edc.internal.acpm;x-friends:="org.eclipse.cdt.debug.edc.ui",
  org.eclipse.cdt.debug.edc.internal.eval.ast.engine;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;x-friends:="org.eclipse.cdt.debug.edc.tests",
  org.eclipse.cdt.debug.edc.internal.formatter,

@@ -24,6 +24,7 @@ import java.util.concurrent.RejectedExecutionException;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
+import org.eclipse.cdt.debug.edc.internal.acpm.CacheManager;
 import org.eclipse.cdt.debug.edc.internal.launch.ShutdownSequence;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Processes;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
@@ -101,6 +102,9 @@ abstract public class EDCLaunch extends DsfLaunch {
 	private static final Map<String, EDCLaunch> launchSessions = Collections
 			.synchronizedMap(new HashMap<String, EDCLaunch>());
 
+	private static final Map<String, ICacheManager> cacheManagers = Collections
+		.synchronizedMap(new HashMap<String, ICacheManager>());
+
 	public EDCLaunch(ILaunchConfiguration launchConfiguration, String mode, ISourceLocator locator, String ownerID) {
 		super(launchConfiguration, mode, locator);
 
@@ -113,12 +117,21 @@ abstract public class EDCLaunch extends DsfLaunch {
 		executor = dsfExecutor;
 		session = DsfSession.startSession(executor, ownerID);
 		launchSessions.put(session.getId(), this);
+		cacheManagers.put(session.getId(), new CacheManager(session));
 	}
 
 	public static EDCLaunch getLaunchForSession(String sessionID) {
 		return launchSessions.get(sessionID);
 	}
 
+	/**
+	 * Returns the ACPM cache manager for the given DSF session
+	 * @since 2.0
+	 */
+	public static ICacheManager getCacheManager(String sessionID) {
+		return cacheManagers.get(sessionID);
+	}
+	
 	public DsfExecutor getDsfExecutor() {
 		return executor;
 	}

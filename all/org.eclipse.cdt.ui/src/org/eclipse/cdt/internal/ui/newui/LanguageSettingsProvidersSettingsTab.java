@@ -75,7 +75,7 @@ import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
  *
  * @noextend This class is not intended to be subclassed by clients.
  */
-public class LanguageSettingsProvidersTab extends AbstractCPropertyTab {
+public class LanguageSettingsProvidersSettingsTab extends AbstractCPropertyTab {
 	private static final int DEFAULT_HEIGHT = 130;
 	private static final int BUTTON_ADD = 0;
 	private static final int BUTTON_EDIT = 1;

@@ -69,7 +69,7 @@ import org.eclipse.cdt.ui.newui.CDTPrefUtil;
  *@noinstantiate This class is not intended to be instantiated by clients.
  *@noextend This class is not intended to be subclassed by clients.
  */
-public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
+public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	private SashForm sashForm;
 	private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
 

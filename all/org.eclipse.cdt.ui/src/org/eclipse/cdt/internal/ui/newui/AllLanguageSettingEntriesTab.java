@@ -67,6 +67,13 @@ import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 
+/**
+ * This tab presents language settings entries categorized by language
+ * settings providers.
+ *
+ *@noinstantiate This class is not intended to be instantiated by clients.
+ *@noextend This class is not intended to be subclassed by clients.
+ */
 public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 	protected Tree treeEntries;
 	protected TreeViewer treeEntriesViewer;

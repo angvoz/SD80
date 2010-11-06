@@ -37,6 +37,7 @@ import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.AbstractPropertyDialog;
 
@@ -88,12 +89,12 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			"Library",
 	};
 	final private Image[] comboKindImages = {
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_INCLUDES_FOLDER),
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_MACRO),
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_TUNIT_HEADER),
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_MACROS_FILE),
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_LIBRARY_FOLDER),
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_LIBRARY),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_MACRO),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_TUNIT_HEADER),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_MACROS_FILE),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_LIBRARY_FOLDER),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_LIBRARY),
 	};
 
 	private static final int COMBO_PATH_INDEX_PROJECT = 0;
@@ -106,9 +107,9 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			"Filesystem",
 	};
 	final private Image[] pathCategoryImages = {
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_OBJS_PROJECT),
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_WORKSPACE),
-			LanguageSettingsImages.get(LanguageSettingsImages.IMG_FILESYSTEM),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_ETOOL_PROJECT),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_WORKSPACE),
+			CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_FILESYSTEM),
 	};
 
 

@@ -64,6 +64,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
+import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 
@@ -163,12 +164,12 @@ public class AllLanguageSettingEntriesTab extends AbstractCPropertyTab {
 					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
 					if (entries!=null) {
 						if (provider instanceof ILanguageSettingsEditableProvider || provider instanceof LanguageSettingsSerializable) {
-							overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_SETTING;
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
 						}
 					} else {
 						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesUpResourceTree(provider);
 						if (entriesParent!=null && entriesParent.size()>0) {
-							overlayKeys[IDecoration.TOP_RIGHT] = LanguageSettingsImages.IMG_OVR_PARENT;
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
 						}
 
 					}

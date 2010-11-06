@@ -14,10 +14,9 @@ import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.swt.graphics.Image;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 
@@ -31,9 +30,9 @@ public class LanguageSettingsProviderAssociation {
 	private static final String ATTR_ICON = "icon"; //$NON-NLS-1$
 	private static final String ATTR_PAGE = "page"; //$NON-NLS-1$
 
-	static private Map<URL, Image> loadedIcons = null;
+	static private List<URL> loadedIcons = null;
 	static private Map<String, URL> fImagesUrlById = null;
-	static private Map<String, URL> fImagesByClass = null;
+	static private Map<String, URL> fImagesUrlByClass = null;
 	static private List<String> fRegirestedIds = null;
 	static private List<String> fRegisteredClasses = null;
 
@@ -41,9 +40,9 @@ public class LanguageSettingsProviderAssociation {
 		if (loadedIcons!=null) {
 			return;
 		}
-		if (loadedIcons==null) loadedIcons = new HashMap<URL, Image>();
+		if (loadedIcons==null) loadedIcons = new ArrayList<URL>();
 		if (fImagesUrlById==null) fImagesUrlById = new HashMap<String, URL>();
-		if (fImagesByClass==null) fImagesByClass = new HashMap<String, URL>();
+		if (fImagesUrlByClass==null) fImagesUrlByClass = new HashMap<String, URL>();
 		if (fRegirestedIds==null) fRegirestedIds = new ArrayList<String>();
 		if (fRegisteredClasses==null) fRegisteredClasses = new ArrayList<String>();
 
@@ -57,15 +56,13 @@ public class LanguageSettingsProviderAssociation {
 				for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
 					if (cfgEl.getName().equals(ELEM_ID_ASSOCIATION)) {
 						String id = cfgEl.getAttribute(ATTR_ID);
-						Image image =getIcon(cfgEl);
 						URL url = getIconUrl(cfgEl);
 						fImagesUrlById.put(id, url);
 						fRegirestedIds.add(id);
 					} else if (cfgEl.getName().equals(ELEM_CLASS_ASSOCIATION)) {
 						String className = cfgEl.getAttribute(ATTR_CLASS);
-						Image image =getIcon(cfgEl);
 						URL url = getIconUrl(cfgEl);
-						fImagesByClass.put(className, url);
+						fImagesUrlByClass.put(className, url);
 						String pageClass = cfgEl.getAttribute(ATTR_PAGE);
 						if (pageClass!=null && pageClass.trim().length()>0) {
 							fRegisteredClasses.add(className);
@@ -77,43 +74,19 @@ public class LanguageSettingsProviderAssociation {
 
 	}
 
-	private static Image getIcon(IConfigurationElement config) {
-		ImageDescriptor idesc = null;
-		URL url = null;
-		try {
-			String iconName = config.getAttribute(ATTR_ICON);
-			if (iconName != null) {
-				URL pluginInstallUrl = Platform.getBundle(config.getDeclaringExtension().getContributor().getName()).getEntry("/"); //$NON-NLS-1$
-				url = new URL(pluginInstallUrl, iconName);
-				if (loadedIcons.containsKey(url))
-					return loadedIcons.get(url);
-				idesc = ImageDescriptor.createFromURL(url);
-			}
-		} catch (MalformedURLException exception) {}
-		if (idesc == null)
-			return null;
-		Image img = idesc.createImage();
-		loadedIcons.put(url, img);
-		return img;
-	}
-
 	private static URL getIconUrl(IConfigurationElement config) {
-		ImageDescriptor idesc = null;
 		URL url = null;
 		try {
 			String iconName = config.getAttribute(ATTR_ICON);
 			if (iconName != null) {
 				URL pluginInstallUrl = Platform.getBundle(config.getDeclaringExtension().getContributor().getName()).getEntry("/"); //$NON-NLS-1$
 				url = new URL(pluginInstallUrl, iconName);
-				if (loadedIcons.containsKey(url))
+				if (loadedIcons.contains(url))
 					return url;
-				idesc = ImageDescriptor.createFromURL(url);
 			}
 		} catch (MalformedURLException exception) {}
-		if (idesc == null)
-			return null;
-		Image img = idesc.createImage();
-		loadedIcons.put(url, img);
+		loadedIcons.add(url);
+		CDTSharedImages.register(url);
 		return url;
 	}
 
@@ -200,7 +173,7 @@ public class LanguageSettingsProviderAssociation {
 	public static URL getImage(Class<? extends ILanguageSettingsProvider> clazz) {
 		for (Class<?> c=clazz;c!=null;c=c.getSuperclass()) {
 			String className = c.getCanonicalName();
-			Set<Entry<String, URL>> entrySet = fImagesByClass.entrySet();
+			Set<Entry<String, URL>> entrySet = fImagesUrlByClass.entrySet();
 			for (Entry<String, URL> entry : entrySet) {
 				if (entry.getKey().equals(className)) {
 					return entry.getValue();
@@ -213,8 +186,6 @@ public class LanguageSettingsProviderAssociation {
 	/**
 	 * Returns Language Settings Provider image registered for closest superclass.
 	 * @param provider TODO
-	 * @param id TODO
-	 * @param clazz - class to find Language Settings Provider image.
 	 * @return image or {@code null}
 	 */
 	public static ICOptionPage createOptionsPage(ILanguageSettingsProvider provider) {

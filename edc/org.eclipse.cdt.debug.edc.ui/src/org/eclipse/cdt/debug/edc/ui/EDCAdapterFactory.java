@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.core.model.IRestart;
 import org.eclipse.cdt.debug.core.model.ISteppingModeTarget;
 import org.eclipse.cdt.debug.edc.internal.ui.DsfTerminateCommand;
 import org.eclipse.cdt.debug.edc.internal.ui.EDCDebugTextHover;
+import org.eclipse.cdt.debug.edc.internal.ui.EDCSteppingModeTarget;
 import org.eclipse.cdt.debug.edc.internal.ui.EDCViewModelAdapter;
 import org.eclipse.cdt.debug.edc.internal.ui.actions.EDCDisconnectCommand;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
@@ -30,7 +31,6 @@ import org.eclipse.cdt.dsf.debug.ui.actions.DsfResumeCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfStepIntoCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfStepOverCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfStepReturnCommand;
-import org.eclipse.cdt.dsf.debug.ui.actions.DsfSteppingModeTarget;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfSuspendCommand;
 import org.eclipse.cdt.dsf.debug.ui.contexts.DsfSuspendTrigger;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.SteppingController;
@@ -85,7 +85,7 @@ abstract public class EDCAdapterFactory implements IAdapterFactory, ILaunchesLis
 		
 		final IDebugModelProvider fDebugModelProvider;
 		final DsfSuspendTrigger fSuspendTrigger;
-		final DsfSteppingModeTarget fSteppingModeTarget;
+		final EDCSteppingModeTarget fSteppingModeTarget;
 		final IModelSelectionPolicyFactory fModelSelectionPolicyFactory;
 		final SteppingController fSteppingController;
 		final DefaultRefreshAllTarget fRefreshAllTarget;
@@ -111,7 +111,7 @@ abstract public class EDCAdapterFactory implements IAdapterFactory, ILaunchesLis
 			session.registerModelAdapter(ISourceDisplay.class, fSourceDisplayAdapter);
 
 			fDisconnectCommand = new EDCDisconnectCommand(session);
-			fSteppingModeTarget = new DsfSteppingModeTarget();
+			fSteppingModeTarget = new EDCSteppingModeTarget(session);
 			fStepIntoCommand = new DsfStepIntoCommand(session, fSteppingModeTarget);
 			fStepOverCommand = new DsfStepOverCommand(session, fSteppingModeTarget);
 			fStepReturnCommand = new DsfStepReturnCommand(session);

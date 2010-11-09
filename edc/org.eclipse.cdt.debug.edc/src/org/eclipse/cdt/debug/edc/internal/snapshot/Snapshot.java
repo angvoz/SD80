@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -29,6 +29,7 @@ import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.PlatformObject;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.internal.core.LaunchManager;
 import org.osgi.framework.InvalidSyntaxException;
@@ -159,16 +160,25 @@ public class Snapshot extends PlatformObject {
 		}
 	}
 	
+	/**
+	 * Write snapshot data.
+	 *
+	 * @param monitor the progress monitor to use for reporting progress to the user. It is the caller's responsibility
+        to call done() on the given monitor. Accepts null, indicating that no progress should be
+        reported and that the operation cannot be canceled.
+	 */
 	public void writeSnapshotData(IProgressMonitor monitor){
 		try {
 			ServiceReference[] references = EDCDebugger.getBundleContext().getServiceReferences(
 					ISnapshotContributor.class.getName(), getServiceFilter(session.getId()));
+			SubMonitor progress = SubMonitor.convert(monitor, references.length * 1000);
+			progress.subTask("Writing snapshot data");
 			for (ServiceReference serviceReference : references) {
-				if (monitor.isCanceled())
+				if (progress.isCanceled())
 					break;
 				ISnapshotContributor sc = (ISnapshotContributor) EDCDebugger.getBundleContext().getService(
 						serviceReference);
-				Element serviceElement = sc.takeShapshot(album, document, monitor);
+				Element serviceElement = sc.takeSnapshot(album, document, progress.newChild(1000));
 				if (serviceElement != null)
 					snapshotRootElement.appendChild(serviceElement);
 			}

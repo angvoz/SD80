@@ -611,7 +611,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return result;
 		}
 
-		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		/**
+		 * @since 2.0
+		 */
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 			Element contextElement = document.createElement(STACK_FRAME);
 			contextElement.setAttribute(PROP_ID, this.getID());
 

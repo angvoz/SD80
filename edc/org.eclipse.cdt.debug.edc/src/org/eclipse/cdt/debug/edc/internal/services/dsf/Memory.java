@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -34,10 +34,10 @@ import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
-import org.eclipse.cdt.dsf.debug.service.IMemory;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionChangedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMAddress;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IMemory;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.StateChangeReason;
@@ -47,6 +47,7 @@ import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.debug.core.model.MemoryByte;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.w3c.dom.Document;
@@ -411,13 +412,18 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		}
 	}
 
-	public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor#takeShapshot(org.eclipse.cdt.debug.edc.snapshot.IAlbum, org.w3c.dom.Document, org.eclipse.core.runtime.IProgressMonitor)
+	 */
+	public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 		Element memoryElement = document.createElement(MEMORY);
+		SubMonitor progress = SubMonitor.convert(monitor, memoryCaches.keySet().size() * 1000);
+		progress.subTask("Memory");
 		for (String key : memoryCaches.keySet()) {
 			MemoryCache cache = memoryCaches.get(key);
 			Element memoryCacheElement = document.createElement(MEMORY_CONTEXT);
 			memoryCacheElement.setAttribute(CONTEXT_ID, key);
-			memoryCacheElement.appendChild(cache.takeShapshot(album, document, monitor));
+			memoryCacheElement.appendChild(cache.takeSnapshot(album, document, progress.newChild(1000)));
 			memoryElement.appendChild(memoryCacheElement);
 		}
 		return memoryElement;

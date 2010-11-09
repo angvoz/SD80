@@ -33,7 +33,6 @@ import org.eclipse.cdt.debug.edc.tests.TestUtils.Condition;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.junit.Assert;
 import org.junit.Test;
 import org.w3c.dom.Document;
@@ -92,7 +91,7 @@ public class SnapshotTests extends BaseLaunchTest {
 			}
 		});
 
-		Album.createSnapshotForSession(session, null, new NullProgressMonitor());
+		Album.captureSnapshotForSession(session, threadDMC);
 		
 		TestUtils.wait(new Condition() {
 			

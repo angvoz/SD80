@@ -60,6 +60,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.debug.core.model.ISourceLocator;
 import org.eclipse.debug.core.sourcelookup.containers.LocalFileStorage;
 import org.w3c.dom.Document;
@@ -176,7 +177,9 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 			initializeSymbolReader();
 		}
 
-		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+			SubMonitor progress = SubMonitor.convert(monitor, runtimeSections.size() + 1);
+			progress.subTask("Modules");
 			Element contextElement = document.createElement(MODULE);
 			contextElement.setAttribute(PROP_ID, this.getID());
 			Element propsElement = SnapshotUtils.makeXMLFromProperties(document, getProperties());
@@ -192,6 +195,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				propsElement = SnapshotUtils.makeXMLFromProperties(document, s.getProperties());
 				sectionElement.appendChild(propsElement);
 				contextElement.appendChild(sectionElement);
+				progress.worked(1);
 			}
 
 			if (!hostFilePath.isEmpty()) {
@@ -201,7 +205,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 					album.addFile(possibleSymFile);
 				}
 			}
-
+			progress.worked(1);
 			return contextElement;
 		}
 

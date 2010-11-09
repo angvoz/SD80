@@ -35,6 +35,7 @@ import org.eclipse.cdt.utils.Addr64Factory;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.debug.core.model.MemoryByte;
 import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.services.IMemory;
@@ -803,7 +804,9 @@ public class MemoryCache implements ISnapshotContributor {
 		}
 	}
 
-	public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+	public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		SubMonitor progress = SubMonitor.convert(monitor, memoryBlockList.size());
+		progress.subTask("Memory");
 		Element memoryCacheElement = document.createElement(MEMORY_CACHE);
 		ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
 
@@ -814,6 +817,7 @@ public class MemoryCache implements ISnapshotContributor {
 			blockElement.setAttribute(ATTR_LENGTH, Long.toString(block.fLength));
 			blockElement.setAttribute(ATTR_VALUE, MemoryUtils.convertMemoryBytesToHexString(block.fBlock));
 			memoryCacheElement.appendChild(blockElement);
+			progress.worked(1);
 		}
 		return memoryCacheElement;
 	}

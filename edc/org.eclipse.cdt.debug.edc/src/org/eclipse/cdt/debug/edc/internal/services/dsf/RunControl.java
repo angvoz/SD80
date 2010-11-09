@@ -567,8 +567,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				break;
 			}
 
-			if (tcfContext != null)
-				return tcfContext.canResume(mode);
+			if (hasTCFContext())
+				return getTCFContext().canResume(mode);
 			else
 				return false;
 		}
@@ -585,10 +585,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext
+						getTCFContext()
 								.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME,
 										0, new DoneCommand() {
 
@@ -639,10 +639,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME,
+						getTCFContext().resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME,
 										0, new DoneCommand() {
 
 											public void doneCommand(
@@ -691,10 +691,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public void suspend(final RequestMonitor requestMonitor) {
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext.suspend(new DoneCommand() {
+						getTCFContext().suspend(new DoneCommand() {
 
 							public void doneCommand(IToken token,
 									Exception error) {
@@ -718,10 +718,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			isTerminatingThanDisconnecting = true;
 			
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext.terminate(new DoneCommand() {
+						getTCFContext().terminate(new DoneCommand() {
 
 							public void doneCommand(IToken token, Exception error) {
 								if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
@@ -881,13 +881,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null)
+			if (hasTCFContext())
 			{
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
 						int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO
 								: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER;
-						tcfContext.resume(mode, 1, new DoneCommand() {
+						getTCFContext().resume(mode, 1, new DoneCommand() {
 							public void doneCommand(IToken token, final Exception error) {
 								// do this in DSF executor thread.
 								getExecutor().execute(new Runnable() {
@@ -917,10 +917,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext
+						getTCFContext()
 								.resume(org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OUT,
 										0, new DoneCommand() {
 
@@ -953,7 +953,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
 						int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO_RANGE
@@ -962,7 +962,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						params.put("RANGE_START", rangeStart.getValue());
 						params.put("RANGE_END", rangeEnd.getValue());
 
-						tcfContext.resume(mode, 0, params, new DoneCommand() {
+						getTCFContext().resume(mode, 0, params, new DoneCommand() {
 
 							public void doneCommand(IToken token,
 									final Exception error) {
@@ -1015,6 +1015,14 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		protected DMCResumedEvent createResumedEvent() {
 			return new ResumedEvent(this);
+		}
+
+		public RunControlContext getTCFContext() {
+			return tcfContext;
+		}
+
+		public boolean hasTCFContext() {
+			return tcfContext != null;
 		}
 
 	}
@@ -1070,8 +1078,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		@Override
 		public boolean canDetach() {
-			// can detach from a process.
-			return true;
+			// Can detach from a process unless we're part of a snapshot.
+			return hasTCFContext();
 		}
 
 		@Override

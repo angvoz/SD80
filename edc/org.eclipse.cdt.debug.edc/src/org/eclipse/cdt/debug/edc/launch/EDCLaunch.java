@@ -95,6 +95,7 @@ abstract public class EDCLaunch extends DsfLaunch {
 	private ILaunchConfiguration activeLaunchConfiguration;
 	private List<ILaunchConfiguration> affiliatedLaunchConfigurations = Collections.synchronizedList(new ArrayList<ILaunchConfiguration>());
 	private boolean isTerminatedThanDisconnected = false;
+	private boolean shuttingDown;
 
 	private static final Map<EDCLaunch, List<IChannel>> launchChannels = Collections
 			.synchronizedMap(new HashMap<EDCLaunch, List<IChannel>>());
@@ -261,7 +262,7 @@ abstract public class EDCLaunch extends DsfLaunch {
 	// IDisconnect
 	@Override
 	public boolean canDisconnect() {
-		return canTerminate();
+		return !isSnapshotLaunch() && canTerminate();
 	}
 
 	@Override
@@ -301,11 +302,13 @@ abstract public class EDCLaunch extends DsfLaunch {
 	 */
 	@ConfinedToDsfExecutor("getSession().getExecutor()")
 	public void shutdownSession(final RequestMonitor rm) {		
-		if (shutDown || executor == null) {
+		if (shutDown || shuttingDown || executor == null) {
 			rm.done();
 			return;
 		}
 
+		shuttingDown = true;
+		
 		Sequence shutdownSeq = new ShutdownSequence(getDsfExecutor(), session.getId(), new RequestMonitor(session
 				.getExecutor(), rm) {
 			@Override

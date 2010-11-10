@@ -63,6 +63,7 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.PlatformObject;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -276,18 +277,21 @@ public class Album extends PlatformObject implements IAlbum {
 	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#createSnapshot(org.eclipse.cdt.dsf.service.DsfSession, org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC, org.eclipse.core.runtime.IProgressMonitor)
 	 */
 	public Snapshot createSnapshot(DsfSession session, StackFrameDMC stackFrame, IProgressMonitor monitor) {
+		SubMonitor progress = SubMonitor.convert(monitor, "Creating Snapshot", 10000);
 		configureAlbum();
+		progress.worked(100);
 		
 		if (getLocation() == null || !getLocation().toFile().exists()){
 				createEmptyAlbum(); 
 		}
 		
 		Snapshot snapshot = new Snapshot(this, session, stackFrame);
-		snapshot.writeSnapshotData(monitor);
+		snapshot.writeSnapshotData(progress.newChild(7900));
 
 		snapshotList.add(snapshot);
-		saveAlbum(monitor);
+		saveAlbum(progress.newChild(1000));
 		
+		monitor.done();
 		return snapshot;
 	}
 
@@ -457,12 +461,17 @@ public class Album extends PlatformObject implements IAlbum {
 		IPath zipPath = getLocation();
 		ZipOutputStream zipOut = null;
 		try {
+			SubMonitor progress = SubMonitor.convert(monitor, 2000 + (snapshotList.size() * 1000));
+			progress.subTask("Saving album data");
+
 			zipOut = new ZipOutputStream(new FileOutputStream(zipPath.toFile()));
 
 			zipOut.putNextEntry(new ZipEntry(ALBUM_DATA));
 
 			saveResourceList();
+			progress.worked(1000);
 			saveSnapshotMetadata();
+			progress.worked(1000);
 
 			String xml = LaunchManager.serializeDocument(document);
 			zipOut.write(xml.getBytes("UTF8")); //$NON-NLS-1$
@@ -471,6 +480,7 @@ public class Album extends PlatformObject implements IAlbum {
 			for (Snapshot snap : snapshotList) {
 				zipOut.putNextEntry(new ZipEntry(snap.getSnapshotFileName()));
 				snap.saveSnapshot(zipOut);
+				progress.worked(1000);
 			}
 
 		} catch (Exception e) {
@@ -966,29 +976,6 @@ public class Album extends PlatformObject implements IAlbum {
 				PREF_CREATION_CONTROL, CREATE_MANUAL, null);
 	}
 
-	public static void createSnapshotForSession(final DsfSession session, final StackFrameDMC stackFrame, final IProgressMonitor monitor) {
-
-		String sessionId = session.getId();
-		Album album = Album.getRecordingForSession(sessionId);
-		if (album == null) {
-			album = new Album();
-			album.setRecordingSessionID(sessionId);
-		}
-		final Album finalAlbum = album;
-		playSnapshotSound();
-
-		session.getExecutor().execute(new DsfRunnable() {
-			public void run() {
-				Snapshot newSnapshot = finalAlbum.createSnapshot(session, stackFrame, monitor);
-				// Fire the event to anyone listening
-				for (ISnapshotAlbumEventListener l : new ArrayList<ISnapshotAlbumEventListener>(listeners)) {
-					l.snapshotCreated(finalAlbum, newSnapshot, session, stackFrame);
-				}
-			}
-		});
-		
-	}
-
 	protected static void playSnapshotSound() {
 		Bundle bundle = Platform.getBundle(EDCDebugger.getUniqueIdentifier());
 		if (bundle == null)
@@ -1199,9 +1186,9 @@ public class Album extends PlatformObject implements IAlbum {
 		Job createSnapshotJob = new Job("Creating Debug Snapshot") {
 
 			@Override
-			protected IStatus run(IProgressMonitor monitor) {
+			protected IStatus run(final IProgressMonitor monitor) {
 
-				Query<IFrameDMContext> query = new Query<IFrameDMContext>() {
+				Query<IFrameDMContext> frameQuery = new Query<IFrameDMContext>() {
 					@Override
 					protected void execute(
 							DataRequestMonitor<IFrameDMContext> rm) {
@@ -1209,11 +1196,9 @@ public class Album extends PlatformObject implements IAlbum {
 								EDCDebugger.getBundleContext(),
 								dmContext.getSessionId());
 						try {
-							Stack stackService = servicesTracker
-									.getService(Stack.class);
+							Stack stackService = servicesTracker.getService(Stack.class);
 							if (stackService != null) {
-								stackService.getTopFrame(
-										dmContext, rm);
+								stackService.getTopFrame(dmContext, rm);
 							}
 						} finally {
 							servicesTracker.dispose();
@@ -1221,20 +1206,42 @@ public class Album extends PlatformObject implements IAlbum {
 					}
 				};
 
-				session.getExecutor().execute(query);
+				session.getExecutor().execute(frameQuery);
 
+				IStatus status = Status.OK_STATUS;
 				try {
-					IFrameDMContext result = query.get();
-					StackFrameDMC topFrame = (StackFrameDMC) result;
-					Album.createSnapshotForSession(session, topFrame, monitor);
+					final StackFrameDMC stackFrame = (StackFrameDMC) frameQuery.get();
 
-				} catch (InterruptedException exc) {
-					Thread.currentThread().interrupt();
-				} catch (java.util.concurrent.ExecutionException e) {
-					EDCDebugger.getMessageLogger().logError(null, e);
+					String sessionId = session.getId();
+					Album album = Album.getRecordingForSession(sessionId);
+					if (album == null) {
+						album = new Album();
+						album.setRecordingSessionID(sessionId);
+					}
+					final Album finalAlbum = album;
+					playSnapshotSound();
+
+					Query<IStatus> query = new Query<IStatus>() {
+						@Override
+						protected void execute(final DataRequestMonitor<IStatus> drm) {
+							Snapshot newSnapshot = finalAlbum.createSnapshot(session, stackFrame, monitor);
+							// Fire the event to anyone listening
+							for (ISnapshotAlbumEventListener l : new ArrayList<ISnapshotAlbumEventListener>(listeners)) {
+								l.snapshotCreated(finalAlbum, newSnapshot, session, stackFrame);
+							}
+							drm.setData(Status.OK_STATUS);
+							drm.done();
+						}
+					};
+
+					session.getExecutor().execute(query);
+
+					status = query.get();
+				} catch (Exception e) {
+					status = new Status(Status.ERROR, EDCDebugger.PLUGIN_ID, "Error creating snapshot", e);
 				}
 
-				return Status.OK_STATUS;
+				return status;
 			}
 		};
 

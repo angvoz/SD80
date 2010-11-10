@@ -40,6 +40,7 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions2.ICastedExpressionDMContex
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.StateChangeReason;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -329,7 +330,7 @@ public class TestUtils {
 				for (ExecutionDMC process : processes) {
 					ExecutionDMC[] threads = process.getChildren();
 					for (ExecutionDMC thread : threads) {
-						if (thread.isSuspended()) {
+						if (thread.isSuspended() && thread.getStateChangeReason() != StateChangeReason.SHAREDLIB) {
 							contextHolder[0] = thread;
 							return true;
 						}

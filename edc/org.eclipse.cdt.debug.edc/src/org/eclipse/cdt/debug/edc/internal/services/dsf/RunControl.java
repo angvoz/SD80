@@ -88,6 +88,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.debug.core.model.MemoryByte;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.IToken;
@@ -333,7 +334,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceExit(); }
 		}
 
-		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 			Element contextElement = document.createElement(EXECUTION_CONTEXT);
 			contextElement.setAttribute(PROP_ID, this.getID());
 
@@ -341,9 +342,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			contextElement.appendChild(propsElement);
 
 			ExecutionDMC[] dmcs = getChildren();
-
+			SubMonitor progress = SubMonitor.convert(monitor, dmcs.length * 1000);
+			progress.subTask(getName());
+			
 			for (ExecutionDMC executionDMC : dmcs) {
-				Element dmcElement = executionDMC.takeShapshot(album, document, monitor);
+				Element dmcElement = executionDMC.takeSnapshot(album, document, progress.newChild(1000));
 				contextElement.appendChild(dmcElement);
 			}
 
@@ -564,8 +567,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				break;
 			}
 
-			if (tcfContext != null)
-				return tcfContext.canResume(mode);
+			if (hasTCFContext())
+				return getTCFContext().canResume(mode);
 			else
 				return false;
 		}
@@ -582,10 +585,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext
+						getTCFContext()
 								.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME,
 										0, new DoneCommand() {
 
@@ -636,10 +639,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext.resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME,
+						getTCFContext().resume(org.eclipse.tm.tcf.services.IRunControl.RM_RESUME,
 										0, new DoneCommand() {
 
 											public void doneCommand(
@@ -688,10 +691,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		public void suspend(final RequestMonitor requestMonitor) {
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext.suspend(new DoneCommand() {
+						getTCFContext().suspend(new DoneCommand() {
 
 							public void doneCommand(IToken token,
 									Exception error) {
@@ -715,10 +718,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			isTerminatingThanDisconnecting = true;
 			
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext.terminate(new DoneCommand() {
+						getTCFContext().terminate(new DoneCommand() {
 
 							public void doneCommand(IToken token, Exception error) {
 								if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.traceEntry(this); }
@@ -878,13 +881,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null)
+			if (hasTCFContext())
 			{
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
 						int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO
 								: org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OVER;
-						tcfContext.resume(mode, 1, new DoneCommand() {
+						getTCFContext().resume(mode, 1, new DoneCommand() {
 							public void doneCommand(IToken token, final Exception error) {
 								// do this in DSF executor thread.
 								getExecutor().execute(new Runnable() {
@@ -914,10 +917,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
-						tcfContext
+						getTCFContext()
 								.resume(org.eclipse.tm.tcf.services.IRunControl.RM_STEP_OUT,
 										0, new DoneCommand() {
 
@@ -950,7 +953,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			flushCache(this);
 
-			if (tcfContext != null) {
+			if (hasTCFContext()) {
 				Protocol.invokeLater(new Runnable() {
 					public void run() {
 						int mode = stepInto ? org.eclipse.tm.tcf.services.IRunControl.RM_STEP_INTO_RANGE
@@ -959,7 +962,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 						params.put("RANGE_START", rangeStart.getValue());
 						params.put("RANGE_END", rangeEnd.getValue());
 
-						tcfContext.resume(mode, 0, params, new DoneCommand() {
+						getTCFContext().resume(mode, 0, params, new DoneCommand() {
 
 							public void doneCommand(IToken token,
 									final Exception error) {
@@ -1014,6 +1017,14 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return new ResumedEvent(this);
 		}
 
+		public RunControlContext getTCFContext() {
+			return tcfContext;
+		}
+
+		public boolean hasTCFContext() {
+			return tcfContext != null;
+		}
+
 	}
 
 	public class ProcessExecutionDMC extends ExecutionDMC implements IContainerDMContext, IProcessDMContext,
@@ -1045,25 +1056,30 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 
 		@Override
-		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
-			Element contextElement = super.takeShapshot(album, document, monitor);
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+			SubMonitor progress = SubMonitor.convert(monitor, 1000);
+			progress.subTask(getName());
+			Element contextElement = super.takeSnapshot(album, document, progress.newChild(500));
 			Element modulesElement = document.createElement(EXECUTION_CONTEXT_MODULES);
 			Modules modulesService = getServicesTracker().getService(Modules.class);
 
 			IModuleDMContext[] modules = modulesService.getModulesForContext(this.getID());
+			SubMonitor modulesMonitor = progress.newChild(500);
+			modulesMonitor.setWorkRemaining(modules.length * 1000);
+			modulesMonitor.subTask("Modules");
 			for (IModuleDMContext moduleContext : modules) {
 				ModuleDMC moduleDMC = (ModuleDMC) moduleContext;
-				modulesElement.appendChild(moduleDMC.takeShapshot(album, document, monitor));
+				modulesElement.appendChild(moduleDMC.takeSnapshot(album, document, modulesMonitor.newChild(1000)));
 			}
-
+			
 			contextElement.appendChild(modulesElement);
 			return contextElement;
 		}
 
 		@Override
 		public boolean canDetach() {
-			// can detach from a process.
-			return true;
+			// Can detach from a process unless we're part of a snapshot.
+			return hasTCFContext();
 		}
 
 		@Override
@@ -1106,17 +1122,22 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 
 		@Override
-		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
-			Element contextElement = super.takeShapshot(album, document, monitor);
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+			SubMonitor progress = SubMonitor.convert(monitor, 1000);
+			progress.subTask(getName());
+			Element contextElement = super.takeSnapshot(album, document, progress.newChild(100));
 			Element registersElement = document.createElement(EXECUTION_CONTEXT_REGISTERS);
 			Registers regService = getServicesTracker().getService(Registers.class);
-
+			
 			IRegisterGroupDMContext[] regGroups = regService.getGroupsForContext(this);
+			SubMonitor registerMonitor = progress.newChild(300);
+			registerMonitor.setWorkRemaining(regGroups.length * 1000);
+			registerMonitor.subTask("Registers");
 			for (IRegisterGroupDMContext registerGroupDMContext : regGroups) {
 				RegisterGroupDMC regDMC = (RegisterGroupDMC) registerGroupDMContext;
-				registersElement.appendChild(regDMC.takeShapshot(album, document, monitor));
+				registersElement.appendChild(regDMC.takeSnapshot(album, document, registerMonitor.newChild(1000)));
 			}
-
+			
 			contextElement.appendChild(registersElement);
 
 			Element framesElement = document.createElement(EXECUTION_CONTEXT_FRAMES);
@@ -1124,11 +1145,17 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			Expressions expressionsService = getServicesTracker().getService(Expressions.class);
 
 			IFrameDMContext[] frames = stackService.getFramesForDMC(this, 0, IStack.ALL_FRAMES);
+			SubMonitor framesMonitor = progress.newChild(600);
+			framesMonitor.setWorkRemaining(frames.length * 2000);
+			framesMonitor.subTask("Stack Frames");
 			for (IFrameDMContext frameDMContext : frames) {
 				StackFrameDMC frameDMC = (StackFrameDMC) frameDMContext;
 				
 				// Get the local variables for each frame
 				IVariableDMContext[] variables = frameDMC.getLocals();
+				SubMonitor variablesMonitor = framesMonitor.newChild(1000);
+				variablesMonitor.setWorkRemaining(variables.length * 10);
+				variablesMonitor.subTask("Variables");
 				for (IVariableDMContext iVariableDMContext : variables) {
 					VariableDMC varDMC = (VariableDMC) iVariableDMContext;
 					IExpressionDMContext expression = expressionsService.createExpression(frameDMContext, varDMC.getName());
@@ -1136,11 +1163,12 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					FormatExtensionManager.instance().setEnabled(true);
 					expressionsService.loadExpressionValues(expression, Album.getVariableCaptureDepth());
 					FormatExtensionManager.instance().setEnabled(wasEnabled);
+					variablesMonitor.worked(10);
+					variablesMonitor.subTask("Variables - " + varDMC.getName());
 				}
 				
-				framesElement.appendChild(frameDMC.takeShapshot(album, document, monitor));
+				framesElement.appendChild(frameDMC.takeSnapshot(album, document, framesMonitor.newChild(1000)));
 			}
-
 			contextElement.appendChild(framesElement);
 
 			return contextElement;
@@ -2327,13 +2355,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 	};
 
-	public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+	public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 		Element contextsElement = document.createElement(EXECUTION_CONTEXTS);
-
 		ExecutionDMC[] dmcs = rootExecutionDMC.getChildren();
+		SubMonitor progress = SubMonitor.convert(monitor, dmcs.length * 1000);
 
 		for (ExecutionDMC executionDMC : dmcs) {
-			Element dmcElement = executionDMC.takeShapshot(album, document, monitor);
+			Element dmcElement = executionDMC.takeSnapshot(album, document, progress.newChild(1000));
 			contextsElement.appendChild(dmcElement);
 		}
 		return contextsElement;

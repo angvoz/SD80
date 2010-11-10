@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.services;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +36,6 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
-import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
@@ -47,6 +45,7 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.services.IRegisters.RegistersContext;
@@ -122,7 +121,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			return result;
 		}
 
-		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		/**
+		 * @since 2.0
+		 */
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 			Element contextElement = document.createElement(REGISTER_GROUP);
 			contextElement.setAttribute(PROP_ID, this.getID());
 
@@ -130,11 +132,12 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			contextElement.appendChild(propsElement);
 
 			RegisterDMC[] allRegisters = getRegisters();
+			SubMonitor progress = SubMonitor.convert(monitor, allRegisters.length * 1000);
+			progress.subTask("Registers");
 			for (RegisterDMC registerDMC : allRegisters) {
-				Element dmcElement = registerDMC.takeShapshot(album, document, monitor);
+				Element dmcElement = registerDMC.takeSnapshot(album, document, progress.newChild(1000));
 				contextElement.appendChild(dmcElement);
 			}
-
 			return contextElement;
 		}
 
@@ -202,7 +205,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		public String toString() {
 			return baseToString() + ".register[" + getName() + "]";} //$NON-NLS-1$ //$NON-NLS-2$
 
-		public Element takeShapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		/**
+		 * @since 2.0
+		 */
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
 			Element registerElement = document.createElement(REGISTER);
 			registerElement.setAttribute(PROP_ID, this.getID());
 			registerElement.setAttribute(PROP_VALUE, getRegisterValue(this));

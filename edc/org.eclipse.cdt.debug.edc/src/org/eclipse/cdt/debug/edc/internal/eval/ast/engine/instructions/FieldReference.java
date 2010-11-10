@@ -129,8 +129,8 @@ public class FieldReference extends CompoundInstruction {
 
 		// for lvalues (base arithmetic types, enums, and pointers), read the
 		// value and cast it to the right type
-		if (typeOfField instanceof ICPPBasicType || typeOfField instanceof IPointerType
-				|| typeOfField instanceof IEnumeration) {
+		if (   typeOfField instanceof ICPPBasicType || typeOfField instanceof IPointerType
+			|| typeOfField instanceof IEnumeration  || typeOfField instanceof IReferenceType) {
 			int byteSize = typeOfField.getByteSize();
 
 			// TODO support 12-byte long double

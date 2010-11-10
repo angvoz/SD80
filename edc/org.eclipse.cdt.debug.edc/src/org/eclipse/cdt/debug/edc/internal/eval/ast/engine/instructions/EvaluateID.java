@@ -29,6 +29,7 @@ import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.services.Stack.VariableDMC;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
@@ -100,7 +101,8 @@ public class EvaluateID extends SimpleInstruction {
 			ILocationProvider provider = variable.getVariable().getLocationProvider();
 			IEDCModuleDMContext module = frame.getModule();
 			if (module != null && provider != null) {
-				valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(frame.getInstructionPtrAddress()));
+				valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(frame.getInstructionPtrAddress()),
+													 TypeUtils.isConstType(variable.getVariable().getType()));
 			}
 			if (valueLocation == null) {
 				// unhandled

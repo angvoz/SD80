@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
+import org.eclipse.jface.viewers.IDecoration;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.TreeItem;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
@@ -18,6 +20,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
+import org.eclipse.cdt.ui.CDTSharedImages;
 
 public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingEntriesProvidersTab {
 	// providerId -> provider
@@ -95,6 +98,31 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 			return entries;
 		}
 
+	}
+
+	@Override
+	public void createControls(Composite parent) {
+		super.createControls(parent);
+		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider() {
+			@Override
+			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
+				String[] overlayKeys = new String[5];
+				if (currentLanguageSetting != null) {
+					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
+					if (entries == null) {
+						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesUpResourceTree(provider);
+						if (entriesParent != null && entriesParent.size() > 0) {
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
+						}
+					} else {
+						if (provider instanceof ILanguageSettingsEditableProvider || provider instanceof LanguageSettingsSerializable) {
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
+						}
+					}
+				}
+				return overlayKeys;
+			}
+		});
 	}
 
 	private EditedProvider makeEditedProvider(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription, IResource rc) {
@@ -603,6 +631,18 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	protected final boolean isIndexerAffected() {
 		// TODO
 		return true;
+	}
+
+	/**
+	 * Shortcut for setting setting entries for current context.
+	 *
+	 */
+	private void setSettingEntries(ILanguageSettingsEditableProvider provider, List<ICLanguageSettingEntry> entries) {
+		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+		IResource rc = getResource();
+		String languageId = currentLanguageSetting.getLanguageId();
+		if (languageId!=null)
+			provider.setSettingEntries(cfgDescription, rc, languageId, entries);
 	}
 
 }

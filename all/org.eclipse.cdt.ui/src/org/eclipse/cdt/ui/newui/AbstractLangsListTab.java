@@ -18,11 +18,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.eclipse.jface.resource.JFaceResources;
-import org.eclipse.jface.viewers.IFontProvider;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
-import org.eclipse.jface.viewers.ITableLabelProvider;
-import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
@@ -33,8 +29,6 @@ import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -66,8 +60,8 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
-import org.eclipse.cdt.ui.CDTSharedImages;
 
+import org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntriesLabelProvider;
 import org.eclipse.cdt.internal.ui.newui.Messages;
 
 public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
@@ -78,6 +72,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected Button showBIButton;
 	protected boolean toAllCfgs = false;
 	protected boolean toAllLang = false;
+	private Label warningLabel;
 	/** @deprecated as of CDT 8.0. {@code linkStringListMode} is used instead. */
 	@Deprecated
 	protected Label lb1, lb2;
@@ -120,12 +115,6 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 
 	private static final Comparator<Object> comp = CDTListComparator.getInstance();
 
-	private final static Image IMG_FOLDER = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_FOLDER);
-	private final static Image IMG_INCLUDES_FOLDER = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER);
-	private final static Image IMG_BUILTIN_FOLDER = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER_SYSTEM);
-	private final static Image IMG_WORKSPACE = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_WORKSPACE);
-	private final static Image IMG_INCLUDES_FOLDER_WORKSPACE = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER_WORKSPACE);
-	private final static Image IMG_MACRO = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_MACRO);
 	private static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
 
 	@Override
@@ -189,7 +178,18 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 		});
 
-		tv.setLabelProvider(new RichLabelProvider());
+		tv.setLabelProvider(new LanguageSettingsEntriesLabelProvider() {
+			@Override
+			public String getColumnText(Object element, int columnIndex) {
+				String columnText = super.getColumnText(element, columnIndex);
+				if (columnIndex == 0) {
+					if (element instanceof ICLanguageSettingEntry && exported.contains(resolve((ICLanguageSettingEntry) element))) {
+						columnText = columnText + Messages.AbstractLangsListTab_ExportIndicator; 
+					}
+				}
+				return columnText;
+			}
+		});
 
 		table.addSelectionListener(new SelectionAdapter() {
 			@Override
@@ -212,6 +212,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 				setColumnToFit();
 			}});
 
+		warningLabel = setupLabel(usercomp, "FIXME gf4giug45guh432h43ig32iu4g324giu342ggiu432gu432fkjdbvkjrewkjvbewrkjbvrebvkjvkjrekjvbkjrbvbvkjrkjvrekjvb", 1, GridData.GRAB_HORIZONTAL);
 		showBIButton = setupCheck(usercomp, Messages.AbstractLangsListTab_ShowBuiltin, 1, GridData.GRAB_HORIZONTAL);
 		gd = (GridData) showBIButton.getLayoutData();
 		showBIButton.addSelectionListener(new SelectionAdapter() {
@@ -692,70 +693,6 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			}
 		}
 		updateData(this.getResDesc());
-	}
-
-	// Extended label provider
-	private class RichLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider*/{
-		public RichLabelProvider(){}
-		@Override
-		public Image getImage(Object element) {
-			return getColumnImage(element, 0);
-		}
-		public Image getColumnImage(Object element, int columnIndex) {
-			if (columnIndex > 0) return null;
-			if (! (element instanceof ICLanguageSettingEntry)) return null;
-
-			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			if (le.getKind() == ICSettingEntry.MACRO)
-				return IMG_MACRO;
-			if ((le.getFlags() & ICSettingEntry.BUILTIN) != 0)
-				return IMG_BUILTIN_FOLDER;
-
-			boolean isWorkspacePath = (le.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
-			if (le.getKind() == ICSettingEntry.INCLUDE_PATH || le.getKind() == ICSettingEntry.INCLUDE_FILE) {
-				if (isWorkspacePath)
-					return IMG_INCLUDES_FOLDER_WORKSPACE;
-				else
-					return IMG_INCLUDES_FOLDER;
-			} else {
-				if (isWorkspacePath)
-					return IMG_WORKSPACE;
-				else
-					return IMG_FOLDER;
-			}
-		}
-		@Override
-		public String getText(Object element) {
-			return getColumnText(element, 0);
-		}
-		public String getColumnText(Object element, int columnIndex) {
-			if (! (element instanceof ICLanguageSettingEntry)) {
-				return (columnIndex == 0) ? element.toString() : EMPTY_STR;
-			}
-			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			if (columnIndex == 0) {
-				String s = le.getName();
-				if (exported.contains(resolve(le)))
-					s = s + Messages.AbstractLangsListTab_ExportIndicator;
-				return s;
-			}
-			if (le.getKind() == ICSettingEntry.MACRO) {
-				switch (columnIndex) {
-					case 1: return le.getValue();
-				}
-			}
-			return EMPTY_STR;
-		}
-
-		public Font getFont(Object element) {
-			if (! (element instanceof ICLanguageSettingEntry)) return null;
-			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			if (le.isBuiltIn()) return null;    // built in
-			if (le.isReadOnly())                // read only
-				return JFaceResources.getFontRegistry().getItalic(JFaceResources.DIALOG_FONT);
-			// normal
-			return JFaceResources.getFontRegistry().getBold(JFaceResources.DIALOG_FONT);
-		}
 	}
 
 	public ICLanguageSetting[] getLangSetting(ICResourceDescription rcDes) {

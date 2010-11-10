@@ -67,7 +67,7 @@ public abstract class ACPathEntry extends ACSettingEntry
 		return null;
 	}
 	
-	protected abstract boolean isFile();
+	public abstract boolean isFile();
 
 	public IPath getLocation() {
 		if(!isValueWorkspacePath())

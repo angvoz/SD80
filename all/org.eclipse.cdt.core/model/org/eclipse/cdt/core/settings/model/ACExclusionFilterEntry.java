@@ -37,7 +37,8 @@ public abstract class ACExclusionFilterEntry extends ACPathEntry implements ICEx
 	}
 
 	@Override
-	protected final boolean isFile() {
+	public
+	final boolean isFile() {
 		return false;
 	}
 	

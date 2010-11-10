@@ -4,6 +4,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.swt.graphics.Image;
 
+import org.eclipse.cdt.core.settings.model.ACPathEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingPathEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
@@ -22,7 +23,6 @@ public class LanguageSettingsImages {
 		return null;
 	}
 
-//	public static Image getImage(int kind, int flags, boolean isProjectRelative) {
 	public static Image getImage(ICLanguageSettingEntry entry) {
 		int kind = entry.getKind();
 		boolean isWorkspacePath = (entry.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
@@ -32,18 +32,7 @@ public class LanguageSettingsImages {
 		String imageKey = getImageKey(kind, flags, isProjectRelative);
 		if (imageKey!=null) {
 			if (entry instanceof ICLanguageSettingPathEntry) {
-				boolean exists = true;
-				boolean resolved = (flags & ICSettingEntry.RESOLVED) ==  ICSettingEntry.RESOLVED;
-				if (isWorkspacePath) {
-					// TODO: Hmm, MBS supplies unresolved entries having location=null
-					if (resolved) {
-						IPath location = ((ICLanguageSettingPathEntry) entry).getLocation();
-						exists = location!=null && location.toFile().exists();
-					}
-				} else {
-					java.io.File file = new java.io.File(path);
-					exists = file.exists();
-				}
+				boolean exists = isLocationOk((ICLanguageSettingPathEntry) entry);
 				if (!exists) {
 					return CDTSharedImages.getImageOverlaid(imageKey, CDTSharedImages.IMG_OVR_WARNING, IDecoration.BOTTOM_LEFT);
 				}
@@ -51,6 +40,38 @@ public class LanguageSettingsImages {
 			return CDTSharedImages.getImage(imageKey);
 		}
 		return null;
+	}
+
+	private static boolean isLocationOk(ICLanguageSettingPathEntry entry) {
+		boolean exists = true;
+		boolean resolved = (entry.getFlags() & ICSettingEntry.RESOLVED) == ICSettingEntry.RESOLVED;
+		boolean isWorkspacePath_FIXME = (entry.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
+		if (isWorkspacePath_FIXME) {
+			// TODO: Hmm, MBS supplies unresolved entries having location=null
+			if (resolved) {
+				IPath location = entry.getLocation();
+				exists = location!=null && location.toFile().exists();
+			// AG: this does not work
+//					} else {
+//						exists = false;
+			}
+		} else {
+			String pathname = entry.getName();
+			java.io.File file = new java.io.File(pathname);
+			exists = file.exists();
+		}
+		return exists;
+	}
+	
+	// AG TODO - use IStatus maybe?
+	public static String getWarningMessage(ICLanguageSettingPathEntry entry) {
+		if (!isLocationOk(entry)) {
+			ACPathEntry acEntry = (ACPathEntry)entry;
+			if (acEntry.isFile())
+				return "File " + entry.getName() + " not found";
+			return "Folder " + entry.getName() + " not found";
+		}
+		return "";
 	}
 
 	private static String getImageKey(int kind, int flag, boolean isProjectRelative) {

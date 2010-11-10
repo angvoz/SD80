@@ -90,7 +90,7 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 
 	/**
 	 * We keep a map of RMs to cache objects so that when our RM cancel listener
-	 * is called, we know which cache entry to discard
+	 * is called, we know which cache entry to toggle off the 'inUse' flag for.
 	 */
 	private Map<RequestMonitor, ICacheEntry> fMonitorToCache = new HashMap<RequestMonitor, ICacheEntry>();
 
@@ -471,31 +471,12 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 		
 		// When a transaction is canceled, any pending updates of cache objects
 		// may end up getting canceled as well. We need to find out when that
-		// happens and remove those cache objects from our pool so that we don't
-		// dish them out to any other transactions. A canceled cache object
-		// currently ends up in the valid state with a canceled status. That
-		// means it's dead in the water. Any transaction that attempts to use
-		// them will outright fail. See 
-		// https://bugs.eclipse.org/bugs/show_bug.cgi?id=310345#c47
+		// happens and update our 'inUse' state of the cache object--set it to
+		// false, otherwise it may needlessly be spared from cleanup.
 		ICacheEntry cache = fMonitorToCache.get(rm);
 		if (cache != null) {
-			// remove the cache object from our flat collection... 
-			fAllCaches.remove(cache);
-			
-			// ...and from our cache-grouped collection
-			IDMContext dmc = cache.getContext();
-			List<ICacheEntry> cacheList = getCacheListForContext(dmc);
-			cacheList.remove(cache);
-			
-			cache.dispose();
 			rm.removeCancelListener(this);
-			
-			// If discarding this cache object left us with no caches for the
-			// context, then remove the context from the collection.
-			if (cacheList.size() == 0) {
-				fCachesByContext.remove(dmc);
-			}
+			((MetaData)cache.getMetaData()).inUse = false;
 		}
-		assert totalCacheCount() == fAllCaches.size();		
 	}
 }

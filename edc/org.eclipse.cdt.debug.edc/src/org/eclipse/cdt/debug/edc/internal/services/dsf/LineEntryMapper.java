@@ -43,14 +43,15 @@ public class LineEntryMapper {
 	 * declare multiple functions on one line.
 	 * @path sourceFile the absolute path to the source file
 	 * @param line the line number (1-based) 
-	 * @return the unmodifiable list of link-time addresses which start at the given line, possibly empty.
+	 * @return the unmodifiable list of link-time addresses which start at the given line, possibly empty,
+	 * will be null if the source file is not used by this module.
 	 */
 	public static Collection<AddressRange> getAddressRangesAtSource(
 			IModuleLineEntryProvider moduleLineEntryProvider,
 			IPath sourceFile,
 			int line) {
 		Collection<AddressRange> range = getAddressRangesAtSource(moduleLineEntryProvider, sourceFile, line, line);
-		if (range.isEmpty()) {
+		if (range != null && range.isEmpty()) {
 			range = getAddressRangesAtSource(moduleLineEntryProvider, sourceFile, line, toEOF);
 		}
 		return range;
@@ -65,7 +66,8 @@ public class LineEntryMapper {
 	 * @path sourceFile the absolute path to the source file
 	 * @param startLine the line number (1-based) 
 	 * @param endLine the line number (1-based) 
-	 * @return the unmodifiable list of link-time addresses which start at the given line, possibly empty.
+	 * @return the unmodifiable list of link-time addresses which start at the given line, possibly empty,
+	 * will be null if the source file is not used by this module.
 	 */
 	private static Collection<AddressRange> getAddressRangesAtSource(
 			IModuleLineEntryProvider moduleLineEntryProvider,
@@ -75,7 +77,7 @@ public class LineEntryMapper {
 		Collection<? extends ILineEntryProvider> fileProviders = 
 			moduleLineEntryProvider.getLineEntryProvidersForFile(sourceFile);
 		if (fileProviders.isEmpty())
-			return Collections.emptyList();
+			return null;
 
 		int lastColumn = -1;
 		IPath lastFile = null;

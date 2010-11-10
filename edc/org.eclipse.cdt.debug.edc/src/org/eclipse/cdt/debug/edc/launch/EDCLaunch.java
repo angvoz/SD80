@@ -22,7 +22,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
+import org.eclipse.cdt.debug.core.sourcelookup.AbsolutePathSourceContainer;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.ExecutablesSourceContainer;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.acpm.CacheManager;
 import org.eclipse.cdt.debug.edc.internal.launch.ShutdownSequence;
@@ -436,17 +438,27 @@ abstract public class EDCLaunch extends DsfLaunch {
 			} else {
 				String exePath = getLaunchConfiguration().getAttribute(
 						ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME, "");
-				if (exePath.length() > 0) {
-					IPath exeDirectory = new Path(exePath).removeLastSegments(1);
-					ISourceContainer[] containers = new ISourceContainer[] { new DirectorySourceContainer(exeDirectory,
-							false) };
-					director.setSourceContainers(containers);
-				}
+				director.setSourceContainers(createExecutableLocatorSourceContainers(exePath));
 			}
 		} catch (CoreException e) {
 			EDCDebugger.getMessageLogger().logError(null, e);
 		}
 		return director;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	protected ISourceContainer[] createExecutableLocatorSourceContainers(String exePath) {
+		List<ISourceContainer> containers = new ArrayList<ISourceContainer>();
+		containers.add(new AbsolutePathSourceContainer());
+		if (exePath.length() > 0)
+		{
+			IPath exeDirectory = new Path(exePath).removeLastSegments(1);
+			containers.add(new DirectorySourceContainer(exeDirectory, false));
+		}
+		containers.add(new ExecutablesSourceContainer());
+		return containers.toArray(new ISourceContainer[containers.size()]);
 	}
 
 	public void initializeSnapshotSupport() {

@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
-import java.io.File;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.text.MessageFormat;
@@ -22,8 +21,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.core.executables.Executable;
-import org.eclipse.cdt.debug.core.executables.ExecutablesManager;
 import org.eclipse.cdt.debug.core.sourcelookup.ICSourceLocator;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
@@ -848,10 +845,8 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		// and for searching sources and executables below.
 		//
 		IPath path = PathUtils.findExistingPathIfCaseSensitive(PathUtils.createPath(originalPath));
-		if (path.toFile().exists())
-			return path;
 
-		// Try source locator first, using the host-correct path.
+		// Try source locator, use the host-correct path.
 		//
 		Object sourceElement = null;
 		ISourceLocator locator = getSourceLocator();
@@ -866,27 +861,6 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				if (sourceElement instanceof LocalFileStorage) {
 					return new Path(((LocalFileStorage) sourceElement).getFile().getAbsolutePath());
 				}
-			}
-		}
-
-		// Now looking for the file in executable view.
-		//
-		// Between the SDK and target, the exact directory and file capitalization may differ.
-		//
-		// Inject required initial slash so we can confidently use String#endsWith() without
-		// matching, e.g. "/path/to/program.exe" with "ram.exe".
-		//
-		String slashAndLowerFileName = File.separator + path.lastSegment().toLowerCase();
-		String absoluteLowerPath = path.makeAbsolute().toOSString().toLowerCase();
-		
-		// Note the 'wait=true' argument.  We can wait now that this job does not lock the UI.  
-		Collection<Executable> executables = ExecutablesManager.getExecutablesManager().getExecutables(true);
-		for (Executable e : executables) {
-			String p = e.getPath().makeAbsolute().toOSString().toLowerCase();
-			if (p.endsWith(absoluteLowerPath) || // stricter match first
-				p.endsWith(slashAndLowerFileName)) // then only check by name
-			{
-				return e.getPath();
 			}
 		}
 		

@@ -40,7 +40,6 @@ import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.model.util.CDTListComparator;
@@ -51,7 +50,6 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
-import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 
@@ -128,38 +126,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 	}
 
-	// Extended label provider for setting entries
-	private class LanguageSettingsContributorsResourceLabelProvider extends LanguageSettingsContributorsLabelProvider {
-		@Override
-		protected String[] getOverlayKeys(Object element, int columnIndex) {
-			if (element instanceof ILanguageSettingsProvider) {
-				String[] overlayKeys = new String[5];
-				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
-				if (currentLanguageSetting!=null) {
-					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
-					if (entries!=null) {
-						if (provider instanceof ILanguageSettingsEditableProvider || provider instanceof LanguageSettingsSerializable) {
-							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
-						}
-					} else {
-						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesUpResourceTree(provider);
-						if (entriesParent!=null && entriesParent.size()>0) {
-							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
-						}
-
-					}
-				}
-				return overlayKeys;
-			}
-			return null;
-		}
-
-		@Override
-		protected String getImageKey(Object element, int columnIndex) {
-			return super.getImageKey(element, columnIndex);
-		}
-	}
-
 	/**
 	 * Shortcut for getting setting entries for current context. {@link LanguageSettingsManager}
 	 * will be checking parent resources if no settings defined for current resource.
@@ -189,18 +155,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		if (languageId==null)
 			return null;
 		return provider.getSettingEntries(cfgDescription, rc, languageId);
-	}
-
-	/**
-	 * Shortcut for setting setting entries for current context.
-	 *
-	 */
-	public void setSettingEntries(ILanguageSettingsEditableProvider provider, List<ICLanguageSettingEntry> entries) {
-		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
-		IResource rc = getResource();
-		String languageId = currentLanguageSetting.getLanguageId();
-		if (languageId!=null)
-			provider.setSettingEntries(cfgDescription, rc, languageId, entries);
 	}
 
 	protected IResource getResource() {
@@ -261,7 +215,22 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 		treeEntriesViewer = new TreeViewer(treeEntries);
 		treeEntriesViewer.setContentProvider(new LanguageSettingsContributorsContentProvider());
-		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsResourceLabelProvider());
+		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider() {
+			@Override
+			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
+				String[] overlayKeys = new String[5];
+				if (currentLanguageSetting != null) {
+					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
+					if (entries == null) {
+						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesUpResourceTree(provider);
+						if (entriesParent != null && entriesParent.size() > 0) {
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
+						}
+					}
+				}
+				return overlayKeys;
+			}
+		});
 		treeEntriesViewer.setUseHashlookup(true);
 
 		sashForm.setWeights(DEFAULT_SASH_WEIGHTS);

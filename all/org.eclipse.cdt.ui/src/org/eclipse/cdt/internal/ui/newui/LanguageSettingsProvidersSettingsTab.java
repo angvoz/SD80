@@ -38,7 +38,6 @@ import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -165,41 +164,7 @@ public class LanguageSettingsProvidersSettingsTab extends AbstractCPropertyTab {
 			public void dispose() {}
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 		});
-		fTableViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider() {
-			@Override
-			public Image getImage(Object element) {
-				return super.getImage(element);
-			}
-
-			@Override
-			protected String[] getOverlayKeys(Object element, int columnIndex) {
-				String[] overlayKeys = super.getOverlayKeys(element, columnIndex);
-//				if (!fTableViewer.getChecked(element)) {
-//					overlayKeys[IDecoration.TOP_LEFT] = null;
-//				}
-				return overlayKeys;
-			}
-			@Override
-			public String getText(Object element) {
-				if (element instanceof ILanguageSettingsProvider) {
-					return ((ILanguageSettingsProvider) element).getName();
-					// FIXME:
-					// return "ErrorParsTab.error.NonAccessibleID [" + id + "]";
-				}
-				// if (element instanceof String) {
-				// String id = (String)element;
-				// ILanguageSettingsProvider provider = fAvailableProvidersMap.get(id);
-				// if (provider!=null) {
-				// String name = provider.getName();
-				// if (name!=null && name.length()>0) {
-				// return name;
-				// }
-				// }
-				// return "ErrorParsTab.error.NonAccessibleID [" + id + "]";
-				// }
-				return OOPS;
-			}
-		});
+		fTableViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider());
 
 		fTableViewer.addCheckStateListener(new ICheckStateListener() {
 			public void checkStateChanged(CheckStateChangedEvent e) {
@@ -357,6 +322,9 @@ public class LanguageSettingsProvidersSettingsTab extends AbstractCPropertyTab {
 		} else {
 			providers = fCfgDesc.getLanguageSettingProviders();
 		}
+		if (providers==null)
+			return;
+
 		ILanguageSettingsProvider provider = null;
 		for (ILanguageSettingsProvider pr : providers) {
 			if (id.equals(pr.getId())) {
@@ -544,6 +512,13 @@ public class LanguageSettingsProvidersSettingsTab extends AbstractCPropertyTab {
 	 */
 	@Override
 	public void updateData(ICResourceDescription resDecs) {
+		if (page.isMultiCfg()) {
+			setAllVisible(false, null);
+			return;
+		} else {
+			setAllVisible(true, null);
+		}
+		
 		ICConfigurationDescription oldCfgDesc = fCfgDesc;
 		fCfgDesc = resDecs!=null ? resDecs.getConfiguration() : null;
 //		if (oldCfgDesc!=fCfgDesc) {

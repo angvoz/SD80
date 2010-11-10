@@ -264,7 +264,7 @@ abstract public class EDCLaunch extends DsfLaunch {
 	// IDisconnect
 	@Override
 	public boolean canDisconnect() {
-		return !isSnapshotLaunch() && canTerminate();
+		return !(snapshotSupportInitialized && isSnapshotLaunch()) && canTerminate();
 	}
 
 	@Override
@@ -322,7 +322,8 @@ abstract public class EDCLaunch extends DsfLaunch {
 									"Session shutdown failed", null)); //$NON-NLS-1$
 				}
 				// Last order of business, shutdown the dispatch queue.
-				tracker.dispose();
+				if (tracker != null)
+					tracker.dispose();
 				tracker = null;
 				DsfSession.endSession(session);
 

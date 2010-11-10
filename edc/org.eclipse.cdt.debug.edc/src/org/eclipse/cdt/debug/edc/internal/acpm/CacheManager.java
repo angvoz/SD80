@@ -18,7 +18,9 @@ import org.eclipse.cdt.debug.edc.acpm.ICacheEntry;
 import org.eclipse.cdt.debug.edc.acpm.MemoryRangeCache;
 import org.eclipse.cdt.debug.edc.acpm.RegistersByNameRequestCache;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.INoop;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfMessages;
 import org.eclipse.cdt.debug.edc.launch.ICacheManager;
 import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
@@ -32,6 +34,7 @@ import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.Platform;
 import org.omg.CORBA.FREE_MEM;
 
 /**
@@ -53,7 +56,7 @@ import org.omg.CORBA.FREE_MEM;
  */
 @ConfinedToDsfExecutor("fDsfSession.getExecutor()")	// any executor
 public class CacheManager implements ICacheManager, DsfSession.SessionEndedListener, RequestMonitor.ICanceledListener {
-
+	
 	/** The bookkeeping data we attach to each cache object. */
 	class MetaData {
 		/** Whether the object was used in the most recent transaction attempt */
@@ -170,6 +173,7 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 	 */
 	@SuppressWarnings("unchecked")
 	private <T extends ICacheEntry> T reuseCache(ICacheEntry cache) {
+		if (EDCTrace.ACPM_TRACE_ON) { EDCTrace.getTrace().trace(null, "Reusing cache: " + cache); }
 		fAllCaches.remove(cache);
 		fAllCaches.add(cache);
 		fCachesUsedInThisTransaction.add(cache);
@@ -191,6 +195,7 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 	 * @return [cache] casted as T
 	 */
 	private <T extends ICacheEntry> T newCache(T cache, List<ICacheEntry> cacheList) {
+		if (EDCTrace.ACPM_TRACE_ON) { EDCTrace.getTrace().trace(null, "New cache: " + cache); }		
 		cache.setMetaData(new MetaData());
 		cacheList.add(cache);
 		fAllCaches.add(cache);
@@ -284,6 +289,7 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 	 * @see org.eclipse.cdt.debug.edc.launch.ICacheManager#beginTransaction()
 	 */
 	public void beginTransaction() {
+		assert fDsfSession.getExecutor().isInExecutorThread();
 		assert fCachesUsedInThisTransaction.size() == 0;
 		fCachesUsedInThisTransaction.clear();	// just in case
 		fInTransaction = true;
@@ -295,8 +301,13 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 	public void endTransaction(boolean failedInvalidCache) {
 		assert fDsfSession.getExecutor().isInExecutorThread();
 		fInTransaction = false;
-		if (failedInvalidCache == false) {
-			System.out.println("The successful transaction took " + fCachesUsedInThisTransaction.size() + " caches.");
+		if (EDCTrace.ACPM_TRACE_ON) {
+			if (failedInvalidCache) {
+				EDCTrace.getTrace().trace(null, "The transaction attempt encountered one or more invalid cache objects.");				
+			} 
+			else {
+				EDCTrace.getTrace().trace(null, "The completed transaction took " + fCachesUsedInThisTransaction.size() + " caches.");
+			}
 		}
 		
 		// Mark cache objects used in the transaction as 'in use' if the
@@ -342,7 +353,9 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 			}
 
 			if (discardCount > 0) {
-				System.out.println("Going to discard " + discardCount + " caches");
+				if (EDCTrace.ACPM_TRACE_ON) {
+					EDCTrace.getTrace().trace(null, "Going to discard " + discardCount + " caches");
+				}
 				List<ICacheEntry> removeForThisContext = new ArrayList<ICacheEntry>(fAllCaches.size() - fMaxCaches);
 				Iterator<Entry<IDMContext, List<ICacheEntry>>> citer = fCachesByContext.entrySet().iterator();
 				while (citer.hasNext()) {
@@ -351,7 +364,9 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 					List<ICacheEntry> cachesForThisContext = entry.getValue();
 					for (ICacheEntry cache : cachesForThisContext) {
 						if (removeThese.contains(cache)) {
-							System.out.println("Removing cache: " + cache);
+							if (EDCTrace.ACPM_TRACE_ON) {
+								EDCTrace.getTrace().trace(null, "Removing cache: " + cache);
+							}
 							removeForThisContext.add(cache);
 							cache.dispose();
 						}
@@ -391,6 +406,7 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 	 */
 	public void purgeAll() {
 		assert fDsfSession.getExecutor().isInExecutorThread();
+		if (EDCTrace.ACPM_TRACE_ON) { EDCTrace.getTrace().trace(null, "Purging all cache objects."); }
 		for (Map.Entry<IDMContext, List<ICacheEntry>> entry : fCachesByContext.entrySet()) {
 			List<ICacheEntry> caches = entry.getValue();
 			for (ICacheEntry cache : caches) {
@@ -403,6 +419,7 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 	}
 	
 	public void dumpStats() {
+		assert fDsfSession.getExecutor().isInExecutorThread();
 		System.out.println("There are " + fAllCaches.size() + " total caches.");
 
 		for (Map.Entry<IDMContext, List<ICacheEntry>> entry : fCachesByContext.entrySet()) {
@@ -468,6 +485,7 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 	 */
 	public void requestCanceled(RequestMonitor rm) {
 		assert fDsfSession.getExecutor().isInExecutorThread();
+		if (EDCTrace.ACPM_TRACE_ON) { EDCTrace.getTrace().trace(null, "RM " + rm.toString() + " was canceled"); }
 		
 		// When a transaction is canceled, any pending updates of cache objects
 		// may end up getting canceled as well. We need to find out when that
@@ -475,6 +493,7 @@ public class CacheManager implements ICacheManager, DsfSession.SessionEndedListe
 		// false, otherwise it may needlessly be spared from cleanup.
 		ICacheEntry cache = fMonitorToCache.get(rm);
 		if (cache != null) {
+			if (EDCTrace.ACPM_TRACE_ON) { EDCTrace.getTrace().trace(null, "Canceled RM is associated with cache: " + cache); }			
 			rm.removeCancelListener(this);
 			((MetaData)cache.getMetaData()).inUse = false;
 		}

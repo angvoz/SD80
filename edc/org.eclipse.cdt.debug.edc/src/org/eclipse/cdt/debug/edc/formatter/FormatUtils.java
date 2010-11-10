@@ -216,6 +216,8 @@ public class FormatUtils {
 		
 		StringBuilder sb = new StringBuilder();
 		ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>(64);// typical size of cache block
+		if (maximumLength == 0)
+			maximumLength = 16384;	// somewhat arbitrary; if the user really wants more, the value can always be set higher
 		OUTER:while (maximumLength > 0) {
 			int amount = Math.min(maximumLength, 64);// typical size of cache block
 			IStatus status = memory.getMemory(frame.getExecutionDMC(), address, buffer, amount, charSize);

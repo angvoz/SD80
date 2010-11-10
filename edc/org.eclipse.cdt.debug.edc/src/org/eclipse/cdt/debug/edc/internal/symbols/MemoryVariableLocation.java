@@ -33,14 +33,24 @@ import org.eclipse.debug.core.model.MemoryByte;
 
 public class MemoryVariableLocation implements IMemoryVariableLocation {
 
-	protected final IAddress address;
-	protected final boolean isRuntimeAddress;
-	protected final DsfServicesTracker tracker;
-	private final IDMContext context;
+	protected IAddress address;
+	protected boolean isRuntimeAddress;
+	protected DsfServicesTracker tracker;
+	private IDMContext context;
 
-	public MemoryVariableLocation(DsfServicesTracker tracker, 
-			IDMContext context,
-			BigInteger addressValue, boolean isRuntimeAddress) {
+	public MemoryVariableLocation(DsfServicesTracker tracker, IDMContext context, BigInteger addressValue,
+			boolean isRuntimeAddress) {
+		initialize(tracker,context,addressValue,isRuntimeAddress, false);
+	}
+
+	public MemoryVariableLocation(DsfServicesTracker tracker, IDMContext context, BigInteger addressValue,
+			boolean isRuntimeAddress, boolean checkNonLocalConstVariable) {
+		// checkConstVariableAddress should only be true for global or static (non-local) constant variables
+		initialize(tracker,context,addressValue,isRuntimeAddress, checkNonLocalConstVariable);
+	}
+
+	private void initialize(DsfServicesTracker tracker, IDMContext context, BigInteger addressValue,
+			boolean isRuntimeAddress, boolean checkNonLocalConstVariable)  {
 		this.tracker = tracker;
 		this.context = context;
 		BigInteger MAXADDR = BigInteger.valueOf(0xffffffffL);
@@ -50,6 +60,43 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 		}
 		this.address = new Addr64(addressValue.and(MAXADDR));
 		this.isRuntimeAddress = isRuntimeAddress;
+
+		if (checkNonLocalConstVariable)
+			checkNonLocalConstVariableAddr();
+	}
+	
+	/**
+	 * Since a global or static constant variable may be either at a fixed ROM address or at a runtime address,
+	 * and a compiler may not know which is correct when generating debug info, check the address   
+	 */
+	private void checkNonLocalConstVariableAddr() {
+		// TODO: Instead of this, query whether the constant variable's address is a fixed or runtime address
+
+		// Try reading a byte at the supposed address, and, if that fails, switch the sense of this.isRuntimeAddress
+		IAddress theAddress = address;
+		if (!isRuntimeAddress) {
+			StackFrameDMC frame = DMContexts.getAncestorOfType(context, StackFrameDMC.class);
+			if (frame == null) {
+				isRuntimeAddress = !isRuntimeAddress;
+				return;
+			}
+			theAddress = frame.getModule().toRuntimeAddress(theAddress);
+		}
+		
+		ExecutionDMC exeDMC = DMContexts.getAncestorOfType(context, ExecutionDMC.class);
+		
+		Memory memoryService = tracker.getService(Memory.class);
+		ArrayList<MemoryByte> memBuffer = new ArrayList<MemoryByte>(1);
+		IStatus memGetStatus = memoryService.getMemory(exeDMC, theAddress, memBuffer, 1, 1);
+		if (!memGetStatus.isOK()) {
+			isRuntimeAddress = !isRuntimeAddress;
+			return;
+		}
+
+		if (!memBuffer.get(0).isReadable()) {
+			isRuntimeAddress = !isRuntimeAddress;
+			return;
+		}
 	}
 
 	/* (non-Javadoc)

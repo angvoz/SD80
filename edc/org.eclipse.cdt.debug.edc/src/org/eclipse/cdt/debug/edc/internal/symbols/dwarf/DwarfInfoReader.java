@@ -1,19 +1,19 @@
-/*
-* Copyright (c) 2010 Nokia Corporation and/or its subsidiary(-ies).
-* All rights reserved.
-* This component and the accompanying materials are made available
-* under the terms of the License "Eclipse Public License v1.0"
-* which accompanies this distribution, and is available
-* at the URL "http://www.eclipse.org/legal/epl-v10.html".
-*
-* Initial Contributors:
-* Nokia Corporation - initial contribution.
-*
-* Contributors:
-*
-* Description: 
-*
-*/
+/**
+ * Copyright (c) 2010 Nokia Corporation and/or its subsidiary(-ies).
+ * All rights reserved.
+ * This component and the accompanying materials are made available
+ * under the terms of the License "Eclipse Public License v1.0"
+ * which accompanies this distribution, and is available
+ * at the URL "http://www.eclipse.org/legal/epl-v10.html".
+ *
+ * Initial Contributors:
+ * Nokia Corporation - initial contribution.
+ *
+ * Contributors:
+ *
+ * Description: 
+ *
+ */
 
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
@@ -1934,8 +1934,11 @@ public class DwarfInfoReader {
 	 */
 	private IAddress getInlineHighAddressFromModuleLineEntryProvider(Scope scope, IAddress low) {
 		IScope lookingForModule = scope.getParent();
+		IAddress neverHigherThan = lookingForModule.getHighAddress();
 		while (lookingForModule != null && !(lookingForModule instanceof DwarfModuleScope)) {
 			lookingForModule = lookingForModule.getParent();
+			if (neverHigherThan == null)
+				neverHigherThan = lookingForModule.getHighAddress();
 		}
 		if (lookingForModule == null)
 			return null;
@@ -1955,6 +1958,8 @@ public class DwarfInfoReader {
 		int thisLine = actualLine, lastLine = 0; 		// XXX false positive on uninitialized variable below causes needless initialization of lastLine = 0
 		boolean jumpedBack = false, jumpedAway = false;
 		do {
+			if (high != null && entry.getHighAddress().compareTo(high) <= 0)
+				break;
 			high = entry.getHighAddress();
 			if (!jumpedAway && otherPath == null)
 				lastLine = thisLine;

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Nokia and others.
+ * Copyright (c) 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,25 +10,12 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.symbols;
 
-import java.util.Map;
-
-import org.eclipse.cdt.debug.edc.symbols.IScope;
-
 /**
- * Pseudo-type that represents the const qualifier
+ * Interface used to identify pseudo-types that represent const qualifiers
+ * 
+ * @noextend This interface is not intended to be extended by clients.
+ * @noimplement This interface is not intended to be implemented by clients.
  */
-public class ConstType extends Type implements IConstType {
-
-	public ConstType(IScope scope, Map<Object, Object> properties) {
-		super("const", scope, 0, properties); //$NON-NLS-1$
-	}
-
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.debug.edc.internal.symbols.Type#getByteSize()
-	 */
-	@Override
-	public int getByteSize() {
-		return updateByteSizeFromSubType();
-	}
+public interface IConstType extends IQualifierType {
 
 }

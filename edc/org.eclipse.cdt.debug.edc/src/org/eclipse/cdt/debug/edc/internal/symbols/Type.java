@@ -66,8 +66,6 @@ public class Type implements IType {
 		if (type instanceof IForwardTypeReference) {
 			type = ((IForwardTypeReference) type).getReferencedType();
 		}
-		if (type instanceof IReferenceType)
-			type = ((IReferenceType)type).getType();
 		return type;
 	}
 

@@ -18,7 +18,11 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.viewers.IFontProvider;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
+import org.eclipse.jface.viewers.ITableLabelProvider;
+import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
@@ -29,6 +33,8 @@ import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -61,7 +67,6 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 
-import org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntriesLabelProvider;
 import org.eclipse.cdt.internal.ui.newui.LanguageSettingsImages;
 import org.eclipse.cdt.internal.ui.newui.Messages;
 import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
@@ -181,18 +186,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 		});
 
-		tv.setLabelProvider(new LanguageSettingsEntriesLabelProvider() {
-			@Override
-			public String getColumnText(Object element, int columnIndex) {
-				String columnText = super.getColumnText(element, columnIndex);
-				if (columnIndex == 0) {
-					if (element instanceof ICLanguageSettingEntry && exported.contains(resolve((ICLanguageSettingEntry) element))) {
-						columnText = columnText + Messages.AbstractLangsListTab_ExportIndicator; 
-					}
-				}
-				return columnText;
-			}
-		});
+		tv.setLabelProvider(new LanguageSettingsEntriesLabelProvider());
 
 		table.addSelectionListener(new SelectionAdapter() {
 			@Override
@@ -712,6 +706,61 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 			}
 		}
 		updateData(this.getResDesc());
+	}
+
+	// Extended label provider
+	private class LanguageSettingsEntriesLabelProvider extends LabelProvider implements IFontProvider, ITableLabelProvider /*, IColorProvider*/{
+		@Override
+		public Image getImage(Object element) {
+			return getColumnImage(element, 0);
+		}
+
+		public Image getColumnImage(Object element, int columnIndex) {
+			if (columnIndex==0 && (element instanceof ICLanguageSettingEntry)) {
+				return LanguageSettingsImages.getImage((ICLanguageSettingEntry) element);
+			}
+			return null;
+		}
+
+		@Override
+		public String getText(Object element) {
+			return getColumnText(element, 0);
+		}
+
+		public String getColumnText(Object element, int columnIndex) {
+			if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
+				switch (columnIndex) {
+				case 0:
+					String name = entry.getName();
+					if (exported.contains(resolve(entry)))
+						name = name + Messages.AbstractLangsListTab_ExportIndicator;
+					return name;
+				case 1:
+					if (entry.getKind() == ICSettingEntry.MACRO) {
+						return entry.getValue();
+					}
+					return null;
+				}
+			} else if (columnIndex == 0) {
+				return element.toString();
+			}
+			
+			return null;
+		}
+		
+		public Font getFont(Object element) {
+			if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
+				if (entry.isBuiltIn())
+					return null;
+				if (entry.isReadOnly())
+					return JFaceResources.getFontRegistry().getItalic(JFaceResources.DIALOG_FONT);
+				// normal
+				return JFaceResources.getFontRegistry().getBold(JFaceResources.DIALOG_FONT);
+			}
+			return null;
+		}
 	}
 
 	public ICLanguageSetting[] getLangSetting(ICResourceDescription rcDes) {

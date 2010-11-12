@@ -1,3 +1,14 @@
+/*******************************************************************************
+ * Copyright (c) 2010 Andrew Gvozdev and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     Andrew Gvozdev - Initial API and implementation
+ *******************************************************************************/
+
 package org.eclipse.cdt.internal.ui.newui;
 
 import org.eclipse.core.runtime.IStatus;
@@ -9,10 +20,23 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 
-/** A message line displaying a status. See also org.eclipse.jface.dialogs.StatusDialog.MessageLine */
+/**
+ * A message line displaying a status.
+ * See also org.eclipse.jface.dialogs.StatusDialog.MessageLine.
+ * 
+ * @since 5.3
+ *
+ */
 public class StatusMessageLine {
 	private CLabel fLabel;
 	
+	/**
+	 * Constructor.
+	 * 
+	 * @param parent - parent element.
+	 * @param style - the style of the control. Refer to {@link CLabel#CLabel(Composite, int)}.
+	 * @param span - how many columns it should span.
+	 */
 	public StatusMessageLine(Composite parent, int style, int span) {
 		fLabel = new CLabel(parent, style);
 		if (span!=1) {
@@ -35,6 +59,12 @@ public class StatusMessageLine {
 		return null;
 	}
 
+	/**
+	 * Assign {@link IStatus} object to the message line. The status should provide
+	 * severity for the icon and message to display.
+	 * 
+	 * @param status - status object for the message line.
+	 */
 	public void setErrorStatus(IStatus status) {
 		if (status != null && !status.isOK()) {
 			String message = status.getMessage();

@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -53,6 +54,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 
+
 /**
  * This tab presents language settings entries categorized by language
  * settings providers.
@@ -70,6 +72,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	protected TreeViewer treeEntriesViewer;
 	protected Button builtInCheckBox;
 	protected Button enableProvidersCheckBox;
+	protected StatusMessageLine fStatusLine;
 
 	protected ICLanguageSetting currentLanguageSetting;
 	protected ICLanguageSetting[] allLanguages; // all languages known
@@ -238,6 +241,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		treeEntries.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
+				updateStatusLine();
 				updateButtons();
 			}
 
@@ -247,6 +251,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 					buttonPressed(1);
 			}
 		});
+
+		fStatusLine = new StatusMessageLine(usercomp, SWT.LEFT, 2);
 
 //		table.addControlListener(new ControlListener() {
 //			public void controlMoved(ControlEvent e) {
@@ -274,6 +280,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
 					enableControls(enableProvidersCheckBox.getSelection());
+					updateStatusLine();
 				}
 			});
 			
@@ -291,6 +298,18 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 		if (enableProvidersCheckBox!=null)
 			enableControls(enableProvidersCheckBox.getSelection());
+	}
+
+	/**
+	 * Displays warning message - if any - for selected language settings entry.
+	 * TODO: Multiline selection (maybe).
+	 */
+	private void updateStatusLine() {
+		IStatus status=null;
+		if (enableProvidersCheckBox.getSelection()) {
+			status = LanguageSettingsImages.getStatus(getSelectedEntry());
+		}
+		fStatusLine.setErrorStatus(status);
 	}
 
 	/**
@@ -402,6 +421,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			treeEntriesViewer.setInput(tableItems.toArray(new Object[tableItems.size()]));
 		}
 
+		updateStatusLine();
 		updateButtons();
 	}
 

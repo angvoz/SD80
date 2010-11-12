@@ -62,7 +62,9 @@ import org.eclipse.cdt.core.settings.model.MultiLanguageSetting;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 
 import org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntriesLabelProvider;
+import org.eclipse.cdt.internal.ui.newui.LanguageSettingsImages;
 import org.eclipse.cdt.internal.ui.newui.Messages;
+import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
 
 public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected Table table;
@@ -72,7 +74,8 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	protected Button showBIButton;
 	protected boolean toAllCfgs = false;
 	protected boolean toAllLang = false;
-	private Label warningLabel;
+	private StatusMessageLine fStatusLine;
+
 	/** @deprecated as of CDT 8.0. {@code linkStringListMode} is used instead. */
 	@Deprecated
 	protected Label lb1, lb2;
@@ -194,6 +197,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		table.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
+				updateStatusLine();
 				updateButtons();
 			}
 
@@ -212,7 +216,8 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 				setColumnToFit();
 			}});
 
-		warningLabel = setupLabel(usercomp, "FIXME gf4giug45guh432h43ig32iu4g324giu342ggiu432gu432fkjdbvkjrewkjvbewrkjbvrebvkjvkjrekjvbkjrbvbvkjrkjvrekjvb", 1, GridData.GRAB_HORIZONTAL);
+		fStatusLine = new StatusMessageLine(usercomp, SWT.LEFT, 2);
+
 		showBIButton = setupCheck(usercomp, Messages.AbstractLangsListTab_ShowBuiltin, 1, GridData.GRAB_HORIZONTAL);
 		gd = (GridData) showBIButton.getLayoutData();
 		showBIButton.addSelectionListener(new SelectionAdapter() {
@@ -235,6 +240,17 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	}
 
 	/**
+	 * @return selected entry when only one is selected or {@code null}.
+	 */
+	private ICLanguageSettingEntry getSelectedEntry() {
+		int index = table.getSelectionIndex();
+		if (index<0 || table.getSelectionIndices().length!=1)
+			return null;
+	
+		return (ICLanguageSettingEntry)(table.getItem(index).getData());
+	}
+
+	/**
 	 * Used to display UI control for multiple configurations string list mode
 	 * (see Multiple Configurations Edit Preference page).
 	 *
@@ -242,6 +258,14 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 	 */
 	protected void updateStringListModeControl() {
 		stringListModeControl.updateStringListModeControl();
+	}
+
+	/**
+	 * Displays warning message - if any - for selected language settings entry.
+	 * Multiline selection is not supported.
+	 */
+	private void updateStatusLine() {
+		fStatusLine.setErrorStatus(LanguageSettingsImages.getStatus(getSelectedEntry()));
 	}
 
 	/**
@@ -350,6 +374,7 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 		}
 
 		updateStringListModeControl();
+		updateStatusLine();
 		updateButtons();
 	}
 
@@ -404,12 +429,6 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 						firstItem = t;
 						lang = langSetting;
 					}
-					// FIXME temporary stub to make testing easier
-					if (langId != null && langId.startsWith("GNU C++")) {
-						firstItem = t;
-						lang = langSetting;
-					}
-					
 				}
 			}
 

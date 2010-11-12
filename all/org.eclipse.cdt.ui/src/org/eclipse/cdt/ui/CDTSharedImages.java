@@ -106,9 +106,12 @@ public class CDTSharedImages {
 	public static final String IMG_OBJS_LIBRARY = "icons/obj16/lib_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDES_CONTAINER = "icons/obj16/includes_container.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDES_FOLDER = "icons/obj16/hfolder_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_INCLUDES_FOLDER_PROJECT = "icons/obj16/hfolder_prj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_INCLUDES_FOLDER_WORKSPACE = "icons/obj16/wsp_includefolder.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_QUOTE_INCLUDES_FOLDER = "icons/obj16/hfolder_quote_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCLUDES_FOLDER_SYSTEM = "icons/obj16/fldr_sys_obj.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_INCLUDES_FOLDER_WORKSPACE = "icons/obj16/wsp_includefolder.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_MACROS_FILE= "icons/obj16/macros_file.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_LIBRARY_FOLDER=  "icons/obj16/fldr_lib_obj.gif"; // $NON-NLS-1$  //$NON-NLS-1$
 	public static final String IMG_OBJS_ORDER = "icons/obj16/cp_order_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_EXCLUSION_FILTER_ATTRIB = "icons/obj16/exclusion_filter_attrib.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_SOURCE_ATTACH_ATTRIB = "icons/obj16/source_attach_attrib.gif"; //$NON-NLS-1$
@@ -171,10 +174,7 @@ public class CDTSharedImages {
 	public static final String IMG_OVR_ERROR = "icons/ovr16/error_co.gif"; //$NON-NLS-1$
 
 	// Language Settings Images
-	public static final String IMG_OBJS_INCLUDES_FOLDER_PROJECT = "icons/obj16/hproject.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_LANG_SETTINGS_PROVIDER = "icons/obj16/ls_entries_provider.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_MACROS_FILE= "icons/obj16/macros_file.gif"; //$NON-NLS-1$
-	public static final String IMG_OBJS_LIBRARY_FOLDER=  "icons/obj16/fldr_lib_obj.gif"; // $NON-NLS-1$  //$NON-NLS-1$
 	public static final String IMG_OBJS_CDT_TESTING = "icons/obj16/flask.png"; //$NON-NLS-1$
 	public static final String IMG_ETOOL_PROJECT = "icons/etool16/prj_obj.gif"; //$NON-NLS-1$
 

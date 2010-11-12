@@ -23,9 +23,6 @@ import org.eclipse.swt.widgets.Composite;
 /**
  * A message line displaying a status.
  * See also org.eclipse.jface.dialogs.StatusDialog.MessageLine.
- * 
- * @since 5.3
- *
  */
 public class StatusMessageLine {
 	private CLabel fLabel;
@@ -46,6 +43,9 @@ public class StatusMessageLine {
 		}
 	}
 
+	/**
+	 * Find an image associated with the status.
+	 */
 	private Image findImage(IStatus status) {
 		if (status.isOK()) {
 			return null;

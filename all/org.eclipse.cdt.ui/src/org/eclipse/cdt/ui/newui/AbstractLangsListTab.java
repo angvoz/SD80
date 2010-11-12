@@ -9,6 +9,7 @@
  *     Intel Corporation - initial API and implementation
  *     IBM Corporation
  *     Markus Schorn (Wind River Systems)
+ *     Andrew Gvozdev (Quoin Inc.)
  *******************************************************************************/
 package org.eclipse.cdt.ui.newui;
 
@@ -18,6 +19,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.viewers.IFontProvider;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
@@ -717,7 +719,9 @@ public abstract class AbstractLangsListTab extends AbstractCPropertyTab {
 
 		public Image getColumnImage(Object element, int columnIndex) {
 			if (columnIndex==0 && (element instanceof ICLanguageSettingEntry)) {
-				return LanguageSettingsImages.getImage((ICLanguageSettingEntry) element);
+				ICConfigurationDescription cfg = getResDesc().getConfiguration();
+				IProject project = cfg.getProjectDescription().getProject();
+				return LanguageSettingsImages.getImage((ICLanguageSettingEntry) element, project.getName());
 			}
 			return null;
 		}

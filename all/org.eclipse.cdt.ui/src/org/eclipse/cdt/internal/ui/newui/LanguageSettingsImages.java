@@ -1,5 +1,18 @@
+/*******************************************************************************
+ * Copyright (c) 2010 Andrew Gvozdev and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     Andrew Gvozdev - Initial API and implementation
+ *******************************************************************************/
+
 package org.eclipse.cdt.internal.ui.newui;
 
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
@@ -13,6 +26,9 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.CUIPlugin;
 
+/**
+ * Helper class to provide unified images for {@link ICLanguageSettingEntry}.
+ */
 public class LanguageSettingsImages {
 	public static Image getImage(int kind, int flags, boolean isProjectRelative) {
 		String imageKey = getImageKey(kind, flags, isProjectRelative);
@@ -26,11 +42,34 @@ public class LanguageSettingsImages {
 		return null;
 	}
 
+	/**
+	 * Returns image for the given entry from internally managed repository including
+	 * necessary overlays. This method is shortcut for {@link #getImage(ICLanguageSettingEntry, String)}
+	 * when no project is available.
+	 * 
+	 * @param entry - language settings entry to get an image for.
+	 * @return the image for the entry with appropriate overlays.
+	 */
 	public static Image getImage(ICLanguageSettingEntry entry) {
+		return getImage(entry, null);
+	}
+	
+	/**
+	 * Returns image for the given entry from internally managed repository including
+	 * necessary overlays.
+	 * 
+	 * @param entry - language settings entry to get an image for.
+	 * @param projectName - pass project name if available. That lets to put "project" metaphor
+	 *    on the image. Pass {@code null} if no project name is available.
+	 * @return the image for the entry with appropriate overlays.
+	 */
+	public static Image getImage(ICLanguageSettingEntry entry, String projectName) {
 		int kind = entry.getKind();
 		boolean isWorkspacePath = (entry.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
 		String path = entry.getName();
-		boolean isProjectRelative = isWorkspacePath && !path.startsWith("/");
+		boolean isProjectRelative = projectName!=null && isWorkspacePath && path.startsWith(IPath.SEPARATOR+projectName+IPath.SEPARATOR);
+		// FIXME
+		isProjectRelative = isProjectRelative || (isWorkspacePath && path.charAt(0)!=IPath.SEPARATOR);
 		int flags = entry.getFlags();
 		String imageKey = getImageKey(kind, flags, isProjectRelative);
 		if (imageKey!=null) {
@@ -49,29 +88,26 @@ public class LanguageSettingsImages {
 					break;
 				}
 				return CDTSharedImages.getImageOverlaid(imageKey, overlayKey, IDecoration.BOTTOM_LEFT);
-//				boolean exists = isLocationOk((ACPathEntry) entry);
-//				if (!exists) {
-//					return CDTSharedImages.getImageOverlaid(imageKey, severity, IDecoration.BOTTOM_LEFT);
-//				}
 			}
 			return CDTSharedImages.getImage(imageKey);
 		}
 		return null;
 	}
 
+	/**
+	 * Checking if the entry points to existing or accessible location.
+	 */
 	private static boolean isLocationOk(ACPathEntry entry) {
+		// have to trust paths which contain variables
+		if (entry.getName().contains("${")) //$NON-NLS-1$
+			return true;
+		
 		boolean exists = true;
-		boolean resolved = (entry.getFlags() & ICSettingEntry.RESOLVED) == ICSettingEntry.RESOLVED;
-		boolean isWorkspacePath_FIXME = (entry.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
-		if (isWorkspacePath_FIXME) {
-			// TODO: Hmm, MBS supplies unresolved entries having location=null
-			if (resolved) {
-				IPath location = entry.getLocation();
-				exists = location!=null && location.toFile().exists();
-			} else {
-				// AG: this does not work
-//						exists = false;
-			}
+		boolean isWorkspacePath = (entry.getFlags() & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
+		if (isWorkspacePath) {
+			IPath path = new Path(entry.getValue());
+			IResource rc = ResourcesPlugin.getWorkspace().getRoot().findMember(path);
+			exists = rc!=null && rc.isAccessible();
 		} else {
 			String pathname = entry.getName();
 			java.io.File file = new java.io.File(pathname);
@@ -80,20 +116,26 @@ public class LanguageSettingsImages {
 		return exists;
 	}
 	
+	/**
+	 * Defines status object for the status message line.
+	 * 
+	 * @param entry - the entry to check status on.
+	 * @return a status object defining severity and message.
+	 */
 	public static IStatus getStatus(ICLanguageSettingEntry entry) {
 		if (entry instanceof ACPathEntry) {
 			ACPathEntry acEntry = (ACPathEntry)entry;
 			IPath path = new Path(acEntry.getName());
 			if (!path.isAbsolute()) {
-				String msg = "Using relative paths is not recommended. This can cause unexpected side-effects.";
+				String msg = "Using relative paths is ambiguous and not recommended. It can cause unexpected side-effects.";
 				return new Status(IStatus.INFO, CUIPlugin.PLUGIN_ID, msg);
 			}
 			if (!isLocationOk(acEntry)) {
 				String msg;
 				if (acEntry.isFile())
-					msg = "The selected file does not exist.";
+					msg = "The selected file does not exist or not accessible.";
 				else
-					msg = "The selected folder does not exist.";
+					msg = "The selected folder does not exist or not accessible.";
 				return new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, msg);
 			}
 				
@@ -101,6 +143,9 @@ public class LanguageSettingsImages {
 		return Status.OK_STATUS;
 	}
 
+	/**
+	 * @return the base key for the image.
+	 */
 	private static String getImageKey(int kind, int flag, boolean isProjectRelative) {
 		String imageKey = null;
 

@@ -40,7 +40,7 @@ public class LocationExpression implements ILocationProvider {
 		this.scope = scope;
 	}
 
-	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress) {
+	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress, boolean isNonLocalConstVariable) {
 
 		if (location == null) {
 			return null;
@@ -85,10 +85,9 @@ public class LocationExpression implements ILocationProvider {
 						break;
 						
 					case DwarfConstants.DW_OP_addr: /* Constant address. */
-						// this is a runtime address
 						long addrValue = DwarfInfoReader.readAddress(location, addressSize);
 						opStack[opStackPtr++] = new MemoryVariableLocation(tracker, context, 
-								BigInteger.valueOf(addrValue), true);
+								BigInteger.valueOf(addrValue), true, isNonLocalConstVariable);
 						break;
 
 					case DwarfConstants.DW_OP_deref: {
@@ -96,7 +95,7 @@ public class LocationExpression implements ILocationProvider {
 						try {
 							BigInteger addr = opStack[opStackPtr - 1].readValue(addressSize);
 							IVariableLocation loc = new MemoryVariableLocation(tracker, context,
-									addr, true);
+									addr, true, isNonLocalConstVariable);
 							opStack[opStackPtr - 1] = loc;
 						} catch (CoreException e) {
 							return new InvalidVariableLocation(e.getMessage());
@@ -189,7 +188,7 @@ public class LocationExpression implements ILocationProvider {
 						functionScope = getFunctionScope(forLinkAddress);
 						
 						IVariableLocation framePtrLoc = functionScope.getFrameBaseLocation().getLocation(tracker,
-								context, forLinkAddress);
+								context, forLinkAddress, false);
 						if (framePtrLoc != null) {
 							if (framePtrLoc instanceof InvalidVariableLocation)
 								return framePtrLoc;

@@ -134,38 +134,38 @@ public class ASTInstructionCompiler extends ASTVisitor {
 
 	@Override
 	public int leave(IASTArrayModifier arrayModifier) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(arrayModifier); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, arrayModifier); }
 		return super.leave(arrayModifier);
 	}
 
 	@SuppressWarnings("deprecation")	// we're simply wrapping a deprecated method
 	@Override
 	public int leave(IASTComment comment) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(comment); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, comment); }
 		return super.leave(comment);
 	}
 
 	@Override
 	public int leave(IASTDeclaration declaration) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(declaration); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, declaration); }
 		return super.leave(declaration);
 	}
 
 	@Override
 	public int leave(IASTDeclarator declarator) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(declarator); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, declarator); }
 		return super.leave(declarator);
 	}
 
 	@Override
 	public int leave(IASTDeclSpecifier declSpec) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(declSpec); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, declSpec); }
 		return super.leave(declSpec);
 	}
 
 	@Override
 	public int leave(IASTEnumerator enumerator) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(enumerator); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, enumerator); }
 		return super.leave(enumerator);
 	}
 
@@ -174,152 +174,152 @@ public class ASTInstructionCompiler extends ASTVisitor {
 		if (!isActive() || hasErrors())
 			return PROCESS_CONTINUE;
 		storeInstruction();
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(expression); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, expression); }
 		return super.leave(expression);
 	}
 
 	@Override
 	public int leave(IASTInitializer initializer) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(initializer); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, initializer); }
 		return super.leave(initializer);
 	}
 
 	@Override
 	public int leave(IASTName name) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(name); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, name); }
 		return super.leave(name);
 	}
 
 	@Override
 	public int leave(IASTParameterDeclaration parameterDeclaration) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(parameterDeclaration); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, parameterDeclaration); }
 		return super.leave(parameterDeclaration);
 	}
 
 	@Override
 	public int leave(IASTPointerOperator ptrOperator) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(ptrOperator); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, ptrOperator); }
 		return super.leave(ptrOperator);
 	}
 
 	@Override
 	public int leave(IASTProblem problem) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(problem); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, problem); }
 		return super.leave(problem);
 	}
 
 	@Override
 	public int leave(IASTStatement statement) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(statement); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, statement); }
 		return super.leave(statement);
 	}
 
 	@Override
 	public int leave(IASTTranslationUnit tu) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(tu); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, tu); }
 		return super.leave(tu);
 	}
 
 	@Override
 	public int leave(IASTTypeId typeId) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(typeId); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, typeId); }
 		return super.leave(typeId);
 	}
 
 	@Override
 	public int visit(IASTArrayModifier arrayModifier) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(arrayModifier); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, arrayModifier); }
 		return super.visit(arrayModifier);
 	}
 
 	@SuppressWarnings("deprecation")	// we're simply wrapping a deprecated method
 	@Override
 	public int visit(IASTComment comment) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(comment); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, comment); }
 		return super.visit(comment);
 	}
 
 	@Override
 	public int visit(IASTDeclaration declaration) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(declaration); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, declaration); }
 		return super.visit(declaration);
 	}
 
 	@Override
 	public int visit(IASTDeclarator declarator) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(declarator); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, declarator); }
 		return super.visit(declarator);
 	}
 
 	@Override
 	public int visit(IASTDeclSpecifier declSpec) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(declSpec); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, declSpec); }
 		return super.visit(declSpec);
 	}
 
 	@Override
 	public int visit(IASTEnumerator enumerator) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(enumerator); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, enumerator); }
 		return super.visit(enumerator);
 	}
 
 	@Override
 	public int visit(IASTInitializer initializer) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(initializer); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, initializer); }
 		return super.visit(initializer);
 	}
 
 	@Override
 	public int visit(IASTParameterDeclaration parameterDeclaration) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry("visit: " + parameterDeclaration.getClass().getSimpleName()); } //$NON-NLS-1$
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, "visit: " + parameterDeclaration.getClass().getSimpleName()); } //$NON-NLS-1$
 		return super.visit(parameterDeclaration);
 	}
 
 	@Override
 	public int visit(IASTPointerOperator ptrOperator) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(ptrOperator); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, ptrOperator); }
 		return super.visit(ptrOperator);
 	}
 
 	@Override
 	public int visit(IASTStatement statement) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(statement); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, statement); }
 		return super.visit(statement);
 	}
 
 	@Override
 	public int visit(IASTTranslationUnit tu) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(tu); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, tu); }
 		return super.visit(tu);
 	}
 
 	@Override
 	public int visit(IASTTypeId typeId) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(typeId); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, typeId); }
 		return super.visit(typeId);
 	}
 
 	@Override
 	public int visit(ASTAmbiguousNode astAmbiguousNode) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(astAmbiguousNode); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, astAmbiguousNode); }
 		return super.visit(astAmbiguousNode);
 	}
 
 	@Override
 	public int visit(IASTName name) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(name); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, name); }
 		return super.visit(name);
 	}
 
 	@Override
 	public int visit(IASTProblem problem) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(problem); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, problem); }
 		return super.visit(problem);
 	}
 
 	@Override
 	public int visit(IASTExpression expression) {
-		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.traceEntry(expression); }
+		if (EDCTrace.EXPRESSION_PARSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, expression); }
 
 		if (expression instanceof IASTLiteralExpression) {
 			visitLiteralExpression((IASTLiteralExpression) expression);

@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <component id="org.eclipse.cdt.debug.edc" version="2">
+    <resource path="src/org/eclipse/cdt/debug/edc/internal/EDCTrace.java" type="org.eclipse.cdt.debug.edc.internal.EDCTrace$NullDebugTrace">
+        <filter id="574619656">
+            <message_arguments>
+                <message_argument value="DebugTrace"/>
+                <message_argument value="NullDebugTrace"/>
+            </message_arguments>
+        </filter>
+    </resource>
     <resource path="src/org/eclipse/cdt/debug/edc/internal/eval/ast/engine/ASTInstructionCompiler.java" type="org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTInstructionCompiler">
         <filter id="640712815">
             <message_arguments>

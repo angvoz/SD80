@@ -10,7 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
-import java.io.File;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.text.MessageFormat;
@@ -18,12 +17,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.debug.core.executables.Executable;
-import org.eclipse.cdt.debug.core.executables.ExecutablesManager;
 import org.eclipse.cdt.debug.core.sourcelookup.ICSourceLocator;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
@@ -72,6 +71,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 	public static final String MODULE = "module";
 	public static final String SECTION = "section";
 	private static final String ADDRESS_RANGE_CACHE = "_address_range";
+	private static final String NO_FILE_CACHE = "_address_range";
 
 	/**
 	 * Modules that are loaded for each ISymbolDMContext (process).
@@ -663,6 +663,11 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				Map<String, Collection<AddressRange>> cachedRanges = new HashMap<String, Collection<AddressRange>>();
 				// Check the persistent cache
 				String cacheKey = reader.getSymbolFile().toOSString() + ADDRESS_RANGE_CACHE;
+				String noFileCacheKey = reader.getSymbolFile().toOSString() + NO_FILE_CACHE;
+				Set<String> noFileCachedData = EDCDebugger.getDefault().getCache().getCachedData(noFileCacheKey, Set.class, reader.getModificationDate());
+				if (noFileCachedData != null && noFileCachedData.contains(file))
+					break; // We have already determined that this file is not used by this module, don't bother checking again.
+				
 				Map<String, Collection<AddressRange>> cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
 				if (cachedData != null)
 				{
@@ -677,6 +682,14 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 						PathUtils.createPath(file),
 						line);
 					
+					if (linkAddressRanges == null)
+					{ // If this file is not used by this module, cache it so we can avoid searching it again.
+						if (noFileCachedData == null)
+							noFileCachedData = new HashSet<String>();
+						noFileCachedData.add(file);
+						EDCDebugger.getDefault().getCache().putCachedData(noFileCacheKey, (Serializable) noFileCachedData, reader.getModificationDate());				
+						break;
+					}
 					cachedRanges.put(file + line, linkAddressRanges);
 					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedRanges, reader.getModificationDate());				
 				}
@@ -848,10 +861,8 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		// and for searching sources and executables below.
 		//
 		IPath path = PathUtils.findExistingPathIfCaseSensitive(PathUtils.createPath(originalPath));
-		if (path.toFile().exists())
-			return path;
 
-		// Try source locator first, using the host-correct path.
+		// Try source locator, use the host-correct path.
 		//
 		Object sourceElement = null;
 		ISourceLocator locator = getSourceLocator();
@@ -866,27 +877,6 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				if (sourceElement instanceof LocalFileStorage) {
 					return new Path(((LocalFileStorage) sourceElement).getFile().getAbsolutePath());
 				}
-			}
-		}
-
-		// Now looking for the file in executable view.
-		//
-		// Between the SDK and target, the exact directory and file capitalization may differ.
-		//
-		// Inject required initial slash so we can confidently use String#endsWith() without
-		// matching, e.g. "/path/to/program.exe" with "ram.exe".
-		//
-		String slashAndLowerFileName = File.separator + path.lastSegment().toLowerCase();
-		String absoluteLowerPath = path.makeAbsolute().toOSString().toLowerCase();
-		
-		// Note the 'wait=true' argument.  We can wait now that this job does not lock the UI.  
-		Collection<Executable> executables = ExecutablesManager.getExecutablesManager().getExecutables(true);
-		for (Executable e : executables) {
-			String p = e.getPath().makeAbsolute().toOSString().toLowerCase();
-			if (p.endsWith(absoluteLowerPath) || // stricter match first
-				p.endsWith(slashAndLowerFileName)) // then only check by name
-			{
-				return e.getPath();
 			}
 		}
 		

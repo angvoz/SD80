@@ -19,6 +19,7 @@ import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
+import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
@@ -83,7 +84,8 @@ public class VariableWithValue extends OperandValue {
 				return valueLocation;
 			}
 			IEDCModuleDMContext module = frame.getModule();
-			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(frame.getInstructionPtrAddress()));
+			valueLocation = provider.getLocation(servicesTracker, frame, module.toLinkAddress(frame.getInstructionPtrAddress()),
+					TypeUtils.isConstType(variable.getType()));
 			if (valueLocation == null) {
 				// unhandled
 				valueLocation = new InvalidVariableLocation(ASTEvalMessages.VariableWithValue_CannotLocateVariable);

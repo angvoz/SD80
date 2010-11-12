@@ -8,6 +8,7 @@
  * Contributors:
  *     Wind River Systems - initial API and implementation
  *     Patrick Chuong (Texas Instruments) - Bug fix (326670)
+ *     Patrick Chuong (Texas Instruments) - Bug fix (329682)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.debug.internal.ui.disassembly;
 
@@ -23,13 +24,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.StringTokenizer;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AddressRangePosition;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.DisassemblyPosition;
-import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.DisassemblyUtils;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.ErrorPosition;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyBackend;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyDocument;
@@ -70,6 +69,8 @@ import org.eclipse.debug.core.IBreakpointManager;
 import org.eclipse.debug.core.model.IBreakpoint;
 import org.eclipse.debug.core.sourcelookup.containers.LocalFileStorage;
 import org.eclipse.debug.ui.DebugUITools;
+import org.eclipse.debug.ui.contexts.DebugContextEvent;
+import org.eclipse.debug.ui.contexts.IDebugContextListener;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.GroupMarker;
 import org.eclipse.jface.action.IAction;
@@ -229,7 +230,7 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	private Color fLabelColor;
 	private Control fRedrawControl;
 	private RGB fPCAnnotationRGB;
-	private Composite fComposite;
+	protected Composite fComposite;
 
 	private DropTarget fDropTarget;
 	private DragSource fDragSource;
@@ -325,35 +326,37 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	private AddressBarContributionItem fAddressBar = null;
 	private Action fJumpToAddressAction = new JumpToAddressAction(this);
 
-	private final class SyncActiveDebugContextAction extends Action {
-		public SyncActiveDebugContextAction() {
-			setChecked(DisassemblyPart.this.isSyncWithActiveDebugContext());
-			setText(DisassemblyMessages.Disassembly_action_Sync_label);
-			setImageDescriptor(DisassemblyImageRegistry.getImageDescriptor(DisassemblyImageRegistry.ICON_Sync_enabled));
-			setDisabledImageDescriptor(DisassemblyImageRegistry.getImageDescriptor(DisassemblyImageRegistry.ICON_Sync_disabled));
-		}
-		
-		@Override
-		public void run() {
-			DisassemblyPart.this.setSyncWithDebugView(this.isChecked());
-		}
-	}
-	
-	private final class TrackExpressionAction extends Action {
-		public TrackExpressionAction() {
-			setChecked(DisassemblyPart.this.isTrackExpression());
-			setEnabled(!fSynchWithActiveDebugContext);
-			setText(DisassemblyMessages.Disassembly_action_TrackExpression_label);
-		}
-		
-		@Override
-		public void run() {
-			DisassemblyPart.this.setTrackExpression(this.isChecked());
-		}
-		
-	}
-	
-	private final class ActionRefreshView extends AbstractDisassemblyAction {
+    private IDebugContextListener fDebugContextListener;
+
+    private final class SyncActiveDebugContextAction extends Action {
+        public SyncActiveDebugContextAction() {
+            setChecked(DisassemblyPart.this.isSyncWithActiveDebugContext());
+            setText(DisassemblyMessages.Disassembly_action_Sync_label);
+            setImageDescriptor(DisassemblyImageRegistry.getImageDescriptor(DisassemblyImageRegistry.ICON_Sync_enabled));
+            setDisabledImageDescriptor(DisassemblyImageRegistry.getImageDescriptor(DisassemblyImageRegistry.ICON_Sync_disabled));
+        }
+        
+        @Override
+        public void run() {
+            DisassemblyPart.this.setSyncWithDebugView(this.isChecked());
+        }
+    }
+    
+    private final class TrackExpressionAction extends Action {
+        public TrackExpressionAction() {
+            setChecked(DisassemblyPart.this.isTrackExpression());
+            setEnabled(!fSynchWithActiveDebugContext);
+            setText(DisassemblyMessages.Disassembly_action_TrackExpression_label);
+        }
+        
+        @Override
+        public void run() {
+            DisassemblyPart.this.setTrackExpression(this.isChecked());
+        }
+        
+    }
+
+    private final class ActionRefreshView extends AbstractDisassemblyAction {
 		public ActionRefreshView() {
 			super(DisassemblyPart.this);
 			setText(DisassemblyMessages.Disassembly_action_RefreshView_label);
@@ -439,7 +442,7 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 
 	private final class ActionToggleSource extends AbstractDisassemblyAction {
 		public ActionToggleSource() {
-			super(DisassemblyPart.this);
+			super(DisassemblyPart.this, IAction.AS_CHECK_BOX);
 			setText(DisassemblyMessages.Disassembly_action_ShowSource_label);
 		}
 		@Override
@@ -459,7 +462,7 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 
 	private final class ActionToggleSymbols extends AbstractDisassemblyAction {
 		public ActionToggleSymbols() {
-			super(DisassemblyPart.this);
+			super(DisassemblyPart.this, IAction.AS_CHECK_BOX);
 			setText(DisassemblyMessages.Disassembly_action_ShowSymbols_label);
 		}
 		@Override
@@ -708,6 +711,13 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	protected void setSite(IWorkbenchPartSite site) {
 		super.setSite(site);
         site.getPage().addPartListener(fPartListener);
+		DebugUITools.getDebugContextManager().addDebugContextListener(fDebugContextListener = new IDebugContextListener() {
+            public void debugContextChanged(DebugContextEvent event) {
+                if ((event.getFlags() & DebugContextEvent.ACTIVATED) != 0) {
+                    updateDebugContext();
+                }
+            }
+        });
 	}
 
 	private DisassemblyDocument createDocument() {
@@ -720,6 +730,10 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	 */
 	@Override
 	public void dispose() {
+	    if (fDebugContextListener != null) {
+	        DebugUITools.getDebugContextManager().removeDebugContextListener(fDebugContextListener);
+	        fDebugContextListener = null;
+	    }
 		IWorkbenchPartSite site = getSite();
 		site.setSelectionProvider(null);
 		site.getPage().removePartListener(fPartListener);
@@ -1200,7 +1214,6 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		manager.add(new Separator(ITextEditorActionConstants.GROUP_EDIT));
 		manager.appendToGroup(ITextEditorActionConstants.GROUP_EDIT, fGlobalActions.get(ITextEditorActionConstants.COPY));
 		manager.appendToGroup(ITextEditorActionConstants.GROUP_EDIT, fGlobalActions.get(ITextEditorActionConstants.SELECT_ALL));
-		// TODO add only if this is an editor
 		manager.add(new Separator(ITextEditorActionConstants.GROUP_SETTINGS));
 		manager.add(fActionToggleSource);
 		manager.add(fActionToggleSymbols);
@@ -1467,6 +1480,7 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 					if (fUpdatePending) {
 						fUpdatePending = false;
 						updateVisibleArea();
+						fPCLastAddress = getTopAddress();
 					}
 				}
 			});
@@ -1862,7 +1876,8 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		resetViewer();
 		if (fDebugSessionId != null) {
 			fJumpToAddressAction.setEnabled(true);
-			fAddressBar.enableAddressBox(true);
+			if (fAddressBar != null)
+			    fAddressBar.enableAddressBox(true);
 
 			int activeFrame = getActiveStackFrame();
 			if (activeFrame > 0) {
@@ -1880,7 +1895,8 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 			fViewer.addViewportListener(this);
         } else {
         	fJumpToAddressAction.setEnabled(false);
-        	fAddressBar.enableAddressBox(false);
+            if (fAddressBar != null)
+                fAddressBar.enableAddressBox(false);
 			fViewer.removeViewportListener(this);
         	fGotoMarkerPending = null;
         }
@@ -2090,8 +2106,8 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		if (fActive) {
 			gotoFrame(frame);
 		} else {
-            // this will trigger an update in #setActive()
-		    fTargetFrame = -1;
+			// this will trigger an update in #setActive()
+			fTargetFrame = -1;
 		}
 	}
 
@@ -2106,7 +2122,7 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		if (!isSyncWithActiveDebugContext()) {
 			if (isTrackExpression()) {
 				if (!DisassemblyMessages.Disassembly_GotoLocation_initial_text.equals(fPCLastLocationTxt))
-					fPCLastAddress = eval(fPCLastLocationTxt);
+					fPCLastAddress = eval(fPCLastLocationTxt, true);
 			}
 			if (fPCLastAddress != PC_UNKNOWN) {
 				address = fPCLastAddress;
@@ -2114,7 +2130,9 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 			    fPCLastAddress = address;
 			}
 			
-			frame = -2; // clear the annotation
+			// need to get the frame address when the view first started.
+			if (fPCLastAddress != PC_UNKNOWN)
+				frame = -2; // clear the annotation
 		} else {
 			fPCLastAddress = address;
 		}
@@ -2944,19 +2962,13 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		return ""; //$NON-NLS-1$
 	}
 	
-	public BigInteger eval(String expr) {
-		String location = evaluateExpression(expr);
-    	if (location != null) {
-    		StringTokenizer st = new StringTokenizer(location);
-    		if (st.hasMoreTokens()) {
-    			try {
-    				return DisassemblyUtils.decodeAddress(st.nextToken());
-    			} catch (Exception e) {
-    				logWarning("Failed to evaluate expression " + expr, e); //$NON-NLS-1$
-    			}
-    		}
-    	}
-    	return PC_UNKNOWN;
+	public BigInteger eval(String expr, boolean suppressError) {
+		if (fBackend != null) {
+			BigInteger address = fBackend.evaluateSymbolAddress(expr, suppressError);
+			if (address != null)
+				return address;
+		}
+		return PC_UNKNOWN;    	
 	}
 
 	protected boolean isTrackExpression() {

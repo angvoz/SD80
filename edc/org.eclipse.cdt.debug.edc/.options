@@ -7,3 +7,4 @@ org.eclipse.cdt.debug.edc/debug/symbolReader/verbose = false
 org.eclipse.cdt.debug.edc/debug/variableValue = false
 org.eclipse.cdt.debug.edc/debug/breakpoints = false
 org.eclipse.cdt.debug.edc/debug/memory = false
+org.eclipse.cdt.debug.edc/debug/acpm = false

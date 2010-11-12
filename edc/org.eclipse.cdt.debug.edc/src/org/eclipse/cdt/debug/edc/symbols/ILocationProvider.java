@@ -30,9 +30,13 @@ public interface ILocationProvider {
 	 * @param forLinkAddress
 	 *            the link-time address for use if the variable can live at
 	 *            different location depending on the execution context
+	 * @param isNonLocalConstVariable
+	 *            whether variable is a global or static (non-local) constant 
 	 * @return the variable location
+	 * @since 2.0
 	 */
-	IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress);
+	IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context,
+									IAddress forLinkAddress, boolean isNonLocalConstVariable);
 
 	/**
 	 * Tell if the variable has a known location at this address.

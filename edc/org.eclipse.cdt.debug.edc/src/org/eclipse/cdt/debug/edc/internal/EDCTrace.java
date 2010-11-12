@@ -12,6 +12,7 @@
 package org.eclipse.cdt.debug.edc.internal;
 
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.osgi.service.debug.DebugTrace;
 
 /**
  * Tracing of EDC code based on standard tracing mechanism in eclipse;
@@ -31,6 +32,7 @@ public class EDCTrace {
 	public static final String VARIABLE_VALUE_TRACE = "/debug/variableValue";
 	public static final String BREAKPOINTS_TRACE = "/debug/breakpoints";
 	public static final String MEMORY_TRACE = "/debug/memory";
+	public static final String ACPM_TRACE = "/debug/acpm";
 
 	// In order to minimize trace overhead when tracing is off, we check these
 	// "globals". They are set at plugin initialization time. Note that they do
@@ -47,6 +49,7 @@ public class EDCTrace {
 	public static boolean VARIABLE_VALUE_TRACE_ON;
 	public static boolean BREAKPOINTS_TRACE_ON;
 	public static boolean MEMORY_TRACE_ON;
+	public static boolean ACPM_TRACE_ON;
 
 	/**
 	 * Returns whether the specific tracing option is on. The answer is based on
@@ -75,41 +78,31 @@ public class EDCTrace {
 			VARIABLE_VALUE_TRACE_ON = isOn(EDCTrace.VARIABLE_VALUE_TRACE);
 			BREAKPOINTS_TRACE_ON = isOn(EDCTrace.BREAKPOINTS_TRACE);
 			MEMORY_TRACE_ON = isOn(EDCTrace.MEMORY_TRACE);
+			ACPM_TRACE_ON = isOn(EDCTrace.ACPM_TRACE);
 		}
 	}
+
+	static class NullDebugTrace implements DebugTrace {
+		public void trace(String option, String message) {}
+		public void trace(String option, String message, Throwable error) {}
+		public void traceDumpStack(String option) {}
+		public void traceEntry(String option) {}
+		public void traceEntry(String option, Object methodArgument) {}
+		public void traceEntry(String option, Object[] methodArguments) {}
+		public void traceExit(String option) {}
+		public void traceExit(String option, Object result) {}
+	};
 	
-	/** Utility front end to equivalent method in DebugTrace */  
-	public static void trace(final Object methodArgument) {
-		if (EDCDebugger.getDefault() != null) {
-			EDCDebugger.getDefault().getTrace().trace(null, methodArgument.toString());
+	private static NullDebugTrace sNullDebugTrace = new NullDebugTrace();
+	
+	public static DebugTrace getTrace() {
+		EDCDebugger activator = EDCDebugger.getDefault();
+		if (activator != null) {
+			return activator.getTrace();
 		}
-	}
-
-	/** Utility front end to equivalent method in DebugTrace */  
-	public static void traceEntry(final Object methodArgument) {
-		if (EDCDebugger.getDefault() != null) {
-			EDCDebugger.getDefault().getTrace().traceEntry(null, methodArgument);
+		else {
+			return sNullDebugTrace;
 		}
-	}
-
-	/** Utility front end to equivalent method in DebugTrace */  
-	public static void traceEntry() {
-		if (EDCDebugger.getDefault() != null) {
-			EDCDebugger.getDefault().getTrace().traceEntry(null);
-		}
-	}
-
-	/** Utility front end to equivalent method in DebugTrace */  
-	public static void traceExit(final Object methodArgument) {
-		if (EDCDebugger.getDefault() != null) {
-			EDCDebugger.getDefault().getTrace().traceExit(null, methodArgument);
-		}
-	}
-
-	/** Utility front end to equivalent method in DebugTrace */  
-	public static void traceExit() {
-		if (EDCDebugger.getDefault() != null) {
-			EDCDebugger.getDefault().getTrace().traceExit(null);
-		}
+		
 	}
 }

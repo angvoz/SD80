@@ -17,6 +17,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IAggregate;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayBoundType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IArrayType;
 import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
+import org.eclipse.cdt.debug.edc.internal.symbols.IConstType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IForwardTypeReference;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
@@ -71,6 +72,28 @@ public class TypeUtils {
 	// is a type a composite (class, struct, or union) type?
 	public static boolean isCompositeType(IType type) {
 		return getStrippedType(type) instanceof ICompositeType;
+	}
+
+	/**
+	 * is a type a constant type?
+	 * @since 2.0
+	 */
+	public static boolean isConstType(IType type) {
+		if (type instanceof IForwardTypeReference)
+			type = ((IForwardTypeReference) type).getReferencedType();
+
+		while (   type instanceof ITypedef || type instanceof IQualifierType || type instanceof IReferenceType
+			   || type instanceof IArrayType) {
+			if (type instanceof IConstType)
+				return true;
+
+			type = type.getType();
+
+			if (type instanceof IForwardTypeReference)
+				type = ((IForwardTypeReference) type).getReferencedType();
+		}
+
+		return false;
 	}
 
 	// return the type with no typedefs, consts, or volatiles

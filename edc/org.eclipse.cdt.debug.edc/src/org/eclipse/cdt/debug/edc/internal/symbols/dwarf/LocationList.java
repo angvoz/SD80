@@ -40,7 +40,8 @@ public class LocationList implements ILocationProvider {
 	public LocationEntry[] getLocationEntries() {
 		return locationList;
 	}
-	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress) {
+
+	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress, boolean isNonLocalConstVariable) {
 		
 		if (locationList != null) {
 			IScope searchScope = scope;
@@ -69,7 +70,7 @@ public class LocationList implements ILocationProvider {
 			if (address >= entry.getLowPC() && address < entry.getHighPC()) {
 				IStreamBuffer locationData = new MemoryStreamBuffer(entry.getBytes(), byteOrder);
 				LocationExpression expression = new LocationExpression(locationData, addressSize, scope);
-				return expression.getLocation(tracker, context, forLinkAddress);
+				return expression.getLocation(tracker, context, forLinkAddress, false);
 			}
 		}
 		

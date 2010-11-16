@@ -91,7 +91,7 @@ public class SnapshotTests extends BaseLaunchTest {
 			}
 		});
 
-		Album.captureSnapshotForSession(session, threadDMC);
+		Album.captureSnapshotForSession(session);
 		
 		TestUtils.wait(new Condition() {
 			

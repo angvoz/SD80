@@ -71,7 +71,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 	public static final String MODULE = "module";
 	public static final String SECTION = "section";
 	private static final String ADDRESS_RANGE_CACHE = "_address_range";
-	private static final String NO_FILE_CACHE = "_address_range";
+	private static final String NO_FILE_CACHE = "_no_file";
 
 	/**
 	 * Modules that are loaded for each ISymbolDMContext (process).
@@ -666,7 +666,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 				String noFileCacheKey = reader.getSymbolFile().toOSString() + NO_FILE_CACHE;
 				Set<String> noFileCachedData = EDCDebugger.getDefault().getCache().getCachedData(noFileCacheKey, Set.class, reader.getModificationDate());
 				if (noFileCachedData != null && noFileCachedData.contains(file))
-					break; // We have already determined that this file is not used by this module, don't bother checking again.
+					continue; // We have already determined that this file is not used by this module, don't bother checking again.
 				
 				Map<String, Collection<AddressRange>> cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
 				if (cachedData != null)
@@ -688,7 +688,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 							noFileCachedData = new HashSet<String>();
 						noFileCachedData.add(file);
 						EDCDebugger.getDefault().getCache().putCachedData(noFileCacheKey, (Serializable) noFileCachedData, reader.getModificationDate());				
-						break;
+						continue;
 					}
 					cachedRanges.put(file + line, linkAddressRanges);
 					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedRanges, reader.getModificationDate());				

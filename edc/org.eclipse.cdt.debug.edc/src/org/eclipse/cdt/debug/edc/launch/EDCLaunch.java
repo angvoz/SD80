@@ -245,16 +245,19 @@ abstract public class EDCLaunch extends DsfLaunch {
 
 	@Override
 	public void terminate() throws DebugException {
-		setTerminating(true);
 		// Step one, tell the run control service to terminate everything
-		getDsfExecutor().execute(new Runnable() {
-			public void run() {
-				RunControl runControlService = tracker
-						.getService(RunControl.class);
-				if (runControlService != null)
-					runControlService.terminateAllContexts(null);
-			}
-		});
+		DsfExecutor dsfExecutor = getDsfExecutor();
+		if (dsfExecutor != null) {
+			setTerminating(true);
+			getDsfExecutor().execute(new Runnable() {
+				public void run() {
+					RunControl runControlService = tracker
+							.getService(RunControl.class);
+					if (runControlService != null)
+						runControlService.terminateAllContexts(null);
+				}
+			});
+		}
 	}
 
 	// ITerminate
@@ -276,13 +279,16 @@ abstract public class EDCLaunch extends DsfLaunch {
 
 	@Override
 	public void disconnect() throws DebugException {
-        getDsfExecutor().execute(new Runnable() {
-            public void run() {
-                Processes procService = tracker.getService(Processes.class);
-                if (procService != null)
-                	procService.detachDebuggerFromSession(null);
-            }
-        });
+		DsfExecutor dsfExecutor = getDsfExecutor();
+		if (dsfExecutor != null) {
+	        getDsfExecutor().execute(new Runnable() {
+	            public void run() {
+	                Processes procService = tracker.getService(Processes.class);
+	                if (procService != null)
+	                	procService.detachDebuggerFromSession(null);
+	            }
+	        });
+		}
 	}
 
 	// IDisconnect

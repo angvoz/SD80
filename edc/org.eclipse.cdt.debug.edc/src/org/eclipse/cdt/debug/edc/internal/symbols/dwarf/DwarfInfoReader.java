@@ -1848,27 +1848,35 @@ public class DwarfInfoReader {
 		  = attributeList.getAttribute(DwarfConstants.DW_AT_high_pc);
 		if (value != null) {
 			IAddress low = new Addr32(attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_low_pc));
+			scope.setLowAddress(low);
 			IAddress high = new Addr32(attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_high_pc));
-			if (low.compareTo(high) > 0) {
+			IScope parent = scope.getParent();
+			if (low.compareTo(high) <= 0) {
+				if (parent instanceof DwarfFunctionScope) {
+					IAddress parentHigh = parent.getHighAddress();
+					if (parentHigh != null && high.compareTo(parentHigh) > 0) {
+						((Scope)parent).setHighAddress(high);
+					}
+				}
+			} else {
 				// relying on the following to confirm that this is an RVCT inline DWARF generation bug
-				if (scope instanceof DwarfFunctionScope && scope.getParent() instanceof DwarfFunctionScope) {
-					high = getInlineHighAddressFromModuleLineEntryProvider(scope, low);
+				if (scope instanceof DwarfFunctionScope && parent instanceof DwarfFunctionScope) {
+					high = fix_Dwarf_InlineHighAddress_Problem(scope);
 					if (high == null)
-						high = low;	// at least prevent ecl.bz Bug 329324 from happening
+						// at least prevent ecl.bz Bug 329324 from happening
+						high = parent.getHighAddress();
 
 				// wow, RVCT, you're neat... I think you mean, point to the high PC of the parent
-				} else if (scope.getParent() != null && scope.getParent().getHighAddress() != null) {
-					high = scope.getParent().getHighAddress();
+				} else if (parent != null && parent.getHighAddress() != null) {
+					high = parent.getHighAddress();
 					// may still be bogus, check again next
 				} 
 				
 				if (low.compareTo(high) > 0) {
-					IAddress t = high;
+					scope.setLowAddress(high);
 					high = low;
-					low = t;
 				}
 			}
-			scope.setLowAddress(low);
 			scope.setHighAddress(high);
 			return;
 		}
@@ -1929,21 +1937,21 @@ public class DwarfInfoReader {
 	 * - if not, it will likely be prior to the function that inlines it
 	 * - and if not, it will likely be more than 32 lines after the function that inlines it
 	 * @param scope
-	 * @param low
 	 * @return high address if determined, or null if prerequisites for finding it aren't met.
 	 */
-	private IAddress getInlineHighAddressFromModuleLineEntryProvider(Scope scope, IAddress low) {
-		IScope lookingForModule = scope.getParent();
-		IAddress neverHigherThan = lookingForModule.getHighAddress();
-		while (lookingForModule != null && !(lookingForModule instanceof DwarfModuleScope)) {
-			lookingForModule = lookingForModule.getParent();
-			if (neverHigherThan == null)
-				neverHigherThan = lookingForModule.getHighAddress();
+	private IAddress fix_Dwarf_InlineHighAddress_Problem(Scope scope) {
+		IAddress low = scope.getLowAddress();
+		IScope parent = scope.getParent();
+		IAddress highest = parent.getHighAddress();
+		while (parent != null && !(parent instanceof DwarfModuleScope)) {
+			parent = parent.getParent();
+			if (highest == null)
+				highest = parent.getHighAddress();
 		}
-		if (lookingForModule == null)
+		if (parent == null)
 			return null;
 
-		DwarfModuleScope moduleScope = (DwarfModuleScope)lookingForModule;
+		DwarfModuleScope moduleScope = (DwarfModuleScope)parent;
 		IModuleLineEntryProvider lineEntryProvider = moduleScope.getModuleLineEntryProvider();
 		if (lineEntryProvider == null)
 			return null;
@@ -1958,16 +1966,21 @@ public class DwarfInfoReader {
 		int thisLine = actualLine, lastLine = 0; 		// XXX false positive on uninitialized variable below causes needless initialization of lastLine = 0
 		boolean jumpedBack = false, jumpedAway = false;
 		do {
-			if (high != null && entry.getHighAddress().compareTo(high) <= 0)
+			IAddress nextHigh = entry.getHighAddress(); 
+			if (highest != null && nextHigh != null && highest.compareTo(nextHigh) < 0) {
+				nextHigh = entry.getLowAddress();
+				if (high == null || nextHigh.compareTo(high) < 0)
+					high = nextHigh;
 				break;
-			high = entry.getHighAddress();
+			}
+			high = nextHigh;
 			if (!jumpedAway && otherPath == null)
 				lastLine = thisLine;
-			entry = lineEntryProvider.getNextLineEntry(entry);
+			entry = lineEntryProvider.getLineEntryAtAddress(high, false);
 			if (entry == null)
 				break;
 			if (otherPath != null) {
-				if (!entry.getFilePath().equals(otherPath))
+				if (entry.getFilePath().equals(actualPath))	// done with nesting
 					break;
 			} else if (!entry.getFilePath().equals(actualPath))	{// easiest test for done with inline
 				otherPath = entry.getFilePath();

@@ -816,7 +816,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				e.resumeAll();
 			}
 		}
-
+		
 		protected void contextResumed(boolean fireResumeEventNow) {
 	        assert getExecutor().isInExecutorThread();
 
@@ -2656,6 +2656,22 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		return ! (dmc instanceof IContainerDMContext);
 	}
 	
+	public ThreadExecutionDMC[] getSuspendedThreads()
+	{
+		ExecutionDMC[] dmcs = null;
+		List<ThreadExecutionDMC> result = new ArrayList<ThreadExecutionDMC>();
+		synchronized (dmcsByID)
+		{
+			Collection<ExecutionDMC> allDMCs = dmcsByID.values();
+			dmcs = allDMCs.toArray(new ExecutionDMC[allDMCs.size()]);
+		}
+		for (ExecutionDMC executionDMC : dmcs) {
+			if (executionDMC instanceof ThreadExecutionDMC && executionDMC.isSuspended())
+				result.add((ThreadExecutionDMC) executionDMC);
+		}
+		return result.toArray(new ThreadExecutionDMC[result.size()]);
+	}
+
 	/**
 	 * Utility method for getting a context property using a default value
 	 * if missing

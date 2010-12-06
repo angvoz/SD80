@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006 Nokia and others.
+ * Copyright (c) 2006, 2010 Nokia and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,7 +8,6 @@
  * Contributors:
  *     Nokia - initial API and implementation
  *******************************************************************************/
-
 package org.eclipse.cdt.debug.internal.ui.sourcelookup;
 
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceNotFoundElement;
@@ -22,8 +21,9 @@ public class CSourceNotFoundEditorInput extends CommonSourceNotFoundEditorInput 
 
 	@Override
 	public String getName() {
-		if (getArtifact() instanceof CSourceNotFoundElement) {
-			String description = ((CSourceNotFoundElement)getArtifact()).getDescription();
+		Object artifact = getArtifact();
+		if (artifact instanceof CSourceNotFoundElement) {
+			String description = ((CSourceNotFoundElement)artifact).getDescription();
 			if (description != null) {
 				return description;
 			}
@@ -33,11 +33,9 @@ public class CSourceNotFoundEditorInput extends CommonSourceNotFoundEditorInput 
 
 	@Override
 	public boolean equals(Object other) {
-		if (other instanceof CSourceNotFoundEditorInput)
-		{
+		if (other instanceof CSourceNotFoundEditorInput) {
 			return super.equals(other) || (this.getName().equals(((CSourceNotFoundEditorInput) other).getName()));
 		}
 		return super.equals(other);
 	}
-
 }

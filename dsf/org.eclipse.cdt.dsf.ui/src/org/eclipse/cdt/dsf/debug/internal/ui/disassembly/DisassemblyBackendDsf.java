@@ -22,10 +22,10 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AbstractDisassemblyBackend;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AddressRangePosition;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.DisassemblyUtils;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.ErrorPosition;
-import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyBackend;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyPartCallback;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
@@ -39,6 +39,7 @@ import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMAddress;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMLocation;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
@@ -68,7 +69,7 @@ import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.Position;
 
-public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedListener {
+public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements SessionEndedListener {
 
 	private volatile IExecutionDMContext fTargetContext;
 	private DsfServicesTracker fServicesTracker;
@@ -76,8 +77,6 @@ public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedL
 	protected IFrameDMData fTargetFrameData;
 
 	private String fDsfSessionId;
-
-	private IDisassemblyPartCallback fCallback;
 
 	/**
 	 * Constructor
@@ -88,9 +87,9 @@ public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedL
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyBackend#init(org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyPartCallback)
 	 */
+	@Override
 	public void init(IDisassemblyPartCallback callback) {
-		assert callback != null;
-		fCallback = callback;
+		super.init(callback);
 		DsfSession.addSessionEndedListener(this);
 	}
 
@@ -597,7 +596,7 @@ public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedL
 	}
 
 	private boolean insertDisassembly(BigInteger startAddress, BigInteger endAddress, IInstruction[] instructions, boolean showSymbols, boolean showDisassembly) {
-		if (!fCallback.hasViewer() || fDsfSessionId == null) {
+        if (!fCallback.hasViewer() || fDsfSessionId == null || fTargetContext == null) {
 			// return true to avoid a retry
 			return true;
 		}
@@ -710,7 +709,7 @@ public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedL
 	 * @return whether [startAddress] was inserted
 	 */
 	private boolean insertDisassembly(BigInteger startAddress, BigInteger endAddress, IMixedInstruction[] mixedInstructions, boolean showSymbols, boolean showDisassembly) {
-		if (!fCallback.hasViewer() || fDsfSessionId == null) {
+        if (!fCallback.hasViewer() || fDsfSessionId == null || fTargetContext == null) {
 			// return true to avoid a retry
 			return true;
 		}
@@ -864,7 +863,7 @@ public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedL
 	 * @see org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyBackend#gotoSymbol(java.lang.String)
 	 */
 	public void gotoSymbol(final String symbol) {
-		evaluateSymbolAddress(symbol, false, new DataRequestMonitor<BigInteger>(getSession().getExecutor(), null) {			
+		evaluateAddressExpression(symbol, false, new DataRequestMonitor<BigInteger>(getSession().getExecutor(), null) {			
 			@Override
 			protected void handleSuccess() {
 				final BigInteger address = getData();
@@ -880,13 +879,14 @@ public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedL
 
 	/*
 	 * (non-Javadoc)
-	 * @see org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyBackend#evaluateSymbolAddress(java.lang.String, boolean)
+	 * @see org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyBackend#evaluateAddressExpression(java.lang.String, boolean)
 	 */
-	public BigInteger evaluateSymbolAddress(final String symbol, final boolean suppressError) {
+	@Override
+	public BigInteger evaluateAddressExpression(final String symbol, final boolean suppressError) {
 		Query<BigInteger> query = new Query<BigInteger>() {
 			@Override
 			protected void execute(DataRequestMonitor<BigInteger> rm) {
-				evaluateSymbolAddress(symbol, suppressError, rm);				
+				evaluateAddressExpression(symbol, suppressError, rm);				
 			}			
 		};
 		getSession().getExecutor().execute(query);
@@ -897,7 +897,7 @@ public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedL
 		}
 	}
 	
-	private void evaluateSymbolAddress(final String symbol, final boolean suppressError, final DataRequestMonitor<BigInteger> rm) {		
+	private void evaluateAddressExpression(final String symbol, final boolean suppressError, final DataRequestMonitor<BigInteger> rm) {		
 		final IExpressions expressions= getService(IExpressions.class);
 		if (expressions == null) {
 			rm.setStatus(new Status(IStatus.ERROR, DsfUIPlugin.PLUGIN_ID, IDsfStatusConstants.REQUEST_FAILED, "", null)); //$NON-NLS-1$
@@ -911,9 +911,19 @@ public class DisassemblyBackendDsf implements IDisassemblyBackend, SessionEndedL
 			@Override
 			protected void handleSuccess() {
 				IExpressionDMAddress data = getData();
-				IAddress address = data.getAddress();
-				rm.setData(address.getValue());
-				rm.done();
+				final IAddress address = data.getAddress();
+                if (address != null && address != IExpressionDMLocation.INVALID_ADDRESS) {
+                    final BigInteger addressValue = address.getValue();
+                    fCallback.asyncExec(new Runnable() {
+                        public void run() {
+                            fCallback.gotoAddress(addressValue);
+                        }
+                    });
+                    rm.setData(addressValue);
+                    rm.done();
+                } else {
+                    handleError();
+                }
 			}
 			@Override
 			protected void handleError() {

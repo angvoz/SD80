@@ -39,6 +39,7 @@ import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.ZipFileUtils;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
@@ -47,7 +48,7 @@ import org.eclipse.cdt.debug.internal.core.sourcelookup.MapEntrySourceContainer;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.Query;
-import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -1181,8 +1182,7 @@ public class Album extends PlatformObject implements IAlbum {
 		listeners.remove(listener);
 	}
 
-	public static void captureSnapshotForSession(final DsfSession session,
-			final IExecutionDMContext dmContext) {
+	public static void captureSnapshotForSession(final DsfSession session) {
 		Job createSnapshotJob = new Job("Creating Debug Snapshot") {
 
 			@Override
@@ -1194,11 +1194,21 @@ public class Album extends PlatformObject implements IAlbum {
 							DataRequestMonitor<IFrameDMContext> rm) {
 						DsfServicesTracker servicesTracker = new DsfServicesTracker(
 								EDCDebugger.getBundleContext(),
-								dmContext.getSessionId());
+								session.getId());
 						try {
-							Stack stackService = servicesTracker.getService(Stack.class);
-							if (stackService != null) {
-								stackService.getTopFrame(dmContext, rm);
+							RunControl runControl = servicesTracker.getService(RunControl.class);
+							IThreadDMContext[] suspendedThreads = runControl.getSuspendedThreads();
+							if (suspendedThreads.length == 0)
+							{
+								rm.setData(null);
+								rm.done();
+							}
+							else
+							{
+								Stack stackService = servicesTracker.getService(Stack.class);
+								if (stackService != null) {
+									stackService.getTopFrame(suspendedThreads[0], rm);
+								}
 							}
 						} finally {
 							servicesTracker.dispose();

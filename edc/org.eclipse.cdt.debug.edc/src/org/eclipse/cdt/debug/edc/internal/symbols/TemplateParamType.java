@@ -37,10 +37,14 @@ public class TemplateParamType implements ITemplateParam {
 	}
 
 	public IType getType() {
+		if (this.type instanceof IForwardTypeReference) {
+			this.type = ((IForwardTypeReference) this.type).getReferencedType();
+		}
+
 		IType nextType = this.type;
 		while (nextType != null) {
 			if (nextType instanceof IForwardTypeReference)
-				nextType = ((IForwardTypeReference) type).getReferencedType();
+				nextType = ((IForwardTypeReference) nextType).getReferencedType();
 			nextType = nextType.getType();
 		}
 		

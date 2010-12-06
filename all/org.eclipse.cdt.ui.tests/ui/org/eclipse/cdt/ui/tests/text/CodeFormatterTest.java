@@ -1446,6 +1446,28 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 	
+	//#define X() {  }
+	//void g() {
+	//	X();
+	//		if (1) {
+	//		x();
+	//	}
+	//	z();
+	//}
+
+	//#define X() {  }
+	//void g() {
+	//	X();
+	//	if (1) {
+	//		x();
+	//	}
+	//	z();
+	//}
+	public void testKeepWrappedLines_Bug322776_2() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_JOIN_WRAPPED_LINES, DefaultCodeFormatterConstants.FALSE);
+		assertFormatterResult();
+	}
+	
 	//void f() {
 	//double confidence = 0.316030 //
 	//- 0.016315 * C_Count //
@@ -1466,4 +1488,54 @@ public class CodeFormatterTest extends BaseUITestCase {
 				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
 		assertFormatterResult();
 	}
+	
+	//#define m() f()
+	//void f() {
+	//if (1) f();
+	//else m();
+	//}
+
+	//#define m() f()
+	//void f() {
+	//	if (1)
+	//		f();
+	//	else
+	//		m();
+	//}
+	public void testMacroAfterElse() throws Exception {
+		assertFormatterResult();
+	}
+
+	//#define M union { double u; void *s; long l; }
+	//typedef M m_t;
+
+	//#define M union { double u; void *s; long l; }
+	//typedef M m_t;
+	public void testMacroWithinTypedef() throws Exception {
+		assertFormatterResult();
+	}
+
+	//#define B() { if (1+2) b(); }
+	//void g() {
+	//	if (1) {
+	//		B();
+	//	} else {
+	//		x();
+	//	}
+	//	z();
+	//}
+
+	//#define B() { if (1+2) b(); }
+	//void g() {
+	//	if (1) {
+	//		B();
+	//	} else {
+	//		x();
+	//	}
+	//	z();
+	//}
+	public void testBinaryExpressionInMacro() throws Exception {
+		assertFormatterResult();
+	}
+
 }

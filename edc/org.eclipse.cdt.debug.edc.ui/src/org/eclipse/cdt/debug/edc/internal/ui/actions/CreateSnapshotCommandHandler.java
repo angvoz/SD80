@@ -26,7 +26,7 @@ public class CreateSnapshotCommandHandler extends AbstractSnapshotCommandHandler
 
 		final DsfSession session = DsfSession
 				.getSession(getSelectionExecutionDMC().getSessionId());
-		Album.captureSnapshotForSession(session, getSelectionExecutionDMC());
+		Album.captureSnapshotForSession(session);
 		return null;
 	}
 

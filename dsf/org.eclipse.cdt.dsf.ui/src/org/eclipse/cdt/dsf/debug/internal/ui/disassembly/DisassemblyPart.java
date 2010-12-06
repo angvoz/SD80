@@ -9,6 +9,7 @@
  *     Wind River Systems - initial API and implementation
  *     Patrick Chuong (Texas Instruments) - Bug fix (326670)
  *     Patrick Chuong (Texas Instruments) - Bug fix (329682)
+ *     Patrick Chuong (Texas Instruments) - bug fix (330259)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.debug.internal.ui.disassembly;
 
@@ -27,8 +28,10 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AbstractDisassemblyBackend;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AddressRangePosition;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.DisassemblyPosition;
+import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.DisassemblyUtils;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.ErrorPosition;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyBackend;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyDocument;
@@ -63,6 +66,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.SafeRunner;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.IBreakpointManager;
@@ -71,6 +75,7 @@ import org.eclipse.debug.core.sourcelookup.containers.LocalFileStorage;
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.contexts.DebugContextEvent;
 import org.eclipse.debug.ui.contexts.IDebugContextListener;
+import org.eclipse.debug.ui.contexts.IDebugContextService;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.GroupMarker;
 import org.eclipse.jface.action.IAction;
@@ -114,7 +119,10 @@ import org.eclipse.jface.text.source.OverviewRuler;
 import org.eclipse.jface.text.source.SourceViewerConfiguration;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
+import org.eclipse.jface.util.SafeRunnable;
+import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyleRange;
@@ -245,6 +253,7 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	private int fAddressSize= 32;
 
 	private volatile boolean fUpdatePending;
+    private volatile int fUpdateCount;
 	private BigInteger fPCAddress;
 	private BigInteger fGotoAddressPending= PC_UNKNOWN;
 	private BigInteger fFocusAddress= PC_UNKNOWN;
@@ -666,6 +675,10 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		}
 
 		initializeViewerFont(fViewer);
+		fDocument = createDocument();
+		fViewer.setDocument(fDocument, new AnnotationModel());
+		JFaceResources.getFontRegistry().addListener(fPropertyChangeListener);
+
 		createActions();
 		hookRulerContextMenu();
 		hookContextMenu();
@@ -676,10 +689,6 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 				updateSelectionDependentActions();
 			}
 		});
-
-		fDocument = createDocument();
-		fViewer.setDocument(fDocument, new AnnotationModel());
-		JFaceResources.getFontRegistry().addListener(fPropertyChangeListener);
 
 		fErrorColor = getSharedColors().getColor(new RGB(96, 0, 0));
 		fInstructionColor = getSharedColors().getColor(new RGB(0, 0, 96));
@@ -711,7 +720,8 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	protected void setSite(IWorkbenchPartSite site) {
 		super.setSite(site);
         site.getPage().addPartListener(fPartListener);
-		DebugUITools.getDebugContextManager().addDebugContextListener(fDebugContextListener = new IDebugContextListener() {
+        IDebugContextService contextService = DebugUITools.getDebugContextManager().getContextService(site.getWorkbenchWindow());
+        contextService.addDebugContextListener(fDebugContextListener = new IDebugContextListener() {
             public void debugContextChanged(DebugContextEvent event) {
                 if ((event.getFlags() & DebugContextEvent.ACTIVATED) != 0) {
                     updateDebugContext();
@@ -1474,16 +1484,18 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	public void viewportChanged(int verticalOffset) {
 		if (fDebugSessionId != null && fGotoAddressPending == PC_UNKNOWN && fScrollPos == null && !fUpdatePending && !fRefreshViewPending) {
 			fUpdatePending = true;
-			invokeLater(new Runnable() {
-				public void run() {
-					assert fUpdatePending;
-					if (fUpdatePending) {
-						fUpdatePending = false;
-						updateVisibleArea();
-						fPCLastAddress = getTopAddress();
-					}
-				}
-			});
+            final int updateCount = fUpdateCount;
+            invokeLater(new Runnable() {
+                public void run() {
+                    if (updateCount == fUpdateCount) {
+                        assert fUpdatePending;
+                        if (fUpdatePending) {
+                            fUpdatePending = false;
+                            updateVisibleArea();
+                        }
+                    }
+                }
+            });
 		}
 	}
 
@@ -1670,15 +1682,12 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		if (fDebugSessionId == null) {
 			return;
 		}
-		if (fUpdatePending) {
-			invokeLater(new Runnable() {
-				public void run() {
-					retrieveDisassembly(file, lines, mixed);
-				}});
-			return;
-		}
-		if (DEBUG) System.out.println("retrieveDisassembly "+file); //$NON-NLS-1$
-		fBackend.retrieveDisassembly(file, lines, fEndAddress, mixed, fShowSymbols, fShowDisassembly);
+        startUpdate(new Runnable() {
+            public void run() {
+                if (DEBUG) System.out.println("retrieveDisassembly "+file); //$NON-NLS-1$
+                fBackend.retrieveDisassembly(file, lines, fEndAddress, mixed, fShowSymbols, fShowDisassembly);
+            }
+        });
 	}
 
 	private void retrieveDisassembly(BigInteger startAddress, BigInteger endAddress, int lines) {
@@ -1838,30 +1847,42 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		return -1;
 	}
 
-	protected void updateDebugContext() {
-		IAdaptable context = DebugUITools.getDebugContext();
-		final IDisassemblyBackend prevBackend = fBackend;
-		fDebugSessionId = null;
-		if (context != null) {
-			if (fBackend == null || !fBackend.supportsDebugContext(context)) {
-				if (fBackend != null) {
-					fBackend.clearDebugContext();
-					fBackend.dispose();
-				}
-				fBackend = (IDisassemblyBackend)context.getAdapter(IDisassemblyBackend.class);
-				if (fBackend != null) {
-					fBackend.init(this);
-				}
-			}
-			
-			if (fBackend != null) {
-				IDisassemblyBackend.SetDebugContextResult result = fBackend.setDebugContext(context);
-				if (result != null) {
-					fDebugSessionId = result.sessionId;
-			        if (result.contextChanged && fViewer != null) {
-						debugContextChanged();
-						if (prevBackend != null && fBackend != prevBackend) {
-							prevBackend.clearDebugContext();
+	protected void updateDebugContext() {		
+		IDebugContextService contextService = DebugUITools.getDebugContextManager().getContextService(getSite().getWorkbenchWindow());
+		ISelection activeContext = contextService.getActiveContext();
+		if (activeContext instanceof IStructuredSelection) {
+			Object selectedElement = ((IStructuredSelection) activeContext).getFirstElement();		
+			if (selectedElement instanceof IAdaptable) {
+				IAdaptable context = (IAdaptable) selectedElement;
+				
+				final IDisassemblyBackend prevBackend = fBackend;
+				fDebugSessionId = null;
+				if (context != null) {
+					if (fBackend == null || !fBackend.supportsDebugContext(context)) {
+						if (fBackend != null) {
+							fBackend.clearDebugContext();
+							fBackend.dispose();
+						}
+						fBackend = (IDisassemblyBackend)context.getAdapter(IDisassemblyBackend.class);
+						if (fBackend != null) {
+							fBackend.init(this);
+						}
+					}
+					
+					if (fBackend != null) {
+						IDisassemblyBackend.SetDebugContextResult result = fBackend.setDebugContext(context);
+						if (result != null) {
+							fDebugSessionId = result.sessionId;
+					        if (result.contextChanged && fViewer != null) {
+		                        startUpdate(new Runnable() {
+		                            public void run() {
+		                                debugContextChanged();              
+		                            }
+		                        });
+								if (prevBackend != null && fBackend != prevBackend) {
+									prevBackend.clearDebugContext();
+								}
+							}
 						}
 					}
 				}
@@ -1869,8 +1890,35 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		}
 	}
 
+	private void startUpdate(final Runnable update) {
+	    final int updateCount = fUpdateCount;
+	    final SafeRunnable safeUpdate = new SafeRunnable() {
+	        public void run() {
+	            if (updateCount == fUpdateCount) {
+	                update.run();
+	            }
+	        }
+	        @Override
+	        public void handleException(Throwable e) {
+	            internalError(e);
+	        }
+	    };
+	    if (fUpdatePending) {
+	        invokeLater(new Runnable() {
+	            public void run() {
+	                if (updateCount == fUpdateCount) {
+	                    SafeRunner.run(safeUpdate);
+	                }
+	            }
+	        });
+	    } else {
+	        SafeRunner.run(safeUpdate);
+	    }
+	}
+
 	private void debugContextChanged() {
 		if (DEBUG) System.out.println("DisassemblyPart.debugContextChanged()"); //$NON-NLS-1$
+        fUpdateCount++;
 		fRunnableQueue.clear();
 		fUpdatePending = false;
 		resetViewer();
@@ -1905,8 +1953,6 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		firePropertyChange(PROP_CONNECTED);
 		firePropertyChange(PROP_SUSPENDED);
 	}
-
-
 
 	private void attachBreakpointsAnnotationModel() {
 		IAnnotationModel annotationModel = fViewer.getAnnotationModel();
@@ -1963,13 +2009,18 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	}
 
 	private BigInteger getTopAddress() {
-		BigInteger topAddress = getAddressOfLine(fViewer.getTopIndex());
-		if (topAddress.equals(fStartAddress)) {
-			// in rare cases, the top line can be '...'
-			// don't use it as reference, take the next line
-			topAddress = getAddressOfLine(fViewer.getTopIndex() + 1);
+		if (fViewer != null) {
+			BigInteger topAddress = getAddressOfLine(fViewer.getTopIndex());
+			if (topAddress.equals(fStartAddress)) {
+				// in rare cases, the top line can be '...'
+				// don't use it as reference, take the next line
+				topAddress = getAddressOfLine(fViewer.getTopIndex() + 1);
+			}
+			return topAddress;
+		
+		} else {
+			return PC_UNKNOWN;
 		}
-		return topAddress;
 	}
 
 	private void resetViewer() {
@@ -2458,35 +2509,41 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		if (doit != null) {
 			fRunnableQueue.add(doit);
 		}
-		if (fUpdatePending) {
-			if (fRunnableQueue.size() == 1) {
-				Runnable doitlater = new Runnable() {
-					public void run() {
-						doScrollLocked(null);
-					}};
-				invokeLater(doitlater);
-			}
-		} else {
-			fUpdatePending = true;
-			lockScroller();
-			try {
-				ArrayList<Runnable> copy = new ArrayList<Runnable>(fRunnableQueue);
-				fRunnableQueue.clear();
-				for (Iterator<Runnable> iter = copy.iterator(); iter.hasNext();) {
-					Runnable doitnow = iter.next();
-					try {
-						doitnow.run();
-					} catch(Exception e) {
-						internalError(e);
-					}
-				}
-			} finally {
-				fUpdatePending = false;
-				unlockScroller();
-				doPending();
-				updateVisibleArea();
-			}
-		}
+        final int updateCount = fUpdateCount;
+        if (fUpdatePending) {
+            if (fRunnableQueue.size() == 1) {
+                Runnable doitlater = new Runnable() {
+                    public void run() {
+                        if (updateCount == fUpdateCount) {
+                            doScrollLocked(null);
+                        }
+                    }};
+                invokeLater(doitlater);
+            }
+        } else {
+            fUpdatePending = true;
+            lockScroller();
+            try {
+                ArrayList<Runnable> copy = new ArrayList<Runnable>(fRunnableQueue);
+                fRunnableQueue.clear();
+                for (Iterator<Runnable> iter = copy.iterator(); iter.hasNext();) {
+                    if (updateCount != fUpdateCount) {
+                        return;
+                    }
+                    Runnable doitnow = iter.next();
+                    try {
+                        doitnow.run();
+                    } catch(Exception e) {
+                        internalError(e);
+                    }
+                }
+            } finally {
+                fUpdatePending = false;
+                unlockScroller();
+                doPending();
+                updateVisibleArea();
+            }
+        }
 	}
 
 	/* (non-Javadoc)
@@ -2608,11 +2665,12 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 			if (fi.fSource != null && lineNr >= 0 && lineNr < fi.fSource.getNumberOfLines()) {
 				fi.fStartAddress = fi.fStartAddress.min(pos.fAddressOffset);
 				fi.fEndAddress = fi.fEndAddress.max(pos.fAddressOffset.add(pos.fAddressLength));
+		    	int last = pos.fLast > lineNr ? pos.fLast : lineNr;
 				final BigInteger lineAddr = fi.fLine2Addr[lineNr];
 				if (lineAddr == null) {
 					fi.fLine2Addr[lineNr] = pos.fAddressOffset;
-					String sourceLine = fi.getLine(lineNr);
-					fDocument.insertSource(pos, sourceLine, lineNr, true);
+					String source = fi.getLines(lineNr, last);
+					fDocument.insertSource(pos, source, lineNr, true);
 				} else {
 					final int comparison = lineAddr.compareTo(pos.fAddressOffset);
 					if (comparison > 0) {
@@ -2636,11 +2694,11 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 							}
 						}
 						fi.fLine2Addr[lineNr] = pos.fAddressOffset;
-						String sourceLine = fi.getLine(lineNr);
-						fDocument.insertSource(pos, sourceLine, lineNr, true);
+						String source = fi.getLines(lineNr, last);
+						fDocument.insertSource(pos, source, lineNr, true);
 					} else if (comparison == 0) {
-						String sourceLine = fi.getLine(lineNr);
-						fDocument.insertSource(pos, sourceLine, lineNr, true);
+						String source = fi.getLines(lineNr, last);
+						fDocument.insertSource(pos, source, lineNr, true);
 					} else {
 						// new source position is after old position
 						try {
@@ -2652,12 +2710,12 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 									fDocument.insertSource(pos, "", lineNr, true); //$NON-NLS-1$
 									fDocument.removeSourcePosition(pos);
 								} else {
-									String sourceLine = fi.getLine(lineNr);
-									fDocument.insertSource(pos, sourceLine, lineNr, true);
+									String source = fi.getLines(lineNr, last);
+									fDocument.insertSource(pos, source, lineNr, true);
 								}
 							} else {
-								String sourceLine = fi.getLine(lineNr);
-								fDocument.insertSource(pos, sourceLine, lineNr, true);
+								String source = fi.getLines(lineNr, last);
+								fDocument.insertSource(pos, source, lineNr, true);
 							}
 						} catch (BadPositionCategoryException e) {
 							internalError(e);
@@ -2789,16 +2847,16 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.debug.internal.ui.disassembly.dsf.IDisassemblyPartCallback#insertSource(org.eclipse.cdt.debug.internal.ui.disassembly.dsf.AddressRangePosition, java.math.BigInteger, java.lang.String, int)
-	 */
 	public AddressRangePosition insertSource(AddressRangePosition pos, BigInteger address, final String file, int lineNumber) {
+		return insertSource(pos, address, file, lineNumber, lineNumber);
+	}
+	public AddressRangePosition insertSource(AddressRangePosition pos, BigInteger address, final String file, int firstLine, int lastLine) {
 		assert isGuiThread();
 		Object sourceElement = null;
 		if (fFile2Storage.containsKey(file)) {
 			sourceElement = fFile2Storage.get(file);
 		} else {
-			sourceElement = fBackend.insertSource(pos, address, file, lineNumber);
+			sourceElement = fBackend.insertSource(pos, address, file, firstLine);
 		}
 		if (sourceElement instanceof File) {
 			sourceElement = new LocalFileStorage((File)sourceElement);
@@ -2841,7 +2899,7 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 				}
 				fi.fReadingJob.schedule();
 			}
-			pos = fDocument.insertInvalidSource(pos, address, fi, lineNumber);
+			pos = fDocument.insertInvalidSource(pos, address, fi, firstLine, lastLine);
 		}
 		
 		return pos;
@@ -2900,7 +2958,11 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		asyncExec(new Runnable() {
 			public void run() {
 				fDebugSessionId = null;
-				debugContextChanged();
+                startUpdate(new Runnable() {
+                    public void run() {
+                        debugContextChanged();              
+                    }
+                });
 			}
 		});
 	}
@@ -2964,11 +3026,25 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	
 	public BigInteger eval(String expr, boolean suppressError) {
 		if (fBackend != null) {
-			BigInteger address = fBackend.evaluateSymbolAddress(expr, suppressError);
+			BigInteger address = null;
+			if (fBackend instanceof AbstractDisassemblyBackend) {
+				address = ((AbstractDisassemblyBackend) fBackend).evaluateAddressExpression(expr, suppressError);
+			} else {
+				String value = fBackend.evaluateExpression(expr);
+				if (value != null) {
+					try {
+						address = DisassemblyUtils.decodeAddress(value);
+					} catch (NumberFormatException e) {
+						if (!suppressError) {
+							generateErrorDialog(DisassemblyMessages.Disassembly_log_error_expression_eval);
+						}
+					}
+				}
+			}
 			if (address != null)
 				return address;
 		}
-		return PC_UNKNOWN;    	
+		return PC_UNKNOWN;
 	}
 
 	protected boolean isTrackExpression() {

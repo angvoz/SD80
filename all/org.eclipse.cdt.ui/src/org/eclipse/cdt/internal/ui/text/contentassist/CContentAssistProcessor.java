@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2008 IBM Corporation and others.
+ * Copyright (c) 2000, 2010 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,6 +10,7 @@
  *     Anton Leherbauer (Wind River Systems)
  *     Bryan Wilkinson (QNX)
  *     Markus Schorn (Wind River Systems)
+ *     Kirk Beitz (Nokia)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.text.contentassist;
 
@@ -32,6 +33,12 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.ui.IEditorPart;
 
+import org.eclipse.cdt.core.dom.ast.IASTCompletionNode;
+import org.eclipse.cdt.core.dom.ast.IASTExpression;
+import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
+import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IPointerType;
+
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.text.ICCompletionProposal;
 import org.eclipse.cdt.ui.text.contentassist.ContentAssistInvocationContext;
@@ -47,11 +54,22 @@ import org.eclipse.cdt.internal.ui.text.Symbols;
  */
 public class CContentAssistProcessor extends ContentAssistProcessor {
 
+	private static class ActivationSet {
+		private final String theSet;
+
+		ActivationSet(String s) {
+			theSet = s;
+		}
+
+		boolean contains(char c) {
+			return -1 != theSet.indexOf(c);
+		}
+	}
+	
 	/**
 	 * A wrapper for {@link ICompetionProposal}s.
 	 */
 	private static class CCompletionProposalWrapper implements ICCompletionProposal {
-
 		private ICompletionProposal fWrappedProposal;
 
 		public CCompletionProposalWrapper(ICompletionProposal proposal) {
@@ -120,10 +138,10 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 		public ICompletionProposal unwrap() {
 			return fWrappedProposal;
 		}
-
 	}
 
-
+	private ActivationSet fReplacementAutoActivationCharacters;
+	private ActivationSet fCContentAutoActivationCharacters;
 	private IContextInformationValidator fValidator;
 	private final IEditorPart fEditor;
 
@@ -144,15 +162,16 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 	}
 
 	/*
-	 * @see org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistProcessor#filterAndSort(java.util.List, org.eclipse.core.runtime.IProgressMonitor)
+	 * @see org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistProcessor#filterAndSort(List, IProgressMonitor)
 	 */
 	@Override
-	protected List<ICompletionProposal> filterAndSortProposals(List<ICompletionProposal> proposals, IProgressMonitor monitor, ContentAssistInvocationContext context) {
+	protected List<ICompletionProposal> filterAndSortProposals(List<ICompletionProposal> proposals,
+			IProgressMonitor monitor, ContentAssistInvocationContext context) {
 		IProposalFilter filter = getCompletionFilter();
 		ICCompletionProposal[] proposalsInput= new ICCompletionProposal[proposals.size()];
 		// wrap proposals which are no ICCompletionProposals
 		boolean wrapped= false;
-		int i=0;
+		int i= 0;
 		for (ICompletionProposal proposal : proposals) {
 			if (proposal instanceof ICCompletionProposal) {
 				proposalsInput[i++]= (ICCompletionProposal)proposal;
@@ -198,8 +217,7 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 		try {
 			IConfigurationElement filterElement = ProposalFilterPreferencesUtil.getPreferredFilterElement();
 			if (null != filterElement) {
-				Object contribObject = filterElement
-						.createExecutableExtension("class"); //$NON-NLS-1$
+				Object contribObject = filterElement.createExecutableExtension("class"); //$NON-NLS-1$
 				if ((contribObject instanceof IProposalFilter)) {
 					filter = (IProposalFilter) contribObject;
 				}
@@ -212,7 +230,7 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 			CUIPlugin.log(e);
 		}
 
-		if (null == filter) {
+		if (filter == null) {
 			// fail-safe default implementation
 			filter = new DefaultProposalFilter();
 		}
@@ -225,12 +243,112 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 		return contexts;
 	}
 
+	/**
+	 * Establishes this processor's set of characters checked after
+	 * auto-activation to determine if auto-replacement correction
+	 * is to occur.
+	 * <p>
+	 * This set is a (possibly complete) subset of the set established by
+	 * {@link ContentAssistProcessor#setCompletionProposalAutoActivationCharacters},
+	 * which is the set of characters used to initially trigger auto-activation
+	 * for any content-assist operations, including this.  (<i>And while the
+	 * name setCompletionProposalAutoActivationCharacters may now be a bit
+	 * misleading, it is part of an API implementation called by jface.</i>)
+	 *
+	 * @param activationSet the activation set
+	 */
+	public void setReplacementAutoActivationCharacters(String activationSet) {
+		fReplacementAutoActivationCharacters= new ActivationSet(activationSet);
+	}
+
+	/**
+	 * Establishes this processor's set of characters checked after
+	 * auto-activation and any auto-correction to determine if completion
+	 * proposal computation is to proceed.
+	 * <p>
+	 * This set is a (possibly complete) subset of the set established by
+	 * {@link ContentAssistProcessor#setCompletionProposalAutoActivationCharacters},
+	 * which is the set of characters used to initially trigger auto-activation
+	 * for any content-assist operations, including this.  (<i>And while the
+	 * name setCompletionProposalAutoActivationCharacters may now be a bit
+	 * misleading, it is part of an API implementation called by jface.</i>)
+	 *
+	 * @param activationSet the activation set
+	 */
+	public void setCContentAutoActivationCharacters(String activationSet) {
+		fCContentAutoActivationCharacters= new ActivationSet(activationSet);
+	}
+
 	/*
 	 * @see org.eclipse.cdt.internal.ui.text.contentassist.ContentAssistProcessor#createContext(org.eclipse.jface.text.ITextViewer, int)
 	 */
 	@Override
 	protected ContentAssistInvocationContext createContext(ITextViewer viewer, int offset, boolean isCompletion) {
-		return new CContentAssistInvocationContext(viewer, offset, fEditor, isCompletion, isAutoActivated());
+		char activationChar = getActivationChar(viewer, offset);
+		CContentAssistInvocationContext context =
+		  		new CContentAssistInvocationContext(viewer, offset, fEditor, isCompletion, isAutoActivated());
+		if (isCompletion && activationChar == '.' && fReplacementAutoActivationCharacters != null &&
+				fReplacementAutoActivationCharacters.contains('.')) {
+			IASTCompletionNode node = context.getCompletionNode();
+			if (node != null) {
+				IASTName[] names = node.getNames();
+				if (names.length > 0 && names[0].getParent() instanceof IASTFieldReference) {
+					IASTFieldReference ref = (IASTFieldReference) names[0].getParent();
+					IASTExpression ownerExpr = ref.getFieldOwner();
+					if (ownerExpr.getExpressionType() instanceof IPointerType) {
+						context = replaceDotWithArrow(viewer, offset, isCompletion, context, activationChar);
+					}
+				}
+			}
+		}
+
+		return context;
+	}
+
+	private CContentAssistInvocationContext replaceDotWithArrow(ITextViewer viewer, int offset,
+			boolean isCompletion, CContentAssistInvocationContext context, char activationChar) {
+		IDocument doc = viewer.getDocument();
+		try {
+			doc.replace(offset - 1, 1, "->"); //$NON-NLS-1$
+			context.dispose();
+			// if user turned on activation only for replacement characters,
+			// setting the context to null will skip the proposals popup later
+			if (!isAutoActivated() || fCContentAutoActivationCharacters.contains(activationChar)) {
+				context = new CContentAssistInvocationContext(viewer, offset + 1, fEditor,
+						isCompletion, isAutoActivated());
+			} else {
+				context = null;
+			}
+		} catch (BadLocationException e) {
+			if (isAutoActivated() && !fCContentAutoActivationCharacters.contains(activationChar)) {
+				if (context != null) {
+					context.dispose(); // XXX dang false positives null deref warnings
+					context = null;
+				}
+			}
+		}
+		return context;
+	}
+
+	/**
+	 * Get the character preceding the content assist activation offset.
+	 * @param viewer 
+	 * @param offset
+	 * @return the activation character
+	 */
+	private char getActivationChar(ITextViewer viewer, int offset) {
+		IDocument doc= viewer.getDocument();
+		if (doc == null) {
+			return 0;
+		}
+		if (offset <= 0) {
+			return 0;
+		}
+		try {
+			return doc.getChar(offset - 1);
+		} catch (BadLocationException e) {
+		}
+		return 0;
 	}
 
 	/*
@@ -263,9 +381,8 @@ public class CContentAssistProcessor extends ContentAssistProcessor {
 				}
 				return true;
 			}
-		} catch (BadLocationException exc) {
+		} catch (BadLocationException e) {
 		}
 		return false;
 	}
-
 }

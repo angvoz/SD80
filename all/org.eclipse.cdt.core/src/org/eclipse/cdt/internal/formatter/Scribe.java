@@ -65,6 +65,7 @@ public class Scribe {
 	private boolean preserveNewLines;
 	private boolean checkLineWrapping;
 	public int lastNumberOfNewLines;
+	private boolean preserveLineBreakIndentation;
 	boolean formatBrace;
 	public int line;
 
@@ -461,7 +462,7 @@ public class Scribe {
 	private String getPreserveEmptyLines(int count) {
 		if (count == 0 && !preserveNewLines) {
 			// preserve line breaks in wrapping if specified
-			if ((!preferences.join_wrapped_lines) && lastNumberOfNewLines == 0) {
+			if (!preferences.join_wrapped_lines && lastNumberOfNewLines == 0) {
 				// Create new line
 				StringBuilder tempBuffer = new StringBuilder();
 				tempBuffer.append(getNewLine());
@@ -469,6 +470,10 @@ public class Scribe {
 				if (currentAlignment != null && !formatBrace) {
 					indentationLevel = currentAlignment.breakIndentationLevel;
 				}
+				
+				// Set the flag to indicate that a specific indentation is currently in used
+				preserveLineBreakIndentation = true;
+				
 				// Print the computed indentation in the buffer
 				printIndentationIfNecessary(tempBuffer);
 
@@ -765,7 +770,9 @@ public class Scribe {
 			handleLineTooLong();
 		}
 		lastNumberOfNewLines= 0;
-		printIndentationIfNecessary();
+		if (indentationLevel != 0) {
+			printIndentationIfNecessary();
+		}
 		if (considerSpaceIfAny) {
 			space();
 		}
@@ -1145,7 +1152,6 @@ public class Scribe {
 					if (indentationsAsTab < numberOfLeadingIndents) {
 						buffer.append('\t');
 						indentationsAsTab++;
-						lastNumberOfNewLines= 0;
 						int complement= tabLength - ((column - 1) % tabLength); // amount
 																				// of
 																				// space
@@ -1160,7 +1166,6 @@ public class Scribe {
 			} else {
 				while (column <= indentationLevel) {
 					buffer.append('\t');
-					lastNumberOfNewLines= 0;
 					int complement= tabLength - ((column - 1) % tabLength); // amount
 																			// of
 																			// space
@@ -1237,12 +1242,16 @@ public class Scribe {
 	}
 
 	public void printNewLine(int insertPosition) {
-		if (shouldSkip(insertPosition - 1)) {
+		if (shouldSkip(scanner.getCurrentPosition())) {
 			return;
 		}
 		if (lastNumberOfNewLines >= 1) {
 			// ensure that the scribe is at the beginning of a new line
-			column = 1; 
+			// only if no specific indentation has been previously set
+			if (!preserveLineBreakIndentation) {
+				column = 1; 
+			}
+			this.preserveLineBreakIndentation = false;
 			return;
 		}
 		addInsertEdit(insertPosition, lineSeparator);
@@ -1251,6 +1260,7 @@ public class Scribe {
 		column= 1;
 		needSpace= false;
 		pendingSpace= false;
+		preserveLineBreakIndentation = false;
 	}
 
 	public void printNextToken(int expectedTokenType) {

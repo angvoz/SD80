@@ -12,6 +12,7 @@
 package org.eclipse.cdt.internal.ui.newui;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -93,7 +94,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		MOVEDOWN_STR
 	};
 
-	// Content provider for setting entries
+	/**
+	 * Content provider for setting entries.
+	 */
 	private class LanguageSettingsContributorsContentProvider implements ITreeContentProvider {
 		public Object[] getElements(Object inputElement) {
 			return getChildren(inputElement);
@@ -105,6 +108,16 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			if (parentElement instanceof ILanguageSettingsProvider) {
 				ILanguageSettingsProvider lsProvider = (ILanguageSettingsProvider)parentElement;
 				List<ICLanguageSettingEntry> seList = getSettingEntriesUpResourceTree(lsProvider);
+				
+				if (builtInCheckBox.getSelection()==false) {
+					for (Iterator<ICLanguageSettingEntry> iter = seList.iterator(); iter.hasNext();) {
+						ICLanguageSettingEntry entry = iter.next();
+						if (entry.isBuiltIn()) {
+							iter.remove();
+						}
+					}
+				}
+				
 				if (seList!=null) {
 					return seList.toArray();
 				}
@@ -136,32 +149,44 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	 * @return list of setting entries for the current context.
 	 */
 	protected List<ICLanguageSettingEntry> getSettingEntriesUpResourceTree(ILanguageSettingsProvider provider) {
-		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
-		IResource rc = getResource();
 		String languageId = currentLanguageSetting.getLanguageId();
 		if (languageId==null)
 			return null;
 
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		IResource rc = getResource();
 		List<ICLanguageSettingEntry> entries = LanguageSettingsManager.getSettingEntriesUpResourceTree(provider, cfgDescription, rc, languageId);
 		return entries;
 	}
 
 	/**
-	 * Shortcut for getting setting entries for current context.
-	 *
+	 * Shortcut for getting setting entries for current context without checking the parent resource.
 	 * @return list of setting entries for the current context.
 	 */
 	protected List<ICLanguageSettingEntry> getSettingEntries(ILanguageSettingsProvider provider) {
-		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
-		IResource rc = getResource();
 		String languageId = currentLanguageSetting.getLanguageId();
 		if (languageId==null)
 			return null;
+
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		IResource rc = getResource();
 		return provider.getSettingEntries(cfgDescription, rc, languageId);
 	}
 
+	/**
+	 * Shortcut for getting the current resource for the property page.
+	 * @return the current resource.
+	 */
 	protected IResource getResource() {
 		return (IResource)page.getElement();
+	}
+	
+	/**
+	 * Shortcut for getting the current configuration description.
+	 * @return the current configuration description.
+	 */
+	protected ICConfigurationDescription getConfigurationDescription() {
+		return getResDesc().getConfiguration();
 	}
 
 	@Override
@@ -272,7 +297,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			}
 		});
 		builtInCheckBox.setSelection(true);
-		builtInCheckBox.setEnabled(false);
+		builtInCheckBox.setEnabled(true);
 
 		if (page.isForProject()) {
 			enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD80, 2, GridData.FILL_HORIZONTAL);
@@ -431,7 +456,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		String langId = currentLanguageSetting.getLanguageId();
 		if (langId != null) {
 			IResource rc = getResource();
-			ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
 			if (rc != null) {
 				List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
 				for (ILanguageSettingsProvider cfgProvider : cfgProviders) {

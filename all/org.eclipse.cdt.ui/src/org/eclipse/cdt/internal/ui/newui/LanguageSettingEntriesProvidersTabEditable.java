@@ -194,7 +194,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 		String langId = currentLanguageSetting.getLanguageId();
 		if (langId != null) {
 			IResource rc = getResource();
-			ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
 			if (rc != null) {
 				List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
 				for (ILanguageSettingsProvider cfgProvider : cfgProviders) {
@@ -219,7 +219,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 
 	private void addEntry(ILanguageSettingsProvider provider, ICLanguageSettingEntry entry) {
 		if (entry != null) {
-			ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
 			String providerId = provider.getId();
 			String languageId = currentLanguageSetting.getLanguageId();
 			IResource rc = getResource();
@@ -250,7 +250,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 
 	private ICLanguageSettingEntry doAdd() {
 		ICLanguageSettingEntry selectedEntry = getSelectedEntry();
-		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), cfgDescription, selectedEntry, true);
 		if (dlg.open()) {
 			return dlg.getEntries()[0];
@@ -260,7 +260,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 
 	private ICLanguageSettingEntry doEdit(ICLanguageSettingEntry ent) {
 		ICLanguageSettingEntry selectedEntry = getSelectedEntry();
-		ICConfigurationDescription cfgDecsription = getResDesc().getConfiguration();
+		ICConfigurationDescription cfgDecsription = getConfigurationDescription();
 		LanguageSettingEntryDialog dlg = new LanguageSettingEntryDialog(usercomp.getShell(), cfgDecsription, selectedEntry);
 		if (dlg.open()) {
 			return dlg.getEntries()[0];
@@ -290,7 +290,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 			List<ICLanguageSettingEntry> entriesOld = getSettingEntriesUpResourceTree(provider);
 			int pos = getExactIndex(entriesOld, entry);
 
-			ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
 			String providerId = provider.getId();
 			String languageId = currentLanguageSetting.getLanguageId();
 			IResource rc = getResource();
@@ -325,7 +325,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 		} else if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider) && getSettingEntriesUpResourceTree(provider)!=null) {
 			String languageId = currentLanguageSetting.getLanguageId();
 			if (languageId!=null) {
-				ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+				ICConfigurationDescription cfgDescription = getConfigurationDescription();
 				IResource rc = getResource();
 				ILanguageSettingsEditableProvider epro = (ILanguageSettingsEditableProvider)provider;
 				epro.setSettingEntries(cfgDescription, rc, languageId, null);
@@ -395,7 +395,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
 			EditedProvider editedProvider = editedProviders.get(selectedProvider);
 			if (editedProvider==null) {
-				ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+				ICConfigurationDescription cfgDescription = getConfigurationDescription();
 				IResource rc = getResource();
 				editedProvider = makeEditedProvider(selectedProvider, cfgDescription, rc);
 				editedProviders.put(editedProvider.getId(), editedProvider);
@@ -433,7 +433,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	@Override
 	protected void performDefaults() {
 		editedProviders = new HashMap<String, EditedProvider>();
-		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		IResource rc = getResource();
 		List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
 		for (ILanguageSettingsProvider provider : providers) {
@@ -638,7 +638,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	 *
 	 */
 	private void setSettingEntries(ILanguageSettingsEditableProvider provider, List<ICLanguageSettingEntry> entries) {
-		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		IResource rc = getResource();
 		String languageId = currentLanguageSetting.getLanguageId();
 		if (languageId!=null)

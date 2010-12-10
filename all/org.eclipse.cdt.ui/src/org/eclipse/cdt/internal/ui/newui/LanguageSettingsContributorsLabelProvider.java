@@ -3,6 +3,7 @@ package org.eclipse.cdt.internal.ui.newui;
 import java.net.URL;
 
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.viewers.IFontProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
@@ -12,10 +13,10 @@ import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
-import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 
-public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*implements IFontProvider, ITableLabelProvider , IColorProvider */ {
-	private static final String TEST_PLUGIN_ID = "org.eclipse.cdt.core.tests";
+public class LanguageSettingsContributorsLabelProvider extends LabelProvider implements IFontProvider /*, ITableLabelProvider , IColorProvider */ {
+	private static final String TEST_PLUGIN_ID = "org.eclipse.cdt.core.tests"; //$NON-NLS-1$
+	private static final String OOPS = "OOPS"; //$NON-NLS-1$
 
 	protected String getBaseKey(ILanguageSettingsProvider provider) {
 		String imageKey = null;
@@ -75,29 +76,30 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider /*i
 	}
 
 	public String getColumnText(Object element, int columnIndex) {
-		if (element instanceof Object[]) {
-			return "OOPS";
-		}
 		if (element instanceof ILanguageSettingsProvider) {
 			return ((ILanguageSettingsProvider) element).getName();
 		} else if (element instanceof ICLanguageSettingEntry) {
 			ICLanguageSettingEntry le = (ICLanguageSettingEntry) element;
-			if (columnIndex == 0) {
+			switch (columnIndex) {
+			case 0:
 				String s = le.getName();
 				if (le.getKind() == ICSettingEntry.MACRO) {
 					s = s + '=' + le.getValue();
 				}
 				return s;
-			}
-			if (le.getKind() == ICSettingEntry.MACRO) {
-				switch (columnIndex) {
-				case 1:
-					return le.getValue();
+			case 1:
+				if (le.getKind() == ICSettingEntry.MACRO) {
+					switch (columnIndex) {
+					case 1:
+						return le.getValue();
+					}
 				}
+				return ""; //$NON-NLS-1$
+			default:
+				return ""; //$NON-NLS-1$
 			}
-			return AbstractCPropertyTab.EMPTY_STR;
 		}
-		return (columnIndex == 0) ? element.toString() : AbstractCPropertyTab.EMPTY_STR;
+		return OOPS;
 	}
 
 	public Font getFont(Object element) {

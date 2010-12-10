@@ -6,7 +6,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Andrew Gvozdev - Initial API and implementation
+ *     Andrew Gvozdev - Initial API and implementation derived from AbstractLangListTab
  *******************************************************************************/
 
 package org.eclipse.cdt.internal.ui.newui;
@@ -28,13 +28,10 @@ import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
@@ -68,7 +65,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	protected static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
 
 	protected Tree treeLanguages;
-	protected TreeColumn columnLanguages;
 	protected Tree treeEntries;
 	protected TreeViewer treeEntriesViewer;
 	protected Button builtInCheckBox;
@@ -108,7 +104,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			if (parentElement instanceof ILanguageSettingsProvider) {
 				ILanguageSettingsProvider lsProvider = (ILanguageSettingsProvider)parentElement;
 				List<ICLanguageSettingEntry> seList = getSettingEntriesUpResourceTree(lsProvider);
-				
+
 				if (builtInCheckBox.getSelection()==false) {
 					for (Iterator<ICLanguageSettingEntry> iter = seList.iterator(); iter.hasNext();) {
 						ICLanguageSettingEntry entry = iter.next();
@@ -117,7 +113,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 						}
 					}
 				}
-				
+
 				if (seList!=null) {
 					return seList.toArray();
 				}
@@ -141,6 +137,61 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		}
 
 	}
+
+	/**
+	 * Shortcut for getting the current resource for the property page.
+	 */
+	protected IResource getResource() {
+		return (IResource)page.getElement();
+	}
+
+	/**
+	 * Shortcut for getting the current configuration description.
+	 */
+	protected ICConfigurationDescription getConfigurationDescription() {
+		return getResDesc().getConfiguration();
+	}
+
+	/**
+	 * Shortcut for getting the currently selected provider.
+	 */
+	protected ILanguageSettingsProvider getSelectedProvider() {
+		TreeItem[] items = treeEntries.getSelection();
+		ILanguageSettingsProvider provider = null;
+		if (items.length>0) {
+			TreeItem item = items[0];
+			Object itemData = item.getData();
+			if (itemData instanceof ICLanguageSettingEntry) {
+				item = item.getParentItem();
+				if (item!=null) {
+					itemData = item.getData();
+				}
+			}
+			if (itemData instanceof ILanguageSettingsProvider) {
+				provider = (ILanguageSettingsProvider)itemData;
+			}
+		}
+		return provider;
+	}
+
+	/**
+	 * Shortcut for getting the currently selected setting entry.
+	 */
+	protected ICLanguageSettingEntry getSelectedEntry() {
+			ICLanguageSettingEntry entry = null;
+
+			TreeItem[] selItems = treeEntries.getSelection();
+			if (selItems.length==0) {
+				return null;
+			}
+
+			TreeItem item = selItems[0];
+			Object itemData = item.getData();
+			if (itemData instanceof ICLanguageSettingEntry) {
+				entry = (ICLanguageSettingEntry)itemData;
+			}
+			return entry;
+		}
 
 	/**
 	 * Shortcut for getting setting entries for current context. {@link LanguageSettingsManager}
@@ -173,73 +224,73 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		return provider.getSettingEntries(cfgDescription, rc, languageId);
 	}
 
-	/**
-	 * Shortcut for getting the current resource for the property page.
-	 * @return the current resource.
-	 */
-	protected IResource getResource() {
-		return (IResource)page.getElement();
-	}
-	
-	/**
-	 * Shortcut for getting the current configuration description.
-	 * @return the current configuration description.
-	 */
-	protected ICConfigurationDescription getConfigurationDescription() {
-		return getResDesc().getConfiguration();
-	}
+	private void addTreeForLanguages(Composite comp) {
+		treeLanguages = new Tree(comp, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL);
+		treeLanguages.setLayoutData(new GridData(GridData.FILL_VERTICAL));
+		treeLanguages.setHeaderVisible(true);
 
-	@Override
-	public void createControls(Composite parent) {
-		super.createControls(parent);
-		usercomp.setLayout(new GridLayout(2, true));
-		GridData gd = (GridData) usercomp.getLayoutData();
-		// Discourage settings entry table from trying to show all its items at once, see bug 264330
-		gd.heightHint = 1;
-
-		// Create the sash form
-		sashForm = new SashForm(usercomp, SWT.NONE);
-		sashForm.setOrientation(SWT.HORIZONTAL);
-		gd = new GridData(GridData.FILL_BOTH);
-		gd.horizontalSpan = 2;
-		sashForm.setLayoutData(gd);
-
-		GridLayout layout = new GridLayout();
-		layout.numColumns = 2;
-		layout.marginHeight = 5;
-		sashForm.setLayout(layout);
-
-		addTree(sashForm).setLayoutData(new GridData(GridData.FILL_VERTICAL));
-		treeEntries = addTree2(sashForm);
-//		table.setLayoutData(new GridData(GridData.FILL_VERTICAL));
-//		table = new Tree(sashForm, SWT.BORDER | SWT.MULTI c | SWT.FULL_SELECTION);
-//		gd = new GridData(GridData.FILL_BOTH);
-//		gd.widthHint = 150;
-//		table.setLayoutData(gd);
-		treeEntries.setLinesVisible(true);
-
-		sashForm.addListener(SWT.Selection, new Listener() {
-			public void handleEvent(Event event) {
-				if (event.detail == SWT.DRAG)
-					return;
-				int shift = event.x - sashForm.getBounds().x;
-				GridData data = (GridData) treeLanguages.getLayoutData();
-				if ((data.widthHint + shift) < 20)
-					return;
-				Point computedSize = usercomp.getShell().computeSize(SWT.DEFAULT, SWT.DEFAULT);
-				Point currentSize = usercomp.getShell().getSize();
-				boolean customSize = !computedSize.equals(currentSize);
-				data.widthHint = data.widthHint;
-				sashForm.layout(true);
-				computedSize = usercomp.getShell().computeSize(SWT.DEFAULT, SWT.DEFAULT);
-				if (customSize)
-					computedSize.x = Math.max(computedSize.x, currentSize.x);
-				computedSize.y = Math.max(computedSize.y, currentSize.y);
-				if (computedSize.equals(currentSize)) {
-					return;
+		treeLanguages.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				TreeItem[] items = treeLanguages.getSelection();
+				if (items.length > 0) {
+					ICLanguageSetting langSetting = (ICLanguageSetting) items[0].getData();
+					if (langSetting != null) {
+						currentLanguageSetting = langSetting;
+						update();
+					}
 				}
 			}
 		});
+
+		final TreeColumn columnLanguages = new TreeColumn(treeLanguages, SWT.NONE);
+		columnLanguages.setText(Messages.AbstractLangsListTab_Languages);
+		columnLanguages.setWidth(200);
+		columnLanguages.setResizable(false);
+		columnLanguages.setToolTipText(Messages.AbstractLangsListTab_Languages);
+
+		treeLanguages.addPaintListener(new PaintListener() {
+			public void paintControl(PaintEvent e) {
+				int x = treeLanguages.getBounds().width - 5;
+				if (columnLanguages.getWidth() != x)
+					columnLanguages.setWidth(x);
+			}
+		});
+
+	}
+
+	private void addTreeForEntries(Composite comp) {
+		treeEntries = new Tree(comp, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL);
+		treeEntries.setLayoutData(new GridData(GridData.FILL_VERTICAL));
+		treeEntries.setHeaderVisible(true);
+		treeEntries.setLinesVisible(true);
+
+		treeEntries.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				TreeItem[] items = treeEntries.getSelection();
+				if (items.length > 0) {
+					Object item = items[0].getData();
+					if (item instanceof ICLanguageSetting) {
+						currentLanguageSetting = (ICLanguageSetting) item;
+						update();
+					}
+				}
+			}
+		});
+		final TreeColumn treeCol = new TreeColumn(treeEntries, SWT.NONE);
+		treeEntries.addPaintListener(new PaintListener() {
+			public void paintControl(PaintEvent e) {
+				int x = treeEntries.getClientArea().width;
+				if (treeCol.getWidth() != x)
+					treeCol.setWidth(x);
+			}
+		});
+
+		treeCol.setText("Setting Entries");
+		treeCol.setWidth(200);
+		treeCol.setResizable(false);
+		treeCol.setToolTipText("Setting Entries Tooltip - FIXME");
 
 		treeEntriesViewer = new TreeViewer(treeEntries);
 		treeEntriesViewer.setContentProvider(new LanguageSettingsContributorsContentProvider());
@@ -261,7 +312,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		});
 		treeEntriesViewer.setUseHashlookup(true);
 
-		sashForm.setWeights(DEFAULT_SASH_WEIGHTS);
 
 		treeEntries.addSelectionListener(new SelectionAdapter() {
 			@Override
@@ -277,18 +327,36 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			}
 		});
 
+	}
+
+	@Override
+	public void createControls(Composite parent) {
+		super.createControls(parent);
+		usercomp.setLayout(new GridLayout(2, true));
+		GridData gd = (GridData) usercomp.getLayoutData();
+		// Discourage settings entry table from trying to show all its items at once, see bug 264330
+		gd.heightHint = 1;
+
+		// Create the sash form
+		sashForm = new SashForm(usercomp, SWT.HORIZONTAL);
+		gd = new GridData(GridData.FILL_BOTH);
+		gd.horizontalSpan = 2;
+		sashForm.setLayoutData(gd);
+
+		GridLayout layout = new GridLayout();
+		layout.numColumns = 2;
+		layout.marginHeight = 5;
+		sashForm.setLayout(layout);
+
+		addTreeForLanguages(sashForm);
+		addTreeForEntries(sashForm);
+
+		sashForm.setWeights(DEFAULT_SASH_WEIGHTS);
+
+		// Status line
 		fStatusLine = new StatusMessageLine(usercomp, SWT.LEFT, 2);
 
-//		table.addControlListener(new ControlListener() {
-//			public void controlMoved(ControlEvent e) {
-//				setColumnToFit();
-//			}
-//
-//			public void controlResized(ControlEvent e) {
-//				setColumnToFit();
-//			}
-//		});
-
+		// "Show built-ins" checkbox
 		builtInCheckBox = setupCheck(usercomp, Messages.AbstractLangsListTab_ShowBuiltin, 1, GridData.FILL_HORIZONTAL);
 		builtInCheckBox.addSelectionListener(new SelectionAdapter() {
 			@Override
@@ -299,49 +367,42 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		builtInCheckBox.setSelection(true);
 		builtInCheckBox.setEnabled(true);
 
-		if (page.isForProject()) {
-			enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD80, 2, GridData.FILL_HORIZONTAL);
-			enableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
-				@Override
-				public void widgetSelected(SelectionEvent e) {
-					enableControls(enableProvidersCheckBox.getSelection());
-					updateStatusLine();
-				}
-			});
-			
-			enableProvidersCheckBox.setSelection(LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject()));
-			
-		}
-		
-		//		additionalTableSet();
+		// "I want to try new scanner discovery" checkbox
+		enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD80, 2, GridData.FILL_HORIZONTAL);
+		enableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				enableControls(enableProvidersCheckBox.getSelection());
+				updateStatusLine();
+			}
+		});
+
+		enableProvidersCheckBox.setSelection(LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject()));
+		// display but disable the checkbox for file/folder resource
+		enableProvidersCheckBox.setEnabled(page.isForProject());
+		enableControls(enableProvidersCheckBox.getSelection());
+
+		// Buttons
 		initButtons(BUTTONS);
+
 		updateData(getResDesc());
-
-		treeEntries.setFocus();
-		// TODO
-		// ImportExportWizardButtons.addWizardLaunchButtons(usercomp, page.getElement());
-
-		if (enableProvidersCheckBox!=null)
-			enableControls(enableProvidersCheckBox.getSelection());
 	}
 
-	/**
-	 * Displays warning message - if any - for selected language settings entry.
-	 * TODO: Multiline selection (maybe).
-	 */
-	private void updateStatusLine() {
-		IStatus status=null;
-		if (enableProvidersCheckBox.getSelection()) {
-			status = LanguageSettingsImages.getStatus(getSelectedEntry());
+	private void enableControls(boolean enable) {
+		builtInCheckBox.setEnabled(enable);
+		sashForm.setEnabled(enable);
+		treeLanguages.setEnabled(enable);
+		treeEntries.setEnabled(enable);
+		buttoncomp.setEnabled(enable);
+
+		if (enable) {
+			update();
+		} else {
+			disableButtons();
 		}
-		fStatusLine.setErrorStatus(status);
 	}
 
-	/**
-	 * Updates state for all buttons Called when table selection changes.
-	 */
-	@Override
-	protected void updateButtons() {
+	private void disableButtons() {
 		buttonSetEnabled(BUTTON_ADD, false);
 		buttonSetEnabled(BUTTON_EDIT, false);
 		buttonSetEnabled(BUTTON_DELETE, false);
@@ -349,129 +410,77 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		buttonSetEnabled(BUTTON_MOVE_DOWN, false);
 	}
 
-	protected ILanguageSettingsProvider getSelectedProvider() {
-		TreeItem[] items = treeEntries.getSelection();
-		ILanguageSettingsProvider provider = null;
-		if (items.length>0) {
-			TreeItem item = items[0];
-			Object itemData = item.getData();
-			if (itemData instanceof ICLanguageSettingEntry) {
-				item = item.getParentItem();
-				if (item!=null) {
-					itemData = item.getData();
-				}
-			}
-			if (itemData instanceof ILanguageSettingsProvider) {
-				provider = (ILanguageSettingsProvider)itemData;
-			}
-		}
-		return provider;
-	}
-
-	private Tree addTree(Composite comp) {
-		treeLanguages = new Tree(comp, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL);
-		treeLanguages.setLayoutData(new GridData(GridData.FILL_VERTICAL));
-		treeLanguages.setHeaderVisible(true);
-
-		treeLanguages.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				TreeItem[] items = treeLanguages.getSelection();
-				if (items.length > 0) {
-					ICLanguageSetting langSetting = (ICLanguageSetting) items[0].getData();
-					if (langSetting != null) {
-						currentLanguageSetting = langSetting;
-						update();
-					}
-				}
-			}
-		});
-		treeLanguages.addPaintListener(new PaintListener() {
-			public void paintControl(PaintEvent e) {
-				int x = treeLanguages.getBounds().width - 5;
-				if (columnLanguages.getWidth() != x)
-					columnLanguages.setWidth(x);
-			}
-		});
-
-		columnLanguages = new TreeColumn(treeLanguages, SWT.NONE);
-		columnLanguages.setText(Messages.AbstractLangsListTab_Languages);
-		columnLanguages.setWidth(200);
-		columnLanguages.setResizable(false);
-		columnLanguages.setToolTipText(Messages.AbstractLangsListTab_Languages);
-		return treeLanguages;
-	}
-
-	private Tree addTree2(Composite comp) {
-		final Tree tree2 = new Tree(comp, SWT.BORDER | SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL /*| SWT.FULL_SELECTION*/);
-		tree2.setLayoutData(new GridData(GridData.FILL_VERTICAL));
-		tree2.setHeaderVisible(true);
-
-		tree2.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				TreeItem[] items = tree2.getSelection();
-				if (items.length > 0) {
-					Object item = items[0].getData();
-					if (item instanceof ICLanguageSetting) {
-						currentLanguageSetting = (ICLanguageSetting) item;
-						update();
-					}
-				}
-			}
-		});
-		final TreeColumn treeCol = new TreeColumn(tree2, SWT.NONE);
-		tree2.addPaintListener(new PaintListener() {
-			public void paintControl(PaintEvent e) {
-				int x = treeEntries.getClientArea().width;
-				if (treeCol.getWidth() != x)
-					treeCol.setWidth(x);
-			}
-		});
-
-		treeCol.setText("Setting Entries");
-		treeCol.setWidth(200);
-		treeCol.setResizable(false);
-		treeCol.setToolTipText("FIXME Setting Entries");
-//		columnToFit = treeCol;
-		return tree2;
+	/**
+	 * Updates state for all buttons. Called when table selection changes.
+	 */
+	@Override
+	protected void updateButtons() {
+		disableButtons();
 	}
 
 	/**
-	 * Called when language changed or item added/edited/removed. Refreshes whole table contwnts
+	 * Displays warning message - if any - for selected language settings entry.
+	 */
+	private void updateStatusLine() {
+		IStatus status=null;
+		if (enableProvidersCheckBox.getSelection()==true) {
+			status = LanguageSettingsImages.getStatus(getSelectedEntry());
+		}
+		fStatusLine.setErrorStatus(status);
+	}
+
+	/**
+	 * Get list of providers to display in the settings entry tree.
+	 */
+	protected List<ILanguageSettingsProvider> getTableItems() {
+		List<ILanguageSettingsProvider> itemsList = new LinkedList<ILanguageSettingsProvider>();
+		if (currentLanguageSetting!=null) {
+			String langId = currentLanguageSetting.getLanguageId();
+			if (langId != null) {
+				IResource rc = getResource();
+				ICConfigurationDescription cfgDescription = getConfigurationDescription();
+				if (rc!=null && cfgDescription!=null) {
+					List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
+					for (ILanguageSettingsProvider cfgProvider : cfgProviders) {
+						if (cfgProvider instanceof LanguageSettingsBaseProvider) {
+							// filter out providers incapable of providing entries for this language
+							List<String> languageIds = ((LanguageSettingsBaseProvider)cfgProvider).getLanguageIds();
+							if (languageIds!=null && !languageIds.contains(langId)) {
+								continue;
+							}
+						}
+						itemsList.add(cfgProvider);
+					}
+				}
+			}
+		}
+		return itemsList;
+	}
+
+	/**
+	 * Called when language changed or item added/edited/removed. Refreshes the whole table contents.
 	 */
 	public void update() {
-		if (currentLanguageSetting != null) {
-			List<ILanguageSettingsProvider> tableItems = getTableItems();
-			treeEntriesViewer.setInput(tableItems.toArray(new Object[tableItems.size()]));
-		}
+		List<ILanguageSettingsProvider> tableItems = getTableItems();
+		treeEntriesViewer.setInput(tableItems.toArray(new Object[tableItems.size()]));
 
 		updateStatusLine();
 		updateButtons();
 	}
 
-	protected List<ILanguageSettingsProvider> getTableItems() {
-		List<ILanguageSettingsProvider> itemsList = new LinkedList<ILanguageSettingsProvider>();
-
-		String langId = currentLanguageSetting.getLanguageId();
-		if (langId != null) {
-			IResource rc = getResource();
-			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-			if (rc != null) {
-				List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
-				for (ILanguageSettingsProvider cfgProvider : cfgProviders) {
-					if (cfgProvider instanceof LanguageSettingsBaseProvider) {
-						// filter out providers incapable of providing entries for this language
-						List<String> languageIds = ((LanguageSettingsBaseProvider)cfgProvider).getLanguageIds();
-						if (languageIds!=null && !languageIds.contains(langId)) {
-							continue;
-						}
-					}
-					itemsList.add(cfgProvider);
-				}
-			}
+	private ICLanguageSetting[] getLangSettings(ICResourceDescription rcDes) {
+		switch (rcDes.getType()) {
+		case ICSettingBase.SETTING_PROJECT:
+		case ICSettingBase.SETTING_CONFIGURATION:
+		case ICSettingBase.SETTING_FOLDER:
+			ICFolderDescription foDes = (ICFolderDescription) rcDes;
+			return foDes.getLanguageSettings();
+		case ICSettingBase.SETTING_FILE:
+			ICFileDescription fiDes = (ICFileDescription) rcDes;
+			ICLanguageSetting langSetting = fiDes.getLanguageSetting();
+			return (langSetting != null) ? new ICLanguageSetting[] { langSetting } : null;
 		}
-		return itemsList;
+		return null;
 	}
 
 	/**
@@ -490,7 +499,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 		treeLanguages.removeAll();
 		TreeItem firstItem = null;
-		allLanguages = getLangSetting(rcDes);
+		allLanguages = getLangSettings(rcDes);
 		if (allLanguages != null) {
 			Arrays.sort(allLanguages, CDTListComparator.getInstance());
 			for (ICLanguageSetting langSetting : allLanguages) {
@@ -516,32 +525,11 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 				}
 			}
 
-			if (firstItem != null /*&& table != null*/) {
+			if (firstItem != null) {
 				treeLanguages.setSelection(firstItem);
 			}
 		}
 		update();
-	}
-
-	protected ICLanguageSettingEntry getSelectedEntry() {
-		ICLanguageSettingEntry entry = null;
-
-		TreeItem[] selItems = treeEntries.getSelection();
-		if (selItems.length==0) {
-			return null;
-		}
-
-		// TODO multiple selection
-//		for (TreeItem item : selItems) {
-//		}
-
-
-		TreeItem item = selItems[0];
-		Object itemData = item.getData();
-		if (itemData instanceof ICLanguageSettingEntry) {
-			entry = (ICLanguageSettingEntry)itemData;
-		}
-		return entry;
 	}
 
 	@Override
@@ -550,43 +538,18 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 	@Override
 	protected void performApply(ICResourceDescription srcRcDescription, ICResourceDescription destRcDescription) {
+		if (page.isForProject() && enableProvidersCheckBox!=null) {
+			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
+		}
+		
 	}
 
 	@Override
 	protected void performOK() {
-	}
-
-	public ICLanguageSetting[] getLangSetting(ICResourceDescription rcDes) {
-		switch (rcDes.getType()) {
-		case ICSettingBase.SETTING_PROJECT:
-		case ICSettingBase.SETTING_CONFIGURATION:
-		case ICSettingBase.SETTING_FOLDER:
-			ICFolderDescription foDes = (ICFolderDescription) rcDes;
-			return foDes.getLanguageSettings();
-		case ICSettingBase.SETTING_FILE:
-			ICFileDescription fiDes = (ICFileDescription) rcDes;
-			ICLanguageSetting langSetting = fiDes.getLanguageSetting();
-			return (langSetting != null) ? new ICLanguageSetting[] { langSetting } : null;
+		if (page.isForProject() && enableProvidersCheckBox!=null) {
+			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
 		}
-		return null;
-	}
-
-	private void enableControls(boolean enable) {
-//		builtInCheckBox.setEnabled(enable);
-		sashForm.setEnabled(enable);
-		treeLanguages.setEnabled(enable);
-		treeEntries.setEnabled(enable);
-		buttoncomp.setEnabled(enable);
 		
-		if (enable) {
-			update();
-		} else {
-			buttonSetEnabled(BUTTON_ADD, enable);
-			buttonSetEnabled(BUTTON_EDIT, enable);
-			buttonSetEnabled(BUTTON_DELETE, enable);
-			buttonSetEnabled(BUTTON_MOVE_UP, enable);
-			buttonSetEnabled(BUTTON_MOVE_DOWN, enable);
-		}
 	}
 
 }

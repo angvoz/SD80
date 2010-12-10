@@ -3723,40 +3723,37 @@
 			</enablement>
 		</decorator>
 	</extension>
-   <extension
-         point="org.eclipse.cdt.core.LanguageSettingsProvider">
-      <provider
-            class="org.eclipse.cdt.internal.ui.language.UserLanguageSettingsProvider"
-            id="org.eclipse.cdt.ui.user.LanguageSettingsProvider"
-            name="CDT User Setting Entries">
-      </provider>
-   </extension>
-   <extension
-         point="org.eclipse.cdt.ui.LanguageSettingsProviderAssociation">
-      <id-association
-            id="org.eclipse.cdt.ui.user.LanguageSettingsProvider"
-            icon="icons/obj16/person-me.gif">
-      </id-association>
-   </extension>
-   <extension
-         point="org.eclipse.cdt.ui.cPropertyTab">
-     <tab
-           class="org.eclipse.cdt.internal.ui.newui.LanguageSettingEntriesProvidersTab"
-           icon="icons/obj16/ls_entries.gif"
-           name="%AllLanguageSettingEntries.name"
-           weight="!!!FIXME 050"
-           helpId="FIXME cdt_u_prop_pns_inc"
-           parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
-           tooltip="%AllLanguageSettingEntries.tooltip"/>
-     <tab
-           class="org.eclipse.cdt.internal.ui.newui.LanguageSettingEntriesProvidersTabEditable"
-           icon="icons/obj16/ls_entries.gif"
-           name="E-Providers"
-           weight="!!!FIXME 050"
-           helpId="FIXME cdt_u_prop_pns_inc"
-           parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
-           tooltip="%AllLanguageSettingEntries.tooltip"/>
-   </extension>
+	<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
+		<provider
+			class="org.eclipse.cdt.internal.ui.language.UserLanguageSettingsProvider"
+			id="org.eclipse.cdt.ui.user.LanguageSettingsProvider"
+			name="CDT User Setting Entries">
+		</provider>
+	</extension>
+	<extension point="org.eclipse.cdt.ui.LanguageSettingsProviderAssociation">
+		<id-association
+			id="org.eclipse.cdt.ui.user.LanguageSettingsProvider"
+			icon="icons/obj16/person-me.gif">
+		</id-association>
+	</extension>
+	<extension point="org.eclipse.cdt.ui.cPropertyTab">
+		<tab
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingEntriesProvidersTab"
+			icon="icons/obj16/ls_entries.gif"
+			name="%AllLanguageSettingEntries.name"
+			weight="!!!FIXME 050"
+			helpId="FIXME cdt_u_prop_pns_inc"
+			parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
+			tooltip="%AllLanguageSettingEntries.tooltip"/>
+		<tab
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingEntriesProvidersTabEditable"
+			icon="icons/obj16/ls_entries.gif"
+			name="E-Providers"
+			weight="!!!FIXME 050"
+			helpId="FIXME cdt_u_prop_pns_inc"
+			parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
+			tooltip="%AllLanguageSettingEntries.tooltip"/>
+	</extension>
  <extension
        point="org.eclipse.ui.commands">
     <command

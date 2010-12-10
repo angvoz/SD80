@@ -29,7 +29,7 @@ import org.osgi.service.prefs.Preferences;
 /**
  * A collection of utility methods to manage language settings providers.
  * See {@link ILanguageSettingsProvider}.
- * 
+ *
  * @since 6.0
  */
 public class LanguageSettingsManager {
@@ -38,7 +38,7 @@ public class LanguageSettingsManager {
 	 */
 	public static String USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE = "enabled"; //$NON-NLS-1$
 	public static boolean USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT = true;
-	
+
 	private static final String PREFERENCES_QUALIFIER = CCorePlugin.PLUGIN_ID;
 	private static final String LANGUAGE_SETTINGS_PROVIDERS_NODE = "languageSettingsProviders"; //$NON-NLS-1$
 
@@ -47,12 +47,12 @@ public class LanguageSettingsManager {
 	 * for the given configuration description, resource and language.
 	 * This method reaches to the parent folder of the resource recursively
 	 * in case the resource does not define the entries for the given provider.
-	 * 
+	 *
 	 * @param provider - language settings provider.
 	 * @param cfgDescription - configuration description.
 	 * @param rc - resource such as file or folder.
 	 * @param languageId - language id.
-	 * 
+	 *
 	 * @return the list of setting entries. Never returns {@code null}
 	 *     although individual providers return {@code null} if no settings defined.
 	 */
@@ -65,7 +65,7 @@ public class LanguageSettingsManager {
 	 * for the given configuration description, resource and language. This is a
 	 * combined list for all providers taking into account settings of parent folder
 	 * if settings for the given resource are not defined.
-	 * 
+	 *
 	 * @param cfgDescription - configuration description.
 	 * @param rc - resource such as file or folder.
 	 * @param languageId - language id.
@@ -73,7 +73,7 @@ public class LanguageSettingsManager {
 	 *     {@link ICSettingEntry#INCLUDE_PATH} etc. This is a binary flag
 	 *     and it is possible to specify composite kind.
 	 *     Use {@link ICSettingEntry#ALL} to get all kinds.
-	 * 
+	 *
 	 * @return the list of setting entries.
 	 */
 	// FIXME: get rid of callers PathEntryTranslator and DescriptionScannerInfoProvider
@@ -116,9 +116,6 @@ public class LanguageSettingsManager {
 		return LanguageSettingsProvidersSerializer.isWorkspaceProvider(provider);
 	}
 
-	/**
-	 * TODO
-	 */
 	private static Preferences getPreferences(IProject project) {
 		if (project == null)
 			return new InstanceScope().getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);
@@ -127,21 +124,25 @@ public class LanguageSettingsManager {
 	}
 
 	/**
+	 * Checks if Language Settings functionality is enabled for given project.
+	 *
+	 * @param project - project to check the preference
+	 * @return {@code true} if functionality is enabled
+	 *
 	 * @noreference This method is temporary and not intended to be referenced by clients.
-	 * 
-	 * @param project TODO
-	 * @return TODO
 	 */
 	public static boolean isLanguageSettingsProvidersEnabled(IProject project) {
 		Preferences pref = LanguageSettingsManager.getPreferences(project);
 		return pref.getBoolean(LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE, LanguageSettingsManager.USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT);
 	}
-	
+
 	/**
+	 * Enable/disable Language Settings functionality for the given project.
+	 *
+	 * @param project
+	 * @param value {@code true} to enable or {@code false} to disable the functionality.
+	 *
 	 * @noreference This method is temporary and not intended to be referenced by clients.
-	 * 
-	 * @param project TODO
-	 * @param value  TODO
 	 */
 	public static void setLanguageSettingsProvidersEnabled(IProject project, boolean value) {
 		Preferences pref = LanguageSettingsManager.getPreferences(project);
@@ -152,4 +153,5 @@ public class LanguageSettingsManager {
 			CCorePlugin.log(e);
 		}
 	}
+
 }

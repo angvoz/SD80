@@ -190,27 +190,28 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	@Override
 	protected List<ILanguageSettingsProvider> getTableItems() {
 		List<ILanguageSettingsProvider> itemsList = new LinkedList<ILanguageSettingsProvider>();
-
-		String langId = currentLanguageSetting.getLanguageId();
-		if (langId != null) {
-			IResource rc = getResource();
-			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-			if (rc != null) {
-				List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
-				for (ILanguageSettingsProvider cfgProvider : cfgProviders) {
-					if (cfgProvider instanceof LanguageSettingsBaseProvider) {
-						// filter out providers incapable of providing entries for this language
-						List<String> languageIds = ((LanguageSettingsBaseProvider)cfgProvider).getLanguageIds();
-						if (languageIds!=null && !languageIds.contains(langId)) {
-							continue;
+		if (currentLanguageSetting!=null) {
+			String langId = currentLanguageSetting.getLanguageId();
+			if (langId != null) {
+				IResource rc = getResource();
+				ICConfigurationDescription cfgDescription = getConfigurationDescription();
+				if (rc!=null && cfgDescription!=null) {
+					List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
+					for (ILanguageSettingsProvider cfgProvider : cfgProviders) {
+						if (cfgProvider instanceof LanguageSettingsBaseProvider) {
+							// filter out providers incapable of providing entries for this language
+							List<String> languageIds = ((LanguageSettingsBaseProvider)cfgProvider).getLanguageIds();
+							if (languageIds!=null && !languageIds.contains(langId)) {
+								continue;
+							}
 						}
+						String providerId = cfgProvider.getId();
+						ILanguageSettingsProvider provider = editedProviders.get(providerId);
+						if (provider==null) {
+							provider = cfgProvider;
+						}
+						itemsList.add(provider);
 					}
-					String providerId = cfgProvider.getId();
-					ILanguageSettingsProvider provider = editedProviders.get(providerId);
-					if (provider==null) {
-						provider = cfgProvider;
-					}
-					itemsList.add(provider);
 				}
 			}
 		}
@@ -538,9 +539,10 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 
 	@Override
 	protected void performOK() {
-		if (page.isForProject() && enableProvidersCheckBox!=null) {
-			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
-		}
+		// FIXME
+//		if (page.isForProject() && enableProvidersCheckBox!=null) {
+//			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
+//		}
 		
 
 		// FIXME: for now only handles current configuration

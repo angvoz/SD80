@@ -90,6 +90,7 @@ public class LaunchConfiguration {
 		for (ILaunchConfiguration launchConfig : launchConfigs) {
 			if (launchConfig.getName().equals(configName)) {
 				try {
+					DebugEventListener.getListener(); // Make sure there is a listener ready
 					launchConfig.launch(ILaunchManager.DEBUG_MODE, new NullProgressMonitor());
 				} catch (CoreException e) {
 					// TODO Auto-generated catch block

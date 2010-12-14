@@ -12,14 +12,20 @@ package org.eclipse.cdt.debug.edc.internal.scripting;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICBreakpointType;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Expressions;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.services.Stack;
+import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.internal.core.breakpoints.CAddressBreakpoint;
@@ -28,6 +34,8 @@ import org.eclipse.cdt.debug.internal.core.breakpoints.CLineBreakpoint;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IStack;
+import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IMarker;
@@ -144,4 +152,80 @@ public class EDC {
 		DsfSession.getSession(sessionId).getExecutor().execute(runnable);
 		return runnable.get();
 	}
+	
+	public static Map<String, Object> listenForEvents(String sessionID, String clientID) throws InterruptedException
+	{
+		return DebugEventListener.getListener().listenForEvents(sessionID, clientID);
+	}
+	
+	public static void setBreakpoints(List<Map<String, Object>> breakpoints) throws Exception
+	{
+		for (Map<String, Object> properties : breakpoints) {
+			if (properties.containsKey(IMarker.LINE_NUMBER))
+			{
+				String sourceFile = (String) properties.get(ICBreakpoint.SOURCE_HANDLE);
+				int lineNumber = (Integer) properties.get(IMarker.LINE_NUMBER);
+				String condition = (String) properties.get(ICBreakpoint.CONDITION);
+				
+				createLineBreakpoint(null, sourceFile, lineNumber, condition);
+			}
+		}
+	}
+	
+	public static List<Map<String, Object>> getVariables(final String sessionID, final String contextID, final int frameLevel) throws InterruptedException, ExecutionException
+	{
+		final ArrayList<Map<String, Object>> result = new ArrayList<Map<String,Object>>();
+
+		Query<Boolean> runnable = new Query<Boolean>() {
+			@Override
+			protected void execute(DataRequestMonitor<Boolean> rm) {
+				DsfServicesTracker servicesTracker = getDsfServicesTracker(sessionID);
+				RunControl runControl = servicesTracker.getService(RunControl.class);
+				Stack stack = servicesTracker.getService(Stack.class);
+				ExecutionDMC context = runControl.getContext(contextID);
+				IFrameDMContext[] frames = stack.getFramesForDMC(context, 0, IStack.ALL_FRAMES);
+				
+				if (frameLevel < frames.length)
+				{
+				}
+				
+				for (IFrameDMContext iFrameDMContext : frames) {
+					StackFrameDMC stackDMC = (StackFrameDMC) iFrameDMContext;
+					result.add(stackDMC.getProperties());
+				}
+				rm.setData(true);
+				rm.done();
+			}
+		};
+		DsfSession.getSession(sessionID).getExecutor().execute(runnable);
+		runnable.get();
+		return result;
+	}
+	
+	public static List<Map<String, Object>> getStackFrames(final String sessionID, final String contextID) throws ExecutionException, InterruptedException
+	{
+		final ArrayList<Map<String, Object>> result = new ArrayList<Map<String,Object>>();
+
+		Query<Boolean> runnable = new Query<Boolean>() {
+			@Override
+			protected void execute(DataRequestMonitor<Boolean> rm) {
+				DsfServicesTracker servicesTracker = getDsfServicesTracker(sessionID);
+				RunControl runControl = servicesTracker.getService(RunControl.class);
+				Stack stack = servicesTracker.getService(Stack.class);
+				ExecutionDMC context = runControl.getContext(contextID);
+				IFrameDMContext[] frames = stack.getFramesForDMC(context, 0, IStack.ALL_FRAMES);
+				
+				for (IFrameDMContext iFrameDMContext : frames) {
+					StackFrameDMC stackDMC = (StackFrameDMC) iFrameDMContext;
+					result.add(stackDMC.getProperties());
+				}
+				rm.setData(true);
+				rm.done();
+			}
+		};
+		DsfSession.getSession(sessionID).getExecutor().execute(runnable);
+		runnable.get();
+		return result;
+	}
+
 }

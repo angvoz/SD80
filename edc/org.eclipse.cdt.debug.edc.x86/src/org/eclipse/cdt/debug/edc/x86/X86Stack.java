@@ -19,7 +19,6 @@ import java.util.Map;
 import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.HostOS;
-import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCMemory;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
@@ -48,7 +47,6 @@ public class X86Stack extends Stack {
 			return map;
 		}
 	}
-	static int nextStackFrameID = 100;
 
 	public X86Stack(DsfSession session) {
 		super(session, new String[] { X86Stack.class.getName() });
@@ -159,7 +157,6 @@ public class X86Stack extends Stack {
 				}
 			
 				properties = new HashMap<String, Object>();
-				properties.put(IEDCDMContext.PROP_ID, Integer.toString(nextStackFrameID++));
 				properties.put(StackFrameDMC.LEVEL_INDEX, level);
 				properties.put(StackFrameDMC.BASE_ADDR, Long.valueOf(baseAddress));
 				properties.put(StackFrameDMC.INSTRUCTION_PTR_ADDR, Long.valueOf(instructionAddress));

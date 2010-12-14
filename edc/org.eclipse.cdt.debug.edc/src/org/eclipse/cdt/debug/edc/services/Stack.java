@@ -280,6 +280,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		 */
 		public static final String PRESERVED_REGISTERS = "preserved_registers";
 		private static final String FRAME_PROPERTY_CACHE = "_frame_properties";
+		/**
+		 * @since 2.0 The id of the owning execution dmc
+		 */
+		public static final String EXECUTION_DMC_ID = "execution_dmc_id";
 
 		private final DsfServicesTracker dsfServicesTracker = getServicesTracker();
 		private final IEDCExecutionDMC executionDMC;
@@ -316,6 +320,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			Map<String, Object> frameProperties = edcFrame.props;
 			
 			this.executionDMC = executionDMC;
+			frameProperties.put(EXECUTION_DMC_ID, executionDMC.getID());
 
 			this.level = (Integer) frameProperties.get(LEVEL_INDEX);
 			this.moduleName = (String) frameProperties.get(MODULE_NAME);

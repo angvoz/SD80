@@ -51,6 +51,7 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
+import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 
 
 /**
@@ -552,4 +553,10 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		
 	}
 
+	@Override
+	public boolean canBeVisible() {
+		if (!CDTPrefUtil.getBool(CDTPrefUtil.KEY_SHOW_PROVIDERS))
+			return false;
+		return super.canBeVisible();
+	}
 }

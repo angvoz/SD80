@@ -76,7 +76,7 @@ public class LanguageSettingsManager {
 	 *
 	 * @return the list of setting entries.
 	 */
-	// FIXME: get rid of callers PathEntryTranslator and DescriptionScannerInfoProvider
+	// FIXME: get rid of callers PathEntryTranslator and DescriptionScannerInfoProvider 
 	public static List<ICLanguageSettingEntry> getSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		return LanguageSettingsExtensionManager.getSettingEntriesByKind(cfgDescription, rc, languageId, kind);
 	}

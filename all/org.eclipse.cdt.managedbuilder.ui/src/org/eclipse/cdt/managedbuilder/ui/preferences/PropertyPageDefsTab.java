@@ -38,6 +38,7 @@ public class PropertyPageDefsTab extends AbstractCPropertyTab {
     private Button show_mng;
     private Button show_tool;
     private Button show_exp;
+    private Button show_providers_tab;
     private Button show_tipbox;
 
     private Button b_0;
@@ -73,6 +74,10 @@ public class PropertyPageDefsTab extends AbstractCPropertyTab {
 		show_exp = new Button(usercomp, SWT.CHECK);
         show_exp.setText(Messages.PropertyPageDefsTab_10); 
         show_exp.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        
+        show_providers_tab = new Button(usercomp, SWT.CHECK);
+        show_providers_tab.setText(Messages.PropertyPageDefsTab_showProvidersTab);
+        show_providers_tab.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         
         show_tipbox = new Button(usercomp, SWT.CHECK);
         show_tipbox.setText(Messages.PropertyPageDefsTab_16); 
@@ -117,6 +122,7 @@ public class PropertyPageDefsTab extends AbstractCPropertyTab {
 		show_mng.setSelection(!CDTPrefUtil.getBool(CDTPrefUtil.KEY_NOMNG));
 		show_tool.setSelection(!CDTPrefUtil.getBool(CDTPrefUtil.KEY_NOTOOLM));
 		show_exp.setSelection(CDTPrefUtil.getBool(CDTPrefUtil.KEY_EXPORT));
+		show_providers_tab.setSelection(CDTPrefUtil.getBool(CDTPrefUtil.KEY_SHOW_PROVIDERS));
 		show_tipbox.setSelection(CDTPrefUtil.getBool(CDTPrefUtil.KEY_TIPBOX));
 		
 		switch (CDTPrefUtil.getInt(CDTPrefUtil.KEY_DISC_NAMES)) {
@@ -140,6 +146,7 @@ public class PropertyPageDefsTab extends AbstractCPropertyTab {
 		CDTPrefUtil.setBool(CDTPrefUtil.KEY_NOMNG, !show_mng.getSelection());
 		CDTPrefUtil.setBool(CDTPrefUtil.KEY_NOTOOLM, !show_tool.getSelection());
 		CDTPrefUtil.setBool(CDTPrefUtil.KEY_EXPORT, show_exp.getSelection());
+		CDTPrefUtil.setBool(CDTPrefUtil.KEY_SHOW_PROVIDERS, show_providers_tab.getSelection());
 		CDTPrefUtil.setBool(CDTPrefUtil.KEY_TIPBOX, show_tipbox.getSelection());
 		int x = 0;
 		if (b_1.getSelection()) x = 1;
@@ -160,6 +167,7 @@ public class PropertyPageDefsTab extends AbstractCPropertyTab {
 		show_mng.setSelection(true);
 		show_tool.setSelection(true);
 		show_exp.setSelection(false);
+		show_providers_tab.setSelection(false);
 		show_tipbox.setSelection(false);
 		b_0.setSelection(true);
 		b_1.setSelection(false);

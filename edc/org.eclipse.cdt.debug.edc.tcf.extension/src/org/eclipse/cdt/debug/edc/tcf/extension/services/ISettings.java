@@ -21,23 +21,42 @@ public interface ISettings extends IService {
 
 	static final String NAME = "Settings";
 
-	IToken getSupportedSettings(DoneGetSettingValues done);
-
 	/**
-	 * Client call back interface for getSettingValue().
+	 * Get the supported setting ids.
+	 * @since 2.0
 	 */
-	interface DoneGetSettingValues {
+	IToken getIds(DoneGetSettingIds done);
+	
+	/**
+	 * Client callback interface for getIds().
+	 * @since 2.0
+	 */
+	interface DoneGetSettingIds {
 		/**
 		 * Called when setting value retrieval is done.
-		 * 
-		 * @param error
-		 *            TODO
-		 * @param value
-		 *            – Current value of the setting.
-		 */
-		void doneGetSettingValues(IToken token, Exception error, String[] ids);
+		 * Called when setting id retrieval is done.
+ 		 */
+		void doneGetSettingIds(IToken token, Exception error, String[] ids);
 	}
 
-	IToken setValues(String context, String[] ids, Object[] values);
-
+	/**
+	 * Set values for one or more setting ids.  An agent should accept
+	 * unknown ids without error but may issue errors when values are 
+	 * not of the expected type.
+	 * @since 2.0
+	 * @param ids array of setting ids
+	 * @param values array of values, parallel in structure to ids
+	 */
+	IToken setValues(String context, String[] ids, Object[] values, DoneSetSettingValues done);
+	 
+	/**
+	 * Client callback interface for setValues().
+	 * @since 2.0
+	 */
+	interface DoneSetSettingValues {
+		/**
+		 * Called when settings are sent and acknowledged.
+		 */
+		void doneSetSettingValues(IToken token, Exception error);
+	}	
 }

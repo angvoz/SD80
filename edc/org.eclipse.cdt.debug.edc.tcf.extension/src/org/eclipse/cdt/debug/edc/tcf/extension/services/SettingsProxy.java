@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.tcf.extension.services;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -57,8 +58,11 @@ public class SettingsProxy implements ISettings {
 		return NAME;
 	}
 
-	public IToken getSupportedSettings(final DoneGetSettingValues done) {
-		return new Command(channel, SettingsProxy.this, "get", new Object[] {}) {
+	/**
+	 * @since 2.0
+	 */
+	public IToken getIds(final DoneGetSettingIds done) {
+		return new Command(channel, SettingsProxy.this, "getIds", new Object[] {}) {
 			@SuppressWarnings("unchecked")
 			@Override
 			public void done(Exception error, Object[] args) {
@@ -67,31 +71,27 @@ public class SettingsProxy implements ISettings {
 					idStrings = (Collection<String>) args[1];
 				else
 					idStrings = Collections.emptyList();
-				done.doneGetSettingValues(token, error, idStrings.toArray(new String[idStrings.size()]));
+				done.doneGetSettingIds(token, error, idStrings.toArray(new String[idStrings.size()]));
 			}
 		}.token;
 	}
-
-	public IToken setValues(String context, String[] ids, Object[] values) {
+	
+	/**
+	 * @since 2.0
+	 */
+	public IToken setValues(String context, String[] ids, Object[] values, final DoneSetSettingValues done) {
 		return new Command(channel, SettingsProxy.this, "set", new Object[] { context, ids, values }) {
 			@Override
 			public void done(Exception error, Object[] args) {
+				 if (error == null) {
+					 assert args.length == 1;
+					 if (args[0] != null)
+						 error = new IOException(args[0].toString());
+					 else
+						 error = null;
+                }
+				done.doneSetSettingValues(token, error);
 			}
 		}.token;
 	}
-
-	// Unused. Remove? [11-17-09]
-//	@SuppressWarnings("unchecked")
-//	private String[] toStringArray(Object o) {
-//		if (o != null && o instanceof Collection) {
-//			Collection<Object> objs = (Collection<Object>) o;
-//			Collection<String> strings = new ArrayList<String>();
-//			for (Object object : objs) {
-//				strings.add(object.toString());
-//			}
-//			return strings.toArray(new String[strings.size()]);
-//		}
-//		return null;
-//	}
-
 }

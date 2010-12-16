@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2010 Nokia and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ * Nokia - Initial API and implementation
+ *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.scripting;
 
 import java.util.ArrayList;
@@ -25,6 +35,12 @@ public class DebugEventListener implements SessionStartedListener {
 			super();
 			this.sessionID = session.getId();
 			sessionListeners.put(sessionID, this);
+			
+			Map<String,String> eventProps = new HashMap<String,String>();
+			eventProps.put("event", "sessionStarted");
+			eventProps.put("id", session.getId());
+			postEvent(eventProps);
+
 			session.addServiceEventListener(this, null);
 		}
 
@@ -32,12 +48,9 @@ public class DebugEventListener implements SessionStartedListener {
 			return sessionID;
 		}
 
-		@DsfServiceEventHandler
-		public void eventDispatched(ISuspendedDMEvent e) {
-			Map<String,String> eventProps = new HashMap<String,String>();
+		public void postEvent(Map<String,String> eventProps)
+		{
 			eventProps.put("session", getSessionID());
-			eventProps.put("event", "contextSuspended");
-			eventProps.put("context", ((IEDCDMContext)e.getDMContext()).getID());
 			synchronized (clientEvents)
 			{
 				Collection<List<Map<String, String>>> eventLists = clientEvents.values();
@@ -49,6 +62,14 @@ public class DebugEventListener implements SessionStartedListener {
 					}
 				}
 			}
+		}
+		
+		@DsfServiceEventHandler
+		public void eventDispatched(ISuspendedDMEvent e) {
+			Map<String,String> eventProps = new HashMap<String,String>();
+			eventProps.put("event", "contextSuspended");
+			eventProps.put("context", ((IEDCDMContext)e.getDMContext()).getID());
+			postEvent(eventProps);
 		}
 
 	}
@@ -77,9 +98,8 @@ public class DebugEventListener implements SessionStartedListener {
 		new SessionListener(session);
 	}
 	
-	public Map<String, Object> listenForEvents(String sessionID, String clientID) throws InterruptedException{
+	public Map<String, Object> listenForEvents(String clientID) throws InterruptedException{
 		Map<String,Object> result = new HashMap<String,Object>();
-		result.put("sessionID", sessionID);
 		result.put("clientID", clientID);
 		List<Map<String,String>> events = null;
 		synchronized (clientEvents)

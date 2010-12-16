@@ -10,44 +10,81 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.launch;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.eclipse.cdt.debug.edc.tcf.extension.services.ISettings;
 import org.eclipse.tm.tcf.protocol.IToken;
-import org.eclipse.tm.tcf.protocol.Protocol;
+import org.eclipse.tm.tcf.util.TCFTask;
 
+/**
+ * @noimplement
+ * @noextend
+ */
 public class AgentSettings {
 
 	private final ISettings settingsService;
-	private final EDCLaunch launch;
 
-	public AgentSettings(ISettings settingsService, EDCLaunch launch) {
+	/**
+	 * @since 2.0
+	 */
+	public AgentSettings(ISettings settingsService) {
 		this.settingsService = settingsService;
-		this.launch = launch;
 	}
 
 	public ISettings getSettingsService() {
 		return settingsService;
 	}
 
-	public EDCLaunch getLaunch() {
-		return launch;
-	}
-
-	public void sendSettingsToAgent() {
-		Protocol.invokeAndWait(new Runnable() {
+	/**
+	 * @since 2.0
+	 */
+	public String[] getSettingIds() throws IOException {
+		TCFTask<String[]> task = new TCFTask<String[]>() {
 
 			public void run() {
 
-				settingsService.getSupportedSettings(new ISettings.DoneGetSettingValues() {
+				settingsService.getIds(new ISettings.DoneGetSettingIds() {
 
-					public void doneGetSettingValues(IToken token, Exception error, String[] ids) {
-						if (ids.length > 0)
-							System.out.println(Arrays.deepToString(ids));
+					public void doneGetSettingIds(IToken token, Exception error, String[] ids) {
+						if (error != null) {
+							error(error);
+						} else {
+							if (ids.length > 0)
+								System.out.println(Arrays.deepToString(ids));
+							done(ids);
+						}
 					}
 				});
 			}
-		});
+			
+		};
+		return task.getIO();
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public void setSettings(final String context, final String[] ids, final Object[] values) throws IOException {
+		
+		TCFTask<Object> task = new TCFTask<Object>() {
+
+			public void run() {
+
+				settingsService.setValues(context, ids, values, 
+				new ISettings.DoneSetSettingValues() {
+
+					public void doneSetSettingValues(IToken token, Exception error) {
+						if (error != null)
+							error(error);
+						else
+							done(null);
+					}
+				});
+			}
+			
+		};
+		task.getIO();
 	}
 
 }

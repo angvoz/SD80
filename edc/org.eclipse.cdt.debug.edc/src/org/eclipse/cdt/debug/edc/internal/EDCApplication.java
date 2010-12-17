@@ -25,8 +25,6 @@ public class EDCApplication implements IApplication {
 	boolean running;
 	
 	public Object start(IApplicationContext context) throws Exception {
-
-		System.out.println("This is the EDC Application");
 		
 		running = true;
 	
@@ -38,7 +36,7 @@ public class EDCApplication implements IApplication {
 
 	 	ScriptingPlugin.getBundleContext();
 
-		while (running)
+	 	while (running)
 		{
 			Thread.sleep(1000);
 		}

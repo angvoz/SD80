@@ -84,9 +84,9 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			List<ILineEntry> currentMappings = lineEntriesByLine.get(entry.getLineNumber());
 			if (currentMappings == null) {
 				currentMappings = new ArrayList<ILineEntry>();
+				lineEntriesByLine.put(entry.getLineNumber(), currentMappings);		
 			}
 			currentMappings.add(entry);
-			lineEntriesByLine.put(entry.getLineNumber(), currentMappings);		
 
 			ILineEntry currentByAddress = lineEntriesByAddress.get(entry.getLowAddress());
 			
@@ -189,8 +189,15 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			}
 
 			int lntSize = lineEntries.size();
-			int endLine
-			  = (endLineNumber != -1) ? endLineNumber : lineEntries.get(lntSize-1).getLineNumber();
+			// Note: this may not be the last line:
+			//	  lineEntries.get(lntSize-1).getLineNumber();
+			// as I've seen line table like this for a source file
+			// (illustrated by line #s):
+			//     7, 8, 25, 26, 12, 14
+			// where line (7, 8) forms one function, (25,26) one function,
+			// and (12, 14) one function.
+			int endLine = (endLineNumber != -1) ? endLineNumber : 
+							lineEntriesByLine.lastKey();
 
 			List<ILineEntry> entries = new ArrayList<ILineEntry>(), startMappings;
 			

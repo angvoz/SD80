@@ -62,8 +62,11 @@ import org.eclipse.cdt.ui.newui.CDTPrefUtil;
  *@noextend This class is not intended to be subclassed by clients.
  */
 public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
-	protected SashForm sashForm;
-	protected static final int[] DEFAULT_SASH_WEIGHTS = new int[] { 10, 30 };
+	protected static final int[] DEFAULT_ENTRIES_SASH_WEIGHTS = new int[] { 10, 30 };
+	protected static final int[] DEFAULT_CONFIGURE_SASH_WEIGHTS = new int[] { 50, 50 };
+
+	protected SashForm sashFormEntries;
+	protected SashForm sashFormConfigure;
 
 	protected Tree treeLanguages;
 	protected Tree treeEntries;
@@ -71,6 +74,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	protected Button builtInCheckBox;
 	protected Button enableProvidersCheckBox;
 	protected StatusMessageLine fStatusLine;
+	
+	protected boolean isConfigureMode = false;
 
 	protected ICLanguageSetting currentLanguageSetting;
 	protected ICLanguageSetting[] allLanguages; // all languages known
@@ -157,8 +162,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	 * Shortcut for getting the currently selected provider.
 	 */
 	protected ILanguageSettingsProvider getSelectedProvider() {
-		TreeItem[] items = treeEntries.getSelection();
 		ILanguageSettingsProvider provider = null;
+
+		TreeItem[] items = treeEntries.getSelection();
 		if (items.length>0) {
 			TreeItem item = items[0];
 			Object itemData = item.getData();
@@ -323,8 +329,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 			@Override
 			public void widgetDefaultSelected(SelectionEvent e) {
-				if (buttonIsEnabled(1) && treeEntries.getSelection().length>0)
-					buttonPressed(1);
+				if (buttonIsEnabled(BUTTON_EDIT) && treeEntries.getSelection().length>0)
+					buttonPressed(BUTTON_EDIT);
 			}
 		});
 
@@ -333,27 +339,16 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	@Override
 	public void createControls(Composite parent) {
 		super.createControls(parent);
-		usercomp.setLayout(new GridLayout(2, true));
-		GridData gd = (GridData) usercomp.getLayoutData();
-		// Discourage settings entry table from trying to show all its items at once, see bug 264330
-		gd.heightHint = 1;
+		{
+			usercomp.setLayout(new GridLayout(2, true));
+			GridData gd = (GridData) usercomp.getLayoutData();
+			// Discourage settings entry table from trying to show all its items at once, see bug 264330
+			gd.heightHint = 1;
+		}
 
-		// Create the sash form
-		sashForm = new SashForm(usercomp, SWT.HORIZONTAL);
-		gd = new GridData(GridData.FILL_BOTH);
-		gd.horizontalSpan = 2;
-		sashForm.setLayoutData(gd);
-
-		GridLayout layout = new GridLayout();
-		layout.numColumns = 2;
-		layout.marginHeight = 5;
-		sashForm.setLayout(layout);
-
-		addTreeForLanguages(sashForm);
-		addTreeForEntries(sashForm);
-
-		sashForm.setWeights(DEFAULT_SASH_WEIGHTS);
-
+		createShowEntriesSashForm();
+		createConfigureSashForm();
+		
 		// Status line
 		fStatusLine = new StatusMessageLine(usercomp, SWT.LEFT, 2);
 
@@ -367,6 +362,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		});
 		builtInCheckBox.setSelection(true);
 		builtInCheckBox.setEnabled(true);
+		builtInCheckBox.setVisible(!isConfigureMode);
 
 		// "I want to try new scanner discovery" checkbox
 		enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD80, 2, GridData.FILL_HORIZONTAL);
@@ -380,20 +376,129 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 		enableProvidersCheckBox.setSelection(LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject()));
 		// display but disable the checkbox for file/folder resource
-		enableProvidersCheckBox.setEnabled(page.isForProject());
+		enableProvidersCheckBox.setEnabled(page.isForProject() && !isConfigureMode);
 		enableControls(enableProvidersCheckBox.getSelection());
 
-		// Buttons
+		setConfigureMode(isConfigureMode);
+
 		initButtons(BUTTONS);
 
 		updateData(getResDesc());
 	}
 
+	private void createShowEntriesSashForm() {
+		// Create the sash form
+		{
+			sashFormEntries = new SashForm(usercomp,SWT.HORIZONTAL);
+			GridLayout layout = new GridLayout(2, false);
+			layout.marginHeight = 5;
+			sashFormEntries.setLayout(layout);
+			
+	
+			addTreeForLanguages(sashFormEntries);
+			addTreeForEntries(sashFormEntries);
+
+			sashFormEntries.setWeights(DEFAULT_ENTRIES_SASH_WEIGHTS);
+
+			enableSashForm(sashFormEntries, !isConfigureMode);
+		}
+
+	}
+
+	private void createConfigureSashForm() {
+		// SashForm for Configure
+		{
+			sashFormConfigure = new SashForm(usercomp, SWT.VERTICAL);
+			sashFormConfigure.setBackground(sashFormConfigure.getDisplay().getSystemColor(SWT.COLOR_GRAY));
+			GridLayout layout = new GridLayout(2, false);
+			layout.marginHeight = 5;
+			sashFormConfigure.setLayout(layout);
+
+//			// table
+			Composite compositeSashForm = new Composite(sashFormConfigure, /*SWT.NONE*/ SWT.BORDER | SWT.CHECK | SWT.SINGLE);
+//			compositeSashForm.setLayout(new GridLayout(1, false));
+//			Table fTable = new Table(compositeSashForm, SWT.BORDER | SWT.CHECK | SWT.SINGLE);
+//			fTable.setLayoutData(new GridData(GridData.FILL_BOTH));
+//			fTable.addSelectionListener(new SelectionAdapter() {
+//				@Override
+//				public void widgetSelected(SelectionEvent e) {
+////					displaySelectedOptionPage();
+//					updateButtons();
+//			}});
+//			final CheckboxTableViewer fTableViewer = new CheckboxTableViewer(fTable);
+//			fTableViewer.setContentProvider(new IStructuredContentProvider() {
+//				public Object[] getElements(Object inputElement) {
+//					return (Object[])inputElement;
+//				}
+//				public void dispose() {}
+//				public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
+//			});
+//			fTableViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider());
+//
+//			fTableViewer.addCheckStateListener(new ICheckStateListener() {
+//				public void checkStateChanged(CheckStateChangedEvent e) {
+////					saveChecked(e.getElement());
+//					fTableViewer.update(e.getElement(), null);
+//				}});
+//
+//
+			Composite fCompositeForOptionsPage = new Composite(sashFormConfigure, SWT.NULL);
+//			/*GridData*/ gd = new GridData(GridData.FILL_BOTH);
+//			gd.grabExcessHorizontalSpace = true;
+//			gd.grabExcessVerticalSpace = true;
+//			fCompositeForOptionsPage.setLayout(new TabFolderLayout());
+//
+//			PixelConverter converter = new PixelConverter(parent);
+//			gd.heightHint = converter.convertHorizontalDLUsToPixels(DEFAULT_HEIGHT);
+//
+//			gd.horizontalAlignment = GridData.FILL;
+//			gd.grabExcessHorizontalSpace = true;
+//			gd.grabExcessVerticalSpace = true;
+////			gd.horizontalSpan = 2;
+//			fCompositeForOptionsPage.setLayoutData(gd);
+
+			sashFormConfigure.setWeights(DEFAULT_CONFIGURE_SASH_WEIGHTS);
+
+			enableSashForm(sashFormConfigure, isConfigureMode);
+		}
+	}
+
+	private void setConfigureMode(boolean isCfgMode) {
+		if (isCfgMode==isConfigureMode)
+			return;
+		
+		isConfigureMode = isCfgMode;
+		
+		enableSashForm(sashFormEntries, !isConfigureMode);
+		treeEntries.setVisible(!isConfigureMode);
+
+		builtInCheckBox.setVisible(!isConfigureMode);
+		builtInCheckBox.setSize(SWT.DEFAULT, !isConfigureMode ? SWT.DEFAULT : 0);
+		enableProvidersCheckBox.setEnabled(!isConfigureMode);
+		enableProvidersCheckBox.setSize(SWT.DEFAULT, !isConfigureMode ? SWT.DEFAULT : 1);
+
+		enableSashForm(sashFormConfigure, isConfigureMode);
+		
+		usercomp.layout();
+	}
+
+	private void enableSashForm(SashForm sashForm, boolean enable) {
+		sashForm.setVisible(enable);
+		GridData gdc = new GridData(enable ? GridData.FILL_BOTH : SWT.NONE);
+		gdc.horizontalSpan = 2;
+		gdc.heightHint = enable ? SWT.DEFAULT : 0;
+		sashForm.setLayoutData(gdc);
+	}
+
 	private void enableControls(boolean enable) {
 		builtInCheckBox.setEnabled(enable);
-		sashForm.setEnabled(enable);
-		treeLanguages.setEnabled(enable);
-		treeEntries.setEnabled(enable);
+		if (isConfigureMode) {
+			sashFormConfigure.setEnabled(enable);
+		} else {
+			sashFormEntries.setEnabled(enable);
+			treeLanguages.setEnabled(enable);
+			treeEntries.setEnabled(enable);
+		}
 		buttoncomp.setEnabled(enable);
 
 		if (enable) {
@@ -416,7 +521,25 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	 */
 	@Override
 	protected void updateButtons() {
-		disableButtons();
+		ICLanguageSettingEntry entry = getSelectedEntry();
+		boolean isEntrySelected = entry!=null;
+		boolean canConfigure = entry==null;
+		
+		if (isConfigureMode) {
+			buttonSetText(BUTTON_EDIT, "Show Entries");
+		} else {
+			if (!isEntrySelected) {
+				buttonSetText(BUTTON_EDIT, "Configure");
+			} else {
+				buttonSetText(BUTTON_EDIT, EDIT_STR);
+			}
+		}
+		
+		buttonSetEnabled(BUTTON_ADD, false);
+		buttonSetEnabled(BUTTON_EDIT, canConfigure);
+		buttonSetEnabled(BUTTON_DELETE, false);
+		buttonSetEnabled(BUTTON_MOVE_UP, false);
+		buttonSetEnabled(BUTTON_MOVE_DOWN, false);
 	}
 
 	/**
@@ -428,6 +551,69 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			status = LanguageSettingsImages.getStatus(getSelectedEntry());
 		}
 		fStatusLine.setErrorStatus(status);
+	}
+
+	/**
+	 * Handle buttons
+	 */
+	@Override
+	public void buttonPressed(int buttonIndex) {
+		ILanguageSettingsProvider selectedProvider = getSelectedProvider();
+		ICLanguageSettingEntry selectedEntry = getSelectedEntry();
+
+		switch (buttonIndex) {
+		case BUTTON_ADD:
+			performAdd(selectedProvider);
+			break;
+		case BUTTON_EDIT:
+			if (selectedEntry!=null) {
+				performEdit(selectedProvider, selectedEntry);
+			} else {
+				performConfigure(selectedProvider);
+			}
+			break;
+		case BUTTON_DELETE:
+				performDelete(selectedProvider, selectedEntry);
+			break;
+		case BUTTON_MOVE_UP:
+			performMoveUp(selectedProvider, selectedEntry);
+			break;
+		case BUTTON_MOVE_DOWN:
+			performMoveDown(selectedProvider, selectedEntry);
+			break;
+		default:
+		}
+		treeEntries.setFocus();
+	}
+
+	protected void performAdd(ILanguageSettingsProvider selectedProvider) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	protected void performEdit(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	protected void performConfigure(ILanguageSettingsProvider selectedProvider) {
+		setConfigureMode(!isConfigureMode);
+		updateButtons();
+	}
+
+	protected void performDelete(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	protected void performMoveUp(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	protected void performMoveDown(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+		// TODO Auto-generated method stub
+		
 	}
 
 	/**
@@ -464,7 +650,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	public void update() {
 		List<ILanguageSettingsProvider> tableItems = getTableItems();
 		treeEntriesViewer.setInput(tableItems.toArray(new Object[tableItems.size()]));
-
 		updateStatusLine();
 		updateButtons();
 	}

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            category="com.android.ide.eclipse.preferences.main"
+            class="org.eclipse.cdt.android.build.internal.ui.NDKPreferencePage"
+            id="org.eclipse.cdt.android.page"
+            name="NDK">
+      </page>
+   </extension>
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            adaptable="true"
+            id="org.eclipse.cdt.android.objectContribution1"
+            objectClass="org.eclipse.core.resources.IProject">
+         <visibility>
+            <and>
+               <objectState
+                     name="projectNature"
+                     value="com.android.ide.eclipse.adt.AndroidNature">
+               </objectState>
+               <not>
+                  <objectState
+                        name="projectNature"
+                        value="org.eclipse.cdt.core.cnature">
+                  </objectState>
+               </not>
+            </and>
+         </visibility>
+         <action
+               class="org.eclipse.cdt.android.build.internal.ui.AddNativeAction"
+               enablesFor="1"
+               id="org.eclipse.cdt.android.action1"
+               label="Add NDK Support"
+               menubarPath="com.android.ide.eclipse.adt.AndroidTools/ndk">
+         </action>
+      </objectContribution>
+   </extension>
+
+</plugin>

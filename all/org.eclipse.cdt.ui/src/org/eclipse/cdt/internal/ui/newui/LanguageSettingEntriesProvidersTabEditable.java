@@ -313,7 +313,11 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	@Override
 	protected void performDelete(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
-			deleteEntry(selectedProvider, selectedEntry);
+			if (selectedEntry!=null) {
+				deleteEntry(selectedProvider, selectedEntry);
+//			} else if (selectedProvider instanceof ???){
+//				((???)selectedProvider).clear();
+			}
 		}
 	}
 
@@ -398,15 +402,21 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	}
 
 	@Override
-	protected void performMoveDown(ILanguageSettingsProvider selectedProvider,
-			ICLanguageSettingEntry selectedEntry) {
-		moveUpOrDown(selectedProvider, selectedEntry, false);
+	protected void performMoveDown(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+		if (isConfigureMode) {
+			super.performMoveDown(selectedProvider, selectedEntry);
+		} else {
+			moveUpOrDown(selectedProvider, selectedEntry, false);
+		}
 	}
 
 	@Override
-	protected void performMoveUp(ILanguageSettingsProvider selectedProvider,
-			ICLanguageSettingEntry selectedEntry) {
-		moveUpOrDown(selectedProvider, selectedEntry, true);
+	protected void performMoveUp(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+		if (isConfigureMode) {
+			super.performMoveUp(selectedProvider, selectedEntry);
+		} else {
+			moveUpOrDown(selectedProvider, selectedEntry, true);
+		}
 	}
 
 	@Override
@@ -576,37 +586,26 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 		boolean isProviderSelected = !isEntrySelected && (provider!=null);
 		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider;
 
-		boolean canAdd = isProviderEditable;
+		boolean canAdd = isProviderEditable && !isConfigureMode;
 		boolean canEdit = isProviderEditable && isEntrySelected;
-		boolean canConfigure = entry==null;
 		boolean canDelete = isProviderEditable && isEntrySelected;
 		boolean canClear = isProviderEditable && isProviderSelected
 			&& !LanguageSettingsManager.isWorkspaceProvider(provider)
 			&& getSettingEntries(provider)!=null;
 
-		if (isProviderSelected) {
+		if (isConfigureMode) {
 			buttonSetText(BUTTON_DELETE, "Reset");
 		} else {
+			if (isProviderSelected) {
+				buttonSetText(BUTTON_DELETE, "Clear");
+			} else {
 			buttonSetText(BUTTON_DELETE, DEL_STR);
-		}
-
-		boolean canMoveUp = false;
-		boolean canMoveDown = false;
-		if (isProviderEditable && isEntrySelected) {
-			List<ICLanguageSettingEntry> entries = getSettingEntriesUpResourceTree(provider);
-			int index = getExactIndex(entries, entry);
-			int itemCount = entries.size();
-			int last=itemCount-1;
-
-			canMoveUp = index>0 && index<=last;
-			canMoveDown = index>=0 && index<last;
+			}
 		}
 
 		buttonSetEnabled(BUTTON_ADD, canAdd);
-		buttonSetEnabled(BUTTON_EDIT, canEdit || canConfigure);
+		buttonSetEnabled(BUTTON_EDIT, canEdit);
 		buttonSetEnabled(BUTTON_DELETE, canDelete || canClear);
-		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
-		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
 
 	}
 

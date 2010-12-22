@@ -403,6 +403,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		Assert.isTrue(!fEditable);
 
 		Link link = new Link(parent, SWT.NONE);
+		// FIXME
 		link.setText(DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Go to Discovery Tab.");
 
 		link.addListener(SWT.Selection, new Listener() {
@@ -422,6 +423,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 
 		GridData gridData = new GridData(SWT.FILL, SWT.BOTTOM, true, false);
 		gridData.horizontalSpan = 2;
+		gridData.widthHint = 1;
 		link.setLayoutData(gridData);
 	}
 

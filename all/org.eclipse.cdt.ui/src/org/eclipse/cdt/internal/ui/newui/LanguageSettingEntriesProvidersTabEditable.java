@@ -21,6 +21,8 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.ui.CDTSharedImages;
+import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
+import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 
 public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingEntriesProvidersTab {
 	// providerId -> provider
@@ -126,6 +128,32 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 		});
 	}
 
+	//	/** TODO
+	//	 * @return {@code true} if the error parsers are allowed to be editable,
+	//	 *     i.e. Add/Edit/Delete buttons are enabled and Options page edits enabled.
+	//	 *     This will evaluate to {@code true} for Preference Build Settings page but
+	//	 *     not for Preference New CDT Project Wizard/Makefile Project.
+	//	 */
+	private boolean isProviderCustomizable(ILanguageSettingsProvider provider) {
+		return page.isForPrefs() || !LanguageSettingsManager.isWorkspaceProvider(provider);
+	}
+
+	@Override
+	protected ICOptionPage createOptionsPage(ILanguageSettingsProvider provider) {
+		ICOptionPage optionsPage = null;
+		if (provider!=null) {
+			optionsPage = LanguageSettingsProviderAssociation.createOptionsPage(provider);
+		}
+		if (optionsPage==null) {
+			optionsPage = super.createOptionsPage(provider);
+		}
+		
+		if (optionsPage instanceof AbstractCOptionPage) {
+			((AbstractCOptionPage)optionsPage).init(provider);
+		}
+		return optionsPage;
+	}
+
 	private EditedProvider makeEditedProvider(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription, IResource rc) {
 		List<ICLanguageSettingEntry> entries;
 		EditedProvider editedProvider;
@@ -160,10 +188,10 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	}
 
 	@Override
-	protected List<ILanguageSettingsProvider> getTableItems() {
+	protected List<ILanguageSettingsProvider> getProviders(ICLanguageSetting languageSetting) {
 		List<ILanguageSettingsProvider> itemsList = new LinkedList<ILanguageSettingsProvider>();
-		if (currentLanguageSetting!=null) {
-			String langId = currentLanguageSetting.getLanguageId();
+		if (languageSetting!=null) {
+			String langId = languageSetting.getLanguageId();
 			if (langId != null) {
 				IResource rc = getResource();
 				ICConfigurationDescription cfgDescription = getConfigurationDescription();
@@ -370,10 +398,8 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 		}
 	}
 
-	private void moveUpOrDown(ILanguageSettingsProvider selectedProvider,
-			ICLanguageSettingEntry selectedEntry, boolean isUp) {
-		ICLanguageSettingEntry old;
-		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
+	private void moveEntry(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry, boolean isUp) {
+		if (selectedProvider instanceof ILanguageSettingsEditableProvider && selectedEntry!=null) {
 			EditedProvider editedProvider = editedProviders.get(selectedProvider);
 			if (editedProvider==null) {
 				ICConfigurationDescription cfgDescription = getConfigurationDescription();
@@ -386,7 +412,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 			if (x >= 0) {
 				if (!isUp)
 					x++; // "down" simply means "up underlying item"
-				old = entries.get(x);
+				ICLanguageSettingEntry old = entries.get(x);
 				ICLanguageSettingEntry old2 = entries.get(x - 1);
 				entries.remove(x);
 				entries.remove(x - 1);
@@ -405,8 +431,8 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	protected void performMoveDown(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 		if (isConfigureMode) {
 			super.performMoveDown(selectedProvider, selectedEntry);
-		} else {
-			moveUpOrDown(selectedProvider, selectedEntry, false);
+		} else if (selectedEntry!=null) {
+			moveEntry(selectedProvider, selectedEntry, false);
 		}
 	}
 
@@ -414,8 +440,8 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	protected void performMoveUp(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 		if (isConfigureMode) {
 			super.performMoveUp(selectedProvider, selectedEntry);
-		} else {
-			moveUpOrDown(selectedProvider, selectedEntry, true);
+		} else if (selectedEntry!=null) {
+			moveEntry(selectedProvider, selectedEntry, true);
 		}
 	}
 

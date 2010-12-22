@@ -203,7 +203,6 @@
          </language-scope>
       </provider>
    </extension>
-<!--
    <extension
          point="org.eclipse.cdt.core.LanguageSettingsProvider">
       <provider
@@ -225,7 +224,6 @@
          </language-scope>
       </provider>
    </extension>
--->
    <extension
          point="org.eclipse.cdt.core.LanguageSettingsProvider">
       <provider

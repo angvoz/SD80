@@ -118,6 +118,8 @@ public class CDTSharedImages {
 	public static final String IMG_OBJS_IMPORT_SETTINGS = "icons/obj16/import_settings_wiz.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_EXPORT_SETTINGS = "icons/obj16/export_settings_wiz.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_INCCONT = "icons/obj16/incc_obj.gif"; //$NON-NLS-1$
+	public static final String IMG_OBJS_EXTENSION = "icons/obj16/extension_obj.gif"; //$NON-NLS-1$
+
 	public static final String IMG_OBJS_NLS_NEVER_TRANSLATE = "icons/obj16/never_translate.gif"; //$NON-NLS-1$
 
 	// Breakpoint images

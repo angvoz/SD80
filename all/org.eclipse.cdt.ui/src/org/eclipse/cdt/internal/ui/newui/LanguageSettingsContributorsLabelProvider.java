@@ -29,7 +29,8 @@ public class LanguageSettingsContributorsLabelProvider extends LabelProvider imp
 		if (url!=null) {
 			imageKey = url.toString();
 		} else {
-			imageKey = CDTSharedImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+//			imageKey = CDTSharedImages.IMG_OBJS_LANG_SETTINGS_PROVIDER;
+			imageKey = CDTSharedImages.IMG_OBJS_EXTENSION;
 		}
 		if (provider.getId().startsWith(TEST_PLUGIN_ID)) {
 			imageKey = CDTSharedImages.IMG_OBJS_CDT_TESTING;

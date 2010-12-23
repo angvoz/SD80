@@ -1,6 +1,10 @@
 package org.eclipse.cdt.android.build.internal.core;
 
+import java.net.URL;
+
+import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.osgi.framework.BundleActivator;
@@ -35,6 +39,10 @@ public class Activator implements BundleActivator {
 	
 	public static void log(Exception e) {
 		getService(ILog.class).log(new Status(IStatus.ERROR, getId(), e.getMessage(), e));
+	}
+
+	public static URL find(IPath path) {
+		return FileLocator.find(context.getBundle(), path, null);
 	}
 	
 }

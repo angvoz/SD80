@@ -27,6 +27,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
@@ -48,6 +49,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
@@ -55,6 +57,7 @@ import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.model.util.CDTListComparator;
@@ -66,6 +69,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.ui.CDTSharedImages;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
@@ -187,7 +191,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			group.setLayout(new GridLayout());
 
 			Label label = new Label(group, SWT.NONE);
-			label.setText("No options are available for this provider.");
+			label.setText("No options are available.");
 			
 			setControl(group);
 		}
@@ -409,6 +413,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	public void createControls(Composite parent) {
 		super.createControls(parent);
 		
+		isConfigureMode = page.isForPrefs();
+		
 		usercomp.setLayout(new GridLayout(2, true));
 		GridData gd = (GridData) usercomp.getLayoutData();
 		// Discourage settings entry table from trying to show all its items at once, see bug 264330
@@ -452,6 +458,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		initButtons(BUTTON_LABELS);
 
 		updateData(getResDesc());
+		updateButtons();
 	}
 
 	private void setConfigureMode(boolean configureMode) {
@@ -462,12 +469,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		
 		enableSashForm(sashFormEntries, !isConfigureMode);
 		treeEntries.setVisible(!isConfigureMode);
-	
 		builtInCheckBox.setVisible(!isConfigureMode);
-		enableProvidersCheckBox.setEnabled(!isConfigureMode);
-	
+
 		enableSashForm(sashFormConfigure, isConfigureMode);
-		
 		usercomp.layout();
 	}
 
@@ -493,10 +497,12 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		sashFormConfigure.setLayout(layout);
 
 		// table
-		Composite compositeSashForm = new Composite(sashFormConfigure, SWT.BORDER | SWT.CHECK | SWT.SINGLE);
+		Composite compositeSashForm = new Composite(sashFormConfigure, SWT.BORDER | SWT.SINGLE);
 		compositeSashForm.setLayout(new GridLayout());
 		
-		tableProviders = new Table(compositeSashForm, SWT.CHECK | SWT.SINGLE);
+		// SWT.CHECK is only set for project properties
+		int checkFlag = page.isForPrefs() ? 0 : SWT.CHECK;
+		tableProviders = new Table(compositeSashForm, checkFlag | SWT.SINGLE);
 		tableProviders.setLayoutData(new GridData(GridData.FILL_BOTH));
 		tableProviders.addSelectionListener(new SelectionAdapter() {
 			@Override
@@ -535,19 +541,21 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	}
 
 	private void enableControls(boolean enable) {
+		sashFormEntries.setEnabled(enable);
+		treeLanguages.setEnabled(enable);
+		treeEntries.setEnabled(enable);
 		builtInCheckBox.setEnabled(enable);
-		if (isConfigureMode) {
-			sashFormConfigure.setEnabled(enable);
-		} else {
-			sashFormEntries.setEnabled(enable);
-			treeLanguages.setEnabled(enable);
-			treeEntries.setEnabled(enable);
-		}
+		
+		sashFormConfigure.setEnabled(enable);
+		tableProviders.setEnabled(enable);
+		
 		buttoncomp.setEnabled(enable);
 
 		if (enable) {
+			displaySelectedOptionPage();
 			update();
 		} else {
+			currentOptionsPage.setVisible(false);
 			disableButtons();
 		}
 	}
@@ -558,7 +566,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	private void initMapProviders() {
 		availableProvidersMap.clear();
 		optionsPageMap.clear();
+
 		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getWorkspaceProviders();
+		initializeOptionsPage(null); // adds default page asa  placeholder
 		for (ILanguageSettingsProvider provider : allProviders) {
 			String id = provider.getId();
 			availableProvidersMap.put(id, provider);
@@ -599,16 +609,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		displaySelectedOptionPage();
 	}
 
-	//	/** TODO
-	//	 * @return {@code true} if the error parsers are allowed to be editable,
-	//	 *     i.e. Add/Edit/Delete buttons are enabled and Options page edits enabled.
-	//	 *     This will evaluate to {@code true} for Preference Build Settings page but
-	//	 *     not for Preference New CDT Project Wizard/Makefile Project.
-	//	 */
-	private boolean isProviderCustomizable(ILanguageSettingsProvider provider) {
-		return page.isForPrefs() || !LanguageSettingsManager.isWorkspaceProvider(provider);
-	}
-
 	protected ICOptionPage createOptionsPage(ILanguageSettingsProvider provider) {
 		return new DummyProviderOptionsPage();
 	}
@@ -616,10 +616,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	private void initializeOptionsPage(ILanguageSettingsProvider provider) {
 		ICOptionPage optionsPage = createOptionsPage(provider);
 		if (optionsPage!=null) {
-			String id = provider.getId();
+			String id = (provider!=null) ? provider.getId() : null;
 			optionsPageMap.put(id, optionsPage);
 			optionsPage.setContainer(page);
-			compositeOptionsPage.setEnabled(isProviderCustomizable(provider));
 			optionsPage.createControl(compositeOptionsPage);
 			optionsPage.setVisible(false);
 			compositeOptionsPage.layout(true);
@@ -631,13 +630,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			currentOptionsPage.setVisible(false);
 
 		ILanguageSettingsProvider provider = getSelectedProvider();
-		if (provider==null) {
-			currentOptionsPage = null;
-			return;
-		}
-		
-		String providerId = provider.getId();
-		ICOptionPage optionsPage = optionsPageMap.get(providerId);
+		String id = (provider!=null) ? provider.getId() : null;
+
+		ICOptionPage optionsPage = optionsPageMap.get(id);
 		if (optionsPage != null) {
 			optionsPage.setVisible(true);
 		}
@@ -680,6 +675,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		buttonSetEnabled(BUTTON_DELETE, false);
 		buttonSetEnabled(BUTTON_MOVE_UP, false);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, false);
+		buttonSetEnabled(BUTTON_CONFIGURE, false);
 	}
 
 	/**
@@ -689,21 +685,31 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	protected void updateButtons() {
 		ILanguageSettingsProvider provider = getSelectedProvider();
 		ICLanguageSettingEntry entry = getSelectedEntry();
-		
-		int pos = tableProviders.getSelectionIndex();
-		int count = tableProviders.getItemCount();
-		int last = count - 1;
-		boolean selected = pos >= 0 && pos <= last;
 
-		boolean canMoveUp = selected && pos != 0;
-		boolean canMoveDown = selected && pos != last;
+		boolean isEntrySelected = entry!=null;
+		boolean isProviderSelected = !isEntrySelected && (provider!=null);
+
+		boolean canConfigure = page.isForProject(); // the button is only enabled in project properties
+		boolean canMoveUp = false;
+		boolean canMoveDown = false;
 		
-		buttonSetText(BUTTON_CONFIGURE, isConfigureMode ? "Show Entries": "Configure" );
+		if (isConfigureMode && canConfigure) {
+			int pos = tableProviders.getSelectionIndex();
+			int count = tableProviders.getItemCount();
+			int last = count - 1;
+			boolean isRangeOk = pos >= 0 && pos <= last;
+			canMoveUp = isProviderSelected && isRangeOk && pos!=0;
+			canMoveDown = isProviderSelected && isRangeOk && pos!=last;
+		}
+		
+		buttonSetText(BUTTON_ADD, isConfigureMode ? "Run": ADD_STR);
+		buttonSetText(BUTTON_DELETE, isProviderSelected || isConfigureMode ? "Clear" : DEL_STR);
+		buttonSetText(BUTTON_CONFIGURE, isConfigureMode ? "Show Entries": "Configure");
 
 		buttonSetEnabled(BUTTON_ADD, false);
 		buttonSetEnabled(BUTTON_EDIT, false);
 		buttonSetEnabled(BUTTON_DELETE, false);
-		buttonSetEnabled(BUTTON_CONFIGURE, true);
+		buttonSetEnabled(BUTTON_CONFIGURE, canConfigure);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
 	}
@@ -905,14 +911,41 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 	@Override
 	protected void performDefaults() {
+		if (page.isForPrefs()) {
+			if (MessageDialog.openQuestion(usercomp.getShell(),
+					"Confirm Resetting Language Settings Providers",
+					"Are you sure you want to reset all customized language settings providers?")) {
+
+				try {
+					LanguageSettingsManager_TBD.setUserDefinedProviders(null);
+				} catch (CoreException e) {
+					CUIPlugin.log("FIXME ErrorParsTab.error.OnRestoring", e);
+				}
+			}
+		} else {
+			if (page.isForProject() && enableProvidersCheckBox!=null) {
+				ICConfigurationDescription cfgDescription = getConfigurationDescription();
+				cfgDescription.setLanguageSettingProviders(new ArrayList<ILanguageSettingsProvider>());
+				update();
+				enableProvidersCheckBox.setSelection(false);
+				enableControls(enableProvidersCheckBox.getSelection());
+			}
+		}
+		initMapProviders();
+		updateButtons();
 	}
 
 	@Override
 	protected void performApply(ICResourceDescription srcRcDescription, ICResourceDescription destRcDescription) {
-		if (page.isForProject() && enableProvidersCheckBox!=null) {
-			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
+		if (!page.isForPrefs()) {
+			ICConfigurationDescription sd = srcRcDescription.getConfiguration();
+			ICConfigurationDescription dd = destRcDescription.getConfiguration();
+			List<ILanguageSettingsProvider> newProviders = sd.getLanguageSettingProviders();
+			dd.setLanguageSettingProviders(newProviders);
+			initMapProviders();
 		}
-		
+
+		performOK();
 	}
 
 	@Override
@@ -921,6 +954,27 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
 		}
 		
+		if (page.isForPrefs()) {
+			// Build Settings page
+			try {
+				ILanguageSettingsProvider[] providers = new ILanguageSettingsProvider[tableProviders.getItemCount()];
+				TableItem[] items = tableProviders.getItems();
+				for (int i=0;i<items.length;i++) {
+					providers[i] = (ILanguageSettingsProvider) items[i].getData();
+				}
+
+				Object[] checkedElements = tableProvidersViewer.getCheckedElements();
+				String[] checkedProviderIds = new String[checkedElements.length];
+				for (int i=0;i<checkedElements.length;i++) {
+					checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
+				}
+
+				LanguageSettingsManager_TBD.setUserDefinedProviders(providers);
+			} catch (CoreException e) {
+				CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
+			}
+			initMapProviders();
+		}
 	}
 
 	@Override

@@ -68,12 +68,9 @@ import org.eclipse.cdt.internal.ui.dialogs.StatusInfo;
 
 
 /**
- * FIXME: all references to error parsers
- *
- * This class represents Error Parser Tab in Project Properties or workspace Preferences
- *
- * @noextend This class is not intended to be subclassed by clients.
+ * @deprecated. TODO: Remove this class after LanguageSettingEntriesProvidersTab implements all functionality.
  */
+@Deprecated
 public class LanguageSettingsProvidersSettingsTab extends AbstractCPropertyTab {
 	private static final int DEFAULT_HEIGHT = 130;
 	private static final int BUTTON_ADD = 0;

@@ -472,12 +472,12 @@
            weight="020">
      </tab>
      <tab
-           class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProvidersSettingsTab"
+           class="org.eclipse.cdt.internal.ui.newui.LanguageSettingEntriesProvidersTabEditable"
            icon="icons/obj16/search.gif"
            name="%LanguageSettingsProvidersTab.name"
            parent="org.eclipse.cdt.make.internal.ui.preferences.BuildSettingsPreferencePage"
            tooltip="%LanguageSettingsProvidersTab.tooltip"
-           weight="040">
+           weight="000">
      </tab>
    </extension>
 

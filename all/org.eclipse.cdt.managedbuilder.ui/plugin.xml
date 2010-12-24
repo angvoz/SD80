@@ -515,6 +515,20 @@
       </page>
       
       <page
+            class="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb_FIXME"
+            id="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb_FIXME"
+            category="org.eclipse.cdt.ui.newui.Page_head_general"
+            name="Providers (under construction)"
+            >
+         <enabledWhen>
+           <adapt type="org.eclipse.core.resources.IResource">
+	            <test property="org.eclipse.core.resources.projectNature"
+	                  value="org.eclipse.cdt.managedbuilder.core.managedBuildNature"/>
+           </adapt>
+         </enabledWhen>
+      </page>
+      
+      <page
             class="org.eclipse.cdt.managedbuilder.ui.properties.Page_ExpPathAndSymb"
             id="org.eclipse.cdt.ui.newui.Page_ExpPathAndSymb"
             category="org.eclipse.cdt.ui.newui.Page_head_general"

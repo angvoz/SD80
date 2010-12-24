@@ -3748,10 +3748,10 @@
 		<tab
 			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingEntriesProvidersTabEditable"
 			icon="icons/obj16/ls_entries.gif"
-			name="E-Providers"
+			name="*Providers"
 			weight="!!!FIXME 050"
 			helpId="FIXME cdt_u_prop_pns_inc"
-			parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
+			parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb_FIXME"
 			tooltip="%AllLanguageSettingEntries.tooltip"/>
 	</extension>
  <extension

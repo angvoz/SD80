@@ -29,13 +29,19 @@
                id="org.eclipse.cdt.android.gcc.compiler"
                isAbstract="false"
                name="Android GCC Compiler"
-               superClass="cdt.managedbuild.tool.gnu.c.compiler">
-         </tool>
-         <tool
-               id="org.eclipse.cdt.android.g++.compiler"
-               isAbstract="false"
-               name="Android G++ Compiler"
-               superClass="cdt.managedbuild.tool.gnu.cpp.compiler">
+               natureFilter="both">
+            <option
+                  browseType="directory"
+                  id="org.eclipse.cdt.android.gcc.option.includePath"
+                  isAbstract="false"
+                  resourceFilter="all"
+                  valueType="includePath">
+            </option>
+            <inputType
+                  id="org.eclipse.cdt.android.gcc.inputType"
+                  scannerConfigDiscoveryProfileId="org.eclipse.cdt.android.build.core.AndroidPerProjectProfile"
+                  sources="c,cpp">
+            </inputType>
          </tool>
       </toolChain>
    </extension>
@@ -44,7 +50,7 @@
          name="Android Per Project Profile"
          point="org.eclipse.cdt.make.core.ScannerConfigurationDiscoveryProfile">
       <scannerInfoCollector
-            class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.DefaultGCCScannerInfoCollector"
+            class="org.eclipse.cdt.android.build.internal.core.NDKScannerInfoCollector"
             scope="project">
       </scannerInfoCollector>
    </extension>

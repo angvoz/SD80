@@ -197,17 +197,8 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	public void createControl(Composite parent) {
 //		Composite optionsPageComposite = new Composite(composite, SWT.NULL);
 		fEditable = parent.isEnabled();
-		Group group = new Group(parent, SWT.SHADOW_ETCHED_IN);
-		group.setText("Builtin Specs Detector Options");
 
-		GridLayout gridLayout = new GridLayout(2, true);
-		gridLayout.makeColumnsEqualWidth = false;
-		gridLayout.marginRight = -10;
-		gridLayout.marginLeft = -4;
-		group.setLayout(gridLayout);
-		group.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-
-		final Composite composite = new Composite(group, SWT.NONE);
+		final Composite composite = new Composite(parent, SWT.NONE);
 		GridLayout layout = new GridLayout();
 		layout.numColumns = 2;
 		layout.marginWidth = 1;
@@ -394,8 +385,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //			createButtons(composite);
 //		}
 
-		setControl(group);
-		group.update();
+		setControl(composite);
 	}
 
 	private void createLinkToPreferences(final Composite parent) {

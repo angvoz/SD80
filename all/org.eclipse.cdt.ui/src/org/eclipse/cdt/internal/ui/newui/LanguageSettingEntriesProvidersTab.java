@@ -186,14 +186,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	private class DummyProviderOptionsPage extends AbstractCOptionPage {
 		@Override
 		public void createControl(Composite parent) {
-			Group group = new Group(parent, SWT.SHADOW_ETCHED_IN);
-			group.setText("Language Settings Provider Options");
-			group.setLayout(new GridLayout());
-
-			Label label = new Label(group, SWT.NONE);
+			Label label = new Label(parent, SWT.NONE);
 			label.setText("No options are available.");
-			
-			setControl(group);
+			setControl(label);
 		}
 		
 		@Override
@@ -616,18 +611,25 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	private void initializeOptionsPage(ILanguageSettingsProvider provider) {
 		ICOptionPage optionsPage = createOptionsPage(provider);
 		if (optionsPage!=null) {
+			Group groupOptionsPage = new Group(compositeOptionsPage, SWT.SHADOW_ETCHED_IN);
+			groupOptionsPage.setText("Language Settings Provider Options");
+			groupOptionsPage.setLayout(new GridLayout());
+
 			String id = (provider!=null) ? provider.getId() : null;
 			optionsPageMap.put(id, optionsPage);
 			optionsPage.setContainer(page);
-			optionsPage.createControl(compositeOptionsPage);
+			optionsPage.createControl(groupOptionsPage);
+			groupOptionsPage.setVisible(false);
 			optionsPage.setVisible(false);
 			compositeOptionsPage.layout(true);
 		}
 	}
 
 	private void displaySelectedOptionPage() {
-		if (currentOptionsPage != null)
+		if (currentOptionsPage != null) {
 			currentOptionsPage.setVisible(false);
+			currentOptionsPage.getControl().getParent().setVisible(false);
+		}
 
 		ILanguageSettingsProvider provider = getSelectedProvider();
 		String id = (provider!=null) ? provider.getId() : null;
@@ -635,6 +637,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		ICOptionPage optionsPage = optionsPageMap.get(id);
 		if (optionsPage != null) {
 			optionsPage.setVisible(true);
+			optionsPage.getControl().getParent().setVisible(true);
 		}
 		currentOptionsPage = optionsPage;
 	}

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.cdt.managedbuilder.core.buildDefinitions">
+      <managedBuildRevision
+            fileVersion="4.0.0">
+      </managedBuildRevision>
+      <toolChain
+            configurationEnvironmentSupplier="org.eclipse.cdt.android.build.internal.core.NDKEnvSupplier"
+            id="org.eclipse.cdt.android.toolChain"
+            isAbstract="false"
+            name="Android GCC">
+         <targetPlatform
+               binaryParser="org.eclipse.cdt.core.ELF"
+               id="org.eclipse.cdt.android.targetPlatform"
+               isAbstract="false">
+         </targetPlatform>
+         <builder
+               cleanBuildTarget="clean"
+               command="ndk-build"
+               commandLauncher="org.eclipse.cdt.android.build.internal.core.NDKCommandLauncher"
+               id="org.eclipse.cdt.android.builder"
+               isAbstract="false"
+               isVariableCaseSensitive="false"
+               name="Android Builder">
+         </builder>
+         <tool
+               id="org.eclipse.cdt.android.gcc.compiler"
+               isAbstract="false"
+               name="Android GCC Compiler"
+               superClass="cdt.managedbuild.tool.gnu.c.compiler">
+         </tool>
+         <tool
+               id="org.eclipse.cdt.android.g++.compiler"
+               isAbstract="false"
+               name="Android G++ Compiler"
+               superClass="cdt.managedbuild.tool.gnu.cpp.compiler">
+         </tool>
+      </toolChain>
+   </extension>
+   <extension
+         id="AndroidPerProjectProfile"
+         name="Android Per Project Profile"
+         point="org.eclipse.cdt.make.core.ScannerConfigurationDiscoveryProfile">
+      <scannerInfoCollector
+            class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.DefaultGCCScannerInfoCollector"
+            scope="project">
+      </scannerInfoCollector>
+   </extension>
+
+</plugin>

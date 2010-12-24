@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: CDT Android Native UI
+Bundle-SymbolicName: org.eclipse.cdt.android.build.ui;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: org.eclipse.cdt.android.build.internal.ui.Activator
+Bundle-Vendor: Eclipse CDT
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.core.resources;bundle-version="3.6.0",
+ org.eclipse.ui,
+ org.eclipse.cdt.core;bundle-version="5.2.1",
+ org.eclipse.cdt.ui;bundle-version="5.2.1",
+ org.eclipse.cdt.managedbuilder.core;bundle-version="7.0.1",
+ org.eclipse.cdt.managedbuilder.ui;bundle-version="7.0.0"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-ActivationPolicy: lazy

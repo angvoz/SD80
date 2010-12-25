@@ -115,6 +115,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	
 	protected boolean isConfigureMode = false;
 
+	private static final String CLEAR_STR = Messages.LanguageSettingsProviderTab_Clear;
+	private static final String RUN_STR = Messages.LanguageSettingsProviderTab_Run;
+	private static final String CONFIGURE_STR = Messages.LanguageSettingsProviderTab_Configure;
+	private static final String SHOW_ENTRIES_STR = Messages.LanguageSettingsProviderTab_ShowEntries;
+
 	protected static final int BUTTON_ADD = 0;
 	protected static final int BUTTON_EDIT = 1;
 	protected static final int BUTTON_DELETE = 2;
@@ -132,7 +137,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		MOVEUP_STR,
 		MOVEDOWN_STR,
 		null,
-		"Configure",
+		CONFIGURE_STR,
 	};
 
 	private List<ILanguageSettingsProvider> initialProvidersList = null;
@@ -255,7 +260,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		@Override
 		public void createControl(Composite parent) {
 			Label label = new Label(parent, SWT.NONE);
-			label.setText("No options are available.");
+			label.setText(Messages.LanguageSettingsProviderTab_NoOptionsAvailable);
 			setControl(label);
 		}
 		
@@ -416,10 +421,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			}
 		});
 
-		treeCol.setText("Setting Entries");
+		treeCol.setText(Messages.LanguageSettingsProviderTab_SettingEntries);
 		treeCol.setWidth(200);
 		treeCol.setResizable(false);
-		treeCol.setToolTipText("Setting Entries Tooltip - FIXME");
+		treeCol.setToolTipText(Messages.LanguageSettingsProviderTab_SettingEntriesTooltip);
 
 		treeEntriesViewer = new TreeViewer(treeEntries);
 		treeEntriesViewer.setContentProvider(new LanguageSettingsContributorsContentProvider());
@@ -583,7 +588,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 	protected void createOptionsControl() {
 		groupOptionsPage = new Group(sashFormConfigure, SWT.SHADOW_ETCHED_IN);
-		groupOptionsPage.setText("Language Settings Provider Options");
+		groupOptionsPage.setText(Messages.LanguageSettingsProviderTab_ProviderOptions);
 		groupOptionsPage.setLayout(new GridLayout(2, false));
 		
 		compositeOptionsPage = new Composite(groupOptionsPage, SWT.NONE);
@@ -754,9 +759,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			canMoveDown = isProviderSelected && isRangeOk && pos!=last;
 		}
 		
-		buttonSetText(BUTTON_ADD, isConfigureMode ? "Run": ADD_STR);
-		buttonSetText(BUTTON_DELETE, isProviderSelected || isConfigureMode ? "Clear" : DEL_STR);
-		buttonSetText(BUTTON_CONFIGURE, isConfigureMode ? "Show Entries": "Configure");
+		buttonSetText(BUTTON_ADD, isConfigureMode ? RUN_STR: ADD_STR);
+		buttonSetText(BUTTON_DELETE, isProviderSelected || isConfigureMode ? CLEAR_STR : DEL_STR);
+		buttonSetText(BUTTON_CONFIGURE, isConfigureMode ? SHOW_ENTRIES_STR: CONFIGURE_STR);
 
 		buttonSetEnabled(BUTTON_ADD, false);
 		buttonSetEnabled(BUTTON_EDIT, false);
@@ -970,13 +975,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	protected void performDefaults() {
 		if (page.isForPrefs()) {
 			if (MessageDialog.openQuestion(usercomp.getShell(),
-					"Reset Language Settings Providers",
-					"Are you sure you want to reset all customized language settings providers?")) {
+					Messages.LanguageSettingsProviderTab_TitleResetProviders,
+					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
 
 				try {
 					LanguageSettingsManager_TBD.setUserDefinedProviders(null);
 				} catch (CoreException e) {
-					CUIPlugin.log("FIXME ErrorParsTab.error.OnRestoring", e);
+					CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorPerformingDefaults, e);
 				}
 			}
 		} else {
@@ -1026,7 +1031,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 				LanguageSettingsManager_TBD.setUserDefinedProviders(providers);
 			} catch (CoreException e) {
-				CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
+				CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorApplyingSettings, e);
 			}
 		}
 		updateData(getResDesc());

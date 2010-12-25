@@ -3738,7 +3738,7 @@
 	</extension>
 	<extension point="org.eclipse.cdt.ui.cPropertyTab">
 		<tab
-			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingEntriesProvidersTab"
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab"
 			icon="icons/obj16/ls_entries.gif"
 			name="%AllLanguageSettingEntries.name"
 			weight="!!!FIXME 050"
@@ -3746,7 +3746,7 @@
 			parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
 			tooltip="%AllLanguageSettingEntries.tooltip"/>
 		<tab
-			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingEntriesProvidersTabEditable"
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTabEditable"
 			icon="icons/obj16/ls_entries.gif"
 			name="*Providers"
 			weight="!!!FIXME 050"

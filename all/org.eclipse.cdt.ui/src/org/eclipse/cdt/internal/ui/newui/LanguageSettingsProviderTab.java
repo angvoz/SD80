@@ -87,7 +87,7 @@ import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
  *@noinstantiate This class is not intended to be instantiated by clients.
  *@noextend This class is not intended to be subclassed by clients.
  */
-public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
+public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	protected static final int[] DEFAULT_ENTRIES_SASH_WEIGHTS = new int[] { 10, 30 };
 	protected static final int[] DEFAULT_CONFIGURE_SASH_WEIGHTS = new int[] { 50, 50 };
 
@@ -458,11 +458,13 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	}
 
 	protected void trackInitialSettings() {
-		ICConfigurationDescription cfgDescription = getConfigurationDescription();
-		if (cfgDescription!=null) {
-			initialProvidersList = cfgDescription.getLanguageSettingProviders();
+		if (page.isForProject()) {
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
+			if (cfgDescription!=null) {
+				initialProvidersList = cfgDescription.getLanguageSettingProviders();
+			}
+			initialEnablement = LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject());
 		}
-		initialEnablement = LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject());
 	}
 	
 	@Override

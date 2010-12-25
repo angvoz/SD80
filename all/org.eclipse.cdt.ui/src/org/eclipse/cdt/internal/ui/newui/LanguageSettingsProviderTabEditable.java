@@ -41,7 +41,7 @@ import org.eclipse.cdt.ui.dialogs.DialogsMessages;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
 
-public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingEntriesProvidersTab {
+public class LanguageSettingsProviderTabEditable extends LanguageSettingsProviderTab {
 	private static final String WORKSPACE_PREFERENCE_PAGE = "org.eclipse.cdt.make.ui.preferences.BuildSettings"; //$NON-NLS-1$
 
 	private Button globalProviderCheckBox = null;

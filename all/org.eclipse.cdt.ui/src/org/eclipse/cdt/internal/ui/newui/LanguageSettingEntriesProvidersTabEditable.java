@@ -302,7 +302,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 			providers.remove(oldProvider);
 			providers.add(pos, newProvider);
 			cfgDescription.setLanguageSettingProviders(providers);
-			initMapProviders();
+			updateTableConfigureProviders();
 			tableProviders.setSelection(pos);
 			initializeOptionsPage(newProvider);
 			displaySelectedOptionPage();
@@ -350,6 +350,35 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 		currentOptionsPage.getControl().setEnabled(provider!=null && isChecked && !LanguageSettingsManager.isWorkspaceProvider(provider));
 	}
 
+//	@Override
+//	protected void saveCheckedProviders(Object selectedElement) {
+//		if (page.isForProject()) {
+//			Object[] checked = tableProvidersViewer.getCheckedElements();
+//			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(checked.length);
+//			for (Object elem : checked) {
+//				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)elem;
+////				if (provider==selectedElement && provider instanceof LanguageSettingsSerializable && LanguageSettingsManager.isWorkspaceProvider(provider)) {
+////					try {
+////						provider = ((LanguageSettingsSerializable)provider).clone();
+////						((LanguageSettingsSerializable)provider).clear();
+////						selectedElement = provider;
+////					} catch (Exception e) {
+////						// Log error but use workspace provider in this case
+////						CUIPlugin.log("Error cloning provider "+provider.getName()+ ", class = "+provider.getClass(), e);
+////					}
+////				}
+//				providers.add(provider);
+//
+//			}
+//
+//			ICConfigurationDescription cfgDescription = getConfigurationDescription();
+//				cfgDescription.setLanguageSettingProviders(providers);
+//				updateData(getResDesc());
+//				if (selectedElement!=null) {
+//					tableProvidersViewer.update(selectedElement, null);
+//				}
+//		}
+//	}
 
 	private EditedProvider makeEditedProvider(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription, IResource rc) {
 		List<ICLanguageSettingEntry> entries;
@@ -832,7 +861,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	}
 
 	@Override
-	protected final boolean isIndexerAffected() {
+	protected boolean isIndexerAffected() {
 		// TODO
 		return true;
 	}

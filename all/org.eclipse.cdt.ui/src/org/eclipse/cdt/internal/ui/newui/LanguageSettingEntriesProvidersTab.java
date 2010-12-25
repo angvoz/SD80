@@ -148,10 +148,10 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 				return (Object[]) parentElement;
 			if (parentElement instanceof ILanguageSettingsProvider) {
 				ILanguageSettingsProvider lsProvider = (ILanguageSettingsProvider)parentElement;
-				List<ICLanguageSettingEntry> seList = getSettingEntriesUpResourceTree(lsProvider);
+				List<ICLanguageSettingEntry> entriesList = getSettingEntriesUpResourceTree(lsProvider);
 
 				if (builtInCheckBox.getSelection()==false) {
-					for (Iterator<ICLanguageSettingEntry> iter = seList.iterator(); iter.hasNext();) {
+					for (Iterator<ICLanguageSettingEntry> iter = entriesList.iterator(); iter.hasNext();) {
 						ICLanguageSettingEntry entry = iter.next();
 						if (entry.isBuiltIn()) {
 							iter.remove();
@@ -159,8 +159,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 					}
 				}
 
-				if (seList!=null) {
-					return seList.toArray();
+				if (entriesList!=null) {
+					return entriesList.toArray();
 				}
 			}
 			return null;
@@ -286,7 +286,12 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	protected ILanguageSettingsProvider getSelectedProvider() {
 		ILanguageSettingsProvider provider = null;
 
-		if (!isConfigureMode) {
+		if (isConfigureMode) {
+			int pos = tableProviders.getSelectionIndex();
+			if (pos >= 0 && pos<tableProviders.getItemCount()) {
+				provider = (ILanguageSettingsProvider)tableProvidersViewer.getElementAt(pos);
+			}
+		} else {
 			TreeItem[] items = treeEntries.getSelection();
 			if (items.length>0) {
 				TreeItem item = items[0];
@@ -301,12 +306,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 					provider = (ILanguageSettingsProvider)itemData;
 				}
 			}
-		} else {
-			int n = tableProviders.getSelectionIndex();
-			if (n >= 0 && n<tableProviders.getItemCount()) {
-				provider = (ILanguageSettingsProvider)tableProvidersViewer.getElementAt(n);
-			}
-
 		}
 		return provider;
 	}
@@ -377,6 +376,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 					if (langSetting != null) {
 						currentLanguageSetting = langSetting;
 						updateTreeEntries();
+						updateButtons();
 					}
 				}
 			}
@@ -404,19 +404,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		treeEntries.setHeaderVisible(true);
 		treeEntries.setLinesVisible(true);
 
-		treeEntries.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				TreeItem[] items = treeEntries.getSelection();
-				if (items.length > 0) {
-					Object item = items[0].getData();
-					if (item instanceof ICLanguageSetting) {
-						currentLanguageSetting = (ICLanguageSetting) item;
-						updateTreeEntries();
-					}
-				}
-			}
-		});
 		final TreeColumn treeCol = new TreeColumn(treeEntries, SWT.NONE);
 		treeEntries.addPaintListener(new PaintListener() {
 			public void paintControl(PaintEvent e) {
@@ -451,7 +438,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		});
 		treeEntriesViewer.setUseHashlookup(true);
 
-
 		treeEntries.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -476,6 +462,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 		isConfigureMode = page.isForPrefs();
 
+		// SashForms for each mode
 		createShowEntriesSashForm();
 		createConfigureSashForm();
 		
@@ -494,7 +481,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		builtInCheckBox.setEnabled(true);
 		builtInCheckBox.setVisible(!isConfigureMode);
 
-		// "I want to try new scanner discovery" checkbox
+		// "I want to try new scanner discovery" temporary checkbox
 		enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD80, 2, GridData.FILL_HORIZONTAL);
 		enableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
 			@Override
@@ -509,12 +496,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		enableProvidersCheckBox.setEnabled(page.isForProject() && !isConfigureMode);
 		enableControls(enableProvidersCheckBox.getSelection());
 
-		setConfigureMode(isConfigureMode);
-
 		initButtons(BUTTON_LABELS);
-
 		updateData(getResDesc());
-		updateButtons();
 	}
 
 	private void setConfigureMode(boolean configureMode) {
@@ -577,14 +560,12 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 				tableProvidersViewer.update(e.getElement(), null);
 			}});
 
-//		compositeSashForm.setBackground(tableProviders.getBackground());
-
 		createOptionsControl();
 
 		sashFormConfigure.setWeights(DEFAULT_CONFIGURE_SASH_WEIGHTS);
 		enableSashForm(sashFormConfigure, isConfigureMode);
 		
-		initMapProviders();
+		updateTableConfigureProviders();
 	}
 
 	protected void createOptionsControl() {
@@ -598,7 +579,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 	private void enableSashForm(SashForm sashForm, boolean enable) {
 		sashForm.setVisible(enable);
-		// Some woodoo here to fill properties page vertically and keep right border for preferences 
+		// Some of woodoo to fill properties page vertically and still keep right border visible in preferences 
 		GridData gd = new GridData(enable || page.isForPrefs() ? GridData.FILL_BOTH : SWT.NONE);
 		gd.horizontalSpan = 2;
 		gd.heightHint = enable ? SWT.DEFAULT : 0;
@@ -629,12 +610,12 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	/**
 	 * Populate provider tables and their option pages which are used in Configure mode
 	 */
-	protected void initMapProviders() {
+	protected void updateTableConfigureProviders() {
 		availableProvidersMap.clear();
 		optionsPageMap.clear();
 
 		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getWorkspaceProviders();
-		initializeOptionsPage(null); // adds default page asa  placeholder
+		initializeOptionsPage(null); // adds default page as a placeholder
 		for (ILanguageSettingsProvider provider : allProviders) {
 			String id = provider.getId();
 			availableProvidersMap.put(id, provider);
@@ -709,32 +690,21 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	}
 
 
-	private void saveCheckedProviders(Object selectedElement) {
+	protected void saveCheckedProviders(Object selectedElement) {
 		if (page.isForProject()) {
 			Object[] checked = tableProvidersViewer.getCheckedElements();
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(checked.length);
-			for (Object elem : checked) {
-				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)elem;
-//				if (provider==selectedElement && provider instanceof LanguageSettingsSerializable && LanguageSettingsManager.isWorkspaceProvider(provider)) {
-//					try {
-//						provider = ((LanguageSettingsSerializable)provider).clone();
-//						((LanguageSettingsSerializable)provider).clear();
-//						selectedElement = provider;
-//					} catch (Exception e) {
-//						// Log error but use workspace provider in this case
-//						CUIPlugin.log("Error cloning provider "+provider.getName()+ ", class = "+provider.getClass(), e);
-//					}
-//				}
+			for (Object element : checked) {
+				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
 				providers.add(provider);
-
 			}
 
 			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-				cfgDescription.setLanguageSettingProviders(providers);
-				updateData(getResDesc());
-				if (selectedElement!=null) {
-					tableProvidersViewer.update(selectedElement, null);
-				}
+			cfgDescription.setLanguageSettingProviders(providers);
+			if (selectedElement!=null) {
+				tableProvidersViewer.update(selectedElement, null);
+			}
+			updateTreeEntries();
 		}
 	}
 
@@ -827,19 +797,17 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	}
 
 	protected void performAdd(ILanguageSettingsProvider selectedProvider) {
-		// TODO Auto-generated method stub
-		
 	}
 	
 	protected void performEdit(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
-		// TODO Auto-generated method stub
-		
 	}
 
+	/**
+	 * Switch between "Configure" mode and "Show Entries"
+	 */
 	protected void performConfigure(ILanguageSettingsProvider selectedProvider) {
 		setConfigureMode(!isConfigureMode);
 		updateButtons();
-		updateTreeEntries();
 	}
 
 	protected void performDelete(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
@@ -860,21 +828,21 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	// Move provider up / down
 	private void moveProvider(boolean up) {
 		int currentPos = tableProviders.getSelectionIndex();
-		if (currentPos < 0 || (up && currentPos == 0) || (!up && currentPos == tableProviders.getItemCount()-1))
+		int last = tableProviders.getItemCount()-1;
+		if (currentPos < 0 || (up && currentPos==0) || (!up && currentPos==last))
 			return;
 
 		ILanguageSettingsProvider provider = (ILanguageSettingsProvider)tableProvidersViewer.getElementAt(currentPos);
-		boolean checked = tableProvidersViewer.getChecked(provider);
+		boolean isChecked = tableProvidersViewer.getChecked(provider);
 		tableProvidersViewer.remove(provider);
 		int newPos = up ? currentPos-1 : currentPos+1;
 		tableProvidersViewer.insert(provider, newPos);
-		tableProvidersViewer.setChecked(provider, checked);
+		tableProvidersViewer.setChecked(provider, isChecked);
 		tableProviders.setSelection(newPos);
 
 		saveCheckedProviders(null);
 		updateButtons();
 	}
-
 
 	/**
 	 * Get list of providers to display in the settings entry tree.
@@ -905,7 +873,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	}
 
 	/**
-	 * Called when language changed or item added/edited/removed. Refreshes the whole table contents.
+	 * Refreshes the entries tree in "Show Entries" mode.
 	 */
 	public void updateTreeEntries() {
 		List<ILanguageSettingsProvider> tableItems = getProviders(currentLanguageSetting);
@@ -929,20 +897,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		return null;
 	}
 
-	/**
-	 * Called when configuration changed Refreshes languages list and calls table refresh.
-	 */
-	@Override
-	public void updateData(ICResourceDescription rcDes) {
-		if (rcDes == null || !canBeVisible())
-			return;
-		if (page.isMultiCfg()) {
-			setAllVisible(false, null);
-			return;
-		} else {
-			setAllVisible(true, null);
-		}
-
+	private void updateTreeLanguages(ICResourceDescription rcDes) {
 		treeLanguages.removeAll();
 		TreeItem firstItem = null;
 		allLanguages = getLangSettings(rcDes);
@@ -975,14 +930,34 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 				treeLanguages.setSelection(firstItem);
 			}
 		}
+	}
+
+	/**
+	 * Called when configuration changed Refreshes languages list entries tree.
+	 */
+	@Override
+	public void updateData(ICResourceDescription rcDes) {
+		if (rcDes == null || !canBeVisible())
+			return;
+
+		if (page.isMultiCfg()) {
+			setAllVisible(false, null);
+			return;
+		} else {
+			setAllVisible(true, null);
+		}
+
+		updateTreeLanguages(rcDes);
 		updateTreeEntries();
+		updateTableConfigureProviders();
+		updateButtons();
 	}
 
 	@Override
 	protected void performDefaults() {
 		if (page.isForPrefs()) {
 			if (MessageDialog.openQuestion(usercomp.getShell(),
-					"Confirm Resetting Language Settings Providers",
+					"Reset Language Settings Providers",
 					"Are you sure you want to reset all customized language settings providers?")) {
 
 				try {
@@ -1000,8 +975,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 				enableControls(enableProvidersCheckBox.getSelection());
 			}
 		}
-		initMapProviders();
-		updateButtons();
+		updateData(getResDesc());
 	}
 
 	@Override
@@ -1011,7 +985,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			ICConfigurationDescription dd = destRcDescription.getConfiguration();
 			List<ILanguageSettingsProvider> newProviders = sd.getLanguageSettingProviders();
 			dd.setLanguageSettingProviders(newProviders);
-			initMapProviders();
 		}
 
 		performOK();
@@ -1042,8 +1015,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			} catch (CoreException e) {
 				CUIPlugin.log("ErrorParsTab.error.OnApplyingSettings", e);
 			}
-			initMapProviders();
 		}
+		updateData(getResDesc());
 	}
 
 	@Override
@@ -1052,4 +1025,11 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			return false;
 		return super.canBeVisible();
 	}
+
+	@Override
+	protected boolean isIndexerAffected() {
+		// TODO
+		return true;
+	}
+
 }

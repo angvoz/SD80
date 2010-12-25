@@ -100,6 +100,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	protected SashForm sashFormConfigure;
 	protected Table tableProviders;
 	protected CheckboxTableViewer tableProvidersViewer;
+	protected Group groupOptionsPage;
 	protected ICOptionPage currentOptionsPage = null;
 	protected Composite compositeOptionsPage;
 	protected final Map<String, ILanguageSettingsProvider> availableProvidersMap = new LinkedHashMap<String, ILanguageSettingsProvider>();
@@ -200,7 +201,6 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		}
 
 	}
-	
 
 	/**
 	 * Shortcut for getting the current resource for the property page.
@@ -312,7 +312,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 					ICLanguageSetting langSetting = (ICLanguageSetting) items[0].getData();
 					if (langSetting != null) {
 						currentLanguageSetting = langSetting;
-						update();
+						updateTreeEntries();
 					}
 				}
 			}
@@ -348,7 +348,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 					Object item = items[0].getData();
 					if (item instanceof ICLanguageSetting) {
 						currentLanguageSetting = (ICLanguageSetting) item;
-						update();
+						updateTreeEntries();
 					}
 				}
 			}
@@ -408,12 +408,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	public void createControls(Composite parent) {
 		super.createControls(parent);
 		
+		usercomp.setLayout(new GridLayout());
+
 		isConfigureMode = page.isForPrefs();
-		
-		usercomp.setLayout(new GridLayout(2, true));
-		GridData gd = (GridData) usercomp.getLayoutData();
-		// Discourage settings entry table from trying to show all its items at once, see bug 264330
-		gd.heightHint = 1;
 
 		createShowEntriesSashForm();
 		createConfigureSashForm();
@@ -426,7 +423,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		builtInCheckBox.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				update();
+				updateTreeEntries();
 			}
 		});
 		builtInCheckBox.setSelection(true);
@@ -463,17 +460,19 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		isConfigureMode = configureMode;
 		
 		enableSashForm(sashFormEntries, !isConfigureMode);
+		treeLanguages.setVisible(!isConfigureMode);
 		treeEntries.setVisible(!isConfigureMode);
 		builtInCheckBox.setVisible(!isConfigureMode);
 
 		enableSashForm(sashFormConfigure, isConfigureMode);
+		tableProviders.setVisible(isConfigureMode);
+		
 		usercomp.layout();
 	}
 
 	private void createShowEntriesSashForm() {
 		sashFormEntries = new SashForm(usercomp,SWT.HORIZONTAL);
-		GridLayout layout = new GridLayout(2, false);
-		layout.marginHeight = 5;
+		GridLayout layout = new GridLayout();
 		sashFormEntries.setLayout(layout);
 
 		addTreeForLanguages(sashFormEntries);
@@ -487,17 +486,15 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	private void createConfigureSashForm() {
 		// SashForm for Configure
 		sashFormConfigure = new SashForm(usercomp, SWT.VERTICAL);
-		GridLayout layout = new GridLayout(2, false);
-		layout.marginHeight = 1;
+		GridLayout layout = new GridLayout();
 		sashFormConfigure.setLayout(layout);
 
-		// table
+		// Providers table
 		Composite compositeSashForm = new Composite(sashFormConfigure, SWT.BORDER | SWT.SINGLE);
 		compositeSashForm.setLayout(new GridLayout());
 		
-		// SWT.CHECK is only set for project properties
-		int checkFlag = page.isForPrefs() ? 0 : SWT.CHECK;
-		tableProviders = new Table(compositeSashForm, checkFlag | SWT.SINGLE);
+		// items checkboxes  only for project properties page
+		tableProviders = new Table(compositeSashForm, page.isForPrefs() ? SWT.NONE : SWT.CHECK);
 		tableProviders.setLayoutData(new GridData(GridData.FILL_BOTH));
 		tableProviders.addSelectionListener(new SelectionAdapter() {
 			@Override
@@ -516,10 +513,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 				tableProvidersViewer.update(e.getElement(), null);
 			}});
 
-		compositeSashForm.setBackground(tableProviders.getBackground());
+//		compositeSashForm.setBackground(tableProviders.getBackground());
 
-		compositeOptionsPage = new Composite(sashFormConfigure, SWT.CHECK | SWT.SINGLE);
-		compositeOptionsPage.setLayout(new TabFolderLayout());
+		createOptionsControl();
 
 		sashFormConfigure.setWeights(DEFAULT_CONFIGURE_SASH_WEIGHTS);
 		enableSashForm(sashFormConfigure, isConfigureMode);
@@ -527,12 +523,22 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		initMapProviders();
 	}
 
+	protected void createOptionsControl() {
+		groupOptionsPage = new Group(sashFormConfigure, SWT.SHADOW_ETCHED_IN);
+		groupOptionsPage.setText("Language Settings Provider Options");
+		groupOptionsPage.setLayout(new GridLayout(2, false));
+		
+		compositeOptionsPage = new Composite(groupOptionsPage, SWT.NONE);
+		compositeOptionsPage.setLayout(new TabFolderLayout());
+	}
+
 	private void enableSashForm(SashForm sashForm, boolean enable) {
 		sashForm.setVisible(enable);
-		GridData gdc = new GridData(enable ? GridData.FILL_BOTH : SWT.NONE);
-		gdc.horizontalSpan = 2;
-		gdc.heightHint = enable ? SWT.DEFAULT : 0;
-		sashForm.setLayoutData(gdc);
+		// Some woodoo here to fill properties page vertically and keep right border for preferences 
+		GridData gd = new GridData(enable || page.isForPrefs() ? GridData.FILL_BOTH : SWT.NONE);
+		gd.horizontalSpan = 2;
+		gd.heightHint = enable ? SWT.DEFAULT : 0;
+		sashForm.setLayoutData(gd);
 	}
 
 	private void enableControls(boolean enable) {
@@ -543,12 +549,13 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		
 		sashFormConfigure.setEnabled(enable);
 		tableProviders.setEnabled(enable);
+		compositeOptionsPage.setEnabled(enable);
 		
 		buttoncomp.setEnabled(enable);
 
 		if (enable) {
 			displaySelectedOptionPage();
-			update();
+			updateTreeEntries();
 		} else {
 			currentOptionsPage.setVisible(false);
 			disableButtons();
@@ -558,7 +565,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	/**
 	 * Populate provider tables and their option pages which are used in Configure mode
 	 */
-	private void initMapProviders() {
+	protected void initMapProviders() {
 		availableProvidersMap.clear();
 		optionsPageMap.clear();
 
@@ -576,8 +583,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		List<ILanguageSettingsProvider> cfgProviders = new ArrayList<ILanguageSettingsProvider>();
 		
 		if (!page.isForPrefs()) {
-			ICConfigurationDescription srcCfgDesc = getConfigurationDescription();
-			cfgProviders = srcCfgDesc.getLanguageSettingProviders();
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
+			cfgProviders = cfgDescription.getLanguageSettingProviders();
 			for (ILanguageSettingsProvider provider : cfgProviders) {
 				availableProvidersMap.put(provider.getId(), provider);
 			}
@@ -608,27 +615,22 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		return new DummyProviderOptionsPage();
 	}
 
-	private void initializeOptionsPage(ILanguageSettingsProvider provider) {
+	protected void initializeOptionsPage(ILanguageSettingsProvider provider) {
 		ICOptionPage optionsPage = createOptionsPage(provider);
-		if (optionsPage!=null) {
-			Group groupOptionsPage = new Group(compositeOptionsPage, SWT.SHADOW_ETCHED_IN);
-			groupOptionsPage.setText("Language Settings Provider Options");
-			groupOptionsPage.setLayout(new GridLayout());
-
-			String id = (provider!=null) ? provider.getId() : null;
-			optionsPageMap.put(id, optionsPage);
-			optionsPage.setContainer(page);
-			optionsPage.createControl(groupOptionsPage);
-			groupOptionsPage.setVisible(false);
-			optionsPage.setVisible(false);
-			compositeOptionsPage.layout(true);
+		if (optionsPage==null) {
+			optionsPage = new DummyProviderOptionsPage();
 		}
+		String id = (provider!=null) ? provider.getId() : null;
+		optionsPageMap.put(id, optionsPage);
+		optionsPage.setContainer(page);
+		optionsPage.createControl(compositeOptionsPage);
+		optionsPage.setVisible(false);
+		compositeOptionsPage.layout(true);
 	}
 
-	private void displaySelectedOptionPage() {
+	protected void displaySelectedOptionPage() {
 		if (currentOptionsPage != null) {
 			currentOptionsPage.setVisible(false);
-			currentOptionsPage.getControl().getParent().setVisible(false);
 		}
 
 		ILanguageSettingsProvider provider = getSelectedProvider();
@@ -637,7 +639,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		ICOptionPage optionsPage = optionsPageMap.get(id);
 		if (optionsPage != null) {
 			optionsPage.setVisible(true);
-			optionsPage.getControl().getParent().setVisible(true);
+			compositeOptionsPage.layout(true);
 		}
 		currentOptionsPage = optionsPage;
 	}
@@ -773,7 +775,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	protected void performConfigure(ILanguageSettingsProvider selectedProvider) {
 		setConfigureMode(!isConfigureMode);
 		updateButtons();
-		update();
+		updateTreeEntries();
 	}
 
 	protected void performDelete(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
@@ -841,7 +843,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	/**
 	 * Called when language changed or item added/edited/removed. Refreshes the whole table contents.
 	 */
-	public void update() {
+	public void updateTreeEntries() {
 		List<ILanguageSettingsProvider> tableItems = getProviders(currentLanguageSetting);
 		treeEntriesViewer.setInput(tableItems.toArray(new Object[tableItems.size()]));
 		updateStatusLine();
@@ -909,7 +911,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 				treeLanguages.setSelection(firstItem);
 			}
 		}
-		update();
+		updateTreeEntries();
 	}
 
 	@Override
@@ -929,7 +931,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			if (page.isForProject() && enableProvidersCheckBox!=null) {
 				ICConfigurationDescription cfgDescription = getConfigurationDescription();
 				cfgDescription.setLanguageSettingProviders(new ArrayList<ILanguageSettingsProvider>());
-				update();
+				updateTreeEntries();
 				enableProvidersCheckBox.setSelection(false);
 				enableControls(enableProvidersCheckBox.getSelection());
 			}

@@ -23,7 +23,6 @@ import org.eclipse.cdt.ui.dialogs.RegularExpressionStatusDialog;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.utils.ui.controls.ControlFactory;
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.Dialog;
@@ -50,16 +49,12 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Link;
-import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.fieldassist.ContentAssistCommandAdapter;
 
 import com.ibm.icu.text.MessageFormat;
@@ -70,9 +65,6 @@ import com.ibm.icu.text.MessageFormat;
  * @since 5.2
  */
 public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage {
-
-	private static final String WORKSPACE_PREFERENCE_PAGE = "org.eclipse.cdt.make.ui.preferences.BuildSettings"; //$NON-NLS-1$
-
 	private static final int BUTTON_ADD = 0;
 	private static final int BUTTON_DELETE = 1;
 	private static final int BUTTON_MOVEUP = 2;
@@ -199,34 +191,34 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		fEditable = parent.isEnabled();
 
 		final Composite composite = new Composite(parent, SWT.NONE);
-		GridLayout layout = new GridLayout();
-		layout.numColumns = 2;
-		layout.marginWidth = 1;
-		layout.marginHeight = 1;
-		layout.marginRight = 1;
-		composite.setLayout(layout);
-		composite.setLayoutData(new GridData(GridData.FILL_BOTH));
-		Dialog.applyDialogFont(composite);
-
-		if (!fEditable) {
-			parent.setEnabled(true); // so the link works
-			createLinkToPreferences(composite);
+		{
+			GridLayout layout = new GridLayout();
+			layout.numColumns = 2;
+			layout.marginWidth = 1;
+			layout.marginHeight = 1;
+			layout.marginRight = 1;
+			composite.setLayout(layout);
+			composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+			Dialog.applyDialogFont(composite);
+			
+			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+			gd.horizontalSpan = 2;
+			composite.setLayoutData(gd);
 		}
-
-
 
 
 		Group groupRun = new Group(composite, SWT.SHADOW_ETCHED_IN);
 //		groupRun.setText("Language Settings Provider Options");
 
-		GridLayout gridLayoutRun = new GridLayout(2, true);
-		gridLayoutRun.makeColumnsEqualWidth = false;
-		gridLayoutRun.marginRight = -10;
-		gridLayoutRun.marginLeft = -4;
+		GridLayout gridLayoutRun = new GridLayout();
+//		GridLayout gridLayoutRun = new GridLayout(2, true);
+//		gridLayoutRun.makeColumnsEqualWidth = false;
+//		gridLayoutRun.marginRight = -10;
+//		gridLayoutRun.marginLeft = -4;
 		groupRun.setLayout(gridLayoutRun);
-		GridData gdRun = new GridData(GridData.FILL_HORIZONTAL);
-		gdRun.horizontalSpan = 2;
-		groupRun.setLayoutData(gdRun);
+//		GridData gdRun = new GridData(GridData.FILL_HORIZONTAL);
+//		gdRun.horizontalSpan = 2;
+//		groupRun.setLayoutData(gdRun);
 
 		{
 			final Button b1 = new Button(groupRun, SWT.RADIO);
@@ -301,39 +293,39 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 
 		}
 
-		{
-			final Button button = new Button(composite, SWT.PUSH);
-			button.setFont(parent.getFont());
-			String text = fProvider.isEmpty() ? "Run Now (TODO)" : "Clear";
-			button.setText(text);
-//			button.addSelectionListener(this);
-			GridData data = new GridData();
-			data.horizontalSpan = 2;
-//			data.horizontalAlignment = GridData.BEGINNING;
-//			data.widthHint = 60;
-			button.setLayoutData(data);
-			// TODO
-			button.setEnabled(fEditable && !fProvider.isEmpty());
-
-			button.addSelectionListener(new SelectionAdapter() {
-
-				@Override
-				public void widgetSelected(SelectionEvent evt) {
-					if (fProvider.isEmpty()) {
-						// TODO
-					} else {
-						fProvider.clear();
-					}
-					// TODO
-					button.setEnabled(fEditable && !fProvider.isEmpty());
-					String text = fProvider.isEmpty() ? "Run Now (TODO)" : "Clear";
-					button.setText(text);
-					button.pack();
-				}
-
-			});
-
-		}
+//		{
+//			final Button button = new Button(composite, SWT.PUSH);
+//			button.setFont(parent.getFont());
+//			String text = fProvider.isEmpty() ? "Run Now (TODO)" : "Clear";
+//			button.setText(text);
+////			button.addSelectionListener(this);
+//			GridData data = new GridData();
+//			data.horizontalSpan = 2;
+////			data.horizontalAlignment = GridData.BEGINNING;
+////			data.widthHint = 60;
+//			button.setLayoutData(data);
+//			// TODO
+//			button.setEnabled(fEditable && !fProvider.isEmpty());
+//
+//			button.addSelectionListener(new SelectionAdapter() {
+//
+//				@Override
+//				public void widgetSelected(SelectionEvent evt) {
+//					if (fProvider.isEmpty()) {
+//						// TODO
+//					} else {
+//						fProvider.clear();
+//					}
+//					// TODO
+//					button.setEnabled(fEditable && !fProvider.isEmpty());
+//					String text = fProvider.isEmpty() ? "Run Now (TODO)" : "Clear";
+//					button.setText(text);
+//					button.pack();
+//				}
+//
+//			});
+//
+//		}
 
 //		// Compiler specs command
 //		{
@@ -386,35 +378,6 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //		}
 
 		setControl(composite);
-	}
-
-	private void createLinkToPreferences(final Composite parent) {
-		 // must not be editable as error parser gets desynchronized with ErrorParsTab
-		Assert.isTrue(!fEditable);
-
-		Link link = new Link(parent, SWT.NONE);
-		// FIXME
-		link.setText(DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Go to Discovery Tab.");
-
-		link.addListener(SWT.Selection, new Listener() {
-			public void handleEvent(Event event) {
-				// Use event.text to tell which link was used
-				PreferencesUtil.createPreferenceDialogOn(parent.getShell(), WORKSPACE_PREFERENCE_PAGE, null, null).open();
-
-//				IErrorParserNamed errorParser = ErrorParserManager.getErrorParserCopy(fErrorParser.getId());
-//				if (errorParser instanceof RegexErrorParser)
-//					fErrorParser = (RegexErrorParser) errorParser;
-//				else
-//					fErrorParser = null;
-
-				initializeTable();
-			}
-		});
-
-		GridData gridData = new GridData(SWT.FILL, SWT.BOTTOM, true, false);
-		gridData.horizontalSpan = 2;
-		gridData.widthHint = 1;
-		link.setLayoutData(gridData);
 	}
 
 	private static RegexErrorPattern newDummyPattern() {

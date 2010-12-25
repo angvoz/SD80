@@ -161,7 +161,8 @@ public class LanguageSettingsProvidersSettingsTab extends AbstractCPropertyTab {
 			public void dispose() {}
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 		});
-		fTableViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider());
+		
+		fTableViewer.setLabelProvider(new LanguageSettingEntriesProvidersTab().new LanguageSettingsContributorsLabelProvider());
 
 		fTableViewer.addCheckStateListener(new ICheckStateListener() {
 			public void checkStateChanged(CheckStateChangedEvent e) {

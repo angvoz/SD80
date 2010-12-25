@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2010 Andrew Gvozdev and others.
+ * Copyright (c) 2010, 2011 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Andrew Gvozdev - Initial API and implementation derived from AbstractLangListTab
+ *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
 
 package org.eclipse.cdt.internal.ui.newui;
@@ -34,6 +34,7 @@ import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.jface.viewers.ICheckStateListener;
 import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.ITreeContentProvider;
+import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
@@ -42,6 +43,7 @@ import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -68,6 +70,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
+import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
@@ -94,7 +97,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	protected Tree treeEntries;
 	protected TreeViewer treeEntriesViewer;
 	protected ICLanguageSetting currentLanguageSetting;
-	protected ICLanguageSetting[] allLanguages; // all languages known
+	protected ICLanguageSetting[] allLanguages;
 	
 	// Configure mode
 	protected SashForm sashFormConfigure;
@@ -133,7 +136,7 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 	};
 
 	/**
-	 * Content provider for setting entries.
+	 * Content provider for setting entries tree.
 	 */
 	private class LanguageSettingsContributorsContentProvider implements ITreeContentProvider {
 		public Object[] getElements(Object inputElement) {
@@ -178,6 +181,67 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		public void dispose() {
 		}
 
+	}
+
+	/**
+	 * Label provider for language settings entries and providers.
+	 *
+	 */
+	protected class LanguageSettingsContributorsLabelProvider extends LabelProvider {
+		protected static final String TEST_PLUGIN_ID = "org.eclipse.cdt.core.tests"; //$NON-NLS-1$
+		protected static final String OOPS = "OOPS"; //$NON-NLS-1$
+
+		/**
+		 * Returns base image key (for image without overlay).
+		 */
+		protected String getBaseKey(ILanguageSettingsProvider provider) {
+			String imageKey = null;
+			if (provider.getId().startsWith(TEST_PLUGIN_ID)) {
+				imageKey = CDTSharedImages.IMG_OBJS_CDT_TESTING;
+			} else {
+				imageKey = CDTSharedImages.IMG_OBJS_EXTENSION;
+			}
+			return imageKey;
+		}
+
+		/**
+		 * Returns keys for image overlays. Returning {@code null} is not allowed.
+		 */
+		protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
+			String[] overlayKeys = new String[5];
+			return overlayKeys;
+		}
+		
+		@Override
+		public Image getImage(Object element) {
+			if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
+				return LanguageSettingsImages.getImage(entry);
+			}
+
+			if (element instanceof ILanguageSettingsProvider) {
+				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
+				String imageKey = getBaseKey(provider);
+				String[] overlayKeys = getOverlayKeys(provider);
+				return CDTSharedImages.getImageOverlaid(imageKey, overlayKeys);
+			}
+			return null;
+		}
+
+		@Override
+		public String getText(Object element) {
+			if (element instanceof ILanguageSettingsProvider) {
+				return ((ILanguageSettingsProvider) element).getName();
+			} else if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
+				String s = entry.getName();
+				if (entry.getKind() == ICSettingEntry.MACRO) {
+					s = s + '=' + entry.getValue();
+				}
+				return s;
+			}
+			return OOPS;
+		}
 	}
 
 	/**

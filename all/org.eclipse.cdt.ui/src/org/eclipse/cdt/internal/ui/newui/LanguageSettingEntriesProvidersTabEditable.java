@@ -1,5 +1,6 @@
 package org.eclipse.cdt.internal.ui.newui;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -49,6 +50,27 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	// providerId -> provider
 	private Map<String, EditedProvider> editedProviders = new HashMap<String, EditedProvider>();
 
+	protected class LanguageSettingsContributorsLabelProviderEnhanced extends LanguageSettingsContributorsLabelProvider {
+		@Override
+		protected String getBaseKey(ILanguageSettingsProvider provider) {
+			String imageKey = null;
+			// try id-association
+			URL url = LanguageSettingsProviderAssociation.getImageUrl(provider.getId());
+			// try class-association
+			if (url==null) {
+				url = LanguageSettingsProviderAssociation.getImage(provider.getClass());
+			}
+			if (url!=null) {
+				imageKey = url.toString();
+			}
+			
+			if (imageKey==null) {
+				imageKey = super.getBaseKey(provider);
+			}
+			return imageKey;
+		}
+	}
+		
 	/**
 	 * Default provider options page.
 	 *
@@ -152,7 +174,7 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 	public void createControls(Composite parent) {
 		super.createControls(parent);
 
-		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsLabelProvider() {
+		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsLabelProviderEnhanced() {
 			@Override
 			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
 				String[] overlayKeys = new String[5];
@@ -168,6 +190,26 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
 						}
 					}
+				}
+				return overlayKeys;
+			}
+		});
+		
+		tableProvidersViewer.setLabelProvider(new LanguageSettingsContributorsLabelProviderEnhanced() {
+			@Override
+			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
+				String[] overlayKeys = new String[5];
+				if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_REFERENCE;
+//					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
+//					overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_LINK;
+				} else {
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONFIGURATION;
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_INDEXED;
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONTEXT;
+					
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_PROJECT;
 				}
 				return overlayKeys;
 			}

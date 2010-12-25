@@ -135,6 +135,9 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 		"Configure",
 	};
 
+	private List<ILanguageSettingsProvider> initialProvidersList = null;
+	private boolean initialEnablement = false;
+	
 	/**
 	 * Content provider for setting entries tree.
 	 */
@@ -454,12 +457,20 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 	}
 
+	protected void trackInitialSettings() {
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		if (cfgDescription!=null) {
+			initialProvidersList = cfgDescription.getLanguageSettingProviders();
+		}
+		initialEnablement = LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject());
+	}
+	
 	@Override
 	public void createControls(Composite parent) {
 		super.createControls(parent);
-		
 		usercomp.setLayout(new GridLayout());
 
+		trackInitialSettings();
 		isConfigureMode = page.isForPrefs();
 
 		// SashForms for each mode
@@ -1017,6 +1028,8 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 			}
 		}
 		updateData(getResDesc());
+		
+		trackInitialSettings();
 	}
 
 	@Override
@@ -1028,8 +1041,15 @@ public class LanguageSettingEntriesProvidersTab extends AbstractCPropertyTab {
 
 	@Override
 	protected boolean isIndexerAffected() {
-		// TODO
-		return true;
+		List<ILanguageSettingsProvider> newProvidersList = null;
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		if (cfgDescription!=null) {
+			newProvidersList = cfgDescription.getLanguageSettingProviders();
+		}
+		boolean newEnablement = LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject());
+		
+		boolean isEqualList = (newProvidersList==initialProvidersList) || (newProvidersList!=null && newProvidersList.equals(initialProvidersList));
+		return newEnablement!=initialEnablement || (newEnablement==true && !isEqualList);
 	}
 
 }

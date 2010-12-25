@@ -860,12 +860,6 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 
 	}
 
-	@Override
-	protected boolean isIndexerAffected() {
-		// TODO
-		return true;
-	}
-
 	/**
 	 * Shortcut for setting setting entries for current context.
 	 *
@@ -876,6 +870,12 @@ public class LanguageSettingEntriesProvidersTabEditable extends LanguageSettingE
 		String languageId = currentLanguageSetting.getLanguageId();
 		if (languageId!=null)
 			provider.setSettingEntries(cfgDescription, rc, languageId, entries);
+	}
+
+	@Override
+	protected boolean isIndexerAffected() {
+		// TODO
+		return true;
 	}
 
 }

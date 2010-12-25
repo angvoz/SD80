@@ -27,7 +27,6 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
@@ -51,7 +50,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
@@ -59,7 +57,6 @@ import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.model.util.CDTListComparator;
@@ -72,7 +69,6 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
-import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
@@ -973,25 +969,12 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 	@Override
 	protected void performDefaults() {
-		if (page.isForPrefs()) {
-			if (MessageDialog.openQuestion(usercomp.getShell(),
-					Messages.LanguageSettingsProviderTab_TitleResetProviders,
-					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
-
-				try {
-					LanguageSettingsManager_TBD.setUserDefinedProviders(null);
-				} catch (CoreException e) {
-					CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorPerformingDefaults, e);
-				}
-			}
-		} else {
-			if (page.isForProject() && enableProvidersCheckBox!=null) {
-				ICConfigurationDescription cfgDescription = getConfigurationDescription();
-				cfgDescription.setLanguageSettingProviders(new ArrayList<ILanguageSettingsProvider>());
-				updateTreeEntries();
-				enableProvidersCheckBox.setSelection(false);
-				enableControls(enableProvidersCheckBox.getSelection());
-			}
+		if (page.isForProject() && enableProvidersCheckBox!=null) {
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
+			cfgDescription.setLanguageSettingProviders(new ArrayList<ILanguageSettingsProvider>());
+			updateTreeEntries();
+			enableProvidersCheckBox.setSelection(false);
+			enableControls(enableProvidersCheckBox.getSelection());
 		}
 		updateData(getResDesc());
 	}
@@ -1013,29 +996,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		if (page.isForProject() && enableProvidersCheckBox!=null) {
 			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
 		}
-		
-		if (page.isForPrefs()) {
-			// Build Settings page
-			try {
-				ILanguageSettingsProvider[] providers = new ILanguageSettingsProvider[tableProviders.getItemCount()];
-				TableItem[] items = tableProviders.getItems();
-				for (int i=0;i<items.length;i++) {
-					providers[i] = (ILanguageSettingsProvider) items[i].getData();
-				}
 
-				Object[] checkedElements = tableProvidersViewer.getCheckedElements();
-				String[] checkedProviderIds = new String[checkedElements.length];
-				for (int i=0;i<checkedElements.length;i++) {
-					checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
-				}
-
-				LanguageSettingsManager_TBD.setUserDefinedProviders(providers);
-			} catch (CoreException e) {
-				CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorApplyingSettings, e);
-			}
-		}
 		updateData(getResDesc());
-		
 		trackInitialSettings();
 	}
 

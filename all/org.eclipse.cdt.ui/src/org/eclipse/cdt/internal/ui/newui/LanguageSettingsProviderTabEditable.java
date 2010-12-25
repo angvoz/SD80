@@ -10,6 +10,7 @@ import java.util.Map;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -22,12 +23,14 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
@@ -698,9 +701,21 @@ public class LanguageSettingsProviderTabEditable extends LanguageSettingsProvide
 					}
 				}
 			}
-			updateData(this.getResDesc());
 		}
 		
+		if (page.isForPrefs()) {
+			if (MessageDialog.openQuestion(usercomp.getShell(),
+					Messages.LanguageSettingsProviderTab_TitleResetProviders,
+					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
+
+				try {
+					LanguageSettingsManager_TBD.setUserDefinedProviders(null);
+				} catch (CoreException e) {
+					CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorPerformingDefaults, e);
+				}
+			}
+		}
+
 		super.performDefaults();
 	}
 
@@ -811,6 +826,27 @@ public class LanguageSettingsProviderTabEditable extends LanguageSettingsProvide
 				destProviders.add(pro);
 			}
 			cfgDescription.setLanguageSettingProviders(destProviders);
+		}
+		
+		if (page.isForPrefs()) {
+			// Build Settings page
+			try {
+				ILanguageSettingsProvider[] providers = new ILanguageSettingsProvider[tableProviders.getItemCount()];
+				TableItem[] items = tableProviders.getItems();
+				for (int i=0;i<items.length;i++) {
+					providers[i] = (ILanguageSettingsProvider) items[i].getData();
+				}
+
+				Object[] checkedElements = tableProvidersViewer.getCheckedElements();
+				String[] checkedProviderIds = new String[checkedElements.length];
+				for (int i=0;i<checkedElements.length;i++) {
+					checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
+				}
+
+				LanguageSettingsManager_TBD.setUserDefinedProviders(providers);
+			} catch (CoreException e) {
+				CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorApplyingSettings, e);
+			}
 		}
 		
 		super.performOK();

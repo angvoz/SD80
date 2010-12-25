@@ -741,8 +741,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		boolean isEntrySelected = entry!=null;
 		boolean isProviderSelected = !isEntrySelected && (provider!=null);
+		boolean isConfigureEnabled = enableProvidersCheckBox!=null && enableProvidersCheckBox.getSelection();
 
-		boolean canConfigure = page.isForProject(); // the button is only enabled in project properties
+		boolean canConfigure = page.isForProject() && isConfigureEnabled; // the button is only enabled in project properties
 		boolean canMoveUp = false;
 		boolean canMoveDown = false;
 		
@@ -951,18 +952,20 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	 */
 	@Override
 	public void updateData(ICResourceDescription rcDes) {
-		if (rcDes == null || !canBeVisible())
+		if (!canBeVisible())
 			return;
 
-		if (page.isMultiCfg()) {
-			setAllVisible(false, null);
-			return;
-		} else {
-			setAllVisible(true, null);
+		if (rcDes!=null) {
+			if (page.isMultiCfg()) {
+				setAllVisible(false, null);
+				return;
+			} else {
+				setAllVisible(true, null);
+			}
+			
+			updateTreeLanguages(rcDes);
+			updateTreeEntries();
 		}
-
-		updateTreeLanguages(rcDes);
-		updateTreeEntries();
 		updateTableConfigureProviders();
 		updateButtons();
 	}

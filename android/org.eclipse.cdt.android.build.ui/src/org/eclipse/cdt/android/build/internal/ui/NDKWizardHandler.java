@@ -14,7 +14,7 @@ public class NDKWizardHandler extends STDWizardHandler {
 	public IToolChain[] getSelectedToolChains() {
 		IToolChain[] tcs = ManagedBuildManager.getRealToolChains();
 		for (IToolChain tc : tcs) {
-			if (tc.getId().equals("com.android.ide.eclipse.adt.ndk.toolChain"))
+			if (tc.getId().equals("org.eclipse.cdt.android.toolChain"))
 				return new IToolChain[] { tc };
 		}
 		return super.getSelectedToolChains();

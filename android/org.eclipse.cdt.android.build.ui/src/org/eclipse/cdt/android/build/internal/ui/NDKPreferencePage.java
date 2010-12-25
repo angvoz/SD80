@@ -1,5 +1,6 @@
 package org.eclipse.cdt.android.build.internal.ui;
 
+import org.eclipse.cdt.android.build.core.NDKManager;
 import org.eclipse.jface.preference.PreferencePage;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -64,8 +65,8 @@ public class NDKPreferencePage extends PreferencePage implements IWorkbenchPrefe
 
 	@Override
 	public boolean performOk() {
-		// TODO Auto-generated method stub
-		return super.performOk();
+		NDKManager.setNDKLocation(text.getText());
+		return true;
 	}
 	
 }

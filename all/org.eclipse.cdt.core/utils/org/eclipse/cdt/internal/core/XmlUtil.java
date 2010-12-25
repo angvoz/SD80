@@ -30,10 +30,9 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
+import org.eclipse.cdt.core.resources.ResourcesUtil;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -260,7 +259,7 @@ public class XmlUtil {
 
 		fileStream.close();
 		
-		refreshWorkspaceFiles(uriLocation);
+		ResourcesUtil.refreshWorkspaceFiles(uriLocation);
 	}
 
 	private static byte[] toByteArray(Document doc) throws CoreException {
@@ -308,29 +307,6 @@ public class XmlUtil {
 		XmlUtil.prettyFormat(doc);
 		return new String(toByteArray(doc));
 	}
-	
-	/**
-	 * Refresh output file when it happens to belong to Workspace. There could
-	 * be multiple workspace {@link IFile} associated with one URI.
-	 * 
-	 * TODO: find better home for this method
-	 * TODO: replace BuildConsoleManager.refreshWorkspaceFiles(URI uri)
-	 *
-	 * @param uri - URI of the file.
-	 */
-	static void refreshWorkspaceFiles(URI uri) {
-		if (uri!=null) {
-			IFile[] files = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(uri);
-			for (IFile file : files) {
-				try {
-					file.refreshLocal(IResource.DEPTH_ZERO, null);
-				} catch (CoreException e) {
-					CCorePlugin.log(e);
-				}
-			}
-		}
-	}
-
 }
 
 

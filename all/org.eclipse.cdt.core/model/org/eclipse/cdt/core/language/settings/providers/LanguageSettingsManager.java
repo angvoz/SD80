@@ -33,9 +33,7 @@ import org.osgi.service.prefs.Preferences;
  * @since 6.0
  */
 public class LanguageSettingsManager {
-	/**
-	 * @noreference This field is temporary and not intended to be referenced by clients.
-	 */
+	/** @noreference This field is temporary and not intended to be referenced by clients. */
 	public static String USE_LANGUAGE_SETTINGS_PROVIDERS_PREFERENCE = "enabled"; //$NON-NLS-1$
 	public static boolean USE_LANGUAGE_SETTINGS_PROVIDERS_DEFAULT = true;
 

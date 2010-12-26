@@ -12,9 +12,9 @@
 package org.eclipse.cdt.managedbuilder.ui.preferences;
 
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
+import org.eclipse.cdt.managedbuilder.internal.ui.Messages;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
-import org.eclipse.cdt.managedbuilder.internal.ui.Messages;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -38,7 +38,7 @@ public class PropertyPageDefsTab extends AbstractCPropertyTab {
     private Button show_mng;
     private Button show_tool;
     private Button show_exp;
-    private Button show_providers_tab;
+    private Button show_providers_tab; // temporary checkbox for scanner discovery Providers tab
     private Button show_tipbox;
 
     private Button b_0;

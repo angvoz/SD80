@@ -16,6 +16,7 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.cdtvariables.ICdtVariable;
 import org.eclipse.cdt.core.cdtvariables.ICdtVariablesContributor;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.CConfigurationStatus;
 import org.eclipse.cdt.core.settings.model.ICBuildSetting;
 import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
@@ -535,4 +536,11 @@ public class CConfigurationDescriptionCache extends CDefaultConfigurationData
 		return status != null ? status : CConfigurationStatus.CFG_STATUS_OK;
 	}
 
+	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
+		fSpecSettings.setLanguageSettingProviders(providers);
+	}
+
+	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
+		return fSpecSettings.getLanguageSettingProviders();
+	}
 }

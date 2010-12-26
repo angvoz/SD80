@@ -16,10 +16,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.parser.IScannerInfo;
 import org.eclipse.cdt.core.parser.IScannerInfoChangeListener;
 import org.eclipse.cdt.core.parser.IScannerInfoProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsScannerInfoProvider;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 
@@ -33,6 +35,11 @@ public class ScannerInfoProviderProxy extends AbstractCExtensionProxy implements
 	}
 
 	public IScannerInfo getScannerInformation(IResource resource) {
+		if (LanguageSettingsManager.isLanguageSettingsProvidersEnabled(getProject())) {
+			LanguageSettingsScannerInfoProvider lsProvider = new LanguageSettingsScannerInfoProvider();
+			return lsProvider.getScannerInformation(resource);
+		}
+		// Legacy logic
 		providerRequested();
 		return fProvider.getScannerInformation(resource);
 	}

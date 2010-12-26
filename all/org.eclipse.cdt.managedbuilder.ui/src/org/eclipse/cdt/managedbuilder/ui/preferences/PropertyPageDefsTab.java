@@ -76,7 +76,8 @@ public class PropertyPageDefsTab extends AbstractCPropertyTab {
         show_exp.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         
         show_providers_tab = new Button(usercomp, SWT.CHECK);
-        show_providers_tab.setText(Messages.PropertyPageDefsTab_showProvidersTab);
+        show_providers_tab.setText(Messages.PropertyPageDefsTab_showProvidersTab  + ", " //$NON-NLS-1$
+        		+ org.eclipse.cdt.internal.ui.newui.Messages.CDTMainWizardPage_TrySD80);
         show_providers_tab.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         
         show_tipbox = new Button(usercomp, SWT.CHECK);

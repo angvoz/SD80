@@ -1008,7 +1008,24 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	public boolean canBeVisible() {
 		if (!CDTPrefUtil.getBool(CDTPrefUtil.KEY_SHOW_PROVIDERS))
 			return false;
-		return super.canBeVisible();
+		if (page.isForPrefs())
+			return true;
+
+		ICLanguageSetting [] langSettings = getLangSettings(getResDesc());
+		if (langSettings == null)
+			return false;
+
+		for (ICLanguageSetting langSetting : langSettings) {
+			String langId = langSetting.getLanguageId();
+			if (langId!=null && langId.length()>0) {
+				LanguageManager langManager = LanguageManager.getInstance();
+				ILanguageDescriptor langDes = langManager.getLanguageDescriptor(langId);
+				if (langDes != null)
+					return true;
+			}
+		}
+
+		return false;
 	}
 
 	@Override

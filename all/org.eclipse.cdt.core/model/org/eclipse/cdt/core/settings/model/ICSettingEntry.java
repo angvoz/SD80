@@ -49,6 +49,8 @@ public interface ICSettingEntry {
 	/**
 	 * Flag {@code UNDEFINED} indicates that the entry should not be defined.
 	 * It's main purpose to provide the means to negate entries defined elsewhere.
+	 * 
+	 * @since 6.0
 	 */
 	int UNDEFINED = 1 << 5;
 

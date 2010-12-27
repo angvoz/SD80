@@ -15,8 +15,7 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
-public abstract class ACPathEntry extends ACSettingEntry
-		implements ICPathEntry {
+public abstract class ACPathEntry extends ACSettingEntry implements ICPathEntry {
 //	IPath fFullPath;
 //	IPath fLocation;
 //	private IPath fPath;
@@ -67,6 +66,9 @@ public abstract class ACPathEntry extends ACSettingEntry
 		return null;
 	}
 	
+	/**
+	 * @since 5.3
+	 */
 	public abstract boolean isFile();
 
 	public IPath getLocation() {

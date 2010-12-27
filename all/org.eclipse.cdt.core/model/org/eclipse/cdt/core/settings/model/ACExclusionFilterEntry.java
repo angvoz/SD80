@@ -36,9 +36,9 @@ public abstract class ACExclusionFilterEntry extends ACPathEntry implements ICEx
 		this.exclusionPatterns = exclusionPatterns != null ? (IPath[])exclusionPatterns.clone() : new IPath[0];
 	}
 
+	/** @since 5.3 */
 	@Override
-	public
-	final boolean isFile() {
+	public final boolean isFile() {
 		return false;
 	}
 	

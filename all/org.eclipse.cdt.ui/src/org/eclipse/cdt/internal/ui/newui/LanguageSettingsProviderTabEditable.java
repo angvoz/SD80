@@ -231,8 +231,8 @@ public class LanguageSettingsProviderTabEditable extends LanguageSettingsProvide
 
 	private Link createLinkToPreferences(final Composite parent) {
 		Link link = new Link(parent, SWT.NONE);
-		// FIXME
-		link.setText(DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Select Discovery Tab.");
+//		// FIXME
+//		link.setText(DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Select Discovery Tab.");
 
 		link.addListener(SWT.Selection, new Listener() {
 			public void handleEvent(Event event) {
@@ -348,7 +348,11 @@ public class LanguageSettingsProviderTabEditable extends LanguageSettingsProvide
 			globalProviderCheckBox.setSelection(isGlobal);
 			globalProviderCheckBox.setEnabled(isChecked && canClone);
 			globalProviderCheckBox.setVisible(provider!=null);
-			linkWorkspacePreferences.setVisible( ! (currentOptionsPage instanceof DummyProviderOptionsPage) && isGlobal);
+			
+			boolean needPreferencesLink = ! (currentOptionsPage instanceof DummyProviderOptionsPage) && isGlobal;
+			// TODO: message
+			linkWorkspacePreferences.setText(needPreferencesLink ? DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Select Discovery Tab." : "");
+			linkWorkspacePreferences.pack();
 		}
 		currentOptionsPage.getControl().setEnabled(provider!=null && isChecked && !LanguageSettingsManager.isWorkspaceProvider(provider));
 	}

@@ -9,7 +9,7 @@
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.internal.ui.language;
+package org.eclipse.cdt.internal.ui.newui;
 
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;

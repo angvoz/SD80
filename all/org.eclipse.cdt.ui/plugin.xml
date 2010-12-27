@@ -3730,6 +3730,12 @@
 			</enablement>
 		</decorator>
 	</extension>
+	<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
+		<provider
+			id="org.eclipse.cdt.ui.user.LanguageSettingsProvider"
+			name="CDT User Setting Entries">
+		</provider>
+	</extension>
 	<extension point="org.eclipse.cdt.ui.cPropertyTab">
 		<tab
 			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab"

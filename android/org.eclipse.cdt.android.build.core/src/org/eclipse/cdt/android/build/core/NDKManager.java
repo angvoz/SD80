@@ -56,48 +56,11 @@ public class NDKManager {
 		TemplateCore template = TemplateEngine.getDefault().getTemplateById("AddNDKSupport");
 		Map<String, String> valueStore = template.getValueStore();
 		valueStore.put("projectName", project.getName());
+		valueStore.put("libraryName", libraryName);
 		template.executeTemplateProcesses(monitor, false);
 		
-		// Generate the Android.mk and initial source file
-		// TODO add this to the template
-		Map<String, String> map = new HashMap<String, String>();
-		map.put("lib", libraryName);
-
-		IFile makefile = project.getFile(new Path("jni/Android.mk"));
-		if (!makefile.exists()) {
-			URL mkURL = Activator.find(new Path("templates/Android.mk"));
-			String contents = readFile(mkURL);
-			contents = contents.replaceAll("''lib''", libraryName);
-			
-			InputStream contentsIn = new ByteArrayInputStream(contents.getBytes());
-			makefile.create(contentsIn, true, monitor);
-
-			// Copy over initial source file
-			// TODO we should allow C or C++ files
-			IFile srcFile = project.getFile(new Path("jni/" + libraryName + ".cpp"));
-			if (!srcFile.exists()) {
-				URL srcURL = Activator.find(new Path("templates/jni.cpp"));
-				InputStream srcIn = srcURL.openStream();
-
-				srcFile.create(srcIn, true, monitor);
-			}
-
-			// refresh project resources
-			project.refreshLocal(IResource.DEPTH_INFINITE, new SubProgressMonitor(monitor, 10));
-		}
+		// refresh project resources
+		project.refreshLocal(IResource.DEPTH_INFINITE, new SubProgressMonitor(monitor, 10));
 	}
 	
-	private static String readFile(URL url) throws IOException {
-		char[] chars = new char[4092];
-		InputStreamReader contentsReader = new InputStreamReader(url.openStream());
-		StringBuffer buffer = new StringBuffer();
-		while (true) {
-			int n = contentsReader.read(chars);
-			if (n == -1)
-				break;
-			buffer.append(chars, 0, n);
-		}
-		contentsReader.close();
-		return buffer.toString();
-	}
 }

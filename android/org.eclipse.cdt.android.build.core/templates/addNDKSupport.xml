@@ -20,4 +20,17 @@
 			<element value="libs"/>
 		</simple-array>
 	</process>
+	<process type="org.eclipse.cdt.android.build.core.SimpleFile">
+		<simple name="projectName" value="$(projectName)"/>
+		<complex-array name="files">
+			<element>
+				<simple name="source" value="templates/Android.mk"/>
+				<simple name="destination" value="jni/Android.mk"/>
+			</element>
+			<element>
+				<simple name="source" value="templates/jni.cpp"/>
+				<simple name="destination"	value="jni/$(libraryName).cpp"/>
+			</element>
+		</complex-array>
+	</process>
 </template>

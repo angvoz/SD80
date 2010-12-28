@@ -69,6 +69,23 @@
                name="outputFolders">
          </simpleArray>
       </processType>
+      <processType
+            name="SimpleFile"
+            processRunner="org.eclipse.cdt.android.build.internal.core.SimpleFile">
+         <simple
+               name="projectName">
+         </simple>
+         <complexArray
+               name="files">
+            <baseType>
+               <simple
+                     name="source">
+               </simple>
+               <simple
+                     name="destination">
+               </simple></baseType>
+         </complexArray>
+      </processType>
    </extension>
    <extension
          point="org.eclipse.cdt.core.templates">

@@ -54,5 +54,29 @@
             scope="project">
       </scannerInfoCollector>
    </extension>
+   <extension
+         point="org.eclipse.cdt.core.templateProcessTypes">
+      <processType
+            name="SetFolders"
+            processRunner="org.eclipse.cdt.android.build.internal.core.SetFolders">
+         <simple
+               name="projectName">
+         </simple>
+         <simpleArray
+               name="sourceFolders">
+         </simpleArray>
+         <simpleArray
+               name="outputFolders">
+         </simpleArray>
+      </processType>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.core.templates">
+      <template
+            id="org.eclipse.cdt.android.build.core.addNDKSupport"
+            location="templates/addNDKSupport.xml"
+            projectType="none">
+      </template>
+   </extension>
 
 </plugin>

@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.eclipse.cdt.android.build.internal.core;
+package org.eclipse.cdt.android.build.internal.core.templates;
 
 import java.io.IOException;
 import java.io.InputStream;

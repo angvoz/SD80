@@ -7,6 +7,7 @@ import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -37,8 +38,21 @@ public class Activator implements BundleActivator {
 		return (ref != null) ? (T)context.getService(ref) : null;
 	}
 	
+	public static Bundle getBundle(String id) {
+		for (Bundle bundle : context.getBundles()) {
+			if (bundle.getSymbolicName().equals(id)) {
+				return bundle;
+			}
+		}
+		return null;
+	}
+	
+	public static IStatus newStatus(Exception e) {
+		return new Status(IStatus.ERROR, getId(), e.getMessage(), e);
+	}
+	
 	public static void log(Exception e) {
-		getService(ILog.class).log(new Status(IStatus.ERROR, getId(), e.getMessage(), e));
+		getService(ILog.class).log(newStatus(e));
 	}
 
 	public static URL find(IPath path) {

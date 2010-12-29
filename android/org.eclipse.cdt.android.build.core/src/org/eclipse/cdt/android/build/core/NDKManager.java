@@ -1,22 +1,15 @@
 package org.eclipse.cdt.android.build.core;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.cdt.android.build.internal.core.Activator;
 import org.eclipse.cdt.core.templateengine.TemplateCore;
 import org.eclipse.cdt.core.templateengine.TemplateEngine;
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -51,7 +44,6 @@ public class NDKManager {
 	
 	public static void addNativeSupport(final IProject project, final String libraryName, IProgressMonitor monitor) 
 			throws CoreException, IOException {
-
 		// Launch our template to set up the project contents
 		TemplateCore template = TemplateEngine.getDefault().getTemplateById("AddNDKSupport");
 		Map<String, String> valueStore = template.getValueStore();

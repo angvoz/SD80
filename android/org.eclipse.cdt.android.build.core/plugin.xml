@@ -50,7 +50,7 @@
          name="Android Per Project Profile"
          point="org.eclipse.cdt.make.core.ScannerConfigurationDiscoveryProfile">
       <scannerInfoCollector
-            class="org.eclipse.cdt.android.build.internal.core.NDKScannerInfoCollector"
+            class="org.eclipse.cdt.android.build.internal.core.discovery.NDKScannerInfoCollector"
             scope="project">
       </scannerInfoCollector>
    </extension>
@@ -58,7 +58,7 @@
          point="org.eclipse.cdt.core.templateProcessTypes">
       <processType
             name="SetFolders"
-            processRunner="org.eclipse.cdt.android.build.internal.core.SetFolders">
+            processRunner="org.eclipse.cdt.android.build.internal.core.templates.SetFolders">
          <simple
                name="projectName">
          </simple>
@@ -71,7 +71,7 @@
       </processType>
       <processType
             name="SimpleFile"
-            processRunner="org.eclipse.cdt.android.build.internal.core.SimpleFile">
+            processRunner="org.eclipse.cdt.android.build.internal.core.templates.SimpleFile">
          <simple
                name="projectName">
          </simple>

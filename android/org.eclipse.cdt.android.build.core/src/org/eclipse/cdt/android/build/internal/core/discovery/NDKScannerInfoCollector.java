@@ -1,11 +1,8 @@
-package org.eclipse.cdt.android.build.internal.core;
-import java.util.ArrayList;
-import java.util.HashMap;
+package org.eclipse.cdt.android.build.internal.core.discovery;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager.IDiscoveredPathInfo;
-import org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager.IDiscoveredScannerInfoSerializable;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoCollector3;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoCollectorCleaner;
 import org.eclipse.cdt.make.core.scannerconfig.InfoContext;
@@ -14,10 +11,7 @@ import org.eclipse.cdt.managedbuilder.scannerconfig.IManagedScannerInfoCollector
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.Path;
-import org.w3c.dom.Element;
 
 
 public class NDKScannerInfoCollector implements IScannerInfoCollector3, IScannerInfoCollectorCleaner, IManagedScannerInfoCollector {
@@ -41,10 +35,7 @@ public class NDKScannerInfoCollector implements IScannerInfoCollector3, IScanner
 
 	@Override
 	public void updateScannerConfiguration(IProgressMonitor monitor) throws CoreException {
-		// The general strategy is to create the discovered path info only if
-		// the Android.mk file is newer than the last time we looked
-		// To update run ndk-build -nvh (or something) to fake the build and extract the commands
-		// Then run them through a specs parser thing
+		pathInfo.update(monitor);
 	}
 
 	@Override

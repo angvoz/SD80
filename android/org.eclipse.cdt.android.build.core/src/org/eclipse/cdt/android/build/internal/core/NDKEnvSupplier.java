@@ -1,6 +1,9 @@
 package org.eclipse.cdt.android.build.internal.core;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -9,6 +12,8 @@ import org.eclipse.cdt.managedbuilder.core.IConfiguration;
 import org.eclipse.cdt.managedbuilder.envvar.IBuildEnvironmentVariable;
 import org.eclipse.cdt.managedbuilder.envvar.IConfigurationEnvironmentVariableSupplier;
 import org.eclipse.cdt.managedbuilder.envvar.IEnvironmentVariableProvider;
+import org.eclipse.core.runtime.FileLocator;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 
 public class NDKEnvSupplier implements IConfigurationEnvironmentVariableSupplier {
@@ -51,12 +56,27 @@ public class NDKEnvSupplier implements IConfigurationEnvironmentVariableSupplier
 	}
 	
 	private String findShellPath() {
-		// Add in the shell environment
-		File bin = new File("C:\\cygwin\\binx");
-		if (bin.isDirectory())
-			return bin.getAbsolutePath();
+		// I'm giving MSYS precedence over Cygwin
+		File bin = new File("C:\\MinGW\\msys\\1.0\\bin");
+		if (bin.isDirectory()) {
+			// for now, need location of cygpath added to the path
+			String path = bin.getAbsolutePath();
+			try {
+				URL url = Activator.find(new Path("cygpath"));
+				if (url != null) {
+					File cygpathFile = new File(FileLocator.toFileURL(url).toURI());
+					path += ";" + cygpathFile.getParentFile().getAbsolutePath();
+				}
+			} catch (IOException e) {
+				Activator.log(e);
+			} catch (URISyntaxException e) {
+				Activator.log(e);
+			}
+			return path;
+		}
 		
-		bin = new File("C:\\MinGW\\msys\\1.0\\bin");
+		// Add in the shell environment
+		bin = new File("C:\\cygwin\\bin");
 		if (bin.isDirectory())
 			return bin.getAbsolutePath();
 		

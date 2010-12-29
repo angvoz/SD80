@@ -1,4 +1,4 @@
-package org.eclipse.cdt.android.build.internal.core;
+package org.eclipse.cdt.android.build.internal.core.templates;
 
 import java.util.ArrayList;
 import java.util.List;

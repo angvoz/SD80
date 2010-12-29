@@ -1,10 +1,11 @@
-package org.eclipse.cdt.android.build.internal.core;
+package org.eclipse.cdt.android.build.internal.core.templates;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.cdt.android.build.internal.core.Activator;
 import org.eclipse.cdt.core.templateengine.TemplateCore;
 import org.eclipse.cdt.core.templateengine.process.ProcessArgument;
 import org.eclipse.cdt.core.templateengine.process.ProcessFailureException;
@@ -60,17 +61,8 @@ public class SimpleFile extends ProcessRunner {
 			throw new ProcessFailureException("project does not exist");
 		
 		// Find bundle to find source files
-		String pluginId = template.getTemplateInfo().getPluginId();
-		Bundle[] bundles = Activator.getContext().getBundles();
-		Bundle templateBundle = null;
-		for (Bundle bundle : bundles) {
-			if (bundle.getSymbolicName().equals(pluginId)) {
-				templateBundle = bundle;
-				break;
-			}
-		}
-		
-		if (templateBundle == null)
+		Bundle bundle = Activator.getBundle(template.getTemplateInfo().getPluginId());
+		if (bundle == null)
 			throw new ProcessFailureException("bundle not found");
 		
 		try {
@@ -80,7 +72,7 @@ public class SimpleFile extends ProcessRunner {
 					// don't overwrite files if they exist already
 					continue;
 				
-				URL sourceURL = FileLocator.find(templateBundle, new Path(op.source), null);
+				URL sourceURL = FileLocator.find(bundle, new Path(op.source), null);
 				if (sourceURL == null)
 					throw new ProcessFailureException("could not find source file: " + op.source);
 				

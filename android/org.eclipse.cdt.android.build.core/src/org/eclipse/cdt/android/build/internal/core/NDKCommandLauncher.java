@@ -14,14 +14,12 @@ public class NDKCommandLauncher extends CommandLauncher {
 			IPath changeToDirectory, IProgressMonitor monitor)
 			throws CoreException {
 		if (Platform.getOS().equals(Platform.OS_WIN32) && commandPath.toString().equals("ndk-build")) {
-			commandPath = new Path("sh");
-			String[] newArgs = new String[2];
-			newArgs[0] = "-c";
-			String command = "ndk-build";
+			String command = commandPath.toString();
 			for (String arg : args)
+				// TODO check for spaces in args
 				command += " " + arg;
-			newArgs[1] = command;
-			args = newArgs;
+			commandPath = new Path("sh");
+			args = new String[] { "-c", command };
 		}
 		return super.execute(commandPath, args, env, changeToDirectory, monitor);
 	}

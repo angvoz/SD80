@@ -13,7 +13,7 @@ public class NDKCommandLauncher extends CommandLauncher {
 	public Process execute(IPath commandPath, String[] args, String[] env,
 			IPath changeToDirectory, IProgressMonitor monitor)
 			throws CoreException {
-		if (Platform.getOS().equals(Platform.OS_WIN32) && commandPath.toString().equals("ndk-build")) {
+		if (Platform.getOS().equals(Platform.OS_WIN32)) {
 			String command = commandPath.toString();
 			for (String arg : args)
 				// TODO check for spaces in args

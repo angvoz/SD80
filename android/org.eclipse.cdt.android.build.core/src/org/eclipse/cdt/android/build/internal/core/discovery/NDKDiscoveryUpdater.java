@@ -59,6 +59,9 @@ public class NDKDiscoveryUpdater {
 				line = reader.readLine();
 			}
 			
+			if (command == null)
+				return;
+			
 			// Run the unique commands with special gcc options to extract the symbols and paths
 			// -E -P -v -dD
 			arguments.add("-E");

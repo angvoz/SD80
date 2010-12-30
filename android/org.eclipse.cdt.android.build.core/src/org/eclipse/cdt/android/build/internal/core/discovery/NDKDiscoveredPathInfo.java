@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager.IDiscoveredPathInfo;
 import org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager.IDiscoveredScannerInfoSerializable;
 import org.eclipse.core.resources.IFile;
@@ -19,6 +21,7 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 	private long lastUpdate = IFile.NULL_STAMP;
 	private IPath[] includePaths;
 	private Map<String, String> symbols;
+	boolean needReindexing = false;
 	
 	public NDKDiscoveredPathInfo(IProject project) {
 		this.project = project;
@@ -31,6 +34,13 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 
 	@Override
 	public IPath[] getIncludePaths() {
+		if (needReindexing) {
+			// Call for a reindex
+			// TODO this is probably a bug. a new include path should trigger reindexing anyway, no?
+			// BTW, can't do this in the update since the indexer runs before this gets called
+			CCorePlugin.getIndexManager().reindex(CoreModel.getDefault().create(project));
+			needReindexing = false;
+		}
 		return includePaths;
 	}
 
@@ -39,6 +49,7 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 		int i = 0;
 		for (String path : pathStrings)
 			includePaths[i++] = new Path(path);
+		needReindexing = true;
 	}
 	
 	@Override
@@ -58,15 +69,17 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 	}
 
 	public void update(IProgressMonitor monitor) throws CoreException {
-		if (!needsUpdating())
+		if (!needUpdating())
 			return;
 		
+		long startTime = System.currentTimeMillis();
 		new NDKDiscoveryUpdater(this).runUpdate(monitor);
+		System.out.println("NDK Discovery update: " + (System.currentTimeMillis() - startTime) + " ms.");
 		
 		recordUpdate();
 	}
 
-	private boolean needsUpdating() {
+	private boolean needUpdating() {
 		if (lastUpdate == IFile.NULL_STAMP)
 			return true;
 		return project.getFile(new Path("jni/Android.mk")).getLocalTimeStamp() > lastUpdate;

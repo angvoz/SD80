@@ -55,7 +55,7 @@ public class NDKDiscoveryUpdater {
 			BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
 			String line = reader.readLine();
 			while (line != null) {
-				checkLine(line);
+				checkBuildLine(line);
 				line = reader.readLine();
 			}
 			
@@ -74,27 +74,15 @@ public class NDKDiscoveryUpdater {
 			args = arguments.toArray(new String[arguments.size()]);
 			proc = new NDKCommandLauncher().execute(new Path(command), args, env, changeToDirectory, monitor);
 			// Error stream has the includes
-			// Input stream has the defines
 			final InputStream errStream = proc.getErrorStream();
 			new Thread() {
 				public void run() {
-					try {
-						BufferedReader reader = new BufferedReader(new InputStreamReader(errStream));
-						String line = reader.readLine();
-						while (line != null) {
-							System.out.println(line);
-							line = reader.readLine();
-						}
-					} catch (IOException e) { }
+					checkIncludes(errStream);
 				};
 			}.start();
-			reader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-			line = reader.readLine();
-			while (line != null) {
-				System.out.println(line);
-				line = reader.readLine();
-			}
 			
+			// Input stream has the defines
+			checkDefines(proc.getInputStream());
 		} catch (IOException e) {
 			throw new CoreException(Activator.newStatus(e));
 		} catch (URISyntaxException e) {
@@ -128,30 +116,17 @@ public class NDKDiscoveryUpdater {
 		return strings.toArray(new String[strings.size()]);
 	}
 
-	private void checkLine(String text) {
-		Line line = new Line(text);
-		String cmd = line.getToken();
-		if (cmd == null) {
-			return;
-		} else if (cmd.endsWith("g++")) {
-			if (command == null || !cplusplus) {
-				command = cmd;
-				cplusplus = true;
-			}
-			gatherOptions(line);
-		} else if (cmd.endsWith("gcc")) {
-			if (command == null)
-				command = cmd;
-			gatherOptions(line);
-		}
-	}
-	
 	private static class Line {
 		private final String line;
 		private int pos;
 		
 		public Line(String line) {
 			this.line = line;
+		}
+		
+		public Line(String line, int pos) {
+			this(line);
+			this.pos = pos;
 		}
 
 		public String getToken() {
@@ -177,11 +152,20 @@ public class NDKDiscoveryUpdater {
 
 		}
 		
-		private void skipWhiteSpace() {
+		private String getRemaining() {
 			if (pos == line.length())
-				return;
+				return null;
 			
+			skipWhiteSpace();
+			String rc = line.substring(pos);
+			pos = line.length();
+			return rc;
+		}
+		
+		private void skipWhiteSpace() {
 			while (true) {
+				if (pos == line.length())
+					return;
 				char c = line.charAt(pos);
 				if (c == ' ')
 					pos++;
@@ -191,9 +175,22 @@ public class NDKDiscoveryUpdater {
 		}
 	}
 	
-	private void addArg(String arg) {
-		if (!arguments.contains(arg))
-			arguments.add(arg);
+	private void checkBuildLine(String text) {
+		Line line = new Line(text);
+		String cmd = line.getToken();
+		if (cmd == null) {
+			return;
+		} else if (cmd.endsWith("g++")) {
+			if (command == null || !cplusplus) {
+				command = cmd;
+				cplusplus = true;
+			}
+			gatherOptions(line);
+		} else if (cmd.endsWith("gcc")) {
+			if (command == null)
+				command = cmd;
+			gatherOptions(line);
+		}
 	}
 	
 	private void gatherOptions(Line line) {
@@ -221,6 +218,63 @@ public class NDKDiscoveryUpdater {
 				}
 			}
 		}
+	}
+	
+	private void addArg(String arg) {
+		if (!arguments.contains(arg))
+			arguments.add(arg);
+	}
+	
+	private void checkIncludes(InputStream in) {
+		try {
+			List<String> includes = new ArrayList<String>();
+			boolean inIncludes1 = false;
+			boolean inIncludes2 = false;
+			BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+			String line = reader.readLine();
+			while (line != null) {
+				if (!inIncludes1) {
+					if (line.equals("#include \"...\" search starts here:"))
+						inIncludes1 = true;
+				} else {
+					if (!inIncludes2) {
+						if (line.equals("#include <...> search starts here:"))
+							inIncludes2 = true;
+						else
+							includes.add(line.trim());
+					} else {
+						if (line.equals("End of search list.")) {
+							pathInfo.setIncludePaths(includes);
+						} else {
+							includes.add(line.trim());
+						}
+					}
+				} 
+				line = reader.readLine();
+			}
+		} catch (IOException e) { }
+	}
+	
+	private void checkDefines(InputStream in) {
+		try {
+			Map<String, String> defines = new HashMap<String, String>();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+			String line = reader.readLine();
+			while (line != null) {
+				if (line.startsWith("#define")) {
+					Line l = new Line(line, 7);
+					String var = l.getToken();
+					if (var == null)
+						continue;
+					String value = l.getRemaining();
+					if (value == null)
+						value = "";
+					defines.put(var, value);
+				}
+				line = reader.readLine();
+			}
+			pathInfo.setSymbols(defines);
+		} catch (IOException e) { }
 	}
 	
 }

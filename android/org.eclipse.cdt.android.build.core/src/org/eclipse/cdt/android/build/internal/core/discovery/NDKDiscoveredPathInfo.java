@@ -1,6 +1,7 @@
 package org.eclipse.cdt.android.build.internal.core.discovery;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager.IDiscoveredPathInfo;
@@ -16,6 +17,8 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 
 	private final IProject project;
 	private long lastUpdate = IFile.NULL_STAMP;
+	private IPath[] includePaths;
+	private Map<String, String> symbols;
 	
 	public NDKDiscoveredPathInfo(IProject project) {
 		this.project = project;
@@ -28,14 +31,27 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 
 	@Override
 	public IPath[] getIncludePaths() {
-		return new IPath[] { new Path("C:\\Android") };
+		return includePaths;
 	}
 
+	void setIncludePaths(List<String> pathStrings) {
+		includePaths = new IPath[pathStrings.size()];
+		int i = 0;
+		for (String path : pathStrings)
+			includePaths[i++] = new Path(path);
+	}
+	
 	@Override
 	public Map<String, String> getSymbols() {
-		return new HashMap<String, String>();
+		if (symbols == null)
+			symbols = new HashMap<String, String>();
+		return symbols;
 	}
 
+	void setSymbols(Map<String, String> symbols) {
+		this.symbols = symbols;
+	}
+	
 	@Override
 	public IDiscoveredScannerInfoSerializable getSerializable() {
 		return null;

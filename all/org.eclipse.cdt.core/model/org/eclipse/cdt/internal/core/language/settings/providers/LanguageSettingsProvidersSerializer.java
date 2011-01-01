@@ -187,7 +187,7 @@ public class LanguageSettingsProvidersSerializer {
 		Document doc = null;
 		try {
 			synchronized (serializingLock) {
-				doc = XmlUtil.loadXML(uriLocation);
+				doc = XmlUtil.loadXml(uriLocation);
 			}
 		} catch (Exception e) {
 			CCorePlugin.log("Can't load preferences from file "+uriLocation, e); //$NON-NLS-1$
@@ -366,7 +366,7 @@ public class LanguageSettingsProvidersSerializer {
 			Document doc = null;
 			try {
 				synchronized (serializingLock) {
-					doc = XmlUtil.loadXML(file);
+					doc = XmlUtil.loadXml(file);
 				}
 				Element rootElement = doc.getDocumentElement(); // <project/>
 				loadLanguageSettings(rootElement, prjDescription);

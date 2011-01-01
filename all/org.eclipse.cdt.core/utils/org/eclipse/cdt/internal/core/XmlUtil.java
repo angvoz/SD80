@@ -196,7 +196,7 @@ public class XmlUtil {
 
 	}
 	
-	private static Document loadXML(InputStream xmlStream) throws CoreException {
+	private static Document loadXml(InputStream xmlStream) throws CoreException {
 		try {
 			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 			return builder.parse(xmlStream);
@@ -206,7 +206,7 @@ public class XmlUtil {
 		}
 	}
 
-	public static Document loadXML(URI uriLocation) throws CoreException {
+	public static Document loadXml(URI uriLocation) throws CoreException {
 		java.io.File xmlFile = new java.io.File(uriLocation);
 		if (!xmlFile.exists()) {
 			return null;
@@ -219,12 +219,12 @@ public class XmlUtil {
 			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to load language settings"), e);
 			throw new CoreException(s);
 		}
-		return loadXML(xmlStream);
+		return loadXml(xmlStream);
 	}
 	
-	public static Document loadXML(IFile xmlFile) throws CoreException {
+	public static Document loadXml(IFile xmlFile) throws CoreException {
 		InputStream xmlStream = xmlFile.getContents();
-		return loadXML(xmlStream);
+		return loadXml(xmlStream);
 	}
 
 	/**

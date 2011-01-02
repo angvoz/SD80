@@ -86,6 +86,10 @@
                </simple></baseType>
          </complexArray>
       </processType>
+      <processType
+            name="AddAndroidBuilders"
+            processRunner="org.eclipse.cdt.android.build.internal.core.templates.AddAndroidBuilders">
+      </processType>
    </extension>
    <extension
          point="org.eclipse.cdt.core.templates">

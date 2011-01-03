@@ -6,7 +6,10 @@ import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
@@ -57,6 +60,10 @@ public class Activator implements BundleActivator {
 
 	public static URL find(IPath path) {
 		return FileLocator.find(context.getBundle(), path, null);
+	}
+
+	public static IEclipsePreferences getPreferences() {
+		return new InstanceScope().getNode(getId());
 	}
 	
 }

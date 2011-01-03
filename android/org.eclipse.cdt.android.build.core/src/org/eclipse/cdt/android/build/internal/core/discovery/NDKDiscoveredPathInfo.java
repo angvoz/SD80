@@ -3,7 +3,9 @@ package org.eclipse.cdt.android.build.internal.core.discovery;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
+import org.eclipse.cdt.android.build.internal.core.Activator;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.make.core.scannerconfig.IDiscoveredPathManager.IDiscoveredPathInfo;
@@ -14,6 +16,9 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.osgi.service.prefs.BackingStoreException;
+import org.osgi.service.prefs.Preferences;
 
 public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 
@@ -22,6 +27,9 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 	private IPath[] includePaths;
 	private Map<String, String> symbols;
 	boolean needReindexing = false;
+	
+	// Keys for preferences
+	public static final String LAST_UPDATE = "lastUpdate";
 	
 	public NDKDiscoveredPathInfo(IProject project) {
 		this.project = project;
@@ -76,7 +84,10 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 		new NDKDiscoveryUpdater(this).runUpdate(monitor);
 		System.out.println("NDK Discovery update: " + (System.currentTimeMillis() - startTime) + " ms.");
 		
-		recordUpdate();
+		if (includePaths != null && symbols != null) {
+			recordUpdate();
+//			save();
+		}
 	}
 
 	private boolean needUpdating() {
@@ -93,4 +104,29 @@ public class NDKDiscoveredPathInfo implements IDiscoveredPathInfo {
 		lastUpdate = IFile.NULL_STAMP;
 	}
 	
+	private void save() {
+		try {
+			IEclipsePreferences prefs = Activator.getPreferences();
+			Preferences discPrefs = prefs.node("discovery/" + project.getName());
+			discPrefs.putLong(LAST_UPDATE, lastUpdate);
+			
+			Preferences includesPrefs = discPrefs.node("includes");
+			Preferences definesPrefs = discPrefs.node("defines");
+		
+			includesPrefs.clear();
+			definesPrefs.clear();
+		
+			for (IPath include : includePaths)
+				includesPrefs.put(include.toPortableString(), "1");
+			
+			for (Entry<String, String> symbol : symbols.entrySet()) {
+				definesPrefs.put(symbol.getKey(), symbol.getValue());
+			}
+			
+			prefs.flush();
+		} catch (BackingStoreException e) {
+			Activator.log(e);
+		}
+		
+	}
 }

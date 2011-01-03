@@ -69,7 +69,7 @@ public class NDKDiscoveryUpdater {
 			arguments.add("-v");
 			arguments.add("-dD");
 			
-			URL url = Activator.find(new Path("discovery/" + (cplusplus ? "test.cpp" : "test.c")));
+			URL url = Activator.findFile(new Path("discovery/" + (cplusplus ? "test.cpp" : "test.c")));
 			File testFile = new File(FileLocator.toFileURL(url).toURI());
 			String testFileName = testFile.getAbsolutePath().replace('\\', '/');
 			arguments.add(testFileName);

@@ -62,7 +62,7 @@ public class NDKEnvSupplier implements IConfigurationEnvironmentVariableSupplier
 			// for now, need location of cygpath added to the path
 			String path = bin.getAbsolutePath();
 			try {
-				URL url = Activator.find(new Path("msys"));
+				URL url = Activator.findFile(new Path("msys"));
 				if (url != null) {
 					File cygpathFile = new File(FileLocator.toFileURL(url).toURI());
 					path += ";" + cygpathFile.getAbsolutePath();

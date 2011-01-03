@@ -1,5 +1,10 @@
 package org.eclipse.cdt.android.build.internal.ui;
 
+import java.lang.reflect.InvocationTargetException;
+
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
@@ -34,4 +39,25 @@ public class Activator extends AbstractUIPlugin {
 		return plugin;
 	}
 
+	public static IStatus newStatus(Exception e) {
+		return new Status(IStatus.ERROR, PLUGIN_ID, e.getMessage(), e);
+	}
+
+	public static void log(Exception e) {
+		if (e instanceof CoreException)
+			plugin.getLog().log(((CoreException)e).getStatus());
+		else if (e instanceof InvocationTargetException) {
+			Throwable e2 = ((InvocationTargetException)e).getTargetException();
+			if (e2 instanceof CoreException)
+				plugin.getLog().log(((CoreException)e).getStatus());
+			else
+				plugin.getLog().log(newStatus(e));
+		} else
+			plugin.getLog().log(newStatus(e));
+	}
+
+	public static void log(IStatus status) {
+		plugin.getLog().log(status);
+	}
+	
 }

@@ -34,7 +34,7 @@
                class="org.eclipse.cdt.android.build.internal.ui.AddNativeAction"
                enablesFor="1"
                id="org.eclipse.cdt.android.action1"
-               label="Add NDK Support"
+               label="Add Native Support..."
                menubarPath="com.android.ide.eclipse.adt.AndroidTools/ndk">
          </action>
       </objectContribution>

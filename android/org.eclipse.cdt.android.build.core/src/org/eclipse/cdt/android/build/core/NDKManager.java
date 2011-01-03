@@ -1,6 +1,5 @@
 package org.eclipse.cdt.android.build.core;
 
-import java.io.IOException;
 import java.util.Map;
 
 import org.eclipse.cdt.android.build.internal.core.Activator;
@@ -20,6 +19,8 @@ public class NDKManager {
 	private static final String NDK_LOCATION = "ndkLocation";
 	private static final String EMPTY = "";
 	private static String ndkLocation;
+	
+	public static final String LIBRARY_NAME = "libraryName";
 	
 	private static IEclipsePreferences getPrefs() {
 		return new InstanceScope().getNode(Activator.getId());
@@ -42,13 +43,13 @@ public class NDKManager {
 		}
 	}
 	
-	public static void addNativeSupport(final IProject project, final String libraryName, IProgressMonitor monitor) 
-			throws CoreException, IOException {
+	public static void addNativeSupport(final IProject project, Map<String, String> templateArgs, IProgressMonitor monitor) 
+			throws CoreException {
 		// Launch our template to set up the project contents
 		TemplateCore template = TemplateEngine.getDefault().getTemplateById("AddNDKSupport");
 		Map<String, String> valueStore = template.getValueStore();
 		valueStore.put("projectName", project.getName());
-		valueStore.put("libraryName", libraryName);
+		valueStore.putAll(templateArgs);
 		template.executeTemplateProcesses(monitor, false);
 		
 		// refresh project resources

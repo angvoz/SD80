@@ -24,11 +24,11 @@
 		<simple name="projectName" value="$(projectName)"/>
 		<complex-array name="files">
 			<element>
-				<simple name="source" value="templates/Android.mk"/>
+				<simple name="source" value="templates/resources/Android.mk"/>
 				<simple name="destination" value="jni/Android.mk"/>
 			</element>
 			<element>
-				<simple name="source" value="templates/jni.cpp"/>
+				<simple name="source" value="templates/resources/main.cpp"/>
 				<simple name="destination"	value="jni/$(libraryName).cpp"/>
 			</element>
 		</complex-array>

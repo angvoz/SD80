@@ -10,7 +10,9 @@ import org.eclipse.cdt.core.templateengine.TemplateCore;
 import org.eclipse.cdt.core.templateengine.process.ProcessArgument;
 import org.eclipse.cdt.core.templateengine.process.ProcessFailureException;
 import org.eclipse.cdt.core.templateengine.process.ProcessRunner;
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -71,7 +73,10 @@ public class SimpleFile extends ProcessRunner {
 				if (destFile.exists())
 					// don't overwrite files if they exist already
 					continue;
-				
+
+				// Make sure parent folders are created
+				mkDirs(project, destFile.getParent(), monitor);
+
 				URL sourceURL = FileLocator.find(bundle, new Path(op.source), null);
 				if (sourceURL == null)
 					throw new ProcessFailureException("could not find source file: " + op.source);
@@ -86,6 +91,13 @@ public class SimpleFile extends ProcessRunner {
 			throw new ProcessFailureException(e);
 		}
 
+	}
+
+	private void mkDirs(IProject project, IContainer container, IProgressMonitor monitor) throws CoreException {
+		if (container.exists())
+			return;
+		mkDirs(project, container.getParent(), monitor);
+		((IFolder)container).create(true, true, monitor);
 	}
 
 }

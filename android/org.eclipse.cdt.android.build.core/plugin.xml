@@ -8,45 +8,45 @@
       </managedBuildRevision>
       <toolChain
             configurationEnvironmentSupplier="org.eclipse.cdt.android.build.internal.core.NDKEnvSupplier"
-            id="org.eclipse.cdt.android.toolChain"
+            id="com.android.toolchain.gcc"
             isAbstract="false"
             name="Android GCC">
          <targetPlatform
                binaryParser="org.eclipse.cdt.core.ELF"
-               id="org.eclipse.cdt.android.targetPlatform"
+               id="com.android.targetPlatform"
                isAbstract="false">
          </targetPlatform>
          <builder
                cleanBuildTarget="clean"
                command="ndk-build"
                commandLauncher="org.eclipse.cdt.android.build.internal.core.NDKCommandLauncher"
-               id="org.eclipse.cdt.android.builder"
+               id="com.android.builder"
                isAbstract="false"
                isVariableCaseSensitive="false"
                name="Android Builder">
          </builder>
          <tool
-               id="org.eclipse.cdt.android.gcc.compiler"
+               id="com.android.gcc.compiler"
                isAbstract="false"
                name="Android GCC Compiler"
                natureFilter="both">
             <option
                   browseType="directory"
-                  id="org.eclipse.cdt.android.gcc.option.includePath"
+                  id="com.android.gcc.option.includePath"
                   isAbstract="false"
                   resourceFilter="all"
                   valueType="includePath">
             </option>
             <inputType
-                  id="org.eclipse.cdt.android.gcc.inputType"
-                  scannerConfigDiscoveryProfileId="org.eclipse.cdt.android.build.core.AndroidPerProjectProfile"
+                  id="com.android.gcc.inputType"
+                  scannerConfigDiscoveryProfileId="com.android.AndroidPerProjectProfile"
                   sources="c,cpp">
             </inputType>
          </tool>
       </toolChain>
    </extension>
    <extension
-         id="AndroidPerProjectProfile"
+         id="com.android.AndroidPerProjectProfile"
          name="Android Per Project Profile"
          point="org.eclipse.cdt.make.core.ScannerConfigurationDiscoveryProfile">
       <scannerInfoCollector
@@ -85,10 +85,6 @@
                      name="destination">
                </simple></baseType>
          </complexArray>
-      </processType>
-      <processType
-            name="AddAndroidBuilders"
-            processRunner="org.eclipse.cdt.android.build.internal.core.templates.AddAndroidBuilders">
       </processType>
    </extension>
    <extension

@@ -46,14 +46,14 @@ public class RegisterView extends BaseLaunchTest {
 	}
 
 	private void testRegisterWrites(final Registers regService, final IRegisterDMContext[] regDMCs)
-			throws InterruptedException {
+			throws Exception {
 		TestUtils.wait(new Condition() {
-			public boolean isConditionValid() {
+			public boolean isConditionValid()throws Exception {
 				for (IRegisterDMContext regContext : regDMCs) {
 					final RegisterDMC regDMC = (RegisterDMC) regContext;
 					regService.writeRegister(regDMC, "0000000d", "NATURAL.Format",
 							new DataRequestMonitor<IBitFieldDMData>(regService.getExecutor(), null));
-					String regValue = regService.getRegisterValue(regDMC);
+					String regValue = regService.getRegisterValueAsHexString(regDMC);
 					if (!regValue.toLowerCase().equals("0000000d"))
 						return false;
 				}
@@ -64,7 +64,7 @@ public class RegisterView extends BaseLaunchTest {
 	}
 
 	private IRegisterDMContext[] waitForRegisterDMCs(final ExecutionDMC executionDMC,
-			final IRegisterGroupDMContext regGroupDMC, final Registers regService) throws InterruptedException {
+			final IRegisterGroupDMContext regGroupDMC, final Registers regService) throws Exception {
 		final IRegisterDMContext contextsHolder[][] = { null };
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
@@ -86,7 +86,7 @@ public class RegisterView extends BaseLaunchTest {
 	}
 
 	private IRegisterGroupDMContext waitForRegisterGroup(final ThreadExecutionDMC threadExeDMC,
-			final Registers regService) throws InterruptedException {
+			final Registers regService) throws Exception {
 		final IRegisterGroupDMContext contextHolder[] = { null };
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
@@ -103,7 +103,7 @@ public class RegisterView extends BaseLaunchTest {
 	}
 
 	private ThreadExecutionDMC waitForThreadExeDMC(final DsfSession session, final ExecutionDMC executionDMC)
-			throws InterruptedException {
+			throws Exception {
 		final ThreadExecutionDMC contextHolder[] = { null };
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {

@@ -49,8 +49,10 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
@@ -77,14 +79,14 @@ public class TestUtils {
 
 	public interface Condition {
 
-		boolean isConditionValid();
+		boolean isConditionValid()throws Exception;
 
 	}
 
 	public static final long DEFAULT_WAIT_TIMEOUT = 60000;
 	public static final long DEFAULT_WAIT_INTERVAL = 10;
 
-	public static void wait(Condition condition) throws InterruptedException {
+	public static void wait(Condition condition) throws Exception {
 		wait(condition, DEFAULT_WAIT_TIMEOUT, DEFAULT_WAIT_INTERVAL);
 	}
 
@@ -92,7 +94,7 @@ public class TestUtils {
 		waitOnExecutorThread(session, condition, DEFAULT_WAIT_TIMEOUT, DEFAULT_WAIT_INTERVAL);
 	}
 
-	public static void wait(Condition condition, long timeout) throws InterruptedException {
+	public static void wait(Condition condition, long timeout) throws Exception {
 		wait(condition, timeout, DEFAULT_WAIT_INTERVAL);
 	}
 
@@ -111,7 +113,12 @@ public class TestUtils {
 
 		@Override
 		protected void execute(DataRequestMonitor<Boolean> rm) {
-			rm.setData(condition.isConditionValid());
+			try {
+				rm.setData(condition.isConditionValid());
+			} catch (Exception e) {
+				rm.setStatus(new Status(IStatus.ERROR, EDCTestPlugin.PLUGIN_ID,
+						null, e)); //$NON-NLS-1$
+			}
 			rm.done();
 		}
 	};
@@ -136,7 +143,7 @@ public class TestUtils {
 
 	}
 
-	public static void wait(Condition condition, long timeout, long interval) throws InterruptedException {
+	public static void wait(Condition condition, long timeout, long interval) throws Exception {
 		long limit = System.currentTimeMillis() + timeout;
 		while (!condition.isConditionValid()) {
 			Display display = Display.getCurrent();
@@ -261,7 +268,7 @@ public class TestUtils {
 		return launchHolder[0];
 	}
 
-	public static DsfSession waitForSession(final EDCLaunch launch) throws InterruptedException {
+	public static DsfSession waitForSession(final EDCLaunch launch) throws Exception {
 		final DsfSession sessionHolder[] = { null };
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
@@ -308,7 +315,7 @@ public class TestUtils {
 			throws Exception {
 		final IFrameDMContext frameHolder[] = { null };
 		TestUtils.waitOnExecutorThread(session, new Condition() {
-			public boolean isConditionValid() {
+			public boolean isConditionValid() throws Exception {
 				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
 				Stack stackService = servicesTracker.getService(Stack.class);
 				if (stackService == null)

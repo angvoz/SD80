@@ -20,7 +20,7 @@ import org.junit.Assert;
 
 public abstract class AbstractLaunchTest extends Assert {
 
-	protected DsfSession waitForSession(final EDCLaunch launch) throws InterruptedException {
+	protected DsfSession waitForSession(final EDCLaunch launch) throws Exception {
 		final DsfSession sessionHolder[] = { null };
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {

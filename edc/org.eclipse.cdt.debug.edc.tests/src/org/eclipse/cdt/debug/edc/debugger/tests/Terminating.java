@@ -20,7 +20,7 @@ import org.junit.Test;
 
 public class Terminating extends BaseLaunchTest {
 
-	protected void waitForLaunchTerminated(final EDCLaunch launch) throws InterruptedException {
+	protected void waitForLaunchTerminated(final EDCLaunch launch) throws Exception {
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
 				return launch.isTerminated();

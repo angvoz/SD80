@@ -72,9 +72,9 @@ public class X86Stack extends Stack {
 
 		ArrayList<EdcStackFrame> frames = new ArrayList<EdcStackFrame>();
 
-		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
-		IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
-		Registers registersService = getServicesTracker().getService(Registers.class);
+		IEDCModules modules = getService(IEDCModules.class);
+		IEDCMemory memoryService = getService(IEDCMemory.class);
+		Registers registersService = getService(Registers.class);
 
 		try {
 			long eipValue = Long.valueOf(registersService.getRegisterValue(context, "EIP"), 16);

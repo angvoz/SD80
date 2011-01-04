@@ -31,7 +31,7 @@ public interface ISnapshotContributor {
 	 * @return the xml element containing the saved data.
 	 * @since 2.0
 	 */
-	public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor);
+	public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) throws Exception;
 
 	/**
 	 * Load an object's data from a previously saved snapshot.

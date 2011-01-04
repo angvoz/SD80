@@ -33,9 +33,10 @@ public class ExpressionsCasting extends BaseExpressionTest {
 	public void restoreFormatter() {
 		FormatExtensionManager.instance().setEnabled(formatterSetting);
 	}
-	
+
 	@Test
 	public void testCastingWithoutVariables() throws Exception {
+		launch.getAlbum().openSnapshot(0);
 		
 		checkExpr(signedCharType, "98 ('b')", "(signed char) 98");
 		checkExpr(wcharType, "0x3039 (L'\u3039')", "(wchar_t) 0x3039");
@@ -58,17 +59,14 @@ public class ExpressionsCasting extends BaseExpressionTest {
 	
 	@Test
 	public void testCastingClassesBasic() throws Exception {
-		openSnapshotAndWaitForSuspendedContext(0);
-		
+		launch.getAlbum().openSnapshot(0);
 		checkExpr(intType, "32", "((Der1*)der1)->b1");
 		checkExpr(intType, "48", "((Der2*)der2)->b2");
-		
 	}
 
 	@Test
 	public void testCastingClassesInUI1() throws Exception {
-		openSnapshotAndWaitForSuspendedContext(0);
-		
+		launch.getAlbum().openSnapshot(0);
 		checkCastedChildExpr(null, "32", "der1", new CastInfo("Der1*"), "b1");
 		checkCastedChildExpr(null, "48", "der2", new CastInfo("Der2 *"), "b2");
 		
@@ -81,8 +79,7 @@ public class ExpressionsCasting extends BaseExpressionTest {
 	
 	@Test
 	public void testCastingClassesInUI1b() throws Exception {
-		openSnapshotAndWaitForSuspendedContext(0);
-		
+		launch.getAlbum().openSnapshot(0);
 		// casting of nested items
 		// (this is superfluous; the UI takes a different path)
 		checkCastedExpr(null, "1.4E-45", "b->a", new CastInfo("float"));
@@ -90,7 +87,7 @@ public class ExpressionsCasting extends BaseExpressionTest {
 	
 	@Test
 	public void testCastingClassesInUI2() throws Exception {
-		openSnapshotAndWaitForSuspendedContext(1);
+		launch.getAlbum().openSnapshot(1);
 		
 		checkCastedChildExpr(null, "64", "der2", new CastInfo("DerDer *"), "c");
 		checkCastedChildExpr(null, "0x3d2470", "der2", new CastInfo("IFaceDerived *"), "Der2");
@@ -98,7 +95,7 @@ public class ExpressionsCasting extends BaseExpressionTest {
 	}
 	@Test
 	public void testCastingClassesInUI3() throws Exception {
-		openSnapshotAndWaitForSuspendedContext(2);
+		launch.getAlbum().openSnapshot(2);
 		
 		checkCastedChildExpr(null, "80", "der2", new CastInfo("IFaceDerived *"), "d");
 		checkCastedChildExpr(null, "80", "der2", new CastInfo("struct IFaceDerived *"), "d");
@@ -109,13 +106,13 @@ public class ExpressionsCasting extends BaseExpressionTest {
 	}
 	@Test
 	public void testCastingClassesInUI4() throws Exception {
-		openSnapshotAndWaitForSuspendedContext(3);
+		launch.getAlbum().openSnapshot(3);
 		
 		checkCastedChildExpr(null, "96", "iface1", new CastInfo("IFaceDerived *"), "d");
 	}
 	@Test
 	public void testCastingClassesInUI5() throws Exception {
-		openSnapshotAndWaitForSuspendedContext(4);
+		launch.getAlbum().openSnapshot(4);
 		
 		checkCastedChildExpr(null, "112", "iface2", new CastInfo("struct IFaceDerived *"), "d");
 		
@@ -123,8 +120,9 @@ public class ExpressionsCasting extends BaseExpressionTest {
 	@Test
 	public void testCastingClassesInUI6() throws Exception {
 		openSnapshotAndWaitForSuspendedContext(5);
+
 		
-		CastInfo arrayCast = new CastInfo(0, 5);
+		CastInfo arrayCast = new CastInfo(0, 5);                  
 		checkCastedChildExpr(null, "104 ('h')", "lstring", arrayCast, "lstring[0]");
 		checkCastedChildExpr(null, "101 ('e')", "lstring", arrayCast, "lstring[1]");
 		checkCastedChildExpr(null, "108 ('l')", "lstring", arrayCast, "lstring[2]");

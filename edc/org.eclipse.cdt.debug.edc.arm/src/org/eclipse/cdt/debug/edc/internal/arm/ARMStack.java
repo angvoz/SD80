@@ -38,6 +38,7 @@ import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.debug.core.model.MemoryByte;
 
@@ -122,7 +123,7 @@ public class ARMStack extends Stack {
 	}
 
 	@Override
-	protected List<EdcStackFrame> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
+	protected List<EdcStackFrame> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) throws CoreException {
 
 		ArrayList<EdcStackFrame> frames = new ArrayList<EdcStackFrame>();
 		
@@ -523,7 +524,7 @@ public class ARMStack extends Stack {
 	}
 
 	private ARMSpilledRegisters parseProlog(IEDCExecutionDMC context, IAddress prologAddress, IAddress pcValue,
-			IAddress spValue, IAddress lrValue, boolean thumbMode) {
+			IAddress spValue, IAddress lrValue, boolean thumbMode) throws CoreException {
 		// read memory from the prolog address to the pc, or 20 bytes, whichever
 		// is less
 		IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
@@ -583,7 +584,7 @@ public class ARMStack extends Stack {
 	}
 
 	private ARMSpilledRegisters parseArmProlog(IEDCExecutionDMC context, List<BigInteger> instructions, 
-			IAddress spValue, IAddress lrValue, IAddress pcAddress) {
+			IAddress spValue, IAddress lrValue, IAddress pcAddress) throws CoreException {
 		ARMSpilledRegisters spilledRegs = new ARMSpilledRegisters();
 
 		IAddress currentSP = spValue;

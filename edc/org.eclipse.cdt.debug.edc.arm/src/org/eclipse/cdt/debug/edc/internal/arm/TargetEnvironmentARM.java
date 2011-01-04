@@ -23,6 +23,7 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IAddressExpressionEvaluator;
 import org.eclipse.cdt.debug.edc.arm.IARMSymbol;
 import org.eclipse.cdt.debug.edc.disassembler.IDisassembler;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.AddressExpressionEvaluatorARM;
 import org.eclipse.cdt.debug.edc.internal.arm.disassembler.DisassemblerARM;
 import org.eclipse.cdt.debug.edc.services.AbstractTargetEnvironment;
@@ -41,6 +42,7 @@ import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.ILaunch;
 
@@ -167,7 +169,12 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			// works when we're getting the mode for the PC address (or very
 			// close to it).  other addresses could be in either mode.
 			Registers registersService = getServicesTracker().getService(Registers.class);
-			return new BigInteger(registersService.getRegisterValue(exeDMC, ARMRegisters.CPSR), 16).testBit(5);
+			try {
+				return new BigInteger(registersService.getRegisterValue(exeDMC, ARMRegisters.CPSR), 16).testBit(5);
+			} catch (CoreException e) {
+				EDCDebugger.getMessageLogger().logException(e);
+				return false;
+			}
 		}
 
 		// if the address is question has bit 0 set then it is a thumb address

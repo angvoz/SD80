@@ -22,14 +22,11 @@ import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.NumberFormatUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
-import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
-import org.eclipse.cdt.debug.edc.tcf.extension.services.ISimpleRegisters;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
-import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -42,6 +39,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -63,15 +61,14 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	private Map<String, List<RegisterGroupDMC>> registerGroupsPerContext = 
 		Collections.synchronizedMap(new HashMap<String, List<RegisterGroupDMC>>());
 
-	private ISimpleRegisters 	tcfSimpleRegistersService = null;
 	protected org.eclipse.tm.tcf.services.IRegisters		tcfRegistersService = null;
 	
 	/**
 	 * Register value cache per execution context.
 	 * Keyed on context ID.
 	 */
-	private Map<String, Map<String, String>> registerValueCache = 
-		Collections.synchronizedMap(new HashMap<String, Map<String, String>>());
+	private Map<String, Map<String, BigInteger>> registerValueCache = 
+		Collections.synchronizedMap(new HashMap<String, Map<String, BigInteger>>());
 
 	/**
 	 * A hex string indicating error in register read.
@@ -124,7 +121,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		/**
 		 * @since 2.0
 		 */
-		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor)throws Exception {
 			Element contextElement = document.createElement(REGISTER_GROUP);
 			contextElement.setAttribute(PROP_ID, this.getID());
 
@@ -208,10 +205,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		/**
 		 * @since 2.0
 		 */
-		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) throws Exception {
 			Element registerElement = document.createElement(REGISTER);
 			registerElement.setAttribute(PROP_ID, this.getID());
-			registerElement.setAttribute(PROP_VALUE, getRegisterValue(this));
+			registerElement.setAttribute(PROP_VALUE, getRegisterValueAsHexString(this));
 			Element propsElement = SnapshotUtils.makeXMLFromProperties(document, getProperties());
 			registerElement.appendChild(propsElement);
 			return registerElement;
@@ -222,12 +219,12 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			String contextID = (String) getProperties().get(PROP_EXECUTION_CONTEXT_ID);
 
 			synchronized (registerValueCache) {
-				Map<String, String> exeDMCRegisters = registerValueCache.get(contextID);
+				Map<String, BigInteger> exeDMCRegisters = registerValueCache.get(contextID);
 				if (exeDMCRegisters == null) {
-					exeDMCRegisters = new HashMap<String, String>();
+					exeDMCRegisters = new HashMap<String, BigInteger>();
 					registerValueCache.put(contextID, exeDMCRegisters);
 				}
-				exeDMCRegisters.put(getID(), registerValue);
+				exeDMCRegisters.put(getID(), new BigInteger(registerValue, 16));
 			}
 		}
 	}
@@ -507,7 +504,6 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		}
 
 		final String exeDMCID = ((IEDCDMContext) exeDMC).getID();
-		final String regDMCID = regDMC.getID();
 		
 		// Put the incoming value into hex
 		if (formatID.equals(IFormattedValues.OCTAL_FORMAT) || formatID.equals(IFormattedValues.BINARY_FORMAT) ||
@@ -518,9 +514,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		}
 
 		// Update cached register values
-		Map<String, String> exeDMCRegisters = registerValueCache.get(exeDMCID);
+		Map<String, BigInteger> exeDMCRegisters = registerValueCache.get(exeDMCID);
 		if (exeDMCRegisters != null) {
-			exeDMCRegisters.put(regDMC.getID(), regValue);
+			exeDMCRegisters.put(regDMC.getID(), new BigInteger(regValue, 16));
 		}
 
 		if (tcfRegistersService != null) {	// TCF IRegisters service available
@@ -564,43 +560,6 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 				rm.done();
 			}
 		}
-		else {
-			// Ensure connection to service agent
-			if (tcfSimpleRegistersService == null) {
-				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-						"Serivce agent not available", null)); //$NON-NLS-1$
-				rm.done();
-				return;
-			}
-	
-			// Create task to communicate with agent and ask it to set
-			// register value
-			final String[] registerValues = new String[] { regValue };
-			TCFTask<String[]> tcfTask = new TCFTask<String[]>() {
-				public void run() {
-					final String[] registerIDs = new String[] { regDMCID };
-					tcfSimpleRegistersService.set(exeDMCID, registerIDs, registerValues, new ISimpleRegisters.DoneSet() {
-						public void doneSet(IToken token, Exception error, String[] values) {
-							if (error == null) {
-								generateRegisterChangedEvent(regDMC);
-							} else {
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
-										"Error writing register.", error));
-							}
-							done(null);
-						}
-					});
-				}
-			};
-	
-			try {
-				tcfTask.get(15, TimeUnit.SECONDS);
-			} catch (Throwable e) {
-				rm.setStatus(EDCDebugger.dsfRequestFailedStatus(null, e));
-			} finally {
-				rm.done();
-			}
-		}
 	}
 
 	public void getAvailableFormats(IFormattedDataDMContext dmc, DataRequestMonitor<String[]> rm) {
@@ -624,49 +583,32 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 * @param context
 	 * @param id
 	 * @return a hex string on success, and {@link #REGISTER_VALUE_ERROR} on error.
+	 * @throws CoreException 
 	 */
-	public String getRegisterValue(IExecutionDMContext context, String id) {
+	public String getRegisterValue(IExecutionDMContext context, String id) throws CoreException {
 		RegisterDMC regDMC;
 		
 		regDMC = findRegisterDMCByName((IEDCExecutionDMC) context, id);
 		assert regDMC != null;
 		
-		return getRegisterValue(regDMC);
+		return getRegisterValueAsHexString(regDMC);
 	}
 
 	/**
-	 * See {@link #getRegisterValue(ExecutionDMC, String)}.
-	 * @param registerDMC
-	 * @return
+	 * @since 2.0
 	 */
-	public String getRegisterValue(RegisterDMC registerDMC) {
-		final StringBuffer regValue = new StringBuffer();
-		getRegisterValue(registerDMC, new DataRequestMonitor<String>(ImmediateExecutor.getInstance(), null) {
-
-			@Override
-			protected void handleSuccess() {
-				regValue.append(getData());
-			}
-
-			@Override
-			protected void handleError() {
-				// We pass this hex string instead of "unknown"
-				// so that callers won't run into exception.
-				EDCDebugger.getMessageLogger().log(getStatus());
-				regValue.append(REGISTER_VALUE_ERROR);
-			}
-		});
-
-		return regValue.toString();
+	public String getRegisterValueAsHexString(RegisterDMC registerDMC) throws CoreException {
+		return getRegisterValue(registerDMC).toString(16);
 	}
-
-	public void getRegisterValue(RegisterDMC registerDMC, final DataRequestMonitor<String> rm) {
+	
+	/**
+	 * @since 2.0
+	 */
+	public BigInteger getRegisterValue(RegisterDMC registerDMC) throws CoreException {
 
 		IExecutionDMContext exeDMC = DMContexts.getAncestorOfType(registerDMC, IExecutionDMContext.class);
 		if (exeDMC == null || !(exeDMC instanceof IEDCDMContext)) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "No valid executionDMC for the register."));
-			rm.done();
-			return;
+			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "No valid executionDMC for the register."));
 		}
 
 		final String exeDMCID = ((IEDCDMContext) exeDMC).getID();
@@ -674,13 +616,11 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	
 		synchronized (registerValueCache) {
 	
-			Map<String, String> exeDMCRegisters = registerValueCache.get(exeDMCID);
+			Map<String, BigInteger> exeDMCRegisters = registerValueCache.get(exeDMCID);
 			if (exeDMCRegisters != null) {
-				String cachedValue = exeDMCRegisters.get(registerDMC.getID());
+				BigInteger cachedValue = exeDMCRegisters.get(registerDMC.getID());
 				if (cachedValue != null) {
-					rm.setData(cachedValue);
-					rm.done();
-					return;
+					return cachedValue;
 				}
 			}
 		}
@@ -689,9 +629,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			final RegistersContext tcfReg = registerDMC.getTCFContext();
 			
             if (tcfReg == null) {
-                    rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "RegisterDMC " + registerDMC.getID() + " has no underlying TCF register context."));
-                    rm.done();
-                    return;
+    			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "RegisterDMC " + registerDMC.getID() + " has no underlying TCF register context."));
             }
 
             TCFTask<byte[]> tcfTask = new TCFTask<byte[]>() {
@@ -700,24 +638,6 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 					tcfReg.get(new org.eclipse.tm.tcf.services.IRegisters.DoneGet() {
 		
 						public void doneGet(IToken token, Exception error, byte[] value) {
-		
-							if (error != null) {
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, "Error reading register.", error));
-							}
-							else {
-								String strVal = MemoryUtils.convertByteArrayToHexString(value);
-								synchronized (registerValueCache) {
-									Map<String, String> exeDMCRegisters = registerValueCache.get(exeDMCID);
-									if (exeDMCRegisters == null) {
-										exeDMCRegisters = new HashMap<String, String>();
-										registerValueCache.put(exeDMCID, exeDMCRegisters);
-									}
-									exeDMCRegisters.put(registerDMCID, strVal);
-								}
-		
-								rm.setData(strVal);
-							}
-		
 							done(value);
 						}
 					});
@@ -725,60 +645,23 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			};
 			
 			try {
-				tcfTask.get(15, TimeUnit.SECONDS);	// ignore the return
-			} catch (Throwable e) {
-				rm.setStatus(EDCDebugger.dsfRequestFailedStatus("Exception reading register " + registerDMC.getName(), e));
-			} finally {
-				rm.done();
-			}
-		}
-		else {
-			if (tcfSimpleRegistersService == null) {
-				rm.setData(REGISTER_VALUE_ERROR);
-				rm.done();
-				return;
-			}
-		
-			TCFTask<String[]> tcfTask = new TCFTask<String[]>() {
-		
-				public void run() {
-					final String[] registerIDs = new String[] { registerDMCID };
-					tcfSimpleRegistersService.get(exeDMCID, registerIDs, new ISimpleRegisters.DoneGet() {
-		
-						public void doneGet(IToken token, Exception error, String[] values) {
-		
-							if (error != null) {
-								rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-										"Error reading register.", error));
-							}
-							else {
-								assert values.length == 1;
-								synchronized (registerValueCache) {
-									Map<String, String> exeDMCRegisters = registerValueCache.get(exeDMCID);
-									if (exeDMCRegisters == null) {
-										exeDMCRegisters = new HashMap<String, String>();
-										registerValueCache.put(exeDMCID, exeDMCRegisters);
-									}
-									exeDMCRegisters.put(registerDMCID, values[0]);
-								}
-		
-								rm.setData(values[0]);
-							}
-		
-							done(values);
-						}
-					});
+				byte[] value = tcfTask.get(15, TimeUnit.SECONDS);	// ignore the return
+				String strVal = MemoryUtils.convertByteArrayToHexString(value);
+				BigInteger biValue = new BigInteger(strVal, 16);
+				synchronized (registerValueCache) {
+					Map<String, BigInteger> exeDMCRegisters = registerValueCache.get(exeDMCID);
+					if (exeDMCRegisters == null) {
+						exeDMCRegisters = new HashMap<String, BigInteger>();
+						registerValueCache.put(exeDMCID, exeDMCRegisters);
+					}
+					exeDMCRegisters.put(registerDMCID, biValue);
 				}
-			};
-			
-			try {
-				tcfTask.get(15, TimeUnit.SECONDS);	// ignore the return
+				return biValue;
 			} catch (Throwable e) {
-				rm.setStatus(EDCDebugger.dsfRequestFailedStatus("Failed to read register " + registerDMC.getName(), e));
-			} finally {
-				rm.done();
+    			throw new CoreException(EDCDebugger.dsfRequestFailedStatus("Exception reading register " + registerDMC.getName(), e));
 			}
 		}
+		throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "TCF Registers Service unavailable."));
 	}
 
 	private void generateRegisterChangedEvent(IRegisterDMContext dmc) {
@@ -787,26 +670,26 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 	private void getRegisterDataValue(RegisterDMC registerDMC, final String formatID,
 			final DataRequestMonitor<FormattedValueDMData> rm) {
+		try {
+			BigInteger bigIntValue = getRegisterValue(registerDMC);
 
-		getRegisterValue(registerDMC, new DataRequestMonitor<String>(getExecutor(), rm) {
+			String formattedValue = bigIntValue.toString(16);
 
-			@Override
-			protected void handleSuccess() {
-				String registerValueAsHexString = getData();
-				String formattedValue = registerValueAsHexString;
-				BigInteger bigIntValue = new BigInteger(registerValueAsHexString, 16);
-				
-				if (formatID.equals(IFormattedValues.OCTAL_FORMAT))
-					formattedValue = NumberFormatUtils.toOctalString(bigIntValue);
-				if (formatID.equals(IFormattedValues.BINARY_FORMAT))
-					formattedValue = NumberFormatUtils.asBinary(bigIntValue);
-				if (formatID.equals(IFormattedValues.DECIMAL_FORMAT))
-					formattedValue = bigIntValue.toString();
-				
-				rm.setData(new FormattedValueDMData(formattedValue));
-				rm.done();
-			}
-		});
+			if (formatID.equals(IFormattedValues.OCTAL_FORMAT))
+				formattedValue = NumberFormatUtils.toOctalString(bigIntValue);
+			if (formatID.equals(IFormattedValues.BINARY_FORMAT))
+				formattedValue = NumberFormatUtils.asBinary(bigIntValue);
+			if (formatID.equals(IFormattedValues.DECIMAL_FORMAT))
+				formattedValue = bigIntValue.toString();
+			
+			rm.setData(new FormattedValueDMData(formattedValue));
+
+		} catch (CoreException e) {
+			Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error in getRegisterDataValue.", e);
+			EDCDebugger.getMessageLogger().log(s);
+			rm.setStatus(s);
+		}
+		rm.done();
 	}
 
 	public FormattedValueDMContext getFormattedValueContext(IFormattedDataDMContext dmc, String formatId) {
@@ -863,13 +746,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	}
 
 	public void tcfServiceReady(IService service) {
-		if (service instanceof ISimpleRegisters)
-			tcfSimpleRegistersService = (ISimpleRegisters) service;
-		else
-			tcfRegistersService = (org.eclipse.tm.tcf.services.IRegisters)service;
+		tcfRegistersService = (org.eclipse.tm.tcf.services.IRegisters)service;
 	}
 
-	public String getRegisterValue(IEDCExecutionDMC executionDMC, int id) {
+	public String getRegisterValue(IEDCExecutionDMC executionDMC, int id) throws CoreException {
 		String name = getRegisterNameFromCommonID(id);
 		if (name != null) {
 			return getRegisterValue(executionDMC, name);

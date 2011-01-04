@@ -167,7 +167,7 @@ public class Snapshot extends PlatformObject {
         to call done() on the given monitor. Accepts null, indicating that no progress should be
         reported and that the operation cannot be canceled.
 	 */
-	public void writeSnapshotData(IProgressMonitor monitor){
+	public void writeSnapshotData(IProgressMonitor monitor) throws Exception{
 		try {
 			ServiceReference[] references = EDCDebugger.getBundleContext().getServiceReferences(
 					ISnapshotContributor.class.getName(), getServiceFilter(session.getId()));

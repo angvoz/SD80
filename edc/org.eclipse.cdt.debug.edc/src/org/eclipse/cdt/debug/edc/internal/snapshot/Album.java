@@ -277,7 +277,7 @@ public class Album extends PlatformObject implements IAlbum {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#createSnapshot(org.eclipse.cdt.dsf.service.DsfSession, org.eclipse.cdt.debug.edc.internal.services.dsf.Stack.StackFrameDMC, org.eclipse.core.runtime.IProgressMonitor)
 	 */
-	public Snapshot createSnapshot(DsfSession session, StackFrameDMC stackFrame, IProgressMonitor monitor) {
+	public Snapshot createSnapshot(DsfSession session, StackFrameDMC stackFrame, IProgressMonitor monitor) throws Exception {
 		SubMonitor progress = SubMonitor.convert(monitor, "Creating Snapshot", 10000);
 		configureAlbum();
 		progress.worked(100);
@@ -1234,12 +1234,18 @@ public class Album extends PlatformObject implements IAlbum {
 					Query<IStatus> query = new Query<IStatus>() {
 						@Override
 						protected void execute(final DataRequestMonitor<IStatus> drm) {
-							Snapshot newSnapshot = finalAlbum.createSnapshot(session, stackFrame, monitor);
-							// Fire the event to anyone listening
-							for (ISnapshotAlbumEventListener l : new ArrayList<ISnapshotAlbumEventListener>(listeners)) {
-								l.snapshotCreated(finalAlbum, newSnapshot, session, stackFrame);
+							try {
+								Snapshot newSnapshot = finalAlbum.createSnapshot(session, stackFrame, monitor);
+								// Fire the event to anyone listening
+								for (ISnapshotAlbumEventListener l : new ArrayList<ISnapshotAlbumEventListener>(listeners)) {
+									l.snapshotCreated(finalAlbum, newSnapshot, session, stackFrame);
+								}
+								drm.setData(Status.OK_STATUS);
+							} catch (Exception e) {
+								Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error creating snapshot.", e);
+								EDCDebugger.getMessageLogger().log(s);
+								drm.setStatus(s);
 							}
-							drm.setData(Status.OK_STATUS);
 							drm.done();
 						}
 					};

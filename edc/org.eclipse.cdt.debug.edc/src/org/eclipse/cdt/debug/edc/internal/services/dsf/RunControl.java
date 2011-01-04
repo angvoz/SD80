@@ -334,7 +334,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 		}
 
-		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor)throws Exception {
 			Element contextElement = document.createElement(EXECUTION_CONTEXT);
 			contextElement.setAttribute(PROP_ID, this.getID());
 
@@ -1056,7 +1056,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 
 		@Override
-		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor)throws Exception {
 			SubMonitor progress = SubMonitor.convert(monitor, 1000);
 			progress.subTask(getName());
 			Element contextElement = super.takeSnapshot(album, document, progress.newChild(500));
@@ -1123,7 +1123,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 
 		@Override
-		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+		public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor)throws Exception {
 			SubMonitor progress = SubMonitor.convert(monitor, 1000);
 			progress.subTask(getName());
 			Element contextElement = super.takeSnapshot(album, document, progress.newChild(100));
@@ -1379,13 +1379,17 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		Breakpoints bpService = getService(Breakpoints.class);
 		Registers regService = getService(Registers.class);
-		String pcString;
+		String pcString = pc;
 
 		if (pc == null) {
 			// read PC register
-			pcString = regService.getRegisterValue(dmc, getTargetEnvironmentService().getPCRegisterID());
-		} else
-			pcString = pc;
+			try {
+				pcString = regService.getRegisterValue(dmc, getTargetEnvironmentService().getPCRegisterID());
+			} catch (CoreException e) {
+				drm.setStatus(new Status(Status.ERROR, EDCDebugger.PLUGIN_ID, null, e));
+				drm.done();
+			}
+		}
 
 		dmc.setPC(pcString);
 
@@ -1680,7 +1684,16 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 
 		Stack stackService = getService(Stack.class);
-		IFrameDMContext[] frames = stackService.getFramesForDMC(dmc, 0, 1);
+		IFrameDMContext[] frames;
+		try {
+			frames = stackService.getFramesForDMC(dmc, 0, 1);
+		} catch (CoreException e) {
+			Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+			EDCDebugger.getMessageLogger().log(s);
+			rm.setStatus(s);
+			rm.done();
+			return;
+		}
 		if (frames.length <= 1) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
 					"Cannot step out as no caller frame is available.", null));
@@ -2364,7 +2377,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		}
 	};
 
-	public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
+	public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor)throws Exception {
 		Element contextsElement = document.createElement(EXECUTION_CONTEXTS);
 		ExecutionDMC[] dmcs = rootExecutionDMC.getChildren();
 		SubMonitor progress = SubMonitor.convert(monitor, dmcs.length * 1000);

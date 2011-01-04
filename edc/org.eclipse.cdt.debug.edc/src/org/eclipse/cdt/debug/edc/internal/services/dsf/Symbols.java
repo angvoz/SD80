@@ -76,7 +76,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCSymbols#getFunctionAtAddress(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress)
 	 */
 	public IFunctionScope getFunctionAtAddress(ISymbolDMContext context, IAddress runtimeAddress) {
-		IEDCModules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModules modulesService = getService(Modules.class);
 		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, runtimeAddress);
 		if (module != null) {
 			IEDCSymbolReader reader = module.getSymbolReader();
@@ -95,7 +95,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCSymbols#getFunctionAtAddress(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress)
 	 */
 	public String getSymbolNameAtAddress(ISymbolDMContext context, IAddress runtimeAddress) {
-		IEDCModules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModules modulesService = getService(Modules.class);
 		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, runtimeAddress);
 		if (module != null) {
 			IEDCSymbolReader reader = module.getSymbolReader();
@@ -112,7 +112,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCSymbols#getLineEntryForAddress(org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext, org.eclipse.cdt.core.IAddress)
 	 */
 	public ILineEntry getLineEntryForAddress(ISymbolDMContext context, IAddress runtimeAddress) {
-		IEDCModules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModules modulesService = getService(Modules.class);
 		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, runtimeAddress);
 		if (module != null) {
 			IEDCSymbolReader reader = module.getSymbolReader();
@@ -131,7 +131,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 	public List<ILineEntry> getLineEntriesForAddressRange(ISymbolDMContext context, IAddress start, IAddress end) {
 		List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
 
-		IEDCModules modulesService = getServicesTracker().getService(Modules.class);
+		IEDCModules modulesService = getService(Modules.class);
 		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, start);
 		if (module == null)
 			return lineEntries;
@@ -180,7 +180,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 	 * @return {@link IFrameRegisters} or <code>null</code>
 	 */
 	public IFrameRegisterProvider getFrameRegisterProvider(ISymbolDMContext context, IAddress runtimeAddress) {
-		Modules modulesService = getServicesTracker().getService(Modules.class);
+		Modules modulesService = getService(Modules.class);
 		IEDCModuleDMContext module = modulesService.getModuleByAddress(context, runtimeAddress);
 		if (module != null) {
 			IEDCSymbolReader reader = module.getSymbolReader();

@@ -667,7 +667,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			final byte[] bpInstruction = getTargetEnvironmentService().getBreakpointInstruction(exeDMC, address);
 			final int inst_size = bpInstruction.length;
 
-			Memory memoryService = getServicesTracker().getService(Memory.class);
+			Memory memoryService = getService(Memory.class);
 			IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(exeDMC, IMemoryDMContext.class);
 
 			memoryService.getMemory(mem_dmc, address, 0, 1, inst_size, new DataRequestMonitor<MemoryByte[]>(
@@ -731,7 +731,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			IExecutionDMContext exe_dmc = DMContexts.getAncestorOfType(bp.getContext(), IExecutionDMContext.class);
 			byte[] bpInstruction = getTargetEnvironmentService().getBreakpointInstruction(exe_dmc, bp_addr);
 
-			Memory memoryService = getServicesTracker().getService(Memory.class);
+			Memory memoryService = getService(Memory.class);
 			IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(bp.getContext(), IMemoryDMContext.class);
 
 			memoryService.setMemory(mem_dmc, bp_addr, 0, 1, bpInstruction.length, bpInstruction, rm);
@@ -788,7 +788,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { bp }); } 
 
 		if (!usesTCFBreakpointService()) {
-			final Memory memoryService = getServicesTracker().getService(Memory.class);
+			final Memory memoryService = getService(Memory.class);
 			IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(bp.getContext(), IMemoryDMContext.class);
 			byte[] orgInst = bp.getOriginalInstruction();
 			memoryService.setMemory(mem_dmc, bp.getAddresses()[0], 0, 1, orgInst.length, orgInst, rm);
@@ -845,7 +845,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		ModuleLoadedEvent event = (ModuleLoadedEvent) e;
 		final IExecutionDMContext executionDMC = event.getExecutionDMC();
 		final ModuleDMC module = (ModuleDMC) e.getLoadedModuleContext();
-		BreakpointsMediator2 bm = getServicesTracker().getService(BreakpointsMediator2.class);
+		BreakpointsMediator2 bm = getService(BreakpointsMediator2.class);
 		if (bm == null) {
 			EDCDebugger.getMessageLogger().logError("Fail to get BreakpointsMediator service to install breakpoints for loaded module "+module, null);
 			assert false;
@@ -980,7 +980,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			}
 		} else {
 			// the point is a symbol
-			Symbols symService = getServicesTracker().getService(Symbols.class);
+			Symbols symService = getService(Symbols.class);
 			List<IAddress> addrs = symService.getFunctionAddress(module, startupStopAt);
 			
 			if (addrs.size() > 0)
@@ -1022,7 +1022,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		
 		final boolean requireResume	= requireResume(module);
 		
-		BreakpointsMediator2 bm = getServicesTracker().getService(BreakpointsMediator2.class);
+		BreakpointsMediator2 bm = getService(BreakpointsMediator2.class);
 		IBreakpointsTargetDMContext bt_dmc = DMContexts.getAncestorOfType(e.getUnloadedModuleContext(),
 				IBreakpointsTargetDMContext.class);
 		bm.stopTrackingBreakpoints(bt_dmc, new RequestMonitor(getExecutor(), null) {
@@ -1132,7 +1132,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			return;
 		}
 
-		Stack stackService = getServicesTracker().getService(Stack.class);
+		Stack stackService = getService(Stack.class);
 
 		stackService.getTopFrame(context, new DataRequestMonitor<IFrameDMContext>(getExecutor(), drm) {
 
@@ -1144,7 +1144,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 					drm.setData(bp.getHitCount() > bp.getIgnoreCount());
 					drm.done();
 				} else {
-					Expressions exprService = getServicesTracker().getService(Expressions.class);
+					Expressions exprService = getService(Expressions.class);
 					IEDCExpression expression = (IEDCExpression) exprService.createExpression(getData(), expr);
 					FormattedValueDMContext fvc = exprService.getFormattedValueContext(expression,
 							IFormattedValues.NATURAL_FORMAT);
@@ -1180,7 +1180,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 * @param description - empty string indicates removing problem marker. 
 	 */
 	protected void reportBreakpointProblem(IBreakpointDMContext targetBP, String description) {
-		BreakpointsMediator2 bmService = getServicesTracker().getService(BreakpointsMediator2.class);
+		BreakpointsMediator2 bmService = getService(BreakpointsMediator2.class);
 		if (bmService == null) {
 			assert false;
 			return;

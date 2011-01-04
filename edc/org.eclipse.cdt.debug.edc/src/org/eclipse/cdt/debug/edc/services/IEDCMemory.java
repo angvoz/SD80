@@ -17,7 +17,7 @@ import org.eclipse.cdt.dsf.debug.service.IMemory;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.debug.core.model.MemoryByte;
 
-public interface IEDCMemory extends IMemory {
+public interface IEDCMemory extends IMemory, IEDCService {
 
 	public IStatus getMemory(IEDCExecutionDMC context, IAddress address,
 			final ArrayList<MemoryByte> memBuffer, int count, int word_size);

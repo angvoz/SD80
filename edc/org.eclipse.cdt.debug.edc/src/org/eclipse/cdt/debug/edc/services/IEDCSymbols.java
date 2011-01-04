@@ -17,7 +17,7 @@ import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 
-public interface IEDCSymbols {
+public interface IEDCSymbols extends IEDCService {
 	/**
 	 * Preference to show all variables that are defined as global by the current source file 
 	 */

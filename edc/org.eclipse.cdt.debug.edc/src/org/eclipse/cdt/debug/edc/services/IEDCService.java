@@ -10,20 +10,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.services;
 
-import org.eclipse.cdt.core.IAddress;
-import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
+import org.eclipse.cdt.dsf.service.IDsfService;
 
-public interface IEDCModules extends IEDCService {
-
-	/**
-	 * get module that contains the given runtime address.
-	 * 
-	 * @param symCtxs
-	 * @param instructionAddress
-	 *            runtime absolute address.
-	 * @return null if not found.
-	 */
-	public IEDCModuleDMContext getModuleByAddress(ISymbolDMContext symCtx,
-			IAddress instructionAddress);
+/**
+ * @since 2.0
+ */
+public interface IEDCService extends IDsfService {
 
 }

@@ -30,6 +30,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.ValueVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfDebugInfoProvider.AttributeValue;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.services.IFrameRegisterProvider;
 import org.eclipse.cdt.debug.edc.services.IFrameRegisters;
 import org.eclipse.cdt.debug.edc.services.Registers;
@@ -40,7 +41,6 @@ import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
 
@@ -50,7 +50,7 @@ import org.eclipse.core.runtime.CoreException;
 public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 	
 	public static class InstructionState {
-		public DsfServicesTracker tracker;
+		public EDCServicesTracker tracker;
 		/**  Calculated register locations for the current frame */
 		public Map<Integer, AbstractRule> regRules;
 		/**  Context for the current frame */
@@ -67,7 +67,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 		private final int addressSize;
 		public boolean cfaOffsetsAreReversed;
 		
-		public InstructionState(DsfServicesTracker tracker,
+		public InstructionState(EDCServicesTracker tracker,
 				IFrameDMContext context,
 				IFrameRegisters childRegisters,
 				FrameDescriptionEntry fde) {
@@ -902,7 +902,7 @@ public class DwarfFrameRegisterProvider implements IFrameRegisterProvider {
 	 * @see org.eclipse.cdt.debug.edc.services.IFrameRegisterProvider#getFrameRegisters(org.eclipse.cdt.dsf.service.DsfSession, org.eclipse.cdt.dsf.service.DsfServicesTracker, org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext)
 	 */
 	public IFrameRegisters getFrameRegisters(DsfSession session,
-			DsfServicesTracker tracker,
+			EDCServicesTracker tracker,
 			IFrameDMContext context) throws CoreException {
 		Registers registers = tracker.getService(Registers.class);
 		IStack stack = tracker.getService(IStack.class);

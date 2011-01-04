@@ -467,7 +467,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							// event as otherwise
 							// stepping will be screwed up by that event.
 							//
-							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+							Breakpoints bpService = getService(Breakpoints.class);
 							bpService.removeAllTempBreakpoints(new RequestMonitor(getExecutor(), null));
 							
 							// check to see if we are in a disabled range
@@ -1050,7 +1050,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		@Override
 		public void loadSnapshot(Element element) throws Exception {
 			// load modules first, since this loads a stack which must consult modules and symbolics
-			Modules modulesService = getServicesTracker().getService(Modules.class);
+			Modules modulesService = getService(Modules.class);
 			modulesService.loadModulesForContext(this, element);
 			super.loadSnapshot(element);
 		}
@@ -1061,7 +1061,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			progress.subTask(getName());
 			Element contextElement = super.takeSnapshot(album, document, progress.newChild(500));
 			Element modulesElement = document.createElement(EXECUTION_CONTEXT_MODULES);
-			Modules modulesService = getServicesTracker().getService(Modules.class);
+			Modules modulesService = getService(Modules.class);
 
 			IModuleDMContext[] modules = modulesService.getModulesForContext(this.getID());
 			SubMonitor modulesMonitor = progress.newChild(500);
@@ -1106,10 +1106,10 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		@Override
 		public void loadSnapshot(Element element) throws Exception {
 			super.loadSnapshot(element);
-			Registers regService = getServicesTracker().getService(Registers.class);
+			Registers regService = getService(Registers.class);
 			regService.loadGroupsForContext(this, element);
 
-			Stack stackService = getServicesTracker().getService(Stack.class);
+			Stack stackService = getService(Stack.class);
 			NodeList frameElements = element.getElementsByTagName(EXECUTION_CONTEXT_FRAMES);
 			for (int i = 0; i < frameElements.getLength(); i++) {
 				Element frameElement = (Element) frameElements.item(i);
@@ -1128,7 +1128,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			progress.subTask(getName());
 			Element contextElement = super.takeSnapshot(album, document, progress.newChild(100));
 			Element registersElement = document.createElement(EXECUTION_CONTEXT_REGISTERS);
-			Registers regService = getServicesTracker().getService(Registers.class);
+			Registers regService = getService(Registers.class);
 			
 			IRegisterGroupDMContext[] regGroups = regService.getGroupsForContext(this);
 			SubMonitor registerMonitor = progress.newChild(300);
@@ -1142,8 +1142,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			contextElement.appendChild(registersElement);
 
 			Element framesElement = document.createElement(EXECUTION_CONTEXT_FRAMES);
-			Stack stackService = getServicesTracker().getService(Stack.class);
-			Expressions expressionsService = getServicesTracker().getService(Expressions.class);
+			Stack stackService = getService(Stack.class);
+			Expressions expressionsService = getService(Expressions.class);
 
 			IFrameDMContext[] frames = stackService.getFramesForDMC(this, 0, IStack.ALL_FRAMES);
 			SubMonitor framesMonitor = progress.newChild(600);
@@ -1377,8 +1377,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		assert getExecutor().isInExecutorThread();
 		
-		Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
-		Registers regService = getServicesTracker().getService(Registers.class);
+		Breakpoints bpService = getService(Breakpoints.class);
+		Registers regService = getService(Registers.class);
 		String pcString;
 
 		if (pc == null) {
@@ -1472,7 +1472,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		// If there is breakpoint at current PC, remove it => Single step =>
 		// Restore it.
 
-		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+		final Breakpoints bpService = getService(Breakpoints.class);
 		if (bpService.usesTCFBreakpointService()) {
 			// no need to do anything since the breakpoints service is expected to handle
 			// stepping past breakpoints since it's the one that sets them
@@ -1529,136 +1529,145 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	public static long getSteppingStartTime() {
 		return steppingStartTime;
 	}
-	
-	public void step(IExecutionDMContext context, StepType stepType, final RequestMonitor rm) {
-		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, MessageFormat.format("{0} context {1}", stepType, context)); }
 
-		if (!(context instanceof ExecutionDMC)) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, MessageFormat.format(
-					"The context [{0}] is not a recognized execution context.", context), null));
-			rm.done();
-		}
+	public void step(final IExecutionDMContext context, final StepType finalStepType, final RequestMonitor rm) {
 
-		if (timeStepping())
-			steppingStartTime = System.currentTimeMillis();
-		
-		final ExecutionDMC dmc = (ExecutionDMC) context;
+		EDCDebugger.execute(new Runnable() {
+			
+			public void run() {		
+				
+			StepType stepType = finalStepType;
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, MessageFormat.format("{0} context {1}", stepType, context)); }
 
-		dmc.setStepping(true);
-
-		IAddress pcAddress = null;
-
-		if (dmc.getPC() == null) { // PC is even unknown, can only do
-			// one-instruction step.
-			stepType = StepType.INSTRUCTION_STEP_INTO;
-		} else
-			pcAddress = new Addr64(dmc.getPC(), 16);
-
-		// For step-out (step-return), no difference between source level or
-		// instruction level.
-		//
-		if (stepType == StepType.STEP_RETURN)
-			stepType = StepType.INSTRUCTION_STEP_RETURN;
-
-		// Source level stepping request.
-		// 
-		if (stepType == StepType.STEP_OVER || stepType == StepType.STEP_INTO) {
-			IEDCModules moduleService = getServicesTracker().getService(Modules.class);
-
-			ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
-
-			IEDCModuleDMContext module = moduleService.getModuleByAddress(symCtx, pcAddress);
-
-			// Check if there is source info for PC address.
-			//
-			if (module != null) {
-				IEDCSymbolReader reader = module.getSymbolReader();
-				assert pcAddress != null;
-				if (reader != null) {
-					IAddress linkAddress = module.toLinkAddress(pcAddress);
-					IModuleLineEntryProvider lineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();
-					ILineEntry line = lineEntryProvider.getLineEntryAtAddress(linkAddress, false);
-					if (line != null) {
-						// get runtime addresses of the line boundaries.
-						IAddress endAddr = module.toRuntimeAddress(line.getHighAddress());
-
-						// get the next source line entry that has a line #
-						// greater
-						// than the current line # (and in the same file),
-						// but is
-						// not outside of the function address range
-						// if found, the start addr of that entry is our end
-						// address, otherwise use the existing end address
-						//   Note: Only do this if Step Over, if Step Into we use
-						//   the endAddr we already have, so if are stepping into inline
-						//   functions, this will work
-						//if (stepType == StepType.STEP_OVER) {
-							ILineEntry nextLine = lineEntryProvider.getNextLineEntry(lineEntryProvider.getLineEntryAtAddress(linkAddress, stepType == StepType.STEP_OVER));
-							if (nextLine != null) {
-								endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
-							}
-							if (stepType == StepType.STEP_OVER)
-							{ // Create a disabled range
-								Collection<ILineEntry> ranges = lineEntryProvider.getLineEntriesForLines(line.getFilePath(), line.getLineNumber(), line.getLineNumber());
-								if (ranges.size() > 1)
-								{
-									for (ILineEntry iLineEntry : ranges) {
-										dmc.addDisabledRange(module.toRuntimeAddress(iLineEntry.getLowAddress()), module.toRuntimeAddress(iLineEntry.getHighAddress()));
-									}
-								}
-							}
-							
-							
-						//}
-
-						/*
-						 * It's possible that PC is larger than startAddr
-						 * (e.g. user does a few instruction level stepping
-						 * then switch to source level stepping; or when we
-						 * just step out a function). We just parse and
-						 * stepping instructions within [pcAddr, endAddr)
-						 * instead of all those within [startAddr, endAddr).
-						 * One possible problem with the solution is when
-						 * control jumps from within [pcAddress, endAddr) to
-						 * somewhere within [startAddr, pcAddress), the
-						 * stepping would stop at somewhere within
-						 * [startAddr, pcAddress) instead of outside of the
-						 * [startAddr, endAddr). But that case is rare (e.g.
-						 * a source line contains a bunch of statements) and
-						 * that "problem" is not unacceptable as user could
-						 * just keep stepping or set a breakpoint and run.
-						 * 
-						 * We can overcome the problem but that would incur
-						 * much more complexity in the stepping code and
-						 * brings down the stepping speed.
-						 * ........................ 08/30/2009
-						 */
-
-						stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
-
-						if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null, "source level stepping."); }
-						return;
-					}
-				}
+			if (!(context instanceof ExecutionDMC)) {
+				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, MessageFormat.format(
+						"The context [{0}] is not a recognized execution context.", context), null));
+				rm.done();
 			}
 
-			// No source found, fall back to instruction level step.
-			if (stepType == StepType.STEP_INTO)
+			if (timeStepping())
+				steppingStartTime = System.currentTimeMillis();
+			
+			final ExecutionDMC dmc = (ExecutionDMC) context;
+
+			dmc.setStepping(true);
+
+			IAddress pcAddress = null;
+
+			if (dmc.getPC() == null) { // PC is even unknown, can only do
+				// one-instruction step.
 				stepType = StepType.INSTRUCTION_STEP_INTO;
-			else
-				stepType = StepType.INSTRUCTION_STEP_OVER;
-		}
+			} else
+				pcAddress = new Addr64(dmc.getPC(), 16);
 
-		// instruction level step
-		// 
-		if (stepType == StepType.INSTRUCTION_STEP_OVER)
-			stepOverOneInstruction(dmc, pcAddress, rm);
-		else if (stepType == StepType.INSTRUCTION_STEP_INTO)
-			stepIntoOneInstruction(dmc, rm);
-		else if (stepType == StepType.INSTRUCTION_STEP_RETURN)
-			stepOut(dmc, pcAddress, rm);
+			// For step-out (step-return), no difference between source level or
+			// instruction level.
+			//
+			if (stepType == StepType.STEP_RETURN)
+				stepType = StepType.INSTRUCTION_STEP_RETURN;
 
-		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
+			// Source level stepping request.
+			// 
+			if (stepType == StepType.STEP_OVER || stepType == StepType.STEP_INTO) {
+				IEDCModules moduleService = getService(Modules.class);
+
+				ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
+
+				IEDCModuleDMContext module = moduleService.getModuleByAddress(symCtx, pcAddress);
+
+				// Check if there is source info for PC address.
+				//
+				if (module != null) {
+					IEDCSymbolReader reader = module.getSymbolReader();
+					assert pcAddress != null;
+					if (reader != null) {
+						IAddress linkAddress = module.toLinkAddress(pcAddress);
+						IModuleLineEntryProvider lineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();
+						ILineEntry line = lineEntryProvider.getLineEntryAtAddress(linkAddress, false);
+						if (line != null) {
+							// get runtime addresses of the line boundaries.
+							IAddress endAddr = module.toRuntimeAddress(line.getHighAddress());
+
+							// get the next source line entry that has a line #
+							// greater
+							// than the current line # (and in the same file),
+							// but is
+							// not outside of the function address range
+							// if found, the start addr of that entry is our end
+							// address, otherwise use the existing end address
+							//   Note: Only do this if Step Over, if Step Into we use
+							//   the endAddr we already have, so if are stepping into inline
+							//   functions, this will work
+							//if (stepType == StepType.STEP_OVER) {
+								ILineEntry nextLine = lineEntryProvider.getNextLineEntry(lineEntryProvider.getLineEntryAtAddress(linkAddress, stepType == StepType.STEP_OVER));
+								if (nextLine != null) {
+									endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
+								}
+								if (stepType == StepType.STEP_OVER)
+								{ // Create a disabled range
+									Collection<ILineEntry> ranges = lineEntryProvider.getLineEntriesForLines(line.getFilePath(), line.getLineNumber(), line.getLineNumber());
+									if (ranges.size() > 1)
+									{
+										for (ILineEntry iLineEntry : ranges) {
+											dmc.addDisabledRange(module.toRuntimeAddress(iLineEntry.getLowAddress()), module.toRuntimeAddress(iLineEntry.getHighAddress()));
+										}
+									}
+								}
+								
+								
+							//}
+
+							/*
+							 * It's possible that PC is larger than startAddr
+							 * (e.g. user does a few instruction level stepping
+							 * then switch to source level stepping; or when we
+							 * just step out a function). We just parse and
+							 * stepping instructions within [pcAddr, endAddr)
+							 * instead of all those within [startAddr, endAddr).
+							 * One possible problem with the solution is when
+							 * control jumps from within [pcAddress, endAddr) to
+							 * somewhere within [startAddr, pcAddress), the
+							 * stepping would stop at somewhere within
+							 * [startAddr, pcAddress) instead of outside of the
+							 * [startAddr, endAddr). But that case is rare (e.g.
+							 * a source line contains a bunch of statements) and
+							 * that "problem" is not unacceptable as user could
+							 * just keep stepping or set a breakpoint and run.
+							 * 
+							 * We can overcome the problem but that would incur
+							 * much more complexity in the stepping code and
+							 * brings down the stepping speed.
+							 * ........................ 08/30/2009
+							 */
+
+							stepAddressRange(dmc, stepType == StepType.STEP_INTO, pcAddress, endAddr, rm);
+
+							if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null, "source level stepping."); }
+							return;
+						}
+					}
+				}
+
+				// No source found, fall back to instruction level step.
+				if (stepType == StepType.STEP_INTO)
+					stepType = StepType.INSTRUCTION_STEP_INTO;
+				else
+					stepType = StepType.INSTRUCTION_STEP_OVER;
+			}
+
+			// instruction level step
+			// 
+			if (stepType == StepType.INSTRUCTION_STEP_OVER)
+				stepOverOneInstruction(dmc, pcAddress, rm);
+			else if (stepType == StepType.INSTRUCTION_STEP_INTO)
+				stepIntoOneInstruction(dmc, rm);
+			else if (stepType == StepType.INSTRUCTION_STEP_RETURN)
+				stepOut(dmc, pcAddress, rm);
+
+			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
+}
+			
+		});
 	}
 
 	private void stepOut(final ExecutionDMC dmc, IAddress pcAddress, final RequestMonitor rm) {
@@ -1670,7 +1679,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return;
 		}
 
-		Stack stackService = getServicesTracker().getService(Stack.class);
+		Stack stackService = getService(Stack.class);
 		IFrameDMContext[] frames = stackService.getFramesForDMC(dmc, 0, 1);
 		if (frames.length <= 1) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
@@ -1684,7 +1693,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 		final IAddress stepToAddress = ((StackFrameDMC) frames[1]).getInstructionPtrAddress();
 		
-		final Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+		final Breakpoints bpService = getService(Breakpoints.class);
 
 		prepareToRun(dmc, new DataRequestMonitor<Boolean>(getExecutor(), rm) {
 			@Override
@@ -1730,7 +1739,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		ISymbolDMContext symbolContext = dmc.getSymbolDMContext();
 
 		if (symbolContext != null) {
-			Modules modulesService = getServicesTracker().getService(Modules.class);
+			Modules modulesService = getService(Modules.class);
 			modulesService.moduleLoaded(symbolContext, dmc, moduleProperties);
 		}
 	}
@@ -1748,7 +1757,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		ISymbolDMContext symbolContext = dmc.getSymbolDMContext();
 
 		if (symbolContext != null) {
-			Modules modulesService = getServicesTracker().getService(Modules.class);
+			Modules modulesService = getService(Modules.class);
 			modulesService.moduleUnloaded(symbolContext, dmc, moduleProperties);
 		}
 	}
@@ -1757,7 +1766,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		assert frames.length > 1 && frames[0] instanceof StackFrameDMC;
 		// Check to see if we are in an inlined function
 		StackFrameDMC currentFrame = ((StackFrameDMC) frames[0]);
-		IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+		IEDCSymbols symbolsService = getService(Symbols.class);
 		IFunctionScope functionScope = symbolsService
 		.getFunctionAtAddress(dmc.getSymbolDMContext(), currentFrame.getInstructionPtrAddress());
 		
@@ -1808,7 +1817,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return;
 		}
 
-		Memory memoryService = getServicesTracker().getService(Memory.class);
+		Memory memoryService = getService(Memory.class);
 		IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(dmc, IMemoryDMContext.class);
 
 		// We need to get the instruction at the PC. We have to
@@ -1854,7 +1863,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							// temp
 							// breakpoint at next instruction and resume ...
 							//
-							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+							Breakpoints bpService = getService(Breakpoints.class);
 							bpService.setTempBreakpoint(dmc, nextInstructionAddress,
 														new RequestMonitor(getExecutor(), rm) {
 								@Override
@@ -1885,7 +1894,6 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 */
 	private void stepAddressRange(final ExecutionDMC dmc, final boolean stepIn, final IAddress startAddr,
 			final IAddress endAddr, final RequestMonitor rm) {
-
 		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, MessageFormat.format("address range [{0},{1})", startAddr.toHexAddressString(), endAddr.toHexAddressString())); }
 
 		if (dmc.supportsStepMode(stepIn ? StepType.STEP_INTO : StepType.STEP_OVER)) {
@@ -1901,7 +1909,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return;
 		}
 
-		final Memory memoryService = getServicesTracker().getService(Memory.class);
+		final Memory memoryService = getService(Memory.class);
 		IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(dmc, IMemoryDMContext.class);
 
 		int memSize = startAddr.distanceTo(endAddr).intValue();
@@ -1986,7 +1994,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 									return;
 								}
 
-								Registers regService = getServicesTracker().getService(Registers.class);
+								Registers regService = getService(Registers.class);
 
 								IAddress addr;
 								try {
@@ -2101,7 +2109,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 									break;
 								}
 
-							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+							Breakpoints bpService = getService(Breakpoints.class);
 							if (bpService.findUserBreakpoint(newPC) != null) { // hit
 								// a
 								// user
@@ -2129,7 +2137,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 							boolean goon = true;
 
-							Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+							Breakpoints bpService = getService(Breakpoints.class);
 
 							if (getData() == true) {
 								// one instruction has been executed
@@ -2231,7 +2239,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		// Flush the Registers cache immediately
 		// For instance the readPCRegister() may get wrong PC value when an
 		// asynchronous suspend event comes too quick after resume.
-		Registers regService = getServicesTracker().getService(Registers.class);
+		Registers regService = getService(Registers.class);
 		regService.flushCache(context);
 	}
 
@@ -2512,7 +2520,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				
 				settingBP_crm.setDoneCount(addrs.size());
 				
-				Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+				Breakpoints bpService = getService(Breakpoints.class);
 				
 				for (IAddress a : addrs)
 					bpService.setTempBreakpoint(dmc, a, settingBP_crm);
@@ -2527,7 +2535,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		rm.done();
 
 //		// If the address is not in any module of the run context, return false. 
-//		Modules moduleService = getServicesTracker().getService(Modules.class);
+//		Modules moduleService = getService(Modules.class);
 //
 //		ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
 //
@@ -2594,7 +2602,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	public void moveToAddress(IExecutionDMContext context, IAddress address,
 			boolean resume, RequestMonitor rm) {
 
-		Registers regService = getServicesTracker().getService(Registers.class);
+		Registers regService = getService(Registers.class);
 		
 		assert(context instanceof ExecutionDMC);
 		ExecutionDMC dmc = (ExecutionDMC)context;
@@ -2640,7 +2648,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			return;
 		}
 		
-		Modules moduleService = getServicesTracker().getService(Modules.class);
+		Modules moduleService = getService(Modules.class);
 
 		moduleService.getLineAddress(dmc, sourceFile, lineNumber, drm);
 	}

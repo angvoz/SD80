@@ -25,11 +25,12 @@ import org.osgi.framework.BundleContext;
 /**
  * This is abstract DSF service with some APIs specific to EDC.
  */
-public abstract class AbstractEDCService extends AbstractDsfService {
+public abstract class AbstractEDCService extends AbstractDsfService implements IEDCService {
 
 	private final String[] classNames;
 	private ITargetEnvironment targetEnvironmentService = null;
 	private final boolean snapshot;
+    private EDCServicesTracker fEDCTracker;
 
 	public AbstractEDCService(DsfSession session, String[] classNames) {
 		super(session);
@@ -41,17 +42,41 @@ public abstract class AbstractEDCService extends AbstractDsfService {
 		return snapshot;
 	}
 
+	/**
+	 * @since 2.0
+	 */
+	public EDCServicesTracker getEDCServicesTracker() {
+		return fEDCTracker;
+	}
+
+    /**
+	 * @since 2.0
+	 */
+    public <V> V getService(Class<V> serviceClass) {
+    	if (IEDCService.class.isAssignableFrom(serviceClass))
+    		return fEDCTracker.getService(serviceClass);
+        return getServicesTracker().getService(serviceClass);
+    }
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.dsf.service.AbstractDsfService#initialize(org.eclipse.cdt.dsf.concurrent.RequestMonitor)
 	 */
 	@Override
 	public void initialize(final RequestMonitor requestMonitor) {
+		fEDCTracker = new EDCServicesTracker(getBundleContext(), getSession().getId());
 		super.initialize(new RequestMonitor(getExecutor(), requestMonitor) {
 			@Override
 			public void handleSuccess() {
 				doInitialize(requestMonitor);
 			}
 		});
+	}
+
+	@Override
+	public void shutdown(RequestMonitor rm) {
+		fEDCTracker.dispose();
+		fEDCTracker = null;
+		super.shutdown(rm);
 	}
 
 	protected void doInitialize(RequestMonitor requestMonitor) {

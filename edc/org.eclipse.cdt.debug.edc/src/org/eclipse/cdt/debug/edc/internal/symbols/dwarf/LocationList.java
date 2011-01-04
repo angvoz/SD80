@@ -16,12 +16,12 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.IStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.MemoryStreamBuffer;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 
 public class LocationList implements ILocationProvider {
 
@@ -41,7 +41,7 @@ public class LocationList implements ILocationProvider {
 		return locationList;
 	}
 
-	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress, boolean isNonLocalConstVariable) {
+	public IVariableLocation getLocation(EDCServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress, boolean isNonLocalConstVariable) {
 		
 		if (locationList != null) {
 			IScope searchScope = scope;
@@ -60,7 +60,7 @@ public class LocationList implements ILocationProvider {
 		return locationList != null ? new InvalidVariableLocation(DwarfMessages.UnknownVariableAddress) : null;
 	}
 
-	private IVariableLocation searchForLocation(DsfServicesTracker tracker,
+	private IVariableLocation searchForLocation(EDCServicesTracker tracker,
 			IFrameDMContext context, IAddress forLinkAddress,
 			IScope scope) {
 		long address = forLinkAddress.getValue().longValue();

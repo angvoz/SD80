@@ -14,12 +14,12 @@ import java.math.BigInteger;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IRegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 public class RegisterVariableLocation implements IRegisterVariableLocation {
@@ -27,9 +27,9 @@ public class RegisterVariableLocation implements IRegisterVariableLocation {
 	protected String name;
 	protected int id;
 	protected final IDMContext context;
-	protected final DsfServicesTracker tracker;
+	protected final EDCServicesTracker tracker;
 
-	public RegisterVariableLocation(DsfServicesTracker tracker, IDMContext context, String name, int id) {
+	public RegisterVariableLocation(EDCServicesTracker tracker, IDMContext context, String name, int id) {
 		this.tracker = tracker;
 		this.context = context;
 		this.name = name;
@@ -90,7 +90,7 @@ public class RegisterVariableLocation implements IRegisterVariableLocation {
 		return context;
 	}
 	
-	public DsfServicesTracker getServicesTracker()
+	public EDCServicesTracker getServicesTracker()
 	{
 		return tracker;
 	}

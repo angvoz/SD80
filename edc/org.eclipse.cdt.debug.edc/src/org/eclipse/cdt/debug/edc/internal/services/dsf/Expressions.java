@@ -91,7 +91,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			super(Expressions.this, new IDMContext[] { parent }, name, ((IEDCDMContext)parent).getID() + "." + name); //$NON-NLS-1$
 			this.expression = expression;
 			this.frame = DMContexts.getAncestorOfType(parent, StackFrameDMC.class);
-			engine = new ASTEvaluationEngine(getServicesTracker(), frame, frame.getTypeEngine());
+			engine = new ASTEvaluationEngine(getEDCServicesTracker(), frame, frame.getTypeEngine());
 		}
 		
 		public BaseEDCExpressionDMC(IDMContext parent, String expression) {
@@ -512,9 +512,12 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 	public class ExpressionData implements IExpressionDMData {
 
 		private final IEDCExpression dmc;
+		private String typeName = "";
 
 		public ExpressionData(IEDCExpression dmc) {
 			this.dmc = dmc;
+			if (dmc != null)
+				this.typeName = dmc.getTypeName();
 		}
 
 		public BasicType getBasicType() {
@@ -569,10 +572,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		}
 
 		public String getTypeName() {
-			if (dmc != null)
-				return dmc.getTypeName();
-			else
-				return ""; //$NON-NLS-1$
+			return typeName;
 		}
 
 	}
@@ -711,7 +711,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 			
 			if (type == null && error == null) {
 				if (frameDmc != null) {
-					ASTEvaluationEngine engine = new ASTEvaluationEngine(getServicesTracker(), frameDmc, frameDmc.getTypeEngine());
+					ASTEvaluationEngine engine = new ASTEvaluationEngine(getEDCServicesTracker(), frameDmc, frameDmc.getTypeEngine());
 					try {
 						IASTTypeId typeId = engine.getCompiledType(info.getTypeString());
 						type = engine.getTypeEngine().getTypeForTypeId(typeId);
@@ -785,209 +785,239 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		rm.done();
 	}
 
-	public void getExpressionAddressData(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMAddress> rm) {
-		if (exprContext instanceof IEDCExpression)
-			rm.setData(new ExpressionDMAddress(exprContext));
-		else
-			rm.setData(new ExpressionDMAddress(null));
-		rm.done();
+	public void getExpressionAddressData(final IExpressionDMContext exprContext, final DataRequestMonitor<IExpressionDMAddress> rm) {
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				if (exprContext instanceof IEDCExpression)
+					rm.setData(new ExpressionDMAddress(exprContext));
+				else
+					rm.setData(new ExpressionDMAddress(null));
+				rm.done();
+			}
+		});
 	}
 
-	public void getExpressionData(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMData> rm) {
-		if (exprContext instanceof IEDCExpression)
-			rm.setData(new ExpressionData((IEDCExpression) exprContext));
-		else
-			rm.setData(new ExpressionData(null));
-		rm.done();
+	public void getExpressionData(final IExpressionDMContext exprContext, final DataRequestMonitor<IExpressionDMData> rm) {
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				if (exprContext instanceof IEDCExpression)
+					rm.setData(new ExpressionData((IEDCExpression) exprContext));
+				else
+					rm.setData(new ExpressionData(null));
+				rm.done();
+			}
+		});
 	}
 
-	public void getSubExpressionCount(IExpressionDMContext exprContext, final DataRequestMonitor<Integer> rm) {
-		// handle array casts
-		CastInfo cast = null;
-		if (exprContext instanceof IEDCExpression && (cast = ((IEDCExpression) exprContext).getCastInfo()) != null) { 
-			if (cast.getArrayCount() > 0) {
-				if (((IEDCExpression)exprContext).getEvaluationError() != null) {
+	public void getSubExpressionCount(final IExpressionDMContext exprContext, final DataRequestMonitor<Integer> rm) {
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				// handle array casts
+				CastInfo cast = null;
+				if (exprContext instanceof IEDCExpression && (cast = ((IEDCExpression) exprContext).getCastInfo()) != null) { 
+					if (cast.getArrayCount() > 0) {
+						if (((IEDCExpression)exprContext).getEvaluationError() != null) {
+							rm.setData(0);
+							rm.done();
+							return;
+						}
+						rm.setData(cast.getArrayCount());
+						rm.done();
+						return;
+					}
+				}
+
+				if (!(exprContext instanceof IEDCExpression)) {
 					rm.setData(0);
 					rm.done();
 					return;
 				}
-				rm.setData(cast.getArrayCount());
-				rm.done();
-				return;
-			}
-		}
 
-		if (!(exprContext instanceof IEDCExpression)) {
-			rm.setData(0);
-			rm.done();
-			return;
-		}
+				IEDCExpression expr = (IEDCExpression) exprContext;
 
-		IEDCExpression expr = (IEDCExpression) exprContext;
+				// if expression has no evaluated value, then it has not yet been evaluated
+				if (expr.getEvaluatedValue() == null && expr.getEvaluatedValueString() != null) {
+					expr.evaluateExpression();
+				}
 
-		// if expression has no evaluated value, then it has not yet been evaluated
-		if (expr.getEvaluatedValue() == null && expr.getEvaluatedValueString() != null) {
-			expr.evaluateExpression();
-		}
+				IType exprType = TypeUtils.getStrippedType(expr.getEvaluatedType());
+				
+				// to expand it, it must either be a pointer, a reference to an aggregate,
+				// or an aggregate
+				boolean pointerType = exprType instanceof IPointerType;
+				boolean referenceType = exprType instanceof IReferenceType;
+				IType pointedTo = null;
+				if (referenceType)
+					pointedTo = TypeUtils.getStrippedType(((IReferenceType) exprType).getType());
+				
+				if (!(exprType instanceof IAggregate) && !pointerType &&
+					!(referenceType && (pointedTo instanceof IAggregate || pointedTo instanceof IPointerType))) {
+					rm.setData(0);
+					rm.done();
+					return;
+				}
+				
+				ITypeContentProvider customProvider = 
+					FormatExtensionManager.instance().getTypeContentProvider(exprType);
+				if (customProvider != null) {
+					try {
+						rm.setData(customProvider.getChildCount(expr));
+						rm.done();
+						return;
+					} catch (Throwable e) {
+					}
+				}
 
-		IType exprType = TypeUtils.getStrippedType(expr.getEvaluatedType());
-		
-		// to expand it, it must either be a pointer, a reference to an aggregate,
-		// or an aggregate
-		boolean pointerType = exprType instanceof IPointerType;
-		boolean referenceType = exprType instanceof IReferenceType;
-		IType pointedTo = null;
-		if (referenceType)
-			pointedTo = TypeUtils.getStrippedType(((IReferenceType) exprType).getType());
-		
-		if (!(exprType instanceof IAggregate) && !pointerType &&
-			!(referenceType && (pointedTo instanceof IAggregate || pointedTo instanceof IPointerType))) {
-			rm.setData(0);
-			rm.done();
-			return;
-		}
-		
-		ITypeContentProvider customProvider = 
-			FormatExtensionManager.instance().getTypeContentProvider(exprType);
-		if (customProvider != null) {
-			try {
-				rm.setData(customProvider.getChildCount(expr));
-				rm.done();
-				return;
-			} catch (Throwable e) {
-			}
-		}
-
-		// TODO: maybe cache these subexpressions; they are just requested again in #getSubExpressions()
-		getSubExpressions(exprContext, new DataRequestMonitor<IExpressions.IExpressionDMContext[]>(
-				getExecutor(), rm) {
-			/* (non-Javadoc)
-			 * @see org.eclipse.cdt.dsf.concurrent.RequestMonitor#handleSuccess()
-			 */
-			@Override
-			protected void handleSuccess() {
-				rm.setData(getData().length);
-				rm.done();
+				// TODO: maybe cache these subexpressions; they are just requested again in #getSubExpressions()
+				getSubExpressions(exprContext, new DataRequestMonitor<IExpressions.IExpressionDMContext[]>(
+						getExecutor(), rm) {
+					/* (non-Javadoc)
+					 * @see org.eclipse.cdt.dsf.concurrent.RequestMonitor#handleSuccess()
+					 */
+					@Override
+					protected void handleSuccess() {
+						rm.setData(getData().length);
+						rm.done();
+					}
+				});
 			}
 		});
 	}
 
-	public void getSubExpressions(IExpressionDMContext exprContext, DataRequestMonitor<IExpressionDMContext[]> rm) {
-		if (!(exprContext instanceof IEDCExpression) || ((IEDCExpression) exprContext).getFrame() == null) {
-			rm.setData(new IEDCExpression[0]);
-			rm.done();
-			return;
-		}
+	public void getSubExpressions(final IExpressionDMContext exprContext, final DataRequestMonitor<IExpressionDMContext[]> rm) {
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				if (!(exprContext instanceof IEDCExpression) || ((IEDCExpression) exprContext).getFrame() == null) {
+					rm.setData(new IEDCExpression[0]);
+					rm.done();
+					return;
+				}
 
-		IEDCExpression expr = (IEDCExpression) exprContext;
+				IEDCExpression expr = (IEDCExpression) exprContext;
 
-		// if expression has no evaluated value, then it has not yet been evaluated
-		if (expr.getEvaluatedValue() == null && expr.getEvaluatedValueString() != null) {
-			expr.evaluateExpression();
-		}
+				// if expression has no evaluated value, then it has not yet been evaluated
+				if (expr.getEvaluatedValue() == null && expr.getEvaluatedValueString() != null) {
+					expr.evaluateExpression();
+				}
 
-		StackFrameDMC frame = (StackFrameDMC) expr.getFrame();
-		IType exprType = TypeUtils.getStrippedType(expr.getEvaluatedType());
+				StackFrameDMC frame = (StackFrameDMC) expr.getFrame();
+				IType exprType = TypeUtils.getStrippedType(expr.getEvaluatedType());
 
-		// if casted to an array, convert thusly
-    	CastInfo castInfo = expr.getCastInfo();
-    	if (castInfo != null && castInfo.getArrayCount() > 0) {
-    		try {
-    			exprType = frame.getTypeEngine().convertToArrayType(exprType, castInfo.getArrayCount());
-    		} catch (CoreException e) {
-    			rm.setStatus(e.getStatus());
-    			rm.done();
-    			return;
-    		}
-    	}
-    	
-		
-		// to expand it, it must either be a pointer, a reference to an aggregate,
-		// or an aggregate
-		boolean pointerType = exprType instanceof IPointerType;
-		boolean referenceType = exprType instanceof IReferenceType;
-		IType pointedTo = null;
-		if (referenceType) {
-			pointedTo = TypeUtils.getStrippedType(((IReferenceType) exprType).getType());
-			exprType = pointedTo;
-		}
-		
-		if (!(exprType instanceof IAggregate) && !pointerType &&
-			!(referenceType && (pointedTo instanceof IAggregate || pointedTo instanceof IPointerType))) {
-			rm.setData(new IEDCExpression[0]);
-			rm.done();
-			return;
-		}
-		
-		ITypeContentProvider customProvider = 
-			FormatExtensionManager.instance().getTypeContentProvider(exprType);
-		if (customProvider != null) {
-			try {
-				getSubExpressions(expr, frame, customProvider, rm);
-			}
-			catch (CoreException e) {
-				// Checked exception. But we don't want to pass the error up as it
-				// would make the variable (say, a structure) not expandable on UI. 
-				// Just resort to the normal formatting.  
-				getSubExpressions(expr, frame, exprType, rm);
-			} catch (Throwable e) {
-				// unexpected error. log it.
-				EDCDebugger.getMessageLogger().logError(
-						EDCServicesMessages.Expressions_ErrorInVariableFormatter + customProvider.getClass().getName(), e);
+				// if casted to an array, convert thusly
+		    	CastInfo castInfo = expr.getCastInfo();
+		    	if (castInfo != null && castInfo.getArrayCount() > 0) {
+		    		try {
+		    			exprType = frame.getTypeEngine().convertToArrayType(exprType, castInfo.getArrayCount());
+		    		} catch (CoreException e) {
+		    			rm.setStatus(e.getStatus());
+		    			rm.done();
+		    			return;
+		    		}
+		    	}
+		    	
 				
-				// default to normal formatting
-				getSubExpressions(expr, frame, exprType, rm);
+				// to expand it, it must either be a pointer, a reference to an aggregate,
+				// or an aggregate
+				boolean pointerType = exprType instanceof IPointerType;
+				boolean referenceType = exprType instanceof IReferenceType;
+				IType pointedTo = null;
+				if (referenceType) {
+					pointedTo = TypeUtils.getStrippedType(((IReferenceType) exprType).getType());
+					exprType = pointedTo;
+				}
+				
+				if (!(exprType instanceof IAggregate) && !pointerType &&
+					!(referenceType && (pointedTo instanceof IAggregate || pointedTo instanceof IPointerType))) {
+					rm.setData(new IEDCExpression[0]);
+					rm.done();
+					return;
+				}
+				
+				ITypeContentProvider customProvider = 
+					FormatExtensionManager.instance().getTypeContentProvider(exprType);
+				if (customProvider != null) {
+					getSubExpressions(expr, frame, exprType, customProvider, rm);
+				}
+				else
+					getSubExpressions(expr, frame, exprType, rm);
 			}
-		}
-		else
-			getSubExpressions(expr, frame, exprType, rm);
+		});
 	}
 
-	public void getSubExpressions(IExpressionDMContext exprContext, final int startIndex_, final int length_,
+	public void getSubExpressions(final IExpressionDMContext exprContext, final int startIndex_, final int length_,
 			final DataRequestMonitor<IExpressionDMContext[]> rm) {
-		getSubExpressions(exprContext, new DataRequestMonitor<IExpressionDMContext[]>(getExecutor(), rm) {
-			@Override
-			protected void handleSuccess() {
-				IExpressionDMContext[] allExprs = getData();
-				if (startIndex_ == 0 && length_ >= allExprs.length) {
-					rm.setData(allExprs);
-					rm.done();
-				} else {
-					int startIndex = startIndex_, length = length_;
-					if (startIndex > allExprs.length) {
-						startIndex = allExprs.length;
-						length = 0;
-					} else if (startIndex + length > allExprs.length) {
-						length = allExprs.length - startIndex;
-						if (length < 0)
-							length = 0;
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				getSubExpressions(exprContext, new DataRequestMonitor<IExpressionDMContext[]>(getExecutor(), rm) {
+					@Override
+					protected void handleSuccess() {
+						IExpressionDMContext[] allExprs = getData();
+						if (startIndex_ == 0 && length_ >= allExprs.length) {
+							rm.setData(allExprs);
+							rm.done();
+						} else {
+							int startIndex = startIndex_, length = length_;
+							if (startIndex > allExprs.length) {
+								startIndex = allExprs.length;
+								length = 0;
+							} else if (startIndex + length > allExprs.length) {
+								length = allExprs.length - startIndex;
+								if (length < 0)
+									length = 0;
+							}
+								
+							IExpressionDMContext[] result = new IExpressionDMContext[length];
+							System.arraycopy(allExprs, startIndex, result, 0, length);
+							rm.setData(result);
+							rm.done();
+						}
 					}
-						
-					IExpressionDMContext[] result = new IExpressionDMContext[length];
-					System.arraycopy(allExprs, startIndex, result, 0, length);
-					rm.setData(result);
+				});
+			}
+		});
+	}
+
+	private void getSubExpressions(final IEDCExpression expr, final StackFrameDMC frame, 
+			final IType exprType, final ITypeContentProvider customProvider, final DataRequestMonitor<IExpressionDMContext[]> rm) {
+
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
+				Iterator<IExpressionDMContext> childIterator;
+				try {
+					childIterator = customProvider.getChildIterator(expr);
+					while (childIterator.hasNext() && !rm.isCanceled()) {
+						children.add(childIterator.next());
+					}
+					rm.setData(children.toArray(new IExpressionDMContext[children.size()]));
 					rm.done();
+				} catch (CoreException e) {
+					// Checked exception. But we don't want to pass the error up as it
+					// would make the variable (say, a structure) not expandable on UI. 
+					// Just resort to the normal formatting.  
+					getSubExpressions(expr, frame, exprType, rm);
+				} catch (Throwable e) {
+					// unexpected error. log it.
+					EDCDebugger.getMessageLogger().logError(
+							EDCServicesMessages.Expressions_ErrorInVariableFormatter + customProvider.getClass().getName(), e);
+					
+					// default to normal formatting
+					getSubExpressions(expr, frame, exprType, rm);
 				}
 			}
 		});
 	}
 
-	private void getSubExpressions(IEDCExpression expr, StackFrameDMC frame, 
-			ITypeContentProvider customProvider, DataRequestMonitor<IExpressionDMContext[]> rm) throws CoreException {
-		List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
-		Iterator<IExpressionDMContext> childIterator = customProvider.getChildIterator(expr);
-		while (childIterator.hasNext() && !rm.isCanceled()) {
-			children.add(childIterator.next());
-		}
-		rm.setData(children.toArray(new IExpressionDMContext[children.size()]));
-		rm.done();
-	}
+	private void getSubExpressions(final IEDCExpression expr, StackFrameDMC frame, 
+					IType exprType,	final DataRequestMonitor<IExpressionDMContext[]> rm) {
 
-	private void getSubExpressions(IEDCExpression expr, StackFrameDMC frame, 
-					IType exprType,	DataRequestMonitor<IExpressionDMContext[]> rm) {
-		IEDCExpression[] children = getLogicalSubExpressions(expr);
-		rm.setData(children);
-		rm.done();
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				IEDCExpression[] children = getLogicalSubExpressions(expr);
+				rm.setData(children);
+				rm.done();
+			}
+		});
 	}
 	
 	/**
@@ -1204,54 +1234,60 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
         }
     }
 
-	public void writeExpression(IExpressionDMContext exprContext, String expressionValue, String formatId, RequestMonitor rm) {
-		IEDCExpression expressionDMC = (IEDCExpression) exprContext;
-		if (isComposite(expressionDMC)) {
-			rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_CannotModifyCompositeValue, null));
-			rm.done();
-			return;
-		}
+	public void writeExpression(final IExpressionDMContext exprContext, final String expressionValue, final String formatId, final RequestMonitor rm) {
 
-		IType exprType = TypeUtils.getStrippedType(expressionDMC.getEvaluatedType());
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				IEDCExpression expressionDMC = (IEDCExpression) exprContext;
+				if (isComposite(expressionDMC)) {
+					rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_CannotModifyCompositeValue, null));
+					rm.done();
+					return;
+				}
 
-		// first try to get value by format as BigInteger
-		Number number = NumberFormatUtils.parseIntegerByFormat(expressionValue, formatId);
-        if (number == null) {
-       		IEDCExpression temp = (IEDCExpression) createExpression(expressionDMC.getFrame(), expressionValue);
-       		temp.evaluateExpression();
-			number = temp.getEvaluatedValue();
+				IType exprType = TypeUtils.getStrippedType(expressionDMC.getEvaluatedType());
 
-       		if (number == null) {
-       			rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_CannotParseExpression, null));
-       			rm.done();
-       			return;
-       		}
-        }
-        
-        BigInteger value = null;
-		try {
-			value = MemoryUtils.convertValueToMemory(exprType, number);
-		} catch (CoreException e) {
-   			rm.setStatus(e.getStatus());
-   			rm.done();
-   			return;
-		}
-        
-        IVariableLocation variableLocation = expressionDMC.getValueLocation();
-        if (variableLocation == null) {
-        	rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_ExpressionNoLocation, null));
-   			rm.done();
-   			return;
-        }
-        	
-    	try {
-    		variableLocation.writeValue(exprType.getByteSize(), value);
-    		getSession().dispatchEvent(new ExpressionChangedDMEvent(exprContext), getProperties());
-		} catch (CoreException e) {
-			rm.setStatus(e.getStatus());
-		}
-        
-		rm.done();
+				// first try to get value by format as BigInteger
+				Number number = NumberFormatUtils.parseIntegerByFormat(expressionValue, formatId);
+		        if (number == null) {
+		       		IEDCExpression temp = (IEDCExpression) createExpression(expressionDMC.getFrame(), expressionValue);
+		       		temp.evaluateExpression();
+					number = temp.getEvaluatedValue();
+
+		       		if (number == null) {
+		       			rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_CannotParseExpression, null));
+		       			rm.done();
+		       			return;
+		       		}
+		        }
+		        
+		        BigInteger value = null;
+				try {
+					value = MemoryUtils.convertValueToMemory(exprType, number);
+				} catch (CoreException e) {
+		   			rm.setStatus(e.getStatus());
+		   			rm.done();
+		   			return;
+				}
+		        
+		        IVariableLocation variableLocation = expressionDMC.getValueLocation();
+		        if (variableLocation == null) {
+		        	rm.setStatus(EDCDebugger.dsfRequestFailedStatus(EDCServicesMessages.Expressions_ExpressionNoLocation, null));
+		   			rm.done();
+		   			return;
+		        }
+		        	
+		    	try {
+		    		variableLocation.writeValue(exprType.getByteSize(), value);
+		    		getSession().dispatchEvent(new ExpressionChangedDMEvent(exprContext), getProperties());
+				} catch (CoreException e) {
+					rm.setStatus(e.getStatus());
+				}
+		        
+				rm.done();
+			}
+		});
+
 	}
 
 	public void getAvailableFormats(IFormattedDataDMContext formattedDataContext, DataRequestMonitor<String[]> rm) {
@@ -1260,56 +1296,60 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		rm.done();
 	}
 
-	public void getFormattedExpressionValue(FormattedValueDMContext formattedDataContext,
-			DataRequestMonitor<FormattedValueDMData> rm) {
-		IDMContext idmContext = formattedDataContext.getParents()[0];
-		FormattedValueDMData formattedValue = null;
-		IEDCExpression exprDMC = null;
+	public void getFormattedExpressionValue(final FormattedValueDMContext formattedDataContext,
+			final DataRequestMonitor<FormattedValueDMData> rm) {
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				IDMContext idmContext = formattedDataContext.getParents()[0];
+				FormattedValueDMData formattedValue = null;
+				IEDCExpression exprDMC = null;
 
-		if (idmContext instanceof IEDCExpression) {
-			exprDMC = (IEDCExpression) formattedDataContext.getParents()[0];
+				if (idmContext instanceof IEDCExpression) {
+					exprDMC = (IEDCExpression) formattedDataContext.getParents()[0];
 
-			exprDMC.evaluateExpression();
-			
-			if (exprDMC != null && exprDMC.getEvaluationError() != null) {
-				rm.setStatus(exprDMC.getEvaluationError());
-				rm.done();
-				return;
-			}
-			
-			formattedValue = exprDMC.getFormattedValue(formattedDataContext); // must call this to get type
-			
-			if (formattedDataContext.getFormatID().equals(IFormattedValues.NATURAL_FORMAT))
-			{
-				IVariableValueConverter customConverter = getCustomValueConverter(exprDMC);
-				if (customConverter != null) {
-					FormattedValueDMData customFormattedValue = null;
-					try {
-						customFormattedValue = new FormattedValueDMData(customConverter.getValue(exprDMC));
-						formattedValue = customFormattedValue;
-					}
-					catch (CoreException e) {
-						// Checked exception like failure in reading memory.
-						// Pass the error to the RM so that it would show up in UI. 
-						rm.setStatus(e.getStatus());
+					exprDMC.evaluateExpression();
+					
+					if (exprDMC != null && exprDMC.getEvaluationError() != null) {
+						rm.setStatus(exprDMC.getEvaluationError());
 						rm.done();
 						return;
 					}
-					catch (Throwable t) {
-						// Other unexpected errors, usually bug in the formatter. Log it 
-						// so that user will be able to see and report the bug. 
-						// Meanwhile default to normal formatting so that user won't see 
-						// such error in Variable UI.
-						EDCDebugger.getMessageLogger().logError(
-								EDCServicesMessages.Expressions_ErrorInVariableFormatter + customConverter.getClass().getName(), t);
+					
+					formattedValue = exprDMC.getFormattedValue(formattedDataContext); // must call this to get type
+					
+					if (formattedDataContext.getFormatID().equals(IFormattedValues.NATURAL_FORMAT))
+					{
+						IVariableValueConverter customConverter = getCustomValueConverter(exprDMC);
+						if (customConverter != null) {
+							FormattedValueDMData customFormattedValue = null;
+							try {
+								customFormattedValue = new FormattedValueDMData(customConverter.getValue(exprDMC));
+								formattedValue = customFormattedValue;
+							}
+							catch (CoreException e) {
+								// Checked exception like failure in reading memory.
+								// Pass the error to the RM so that it would show up in UI. 
+								rm.setStatus(e.getStatus());
+								rm.done();
+								return;
+							}
+							catch (Throwable t) {
+								// Other unexpected errors, usually bug in the formatter. Log it 
+								// so that user will be able to see and report the bug. 
+								// Meanwhile default to normal formatting so that user won't see 
+								// such error in Variable UI.
+								EDCDebugger.getMessageLogger().logError(
+										EDCServicesMessages.Expressions_ErrorInVariableFormatter + customConverter.getClass().getName(), t);
+							}
+						}
 					}
-				}
-			}
-		} else
-			formattedValue = new FormattedValueDMData(""); //$NON-NLS-1$
+				} else
+					formattedValue = new FormattedValueDMData(""); //$NON-NLS-1$
 
-		rm.setData(formattedValue);
-		rm.done();
+				rm.setData(formattedValue);
+				rm.done();
+			}
+		});
 	}
 
 	private IVariableValueConverter getCustomValueConverter(IEDCExpression exprDMC) {

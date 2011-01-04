@@ -28,9 +28,9 @@ import org.eclipse.cdt.core.parser.ScannerInfo;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.InstructionSequence;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions.Interpreter;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.GNUCPPSourceParser;
 import org.eclipse.cdt.internal.core.parser.scanner.CPreprocessor;
 import org.eclipse.core.runtime.CoreException;
@@ -39,7 +39,7 @@ import org.eclipse.core.runtime.CoreException;
 public class ASTEvaluationEngine {
 
 	public static final String UNKNOWN_TYPE = "<UNKNOWN>"; //$NON-NLS-1$
-	private final DsfServicesTracker tracker;
+	private final EDCServicesTracker tracker;
 	private final IDMContext context;
 	private final TypeEngine typeEngine;
 
@@ -48,7 +48,7 @@ public class ASTEvaluationEngine {
 	 * @param tracker 
 	 * 
 	 */
-	public ASTEvaluationEngine(DsfServicesTracker tracker, IDMContext context, TypeEngine typeEngine) {
+	public ASTEvaluationEngine(EDCServicesTracker tracker, IDMContext context, TypeEngine typeEngine) {
 		this.tracker = tracker;
 		this.context = context;
 		this.typeEngine = typeEngine;

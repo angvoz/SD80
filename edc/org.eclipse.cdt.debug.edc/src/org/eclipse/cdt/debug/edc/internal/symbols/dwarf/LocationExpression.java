@@ -19,13 +19,13 @@ import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IRegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 public class LocationExpression implements ILocationProvider {
@@ -40,7 +40,7 @@ public class LocationExpression implements ILocationProvider {
 		this.scope = scope;
 	}
 
-	public IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress, boolean isNonLocalConstVariable) {
+	public IVariableLocation getLocation(EDCServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress, boolean isNonLocalConstVariable) {
 
 		if (location == null) {
 			return null;

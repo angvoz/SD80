@@ -19,13 +19,13 @@ import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Memory;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
@@ -35,21 +35,21 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 
 	protected IAddress address;
 	protected boolean isRuntimeAddress;
-	protected DsfServicesTracker tracker;
+	protected EDCServicesTracker tracker;
 	private IDMContext context;
 
-	public MemoryVariableLocation(DsfServicesTracker tracker, IDMContext context, BigInteger addressValue,
+	public MemoryVariableLocation(EDCServicesTracker tracker, IDMContext context, BigInteger addressValue,
 			boolean isRuntimeAddress) {
 		initialize(tracker,context,addressValue,isRuntimeAddress, false);
 	}
 
-	public MemoryVariableLocation(DsfServicesTracker tracker, IDMContext context, BigInteger addressValue,
+	public MemoryVariableLocation(EDCServicesTracker tracker, IDMContext context, BigInteger addressValue,
 			boolean isRuntimeAddress, boolean checkNonLocalConstVariable) {
 		// checkConstVariableAddress should only be true for global or static (non-local) constant variables
 		initialize(tracker,context,addressValue,isRuntimeAddress, checkNonLocalConstVariable);
 	}
 
-	private void initialize(DsfServicesTracker tracker, IDMContext context, BigInteger addressValue,
+	private void initialize(EDCServicesTracker tracker, IDMContext context, BigInteger addressValue,
 			boolean isRuntimeAddress, boolean checkNonLocalConstVariable)  {
 		this.tracker = tracker;
 		this.context = context;
@@ -209,7 +209,7 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 		return context;
 	}
 
-	public DsfServicesTracker getServicesTracker() {
+	public EDCServicesTracker getServicesTracker() {
 		return tracker;
 	}
 }

@@ -14,25 +14,25 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 import org.eclipse.cdt.debug.edc.internal.eval.ast.engine.ASTEvalMessages;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 public class VariableWithValue extends OperandValue {
 	final IVariable variable;
-	private final DsfServicesTracker servicesTracker;
+	private final EDCServicesTracker servicesTracker;
 	private final StackFrameDMC frame;
 
-	public VariableWithValue(DsfServicesTracker servicesTracker, StackFrameDMC frame, IVariable variable) {
+	public VariableWithValue(EDCServicesTracker servicesTracker, StackFrameDMC frame, IVariable variable) {
 		this(servicesTracker, frame, variable, false);
 	}
 
-	public VariableWithValue(DsfServicesTracker servicesTracker, StackFrameDMC frame, IVariable variable,
+	public VariableWithValue(EDCServicesTracker servicesTracker, StackFrameDMC frame, IVariable variable,
 			boolean isBitField) {
 		super(variable.getType(), isBitField);
 		this.servicesTracker = servicesTracker;
@@ -40,7 +40,7 @@ public class VariableWithValue extends OperandValue {
 		this.variable = variable;
 	}
 	
-	public VariableWithValue(DsfServicesTracker servicesTracker, StackFrameDMC frame, IVariable variable, IType otherType) {
+	public VariableWithValue(EDCServicesTracker servicesTracker, StackFrameDMC frame, IVariable variable, IType otherType) {
 		super(otherType, false);
 		this.servicesTracker = servicesTracker;
 		this.frame = frame;
@@ -49,7 +49,7 @@ public class VariableWithValue extends OperandValue {
 	/**
 	 * @return the servicesTracker
 	 */
-	public DsfServicesTracker getServicesTracker() {
+	public EDCServicesTracker getServicesTracker() {
 		return servicesTracker;
 	}
 	/**

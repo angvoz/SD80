@@ -173,7 +173,7 @@ public class FormatUtils {
 	 		throws CoreException {
 		IEDCExpression expression = (IEDCExpression) variable;
 		StackFrameDMC frame = (StackFrameDMC) expression.getFrame();
-		IEDCMemory memory = frame.getDsfServicesTracker().getService(Memory.class);
+		IEDCMemory memory = frame.getEDCServicesTracker().getService(Memory.class);
 		
 		StringBuilder sb = new StringBuilder();
 		ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>();
@@ -212,7 +212,7 @@ public class FormatUtils {
 			int maximumLength) throws CoreException {
 		IEDCExpression expression = (IEDCExpression) variable;
 		StackFrameDMC frame = (StackFrameDMC) expression.getFrame();
-		IEDCMemory memory = frame.getDsfServicesTracker().getService(Memory.class);
+		IEDCMemory memory = frame.getEDCServicesTracker().getService(Memory.class);
 		
 		StringBuilder sb = new StringBuilder();
 		ArrayList<MemoryByte> buffer = new ArrayList<MemoryByte>(64);// typical size of cache block

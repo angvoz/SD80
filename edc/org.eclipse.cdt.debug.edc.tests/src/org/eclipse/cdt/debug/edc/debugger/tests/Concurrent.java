@@ -19,6 +19,7 @@ import org.eclipse.cdt.debug.edc.tests.TestUtils;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.junit.After;
 import org.junit.Test;
@@ -43,8 +44,12 @@ public class Concurrent extends BaseLaunchTest {
 			
 			public void run() {
 				Stack stackService = TestUtils.getService(session, Stack.class);
-				IFrameDMContext[] frames = stackService.getFramesForDMC((ExecutionDMC) executionDMC, 0, IStack.ALL_FRAMES);
-				System.out.println("got frames: " + frames);
+				try {
+					IFrameDMContext[] frames = stackService.getFramesForDMC((ExecutionDMC) executionDMC, 0, IStack.ALL_FRAMES);
+					System.out.println("Got frames: " + frames);
+				} catch (CoreException e) {
+					e.printStackTrace();
+				}
 			}
 			
 		};

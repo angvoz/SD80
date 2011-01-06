@@ -317,10 +317,18 @@ public class ExtractLocalVariableRefactoring extends CRefactoring {
 
 	public String guessTempName() {
 		String[] proposals= guessTempNames();
-		if (proposals.length == 0)
+		if (proposals.length == 0) {
 			return info.getName();
-		else
-			return proposals[0];
+		} else {
+			String name = proposals[proposals.length - 1];
+			return name;
+		}
+	}
+
+	private String[] getPrefixes() {
+		// In Future we could use user preferences to define the prefixes
+		String[] prefixes = { "get", "is" }; //$NON-NLS-1$//$NON-NLS-2$
+		return prefixes;
 	}
 
 	/**
@@ -394,7 +402,7 @@ public class ExtractLocalVariableRefactoring extends CRefactoring {
 							tmpName[len++] = c;
 						}
 					}
-					name = new String(tmpName, 0, len);
+					name = trimPrefixes(new String(tmpName, 0, len));
 					if (name.length() > 0) {
 						if (nameAvailable(name, guessedTempNames, scope)) {
 							guessedTempNames.add(name);
@@ -403,6 +411,7 @@ public class ExtractLocalVariableRefactoring extends CRefactoring {
 						}
 					}
 				}
+
 			});
 		}
 		if (guessedTempNames.isEmpty()) {
@@ -412,6 +421,40 @@ public class ExtractLocalVariableRefactoring extends CRefactoring {
 			}
 		}
 		return guessedTempNames.toArray(new String[0]);
+	}
+
+	private String trimPrefixes(String name) {
+		String lower = name.toLowerCase();
+		int start = 0;
+		for (String prefix : getPrefixes()) {
+			if(lower.startsWith(prefix)) {
+				if (name.length() > prefix.length()) {
+					start = prefix.length();
+				}
+			}
+			prefix = prefix + "_"; //$NON-NLS-1$
+			if(lower.startsWith(prefix)) {
+				if (name.length() > prefix.length()) {
+					start = prefix.length();
+				}
+			}
+		}
+
+		if (start > 0) {
+
+			String nameWithoutPrefix = name.substring(start);
+			if (Character.isUpperCase(nameWithoutPrefix.charAt(0))) {
+				nameWithoutPrefix = nameWithoutPrefix.substring(0, 1).toLowerCase()
+						+ nameWithoutPrefix.substring(1);
+			}
+
+			if (!Character.isJavaIdentifierStart(nameWithoutPrefix.charAt(0))) {
+				nameWithoutPrefix = "_" + nameWithoutPrefix; //$NON-NLS-1$
+			}
+			return nameWithoutPrefix;
+		} else {
+			return name;
+		}
 	}
 
 	private boolean nameAvailable(String name, List<String> guessedNames, IScope scope) {

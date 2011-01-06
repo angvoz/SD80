@@ -56,7 +56,6 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.service.IDsfService;
 import org.eclipse.cdt.utils.Addr64;
@@ -190,14 +189,15 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	 */
 	public static class PreservedFrameRegisters implements IFrameRegisters {
 		private final Map<Integer, BigInteger> preservedRegisters;
-		private final DsfServicesTracker dsfServicesTracker;
+		private final EDCServicesTracker dsfServicesTracker;
 		private final StackFrameDMC context;
 
 		/**
 		 * @param preservedRegisters map of register number to the address
 		 * where the register is saved
+		 * @since 2.0
 		 */
-		public PreservedFrameRegisters(DsfServicesTracker dsfServicesTracker,
+		public PreservedFrameRegisters(EDCServicesTracker dsfServicesTracker,
 				StackFrameDMC context,
 				Map<Integer, BigInteger> preservedRegisters) {
 			this.dsfServicesTracker = dsfServicesTracker;
@@ -285,7 +285,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		 */
 		public static final String EXECUTION_DMC_ID = "execution_dmc_id";
 
-		private final DsfServicesTracker dsfServicesTracker = getServicesTracker();
+		private final EDCServicesTracker dsfServicesTracker = Stack.this.getEDCServicesTracker();
 		private final IEDCExecutionDMC executionDMC;
 		private final int level;
 		private IAddress baseAddress;
@@ -367,7 +367,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 									if (!cachedPropertiesHasFunctionName)
 									{
 										setFunctionName(executionDMC, frameProperties,
-														getServicesTracker().getService(Symbols.class));
+														getService(Symbols.class));
 										cachedProperties.put(FUNCTION_NAME, functionName);
 									}
 
@@ -391,7 +391,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				if (!usingCachedProperties)
 				{
 					// compute the source location
-					IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+					IEDCSymbols symbolsService = getService(Symbols.class);
 					
 					ILineEntry line = symbolsService.getLineEntryForAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 					if (line != null) {
@@ -423,7 +423,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					}
 				}
 			}
-			typeEngine = new TypeEngine(dsfServicesTracker, debugInfoProvider);
+			typeEngine = new TypeEngine(getTargetEnvironmentService(), debugInfoProvider);
 		}
 
 		private void setFunctionName(final IEDCExecutionDMC executionDMC,
@@ -511,8 +511,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return level;
 		}
 
-		public DsfServicesTracker getDsfServicesTracker() {
-			return dsfServicesTracker;
+		/**
+		 * @since 2.0
+		 */
+		public EDCServicesTracker getEDCServicesTracker() {
+			return Stack.this.getEDCServicesTracker();
 		}
 
 		public int compareTo(StackFrameDMC f) {
@@ -584,8 +587,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		 */
 		private String findSourceFile(String sourceFile) {
 			String result = "";
-			CSourceLookup lookup = getServicesTracker().getService(CSourceLookup.class);
-			RunControl runControl = getServicesTracker().getService(RunControl.class);
+			CSourceLookup lookup = getService(CSourceLookup.class);
+			RunControl runControl = getService(RunControl.class);
 			CSourceLookupDirector[] directors = lookup.getSourceLookupDirectors(runControl.getRootDMC());
 
 			for (CSourceLookupDirector cSourceLookupDirector : directors) {
@@ -667,7 +670,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				locals = new ArrayList<VariableDMC>();
 				localsByName.clear();
 				thisPtrs.clear();
-				IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+				IEDCSymbols symbolsService = getService(IEDCSymbols.class);
 				IFunctionScope scope = symbolsService
 						.getFunctionAtAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 				if (scope != null) {
@@ -973,7 +976,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			if (enumerators == null) {
 				enumerators = new ArrayList<EnumeratorDMC>();
 				if (getServicesTracker() != null) {
-					IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+					IEDCSymbols symbolsService = getService(Symbols.class);
 					if (executionDMC != null && symbolsService != null) {
 						IFunctionScope scope = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
 								instructionPtrAddress);
@@ -1011,18 +1014,18 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			if (frameRegisters == null) {
 				if (level == 0) {
 					// for top of stack, the registers service does the work
-					final Registers registers = getDsfServicesTracker().getService(Registers.class);
+					final Registers registers = getEDCServicesTracker().getService(Registers.class);
 					frameRegisters = new CurrentFrameRegisters(executionDMC, registers);
 				} else {
 					// see if symbolics can provide unwinding support
 					if (module != null) {
-						Symbols symbolsService = getServicesTracker().getService(Symbols.class);
+						Symbols symbolsService = getService(Symbols.class);
 						IFrameRegisterProvider frameRegisterProvider = symbolsService.getFrameRegisterProvider(
 								executionDMC.getSymbolDMContext(), instructionPtrAddress);
 						if (frameRegisterProvider != null) {
 							try {
 								frameRegisters = frameRegisterProvider.getFrameRegisters(
-										getSession(), getServicesTracker(), this);
+										getSession(), getEDCServicesTracker(), this);
 							} catch (CoreException e) {
 								// debug info failure; we should report this 
 								frameRegisters = new AlwaysFailingFrameRegisters(e);
@@ -1161,7 +1164,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		rm.done();
 	}
 
-	public void getFrames(IDMContext execContext, DataRequestMonitor<IFrameDMContext[]> rm) {
+	public void getFrames(final IDMContext execContext, final DataRequestMonitor<IFrameDMContext[]> rm) {
 		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, execContext); }
 
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(execContext, ExecutionDMC.class);
@@ -1173,12 +1176,25 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				rm.done();
 				return;
 			}
+			
+			EDCDebugger.execute(new Runnable() {
+				
+				public void run() {
+					try {
+						rm.setData(getFramesForDMC((ExecutionDMC) execContext, 0, ALL_FRAMES));
+						if (rm.getData().length == 0)
+							rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execDmc, null)); //$NON-NLS-1$
+					} catch (CoreException e) {
+						Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+						EDCDebugger.getMessageLogger().log(s);
+						rm.setStatus(s);
+					}
+					if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+					rm.done();
+				}
+				
+			});
 
-			rm.setData(getFramesForDMC((ExecutionDMC) execContext, 0, ALL_FRAMES));
-			if (rm.getData().length == 0)
-				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execDmc, null)); //$NON-NLS-1$
-			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
-			rm.done();
 		}
 		else {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
@@ -1186,37 +1202,47 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 	}
 
-	public void getLocals(IFrameDMContext frameCtx, DataRequestMonitor<IVariableDMContext[]> rm) {
-		StackFrameDMC frameContext = (StackFrameDMC) frameCtx;
-		IAddress contextIPAddress = frameContext.getInstructionPtrAddress();
+	public void getLocals(final IFrameDMContext frameCtx, final DataRequestMonitor<IVariableDMContext[]> rm) {
+		EDCDebugger.execute(new Runnable() {
+			
+			public void run() {
 
-		boolean useVariableCache = false;
+				final StackFrameDMC frameContext = (StackFrameDMC) frameCtx;
+				IAddress contextIPAddress = frameContext.getInstructionPtrAddress();
+				boolean useVariableCache = false;
+				// the frame context passed in may be "stale".  it may prove equal to the current frame,
+				// but if the instruction ptr address is different, then the locals won't be collected properly
+				try {
+					IFrameDMContext[] iFrames = getFramesForDMC(frameContext.getExecutionDMC(), 0, ALL_FRAMES);
+					for (IFrameDMContext iFrameDMC : iFrames) {
+						if (frameCtx == iFrameDMC) {
+							useVariableCache = true;
+							break;
+						}
+						if (frameContext.equals(iFrameDMC)) {
+							StackFrameDMC frameDMC = (StackFrameDMC)iFrameDMC;
+							IAddress stackFrameIPAddr = frameDMC.getInstructionPtrAddress(); 
+							if (contextIPAddress.equals(stackFrameIPAddr)) {
+								useVariableCache = true;
+							} else {
+								frameContext.setInstructionPtrAddress(stackFrameIPAddr);
+							}
+							break;
+						}
+					}
 
-		// the frame context passed in may be "stale".  it may prove equal to the current frame,
-		// but if the instruction ptr address is different, then the locals won't be collected properly
-		IFrameDMContext[] iFrames = getFramesForDMC(frameContext.getExecutionDMC(), 0, ALL_FRAMES);
-		for (IFrameDMContext iFrameDMC : iFrames) {
-			if (frameCtx == iFrameDMC) {
-				useVariableCache = true;
-				break;
-			}
-			if (frameContext.equals(iFrameDMC)) {
-				StackFrameDMC frameDMC = (StackFrameDMC)iFrameDMC;
-				IAddress stackFrameIPAddr = frameDMC.getInstructionPtrAddress(); 
-				if (contextIPAddress.equals(stackFrameIPAddr)) {
-					useVariableCache = true;
-				} else {
-					frameContext.setInstructionPtrAddress(stackFrameIPAddr);
+					rm.setData(frameContext.getLocals(useVariableCache));
+				} catch (CoreException e) {
+					Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+					EDCDebugger.getMessageLogger().log(s);
+					rm.setStatus(s);
 				}
-				break;
+				rm.done();
 			}
-		}
-
-		rm.setData(frameContext.getLocals(useVariableCache));
-		rm.done();
+		});
 	}
 
-	public void getStackDepth(IDMContext dmc, int maxDepth, DataRequestMonitor<Integer> rm) {
+	public void getStackDepth(IDMContext dmc, final int maxDepth, final DataRequestMonitor<Integer> rm) {
 		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { dmc, maxDepth }); }
 		
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(dmc, ExecutionDMC.class);
@@ -1229,16 +1255,25 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				return;
 			}
 
-			int startFrame = 0;
-			int endFrame = ALL_FRAMES;	
-			if (maxDepth > 0)
-				endFrame = maxDepth - 1;
-			rm.setData(getFramesForDMC(execDmc, startFrame, endFrame).length);
-			if (rm.getData() == 0)
-				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execDmc, null)); //$NON-NLS-1$
-
-			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
-			rm.done();
+			EDCDebugger.execute(new Runnable() {
+				public void run() {
+					int startFrame = 0;
+					int endFrame = ALL_FRAMES;	
+					if (maxDepth > 0)
+						endFrame = maxDepth - 1;
+					try {
+						rm.setData(getFramesForDMC(execDmc, startFrame, endFrame).length);
+						if (rm.getData() == 0)
+							rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execDmc, null)); //$NON-NLS-1$
+						if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+					} catch (CoreException e) {
+						Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+						EDCDebugger.getMessageLogger().log(s);
+						rm.setStatus(s);
+					}
+					rm.done();
+				}
+			});
 		}
 		else {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
@@ -1246,19 +1281,30 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 	}
 
-	public void getTopFrame(IDMContext execContext, DataRequestMonitor<IFrameDMContext> rm) {
+	public void getTopFrame(final IDMContext execContext, final DataRequestMonitor<IFrameDMContext> rm) {
 		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, execContext); }
-		
-		IFrameDMContext[] frames = getFramesForDMC((ExecutionDMC) execContext, 0, 0);
-		if (frames.length == 0) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE,
-					"No top stack frame available", null)); //$NON-NLS-1$
-			rm.done();
-			return;
-		}
-		rm.setData(frames[0]);
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
-		rm.done();
+
+		EDCDebugger.execute(new Runnable() {
+			public void run() {
+				try {
+					IFrameDMContext[] frames = getFramesForDMC((ExecutionDMC) execContext, 0, 0);
+					if (frames.length == 0) {
+						rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE,
+								"No top stack frame available", null)); //$NON-NLS-1$
+						rm.done();
+						return;
+					}
+					rm.setData(frames[0]);
+				} catch (CoreException e) {
+					Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+					EDCDebugger.getMessageLogger().log(s);
+					rm.setStatus(s);
+				}
+				if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+				rm.done();
+			}
+		});
+
 	}
 
 	public void getVariableData(IVariableDMContext variableDmc, DataRequestMonitor<IVariableDMData> rm) {
@@ -1279,7 +1325,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.dsf.debug.service.IStack#getFrames(org.eclipse.cdt.dsf.datamodel.IDMContext, int, int, org.eclipse.cdt.dsf.concurrent.DataRequestMonitor)
 	 */
-	public void getFrames(IDMContext execContext, int startIndex, int endIndex, DataRequestMonitor<IFrameDMContext[]> rm) {
+	public void getFrames(final IDMContext execContext, final int startIndex, final int endIndex, final DataRequestMonitor<IFrameDMContext[]> rm) {
 		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { execContext, startIndex, endIndex }); }
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(execContext, ExecutionDMC.class);
 		if (execDmc != null)
@@ -1291,11 +1337,24 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				return;
 			}
 
-			rm.setData(getFramesForDMC((ExecutionDMC) execContext, startIndex, endIndex));
-			if (rm.getData().length == 0)
-				rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execContext, null)); //$NON-NLS-1$
-			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
-			rm.done();
+			EDCDebugger.execute(new Runnable() {
+				
+				public void run() {
+					try {
+						rm.setData(getFramesForDMC((ExecutionDMC) execContext, startIndex, endIndex));
+						if (rm.getData().length == 0)
+							rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_STATE, "No stack frame available for: " + execContext, null)); //$NON-NLS-1$
+					} catch (CoreException e) {
+						Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+						EDCDebugger.getMessageLogger().log(s);
+						rm.setStatus(s);
+					}
+					if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+					rm.done();
+				}
+				
+			});
+
 		}
 		else {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
@@ -1304,7 +1363,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
 	}
 
-	public IFrameDMContext[] getFramesForDMC(IEDCExecutionDMC context, int startIndex, int endIndex) {
+	public IFrameDMContext[] getFramesForDMC(IEDCExecutionDMC context, int startIndex, int endIndex) throws CoreException {
 		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { context, startIndex, endIndex }); }
 
 		if (!context.isSuspended() || 
@@ -1352,7 +1411,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		}
 	}
 
-	private void updateFrames(IEDCExecutionDMC context, int startIndex, int endIndex) {
+	private void updateFrames(IEDCExecutionDMC context, int startIndex, int endIndex) throws CoreException {
 		ArrayList<StackFrameDMC> frames = new ArrayList<StackFrameDMC>();
 		List<EdcStackFrame> edcFrames = computeStackFrames(context, startIndex, endIndex);
 		StackFrameDMC previous = null;
@@ -1399,7 +1458,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		public Map<String, Object> props;
 	}
 	
-	protected abstract List<EdcStackFrame> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex);
+	protected abstract List<EdcStackFrame> computeStackFrames(IEDCExecutionDMC context, int startIndex, int endIndex) throws CoreException;
 
 	public void loadFramesForContext(IEDCExecutionDMC exeDmc, Element allFrames) throws Exception {
 		flushCache(null);

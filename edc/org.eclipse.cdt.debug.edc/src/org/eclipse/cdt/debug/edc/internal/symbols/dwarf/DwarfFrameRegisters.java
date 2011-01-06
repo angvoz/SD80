@@ -23,11 +23,11 @@ import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvid
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.AbstractRule;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.FrameDescriptionEntry;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfFrameRegisterProvider.InstructionState;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.services.IFrameRegisters;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IRangeList.Entry;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -37,7 +37,7 @@ import org.eclipse.core.runtime.CoreException;
  */
 public class DwarfFrameRegisters implements IFrameRegisters {
 
-	private final DsfServicesTracker tracker;
+	private final EDCServicesTracker tracker;
 	private final StackFrameDMC context;
 	private final IFrameRegisters childRegisters;
 
@@ -52,7 +52,7 @@ public class DwarfFrameRegisters implements IFrameRegisters {
 	 * @param provider 
 	 * 
 	 */
-	public DwarfFrameRegisters(DsfServicesTracker tracker,
+	public DwarfFrameRegisters(EDCServicesTracker tracker,
 			StackFrameDMC context, 
 			FrameDescriptionEntry fde,
 			IFrameRegisters childRegisters, DwarfDebugInfoProvider provider) {

@@ -23,6 +23,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.services.Stack.EnumeratorDMC;
 import org.eclipse.cdt.debug.edc.services.Stack.IVariableEnumeratorContext;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
@@ -31,7 +32,6 @@ import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 public class EvaluateID extends SimpleInstruction {
@@ -84,7 +84,7 @@ public class EvaluateID extends SimpleInstruction {
 			throw EDCDebugger.newCoreException(MessageFormat.format(ASTEvalMessages.EvaluateID_CannotResolveName, name));
 
 		StackFrameDMC frame = (StackFrameDMC) context;
-		DsfServicesTracker servicesTracker = frame.getDsfServicesTracker();
+		EDCServicesTracker servicesTracker = frame.getEDCServicesTracker();
 		IEDCModules modules = servicesTracker.getService(IEDCModules.class);
 
 		// check by name for a variable or enumerator

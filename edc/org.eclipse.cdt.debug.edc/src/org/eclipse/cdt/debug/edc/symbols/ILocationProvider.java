@@ -11,8 +11,8 @@
 package org.eclipse.cdt.debug.edc.symbols;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 
 /**
  * Interface to interpret the location of a variable at runtime.
@@ -35,7 +35,7 @@ public interface ILocationProvider {
 	 * @return the variable location
 	 * @since 2.0
 	 */
-	IVariableLocation getLocation(DsfServicesTracker tracker, IFrameDMContext context,
+	IVariableLocation getLocation(EDCServicesTracker tracker, IFrameDMContext context,
 									IAddress forLinkAddress, boolean isNonLocalConstVariable);
 
 	/**

@@ -17,8 +17,8 @@ import org.eclipse.cdt.debug.edc.internal.symbols.InvalidVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.RegisterVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.ValueVariableLocation;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 
 /**
  * Create {@link IVariableLocation} instances
@@ -26,22 +26,34 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 public final class VariableLocationFactory {
 	protected VariableLocationFactory() { }
 	
-	public static IMemoryVariableLocation createMemoryVariableLocation(DsfServicesTracker tracker, 
+	/**
+	 * @since 2.0
+	 */
+	public static IMemoryVariableLocation createMemoryVariableLocation(EDCServicesTracker tracker, 
 			IDMContext context, BigInteger addressValue, boolean isRuntimeAddress) {
 		return new MemoryVariableLocation(tracker, context, addressValue, isRuntimeAddress);
 	}
 	
-	public static IMemoryVariableLocation createMemoryVariableLocation(DsfServicesTracker tracker, 
+	/**
+	 * @since 2.0
+	 */
+	public static IMemoryVariableLocation createMemoryVariableLocation(EDCServicesTracker tracker, 
 			IDMContext context, BigInteger addressValue) {
 		return new MemoryVariableLocation(tracker, context, addressValue, true);
 	}
-	public static IMemoryVariableLocation createMemoryVariableLocation(DsfServicesTracker tracker, 
+	/**
+	 * @since 2.0
+	 */
+	public static IMemoryVariableLocation createMemoryVariableLocation(EDCServicesTracker tracker, 
 			IDMContext context, long addressValue) {
 		return new MemoryVariableLocation(tracker, context, BigInteger.valueOf(addressValue), true);
 	}
 	
+	/**
+	 * @since 2.0
+	 */
 	public static IMemoryVariableLocation createMemoryVariableLocation(
-			DsfServicesTracker tracker, IDMContext context,
+			EDCServicesTracker tracker, IDMContext context,
 			Number addressValue) {
 		BigInteger addr;
 		if (addressValue instanceof BigInteger)
@@ -51,12 +63,18 @@ public final class VariableLocationFactory {
 		return new MemoryVariableLocation(tracker, context, addr, true);
 	}
 
+	/**
+	 * @since 2.0
+	 */
 	public static IRegisterVariableLocation createRegisterVariableLocation(
-			DsfServicesTracker tracker,  IDMContext context, String name, int id) {
+			EDCServicesTracker tracker,  IDMContext context, String name, int id) {
 		return new RegisterVariableLocation(tracker, context, name, id);
 	}
+	/**
+	 * @since 2.0
+	 */
 	public static IRegisterVariableLocation createRegisterVariableLocation(
-			DsfServicesTracker tracker,  IDMContext context, int id) {
+			EDCServicesTracker tracker,  IDMContext context, int id) {
 		return new RegisterVariableLocation(tracker, context, null, id);
 	}
 	

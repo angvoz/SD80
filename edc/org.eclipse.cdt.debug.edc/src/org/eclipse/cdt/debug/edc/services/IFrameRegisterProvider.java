@@ -12,7 +12,6 @@
 package org.eclipse.cdt.debug.edc.services;
 
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
 
@@ -28,8 +27,9 @@ public interface IFrameRegisterProvider {
 	 * @param context the frame
 	 * @return {@link IFrameRegisters} or <code>null</code> if no information found
 	 * @throws CoreException if fatal error handling the symbolics for the frame
+	 * @since 2.0
 	 */
-	IFrameRegisters getFrameRegisters(DsfSession session, DsfServicesTracker tracker, IFrameDMContext context) throws CoreException;
+	IFrameRegisters getFrameRegisters(DsfSession session, EDCServicesTracker tracker, IFrameDMContext context) throws CoreException;
 	
 	void dispose();
 }

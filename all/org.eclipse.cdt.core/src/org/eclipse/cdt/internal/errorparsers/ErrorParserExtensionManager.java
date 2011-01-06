@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Andrew Gvozdev (Quoin Inc.) and others.
+ * Copyright (c) 2009, 2011 Andrew Gvozdev (Quoin Inc.) and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,30 +11,15 @@
 
 package org.eclipse.cdt.internal.errorparsers;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Map.Entry;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ErrorParserManager;
@@ -45,24 +30,21 @@ import org.eclipse.cdt.core.errorparsers.ErrorParserNamedWrapper;
 import org.eclipse.cdt.core.errorparsers.RegexErrorParser;
 import org.eclipse.cdt.core.errorparsers.RegexErrorPattern;
 import org.eclipse.cdt.internal.core.XmlUtil;
+import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 /**
  * ErrorParserExtensionManager manages error parser extensions, serialization and preferences
@@ -101,6 +83,34 @@ public class ErrorParserExtensionManager {
 	private static LinkedHashMap<String, IErrorParserNamed> fUserDefinedErrorParsers = null;
 	private static List<String> fDefaultErrorParserIds = null;
 
+	private static class ErrorParserComparator implements Comparator<IErrorParserNamed> {
+		// For the error parsers taken from platform extensions following sorting order applies:
+		// - first regular error parsers
+		// - then deprecated ones
+		// - then contributed by test plugin
+		// inside the same category sort by parser name
+		public int compare(IErrorParserNamed errorParser1, IErrorParserNamed errorParser2) {
+			final String TEST_PLUGIN_ID="org.eclipse.cdt.core.tests"; //$NON-NLS-1$
+			final String DEPRECATED=CCorePlugin.getResourceString("CCorePlugin.Deprecated"); //$NON-NLS-1$
+			
+			boolean isTestPlugin1 = errorParser1.getId().startsWith(TEST_PLUGIN_ID);
+			boolean isTestPlugin2 = errorParser2.getId().startsWith(TEST_PLUGIN_ID);
+			if (isTestPlugin1==true && isTestPlugin2==false)
+				return 1;
+			if (isTestPlugin1==false && isTestPlugin2==true)
+				return -1;
+			
+			boolean isDeprecated1 = errorParser1.getName().contains(DEPRECATED);
+			boolean isDeprecated2 = errorParser2.getName().contains(DEPRECATED);
+			if (isDeprecated1==true && isDeprecated2==false)
+				return 1;
+			if (isDeprecated1==false && isDeprecated2==true)
+				return -1;
+			
+			return errorParser1.getName().compareTo(errorParser2.getName());
+		}
+	}
+
 	static {
 		loadUserDefinedErrorParsers();
 		loadDefaultErrorParserIds();
@@ -116,42 +126,23 @@ public class ErrorParserExtensionManager {
 		fUserDefinedErrorParsers = null;
 		Document doc = null;
 		try {
-			doc = loadXml(getStoreLocation(STORAGE_ERRORPARSER_EXTENSIONS));
+			doc = XmlUtil.loadXml(getStoreURI(STORAGE_ERRORPARSER_EXTENSIONS));
 		} catch (Exception e) {
-			CCorePlugin.log("Can't load preferences from file "+STORAGE_ERRORPARSER_EXTENSIONS, e); //$NON-NLS-1$
+			CCorePlugin.log("Can't load preferences from "+STORAGE_ERRORPARSER_EXTENSIONS, e); //$NON-NLS-1$
 		}
 
 		if (doc!=null) {
-			Set<IErrorParserNamed> errorParsers = new LinkedHashSet<IErrorParserNamed>();
-			loadErrorParserExtensions(doc, errorParsers);
+			Set<IErrorParserNamed> sortedErrorParsers = new TreeSet<IErrorParserNamed>(new ErrorParserComparator());
+			loadErrorParserExtensions(doc, sortedErrorParsers);
 
-			if (errorParsers.size()>0) {
+			if (sortedErrorParsers.size()>0) {
 				fUserDefinedErrorParsers = new LinkedHashMap<String, IErrorParserNamed>();
-				for (IErrorParserNamed errorParser : errorParsers) {
+				for (IErrorParserNamed errorParser : sortedErrorParsers) {
 					fUserDefinedErrorParsers.put(errorParser.getId(), errorParser);
 				}
 			}
 		}
 		recalculateAvailableErrorParsers();
-	}
-
-	/**
-	 * Load XML from file to DOM Document.
-	 *
-	 * @param location - location of XML file
-	 * @return new loaded XML Document or {@code null} if file does not exist
-	 * @throws ParserConfigurationException
-	 * @throws SAXException
-	 * @throws IOException
-	 */
-	private static Document loadXml(IPath location) throws ParserConfigurationException, SAXException, IOException  {
-		java.io.File storeFile = location.toFile();
-		if (storeFile.exists()) {
-			InputStream xmlStream = new FileInputStream(storeFile);
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			return builder.parse(xmlStream);
-		}
-		return null;
 	}
 
 	/**
@@ -162,21 +153,19 @@ public class ErrorParserExtensionManager {
 	 */
 	private static void loadErrorParserExtensions(Document doc, Set<IErrorParserNamed> errorParsers) {
 		errorParsers.clear();
-		NodeList extentionNodes = doc.getElementsByTagName(ELEM_EXTENSION);
-		for (int iext=0;iext<extentionNodes.getLength();iext++) {
-			Node extentionNode = extentionNodes.item(iext);
-			if(extentionNode.getNodeType() != Node.ELEMENT_NODE)
+		NodeList extensionNodes = doc.getElementsByTagName(ELEM_EXTENSION);
+		for (int iext=0;iext<extensionNodes.getLength();iext++) {
+			Node extensionNode = extensionNodes.item(iext);
+			if(extensionNode.getNodeType() != Node.ELEMENT_NODE)
 				continue;
 
-			NodeList errorparserNodes = extentionNode.getChildNodes();
+			NodeList errorparserNodes = extensionNode.getChildNodes();
 			for (int ierp=0;ierp<errorparserNodes.getLength();ierp++) {
 				Node errorparserNode = errorparserNodes.item(ierp);
 				if(errorparserNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_ERRORPARSER.equals(errorparserNode.getNodeName()))
 					continue;
 
-				NamedNodeMap errorParserAttributes = errorparserNode.getAttributes();
-				String className = determineNodeValue(errorParserAttributes.getNamedItem(ATTR_CLASS));
-
+				String className = XmlUtil.determineAttributeValue(errorparserNode, ATTR_CLASS);
 				try {
 					IErrorParserNamed errorParser = createErrorParserCarcass(className, Platform.getExtensionRegistry());
 					if (errorParser!=null) {
@@ -212,34 +201,7 @@ public class ErrorParserExtensionManager {
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	synchronized public static void loadErrorParserExtensions() {
-		Set<IErrorParserNamed> sortedErrorParsers = new TreeSet<IErrorParserNamed>(new Comparator<IErrorParserNamed>() {
-			// For the error parsers taken from platform extensions following sorting order applies:
-			// - first regular error parsers
-			// - then deprecated ones
-			// - then contributed by test plugin
-			// inside the same category sort by parser name
-			public int compare(IErrorParserNamed errorParser1, IErrorParserNamed errorParser2) {
-				final String TEST_PLUGIN_ID="org.eclipse.cdt.core.tests"; //$NON-NLS-1$
-				final String DEPRECATED=CCorePlugin.getResourceString("CCorePlugin.Deprecated"); //$NON-NLS-1$
-				
-				boolean isTestPlugin1 = errorParser1.getId().startsWith(TEST_PLUGIN_ID);
-				boolean isTestPlugin2 = errorParser2.getId().startsWith(TEST_PLUGIN_ID);
-				if (isTestPlugin1==true && isTestPlugin2==false)
-					return 1;
-				if (isTestPlugin1==false && isTestPlugin2==true)
-					return -1;
-				
-				boolean isDeprecated1 = errorParser1.getName().contains(DEPRECATED);
-				boolean isDeprecated2 = errorParser2.getName().contains(DEPRECATED);
-				if (isDeprecated1==true && isDeprecated2==false)
-					return 1;
-				if (isDeprecated1==false && isDeprecated2==true)
-					return -1;
-				
-				return errorParser1.getName().compareTo(errorParser2.getName());
-			}
-		});
-
+		Set<IErrorParserNamed> sortedErrorParsers = new TreeSet<IErrorParserNamed>(new ErrorParserComparator());
 		loadErrorParserExtensions(Platform.getExtensionRegistry(), sortedErrorParsers);
 
 		fExtensionErrorParsers.clear();
@@ -287,14 +249,43 @@ public class ErrorParserExtensionManager {
 	 */
 	private static void recalculateAvailableErrorParsers() {
 		fAvailableErrorParsers.clear();
-		if (fUserDefinedErrorParsers!=null) {
-			fAvailableErrorParsers.putAll(fUserDefinedErrorParsers);
-		}
-		for (IErrorParserNamed errorParser : fExtensionErrorParsers.values()) {
-			String id = errorParser.getId();
-			if (!fAvailableErrorParsers.containsKey(id)) {
-				fAvailableErrorParsers.put(id, errorParser);
+		// put default parsers on top of the list
+		List<String> ids = new ArrayList<String>();
+		if (fDefaultErrorParserIds!=null) {
+			for (String id : fDefaultErrorParserIds) {
+				IErrorParserNamed errorParser = null;
+				if (fUserDefinedErrorParsers!=null) {
+					errorParser = fUserDefinedErrorParsers.get(id);
+				}
+				if (errorParser==null) {
+					errorParser = fExtensionErrorParsers.get(id);
+				}
+				if (errorParser!=null) {
+					fAvailableErrorParsers.put(id, errorParser);
+					ids.add(id);
+				}
 			}
+		}
+		// then the rest in the order defined by comparator
+		Set<IErrorParserNamed> sortedErrorParsers = new TreeSet<IErrorParserNamed>(new ErrorParserComparator());
+
+		if (fUserDefinedErrorParsers!=null) {
+			for (String id : fUserDefinedErrorParsers.keySet()) {
+				if (!ids.contains(id)) {
+					IErrorParserNamed errorParser = fUserDefinedErrorParsers.get(id);
+					sortedErrorParsers.add(errorParser);
+				}
+			}
+		}
+		for (String id : fExtensionErrorParsers.keySet()) {
+			if (!ids.contains(id)) {
+				IErrorParserNamed errorParser = fExtensionErrorParsers.get(id);
+				sortedErrorParsers.add(errorParser);
+			}
+		}
+
+		for (IErrorParserNamed errorParser : sortedErrorParsers) {
+			fAvailableErrorParsers.put(errorParser.getId(), errorParser);
 		}
 	}
 
@@ -305,10 +296,8 @@ public class ErrorParserExtensionManager {
 	 */
 	public static void serializeUserDefinedErrorParsers() throws CoreException {
 		try {
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			Document doc = builder.newDocument();
-			Element elementPlugin = doc.createElement(ELEM_PLUGIN);
-			doc.appendChild(elementPlugin);
+			Document doc = XmlUtil.newDocument();
+			Element elementPlugin = XmlUtil.appendElement(doc, ELEM_PLUGIN);
 
 			if (fUserDefinedErrorParsers!=null) {
 				for (Entry<String, IErrorParserNamed> entry: fUserDefinedErrorParsers.entrySet()) {
@@ -317,10 +306,10 @@ public class ErrorParserExtensionManager {
 				}
 			}
 
-			serializeXml(doc, getStoreLocation(STORAGE_ERRORPARSER_EXTENSIONS));
+			XmlUtil.serializeXml(doc, getStoreURI(STORAGE_ERRORPARSER_EXTENSIONS));
 
 		} catch (Exception e) {
-			throw new CoreException(new Status(IStatus.ERROR, "Failed serializing to file " + STORAGE_ERRORPARSER_EXTENSIONS, CCorePlugin.PLUGIN_ID, e)); //$NON-NLS-1$
+			throw new CoreException(CCorePlugin.createStatus("Failed serializing to file " + STORAGE_ERRORPARSER_EXTENSIONS, e)); //$NON-NLS-1$
 		}
 	}
 
@@ -375,23 +364,19 @@ public class ErrorParserExtensionManager {
 		if (errorParser instanceof ErrorParserNamedWrapper)
 			errorParser = ((ErrorParserNamedWrapper)errorParser).getErrorParser();
 
-		Document doc = elementPlugin.getOwnerDocument();
-
 		// <extension/>
-		Element elementExtension = doc.createElement(ELEM_EXTENSION);
-		elementExtension.setAttribute(ATTR_ID, simpleId);
-		elementExtension.setAttribute(ATTR_NAME, name);
-		elementExtension.setAttribute(ATTR_POINT, EXTENSION_POINT_ERROR_PARSER);
-
-		elementPlugin.appendChild(elementExtension);
+		Element elementExtension = XmlUtil.appendElement(elementPlugin, ELEM_EXTENSION, new String[] {
+				ATTR_ID, simpleId,
+				ATTR_NAME, name,
+				ATTR_POINT, EXTENSION_POINT_ERROR_PARSER,
+			});
 
 		// <errorparser/>
-		Element elementErrorParser = doc.createElement(ELEM_ERRORPARSER);
-		elementErrorParser.setAttribute(ATTR_ID, id);
-		elementErrorParser.setAttribute(ATTR_NAME, name);
-		elementErrorParser.setAttribute(ATTR_CLASS, errorParser.getClass().getCanonicalName());
-
-		elementExtension.appendChild(elementErrorParser);
+		Element elementErrorParser = XmlUtil.appendElement(elementExtension, ELEM_ERRORPARSER, new String[] {
+				ATTR_ID, id,
+				ATTR_NAME, name,
+				ATTR_CLASS, errorParser.getClass().getCanonicalName(),
+			});
 
 		if (errorParserNamed instanceof RegexErrorParser) {
 			RegexErrorParser regexErrorParser = (RegexErrorParser)errorParserNamed;
@@ -399,15 +384,15 @@ public class ErrorParserExtensionManager {
 
 			for (RegexErrorPattern pattern : patterns) {
 				// <pattern/>
-				Element elementPattern = doc.createElement(ELEM_PATTERN);
-				elementPattern.setAttribute(ATTR_SEVERITY, severityToString(pattern.getSeverity()));
-				elementPattern.setAttribute(ATTR_REGEX, pattern.getPattern());
-				elementPattern.setAttribute(ATTR_FILE, pattern.getFileExpression());
-				elementPattern.setAttribute(ATTR_LINE, pattern.getLineExpression());
-				elementPattern.setAttribute(ATTR_DESCRIPTION, pattern.getDescriptionExpression());
-				elementPattern.setAttribute(ATTR_EAT_LINE, String.valueOf(pattern.isEatProcessedLine()));
-
-				elementErrorParser.appendChild(elementPattern);
+				@SuppressWarnings("unused")
+				Element elementPattern = XmlUtil.appendElement(elementErrorParser, ELEM_PATTERN, new String[] {
+						ATTR_SEVERITY, severityToString(pattern.getSeverity()),
+						ATTR_REGEX, pattern.getPattern(),
+						ATTR_FILE, pattern.getFileExpression(),
+						ATTR_LINE, pattern.getLineExpression(),
+						ATTR_DESCRIPTION, pattern.getDescriptionExpression(),
+						ATTR_EAT_LINE, String.valueOf(pattern.isEatProcessedLine()),
+					});
 			}
 
 		}
@@ -429,36 +414,6 @@ public class ErrorParserExtensionManager {
 	}
 
 	/**
-	 * Serialize XML Document in a file.
-	 *
-	 * @param doc - XML to serialize
-	 * @param location - location of the file
-	 * @throws IOException in case of problems with file I/O
-	 * @throws TransformerException in case of problems with XML output
-	 */
-	synchronized private static void serializeXml(Document doc, IPath location) throws IOException, TransformerException {
-
-		java.io.File storeFile = location.toFile();
-		if (!storeFile.exists()) {
-			storeFile.createNewFile();
-		}
-		OutputStream fileStream = new FileOutputStream(storeFile);
-
-		TransformerFactory transformerFactory = TransformerFactory.newInstance();
-		Transformer transformer = transformerFactory.newTransformer();
-		transformer.setOutputProperty(OutputKeys.METHOD, "xml");	//$NON-NLS-1$
-		transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8"); //$NON-NLS-1$
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");	//$NON-NLS-1$
-
-		XmlUtil.prettyFormat(doc);
-		DOMSource source = new DOMSource(doc);
-		StreamResult result = new StreamResult(new FileOutputStream(storeFile));
-		transformer.transform(source, result);
-
-		fileStream.close();
-	}
-
-	/**
 	 * Save the list of default error parsers in preferences.
 	 *
 	 * @throws BackingStoreException in case of problem storing
@@ -476,10 +431,12 @@ public class ErrorParserExtensionManager {
 
 	/**
 	 * @param store - name of the store
-	 * @return location of the store in the plug-in state area
+	 * @return URI of the store in the plug-in state area to keep plug-in specific data.
 	 */
-	private static IPath getStoreLocation(String store) {
-		return CCorePlugin.getDefault().getStateLocation().append(store);
+	private static URI getStoreURI(String store) {
+		IPath location = CCorePlugin.getDefault().getStateLocation().append(store);
+		URI uri = URIUtil.toURI(location);
+		return uri;
 	}
 
 	/**
@@ -550,9 +507,8 @@ public class ErrorParserExtensionManager {
 	 * @param errorparserNode - XML error parser node
 	 */
 	private static void configureErrorParser(IErrorParserNamed errorParser, Node errorparserNode) {
-		NamedNodeMap errorParserAttributes = errorparserNode.getAttributes();
-		String id = determineNodeValue(errorParserAttributes.getNamedItem(ATTR_ID));
-		String name = determineNodeValue(errorParserAttributes.getNamedItem(ATTR_NAME));
+		String id = XmlUtil.determineAttributeValue(errorparserNode, ATTR_ID);
+		String name = XmlUtil.determineAttributeValue(errorparserNode, ATTR_NAME);
 		errorParser.setId(id);
 		errorParser.setName(name);
 		if (errorParser instanceof RegexErrorParser) {
@@ -564,13 +520,12 @@ public class ErrorParserExtensionManager {
 				if(patternNode.getNodeType() != Node.ELEMENT_NODE || ! ELEM_PATTERN.equals(patternNode.getNodeName()))
 					continue;
 
-				NamedNodeMap patternAttributes = patternNode.getAttributes();
-				String attrSeverity = determineNodeValue(patternAttributes.getNamedItem(ATTR_SEVERITY));
-				String regex = determineNodeValue(patternAttributes.getNamedItem(ATTR_REGEX));
-				String fileExpr = determineNodeValue(patternAttributes.getNamedItem(ATTR_FILE));
-				String lineExpr = determineNodeValue(patternAttributes.getNamedItem(ATTR_LINE));
-				String DescExpr = determineNodeValue(patternAttributes.getNamedItem(ATTR_DESCRIPTION));
-				String attrEatLine = determineNodeValue(patternAttributes.getNamedItem(ATTR_EAT_LINE));
+				String attrSeverity = XmlUtil.determineAttributeValue(patternNode, ATTR_SEVERITY);
+				String regex = XmlUtil.determineAttributeValue(patternNode, ATTR_REGEX);
+				String fileExpr = XmlUtil.determineAttributeValue(patternNode, ATTR_FILE);
+				String lineExpr = XmlUtil.determineAttributeValue(patternNode, ATTR_LINE);
+				String DescExpr = XmlUtil.determineAttributeValue(patternNode, ATTR_DESCRIPTION);
+				String attrEatLine = XmlUtil.determineAttributeValue(patternNode, ATTR_EAT_LINE);
 
 				int severity = stringToSeverity(attrSeverity);
 
@@ -579,14 +534,6 @@ public class ErrorParserExtensionManager {
 						severity, eatLine));
 			}
 		}
-	}
-
-	/**
-	 * @param node
-	 * @return node value or {@code null}
-	 */
-	private static String determineNodeValue(Node node) {
-		return node!=null ? node.getNodeValue() : null;
 	}
 
 	/**
@@ -627,7 +574,7 @@ public class ErrorParserExtensionManager {
 	 * Return error parser as stored in internal list.
 	 *
 	 * @noreference This method is not intended to be referenced by clients.
-	 * Use {@link #getErrorParserCopy(String)} instead.
+	 * Use {@link #getErrorParserCopy(String, boolean)} instead.
 	 *
 	 * @param id - ID of error parser
 	 * @return internal instance of error parser
@@ -662,9 +609,11 @@ public class ErrorParserExtensionManager {
 		if (errorParsers==null) {
 			fUserDefinedErrorParsers = null;
 		} else {
+			Set<IErrorParserNamed> sortedErrorParsers = new TreeSet<IErrorParserNamed>(new ErrorParserComparator());
+			sortedErrorParsers.addAll(Arrays.asList(errorParsers));
 			fUserDefinedErrorParsers= new LinkedHashMap<String, IErrorParserNamed>();
 			// set customized list
-			for (IErrorParserNamed errorParser : errorParsers) {
+			for (IErrorParserNamed errorParser : sortedErrorParsers) {
 				fUserDefinedErrorParsers.put(errorParser.getId(), errorParser);
 			}
 		}
@@ -684,6 +633,15 @@ public class ErrorParserExtensionManager {
 	 */
 	public static String[] getErrorParserExtensionIds() {
 		return fExtensionErrorParsers.keySet().toArray(new String[0]);
+	}
+
+	/**
+	 * @return default error parsers IDs to be used if error parser list is empty.
+	 */
+	public static String[] getUserDefinedErrorParserIds() {
+		if (fUserDefinedErrorParsers!=null)
+			return fUserDefinedErrorParsers.keySet().toArray(new String[0]);
+		return null;
 	}
 
 	/**
@@ -711,6 +669,7 @@ public class ErrorParserExtensionManager {
 		} else {
 			fDefaultErrorParserIds = new ArrayList<String>(Arrays.asList(ids));
 		}
+		recalculateAvailableErrorParsers();
 	}
 
 	/**
@@ -725,11 +684,12 @@ public class ErrorParserExtensionManager {
 
 	/**
 	 * @param id - ID of error parser
+	 * @param isExtension - if {@code true} get unmodified copy of error parser defined as extension
 	 * @return cloned copy of error parser. Note that {@link ErrorParserNamedWrapper} returns
 	 * shallow copy with the same instance of underlying error parser.
 	 */
-	public static IErrorParserNamed getErrorParserCopy(String id) {
-		IErrorParserNamed errorParser = fAvailableErrorParsers.get(id);
+	public static IErrorParserNamed getErrorParserCopy(String id, boolean isExtension) {
+		IErrorParserNamed errorParser = isExtension ? fExtensionErrorParsers.get(id) : fAvailableErrorParsers.get(id);
 
 		try {
 			if (errorParser instanceof RegexErrorParser) {
@@ -742,6 +702,5 @@ public class ErrorParserExtensionManager {
 		}
 		return errorParser;
 	}
-
 
 }

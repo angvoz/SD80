@@ -46,7 +46,10 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.model.IBreakpoint;
 
@@ -189,31 +192,36 @@ public class EDC {
 				Expressions expressions = servicesTracker.getService(Expressions.class);
 				Stack stack = servicesTracker.getService(Stack.class);
 				ExecutionDMC context = runControl.getContext(contextID);
-				IFrameDMContext[] frames = stack.getFramesForDMC(context, 0, IStack.ALL_FRAMES);
-				
-				if (frameLevel < frames.length)
-				{
-					StackFrameDMC frameDMC = (StackFrameDMC) frames[frameLevel];
-					IVariableDMContext[] locals = frameDMC.getLocals();
-					for (IVariableDMContext var : locals) {
-						VariableDMC varDMC = (VariableDMC) var;
-						String varName = varDMC.getName();
-						IEDCExpression expressionContext = (IEDCExpression) expressions.createExpression(frameDMC, varName);
-						expressionContext.evaluateExpression();
-						String value = expressionContext.getEvaluatedValueString();
-						String typeName = expressionContext.getTypeName();
-						Map<String, Object> expressionProps = expressionContext.getProperties();
-						expressionProps.put("value", value);
-						expressionProps.put("type", typeName);
-						IVariableLocation location = expressionContext.getEvaluatedLocation();
-						IAddress addressValue = location.getAddress();
-						BigInteger addressValueValue = addressValue.getValue();
-						expressionProps.put("address", addressValueValue.longValue());
-						expressionProps.put("hasChildren", expressionContext.hasChildren());
-						result.add(expressionProps);
+				try {
+					IFrameDMContext[] frames = stack.getFramesForDMC(context, 0, IStack.ALL_FRAMES);
+					if (frameLevel < frames.length)
+					{
+						StackFrameDMC frameDMC = (StackFrameDMC) frames[frameLevel];
+						IVariableDMContext[] locals = frameDMC.getLocals();
+						for (IVariableDMContext var : locals) {
+							VariableDMC varDMC = (VariableDMC) var;
+							String varName = varDMC.getName();
+							IEDCExpression expressionContext = (IEDCExpression) expressions.createExpression(frameDMC, varName);
+							expressionContext.evaluateExpression();
+							String value = expressionContext.getEvaluatedValueString();
+							String typeName = expressionContext.getTypeName();
+							Map<String, Object> expressionProps = expressionContext.getProperties();
+							expressionProps.put("value", value);
+							expressionProps.put("type", typeName);
+							IVariableLocation location = expressionContext.getEvaluatedLocation();
+							IAddress addressValue = location.getAddress();
+							BigInteger addressValueValue = addressValue.getValue();
+							expressionProps.put("address", addressValueValue.longValue());
+							expressionProps.put("hasChildren", expressionContext.hasChildren());
+							result.add(expressionProps);
+						}
 					}
+					rm.setData(true);
+				} catch (CoreException e) {
+					Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+					EDCDebugger.getMessageLogger().log(s);
+					rm.setStatus(s);
 				}
-				rm.setData(true);
 				rm.done();
 			}
 		};
@@ -233,13 +241,19 @@ public class EDC {
 				RunControl runControl = servicesTracker.getService(RunControl.class);
 				Stack stack = servicesTracker.getService(Stack.class);
 				ExecutionDMC context = runControl.getContext(contextID);
-				IFrameDMContext[] frames = stack.getFramesForDMC(context, 0, IStack.ALL_FRAMES);
-				
-				for (IFrameDMContext iFrameDMContext : frames) {
-					StackFrameDMC stackDMC = (StackFrameDMC) iFrameDMContext;
-					result.add(stackDMC.getProperties());
+				try {
+					IFrameDMContext[] frames = stack.getFramesForDMC(context, 0, IStack.ALL_FRAMES);
+					
+					for (IFrameDMContext iFrameDMContext : frames) {
+						StackFrameDMC stackDMC = (StackFrameDMC) iFrameDMContext;
+						result.add(stackDMC.getProperties());
+					}
+					rm.setData(true);
+				} catch (CoreException e) {
+					Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+					EDCDebugger.getMessageLogger().log(s);
+					rm.setStatus(s);
 				}
-				rm.setData(true);
 				rm.done();
 			}
 		};

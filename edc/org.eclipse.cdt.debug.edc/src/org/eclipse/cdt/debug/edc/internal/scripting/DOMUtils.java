@@ -34,6 +34,7 @@ import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.tm.tcf.services.IRunControl;
 
@@ -124,10 +125,14 @@ public class DOMUtils {
 				Stack stackService = servicesTracker.getService(Stack.class);
 				RunControl runControlService = servicesTracker.getService(RunControl.class);
 				if (runControlService != null && stackService != null) {
-					IFrameDMContext[] serviceFrames = stackService.getFramesForDMC(runControlService
-							.getContext(contextId), 0, IStack.ALL_FRAMES);
-					for (IFrameDMContext serviceFrame : serviceFrames) {
-						frames.add((StackFrameDMC) serviceFrame);
+					try {
+						IFrameDMContext[] serviceFrames = stackService.getFramesForDMC(runControlService
+								.getContext(contextId), 0, IStack.ALL_FRAMES);
+						for (IFrameDMContext serviceFrame : serviceFrames) {
+							frames.add((StackFrameDMC) serviceFrame);
+						}
+					} catch (CoreException e) {
+						e.printStackTrace();
 					}
 				}
 			}

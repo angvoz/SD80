@@ -26,13 +26,13 @@ import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IQualifierType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IReferenceType;
 import org.eclipse.cdt.debug.edc.internal.symbols.TypedefType;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
 import org.eclipse.cdt.debug.edc.symbols.VariableLocationFactory;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -107,7 +107,7 @@ public class OperandValue {
 				// use result as the location of the referenced variable's value
 				if (location != null && location.getContext() != null && location.getServicesTracker() != null) {
 					IDMContext context = location.getContext();
-					DsfServicesTracker servicesTracker = location.getServicesTracker();
+					EDCServicesTracker servicesTracker = location.getServicesTracker();
 					IType pointedTo = TypeUtils.getStrippedType(varType).getType();
 					if (pointedTo instanceof ICPPBasicType || pointedTo instanceof IPointerType ||
 						pointedTo instanceof IEnumeration) {

@@ -480,3 +480,119 @@ void func() {
     a0;
 }
 
+//!Bug 331963 Extract local variable doesn't put template type parameters
+//#org.eclipse.cdt.ui.tests.refactoring.extractlocalvariable.ExtractLocalVariableRefactoringTest
+//@A.cpp
+
+template<class T>
+class Foo {
+};
+
+Foo<int> getFoo();
+
+int main() {
+
+    /*$*/getFoo()/*$$*/;
+
+    return 0;
+}
+
+//=
+
+template<class T>
+class Foo {
+};
+
+Foo<int> getFoo();
+
+int main() {
+    Foo<int> foo = getFoo();
+    foo;
+
+    return 0;
+}
+
+//!Bug 331963 Extract local variable doesn't put template type parameters Namespace
+//#org.eclipse.cdt.ui.tests.refactoring.extractlocalvariable.ExtractLocalVariableRefactoringTest
+//@A.cpp
+namespace bar{
+template<class T>
+class Foo {
+};
+}
+
+bar::Foo<int> getFoo();
+
+int main() {
+
+    /*$*/getFoo()/*$$*/;
+
+    return 0;
+}
+
+//=
+namespace bar{
+template<class T>
+class Foo {
+};
+}
+
+bar::Foo<int> getFoo();
+
+int main() {
+    bar::Foo<int> foo = getFoo();
+    foo;
+
+    return 0;
+}
+
+//!Bug 330693 Improve suggested variable name in Extract Local Variable
+//#org.eclipse.cdt.ui.tests.refactoring.extractlocalvariable.ExtractLocalVariableRefactoringTest
+//@A.cpp
+
+struct Foo{
+	int getVarWithLongName();
+};
+
+void bar(){
+	Foo f;
+	/*$*/f.getVarWithLongName()/*$$*/;
+}
+
+//=
+
+struct Foo{
+	int getVarWithLongName();
+};
+
+void bar(){
+	Foo f;
+    int varWithLongName = f.getVarWithLongName();
+    varWithLongName;
+}
+
+//!Bug 330693 Improve suggested variable name in Extract Local Variable: name == prefix
+//#org.eclipse.cdt.ui.tests.refactoring.extractlocalvariable.ExtractLocalVariableRefactoringTest
+//@A.cpp
+
+struct Foo{
+	int get();
+};
+
+void bar(){
+	Foo f;
+	/*$*/f.get()/*$$*/;
+}
+
+//=
+
+struct Foo{
+	int get();
+};
+
+void bar(){
+	Foo f;
+    int get = f.get();
+    get;
+}
+

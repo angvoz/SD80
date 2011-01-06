@@ -1,3 +1,13 @@
+/*******************************************************************************
+ * Copyright (c) 2010, 2011 Wind River Systems and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     Wind River Systems - Initial API and implementation
+ *******************************************************************************/
 package org.eclipse.cdt.android.build.internal.core;
 
 import org.eclipse.cdt.core.CommandLauncher;
@@ -13,15 +23,13 @@ public class NDKCommandLauncher extends CommandLauncher {
 	public Process execute(IPath commandPath, String[] args, String[] env,
 			IPath changeToDirectory, IProgressMonitor monitor)
 			throws CoreException {
-		if (Platform.getOS().equals(Platform.OS_WIN32) && commandPath.toString().equals("ndk-build")) {
-			commandPath = new Path("sh");
-			String[] newArgs = new String[2];
-			newArgs[0] = "-c";
-			String command = "ndk-build";
+		if (Platform.getOS().equals(Platform.OS_WIN32)) {
+			String command = commandPath.toString();
 			for (String arg : args)
+				// TODO check for spaces in args
 				command += " " + arg;
-			newArgs[1] = command;
-			args = newArgs;
+			commandPath = new Path("sh");
+			args = new String[] { "-c", command };
 		}
 		return super.execute(commandPath, args, env, changeToDirectory, monitor);
 	}

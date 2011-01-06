@@ -187,7 +187,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 				// hide breakpoints inserted in the memory by debugger
 				MemoryByte[] data = getData();
 
-				Breakpoints bpService = getServicesTracker().getService(Breakpoints.class);
+				Breakpoints bpService = getService(Breakpoints.class);
 				bpService.removeBreakpointFromMemoryBuffer(address.add(offset), data);
 
 				drm.setData(data);
@@ -355,7 +355,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 
 		// Get the context and expression service handle
 		final IExpressionDMContext context = e.getDMContext();
-		IExpressions expressionService = getServicesTracker().getService(IExpressions.class);
+		IExpressions expressionService = getService(IExpressions.class);
 
 		// Get the variable information and update the corresponding memory
 		// locations

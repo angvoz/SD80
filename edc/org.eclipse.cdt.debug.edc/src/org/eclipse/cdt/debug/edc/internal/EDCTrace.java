@@ -93,16 +93,65 @@ public class EDCTrace {
 		public void traceExit(String option, Object result) {}
 	};
 	
-	private static NullDebugTrace sNullDebugTrace = new NullDebugTrace();
-	
-	public static DebugTrace getTrace() {
-		EDCDebugger activator = EDCDebugger.getDefault();
-		if (activator != null) {
-			return activator.getTrace();
+	static class EDCTraceWrapper implements DebugTrace {
+		private final DebugTrace tracer;
+		
+		private String fixArgument(Object argument) {
+			if (argument != null)
+				return argument.toString().replaceAll("\\{", "[").replaceAll("\\}", "]");
+			return null;
 		}
-		else {
-			return sNullDebugTrace;
+		private String[] fixArguments(Object[] arguments) {
+			if (arguments != null) {
+				String[] args = new String[arguments.length];
+				for (int i = 0; i < arguments.length; i++) {
+					args[i] = fixArgument(arguments[i]);
+				}
+				return args;
+			}
+			return null;
 		}
 		
+		public EDCTraceWrapper(DebugTrace tracer) {
+			this.tracer = tracer;
+		}
+		public void trace(String option, String message) {
+			tracer.trace(option, message);
+		}
+		public void trace(String option, String message, Throwable error) {
+			tracer.trace(option, message, error);
+		}
+		public void traceDumpStack(String option) {
+			tracer.traceDumpStack(option);
+		}
+		public void traceEntry(String option) {
+			tracer.traceEntry(option);
+		}
+		public void traceEntry(String option, Object methodArgument) {
+			tracer.traceEntry(option, fixArgument(methodArgument));
+		}
+		public void traceEntry(String option, Object[] methodArguments) {
+			tracer.traceEntry(option, fixArguments(methodArguments));
+		}
+		public void traceExit(String option) {
+			tracer.traceExit(option);
+		}
+		public void traceExit(String option, Object result) {
+			tracer.traceExit(option, fixArgument(result));
+		}
+	}
+	
+	private static DebugTrace sTrace;
+	
+	public static DebugTrace getTrace() {
+		if (sTrace == null) {
+			EDCDebugger activator = EDCDebugger.getDefault();
+			if (activator != null) {
+				sTrace = new EDCTraceWrapper(activator.getTrace());
+			}
+			else
+				sTrace = new NullDebugTrace();
+		}
+		return sTrace;
 	}
 }

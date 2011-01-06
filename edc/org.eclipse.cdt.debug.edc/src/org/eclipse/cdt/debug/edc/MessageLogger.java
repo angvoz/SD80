@@ -203,6 +203,17 @@ public abstract class MessageLogger {
 		log(IStatus.ERROR, mainMessage, t);
 	}
 
+	/**
+	 * Log an exception.
+	 * 
+	 * @param exception
+	 *            the exception caused by the error (may be <code>null</code>)
+	 * @since 2.0
+	 */
+	public void logException(Throwable t) {
+		log(IStatus.ERROR, null, t);
+	}
+
 	public abstract Plugin getPlugin();
 
 	public abstract String getPluginID();

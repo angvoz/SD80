@@ -34,7 +34,6 @@ import org.eclipse.cdt.internal.ui.refactoring.Container;
  * Helper class to support operations concerning a selection.
  * 
  * @author Mirko Stocker, Lukas Felber
- *
  */
 public class SelectionHelper {
 
@@ -46,8 +45,8 @@ public class SelectionHelper {
 		return null;
 	}
 	
-	public static IASTSimpleDeclaration findFirstSelectedDeclaration(final Region textSelection, IASTTranslationUnit translationUnit) {
-
+	public static IASTSimpleDeclaration findFirstSelectedDeclaration(final Region textSelection,
+			IASTTranslationUnit translationUnit) {
 		final Container<IASTSimpleDeclaration> container = new Container<IASTSimpleDeclaration>();
 
 		translationUnit.accept(new ASTVisitor() {
@@ -56,7 +55,8 @@ public class SelectionHelper {
 			}
 			@Override
 			public int visit(IASTDeclaration declaration) {
-				if (declaration instanceof IASTSimpleDeclaration && isSelectionOnExpression(textSelection, declaration)) {
+				if (declaration instanceof IASTSimpleDeclaration &&
+						isSelectionOnExpression(textSelection, declaration)) {
 					container.setObject((IASTSimpleDeclaration) declaration);
 				}
 				return super.visit(declaration);
@@ -70,7 +70,7 @@ public class SelectionHelper {
 		Region exprPos = createExpressionPosition(expression);
 		int selStart = textSelection.getOffset();
 		int selEnd = textSelection.getLength() + selStart;
-		return exprPos.getOffset()+exprPos.getLength() >= selStart && exprPos.getOffset() <= selEnd;
+		return exprPos.getOffset() + exprPos.getLength() >= selStart && exprPos.getOffset() <= selEnd;
 	}
 	
 	public static boolean isExpressionWhollyInSelection(Region textSelection, IASTNode expression) {
@@ -79,7 +79,7 @@ public class SelectionHelper {
 		int selStart = textSelection.getOffset();
 		int selEnd = textSelection.getLength() + selStart;
 
-		return exprPos.getOffset() >= selStart && exprPos.getOffset()+exprPos.getLength() <= selEnd;
+		return exprPos.getOffset() >= selStart && exprPos.getOffset() + exprPos.getLength() <= selEnd;
 	}
 	
 	public static boolean isInSameFile(IASTNode node, IFile file) {
@@ -90,21 +90,20 @@ public class SelectionHelper {
 	}
 	
 	public static boolean isInSameFileSelection(Region textSelection, IASTNode node, IFile file) {
-		if( isInSameFile(node, file) ) {
+		if (isInSameFile(node, file)) {
 			return SelectionHelper.isSelectionOnExpression(textSelection, node);
 		}
 		return false;
 	}
 	
 	public static boolean isSelectedFile(Region textSelection, IASTNode node, IFile file) {
-		if( isInSameFile(node, file) ) {
+		if (isInSameFile(node, file)) {
 			return isExpressionWhollyInSelection(textSelection, node);
 		}
 		return false;
 	}
 	
 	protected static Region createExpressionPosition(IASTNode expression) {
-
 		int start = Integer.MAX_VALUE;
 		int nodeLength = 0;
 		IASTNodeLocation[] nodeLocations = expression.getNodeLocations();
@@ -113,14 +112,14 @@ public class SelectionHelper {
 				if (location instanceof IASTMacroExpansionLocation) {
 					IASTMacroExpansionLocation macroLoc = (IASTMacroExpansionLocation) location;
 					int nodeOffset = macroLoc.asFileLocation().getNodeOffset();
-					if(nodeOffset < start) {
+					if (nodeOffset < start) {
 						start = nodeOffset;
 					}
 					nodeLength += macroLoc.asFileLocation().getNodeLength();
-				}else {
+				} else {
 					IASTFileLocation loc = expression.getFileLocation();
 					int nodeOffset = loc.getNodeOffset();
-					if(nodeOffset < start) {
+					if (nodeOffset < start) {
 						start = nodeOffset;
 					}
 					nodeLength = loc.getNodeLength();

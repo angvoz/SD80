@@ -13,11 +13,11 @@ package org.eclipse.cdt.debug.edc.internal.symbols;
 import java.math.BigInteger;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.symbols.IRegisterOffsetVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 public class RegisterOffsetVariableLocation extends RegisterVariableLocation implements IRegisterOffsetVariableLocation {
@@ -25,7 +25,7 @@ public class RegisterOffsetVariableLocation extends RegisterVariableLocation imp
 	protected final long offset;
 	private int addressSize;
 
-	public RegisterOffsetVariableLocation(DsfServicesTracker tracker, IDMContext context, String name, int id, long offset) {
+	public RegisterOffsetVariableLocation(EDCServicesTracker tracker, IDMContext context, String name, int id, long offset) {
 		super(tracker, context, name, id);
 		this.offset = offset;
 	}

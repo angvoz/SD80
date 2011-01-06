@@ -14,10 +14,10 @@ import java.math.BigInteger;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.symbols.IValueVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IVariableLocation;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -75,7 +75,7 @@ public class ValueVariableLocation implements IValueVariableLocation {
 		return null;
 	}
 
-	public DsfServicesTracker getServicesTracker() {
+	public EDCServicesTracker getServicesTracker() {
 		return null;
 	}
 }

@@ -64,7 +64,7 @@ public class MemoryView extends BaseLaunchTest {
 	}
 
 	private void waitForMemoryValues(final Addr32 addr32, final ExecutionDMC executionDMC, final IEDCMemory mem,
-			final byte[] data) throws InterruptedException {
+			final byte[] data) throws Exception {
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
 				ArrayList<MemoryByte> buf = new ArrayList<MemoryByte>();

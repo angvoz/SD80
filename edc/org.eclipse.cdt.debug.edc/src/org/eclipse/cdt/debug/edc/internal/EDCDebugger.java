@@ -249,4 +249,8 @@ public class EDCDebugger extends Plugin {
 		}
 		return cache;
 	}
+
+	public static void execute(Runnable runnable) {
+		new Thread(runnable).start();
+	}
 }

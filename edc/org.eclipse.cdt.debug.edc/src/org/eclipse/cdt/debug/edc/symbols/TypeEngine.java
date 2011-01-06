@@ -41,7 +41,6 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
 import org.eclipse.cdt.debug.edc.internal.symbols.PointerType;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -60,9 +59,11 @@ public class TypeEngine {
 	private Map<String, IArrayType> typeToArrayTypeMap = new HashMap<String, IArrayType>();
 	private boolean charIsSigned;
 
-	public TypeEngine(DsfServicesTracker tracker, IDebugInfoProvider debugInfoProvider) {
+	/**
+	 * @since 2.0
+	 */
+	public TypeEngine(ITargetEnvironment targetEnvironment, IDebugInfoProvider debugInfoProvider) {
 		this.debugInfoProvider = debugInfoProvider;
-		ITargetEnvironment targetEnvironment = tracker.getService(ITargetEnvironment.class);
 		if (targetEnvironment != null) {
 			typeSizeMap = targetEnvironment.getBasicTypeSizes();
 			addressSize = targetEnvironment.getPointerSize();

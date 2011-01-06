@@ -13,6 +13,8 @@ package org.eclipse.cdt.debug.edc.tests;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.eclipse.cdt.debug.edc.ITCFAgentLauncher;
@@ -47,8 +49,10 @@ import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
@@ -70,16 +74,19 @@ import org.junit.Assert;
 @SuppressWarnings("restriction")
 public class TestUtils {
 
+    private static final Map<DsfSession,Map<Object,Object>> services = Collections
+	.synchronizedMap(new HashMap<DsfSession,Map<Object,Object>>());
+
 	public interface Condition {
 
-		boolean isConditionValid();
+		boolean isConditionValid()throws Exception;
 
 	}
 
 	public static final long DEFAULT_WAIT_TIMEOUT = 60000;
 	public static final long DEFAULT_WAIT_INTERVAL = 10;
 
-	public static void wait(Condition condition) throws InterruptedException {
+	public static void wait(Condition condition) throws Exception {
 		wait(condition, DEFAULT_WAIT_TIMEOUT, DEFAULT_WAIT_INTERVAL);
 	}
 
@@ -87,7 +94,7 @@ public class TestUtils {
 		waitOnExecutorThread(session, condition, DEFAULT_WAIT_TIMEOUT, DEFAULT_WAIT_INTERVAL);
 	}
 
-	public static void wait(Condition condition, long timeout) throws InterruptedException {
+	public static void wait(Condition condition, long timeout) throws Exception {
 		wait(condition, timeout, DEFAULT_WAIT_INTERVAL);
 	}
 
@@ -106,7 +113,12 @@ public class TestUtils {
 
 		@Override
 		protected void execute(DataRequestMonitor<Boolean> rm) {
-			rm.setData(condition.isConditionValid());
+			try {
+				rm.setData(condition.isConditionValid());
+			} catch (Exception e) {
+				rm.setStatus(new Status(IStatus.ERROR, EDCTestPlugin.PLUGIN_ID,
+						null, e)); //$NON-NLS-1$
+			}
 			rm.done();
 		}
 	};
@@ -131,7 +143,7 @@ public class TestUtils {
 
 	}
 
-	public static void wait(Condition condition, long timeout, long interval) throws InterruptedException {
+	public static void wait(Condition condition, long timeout, long interval) throws Exception {
 		long limit = System.currentTimeMillis() + timeout;
 		while (!condition.isConditionValid()) {
 			Display display = Display.getCurrent();
@@ -186,10 +198,19 @@ public class TestUtils {
 			return s1.equals(s2);
 	}
 
-	public static void showPerspective(String perspective) throws WorkbenchException {
-		IWorkbench workbench = PlatformUI.getWorkbench();
-		IWorkbenchWindow activeWindow = workbench.getActiveWorkbenchWindow();
-		workbench.showPerspective(perspective, activeWindow);
+	public static void showPerspective(final String perspective) {
+		
+		Display display = Display.getDefault();
+		if ( display != null )
+			display.syncExec( new Runnable() {
+				public void run() {
+					IWorkbench workbench = PlatformUI.getWorkbench();
+					IWorkbenchWindow activeWindow = workbench.getActiveWorkbenchWindow();
+					try {
+						workbench.showPerspective(perspective, activeWindow);
+					} catch (WorkbenchException e) {}
+				}
+			});
 	}
 
 	public static void disableDebugPerspectiveSwitchPrompt() {
@@ -247,7 +268,7 @@ public class TestUtils {
 		return launchHolder[0];
 	}
 
-	public static DsfSession waitForSession(final EDCLaunch launch) throws InterruptedException {
+	public static DsfSession waitForSession(final EDCLaunch launch) throws Exception {
 		final DsfSession sessionHolder[] = { null };
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
@@ -294,7 +315,7 @@ public class TestUtils {
 			throws Exception {
 		final IFrameDMContext frameHolder[] = { null };
 		TestUtils.waitOnExecutorThread(session, new Condition() {
-			public boolean isConditionValid() {
+			public boolean isConditionValid() throws Exception {
 				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
 				Stack stackService = servicesTracker.getService(Stack.class);
 				if (stackService == null)
@@ -373,22 +394,10 @@ public class TestUtils {
 	public static IEDCExpression getExpressionDMC(final DsfSession session, final IDMContext frame, final String expr)
 		throws Exception, ExecutionException {
 		
-		Query<IEDCExpression> runnable = new Query<IEDCExpression>() {
-			
-			@Override
-			protected void execute(DataRequestMonitor<IEDCExpression> rm) {
-				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
-				Expressions expressionsService = servicesTracker.getService(Expressions.class);
-				IEDCExpression expression = (IEDCExpression) expressionsService.createExpression(frame, expr);
-				expression.evaluateExpression();
-				rm.setData(expression);
-				rm.done();
-			}
-		};
-		
-		session.getExecutor().execute(runnable);
-		
-		return runnable.get();
+		Expressions expressionsService = getService(session, Expressions.class);
+		IEDCExpression expression = (IEDCExpression) expressionsService.createExpression(frame, expr);
+		expression.evaluateExpression();
+		return expression;
 	}
 
 
@@ -403,44 +412,25 @@ public class TestUtils {
 	 */
 	public static String getFormattedExpressionValue(final DsfSession session, final IDMContext frame, final IEDCExpression expression)
 		throws Exception, ExecutionException {
-		
-		Query<String> runnable = new Query<String>() {
-		
-			@Override
-			protected void execute(DataRequestMonitor<String> rm) {
-				DsfServicesTracker servicesTracker = getDsfServicesTracker(session);
-				Expressions expressionsService = servicesTracker.getService(Expressions.class);
-				FormattedValueDMContext fvc = expressionsService.getFormattedValueContext(expression,
-						IFormattedValues.NATURAL_FORMAT);
-				FormattedValueDMData formattedValue = expression.getFormattedValue(fvc);
-				IType exprType = TypeUtils.getStrippedType(expression.getEvaluatedType());
-				IVariableValueConverter customValue = 
-					FormatExtensionManager.instance().getVariableValueConverter(exprType);
-				if (customValue != null) {
-					FormattedValueDMData customFormattedValue = null;
-					try {
-						customFormattedValue = new FormattedValueDMData(customValue.getValue(expression));
-						formattedValue = customFormattedValue;
-					}
-					catch (CoreException e) {
-						// Checked exception like failure in reading memory.
-						// Pass the error to the RM so that it would show up in UI. 
-						rm.setStatus(e.getStatus());
-						rm.done();
-						return;
-					}
-					catch (Throwable t) {
-					}
-				}
-				
-				rm.setData(formattedValue.getFormattedValue());
-				rm.done();
+		Expressions expressionsService = getService(session, Expressions.class);
+		FormattedValueDMContext fvc = expressionsService.getFormattedValueContext(expression,
+				IFormattedValues.NATURAL_FORMAT);
+		FormattedValueDMData formattedValue = expression.getFormattedValue(fvc);
+		IType exprType = TypeUtils.getStrippedType(expression.getEvaluatedType());
+		IVariableValueConverter customValue = 
+			FormatExtensionManager.instance().getVariableValueConverter(exprType);
+		if (customValue != null) {
+			FormattedValueDMData customFormattedValue = null;
+			try {
+				customFormattedValue = new FormattedValueDMData(customValue.getValue(expression));
+				formattedValue = customFormattedValue;
 			}
-		};
+			catch (CoreException e) {}
+			catch (Throwable t) {
+			}
+		}
 		
-		session.getExecutor().execute(runnable);
-		
-		return runnable.get();
+		return formattedValue.getFormattedValue();
 	}
 
 	/**
@@ -518,6 +508,38 @@ public class TestUtils {
 		session.getExecutor().execute(runnable);
 		
 		return runnable.get();
+	}
+
+	@SuppressWarnings("unchecked")
+	static public <V> V getService(final DsfSession session, final Class<V> serviceClass) {
+		if (services.get(session) == null)
+			services.put(session, new HashMap<Object, Object>());
+		if (!services.get(session).containsKey(serviceClass))
+		{
+			if (session.getExecutor().isInExecutorThread())
+			{
+				services.get(session).put(serviceClass, getDsfServicesTracker(session).getService(serviceClass));
+			}
+			else
+			{
+				Query<V> serviceQuery = new Query<V>() {
+					@Override
+					protected void execute(
+							DataRequestMonitor<V> rm) {
+						rm.setData(getDsfServicesTracker(session).getService(serviceClass));
+						rm.done();
+					}
+				};
+				session.getExecutor().execute(serviceQuery);
+				try {
+					services.get(session).put(serviceClass, serviceQuery.get());
+				} catch (Exception e) {
+					EDCDebugger.getMessageLogger().logError(null, e);
+					return null;
+				}
+			}
+		}
+		return (V) services.get(session).get(serviceClass);		
 	}
 
 	public static DsfServicesTracker getDsfServicesTracker(final DsfSession session) {

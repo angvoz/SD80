@@ -13,9 +13,9 @@ package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 import java.util.EmptyStackException;
 import java.util.Stack;
 
+import org.eclipse.cdt.debug.edc.services.EDCServicesTracker;
 import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.CoreException;
 
 public class Interpreter {
@@ -26,7 +26,7 @@ public class Interpreter {
 	private OperandValue lastValue;
 
 	private boolean fStopped = false;
-	private final DsfServicesTracker tracker;
+	private final EDCServicesTracker tracker;
 	private final TypeEngine typeEngine;
 
 	/**
@@ -37,7 +37,7 @@ public class Interpreter {
 	 * @param context
 	 *            - instruction context
 	 */
-	public Interpreter(DsfServicesTracker tracker, IDMContext context, 
+	public Interpreter(EDCServicesTracker tracker, IDMContext context, 
 			TypeEngine typeEngine,
 			InstructionSequence instructionSequence) {
 		this.tracker = tracker;
@@ -46,7 +46,7 @@ public class Interpreter {
 		this.instructions = instructionSequence.getInstructions();
 	}
 
-	public DsfServicesTracker getServicesTracker() {
+	public EDCServicesTracker getServicesTracker() {
 		return tracker;
 	}
 

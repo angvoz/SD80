@@ -3730,6 +3730,16 @@
 			</enablement>
 		</decorator>
 	</extension>
+	<extension point="org.eclipse.cdt.ui.cPropertyTab">
+		<tab
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab"
+			icon="icons/obj16/ls_entries.gif"
+			name="%AllLanguageSettingEntries.name"
+			weight="050"
+			helpId="cdt_u_prop_pns_inc"
+			parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
+			tooltip="%AllLanguageSettingEntries.tooltip"/>
+	</extension>
  <extension
        point="org.eclipse.ui.commands">
     <command

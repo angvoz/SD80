@@ -183,6 +183,7 @@ public class CDTSharedImages {
 	public static final String IMG_OVR_ERROR = "icons/ovr16/error_co.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_SETTING = "icons/ovr16/setting_nav.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_INACTIVE = "icons/ovr16/inactive_co.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_PARENT = "icons/ovr16/path_inherit_co.gif"; //$NON-NLS-1$
 
 	/**
 	 * The method finds URL of the image corresponding to the key which could be project-relative path

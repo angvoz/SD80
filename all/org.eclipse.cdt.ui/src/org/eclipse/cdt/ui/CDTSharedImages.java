@@ -39,6 +39,10 @@ import org.eclipse.swt.graphics.Image;
  * <br>
  * and {@link org.eclipse.ui.ide.IDE.SharedImages}.
  * </p>
+ * <p>
+ * Note that org.eclipse.cdt.ui.tests.misc.CDTSharedImagesTests will verify
+ * existence of the images defined here.
+ * </p>
  *
  * @noextend This class is not intended to be subclassed by clients.
  * @noinstantiate This class is not intended to be instantiated by clients.
@@ -99,6 +103,7 @@ public class CDTSharedImages {
 	public static final String IMG_OBJS_CEXEC = "icons/obj16/exec_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_CEXEC_DEBUG = "icons/obj16/exec_dbg_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_CORE = "icons/obj16/core_obj.gif"; //$NON-NLS-1$
+
 	public static final String IMG_OBJS_CONTAINER = "icons/obj16/container_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_ARCHIVES_CONTAINER = "icons/obj16/archives_obj.gif"; //$NON-NLS-1$
 	public static final String IMG_OBJS_BINARIES_CONTAINER = "icons/obj16/binaries_obj.gif"; //$NON-NLS-1$

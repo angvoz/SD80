@@ -44,7 +44,7 @@ import org.eclipse.cdt.ui.dialogs.DialogsMessages;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
 
-public class LanguageSettingsProviderTabEditable extends LanguageSettingsProviderTab {
+public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
 	private static final String WORKSPACE_PREFERENCE_PAGE = "org.eclipse.cdt.make.ui.preferences.BuildSettings"; //$NON-NLS-1$
 
 	private Button globalProviderCheckBox = null;
@@ -175,7 +175,7 @@ public class LanguageSettingsProviderTabEditable extends LanguageSettingsProvide
 
 	@Override
 	public void createControls(Composite parent) {
-		isConfigureMode = true;
+		isConfigureMode = false;
 		super.createControls(parent);
 
 		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsLabelProviderEnhanced() {

@@ -27,6 +27,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
@@ -68,7 +69,9 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.ui.CDTSharedImages;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
@@ -113,8 +116,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 	private static final String CLEAR_STR = Messages.LanguageSettingsProviderTab_Clear;
 	private static final String RUN_STR = Messages.LanguageSettingsProviderTab_Run;
-	private static final String CONFIGURE_STR = Messages.LanguageSettingsProviderTab_Configure;
-	private static final String SHOW_ENTRIES_STR = Messages.LanguageSettingsProviderTab_ShowEntries;
+//	private static final String CONFIGURE_STR = Messages.LanguageSettingsProviderTab_Configure;
+//	private static final String SHOW_ENTRIES_STR = Messages.LanguageSettingsProviderTab_ShowEntries;
 
 	protected static final int BUTTON_ADD = 0;
 	protected static final int BUTTON_EDIT = 1;
@@ -122,8 +125,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	// there is a separator instead of button #3
 	protected static final int BUTTON_MOVE_UP = 4;
 	protected static final int BUTTON_MOVE_DOWN = 5;
-	// there is a separator instead of button #6
-	protected static final int BUTTON_CONFIGURE = 7;
+//	// there is a separator instead of button #6
+//	protected static final int BUTTON_CONFIGURE = 7;
 
 	protected final static String[] BUTTON_LABELS = {
 		ADD_STR,
@@ -132,8 +135,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		null,
 		MOVEUP_STR,
 		MOVEDOWN_STR,
-		null,
-		CONFIGURE_STR,
+//		null,
+//		CONFIGURE_STR,
 	};
 
 	private List<ILanguageSettingsProvider> initialProvidersList = null;
@@ -472,9 +475,12 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	public void createControls(Composite parent) {
 		super.createControls(parent);
 		usercomp.setLayout(new GridLayout());
+		GridData gd = (GridData) usercomp.getLayoutData();
+		// Discourage settings entry table from trying to show all its items at once, see bug 264330
+		gd.heightHint =1;
 
 		trackInitialSettings();
-		isConfigureMode = page.isForPrefs();
+//		isConfigureMode = page.isForPrefs();
 
 		// SashForms for each mode
 		createShowEntriesSashForm();
@@ -728,7 +734,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		buttonSetEnabled(BUTTON_DELETE, false);
 		buttonSetEnabled(BUTTON_MOVE_UP, false);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, false);
-		buttonSetEnabled(BUTTON_CONFIGURE, false);
+//		buttonSetEnabled(BUTTON_CONFIGURE, false);
 	}
 
 	/**
@@ -758,12 +764,12 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		
 		buttonSetText(BUTTON_ADD, isConfigureMode ? RUN_STR: ADD_STR);
 		buttonSetText(BUTTON_DELETE, isProviderSelected || isConfigureMode ? CLEAR_STR : DEL_STR);
-		buttonSetText(BUTTON_CONFIGURE, isConfigureMode ? SHOW_ENTRIES_STR: CONFIGURE_STR);
+//		buttonSetText(BUTTON_CONFIGURE, isConfigureMode ? SHOW_ENTRIES_STR: CONFIGURE_STR);
 
 		buttonSetEnabled(BUTTON_ADD, false);
 		buttonSetEnabled(BUTTON_EDIT, false);
 		buttonSetEnabled(BUTTON_DELETE, false);
-		buttonSetEnabled(BUTTON_CONFIGURE, canConfigure);
+//		buttonSetEnabled(BUTTON_CONFIGURE, canConfigure);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
 	}
@@ -775,6 +781,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		IStatus status=null;
 		if (enableProvidersCheckBox.getSelection()==true) {
 			status = LanguageSettingsImages.getStatus(getSelectedEntry());
+		}
+		if (!isConfigureMode && (status==null || status==Status.OK_STATUS)) {
+			ILanguageSettingsProvider provider = getSelectedProvider();
+			if (provider!=null && !(provider instanceof ILanguageSettingsEditableProvider)) {
+				String msg = "Setting entries for this provider are supplied by system and are not editable.";
+				status = new Status(IStatus.INFO, CUIPlugin.PLUGIN_ID, msg);
+			}
 		}
 		fStatusLine.setErrorStatus(status);
 	}
@@ -797,9 +810,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		case BUTTON_DELETE:
 			performDelete(selectedProvider, selectedEntry);
 			break;
-		case BUTTON_CONFIGURE:
-			performConfigure(selectedProvider);
-			break;
+//		case BUTTON_CONFIGURE:
+//			performConfigure(selectedProvider);
+//			break;
 		case BUTTON_MOVE_UP:
 			performMoveUp(selectedProvider, selectedEntry);
 			break;
@@ -817,13 +830,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	protected void performEdit(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 	}
 
-	/**
-	 * Switch between "Configure" mode and "Show Entries"
-	 */
-	protected void performConfigure(ILanguageSettingsProvider selectedProvider) {
-		setConfigureMode(!isConfigureMode);
-		updateButtons();
-	}
+//	/**
+//	 * Switch between "Configure" mode and "Show Entries"
+//	 */
+//	protected void performConfigure(ILanguageSettingsProvider selectedProvider) {
+//		setConfigureMode(!isConfigureMode);
+//		updateButtons();
+//	}
 
 	protected void performDelete(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 	}

@@ -2820,6 +2820,17 @@
              </adapt>
          </enabledWhen>
       </page>
+      <page
+            name="SD80"
+            id="org.eclipse.cdt.ui.language.settings"
+            class="org.eclipse.cdt.internal.ui.newui.Page_LanguageSettingsProviders"
+            category="org.eclipse.cdt.ui.newui.Page_head_general">
+         <enabledWhen>
+           <adapt type="org.eclipse.core.resources.IResource">
+	            <test property="org.eclipse.core.resources.projectNature" value="org.eclipse.cdt.core.cnature"/>
+           </adapt>
+         </enabledWhen>
+      </page>
    </extension>
 
    <extension
@@ -3738,12 +3749,20 @@
 	</extension>
 	<extension point="org.eclipse.cdt.ui.cPropertyTab">
 		<tab
-			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTabEditable"
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntriesTab"
 			icon="icons/obj16/ls_entries.gif"
-			name="*Providers"
-			weight="!!!FIXME 050"
+			name="Entries"
+			weight="010"
 			helpId="FIXME cdt_u_prop_pns_inc"
-			parent="org.eclipse.cdt.managedbuilder.ui.properties.Page_PathAndSymb"
+			parent="org.eclipse.cdt.internal.ui.newui.Page_LanguageSettingsProviders"
+			tooltip="%AllLanguageSettingEntries.tooltip"/>
+		<tab
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTabEditable"
+			icon="icons/obj16/extension_obj.gif"
+			name="Providers"
+			weight="020"
+			helpId="FIXME cdt_u_prop_pns_inc"
+			parent="org.eclipse.cdt.internal.ui.newui.Page_LanguageSettingsProviders"
 			tooltip="%AllLanguageSettingEntries.tooltip"/>
 	</extension>
  <extension

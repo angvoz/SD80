@@ -192,6 +192,7 @@ public class CDTSharedImages {
 	public static final String IMG_OVR_REFERENCE = "icons/ovr16/referencedby_co.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_PROJECT = "icons/ovr16/project_co.gif"; //$NON-NLS-1$
 	public static final String IMG_OVR_CONTEXT = "icons/ovr16/overlay-has-context.gif"; //$NON-NLS-1$
+	public static final String IMG_OVR_LOCK = "icons/ovr16/lock_ovr.gif"; //$NON-NLS-1$
 
 	/**
 	 * The method finds URL of the image corresponding to the key which could be project-relative path

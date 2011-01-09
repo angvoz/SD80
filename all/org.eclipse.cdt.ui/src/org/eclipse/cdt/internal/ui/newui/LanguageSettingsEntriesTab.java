@@ -190,7 +190,7 @@ public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
 							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
 						}
 					} else {
-						if (provider instanceof ILanguageSettingsEditableProvider || provider instanceof LanguageSettingsSerializable) {
+						if (provider instanceof ILanguageSettingsEditableProvider) {
 							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
 						}
 					}

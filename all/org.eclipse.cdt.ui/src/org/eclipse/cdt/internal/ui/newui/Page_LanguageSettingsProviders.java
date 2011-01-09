@@ -10,7 +10,9 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.newui;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.ui.newui.AbstractPage;
+import org.eclipse.cdt.ui.newui.ICPropertyTab;
 
 
 /**
@@ -18,8 +20,22 @@ import org.eclipse.cdt.ui.newui.AbstractPage;
  * @noinstantiate This class is not intended to be instantiated by clients.
  */
 public class Page_LanguageSettingsProviders extends AbstractPage {
+	private Boolean isLanguageSettingsProvidersEnabled = null;
+
 	@Override
 	protected boolean isSingle() {
 		return false;
+	}
+	
+	public boolean isLanguageSettingsProvidersEnabled() {
+		if (isLanguageSettingsProvidersEnabled==null) {
+			isLanguageSettingsProvidersEnabled = LanguageSettingsManager.isLanguageSettingsProvidersEnabled(getProject());
+		}
+		return isLanguageSettingsProvidersEnabled;
+	}
+
+	public void setLanguageSettingsProvidersEnabled(boolean enable) {
+		isLanguageSettingsProvidersEnabled = enable;
+		forEach(ICPropertyTab.UPDATE,getResDesc());
 	}
 }

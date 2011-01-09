@@ -113,6 +113,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	protected StatusMessageLine fStatusLine;
 	
 	protected boolean isConfigureMode = false;
+	
+	protected Page_LanguageSettingsProviders propertyPage = null;
 
 	private static final String CLEAR_STR = Messages.LanguageSettingsProviderTab_Clear;
 	private static final String RUN_STR = Messages.LanguageSettingsProviderTab_Run;
@@ -478,6 +480,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		GridData gd = (GridData) usercomp.getLayoutData();
 		// Discourage settings entry table from trying to show all its items at once, see bug 264330
 		gd.heightHint =1;
+		
+		if (page instanceof Page_LanguageSettingsProviders) {
+			propertyPage = (Page_LanguageSettingsProviders) page;
+		}
 
 		trackInitialSettings();
 //		isConfigureMode = page.isForPrefs();
@@ -506,14 +512,20 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		enableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				enableControls(enableProvidersCheckBox.getSelection());
+				boolean enabled = enableProvidersCheckBox.getSelection();
+				if (propertyPage!=null)
+					propertyPage.setLanguageSettingsProvidersEnabled(enabled);
+				enableControls(enabled);
 				updateStatusLine();
 			}
 		});
 
-		enableProvidersCheckBox.setSelection(LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject()));
+		if (propertyPage!=null)
+			enableProvidersCheckBox.setSelection(propertyPage.isLanguageSettingsProvidersEnabled());
+		else
+			enableProvidersCheckBox.setSelection(LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject()));
 		// display but disable the checkbox for file/folder resource
-		enableProvidersCheckBox.setEnabled(page.isForProject() && !isConfigureMode);
+		enableProvidersCheckBox.setEnabled(page.isForProject()/* && !isConfigureMode*/);
 		enableControls(enableProvidersCheckBox.getSelection());
 
 		initButtons(BUTTON_LABELS);
@@ -978,6 +990,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			
 			updateTreeLanguages(rcDes);
 			updateTreeEntries();
+			if (propertyPage!=null) {
+				boolean enabled = propertyPage.isLanguageSettingsProvidersEnabled();
+				enableProvidersCheckBox.setSelection(enabled);
+				enableControls(enabled);
+			}
 		}
 		updateTableConfigureProviders();
 		updateButtons();
@@ -989,8 +1006,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			ICConfigurationDescription cfgDescription = getConfigurationDescription();
 			cfgDescription.setLanguageSettingProviders(new ArrayList<ILanguageSettingsProvider>());
 			updateTreeEntries();
-			enableProvidersCheckBox.setSelection(false);
-			enableControls(enableProvidersCheckBox.getSelection());
+			boolean enabled = false;
+			enableProvidersCheckBox.setSelection(enabled);
+			if (propertyPage!=null)
+				propertyPage.setLanguageSettingsProvidersEnabled(enabled);
+			enableControls(enabled);
 		}
 		updateData(getResDesc());
 	}
@@ -1010,7 +1030,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	@Override
 	protected void performOK() {
 		if (page.isForProject() && enableProvidersCheckBox!=null) {
-			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enableProvidersCheckBox.getSelection());
+			boolean enabled = enableProvidersCheckBox.getSelection();
+			if (propertyPage!=null)
+				enabled = propertyPage.isLanguageSettingsProvidersEnabled();
+			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enabled);
+			enableProvidersCheckBox.setSelection(enabled);
 		}
 
 		updateData(getResDesc());

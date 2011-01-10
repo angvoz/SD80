@@ -3757,7 +3757,7 @@
 			parent="org.eclipse.cdt.internal.ui.newui.Page_LanguageSettingsProviders"
 			tooltip="%AllLanguageSettingEntries.tooltip"/>
 		<tab
-			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTabEditable"
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab"
 			icon="icons/obj16/extension_obj.gif"
 			name="Providers"
 			weight="020"

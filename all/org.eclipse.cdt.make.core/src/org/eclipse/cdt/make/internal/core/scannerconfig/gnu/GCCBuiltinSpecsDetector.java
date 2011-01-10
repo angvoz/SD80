@@ -11,7 +11,9 @@
 
 package org.eclipse.cdt.make.internal.core.scannerconfig.gnu;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -28,6 +30,7 @@ import org.eclipse.cdt.make.internal.core.scannerconfig.util.TraceUtil;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
 
 public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 	private static final Pattern MACRO_PATTERN = Pattern.compile("#define (\\S*) *(.*)"); //$NON-NLS-1$
@@ -134,7 +137,6 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		} else if (expectingIncludes) {
 			line.trim();
 			IPath path = new Path(line);
-			// TODO - Cygwin and remote scenario
 			java.io.File file = new java.io.File(line);
 			if (file.exists() && file.isDirectory()) {
 				// get rid of relative portions "../"
@@ -142,6 +144,13 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 					path = new Path(file.getCanonicalPath());
 				} catch (IOException e) {
 					MakeCorePlugin.log(e);
+				}
+			}
+			// TODO - Redo Cygwin and do remote scenario
+			if (!file.exists()) {
+				try {
+					path = new Path(cygwinToWindowsPath(line));
+				} catch (Exception e) {
 				}
 			}
 			detectedIncludes.add(new CIncludePathEntry(path, includeFlag));
@@ -179,4 +188,35 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		super.shutdown();
 	}
 
+	// FIXME
+	/**
+	 * See ResourceHelper#cygwinToWindowsPath(String).
+	 * 
+	 * Conversion from Cygwin path to Windows path.
+	 *
+	 * @param cygwinPath - Cygwin path.
+	 * @return Windows style converted path.
+	 * @throws UnsupportedOperationException if Cygwin is unavailable.
+	 * @throws IOException on IO problem.
+	 */
+	public static String cygwinToWindowsPath(String cygwinPath) throws IOException, UnsupportedOperationException {
+		if (!Platform.getOS().equals(Platform.OS_WIN32)) {
+			// Don't run this on non-windows platforms
+			throw new UnsupportedOperationException("Not a Windows system, Cygwin is unavailable.");
+		}
+		String[] args = {"cygpath", "-w", cygwinPath};
+		Process cygpath;
+		try {
+			cygpath = Runtime.getRuntime().exec(args);
+		} catch (IOException ioe) {
+			throw new UnsupportedOperationException("Cygwin utility cygpath is not in the system search path.");
+		}
+		BufferedReader stdout = new BufferedReader(new InputStreamReader(cygpath.getInputStream()));
+
+		String windowsPath = stdout.readLine();
+		if (windowsPath == null) {
+			throw new UnsupportedOperationException("Cygwin utility cygpath is not available.");
+		}
+		return windowsPath.trim();
+	}
 }

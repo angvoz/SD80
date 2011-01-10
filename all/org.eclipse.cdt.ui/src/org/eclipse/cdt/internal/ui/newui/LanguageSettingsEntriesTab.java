@@ -8,29 +8,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.IDecoration;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Link;
-import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.TreeItem;
-import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
@@ -38,18 +22,8 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.ui.CDTSharedImages;
-import org.eclipse.cdt.ui.CUIPlugin;
-import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
-import org.eclipse.cdt.ui.dialogs.DialogsMessages;
-import org.eclipse.cdt.ui.dialogs.ICOptionPage;
-import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
 
 public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
-	private static final String WORKSPACE_PREFERENCE_PAGE = "org.eclipse.cdt.make.ui.preferences.BuildSettings"; //$NON-NLS-1$
-
-	private Button globalProviderCheckBox = null;
-	private Link linkWorkspacePreferences = null;
-	
 	// providerId -> provider
 	private Map<String, EditedProvider> editedProviders = new HashMap<String, EditedProvider>();
 
@@ -74,31 +48,6 @@ public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
 		}
 	}
 		
-	/**
-	 * Default provider options page.
-	 *
-	 */
-	private class DummyProviderOptionsPage extends AbstractCOptionPage {
-		@Override
-		public void createControl(Composite parent) {
-			Label label = new Label(parent, SWT.NONE);
-			if (page.isForPrefs()) {
-				label.setText("No options are available.");
-			}
-			setControl(label);
-		}
-		
-		@Override
-		public void performApply(IProgressMonitor monitor) throws CoreException {
-		}
-
-		@Override
-		public void performDefaults() {
-		}
-
-	}
-	
-
 	private class EditedProvider implements ILanguageSettingsEditableProvider {
 		private String id;
 		private String name;
@@ -199,194 +148,7 @@ public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
 			}
 		});
 		
-		tableProvidersViewer.setLabelProvider(new LanguageSettingsContributorsLabelProviderEnhanced() {
-			@Override
-			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
-				String[] overlayKeys = new String[5];
-				if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_REFERENCE;
-//					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
-//					overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_LINK;
-				} else {
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONFIGURATION;
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_INDEXED;
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONTEXT;
-					
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_PROJECT;
-				}
-				return overlayKeys;
-			}
-		});
 	}
-
-	//	/** TODO
-	//	 * @return {@code true} if the error parsers are allowed to be editable,
-	//	 *     i.e. Add/Edit/Delete buttons are enabled and Options page edits enabled.
-	//	 *     This will evaluate to {@code true} for Preference Build Settings page but
-	//	 *     not for Preference New CDT Project Wizard/Makefile Project.
-	//	 */
-	private boolean isProviderCustomizable(ILanguageSettingsProvider provider) {
-		return page.isForPrefs() || !LanguageSettingsManager.isWorkspaceProvider(provider);
-	}
-
-	private Link createLinkToPreferences(final Composite parent) {
-		Link link = new Link(parent, SWT.NONE);
-//		// FIXME
-//		link.setText(DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Select Discovery Tab.");
-
-		link.addListener(SWT.Selection, new Listener() {
-			public void handleEvent(Event event) {
-				// Use event.text to tell which link was used
-				PreferencesUtil.createPreferenceDialogOn(parent.getShell(), WORKSPACE_PREFERENCE_PAGE, null, null).open();
-			}
-		});
-
-		return link;
-	}
-
-
-	@Override
-	protected void createOptionsControl() {
-		groupOptionsPage = new Group(sashFormConfigure, SWT.SHADOW_ETCHED_IN);
-		groupOptionsPage.setText("Language Settings Provider Options");
-		groupOptionsPage.setLayout(new GridLayout(2, false));
-		
-		if (!page.isForPrefs()) {
-			if (globalProviderCheckBox==null) {
-				globalProviderCheckBox = new Button(groupOptionsPage, SWT.CHECK);
-				globalProviderCheckBox.setText("Use shared provider defined globally.");
-				globalProviderCheckBox.addSelectionListener(new SelectionAdapter() {
-					@Override
-					public void widgetSelected(SelectionEvent e) {
-						updateConfigureTable();
-					}
-
-					@Override
-					public void widgetDefaultSelected(SelectionEvent e) {
-						widgetSelected(e);
-					}
-
-				});
-				
-				linkWorkspacePreferences = createLinkToPreferences(groupOptionsPage);
-			}
-		}
-
-		compositeOptionsPage = new Composite(groupOptionsPage, SWT.NONE);
-		compositeOptionsPage.setLayout(new TabFolderLayout());
-	}
-
-	private void updateConfigureTable() {
-		// TODO
-		ILanguageSettingsProvider oldProvider = getSelectedProvider();
-		ILanguageSettingsProvider newProvider = null;
-
-		String id = oldProvider.getId();
-		if (globalProviderCheckBox.getSelection()) {
-			// Global provider reference chosen
-			newProvider = LanguageSettingsManager.getWorkspaceProvider(id);
-		} else {
-			// Local provider instance chosen
-			if (oldProvider instanceof LanguageSettingsSerializable) {
-				try {
-					// TODO: add new method to LanguageSettingsSerializable to avoid cloning data
-					newProvider = ((LanguageSettingsSerializable)oldProvider).clone();
-					((LanguageSettingsSerializable)newProvider).clear();
-				} catch (CloneNotSupportedException e) {
-					CUIPlugin.log("Exception trying to clone workspace provider "+id, e);
-					return;
-				}
-			}
-		}
-		if (newProvider!=null) {
-			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
-			int pos = providers.indexOf(oldProvider);
-			providers.remove(oldProvider);
-			providers.add(pos, newProvider);
-			cfgDescription.setLanguageSettingProviders(providers);
-			updateTableConfigureProviders();
-			tableProviders.setSelection(pos);
-			initializeOptionsPage(newProvider);
-			displaySelectedOptionPage();
-			updateButtons();
-//			updateData(getResDesc());
-			tableProvidersViewer.update(newProvider, null);
-		}
-	}
-
-	@Override
-	protected ICOptionPage createOptionsPage(ILanguageSettingsProvider provider) {
-		ICOptionPage optionsPage = null;
-		if (provider!=null) {
-			optionsPage = LanguageSettingsProviderAssociation.createOptionsPage(provider);
-		}
-		if (optionsPage==null) {
-			optionsPage = new DummyProviderOptionsPage();
-		}
-		
-		if (optionsPage instanceof AbstractCOptionPage) {
-			((AbstractCOptionPage)optionsPage).init(provider);
-		}
-		return optionsPage;
-	}
-
-	@Override
-	protected void initializeOptionsPage(ILanguageSettingsProvider provider) {
-		super.initializeOptionsPage(provider);
-	}
-
-	@Override
-	protected void displaySelectedOptionPage() {
-		super.displaySelectedOptionPage();
-
-		ILanguageSettingsProvider provider = getSelectedProvider();
-		boolean isChecked = tableProvidersViewer.getChecked(provider);
-		if (!page.isForPrefs()) {
-			boolean canClone = provider instanceof LanguageSettingsSerializable || provider instanceof ILanguageSettingsEditableProvider;
-			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
-			globalProviderCheckBox.setSelection(isGlobal);
-			globalProviderCheckBox.setEnabled(isChecked && canClone);
-			globalProviderCheckBox.setVisible(provider!=null);
-			
-			boolean needPreferencesLink = ! (currentOptionsPage instanceof DummyProviderOptionsPage) && isGlobal;
-			// TODO: message
-			linkWorkspacePreferences.setText(needPreferencesLink ? DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Select Discovery Tab." : "");
-			linkWorkspacePreferences.pack();
-		}
-		currentOptionsPage.getControl().setEnabled(provider!=null && isChecked && !LanguageSettingsManager.isWorkspaceProvider(provider));
-	}
-
-//	@Override
-//	protected void saveCheckedProviders(Object selectedElement) {
-//		if (page.isForProject()) {
-//			Object[] checked = tableProvidersViewer.getCheckedElements();
-//			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(checked.length);
-//			for (Object elem : checked) {
-//				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)elem;
-////				if (provider==selectedElement && provider instanceof LanguageSettingsSerializable && LanguageSettingsManager.isWorkspaceProvider(provider)) {
-////					try {
-////						provider = ((LanguageSettingsSerializable)provider).clone();
-////						((LanguageSettingsSerializable)provider).clear();
-////						selectedElement = provider;
-////					} catch (Exception e) {
-////						// Log error but use workspace provider in this case
-////						CUIPlugin.log("Error cloning provider "+provider.getName()+ ", class = "+provider.getClass(), e);
-////					}
-////				}
-//				providers.add(provider);
-//
-//			}
-//
-//			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-//				cfgDescription.setLanguageSettingProviders(providers);
-//				updateData(getResDesc());
-//				if (selectedElement!=null) {
-//					tableProvidersViewer.update(selectedElement, null);
-//				}
-//		}
-//	}
 
 	private EditedProvider makeEditedProvider(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription, IResource rc) {
 		List<ICLanguageSettingEntry> entries;
@@ -663,18 +425,14 @@ public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
 
 	@Override
 	protected void performMoveDown(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
-		if (isConfigureMode) {
-			super.performMoveDown(selectedProvider, selectedEntry);
-		} else if (selectedEntry!=null) {
+		if (selectedEntry!=null) {
 			moveEntry(selectedProvider, selectedEntry, false);
 		}
 	}
 
 	@Override
 	protected void performMoveUp(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
-		if (isConfigureMode) {
-			super.performMoveUp(selectedProvider, selectedEntry);
-		} else if (selectedEntry!=null) {
+		if (selectedEntry!=null) {
 			moveEntry(selectedProvider, selectedEntry, true);
 		}
 	}
@@ -704,19 +462,6 @@ public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
 							}
 						}
 					}
-				}
-			}
-		}
-		
-		if (page.isForPrefs()) {
-			if (MessageDialog.openQuestion(usercomp.getShell(),
-					Messages.LanguageSettingsProviderTab_TitleResetProviders,
-					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
-
-				try {
-					LanguageSettingsManager_TBD.setUserDefinedProviders(null);
-				} catch (CoreException e) {
-					CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorPerformingDefaults, e);
 				}
 			}
 		}
@@ -833,27 +578,6 @@ public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
 			cfgDescription.setLanguageSettingProviders(destProviders);
 		}
 		
-		if (page.isForPrefs()) {
-			// Build Settings page
-			try {
-				ILanguageSettingsProvider[] providers = new ILanguageSettingsProvider[tableProviders.getItemCount()];
-				TableItem[] items = tableProviders.getItems();
-				for (int i=0;i<items.length;i++) {
-					providers[i] = (ILanguageSettingsProvider) items[i].getData();
-				}
-
-				Object[] checkedElements = tableProvidersViewer.getCheckedElements();
-				String[] checkedProviderIds = new String[checkedElements.length];
-				for (int i=0;i<checkedElements.length;i++) {
-					checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
-				}
-
-				LanguageSettingsManager_TBD.setUserDefinedProviders(providers);
-			} catch (CoreException e) {
-				CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorApplyingSettings, e);
-			}
-		}
-		
 		super.performOK();
 	}
 
@@ -864,40 +588,38 @@ public class LanguageSettingsEntriesTab extends LanguageSettingsProviderTab {
 	protected void updateButtons() {
 		super.updateButtons();
 		
-		if (!isConfigureMode) {
-			ILanguageSettingsProvider provider = getSelectedProvider();
-			ICLanguageSettingEntry entry = getSelectedEntry();
-			boolean isEntrySelected = entry!=null;
-			boolean isProviderSelected = !isEntrySelected && (provider!=null);
-			boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider;
+		ILanguageSettingsProvider provider = getSelectedProvider();
+		ICLanguageSettingEntry entry = getSelectedEntry();
+		boolean isEntrySelected = entry!=null;
+		boolean isProviderSelected = !isEntrySelected && (provider!=null);
+		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider;
+		
+		boolean canAdd = isProviderEditable;
+		boolean canEdit = isProviderEditable && isEntrySelected;
+		boolean canDelete = isProviderEditable && isEntrySelected;
+		boolean canClear = isProviderEditable && isProviderSelected
+			&& !LanguageSettingsManager.isWorkspaceProvider(provider)
+			&& getSettingEntries(provider)!=null;
+		
+		boolean canMoveUp = false;
+		boolean canMoveDown = false;
+		if (isProviderEditable && isEntrySelected) {
+			List<ICLanguageSettingEntry> entries = getSettingEntriesUpResourceTree(provider);
+			int last = entries.size()-1;
+			int pos = getExactIndex(entries, entry);
 			
-			boolean canAdd = isProviderEditable && !isConfigureMode;
-			boolean canEdit = isProviderEditable && isEntrySelected;
-			boolean canDelete = isProviderEditable && isEntrySelected;
-			boolean canClear = isProviderEditable && isProviderSelected
-				&& !LanguageSettingsManager.isWorkspaceProvider(provider)
-				&& getSettingEntries(provider)!=null;
-			
-			boolean canMoveUp = false;
-			boolean canMoveDown = false;
-			if (isProviderEditable && isEntrySelected) {
-				List<ICLanguageSettingEntry> entries = getSettingEntriesUpResourceTree(provider);
-				int last = entries.size()-1;
-				int pos = getExactIndex(entries, entry);
-				
-				if (pos>=0 && pos<=last) {
-					canMoveUp = pos!=0;
-					canMoveDown = pos!=last;
-				}
+			if (pos>=0 && pos<=last) {
+				canMoveUp = pos!=0;
+				canMoveDown = pos!=last;
 			}
-			
-			buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
-			buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
-			
-			buttonSetEnabled(BUTTON_ADD, canAdd);
-			buttonSetEnabled(BUTTON_EDIT, canEdit);
-			buttonSetEnabled(BUTTON_DELETE, canDelete || canClear);
 		}
+		
+		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
+		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
+		
+		buttonSetEnabled(BUTTON_ADD, canAdd);
+		buttonSetEnabled(BUTTON_EDIT, canEdit);
+		buttonSetEnabled(BUTTON_DELETE, canDelete || canClear);
 
 	}
 

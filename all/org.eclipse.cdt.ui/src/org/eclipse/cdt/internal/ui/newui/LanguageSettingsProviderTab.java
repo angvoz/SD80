@@ -620,26 +620,31 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	@Override
 	protected void updateButtons() {
 		ILanguageSettingsProvider provider = getSelectedProvider();
-
 		boolean isProviderSelected =provider!=null;
-		boolean isConfigureEnabled = enableProvidersCheckBox!=null && enableProvidersCheckBox.getSelection();
 
-		boolean canConfigure = page.isForProject() && isConfigureEnabled; // the button is only enabled in project properties
-		boolean canMoveUp = false;
-		boolean canMoveDown = false;
-		
-		if (canConfigure) {
-			int pos = tableProviders.getSelectionIndex();
-			int count = tableProviders.getItemCount();
-			int last = count - 1;
-			boolean isRangeOk = pos >= 0 && pos <= last;
-			canMoveUp = isProviderSelected && isRangeOk && pos!=0;
-			canMoveDown = isProviderSelected && isRangeOk && pos!=last;
+		int pos = tableProviders.getSelectionIndex();
+		int count = tableProviders.getItemCount();
+		int last = count - 1;
+		boolean isRangeOk = pos >= 0 && pos <= last;
+
+		// TODO: canClear for ILanguageSettingsEditableProvider
+		boolean canClear = false;
+		if (provider instanceof LanguageSettingsSerializable) {
+			
+			LanguageSettingsSerializable sprovider = (LanguageSettingsSerializable) provider;
+			if (!sprovider.isEmpty()) {
+				boolean canClearForWorkspace = LanguageSettingsManager.isWorkspaceProvider(provider) && page.isForPrefs();
+				boolean canClearForConfiguration = !LanguageSettingsManager.isWorkspaceProvider(provider) && page.isForProject();
+				canClear = canClearForWorkspace || canClearForConfiguration;
+			}
 		}
+		
+		boolean canMoveUp = isProviderSelected && isRangeOk && pos!=0;
+		boolean canMoveDown = isProviderSelected && isRangeOk && pos!=last;
 		
 		buttonSetEnabled(BUTTON_RUN, false);
 		buttonSetEnabled(BUTTON_EDIT, false);
-		buttonSetEnabled(BUTTON_CLEAR, false);
+		buttonSetEnabled(BUTTON_CLEAR, canClear);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
 	}
@@ -658,23 +663,22 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	@Override
 	public void buttonPressed(int buttonIndex) {
 		ILanguageSettingsProvider selectedProvider = getSelectedProvider();
-		ICLanguageSettingEntry selectedEntry = null;
 
 		switch (buttonIndex) {
 		case BUTTON_RUN:
 			performAdd(selectedProvider);
 			break;
 		case BUTTON_EDIT:
-			performEdit(selectedProvider, selectedEntry);
+			performEdit(selectedProvider);
 			break;
 		case BUTTON_CLEAR:
-			performDelete(selectedProvider, selectedEntry);
+			performClear(selectedProvider);
 			break;
 		case BUTTON_MOVE_UP:
-			performMoveUp(selectedProvider, selectedEntry);
+			performMoveUp(selectedProvider);
 			break;
 		case BUTTON_MOVE_DOWN:
-			performMoveDown(selectedProvider, selectedEntry);
+			performMoveDown(selectedProvider);
 			break;
 		default:
 		}
@@ -683,7 +687,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	private void performAdd(ILanguageSettingsProvider selectedProvider) {
 	}
 	
-	private void performEdit(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+	private void performEdit(ILanguageSettingsProvider selectedProvider) {
 	}
 
 //	/**
@@ -694,26 +698,23 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 //		updateButtons();
 //	}
 
-	private void performDelete(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+	private void performClear(ILanguageSettingsProvider selectedProvider) {
 		if (selectedProvider instanceof LanguageSettingsSerializable){
-			if (selectedEntry==null) {
-				((LanguageSettingsSerializable)selectedProvider).clear();
-			}
+//			((LanguageSettingsSerializable)selectedProvider).clear();
+			updateButtons();
 		} else if (selectedProvider instanceof ILanguageSettingsEditableProvider){
 			// FIXME
-//			if (selectedEntry==null) {
 //				((ILanguageSettingsEditableProvider)selectedProvider).clear();
-//			}
 		}
 	}
 
-	private void performMoveUp(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+	private void performMoveUp(ILanguageSettingsProvider selectedProvider) {
 		if (selectedProvider!=null) {
 			moveProvider(true);
 		}
 	}
 
-	private void performMoveDown(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
+	private void performMoveDown(ILanguageSettingsProvider selectedProvider) {
 		if (selectedProvider!=null) {
 			moveProvider(false);
 		}

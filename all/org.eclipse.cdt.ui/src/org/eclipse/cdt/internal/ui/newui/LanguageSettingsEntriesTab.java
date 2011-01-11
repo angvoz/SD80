@@ -1175,43 +1175,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	protected void performOK() {
 		if (!page.isForPrefs()) {
 			// FIXME: for now only handles current configuration
-			ICResourceDescription rcDesc = getResDesc();
-			IResource rc = getResource();
-			ICConfigurationDescription cfgDescription = rcDesc.getConfiguration();
-			
-			List<ILanguageSettingsProvider> destProviders = new ArrayList<ILanguageSettingsProvider>();
-			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
-			for (ILanguageSettingsProvider pro : providers) {
-				EditedProvider editedProvider = editedProviders.get(pro.getId());
-	
-				if (editedProvider!=null) {
-					if (pro instanceof ILanguageSettingsEditableProvider) {
-						if (pro instanceof LanguageSettingsSerializable) {
-							LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
-							if (LanguageSettingsManager.isWorkspaceProvider(spro)) {
-								try {
-									pro = spro.clone();
-									if (pro.getClass()!=spro.getClass())
-										throw new CloneNotSupportedException("Class " + spro.getClass() + " does not support cloning.");
-								} catch (CloneNotSupportedException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}
-							}
-						}
-						ILanguageSettingsEditableProvider epro = (ILanguageSettingsEditableProvider)pro;
-						for (ICLanguageSetting languageSetting : allLanguages) {
-							String languageId = languageSetting.getLanguageId();
-							if (languageId!=null) {
-								List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(cfgDescription, rc, languageId);
-								epro.setSettingEntries(cfgDescription, rc, languageId, entries);
-							}
-						}
-					}
-				}
-				destProviders.add(pro);
-			}
-			cfgDescription.setLanguageSettingProviders(destProviders);
+			saveCheckedProviders();
 		}
 
 		if (page.isForProject() && enableProvidersCheckBox!=null) {
@@ -1224,6 +1188,45 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 
 		updateData(getResDesc());
 		trackInitialSettings();
+	}
+
+	private void saveCheckedProviders() {
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		IResource rc = getResource();
+		
+		List<ILanguageSettingsProvider> destProviders = new ArrayList<ILanguageSettingsProvider>();
+		List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+		for (ILanguageSettingsProvider pro : providers) {
+			EditedProvider editedProvider = editedProviders.get(pro.getId());
+
+			if (editedProvider!=null) {
+				if (pro instanceof ILanguageSettingsEditableProvider) {
+					if (pro instanceof LanguageSettingsSerializable) {
+						LanguageSettingsSerializable spro = (LanguageSettingsSerializable)pro;
+						if (LanguageSettingsManager.isWorkspaceProvider(spro)) {
+							try {
+								pro = spro.clone();
+								if (pro.getClass()!=spro.getClass())
+									throw new CloneNotSupportedException("Class " + spro.getClass() + " does not support cloning.");
+							} catch (CloneNotSupportedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+					ILanguageSettingsEditableProvider epro = (ILanguageSettingsEditableProvider)pro;
+					for (ICLanguageSetting languageSetting : allLanguages) {
+						String languageId = languageSetting.getLanguageId();
+						if (languageId!=null) {
+							List<ICLanguageSettingEntry> entries = editedProvider.getSettingEntries(cfgDescription, rc, languageId);
+							epro.setSettingEntries(cfgDescription, rc, languageId, entries);
+						}
+					}
+				}
+			}
+			destProviders.add(pro);
+		}
+		cfgDescription.setLanguageSettingProviders(destProviders);
 	}
 
 	@Override

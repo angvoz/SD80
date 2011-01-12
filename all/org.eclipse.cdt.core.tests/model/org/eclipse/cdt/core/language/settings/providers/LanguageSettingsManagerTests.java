@@ -29,6 +29,7 @@ import org.eclipse.cdt.core.testplugin.CModelMock;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
+import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -139,6 +140,35 @@ public class LanguageSettingsManagerTests extends TestCase {
 		assertEquals(provider2, actual.get(1));
 		assertEquals(providers.size(), actual.size());
 		assertNotSame(actual, providers);
+	}
+
+	/**
+	 * Test read-only configuration description.
+	 */
+	public void testConfigurationDescription_ReadOnly() throws Exception {
+		// create a project
+		IProject project = ResourceHelper.createCDTProjectWithConfig(getName());
+		ICProjectDescription prjDescription = CProjectDescriptionManager.getInstance().getProjectDescription(project, false);
+		assertNotNull(prjDescription);
+		ICConfigurationDescription cfgDescription = prjDescription.getDefaultSettingConfiguration();
+		assertNotNull(cfgDescription);
+
+		try {
+			cfgDescription.setLanguageSettingProviders(null);
+			fail("Violation of write access for read-only configuration description");
+		} catch (Exception e) {
+			// an exception is expected here
+		}
+
+		List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+		assertNotNull(providers);
+		
+		try {
+			providers.add(null);
+			fail("Violation of write access for read-only configuration description");
+		} catch (Exception e) {
+			// an exception is expected here
+		} 
 	}
 
 	/**

@@ -782,6 +782,6 @@ public class CConfigurationDescription extends CDataProxyContainer implements IC
 		} catch (CoreException e) {
 			CCorePlugin.log(e);
 		}
-		return new ArrayList<ILanguageSettingsProvider>(0);
+		return null;
 	}
 }

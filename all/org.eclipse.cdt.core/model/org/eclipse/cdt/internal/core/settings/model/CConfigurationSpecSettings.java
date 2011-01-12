@@ -13,6 +13,7 @@ package org.eclipse.cdt.internal.core.settings.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1032,6 +1033,6 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 	}
 
 	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
-		return new ArrayList<ILanguageSettingsProvider>(fLanguageSettingsProviders);
+		return Collections.unmodifiableList(fLanguageSettingsProviders);
 	}
 }

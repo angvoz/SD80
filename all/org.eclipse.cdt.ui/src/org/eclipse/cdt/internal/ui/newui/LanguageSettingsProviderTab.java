@@ -243,7 +243,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	 * Shortcut for getting the current configuration description.
 	 */
 	private ICConfigurationDescription getConfigurationDescription() {
-		return getResDesc().getConfiguration();
+		ICConfigurationDescription cfgDescription = getResDesc().getConfiguration();
+		return cfgDescription;
 	}
 
 	/**
@@ -410,7 +411,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		}
 		if (newProvider!=null) {
 			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
 			int pos = providers.indexOf(oldProvider);
 			providers.remove(oldProvider);
 			providers.add(pos, newProvider);

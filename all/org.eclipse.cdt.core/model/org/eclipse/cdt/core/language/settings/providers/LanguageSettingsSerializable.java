@@ -29,6 +29,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.cdt.internal.core.XmlUtil;
+import org.eclipse.cdt.internal.core.settings.model.SettingsModelMessages;
 import org.eclipse.core.resources.IResource;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -58,6 +59,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				Map<String, // resource project path
 					List<ICLanguageSettingEntry>>> fStorage = new HashMap<String, Map<String, List<ICLanguageSettingEntry>>>();
 
+	private boolean isReadOnly = false;
+
 	public LanguageSettingsSerializable() {
 		super();
 	}
@@ -70,6 +73,37 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		load(elementProvider);
 	}
 
+	@Override
+	public void setId(String id) {
+		if (isReadOnly)
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+
+		super.setId(id);
+	}
+
+	@Override
+	public void setName(String name) {
+		if (isReadOnly)
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+
+		super.setName(name);
+	}
+	
+	@Override
+	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
+		if (isReadOnly)
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+
+		super.configureProvider(id, name, languages, entries, customParameter);
+	}
+
+	/**
+	 * @return {@code true} if the provider is read-only or {@code false} otherwise.
+	 */
+	public boolean isReadOnly() {
+		return isReadOnly;
+	}
+	
 	/**
 	 * @return {@code true} if the provider does not keep any settings yet or {@code false} if there are some.
 	 */
@@ -78,14 +112,23 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	public void setLanguageIds(List <String> languages) {
+		if (isReadOnly)
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+
 		this.languageScope = new ArrayList<String>(languages);
 	}
 
 	public void setCustomParameter(String customParameter) {
+		if (isReadOnly)
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+
 		this.customParameter = customParameter;
 	}
 
 	public void clear() {
+		if (isReadOnly)
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+
 		fStorage.clear();
 	}
 
@@ -111,6 +154,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
+		if (isReadOnly)
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+
 		String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
 		setSettingEntriesInternal(rcProjectPath, languageId, entries);
 	}
@@ -246,6 +292,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 
 	// provider/configuration/language/resource/entry
 	public void load(Element providerNode) {
+		if (isReadOnly)
+			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+
 		fStorage.clear();
 		languageScope = null;
 
@@ -383,6 +432,12 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		return clone;
 	}
 
+	public final LanguageSettingsSerializable clone(boolean isReadOnly) throws CloneNotSupportedException {
+		LanguageSettingsSerializable clone = clone();
+		clone.isReadOnly = isReadOnly;
+		return clone;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -396,6 +451,12 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		return result;
 	}
 
+	/**
+	 * @return {@code true} if the objects are equal, {@code false } otherwise.
+	 * Note that read-only flag does not affect equality.
+	 * 
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)

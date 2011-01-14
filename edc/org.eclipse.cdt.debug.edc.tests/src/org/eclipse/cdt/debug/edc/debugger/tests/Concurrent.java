@@ -57,6 +57,7 @@ public class Concurrent extends BaseLaunchTest {
 		int testCount = 50;
 		while (testCount-- > 0)
 			EDCDebugger.execute(getFrames);
+		Thread.sleep(10 * 1000);
 
 	}
 	

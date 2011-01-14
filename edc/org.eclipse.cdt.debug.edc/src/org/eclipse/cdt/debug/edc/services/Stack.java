@@ -1233,9 +1233,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 					rm.setData(frameContext.getLocals(useVariableCache));
 				} catch (CoreException e) {
-					Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
-					EDCDebugger.getMessageLogger().log(s);
-					rm.setStatus(s);
+					EDCDebugger.getMessageLogger().log(e.getStatus());
+					rm.setStatus(e.getStatus());
 				}
 				rm.done();
 			}

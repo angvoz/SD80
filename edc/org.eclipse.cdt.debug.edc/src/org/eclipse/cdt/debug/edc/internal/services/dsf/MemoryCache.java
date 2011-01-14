@@ -12,6 +12,7 @@
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -62,17 +63,14 @@ public class MemoryCache implements ISnapshotContributor {
 	// Timeout waiting for TCF agent reply.
 	final private int TIMEOUT = 6000; // milliseconds
 	private int minimumBlockSize = 0;
+	private final Map<String, MemoryContext>	tcfMemoryContexts = Collections.synchronizedMap(new HashMap<String, MemoryContext>());
+	private final SortedMemoryBlockList memoryBlockList = new SortedMemoryBlockList();
 
 	/**
 	 * @param minimumBlockSize minimum size of memory block to cache.
 	 */
 	public MemoryCache(int minimumBlockSize) {
 		this.minimumBlockSize = minimumBlockSize;
-		
-		// create the memory block cache
-		memoryBlockList = new SortedMemoryBlockList();
-		
-		tcfMemoryContexts = new HashMap<String, MemoryContext>();
 	}
 
 	public void reset() {
@@ -636,9 +634,6 @@ public class MemoryCache implements ISnapshotContributor {
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 	}
-
-	private final Map<String, MemoryContext>	tcfMemoryContexts;
-	private final SortedMemoryBlockList memoryBlockList;
 
 	private class MemoryBlock {
 		public MemoryBlock(IAddress fAddress, long fLength, MemoryByte[] fBlock) {

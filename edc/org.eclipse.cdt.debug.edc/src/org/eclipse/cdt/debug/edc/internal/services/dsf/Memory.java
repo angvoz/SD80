@@ -101,92 +101,6 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		getSession().addServiceEventListener(this, null);
 	}
 
-	public void fillMemory(final IMemoryDMContext context, final IAddress address, final long offset, final int word_size, final int count,
-			byte[] pattern, final RequestMonitor rm) {
-		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
-
-		// Validate the context
-		if (context == null) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
-							"Unknown context type", null)); //$NON-NLS-1$;
-			rm.done();
-			return;
-		}
-
-		// Validate the word size
-		if (word_size < 1) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, NOT_SUPPORTED,
-					"Word size not supported (< 1)", null)); //$NON-NLS-1$
-			rm.done();
-			return;
-		}
-
-		// Validate the repeat count
-		if (count < 0) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
-					"Invalid repeat count (< 0)", null)); //$NON-NLS-1$
-			rm.done();
-			return;
-		}
-
-		// Validate the pattern
-		if (pattern.length < 1) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
-					"Empty pattern", null)); //$NON-NLS-1$
-			rm.done();
-			return;
-		}
-
-		// Create an aggregate buffer so we can write in 1 shot
-		final int length = pattern.length;
-		final byte[] buffer = new byte[count * length];
-		for (int i = 0; i < count; i++) {
-			System.arraycopy(pattern, 0, buffer, i * length, length);
-		}
-
-		// All is clear: go for it
-		// NOTE: We normalize word_size and count*length to read 1-byte words for this implementation
-		EDCDebugger.execute(new Runnable() {
-			
-			public void run() {
-				// NOTE: We normalize word_size and count to read 1-byte words for this implementation
-				try {
-					getMemoryCache(context).setMemory(tcfMemoryService, context, address, offset, 1, count * length * word_size,
-							buffer, getTCFTimeout());
-				} catch (CoreException e) {
-					EDCDebugger.getMessageLogger().log(e.getStatus());
-					rm.setStatus(e.getStatus());
-				}
-				rm.done();
-				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
-			}
-			
-		});
-	}
-
-	public void getMemory(final IMemoryDMContext context, final IAddress address, final long offset,
-			final int word_size, final int count, final DataRequestMonitor<MemoryByte[]> drm) {
-		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
-
-		EDCDebugger.execute(new Runnable() {
-			
-			public void run() {
-				// NOTE: We normalize word_size and count to read 1-byte words for this implementation
-				try {
-					MemoryByte[] memoryBytes = getMemory(context, address, offset, word_size, count);
-					drm.setData(memoryBytes);
-				} catch (CoreException e) {
-					EDCDebugger.getMessageLogger().log(e.getStatus());
-					drm.setStatus(e.getStatus());
-				}
-				drm.done();
-				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
-			}
-			
-		});
-
-	}
-
 	public MemoryByte[] getMemory(final IMemoryDMContext context, final IAddress address, final long offset,
 			final int word_size, final int count) throws CoreException {
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
@@ -237,70 +151,6 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		return Status.OK_STATUS;
 	}
 
-	public void setMemory(final IMemoryDMContext context, final IAddress address, final long offset,
-			final int word_size, final int count, final byte[] buffer, final RequestMonitor rm) {
-		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
-
-		// Validate the context
-		if (context == null) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
-							"Unknown context type", null)); //$NON-NLS-1$);
-			rm.done();
-			return;
-		}
-
-		// Validate the word size
-		// NOTE: We only accept 1 byte words for this implementation
-		if (word_size != 1) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, NOT_SUPPORTED,
-					"Word size not supported (!= 1)", null)); //$NON-NLS-1$
-			rm.done();
-			return;
-		}
-
-		// Validate the byte count
-		if (count < 0) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
-					"Invalid word count (< 0)", null)); //$NON-NLS-1$
-			rm.done();
-			return;
-		}
-
-		// Validate the buffer size
-		if (buffer.length < count) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
-					"Buffer too short", null)); //$NON-NLS-1$
-			rm.done();
-			return;
-		}
-		// everything ok
-
-		EDCDebugger.execute(new Runnable() {
-			
-			public void run() {
-				// NOTE: We normalize word_size and count to read 1-byte words for this implementation
-				try {
-					getMemoryCache(context).setMemory(tcfMemoryService, context, address, offset, word_size, count, buffer, getTCFTimeout());
-					if (rm.isSuccess()) {
-						// we've modified memory - send an event
-						IAddress[] addresses = new IAddress[count];
-						for (int i = 0; i < count; i++) {
-							addresses[i] = address.add(offset + i);
-						}
-						getSession().dispatchEvent(new MemoryChangedEvent(context, addresses), getProperties());
-					}
-				} catch (CoreException e) {
-					EDCDebugger.getMessageLogger().log(e.getStatus());
-					rm.setStatus(e.getStatus());
-				}
-				rm.done();
-				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
-			}
-			
-		});
-
-	}
-
 	public void flushCache(IDMContext context) {
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { context }); }
 
@@ -329,33 +179,6 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 	}
 
-/*	 (non-Javadoc)
-	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCMemory#getMemory(org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC, org.eclipse.cdt.core.IAddress, java.util.ArrayList, int, int)
-	 
-	public IStatus getMemory(IEDCExecutionDMC context, IAddress address, final ArrayList<MemoryByte> memBuffer, int count,
-			int word_size) {
-		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), count }); }
-
-		final IStatus[] ret = new IStatus[] { Status.OK_STATUS };
-
-		getMemory(context, address, 0, word_size, count, new DataRequestMonitor<MemoryByte[]>(ImmediateExecutor
-				.getInstance(), null) {
-
-			@Override
-			protected void handleCompleted() {
-				if (isSuccess()) {
-					MemoryByte[] resultMem = getData();
-					memBuffer.addAll(Arrays.asList(resultMem));
-				} else {
-					ret[0] = getStatus();
-				}
-			}
-		});
-
-		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null, ret[0]); }
-		return ret[0];
-	}
-*/	
 	public IStatus setMemory(IMemoryDMContext context, IAddress address, int word_size, int count, byte[] buffer) {
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), count }); }
 
@@ -484,4 +307,165 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 	public long getTCFTimeout() {
 		return tcfTimeout;
 	}
+	
+	// Implementation of org.eclipse.cdt.dsf.debug.service.IMemory
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.dsf.debug.service.IMemory#fillMemory(org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext, org.eclipse.cdt.core.IAddress, long, int, int, byte[], org.eclipse.cdt.dsf.concurrent.RequestMonitor)
+	 */
+	public void fillMemory(final IMemoryDMContext context, final IAddress address, final long offset, final int word_size, final int count,
+			final byte[] pattern, final RequestMonitor rm) {
+		EDCDebugger.execute(new Runnable() {
+			
+			public void run() {
+				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
+
+				// Validate the context
+				if (context == null) {
+					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
+									"Unknown context type", null)); //$NON-NLS-1$;
+					rm.done();
+					return;
+				}
+
+				// Validate the word size
+				if (word_size < 1) {
+					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, NOT_SUPPORTED,
+							"Word size not supported (< 1)", null)); //$NON-NLS-1$
+					rm.done();
+					return;
+				}
+
+				// Validate the repeat count
+				if (count < 0) {
+					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
+							"Invalid repeat count (< 0)", null)); //$NON-NLS-1$
+					rm.done();
+					return;
+				}
+
+				// Validate the pattern
+				if (pattern.length < 1) {
+					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
+							"Empty pattern", null)); //$NON-NLS-1$
+					rm.done();
+					return;
+				}
+
+				// Create an aggregate buffer so we can write in 1 shot
+				final int length = pattern.length;
+				final byte[] buffer = new byte[count * length];
+				for (int i = 0; i < count; i++) {
+					System.arraycopy(pattern, 0, buffer, i * length, length);
+				}
+
+				// All is clear: go for it
+				// NOTE: We normalize word_size and count to read 1-byte words for this implementation
+				try {
+					getMemoryCache(context).setMemory(tcfMemoryService, context, address, offset, 1, count * length * word_size,
+							buffer, getTCFTimeout());
+				} catch (CoreException e) {
+					EDCDebugger.getMessageLogger().log(e.getStatus());
+					rm.setStatus(e.getStatus());
+				}
+				rm.done();
+				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
+			}
+			
+		});
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.dsf.debug.service.IMemory#getMemory(org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext, org.eclipse.cdt.core.IAddress, long, int, int, org.eclipse.cdt.dsf.concurrent.DataRequestMonitor)
+	 */
+	public void getMemory(final IMemoryDMContext context, final IAddress address, final long offset,
+			final int word_size, final int count, final DataRequestMonitor<MemoryByte[]> drm) {
+
+		EDCDebugger.execute(new Runnable() {
+			
+			public void run() {
+				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
+				// NOTE: We normalize word_size and count to read 1-byte words for this implementation
+				try {
+					MemoryByte[] memoryBytes = getMemory(context, address, offset, word_size, count);
+					drm.setData(memoryBytes);
+				} catch (CoreException e) {
+					EDCDebugger.getMessageLogger().log(e.getStatus());
+					drm.setStatus(e.getStatus());
+				}
+				drm.done();
+				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
+			}
+			
+		});
+
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.dsf.debug.service.IMemory#setMemory(org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext, org.eclipse.cdt.core.IAddress, long, int, int, byte[], org.eclipse.cdt.dsf.concurrent.RequestMonitor)
+	 */
+	public void setMemory(final IMemoryDMContext context, final IAddress address, final long offset,
+			final int word_size, final int count, final byte[] buffer, final RequestMonitor rm) {
+
+		EDCDebugger.execute(new Runnable() {
+			
+			public void run() {
+				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
+
+				// Validate the context
+				if (context == null) {
+					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
+									"Unknown context type", null)); //$NON-NLS-1$);
+					rm.done();
+					return;
+				}
+
+				// Validate the word size
+				// NOTE: We only accept 1 byte words for this implementation
+				if (word_size != 1) {
+					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, NOT_SUPPORTED,
+							"Word size not supported (!= 1)", null)); //$NON-NLS-1$
+					rm.done();
+					return;
+				}
+
+				// Validate the byte count
+				if (count < 0) {
+					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
+							"Invalid word count (< 0)", null)); //$NON-NLS-1$
+					rm.done();
+					return;
+				}
+
+				// Validate the buffer size
+				if (buffer.length < count) {
+					rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
+							"Buffer too short", null)); //$NON-NLS-1$
+					rm.done();
+					return;
+				}
+				// everything ok
+				// NOTE: We normalize word_size and count to read 1-byte words for this implementation
+				try {
+					getMemoryCache(context).setMemory(tcfMemoryService, context, address, offset, word_size, count, buffer, getTCFTimeout());
+					if (rm.isSuccess()) {
+						// we've modified memory - send an event
+						IAddress[] addresses = new IAddress[count];
+						for (int i = 0; i < count; i++) {
+							addresses[i] = address.add(offset + i);
+						}
+						getSession().dispatchEvent(new MemoryChangedEvent(context, addresses), getProperties());
+					}
+				} catch (CoreException e) {
+					EDCDebugger.getMessageLogger().log(e.getStatus());
+					rm.setStatus(e.getStatus());
+				}
+				rm.done();
+				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
+			}
+			
+		});
+
+	}
+
 }

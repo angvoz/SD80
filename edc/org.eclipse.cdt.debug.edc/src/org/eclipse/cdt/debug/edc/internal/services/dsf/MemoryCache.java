@@ -16,6 +16,9 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.IAddressFactory;
@@ -25,13 +28,13 @@ import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
-import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
 import org.eclipse.cdt.utils.Addr32Factory;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.cdt.utils.Addr64Factory;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -330,9 +333,11 @@ public class MemoryCache implements ISnapshotContributor {
 	 * @param word_size
 	 * @param count
 	 * @param drm
+	 * @param timeOutLimit 
+	 * @throws CoreException 
 	 */
-	public void getMemory(final IMemory tcfMemoryService, final IMemoryDMContext context, final IAddress address,
-			final int word_size, final int count, final DataRequestMonitor<MemoryByte[]> drm) {
+	public MemoryByte[] getMemory(final IMemory tcfMemoryService, final IMemoryDMContext context, final IAddress address,
+			final int word_size, final int count, long timeOutLimit) throws CoreException {
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { context, address.toHexAddressString(), word_size, count }); }
 
 		// determine number of read requests to issue
@@ -340,9 +345,7 @@ public class MemoryCache implements ISnapshotContributor {
 		final int numberOfRequests = missingBlocks.size();
 
 		if (numberOfRequests > 0 && tcfMemoryService == null) {
-			drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, "Fail to read memory.")); //$NON-NLS-1$
-			drm.done();
-			return;
+			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, "Fail to read memory."));
 		}
 		// System.out.printf("MemoryCache.getMemory address=%x count=%d numberOfRequests=%d\n",
 		// address.getValue(), count, numberOfRequests);
@@ -355,22 +358,20 @@ public class MemoryCache implements ISnapshotContributor {
 			
 			MemoryByte[] result;
 			try {
-				result = readBlock(tcfMemoryService, context, blockAddress, word_size, blockLength);
+				result = readBlock(tcfMemoryService, context, blockAddress, word_size, blockLength, timeOutLimit);
 				MemoryBlock newBlock = new MemoryBlock(blockAddress, blockLength, result);
 				memoryBlockList.add(newBlock);
-			} catch (IOException e) {
-				drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
+			} catch (Exception e) {
+				throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
 						"Fail to read memory.", e.getCause())); //$NON-NLS-1$
-				drm.done();
-				return;
 			}
 		}
-		drm.setData(getMemoryBlockFromCache(address, count));
-		drm.done();
+		MemoryByte[] result = getMemoryBlockFromCache(address, count);
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
+		return result;
 	}
 
-	private MemoryContext getTCFMemoryContext(final IMemory tcfMemoryService, final String contextID) throws IOException {
+	private MemoryContext getTCFMemoryContext(final IMemory tcfMemoryService, final String contextID, long timeOutLimit) throws IOException, InterruptedException, ExecutionException, TimeoutException {
 
 		MemoryContext ret = tcfMemoryContexts.get(contextID);
 		if (ret != null)
@@ -392,11 +393,7 @@ public class MemoryCache implements ISnapshotContributor {
 			}
 		};
 
-		try {
-			ret = tcfTask.getIO();
-		} catch (IOException e) {
-			throw e;
-		}
+		ret = tcfTask.get(timeOutLimit, TimeUnit.MILLISECONDS);
 
 		if (ret != null)
 			tcfMemoryContexts.put(contextID, ret);
@@ -412,15 +409,19 @@ public class MemoryCache implements ISnapshotContributor {
 	 * @param address
 	 * @param word_size
 	 * @param count
+	 * @param timeOutLimit 
 	 * @return
 	 * @throws IOException
+	 * @throws TimeoutException 
+	 * @throws ExecutionException 
+	 * @throws InterruptedException 
 	 */
 	private MemoryByte[] readBlock(final IMemory tcfMemoryService, final IMemoryDMContext context,
-			final IAddress address, final int word_size, final int count) throws IOException {
+			final IAddress address, final int word_size, final int count, long timeOutLimit) throws IOException, InterruptedException, ExecutionException, TimeoutException {
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { context, address.toHexAddressString(), word_size, count }); }
 
-		final MemoryContext tcfMC = getTCFMemoryContext(tcfMemoryService, ((IEDCDMContext)context).getID());
+		final MemoryContext tcfMC = getTCFMemoryContext(tcfMemoryService, ((IEDCDMContext)context).getID(), timeOutLimit);
 		
 		MemoryByte[] result = null;
 
@@ -476,11 +477,7 @@ public class MemoryCache implements ISnapshotContributor {
 			}
 		};
 
-		try {
-			result = tcfTask.getIO();
-		} catch (IOException e) {
-			throw e;
-		}
+		result = tcfTask.get(timeOutLimit, TimeUnit.MILLISECONDS);
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 		return result;
@@ -498,23 +495,23 @@ public class MemoryCache implements ISnapshotContributor {
 	 * @param count
 	 * @param buffer
 	 * @param rm
+	 * @throws CoreException 
 	 */
 	public void setMemory(IMemory tcfMemoryService, IMemoryDMContext context, final IAddress address,
-			final long offset, final int word_size, final int count, byte[] buffer, final RequestMonitor rm) {
+			final long offset, final int word_size, final int count, byte[] buffer,
+			long timeOutLimit) throws CoreException {
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { context, address.toHexAddressString(), offset, word_size, count }); }
 
 		try {
-			writeBlock(tcfMemoryService, context, address, offset, word_size, count, buffer);
+			writeBlock(tcfMemoryService, context, address, offset, word_size, count, buffer, timeOutLimit);
 			if (blockIsCached(address.add(offset), word_size * count)) {
-				MemoryByte[] update = readBlock(tcfMemoryService, context, address.add(offset), word_size, count);
+				MemoryByte[] update = readBlock(tcfMemoryService, context, address.add(offset), word_size, count, timeOutLimit);
 				updateMemoryCache(address.add(offset), update.length, update);
 			}
-		} catch (IOException e) {
-			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
-					"Error Writing Memory", e)); //$NON-NLS-1$
+		} catch (Exception e) {
+			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, "Fail to write memory."));
 		}
-		rm.done();
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 	}
@@ -580,10 +577,14 @@ public class MemoryCache implements ISnapshotContributor {
 	 * @param word_size
 	 * @param count
 	 * @param buffer
+	 * @param timeOutLimit 
 	 * @throws IOException
+	 * @throws TimeoutException 
+	 * @throws ExecutionException 
+	 * @throws InterruptedException 
 	 */
 	private void writeBlock(final IMemory tcfMemoryService, final IMemoryDMContext context, final IAddress address,
-			final long offset, final int word_size, final int count, final byte[] buffer) throws IOException {
+			final long offset, final int word_size, final int count, final byte[] buffer, long timeOutLimit) throws IOException, InterruptedException, ExecutionException, TimeoutException {
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { context, address.toHexAddressString(), offset, word_size, count }); }
 
@@ -615,11 +616,7 @@ public class MemoryCache implements ISnapshotContributor {
 			}
 		};
 
-		try {
-			tcfTask.getIO();
-		} catch (IOException e) {
-			throw e;
-		}
+		tcfTask.get(timeOutLimit, TimeUnit.MILLISECONDS);
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 	}
@@ -737,10 +734,11 @@ public class MemoryCache implements ISnapshotContributor {
 	 * @param word_size
 	 * @param count
 	 * @param rm
+	 * @param timeOutLimit 
 	 * @return true = cache has been modified
 	 */
 	public boolean refreshMemory(IMemory tcfMemoryService, IMemoryDMContext context, IAddress address, int offset,
-			int word_size, int count, RequestMonitor rm) {
+			int word_size, int count, RequestMonitor rm, long timeOutLimit) {
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { context, address.toHexAddressString(), offset, count }); }
 
 		boolean modified = false;
@@ -759,7 +757,7 @@ public class MemoryCache implements ISnapshotContributor {
 		}
 
 		try {
-			MemoryByte[] newBlock = readBlock(tcfMemoryService, context, address, word_size, count);
+			MemoryByte[] newBlock = readBlock(tcfMemoryService, context, address, word_size, count, timeOutLimit);
 			MemoryByte[] oldBlock = getMemoryBlockFromCache(address, count);
 			boolean blocksDiffer = false;
 			for (int i = 0; i < oldBlock.length; i++) {
@@ -772,7 +770,7 @@ public class MemoryCache implements ISnapshotContributor {
 				updateMemoryCache(address, count, newBlock);
 				modified = true;
 			}
-		} catch (IOException e) {
+		} catch (Exception e) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, IDsfStatusConstants.INTERNAL_ERROR,
 					"Error Writing Memory", e)); //$NON-NLS-1$
 		}

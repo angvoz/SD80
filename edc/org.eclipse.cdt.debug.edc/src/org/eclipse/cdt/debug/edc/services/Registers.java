@@ -70,6 +70,8 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	private Map<String, Map<String, BigInteger>> registerValueCache = 
 		Collections.synchronizedMap(new HashMap<String, Map<String, BigInteger>>());
 
+	private long tcfTimeout;
+
 	/**
 	 * A hex string indicating error in register read.
 	 * See where this is used for more.
@@ -107,7 +109,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		public String toString() {
 			return baseToString() + ".group[" + getName() + "]";} //$NON-NLS-1$ //$NON-NLS-2$
 
-		public RegisterDMC[] getRegisters() {
+		public RegisterDMC[] getRegisters() throws CoreException {
 			RegisterDMC[] result = new RegisterDMC[0];
 			synchronized (registers) {
 				if (registers.size() == 0) {
@@ -322,6 +324,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		super(session, 
 				massageClassNames(classNames,
 						new String[] {IRegisters.class.getName(), Registers.class.getName()}));
+		setTCFTimeout(15 * 1000); // Fifteen seconds
 	}
 
 	/**
@@ -337,8 +340,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 * @param exeDMC
 	 * @param name
 	 * @return
+	 * @throws CoreException 
 	 */
-	private RegisterDMC findRegisterDMCByName(IEDCExecutionDMC exeDMC, String name) {
+	private RegisterDMC findRegisterDMCByName(IEDCExecutionDMC exeDMC, String name) throws CoreException {
 		assert RunControl.isNonContainer(exeDMC);
 		
 		// this will create the reg groups for the exeDMC if not yet. 
@@ -416,7 +420,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		rm.done();
 	}
 
-	public IRegisterGroupDMContext[] getGroupsForContext(IEDCExecutionDMC exeContext) {
+	public IRegisterGroupDMContext[] getGroupsForContext(IEDCExecutionDMC exeContext) throws CoreException {
 		String contextID = exeContext.getID();
 		List<RegisterGroupDMC> groupsForContext = registerGroupsPerContext.get(contextID);
 		if (groupsForContext == null) {
@@ -431,14 +435,26 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	public void getRegisterGroups(IDMContext ctx, DataRequestMonitor<IRegisterGroupDMContext[]> rm) {
 		IEDCExecutionDMC execDmc = DMContexts.getAncestorOfType(ctx, IEDCExecutionDMC.class);
 		if (execDmc != null && RunControl.isNonContainer(execDmc)) {
-			rm.setData(getGroupsForContext(execDmc));
+			try {
+				rm.setData(getGroupsForContext(execDmc));
+			} catch (CoreException e) {
+				Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error getting register groups");
+				EDCDebugger.getMessageLogger().log(s);
+				rm.setStatus(s);
+			}
 			rm.done();
 			return;
 		}
 
 		StackFrameDMC frameDmc = DMContexts.getAncestorOfType(ctx, StackFrameDMC.class);
 		if (frameDmc != null) {
-			rm.setData(getGroupsForContext(frameDmc.getExecutionDMC()));
+			try {
+				rm.setData(getGroupsForContext(frameDmc.getExecutionDMC()));
+			} catch (CoreException e) {
+				Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error getting register groups");
+				EDCDebugger.getMessageLogger().log(s);
+				rm.setStatus(s);
+			}
 			rm.done();
 			return;
 		}
@@ -452,14 +468,20 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		IEDCExecutionDMC executionContext = DMContexts.getAncestorOfType(ctx, IEDCExecutionDMC.class);
 
 		RegisterDMC[] allRegisters;
-		if (groupContext != null && executionContext != null) {
-			allRegisters = groupContext.getRegisters();
-		}
-		else {
-			allRegisters = new RegisterDMC[0];
+		try {
+			if (groupContext != null && executionContext != null) {
+				allRegisters = groupContext.getRegisters();
+			}
+			else {
+				allRegisters = new RegisterDMC[0];
+			}
+			rm.setData(allRegisters);
+		} catch (CoreException e) {
+			Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error getting register groups");
+			EDCDebugger.getMessageLogger().log(s);
+			rm.setStatus(s);
 		}
 
-		rm.setData(allRegisters);
 		rm.done();
 	}
 
@@ -479,8 +501,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 *            register name.
 	 * @param regValue
 	 *            big-endian hex string representation of the value to write.
+	 * @throws CoreException 
 	 */
-	public void writeRegister(IEDCExecutionDMC context, String regID, String regValue) {
+	public void writeRegister(IEDCExecutionDMC context, String regID, String regValue) throws CoreException {
 		RegisterDMC regDMC;
 		
 		regDMC = findRegisterDMCByName(context, regID);
@@ -492,7 +515,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 	public void writeRegister(IRegisterDMContext regCtx, String regValue, String formatID, final RequestMonitor rm) {
 		assert (regCtx instanceof RegisterDMC);
-		
+
 		final RegisterDMC regDMC = (RegisterDMC) regCtx;
 		IExecutionDMContext exeDMC = DMContexts.getAncestorOfType(regDMC, IExecutionDMContext.class);
 		if (exeDMC == null || !(exeDMC instanceof IEDCDMContext)) {
@@ -551,7 +574,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			};
 	
 			try {
-				tcfTask.get(15, TimeUnit.SECONDS);
+				tcfTask.get(getTCFTimeout(), TimeUnit.MILLISECONDS);
 			} catch (Throwable e) {
 				rm.setStatus(EDCDebugger.dsfRequestFailedStatus(null, e));
 			} finally {
@@ -613,7 +636,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 
 		final String exeDMCID = ((IEDCDMContext) exeDMC).getID();
 		final String registerDMCID = registerDMC.getID();
-	
+
 		synchronized (registerValueCache) {
 	
 			Map<String, BigInteger> exeDMCRegisters = registerValueCache.get(exeDMCID);
@@ -645,7 +668,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			};
 			
 			try {
-				byte[] value = tcfTask.get(15, TimeUnit.SECONDS);	// ignore the return
+				byte[] value = tcfTask.get(getTCFTimeout(), TimeUnit.MILLISECONDS);	// ignore the return
 				String strVal = MemoryUtils.convertByteArrayToHexString(value);
 				BigInteger biValue = new BigInteger(strVal, 16);
 				synchronized (registerValueCache) {
@@ -765,7 +788,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 * @param parentID thread ID or register group ID.
 	 * @return
 	 */
-	protected List<RegistersContext>	getTCFRegistersContexts(final String parentID) {
+	protected List<RegistersContext>	getTCFRegistersContexts(final String parentID) throws CoreException {
 		List<RegistersContext> tcfRegContexts = new ArrayList<RegistersContext>();
 		
 		TCFTask<String[]> getChildIDTask = new TCFTask<String[]>() {
@@ -783,10 +806,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		
 		String[] childIDs;
 		try {
-			childIDs = getChildIDTask.get(15, TimeUnit.SECONDS);
+			childIDs = getChildIDTask.get(getTCFTimeout(), TimeUnit.MILLISECONDS);
 		} catch (Throwable e) {
-			EDCDebugger.getMessageLogger().logError("Fail to get TCF context for: " + parentID, e);
-			return tcfRegContexts;
+			throw new CoreException(EDCDebugger.dsfRequestFailedStatus("Fail to get TCF context for: " + parentID, e));
 		}
 		
 		for (String gid: childIDs) {
@@ -805,9 +827,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		
 			RegistersContext rgc = null;
 			try {
-				rgc = getGroupContextTask.get(15, TimeUnit.SECONDS);
+				rgc = getGroupContextTask.get(getTCFTimeout(), TimeUnit.MILLISECONDS);
 			} catch (Throwable e) {
-				EDCDebugger.getMessageLogger().logError("Fail to get TCF context with ID: " + gid, e);
+				throw new CoreException(EDCDebugger.dsfRequestFailedStatus("Fail to get TCF context for: " + parentID, e));
 			}
 			
 			if (rgc != null)
@@ -845,7 +867,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		}
 	}
 
-	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) {
+	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) throws CoreException {
 		ArrayList<RegisterDMC> registers = new ArrayList<RegisterDMC>();
 	
 		if (tcfRegistersService != null) {
@@ -859,7 +881,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		return registers;
 	}
 	
-	protected List<RegisterGroupDMC> createGroupsForContext(IEDCExecutionDMC ctx) {
+	protected List<RegisterGroupDMC> createGroupsForContext(IEDCExecutionDMC ctx) throws CoreException {
 
 		List<RegisterGroupDMC> groups = Collections.synchronizedList(new ArrayList<RegisterGroupDMC>());
 
@@ -885,4 +907,19 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 * @return the corresponding register name, or null of n/a
 	 */
 	public abstract String getRegisterNameFromCommonID(int id);
+	
+	/**
+	 * @since 2.0
+	 */
+	public void setTCFTimeout(long msecs) {
+		tcfTimeout = msecs;
+	}
+
+	/**
+	 * @since 2.0
+	 */
+	public long getTCFTimeout() {
+		return tcfTimeout;
+	}
+
 }

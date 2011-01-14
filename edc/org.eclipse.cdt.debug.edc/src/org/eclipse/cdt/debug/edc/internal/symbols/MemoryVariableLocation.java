@@ -146,8 +146,10 @@ public class MemoryVariableLocation implements IMemoryVariableLocation {
 					SymbolsMessages.MemoryVariableLocation_CannotReadAddrFormat, theAddress.add(i).getValue().toString(16)));
 		}
 
+		MemoryByte[] memArray = memBuffer.toArray(new MemoryByte[varSize]);
+		
 		return MemoryUtils.convertByteArrayToUnsignedLong(
-				memBuffer.toArray(new MemoryByte[varSize]), getEndian());
+				memArray, getEndian());
 	}
 
 	private int getEndian() {

@@ -77,7 +77,10 @@ public class MemoryCache implements ISnapshotContributor {
 
 	public void reset() {
 		// clear the memory cache
-		memoryBlockList.clear();
+		synchronized (memoryBlockList)
+		{
+			memoryBlockList.clear();
+		}
 	}
 
     /**
@@ -141,59 +144,62 @@ public class MemoryCache implements ISnapshotContributor {
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { reqBlockStart.toHexAddressString(), count }); }
 		LinkedList<MemoryBlock> list = new LinkedList<MemoryBlock>();
 
-		ListIterator<MemoryBlock> it = memoryBlockList.listIterator();
+		synchronized (memoryBlockList)
+		{
+			ListIterator<MemoryBlock> it = memoryBlockList.listIterator();
 
-		// Look for holes in the list of memory blocks
-		while (it.hasNext() && count > 0) {
-			MemoryBlock cachedBlock = it.next();
-			IAddress cachedBlockStart = cachedBlock.fAddress;
-			IAddress cachedBlockEnd = cachedBlock.fAddress.add(cachedBlock.fLength);
+			// Look for holes in the list of memory blocks
+			while (it.hasNext() && count > 0) {
+				MemoryBlock cachedBlock = it.next();
+				IAddress cachedBlockStart = cachedBlock.fAddress;
+				IAddress cachedBlockEnd = cachedBlock.fAddress.add(cachedBlock.fLength);
 
-			// Case where we miss a block before the cached block
-			if (reqBlockStart.distanceTo(cachedBlockStart).longValue() >= 0) {
-				int length = (int) Math.min(reqBlockStart.distanceTo(cachedBlockStart).longValue(), count);
-				// If both blocks start at the same location, no need to create
-				// a new cached block
-				if (length > 0) {
-					IAddress blockAddress;
-					if (reqBlockStart instanceof Addr64) {
-						IAddressFactory f = new Addr64Factory();
-						blockAddress = f.createAddress(reqBlockStart.getValue());
-					} else {
-						IAddressFactory f = new Addr32Factory();
-						blockAddress = f.createAddress(reqBlockStart.getValue());
+				// Case where we miss a block before the cached block
+				if (reqBlockStart.distanceTo(cachedBlockStart).longValue() >= 0) {
+					int length = (int) Math.min(reqBlockStart.distanceTo(cachedBlockStart).longValue(), count);
+					// If both blocks start at the same location, no need to create
+					// a new cached block
+					if (length > 0) {
+						IAddress blockAddress;
+						if (reqBlockStart instanceof Addr64) {
+							IAddressFactory f = new Addr64Factory();
+							blockAddress = f.createAddress(reqBlockStart.getValue());
+						} else {
+							IAddressFactory f = new Addr32Factory();
+							blockAddress = f.createAddress(reqBlockStart.getValue());
+						}
+						MemoryBlock newBlock = new MemoryBlock(blockAddress, length, new MemoryByte[0]);
+						list.add(newBlock);
 					}
-					MemoryBlock newBlock = new MemoryBlock(blockAddress, length, new MemoryByte[0]);
-					list.add(newBlock);
+					// Adjust request block start and length for the next iteration
+					reqBlockStart = cachedBlockEnd;
+					count -= length + cachedBlock.fLength;
 				}
-				// Adjust request block start and length for the next iteration
-				reqBlockStart = cachedBlockEnd;
-				count -= length + cachedBlock.fLength;
+
+				// Case where the requested block starts somewhere in the cached
+				// block
+				else if (cachedBlockStart.distanceTo(reqBlockStart).longValue() > 0
+						&& reqBlockStart.distanceTo(cachedBlockEnd).longValue() >= 0) {
+					// Start of the requested block already in cache
+					// Adjust request block start and length for the next iteration
+					count -= reqBlockStart.distanceTo(cachedBlockEnd).longValue();
+					reqBlockStart = cachedBlockEnd;
+				}
 			}
 
-			// Case where the requested block starts somewhere in the cached
-			// block
-			else if (cachedBlockStart.distanceTo(reqBlockStart).longValue() > 0
-					&& reqBlockStart.distanceTo(cachedBlockEnd).longValue() >= 0) {
-				// Start of the requested block already in cache
-				// Adjust request block start and length for the next iteration
-				count -= reqBlockStart.distanceTo(cachedBlockEnd).longValue();
-				reqBlockStart = cachedBlockEnd;
+			// Case where we miss a block at the end of the cache
+			if (count > 0) {
+				IAddress blockAddress;
+				if (reqBlockStart instanceof Addr64) {
+					IAddressFactory f = new Addr64Factory();
+					blockAddress = f.createAddress(reqBlockStart.getValue());
+				} else {
+					IAddressFactory f = new Addr32Factory();
+					blockAddress = f.createAddress(reqBlockStart.getValue());
+				}
+				MemoryBlock newBlock = new MemoryBlock(blockAddress, count, new MemoryByte[0]);
+				list.add(newBlock);
 			}
-		}
-
-		// Case where we miss a block at the end of the cache
-		if (count > 0) {
-			IAddress blockAddress;
-			if (reqBlockStart instanceof Addr64) {
-				IAddressFactory f = new Addr64Factory();
-				blockAddress = f.createAddress(reqBlockStart.getValue());
-			} else {
-				IAddressFactory f = new Addr32Factory();
-				blockAddress = f.createAddress(reqBlockStart.getValue());
-			}
-			MemoryBlock newBlock = new MemoryBlock(blockAddress, count, new MemoryByte[0]);
-			list.add(newBlock);
 		}
 
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null, list); }
@@ -228,38 +234,41 @@ public class MemoryCache implements ISnapshotContributor {
 
 		MemoryByte[] resultBlock = new MemoryByte[count];
 
-		IAddress reqBlockEnd = reqBlockStart.add(count);
-		ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
+		synchronized (memoryBlockList)
+		{
+			IAddress reqBlockEnd = reqBlockStart.add(count);
+			ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
 
-		while (iter.hasNext()) {
-			MemoryBlock cachedBlock = iter.next();
-			IAddress cachedBlockStart = cachedBlock.fAddress;
-			IAddress cachedBlockEnd = cachedBlock.fAddress.add(cachedBlock.fLength);
+			while (iter.hasNext()) {
+				MemoryBlock cachedBlock = iter.next();
+				IAddress cachedBlockStart = cachedBlock.fAddress;
+				IAddress cachedBlockEnd = cachedBlock.fAddress.add(cachedBlock.fLength);
 
-			// Case where the cached block overlaps completely the requested
-			// memory block
-			if (cachedBlockStart.distanceTo(reqBlockStart).longValue() >= 0
-					&& reqBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
-				int pos = (int) cachedBlockStart.distanceTo(reqBlockStart).longValue();
-				System.arraycopy(cachedBlock.fBlock, pos, resultBlock, 0, count);
-			}
+				// Case where the cached block overlaps completely the requested
+				// memory block
+				if (cachedBlockStart.distanceTo(reqBlockStart).longValue() >= 0
+						&& reqBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
+					int pos = (int) cachedBlockStart.distanceTo(reqBlockStart).longValue();
+					System.arraycopy(cachedBlock.fBlock, pos, resultBlock, 0, count);
+				}
 
-			// Case where the beginning of the cached block is within the
-			// requested memory block
-			else if (reqBlockStart.distanceTo(cachedBlockStart).longValue() >= 0
-					&& cachedBlockStart.distanceTo(reqBlockEnd).longValue() > 0) {
-				int pos = (int) reqBlockStart.distanceTo(cachedBlockStart).longValue();
-				int length = (int) Math.min(cachedBlock.fLength, count - pos);
-				System.arraycopy(cachedBlock.fBlock, 0, resultBlock, pos, length);
-			}
+				// Case where the beginning of the cached block is within the
+				// requested memory block
+				else if (reqBlockStart.distanceTo(cachedBlockStart).longValue() >= 0
+						&& cachedBlockStart.distanceTo(reqBlockEnd).longValue() > 0) {
+					int pos = (int) reqBlockStart.distanceTo(cachedBlockStart).longValue();
+					int length = (int) Math.min(cachedBlock.fLength, count - pos);
+					System.arraycopy(cachedBlock.fBlock, 0, resultBlock, pos, length);
+				}
 
-			// Case where the end of the cached block is within the requested
-			// memory block
-			else if (cachedBlockStart.distanceTo(reqBlockStart).longValue() >= 0
-					&& reqBlockStart.distanceTo(cachedBlockEnd).longValue() > 0) {
-				int pos = (int) cachedBlockStart.distanceTo(reqBlockStart).longValue();
-				int length = (int) Math.min(cachedBlock.fLength - pos, count);
-				System.arraycopy(cachedBlock.fBlock, pos, resultBlock, 0, length);
+				// Case where the end of the cached block is within the requested
+				// memory block
+				else if (cachedBlockStart.distanceTo(reqBlockStart).longValue() >= 0
+						&& reqBlockStart.distanceTo(cachedBlockEnd).longValue() > 0) {
+					int pos = (int) cachedBlockStart.distanceTo(reqBlockStart).longValue();
+					int length = (int) Math.min(cachedBlock.fLength - pos, count);
+					System.arraycopy(cachedBlock.fBlock, pos, resultBlock, 0, length);
+				}
 			}
 		}
 
@@ -277,44 +286,48 @@ public class MemoryCache implements ISnapshotContributor {
 	 */
 	private void updateMemoryCache(IAddress modBlockStart, int count, MemoryByte[] modBlock) {
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { modBlockStart.toHexAddressString(), count }); }
-		IAddress modBlockEnd = modBlockStart.add(count);
-		ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
 
-		while (iter.hasNext()) {
-			MemoryBlock cachedBlock = iter.next();
-			IAddress cachedBlockStart = cachedBlock.fAddress;
-			IAddress cachedBlockEnd = cachedBlock.fAddress.add(cachedBlock.fLength);
+		synchronized (memoryBlockList)
+		{
+			IAddress modBlockEnd = modBlockStart.add(count);
+			ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
 
-			// For now, we only bother to update bytes already cached.
-			// Note: In a better implementation (v1.1), we would augment
-			// the cache with the missing memory blocks since we went
-			// through the pains of reading them in the first place.
-			// (this is left as an exercise to the reader :-)
+			while (iter.hasNext()) {
+				MemoryBlock cachedBlock = iter.next();
+				IAddress cachedBlockStart = cachedBlock.fAddress;
+				IAddress cachedBlockEnd = cachedBlock.fAddress.add(cachedBlock.fLength);
 
-			// Case where the modified block is completely included in the
-			// cached block
-			if (cachedBlockStart.distanceTo(modBlockStart).longValue() >= 0
-					&& modBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
-				int pos = (int) cachedBlockStart.distanceTo(modBlockStart).longValue();
-				System.arraycopy(modBlock, 0, cachedBlock.fBlock, pos, count);
-			}
+				// For now, we only bother to update bytes already cached.
+				// Note: In a better implementation (v1.1), we would augment
+				// the cache with the missing memory blocks since we went
+				// through the pains of reading them in the first place.
+				// (this is left as an exercise to the reader :-)
 
-			// Case where the beginning of the modified block is within the
-			// cached block
-			else if (cachedBlockStart.distanceTo(modBlockStart).longValue() >= 0
-					&& modBlockStart.distanceTo(cachedBlockEnd).longValue() > 0) {
-				int pos = (int) cachedBlockStart.distanceTo(modBlockStart).longValue();
-				int length = (int) cachedBlockStart.distanceTo(modBlockEnd).longValue();
-				System.arraycopy(modBlock, 0, cachedBlock.fBlock, pos, length);
-			}
+				// Case where the modified block is completely included in the
+				// cached block
+				if (cachedBlockStart.distanceTo(modBlockStart).longValue() >= 0
+						&& modBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
+					int pos = (int) cachedBlockStart.distanceTo(modBlockStart).longValue();
+					System.arraycopy(modBlock, 0, cachedBlock.fBlock, pos, count);
+				}
 
-			// Case where the end of the modified block is within the cached
-			// block
-			else if (cachedBlockStart.distanceTo(modBlockEnd).longValue() > 0
-					&& modBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
-				int pos = (int) modBlockStart.distanceTo(cachedBlockStart).longValue();
-				int length = (int) cachedBlockStart.distanceTo(modBlockEnd).longValue();
-				System.arraycopy(modBlock, pos, cachedBlock.fBlock, 0, length);
+				// Case where the beginning of the modified block is within the
+				// cached block
+				else if (cachedBlockStart.distanceTo(modBlockStart).longValue() >= 0
+						&& modBlockStart.distanceTo(cachedBlockEnd).longValue() > 0) {
+					int pos = (int) cachedBlockStart.distanceTo(modBlockStart).longValue();
+					int length = (int) cachedBlockStart.distanceTo(modBlockEnd).longValue();
+					System.arraycopy(modBlock, 0, cachedBlock.fBlock, pos, length);
+				}
+
+				// Case where the end of the modified block is within the cached
+				// block
+				else if (cachedBlockStart.distanceTo(modBlockEnd).longValue() > 0
+						&& modBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
+					int pos = (int) modBlockStart.distanceTo(cachedBlockStart).longValue();
+					int length = (int) cachedBlockStart.distanceTo(modBlockEnd).longValue();
+					System.arraycopy(modBlock, pos, cachedBlock.fBlock, 0, length);
+				}
 			}
 		}
 
@@ -527,39 +540,42 @@ public class MemoryCache implements ISnapshotContributor {
 		if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { modBlockStart.toHexAddressString(), count }); }
 		boolean cacheFound = false;
 
-		IAddress modBlockEnd = modBlockStart.add(count);
-		ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
+		synchronized (memoryBlockList)
+		{
+			IAddress modBlockEnd = modBlockStart.add(count);
+			ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
 
-		while (iter.hasNext()) {
-			MemoryBlock cachedBlock = iter.next();
-			IAddress cachedBlockStart = cachedBlock.fAddress;
-			IAddress cachedBlockEnd = cachedBlock.fAddress.add(cachedBlock.fLength);
+			while (iter.hasNext()) {
+				MemoryBlock cachedBlock = iter.next();
+				IAddress cachedBlockStart = cachedBlock.fAddress;
+				IAddress cachedBlockEnd = cachedBlock.fAddress.add(cachedBlock.fLength);
 
-			// For now, we only bother to update bytes already cached.
-			// Note: In a better implementation (v1.1), we would augment
-			// the cache with the missing memory blocks since we went
-			// through the pains of reading them in the first place.
-			// (this is left as an exercise to the reader :-)
+				// For now, we only bother to update bytes already cached.
+				// Note: In a better implementation (v1.1), we would augment
+				// the cache with the missing memory blocks since we went
+				// through the pains of reading them in the first place.
+				// (this is left as an exercise to the reader :-)
 
-			// Case where the modified block is completely included in the
-			// cached block
-			if (cachedBlockStart.distanceTo(modBlockStart).longValue() >= 0
-					&& modBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
-				cacheFound = true;
-			}
+				// Case where the modified block is completely included in the
+				// cached block
+				if (cachedBlockStart.distanceTo(modBlockStart).longValue() >= 0
+						&& modBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
+					cacheFound = true;
+				}
 
-			// Case where the beginning of the modified block is within the
-			// cached block
-			else if (cachedBlockStart.distanceTo(modBlockStart).longValue() >= 0
-					&& modBlockStart.distanceTo(cachedBlockEnd).longValue() > 0) {
-				cacheFound = true;
-			}
+				// Case where the beginning of the modified block is within the
+				// cached block
+				else if (cachedBlockStart.distanceTo(modBlockStart).longValue() >= 0
+						&& modBlockStart.distanceTo(cachedBlockEnd).longValue() > 0) {
+					cacheFound = true;
+				}
 
-			// Case where the end of the modified block is within the cached
-			// block
-			else if (cachedBlockStart.distanceTo(modBlockEnd).longValue() > 0
-					&& modBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
-				cacheFound = true;
+				// Case where the end of the modified block is within the cached
+				// block
+				else if (cachedBlockStart.distanceTo(modBlockEnd).longValue() > 0
+						&& modBlockEnd.distanceTo(cachedBlockEnd).longValue() >= 0) {
+					cacheFound = true;
+				}
 			}
 		}
 
@@ -646,7 +662,7 @@ public class MemoryCache implements ISnapshotContributor {
 		// Insert the block in the sorted linked list and merge contiguous
 		// blocks if necessary
 		@Override
-		public boolean add(MemoryBlock block) {
+		synchronized public boolean add(MemoryBlock block) {
 			if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { block.fAddress.toHexAddressString(), block.fLength }); }
 
 			// If the list is empty, just store the block
@@ -803,20 +819,23 @@ public class MemoryCache implements ISnapshotContributor {
 	}
 
 	public Element takeSnapshot(IAlbum album, Document document, IProgressMonitor monitor) {
-		SubMonitor progress = SubMonitor.convert(monitor, memoryBlockList.size());
-		progress.subTask("Memory");
-		Element memoryCacheElement = document.createElement(MEMORY_CACHE);
-		ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
+		synchronized (memoryBlockList)
+		{
+			SubMonitor progress = SubMonitor.convert(monitor, memoryBlockList.size());
+			progress.subTask("Memory");
+			Element memoryCacheElement = document.createElement(MEMORY_CACHE);
+			ListIterator<MemoryBlock> iter = memoryBlockList.listIterator();
 
-		while (iter.hasNext()) {
-			MemoryBlock block = iter.next();
-			Element blockElement = document.createElement(MEMORY_BLOCK);
-			blockElement.setAttribute(ATTR_ADDRESS, block.fAddress.toHexAddressString());
-			blockElement.setAttribute(ATTR_LENGTH, Long.toString(block.fLength));
-			blockElement.setAttribute(ATTR_VALUE, MemoryUtils.convertMemoryBytesToHexString(block.fBlock));
-			memoryCacheElement.appendChild(blockElement);
-			progress.worked(1);
+			while (iter.hasNext()) {
+				MemoryBlock block = iter.next();
+				Element blockElement = document.createElement(MEMORY_BLOCK);
+				blockElement.setAttribute(ATTR_ADDRESS, block.fAddress.toHexAddressString());
+				blockElement.setAttribute(ATTR_LENGTH, Long.toString(block.fLength));
+				blockElement.setAttribute(ATTR_VALUE, MemoryUtils.convertMemoryBytesToHexString(block.fBlock));
+				memoryCacheElement.appendChild(blockElement);
+				progress.worked(1);
+			}
+			return memoryCacheElement;
 		}
-		return memoryCacheElement;
 	}
 }

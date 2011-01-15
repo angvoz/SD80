@@ -50,6 +50,7 @@ import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
@@ -63,7 +64,6 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
@@ -398,11 +398,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			newProvider = LanguageSettingsManager.getWorkspaceProvider(id);
 		} else {
 			// Local provider instance chosen
-			if (oldProvider instanceof LanguageSettingsSerializable) {
+			if (oldProvider instanceof LanguageSettingsCloneableProvider) {
 				try {
 					// TODO: add new method to LanguageSettingsSerializable to avoid cloning data
-					newProvider = ((LanguageSettingsSerializable)oldProvider).clone();
-					((LanguageSettingsSerializable)newProvider).clear();
+					newProvider = ((LanguageSettingsCloneableProvider)oldProvider).clone(false);
+					if (newProvider instanceof LanguageSettingsSerializable) {
+						((LanguageSettingsSerializable)newProvider).clear();
+					}
 				} catch (CloneNotSupportedException e) {
 					CUIPlugin.log("Exception trying to clone workspace provider "+id, e);
 					return;
@@ -574,7 +576,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		boolean isChecked = tableProvidersViewer.getChecked(provider);
 		if (!page.isForPrefs()) {
-			boolean canClone = provider instanceof LanguageSettingsSerializable || provider instanceof ILanguageSettingsEditableProvider;
+			boolean canClone = provider instanceof LanguageSettingsCloneableProvider;
 			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
 			globalProviderCheckBox.setSelection(isGlobal);
 			globalProviderCheckBox.setEnabled(isChecked && canClone);
@@ -700,12 +702,24 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 //	}
 
 	private void performClear(ILanguageSettingsProvider selectedProvider) {
-		if (selectedProvider instanceof LanguageSettingsSerializable){
-//			((LanguageSettingsSerializable)selectedProvider).clear();
+		if (selectedProvider instanceof LanguageSettingsCloneableProvider){
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
+				
+			LanguageSettingsCloneableProvider writableProvider;
+			try {
+				writableProvider = ((LanguageSettingsCloneableProvider) selectedProvider).clone(false);
+			} catch (CloneNotSupportedException e) {
+				throw new UnsupportedOperationException("Internal Error");
+			}
+			writableProvider.clear();
+			
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+			int pos = providers.indexOf(selectedProvider);
+			providers.remove(pos);
+			providers.add(pos, writableProvider);
+			cfgDescription.setLanguageSettingProviders(providers);
+			
 			updateButtons();
-		} else if (selectedProvider instanceof ILanguageSettingsEditableProvider){
-			// FIXME
-//				((ILanguageSettingsEditableProvider)selectedProvider).clear();
 		}
 	}
 
@@ -895,6 +909,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			return false;
 		if (page.isForPrefs())
 			return true;
+		
+		if (!page.isForProject())
+			return false;
 
 		ICLanguageSetting [] langSettings = getLangSettings(getResDesc());
 		if (langSettings == null)

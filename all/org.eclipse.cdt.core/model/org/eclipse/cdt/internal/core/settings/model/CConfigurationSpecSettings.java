@@ -19,11 +19,12 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.CExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICBuildSetting;
@@ -192,7 +193,12 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 		copyExtensionInfo(base);
 		
-		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(base.getLanguageSettingProviders());
+		List<ILanguageSettingsProvider> baseLanguageSettingProviders = base.getLanguageSettingProviders();
+		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(baseLanguageSettingProviders.size());
+		for (ILanguageSettingsProvider provider : baseLanguageSettingProviders) {
+			provider = cloneProvider(provider);
+			fLanguageSettingsProviders.add(provider);
+		}
 	}
 
 //	private void copyRefInfos(Map infosMap){
@@ -856,6 +862,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		String id = element.getAttribute(PROJECT_EXTENSION_ATTR_ID);
 		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
 		if (provider!=null) {
+			provider = cloneProvider(provider);
 			fLanguageSettingsProviders.add(provider);
 		}
 	}
@@ -1022,6 +1029,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		for (ILanguageSettingsProvider provider : providers) {
 			String id = provider.getId();
 			if (!ids.contains(id)) {
+				provider = cloneProvider(provider);
 				fLanguageSettingsProviders.add(provider);
 				ids.add(id);
 			} else {
@@ -1034,5 +1042,19 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
 		return Collections.unmodifiableList(fLanguageSettingsProviders);
+	}
+	
+	private ILanguageSettingsProvider cloneProvider(ILanguageSettingsProvider provider) {
+		// non-LanguageSettingsCloneableProvider-s are treated as unmodifiable
+		if (provider instanceof LanguageSettingsCloneableProvider) {
+			try {
+				// get read-only copy
+				provider = ((LanguageSettingsCloneableProvider)provider).clone(true);
+			} catch (CloneNotSupportedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return provider;
 	}
 }

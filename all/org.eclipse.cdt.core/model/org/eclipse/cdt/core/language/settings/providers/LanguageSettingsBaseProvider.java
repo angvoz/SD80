@@ -12,6 +12,7 @@
 package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
@@ -128,11 +129,15 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 	 */
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		if (languageScope==null) {
-			return cloneList(entries);
+			if (entries==null)
+				return null;
+			return Collections.unmodifiableList(entries);
 		}
 		for (String lang : languageScope) {
 			if (lang.equals(languageId)) {
-				return cloneList(entries);
+				if (entries==null)
+					return null;
+				return Collections.unmodifiableList(entries);
 			}
 		}
 		return null;
@@ -142,7 +147,9 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 	 * @return the list of languages this provider provides for.
 	 */
 	public List<String> getLanguageIds() {
-		return languageScope!=null ? new ArrayList<String>(languageScope) : null;
+		if (languageScope==null)
+			return null;
+		return Collections.unmodifiableList(languageScope);
 	}
 
 	/**

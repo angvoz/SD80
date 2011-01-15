@@ -906,7 +906,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		assertNull(providerNull.getSettingEntries(null, null, null));
 		
 		// clone read-only copy
-		LanguageSettingsSerializable provider = providerNull.clone(true);
+		LanguageSettingsSerializable provider = (LanguageSettingsSerializable) providerNull.clone(true);
 		assertEquals(providerNull, provider);
 		assertEquals(true, provider.isReadOnly());
 		
@@ -975,7 +975,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		}
 		
 		// clone writable copy
-		LanguageSettingsSerializable providerWritable = provider.clone(false);
+		LanguageSettingsSerializable providerWritable = (LanguageSettingsSerializable) provider.clone(false);
 		assertEquals(provider, providerWritable);
 		assertEquals(false, providerWritable.isReadOnly());
 

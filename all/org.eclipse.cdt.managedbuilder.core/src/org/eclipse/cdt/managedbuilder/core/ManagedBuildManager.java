@@ -50,8 +50,8 @@ import javax.xml.transform.stream.StreamResult;
 import org.eclipse.cdt.core.AbstractCExtension;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.CoreModelUtil;
 import org.eclipse.cdt.core.parser.IScannerInfo;
@@ -4818,9 +4818,9 @@ public class ManagedBuildManager extends AbstractCExtension {
 					}
 				} else {
 					provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(id);
-					if (provider instanceof LanguageSettingsSerializable) {
+					if (provider instanceof LanguageSettingsCloneableProvider) {
 						try {
-							provider = ((LanguageSettingsSerializable)provider).clone();
+							provider = ((LanguageSettingsCloneableProvider)provider).clone(true);
 						} catch (CloneNotSupportedException e) {
 							// shouldn't happen. just in case, log the error and use workspace provider
 							ManagedBuilderCorePlugin.log(e);
@@ -4842,11 +4842,13 @@ public class ManagedBuildManager extends AbstractCExtension {
 		// FIXME: ability to remove PROVIDER_UI_USER
 		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
 			ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
-			try {
-				provider = ((LanguageSettingsSerializable)provider).clone();
-			} catch (CloneNotSupportedException e) {
-				// shouldn't happen. just in case, log the error and use workspace provider
-				ManagedBuilderCorePlugin.log(e);
+			if (provider instanceof LanguageSettingsCloneableProvider) {
+				try {
+					provider = ((LanguageSettingsCloneableProvider)provider).clone(true);
+				} catch (CloneNotSupportedException e) {
+					// shouldn't happen. just in case, log the error and use workspace provider
+					ManagedBuilderCorePlugin.log(e);
+				}
 			}
 			providers.add(0, provider);
 		}

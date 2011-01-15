@@ -12,6 +12,7 @@
 package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 
-public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider implements Cloneable {
+public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvider {
 	public static final String ELEM_PROVIDER = "provider"; //$NON-NLS-1$
 	private static final String ATTR_ID = "id"; //$NON-NLS-1$
 
@@ -59,8 +60,6 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 				Map<String, // resource project path
 					List<ICLanguageSettingEntry>>> fStorage = new HashMap<String, Map<String, List<ICLanguageSettingEntry>>>();
 
-	private boolean isReadOnly = false;
-
 	public LanguageSettingsSerializable() {
 		super();
 	}
@@ -70,40 +69,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	public LanguageSettingsSerializable(Element elementProvider) {
+		super();
 		load(elementProvider);
 	}
-
-	@Override
-	public void setId(String id) {
-		if (isReadOnly)
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
-
-		super.setId(id);
-	}
-
-	@Override
-	public void setName(String name) {
-		if (isReadOnly)
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
-
-		super.setName(name);
-	}
-	
-	@Override
-	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
-		if (isReadOnly)
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
-
-		super.configureProvider(id, name, languages, entries, customParameter);
-	}
-
-	/**
-	 * @return {@code true} if the provider is read-only or {@code false} otherwise.
-	 */
-	public boolean isReadOnly() {
-		return isReadOnly;
-	}
-	
 	/**
 	 * @return {@code true} if the provider does not keep any settings yet or {@code false} if there are some.
 	 */
@@ -111,22 +79,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		return fStorage.isEmpty();
 	}
 
-	public void setLanguageIds(List <String> languages) {
-		if (isReadOnly)
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
-
-		this.languageScope = new ArrayList<String>(languages);
-	}
-
-	public void setCustomParameter(String customParameter) {
-		if (isReadOnly)
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
-
-		this.customParameter = customParameter;
-	}
-
 	public void clear() {
-		if (isReadOnly)
+		if (isReadOnly())
 			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
 
 		fStorage.clear();
@@ -154,7 +108,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	}
 
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
-		if (isReadOnly)
+		if (isReadOnly())
 			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
 
 		String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
@@ -167,7 +121,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 		if (langMap!=null) {
 			String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
 			List<ICLanguageSettingEntry> entries = langMap.get(rcProjectPath);
-			return entries;
+			if (entries!=null)
+				return Collections.unmodifiableList(entries);
 		}
 
 		return null;
@@ -292,7 +247,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 
 	// provider/configuration/language/resource/entry
 	public void load(Element providerNode) {
-		if (isReadOnly)
+		if (isReadOnly())
 			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
 
 		fStorage.clear();
@@ -427,14 +382,11 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	 */
 	@Override
 	public LanguageSettingsSerializable clone() throws CloneNotSupportedException {
+		if (isReadOnly())
+			return this;
+		
 		LanguageSettingsSerializable clone = (LanguageSettingsSerializable)super.clone();
 		clone.fStorage = cloneStorage();
-		return clone;
-	}
-
-	public final LanguageSettingsSerializable clone(boolean isReadOnly) throws CloneNotSupportedException {
-		LanguageSettingsSerializable clone = clone();
-		clone.isReadOnly = isReadOnly;
 		return clone;
 	}
 

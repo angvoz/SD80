@@ -387,6 +387,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		return link;
 	}
 
+	// Called from globalProviderCheckBox listener
 	private void updateConfigureTable() {
 		// TODO
 		ILanguageSettingsProvider oldProvider = getSelectedProvider();
@@ -402,8 +403,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 				try {
 					// TODO: add new method to LanguageSettingsSerializable to avoid cloning data
 					newProvider = ((LanguageSettingsCloneableProvider)oldProvider).clone(false);
-					if (newProvider instanceof LanguageSettingsSerializable) {
-						((LanguageSettingsSerializable)newProvider).clear();
+					if (newProvider instanceof LanguageSettingsCloneableProvider) {
+						((LanguageSettingsCloneableProvider)newProvider).clear();
 					}
 				} catch (CloneNotSupportedException e) {
 					CUIPlugin.log("Exception trying to clone workspace provider "+id, e);
@@ -418,13 +419,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			providers.remove(oldProvider);
 			providers.add(pos, newProvider);
 			cfgDescription.setLanguageSettingProviders(providers);
-			updateTableConfigureProviders();
+
+			updateData(getResDesc());
 			tableProviders.setSelection(pos);
-			initializeOptionsPage(newProvider);
+			initializeOptionsPage(availableProvidersMap.get(id));
 			displaySelectedOptionPage();
-			updateButtons();
-//			updateData(getResDesc());
-			tableProvidersViewer.update(newProvider, null);
 		}
 	}
 

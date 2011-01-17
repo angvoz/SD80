@@ -15,11 +15,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IStatus;
@@ -130,81 +128,6 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		}
 	}
 		
-	private class EditedProvider implements ILanguageSettingsEditableProvider {
-		private String id;
-		private String name;
-		// cfgId -> languageID -> lsEntries
-		private Map<String, Map<String, List<ICLanguageSettingEntry>>> cfgLangEntries;
-
-		public EditedProvider(String id, String name) {
-			this.id = id;
-			this.name = name;
-		}
-
-		public String getId() {
-			return id;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		/**
-		 * Set setting entries for the given configuration and language.
-		 * @param entries - modified entries to keep. {@code null} will remove the list from the map.
-		 */
-		public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc,
-				String languageId, List<ICLanguageSettingEntry> entries) {
-
-			String cfgId = cfgDescription.getId();
-			if (entries!=null) {
-				Map<String, List<ICLanguageSettingEntry>> langEntries;
-				if (cfgLangEntries==null) {
-					cfgLangEntries = new HashMap<String, Map<String,List<ICLanguageSettingEntry>>>();
-					langEntries = null;
-				} else {
-					langEntries = cfgLangEntries.get(cfgId);
-				}
-				if (langEntries==null) {
-					langEntries = new HashMap<String, List<ICLanguageSettingEntry>>();
-					cfgLangEntries.put(cfgId, langEntries);
-				}
-				langEntries.put(languageId, new ArrayList<ICLanguageSettingEntry>(entries));
-			} else {
-				if (cfgLangEntries!=null) {
-					Map<String, List<ICLanguageSettingEntry>> langEntries = cfgLangEntries.get(cfgId);
-					if (langEntries!=null) {
-						langEntries.remove(languageId);
-						if (langEntries.size()==0) {
-							cfgLangEntries.remove(cfgId);
-							langEntries=null;
-						}
-					}
-					if (cfgLangEntries.size()==0) {
-						cfgLangEntries = null;
-					}
-				}
-			}
-
-		}
-
-		public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription,
-				IResource rc, String languageId) {
-
-			List<ICLanguageSettingEntry> entries = null;
-			if (cfgLangEntries!=null) {
-				String cfgId = cfgDescription.getId();
-				Map<String, List<ICLanguageSettingEntry>> langEntries = cfgLangEntries.get(cfgId);
-				if (langEntries!=null) {
-					entries = langEntries.get(languageId);
-				}
-			}
-			return entries;
-		}
-
-	}
-
-
 	/**
 	 * Content provider for setting entries tree.
 	 */

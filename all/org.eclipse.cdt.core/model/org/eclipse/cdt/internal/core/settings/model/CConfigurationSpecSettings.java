@@ -19,8 +19,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
@@ -1046,7 +1046,8 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 	
 	private ILanguageSettingsProvider cloneProvider(ILanguageSettingsProvider provider) {
 		// non-LanguageSettingsCloneableProvider-s are treated as unmodifiable
-		if (provider instanceof LanguageSettingsCloneableProvider) {
+		// TODO - test case for workspace provider
+		if (provider instanceof LanguageSettingsCloneableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider)) {
 			try {
 				// get read-only copy
 				provider = ((LanguageSettingsCloneableProvider)provider).clone(true);

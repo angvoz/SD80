@@ -206,7 +206,7 @@ public class LanguageSettingsProvidersSerializer {
 						provider = fUserDefinedProviders.get(providerId);
 					}
 					if (provider==null) {
-						provider = getWorkspaceProvider(providerId);
+						provider = LanguageSettingsExtensionManager.getExtensionProvider(providerId);
 					}
 					if (provider instanceof LanguageSettingsSerializable) {
 						((LanguageSettingsSerializable)provider).load(providerNode);

@@ -46,6 +46,7 @@ public class NDKManager {
 	public static void setNDKLocation(String location) {
 		IEclipsePreferences prefs = getPrefs();
 		prefs.put(NDK_LOCATION, location);
+		ndkLocation = location;
 		try {
 			prefs.flush();
 		} catch (BackingStoreException e) {

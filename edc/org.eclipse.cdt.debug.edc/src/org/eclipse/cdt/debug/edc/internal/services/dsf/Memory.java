@@ -315,7 +315,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 	 */
 	public void fillMemory(final IMemoryDMContext context, final IAddress address, final long offset, final int word_size, final int count,
 			final byte[] pattern, final RequestMonitor rm) {
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			
 			public void run() {
 				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
@@ -372,7 +372,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 			}
 			
-		});
+		}, rm);
 	}
 
 	/* (non-Javadoc)
@@ -381,7 +381,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 	public void getMemory(final IMemoryDMContext context, final IAddress address, final long offset,
 			final int word_size, final int count, final DataRequestMonitor<MemoryByte[]> drm) {
 
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			
 			public void run() {
 				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
@@ -397,7 +397,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 			}
 			
-		});
+		}, drm);
 
 	}
 
@@ -407,7 +407,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 	public void setMemory(final IMemoryDMContext context, final IAddress address, final long offset,
 			final int word_size, final int count, final byte[] buffer, final RequestMonitor rm) {
 
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			
 			public void run() {
 				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { address.toHexAddressString(), offset, word_size, count }); }
@@ -464,7 +464,7 @@ public class Memory extends AbstractEDCService implements IEDCMemory, ICachingSe
 				if (EDCTrace.MEMORY_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 			}
 			
-		});
+		}, rm);
 
 	}
 

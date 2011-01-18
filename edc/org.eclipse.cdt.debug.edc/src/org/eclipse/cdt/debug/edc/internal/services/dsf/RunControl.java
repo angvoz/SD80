@@ -1388,7 +1388,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		assert getExecutor().isInExecutorThread();
 
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			
 			public void run() {
 				try {
@@ -1456,8 +1456,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null, drm.getData()); }
 			}
 			
-		});
-
+		}, drm);
 	}
 
 	public void resume(IExecutionDMContext context, final RequestMonitor rm) {
@@ -1565,7 +1564,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 	public void step(final IExecutionDMContext context, final StepType finalStepType, final RequestMonitor rm) {
 
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			
 			public void run() {		
 				
@@ -1700,7 +1699,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 }
 			
-		});
+		}, rm);
 	}
 
 	private void stepOut(final ExecutionDMC dmc, IAddress pcAddress, final RequestMonitor rm) {

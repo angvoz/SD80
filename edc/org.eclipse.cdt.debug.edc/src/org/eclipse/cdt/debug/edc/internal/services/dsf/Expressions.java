@@ -786,7 +786,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 	}
 
 	public void getExpressionAddressData(final IExpressionDMContext exprContext, final DataRequestMonitor<IExpressionDMAddress> rm) {
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				if (exprContext instanceof IEDCExpression)
 					rm.setData(new ExpressionDMAddress(exprContext));
@@ -794,11 +794,11 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 					rm.setData(new ExpressionDMAddress(null));
 				rm.done();
 			}
-		});
+		}, rm);
 	}
 
 	public void getExpressionData(final IExpressionDMContext exprContext, final DataRequestMonitor<IExpressionDMData> rm) {
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				if (exprContext instanceof IEDCExpression)
 					rm.setData(new ExpressionData((IEDCExpression) exprContext));
@@ -806,11 +806,11 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 					rm.setData(new ExpressionData(null));
 				rm.done();
 			}
-		});
+		}, rm);
 	}
 
 	public void getSubExpressionCount(final IExpressionDMContext exprContext, final DataRequestMonitor<Integer> rm) {
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				// handle array casts
 				CastInfo cast = null;
@@ -881,11 +881,11 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 					}
 				});
 			}
-		});
+		}, rm);
 	}
 
 	public void getSubExpressions(final IExpressionDMContext exprContext, final DataRequestMonitor<IExpressionDMContext[]> rm) {
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				if (!(exprContext instanceof IEDCExpression) || ((IEDCExpression) exprContext).getFrame() == null) {
 					rm.setData(new IEDCExpression[0]);
@@ -941,12 +941,12 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				else
 					getSubExpressions(expr, frame, exprType, rm);
 			}
-		});
+		}, rm);
 	}
 
 	public void getSubExpressions(final IExpressionDMContext exprContext, final int startIndex_, final int length_,
 			final DataRequestMonitor<IExpressionDMContext[]> rm) {
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				getSubExpressions(exprContext, new DataRequestMonitor<IExpressionDMContext[]>(getExecutor(), rm) {
 					@Override
@@ -974,13 +974,13 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 					}
 				});
 			}
-		});
+		}, rm);
 	}
 
 	private void getSubExpressions(final IEDCExpression expr, final StackFrameDMC frame, 
 			final IType exprType, final ITypeContentProvider customProvider, final DataRequestMonitor<IExpressionDMContext[]> rm) {
 
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
 				Iterator<IExpressionDMContext> childIterator;
@@ -1005,19 +1005,19 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 					getSubExpressions(expr, frame, exprType, rm);
 				}
 			}
-		});
+		}, rm);
 	}
 
 	private void getSubExpressions(final IEDCExpression expr, StackFrameDMC frame, 
 					IType exprType,	final DataRequestMonitor<IExpressionDMContext[]> rm) {
 
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				IEDCExpression[] children = getLogicalSubExpressions(expr);
 				rm.setData(children);
 				rm.done();
 			}
-		});
+		}, rm);
 	}
 	
 	/**
@@ -1236,7 +1236,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 
 	public void writeExpression(final IExpressionDMContext exprContext, final String expressionValue, final String formatId, final RequestMonitor rm) {
 
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				IEDCExpression expressionDMC = (IEDCExpression) exprContext;
 				if (isComposite(expressionDMC)) {
@@ -1286,7 +1286,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		        
 				rm.done();
 			}
-		});
+		}, rm);
 
 	}
 
@@ -1298,7 +1298,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 
 	public void getFormattedExpressionValue(final FormattedValueDMContext formattedDataContext,
 			final DataRequestMonitor<FormattedValueDMData> rm) {
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			public void run() {
 				IDMContext idmContext = formattedDataContext.getParents()[0];
 				FormattedValueDMData formattedValue = null;
@@ -1349,7 +1349,7 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 				rm.setData(formattedValue);
 				rm.done();
 			}
-		});
+		}, rm);
 	}
 
 	private IVariableValueConverter getCustomValueConverter(IEDCExpression exprDMC) {

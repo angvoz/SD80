@@ -2,6 +2,7 @@ package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
+import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.Status;
@@ -44,5 +45,20 @@ public class Noop extends AbstractEDCService implements INoop {
 				rm.done();
 			}
 		}.start();
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.INoop#longNoopUsingServiceTracker(int, org.eclipse.cdt.dsf.concurrent.RequestMonitor)
+	 */
+	public void longNoopUsingServiceTracker(int duration, RequestMonitor rm) {
+		for (int i = 0; i < duration; i++) {
+			// ask for any service; our own is fine
+			getService(INoop.class);
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				return;
+			}
+		}
 	}
 }

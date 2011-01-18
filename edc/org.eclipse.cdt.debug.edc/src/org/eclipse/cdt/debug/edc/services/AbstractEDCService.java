@@ -14,12 +14,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
+import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.service.AbstractDsfService;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.Assert;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.MultiStatus;
+import org.eclipse.core.runtime.OperationCanceledException;
+import org.eclipse.core.runtime.Status;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -121,5 +129,88 @@ public abstract class AbstractEDCService extends AbstractDsfService implements I
 			}
 		}
 		return newClassNames.toArray(new String[newClassNames.size()]);
+	}
+
+	/**
+	 * EDC services can use this method to execute blocking <i>thread-safe</i>
+	 * code without blocking the DSF thread. The runnable is exercised on a
+	 * separate thread obtained from a thread pool. This mechanism was
+	 * introduced to allow an EDC service's logic to avoid bogging down the DSF
+	 * thread in cases where it cannot reasonably avoid making a blocking call.
+	 * One example is when a TCF service has to be invoked synchronously (the
+	 * calling thread waits for the request monitor to complete). Such things
+	 * should not be done on the DSF thread since that thread is meant to be
+	 * readily available to handle a queue of requests, much like a UI thread
+	 * is.
+	 * 
+	 * In the event of an uncaught exception in the given code, the request
+	 * monitor is automatically completed and given an error status.
+	 * 
+	 * @throws RejectedExecutionException
+	 *             if the thread pool has been overwhelmed and given code cannot
+	 *             be scheduled to run
+	 * 
+	 * @since 2.0
+	 */
+	protected void asyncExec(Runnable runnable, RequestMonitor rm) {
+		try {
+			EDCLaunch.getThreadPool(getSession().getId()).execute(new SafeRunner(runnable, rm));
+		}
+		catch (RejectedExecutionException exc) {
+			// See EDCLaunch.newThreadPool()
+			String msg = Messages.AbstractEDCService_0;
+			EDCDebugger.getMessageLogger().log(IStatus.WARNING, msg, exc); 
+			rm.setStatus(new Status(Status.ERROR, EDCDebugger.PLUGIN_ID, msg, exc));
+			rm.done();
+			throw exc;
+		}
+	}
+
+	/**
+	 * A safe runner used by {@link AbstractEDCService#asyncExec(Runnable)} to
+	 * ensure an uncaught exception does not leave the request monitor hanging.
+	 */
+	private class SafeRunner implements Runnable {
+		private Runnable fCode;
+		private RequestMonitor fRm;
+
+		SafeRunner(Runnable code, RequestMonitor rm) {
+			fCode = code;
+			fRm = rm;
+			Assert.isNotNull(code);
+		}
+
+		public void run() {
+			try {
+				fCode.run();
+			} catch (Exception e) {
+				handleException(fCode, e);
+			} catch (LinkageError e) {
+				handleException(fCode, e);
+			} catch (AssertionError e) {
+				handleException(fCode, e);
+			}
+		}
+
+		private void handleException(Runnable code, Throwable e) {
+			IStatus status;
+			if (!(e instanceof OperationCanceledException)) {
+				// try to obtain the correct plug-in id for the bundle providing the safe runnable 
+				if (e instanceof CoreException) {
+					status = new MultiStatus(EDCDebugger.PLUGIN_ID, -1, Messages.AbstractEDCService_1, e);
+					((MultiStatus)status).merge(((CoreException) e).getStatus());
+				} else {
+					status = new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, -1, Messages.AbstractEDCService_2, e);
+				}
+				EDCDebugger.getMessageLogger().log(status);
+			}
+			else {
+				status = new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, -1, Messages.AbstractEDCService_3, e);
+			}
+			if (fRm != null) {
+				fRm.setStatus(status);
+				fRm.done();
+			}
+		}
 	}
 }

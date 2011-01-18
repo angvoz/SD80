@@ -17,9 +17,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
 import org.eclipse.cdt.debug.core.sourcelookup.AbsolutePathSourceContainer;
@@ -34,6 +40,7 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExitedEvent;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.RootExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Album;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
+import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
@@ -108,6 +115,13 @@ abstract public class EDCLaunch extends DsfLaunch {
 	private static final Map<String, ICacheManager> cacheManagers = Collections
 		.synchronizedMap(new HashMap<String, ICacheManager>());
 
+	/**
+	 * Every EDC (DSF) session has a thread pool in which to delegate blocking
+	 * code to. See AbstractEDCService.asyncExec()
+	 */
+	private static final Map<String, ExecutorService> threadPools = Collections
+		.synchronizedMap(new HashMap<String, ExecutorService>());
+
 	public EDCLaunch(ILaunchConfiguration launchConfiguration, String mode, ISourceLocator locator, String ownerID) {
 		super(launchConfiguration, mode, locator);
 
@@ -121,7 +135,63 @@ abstract public class EDCLaunch extends DsfLaunch {
 		session = DsfSession.startSession(executor, ownerID);
 		launchSessions.put(session.getId(), this);
 		cacheManagers.put(session.getId(), new CacheManager(session));
+		
+		threadPools.put(session.getId(), newThreadPool());
 	}
+
+	/**
+	 * Obtains a new thread pool
+	 */
+	private ThreadPoolExecutor newThreadPool() {
+		// Thread pools can be a tricky thing. The behaviors available for
+		// ThreadPoolExecutor are particularly so. Grab a handful of
+		// aspirin and read the class javadoc if you're up for it. Basically,
+		// what we're going to do here is create a thread pool that hopes to
+		// meet demand with three threads. It will use a queue to allow itself
+		// to be backlogged by a maximum of 10,000 requests. If the requests
+		// keep pouring in and the backlog limit is blown, the pool will
+		// dispatch up to three additional threads (for a total of six) to try
+		// to handle the load. If it still can't keep up after that, then it
+		// throws up its hands and starts rejecting requests. We need to protect
+		// ourselves from exhausting cpu/system resources (a million threads) or
+		// memory (millions of backlogged requests). A coding or runtime mishap
+		// could lead to either if we don't set limits on the thread pool. But
+		// what are reasonable limits? The best we can do is set some values we
+		// think will work, use checks to make us or the user aware when they
+		// don't, and give the user a backdoor mechanism to tweak the values
+		// until we can provide better default values.
+		//
+		// Also, keep in mind that the thread pool will try to trim down the
+		// number of threads if and when it has had to resort to creating
+		// additional ones to handle a heavy load. If a thread is idle for more
+		// than ten seconds, it will be shut down.
+
+		int coreThreadCount = getBackdoorValue("org.eclipse.cdt.edc.poolthread.coreThreadCount", 3);
+		int maxThreadCount = getBackdoorValue("org.eclipse.cdt.edc.poolthread.maxThreadCount", coreThreadCount + 3);
+		long idleLimit = getBackdoorValue("org.eclipse.cdt.edc.poolthread.idleLimit", 10);
+		int queueLimit = getBackdoorValue("org.eclipse.cdt.edc.poolthread.queueLimit", 10000);
+		
+	    return new ThreadPoolExecutor(coreThreadCount, maxThreadCount,
+	            idleLimit, TimeUnit.SECONDS,
+	            new ArrayBlockingQueue<Runnable>(queueLimit));
+	}
+
+	/**
+	 * Provide a backdoor mechanism for tweaking the thread pool parameters on
+	 * the field. Hopefully this will never be needed, but better safe than
+	 * sorry.
+	 */
+	private static int getBackdoorValue(String prop, int defaultVal) {
+		String value = System.getProperty(prop);
+		if (value != null) {
+			try {
+				return Integer.parseInt(value);
+			}
+			catch (NumberFormatException exc){}
+		}
+		return defaultVal;
+	}
+	
 
 	public static EDCLaunch getLaunchForSession(String sessionID) {
 		return launchSessions.get(sessionID);
@@ -134,7 +204,15 @@ abstract public class EDCLaunch extends DsfLaunch {
 	public static ICacheManager getCacheManager(String sessionID) {
 		return cacheManagers.get(sessionID);
 	}
-	
+
+	/**
+	 * See {@link #threadPools}
+	 * @since 2.0
+	 */
+	public static ExecutorService getThreadPool(String sessionID) {
+		return threadPools.get(sessionID);
+	}
+
 	public DsfExecutor getDsfExecutor() {
 		return executor;
 	}
@@ -316,7 +394,27 @@ abstract public class EDCLaunch extends DsfLaunch {
 		}
 
 		shuttingDown = true;
-		
+
+		// Shut down the thread pool, otherwise its core threads might hang
+		// around indefinitely.
+		ExecutorService pool = threadPools.get(session.getId());
+		if (pool != null) {
+			pool.shutdown();
+			try {
+				// We need to wait for the threads actively handling a task
+				// to complete. If we proceed with the session shutdown before
+				// that, the active threads are likely to encounter problem as
+				// they try to operate within a defunct session. Don't wait
+				// indefinitely, though. Note that this does not block the 
+				// UI from showing the session as terminated. For the most part,
+				// things on the surface should look like the debug session
+				// ended. Obviously, cleanup will be pending.
+				pool.awaitTermination(15, TimeUnit.SECONDS);
+			} catch (InterruptedException exc) {
+				EDCDebugger.getMessageLogger().logException(exc);
+			}
+		}
+
 		Sequence shutdownSeq = new ShutdownSequence(getDsfExecutor(), session.getId(), new RequestMonitor(session
 				.getExecutor(), rm) {
 			@Override

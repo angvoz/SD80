@@ -116,11 +116,12 @@ public class NDKEnvSupplier implements IConfigurationEnvironmentVariableSupplier
 				getPath(),
 				IBuildEnvironmentVariable.ENVVAR_PREPEND,
 				Platform.getOS().equals(Platform.OS_WIN32) ? ";" : ":");
-		new MyBuildEnvironmentVariable(
-				"CYGWIN",
-				"nodosfilewarning",
-				IBuildEnvironmentVariable.ENVVAR_REPLACE,
-				null);
+		if (Platform.getOS().equals(Platform.OS_WIN32))
+			new MyBuildEnvironmentVariable(
+					"CYGWIN",
+					"nodosfilewarning",
+					IBuildEnvironmentVariable.ENVVAR_REPLACE,
+					null);
 	}
 	
 	@Override

@@ -20,10 +20,10 @@ import org.eclipse.core.runtime.Platform;
 public class NDKCommandLauncher extends CommandLauncher {
 
 	@Override
-	public Process execute(IPath commandPath, String[] args, String[] env,
-			IPath changeToDirectory, IProgressMonitor monitor)
+	public Process execute(IPath commandPath, String[] args, String[] env, IPath changeToDirectory, IProgressMonitor monitor)
 			throws CoreException {
-		if (Platform.getOS().equals(Platform.OS_WIN32)) {
+		if (Platform.getOS().equals(Platform.OS_WIN32) || Platform.getOS().equals(Platform.OS_MACOSX)) {
+			// Neither Mac or Windows support calling the ndk-build script directly.
 			String command = commandPath.toString();
 			for (String arg : args)
 				// TODO check for spaces in args

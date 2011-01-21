@@ -196,8 +196,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		List<ILanguageSettingsProvider> baseLanguageSettingProviders = base.getLanguageSettingProviders();
 		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(baseLanguageSettingProviders.size());
 		for (ILanguageSettingsProvider provider : baseLanguageSettingProviders) {
-			provider = cloneProvider(provider);
-			fLanguageSettingsProviders.add(provider);
+			addProvider(provider);
 		}
 	}
 
@@ -862,8 +861,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		String id = element.getAttribute(PROJECT_EXTENSION_ATTR_ID);
 		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
 		if (provider!=null) {
-			provider = cloneProvider(provider);
-			fLanguageSettingsProviders.add(provider);
+			addProvider(provider);
 		}
 	}
 
@@ -1029,8 +1027,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		for (ILanguageSettingsProvider provider : providers) {
 			String id = provider.getId();
 			if (!ids.contains(id)) {
-				provider = cloneProvider(provider);
-				fLanguageSettingsProviders.add(provider);
+				addProvider(provider);
 				ids.add(id);
 			} else {
 				String msg = NLS.bind(SettingsModelMessages.getString("CConfigurationSpecSettings.MustHaveUniqueID"), id); //$NON-NLS-1$
@@ -1044,18 +1041,11 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		return Collections.unmodifiableList(fLanguageSettingsProviders);
 	}
 	
-	private ILanguageSettingsProvider cloneProvider(ILanguageSettingsProvider provider) {
-		// non-LanguageSettingsCloneableProvider-s are treated as unmodifiable
-		// TODO - test case for workspace provider
-		if (provider instanceof LanguageSettingsCloneableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider)) {
-			try {
-				// get read-only copy
-				provider = ((LanguageSettingsCloneableProvider)provider).clone(true);
-			} catch (CloneNotSupportedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+	private ILanguageSettingsProvider addProvider(ILanguageSettingsProvider provider) {
+		if (provider instanceof LanguageSettingsCloneableProvider) {
+			provider = ((LanguageSettingsCloneableProvider)provider).getReadable();
 		}
+		fLanguageSettingsProviders.add(provider);
 		return provider;
 	}
 }

@@ -51,6 +51,7 @@ import org.eclipse.cdt.core.AbstractCExtension;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.CoreModelUtil;
@@ -63,7 +64,6 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.XmlStorageUtil;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildPropertyManager;
 import org.eclipse.cdt.managedbuilder.envvar.IEnvironmentBuildPathsChangeListener;
@@ -4805,7 +4805,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 				ILanguageSettingsProvider provider = null;
 				if (id.startsWith("*")) {
 					id = id.substring(1);
-					provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(id);
+					provider = LanguageSettingsManager.getWorkspaceProvider(id);
 				} else if (id.startsWith("-")) {
 					id = id.substring(1);
 					for (ILanguageSettingsProvider pr : providers) {
@@ -4817,15 +4817,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 						}
 					}
 				} else {
-					provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(id);
-					if (provider instanceof LanguageSettingsCloneableProvider) {
-						try {
-							provider = ((LanguageSettingsCloneableProvider)provider).clone(true);
-						} catch (CloneNotSupportedException e) {
-							// shouldn't happen. just in case, log the error and use workspace provider
-							ManagedBuilderCorePlugin.log(e);
-						}
-					}
+					provider = LanguageSettingsManager.getWorkspaceProvider(id);
 				}
 				if (provider!=null) {
 					providers.add(provider);
@@ -4835,22 +4827,17 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 		if (providers.isEmpty()) {
 			// Add MBS provider for unsuspecting toolchains (backward compatibility)
-			ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
 			providers.add(provider);
 		}
 
 		// FIXME: ability to remove PROVIDER_UI_USER
 		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
-			ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
-			if (provider instanceof LanguageSettingsCloneableProvider) {
-				try {
-					provider = ((LanguageSettingsCloneableProvider)provider).clone(true);
-				} catch (CloneNotSupportedException e) {
-					// shouldn't happen. just in case, log the error and use workspace provider
-					ManagedBuilderCorePlugin.log(e);
-				}
-			}
-			providers.add(0, provider);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
+			if (provider instanceof LanguageSettingsCloneableProvider)
+				provider = ((LanguageSettingsCloneableProvider)provider).getReadable();
+			if (provider!=null)
+				providers.add(0, provider);
 		}
 
 		return providers;

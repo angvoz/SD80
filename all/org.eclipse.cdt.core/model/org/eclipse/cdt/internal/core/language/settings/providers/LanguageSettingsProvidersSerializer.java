@@ -2,11 +2,14 @@ package org.eclipse.cdt.internal.core.language.settings.providers;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
@@ -16,6 +19,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -46,7 +50,6 @@ public class LanguageSettingsProvidersSerializer {
 	static {
 		try {
 			loadLanguageSettingsWorkspace();
-			recalculateAvailableProviders();
 		} catch (Throwable e) {
 			CCorePlugin.log("Error loading workspace language settings providers", e); //$NON-NLS-1$
 		} finally {
@@ -60,7 +63,16 @@ public class LanguageSettingsProvidersSerializer {
 	private static void recalculateAvailableProviders() {
 		fAvailableProviders.clear();
 		if (fUserDefinedProviders!=null) {
-			fAvailableProviders.putAll(fUserDefinedProviders);
+			for (Entry<String, ILanguageSettingsProvider> entry : fUserDefinedProviders.entrySet()) {
+				ILanguageSettingsProvider provider = entry.getValue();
+				if (provider instanceof LanguageSettingsCloneableProvider) {
+					provider = ((LanguageSettingsCloneableProvider)provider).getReadable();
+				}
+				if (provider!=null) {
+					String id = provider.getId();
+					fAvailableProviders.put(id, provider);
+				}
+			}
 		}
 		for (ILanguageSettingsProvider provider : LanguageSettingsExtensionManager.getExtensionProviders()) {
 			String id = provider.getId();
@@ -93,7 +105,7 @@ public class LanguageSettingsProvidersSerializer {
 		 * @param providers - array of user defined providers
 		 * @throws CoreException in case of problems
 		 */
-		public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
+		public static void setUserDefinedProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
 			setUserDefinedProvidersInternal(providers);
 	//		serializeUserDefinedProviders();
 		}
@@ -102,19 +114,23 @@ public class LanguageSettingsProvidersSerializer {
 	 * Internal method to set user defined providers in memory.
 	 *
 	 * @noreference This method is not intended to be referenced by clients.
-	 * Use {@link #setUserDefinedProviders(ILanguageSettingsProvider[])}.
+	 * Use {@link #setUserDefinedProviders(List)}.
 	 *
-	 * @param providers - array of user defined providers. If {@code null}
-	 * is passed user defined providers are cleared.
+	 * @param providers - list of user defined providers. If {@code null}
+	 *    is passed user defined providers are cleared.
 	 */
-	public static void setUserDefinedProvidersInternal(ILanguageSettingsProvider[] providers) {
+	public static void setUserDefinedProvidersInternal(List<ILanguageSettingsProvider> providers) {
 		if (providers==null) {
 			fUserDefinedProviders = null;
 		} else {
 			fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
-			// set customized list
 			for (ILanguageSettingsProvider provider : providers) {
-				fUserDefinedProviders.put(provider.getId(), provider);
+				if (!isWorkspaceProvider(provider)) {
+					if (provider instanceof LanguageSettingsCloneableProvider)
+						provider = ((LanguageSettingsCloneableProvider)provider).getReadable();
+					if (provider!=null)
+						fUserDefinedProviders.put(provider.getId(), provider);
+				}
 			}
 		}
 		recalculateAvailableProviders();
@@ -182,6 +198,8 @@ public class LanguageSettingsProvidersSerializer {
 	}
 
 	public static void loadLanguageSettingsWorkspace() throws CoreException {
+		fUserDefinedProviders = null;
+		
 		URI uriLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
 	
 		Document doc = null;
@@ -198,22 +216,15 @@ public class LanguageSettingsProvidersSerializer {
 			NodeList providerNodes = rootElement.getElementsByTagName(LanguageSettingsSerializable.ELEM_PROVIDER);
 	
 			for (int i=0;i<providerNodes.getLength();i++) {
-				Element providerNode = (Element)providerNodes.item(i);
-				String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
-				if (providerId!=null) {
-					ILanguageSettingsProvider provider = null;
-					if (fUserDefinedProviders!=null) {
-						provider = fUserDefinedProviders.get(providerId);
-					}
-					if (provider==null) {
-						provider = LanguageSettingsExtensionManager.getExtensionProvider(providerId);
-					}
-					if (provider instanceof LanguageSettingsSerializable) {
-						((LanguageSettingsSerializable)provider).load(providerNode);
-					}
+				ILanguageSettingsProvider provider = loadProvider(providerNodes.item(i));
+				if (provider!=null) {
+					if (fUserDefinedProviders==null)
+						fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
+					fUserDefinedProviders.put(provider.getId(), provider);
 				}
 			}
 		}
+		recalculateAvailableProviders();
 	}
 
 	public static void serializeLanguageSettings(Element parentElement, ICProjectDescription prjDescription) throws CoreException {
@@ -342,7 +353,11 @@ public class LanguageSettingsProvidersSerializer {
 				provider = LanguageSettingsExtensionManager.createProviderCarcass(providerClass, Platform.getExtensionRegistry());
 			}
 			if (provider instanceof LanguageSettingsSerializable) {
+				// FIXME
+				Assert.isTrue(!(provider instanceof LanguageSettingsCloneableProvider) || !((LanguageSettingsCloneableProvider)provider).isReadOnly());
 				((LanguageSettingsSerializable)provider).load((Element) providerNode);
+				// FIXME
+				Assert.isTrue(!(provider instanceof LanguageSettingsCloneableProvider) || ((LanguageSettingsCloneableProvider)provider).isReadOnly());
 			}
 		}
 		if (provider==null) {
@@ -396,14 +411,17 @@ public class LanguageSettingsProvidersSerializer {
 	 * Get Language Settings Provider defined in the workspace. That includes user-defined
 	 * providers and after that providers defined as extensions via
 	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
-	 * That returns actual object, any modifications will affect any configuration
-	 * referring to the provider.
 	 *
 	 * @param id - ID of provider to find.
 	 * @return the provider or {@code null} if provider is not defined.
 	 */
 	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
 		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
+		if (provider instanceof LanguageSettingsCloneableProvider) { 
+			if (!((LanguageSettingsCloneableProvider)provider).isReadOnly()) {
+				Assert.isTrue(((LanguageSettingsCloneableProvider)provider).isReadOnly());
+			}
+		}
 		return provider;
 	}
 
@@ -411,7 +429,7 @@ public class LanguageSettingsProvidersSerializer {
 	 * @return ordered set of providers defined in the workspace which include contributed through extension + user defined ones
 	 */
 	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
-		return new ArrayList<ILanguageSettingsProvider>(fAvailableProviders.values());
+		return Collections.unmodifiableList(new ArrayList<ILanguageSettingsProvider>(fAvailableProviders.values()));
 	}
 
 	/**

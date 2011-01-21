@@ -20,6 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.viewers.IDecoration;
@@ -46,6 +47,7 @@ import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvide
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.model.util.CDTListComparator;
@@ -712,19 +714,19 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		IResource rc = getResource();
 		String languageId = currentLanguageSetting.getLanguageId();
 			
-		LanguageSettingsCloneableProvider writableProvider;
-		try {
-			writableProvider = ((LanguageSettingsCloneableProvider) provider).clone(false);
-		} catch (CloneNotSupportedException e) {
-			throw new UnsupportedOperationException("Internal Error");
+		LanguageSettingsCloneableProvider writableProvider = (LanguageSettingsCloneableProvider) provider;
+		if (writableProvider.isReadOnly()) {
+			writableProvider = ((LanguageSettingsCloneableProvider) provider).getWritable();
 		}
-		writableProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
-		
-		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
-		pos = providers.indexOf(provider);
-		providers.remove(pos);
-		providers.add(pos, writableProvider);
-		cfgDescription.setLanguageSettingProviders(providers);
+		if (writableProvider!=null) {
+			writableProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
+			
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+			pos = providers.indexOf(provider);
+			providers.remove(pos);
+			providers.add(pos, writableProvider);
+			cfgDescription.setLanguageSettingProviders(providers);
+		}
 	}
 
 	private List<ICLanguageSettingEntry> getWritableEntries(ILanguageSettingsProvider provider) {
@@ -989,7 +991,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 //				
 //			LanguageSettingsCloneableProvider writableProvider;
 //			try {
-//				writableProvider = ((LanguageSettingsCloneableProvider) provider).clone(false);
+//				writableProvider = ((LanguageSettingsCloneableProvider) provider).getWritable();
 //			} catch (CloneNotSupportedException e) {
 //				throw new UnsupportedOperationException("Internal Error");
 //			}
@@ -1010,12 +1012,9 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 			
 			for (ILanguageSettingsProvider provider : providers) {
 				if (provider instanceof LanguageSettingsCloneableProvider) {
-					LanguageSettingsCloneableProvider writableProvider;
-					try {
-						writableProvider = ((LanguageSettingsCloneableProvider) provider).clone(false);
-					} catch (CloneNotSupportedException e) {
-						throw new UnsupportedOperationException("Internal Error");
-					}
+					LanguageSettingsCloneableProvider writableProvider = ((LanguageSettingsCloneableProvider) provider).getWritable();
+					if (writableProvider==null)
+						continue;
 					
 					TreeItem[] tisLang = treeLanguages.getItems();
 					for (TreeItem tiLang : tisLang) {
@@ -1075,6 +1074,14 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 				enabled = masterPropertyPage.isLanguageSettingsProvidersEnabled();
 			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enabled);
 			enableProvidersCheckBox.setSelection(enabled);
+		}
+		
+		try {
+			LanguageSettingsManager_TBD.serializeWorkspaceProviders();
+		} catch (CoreException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new UnsupportedOperationException("Internal Error");
 		}
 
 		updateData(getResDesc());

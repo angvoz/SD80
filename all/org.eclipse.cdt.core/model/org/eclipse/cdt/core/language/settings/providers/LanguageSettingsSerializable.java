@@ -75,10 +75,12 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 	/**
 	 * @return {@code true} if the provider does not keep any settings yet or {@code false} if there are some.
 	 */
+	@Override
 	public boolean isEmpty() {
 		return fStorage.isEmpty();
 	}
 
+	@Override
 	public void clear() {
 		if (isReadOnly())
 			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
@@ -107,6 +109,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 		}
 	}
 
+	@Override
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
 		if (isReadOnly())
 			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
@@ -285,6 +288,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 			if (settings.size()>0) {
 				setSettingEntriesInternal(null, null, settings);
 			}
+			
+			// TODO: consider moving outside
+			makeReadOnly();
 		}
 	}
 
@@ -382,9 +388,6 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 	 */
 	@Override
 	public LanguageSettingsSerializable clone() throws CloneNotSupportedException {
-		if (isReadOnly())
-			return this;
-		
 		LanguageSettingsSerializable clone = (LanguageSettingsSerializable)super.clone();
 		clone.fStorage = cloneStorage();
 		return clone;

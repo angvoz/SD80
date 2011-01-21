@@ -400,15 +400,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		} else {
 			// Local provider instance chosen
 			if (oldProvider instanceof LanguageSettingsCloneableProvider) {
-				try {
-					// TODO: add new method to LanguageSettingsSerializable to avoid cloning data
-					newProvider = ((LanguageSettingsCloneableProvider)oldProvider).clone(false);
-					if (newProvider instanceof LanguageSettingsCloneableProvider) {
-						((LanguageSettingsCloneableProvider)newProvider).clear();
-					}
-				} catch (CloneNotSupportedException e) {
-					CUIPlugin.log("Exception trying to clone workspace provider "+id, e);
-					return;
+				newProvider = ((LanguageSettingsCloneableProvider)oldProvider).getWritable();
+				if (newProvider instanceof LanguageSettingsCloneableProvider) {
+					((LanguageSettingsCloneableProvider)newProvider).clear();
 				}
 			}
 		}
@@ -702,21 +696,27 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 	private void performClear(ILanguageSettingsProvider selectedProvider) {
 		if (selectedProvider instanceof LanguageSettingsCloneableProvider){
-			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-				
-			LanguageSettingsCloneableProvider writableProvider;
-			try {
-				writableProvider = ((LanguageSettingsCloneableProvider) selectedProvider).clone(false);
-			} catch (CloneNotSupportedException e) {
-				throw new UnsupportedOperationException("Internal Error");
+			if (page.isForPrefs()) {
+				if (LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
+					// FIXME get writable provider here
+					((LanguageSettingsCloneableProvider) selectedProvider).clear();
+				}
+			} else {
+				ICConfigurationDescription cfgDescription = getConfigurationDescription();
+				if (cfgDescription!=null) {
+					LanguageSettingsCloneableProvider writableProvider;
+					writableProvider = ((LanguageSettingsCloneableProvider) selectedProvider).getWritable();
+					if (writableProvider!=null) {
+						writableProvider.clear();
+						
+						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+						int pos = providers.indexOf(selectedProvider);
+						providers.remove(pos);
+						providers.add(pos, writableProvider);
+						cfgDescription.setLanguageSettingProviders(providers);
+					}
+				}
 			}
-			writableProvider.clear();
-			
-			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
-			int pos = providers.indexOf(selectedProvider);
-			providers.remove(pos);
-			providers.add(pos, writableProvider);
-			cfgDescription.setLanguageSettingProviders(providers);
 			
 			updateButtons();
 		}
@@ -802,7 +802,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
 
 				try {
-					LanguageSettingsManager_TBD.setUserDefinedProviders(null);
+					LanguageSettingsManager.setUserDefinedProviders(null);
 				} catch (CoreException e) {
 					CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorPerformingDefaults, e);
 				}
@@ -872,10 +872,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		if (page.isForPrefs()) {
 			// Build Settings page
 			try {
-				ILanguageSettingsProvider[] providers = new ILanguageSettingsProvider[tableProviders.getItemCount()];
+				List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(tableProviders.getItemCount());
 				TableItem[] items = tableProviders.getItems();
-				for (int i=0;i<items.length;i++) {
-					providers[i] = (ILanguageSettingsProvider) items[i].getData();
+				for (TableItem item : items) {
+					providers.add((ILanguageSettingsProvider) item.getData());
 				}
 
 				Object[] checkedElements = tableProvidersViewer.getCheckedElements();
@@ -884,7 +884,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 					checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
 				}
 
-				LanguageSettingsManager_TBD.setUserDefinedProviders(providers);
+				LanguageSettingsManager.setUserDefinedProviders(providers);
 			} catch (CoreException e) {
 				CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorApplyingSettings, e);
 			}
@@ -896,6 +896,14 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 				enabled = masterPropertyPage.isLanguageSettingsProvidersEnabled();
 			LanguageSettingsManager.setLanguageSettingsProvidersEnabled(page.getProject(), enabled);
 			enableProvidersCheckBox.setSelection(enabled);
+		}
+
+		try {
+			LanguageSettingsManager_TBD.serializeWorkspaceProviders();
+		} catch (CoreException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new UnsupportedOperationException("Internal Error");
 		}
 
 		updateData(getResDesc());

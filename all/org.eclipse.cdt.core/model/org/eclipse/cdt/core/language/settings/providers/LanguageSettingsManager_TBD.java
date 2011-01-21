@@ -19,12 +19,10 @@ import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
-import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 
 /**
  * TODO
@@ -71,58 +69,9 @@ public class LanguageSettingsManager_TBD {
 		return false;
 	}
 
+	@Deprecated // Shouldn't be API
 	public static void serializeWorkspaceProviders() throws CoreException {
 		LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
-	}
-
-	/**
-	 * Set and store in workspace area user defined providers.
-	 *
-	 * @param providers - array of user defined providers
-	 * @throws CoreException in case of problems
-	 */
-	public static void setUserDefinedProviders(ILanguageSettingsProvider[] providers) throws CoreException {
-		LanguageSettingsProvidersSerializer.setUserDefinedProviders(providers);
-	}
-
-	// FIXME: get rid of using that in DescriptionScannerInfoProvider
-	@Deprecated
-	public static String[] getLanguageIds(ICConfigurationDescription cfgDescription, IResource resource) {
-		ICResourceDescription rcDes = null;
-		IPath rcPath = resource.getProjectRelativePath();
-		if(resource.getType() == IResource.PROJECT){
-			rcDes = cfgDescription.getRootFolderDescription();
-		} else {
-			rcDes = cfgDescription.getResourceDescription(rcPath, false);
-		}
-
-		if(rcDes.getType() == ICSettingBase.SETTING_FILE){
-			ICLanguageSetting setting = ((ICFileDescription)rcDes).getLanguageSetting();
-			return new String[] {setting.getLanguageId()};
-		} else {
-			if(resource.getType() == IResource.FILE) {
-				ICLanguageSetting setting = ((ICFolderDescription)rcDes).getLanguageSettingForFile(rcPath.lastSegment());
-				if (setting!=null) {
-					// FIXME: there is a bug in in AbstractIndexerTask.parseFilesUpFront(). It should not parse C++ files for pure C project
-					return new String[] {setting.getLanguageId()};
-				}
-			} else {
-				ICLanguageSetting settings[] = ((ICFolderDescription)rcDes).getLanguageSettings();
-				if(settings==null || settings.length==0){
-					ICFolderDescription foDes = cfgDescription.getRootFolderDescription();
-					settings = foDes.getLanguageSettings();
-				}
-				if(settings!=null){
-					String[] ids = new String[settings.length];
-					for (int i=0;i<settings.length;i++) {
-						ids[i] = settings[i].getLanguageId();
-					}
-					return ids;
-				}
-			}
-		}
-
-		return null;
 	}
 
 }

@@ -42,6 +42,9 @@ import org.w3c.dom.Element;
  * Test cases testing LanguageSettingsProvider functionality
  */
 public class LanguageSettingsSerializableTests extends TestCase {
+	// Should match id of extension point defined in plugin.xml
+	private static final String EXTENSION_SERIALIZABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.serializable.language.settings.provider";
+
 	private static final String CFG_ID = "test.configuration.id";
 	private static final String CFG_ID_1 = "test.configuration.id.1";
 	private static final String CFG_ID_2 = "test.configuration.id.2";
@@ -75,7 +78,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	@Override
 	protected void tearDown() throws Exception {
 		ResourceHelper.cleanUp();
-		LanguageSettingsManager_TBD.setUserDefinedProviders(null);
+		LanguageSettingsManager.setUserDefinedProviders(null);
 	}
 
 	/**
@@ -906,7 +909,8 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		assertNull(providerNull.getSettingEntries(null, null, null));
 		
 		// clone read-only copy
-		LanguageSettingsSerializable provider = (LanguageSettingsSerializable) providerNull.clone(true);
+		LanguageSettingsSerializable provider = (LanguageSettingsSerializable) providerNull.getReadable();
+		assertNotNull(provider);
 		assertEquals(providerNull, provider);
 		assertEquals(true, provider.isReadOnly());
 		
@@ -975,7 +979,8 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		}
 		
 		// clone writable copy
-		LanguageSettingsSerializable providerWritable = (LanguageSettingsSerializable) provider.clone(false);
+		LanguageSettingsSerializable providerWritable = (LanguageSettingsSerializable) provider.getWritable();
+		assertNotNull(providerWritable);
 		assertEquals(provider, providerWritable);
 		assertEquals(false, providerWritable.isReadOnly());
 

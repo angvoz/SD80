@@ -11,15 +11,21 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.settings.model;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.CExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICBuildSetting;
 import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
@@ -40,6 +46,7 @@ import org.eclipse.cdt.internal.core.envvar.EnvironmentVariableManager;
 import org.eclipse.cdt.utils.envvar.StorableEnvironment;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.QualifiedName;
+import org.eclipse.osgi.util.NLS;
 
 /**
  * CConfigurationSpecSettings impelements ICSettingsStorage
@@ -63,6 +70,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 	private static final String PROJECT_EXTENSIONS = "extensions"; //$NON-NLS-1$
 	private static final String OWNER_ID = "owner"; //$NON-NLS-1$
 	private static final String OLD_OWNER_ID = "id"; //$NON-NLS-1$
+	private static final String LANG_SETTINGS_PROVIDER_ELEM = "languageSettingsProvider"; //$NON-NLS-1$
 
 	static final String ID = "id";	//$NON-NLS-1$
 	static final String NAME = "name";	//$NON-NLS-1$
@@ -87,6 +95,8 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 //	private CConfigBasedDescriptor fDescriptor;
 //	private Map fExternalSettingsProviderMap;
 
+	private List<ILanguageSettingsProvider> fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(0);
+
 	private class DeltaSet {
 		public Set<ICConfigExtensionReference> extSet;
 		public Set<String> idSet;
@@ -106,6 +116,8 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		fId = settings.getAttribute(ID);
 
 		setCOwner(settings.getAttribute(OWNER_ID));
+		
+		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(0);
 
 		for (ICStorageElement child : settings.getChildren()) {
 			String name = child.getName();
@@ -119,14 +131,14 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 			} else if(StorableEnvironment.ENVIRONMENT_ELEMENT_NAME.equals(name)){
 				fEnvironment = new StorableEnvironment(child, fCfg.isReadOnly());
 			} else if(PROJECT_EXTENSIONS.equals(name)){
+				fLanguageSettingsProviders.clear();
 				loadExtensionInfo(child, false);
 			}
 		}
 
 //		if(fMacros == null)
 //			fMacros = new StorableMacros(des.isReadOnly());
-
-
+		
 	}
 
 	public CConfigurationSpecSettings(ICConfigurationDescription des, ICStorageElement storage, ICStorageElement oldInfo) throws CoreException{
@@ -134,7 +146,8 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		fRootStorageElement = storage;
 
 		loadOldStileDescription(oldInfo);
-
+			
+		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(0);
 	}
 	private void loadOldStileDescription(ICStorageElement storage) throws CoreException{
 		setCOwner(storage.getAttribute(OLD_OWNER_ID));
@@ -179,6 +192,12 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		fOwner = base.fOwner;
 
 		copyExtensionInfo(base);
+		
+		List<ILanguageSettingsProvider> baseLanguageSettingProviders = base.getLanguageSettingProviders();
+		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(baseLanguageSettingProviders.size());
+		for (ILanguageSettingsProvider provider : baseLanguageSettingProviders) {
+			addProvider(provider);
+		}
 	}
 
 //	private void copyRefInfos(Map infosMap){
@@ -387,6 +406,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 		ICStorageElement extEl = settings.createChild(PROJECT_EXTENSIONS);
 		encodeProjectExtensions(extEl);
+		encodeLanguageSettingProviders(extEl);
 	}
 
 	public boolean isReadOnly(){
@@ -780,6 +800,12 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 					} catch (CoreException e) {
 						CCorePlugin.log(e);
 					}
+				} else if (childNode.getName().equals(LANG_SETTINGS_PROVIDER_ELEM)) {
+					try {
+						decodeLanguageSettingProviders(childNode);
+					} catch (CoreException e) {
+						CCorePlugin.log(e);
+					}
 				} else if (oldData && childNode.getName().equals(PROJECT_DATA)) {
 					try {
 						decodeProjectData(childNode);
@@ -823,6 +849,23 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		}
 	}
 
+	private void encodeLanguageSettingProviders(ICStorageElement configRootElement) {
+		ICStorageElement element;
+		for (ILanguageSettingsProvider provider : fLanguageSettingsProviders) {
+			element = configRootElement.createChild(LANG_SETTINGS_PROVIDER_ELEM);
+			element.setAttribute(PROJECT_EXTENSION_ATTR_ID, provider.getId());
+		}
+	}
+	
+	private void decodeLanguageSettingProviders(ICStorageElement element) throws CoreException {
+		String id = element.getAttribute(PROJECT_EXTENSION_ATTR_ID);
+		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
+		if (provider!=null) {
+			addProvider(provider);
+		}
+	}
+
+	
 	private void decodeProjectData(ICStorageElement data) throws CoreException {
 		for (ICStorageElement element : data.getChildren()) {
 			if(PROJECT_DATA_ITEM.equals(element.getName())){
@@ -970,5 +1013,39 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 	public void updateExternalSettingsProviders(String[] ids){
 		ExtensionContainerFactory.updateReferencedProviderIds(fCfg, ids);
+	}
+	
+	/**
+	 * Adds list of {@link ILanguageSettingsProvider} to the specs.
+	 * Note that only unique IDs are accepted.
+	 * 
+	 * @param providers - list of providers to keep in the specs.
+	 */
+	public void setLanguageSettingProviders(List<ILanguageSettingsProvider> providers) {
+		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>();
+		Set<String> ids = new HashSet<String>();
+		for (ILanguageSettingsProvider provider : providers) {
+			String id = provider.getId();
+			if (!ids.contains(id)) {
+				addProvider(provider);
+				ids.add(id);
+			} else {
+				String msg = NLS.bind(SettingsModelMessages.getString("CConfigurationSpecSettings.MustHaveUniqueID"), id); //$NON-NLS-1$
+				throw new IllegalArgumentException(msg);
+			}
+		}
+		fIsModified = true;
+	}
+
+	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
+		return Collections.unmodifiableList(fLanguageSettingsProviders);
+	}
+	
+	private ILanguageSettingsProvider addProvider(ILanguageSettingsProvider provider) {
+		if (provider instanceof LanguageSettingsCloneableProvider) {
+			provider = ((LanguageSettingsCloneableProvider)provider).getReadable();
+		}
+		fLanguageSettingsProviders.add(provider);
+		return provider;
 	}
 }

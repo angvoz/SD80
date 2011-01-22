@@ -12,14 +12,33 @@ package org.eclipse.cdt.managedbuilder.core;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ConsoleOutputStream;
 import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.IMarkerGenerator;
+import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICModelMarker;
+import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.resources.IConsole;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICFolderDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.managedbuilder.buildmodel.BuildDescriptionManager;
 import org.eclipse.cdt.managedbuilder.buildmodel.IBuildDescription;
+import org.eclipse.cdt.managedbuilder.internal.buildmodel.BuildDescription;
 import org.eclipse.cdt.managedbuilder.internal.buildmodel.BuildStateManager;
 import org.eclipse.cdt.managedbuilder.internal.buildmodel.DescriptionBuilder;
 import org.eclipse.cdt.managedbuilder.internal.buildmodel.IBuildModelBuilder;
@@ -34,12 +53,13 @@ import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
 /**
  * The build runner for the internal builder.
- * 
+ *
  * @author dschaefer
  * @since 8.0
  */
@@ -59,6 +79,21 @@ public class InternalBuildRunner implements IBuildRunner {
 	private static final String MARKERS = "ManagedMakeBuilder.message.creating.markers";	//$NON-NLS-1$
 	private static final String NOTHING_BUILT = "ManagedMakeBuilder.message.no.build";	//$NON-NLS-1$
 	private static final String BUILD_ERROR = "ManagedMakeBuilder.message.error";	//$NON-NLS-1$
+
+
+	// TODO: same function is present in CommandBuilder and BuildProcessManager
+	private String[] mapToStringArray(Map<String, String> map){
+		if(map == null)
+			return null;
+
+		List<String> list = new ArrayList<String>();
+
+		for (Entry<String, String> entry : map.entrySet()) {
+			list.add(entry.getKey() + '=' + entry.getValue());
+		}
+
+		return list.toArray(new String[list.size()]);
+	}
 
 	public boolean invokeBuild(int kind, IProject project, IConfiguration configuration,
 			IBuilder builder, IConsole console, IMarkerGenerator markerGenerator,
@@ -94,6 +129,16 @@ public class InternalBuildRunner implements IBuildRunner {
 
 			// Get a build console for the project
 			StringBuffer buf = new StringBuffer();
+
+			IBuildDescription des = BuildDescriptionManager.createBuildDescription(configuration, cBS, delta, flags);
+
+			IPath workingDirectory = des.getDefaultBuildDirLocation();
+			String[] env = null;
+			if (des instanceof BuildDescription) {
+				Map<String, String> envMap = ((BuildDescription)des).getEnvironment();
+				env = mapToStringArray(envMap);
+			}
+
 			consoleOutStream = console.getOutputStream();
 			String[] consoleHeader = new String[3];
 			if(buildIncrementaly)
@@ -117,10 +162,27 @@ public class InternalBuildRunner implements IBuildRunner {
 				buf.append(System.getProperty("line.separator", "\n"));	//$NON-NLS-1$	//$NON-NLS-2$
 				buf.append(System.getProperty("line.separator", "\n"));	//$NON-NLS-1$	//$NON-NLS-2$
 			}
+
+			if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
+				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
+				runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
+
+				List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+				for (ILanguageSettingsProvider provider : providers) {
+					if (provider instanceof AbstractBuildCommandParser) {
+						buf.append(System.getProperty("line.separator", "\n"));	//$NON-NLS-1$	//$NON-NLS-2$
+						String msg = ManagedMakeMessages.getFormattedString("BOP Language Settings Provider [{0}] is not supported by Internal Builder.", provider.getName());
+						buf.append("**** "+msg+" ****");
+						buf.append(System.getProperty("line.separator", "\n"));	//$NON-NLS-1$	//$NON-NLS-2$
+						buf.append(System.getProperty("line.separator", "\n"));	//$NON-NLS-1$	//$NON-NLS-2$
+
+						ManagedBuilderCorePlugin.error(msg);
+					}
+				}
+			}
+
 			consoleOutStream.write(buf.toString().getBytes());
 			consoleOutStream.flush();
-
-			IBuildDescription des = BuildDescriptionManager.createBuildDescription(configuration, cBS, delta, flags);
 
 			DescriptionBuilder dBuilder = null;
 			if (!isParallel)
@@ -191,6 +253,12 @@ public class InternalBuildRunner implements IBuildRunner {
 				consoleOutStream.flush();
 				epmOutputStream.close();
 				epmOutputStream = null;
+				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
+					LanguageSettingsManager_TBD.serializeWorkspaceProviders();
+					ICProjectDescription prjDescription = CCorePlugin.getDefault().getProjectDescription(project, false);
+					LanguageSettingsProvidersSerializer.serializeLanguageSettings(prjDescription);
+				}
+
 				// Generate any error markers that the build has discovered
 				monitor.subTask(ManagedMakeMessages
 						.getResourceString(MARKERS));
@@ -238,5 +306,47 @@ public class InternalBuildRunner implements IBuildRunner {
 		}
 		return false;
 	}
-	
+
+	// TODO: same copy in ExternalBuildRunner
+	private void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
+			String[] env, IConsole console, IProgressMonitor monitor) throws CoreException {
+		ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
+		List<String> languageIds = new ArrayList<String>();
+		for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
+			String id = languageSetting.getLanguageId();
+			if (id!=null) {
+				languageIds.add(id);
+			}
+		}
+
+		for (ILanguageSettingsProvider lsProvider : cfgDescription.getLanguageSettingProviders()) {
+			if (lsProvider instanceof AbstractBuiltinSpecsDetector) {
+				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
+					for (String languageId : languageIds) {
+					if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
+						try {
+							detector.startup(cfgDescription, languageId);
+							// FIXME: workingDirectory should be deterministic
+							if (!workingDirectory.toFile().exists()) {
+								IProject project = cfgDescription.getProjectDescription().getProject();
+								workingDirectory = project.getLocation();
+							}
+							detector.run(workingDirectory, env, console, monitor);
+						} catch (Exception e) {
+							ManagedBuilderCorePlugin.log(e);
+						}
+					}
+				}
+			}
+		}
+
+		// AG: FIXME
+//		LanguageSettingsManager.serialize(cfgDescription);
+		// AG: FIXME - rather send event that ls settings changed
+		IProject project = cfgDescription.getProjectDescription().getProject();
+		ICProject icProject = CoreModel.getDefault().create(project);
+		ICElement[] tuSelection = new ICElement[] {icProject};
+		CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
+	}
+
 }

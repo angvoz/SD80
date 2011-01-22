@@ -209,6 +209,7 @@ public class Messages extends NLS {
 	public static String PropertyPageDefsTab_8;
 	public static String PropertyPageDefsTab_9;
 	public static String PropertyPageDefsTab_showIncludeFileTab;
+	public static String PropertyPageDefsTab_showProvidersTab;
 	public static String ResourceCustomBuildStepBlock_label_applicability_rule_after;
 	public static String ResourceCustomBuildStepBlock_label_applicability_rule_before;
 	public static String ResourceCustomBuildStepBlock_label_applicability_rule_disable;

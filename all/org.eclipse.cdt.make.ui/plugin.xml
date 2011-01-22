@@ -471,6 +471,14 @@
            tooltip="%ErrorParsersTab.tooltip"
            weight="020">
      </tab>
+     <tab
+           class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab"
+           icon="icons/obj16/search.gif"
+           name="%LanguageSettingsProvidersTab.name"
+           parent="org.eclipse.cdt.make.internal.ui.preferences.BuildSettingsPreferencePage"
+           tooltip="%LanguageSettingsProvidersTab.tooltip"
+           weight="000">
+     </tab>
    </extension>
 
      <extension
@@ -532,5 +540,17 @@
             %makeCompareFontDefinition.description
          </description>
       </fontDefinition>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.ui.LanguageSettingsProviderAssociation">
+      <class-association
+            class="org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector"
+            icon="icons/obj16/inspect_system.gif"
+            page="org.eclipse.cdt.make.internal.ui.preferences.GCCBuiltinSpecsDetectorOptionPage">
+      </class-association>
+      <class-association
+            icon="icons/obj16/log_obj.gif"
+            class="org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser">
+      </class-association>
    </extension>
 </plugin>

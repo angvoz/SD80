@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2009 Institute for Software, HSR Hochschule fuer Technik  
+ * Copyright (c) 2008, 2011 Institute for Software, HSR Hochschule fuer Technik  
  * Rapperswil, University of applied sciences and others
  * All rights reserved. This program and the accompanying materials 
  * are made available under the terms of the Eclipse Public License v1.0 
@@ -7,14 +7,14 @@
  * http://www.eclipse.org/legal/epl-v10.html  
  *  
  * Contributors: 
- * Institute for Software - initial API and implementation
+ * 	   Institute for Software - initial API and implementation
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.refactoring;
 
 import org.eclipse.osgi.util.NLS;
 
 public final class Messages extends NLS {
-
 	public static String DeleteFileChange_0;
 	public static String DeleteFileChange_1;
 	public static String Refactoring_name;
@@ -30,9 +30,11 @@ public final class Messages extends NLS {
 	public static String CreateFileChange_UnknownLoc;
 	public static String CreateFileChange_FileExists;
 	public static String CRefactoring_FileNotFound;
+	public static String CRefactoring_checking_final_conditions;
 	public static String Refactoring_SelectionNotValid;
 	public static String Refactoring_CantLoadTU;
 	public static String Refactoring_Ambiguity;
+	public static String Refactoring_ParsingError;
 	public static String NodeContainer_Name;
 	public static String NO_FILE;
 	public static String RefactoringSaveHelper_unexpected_exception;

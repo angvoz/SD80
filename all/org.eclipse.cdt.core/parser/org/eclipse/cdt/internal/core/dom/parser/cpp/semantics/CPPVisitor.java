@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2010 IBM Corporation and others.
+ * Copyright (c) 2004, 2011 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -1409,7 +1409,7 @@ public class CPPVisitor extends ASTQueries {
 					if (nameBinding.equals(binding)) {
 						return true;
 					}
-					// a using declaration is a declaration for the references of its delegates
+					// A using declaration is a declaration for the references of its delegates
 					if (nameBinding instanceof ICPPUsingDeclaration) {
 						if (ArrayUtil.contains(((ICPPUsingDeclaration) nameBinding).getDelegates(), binding)) {
 							return true;

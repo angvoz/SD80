@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/org.eclipse.cdt.android.feature_1.0.0.qualifier.jar" id="org.eclipse.cdt.android.feature" version="1.0.0.qualifier">
+      <category name="org.eclipse.cdt.android"/>
+   </feature>
+   <category-def name="org.eclipse.cdt.android" label="Android Native Development">
+      <description>
+         Plugin&apos;s to support Android native development with CDT.
+      </description>
+   </category-def>
+</site>

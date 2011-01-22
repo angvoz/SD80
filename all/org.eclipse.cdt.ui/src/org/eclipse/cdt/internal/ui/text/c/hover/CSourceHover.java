@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2002, 2010 QNX Software Systems and others.
+ * Copyright (c) 2002, 2011 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -50,6 +50,7 @@ import org.eclipse.cdt.core.dom.IName;
 import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
@@ -64,6 +65,7 @@ import org.eclipse.cdt.core.dom.ast.IProblemBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.ITypedef;
 import org.eclipse.cdt.core.dom.ast.IVariable;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPSpecialization;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateParameter;
@@ -137,6 +139,19 @@ public class CSourceHover extends AbstractCEditorTextHover {
 					if (name != null) {
 						IBinding binding= name.resolveBinding();
 						if (binding != null) {
+							
+							// Check for implicit names first, could be an implicit constructor call
+							if(name.getParent() instanceof IASTImplicitNameOwner) {
+								IASTImplicitNameOwner iastImplicitNameOwner = (IASTImplicitNameOwner) name.getParent();
+								IASTName [] implicitNames = iastImplicitNameOwner.getImplicitNames();
+								if(implicitNames.length == 1) {
+									IBinding implicitNameBinding = implicitNames[0].resolveBinding();
+									if(implicitNameBinding instanceof ICPPConstructor) {
+										binding = implicitNameBinding;
+									}
+								}
+							}
+							
 							if (binding instanceof IProblemBinding) {
 								// report problem as source comment
 								if (DEBUG) {
@@ -394,7 +409,7 @@ public class CSourceHover extends AbstractCEditorTextHover {
 				} else if (binding instanceof IVariable) {
 					type= ((IVariable)binding).getType();
 				}
-				expectClosingBrace= type instanceof ICompositeType || type instanceof IEnumeration;
+				expectClosingBrace= (type instanceof ICompositeType || type instanceof IEnumeration) && !(binding instanceof IVariable);
 				final int nameLine= doc.getLineOfOffset(nameOffset);
 				sourceStart= nameOffset;
 				int commentBound;
@@ -442,7 +457,7 @@ public class CSourceHover extends AbstractCEditorTextHover {
 			boolean searchBrace= false;
 			boolean searchSemi= false;
 			boolean searchComma= false;
-			if (binding instanceof ICompositeType || binding instanceof IEnumeration) {
+			if (binding instanceof ICompositeType && isDefinition || binding instanceof IEnumeration) {
 				searchBrace= true;
 			} else if (binding instanceof ICPPTemplateDefinition) {
 				searchBrace= true;

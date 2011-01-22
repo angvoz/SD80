@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.launch;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.INoop;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Snapshots;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
@@ -142,6 +143,11 @@ public class ShutdownSequence extends Sequence {
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
 			shutdownService(Symbols.class, requestMonitor);
+		}
+	}, new Step() {
+		@Override
+		public void execute(RequestMonitor requestMonitor) {
+			shutdownService(INoop.class, requestMonitor);
 		}
 	}, new Step() {
 		@Override

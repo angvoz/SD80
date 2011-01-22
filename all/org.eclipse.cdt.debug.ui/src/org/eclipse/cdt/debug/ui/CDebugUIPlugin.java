@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2010 QNX Software Systems and others.
+ * Copyright (c) 2004, 2011 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -27,6 +27,7 @@ import org.eclipse.cdt.debug.internal.ui.EvaluationContextManager;
 import org.eclipse.cdt.debug.internal.ui.IInternalCDebugUIConstants;
 import org.eclipse.cdt.debug.internal.ui.disassembly.dsf.DisassemblyBackendCdiFactory;
 import org.eclipse.cdt.debug.internal.ui.disassembly.editor.DisassemblyEditorManager;
+import org.eclipse.cdt.debug.internal.ui.pinclone.ViewIDCounterManager;
 import org.eclipse.cdt.debug.ui.sourcelookup.DefaultSourceLocator;
 import org.eclipse.cdt.debug.ui.sourcelookup.OldDefaultSourceLocator;
 import org.eclipse.core.resources.IWorkspace;
@@ -289,39 +290,45 @@ public class CDebugUIPlugin extends AbstractUIPlugin {
     public void start( BundleContext context ) throws Exception {
 		super.start( context );
         fDisassemblyEditorManager = new DisassemblyEditorManager();
-		EvaluationContextManager.startup();
 		CDebugCorePlugin.getDefault().addCBreakpointListener( CBreakpointUpdater.getInstance() );
 		
 		// Register the CDI backend for DSF's disassembly view
 		Platform.getAdapterManager().registerAdapters(new DisassemblyBackendCdiFactory(), ICDebugElement.class);
 		
-		// We contribute actions to the platform's Variables view with a
-		// criteria to enable only when this plugin is loaded. This can lead to
-		// some edge cases with broken behavior (273306). The solution is to
-		// force a selection change notification after we get loaded.
-		WorkbenchJob wjob = new WorkbenchJob("CDT Variable view action updater") { //$NON-NLS-1$
+		WorkbenchJob wjob = new WorkbenchJob("Initializing CDT Debug UI") { //$NON-NLS-1$
 			@Override
 			public IStatus runInUIThread(IProgressMonitor monitor) {
-				IWorkbenchWindow[] windows = PlatformUI.getWorkbench().getWorkbenchWindows();
-				for (IWorkbenchWindow window : windows) {
-				   IWorkbenchPage[] pages = window.getPages();
-				   for (IWorkbenchPage page : pages) {
-					   IViewReference viewRef = page.findViewReference(IDebugUIConstants.ID_VARIABLE_VIEW);
-					   if (viewRef != null) {
-						   IViewPart part = viewRef.getView(false);
-						   if (part instanceof IDebugView) {
-							   Viewer viewer = ((IDebugView)part).getViewer();
-							   if (viewer != null) {
-								   viewer.setSelection(viewer.getSelection());
-							   }
-						   }
-					   }
-				   }
-				}
+				startupInUIThread();
 				return Status.OK_STATUS;
 			}
 		};
 		wjob.schedule();
+	}
+
+	private void startupInUIThread() {
+		EvaluationContextManager.startup();
+		ViewIDCounterManager.getInstance().init();
+		
+		// We contribute actions to the platform's Variables view with a
+		// criteria to enable only when this plugin is loaded. This can lead to
+		// some edge cases with broken behavior (273306). The solution is to
+		// force a selection change notification after we get loaded.
+		IWorkbenchWindow[] windows = PlatformUI.getWorkbench().getWorkbenchWindows();
+		for (IWorkbenchWindow window : windows) {
+		   IWorkbenchPage[] pages = window.getPages();
+		   for (IWorkbenchPage page : pages) {
+			   IViewReference viewRef = page.findViewReference(IDebugUIConstants.ID_VARIABLE_VIEW);
+			   if (viewRef != null) {
+				   IViewPart part = viewRef.getView(false);
+				   if (part instanceof IDebugView) {
+					   Viewer viewer = ((IDebugView)part).getViewer();
+					   if (viewer != null) {
+						   viewer.setSelection(viewer.getSelection());
+					   }
+				   }
+			   }
+		   }
+		}
 	}
 
 	/*

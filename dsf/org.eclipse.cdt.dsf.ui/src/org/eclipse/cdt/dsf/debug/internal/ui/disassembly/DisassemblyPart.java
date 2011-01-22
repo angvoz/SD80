@@ -10,6 +10,7 @@
  *     Patrick Chuong (Texas Instruments) - Bug fix (326670)
  *     Patrick Chuong (Texas Instruments) - Bug fix (329682)
  *     Patrick Chuong (Texas Instruments) - bug fix (330259)
+ *     Patrick Chuong (Texas Instruments) - Pin and Clone Supports (331781)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.debug.internal.ui.disassembly;
 
@@ -75,7 +76,6 @@ import org.eclipse.debug.core.sourcelookup.containers.LocalFileStorage;
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.contexts.DebugContextEvent;
 import org.eclipse.debug.ui.contexts.IDebugContextListener;
-import org.eclipse.debug.ui.contexts.IDebugContextService;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.GroupMarker;
 import org.eclipse.jface.action.IAction;
@@ -120,9 +120,7 @@ import org.eclipse.jface.text.source.SourceViewerConfiguration;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.util.SafeRunnable;
-import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyleRange;
@@ -720,14 +718,14 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	protected void setSite(IWorkbenchPartSite site) {
 		super.setSite(site);
         site.getPage().addPartListener(fPartListener);
-        IDebugContextService contextService = DebugUITools.getDebugContextManager().getContextService(site.getWorkbenchWindow());
-        contextService.addDebugContextListener(fDebugContextListener = new IDebugContextListener() {
+        fDebugContextListener = new IDebugContextListener() {
             public void debugContextChanged(DebugContextEvent event) {
                 if ((event.getFlags() & DebugContextEvent.ACTIVATED) != 0) {
                     updateDebugContext();
                 }
             }
-        });
+        };
+        DebugUITools.addPartDebugContextListener(site, fDebugContextListener);
 	}
 
 	private DisassemblyDocument createDocument() {
@@ -740,13 +738,13 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 	 */
 	@Override
 	public void dispose() {
-	    if (fDebugContextListener != null) {
-	        DebugUITools.getDebugContextManager().removeDebugContextListener(fDebugContextListener);
-	        fDebugContextListener = null;
-	    }
 		IWorkbenchPartSite site = getSite();
 		site.setSelectionProvider(null);
 		site.getPage().removePartListener(fPartListener);
+	    if (fDebugContextListener != null) {
+	        DebugUITools.removePartDebugContextListener(site, fDebugContextListener);
+	        fDebugContextListener = null;
+	    }
 		if (fHandlerActivations != null) {
 			IHandlerService handlerService = (IHandlerService)site.getService(IHandlerService.class);
 			handlerService.deactivateHandlers(fHandlerActivations);
@@ -1847,45 +1845,44 @@ public abstract class DisassemblyPart extends WorkbenchPart implements IDisassem
 		return -1;
 	}
 
-	protected void updateDebugContext() {		
-		IDebugContextService contextService = DebugUITools.getDebugContextManager().getContextService(getSite().getWorkbenchWindow());
-		ISelection activeContext = contextService.getActiveContext();
-		if (activeContext instanceof IStructuredSelection) {
-			Object selectedElement = ((IStructuredSelection) activeContext).getFirstElement();		
-			if (selectedElement instanceof IAdaptable) {
-				IAdaptable context = (IAdaptable) selectedElement;
-				
-				final IDisassemblyBackend prevBackend = fBackend;
-				fDebugSessionId = null;
-				if (context != null) {
-					if (fBackend == null || !fBackend.supportsDebugContext(context)) {
-						if (fBackend != null) {
-							fBackend.clearDebugContext();
-							fBackend.dispose();
-						}
-						fBackend = (IDisassemblyBackend)context.getAdapter(IDisassemblyBackend.class);
-						if (fBackend != null) {
-							fBackend.init(this);
-						}
-					}
-					
-					if (fBackend != null) {
-						IDisassemblyBackend.SetDebugContextResult result = fBackend.setDebugContext(context);
-						if (result != null) {
-							fDebugSessionId = result.sessionId;
-					        if (result.contextChanged && fViewer != null) {
-		                        startUpdate(new Runnable() {
-		                            public void run() {
-		                                debugContextChanged();              
-		                            }
-		                        });
-								if (prevBackend != null && fBackend != prevBackend) {
-									prevBackend.clearDebugContext();
-								}
-							}
-						}
+	protected void updateDebugContext() {
+		IAdaptable context = DebugUITools.getPartDebugContext(getSite());
+		if (context != null) {
+			final IDisassemblyBackend prevBackend = fBackend;
+			fDebugSessionId = null;
+			boolean needUpdate = false;
+			if (prevBackend == null || !prevBackend.supportsDebugContext(context)) {
+				needUpdate = true;
+				fBackend = (IDisassemblyBackend)context.getAdapter(IDisassemblyBackend.class);
+				if (fBackend != null) {
+					if (fBackend.supportsDebugContext(context)) {
+						fBackend.init(this);
+					} else {
+						fBackend = null;
 					}
 				}
+			}
+
+			if (fBackend != null) {
+				IDisassemblyBackend.SetDebugContextResult result = fBackend.setDebugContext(context);
+				if (result != null) {
+					fDebugSessionId = result.sessionId;
+					if (result.contextChanged) {
+						needUpdate = true;
+					}
+				}
+			}
+			if (prevBackend != null && fBackend != prevBackend) {
+				needUpdate = true;
+				prevBackend.clearDebugContext();
+				prevBackend.dispose();
+			}
+			if (needUpdate && fViewer != null) {
+				startUpdate(new Runnable() {
+					public void run() {
+						debugContextChanged();
+					}
+				});
 			}
 		}
 	}

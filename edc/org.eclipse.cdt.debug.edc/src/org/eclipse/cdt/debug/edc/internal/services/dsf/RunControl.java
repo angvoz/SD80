@@ -266,6 +266,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		private boolean isTerminatingThanDisconnecting = false;
 		
 		private List<EDCAddressRange> disabledRanges = Collections.synchronizedList(new ArrayList<EDCAddressRange>());
+		private boolean suspendEventsEnabled = true;
 		
 		public ExecutionDMC(ExecutionDMC parent, Map<String, Object> props, RunControlContext tcfContext) {
 			super(RunControl.this, parent == null ? new IDMContext[0] : new IDMContext[] { parent }, props);
@@ -481,7 +482,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 							{
 								// Only after completion of those preprocessing do 
 								// we fire the event.
-								getSession().dispatchEvent(dmc.createSuspendedEvent(stateChangeReason, params),
+								if (dmc.suspendEventsEnabled())
+									getSession().dispatchEvent(dmc.createSuspendedEvent(stateChangeReason, params),
 										RunControl.this.getProperties());
 							}
 							dmc.clearDisabledRanges();
@@ -495,6 +497,15 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				preprocessOnSuspend(dmc, latestPC, preprocessDrm);
 			}
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
+		}
+
+		protected boolean suspendEventsEnabled() {
+			return suspendEventsEnabled ;
+		}
+		
+		protected void setSuspendEventsEnabled(boolean enabled)
+		{
+			suspendEventsEnabled = enabled;
 		}
 
 		protected void clearDisabledRanges() {
@@ -1372,76 +1383,85 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	 *            DataRequestMonitor whose result indicates whether to honor
 	 *            the suspend.
 	 */
-	protected void preprocessOnSuspend(ExecutionDMC dmc, String pc,
-			DataRequestMonitor<Boolean> drm) {
+	protected void preprocessOnSuspend(final ExecutionDMC dmc, final String pc,
+			final DataRequestMonitor<Boolean> drm) {
 		
 		assert getExecutor().isInExecutorThread();
-		
-		Breakpoints bpService = getService(Breakpoints.class);
-		Registers regService = getService(Registers.class);
-		String pcString = pc;
 
-		if (pc == null) {
-			// read PC register
-			try {
-				pcString = regService.getRegisterValue(dmc, getTargetEnvironmentService().getPCRegisterID());
-			} catch (CoreException e) {
-				drm.setStatus(new Status(Status.ERROR, EDCDebugger.PLUGIN_ID, null, e));
-				drm.done();
+		asyncExec(new Runnable() {
+			
+			public void run() {
+				try {
+					Breakpoints bpService = getService(Breakpoints.class);
+					Registers regService = getService(Registers.class);
+					String pcString = pc;
+
+					if (pc == null) {
+						// read PC register
+						pcString = regService.getRegisterValue(dmc, getTargetEnvironmentService().getPCRegisterID());
+					}
+
+					dmc.setPC(pcString);
+
+					// This check is to speed up handling of suspend due to
+					// other reasons such as "step".
+					// The TCF agents should always report the
+					// "stateChangeReason" as BREAKPOINT when a breakpoint
+					// is hit.
+
+					if (dmc.getStateChangeReason() != StateChangeReason.BREAKPOINT) {
+						drm.setData(true);
+						drm.done();
+						return;
+					}
+
+					if (!bpService.usesTCFBreakpointService()) {
+						// generic software breakpoint is used.
+						// We need to move PC back to the breakpoint
+						// instruction.
+						long pcValue;
+
+						pcValue = Long.valueOf(pcString, 16);
+						pcValue -= getTargetEnvironmentService()
+								.getBreakpointInstruction(dmc, new Addr64(pcString, 16)).length;
+						pcString = Long.toHexString(pcValue);
+
+						// Stopped but not due to breakpoint set by debugger.
+						// For instance, some Windows DLL has "int 3"
+						// instructions in it.
+						// 
+						if (bpService.findBreakpoint(new Addr64(pcString, 16)) != null) {
+							// Now adjust PC register.
+							regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), pcString);
+							dmc.setPC(pcString);
+						}
+					}
+
+					// check if a conditional breakpoint (must be a user bp) is hit
+					//
+					BreakpointDMData bp = bpService.findUserBreakpoint(new Addr64(pcString, 16));
+					if (bp != null) {
+						// evaluate the condition
+						bpService.evaluateBreakpointCondition(dmc, bp, drm);
+					} else {
+						drm.setData(true);
+						drm.done();
+					}
+				} catch (CoreException e) {
+					Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), null, e);
+					EDCDebugger.getMessageLogger().log(s);
+					drm.setStatus(s);
+					drm.done();
+				}
+				if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null, drm.getData()); }
 			}
-		}
-
-		dmc.setPC(pcString);
-
-		// This check is to speed up handling of suspend due to
-		// other reasons such as "step".
-		// The TCF agents should always report the
-		// "stateChangeReason" as BREAKPOINT when a breakpoint
-		// is hit.
-
-		if (dmc.getStateChangeReason() != StateChangeReason.BREAKPOINT) {
-			drm.setData(true);
-			drm.done();
-			return;
-		}
-
-		if (!bpService.usesTCFBreakpointService()) {
-			// generic software breakpoint is used.
-			// We need to move PC back to the breakpoint
-			// instruction.
-			long pcValue;
-
-			pcValue = Long.valueOf(pcString, 16);
-			pcValue -= getTargetEnvironmentService()
-					.getBreakpointInstruction(dmc, new Addr64(pcString, 16)).length;
-			pcString = Long.toHexString(pcValue);
-
-			// Stopped but not due to breakpoint set by debugger.
-			// For instance, some Windows DLL has "int 3"
-			// instructions in it.
-			// 
-			if (bpService.findBreakpoint(new Addr64(pcString, 16)) != null) {
-				// Now adjust PC register.
-				regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), pcString);
-				dmc.setPC(pcString);
-			}
-		}
-
-		// check if a conditional breakpoint (must be a user bp) is
-		// hit
-		//
-		BreakpointDMData bp = bpService.findUserBreakpoint(new Addr64(pcString, 16));
-		if (bp != null) {
-			// evaluate the condition
-			bpService.evaluateBreakpointCondition(dmc, bp, drm);
-		} else {
-			drm.setData(true);
-			drm.done();
-		}
+			
+		}, drm);
 	}
 
 	public void resume(IExecutionDMContext context, final RequestMonitor rm) {
 		if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, MessageFormat.format("resume context {0}", context)); }
+		System.out.println("resume(IExecutionDMContext context, final RequestMonitor rm");
 
 		if (!(context instanceof ExecutionDMC)) {
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, MessageFormat.format(
@@ -1455,6 +1475,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 			@Override
 			protected void handleSuccess() {
+				System.out.println("dmc.resume(rm)");
 				dmc.resume(rm);
 				if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null, MessageFormat.format("resume() done on context {0}", dmc)); }
 			}
@@ -1496,7 +1517,14 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 					protected void handleSuccess() {
 						// Now step over the instruction
 						//
+						dmc.setSuspendEventsEnabled(false);
 						dmc.singleStep(true, new RequestMonitor(getExecutor(), drm) {
+							@Override
+							protected void handleCompleted() {
+								dmc.setSuspendEventsEnabled(true);
+								super.handleCompleted();
+							}
+
 							@Override
 							protected void handleSuccess() {
 								// At this point the single instruction
@@ -1536,7 +1564,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 
 	public void step(final IExecutionDMContext context, final StepType finalStepType, final RequestMonitor rm) {
 
-		EDCDebugger.execute(new Runnable() {
+		asyncExec(new Runnable() {
 			
 			public void run() {		
 				
@@ -1671,7 +1699,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 			if (EDCTrace.RUN_CONTROL_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 }
 			
-		});
+		}, rm);
 	}
 
 	private void stepOut(final ExecutionDMC dmc, IAddress pcAddress, final RequestMonitor rm) {
@@ -2624,7 +2652,15 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		if (! newPC.equals(dmc.getPC())) {
 			// Hmm, this interface should report status.
-			regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), newPC);
+			try {
+				regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), newPC);
+			} catch (CoreException e) {
+				Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error adjusting the PC register", e);
+				EDCDebugger.getMessageLogger().log(s);
+				rm.setStatus(s);
+				rm.done();
+				return;
+			}
 
 			// udpate cached PC.
 			dmc.setPC(newPC);

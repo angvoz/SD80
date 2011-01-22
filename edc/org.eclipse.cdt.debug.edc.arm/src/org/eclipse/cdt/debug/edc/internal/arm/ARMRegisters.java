@@ -19,6 +19,7 @@ import java.util.Map;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.CoreException;
 
 public class ARMRegisters extends Registers {
 
@@ -199,7 +200,7 @@ public class ARMRegisters extends Registers {
 	}
 
 	@Override
-	protected List<RegisterGroupDMC> createGroupsForContext(final IEDCExecutionDMC ctx) {
+	protected List<RegisterGroupDMC> createGroupsForContext(final IEDCExecutionDMC ctx) throws CoreException {
 
 		List<RegisterGroupDMC> groups = super.createGroupsForContext(ctx);
 		if (groups.size() > 0)
@@ -216,7 +217,7 @@ public class ARMRegisters extends Registers {
 	}
 
 	@Override
-	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) {
+	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) throws CoreException {
 
 		List<RegisterDMC> registers = super.createRegistersForGroup(registerGroupDMC);
 		if (registers.size() > 0)

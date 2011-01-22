@@ -25,6 +25,7 @@ import org.eclipse.cdt.dsf.debug.service.IRegisters.IBitFieldDMData;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterGroupDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.CoreException;
 import org.junit.Test;
 
 public class RegisterView extends BaseLaunchTest {
@@ -90,10 +91,15 @@ public class RegisterView extends BaseLaunchTest {
 		final IRegisterGroupDMContext contextHolder[] = { null };
 		TestUtils.wait(new Condition() {
 			public boolean isConditionValid() {
-				IRegisterGroupDMContext[] regGroups = regService.getGroupsForContext(threadExeDMC);
-				if (regGroups.length > 0) {
-					contextHolder[0] = regGroups[0];
-					return true;
+				try {
+					IRegisterGroupDMContext[] regGroups = regService.getGroupsForContext(threadExeDMC);
+					if (regGroups.length > 0) {
+						contextHolder[0] = regGroups[0];
+						return true;
+					}
+				} catch (CoreException e) {
+					e.printStackTrace();
+					return false;
 				}
 
 				return false;

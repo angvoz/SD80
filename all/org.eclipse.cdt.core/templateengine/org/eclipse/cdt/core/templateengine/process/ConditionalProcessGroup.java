@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2008 Symbian Software Limited and others.
+ * Copyright (c) 2007, 2011 Symbian Software Limited and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  * Bala Torati (Symbian) - Initial API and implementation
+ * Christian Walther (walther@indel.ch) [333537] - Macro expansion in conditional process groups
  *******************************************************************************/
 package org.eclipse.cdt.core.templateengine.process;
 
@@ -187,12 +188,8 @@ public class ConditionalProcessGroup {
 			return false;
 		}
 		Map<String, String> valueStore = template.getValueStore();
-		String processedLValue= lValue;
-		String processedRValue= rValue;
-		for(String value : macros) {
-			processedLValue = processedLValue.replaceAll(ProcessHelper.START_PATTERN + value + ProcessHelper.END_PATTERN, valueStore.get(value));
-			processedRValue = processedRValue.replaceAll(ProcessHelper.START_PATTERN + value + ProcessHelper.END_PATTERN, valueStore.get(value));
-		}
+		String processedLValue = ProcessHelper.getValueAfterExpandingMacros(lValue, macros, valueStore);
+		String processedRValue = ProcessHelper.getValueAfterExpandingMacros(rValue, macros, valueStore);
 		if(operator.equals(Operator.EQUALS)) {
 			return processedLValue.equals(processedRValue);
 		} else if(operator.equals(Operator.NOT_EQUALS)) {

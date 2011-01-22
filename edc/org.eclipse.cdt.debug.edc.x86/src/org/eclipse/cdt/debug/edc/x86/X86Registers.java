@@ -18,6 +18,7 @@ import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
+import org.eclipse.core.runtime.CoreException;
 
 public class X86Registers extends Registers {
 
@@ -37,7 +38,7 @@ public class X86Registers extends Registers {
 	}
 
 	@Override
-	protected List<RegisterGroupDMC> createGroupsForContext(IEDCExecutionDMC ctx) {
+	protected List<RegisterGroupDMC> createGroupsForContext(IEDCExecutionDMC ctx) throws CoreException {
 
 		List<RegisterGroupDMC> groups = super.createGroupsForContext(ctx);
 		if (groups.size() > 0)
@@ -53,7 +54,7 @@ public class X86Registers extends Registers {
 	}
 
 	@Override
-	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) {
+	protected List<RegisterDMC> createRegistersForGroup(RegisterGroupDMC registerGroupDMC) throws CoreException {
 
 		List<RegisterDMC> registers = super.createRegistersForGroup(registerGroupDMC);
 		if (registers.size() > 0)

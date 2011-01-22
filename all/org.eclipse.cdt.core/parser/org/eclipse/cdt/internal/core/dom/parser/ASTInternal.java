@@ -29,8 +29,8 @@ import org.eclipse.core.runtime.CoreException;
  */
 public class ASTInternal {
 	public static IASTNode[] getDeclarationsOfBinding(IBinding binding) {
-		if( binding instanceof ICPPInternalBinding ) {
-			return ((ICPPInternalBinding)binding).getDeclarations();
+		if (binding instanceof ICPPInternalBinding) {
+			return ((ICPPInternalBinding) binding).getDeclarations();
 		}
 		assert false;
 		return IASTNode.EMPTY_NODE_ARRAY;
@@ -57,7 +57,7 @@ public class ASTInternal {
 	
 	public static boolean isStatic(IFunction func, boolean resolveAll) {
 		if (func instanceof ICPPInternalFunction) {
-			return ((ICPPInternalFunction)func).isStatic(resolveAll);
+			return ((ICPPInternalFunction) func).isStatic(resolveAll);
 		}
 		if (func instanceof ICInternalFunction) {
 			return ((ICInternalFunction) func).isStatic(resolveAll);
@@ -78,13 +78,11 @@ public class ASTInternal {
 			ICPPInternalBinding ib= (ICPPInternalBinding) binding;
 			decls= ib.getDeclarations();
 			def= ib.getDefinition();
-		}
-		else if (binding instanceof ICInternalBinding) {
+		} else if (binding instanceof ICInternalBinding) {
 			ICInternalBinding ib= (ICInternalBinding) binding;
 			decls= ib.getDeclarations();
 			def= ib.getDefinition();
-		}
-		else {
+		} else {
 			return null;
 		}
 		if (requireDefinition && def == null) {
@@ -92,14 +90,14 @@ public class ASTInternal {
 		}
 		String filePath= null;
 		if (def != null) {
-			if ( (filePath= isPartOfSource(filePath, def)) == null) {
+			if ((filePath= isPartOfSource(filePath, def)) == null) {
 				return null;
 			}
 		}
 		if (decls != null) {
 			for (final IASTNode node : decls) {
 				if (node != null) {
-					if ( (filePath= isPartOfSource(filePath, node)) == null) {
+					if ((filePath= isPartOfSource(filePath, node)) == null) {
 						return null;
 					}
 				}
@@ -135,13 +133,11 @@ public class ASTInternal {
 			ICPPInternalBinding ib= (ICPPInternalBinding) binding;
 			decls= ib.getDeclarations();
 			def= ib.getDefinition();
-		}
-		else if (binding instanceof ICInternalBinding) {
+		} else if (binding instanceof ICInternalBinding) {
 			ICInternalBinding ib= (ICInternalBinding) binding;
 			decls= ib.getDeclarations();
 			def= ib.getDefinition();
-		}
-		else {
+		} else {
 			return null;
 		}
 		String filePath= null;

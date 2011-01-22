@@ -59,10 +59,13 @@ public class Interpreter {
 		reset();
 		while (instructionCounter < instructions.length && !fStopped) {
 			Instruction instruction = instructions[instructionCounter++];
-			Interpreter old = instruction.fInterpreter;
-			instruction.setInterpreter(this);
-			instruction.execute();
-			instruction.setInterpreter(old);
+			synchronized(instruction)
+			{
+				Interpreter old = instruction.fInterpreter;
+				instruction.setInterpreter(this);
+				instruction.execute();
+				instruction.setInterpreter(old);
+			}
 		}
 	}
 

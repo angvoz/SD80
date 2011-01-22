@@ -51,6 +51,9 @@ public class NDKPreferencePage extends PreferencePage implements IWorkbenchPrefe
 		
 		text = new Text(grpNdkLocation, SWT.BORDER);
 		text.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		String ndkLoc = NDKManager.getNDKLocation();
+		if (ndkLoc != null)
+			text.setText(ndkLoc);
 		
 		Button button = new Button(grpNdkLocation, SWT.NONE);
 		button.addSelectionListener(new SelectionAdapter() {

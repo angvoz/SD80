@@ -204,6 +204,48 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
+	 * Test ICConfigurationDescription API (getters and setters).
+	 */
+	public void testConfigurationDescription_WorkspaceProviders() throws Exception {
+		ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
+		ILanguageSettingsProvider extensionProvider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+
+		{
+			// set provider taken from extension
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+			providers.add(extensionProvider);
+			cfgDescription.setLanguageSettingProviders(providers);
+			// doublecheck it got there
+			List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
+			assertEquals(1,cfgProviders.size());
+			ILanguageSettingsProvider provider = cfgProviders.get(0);
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_NAME, provider.getName());
+		}
+		
+		{
+			// replace workspace provider with mock one
+			List<ILanguageSettingsProvider> providers = new ArrayList(LanguageSettingsManager.getWorkspaceProviders());
+			assertTrue(providers.contains(extensionProvider));
+			providers.remove(extensionProvider);
+			ILanguageSettingsProvider userProvider = new MockProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID, PROVIDER_NAME_1, null);
+			providers.add(userProvider);
+			LanguageSettingsManager.setUserDefinedProviders(providers);
+			// doublecheck it got there
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			assertEquals(PROVIDER_NAME_1, provider.getName());
+		}
+		
+		{
+			// make sure configuration now uses the new provider
+			List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
+			assertEquals(1,cfgProviders.size());
+			ILanguageSettingsProvider provider = cfgProviders.get(0);
+			assertEquals(PROVIDER_NAME_1, provider.getName());
+		}
+		
+	}
+
+	/**
 	 * Test various cases of ill-defined providers.
 	 */
 	public void testRudeProviders() throws Exception {

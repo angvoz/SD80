@@ -82,7 +82,7 @@ import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
  *@noextend This class is not intended to be subclassed by clients.
  */
 public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
-	private static final String WORKSPACE_PREFERENCE_PAGE = "org.eclipse.cdt.make.ui.preferences.BuildSettings"; //$NON-NLS-1$
+	private static final String WORKSPACE_PREFERENCE_PAGE = "org.eclipse.cdt.ui.preferences.BuildSettingProperties"; //$NON-NLS-1$
 	
 	private static final int[] DEFAULT_CONFIGURE_SASH_WEIGHTS = new int[] { 50, 50 };
 

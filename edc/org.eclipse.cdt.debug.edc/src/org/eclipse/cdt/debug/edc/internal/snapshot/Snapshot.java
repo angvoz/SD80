@@ -132,6 +132,7 @@ public class Snapshot extends PlatformObject {
 		return ("(" + IDsfService.PROP_SESSION_ID + "=" + sessionId + ")").intern(); //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void open(DsfSession session) {
 		ServiceReference[] references;
 		BufferedInputStream stream = null;
@@ -167,6 +168,7 @@ public class Snapshot extends PlatformObject {
         to call done() on the given monitor. Accepts null, indicating that no progress should be
         reported and that the operation cannot be canceled.
 	 */
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public void writeSnapshotData(IProgressMonitor monitor) throws Exception{
 		try {
 			ServiceReference[] references = EDCDebugger.getBundleContext().getServiceReferences(

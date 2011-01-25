@@ -33,7 +33,6 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
-import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -61,7 +60,6 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 public class SnapshotUtils extends PlatformObject {
 
@@ -496,14 +494,8 @@ public class SnapshotUtils extends PlatformObject {
 			if (!album.isLoaded()){
 				album.loadAlbum(false);
 			}
-		} catch (ParserConfigurationException e1) {
-			e1.printStackTrace();
-			return false;
-		} catch (SAXException e1) {
-			e1.printStackTrace();
-			return false;
-		} catch (IOException e1) {
-			e1.printStackTrace();
+		} catch (Exception e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
 			return false;
 		}
 		
@@ -524,27 +516,30 @@ public class SnapshotUtils extends PlatformObject {
 				proxyLaunchConfig = proxyLaunchConfigWC.doSave();
 				
 			} catch (CoreException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				EDCDebugger.getMessageLogger().logError(null, e);
 			}
 
 		}
 		
-		final ILaunchConfiguration finalProxyLC = proxyLaunchConfig;
-		Job launchJob = new Job("Launching " + albumPath.toFile().getName()) {
+		if (proxyLaunchConfig != null)
+		{
+			final ILaunchConfiguration finalProxyLC = proxyLaunchConfig;
+			Job launchJob = new Job("Launching " + albumPath.toFile().getName()) {
 
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				try {
-					finalProxyLC.launch(ILaunchManager.DEBUG_MODE, new NullProgressMonitor(), false, true);
-				} catch (CoreException e) {
-					EDCDebugger.getMessageLogger().logError(null, e);
-					return Status.CANCEL_STATUS;
+				@Override
+				protected IStatus run(IProgressMonitor monitor) {
+					try {
+						finalProxyLC.launch(ILaunchManager.DEBUG_MODE, new NullProgressMonitor(), false, true);
+					} catch (CoreException e) {
+						EDCDebugger.getMessageLogger().logError(null, e);
+						return Status.CANCEL_STATUS;
+					}
+					return Status.OK_STATUS;
 				}
-				return Status.OK_STATUS;
-			}
-		};
-		launchJob.schedule();
+			};
+			launchJob.schedule();
+		}
+		
 		return false;
 	}
 	

@@ -34,6 +34,7 @@ public class MemoryView extends BaseLaunchTest {
 
 	@Test
 	public void testMemoryView() throws Exception {
+		TestUtils.showDebugPerspective();
 		final EDCLaunch launch = createLaunch();
 		assertNotNull(launch);
 		final Addr32 addr32 = new Addr32(0x405400);

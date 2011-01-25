@@ -49,6 +49,7 @@ public class SnapshotTests extends BaseLaunchTest {
 		if (!HostOS.IS_WIN32)
 			return;
 		testComplete = false;
+		TestUtils.showDebugPerspective();
 		EDCLaunch launch = createLaunch();
 		assertNotNull(launch);
 		final DsfSession session = waitForSession(launch);
@@ -99,6 +100,8 @@ public class SnapshotTests extends BaseLaunchTest {
 				return testComplete;
 			}
 		});
+		
+		TestUtils.terminateLaunch(launch);
 		
 	}
 

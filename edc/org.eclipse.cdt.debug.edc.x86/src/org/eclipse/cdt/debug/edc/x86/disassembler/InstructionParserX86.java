@@ -401,68 +401,73 @@ public class InstructionParserX86 {
 		}
 
 		assert opc != null;
+		
+		if (opc != null)
+		{
+			if (opc.needModRM() && modRM == null) {
+				modRM = getModRM(codeBuffer.get());
+			}
 
-		if (opc.needModRM() && modRM == null) {
-			modRM = getModRM(codeBuffer.get());
-		}
+			// Check which operand should be used to determine size suffix.
+			if (opc.getName().endsWith(OpcodeX86.SIZE_FLAG_SOURCE))
+				honorSrcSize = true;
 
-		// Check which operand should be used to determine size suffix.
-		if (opc.getName().endsWith(OpcodeX86.SIZE_FLAG_SOURCE))
-			honorSrcSize = true;
+			// Parse operands one by one.
+			//
+			String[] operandDescs = opc.getOperandDescriptors();
+			if (operandDescs != null) {
+				int opCnt = operandDescs.length;
+				String opr;
 
-		// Parse operands one by one.
-		//
-		String[] operandDescs = opc.getOperandDescriptors();
-		if (operandDescs != null) {
-			int opCnt = operandDescs.length;
-			String opr;
+				operandStrings = new String[opCnt];
+				for (int i = 0; i < opCnt; i++) {
+					// Default. These will be set in parsing the operand.
+					isMemoryOperand = false;
+					operandSize = 32;
 
-			operandStrings = new String[opCnt];
-			for (int i = 0; i < opCnt; i++) {
-				// Default. These will be set in parsing the operand.
-				isMemoryOperand = false;
-				operandSize = 32;
+					opr = parseOperand(operandDescs[i]);
 
-				opr = parseOperand(operandDescs[i]);
+					if (isMemoryOperand) {
+						// check if there is segment-override prefix.
+						String seg = getSegmentRegisterFromPrefix();
+						if (seg != null)
+							opr = seg + ":" + opr;
+					}
 
-				if (isMemoryOperand) {
-					// check if there is segment-override prefix.
-					String seg = getSegmentRegisterFromPrefix();
-					if (seg != null)
-						opr = seg + ":" + opr;
-				}
+					operandStrings[i] = opr;
 
-				operandStrings[i] = opr;
-
-				// determine the operand size suffix
-				if (!honorSrcSize && i == 0 || // honor target, the first
-						// operand
-						honorSrcSize && i > 0) // honor source, the second
-				// operand
-				{
-					// Don't set suffix if the determining operand is register
-					// operand.
-					// Example case: "imul OD_Ev":
-					// f7 ea imul %edx
-					// f7 ad 74 fb ff ff imull -0x48c(%ebp)
-					//
-					// Exception case:
-					// The target register operand determines the size suffix.
-					// "0f be c2", "movsbl %dl,%eax",
-					// "66 0f be 82 00 b0 2c", "movsbw 0x82cb000(%edx),%ax",
-					//
-					if (isMemoryOperand
-							|| AssemblyFormatterX86.sInstructionsSuffixFromRegisterOperand.contains(opc.getName()))
-						nameSizeSuffix = AssemblyFormatterX86.instructionNameSizeSuffix(operandSize);
+					// determine the operand size suffix
+					if (!honorSrcSize && i == 0 || // honor target, the first
+							// operand
+							honorSrcSize && i > 0) // honor source, the second
+					// operand
+					{
+						// Don't set suffix if the determining operand is register
+						// operand.
+						// Example case: "imul OD_Ev":
+						// f7 ea imul %edx
+						// f7 ad 74 fb ff ff imull -0x48c(%ebp)
+						//
+						// Exception case:
+						// The target register operand determines the size suffix.
+						// "0f be c2", "movsbl %dl,%eax",
+						// "66 0f be 82 00 b0 2c", "movsbw 0x82cb000(%edx),%ax",
+						//
+						if (isMemoryOperand
+								|| AssemblyFormatterX86.sInstructionsSuffixFromRegisterOperand.contains(opc.getName()))
+							nameSizeSuffix = AssemblyFormatterX86.instructionNameSizeSuffix(operandSize);
+					}
 				}
 			}
-		}
 
-		// Now printable output
-		//
-		ArrayList<Integer> instPrefixes = new ArrayList<Integer>(prefixes);
-		instPrefixes.removeAll(prefixesUsed);
-		return AssemblyFormatterX86.formatInstruction(instPrefixes, opc.getName(), nameSizeSuffix, operandStrings);
+			// Now printable output
+			//
+			ArrayList<Integer> instPrefixes = new ArrayList<Integer>(prefixes);
+			instPrefixes.removeAll(prefixesUsed);
+			return AssemblyFormatterX86.formatInstruction(instPrefixes, opc.getName(), nameSizeSuffix, operandStrings);
+		}
+		
+		return "";
 	}
 
 	private OpcodeX86 lookupOneByteOpcode(int opcodeID) throws CoreException {

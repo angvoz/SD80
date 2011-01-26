@@ -112,9 +112,6 @@ abstract public class EDCLaunch extends DsfLaunch {
 	private static final Map<String, EDCLaunch> launchSessions = Collections
 			.synchronizedMap(new HashMap<String, EDCLaunch>());
 
-	private static final Map<String, ICacheManager> cacheManagers = Collections
-		.synchronizedMap(new HashMap<String, ICacheManager>());
-
 	/**
 	 * Every EDC (DSF) session has a thread pool in which to delegate blocking
 	 * code to. See AbstractEDCService.asyncExec()
@@ -134,7 +131,6 @@ abstract public class EDCLaunch extends DsfLaunch {
 		executor = dsfExecutor;
 		session = DsfSession.startSession(executor, ownerID);
 		launchSessions.put(session.getId(), this);
-		cacheManagers.put(session.getId(), new CacheManager(session));
 		
 		threadPools.put(session.getId(), newThreadPool());
 	}
@@ -195,14 +191,6 @@ abstract public class EDCLaunch extends DsfLaunch {
 
 	public static EDCLaunch getLaunchForSession(String sessionID) {
 		return launchSessions.get(sessionID);
-	}
-
-	/**
-	 * Returns the ACPM cache manager for the given DSF session
-	 * @since 2.0
-	 */
-	public static ICacheManager getCacheManager(String sessionID) {
-		return cacheManagers.get(sessionID);
 	}
 
 	/**

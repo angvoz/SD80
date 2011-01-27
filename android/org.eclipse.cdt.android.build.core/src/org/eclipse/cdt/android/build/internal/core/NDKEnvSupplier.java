@@ -66,26 +66,14 @@ public class NDKEnvSupplier implements IConfigurationEnvironmentVariableSupplier
 	}
 	
 	private String findShellPath() {
-		// I'm giving MSYS precedence over Cygwin
+		// I'm giving MSYS precedence over Cygwin. I'm biased that way :)
+		// TODO using the default paths for now, need smarter ways to get at them
+		// Alternatively the user can add the bin to their path themselves.
 		File bin = new File("C:\\MinGW\\msys\\1.0\\bin");
 		if (bin.isDirectory()) {
-			// for now, need location of cygpath added to the path
-			String path = bin.getAbsolutePath();
-			try {
-				URL url = Activator.findFile(new Path("msys"));
-				if (url != null) {
-					File cygpathFile = new File(FileLocator.toFileURL(url).toURI());
-					path += ";" + cygpathFile.getAbsolutePath();
-				}
-			} catch (IOException e) {
-				Activator.log(e);
-			} catch (URISyntaxException e) {
-				Activator.log(e);
-			}
-			return path;
+			return bin.getAbsolutePath();
 		}
 		
-		// Add in the shell environment
 		bin = new File("C:\\cygwin\\bin");
 		if (bin.isDirectory())
 			return bin.getAbsolutePath();
@@ -97,6 +85,7 @@ public class NDKEnvSupplier implements IConfigurationEnvironmentVariableSupplier
 		String path = NDKManager.getNDKLocation();
 		
 		if (Platform.getOS().equals(Platform.OS_WIN32)) {
+			// Add in the path to the shell
 			String shellPath = findShellPath();
 			if (shellPath != null)
 				path = shellPath + ";" + path;

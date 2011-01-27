@@ -25,69 +25,53 @@ public class NDKEnvSupplier implements IConfigurationEnvironmentVariableSupplier
 
 	private static Map<String, IBuildEnvironmentVariable> envVars;
 	
-	private static class MyBuildEnvironmentVariable implements IBuildEnvironmentVariable {
-		private final String name;
-		private final String value;
-		private final int operation;
-		private final String delimiter;
-		
-		public MyBuildEnvironmentVariable(String name, String value, int operation, String delimiter) {
-			this.name = name;
-			this.value = value;
-			this.operation = operation;
-			this.delimiter = delimiter;
-			envVars.put(getName(), this);
-		}
-		
+	private static class NDKPathEnvironmentVariable implements IBuildEnvironmentVariable {
 		@Override
 		public String getName() {
-			return name;
+			return "PATH";
 		}
 		
 		@Override
 		public String getValue() {
-			return value;
+			String path = NDKManager.getNDKLocation();
+			
+			if (Platform.getOS().equals(Platform.OS_WIN32)) {
+				// Add in the path to the shell
+				String shellPath = findShellPath();
+				if (shellPath != null)
+					path = shellPath + ";" + path;
+			}
+				
+			return path;
+		}
+		
+		private String findShellPath() {
+			// I'm giving MSYS precedence over Cygwin. I'm biased that way :)
+			// TODO using the default paths for now, need smarter ways to get at them
+			// Alternatively the user can add the bin to their path themselves.
+			File bin = new File("C:\\MinGW\\msys\\1.0\\bin");
+			if (bin.isDirectory()) {
+				return bin.getAbsolutePath();
+			}
+			
+			bin = new File("C:\\cygwin\\bin");
+			if (bin.isDirectory())
+				return bin.getAbsolutePath();
+			
+			return null;
 		}
 		
 		@Override
 		public int getOperation() {
-			return operation;
+			return ENVVAR_PREPEND;
 		}
 		
 		@Override
 		public String getDelimiter() {
-			return delimiter;
+			return Platform.getOS().equals(Platform.OS_WIN32) ? ";" : ":";
 		}
 	}
 	
-	private String findShellPath() {
-		// I'm giving MSYS precedence over Cygwin. I'm biased that way :)
-		// TODO using the default paths for now, need smarter ways to get at them
-		// Alternatively the user can add the bin to their path themselves.
-		File bin = new File("C:\\MinGW\\msys\\1.0\\bin");
-		if (bin.isDirectory()) {
-			return bin.getAbsolutePath();
-		}
-		
-		bin = new File("C:\\cygwin\\bin");
-		if (bin.isDirectory())
-			return bin.getAbsolutePath();
-		
-		return null;
-	}
-	
-	private String getPath() {
-		String path = NDKManager.getNDKLocation();
-		
-		if (Platform.getOS().equals(Platform.OS_WIN32)) {
-			// Add in the path to the shell
-			String shellPath = findShellPath();
-			if (shellPath != null)
-				path = shellPath + ";" + path;
-		}
-			
-		return path;
-	}
 	
 	private synchronized void init() {
 		if (envVars != null)
@@ -95,17 +79,34 @@ public class NDKEnvSupplier implements IConfigurationEnvironmentVariableSupplier
 		
 		envVars = new HashMap<String, IBuildEnvironmentVariable>();
 		
-		new MyBuildEnvironmentVariable(
-				"PATH",
-				getPath(),
-				IBuildEnvironmentVariable.ENVVAR_PREPEND,
-				Platform.getOS().equals(Platform.OS_WIN32) ? ";" : ":");
-		if (Platform.getOS().equals(Platform.OS_WIN32))
-			new MyBuildEnvironmentVariable(
-					"CYGWIN",
-					"nodosfilewarning",
-					IBuildEnvironmentVariable.ENVVAR_REPLACE,
-					null);
+		IBuildEnvironmentVariable path = new NDKPathEnvironmentVariable();
+		envVars.put(path.getName(), path);
+		
+		if (Platform.getOS().equals(Platform.OS_WIN32)) {
+			IBuildEnvironmentVariable cygwin = new IBuildEnvironmentVariable() {
+				@Override
+				public String getName() {
+					return "CYGWIN";
+				}
+				
+				@Override
+				public String getValue() {
+					return "nodosfilewarning";
+				}
+				
+				@Override
+				public int getOperation() {
+					return IBuildEnvironmentVariable.ENVVAR_REPLACE;
+				}
+				
+				@Override
+				public String getDelimiter() {
+					return null;
+				}
+			};
+			
+			envVars.put(cygwin.getName(), cygwin);
+		}
 	}
 	
 	@Override

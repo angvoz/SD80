@@ -102,7 +102,7 @@ public class FormatExtensionManager implements IVariableFormatManager {
 	private FormatExtensionManager(IVariableFormatProviderChooser chooser) {
 		readProviders();
 		setFormatProviderChooser(chooser);
-		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		IEclipsePreferences scope = InstanceScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
 		enabled = scope.getBoolean(VARIABLE_FORMATS_ENABLED, FormatExtensionManager.VARIABLE_FORMATS_ENABLED_DEFAULT);
 	}
 

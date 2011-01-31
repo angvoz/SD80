@@ -12,7 +12,6 @@ package org.eclipse.cdt.debug.edc.internal;
 
 import org.eclipse.cdt.scripting.ScriptingPlugin;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
-import org.eclipse.core.runtime.preferences.IScopeContext;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.internal.core.IInternalDebugCoreConstants;
@@ -28,10 +27,10 @@ public class EDCApplication implements IApplication {
 		
 		running = true;
 	
-	 	IEclipsePreferences prefs = ((IScopeContext) new InstanceScope()).getNode(ScriptingPlugin.PLUGIN_ID);
+	 	IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(ScriptingPlugin.PLUGIN_ID);
 	 	prefs.putBoolean(ScriptingPlugin.SCRIPTING_ENABLED, true);
 
-	 	prefs = ((IScopeContext) new InstanceScope()).getNode(DebugPlugin.getUniqueIdentifier());
+	 	prefs = InstanceScope.INSTANCE.getNode(DebugPlugin.getUniqueIdentifier());
 	 	prefs.putBoolean(IInternalDebugCoreConstants.PREF_ENABLE_STATUS_HANDLERS, false);
 
 	 	ScriptingPlugin.getBundleContext();

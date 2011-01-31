@@ -948,7 +948,7 @@ public class Album extends PlatformObject implements IAlbum {
 	}
 
 	public static void setVariableCaptureDepth(int newSetting) {
-		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		IEclipsePreferences scope = InstanceScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
 		scope.putInt(PREF_VARIABLE_CAPTURE_DEPTH, newSetting);
 		try {
 			scope.flush();
@@ -963,7 +963,7 @@ public class Album extends PlatformObject implements IAlbum {
 	}
 
 	public static void setSnapshotCreationControl(String newSetting) {
-		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		IEclipsePreferences scope = InstanceScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
 		scope.put(PREF_CREATION_CONTROL, newSetting);
 		try {
 			scope.flush();

@@ -106,7 +106,7 @@ public abstract class AbstractStringFormatter implements IVariableFormatProvider
 	 * @return size in characters
 	 */
 	protected int getMaximumLength() {
-		IEclipsePreferences scope = new InstanceScope().getNode("org.eclipse.debug.ui");
+		IEclipsePreferences scope = InstanceScope.INSTANCE.getNode("org.eclipse.debug.ui");
 		return scope.getInt("org.eclipse.debug.ui.max_detail_length", 256);
 	}
 	

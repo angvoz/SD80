@@ -21,7 +21,7 @@ public class EDCDebugPreferenceInitializer extends
 
 	@Override
 	public void initializeDefaultPreferences() {
-		IEclipsePreferences node = new DefaultScope().getNode(EDCDebugger.PLUGIN_ID);
+		IEclipsePreferences node = DefaultScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
 		node.putInt(Album.PREF_VARIABLE_CAPTURE_DEPTH, 5);
 		node.put(Album.PREF_CREATION_CONTROL, Album.CREATE_MANUAL);
 		node.putBoolean(FormatExtensionManager.VARIABLE_FORMATS_ENABLED, FormatExtensionManager.VARIABLE_FORMATS_ENABLED_DEFAULT);

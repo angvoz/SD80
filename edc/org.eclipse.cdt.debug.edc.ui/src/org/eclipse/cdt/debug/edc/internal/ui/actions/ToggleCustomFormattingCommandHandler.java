@@ -67,7 +67,7 @@ public class ToggleCustomFormattingCommandHandler extends AbstractHandler {
 		Command command = event.getCommand();
 		boolean enabled = HandlerUtil.toggleCommandState(command);
 		FormatExtensionManager.instance().setEnabled(!enabled );
-		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		IEclipsePreferences scope = InstanceScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
 		scope.putBoolean(FormatExtensionManager.VARIABLE_FORMATS_ENABLED, !enabled);
 		try {
 			scope.flush();

@@ -33,7 +33,7 @@ import org.osgi.framework.ServiceReference;
  * @since 2.0
  */
 public class EDCServicesTracker {
-    
+	
     private static String getServiceFilter(String sessionId) {
         return ("(" + IDsfService.PROP_SESSION_ID + "=" + sessionId + ")").intern();   //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$
     }
@@ -72,8 +72,10 @@ public class EDCServicesTracker {
     private volatile boolean fDisposed = false;
     private final BundleContext fBundleContext;
 
-    private final Map<ServiceKey,ServiceReference> fServiceReferences = Collections.synchronizedMap(new HashMap<ServiceKey,ServiceReference>());
-    private final Map<ServiceReference,Object> fServices = Collections.synchronizedMap(new HashMap<ServiceReference,Object>());
+    @SuppressWarnings("rawtypes")
+	private final Map<ServiceKey,ServiceReference> fServiceReferences = Collections.synchronizedMap(new HashMap<ServiceKey,ServiceReference>());
+    @SuppressWarnings("rawtypes")
+	private final Map<ServiceReference,Object> fServices = Collections.synchronizedMap(new HashMap<ServiceReference,Object>());
     private final String fServiceFilter;
 
     private final ServiceListener fListner = new ServiceListener() {
@@ -94,7 +96,8 @@ public class EDCServicesTracker {
         }
     };
     
-    private void handleUnregisterEvent(ServiceEvent event) {
+    @SuppressWarnings("rawtypes")
+	private void handleUnregisterEvent(ServiceEvent event) {
     	synchronized (fServiceReferences)
     	{
             for (Iterator<Map.Entry<ServiceKey, ServiceReference>> itr = fServiceReferences.entrySet().iterator(); itr.hasNext();) {
@@ -188,7 +191,7 @@ public class EDCServicesTracker {
      * session-ID 
      * @return instance of the desired service, null if not found
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public <V> V getService(Class<V> serviceClass, String filter) {
         ServiceReference serviceRef = getServiceReference(serviceClass, filter);
         if (serviceRef == null) {
@@ -214,7 +217,8 @@ public class EDCServicesTracker {
         doDispose();
     }
 
-    private void doDispose() {
+    @SuppressWarnings("rawtypes")
+	private void doDispose() {
     	synchronized (fServices)
     	{
             try {

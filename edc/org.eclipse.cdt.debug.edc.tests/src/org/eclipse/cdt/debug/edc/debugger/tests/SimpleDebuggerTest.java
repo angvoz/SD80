@@ -59,7 +59,6 @@ public abstract class SimpleDebuggerTest {
 				return;
 			}
 		}
-		TestUtils.disableDebugPerspectiveSwitchPrompt();
 		launch = TestUtils.createLaunchForAlbum(getAlbumName());
 		Assert.assertNotNull(launch);
 		session = TestUtils.waitForSession(launch);

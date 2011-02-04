@@ -8,6 +8,7 @@
  * Contributors:
  *     Anton Leherbauer (Wind River Systems) - initial API and implementation
  *     Andrew Ferguson (Symbian)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.ui.tests.text;
 
@@ -38,7 +39,6 @@ import org.eclipse.cdt.internal.formatter.align.Alignment;
  * @since 4.0
  */
 public class CodeFormatterTest extends BaseUITestCase {
-
 	private Map<String, Object> fOptions;
 	private Map<String, String> fDefaultOptions;
 
@@ -72,10 +72,10 @@ public class CodeFormatterTest extends BaseUITestCase {
 		edit.apply(document);
 		assertEquals(expected, document.get());
 	}
-	
+
 	//void foo(int arg);
 	//void foo(int arg){}
-	
+
 	//void foo (int arg);
 	//void foo (int arg) {
 	//}
@@ -132,12 +132,12 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testIndentConfusionByCastExpression_Bug191021() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//int
 	//var;
 	//int*
 	//pvar;
-	
+
 	//int var;
 	//int* pvar;
 	public void testSpaceBetweenTypeAndIdentifier_Bug194603() throws Exception {
@@ -145,7 +145,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//int a = sizeof(     int)    ;
-	
+
 	//int a = sizeof(int);
 	public void testSizeofExpression_Bug195246() throws Exception {
 		assertFormatterResult();
@@ -153,7 +153,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 
 	//int x;
 	//int a = sizeof     x    ;
-	
+
 	//int x;
 	//int a = sizeof x;
 	public void testSizeofExpression_Bug201330() throws Exception {
@@ -199,6 +199,45 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
+	//class ClassWithALongName {
+	//public:
+	//class Iterator {
+	//bool isDone();
+	//void next();
+	//};
+	//
+	//Iterator getIterator();
+	//};
+	//
+	//void test() {
+	//ClassWithALongName* variable_with_a_long_name;
+	//for (ClassWithALongName::Iterator iter_for_class_with_a_long_name = variable_with_a_long_name->getIterator(); !iter_for_class_with_a_long_name.isDone(); iter_for_class_with_a_long_name.next()) {
+	//}
+	//}
+
+	//class ClassWithALongName {
+	//public:
+	//    class Iterator {
+	//        bool isDone();
+	//        void next();
+	//    };
+	//
+	//    Iterator getIterator();
+	//};
+	//
+	//void test() {
+	//    ClassWithALongName* variable_with_a_long_name;
+	//    for (ClassWithALongName::Iterator
+	//            iter_for_class_with_a_long_name = variable_with_a_long_name->getIterator();
+	//            !iter_for_class_with_a_long_name.isDone();
+	//            iter_for_class_with_a_long_name.next()) {
+	//    }
+	//}
+	public void testForWithEmptyExpression_Bug280989() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
 	//#define MY private:
 	//
 	//class ClassA
@@ -218,16 +257,16 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//int verylooooooooooooooooooooooooooooooooooongname = 0000000000000000000000000000000;
-	
+
 	//int verylooooooooooooooooooooooooooooooooooongname =
 	//		0000000000000000000000000000000;
 	public void testLineWrappingOfInitializerExpression_Bug200961() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_ASSIGNMENT, Integer.toString(Alignment.M_COMPACT_SPLIT));
 		assertFormatterResult();
 	}
-	
+
 	//void functionWithLooooooooooooooooooooooooooooooooooooooooooooooooongName() throw(float);
-	
+
 	//void functionWithLooooooooooooooooooooooooooooooooooooooooooooooooongName()
 	//		throw (float);
 	public void testLineWrappingOfThrowSpecification_Bug200959() throws Exception {
@@ -238,7 +277,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//public:
 	//A();
 	//};
-	
+
 	//class A
 	//    {
 	//public:
@@ -255,7 +294,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//public:
 	//A();
 	//};
-	
+
 	//class A
 	//    {
 	//    public:
@@ -272,7 +311,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//public:
 	//A();
 	//};
-	
+
 	//class A
 	//    {
 	//    public:
@@ -334,7 +373,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//int main(int argc, char const int * argv[]) { try { for (int i = 1; i < argc; ++i) { } return 0; } catch (float e) { return 1; } catch (...) { return 2; } }
-	
+
 	//int main(int argc, char const int * argv[]) {
 	//	try {
 	//		for (int i = 1; i < argc; ++i) {
@@ -362,7 +401,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testMacroAsInitializer_Bug214354() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//#define break_start(); { int foo;
 	//#define break_end(); foo = 0; }
 	//
@@ -380,7 +419,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//    if(b == a)
 	//      indentation_remains();
 	//}
-	
+
 	//#define break_start(); { int foo;
 	//#define break_end(); foo = 0; }
 	//
@@ -401,18 +440,18 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testBracesInMacros_Bug217435() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//int a=1+2;
 	//int b= - a;
 	//int c =b ++/-- b;
-	
+
 	//int a = 1 + 2;
 	//int b = -a;
 	//int c = b++ / --b;
 	public void testWhitespaceSurroundingOperators() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//void f() {
 	//int *px= :: new int(  0 );
 	//int* py [] =  new   int [5 ] (0, 1,2,3, 4);
@@ -503,7 +542,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//class Example: public FooClass, public virtual BarClass {};
-	
+
 	//class Example:
 	//		public FooClass,
 	//		public virtual BarClass {
@@ -515,7 +554,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//class Example: public FooClass, public virtual BarClass {};
-	
+
 	//class Example:	public FooClass,
 	//				public virtual BarClass {
 	//};
@@ -541,12 +580,72 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
+	//class ClassWithALongName {
+	//public:
+	//ClassWithALongName* methodWithAQuiteLongName();
+	//};
+	//
+	//void test() {
+	//ClassWithALongName* variable_with_a_long_name = variable_with_a_long_name->methodWithAQuiteLongName();
+	//variable_with_a_long_name = variable_with_a_long_name->methodWithAQuiteLongName();
+	//}
+
+	//class ClassWithALongName {
+	//public:
+	//    ClassWithALongName* methodWithAQuiteLongName();
+	//};
+	//
+	//void test() {
+	//    ClassWithALongName* variable_with_a_long_name =
+	//            variable_with_a_long_name->methodWithAQuiteLongName();
+	//    variable_with_a_long_name =
+	//            variable_with_a_long_name->methodWithAQuiteLongName();
+	//}
+	public void testAssignment() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_ASSIGNMENT,
+				Integer.toString(Alignment.M_COMPACT_SPLIT));
+		assertFormatterResult();
+	}
+
+	//class ClassWithALongName {
+	//public:
+	//ClassWithALongName* methodWithALongName();
+	//ClassWithALongName* anotherMethodWithALongName();
+	//};
+	//
+	//void test() {
+	//ClassWithALongName* variable_with_a_long_name;
+	//ClassWithALongName* another_variable = variable_with_a_long_name->methodWithALongName()->anotherMethodWithALongName();
+	//}
+
+	//class ClassWithALongName {
+	//public:
+	//    ClassWithALongName* methodWithALongName();
+	//    ClassWithALongName* anotherMethodWithALongName();
+	//};
+	//
+	//void test() {
+	//    ClassWithALongName* variable_with_a_long_name;
+	//    ClassWithALongName* another_variable =
+	//            variable_with_a_long_name->methodWithALongName()
+	//                    ->anotherMethodWithALongName();
+	//}
+	public void testMemberAccess() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_ASSIGNMENT,
+				Integer.toString(Alignment.M_COMPACT_SPLIT));
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_MEMBER_ACCESS,
+				Integer.toString(Alignment.M_COMPACT_SPLIT));
+		assertFormatterResult();
+	}
+
 	//int foo(){try{}catch(...){}}
 	//float* bar();
 	//template<typename _CharT, typename _Traits>class basic_ios : public ios_base{public:
 	//  // Types:
 	//};
-	
+
 	//int
 	//foo()
 	//{
@@ -609,7 +708,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 		fOptions.putAll(DefaultCodeFormatterOptions.getWhitesmithsSettings().getMap());
 		assertFormatterResult();
 	}
-	
+
 	//enum Tthe3rdtestIds
 	//{
 	//ECommand1 = 0x6001,
@@ -644,7 +743,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//void f() { throw 42; }
-	
+
 	//void f() {
 	//	throw 42;
 	//}
@@ -658,7 +757,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//  // Comment
 	//  for(;;);
 	//}
-	
+
 	//struct {
 	//	int l;
 	//} s;
@@ -678,7 +777,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//  // Comment
 	//  for(;;);
 	//}
-	
+
 	//struct {
 	//	int e;
 	//} s;
@@ -698,7 +797,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//  // Comment
 	//  for(;;);
 	//}
-	
+
 	//struct {
 	//	int f;
 	//} s;
@@ -713,7 +812,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//int a = 0, b = 1, c = 2, d = 3;
-	
+
 	//int a = 0,b = 1,c = 2,d = 3;
 	public void testSpaceAfterCommaInDeclaratorList_Bug234915() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_AFTER_COMMA_IN_DECLARATOR_LIST, CCorePlugin.DO_NOT_INSERT);
@@ -721,7 +820,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//int a = 0,b = 1,c = 2,d = 3;
-	
+
 	//int a = 0, b = 1, c = 2, d = 3;
 	public void testSpaceAfterCommaInDeclaratorList2_Bug234915() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_AFTER_COMMA_IN_DECLARATOR_LIST, CCorePlugin.INSERT);
@@ -801,7 +900,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testNestedTemplatedArgument_Bug241058() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//#define TP_SMALLINT int32_t
 	//void foo(const TP_SMALLINT &intVal) { }
 	//void bar(const TP_SMALLINT intVal) { }
@@ -814,7 +913,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testPreserveSpaceInParameterDecl_Bug241967() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//#define MY_MACRO int a; \
 	//    int b; \
 	//    int c();
@@ -826,7 +925,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//		asdf();
 	//~asdf();
 	//};
-	
+
 	//#define MY_MACRO int a; \
 	//    int b; \
 	//    int c();
@@ -845,7 +944,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//void foo() {
 	//for(int i=0;i<50;++i){}
 	//}
-	
+
 	//void foo() {
 	//	for (int i = 0 ; i < 50 ; ++i) {
 	//	}
@@ -856,7 +955,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//char *b, * const a;
-	
+
 	//char *b, * const a;
 	public void testPreserveSpaceBetweenPointerModifierAndIdentifier_Bug243056() throws Exception {
 		assertFormatterResult();
@@ -1100,7 +1199,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testDotStarAndArrowStarOperators_Bug257700() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//void zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz1(unsigned char __attribute__((unused)) x, unsigned char __attribute__((unused)) y){;}
 
 	//void zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz1(
@@ -1111,7 +1210,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void test__attribute__InParameterDecl_Bug206271() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//#define assert(e) if(!(e)) printf("Failed assertion")
 	//void test(){assert(1 > 0);}
 
@@ -1145,7 +1244,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testPreserveSpaceBetweenNameAnd__attribute__Bug261967() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//extern "C" void f(int i, char c, float x);
 
 	//extern "C" void f(int i, char c, float x);
@@ -1176,12 +1275,12 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testFormatterProblemsWithTypename_Bug269590() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//void
 	//foo();
 	//int*
 	//bar();
-	
+
 	//void
 	//foo();
 	//int*
@@ -1317,7 +1416,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 
 	//#define new new(__FILE__, __LINE__)
 	//void func() {char* a = new    char[10];}
-	
+
 	//#define new new(__FILE__, __LINE__)
 	//void func() {
 	//	char* a = new char[10];
@@ -1328,7 +1427,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 
 	//#define MACRO(a) class b : public a
 	//MACRO(aClass){ int a;};
-	
+
 	//#define MACRO(a) class b : public a
 	//MACRO(aClass) {
 	//	int a;
@@ -1336,12 +1435,12 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testCompositeTypeSpecAsMacro_Bug298592() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//void f() {
 	//w_char* p   =  L"wide string literal";
 	//int x = 0;
 	//if (x == 0) x = 5;}
-	
+
 	//void f() {
 	//	w_char* p = L"wide string literal";
 	//	int x = 0;
@@ -1354,13 +1453,13 @@ public class CodeFormatterTest extends BaseUITestCase {
 
 	//#define INT (int)
 	//int i = INT 1;
-	
+
 	//#define INT (int)
 	//int i = INT 1;
 	public void testCastAsMacro_Bug285901() throws Exception {
 		assertFormatterResult();
 	}
-	
+
 	//PARENT_T sample={.a=1,.b={a[2]=1,.b.c=2}};
 
 	//PARENT_T sample = { .a = 1, .b = { a[2] = 1, .b.c = 2 } };
@@ -1370,7 +1469,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//void extend_terminal_bond_to_label(vector<atom_t> &atom, const vector<letters_t> &letters, int n_letters, const vector<bond_t> &bond, int n_bond, const vector<label_t> &label, int n_label, double avg, double maxh, double max_dist_double_bond);
-	
+
 	//void extend_terminal_bond_to_label(vector<atom_t> &atom, const vector<letters_t> &letters, int n_letters,
 	//                                   const vector<bond_t> &bond, int n_bond, const vector<label_t> &label, int n_label,
 	//                                   double avg, double maxh, double max_dist_double_bond);
@@ -1402,7 +1501,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	}
 
 	//void extend_terminal_bond_to_label(vector<atom_t> &atom, const vector<letters_t> &letters, int n_letters, const vector<bond_t> &bond, int n_bond, const vector<label_t> &label, int n_label, double avg, double maxh, double max_dist_double_bond);
-	
+
 	//void extend_terminal_bond_to_label(vector<atom_t> &atom,
 	//                                   const vector<letters_t> &letters,
 	//                                   int n_letters, const vector<bond_t> &bond,
@@ -1434,7 +1533,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//{ 1,2,     3,4 },
 	//        {1, 2,3, 4}
 	//	};
-	
+
 	//int table[][] = {
 	//		{ 1, 2, 3, 4 },
 	//		{ 1, 2, 3, 4 },
@@ -1445,7 +1544,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_JOIN_WRAPPED_LINES, DefaultCodeFormatterConstants.FALSE);
 		assertFormatterResult();
 	}
-	
+
 	//#define X() {  }
 	//void g() {
 	//	X();
@@ -1467,7 +1566,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_JOIN_WRAPPED_LINES, DefaultCodeFormatterConstants.FALSE);
 		assertFormatterResult();
 	}
-	
+
 	//void f() {
 	//double confidence = 0.316030 //
 	//- 0.016315 * C_Count //
@@ -1488,7 +1587,7 @@ public class CodeFormatterTest extends BaseUITestCase {
 				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
 		assertFormatterResult();
 	}
-	
+
 	//#define m() f()
 	//void f() {
 	//if (1) f();

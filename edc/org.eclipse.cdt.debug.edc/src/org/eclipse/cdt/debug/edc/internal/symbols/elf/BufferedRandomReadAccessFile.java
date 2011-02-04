@@ -220,16 +220,13 @@ public class BufferedRandomReadAccessFile implements
 	 */
 	public String readUTF() throws IOException {
 		try {
-			int consumed = 0;
 			short length = bigEndianBuffer.getShort();
-			consumed += 2;
 			StringBuilder sb = new StringBuilder();
 			while (length-- > 0) {
 				// TODO
 				int c = (bigEndianBuffer.get()) & 0xff;
 				if (c >= 0x80)
 					assert false;
-				consumed++;
 				sb.append(c);
 			}
 			return sb.toString();

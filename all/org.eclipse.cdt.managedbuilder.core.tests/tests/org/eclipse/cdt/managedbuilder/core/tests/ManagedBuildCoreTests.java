@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2010 Intel Corporation and others.
+ * Copyright (c) 2004, 2011 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -33,7 +33,6 @@ import org.eclipse.core.runtime.IConfigurationElement;
 
 
 public class ManagedBuildCoreTests extends TestCase {
-	private static final boolean boolVal = true;
 	private static IProjectType exeType;	
 	private static IProjectType libType;
 	private static IProjectType dllType;
@@ -53,7 +52,6 @@ public class ManagedBuildCoreTests extends TestCase {
 	 * definitions are loaded correctly. 
 	 */
 	public void testLoadManifest() throws Exception {
-		IProjectType[] projTypes = ManagedBuildManager.getDefinedProjectTypes();
 		exeType = ManagedBuildManager.getProjectType("cdt.managedbuild.target.testgnu21.exe");
 		checkExeProjectType(exeType);				
 		dllType = ManagedBuildManager.getProjectType("cdt.managedbuild.target.testgnu21.so");
@@ -109,7 +107,6 @@ public class ManagedBuildCoreTests extends TestCase {
 		int expecectedNumTools = 5;
 		int numOrderCCompilerTool = 0;
 		int expecectedCNature = ITool.FILTER_C;
-		int expecectedCCNature = ITool.FILTER_CC;
 				
 		// Check project attributes
 		//
@@ -141,7 +138,7 @@ public class ManagedBuildCoreTests extends TestCase {
 			 //		     		     
 		     ITargetPlatform platform = toolChain.getTargetPlatform();
 		     		     				
-			 List expectedOSListarr = new ArrayList();
+			 List<String> expectedOSListarr = new ArrayList<String>();
 			 String[] expectedOSListTokens = expectedOSList.split(","); //$NON-NLS-1$
 			 for (i = 0; i < expectedOSListTokens.length; ++i) {
 				 expectedOSListarr.add(expectedOSListTokens[i].trim());
@@ -208,8 +205,7 @@ public class ManagedBuildCoreTests extends TestCase {
 		     assertEquals(optionDefaultValue, (expectedOptionIdValue1[iconfig]));
 		     String optionEnumCmd1 = option.getEnumCommand(optionDefaultValue);
 		     assertEquals(optionEnumCmd1, (expectedOptionEnumCmd1arr[iconfig]));		     
-		     List expectedEnumList1arr = new ArrayList();
-		     String enumValues[] = option.getApplicableValues();
+		     List<String> expectedEnumList1arr = new ArrayList<String>();
 		     String[] expectedEnumList1Tokens = expectedEnumList1.split(","); //$NON-NLS-1$
 			 for (i = 0; i < expectedEnumList1Tokens.length; ++i) {
 			 	expectedEnumList1arr.add(expectedEnumList1Tokens[i].trim());
@@ -288,7 +284,6 @@ public class ManagedBuildCoreTests extends TestCase {
 		int expecectedNumTools = 5;
 		int numOrderCLinkerTool = 2;
 		int expecectedCNature = ITool.FILTER_C;
-		int expecectedCCNature = ITool.FILTER_CC;
 				
 		// Check project attributes
 		//
@@ -318,7 +313,7 @@ public class ManagedBuildCoreTests extends TestCase {
 		     IToolChain toolChain = configs[iconfig].getToolChain();
 		     assertEquals(toolChain.getName(), (expectedToolChainName[iconfig]));
 		     
-		     List expectedOSListarr = new ArrayList();
+		     List<String> expectedOSListarr = new ArrayList<String>();
 			 String[] expectedOSListTokens = expectedOSList.split(","); //$NON-NLS-1$
 			 for (i = 0; i < expectedOSListTokens.length; ++i) {
 				 expectedOSListarr.add(expectedOSListTokens[i].trim());
@@ -380,7 +375,6 @@ public class ManagedBuildCoreTests extends TestCase {
 		     //
 		     option = tool.getOptionById(OptionId1A);		     		     
 		     assertTrue(option.isExtensionElement());
-		     String optionDefaultValue = (String)option.getDefaultValue();		     
 		     assertEquals(option.getValueType(), (IOption.LIBRARIES));		     	   
 		     assertEquals(option.getCommand(), (expectedOptionCmd1Aarr));
 		     assertEquals(option.getBrowseType(), (IOption.BROWSE_FILE));
@@ -389,7 +383,6 @@ public class ManagedBuildCoreTests extends TestCase {
 		     //
 		     option = tool.getOptionById(OptionId1B);		     		     
 		     assertTrue(option.isExtensionElement());
-		     optionDefaultValue = (String)option.getDefaultValue();		     
 		     assertEquals(option.getValueType(), (IOption.STRING_LIST));		     	   
 		     assertEquals(option.getCommand(), (expectedOptionCmd1Barr));
 		     assertEquals(option.getBrowseType(), (IOption.BROWSE_DIR));
@@ -398,7 +391,6 @@ public class ManagedBuildCoreTests extends TestCase {
 		     //
 		     option = tool.getOptionById(OptionId1C);		     		     
 		     assertTrue(option.isExtensionElement());
-		     optionDefaultValue = (String)option.getDefaultValue();		     
 		     assertEquals(option.getValueType(), (IOption.OBJECTS));		     	   
 		     assertEquals(option.getBrowseType(), (IOption.BROWSE_FILE));
 	
@@ -482,7 +474,6 @@ public class ManagedBuildCoreTests extends TestCase {
 	    boolean expectedOptionIdValue3 = false;	    
 		int expecectedNumTools = 4;
 		int numOrderCppCompilerTool = 1;		
-		int expecectedCNature = ITool.FILTER_C;
 		int expecectedCCNature = ITool.FILTER_CC;
 				
 		// Check project attributes
@@ -512,7 +503,7 @@ public class ManagedBuildCoreTests extends TestCase {
 		     //
 		     IToolChain toolChain = configs[iconfig].getToolChain();
 		     
-		     List expectedOSListarr = new ArrayList();
+		     List<String> expectedOSListarr = new ArrayList<String>();
 			 String[] expectedOSListTokens = expectedOSList.split(","); //$NON-NLS-1$
 			 for (i = 0; i < expectedOSListTokens.length; ++i) {
 				 expectedOSListarr.add(expectedOSListTokens[i].trim());
@@ -581,8 +572,7 @@ public class ManagedBuildCoreTests extends TestCase {
 		     String optionEnumCmd1 = option.getEnumCommand(optionDefaultValue);
 		     assertEquals(optionEnumCmd1, (expectedOptionEnumCmd1arr[iconfig]));
 		     
-		     List expectedEnumList1arr = new ArrayList();
-		     String enumValues[] = option.getApplicableValues();
+		     List<String> expectedEnumList1arr = new ArrayList<String>();
 		     String[] expectedEnumList1Tokens = expectedEnumList1.split(","); //$NON-NLS-1$
 			 for (i = 0; i < expectedEnumList1Tokens.length; ++i) {
 			 	expectedEnumList1arr.add(expectedEnumList1Tokens[i].trim());

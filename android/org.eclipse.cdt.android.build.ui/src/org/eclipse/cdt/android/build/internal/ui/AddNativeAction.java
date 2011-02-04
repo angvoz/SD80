@@ -40,7 +40,7 @@ public class AddNativeAction implements IObjectActionDelegate {
 		}
 		
 		if (project != null) {
-			AddNativeWizard wizard = new AddNativeWizard(project);
+			AddNativeWizard wizard = new AddNativeWizard(project, part.getSite().getWorkbenchWindow());
 			WizardDialog dialog = new WizardDialog(part.getSite().getShell(), wizard);
 			dialog.open();
 		}

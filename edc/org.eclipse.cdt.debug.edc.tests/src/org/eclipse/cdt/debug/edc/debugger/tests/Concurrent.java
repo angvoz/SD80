@@ -45,7 +45,7 @@ public class Concurrent extends BaseLaunchTest {
 	 */
 	@Test
 	public void testShutdown() throws Throwable {
-		TestUtils.showPerspective("org.eclipse.debug.ui.DebugPerspective");	
+		TestUtils.showDebugPerspective();	
 		launch = createLaunch();
 		assertNotNull(launch);
 		session = TestUtils.waitForSession(launch);
@@ -163,7 +163,7 @@ public class Concurrent extends BaseLaunchTest {
 	 * @throws Throwable
 	 */
 	public void testStackTraces() throws Throwable {
-		TestUtils.showPerspective("org.eclipse.debug.ui.DebugPerspective");	
+		TestUtils.showDebugPerspective();	
 		launch = createLaunch();
 		assertNotNull(launch);
 		session = TestUtils.waitForSession(launch);

@@ -1081,6 +1081,7 @@ public class DwarfInfoReader {
 				int info_line = 1;
 				int info_column = 0;
 				boolean is_stmt = default_is_stmt;
+				@SuppressWarnings("unused")
 				int info_flags = 0;
 				@SuppressWarnings("unused")
 				long info_ISA = 0;

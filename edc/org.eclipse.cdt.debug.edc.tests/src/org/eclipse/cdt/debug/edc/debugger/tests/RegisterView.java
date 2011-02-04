@@ -10,10 +10,11 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.debugger.tests;
 
+import junit.framework.Assert;
+
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ThreadExecutionDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
-import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.Registers;
 import org.eclipse.cdt.debug.edc.services.Registers.RegisterDMC;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
@@ -21,7 +22,6 @@ import org.eclipse.cdt.debug.edc.tests.TestUtils.Condition;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.CompositeDMContext;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
-import org.eclipse.cdt.dsf.debug.service.IRegisters.IBitFieldDMData;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterGroupDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -30,17 +30,22 @@ import org.junit.Test;
 
 public class RegisterView extends BaseLaunchTest {
 
+	private EDCLaunch launch;
+	private DsfSession session;
+
 	@Test
 	public void testRegisterView() throws Exception {
-		final EDCLaunch launch = createLaunch();
+		TestUtils.showDebugPerspective();	
+		launch = createLaunch();
 		assertNotNull(launch);
-		final DsfSession session = waitForSession(launch);
+		session = TestUtils.waitForSession(launch);
 		assertNotNull(session);
-		final ExecutionDMC executionDMC = waitForExecutionDMC(session);
+		final ExecutionDMC executionDMC = TestUtils.waitForSuspendedThread(session);
 		assertNotNull(executionDMC);
-		final ThreadExecutionDMC threadExeDMC = waitForThreadExeDMC(session, executionDMC);
-		final Registers regService = getDsfServicesTracker(session).getService(Registers.class);
-		final IRegisterGroupDMContext regGroupDMC = waitForRegisterGroup(threadExeDMC, regService);
+		Thread.sleep(10 * 1000);
+
+		final Registers regService = TestUtils.getService(session, Registers.class);
+		final IRegisterGroupDMContext regGroupDMC = waitForRegisterGroup((ThreadExecutionDMC) executionDMC, regService);
 		final IRegisterDMContext[] regDMCs = waitForRegisterDMCs(executionDMC, regGroupDMC, regService);
 
 		testRegisterWrites(regService, regDMCs);
@@ -48,20 +53,11 @@ public class RegisterView extends BaseLaunchTest {
 
 	private void testRegisterWrites(final Registers regService, final IRegisterDMContext[] regDMCs)
 			throws Exception {
-		TestUtils.wait(new Condition() {
-			public boolean isConditionValid()throws Exception {
-				for (IRegisterDMContext regContext : regDMCs) {
-					final RegisterDMC regDMC = (RegisterDMC) regContext;
-					regService.writeRegister(regDMC, "0000000d", "NATURAL.Format",
-							new DataRequestMonitor<IBitFieldDMData>(regService.getExecutor(), null));
-					String regValue = regService.getRegisterValueAsHexString(regDMC);
-					if (!regValue.toLowerCase().equals("0000000d"))
-						return false;
-				}
-
-				return true;
-			}
-		});
+		for (IRegisterDMContext regContext : regDMCs) {
+			final RegisterDMC regDMC = (RegisterDMC) regContext;
+			regService.writeRegister(regDMC, "0000000d", "NATURAL.Format");
+			Assert.assertEquals("d", regService.getRegisterValueAsHexString(regDMC));
+		}
 	}
 
 	private IRegisterDMContext[] waitForRegisterDMCs(final ExecutionDMC executionDMC,
@@ -104,25 +100,6 @@ public class RegisterView extends BaseLaunchTest {
 
 				return false;
 			}
-		});
-		return contextHolder[0];
-	}
-
-	private ThreadExecutionDMC waitForThreadExeDMC(final DsfSession session, final ExecutionDMC executionDMC)
-			throws Exception {
-		final ThreadExecutionDMC contextHolder[] = { null };
-		TestUtils.wait(new Condition() {
-			public boolean isConditionValid() {
-				for (IEDCExecutionDMC context : executionDMC.getChildren()) {
-					if (context instanceof ThreadExecutionDMC) {
-						contextHolder[0] = (ThreadExecutionDMC) context;
-						return true;
-					}
-				}
-
-				return false;
-			}
-
 		});
 		return contextHolder[0];
 	}

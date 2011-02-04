@@ -43,7 +43,7 @@ public class ToggleShowAllVariablesCommandHandler extends AbstractHandler {
 		// Note: toggleCommandState() returns the state before it is toggled
 		boolean enabled = !HandlerUtil.toggleCommandState(command);
 
-		IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+		IEclipsePreferences scope = InstanceScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
 		scope.putBoolean(IEDCSymbols.SHOW_ALL_VARIABLES_ENABLED, enabled);
 		try {
 			scope.flush();

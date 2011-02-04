@@ -198,6 +198,10 @@ public class TestUtils {
 			return s1.equals(s2);
 	}
 
+	public static void showDebugPerspective() {
+		showPerspective("org.eclipse.debug.ui.DebugPerspective");
+	}
+	
 	public static void showPerspective(final String perspective) {
 		
 		Display display = Display.getDefault();
@@ -600,5 +604,18 @@ public class TestUtils {
 				}
 			}
 		}
+	}
+
+	public static void waitForLaunchTerminated(final EDCLaunch launch) throws Exception {
+		TestUtils.wait(new Condition() {
+			public boolean isConditionValid() {
+				return launch.isTerminated();
+			}
+		});
+	}
+
+	public static void terminateLaunch(EDCLaunch launch) throws Exception {
+		launch.terminate();
+		waitForLaunchTerminated(launch);
 	}
 }

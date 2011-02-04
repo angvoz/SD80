@@ -238,7 +238,7 @@ public class K9SystemView extends SystemView {
 	@Override
 	public void createPartControl(Composite parent) {
 		setRefreshInterval(5000);		
-		setPrefsNode(new InstanceScope().getNode(EDCTestPlugin.PLUGIN_ID));
+		setPrefsNode(InstanceScope.INSTANCE.getNode(EDCTestPlugin.PLUGIN_ID));
 		setPresentationContext(new PresentationContext(VIEW_ID));
 		setDataModel(new K9DataModel());
 		setViewModel(new K9ViewModel());

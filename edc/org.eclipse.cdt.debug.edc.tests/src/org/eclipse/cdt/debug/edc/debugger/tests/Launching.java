@@ -12,6 +12,7 @@ package org.eclipse.cdt.debug.edc.debugger.tests;
 
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
+import org.eclipse.cdt.debug.edc.tests.TestUtils;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.junit.Test;
 
@@ -19,6 +20,7 @@ public class Launching extends BaseLaunchTest {
 
 	@Test
 	public void testLaunching() throws Exception {
+		TestUtils.showDebugPerspective();
 		EDCLaunch launch = createLaunch();
 		assertNotNull(launch);
 		DsfSession session = waitForSession(launch);

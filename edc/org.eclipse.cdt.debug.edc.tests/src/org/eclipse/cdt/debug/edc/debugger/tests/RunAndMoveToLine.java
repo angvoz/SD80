@@ -85,8 +85,7 @@ public class RunAndMoveToLine extends BaseLaunchTest {
 	 */
 	@Test
 	public void testRunAndMoveToLine() throws Exception {
-		TestUtils.disableDebugPerspectiveSwitchPrompt();
-
+		TestUtils.showDebugPerspective();
 		launch = createLaunch();
 		assertNotNull(launch);
 		session = TestUtils.waitForSession(launch);

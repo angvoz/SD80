@@ -194,7 +194,7 @@ public class WindowsSystemView extends SystemView {
 	@Override
 	public void createPartControl(Composite parent) {
 		setPresentationContext(new PresentationContext(VIEW_ID));
-		setPrefsNode(new InstanceScope().getNode(WindowsDebuggerUI.PLUGIN_ID));
+		setPrefsNode(InstanceScope.INSTANCE.getNode(WindowsDebuggerUI.PLUGIN_ID));
 		setDataModel(new WindowsDataModel());
 		setViewModel(new WindowsViewModel());
 		getViewModel().buildViewModel();

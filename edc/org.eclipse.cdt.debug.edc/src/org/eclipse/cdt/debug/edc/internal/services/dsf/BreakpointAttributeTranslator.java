@@ -288,7 +288,6 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 					"Breakpoint marker does not exist", null));
 		}
 		// Suppress cast warning: platform is still on Java 1.3
-		@SuppressWarnings("unchecked")
 		Map<String, Object> platformBpAttrs = marker.getAttributes();
 
 		// Just make a copy of the platform attributes.

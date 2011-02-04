@@ -169,7 +169,7 @@ public class EDCDebugUI extends AbstractUIPlugin {
 
 	public IPreferenceStore getPreferenceStore() {
 		if (preferenceStore == null) {
-			preferenceStore = new ScopedPreferenceStore(new InstanceScope(), EDCDebugger.PLUGIN_ID);
+			preferenceStore = new ScopedPreferenceStore(InstanceScope.INSTANCE, EDCDebugger.PLUGIN_ID);
 
 		}
 		return preferenceStore;

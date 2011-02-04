@@ -917,6 +917,11 @@ public class Scribe {
 		}
 	}
 
+	/**
+	 * Prints comment at the current position.
+	 * 
+	 * @return {@code true} if a writespace character was encountered preceding the next token,
+	 */
 	public boolean printComment() {
 		// if we have a space between two tokens we ensure it will be dumped in
 		// the formatted string
@@ -1445,8 +1450,7 @@ public class Scribe {
 
 	void redoAlignment(AlignmentException e) {
 		if (e.relativeDepth > 0) { // if exception targets a distinct context
-			e.relativeDepth--; // record fact that current context got
-								// traversed
+			e.relativeDepth--; // record fact that current context got traversed
 			currentAlignment= currentAlignment.enclosing; // pop currentLocation
 			throw e; // rethrow
 		}
@@ -1764,5 +1768,4 @@ public class Scribe {
 			}
 		}
 	}
-
 }

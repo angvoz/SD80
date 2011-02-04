@@ -17,6 +17,7 @@ import java.util.Map;
 import org.eclipse.cdt.android.build.core.NDKManager;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRunnable;
@@ -26,15 +27,20 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.wizard.Wizard;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.WorkbenchException;
 
 public class AddNativeWizard extends Wizard {
 
-	private AddNativeWizardPage addNativeWizardPage;
 	private final IProject project;
+	private final IWorkbenchWindow window;
+	
+	private AddNativeWizardPage addNativeWizardPage;
 	private Map<String, String> templateArgs = new HashMap<String, String>();
 	
-	public AddNativeWizard(IProject project) {
+	public AddNativeWizard(IProject project, IWorkbenchWindow window) {
 		this.project = project;
+		this.window = window;
 		templateArgs.put(NDKManager.LIBRARY_NAME, project.getName());
 	}
 	
@@ -46,6 +52,13 @@ public class AddNativeWizard extends Wizard {
 	
 	@Override
 	public boolean performFinish() {
+		// Switch to C/C++ Perspective
+		try {
+			window.getWorkbench().showPerspective(CUIPlugin.ID_CPERSPECTIVE, window);
+		} catch (WorkbenchException e1) {
+			Activator.log(e1);
+		}
+		
 		addNativeWizardPage.updateArgs(templateArgs);
 		
 		IRunnableWithProgress op = new IRunnableWithProgress() {

@@ -20,8 +20,8 @@ import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly;
-import org.eclipse.cdt.dsf.debug.service.IMixedInstruction;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly.IDisassemblyDMContext;
+import org.eclipse.cdt.dsf.debug.service.IMixedInstruction;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.junit.Test;
@@ -43,6 +43,7 @@ public class DisassemblyView extends BaseLaunchTest {
 
 	@Test
 	public void testDisassemblyView() throws Exception {
+		TestUtils.showDebugPerspective();
 		EDCLaunch launch = createLaunch();
 		assertNotNull(launch);
 		DsfSession session = waitForSession(launch);

@@ -655,13 +655,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			// may need to refresh the locals list because "Show All Variables"
 			// toggle has changed
 		    if (showAllVariablesEnabled == null) {
-				IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+				IEclipsePreferences scope = InstanceScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
 		    	showAllVariablesEnabled = scope.getBoolean(IEDCSymbols.SHOW_ALL_VARIABLES_ENABLED, false);
 		    }
 
 			boolean enabled = showAllVariablesEnabled.booleanValue();
 			if (locals != null) {
-				IEclipsePreferences scope = new InstanceScope().getNode(EDCDebugger.PLUGIN_ID);
+				IEclipsePreferences scope = InstanceScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
 				enabled = scope.getBoolean(IEDCSymbols.SHOW_ALL_VARIABLES_ENABLED, showAllVariablesEnabled);
 			}
 

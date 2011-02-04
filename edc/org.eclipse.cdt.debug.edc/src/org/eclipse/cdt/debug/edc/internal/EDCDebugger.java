@@ -134,6 +134,7 @@ public class EDCDebugger extends Plugin {
 		return getDefault().getBundle().getBundleContext();
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public DebugTrace getTrace() {
 		synchronized (traceLock) {
 			if (trace == null) {

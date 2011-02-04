@@ -45,9 +45,9 @@ import org.eclipse.swt.widgets.TreeItem;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.model.util.CDTListComparator;
@@ -714,17 +714,13 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		IResource rc = getResource();
 		String languageId = currentLanguageSetting.getLanguageId();
 			
-		LanguageSettingsCloneableProvider writableProvider = (LanguageSettingsCloneableProvider) provider;
-		if (writableProvider.isReadOnly()) {
-			writableProvider = ((LanguageSettingsCloneableProvider) provider).getWritable();
-		}
-		if (writableProvider!=null) {
-			writableProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
+		if (provider instanceof LanguageSettingsSerializable) {
+			((LanguageSettingsSerializable)provider).setSettingEntries(cfgDescription, rc, languageId, entries);
 			
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
 			pos = providers.indexOf(provider);
 			providers.remove(pos);
-			providers.add(pos, writableProvider);
+			providers.add(pos, provider);
 			cfgDescription.setLanguageSettingProviders(providers);
 		}
 	}
@@ -1011,22 +1007,17 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 			List<ILanguageSettingsProvider> writableProviders = new ArrayList<ILanguageSettingsProvider>(providers.size());
 			
 			for (ILanguageSettingsProvider provider : providers) {
-				if (provider instanceof LanguageSettingsCloneableProvider) {
-					LanguageSettingsCloneableProvider writableProvider = ((LanguageSettingsCloneableProvider) provider).getWritable();
-					if (writableProvider==null)
-						continue;
-					
+				if (provider instanceof LanguageSettingsSerializable) {
 					TreeItem[] tisLang = treeLanguages.getItems();
 					for (TreeItem tiLang : tisLang) {
 						Object item = tiLang.getData();
 						if (item instanceof ICLanguageSetting) {
 							String languageId = ((ICLanguageSetting)item).getLanguageId();
 							if (languageId!=null) {
-								writableProvider.setSettingEntries(cfgDescription, rc, languageId, null);
+								((LanguageSettingsSerializable)provider).setSettingEntries(cfgDescription, rc, languageId, null);
 							}
 						}
 					}
-					provider = writableProvider;
 				}
 				writableProviders.add(provider);
 			}

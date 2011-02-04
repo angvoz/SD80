@@ -30,14 +30,13 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.cdt.internal.core.XmlUtil;
-import org.eclipse.cdt.internal.core.settings.model.SettingsModelMessages;
 import org.eclipse.core.resources.IResource;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 
-public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvider {
+public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider implements Cloneable {
 	public static final String ELEM_PROVIDER = "provider"; //$NON-NLS-1$
 	private static final String ATTR_ID = "id"; //$NON-NLS-1$
 
@@ -72,19 +71,23 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 		super();
 		load(elementProvider);
 	}
+
 	/**
 	 * @return {@code true} if the provider does not keep any settings yet or {@code false} if there are some.
 	 */
-	@Override
 	public boolean isEmpty() {
 		return fStorage.isEmpty();
 	}
 
-	@Override
-	public void clear() {
-		if (isReadOnly())
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
+	public void setLanguageIds(List <String> languages) {
+		this.languageScope = new ArrayList<String>(languages);
+	}
 
+	public void setCustomParameter(String customParameter) {
+		this.customParameter = customParameter;
+	}
+
+	public void clear() {
 		fStorage.clear();
 	}
 
@@ -109,11 +112,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 		}
 	}
 
-	@Override
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
-		if (isReadOnly())
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
-
 		String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
 		setSettingEntriesInternal(rcProjectPath, languageId, entries);
 	}
@@ -250,9 +249,6 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 
 	// provider/configuration/language/resource/entry
 	public void load(Element providerNode) {
-		if (isReadOnly())
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsSerializable_ReadOnlyAccessError")); //$NON-NLS-1$
-
 		fStorage.clear();
 		languageScope = null;
 
@@ -288,9 +284,6 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 			if (settings.size()>0) {
 				setSettingEntriesInternal(null, null, settings);
 			}
-			
-			// TODO: consider moving outside
-			makeReadOnly();
 		}
 	}
 
@@ -408,7 +401,6 @@ public class LanguageSettingsSerializable extends LanguageSettingsCloneableProvi
 
 	/**
 	 * @return {@code true} if the objects are equal, {@code false } otherwise.
-	 * Note that read-only flag does not affect equality.
 	 * 
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */

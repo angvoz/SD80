@@ -50,7 +50,6 @@ import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
@@ -399,11 +398,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			newProvider = LanguageSettingsManager.getWorkspaceProvider(id);
 		} else {
 			// Local provider instance chosen
-			if (oldProvider instanceof LanguageSettingsCloneableProvider) {
-				newProvider = ((LanguageSettingsCloneableProvider)oldProvider).getWritable();
-				if (newProvider instanceof LanguageSettingsCloneableProvider) {
-					((LanguageSettingsCloneableProvider)newProvider).clear();
-				}
+			if (oldProvider instanceof LanguageSettingsSerializable) {
+				newProvider = oldProvider;
+				((LanguageSettingsSerializable)newProvider).clear();
 			}
 		}
 		if (newProvider!=null) {
@@ -482,7 +479,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		availableProvidersMap.clear();
 		optionsPageMap.clear();
 
-		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getRawWorkspaceProviders();
+		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getWorkspaceProviders();
 		initializeOptionsPage(null); // adds default page as a placeholder
 		for (ILanguageSettingsProvider provider : allProviders) {
 			String id = provider.getId();
@@ -569,7 +566,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		boolean isChecked = tableProvidersViewer.getChecked(provider);
 		if (!page.isForPrefs()) {
-			boolean canClone = provider instanceof LanguageSettingsCloneableProvider;
+			boolean canClone = provider instanceof LanguageSettingsSerializable;
 			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
 			globalProviderCheckBox.setSelection(isGlobal);
 			globalProviderCheckBox.setEnabled(isChecked && canClone);
@@ -695,25 +692,23 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 //	}
 
 	private void performClear(ILanguageSettingsProvider selectedProvider) {
-		if (selectedProvider instanceof LanguageSettingsCloneableProvider){
+		if (selectedProvider instanceof LanguageSettingsSerializable){
 			if (page.isForPrefs()) {
 				if (LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
 					// FIXME get writable provider here
-					((LanguageSettingsCloneableProvider) selectedProvider).clear();
+					((LanguageSettingsSerializable) selectedProvider).clear();
 				}
 			} else {
 				ICConfigurationDescription cfgDescription = getConfigurationDescription();
 				if (cfgDescription!=null) {
-					LanguageSettingsCloneableProvider writableProvider;
-					writableProvider = ((LanguageSettingsCloneableProvider) selectedProvider).getWritable();
-					if (writableProvider!=null) {
-						writableProvider.clear();
+					if (selectedProvider instanceof LanguageSettingsSerializable) {
+						((LanguageSettingsSerializable)selectedProvider).clear();
 						
-						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
-						int pos = providers.indexOf(selectedProvider);
-						providers.remove(pos);
-						providers.add(pos, writableProvider);
-						cfgDescription.setLanguageSettingProviders(providers);
+//						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+//						int pos = providers.indexOf(selectedProvider);
+//						providers.remove(pos);
+//						providers.add(pos, writableProvider);
+//						cfgDescription.setLanguageSettingProviders(providers);
 					}
 				}
 			}

@@ -24,7 +24,6 @@ import java.util.Set;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.settings.model.CExternalSetting;
 import org.eclipse.cdt.core.settings.model.ICBuildSetting;
@@ -193,11 +192,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 		copyExtensionInfo(base);
 		
-		List<ILanguageSettingsProvider> baseLanguageSettingProviders = base.getLanguageSettingProviders();
-		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(baseLanguageSettingProviders.size());
-		for (ILanguageSettingsProvider provider : baseLanguageSettingProviders) {
-			addProvider(provider);
-		}
+		fLanguageSettingsProviders = new ArrayList<ILanguageSettingsProvider>(base.getLanguageSettingProviders());
 	}
 
 //	private void copyRefInfos(Map infosMap){
@@ -861,7 +856,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		String id = element.getAttribute(PROJECT_EXTENSION_ATTR_ID);
 		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
 		if (provider!=null) {
-			addProvider(provider);
+			fLanguageSettingsProviders.add(provider);
 		}
 	}
 
@@ -1027,7 +1022,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		for (ILanguageSettingsProvider provider : providers) {
 			String id = provider.getId();
 			if (!ids.contains(id)) {
-				addProvider(provider);
+				fLanguageSettingsProviders.add(provider);
 				ids.add(id);
 			} else {
 				String msg = NLS.bind(SettingsModelMessages.getString("CConfigurationSpecSettings.MustHaveUniqueID"), id); //$NON-NLS-1$
@@ -1039,13 +1034,5 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 
 	public List<ILanguageSettingsProvider> getLanguageSettingProviders() {
 		return Collections.unmodifiableList(fLanguageSettingsProviders);
-	}
-	
-	private ILanguageSettingsProvider addProvider(ILanguageSettingsProvider provider) {
-		if (provider instanceof LanguageSettingsCloneableProvider) {
-			provider = ((LanguageSettingsCloneableProvider)provider).getReadable();
-		}
-		fLanguageSettingsProviders.add(provider);
-		return provider;
 	}
 }

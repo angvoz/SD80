@@ -81,7 +81,6 @@ public class LanguageSettingsManager {
 	}
 
 	/**
-	 * TODO explain LanguageSettingsWorkspaceProvider
 	 * Get Language Settings Provider defined in the workspace. That includes user-defined
 	 * providers and after that providers defined as extensions via
 	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
@@ -92,26 +91,20 @@ public class LanguageSettingsManager {
 	 * @return the provider or {@code null} if provider is not defined.
 	 */
 	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
-		ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(id);
-		if (provider instanceof LanguageSettingsCloneableProvider) { 
-			provider = new LanguageSettingsWorkspaceProvider(provider.getId());
-		}
-		return provider;
+		return LanguageSettingsProvidersSerializer.getWorkspaceProvider(id);
 	}
 
 	/**
-	 * TODO explain LanguageSettingsWorkspaceProvider
 	 * @return a list of language settings providers defined on workspace level.
 	 * That includes user-defined providers and after that providers defined as
 	 * extensions via {@code org.eclipse.cdt.core.LanguageSettingsProvider}
 	 * extension point.
 	 */
-	public static List<ILanguageSettingsProvider> getRawWorkspaceProviders() {
-		return LanguageSettingsProvidersSerializer.getRawWorkspaceProviders();
+	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
+		return LanguageSettingsProvidersSerializer.getWorkspaceProviders();
 	}
 
 	/**
-	 * TODO explain LanguageSettingsWorkspaceProvider
 	 * Checks if the provider is defined on the workspace level.
 	 * See {@link LanguageSettingsManager#getWorkspaceProvider(String)}.
 	 *
@@ -119,7 +112,7 @@ public class LanguageSettingsManager {
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
 	 */
 	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
-		return (provider instanceof LanguageSettingsWorkspaceProvider) || LanguageSettingsProvidersSerializer.isRawWorkspaceProvider(provider);
+		return LanguageSettingsProvidersSerializer.isWorkspaceProvider(provider);
 	}
 
 	/**

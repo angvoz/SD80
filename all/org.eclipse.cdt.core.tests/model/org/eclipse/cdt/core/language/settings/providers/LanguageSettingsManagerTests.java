@@ -30,7 +30,6 @@ import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.cdt.internal.core.settings.model.CConfigurationDescription;
-import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -146,35 +145,6 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
-	 * Test read-only configuration description.
-	 */
-	public void testConfigurationDescription_ReadOnly() throws Exception {
-		// create a project
-		IProject project = ResourceHelper.createCDTProjectWithConfig(getName());
-		ICProjectDescription prjDescription = CProjectDescriptionManager.getInstance().getProjectDescription(project, false);
-		assertNotNull(prjDescription);
-		ICConfigurationDescription cfgDescription = prjDescription.getDefaultSettingConfiguration();
-		assertNotNull(cfgDescription);
-
-		try {
-			cfgDescription.setLanguageSettingProviders(null);
-			fail("Violation of write access for read-only configuration description");
-		} catch (Exception e) {
-			// an exception is expected here
-		}
-
-		List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
-		assertNotNull(providers);
-		
-		try {
-			providers.add(null);
-			fail("Violation of write access for read-only configuration description");
-		} catch (Exception e) {
-			// an exception is expected here
-		} 
-	}
-
-	/**
 	 * Test to ensure uniqueness of ids for providers kept in configuration description.
 	 */
 	public void testConfigurationDescription_ProvidersUniqueId() throws Exception {
@@ -210,7 +180,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testConfigurationDescription_WorkspaceProviders() throws Exception {
 		ICConfigurationDescription cfgDescription = new MockConfigurationDescription(CFG_ID);
 		ILanguageSettingsProvider extensionProvider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-		assertTrue(extensionProvider instanceof LanguageSettingsWorkspaceProvider);
+		assertTrue(LanguageSettingsManager.isWorkspaceProvider(extensionProvider));
 
 		{
 			// set provider taken from extension
@@ -226,13 +196,15 @@ public class LanguageSettingsManagerTests extends TestCase {
 		
 		{
 			// replace workspace provider with mock one
-			List<ILanguageSettingsProvider> providers = new ArrayList(LanguageSettingsManager.getRawWorkspaceProviders());
-			ILanguageSettingsProvider rawProvider = LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(extensionProvider.getId());
-			assertTrue(providers.contains(rawProvider));
-			providers.remove(rawProvider);
+			List<ILanguageSettingsProvider> providers = new ArrayList(LanguageSettingsManager.getWorkspaceProviders());
+			ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(extensionProvider.getId());
+			assertTrue(providers.contains(provider));
+			providers.remove(provider);
 			ILanguageSettingsProvider userProvider = new MockProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID, PROVIDER_NAME_1, null);
 			providers.add(userProvider);
 			LanguageSettingsManager.setUserDefinedProviders(providers);
+		}
+		{
 			// doublecheck it got there
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			assertEquals(PROVIDER_NAME_1, provider.getName());
@@ -697,7 +669,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	 */
 	public void testWorkspaceProviders() throws Exception {
 		// Common variables
-		List<ILanguageSettingsProvider> availableProviders = LanguageSettingsManager.getRawWorkspaceProviders();
+		List<ILanguageSettingsProvider> availableProviders = LanguageSettingsManager.getWorkspaceProviders();
 		assertNotNull(availableProviders);
 		assertTrue(availableProviders.size()>0);
 
@@ -714,7 +686,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		// Preconditions
 		{
 
-			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getRawWorkspaceProviders();
+			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
 			assertFalse(workspaceProviders.contains(mockProvider1));
 			assertFalse(workspaceProviders.contains(mockProvider2));
 
@@ -736,7 +708,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			providers.add(mockProvider2);
 			LanguageSettingsManager.setUserDefinedProviders(providers);
 
-			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getRawWorkspaceProviders();
+			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
 			assertTrue(workspaceProviders.contains(mockProvider1));
 			assertTrue(workspaceProviders.contains(mockProvider2));
 
@@ -755,7 +727,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 		{
 			LanguageSettingsManager.setUserDefinedProviders(null);
 
-			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getRawWorkspaceProviders();
+			List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
 			assertFalse(workspaceProviders.contains(mockProvider1));
 			assertFalse(workspaceProviders.contains(mockProvider2));
 
@@ -776,7 +748,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	public void testUserDefinedProviders() throws Exception {
 		// reset providers
 		LanguageSettingsManager.setUserDefinedProviders(null);
-		int size = LanguageSettingsManager.getRawWorkspaceProviders().size();
+		int size = LanguageSettingsManager.getWorkspaceProviders().size();
 		assertTrue(size > 0);
 		assertNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0));
 
@@ -785,55 +757,9 @@ public class LanguageSettingsManagerTests extends TestCase {
 		LanguageSettingsManager.setUserDefinedProviders(providers);
 		assertNotNull(LanguageSettingsManager.getWorkspaceProvider(PROVIDER_0));
 
-		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getRawWorkspaceProviders();
+		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getWorkspaceProviders();
 		assertEquals(size+1, allProviders.size());
 		assertEquals(PROVIDER_0, allProviders.get(0).getId());
 	}
 
-	/**
-	 * Test write access for workspace providers.
-	 *
-	 * @throws Exception...
-	 */
-	public void testWorkspaceProvidersReadOnly() throws Exception {
-		// reset providers
-		LanguageSettingsManager.setUserDefinedProviders(null);
-		
-		{
-			// old workspace provider should be read-only
-			ILanguageSettingsProvider rawProvider = LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-			assertNotNull(rawProvider);
-			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_NAME, rawProvider.getName());
-			assertTrue(rawProvider instanceof LanguageSettingsSerializable);
-			assertTrue(((LanguageSettingsSerializable)rawProvider).isReadOnly());
-		}
-		
-		{
-			// replace workspace provider with custom one
-			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
-			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(EXTENSION_SERIALIZABLE_PROVIDER_ID, PROVIDER_NAME_0);
-			assertEquals(false, provider.isReadOnly());
-			providers.add(provider);
-			LanguageSettingsManager.setUserDefinedProviders(providers);
-		}
-		
-		{
-			// new workspace provider should be read-only
-			ILanguageSettingsProvider rawProvider = LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-			assertNotNull(rawProvider);
-			assertEquals(PROVIDER_NAME_0, rawProvider.getName());
-			assertTrue(rawProvider instanceof LanguageSettingsSerializable);
-			assertTrue(((LanguageSettingsSerializable)rawProvider).isReadOnly());
-		}
-		
-		{
-			// extension provider should be read-only
-			ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-			assertNotNull(provider);
-			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_NAME, provider.getName());
-			assertTrue(provider instanceof LanguageSettingsSerializable);
-			assertTrue(((LanguageSettingsSerializable)provider).isReadOnly());
-		}
-	}
-	
 }

@@ -88,7 +88,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtension() throws Exception {
 		{
-			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getRawWorkspaceProviders();
+			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
 			List<String> ids = new ArrayList<String>();
 			for (ILanguageSettingsProvider provider : providers) {
 				ids.add(provider.getId());
@@ -166,7 +166,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionsSorting() throws Exception {
 		{
-			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getRawWorkspaceProviders();
+			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
 			String lastName="";
 			for (ILanguageSettingsProvider provider : providers) {
 				if (LanguageSettingsManager.isWorkspaceProvider(provider)) {

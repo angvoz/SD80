@@ -22,7 +22,6 @@ import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsCloneableProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
@@ -196,8 +195,6 @@ public class LanguageSettingsExtensionManager {
 
 		if (provider instanceof LanguageSettingsBaseProvider) {
 			((LanguageSettingsBaseProvider) provider).configureProvider(ceId, ceName, languages, entries, ceParameter);
-			if (provider instanceof LanguageSettingsCloneableProvider)
-				((LanguageSettingsCloneableProvider)provider).makeReadOnly();
 		} else if (provider instanceof AbstractExecutableExtensionBase) {
 			((AbstractExecutableExtensionBase) provider).setId(ceId);
 			((AbstractExecutableExtensionBase) provider).setName(ceName);

@@ -167,7 +167,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		{
 			// get the provider
-			LanguageSettingsSerializable provider = (LanguageSettingsSerializable) LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			LanguageSettingsSerializable provider = (LanguageSettingsSerializable) LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			assertNotNull(provider);
 			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, provider.getId());
 			
@@ -192,7 +192,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		{
 			// doublecheck it's clean
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
 			assertNull(actual);
 		}
@@ -200,7 +200,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsProvidersSerializer.loadLanguageSettingsWorkspace();
 
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, provider.getId());
 			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
 			assertEquals(entries.get(0), actual.get(0));
@@ -273,8 +273,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		{
 			// ID should be in the list of workspace providers
-			assertNotNull(LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID));
-			ILanguageSettingsProvider oldProvider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider oldProvider = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_PROVIDER_ID);
 			assertTrue(oldProvider instanceof LanguageSettingsBaseProvider);
 		}
 
@@ -291,17 +290,19 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			// user defined providers are always before extension providers
 			assertEquals(EXTENSION_PROVIDER_ID, providers.get(0).getId());
 			// doublecheck it got there
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_PROVIDER_ID);
 			assertTrue(provider instanceof LanguageSettingsSerializable);
 		}
 
 		{
 			// serialize language settings of user defined providers (on workspace level)
 			LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
+		}
+		{
 			// clear the provider
 			mockProvider.setSettingEntries(null, null, null, null);
 			// doublecheck it's clean
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_PROVIDER_ID);
 			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
 			assertNull(actual);
 		}
@@ -309,7 +310,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsProvidersSerializer.loadLanguageSettingsWorkspace();
 
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_PROVIDER_ID);
 			assertEquals(EXTENSION_PROVIDER_ID, provider.getId());
 			assertEquals(PROVIDER_NAME_0, provider.getName());
 			assertTrue(provider instanceof LanguageSettingsSerializable);
@@ -555,7 +556,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 		Element rootElement = null;
 
 		// provider of other type (not LanguageSettingsSerializable) defined as an extension
-		ILanguageSettingsProvider providerExt = LanguageSettingsProvidersSerializer.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_PROVIDER_ID);
 
 		{
 			// create cfg description
@@ -604,14 +605,14 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		// provider set on workspace level overriding an extension
 		String idExt = EXTENSION_PROVIDER_ID;
-		ILanguageSettingsProvider providerExt = LanguageSettingsProvidersSerializer.getWorkspaceProvider(idExt);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(idExt);
 		ILanguageSettingsProvider providerWsp = new MockProvider(idExt, PROVIDER_NAME_0);
 		assertNotNull(providerWsp);
 		{
 			List<ILanguageSettingsProvider> providersList = new ArrayList<ILanguageSettingsProvider>();
 			providersList.add(providerWsp);
 			LanguageSettingsManager.setUserDefinedProviders(providersList);
-			ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(idExt);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(idExt);
 			assertNotSame(providerExt, provider);
 			assertSame(providerWsp, provider);
 		}
@@ -662,7 +663,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		// provider set on workspace level overriding an extension
 		String idExt = EXTENSION_PROVIDER_ID;
-		ILanguageSettingsProvider providerExt = LanguageSettingsProvidersSerializer.getWorkspaceProvider(idExt);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(idExt);
 		assertNotNull(providerExt);
 		{
 			// create cfg description
@@ -715,14 +716,14 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		// define provider set on workspace level overriding an extension
 		String idExt = EXTENSION_PROVIDER_ID;
-		ILanguageSettingsProvider providerExt = LanguageSettingsProvidersSerializer.getWorkspaceProvider(idExt);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(idExt);
 		ILanguageSettingsProvider providerWsp = new LanguageSettingsSerializable(idExt, PROVIDER_NAME_WSP);
 		assertNotNull(providerWsp);
 		{
 			List<ILanguageSettingsProvider> providersList = new ArrayList<ILanguageSettingsProvider>();
 			providersList.add(providerWsp);
 			LanguageSettingsManager.setUserDefinedProviders(providersList);
-			ILanguageSettingsProvider provider = LanguageSettingsProvidersSerializer.getWorkspaceProvider(idExt);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(idExt);
 			assertNotSame(providerExt, provider);
 			assertSame(providerWsp, provider);
 		}
@@ -790,7 +791,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 				assertNotNull(cfgDescription);
 
 				// 1. Provider reference to extension from plugin.xml
-				providerExt = LanguageSettingsProvidersSerializer.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+				providerExt = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_PROVIDER_ID);
 
 				// 2. Provider reference to provider defined in the workspace
 				providerWsp = new LanguageSettingsSerializable(PROVIDER_ID_WSP, PROVIDER_NAME_WSP);

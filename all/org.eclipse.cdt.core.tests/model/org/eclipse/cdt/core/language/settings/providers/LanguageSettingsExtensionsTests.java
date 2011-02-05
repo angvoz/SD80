@@ -25,7 +25,6 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
@@ -88,7 +87,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtension() throws Exception {
 		{
-			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
+			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getRawWorkspaceProviders();
 			List<String> ids = new ArrayList<String>();
 			for (ILanguageSettingsProvider provider : providers) {
 				ids.add(provider.getId());
@@ -97,7 +96,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		}
 
 		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(DEFAULT_PROVIDER_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(DEFAULT_PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
 		assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
 
@@ -138,7 +137,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionBaseProviderSubclass() throws Exception {
 		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
 		assertNotNull(providerExt);
 
 		assertTrue(providerExt instanceof TestClassLanguageSettingsBaseProvider);
@@ -166,7 +165,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionsSorting() throws Exception {
 		{
-			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
+			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getRawWorkspaceProviders();
 			String lastName="";
 			for (ILanguageSettingsProvider provider : providers) {
 				if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
@@ -183,7 +182,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionsNameId() throws Exception {
 		// get test plugin extension non-default provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_ID_EXT);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
 		assertTrue(providerExt instanceof TestClassLanguageSettingsProvider);
 

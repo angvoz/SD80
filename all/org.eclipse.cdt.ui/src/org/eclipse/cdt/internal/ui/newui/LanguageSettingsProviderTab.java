@@ -479,7 +479,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		availableProvidersMap.clear();
 		optionsPageMap.clear();
 
-		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getWorkspaceProviders();
+		List<ILanguageSettingsProvider> allProviders = LanguageSettingsManager.getRawWorkspaceProviders();
 		initializeOptionsPage(null); // adds default page as a placeholder
 		for (ILanguageSettingsProvider provider : allProviders) {
 			String id = provider.getId();

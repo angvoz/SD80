@@ -4,10 +4,12 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsWorkspaceProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.internal.core.XmlUtil;
@@ -16,6 +18,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -59,10 +62,20 @@ public class LanguageSettingsProvidersSerializer {
 	private static void recalculateAvailableProviders() {
 		fAvailableProviders.clear();
 		if (fUserDefinedProviders!=null) {
-			fAvailableProviders.putAll(fUserDefinedProviders);
+			for (Entry<String, ILanguageSettingsProvider> entry : fUserDefinedProviders.entrySet()) {
+				ILanguageSettingsProvider provider = entry.getValue();
+				if (provider!=null) {
+					String id = provider.getId();
+					// FIXME
+					Assert.isTrue( !(provider instanceof LanguageSettingsWorkspaceProvider) );
+					fAvailableProviders.put(id, provider);
+				}
+			}
 		}
 		for (ILanguageSettingsProvider provider : LanguageSettingsExtensionManager.getExtensionProviders()) {
 			String id = provider.getId();
+			// FIXME
+			Assert.isTrue( !(provider instanceof LanguageSettingsWorkspaceProvider) );
 			if (!fAvailableProviders.containsKey(id)) {
 				fAvailableProviders.put(id, provider);
 			}
@@ -113,7 +126,13 @@ public class LanguageSettingsProvidersSerializer {
 			fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
 			// set customized list
 			for (ILanguageSettingsProvider provider : providers) {
-				fUserDefinedProviders.put(provider.getId(), provider);
+				if (!isRawWorkspaceProvider(provider)) {
+					if (provider instanceof LanguageSettingsWorkspaceProvider) {
+						provider = fAvailableProviders.get(provider.getId());
+					}
+					if (provider!=null)
+						fUserDefinedProviders.put(provider.getId(), provider);
+				}
 			}
 		}
 		recalculateAvailableProviders();
@@ -309,7 +328,7 @@ public class LanguageSettingsProvidersSerializer {
 						ILanguageSettingsProvider provider=null;
 						if (providerNode.getNodeName().equals(ELEM_PROVIDER_REFERENCE)) {
 							String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
-							provider = getWorkspaceProvider(providerId);
+							provider = getRawWorkspaceProvider(providerId);
 						} else if (providerNode.getNodeName().equals(LanguageSettingsExtensionManager.ELEM_PROVIDER)) {
 							provider = loadProvider(providerNode);
 						}
@@ -377,7 +396,7 @@ public class LanguageSettingsProvidersSerializer {
 			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
 				if (cfgDescription!=null) {
 					List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(2);
-					ILanguageSettingsProvider userProvider = getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
+					ILanguageSettingsProvider userProvider = getRawWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
 					providers.add(userProvider);
 					cfgDescription.setLanguageSettingProviders(providers);
 				}
@@ -396,25 +415,37 @@ public class LanguageSettingsProvidersSerializer {
 	 * @param id - ID of provider to find.
 	 * @return the provider or {@code null} if provider is not defined.
 	 */
-	public static ILanguageSettingsProvider getWorkspaceProvider(String id) {
+	public static ILanguageSettingsProvider getRawWorkspaceProvider(String id) {
 		ILanguageSettingsProvider provider = fAvailableProviders.get(id);
+		// FIXME
+		Assert.isTrue( !(provider instanceof LanguageSettingsWorkspaceProvider) );
 		return provider;
 	}
 
 	/**
 	 * @return ordered set of providers defined in the workspace which include contributed through extension + user defined ones
 	 */
-	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
+	public static List<ILanguageSettingsProvider> getRawWorkspaceProviders() {
 		return new ArrayList<ILanguageSettingsProvider>(fAvailableProviders.values());
 	}
 
 	/**
-	 * Checks if the provider is defined on the workspace level. See {@link #getWorkspaceProvider(String)}.
+	 * Checks if the provider is defined on the workspace level. See {@link #getRawWorkspaceProvider(String)}.
 	 *
 	 * @param provider - provider to check.
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
 	 */
-	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
-		return provider==getWorkspaceProvider(provider.getId());
+	public static boolean isRawWorkspaceProvider(ILanguageSettingsProvider provider) {
+		return provider==getRawWorkspaceProvider(provider.getId());
+	}
+	
+	/**
+	 * Checks if the provider is defined on the workspace level. See {@link #getRawWorkspaceProvider(String)}.
+	 *
+	 * @param provider - provider to check.
+	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
+	 */
+	private static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
+		return provider instanceof LanguageSettingsWorkspaceProvider;
 	}
 }

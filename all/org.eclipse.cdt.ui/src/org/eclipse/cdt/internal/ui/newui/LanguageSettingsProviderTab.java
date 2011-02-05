@@ -64,6 +64,7 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.DialogsMessages;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
@@ -398,8 +399,14 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		} else {
 			// Local provider instance chosen
 			if (oldProvider instanceof LanguageSettingsSerializable) {
-				newProvider = oldProvider;
-				((LanguageSettingsSerializable)newProvider).clear();
+				try {
+					newProvider = ((LanguageSettingsSerializable)oldProvider).clone();
+					if (newProvider instanceof LanguageSettingsSerializable) {
+						((LanguageSettingsSerializable)newProvider).clear();
+					}
+				} catch (CloneNotSupportedException e) {
+					CUIPlugin.log("Error cloning provider " + oldProvider.getId(), e);
+				}
 			}
 		}
 		if (newProvider!=null) {

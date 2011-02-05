@@ -86,39 +86,39 @@ public class LanguageSettingsProvidersSerializer {
 		return result;
 	}
 
-	/**
-		 * Set and store in workspace area user defined providers.
-		 *
-		 * @param providers - array of user defined providers
-		 * @throws CoreException in case of problems
-		 */
-		public static void setUserDefinedProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
-			setUserDefinedProvidersInternal(providers);
-	//		serializeUserDefinedProviders();
-		}
-
-	/**
-	 * Internal method to set user defined providers in memory.
-	 *
-	 * @noreference This method is not intended to be referenced by clients.
-	 * Use {@link #setUserDefinedProviders(List)}.
-	 *
-	 * @param providers - list of user defined providers. If {@code null}
-	 *    is passed user defined providers are cleared.
-	 */
-	public static void setUserDefinedProvidersInternal(List<ILanguageSettingsProvider> providers) {
-		if (providers==null) {
-			fUserDefinedProviders = null;
-		} else {
-			fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
-			// set customized list
-			for (ILanguageSettingsProvider provider : providers) {
-				fUserDefinedProviders.put(provider.getId(), provider);
-			}
-		}
-		recalculateAvailableProviders();
-	}
-
+//	/**
+//		 * Set and store in workspace area user defined providers.
+//		 *
+//		 * @param providers - array of user defined providers
+//		 * @throws CoreException in case of problems
+//		 */
+//		public static void setUserDefinedProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
+//			setUserDefinedProvidersInternal(providers);
+//	//		serializeUserDefinedProviders();
+//		}
+//
+//	/**
+//	 * Internal method to set user defined providers in memory.
+//	 *
+//	 * @noreference This method is not intended to be referenced by clients.
+//	 * Use {@link #setUserDefinedProviders(List)}.
+//	 *
+//	 * @param providers - list of user defined providers. If {@code null}
+//	 *    is passed user defined providers are cleared.
+//	 */
+//	public static void setUserDefinedProvidersInternal(List<ILanguageSettingsProvider> providers) {
+//		if (providers==null) {
+//			fUserDefinedProviders = null;
+//		} else {
+//			fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
+//			// set customized list
+//			for (ILanguageSettingsProvider provider : providers) {
+//				fUserDefinedProviders.put(provider.getId(), provider);
+//			}
+//		}
+//		recalculateAvailableProviders();
+//	}
+//
 	/**
 	 * TODO: refactor with ErrorParserManager
 	 *

@@ -22,7 +22,6 @@ import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSetting
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
 import org.osgi.service.prefs.Preferences;
@@ -115,16 +114,16 @@ public class LanguageSettingsManager {
 		return LanguageSettingsProvidersSerializer.isWorkspaceProvider(provider);
 	}
 
-	/**
-	 * Set and store in workspace area user defined providers.
-	 *
-	 * @param providers - array of user defined providers
-	 * @throws CoreException in case of problems
-	 */
-	public static void setUserDefinedProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
-		LanguageSettingsProvidersSerializer.setUserDefinedProviders(providers);
-	}
-
+//	/**
+//	 * Set and store in workspace area user defined providers.
+//	 *
+//	 * @param providers - array of user defined providers
+//	 * @throws CoreException in case of problems
+//	 */
+//	public static void setUserDefinedProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
+//		LanguageSettingsProvidersSerializer.setUserDefinedProviders(providers);
+//	}
+//
 	private static Preferences getPreferences(IProject project) {
 		if (project == null)
 			return new InstanceScope().getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);

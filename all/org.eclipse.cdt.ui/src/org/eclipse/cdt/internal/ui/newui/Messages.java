@@ -187,7 +187,6 @@ public class Messages extends NLS {
 	public static String LanguageSettingsProviderTab_AreYouSureToResetProviders;
 	public static String LanguageSettingsProviderTab_Clear;
 	public static String LanguageSettingsProviderTab_Configure;
-	public static String LanguageSettingsProviderTab_ErrorApplyingSettings;
 	public static String LanguageSettingsProviderTab_ErrorPerformingDefaults;
 	public static String LanguageSettingsProviderTab_NoOptionsAvailable;
 	public static String LanguageSettingsProviderTab_ProviderOptions;

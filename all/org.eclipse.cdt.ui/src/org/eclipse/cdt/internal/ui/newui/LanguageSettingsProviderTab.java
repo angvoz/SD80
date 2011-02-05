@@ -64,7 +64,6 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
-import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.DialogsMessages;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
@@ -795,12 +794,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			if (MessageDialog.openQuestion(usercomp.getShell(),
 					Messages.LanguageSettingsProviderTab_TitleResetProviders,
 					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
-
-				try {
-					LanguageSettingsManager.setUserDefinedProviders(null);
-				} catch (CoreException e) {
-					CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorPerformingDefaults, e);
-				}
+				// TODO
 			}
 		}
 
@@ -865,23 +859,17 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		}
 		
 		if (page.isForPrefs()) {
-			// Build Settings page
-			try {
-				List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(tableProviders.getItemCount());
-				TableItem[] items = tableProviders.getItems();
-				for (TableItem item : items) {
-					providers.add((ILanguageSettingsProvider) item.getData());
-				}
+		// Build Settings page
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(tableProviders.getItemCount());
+			TableItem[] items = tableProviders.getItems();
+			for (TableItem item : items) {
+				providers.add((ILanguageSettingsProvider) item.getData());
+			}
 
-				Object[] checkedElements = tableProvidersViewer.getCheckedElements();
-				String[] checkedProviderIds = new String[checkedElements.length];
-				for (int i=0;i<checkedElements.length;i++) {
-					checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
-				}
-
-				LanguageSettingsManager.setUserDefinedProviders(providers);
-			} catch (CoreException e) {
-				CUIPlugin.log(Messages.LanguageSettingsProviderTab_ErrorApplyingSettings, e);
+			Object[] checkedElements = tableProvidersViewer.getCheckedElements();
+			String[] checkedProviderIds = new String[checkedElements.length];
+			for (int i=0;i<checkedElements.length;i++) {
+				checkedProviderIds[i] = ((ILanguageSettingsProvider)checkedElements[i]).getId();
 			}
 		}
 		

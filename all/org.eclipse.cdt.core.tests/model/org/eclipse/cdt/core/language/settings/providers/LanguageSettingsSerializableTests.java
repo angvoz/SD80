@@ -78,7 +78,6 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	@Override
 	protected void tearDown() throws Exception {
 		ResourceHelper.cleanUp();
-		LanguageSettingsManager.setUserDefinedProviders(null);
 	}
 
 	/**
@@ -121,9 +120,6 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	/**
 	 */
 	public void testNoProviders() throws Exception {
-		// nullify user defined providers
-		LanguageSettingsProvidersSerializer.setUserDefinedProvidersInternal(null);
-
 		// serialize language settings of user defined providers (on workspace level)
 		LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
 		LanguageSettingsProvidersSerializer.loadLanguageSettingsWorkspace();

@@ -701,6 +701,13 @@
           <keywordReference id="org.eclipse.cdt.ui.common"/>
       </page>
       <page
+            name="SD80"
+            category="org.eclipse.cdt.ui.preferences.CPluginPreferencePage"
+            class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsPreferencePage"
+            id="org.eclipse.cdt.ui.preferences.LanguageSettingsProviders">
+          <keywordReference id="org.eclipse.cdt.ui.common TODO"/>
+      </page>
+      <page
             name="%CPluginFileTypesPreferencePage.name"
             category="org.eclipse.cdt.ui.preferences.CPluginPreferencePage"
             class="org.eclipse.cdt.internal.ui.preferences.CFileTypesPreferencePage"
@@ -3767,11 +3774,27 @@
 		<tab
 			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab"
 			icon="icons/obj16/extension_obj.gif"
-			name="Providers"
+			name="%LanguageSettingsProvidersTab.name"
 			weight="020"
 			helpId="FIXME cdt_u_prop_pns_inc"
 			parent="org.eclipse.cdt.internal.ui.newui.Page_LanguageSettingsProviders"
-			tooltip="%AllLanguageSettingEntries.tooltip"/>
+			tooltip="%LanguageSettingsProvidersTab.tooltip"/>
+		<tab
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab"
+			icon="icons/obj16/extension_obj.gif"
+			name="%LanguageSettingsProvidersTab.name"
+			parent="org.eclipse.cdt.internal.ui.newui.LanguageSettingsPreferencePage"
+			tooltip="%LanguageSettingsProvidersTab.tooltip"
+			weight="000">
+		</tab>
+		<tab
+			class="org.eclipse.cdt.internal.ui.newui.LanguageSettingsEntriesTab"
+			icon="icons/obj16/ls_entries.gif"
+			name="%LanguageSettingsEntriesTab.name"
+			parent="org.eclipse.cdt.internal.ui.newui.LanguageSettingsPreferencePage"
+			tooltip="%LanguageSettingsEntriesTab.tooltip"
+			weight="020">
+		</tab>
 	</extension>
  <extension
        point="org.eclipse.ui.commands">

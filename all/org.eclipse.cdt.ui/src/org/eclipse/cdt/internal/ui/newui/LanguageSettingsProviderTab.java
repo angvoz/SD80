@@ -122,7 +122,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		MOVEDOWN_STR,
 	};
 
-	private List<ILanguageSettingsProvider> initialProvidersList = null;
+	private Map<String, List<ILanguageSettingsProvider>> initialProvidersMap = new HashMap<String, List<ILanguageSettingsProvider>>();
 	private boolean initialEnablement = false;
 	
 	/**
@@ -261,9 +261,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 	private void trackInitialSettings() {
 		if (page.isForProject()) {
-			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-			if (cfgDescription!=null) {
-				initialProvidersList = cfgDescription.getLanguageSettingProviders();
+			ICConfigurationDescription[] cfgDescriptions = page.getCfgsEditable();
+			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+				if (cfgDescription!=null) {
+					String cfgId = cfgDescription.getId();
+					List<ILanguageSettingsProvider> initialProviders = cfgDescription.getLanguageSettingProviders();
+					initialProvidersMap.put(cfgId, initialProviders);
+				}
 			}
 			initialEnablement = LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject());
 		}
@@ -352,6 +356,17 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 //					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONTEXT;
 					
 //					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_PROJECT;
+				}
+				// TODO temporary for debugging
+				if (!page.isForPrefs()) {
+					ICConfigurationDescription cfgDescription = getConfigurationDescription();
+					List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+					if (providers.contains(provider)) {
+						List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
+						if (initialProviders!=null && !initialProviders.contains(provider)) {
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
+						}
+					}
 				}
 				return overlayKeys;
 			}
@@ -638,8 +653,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			}
 		}
 		
-		boolean canMoveUp = isProviderSelected && isRangeOk && pos!=0;
-		boolean canMoveDown = isProviderSelected && isRangeOk && pos!=last;
+		boolean canMoveUp = page.isForProject() && isProviderSelected && isRangeOk && pos!=0;
+		boolean canMoveDown = page.isForProject() && isProviderSelected && isRangeOk && pos!=last;
 		
 		buttonSetEnabled(BUTTON_RUN, false);
 		buttonSetEnabled(BUTTON_EDIT, false);
@@ -697,6 +712,31 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 //		updateButtons();
 //	}
 
+	/**
+	 * @param selectedProvider
+	 * @return
+	 */
+	private LanguageSettingsSerializable arrangeEditedCopy(LanguageSettingsSerializable selectedProvider) {
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
+		if (initialProviders.contains(selectedProvider)) {
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+			int pos = providers.indexOf(selectedProvider);
+			if (pos>=0) {
+				try {
+					selectedProvider = selectedProvider.clone();
+					providers.set(pos, selectedProvider);
+					cfgDescription.setLanguageSettingProviders(providers);
+				} catch (CloneNotSupportedException e) {
+					CUIPlugin.log("Internal Error: cannot clone provider "+selectedProvider.getId(), e);
+				}
+			} else {
+				CUIPlugin.getDefault().logErrorMessage("Internal Error: cannot find provider "+selectedProvider.getId());
+			}
+		}
+		return selectedProvider;
+	}
+
 	private void performClear(ILanguageSettingsProvider selectedProvider) {
 		if (selectedProvider instanceof LanguageSettingsSerializable){
 			if (page.isForPrefs()) {
@@ -708,7 +748,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 				ICConfigurationDescription cfgDescription = getConfigurationDescription();
 				if (cfgDescription!=null) {
 					if (selectedProvider instanceof LanguageSettingsSerializable) {
+						selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
 						((LanguageSettingsSerializable)selectedProvider).clear();
+						updateTableConfigureProviders();
 						
 //						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
 //						int pos = providers.indexOf(selectedProvider);
@@ -896,8 +938,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			throw new UnsupportedOperationException("Internal Error");
 		}
 
-		updateData(getResDesc());
 		trackInitialSettings();
+		updateData(getResDesc());
 	}
 
 	@Override
@@ -936,7 +978,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		}
 		boolean newEnablement = LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject());
 		
-		boolean isEqualList = (newProvidersList==initialProvidersList) || (newProvidersList!=null && newProvidersList.equals(initialProvidersList));
+		// TODO
+		boolean isEqualList = false;
+//		boolean isEqualList = (newProvidersList==initialProvidersMap) || (newProvidersList!=null && newProvidersList.equals(initialProvidersMap));
 		return newEnablement!=initialEnablement || (newEnablement==true && !isEqualList);
 	}
 

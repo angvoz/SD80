@@ -15,9 +15,11 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
@@ -106,7 +108,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	};
 	private static final String CLEAR_STR = Messages.LanguageSettingsProviderTab_Clear;
 
-	private List<ILanguageSettingsProvider> initialProvidersList = null;
+	private Map<String, List<ILanguageSettingsProvider>> initialProvidersMap = new HashMap<String, List<ILanguageSettingsProvider>>();
 	private boolean initialEnablement = false;
 	
 	private class LanguageSettingsContributorsLabelProviderEnhanced extends LanguageSettingsContributorsLabelProvider {
@@ -401,6 +403,12 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 						}
 					}
 				}
+				// TODO temporary for debugging
+				ICConfigurationDescription cfgDescription = getConfigurationDescription();
+				List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
+				if (initialProviders!=null && !initialProviders.contains(provider)) {
+					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
+				}
 				return overlayKeys;
 			}
 		});
@@ -425,9 +433,13 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 
 	private void trackInitialSettings() {
 		if (page.isForProject()) {
-			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-			if (cfgDescription!=null) {
-				initialProvidersList = cfgDescription.getLanguageSettingProviders();
+			ICConfigurationDescription[] cfgDescriptions = page.getCfgsEditable();
+			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
+				if (cfgDescription!=null) {
+					String cfgId = cfgDescription.getId();
+					List<ILanguageSettingsProvider> initialProviders = cfgDescription.getLanguageSettingProviders();
+					initialProvidersMap.put(cfgId, initialProviders);
+				}
 			}
 			initialEnablement = LanguageSettingsManager.isLanguageSettingsProvidersEnabled(page.getProject());
 		}
@@ -541,14 +553,12 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		boolean isEntrySelected = entry!=null;
 		boolean isProviderSelected = !isEntrySelected && (provider!=null);
 
-		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider;
+		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider);
 		
 		boolean canAdd = isProviderEditable;
 		boolean canEdit = isProviderEditable && isEntrySelected;
 		boolean canDelete = isProviderEditable && isEntrySelected;
-		boolean canClear = isProviderEditable && isProviderSelected
-			&& !LanguageSettingsManager.isWorkspaceProvider(provider)
-			&& getSettingEntries(provider)!=null;
+		boolean canClear = isProviderEditable && isProviderSelected && getSettingEntries(provider)!=null;
 		
 		boolean canMoveUp = false;
 		boolean canMoveDown = false;
@@ -717,11 +727,11 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		if (provider instanceof LanguageSettingsSerializable) {
 			((LanguageSettingsSerializable)provider).setSettingEntries(cfgDescription, rc, languageId, entries);
 			
-			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
-			pos = providers.indexOf(provider);
-			providers.remove(pos);
-			providers.add(pos, provider);
-			cfgDescription.setLanguageSettingProviders(providers);
+//			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+//			pos = providers.indexOf(provider);
+//			providers.remove(pos);
+//			providers.add(pos, provider);
+//			cfgDescription.setLanguageSettingProviders(providers);
 		}
 	}
 
@@ -749,12 +759,40 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	}
 
 	private void performAdd(ILanguageSettingsProvider selectedProvider) {
-		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
+		if (selectedProvider instanceof LanguageSettingsSerializable) {
 			ICLanguageSettingEntry settingEntry = doAdd();
-			addEntry(selectedProvider, settingEntry);
+			if (settingEntry!=null) {
+				selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
+				addEntry(selectedProvider, settingEntry);
+			}
 		}
 	}
 	
+	/**
+	 * @param selectedProvider
+	 * @return
+	 */
+	private LanguageSettingsSerializable arrangeEditedCopy(LanguageSettingsSerializable selectedProvider) {
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
+		if (initialProviders.contains(selectedProvider)) {
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+			int pos = providers.indexOf(selectedProvider);
+			if (pos>=0) {
+				try {
+					selectedProvider = selectedProvider.clone();
+					providers.set(pos, selectedProvider);
+					cfgDescription.setLanguageSettingProviders(providers);
+				} catch (CloneNotSupportedException e) {
+					CUIPlugin.log("Internal Error: cannot clone provider "+selectedProvider.getId(), e);
+				}
+			} else {
+				CUIPlugin.getDefault().logErrorMessage("Internal Error: cannot find provider "+selectedProvider.getId());
+			}
+		}
+		return selectedProvider;
+	}
+
 	private ICLanguageSettingEntry doEdit(ICLanguageSettingEntry ent) {
 		ICLanguageSettingEntry selectedEntry = getSelectedEntry();
 		ICConfigurationDescription cfgDecsription = getConfigurationDescription();
@@ -769,6 +807,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
 			ICLanguageSettingEntry settingEntry = doEdit(selectedEntry);
 			if (settingEntry!=null) {
+				selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
 				deleteEntry(selectedProvider, selectedEntry);
 				addEntry(selectedProvider, settingEntry);
 			}
@@ -807,6 +846,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 
 	private void performDelete(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
+			selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
 			if (selectedEntry!=null) {
 				deleteEntry(selectedProvider, selectedEntry);
 			} else {
@@ -833,12 +873,14 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 
 	private void performMoveUp(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 		if (selectedEntry!=null) {
+			selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
 			moveEntry(selectedProvider, selectedEntry, true);
 		}
 	}
 
 	private void performMoveDown(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 		if (selectedEntry!=null) {
+			selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
 			moveEntry(selectedProvider, selectedEntry, false);
 		}
 	}
@@ -1075,8 +1117,8 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 			throw new UnsupportedOperationException("Internal Error");
 		}
 
-		updateData(getResDesc());
 		trackInitialSettings();
+		updateData(getResDesc());
 	}
 
 	@Override

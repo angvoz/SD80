@@ -21,6 +21,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
@@ -398,16 +399,24 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
 						}
 					} else {
-						if (provider instanceof ILanguageSettingsEditableProvider) {
+						if (provider instanceof ILanguageSettingsEditableProvider && !(getResource() instanceof IProject)) {
 							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
 						}
 					}
 				}
-				// TODO temporary for debugging
-				ICConfigurationDescription cfgDescription = getConfigurationDescription();
-				List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
-				if (initialProviders!=null && !initialProviders.contains(provider)) {
-					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
+				{// TODO temporary for debugging
+					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
+					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER)
+						|| provider instanceof ILanguageSettingsEditableProvider;
+					
+					if (LanguageSettingsManager.isWorkspaceProvider(provider) && !isSpecial) {
+						overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
+					}
+					ICConfigurationDescription cfgDescription = getConfigurationDescription();
+					List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
+					if (initialProviders!=null && !initialProviders.contains(provider)) {
+						overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
+					}
 				}
 				return overlayKeys;
 			}
@@ -553,7 +562,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		boolean isEntrySelected = entry!=null;
 		boolean isProviderSelected = !isEntrySelected && (provider!=null);
 
-		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider);
+		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider /*&& !LanguageSettingsManager.isWorkspaceProvider(provider)*/;
 		
 		boolean canAdd = isProviderEditable;
 		boolean canEdit = isProviderEditable && isEntrySelected;

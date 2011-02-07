@@ -63,6 +63,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
@@ -345,26 +346,30 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			@Override
 			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
 				String[] overlayKeys = new String[5];
-				if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_REFERENCE;
-//					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
-//					overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_LINK;
-				} else {
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONFIGURATION;
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_INDEXED;
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONTEXT;
-					
-//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_PROJECT;
-				}
-				// TODO temporary for debugging
-				if (!page.isForPrefs()) {
-					ICConfigurationDescription cfgDescription = getConfigurationDescription();
-					List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
-					if (providers.contains(provider)) {
-						List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
-						if (initialProviders!=null && !initialProviders.contains(provider)) {
-							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
+				{ // TODO temporary for debugging
+					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
+					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER)
+						|| provider instanceof ILanguageSettingsEditableProvider;
+					if (LanguageSettingsManager.isWorkspaceProvider(provider) && !isSpecial) {
+						overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
+	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_REFERENCE;
+	//					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
+	//					overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_LINK;
+					} else {
+	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONFIGURATION;
+	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_INDEXED;
+	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONTEXT;
+						
+	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_PROJECT;
+					}
+					if (!page.isForPrefs()) {
+						ICConfigurationDescription cfgDescription = getConfigurationDescription();
+						List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+						if (providers.contains(provider)) {
+							List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
+							if (initialProviders!=null && !initialProviders.contains(provider)) {
+								overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
+							}
 						}
 					}
 				}
@@ -447,7 +452,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		if (!page.isForPrefs()) {
 			if (globalProviderCheckBox==null) {
 				globalProviderCheckBox = new Button(groupOptionsPage, SWT.CHECK);
-				globalProviderCheckBox.setText("Use shared provider defined globally.");
+				globalProviderCheckBox.setText("Shared provider defined globally.");
 				globalProviderCheckBox.addSelectionListener(new SelectionAdapter() {
 					@Override
 					public void widgetSelected(SelectionEvent e) {
@@ -588,9 +593,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		boolean isChecked = tableProvidersViewer.getChecked(provider);
 		if (!page.isForPrefs()) {
 			boolean canClone = provider instanceof LanguageSettingsSerializable;
+			boolean isEditable = provider instanceof ILanguageSettingsEditableProvider;
 			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
-			globalProviderCheckBox.setSelection(isGlobal);
-			globalProviderCheckBox.setEnabled(isChecked && canClone);
+			// Currently editing global editable providers is not allowed (clone will be created on attempt)
+			globalProviderCheckBox.setSelection(isGlobal && !isEditable);
+			globalProviderCheckBox.setEnabled(isChecked && canClone && !isEditable);
 			globalProviderCheckBox.setVisible(provider!=null);
 			
 			boolean needPreferencesLink = ! (currentOptionsPage instanceof DummyProviderOptionsPage) && isGlobal;

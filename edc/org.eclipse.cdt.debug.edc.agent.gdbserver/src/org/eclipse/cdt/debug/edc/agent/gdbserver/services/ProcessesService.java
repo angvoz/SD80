@@ -97,6 +97,15 @@ public class ProcessesService implements IProcesses {
 						processIDToAttach = Integer.valueOf(directory);
 					}
 				}
+				else if (args[4] instanceof Map)
+				{
+					@SuppressWarnings("unchecked")
+					Map<String,Object> params = (Map<String, Object>) args[4];
+					attach = (Boolean) params.get(IProcesses.START_ATTACH);
+					if (attach) {
+						processIDToAttach = Integer.valueOf(directory);
+					}
+				}
 				startDebug(token, attach);
 
 			} else if (name.equals("attach")) {

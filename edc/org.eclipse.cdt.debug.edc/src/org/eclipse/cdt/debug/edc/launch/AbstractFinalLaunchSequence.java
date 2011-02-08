@@ -625,7 +625,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 			final String[] args = LaunchUtils.getProgramArgumentsArray(cfg);
 			final Map<String, String> env = LaunchUtils.getEnvironmentVariables(cfg);
 			final boolean append = cfg.getAttribute(ILaunchManager.ATTR_APPEND_ENVIRONMENT_VARIABLES, true);
-			final boolean attach = false;
+			final Map<String,Object> params = new HashMap<String,Object>();
 
 			final IProcesses.DoneGetEnvironment done_env = new IProcesses.DoneGetEnvironment() {
 				public void doneGetEnvironment(IToken token, Exception error, Map<String, String> def) {
@@ -642,7 +642,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 						vars.putAll(env);
 					Protocol.invokeAndWait(new Runnable() {
 						public void run() {
-							ps.start(workingDirectory, file, args, vars, attach, new IProcesses.DoneStart() {
+							ps.start(workingDirectory, file, args, vars, params, new IProcesses.DoneStart() {
 								public void doneStart(IToken token, Exception error, ProcessContext process) {
 									if (error != null) {
 										requestMonitor.setStatus(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(),

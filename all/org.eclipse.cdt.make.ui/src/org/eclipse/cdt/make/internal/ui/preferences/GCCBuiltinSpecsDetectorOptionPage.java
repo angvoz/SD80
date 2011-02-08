@@ -14,9 +14,11 @@ package org.eclipse.cdt.make.internal.ui.preferences;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.errorparsers.RegexErrorParser;
 import org.eclipse.cdt.core.errorparsers.RegexErrorPattern;
+import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
 import org.eclipse.cdt.internal.ui.util.SWTUtil;
 import org.eclipse.cdt.internal.ui.util.TableLayoutComposite;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.DialogsMessages;
 import org.eclipse.cdt.ui.dialogs.RegularExpressionStatusDialog;
@@ -25,6 +27,8 @@ import org.eclipse.cdt.utils.ui.controls.ControlFactory;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.layout.PixelConverter;
 import org.eclipse.jface.text.FindReplaceDocumentAdapterContentProposalProvider;
@@ -88,6 +92,8 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	private boolean fEditable;
 
 	private Text inputCommand;
+	
+	private StatusMessageLine fStatusLine;
 
 	/**
 	 * Provides generic implementation for overridden methods.
@@ -232,6 +238,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			b1.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
+					// FIXME - need to do that in performApply()
 					fProvider.setRunOnce(b1.getSelection());
 				}});
 
@@ -247,6 +254,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			b2.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
+					// FIXME - need to do that in performApply()
 					fProvider.setRunOnce(!b2.getSelection());
 				}});
 
@@ -272,8 +280,8 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			inputCommand.addModifyListener(new ModifyListener() {
 
 				public void modifyText(ModifyEvent e) {
-					// TODO Auto-generated method stub
-
+					// FIXME - need to do that in performApply()
+					fProvider.setCustomParameter(inputCommand.getText());
 				}
 			});
 		}
@@ -376,6 +384,13 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //		if (fEditable) {
 //			createButtons(composite);
 //		}
+
+		// Status line
+		if (fEditable) {
+			fStatusLine = new StatusMessageLine(composite, SWT.LEFT, 2);
+			IStatus status = new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, "Note that currently the options are applied to provider directly (FIXME)");
+			fStatusLine.setErrorStatus(status);
+		}
 
 		setControl(composite);
 	}

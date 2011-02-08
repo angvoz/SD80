@@ -12,20 +12,21 @@
 package org.eclipse.cdt.debug.edc.tests;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.tm.tcf.core.AbstractPeer;
 import org.eclipse.tm.tcf.protocol.IChannel;
+import org.eclipse.tm.tcf.protocol.IChannel.IChannelListener;
 import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.protocol.Protocol;
-import org.eclipse.tm.tcf.protocol.IChannel.IChannelListener;
 import org.eclipse.tm.tcf.services.IDiagnostics;
-import org.eclipse.tm.tcf.services.ILocator;
-import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IDiagnostics.DoneEcho;
+import org.eclipse.tm.tcf.services.ILocator;
 import org.eclipse.tm.tcf.services.ILocator.LocatorListener;
+import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IProcesses.ProcessContext;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -218,7 +219,10 @@ public class ManualDebuggerAgentTest {
 				}
 			});
 
-			serv.start("", "/mydisk/myprog/cpp/gtkhello/helloworld", new String[] { "" }, null, false,
+			final Map<String,Object> params = new HashMap<String,Object>();
+			params.put(IProcesses.START_ATTACH, false);
+
+			serv.start("", "/mydisk/myprog/cpp/gtkhello/helloworld", new String[] { "" }, null, params,
 					new IProcesses.DoneStart() {
 
 						public void doneStart(IToken token, Exception error, ProcessContext process) {

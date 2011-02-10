@@ -272,6 +272,82 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 	/**
 	 */
+	public void testNullLanguageScope() throws Exception {
+		// define benchmark entries
+		List<ICLanguageSettingEntry> entriesNullLanguage = new ArrayList<ICLanguageSettingEntry>();
+		entriesNullLanguage.add(new CIncludePathEntry("path_null", 0));
+		List<ICLanguageSettingEntry> entriesLanguage = new ArrayList<ICLanguageSettingEntry>();
+		entriesLanguage.add(new CIncludePathEntry("path", 0));
+		
+		Element elementProvider;
+
+		{
+			// create a provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
+			assertEquals(null, provider.getLanguageIds());
+			
+			// add null language
+			provider.setSettingEntries(null, MOCK_RC, null, entriesNullLanguage);
+			assertEquals(null, provider.getLanguageIds());
+			{
+				// getter by null language
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, MOCK_RC, null);
+				assertEquals(entriesNullLanguage.get(0), actual.get(0));
+				assertEquals(entriesNullLanguage.size(), actual.size());
+			}
+			{
+				// getter by any language - should return same entries as null
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, MOCK_RC, LANG_ID);
+				assertEquals(entriesNullLanguage.get(0), actual.get(0));
+				assertEquals(entriesNullLanguage.size(), actual.size());
+			}
+	
+			// add non-null language
+			provider.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, entriesLanguage);
+	//		assertEquals("TODO", provider.getLanguageIds()); // TODO
+			{
+				// getter by null language
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, MOCK_RC, null);
+				assertEquals(entriesNullLanguage.get(0), actual.get(0));
+				assertEquals(entriesNullLanguage.size(), actual.size());
+			}
+			{
+				// getter by the language
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, MOCK_RC, LANG_ID);
+				assertEquals(entriesLanguage.get(0), actual.get(0));
+				assertEquals(entriesLanguage.size(), actual.size());
+			}
+		
+			// provider/configuration/language/resource/settingEntry
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			
+			// verify that "language" element is saved in XML
+			String xmlString = XmlUtil.toString(doc);
+			assertTrue(xmlString.contains("<language")); // LanguageSettingsSerializable.ELEM_LANGUAGE;
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			{
+				// getter by null language
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, MOCK_RC, null);
+				assertEquals(entriesNullLanguage.get(0), actual.get(0));
+				assertEquals(entriesNullLanguage.size(), actual.size());
+			}
+			{
+				// getter by the language
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, MOCK_RC, LANG_ID);
+				assertEquals(entriesLanguage.get(0), actual.get(0));
+				assertEquals(entriesLanguage.size(), actual.size());
+			}
+		}
+	}
+	
+	
+	/**
+	 */
 	public void testNullResource() throws Exception {
 		// provider/configuration/language/resource/settingEntry
 		Element elementProvider;

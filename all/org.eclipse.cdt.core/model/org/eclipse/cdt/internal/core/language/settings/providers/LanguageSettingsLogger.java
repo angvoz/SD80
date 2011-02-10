@@ -10,6 +10,11 @@ import org.eclipse.core.runtime.Status;
 @Deprecated
 public class LanguageSettingsLogger {
 
+	/**
+	 * 
+	 */
+	private static final boolean ENABLED = false;
+
 	// AG FIXME
 	/**
 	 * @param msg
@@ -17,9 +22,11 @@ public class LanguageSettingsLogger {
 	 */
 	@Deprecated
 	public static void logInfo(String msg) {
-		Exception e = new Exception(msg);
-		IStatus status = new Status(IStatus.INFO, CCorePlugin.PLUGIN_ID, msg, e);
-		CCorePlugin.log(status);
+		if (ENABLED) {
+			Exception e = new Exception(msg);
+			IStatus status = new Status(IStatus.INFO, CCorePlugin.PLUGIN_ID, msg, e);
+			CCorePlugin.log(status);
+		}
 	}
 
 	// AG FIXME
@@ -29,9 +36,11 @@ public class LanguageSettingsLogger {
 	 */
 	@Deprecated
 	public static void logWarning(String msg) {
-		Exception e = new Exception(msg);
-		IStatus status = new Status(IStatus.WARNING, CCorePlugin.PLUGIN_ID, msg, e);
-		CCorePlugin.log(status);
+		if (ENABLED) {
+			Exception e = new Exception(msg);
+			IStatus status = new Status(IStatus.WARNING, CCorePlugin.PLUGIN_ID, msg, e);
+			CCorePlugin.log(status);
+		}
 	}
 
 	// AG FIXME
@@ -41,9 +50,11 @@ public class LanguageSettingsLogger {
 	 */
 	@Deprecated
 	public static void logError(String msg) {
-		Exception e = new Exception(msg);
-		IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, msg, e);
-		CCorePlugin.log(status);
+		if (ENABLED) {
+			Exception e = new Exception(msg);
+			IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, msg, e);
+			CCorePlugin.log(status);
+		}
 	}
 	
 	// AG FIXME
@@ -54,13 +65,15 @@ public class LanguageSettingsLogger {
 	 */
 	@Deprecated
 	public static void logScannerInfoProvider(IResource rc, Object who) {
-		String msg = "rc="+rc+" <-- "+who.getClass().getSimpleName();
-		if (rc instanceof IFile) {
-			LanguageSettingsLogger.logInfo(msg);
-		} else if (rc instanceof IProject) {
-			LanguageSettingsLogger.logWarning(msg);
-		} else {
-			LanguageSettingsLogger.logError(msg);
+		if (ENABLED) {
+			String msg = "rc="+rc+" <-- "+who.getClass().getSimpleName();
+			if (rc instanceof IFile) {
+				LanguageSettingsLogger.logInfo(msg);
+			} else if (rc instanceof IProject) {
+				LanguageSettingsLogger.logWarning(msg);
+			} else {
+				LanguageSettingsLogger.logError(msg);
+			}
 		}
 	}
 }

@@ -126,6 +126,10 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 			if (entries!=null)
 				return Collections.unmodifiableList(entries);
 		}
+		
+		if (languageId!=null && (languageScope==null || languageScope.contains(languageId))) {
+			return getSettingEntries(cfgDescription, rc, null);
+		}
 
 		return null;
 	}

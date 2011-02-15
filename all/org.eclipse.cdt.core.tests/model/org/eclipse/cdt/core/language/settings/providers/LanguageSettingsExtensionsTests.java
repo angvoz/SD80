@@ -25,7 +25,6 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
@@ -141,8 +140,8 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(BASE_PROVIDER_SUBCLASS_ID_EXT);
 		assertNotNull(providerExt);
 
-		assertTrue(providerExt instanceof TestClassLanguageSettingsBaseProvider);
-		TestClassLanguageSettingsBaseProvider provider = (TestClassLanguageSettingsBaseProvider)providerExt;
+		assertTrue(providerExt instanceof MockLanguageSettingsBaseProvider);
+		MockLanguageSettingsBaseProvider provider = (MockLanguageSettingsBaseProvider)providerExt;
 		assertEquals(BASE_PROVIDER_SUBCLASS_ID_EXT, provider.getId());
 		assertEquals(PROVIDER_PARAMETER_EXT, provider.getCustomParameter());
 
@@ -185,7 +184,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		// get test plugin extension non-default provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(PROVIDER_ID_EXT);
 		assertNotNull(providerExt);
-		assertTrue(providerExt instanceof TestClassLanguageSettingsProvider);
+		assertTrue(providerExt instanceof MockLanguageSettingsProvider);
 
 		assertEquals(PROVIDER_ID_EXT, providerExt.getId());
 		assertEquals(PROVIDER_NAME_EXT, providerExt.getName());

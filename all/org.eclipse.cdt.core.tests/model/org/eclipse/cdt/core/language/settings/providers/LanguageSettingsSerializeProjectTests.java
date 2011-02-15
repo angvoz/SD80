@@ -395,7 +395,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 			assertNotNull(cfgDescription);
 
-			LanguageSettingsSerializable serializableProvider = new TestClassLanguageSettingsSerializableProvider(PROVIDER_0, PROVIDER_NAME_0);
+			LanguageSettingsSerializable serializableProvider = new MockLanguageSettingsSerializableProvider(PROVIDER_0, PROVIDER_NAME_0);
 			serializableProvider.setSettingEntries(null, null, null, entries);
 
 			ArrayList<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
@@ -423,7 +423,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertNotNull(providers);
 			assertEquals(1, providers.size());
 			ILanguageSettingsProvider provider = providers.get(0);
-			assertTrue(provider instanceof TestClassLanguageSettingsSerializableProvider);
+			assertTrue(provider instanceof MockLanguageSettingsSerializableProvider);
 
 			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
 			assertEquals(entries.get(0), actual.get(0));
@@ -496,7 +496,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertNotNull(cfgDescription);
 
 			// populate with provider overriding the extension (must be SerializableLanguageSettingsProvider or a class from another extension)
-			ILanguageSettingsProvider providerOverride = new TestClassLanguageSettingsSerializableProvider(idExt, PROVIDER_NAME_0);
+			ILanguageSettingsProvider providerOverride = new MockLanguageSettingsSerializableProvider(idExt, PROVIDER_NAME_0);
 			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
 			providers.add(providerOverride);
 			cfgDescription.setLanguageSettingProviders(providers);
@@ -525,7 +525,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			assertEquals(1, providers.size());
 			ILanguageSettingsProvider provider = providers.get(0);
 			assertNotNull(provider);
-			assertTrue(provider instanceof TestClassLanguageSettingsSerializableProvider);
+			assertTrue(provider instanceof MockLanguageSettingsSerializableProvider);
 			assertEquals(idExt, provider.getId());
 			assertEquals(PROVIDER_NAME_0, provider.getName());
 		}
@@ -563,7 +563,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 				LanguageSettingsSerializable mockProvider1 = new LanguageSettingsSerializable(PROVIDER_0, PROVIDER_NAME_0);
 				mockProvider1.setSettingEntries(null, null, null, entries_31);
 				// 3.2
-				LanguageSettingsSerializable mockProvider2 = new TestClassLanguageSettingsSerializableProvider(PROVIDER_2, PROVIDER_NAME_2);
+				LanguageSettingsSerializable mockProvider2 = new MockLanguageSettingsSerializableProvider(PROVIDER_2, PROVIDER_NAME_2);
 				mockProvider2.setSettingEntries(null, null, null, entries_32);
 
 				ArrayList<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
@@ -610,7 +610,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			// 3.2
 			{
 				ILanguageSettingsProvider provider2 = providers.get(2);
-				assertTrue(provider2 instanceof TestClassLanguageSettingsSerializableProvider);
+				assertTrue(provider2 instanceof MockLanguageSettingsSerializableProvider);
 				List<ICLanguageSettingEntry> actual = provider2.getSettingEntries(null, null, null);
 				assertEquals(entries_32.get(0), actual.get(0));
 				assertEquals(entries_32.size(), actual.size());

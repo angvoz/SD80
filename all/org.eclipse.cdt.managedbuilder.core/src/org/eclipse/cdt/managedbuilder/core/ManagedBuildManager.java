@@ -52,7 +52,6 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.CoreModelUtil;
 import org.eclipse.cdt.core.parser.IScannerInfo;
@@ -62,6 +61,7 @@ import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.XmlStorageUtil;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
@@ -4835,7 +4835,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
 			try {
-				provider = ((LanguageSettingsSerializable)provider).clone();
+				provider = ((ILanguageSettingsEditableProvider)provider).clone();
 			} catch (CloneNotSupportedException e) {
 				// shouldn't happen. just in case, log the error and use workspace provider
 				ManagedBuilderCorePlugin.log(e);

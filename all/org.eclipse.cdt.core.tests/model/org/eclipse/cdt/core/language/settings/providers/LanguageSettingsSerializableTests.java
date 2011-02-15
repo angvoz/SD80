@@ -894,7 +894,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 	/**
 	 */
-	public void testEqualsAndClone() throws Exception {
+	public void testEquals() throws Exception {
 		List<ICLanguageSettingEntry> sampleEntries_1 = new ArrayList<ICLanguageSettingEntry>();
 		sampleEntries_1.add(new CMacroEntry("MACRO0", "value0",1));
 		sampleEntries_1.add(new CIncludePathEntry("path0", 1));
@@ -912,28 +912,6 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		provider1.setCustomParameter(CUSTOM_PARAMETER);
 		provider1.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, sampleEntries_1);
 		provider1.setSettingEntries(null, null, LANG_ID, sampleEntries_2);
-
-		{
-			// clone provider
-			LanguageSettingsSerializable providerClone = provider1.clone();
-			assertNotSame(provider1, providerClone);
-			assertTrue(provider1.equals(providerClone));
-			assertTrue(provider1.getClass()==providerClone.getClass());
-			assertEquals(provider1.getCustomParameter(), providerClone.getCustomParameter());
-			assertEquals(provider1.getLanguageIds().get(0), providerClone.getLanguageIds().get(0));
-
-			List<ICLanguageSettingEntry> actual1 = providerClone.getSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID);
-			assertNotSame(sampleEntries_1, actual1);
-			assertEquals(sampleEntries_1.get(0), actual1.get(0));
-			assertEquals(sampleEntries_1.get(1), actual1.get(1));
-			assertEquals(sampleEntries_1.get(2), actual1.get(2));
-			assertEquals(sampleEntries_1.size(), actual1.size());
-
-			List<ICLanguageSettingEntry> actual2 = providerClone.getSettingEntries(null, null, LANG_ID);
-			assertNotSame(sampleEntries_2, actual2);
-			assertEquals(sampleEntries_2.get(0), actual2.get(0));
-			assertEquals(sampleEntries_2.size(), actual2.size());
-		}
 
 		{
 			// create another provider with the same data
@@ -972,5 +950,58 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		}
 	}
 
+	/**
+	 */
+	public void testClone() throws Exception {
+		// define sample data
+		List<ICLanguageSettingEntry> sampleEntries_1 = new ArrayList<ICLanguageSettingEntry>();
+		sampleEntries_1.add(new CMacroEntry("MACRO0", "value0",1));
+		sampleEntries_1.add(new CIncludePathEntry("path0", 1));
+		sampleEntries_1.add(new CIncludePathEntry("path1", 1));
+
+		List<ICLanguageSettingEntry> sampleEntries_2 = new ArrayList<ICLanguageSettingEntry>();
+		sampleEntries_2.add(new CIncludePathEntry("path0", 1));
+
+		List<String> sampleLanguages = new ArrayList<String>();
+		sampleLanguages.add(LANG_ID);
+
+		// create a model provider
+		class LanguageSettingsSerializableMock extends LanguageSettingsSerializable implements Cloneable {
+			public LanguageSettingsSerializableMock(String id, String name) {
+				super(id, name);
+			}
+			@Override
+			public LanguageSettingsSerializableMock clone() throws CloneNotSupportedException {
+				return (LanguageSettingsSerializableMock) super.clone();
+			}
+
+		}
+		LanguageSettingsSerializableMock provider1 = new LanguageSettingsSerializableMock(PROVIDER_1, PROVIDER_NAME_1);
+		provider1.setLanguageIds(sampleLanguages);
+		provider1.setCustomParameter(CUSTOM_PARAMETER);
+		provider1.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, sampleEntries_1);
+		provider1.setSettingEntries(null, null, LANG_ID, sampleEntries_2);
+
+		// clone provider
+		LanguageSettingsSerializableMock providerClone = provider1.clone();
+		assertNotSame(provider1, providerClone);
+		assertTrue(provider1.equals(providerClone));
+		assertTrue(provider1.getClass()==providerClone.getClass());
+		assertEquals(provider1.getCustomParameter(), providerClone.getCustomParameter());
+		assertEquals(provider1.getLanguageIds().get(0), providerClone.getLanguageIds().get(0));
+
+		List<ICLanguageSettingEntry> actual1 = providerClone.getSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID);
+		assertNotSame(sampleEntries_1, actual1);
+		assertEquals(sampleEntries_1.get(0), actual1.get(0));
+		assertEquals(sampleEntries_1.get(1), actual1.get(1));
+		assertEquals(sampleEntries_1.get(2), actual1.get(2));
+		assertEquals(sampleEntries_1.size(), actual1.size());
+
+		List<ICLanguageSettingEntry> actual2 = providerClone.getSettingEntries(null, null, LANG_ID);
+		assertNotSame(sampleEntries_2, actual2);
+		assertEquals(sampleEntries_2.get(0), actual2.get(0));
+		assertEquals(sampleEntries_2.size(), actual2.size());
+	}
 }
+
 

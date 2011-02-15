@@ -24,6 +24,7 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.internal.core.scannerconfig.util.TraceUtil;
@@ -32,7 +33,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 
-public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
+public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implements ILanguageSettingsEditableProvider {
 	private static final Pattern MACRO_PATTERN = Pattern.compile("#define (\\S*) *(.*)"); //$NON-NLS-1$
 	private static final Pattern MACRO_WITH_ARGS_PATTERN = Pattern.compile("#define (\\S*\\(.*?\\)) *(.*)"); //$NON-NLS-1$
 
@@ -219,4 +220,14 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		}
 		return windowsPath.trim();
 	}
+	
+	/* (non-Javadoc)
+	 * @see java.lang.Object#clone()
+	 */
+	@Override
+	public GCCBuiltinSpecsDetector clone() throws CloneNotSupportedException {
+		// FIXME
+		return (GCCBuiltinSpecsDetector) super.clone();
+	}
+
 }

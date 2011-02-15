@@ -347,10 +347,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
 				String[] overlayKeys = new String[5];
 				{ // TODO temporary for debugging
-					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
-					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER)
-						|| provider instanceof ILanguageSettingsEditableProvider;
-					if (LanguageSettingsManager.isWorkspaceProvider(provider) && !isSpecial) {
+//					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
+//					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER);
+					
+					if (LanguageSettingsManager.isWorkspaceProvider(provider) /*&& !isSpecial*/) {
 						overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
 	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_REFERENCE;
 	//					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
@@ -418,12 +418,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			newProvider = LanguageSettingsManager.getWorkspaceProvider(id);
 		} else {
 			// Local provider instance chosen
-			if (oldProvider instanceof LanguageSettingsSerializable) {
+			if (oldProvider instanceof ILanguageSettingsEditableProvider) {
 				try {
-					newProvider = ((LanguageSettingsSerializable)oldProvider).clone();
-					if (newProvider instanceof LanguageSettingsSerializable) {
-						((LanguageSettingsSerializable)newProvider).clear();
-					}
+					newProvider = ((ILanguageSettingsEditableProvider)oldProvider).clone();
+					((ILanguageSettingsEditableProvider)newProvider).clear();
 				} catch (CloneNotSupportedException e) {
 					CUIPlugin.log("Error cloning provider " + oldProvider.getId(), e);
 				}
@@ -597,12 +595,12 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		boolean isChecked = tableProvidersViewer.getChecked(provider);
 		if (!page.isForPrefs()) {
-			boolean canClone = provider instanceof LanguageSettingsSerializable;
+			boolean canClone = provider instanceof ILanguageSettingsEditableProvider;
 			boolean isEditable = provider instanceof ILanguageSettingsEditableProvider;
 			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
 			// Currently editing global editable providers is not allowed (clone will be created on attempt)
-			globalProviderCheckBox.setSelection(isGlobal && !isEditable);
-			globalProviderCheckBox.setEnabled(isChecked && canClone && !isEditable);
+			globalProviderCheckBox.setSelection(isGlobal /*&& !isEditable*/);
+			globalProviderCheckBox.setEnabled(isChecked && canClone /*&& !isEditable*/);
 			globalProviderCheckBox.setVisible(provider!=null);
 			
 			boolean needPreferencesLink = ! (currentOptionsPage instanceof DummyProviderOptionsPage) && isGlobal;
@@ -670,7 +668,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		// TODO: canClear for ILanguageSettingsEditableProvider
 		boolean canClear = false;
-		if (provider instanceof LanguageSettingsSerializable) {
+		if (provider instanceof LanguageSettingsSerializable && provider instanceof ILanguageSettingsEditableProvider) {
 			
 			LanguageSettingsSerializable sprovider = (LanguageSettingsSerializable) provider;
 			if (!sprovider.isEmpty()) {
@@ -743,7 +741,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	 * @param selectedProvider
 	 * @return
 	 */
-	private LanguageSettingsSerializable arrangeEditedCopy(LanguageSettingsSerializable selectedProvider) {
+	private ILanguageSettingsEditableProvider arrangeEditedCopy(ILanguageSettingsEditableProvider selectedProvider) {
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
 		if (initialProviders.contains(selectedProvider)) {
@@ -751,7 +749,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			int pos = providers.indexOf(selectedProvider);
 			if (pos>=0) {
 				try {
-					selectedProvider = selectedProvider.clone();
+					selectedProvider = (ILanguageSettingsEditableProvider) selectedProvider.clone();
 					providers.set(pos, selectedProvider);
 					cfgDescription.setLanguageSettingProviders(providers);
 				} catch (CloneNotSupportedException e) {
@@ -765,26 +763,24 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	}
 
 	private void performClear(ILanguageSettingsProvider selectedProvider) {
-		if (selectedProvider instanceof LanguageSettingsSerializable){
+		if (selectedProvider instanceof ILanguageSettingsEditableProvider){
 			if (page.isForPrefs()) {
 				if (LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
 					// FIXME get writable provider here
-					((LanguageSettingsSerializable) selectedProvider).clear();
+					((ILanguageSettingsEditableProvider) selectedProvider).clear();
 				}
 			} else {
 				ICConfigurationDescription cfgDescription = getConfigurationDescription();
 				if (cfgDescription!=null) {
-					if (selectedProvider instanceof LanguageSettingsSerializable) {
-						selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
-						((LanguageSettingsSerializable)selectedProvider).clear();
-						updateTableConfigureProviders();
+					selectedProvider = arrangeEditedCopy((ILanguageSettingsEditableProvider)selectedProvider);
+					((ILanguageSettingsEditableProvider)selectedProvider).clear();
+					updateTableConfigureProviders();
 						
-//						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
-//						int pos = providers.indexOf(selectedProvider);
-//						providers.remove(pos);
-//						providers.add(pos, writableProvider);
-//						cfgDescription.setLanguageSettingProviders(providers);
-					}
+//					List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+//					int pos = providers.indexOf(selectedProvider);
+//					providers.remove(pos);
+//					providers.add(pos, writableProvider);
+//					cfgDescription.setLanguageSettingProviders(providers);
 				}
 			}
 			

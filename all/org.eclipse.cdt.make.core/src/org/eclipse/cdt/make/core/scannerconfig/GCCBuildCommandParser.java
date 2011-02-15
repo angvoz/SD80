@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -41,7 +42,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.URIUtil;
 
-public class GCCBuildCommandParser extends AbstractBuildCommandParser {
+public class GCCBuildCommandParser extends AbstractBuildCommandParser implements ILanguageSettingsEditableProvider {
 	// TODO better algorithm to figure out the file
 	// TODO test cases for boost bjam syntax with white spaces and quotes
 	//    "g++"  -ftemplate-depth-128 -O0 -fno-inline -Wall -g -mthreads  -DBOOST_ALL_NO_LIB=1 -DBOOST_PYTHON_SOURCE -DBOOST_PYTHON_STATIC_LIB  -I"." -I"c:\Python25\Include" -c -o "bin.v2\libs\python\build\gcc-mingw-3.4.5\debug\link-static\threading-multi\numeric.o" "libs\python\src\numeric.cpp"
@@ -319,6 +320,15 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser {
 			}
 		}
 		return false;
+	}
+	
+	/* (non-Javadoc)
+	 * @see java.lang.Object#clone()
+	 */
+	@Override
+	public GCCBuildCommandParser clone() throws CloneNotSupportedException {
+		// FIXME
+		return (GCCBuildCommandParser) super.clone();
 	}
 
 }

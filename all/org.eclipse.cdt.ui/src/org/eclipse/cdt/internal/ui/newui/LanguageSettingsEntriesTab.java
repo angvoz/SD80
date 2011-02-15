@@ -405,11 +405,10 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 					}
 				}
 				{// TODO temporary for debugging
-					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
-					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER)
-						|| provider instanceof ILanguageSettingsEditableProvider;
+//					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
+//					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER);
 					
-					if (LanguageSettingsManager.isWorkspaceProvider(provider) && !isSpecial) {
+					if (LanguageSettingsManager.isWorkspaceProvider(provider) /*&& !isSpecial*/) {
 						overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
 					}
 					ICConfigurationDescription cfgDescription = getConfigurationDescription();
@@ -562,16 +561,17 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		boolean isEntrySelected = entry!=null;
 		boolean isProviderSelected = !isEntrySelected && (provider!=null);
 
-		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider /*&& !LanguageSettingsManager.isWorkspaceProvider(provider)*/;
+		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider);
+		boolean isUserProvider = provider instanceof UserLanguageSettingsProvider;
 		
-		boolean canAdd = isProviderEditable;
-		boolean canEdit = isProviderEditable && isEntrySelected;
-		boolean canDelete = isProviderEditable && isEntrySelected;
+		boolean canAdd = isUserProvider;
+		boolean canEdit = isUserProvider && isEntrySelected;
+		boolean canDelete = isUserProvider && isEntrySelected;
 		boolean canClear = isProviderEditable && isProviderSelected && getSettingEntries(provider)!=null;
 		
 		boolean canMoveUp = false;
 		boolean canMoveDown = false;
-		if (isProviderEditable && isEntrySelected) {
+		if (isUserProvider && isEntrySelected) {
 			List<ICLanguageSettingEntry> entries = getSettingEntriesUpResourceTree(provider);
 			int last = entries.size()-1;
 			int pos = getExactIndex(entries, entry);
@@ -603,7 +603,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		}
 		if (status==null || status==Status.OK_STATUS) {
 			ILanguageSettingsProvider provider = getSelectedProvider();
-			if (provider!=null && !(provider instanceof ILanguageSettingsEditableProvider)) {
+			if (provider!=null && !(provider instanceof UserLanguageSettingsProvider)) {
 				String msg = "Setting entries for this provider are supplied by system and are not editable.";
 				status = new Status(IStatus.INFO, CUIPlugin.PLUGIN_ID, msg);
 			}
@@ -768,10 +768,10 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	}
 
 	private void performAdd(ILanguageSettingsProvider selectedProvider) {
-		if (selectedProvider instanceof LanguageSettingsSerializable) {
+		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
 			ICLanguageSettingEntry settingEntry = doAdd();
 			if (settingEntry!=null) {
-				selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
+				selectedProvider = arrangeEditedCopy((ILanguageSettingsEditableProvider)selectedProvider);
 				addEntry(selectedProvider, settingEntry);
 			}
 		}
@@ -781,7 +781,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	 * @param selectedProvider
 	 * @return
 	 */
-	private LanguageSettingsSerializable arrangeEditedCopy(LanguageSettingsSerializable selectedProvider) {
+	private ILanguageSettingsEditableProvider arrangeEditedCopy(ILanguageSettingsEditableProvider selectedProvider) {
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
 		if (initialProviders.contains(selectedProvider)) {
@@ -789,7 +789,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 			int pos = providers.indexOf(selectedProvider);
 			if (pos>=0) {
 				try {
-					selectedProvider = selectedProvider.clone();
+					selectedProvider = (ILanguageSettingsEditableProvider) selectedProvider.clone();
 					providers.set(pos, selectedProvider);
 					cfgDescription.setLanguageSettingProviders(providers);
 				} catch (CloneNotSupportedException e) {
@@ -816,7 +816,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
 			ICLanguageSettingEntry settingEntry = doEdit(selectedEntry);
 			if (settingEntry!=null) {
-				selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
+				selectedProvider = arrangeEditedCopy((ILanguageSettingsEditableProvider)selectedProvider);
 				deleteEntry(selectedProvider, selectedEntry);
 				addEntry(selectedProvider, settingEntry);
 			}
@@ -855,7 +855,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 
 	private void performDelete(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
 		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
-			selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
+			selectedProvider = arrangeEditedCopy((ILanguageSettingsEditableProvider)selectedProvider);
 			if (selectedEntry!=null) {
 				deleteEntry(selectedProvider, selectedEntry);
 			} else {
@@ -881,15 +881,15 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	}
 
 	private void performMoveUp(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
-		if (selectedEntry!=null) {
-			selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
+		if (selectedEntry!=null && (selectedProvider instanceof ILanguageSettingsEditableProvider)) {
+			selectedProvider = arrangeEditedCopy((ILanguageSettingsEditableProvider)selectedProvider);
 			moveEntry(selectedProvider, selectedEntry, true);
 		}
 	}
 
 	private void performMoveDown(ILanguageSettingsProvider selectedProvider, ICLanguageSettingEntry selectedEntry) {
-		if (selectedEntry!=null) {
-			selectedProvider = arrangeEditedCopy((LanguageSettingsSerializable)selectedProvider);
+		if (selectedEntry!=null && (selectedProvider instanceof ILanguageSettingsEditableProvider)) {
+			selectedProvider = arrangeEditedCopy((ILanguageSettingsEditableProvider)selectedProvider);
 			moveEntry(selectedProvider, selectedEntry, false);
 		}
 	}

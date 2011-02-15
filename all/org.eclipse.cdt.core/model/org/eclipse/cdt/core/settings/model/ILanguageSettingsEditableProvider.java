@@ -23,7 +23,10 @@ import org.eclipse.core.resources.IResource;
  * their settings themselves and not providing such option to the user.
  *
  */
-public interface ILanguageSettingsEditableProvider extends ILanguageSettingsProvider {
+public interface ILanguageSettingsEditableProvider extends ILanguageSettingsProvider, Cloneable {
 
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries);
+	public void clear();
+	
+	public ILanguageSettingsProvider clone() throws CloneNotSupportedException;
 }

@@ -36,7 +36,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 
-public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider implements Cloneable {
+public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	public static final String ELEM_PROVIDER = "provider"; //$NON-NLS-1$
 	private static final String ATTR_ID = "id"; //$NON-NLS-1$
 
@@ -384,7 +384,7 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider i
 	 * @see java.lang.Object#clone()
 	 */
 	@Override
-	public LanguageSettingsSerializable clone() throws CloneNotSupportedException {
+	protected LanguageSettingsSerializable clone() throws CloneNotSupportedException {
 		LanguageSettingsSerializable clone = (LanguageSettingsSerializable)super.clone();
 		clone.fStorage = cloneStorage();
 		return clone;

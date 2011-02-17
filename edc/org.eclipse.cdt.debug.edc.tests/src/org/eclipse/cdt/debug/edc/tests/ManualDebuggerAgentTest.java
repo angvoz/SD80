@@ -12,7 +12,6 @@
 package org.eclipse.cdt.debug.edc.tests;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.tm.tcf.core.AbstractPeer;
@@ -191,6 +190,7 @@ public class ManualDebuggerAgentTest {
 		});
 	}
 
+	@SuppressWarnings("deprecation")
 	private void examineService(IService service) {
 		if (service instanceof IDiagnostics) {
 			IDiagnostics serv = (IDiagnostics) service;
@@ -219,10 +219,7 @@ public class ManualDebuggerAgentTest {
 				}
 			});
 
-			final Map<String,Object> params = new HashMap<String,Object>();
-			params.put(IProcesses.START_ATTACH, false);
-
-			serv.start("", "/mydisk/myprog/cpp/gtkhello/helloworld", new String[] { "" }, null, params,
+			serv.start("", "/mydisk/myprog/cpp/gtkhello/helloworld", new String[] { "" }, null, false,
 					new IProcesses.DoneStart() {
 
 						public void doneStart(IToken token, Exception error, ProcessContext process) {

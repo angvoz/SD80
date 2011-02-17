@@ -121,10 +121,127 @@ void dbg_variables_local()
 	}
 
 /****************************************************************************************************/
+int dbg_call_from_nested_scope(int arg_lint, char arg_lchar);
+int dbg_call_from_nested_scope(int arg_lint, char arg_lchar)
+{
+	/* step over each of the instructions, and   */
+
+	char lchar = arg_lchar + 2;
+	int lint = arg_lint * 10;
+
+	return lchar + lint;
+}
+
+/****************************************************************************************************/
+void dbg_variables_scoped()
+{
+	volatile int SizeOfInt = sizeof (int);
+	#if SizeOfInt == 2
+	volatile long int lint;
+	#else
+	volatile int lint;
+	#endif
+	volatile char lchar;
+#ifdef _Floating_Point_Support_
+	volatile float lfloat;
+	volatile double ldouble;
+#endif /* _Floating_Point_Support_ */
+	volatile long llong;
+	volatile UINT luint;
+	volatile char *lstring;
+	volatile char larray[8] = "_estin_";
+	   
+	lint = 1024;			 /*	Natural 			1024
+								Decimal 		    1024								
+								Hexadecimal			0x400
+							 */
+
+	/* step into the following and follow the instructions */
+	luint = dbg_call_from_nested_scope(90, 'z') / 2;
+
+	/* after stepping out of the previous function,
+	 * re-examine local variables */
+
+	lint *= 2;
+
+	{
+		volatile int nested_lint = lint/2;
+
+		lchar = 'a';			 /*	Natural 			'a'
+									Decimal 			97
+									Hexadecimal			0x61
+								 */
+
+		{
+			volatile char nested_lchar = 'g';
+#ifdef _Floating_Point_Support_
+
+			lfloat = 55.55f;		/*	Natural 			55.55
+										Decimal 			1113469747
+										Hexadecimal			0x425e3333
+									 */
+#endif /* _Floating_Point_Support_ */
+			{
+#ifdef _Floating_Point_Support_
+				volatile float nested_float = lfloat / 5.0;
+	
+				ldouble = ((double)nested_float) * 20.0 + 0.022;
+										/*	Natural 			222.222
+											Decimal 			4642022758098564809
+											Hexadecimal			0x406bc71a9fbe76c9
+										*/
+#endif /* _Floating_Point_Support_ */
+				{
+#ifdef _Floating_Point_Support_
+					volatile double nested_double = ldouble / 2.0;
+					/* step into the following and follow the instructions */
+					nested_double
+					  = dbg_call_from_nested_scope((int)nested_double,
+												   (char)nested_float);
+#else
+					llong = dbg_call_from_nested_scope(102, 2);
+#endif /* _Floating_Point_Support_ */
+
+					/* after stepping out of the previous function,
+					 * re-examine local variables */
+
+					llong = 123456789;		/*	Natural 			123456789
+												Decimal 			123456789
+												Hexadecimal			0x075BCD15
+											*/
+				}
+
+				luint = nested_lint / 2;	/*	Natural 			256
+												Decimal 			256
+												Hexadecimal			0x100
+				 	 	 	 	 	 	 	 */
+			}
+			larray[6] = nested_lchar;
+		}
+
+		lstring = (char*)"hello";	/*	Natural 			'h'
+										Decimal 			104
+										Hexadecimal			0x68
+									*/
+	}
+
+	larray[0] = lchar + 19;
+
+	/* step into the following and follow the instructions */
+	lint = dbg_call_from_nested_scope((int)larray[0], larray[0]);
+
+	/* after stepping out of the previous function,
+	 * re-examine local variables */
+
+	gint = ++lint;
+}
+
+/****************************************************************************************************/
 void dbg_variables()
 {
 	dbg_variables_global();
-	dbg_variables_local();	
+	dbg_variables_local();
+	dbg_variables_scoped();
 }
 
 /*-------------------------------------------------------------------------------------------------------------           

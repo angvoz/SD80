@@ -117,7 +117,7 @@ public class TestUnmanglerEABI extends TestCase {
 	
 	@Test
 	public void testSpecialClassMethods() throws UnmanglingException {
-		assertEquals("Der2::Der2()", unmangle("_ZN4Der2D0Ev"));
+		assertEquals("Der2::~Der2()", unmangle("_ZN4Der2D0Ev"));
 		assertEquals("DerivedTypes::DerivedTypes()", unmangle("_ZN12DerivedTypesC2Ev"));
 	}
 	
@@ -138,7 +138,7 @@ public class TestUnmanglerEABI extends TestCase {
 	@Test
 	public void testStdExpansions() throws UnmanglingException {
 		assertEquals("operator <<(::std::basic_ostream<char,::std::char_traits<char> >&,::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > const&)", unmangle("_ZlsRSoRKSs"));
-		assertEquals("::std::__codecvt_abstract_base<char,char,int>::std::__codecvt_abstract_base()", unmangle("_ZNSt23__codecvt_abstract_baseIcciED0Ev"));
+		assertEquals("::std::__codecvt_abstract_base<char,char,int>::~__codecvt_abstract_base()", unmangle("_ZNSt23__codecvt_abstract_baseIcciED0Ev"));
 	}
 	@Test
 	public void testExtraStuff() throws UnmanglingException {
@@ -203,4 +203,74 @@ public class TestUnmanglerEABI extends TestCase {
 		assertEquals("void operator-<42>(A<J+2>::T)", "_ZngILi42EEvN1AIXplT_Li2EEE1TE");
 		assertEquals("...B<(J+1)/2>...", "_Z1BIXdvplT1_Li1ELi2EEE");
 	*/
+	
+	@Test
+	public void testSubstitutions() throws UnmanglingException {
+		// 0: TPckgBuf
+		// 1: WiFiProt
+		// 2: WiFiProt::TWiFiInputParams
+		// 3: TPckgBuf<WiFiProt::TWiFiInputParams>
+		assertEquals("TPckgBuf<WiFiProt::TWiFiInputParams>::TPckgBuf(TPckgBuf<WiFiProt::TWiFiInputParams> const&)",
+				unmangle("_ZN8TPckgBufIN8WiFiProt16TWiFiInputParamsEEC1ERKS2_"));	
+
+		// 0: long long const
+		// 1: long long const [4]
+		// 2: long long const (&) [4]
+		assertEquals("dVector3Dot(long long const(&)[4],long long const(&)[4])",
+				unmangle("_Z11dVector3DotRA4_KxS1_"));
+		
+		/*
+typedef void T();
+struct S {};
+void f(T*, T (S::*)) {}
+
+		 */
+		//assertEquals("void f(T*, T (S::*))",
+		//		unmangle("_Z1fPFvvEM1SFvvE"));
+		assertEquals("f(void (*)(),void (S::*)())",
+				unmangle("_Z1fPFvvEM1SFvvE"));
+
+		assertEquals("CActiveScheduler::Start(CActiveScheduler::TLoop**)",
+				unmangle("_ZN16CActiveScheduler5StartEPPNS_5TLoopE"));
+
+		assertEquals("CActiveScheduler::DoRunL(CActiveScheduler::TLoop** volatile const&,CActive* volatile&,CActiveScheduler::TCleanupBundle*)", 
+				unmangle("_ZN16CActiveScheduler6DoRunLERVKPPNS_5TLoopERVP7CActivePNS_14TCleanupBundleE"));
+	}
+	
+	@Test
+	public void testRegressions() throws UnmanglingException {
+		assertEquals("void Klass<Data,Type<Data> >::method<Type<Data> >()",
+				unmangle("_ZN5KlassI4Data4TypeIS0_EE6methodIS2_EEvv"));
+		assertEquals("CMMFFormatEncode::GetSupportedNumChannelsL(RArray<unsigned int>&)",
+				unmangle("_ZN16CMMFFormatEncode24GetSupportedNumChannelsLER6RArrayIjE"));
+		assertEquals("MeshMachine::TAggregatedTransition<CoreNetStates::TAddDataClient,PRStates::TSendProvision,MeshMachine::TNodeContext<ESock::CMMCommsProviderBase,MeshMachine::TNodeContext<ESock::ACFMMNodeBase,MeshMachine::TNodeContext<MeshMachine::AMMNodeBase,MeshMachine::TNodeContextBase,MeshMachine::CNodeActivityBase>,MeshMachine::CNodeActivityBase>,MeshMachine::CNodeActivityBase> >::~TAggregatedTransition()",
+				unmangle("_ZN11MeshMachine21TAggregatedTransitionIN13CoreNetStates14TAddDataClientEN8PRStates14TSendProvisionENS_12TNodeContextIN5ESock20CMMCommsProviderBaseENS5_INS6_13ACFMMNodeBaseENS5_INS_11AMMNodeBaseENS_16TNodeContextBaseENS_17CNodeActivityBaseEEESB_EESB_EEED1Ev"));
+	}
+	
+	
+	@Test
+	public void testExpressions1() throws UnmanglingException {
+		assertEquals("TBuf8<128>::TBuf8(TBuf8<128> const&)",
+				unmangle("_ZN5TBuf8ILi128EEC1ERKS0_"));
+
+		// int types have suffixes
+		assertEquals("CArrayFix<TBuf8<6> >::~CArrayFix()",
+				unmangle("_ZN9CArrayFixI5TBuf8ILi6EEED1Ev"));
+		assertEquals("int something<10UL>(float)",
+				unmangle("_Z9somethingILm10EEif"));
+		assertEquals("CArrayFix<TBuf8<6LL> >::~CArrayFix()",
+				unmangle("_ZN9CArrayFixI5TBuf8ILx6EEED1Ev"));
+		
+		// show cast-to-type name if not simple int
+		assertEquals("CArrayFix<TBuf8<(__int128)6> >::~CArrayFix()",
+				unmangle("_ZN9CArrayFixI5TBuf8ILn6EEED1Ev"));
+	}
+	
+	@Test
+	public void testEnumConstants() throws UnmanglingException {
+		assertEquals("Json::objectValue",
+				unmangle("__N4Json11objectValueE"));
+		assertEquals("Json::ValueType",
+				unmangle("_ZN4Json9ValueTypeE"));
+	}
 }

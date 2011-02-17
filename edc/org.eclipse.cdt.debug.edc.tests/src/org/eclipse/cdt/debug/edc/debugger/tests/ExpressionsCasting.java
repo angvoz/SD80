@@ -33,7 +33,7 @@ public class ExpressionsCasting extends BaseExpressionTest {
 	public void restoreFormatter() {
 		FormatExtensionManager.instance().setEnabled(formatterSetting);
 	}
-
+	
 	@Test
 	public void testCastingWithoutVariables() throws Exception {
 		launch.getAlbum().openSnapshot(0);
@@ -122,7 +122,7 @@ public class ExpressionsCasting extends BaseExpressionTest {
 		openSnapshotAndWaitForSuspendedContext(5);
 
 		
-		CastInfo arrayCast = new CastInfo(0, 5);                  
+		CastInfo arrayCast = new CastInfo(0, 5);
 		checkCastedChildExpr(null, "104 ('h')", "lstring", arrayCast, "lstring[0]");
 		checkCastedChildExpr(null, "101 ('e')", "lstring", arrayCast, "lstring[1]");
 		checkCastedChildExpr(null, "108 ('l')", "lstring", arrayCast, "lstring[2]");

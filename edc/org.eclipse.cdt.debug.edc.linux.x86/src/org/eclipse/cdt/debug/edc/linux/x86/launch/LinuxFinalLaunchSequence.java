@@ -10,9 +10,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.linux.x86.launch;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.IProcessInfo;
 import org.eclipse.cdt.core.IProcessList;
@@ -113,14 +110,12 @@ public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 			final IProcessInfo proc = processes[selectedIndex];
 
-			final Map<String,Object> params = new HashMap<String,Object>();
-			params.put(IProcesses.START_ATTACH, true);
-
 			// 4) attach
 			Protocol.invokeLater(new Runnable() {
+				@SuppressWarnings("deprecation")
 				public void run() {
 					tcfProcService.start(Integer.toString(proc.getPid()), proc.getName(), new String[] { "" }, null,
-							params, new IProcesses.DoneStart() {
+							true, new IProcesses.DoneStart() {
 								public void doneStart(IToken token, Exception error, IProcesses.ProcessContext process) {
 									if (error != null) {
 										requestMonitor.setStatus(new Status(IStatus.ERROR, LinuxDebugger

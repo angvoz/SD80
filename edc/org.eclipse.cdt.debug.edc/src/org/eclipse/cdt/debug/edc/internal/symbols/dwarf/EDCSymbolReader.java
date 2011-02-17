@@ -16,12 +16,14 @@ import java.util.Collection;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.symbols.ISection;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.BaseExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IDebugInfoProvider;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSection;
 import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.ISymbol;
+import org.eclipse.cdt.debug.edc.symbols.IUnmangler;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -163,5 +165,11 @@ public class EDCSymbolReader implements IEDCSymbolReader {
 	
 	public IDebugInfoProvider getDebugInfoProvider() {
 		return debugInfoProvider;
+	}
+	
+	public IUnmangler getUnmangler() {
+		if (exeSymReader instanceof BaseExecutableSymbolicsReader)
+			return ((BaseExecutableSymbolicsReader) exeSymReader).getUnmangler();
+		return null;
 	}
 }

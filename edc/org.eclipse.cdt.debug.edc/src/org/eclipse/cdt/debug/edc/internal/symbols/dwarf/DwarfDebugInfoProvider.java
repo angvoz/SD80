@@ -728,6 +728,9 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	// list of compile units in .debug_info order
 	protected ArrayList<DwarfCompileUnit> compileUnits = new ArrayList<DwarfCompileUnit>();
 
+	// list of compile units with code (non-zero high address), sorted by low address
+	protected ArrayList<DwarfCompileUnit> sortedCompileUnitsWithCode = new ArrayList<DwarfCompileUnit>();
+
 	// function and type declarations can be referenced by offsets relative to
 	// the compile unit or to the entire .debug_info section. therefore we keep
 	// maps by .debug_info offset, and for compile unit relative offsets, we
@@ -852,6 +855,15 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			parsedForScopesAndAddresses = true;
 			reader.parseForAddresses(false);
 		}
+	}
+
+	synchronized void ensureParsedForScope(IAddress linkAddress) {
+		DwarfInfoReader reader = new DwarfInfoReader(this);
+		if (!parsedInitially) {
+			parsedInitially = true;
+			reader.parseInitial();
+		}
+		reader.parseForAddress(linkAddress);
 	}
 
 	synchronized void ensureParsedForVariables() {
@@ -1069,7 +1081,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	}
 
 	public ICompileUnitScope getCompileUnitForAddress(IAddress linkAddress) {
-		ensureParsedForScopes();
+		ensureParsedForScope(linkAddress);
 		
 		IScope scope = moduleScope.getScopeAtAddress(linkAddress);
 		while (scope != null && !(scope instanceof ICompileUnitScope)) {

@@ -24,7 +24,9 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -81,7 +83,6 @@ import org.eclipse.cdt.debug.edc.symbols.IExecutableSymbolicsReader;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
-import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.symbols.IRangeList;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
@@ -157,7 +158,13 @@ public class DwarfInfoReader {
 	
 	private ICPPBasicType voidType = null;
 	
-	private UnmanglerEABI unmangler = new UnmanglerEABI();
+	private IUnmangler unmangler;
+	
+	// comparator for sorting and searching based on compilation unit low address
+	private static Comparator<DwarfCompileUnit> sComparatorByLowAddress = new Comparator<DwarfCompileUnit>() {
+		public int compare(DwarfCompileUnit o1, DwarfCompileUnit o2) {
+			return (o1.getLowAddress().compareTo(o2.getLowAddress()));
+		}};
 
 	/**
 	 * Create a reader for the provider.  This constructor and any methods 
@@ -167,13 +174,30 @@ public class DwarfInfoReader {
 	public DwarfInfoReader(DwarfDebugInfoProvider provider) {
 		this.provider = provider;
 		exeReader = provider.getExecutableSymbolicsReader();
+		if (exeReader instanceof BaseExecutableSymbolicsReader)
+			unmangler = ((BaseExecutableSymbolicsReader) exeReader).getUnmangler();
+		if (unmangler == null)
+			unmangler = new UnmanglerEABI();
+
 		symbolFilePath = provider.getSymbolFile();
 		fileHelper = provider.fileHelper;
 		moduleScope = (DwarfModuleScope) provider.getModuleScope();
 		debugInfoSection = exeReader.findExecutableSection(DWARF_DEBUG_INFO);
 		publicNamesSection = exeReader.findExecutableSection(DWARF_DEBUG_PUBNAMES);
-		
+
 		codeRanges = getCodeRanges();
+	}
+
+	private String unmangle(String name) {
+		if (!unmangler.isMangled(name))
+			return name;
+
+		try {
+			name = unmangler.unmangle(name);
+		} catch (UnmanglingException ue) {
+		}
+
+		return name;
 	}
 
 	/**
@@ -236,7 +260,7 @@ public class DwarfInfoReader {
 	 *            info, we don't.
 	 */
 	public void parseForAddresses(boolean includeCUWithoutCode) {
-		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, DwarfMessages.DwarfInfoReader_TraceAddressParseFor + symbolFilePath); }
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, DwarfMessages.DwarfInfoReader_TraceAddressesParseFor + symbolFilePath); }
 		for (DwarfCompileUnit compileUnit : provider.compileUnits) {
 			if (DEBUG) {
 				// For internal check. 
@@ -252,7 +276,7 @@ public class DwarfInfoReader {
 				parseCompilationUnitForAddresses(compileUnit);
 			}
 		}
-		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceExit(null, DwarfMessages.DwarfInfoReader_TraceFinishedAddressParse); }
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceExit(null, DwarfMessages.DwarfInfoReader_TraceFinishedAddressesParse); }
 		
 		moduleScope.fixupRanges(Addr32.ZERO);
 
@@ -260,6 +284,38 @@ public class DwarfInfoReader {
 			dumpSymbols();
 		}
 
+	}
+
+	/**
+	 * Parse compilation unit corresponding to address
+	 * 
+	 * @param linkAddress
+	 *            address in a compile unit that contains code
+	 */
+	public void parseForAddress(IAddress linkAddress) {
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, DwarfMessages.DwarfInfoReader_TraceAddressParseFor + symbolFilePath); }
+
+		// find compilation unit containing address, and parse it
+		DwarfCompileUnit cu = new DwarfCompileUnit(provider, null, null, linkAddress, linkAddress, null, false, null);
+		int index = Collections.binarySearch (provider.sortedCompileUnitsWithCode, cu, sComparatorByLowAddress);
+
+		if (index >= 0) {
+			cu = provider.sortedCompileUnitsWithCode.get(index);
+			parseCompilationUnitForAddresses(cu);
+		} else if (index < -1 && -index - 2 < provider.sortedCompileUnitsWithCode.size()) {
+			cu = provider.sortedCompileUnitsWithCode.get(-index - 2);
+			if (cu.getLowAddress().compareTo(linkAddress) <= 0 && cu.getHighAddress().compareTo(linkAddress) >= 0)
+				parseCompilationUnitForAddresses(cu);
+		} else {
+			return;
+		}
+
+		if (moduleScope.getLowAddress().compareTo(cu.getLowAddress()) > 0)
+			moduleScope.setLowAddress(cu.getLowAddress());
+		if (moduleScope.getHighAddress().compareTo(cu.getHighAddress()) < 0)
+			moduleScope.setHighAddress(cu.getHighAddress());
+
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceExit(null, DwarfMessages.DwarfInfoReader_TraceFinishedAddressParse); }
 	}
 	
 	/**
@@ -330,20 +386,15 @@ public class DwarfInfoReader {
 				long code = read_unsigned_leb128(dataInfoBytes);
 				AbbreviationEntry entry = abbrevs.get(new Long(code));
 				
-				if (entry != null && name.length() > 0) {
-					// if the name is mangled, demangle it
-					if (name.startsWith("_Z")) {
-						if (unmangler == null)
-							unmangler = new UnmanglerEABI();
-						try {
-							name = unmangler.unmangle(name);
-						} catch (UnmanglingException ue) {
-						}
-					}
+				// ignore empty names, names without debug info, and
+				// compiler-generated special symbols
+				if (entry != null && name.length() > 0 && !name.startsWith("<")) {
+					// if the name is mangled, unmangle it
+					name = unmangle(name);
 
 					String baseName = name;
 					int baseStart = name.lastIndexOf("::"); //$NON-NLS-1$
-					if (baseStart != -1)
+					if (baseStart != -1)		
 						baseName = name.substring(baseStart + 2);
 					if (entry.tag == DwarfConstants.DW_TAG_variable) {
 						List<PublicNameInfo> variables = provider.publicVariables.get(baseName);
@@ -422,6 +473,9 @@ public class DwarfInfoReader {
 		}
 		monitor.done();
 		provider.compileUnits.trimToSize();
+		// sort by low address the list of compilation units with code
+		provider.sortedCompileUnitsWithCode.trimToSize();
+		Collections.sort(provider.sortedCompileUnitsWithCode, sComparatorByLowAddress);
 		provider.buildReferencedFilesList = false;
 	}
 
@@ -645,7 +699,6 @@ public class DwarfInfoReader {
 				    		baseAndScopedNames.nameWithScope = name;
 				    	} else {
 				    		if (exeReader instanceof BaseExecutableSymbolicsReader) {
-				    			IUnmangler unmangler = ((BaseExecutableSymbolicsReader)exeReader).getUnmangler();
 					    		try {
 					    			baseAndScopedNames.nameWithScope = unmangler.unmangle(unmangler.undecorate(name));
 					    		} catch(UnmanglingException ue) {
@@ -1063,11 +1116,10 @@ public class DwarfInfoReader {
 					leb128 = read_unsigned_leb128(data);
 
 					IPath fullPath = fileHelper.normalizeFilePath(dirList.get((int) leb128), fileName);
-					if (fullPath != null) {
-						fileList.add(fullPath);
-					}
+					// add a null as a placeholder when the filename is enclosed in '<' & '>' (e.g., "<stdin>")
+					fileList.add(fullPath);
 
-					// Skip the followings
+					// Skip the following
 					//
 					// modification time
 					leb128 = read_unsigned_leb128(data);
@@ -1095,8 +1147,10 @@ public class DwarfInfoReader {
 						info_line += (((opcode - opcode_base) % line_range) + line_base);
 						info_address += (opcode - opcode_base) / line_range * minimum_instruction_length;
 						if (is_stmt && fileList.size() > 0) {
-							lineEntries.add(new LineEntry(fileList.get((int) info_file - 1), info_line, info_column,
-									new Addr32(info_address), null));
+							IPath path = fileList.get((int) info_file - 1);
+							// added a null as a placeholder when the filename was enclosed in '<' & '>' (e.g., "<stdin>")
+							if (path != null)
+								lineEntries.add(new LineEntry(path, info_line, info_column,	new Addr32(info_address), null));
 						}
 						info_flags &= ~(DwarfConstants.LINE_BasicBlock | DwarfConstants.LINE_PrologueEnd | DwarfConstants.LINE_EpilogueBegin);
 					} else if (opcode == 0) {
@@ -1212,10 +1266,15 @@ public class DwarfInfoReader {
 		}
 
 		// the last line entry
-		if (previousEntry != null && previousEntry.getHighAddress() == null) {
-			previousEntry.setHighAddress(scope.getHighAddress());
+		if (previousEntry != null) {
+			IAddress prevHigh = previousEntry.getHighAddress();
+			if (prevHigh == null)
+				previousEntry.setHighAddress(scope.getHighAddress());
+// FIXME: the following is causing JUnit tests to fail
+//			else if (prevHigh != null && prevHigh.compareTo(scope.getHighAddress()) > 0)
+//				previousEntry.setHighAddress(scope.getHighAddress());
 		}
-
+		
 		return lineEntries;
 	}
 
@@ -1941,32 +2000,24 @@ public class DwarfInfoReader {
 	 * @return high address if determined, or null if prerequisites for finding it aren't met.
 	 */
 	private IAddress fix_Dwarf_InlineHighAddress_Problem(Scope scope) {
-		IAddress low = scope.getLowAddress();
-		IScope parent = scope.getParent();
-		IAddress highest = parent.getHighAddress();
-		while (parent != null && !(parent instanceof DwarfModuleScope)) {
-			parent = parent.getParent();
-			if (highest == null)
-				highest = parent.getHighAddress();
-		}
-		if (parent == null)
-			return null;
+ 		IAddress low = scope.getLowAddress();
+		IAddress highest = scope.getParent().getHighAddress();
+		Iterator<ILineEntry> lineEntries
+		  = currentCompileUnitScope.getLineEntries().iterator();
 
-		DwarfModuleScope moduleScope = (DwarfModuleScope)parent;
-		IModuleLineEntryProvider lineEntryProvider = moduleScope.getModuleLineEntryProvider();
-		if (lineEntryProvider == null)
-			return null;
+		ILineEntry entry;
+		do {
+			entry = lineEntries.next();
+			if (entry == null)
+				return null;
+		} while (low.compareTo(entry.getHighAddress()) > 0);
 
-		IAddress high = null;
-		ILineEntry entry = lineEntryProvider.getLineEntryAtAddress(low, false);
-		if (entry == null)
-			return null;
-
+ 		IAddress high = null;
 		IPath actualPath = entry.getFilePath(), otherPath = null;
 		int actualLine = entry.getLineNumber();
 		int thisLine = actualLine, lastLine = 0; 		// XXX false positive on uninitialized variable below causes needless initialization of lastLine = 0
 		boolean jumpedBack = false, jumpedAway = false;
-		do {
+		OUTER:do {
 			IAddress nextHigh = entry.getHighAddress(); 
 			if (highest != null && nextHigh != null && highest.compareTo(nextHigh) < 0) {
 				nextHigh = entry.getLowAddress();
@@ -1977,9 +2028,16 @@ public class DwarfInfoReader {
 			high = nextHigh;
 			if (!jumpedAway && otherPath == null)
 				lastLine = thisLine;
-			entry = lineEntryProvider.getLineEntryAtAddress(high, false);
-			if (entry == null)
-				break;
+
+			if (high == null)
+				break OUTER;
+			
+			do {
+				entry = lineEntries.next();
+				if (entry == null)
+					break OUTER;
+			} while (high.equals(entry.getHighAddress()));
+
 			if (otherPath != null) {
 				if (entry.getFilePath().equals(actualPath))	// done with nesting
 					break;
@@ -1990,19 +2048,17 @@ public class DwarfInfoReader {
 				if (!jumpedBack && !jumpedAway) {
 					if (thisLine < actualLine) {
 						jumpedBack = true;
-					} else if (thisLine > lastLine + 32) {	// XXX false positive here causes needless init of lastLine = 0 above
+					} else if (thisLine > lastLine + 24) {	// XXX false positive here causes needless init of lastLine = 0 above
 						jumpedAway = true;
 					}
 				} else if (jumpedBack) {
 					if (thisLine > actualLine) // jumped back ahead; done
 						break;
 				} else if (jumpedAway) {
-					if (thisLine < actualLine) { // supercedes jumpAway test
-						jumpedAway = false;
-						jumpedBack = true;
-					} else if (thisLine < lastLine) {
+					if (thisLine < actualLine
+							|| thisLine < lastLine
+							|| thisLine > lastLine + 24)
 						break;
-					}
 				}					
 			}
 		} while (entry != null);
@@ -2041,6 +2097,10 @@ public class DwarfInfoReader {
 		matchingCompileUnits.add(currentCompileUnitScope);
 		provider.compileUnitsPerFile.put(filePath, matchingCompileUnits);
 		provider.compileUnits.add(currentCompileUnitScope);
+
+		if (!currentCompileUnitScope.getHighAddress().isZero()) // has code
+			provider.sortedCompileUnitsWithCode.add(currentCompileUnitScope);
+
 		moduleScope.addChild(currentCompileUnitScope);
 		
 		provider.registerCompileUnitHeader(currentCUHeader.debugInfoOffset, currentCUHeader);
@@ -2395,15 +2455,8 @@ public class DwarfInfoReader {
 		
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 
-		// if the name is mangled, demangle it
-		if (name.startsWith("_Z")) {
-			if (unmangler == null)
-				unmangler = new UnmanglerEABI();
-			try {
-				name = unmangler.unmangle(name);
-			} catch (UnmanglingException ue) {
-			}
-		}
+		// if the name is mangled, unmangle it
+		name = unmangle(name);
 		
 		// GCC may put the template parameter of an inherited class at the end of the name,
 		// so strip that off
@@ -2429,15 +2482,8 @@ public class DwarfInfoReader {
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 
-		// if the name is mangled, demangle it
-		if (name.startsWith("_Z")) {
-			if (unmangler == null)
-				unmangler = new UnmanglerEABI();
-			try {
-				name = unmangler.unmangle(name);
-			} catch (UnmanglingException ue) {
-			}
-		}
+		// if the name is mangled, unmangle it
+		name = unmangle(name);
 
 		StructType type = new StructType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
@@ -2452,15 +2498,8 @@ public class DwarfInfoReader {
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 
-		// if the name is mangled, demangle it
-		if (name.startsWith("_Z")) {
-			if (unmangler == null)
-				unmangler = new UnmanglerEABI();
-			try {
-				name = unmangler.unmangle(name);
-			} catch (UnmanglingException ue) {
-			}
-		}
+		// if the name is mangled, unmangle it
+		name = unmangle(name);
 
 		UnionType type = new UnionType(name, currentParentScope, byteSize, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
@@ -2773,6 +2812,9 @@ public class DwarfInfoReader {
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+		// if the name is mangled, unmangle it
+		name = unmangle(name);
+
 		int byteSize = attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_byte_size);
 
 		Enumeration type = new Enumeration(name, currentParentScope, byteSize, null);
@@ -2796,6 +2838,12 @@ public class DwarfInfoReader {
 		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, offset); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+		if (unmangler.isMangled(name)) {
+			try {
+				name = unmangler.unmangle(name);
+			} catch (UnmanglingException ue) {
+			}
+		}
 		long value = attributeList.getAttributeValueAsSignedLong(DwarfConstants.DW_AT_const_value);
 
 		Enumerator enumerator = new Enumerator(name, value);
@@ -2814,15 +2862,8 @@ public class DwarfInfoReader {
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 
-		// if the name is mangled, demangle it
-		if (name.startsWith("_Z")) {
-			if (unmangler == null)
-				unmangler = new UnmanglerEABI();
-			try {
-				name = unmangler.unmangle(name);
-			} catch (UnmanglingException ue) {
-			}
-		}
+		// if the name is mangled, unmangle it
+		name = unmangle(name);
 
 		TypedefType type = new TypedefType(name, currentParentScope, null);
 		type.setType(getTypeOrReference(attributeList, currentCUHeader));
@@ -2970,20 +3011,13 @@ public class DwarfInfoReader {
 
 		boolean global = (otherAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_external) == 1);
 
-		// if the name is mangled, demangle it
+		// if the name is mangled, unmangle it
 		if (name.startsWith("_Z")) {
-			if (unmangler == null)
-				unmangler = new UnmanglerEABI();
-			try {
-				name = unmangler.unmangle(name);
-			} catch (UnmanglingException ue) {
-			}
+			name = unmangle(name);
 		} else if (global) {
 			// GCCE uses DW_AT_MIPS_linkage_name for the mangled name of an externally visible variable
 			String mangledName = otherAttributes.getAttributeValueAsString(DwarfConstants.DW_AT_MIPS_linkage_name);
-			if (mangledName.startsWith("_Z")) {
-				if (unmangler == null)
-					unmangler = new UnmanglerEABI();
+			if (unmangler.isMangled(mangledName)) {
 				try {
 					name = unmangler.unmangle(mangledName);
 				} catch (UnmanglingException ue) {
@@ -2996,11 +3030,33 @@ public class DwarfInfoReader {
 			long startScope = attributeList.getAttributeValueAsLong(DwarfConstants.DW_AT_start_scope);
 			boolean isDeclared = otherAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_artificial) <= 0;
 			
+			int definingFileNum = otherAttributes.getAttributeValueAsInt(DwarfConstants.DW_AT_decl_file);
+			if (definingFileNum > 0 && attributeList.getAttributeValueAsInt(DwarfConstants.DW_AT_declaration) > 0) {
+				// variable is declared here, but not defined here
+				definingFileNum = 0;
+			}
+
+			IPath definingFile = null;
+
+			// find the file it's defined in
+			if (definingFileNum > 0) {
+				// find the enclosing compile unit to get access to its list of
+				// .debug_line file names
+				IScope cuScope = currentParentScope;
+				while (cuScope != null && !(cuScope instanceof DwarfCompileUnit))
+					cuScope = cuScope.getParent();
+
+				if (cuScope != null) {
+					definingFile = ((DwarfCompileUnit) cuScope).getFileEntry(definingFileNum);
+				}
+			}
+
 			DwarfVariable variable = new DwarfVariable(name, 
 							global ? moduleScope : currentParentScope, 
 							locationProvider,
 							type,
-							isDeclared);
+							isDeclared,
+							definingFile);
 
 			variable.setStartScope(startScope);
 			

@@ -62,8 +62,10 @@ public class DwarfMessages extends NLS {
 	public static String DwarfInfoReader_TraceAddressParse1;
 	public static String DwarfInfoReader_TraceAddressParse2;
 	
-	public static String DwarfInfoReader_TraceAddressParseFor;
+	public static String DwarfInfoReader_TraceAddressesParseFor;
+	public static String DwarfInfoReader_TraceFinishedAddressesParse;
 	
+	public static String DwarfInfoReader_TraceAddressParseFor;
 	public static String DwarfInfoReader_TraceFinishedAddressParse;
 	
 	public static String DwarfInfoReader_TraceFinishedInitialParse;

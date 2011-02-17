@@ -302,16 +302,22 @@ public class LocationExpression implements ILocationProvider {
 		return functionScope;
 	}
 
-
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider#isLocationKnown(org.eclipse.cdt.core.IAddress)
 	 */
 	public boolean isLocationKnown(IAddress forLinkAddress) {
-		// an expression has a static lifetime
+		// a location expression has the lifetime of its scope
 		return true;
 	}
 	
 	public IScope getScope() {
 		return scope;
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider#lifetimeMustMatchScope()
+	 */
+	public boolean lifetimeMustMatchScope() {
+		return true;
 	}
 }

@@ -14,12 +14,13 @@ import org.eclipse.cdt.debug.edc.internal.symbols.Variable;
 import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
+import org.eclipse.core.runtime.IPath;
 
 public class DwarfVariable extends Variable {
 
 	public DwarfVariable(String name, IScope scope, ILocationProvider locationProvider, 
-			IType type, boolean isDeclared) {
-		super(name, scope, null, locationProvider, isDeclared);
+			IType type, boolean isDeclared, IPath definingFile) {
+		super(name, scope, null, locationProvider, isDeclared, definingFile);
 
 		this.type = type;
 	}

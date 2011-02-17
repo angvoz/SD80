@@ -91,4 +91,11 @@ public class LocationList implements ILocationProvider {
 		}
 		return false;
 	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILocationProvider#lifetimeMustMatchScope()
+	 */
+	public boolean lifetimeMustMatchScope() {
+		return false;	// may or may not match
+	}
 }

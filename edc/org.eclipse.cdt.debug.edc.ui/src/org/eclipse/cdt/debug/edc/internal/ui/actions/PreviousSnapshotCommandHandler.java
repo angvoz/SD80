@@ -28,6 +28,7 @@ public class PreviousSnapshotCommandHandler extends AbstractSnapshotCommandHandl
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		try {
 			if (isSnapshotSession()) {
+				getAlbumContext().stopPlayingSnapshots();
 				getAlbumContext().openPreviousSnapshot();
 			}
 			else

@@ -617,6 +617,9 @@ public class InstructionParserARM {
 		case arm_tst:
 			instruction = mnemonic + getCondition(opcode) + "\t" + getRn(opcode) + "," + getShifterOperand(opcode);
 			break;
+		case arm_undefined:
+			instruction = mnemonic;
+			break;
 		// ARMv6 instructions
 		case arm_bxj:
 			instruction = mnemonic + getCondition(opcode) + "\t" + getRm(opcode);
@@ -1307,6 +1310,9 @@ public class InstructionParserARM {
 		case thumb_uxtb:
 		case thumb_uxth:
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
+			break;
+		case thumb_undefined:
+			instruction = mnemonic;
 			break;
 		default:
 			instruction = IDisassembler.INVALID_OPCODE;

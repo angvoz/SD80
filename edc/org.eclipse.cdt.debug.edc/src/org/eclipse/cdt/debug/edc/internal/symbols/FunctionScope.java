@@ -110,6 +110,37 @@ public class FunctionScope extends Scope implements IFunctionScope {
 				recurseGetScopedVariables(kid, scoped, varNames, linkAddress);
 			else if (isFunctionScope && linkAddress.compareTo(kid.getHighAddress()) == 0)
 				recurseGetScopedVariables(kid, scoped, varNames, kid.getHighAddress());
+			else if (kid instanceof ILexicalBlockScope) {
+				// RVCT 4.x Dwarf lexical blocks may contain local variables whose live ranges extend
+				// beyond the bounds of their enclosing lexical blocks, so check lexical block variables
+				recurseGetLexicalBlockVariables(kid, scoped, varNames, linkAddress);
+			}	
+		}
+	}
+
+	/**
+	 * Find lexical block variables whose lifetimes include the given address, whether or not the address is
+	 * inside the lexical block. 
+	 * Note: RVCT 4.x Dwarf lexical blocks may contain local variables whose live ranges extend beyond
+	 *       the bounds of their enclosing lexical blocks
+	 **/
+	private static void recurseGetLexicalBlockVariables(IScope scope, List<IVariable> scoped, List<String> varNames, IAddress linkAddress) {
+		if (!(scope instanceof ILexicalBlockScope))
+			return;
+
+		for (IVariable var : scope.getVariables()) {
+			ILocationProvider locationProvider = var.getLocationProvider();
+			if (!locationProvider.lifetimeMustMatchScope() && locationProvider.isLocationKnown(linkAddress)) {
+				String varName = var.getName();
+				if (!varNames.contains(varName)) {
+					scoped.add(var);
+					varNames.add(varName);
+				}
+			}
+		}
+
+		for (IScope kid : scope.getChildren()) {
+			recurseGetLexicalBlockVariables(kid, scoped, varNames, linkAddress);
 		}
 	}
 

@@ -14,6 +14,7 @@ import org.eclipse.cdt.debug.edc.symbols.ILocationProvider;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
+import org.eclipse.core.runtime.IPath;
 
 
 public class Variable implements IVariable {
@@ -24,13 +25,16 @@ public class Variable implements IVariable {
 	protected ILocationProvider locationProvider;
 	protected long startScope;
 	protected boolean isDeclared;
+	protected IPath definingFile;
+
 	
-	public Variable(String name, IScope scope, IType type, ILocationProvider locationProvider, boolean isDeclared) {
+	public Variable(String name, IScope scope, IType type, ILocationProvider locationProvider, boolean isDeclared, IPath definingFile) {
 		this.name = name;
 		this.scope = scope;
 		this.type = type;
 		this.locationProvider = locationProvider;
 		this.isDeclared = isDeclared;
+		this.definingFile = definingFile;
 	}
 
 	/* (non-Javadoc)
@@ -89,6 +93,13 @@ public class Variable implements IVariable {
 	 */
 	public boolean isDeclared() {
 		return isDeclared;
+	}
+	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.IVariable#getDefiningFile()
+	 */
+	public IPath getDefiningFile() {
+		return definingFile;
 	}
 
 	@Override

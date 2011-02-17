@@ -72,24 +72,12 @@ public class LineEntry implements ILineEntry {
 
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("LineEntry ["); //$NON-NLS-1$
-		builder.append("lowAddress="); //$NON-NLS-1$
-		builder.append(lowAddress.toHexAddressString());
-		builder.append(", highAddress="); //$NON-NLS-1$
-		builder.append(highAddress.toHexAddressString());
-		builder.append(", "); //$NON-NLS-1$
-		if (filePath != null) {
-			builder.append("path="); //$NON-NLS-1$
-			builder.append(filePath.toOSString());
-			builder.append(", "); //$NON-NLS-1$
-		}
-		builder.append("line="); //$NON-NLS-1$
-		builder.append(lineNumber);
-		builder.append(", "); //$NON-NLS-1$
-		builder.append("column="); //$NON-NLS-1$
-		builder.append(columnNumber);
-		builder.append("]"); //$NON-NLS-1$
-		return builder.toString();
+		return "LineEntry [lowAddress="
+				+ (lowAddress != null ? lowAddress.toHexAddressString() : "null")
+				+ ", highAddress="
+				+ (highAddress != null ? highAddress.toHexAddressString() : "null")
+				+ ((filePath != null) ? ", path=" + filePath.toOSString() + ", " : ", ")
+				+ "line=" + lineNumber + ", column=" + columnNumber
+				+ "]" ; //$NON-NLS-1$
 	}
 }

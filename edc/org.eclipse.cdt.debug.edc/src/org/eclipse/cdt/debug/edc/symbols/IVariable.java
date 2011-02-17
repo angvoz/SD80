@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.symbols;
 
 import org.eclipse.cdt.debug.edc.internal.symbols.ILexicalBlockScope;
+import org.eclipse.core.runtime.IPath;
 
 /**
  * Interface representing a variable or parameter.
@@ -66,6 +67,14 @@ public interface IVariable {
 	 * @since 2.0
 	 */
 	boolean isDeclared();
+	
+	/**
+	 * Get the path of the file in which this variable is defined
+	 *  
+	 * @return file in which this variable is defined, or null if unknown
+	 * @since 2.0
+	 */
+	IPath getDefiningFile();
 
 	/**
 	 * 

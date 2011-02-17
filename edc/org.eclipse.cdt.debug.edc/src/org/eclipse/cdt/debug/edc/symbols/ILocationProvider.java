@@ -46,4 +46,12 @@ public interface ILocationProvider {
 	 * Note: if a variable has a static address, always return true. 
 	 */
 	boolean isLocationKnown(IAddress forLinkAddress);
+
+	/**
+	 * Tell if the variable's lifetime must be the same as its enclosing scope.
+	 * @return true if a lifetime range must match its enclosing scope's, or false if not.
+	 * Note: If a variable has a static address, always return true.
+	 * @since 2.0
+	 */
+	boolean lifetimeMustMatchScope();
 }

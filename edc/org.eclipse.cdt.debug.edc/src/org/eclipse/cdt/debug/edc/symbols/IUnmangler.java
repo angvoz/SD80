@@ -40,4 +40,14 @@ public interface IUnmangler {
 	 * @throws UnmanglingException if symbol cannot be mangled 
 	 */
 	String unmangle(String symbol) throws UnmanglingException;
+	
+	/**
+	 * Unmangle the symbol without args
+	 * @param symbol
+	 * @return the function name without args
+	 * @throws UnmanglingException
+	 * @since 2.0
+	 */
+	String unmangleWithoutArgs(String symbol) throws UnmanglingException;
+
 }

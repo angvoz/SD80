@@ -27,10 +27,13 @@ import org.eclipse.cdt.debug.edc.symbols.IUnmangler;
  */
 public class UnmanglerEABI implements IUnmangler {
 
+	private static boolean DEBUG = false;
+	
 	enum SubstType {
 		PREFIX,
 		TEMPLATE_PREFIX,
 		TYPE,
+		QUAL_TYPE,
 		TEMPLATE_TEMPLATE_PARAM,
 		
 	}
@@ -45,15 +48,19 @@ public class UnmanglerEABI implements IUnmangler {
 		private Stack<Integer> pushes ; // lengths of buffer when pushed 
 		private List<String> substitutions;
 		private Map<Integer, SubstType> substitutionTypes;
+		private int lastTypeNameIndex;
 		
 		private List<String> templateArgs;
 		private int templateArgBase;
 		private Stack<Integer> templateArgStack;	// length of templateArgs when pushed
 		
 		private Stack<Integer> backtracks ; // grouped entries: index value, lengths of buffer, and substitutions length when pushed 
-		
-		public UnmangleState(String symbol) {
+
+		private final boolean nameOnly;
+
+		public UnmangleState(String symbol, boolean nameOnly) {
 			this.symbol = symbol.toCharArray();
+			this.nameOnly = nameOnly;
 			index = 0;
 			buffer = new StringBuilder();
 			pushes = new Stack<Integer>();
@@ -62,6 +69,7 @@ public class UnmanglerEABI implements IUnmangler {
 			templateArgs = new ArrayList<String>();
 			templateArgStack = new Stack<Integer>();
 			backtracks = new Stack<Integer>();
+			lastTypeNameIndex = -1;
 		}
 		
 		/* (non-Javadoc)
@@ -121,6 +129,7 @@ public class UnmanglerEABI implements IUnmangler {
 		 */
 		public void safePush() {
 			backtracks.push(index);
+			backtracks.push(lastTypeNameIndex);
 			backtracks.push(buffer.length());
 			backtracks.push(substitutions.size());
 			backtracks.push(pushes.size());
@@ -130,6 +139,7 @@ public class UnmanglerEABI implements IUnmangler {
 		 * Call when a #safePush() branch has succeeded to discard backtrack state.
 		 */
 		public void safePop() {
+			backtracks.pop();
 			backtracks.pop();
 			backtracks.pop();
 			backtracks.pop();
@@ -148,9 +158,20 @@ public class UnmanglerEABI implements IUnmangler {
 			while (substitutionTypes.size() > oldSize)
 				substitutionTypes.remove(substitutionTypes.size() - 1);
 			buffer.setLength(backtracks.pop());
+			lastTypeNameIndex = backtracks.pop();
 			index = backtracks.pop();
 		}
-		
+
+		/**
+		 * Tell if there is any current string (length > 0)
+		 * @return
+		 */
+		public boolean hasCurrent() {
+			int oldpos = pushes.isEmpty() ? 0 : pushes.peek();
+			int end = buffer.length();
+			return end > oldpos;
+		}
+
 		/**
 		 * Get the current constructed string (since the last #push())
 		 * @return
@@ -168,15 +189,42 @@ public class UnmanglerEABI implements IUnmangler {
 		public void remember(SubstType substType) {
 			remember(current(), substType);
 		}
-		
+
+		public boolean lastSubstitutionIsPrefix(SubstType substType) {
+			if (substitutions.size() == 0)
+				return false;
+			String current = current();
+			if (substitutions.get(substitutions.size() - 1).length() >= current.length())
+				return false;
+			return lastSubstitution() == substType;
+		}
 		/**
 		 * Remember the given string as a substitution.
 		 * @param name
 		 * @param substType
 		 */
 		public void remember(String name, SubstType substType) {
-			substitutionTypes.put(substitutions.size(), substType);
+			if (name.length() == 0)
+				return;
+			int num = substitutions.size();
+			if (num > 0 && substitutions.get(num - 1).equals(name))
+				return;
 			substitutions.add(name);
+			substitutionTypes.put(num, substType);
+			lastTypeNameIndex = num;
+			if (DEBUG) System.out.println(num+" := " + name + " --> " + substType);
+		}
+		
+		/**
+		 * Replace the last substitution.
+		 * @param name
+		 * @param substType
+		 */
+		public void rememberInstead(String name, SubstType substType) {
+			int num = substitutions.size() - 1;
+			substitutions.set(num, name);
+			substitutionTypes.put(num, substType);
+			if (DEBUG) System.out.println(num+" ::= " + name + " -- > " + substType);
 		}
 		
 		/**
@@ -253,7 +301,9 @@ public class UnmanglerEABI implements IUnmangler {
 		}
 
 		public void updateSubstitution(SubstType substType) {
-			substitutionTypes.put(substitutions.size() - 1, substType);
+			int num = substitutions.size() - 1;
+			substitutionTypes.put(num, substType);
+			if (DEBUG) System.out.println(num + " ::= " + substType);
 		}
 
 		/**
@@ -283,13 +333,14 @@ public class UnmanglerEABI implements IUnmangler {
 		}
 
 		public String lastSubstitutedName() {
-			if (substitutions.size() == 0)
+			if (lastTypeNameIndex < 0)
 				return "";
-			return substitutions.get(substitutions.size() - 1);
+			return substitutions.get(lastTypeNameIndex);
 		}
 	}
-	
+
 	private static WeakHashMap<String, String> unmangledMap = new WeakHashMap<String, String>();
+	private static WeakHashMap<String, String> withoutArgsMap = new WeakHashMap<String, String>();
 	
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IUnmangler#undecorate(java.lang.String)
@@ -306,23 +357,53 @@ public class UnmanglerEABI implements IUnmangler {
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IUnmangler#isMangled(java.lang.String)
 	 */
 	public boolean isMangled(String symbol) {
-		return symbol != null && symbol.startsWith("_Z");
+		if (symbol == null)
+			return false;
+		if (symbol.startsWith("_Z"))
+			return true;
+		// this is used for enum constants
+		if (symbol.startsWith("__N"))
+			return true;
+		return false;
+	}
+
+	public String unmangleWithoutArgs(String symbol) throws UnmanglingException {
+		return unmangle(symbol, true);
+	}
+
+	public String unmangle(String symbol) throws UnmanglingException {
+		return unmangle(symbol, false);
 	}
 	
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IUnmangler#unmangle(java.lang.String)
-	 */
-	public String unmangle(String symbol) throws UnmanglingException {
+	public String unmangle(String symbol, boolean skipArgs) throws UnmanglingException {
 		if (symbol == null)
 			return null;
 		
 		String unmangled;
-		
-		if (unmangledMap.containsKey(symbol)) {
+
+		if (skipArgs) {
+			if (withoutArgsMap.containsKey(symbol))
+				unmangled = withoutArgsMap.get(symbol);
+			else {
+				unmangled = doUnmangle(symbol, true);
+				withoutArgsMap.put(symbol, unmangled);
+			}
+		} else if (unmangledMap.containsKey(symbol)) {
 			unmangled = unmangledMap.get(symbol);
 		} else {
-			unmangled = doUnmangle(symbol);
+			unmangled = doUnmangle(symbol, skipArgs);
 			unmangledMap.put(symbol, unmangled);
+
+			do {// for break below if conditionals succeed
+				int paren = unmangled.indexOf('(');
+				if (0 < paren) {
+					String unmangledWithoutArgs = unmangled.substring(0, paren-1);
+					if (unmangledWithoutArgs != null && unmangledWithoutArgs.length() != 0) {
+						withoutArgsMap.put(symbol, unmangledWithoutArgs);
+						break;
+				}	}
+				withoutArgsMap.put(symbol, unmangled);
+			} while (false);// allows break above to skip default case
 		}
 		
 		return unmangled;
@@ -333,7 +414,7 @@ public class UnmanglerEABI implements IUnmangler {
 	 * @return
 	 * @throws UnmanglingException
 	 */
-	private String doUnmangle(String symbol) throws UnmanglingException {
+	private String doUnmangle(String symbol, boolean nameOnly) throws UnmanglingException {
 		/*
  Entities with C linkage and global namespace variables are not mangled. Mangled names have the general structure:
 
@@ -343,23 +424,29 @@ public class UnmanglerEABI implements IUnmangler {
 	       ::= <data name>
 	       ::= <special-name>
 		 */
-		if (!symbol.startsWith("_Z")) {
+		if (symbol.startsWith("_Z")) {
+			String suffix = "";
+			int idx = symbol.indexOf('@');
+			if (idx >= 0) {
+				suffix = symbol.substring(idx);
+				symbol = symbol.substring(0, idx);
+			}
+			
+			UnmangleState state = new UnmangleState(symbol, nameOnly);
+			state.skip2();
+			
+			String unmangled = unmangleEncoding(state);
+			unmangled += suffix;
+			return unmangled;
+		} else if (symbol.startsWith("__N")) {
+			UnmangleState state = new UnmangleState(symbol, true);
+			state.skip2();
+			
+			String unmangled = unmangleName(state);
+			return unmangled;
+		} else {
 			return symbol;
 		}
-		
-		String suffix = "";
-		int idx = symbol.indexOf('@');
-		if (idx >= 0) {
-			suffix = symbol.substring(idx);
-			symbol = symbol.substring(0, idx);
-		}
-		
-		UnmangleState state = new UnmangleState(symbol);
-		state.skip2();
-		
-		String unmangled = unmangleEncoding(state);
-		unmangled += suffix;
-		return unmangled;
 	}
 
 	/*
@@ -380,7 +467,7 @@ public class UnmanglerEABI implements IUnmangler {
 			name = unmangleName(state);
 		}
 		
-		if (!state.done()) {
+		if (!state.done() && !state.nameOnly) {
 			boolean isTemplate = name.endsWith(">");	// HACK
 			if (isTemplate) {
 				state.buffer.append(unmangleType(state));
@@ -586,8 +673,10 @@ public class UnmanglerEABI implements IUnmangler {
 				state.buffer.append(name);
 				if (state.peek() == 'I') {
 					// unscoped-template-name
-					state.remember(name, SubstType.PREFIX);
-					state.buffer.append(unmangleTemplateArgs(state, false));
+					state.remember(name, SubstType.TEMPLATE_PREFIX);
+					String args = unmangleTemplateArgs(state, false);
+					state.buffer.append(args);
+					state.remember(name + args, SubstType.TYPE);
 				}
 			}
 		}
@@ -696,33 +785,10 @@ public class UnmanglerEABI implements IUnmangler {
 		state.consume('N');
 		String cvquals = unmangleCVQualifiers(state);
 		
-		// The parse is not LR(1) or even unambiguous, so we need backtracking.
-		try {
-			state.safePush();
-			String templPrefix = unmangleTemplatePrefix(state);
-			String templArgs = unmangleTemplateArgs(state, true);
-			state.consume('E');
-			state.safePop();
-			state.buffer.append(templPrefix);
-			state.buffer.append(templArgs);
-		} catch (UnmanglingException e) {
-			state.safeBacktrack(); 
-			
-			String prefix = unmanglePrefix(state, SubstType.PREFIX);
-			
-			// due to fishiness in mutual recursion, the prefix may have already consumed the unqualified name
-			String unqualName = null;
-			if (prefix.length() > 0 && state.peek() != 'E') {
-				unqualName = unmangleUnqualifiedName(state);
-			}
-			state.consume('E');
-			
-			state.buffer.append(prefix);
-			if (prefix.length() > 0 && unqualName != null) {
-				addNameWithColons(state, unqualName);
-			}
-			
-		}
+		state.buffer.append(unmanglePrefix(state, SubstType.PREFIX));
+		
+		state.consume('E');
+		
 		if (cvquals.length() > 0) {
 			state.buffer.append(' ');
 			state.buffer.append(cvquals);
@@ -735,12 +801,19 @@ public class UnmanglerEABI implements IUnmangler {
   <template-args> ::= I <template-arg>+ E
 
 	 */
-	private String unmangleTemplateArgs(UnmangleState state, boolean atLeastOne) throws UnmanglingException {
+	private String unmangleTemplateArgs(UnmangleState state, boolean substArg) throws UnmanglingException {
 		state.push();
-		state.consume('I');
 		
+		int origTypeIndex = state.lastTypeNameIndex;
+		
+		String typeName = state.lastSubstitutedName();
+		
+		if (!substArg || state.peek() == 'I') {
+			state.consume('I');
+			substArg = false;
+		}
 		state.buffer.append('<');
-		if (atLeastOne || state.peek() != 'E') {
+		if (state.peek() != 'E') {
 			boolean first = true;
 			do {
 				if (first)
@@ -750,10 +823,19 @@ public class UnmanglerEABI implements IUnmangler {
 				state.buffer.append(unmangleTemplateArg(state));
 			} while (state.peek() != 'E');
 		}
-		state.skip();
-		if (state.buffer.lastIndexOf(">") == state.buffer.length())
+		
+		if (!substArg)
+			state.consume('E');
+		
+		if (state.buffer.lastIndexOf(">") == state.buffer.length() - 1)
 			state.buffer.append(' ');
 		state.buffer.append('>');
+		
+		if (state.lastSubstitution() == SubstType.TEMPLATE_TEMPLATE_PARAM)
+			state.rememberInstead(typeName + state.current(), SubstType.TEMPLATE_TEMPLATE_PARAM);
+		else if (state.lastTypeNameIndex > origTypeIndex)
+			state.remember(typeName + state.current(), SubstType.TYPE);
+		state.lastTypeNameIndex = origTypeIndex;
 		
 		return state.pop();
 	}
@@ -777,9 +859,8 @@ public class UnmanglerEABI implements IUnmangler {
 			arg = unmangleTemplateArgs(state, false);
 		} else if (ch == 's' && state.peek(1) == 'p') {
 			throw state.notImplemented();
-		} else if (ch == 'L'){
-			//state.buffer.append(unmangleExprPrimary(state));
-			throw state.notImplemented();
+		} else if (ch == 'L') {
+			arg = unmangleExprPrimary(state);
 		} else {
 			arg = unmangleType(state);
 		}
@@ -789,29 +870,82 @@ public class UnmanglerEABI implements IUnmangler {
 		return state.pop();
 	}
 
+
+	/**
+<expr-primary> ::= L <type> <value number> E                          # integer literal
+                 ::= L <type> <value float> E                           # floating literal
+                 ::= L <string type> E                                  # string literal
+                 ::= L <nullptr type> E                                 # nullptr literal (i.e., "LDnE")
+		 ::= L <type> <real-part float> _ <imag-part float> E   # complex floating point literal (C 2000)
+                 ::= L <mangled-name> E                                 # external name
+
+	 * @param state
+	 * @return
+	 */
+	private String unmangleExprPrimary(UnmangleState state) throws UnmanglingException {
+		state.push();
+		state.consume('L');
+		
+		try {
+			state.safePush();
+			
+			String type = null;
+			String suffix = null;
+			switch (state.peek()) {
+			case 'i':	// int
+				suffix = "";
+				break;
+			case 'j':	// unsigned int
+				suffix = "U";
+				break;
+			case 'l':	// long
+				suffix = "L";
+				break;
+			case 'm':	// unsigned long
+				suffix = "UL";
+				break;
+			case 'x':	// long long
+				suffix = "LL";
+				break;
+			case 'y':	// unsigned long long
+				suffix = "ULL";
+				break;
+			}
+			if (suffix != null) {
+				state.skip();
+				state.buffer.append(doUnmangleNumber(state));
+				state.buffer.append(suffix);
+			} else {
+				// show other types
+				type = unmangleType(state);
+				state.buffer.append('(');
+				state.buffer.append(type);
+				state.buffer.append(')');
+				state.buffer.append(doUnmangleNumber(state));
+			}
+			state.safePop();
+		} catch (UnmanglingException e) {
+			state.safeBacktrack();
+			
+			// must be mangled-name or something else
+			state.buffer.append(unmangleName(state));
+		}
+		state.consume('E');
+		
+		return state.popAndRemember(SubstType.TEMPLATE_TEMPLATE_PARAM);
+		
+	}
 	/*
   <template-param> ::= T_	# first template parameter
 		   ::= T <parameter-2 non-negative number> _
-  <template-template-param> ::= <template-param>
-			    ::= <substitution>
-
 		   
 	 */
 	private String unmangleTemplateParam(UnmangleState state) throws UnmanglingException {
 		state.push();
 		
-		char ch = state.peek();
-		if (ch == 'S') {
-			state.buffer.append(unmangleSubstitution(state));
-			return state.pop();
-		}
-		else if (ch == 'T') {
-			state.skip();
-			int num = doUnmangleBase10(state);
-			state.buffer.append(state.getTemplateArg(num));
-		} 
-		else
-			throw state.unexpected();
+		state.consume('T');
+		int num = doUnmangleBase10(state);
+		state.buffer.append(state.getTemplateArg(num));
 		
 		return state.popAndRemember(SubstType.TEMPLATE_TEMPLATE_PARAM);
 	}
@@ -856,7 +990,7 @@ public class UnmanglerEABI implements IUnmangler {
 		state.consume('S');
 		
 		char ch = state.peek();
-		if (ch == '_' || (ch >= '0' && ch <= '9')) {
+		if (ch == '_' || (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z')) {
 			int num = doUnmangleBase36(state);
 			if (num < 0 || num >= state.substitutions.size()) 
 				throw state.unexpected("substitution id in the range 0-"+ state.substitutions.size() + " but got " + num);
@@ -869,10 +1003,13 @@ public class UnmanglerEABI implements IUnmangler {
 				state.buffer.append(val);
 				break;
 			case TEMPLATE_PREFIX:
+				state.buffer.append(val);
+				state.buffer.append(unmangleTemplateArgs(state, true));
+				break;
 			case TEMPLATE_TEMPLATE_PARAM:
 				state.buffer.append(val);
-				state.buffer.append(unmangleTemplateArgs(state, false));
 				break;
+			case QUAL_TYPE:
 			case TYPE:
 				// ...?
 				state.buffer.append(val);
@@ -950,46 +1087,63 @@ public class UnmanglerEABI implements IUnmangler {
 	private String unmanglePrefix(UnmangleState state, SubstType substType) throws UnmanglingException {
 		state.push();
 		
-		char ch = state.peek();
+		boolean any = false;
+		boolean lastSubst = false; 
 		
-		if (ch == 'T') {
-			state.buffer.append(unmangleTemplateParam(state));
-			state.remember(substType);
-		}
-		else if (ch == 'S') {
-			state.buffer.append(unmangleSubstitution(state));
-			state.remember(substType);
-		} 
-		
-		
-		// prefix'
 		while (true) {
-			try {
-				// loose: data-member-prefix is only a source-name
-				String name = unmangleUnqualifiedName(state);
-				addNameWithColons(state, name);
-				state.remember(substType);
-			} catch (UnmanglingException e) {
-				// empty
+			char ch = state.peek();
+			
+			if (ch == 'E') {
 				break;
 			}
+				
+			String part = null;
 			
-			ch = state.peek();
-			if (ch == 'M') {
-				state.skip();
-				// TODO: formatting?
+			if (ch == 'T') {
+				part = unmangleTemplateParam(state);
+				state.remember(substType);
+			}
+			else if (ch == 'S') {
+				part = unmangleSubstitution(state);
+				lastSubst = true;
+			} 
+			else if ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') 
+					|| (ch == 'C' || ch == 'D' || ch == 'L')) {
+				part = unmangleUnqualifiedName(state);
 			}
 			else if (ch == 'I') {
-				// we cheat here to break the mutual recursion: 
-				// let this prefix handler subsume N number of prefixes,
-				// and the template prefix handler only handle arguments
-				state.updateSubstitution(SubstType.TEMPLATE_PREFIX);
-				state.buffer.append(unmangleTemplateArgs(state, false));
-				break;
+				if (!any)
+					throw state.unexpected();
+
+				if (state.hasCurrent()) {
+					state.updateSubstitution(SubstType.TEMPLATE_PREFIX);
+					part = state.current();
+				}
+				String args = unmangleTemplateArgs(state, false);
+				state.buffer.append(args);
+				continue;
+			}
+			else {
+				throw state.unexpected();
+			}
+			
+			lastSubst = false;
+			any = true;
+			
+			if (lastSubst)
+				any = true;
+			if (state.hasCurrent()) {
+				addNameWithColons(state, part);
+			} else {
+				state.buffer.append(part);
+			}
+			
+			if (ch != 'S' && state.peek() != 'E') {
+				state.remember(substType);
 			}
 		}
 		
-			
+		
 		return state.pop();
 	}
 
@@ -998,7 +1152,7 @@ public class UnmanglerEABI implements IUnmangler {
 	 * @param name
 	 */
 	private void addNameWithColons(UnmangleState state, String name) {
-		if (state.current().length() > 0 && !name.startsWith("::"))
+		if (state.hasCurrent() && !name.startsWith("::"))
 			state.buffer.append("::");
 		state.buffer.append(name);
 	}
@@ -1016,7 +1170,7 @@ public class UnmanglerEABI implements IUnmangler {
 	  				::= #empty
 	--> followed by <template-args> (I)
 	 */
-	private String unmangleTemplatePrefix(UnmangleState state) throws UnmanglingException {
+	String unmangleTemplatePrefix(UnmangleState state) throws UnmanglingException {
 		state.push();
 		
 		char ch = state.peek();
@@ -1029,16 +1183,7 @@ public class UnmanglerEABI implements IUnmangler {
 		if (ch == 'T') {
 			state.buffer.append(unmangleTemplateParam(state));
 			state.buffer.append(unmangleTemplatePrefixPrime(state));
-			return state.popAndRemember(SubstType.TEMPLATE_PREFIX);
-		//} else if (ch == 'I') {
-		//	// end of prefix
 		}
-		
-		// we cheat here to break mutual recursion
-		
-		state.buffer.append(unmanglePrefix(state, SubstType.TEMPLATE_PREFIX));
-		String unqualifiedName = unmangleUnqualifiedName(state);
-		addNameWithColons(state, unqualifiedName);
 		
 		return state.popAndRemember(SubstType.TEMPLATE_PREFIX);
 	}
@@ -1048,6 +1193,10 @@ public class UnmanglerEABI implements IUnmangler {
 		while (true) {
 			try {
 				state.buffer.append(unmangleUnqualifiedName(state));
+				if (state.peek() == 'I') {
+					// unscoped-template-name
+					state.buffer.append(unmangleTemplateArgs(state, false));
+				}
 			} catch (UnmanglingException e) {
 				break;
 			}
@@ -1093,15 +1242,21 @@ public class UnmanglerEABI implements IUnmangler {
 				state.buffer.append(' ');
 				state.buffer.append(cvquals);
 			}
-			return state.popAndRemember(SubstType.TYPE);
+			if (state.lastSubstitutionIsPrefix(SubstType.QUAL_TYPE))
+				state.remember(SubstType.QUAL_TYPE);
+			return state.popAndRemember(SubstType.QUAL_TYPE);
 		case 'P':
 			state.buffer.append(unmangleType(state));
-			state.buffer.append("*");
-			return state.popAndRemember(SubstType.TYPE);
+			if (state.lastSubstitutionIsPrefix(SubstType.QUAL_TYPE))
+				state.remember(SubstType.QUAL_TYPE);
+			ptrOrRefize(state.buffer, "*");
+			return state.popAndRemember(SubstType.QUAL_TYPE);
 		case 'R':
 			state.buffer.append(unmangleType(state));
-			state.buffer.append("&"); 
-			return state.popAndRemember(SubstType.TYPE);
+			if (state.lastSubstitutionIsPrefix(SubstType.QUAL_TYPE))
+				state.remember(SubstType.QUAL_TYPE);
+			ptrOrRefize(state.buffer, "&");
+			return state.popAndRemember(SubstType.QUAL_TYPE);
 		case 'O': // rvalue reference-to
 		case 'C': // complex pair
 		case 'G': // imaginary
@@ -1189,6 +1344,7 @@ public class UnmanglerEABI implements IUnmangler {
 		// <class-enum-type> ::= <unqualified-name> | <nested-name>
 		//
 		case 'N':
+			state.unget();
 			state.buffer.append(unmangleNestedName(state));
 			state.remember(SubstType.TYPE);
 			break;
@@ -1233,7 +1389,13 @@ public class UnmanglerEABI implements IUnmangler {
 			
 		default:
 			state.unget();
-			state.buffer.append(unmangleUnqualifiedName(state));
+			String unqual = unmangleUnqualifiedName(state);
+			state.buffer.append(unqual);
+			if (state.peek() == 'I') {
+				// unscoped-template-name
+				state.remember(unqual, SubstType.TEMPLATE_PREFIX);
+				state.buffer.append(unmangleTemplateArgs(state, false));
+			}
 			state.remember(SubstType.TYPE);
 			break;
 		}
@@ -1241,6 +1403,35 @@ public class UnmanglerEABI implements IUnmangler {
 	}
 
 	
+	/**
+	 * Insert a "*" or "&" into a string.  If this is a function type,
+	 * insert in front of the argument list, not after.
+	 * @param buffer
+	 * @param string
+	 */
+	private void ptrOrRefize(StringBuilder buffer, String string) {
+		char last = buffer.length() > 0 ? buffer.charAt(buffer.length() - 1) : 0;
+		if (last == ')' || last == ']') {
+			char match = last == ')' ? '(' : '[';
+			int stack = 0;
+			int idx = buffer.length() - 1;
+			while (idx > 0) {
+				char ch = buffer.charAt(idx);
+				if (ch == last)
+					stack++;
+				else if (ch == match) {
+					stack--;
+					if (stack == 0) 
+						break;
+				}
+				idx--;
+			}
+			buffer.insert(idx, '(' + string + ')');
+		} else {
+			buffer.append(string);
+		}
+	}
+
 	/*
   <array-type> ::= A <positive dimension number> _ <element type>
 	       ::= A [<dimension expression>] _ <element type>
@@ -1309,17 +1500,17 @@ public class UnmanglerEABI implements IUnmangler {
 			switch (state.peek()) {
 			case 'r':
 				state.skip();
-				if (state.current().length() > 0) state.buffer.append(' ');
+				if (state.hasCurrent()) state.buffer.append(' ');
 				state.buffer.append("restrict"); 
 				break;
 			case 'V':
 				state.skip();
-				if (state.current().length() > 0) state.buffer.append(' ');
+				if (state.hasCurrent()) state.buffer.append(' ');
 				state.buffer.append("volatile"); 
 				break;
 			case 'K':
 				state.skip();
-				if (state.current().length() > 0) state.buffer.append(' ');
+				if (state.hasCurrent()) state.buffer.append(' ');
 				state.buffer.append("const"); 
 				break;
 			default:
@@ -1426,7 +1617,7 @@ public class UnmanglerEABI implements IUnmangler {
 		}
 		else if (ch == 'C') {
 			state.push();
-			String last = state.lastSubstitutedName();
+			String last = simpleName(state.lastSubstitutedName());
 			state.get();
 			switch (state.get()) {
 			case '1':
@@ -1441,20 +1632,34 @@ public class UnmanglerEABI implements IUnmangler {
 		}
 		else if (ch == 'D') {
 			state.push();
-			String last = state.lastSubstitutedName();
-			state.get();
+			String last = simpleName(state.lastSubstitutedName());
+			state.get();	
+			state.buffer.append('~');
+			state.buffer.append(last);
 			switch (state.get()) {
 			case '0':
+				return state.pop();
 			case '1':
+				return state.pop();
 			case '2':
-				state.buffer.append(last);
 				return state.pop();
 			default:
 				state.unget();
-				throw state.unexpected("constructor name");
+				throw state.unexpected("destructor name");
 			}
 		}
 		throw state.unexpected();
+	}
+
+	/**
+	 * @param name
+	 * @return
+	 */
+	private String simpleName(String name) {
+		int idx = name.lastIndexOf("::");
+		if (idx >= 0)
+			return name.substring(idx + 2);
+		return name;
 	}
 
 	/*

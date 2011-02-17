@@ -119,7 +119,7 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 			if (reader != null) {
 				IAddress linkAddress = module.toLinkAddress(runtimeAddress);
 				IModuleLineEntryProvider lineEntryProvider = reader.getModuleScope().getModuleLineEntryProvider();
-				return lineEntryProvider.getLineEntryAtAddress(linkAddress, true);
+				return lineEntryProvider.getLineEntryAtAddress(linkAddress);
 			}
 		}
 		return null;
@@ -157,14 +157,14 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 
 			IModuleLineEntryProvider lineEntryProvider = moduleScope.getModuleLineEntryProvider();
 
-			ILineEntry entry = lineEntryProvider.getLineEntryAtAddress(linkStartAddress, false);
+			ILineEntry entry = lineEntryProvider.getLineEntryAtAddress(linkStartAddress);
 			while (entry != null && entry.getLowAddress().compareTo(linkEndAddress) < 0) {
 				lineEntries.add(entry);
 				// FIXME: this shouldn't happen
 				if (entry.getLowAddress().compareTo(entry.getHighAddress()) >= 0)
-					entry = lineEntryProvider.getLineEntryAtAddress(entry.getHighAddress().add(1), false);
+					entry = lineEntryProvider.getLineEntryAtAddress(entry.getHighAddress().add(1));
 				else
-					entry = lineEntryProvider.getLineEntryAtAddress(entry.getHighAddress(), false);
+					entry = lineEntryProvider.getLineEntryAtAddress(entry.getHighAddress());
 			}
 		}
 

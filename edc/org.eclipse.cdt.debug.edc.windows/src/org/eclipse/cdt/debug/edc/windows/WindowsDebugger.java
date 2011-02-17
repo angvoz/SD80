@@ -121,10 +121,10 @@ public class WindowsDebugger extends Plugin {
 			final String[] args = LaunchUtils.getProgramArgumentsArray(cfg);
 			final Map<String, String> env = LaunchUtils.getEnvironmentVariables(cfg);
 			final boolean append = cfg.getAttribute(ILaunchManager.ATTR_APPEND_ENVIRONMENT_VARIABLES, true);
-			final Map<String,Object> params = new HashMap<String,Object>();
-			params.put(IProcesses.START_ATTACH, true);
+			final boolean attach = true;
 
 			final IProcesses.DoneGetEnvironment done_env = new IProcesses.DoneGetEnvironment() {
+				@SuppressWarnings("deprecation")
 				public void doneGetEnvironment(IToken token, Exception error, Map<String, String> def) {
 					if (error != null) {
 						requestMonitor.setStatus(new Status(IStatus.ERROR, PLUGIN_ID, error.getLocalizedMessage(),
@@ -137,7 +137,7 @@ public class WindowsDebugger extends Plugin {
 						vars.putAll(def);
 					if (env != null)
 						vars.putAll(env);
-					ps.start(workingDirectory, file, args, vars, params, new IProcesses.DoneStart() {
+					ps.start(workingDirectory, file, args, vars, attach, new IProcesses.DoneStart() {
 
 						public void doneStart(IToken token, Exception error, ProcessContext process) {
 							if (error != null) {

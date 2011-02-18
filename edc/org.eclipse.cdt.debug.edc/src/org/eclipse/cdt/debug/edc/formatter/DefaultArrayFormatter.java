@@ -32,7 +32,7 @@ public class DefaultArrayFormatter implements IVariableFormatProvider {
 
 		@Override
 		protected String getSummaryValue(IExpressionDMContext variable) throws CoreException {
-			IExpressions expressions = ((IEDCExpression) variable).getServiceTracker().getService(IExpressions.class);
+			IExpressions expressions = ((IEDCExpression) variable).getExpressionsService();
 			if (expressions == null)
 				return ""; //$NON-NLS-1$
 			StringBuilder sb = new StringBuilder("[");

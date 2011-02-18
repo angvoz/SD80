@@ -124,10 +124,10 @@ public class QSetQHashFormatter implements IVariableFormatProvider {
 			FormatUtils.evaluateExpression(numBucketsChild);
 			int numBuckets = numBucketsChild.getEvaluatedValue().intValue();
 			if (numBuckets > 0) {
-				IExpressions2 expressions2 = bucketsChild.getServiceTracker().getService(IExpressions2.class);
+				IExpressions2 expressions2 = bucketsChild.getExpressionsService();
 				IExpressionDMContext castedBucketsChild = expressions2.createCastedExpression(bucketsChild, new CastInfo(0, numBuckets));
 				// add in all actual children from bucket elements
-				IExpressions expressions = bucketsChild.getServiceTracker().getService(IExpressions.class);
+				IExpressions expressions = bucketsChild.getExpressionsService();
 				List<IExpressionDMContext> bucketsChildExpressions = FormatUtils.getAllChildExpressions(castedBucketsChild);
 				int nameIndex = 0;
 				for (IExpressionDMContext bucketChild : bucketsChildExpressions) {

@@ -150,7 +150,7 @@ public class FormatUtils {
 	 */
 	public static IExpressionDMContext createSubExpression(IExpressionDMContext variable, String name, String subExpressionStr) {
 		IEDCExpression parentExpr = (IEDCExpression) variable;
-		IExpressions expressions = parentExpr.getServiceTracker().getService(IExpressions.class);
+		IExpressions expressions = parentExpr.getExpressionsService();
 		if (expressions == null)
 			return null;
 		String expressionStr = parentExpr.getExpression() + subExpressionStr;
@@ -288,7 +288,7 @@ public class FormatUtils {
 	public static List<IExpressionDMContext> getAllChildExpressions(IExpressionDMContext variable) {
 		
 		IEDCExpression variableDMC = (IEDCExpression) variable;
-		Expressions expressions = variableDMC.getServiceTracker().getService(Expressions.class);
+		Expressions expressions = (Expressions) variableDMC.getExpressionsService();
 		if (expressions == null)
 			return Collections.emptyList();
 		
@@ -331,7 +331,7 @@ public class FormatUtils {
 	 * @return the member value
 	 */
 	public static String getMemberValue(IExpressionDMContext variable, IType type, String memberName, String format) {
-		IExpressions expressions = ((IEDCExpression)variable).getServiceTracker().getService(IExpressions.class);
+		IExpressions expressions = ((IEDCExpression)variable).getExpressionsService();
 		if (expressions == null)
 			return ""; //$NON-NLS-1$
 		IEDCExpression expression = 
@@ -361,7 +361,7 @@ public class FormatUtils {
 	 * @since 2.0
 	 */
 	public static String getVariableValue(IExpressionDMContext variable, String format) {
-		IExpressions expressions = ((IEDCExpression)variable).getServiceTracker().getService(IExpressions.class);
+		IExpressions expressions = ((IEDCExpression)variable).getExpressionsService();
 		FormattedValueDMContext fvc = 
 			expressions.getFormattedValueContext(variable, format);
 		FormattedValueDMData formattedValue = ((IEDCExpression) variable).getFormattedValue(fvc);

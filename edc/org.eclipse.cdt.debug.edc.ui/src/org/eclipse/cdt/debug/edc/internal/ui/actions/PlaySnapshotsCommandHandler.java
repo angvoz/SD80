@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui.actions;
 
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.debug.ui.contexts.DebugContextEvent;
@@ -21,6 +22,15 @@ public class PlaySnapshotsCommandHandler extends AbstractSnapshotCommandHandler 
 	}
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
+
+		if (isSnapshotSession()) {
+			try {
+				getAlbumContext().playSnapshots();
+			} catch (Exception e) {
+				EDCDebugger.getMessageLogger().logError(null, e);
+			}
+		}
+	
 		return null;
 	}
 

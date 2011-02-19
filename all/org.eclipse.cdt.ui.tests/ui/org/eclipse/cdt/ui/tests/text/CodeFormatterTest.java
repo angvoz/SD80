@@ -941,6 +941,43 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
+	//#define MY_MACRO(a, b, c)
+	//
+	//MY_MACRO(abcdefghijklmnopqrstuvwxyz,25,"very very very very very very very very very very long text");
+
+	//#define MY_MACRO(a, b, c)
+	//
+	//MY_MACRO(abcdefghijklmnopqrstuvwxyz, 25,
+	//        "very very very very very very very very very very long text");
+	public void testFunctionStyleMacro_1() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
+	//#define MY_MACRO(a, b, c) \
+	//int a = b; \
+	//const char s[] = c
+	//
+	//MY_MACRO(abcdefghijklmnopqrstuvwxyz,(25 + 3),"very very very very very very very very very very long text");
+
+	//#define MY_MACRO(a, b, c) \
+	//int a = b; \
+	//const char s[] = c
+	//
+	//MY_MACRO( abcdefghijklmnopqrstuvwxyz,
+	//          (25 + 3),
+	//          "very very very very very very very very very very long text" );
+	public void testFunctionStyleMacro_2() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_ARGUMENTS_IN_METHOD_INVOCATION,
+				Integer.toString(Alignment.M_NEXT_PER_LINE_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_AFTER_OPENING_PAREN_IN_METHOD_INVOCATION,
+				CCorePlugin.INSERT);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_BEFORE_CLOSING_PAREN_IN_METHOD_INVOCATION,
+				CCorePlugin.INSERT);
+		assertFormatterResult();
+	}
+
 	//void foo() {
 	//for(int i=0;i<50;++i){}
 	//}
@@ -1105,6 +1142,59 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//}
 	public void testCompoundStatementAsMacroGNU_Bug244928() throws Exception {
 		fOptions.putAll(DefaultCodeFormatterOptions.getGNUSettings().getMap());
+		assertFormatterResult();
+	}
+
+	//class Point {
+	//public:
+	//Point(int x, int y) : x(x), y(y) {}
+	//
+	//private:
+	//int x;
+	//int y;
+	//};
+
+	//class Point {
+	//public:
+	//    Point(int x, int y) :
+	//            x(x), y(y) {
+	//    }
+	//
+	//private:
+	//    int x;
+	//    int y;
+	//};
+	public void testConstructorInitializer_1() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
+	//class Point {
+	//public:
+	//Point(int x, int y) : x(x), y(y) {}
+	//
+	//private:
+	//int x;
+	//int y;
+	//};
+
+	//class Point {
+	//public:
+	//    Point(int x, int y)
+	//            : x(x),
+	//              y(y) {
+	//    }
+	//
+	//private:
+	//    int x;
+	//    int y;
+	//};
+	public void testConstructorInitializer_2() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_INSERT_NEW_LINE_BEFORE_COLON_IN_CONSTRUCTOR_INITIALIZER_LIST,
+				CCorePlugin.INSERT);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_CONSTRUCTOR_INITIALIZER_LIST,
+				Integer.toString(Alignment.M_NEXT_PER_LINE_SPLIT | Alignment.M_INDENT_ON_COLUMN | Alignment.M_FORCE));
 		assertFormatterResult();
 	}
 

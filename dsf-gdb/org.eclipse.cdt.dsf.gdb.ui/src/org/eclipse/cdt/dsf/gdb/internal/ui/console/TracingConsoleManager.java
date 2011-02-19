@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Ericsson and others.
+ * Copyright (c) 2009, 2011 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -33,10 +33,33 @@ import org.eclipse.ui.console.IConsoleManager;
 public class TracingConsoleManager implements ILaunchesListener2, IPropertyChangeListener {
 
 	/**
+	 * The number of characters that should be deleted once the GDB traces console
+	 * reaches its configurable maximum.
+	 */
+	private static final int NUMBER_OF_CHARS_TO_DELETE = 100000;
+
+	/**
+	 * The minimum number of characters that should be kept when truncating
+	 * the console output. 
+	 */
+	private static final int MIN_NUMBER_OF_CHARS_TO_KEEP = 5000;
+
+	/**
 	 * Member to keep track of the preference.
 	 * We keep it up-to-date by registering as an IPropertyChangeListener
 	 */
 	private boolean fTracingEnabled = false;
+	
+	/**
+	 * The maximum number of characters that are allowed per console
+	 */
+	private int fMaxNumCharacters = 500000;
+	
+	/**
+	 * The number of characters that will be kept in the console once we
+	 * go over fMaxNumCharacters and that we must remove some characters
+	 */
+	private int fMinNumCharacters = fMaxNumCharacters - NUMBER_OF_CHARS_TO_DELETE;
 	
 	/**
 	 * Start the tracing console.  We don't do this in a constructor, because
@@ -47,6 +70,8 @@ public class TracingConsoleManager implements ILaunchesListener2, IPropertyChang
 		
 		store.addPropertyChangeListener(this);
 		fTracingEnabled = store.getBoolean(IGdbDebugPreferenceConstants.PREF_TRACES_ENABLE);
+		int maxChars = store.getInt(IGdbDebugPreferenceConstants.PREF_MAX_GDB_TRACES);
+		setWaterMarks(maxChars);
 		
 		if (fTracingEnabled) {
 			toggleTracing(true);
@@ -110,7 +135,11 @@ public class TracingConsoleManager implements ILaunchesListener2, IPropertyChang
 		if (event.getProperty().equals(IGdbDebugPreferenceConstants.PREF_TRACES_ENABLE)) {
 			fTracingEnabled = (Boolean)event.getNewValue();
 			toggleTracing(fTracingEnabled);
+		} else if (event.getProperty().equals(IGdbDebugPreferenceConstants.PREF_MAX_GDB_TRACES)) {
+			int maxChars = (Integer)event.getNewValue();
+			updateAllConsoleWaterMarks(maxChars);
 		}
+
 	}
 
 	protected void addConsole(ILaunch launch) {
@@ -121,6 +150,7 @@ public class TracingConsoleManager implements ILaunchesListener2, IPropertyChang
 				if (launch.isTerminated() == false) {
 					// Create and  new tracing console.
 					TracingConsole console = new TracingConsole(launch, ConsoleMessages.ConsoleMessages_trace_console_name);
+					console.setWaterMarks(fMinNumCharacters, fMaxNumCharacters);
 					ConsolePlugin.getDefault().getConsoleManager().addConsoles(new IConsole[]{console});
 				} // else we don't display a new console for a terminated launch
 			}
@@ -161,5 +191,39 @@ public class TracingConsoleManager implements ILaunchesListener2, IPropertyChang
 			}
 		}
 		return null;
+	}
+	
+	/** @since 2.2 */
+	protected void setWaterMarks(int maxChars) {
+		if (maxChars < (MIN_NUMBER_OF_CHARS_TO_KEEP * 2)) {
+			maxChars = MIN_NUMBER_OF_CHARS_TO_KEEP * 2;
+		}
+		
+		fMaxNumCharacters = maxChars;
+		// If the max number of chars is anything below the number of chars we are going to delete
+		// (plus our minimum buffer), we only keep the minimum.
+		// If the max number of chars is bigger than the number of chars we are going to delete (plus
+		// the minimum buffer), we truncate a fixed amount chars.
+		fMinNumCharacters = maxChars < (NUMBER_OF_CHARS_TO_DELETE + MIN_NUMBER_OF_CHARS_TO_KEEP) 
+								? MIN_NUMBER_OF_CHARS_TO_KEEP : maxChars - NUMBER_OF_CHARS_TO_DELETE;
+	}
+
+	/** @since 2.2 */
+	protected void updateAllConsoleWaterMarks(int maxChars) {
+		setWaterMarks(maxChars);
+		ILaunch[] launches = DebugPlugin.getDefault().getLaunchManager().getLaunches();
+		for (ILaunch launch : launches) {
+			updateConsoleWaterMarks(launch);
+		}
+	}
+	
+	/** @since 2.2 */
+	protected void updateConsoleWaterMarks(ILaunch launch) {
+		if (launch instanceof ITracedLaunch) {
+			TracingConsole console = getConsole(launch);
+			if (console != null) {
+				console.setWaterMarks(fMinNumCharacters, fMaxNumCharacters);
+			}		
+		}
 	}
 }

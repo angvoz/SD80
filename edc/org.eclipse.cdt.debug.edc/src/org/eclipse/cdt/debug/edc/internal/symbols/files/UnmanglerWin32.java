@@ -56,6 +56,14 @@ public class UnmanglerWin32 implements IUnmangler {
 	public boolean isMangled(String symbol) {
 		return symbol != null && symbol.startsWith("?");
 	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IUnmangler#unmangleNameOnly(java.lang.String)
+	 */
+	public String unmangleWithoutArgs(String symbol) throws UnmanglingException {
+		// big fat TODO
+		return symbol;
+	}
 	
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IUnmangler#unmangle(java.lang.String)

@@ -278,6 +278,31 @@
             </test>
          </with>
       </definition>
+      <definition
+            id="org.eclipse.cdt.debug.edc.ui.testIsPlaySnapshotsAvailable">
+        <and>
+            <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsEDCDebugSession">
+            </reference>
+             <reference
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotDebuggingActionSetActive">
+            </reference>
+             <or>
+               <with
+                     variable="activePart">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isPlaySnapshotsAvailable">
+                  </test>
+               </with>
+               <with
+                     variable="selection">
+                  <test
+                        property="org.eclipse.cdt.debug.edc.ui.isPlaySnapshotsAvailable">
+                  </test>
+               </with>
+            </or>
+           </and>
+      </definition>
      <definition
             id="org.eclipse.cdt.debug.edc.ui.testIsPreviousSnapshotAvailable">
         <and>
@@ -404,7 +429,7 @@
             commandId="org.eclipse.cdt.debug.edc.ui.playSnapshots">
          <enabledWhen>
             <reference
-                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsSnapshotSession">
+                  definitionId="org.eclipse.cdt.debug.edc.ui.testIsPlaySnapshotsAvailable">
             </reference>
          </enabledWhen>
       </handler>
@@ -489,6 +514,20 @@
             id="org.eclipse.cdt.debug.edc.ui.partSnapshotPropertyTester"
             namespace="org.eclipse.cdt.debug.edc.ui"
             properties="isEDCSession"
+            type="org.eclipse.ui.IWorkbenchPart">
+      </propertyTester>
+     <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.selectionSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isPlaySnapshotsAvailable"
+            type="org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext">
+      </propertyTester>
+      <propertyTester
+            class="org.eclipse.cdt.debug.edc.internal.ui.actions.DebugSnapshotPropertyTester"
+            id="org.eclipse.cdt.debug.edc.ui.partSnapshotPropertyTester"
+            namespace="org.eclipse.cdt.debug.edc.ui"
+            properties="isPlaySnapshotsAvailable"
             type="org.eclipse.ui.IWorkbenchPart">
       </propertyTester>
      <propertyTester

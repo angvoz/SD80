@@ -26,16 +26,15 @@ public interface ISettings extends IService {
 	 * @since 2.0
 	 */
 	IToken getIds(DoneGetSettingIds done);
-	
+
 	/**
 	 * Client callback interface for getIds().
 	 * @since 2.0
 	 */
 	interface DoneGetSettingIds {
 		/**
-		 * Called when setting value retrieval is done.
 		 * Called when setting id retrieval is done.
- 		 */
+		 */
 		void doneGetSettingIds(IToken token, Exception error, String[] ids);
 	}
 
@@ -48,7 +47,7 @@ public interface ISettings extends IService {
 	 * @param values array of values, parallel in structure to ids
 	 */
 	IToken setValues(String context, String[] ids, Object[] values, DoneSetSettingValues done);
-	 
+
 	/**
 	 * Client callback interface for setValues().
 	 * @since 2.0
@@ -58,5 +57,5 @@ public interface ISettings extends IService {
 		 * Called when settings are sent and acknowledged.
 		 */
 		void doneSetSettingValues(IToken token, Exception error);
-	}	
+	}
 }

@@ -165,7 +165,7 @@ public abstract class AbstractCompositeFormatProvider extends AbstractVariableCo
 	 * @throws CoreException the core exception
 	 */
 	protected String getValueString(IExpressionDMContext variable) throws CoreException {
-		IExpressions expressions = ((IEDCExpression) variable).getServiceTracker().getService(IExpressions.class);
+		IExpressions expressions = ((IEDCExpression) variable).getExpressionsService();
 		if (expressions == null)
 			return ""; //$NON-NLS-1$
 		

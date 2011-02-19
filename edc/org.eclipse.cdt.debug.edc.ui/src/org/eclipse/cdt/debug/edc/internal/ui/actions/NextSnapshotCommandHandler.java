@@ -26,6 +26,7 @@ public class NextSnapshotCommandHandler extends AbstractSnapshotCommandHandler {
 
 		if (isSnapshotSession()) {
 			try {
+				getAlbumContext().stopPlayingSnapshots();
 				getAlbumContext().openNextSnapshot();
 			} catch (Exception e) {
 				EDCDebugger.getMessageLogger().logError(null, e);

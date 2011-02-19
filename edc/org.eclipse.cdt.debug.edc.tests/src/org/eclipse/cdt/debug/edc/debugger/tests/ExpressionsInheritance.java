@@ -21,14 +21,14 @@ public class ExpressionsInheritance extends SimpleDebuggerTest {
 	/*
 	 * Note: This assumes you are at a breakpoint where the following are true:
 	 * 
-	 * class Person has fields _age(20), _height(72), _weight(150) class
-	 * Employee inherits from Person and has field _salary(no default)
+	 * class Person has fields _age(20), _height(72), _weight(150)
+	 * class Employee inherits from Person and has field _salary(no default)
 	 * 
-	 * Jane is a default Person Frank is an Employee with _salary = 2000.0 and
-	 * otherwise a default Person Jessie is an Employee with _salary = 4000.0,
-	 * _age = 15, _height = 73, _weight = 123 John is an Employee wit		Assert.assertEquals("0", getExpressionValue("larray[1] & 1"));
-h _salary =
-	 * 5000.0 and otherwise a default Person
+	 * Jane is a default Person
+	 * Frank is an Employee with _salary = 2000.0 and  otherwise a default Person
+	 * Jessie is an Employee with _salary = 4000.0, _age = 15, _height = 73,
+	 *       _weight = 123
+	 * John is an Employee with _salary = * 5000.0 and otherwise a default Person
 	 */
 	@Test
 	public void testExpressionsSimpleInheritance() throws Exception {

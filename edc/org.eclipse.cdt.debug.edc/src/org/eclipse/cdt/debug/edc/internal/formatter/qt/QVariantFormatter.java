@@ -123,7 +123,7 @@ public class QVariantFormatter implements IVariableFormatProvider {
 			if (isShared)
 				typeString += '*';
 			if (typeString != null) {
-				IExpressions2 expressions2 = dataChild.getServiceTracker().getService(IExpressions2.class);
+				IExpressions2 expressions2 = dataChild.getExpressionsService();
 				CastInfo castInfo = new CastInfo(typeString);
 				dataChild = (IEDCExpression) expressions2.createCastedExpression(dataChild, castInfo);
 			}

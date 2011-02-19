@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2010 IBM Corporation and others.
+ * Copyright (c) 2005, 2011 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -1605,7 +1605,9 @@ public class CPPTemplates {
 			if (args != null) {
 				IBinding instance= instantiateFunctionTemplate(template, args, map);
 				if (instance instanceof ICPPFunction) {
-					return (ICPPFunction) instance;
+					final ICPPFunction f = (ICPPFunction) instance;
+					if (isValidType(f.getType())) 
+						return f;
 				} 
 			}
 		} catch (DOMException e) {
@@ -1917,10 +1919,27 @@ public class CPPTemplates {
 	}
 
 	static boolean isValidType(IType t) {
-		while (t instanceof ITypeContainer) {
-			t = ((ITypeContainer) t).getType();
+		for (;;) {
+			if (t instanceof ISemanticProblem) {
+				return false;
+			} else if (t instanceof IFunctionType) {
+				IFunctionType ft= (IFunctionType) t;
+				for (IType parameterType : ft.getParameterTypes()) {
+					if (!isValidType(parameterType))
+						return false;
+				}
+				t= ft.getReturnType();
+			} else if (t instanceof ICPPPointerToMemberType) {
+				ICPPPointerToMemberType mptr= (ICPPPointerToMemberType) t;
+				if (!isValidType(mptr.getMemberOfClass()))
+					return false;
+				t= mptr.getType();
+			} else if (t instanceof ITypeContainer) {
+				t= ((ITypeContainer) t).getType();
+			} else {
+				return true;
+			}
 		}
-		return !(t instanceof ISemanticProblem);
 	}
 	
 	static boolean isValidArgument(ICPPTemplateArgument arg) {
@@ -2257,17 +2276,13 @@ public class CPPTemplates {
 	}
 
 	public static ICPPTemplateParameterMap createParameterMap(ICPPTemplateDefinition tdef, ICPPTemplateArgument[] args) {
-		try {
-			ICPPTemplateParameter[] tpars= tdef.getTemplateParameters();
-			int len= Math.min(tpars.length, args.length);
-			CPPTemplateParameterMap result= new CPPTemplateParameterMap(len);
-			for (int i = 0; i < len; i++) {
-				result.put(tpars[i], args[i]);
-			}
-			return result;
-		} catch (DOMException e) {
-			return CPPTemplateParameterMap.EMPTY;
+		ICPPTemplateParameter[] tpars= tdef.getTemplateParameters();
+		int len= Math.min(tpars.length, args.length);
+		CPPTemplateParameterMap result= new CPPTemplateParameterMap(len);
+		for (int i = 0; i < len; i++) {
+			result.put(tpars[i], args[i]);
 		}
+		return result;
 	}
 
 	/**
@@ -2299,40 +2314,36 @@ public class CPPTemplates {
 		if (keys.length == 0)
 			return ObjectMap.EMPTY_MAP;
 		
-		try {
-			List<ICPPTemplateDefinition> defs= new ArrayList<ICPPTemplateDefinition>();
-			IBinding owner= b;
-			while (owner != null) {
-				if (owner instanceof ICPPTemplateDefinition) {
-					defs.add((ICPPTemplateDefinition) owner);
-				} else if (owner instanceof ICPPTemplateInstance) {
-					defs.add(((ICPPTemplateInstance) owner).getTemplateDefinition());
-				}
-				owner= owner.getOwner();
+		List<ICPPTemplateDefinition> defs= new ArrayList<ICPPTemplateDefinition>();
+		IBinding owner= b;
+		while (owner != null) {
+			if (owner instanceof ICPPTemplateDefinition) {
+				defs.add((ICPPTemplateDefinition) owner);
+			} else if (owner instanceof ICPPTemplateInstance) {
+				defs.add(((ICPPTemplateInstance) owner).getTemplateDefinition());
 			}
-			Collections.reverse(defs);
+			owner= owner.getOwner();
+		}
+		Collections.reverse(defs);
 
-			ObjectMap result= new ObjectMap(keys.length);
-			for (int key: keys) {
-				int nestingLevel= key >> 16;
-				int numParam= key & 0xffff;
+		ObjectMap result= new ObjectMap(keys.length);
+		for (int key: keys) {
+			int nestingLevel= key >> 16;
+			int numParam= key & 0xffff;
 
-				if (0 <= numParam && 0 <= nestingLevel && nestingLevel < defs.size()) {
-					ICPPTemplateDefinition tdef= defs.get(nestingLevel);
-					ICPPTemplateParameter[] tps= tdef.getTemplateParameters();
-					if (numParam < tps.length) {
-						ICPPTemplateArgument arg= tpmap.getArgument(key);
-						if (arg != null) {
-							IType type= arg.isNonTypeValue() ? arg.getTypeOfNonTypeValue() : arg.getTypeValue();
-							result.put(tps[numParam], type);
-						}
+			if (0 <= numParam && 0 <= nestingLevel && nestingLevel < defs.size()) {
+				ICPPTemplateDefinition tdef= defs.get(nestingLevel);
+				ICPPTemplateParameter[] tps= tdef.getTemplateParameters();
+				if (numParam < tps.length) {
+					ICPPTemplateArgument arg= tpmap.getArgument(key);
+					if (arg != null) {
+						IType type= arg.isNonTypeValue() ? arg.getTypeOfNonTypeValue() : arg.getTypeValue();
+						result.put(tps[numParam], type);
 					}
 				}
 			}
-			return result;
-		} catch (DOMException e) {
 		}
-		return ObjectMap.EMPTY_MAP;
+		return result;
 	}
 
 	public static IBinding findDeclarationForSpecialization(IBinding binding) {

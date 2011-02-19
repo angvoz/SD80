@@ -20,8 +20,8 @@ import org.eclipse.cdt.debug.edc.formatter.IVariableFormatProvider;
 import org.eclipse.cdt.debug.edc.formatter.IVariableValueConverter;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
 import org.eclipse.cdt.debug.edc.symbols.IType;
-import org.eclipse.cdt.dsf.debug.service.IExpressions2;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
+import org.eclipse.cdt.dsf.debug.service.IExpressions2;
 import org.eclipse.cdt.dsf.debug.service.IExpressions2.CastInfo;
 import org.eclipse.core.runtime.CoreException;
 
@@ -46,7 +46,7 @@ public class QStringFormatter implements IVariableFormatProvider {
 		protected List<IExpressionDMContext> getChildren(IExpressionDMContext variable) throws CoreException {
 			IEDCExpression dataChild = 
 				(IEDCExpression) FormatUtils.findInCollectionByName(super.getChildren(variable), DATA_NAME);
-			IExpressions2 expressions2 = dataChild.getServiceTracker().getService(IExpressions2.class);
+			IExpressions2 expressions2 = dataChild.getExpressionsService();
 			CastInfo castInfo = new CastInfo("wchar_t*"); //$NON-NLS-1$
 			IExpressionDMContext castedChild = expressions2.createCastedExpression(dataChild, castInfo);
 			return Collections.singletonList(castedChild);

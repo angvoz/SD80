@@ -121,6 +121,7 @@ public class Album extends PlatformObject implements IAlbum {
 	public static final String CREATE_AT_BEAKPOINTS = "breakpoints";	
 	
 	public static final String PREF_VARIABLE_CAPTURE_DEPTH = "variable_capture_depth";
+	public static final String PLAY_SNAPSHOT_DELAY_TIME = "play_snapshot_delay_time";
 
 	private static final String CAMERA_CLICK_WAV = "/sounds/camera_click.wav";
 	
@@ -146,8 +147,9 @@ public class Album extends PlatformObject implements IAlbum {
 	private boolean metadataSaved;
 	private boolean albumInfoSaved;
 	private String displayName;
+	private boolean playingSnapshots;
 
-    /**
+	/**
      * Listener for state changes on albums
      */
 	protected static List<ISnapshotAlbumEventListener> listeners = Collections.synchronizedList(new ArrayList<ISnapshotAlbumEventListener>());
@@ -611,10 +613,13 @@ public class Album extends PlatformObject implements IAlbum {
 			}
 		};
 
-		if (session.getExecutor().isInExecutorThread())
-			openIt.run();
-		else
-			session.getExecutor().execute(openIt);
+		if (session != null && session.getExecutor() != null)
+		{
+			if (session.getExecutor().isInExecutorThread())
+				openIt.run();
+			else
+				session.getExecutor().execute(openIt);
+		}
 
 	}
 
@@ -867,8 +872,33 @@ public class Album extends PlatformObject implements IAlbum {
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.snapshot.IAlbum#playSnapshots(org.eclipse.cdt.dsf.service.DsfSession)
 	 */
-	public void playSnapshots(DsfSession session) {
-		// TODO Auto-generated method stub
+	public void playSnapshots() {
+		if (!isPlayingSnapshots())
+		{
+			Job playSnapshotsJob = new Job("Play Snapshots for Album " + getDisplayName()){
+
+				@Override
+				protected IStatus run(IProgressMonitor monitor) {
+					try {
+						monitor.beginTask("Play Snapshots for Album " + getDisplayName(), IProgressMonitor.UNKNOWN);
+						while (isPlayingSnapshots() && !monitor.isCanceled())
+						{
+							Album.this.openNextSnapshot();
+							Thread.sleep(getPlaySnapshotInterval());
+						}
+						setPlayingSnapshots(false);
+						monitor.done();
+					} catch (Exception e) {
+						EDCDebugger.getMessageLogger().logError(null, e);
+						return new Status(Status.ERROR, EDCDebugger.PLUGIN_ID, null, e);
+					}
+					return Status.OK_STATUS;
+				}
+				
+			};
+			setPlayingSnapshots(true);
+			playSnapshotsJob.schedule();
+		}
 	}
 
 	/* (non-Javadoc)
@@ -960,6 +990,21 @@ public class Album extends PlatformObject implements IAlbum {
 	public static int getVariableCaptureDepth() {
 		return Platform.getPreferencesService().getInt(EDCDebugger.PLUGIN_ID,
 				PREF_VARIABLE_CAPTURE_DEPTH, 5, null);
+	}
+
+	public static void setPlaySnapshotInterval(int delayInMilliseconds) {
+		IEclipsePreferences scope = InstanceScope.INSTANCE.getNode(EDCDebugger.PLUGIN_ID);
+		scope.putInt(PLAY_SNAPSHOT_DELAY_TIME, delayInMilliseconds);
+		try {
+			scope.flush();
+		} catch (BackingStoreException e) {
+			EDCDebugger.getMessageLogger().logError(null, e);
+		}
+	}
+
+	public static int getPlaySnapshotInterval() {
+		return Platform.getPreferencesService().getInt(EDCDebugger.PLUGIN_ID,
+				PLAY_SNAPSHOT_DELAY_TIME, 5000, null);
 	}
 
 	public static void setSnapshotCreationControl(String newSetting) {
@@ -1262,6 +1307,19 @@ public class Album extends PlatformObject implements IAlbum {
 		};
 
 		createSnapshotJob.schedule();
+	}
+
+    public boolean isPlayingSnapshots() {
+		return playingSnapshots;
+	}
+
+	public void setPlayingSnapshots(boolean playingSnapshots) {
+		this.playingSnapshots = playingSnapshots;
+	}
+
+	public void stopPlayingSnapshots() {
+		setPlayingSnapshots(false);
+		openSnapshot(getCurrentSnapshotIndex()); // Reloading the current snapshot will resync the UI.
 	}
 
 }

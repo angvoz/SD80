@@ -96,7 +96,7 @@ public class QMapFormatter implements IVariableFormatProvider {
 			if (size < 0 || size > 0x1000000) // sanity
 				throw EDCDebugger.newCoreException("Uninitialized");
 			if (size > 0) {
-				IExpressions expressions = sizeChild.getServiceTracker().getService(IExpressions.class);
+				IExpressions expressions = sizeChild.getExpressionsService();
 				children.addAll(getElementsFromMapHead(expressions, (IEDCExpression) childContexts.get(HEAD_CHILD_INDEX), size));
 			}
 			

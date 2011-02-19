@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Ericsson and others.
+ * Copyright (c) 2009, 2011 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -130,13 +130,33 @@ public class GdbDebugPreferencePage extends FieldEditorPreferencePage implements
 		group.setLayout(groupLayout);
 		group.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
-		BooleanFieldEditor boolField= new BooleanFieldEditor(
+		final ListenableBooleanFieldEditor enableGdbTracesField = new ListenableBooleanFieldEditor(
 				IGdbDebugPreferenceConstants.PREF_TRACES_ENABLE,
 				MessagesForPreferences.GdbDebugPreferencePage_enableTraces_label,
-				group);
+				SWT.NONE, group);
 
-		boolField.fillIntoGrid(group, 3);
-		addField(boolField);
+		enableGdbTracesField.fillIntoGrid(group, 3);
+		addField(enableGdbTracesField);
+
+		final IntegerFieldEditor maxCharactersField = new IntegerFieldEditor(
+				IGdbDebugPreferenceConstants.PREF_MAX_GDB_TRACES,
+				MessagesForPreferences.GdbDebugPreferencePage_maxGdbTraces_label,
+				group);
+		// Instead of using Integer.MAX_VALUE which is some obscure number, using 2 billion is nice and readable
+		maxCharactersField.setValidRange(10000, 2000000000);
+		
+		maxCharactersField.fillIntoGrid(group, 3);
+		addField(maxCharactersField);
+
+		final Group finalGroup = group;
+		enableGdbTracesField.getChangeControl(group).addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				boolean enabled = enableGdbTracesField.getBooleanValue();				
+				maxCharactersField.setEnabled(enabled, finalGroup);
+			}
+		});
+		
 		// need to set layout again
 		group.setLayout(groupLayout);
 		
@@ -146,7 +166,7 @@ public class GdbDebugPreferencePage extends FieldEditorPreferencePage implements
 		group.setLayout(groupLayout);
 		group.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
-		boolField= new BooleanFieldEditor(
+		BooleanFieldEditor boolField= new BooleanFieldEditor(
 				IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB,
 				MessagesForPreferences.GdbDebugPreferencePage_autoTerminateGdb_label,
 				group);

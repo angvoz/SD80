@@ -101,7 +101,7 @@ public class QVectorFormatter implements IVariableFormatProvider {
 			}
 			else if (size > 1) {
 				IEDCExpression arrayChild = (IEDCExpression) children.get(ARRAY_CHILD_INDEX);
-				IExpressions2 expressions2 = arrayChild.getServiceTracker().getService(IExpressions2.class);
+				IExpressions2 expressions2 = arrayChild.getExpressionsService();
 				CastInfo castInfo = new CastInfo(0, Math.min(size, FormatUtils.getMaxNumberOfChildren()));
 				IExpressionDMContext castedArrayChild = expressions2.createCastedExpression(arrayChild, castInfo );
 				children.set(ARRAY_CHILD_INDEX, castedArrayChild);

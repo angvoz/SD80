@@ -694,7 +694,7 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 					EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedRanges, reader.getModificationDate());				
 				}
 								
-				// map addresses
+				// convert addresses to runtime ones.
 				for (AddressRange linkAddressRange : linkAddressRanges) {
 					EDCAddressRange addrRange = new EDCAddressRange(
 							mdmc.toRuntimeAddress(linkAddressRange.getStartAddress()),
@@ -827,18 +827,24 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 	 */
 	public ModuleDMC getModuleByAddress(ISymbolDMContext symCtx, IAddress instructionAddress) {
 		ModuleDMC bestMatch = null;
-		synchronized (modules) {
-			List<ModuleDMC> moduleList = modules.get(((IEDCDMContext) symCtx).getID());
-			if (moduleList != null) {
-				for (ModuleDMC moduleDMC : moduleList) {
-					if (moduleDMC.containsAddress(instructionAddress)) {
-						bestMatch = moduleDMC;
-						break;
+		if (symCtx instanceof ModuleDMC) {
+			if (((ModuleDMC)symCtx).containsAddress(instructionAddress))
+				bestMatch = (ModuleDMC)symCtx;
+		}
+		else {
+			synchronized (modules) {
+				List<ModuleDMC> moduleList = modules.get(((IEDCDMContext) symCtx).getID());
+				if (moduleList != null) {
+					for (ModuleDMC moduleDMC : moduleList) {
+						if (moduleDMC.containsAddress(instructionAddress)) {
+							bestMatch = moduleDMC;
+							break;
+						}
 					}
-				}
-
-				if (bestMatch == null) {
-					// TODO: add a bogus wrap-all module ?
+	
+					if (bestMatch == null) {
+						// TODO: add a bogus wrap-all module ?
+					}
 				}
 			}
 		}

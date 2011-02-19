@@ -12,6 +12,7 @@ package org.eclipse.cdt.make.ui;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.cdt.make.core.IMakeTarget;
@@ -19,6 +20,7 @@ import org.eclipse.cdt.make.internal.ui.MakeUIPlugin;
 import org.eclipse.cdt.make.internal.ui.preferences.MakePreferencePage;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -45,7 +47,10 @@ import org.eclipse.ui.progress.IProgressService;
  * @noinstantiate This class is not intended to be instantiated by clients.
  */
 public class TargetBuild {
-
+	/** @since 7.1 */
+	public static final String LAST_TARGET = "lastTarget"; //$NON-NLS-1$
+	/** @since 7.1 */
+	public static final String LAST_TARGET_CONTAINER = "lastTargetContainer"; //$NON-NLS-1$
 	/**
 	 * Causes all editors to save any modified resources depending on the user's preference.
 	 */
@@ -54,10 +59,16 @@ public class TargetBuild {
 		if (!BuildAction.isSaveAllSet())
 			return;
 
-		List projects = new ArrayList();
+		List<IProject> projects = new ArrayList<IProject>();
 		for (int i = 0; i < targets.length; ++i) {
 			IMakeTarget target = targets[i];
 			projects.add(target.getProject());
+			// Ensure we correctly save files in all referenced projects before build
+			try {
+				projects.addAll(Arrays.asList(target.getProject().getReferencedProjects()));
+			} catch (CoreException e) {
+				// Project not accessible or not open
+			}
 		}
 
 		IWorkbenchWindow[] windows = PlatformUI.getWorkbench().getWorkbenchWindows();

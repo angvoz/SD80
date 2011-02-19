@@ -19,13 +19,15 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions2.CastInfo;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMData;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.core.runtime.IStatus;
 
 public interface IEDCExpression extends IExpressionDMContext, IEDCDMContext {
 
 	public Executor getExecutor();
-	public DsfServicesTracker getServiceTracker();
+	/**
+	 * @since 2.0
+	 */
+	public IEDCExpressions getExpressionsService();
 
 	/**
 	 * Change the name of the expression that appears in the Variables view Name

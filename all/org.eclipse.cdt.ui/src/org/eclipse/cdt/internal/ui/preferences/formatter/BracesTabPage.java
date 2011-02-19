@@ -24,14 +24,6 @@ import org.eclipse.cdt.core.formatter.DefaultCodeFormatterConstants;
 public class BracesTabPage extends FormatterTabPage {
 	
 	/**
-	 * Constant array for boolean selection 
-	 */
-	private static String[] FALSE_TRUE = {
-		DefaultCodeFormatterConstants.FALSE,
-		DefaultCodeFormatterConstants.TRUE
-	};	
-	
-	/**
 	 * Some C++ source code used for preview.
 	 */
 	private final static String PREVIEW=
@@ -41,7 +33,7 @@ public class BracesTabPage extends FormatterTabPage {
 		"\n\n" +  //$NON-NLS-1$
 		"class Point {" +  //$NON-NLS-1$
 		"public:" +  //$NON-NLS-1$
-		"Point(double xc, double yc) : x(xc), y(yc) {}" + //$NON-NLS-1$ 
+		"Point(double x, double y) : x(x), y(y) {}" + //$NON-NLS-1$ 
 		"double distance(const Point& other) const;" + //$NON-NLS-1$
 		"int compareX(const Point& other) const;" + //$NON-NLS-1$
 		"double x;" +  //$NON-NLS-1$
@@ -80,49 +72,45 @@ public class BracesTabPage extends FormatterTabPage {
 		"}"+ //$NON-NLS-1$
 		"} // end namespace FOO"; //$NON-NLS-1$
 
-	
 	private TranslationUnitPreview fPreview;
 	
-	
-	private final String [] fBracePositions= {
+	private final String[] fBracePositions= {
 	    DefaultCodeFormatterConstants.END_OF_LINE,
 	    DefaultCodeFormatterConstants.NEXT_LINE,
 	    DefaultCodeFormatterConstants.NEXT_LINE_SHIFTED
 	};
 	
-	private final String [] fExtendedBracePositions= {
+	private final String[] fExtendedBracePositions= {
 		DefaultCodeFormatterConstants.END_OF_LINE,
 	    DefaultCodeFormatterConstants.NEXT_LINE,
 	    DefaultCodeFormatterConstants.NEXT_LINE_SHIFTED, 
 		DefaultCodeFormatterConstants.NEXT_LINE_ON_WRAP
 	};
 	
-	private final String [] fBracePositionNames= {
+	private final String[] fBracePositionNames= {
 	    FormatterMessages.BracesTabPage_position_same_line, 
 	    FormatterMessages.BracesTabPage_position_next_line, 
 	    FormatterMessages.BracesTabPage_position_next_line_indented
 	};
 	
-	private final String [] fExtendedBracePositionNames= {
+	private final String[] fExtendedBracePositionNames= {
 	    FormatterMessages.BracesTabPage_position_same_line, 
 	    FormatterMessages.BracesTabPage_position_next_line, 
 	    FormatterMessages.BracesTabPage_position_next_line_indented, 
 		FormatterMessages.BracesTabPage_position_next_line_on_wrap
 	};
-
 	
 	/**
 	 * Create a new BracesTabPage.
 	 * @param modifyDialog
 	 * @param workingValues
 	 */
-	public BracesTabPage(ModifyDialog modifyDialog, Map<String,String> workingValues) {
+	public BracesTabPage(ModifyDialog modifyDialog, Map<String, String> workingValues) {
 		super(modifyDialog, workingValues);
 	}
 	
 	@Override
 	protected void doCreatePreferences(Composite composite, int numColumns) {
-		
 		final Group group= createGroup(numColumns, composite, FormatterMessages.BracesTabPage_group_brace_positions_title); 
 		createExtendedBracesCombo(group, numColumns, FormatterMessages.BracesTabPage_option_class_declaration, DefaultCodeFormatterConstants.FORMATTER_BRACE_POSITION_FOR_TYPE_DECLARATION); 
 		createExtendedBracesCombo(group, numColumns, FormatterMessages.BracesTabPage_option_namespace_declaration, DefaultCodeFormatterConstants.FORMATTER_BRACE_POSITION_FOR_NAMESPACE_DECLARATION); 
@@ -173,17 +161,15 @@ public class BracesTabPage extends FormatterTabPage {
 		return createComboPref(composite, numColumns, message, key, fExtendedBracePositions, fExtendedBracePositionNames);
 	}
 	
-	private CheckboxPreference createIndentedCheckboxPref(Composite composite, int numColumns, String message, String key, String [] values) {
+	private CheckboxPreference createIndentedCheckboxPref(Composite composite, int numColumns, String message, String key, String[] values) {
 		CheckboxPreference pref= createCheckboxPref(composite, numColumns, message, key, values);
 		GridData data= (GridData) pref.getControl().getLayoutData();
 		data.horizontalIndent= fPixelConverter.convertWidthInCharsToPixels(1);
 		return pref;
 	}
-	
 
     @Override
 	protected void doUpdatePreview() {
         fPreview.update();
     }
-
 }

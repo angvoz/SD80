@@ -47,6 +47,7 @@ import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
 import org.eclipse.cdt.debug.edc.services.DMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCExpression;
+import org.eclipse.cdt.debug.edc.services.IEDCExpressions;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IInvalidVariableLocation;
@@ -66,14 +67,13 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions2;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 
-public class Expressions extends AbstractEDCService implements IExpressions2 {
+public class Expressions extends AbstractEDCService implements IEDCExpressions {
 
 	public abstract class BaseEDCExpressionDMC extends DMContext implements IEDCExpression {
 		protected String expression;
@@ -398,8 +398,8 @@ public class Expressions extends AbstractEDCService implements IExpressions2 {
 		/* (non-Javadoc)
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getService()
 		 */
-		public DsfServicesTracker getServiceTracker() {
-			return getServicesTracker();
+		public Expressions getExpressionsService() {
+			return Expressions.this;
 		}
 		
 		/* (non-Javadoc)

@@ -213,6 +213,7 @@ public class TestOpcodeARM extends Assert {
 			this.new OpcodeTest(OpcodeARM.Index.thumb_bkpt, 0xBE01),
 			this.new OpcodeTest(OpcodeARM.Index.thumb_blx1, 0xF7FF),
 			this.new OpcodeTest(OpcodeARM.Index.thumb_blx2, 0x4780),
+			this.new OpcodeTest(OpcodeARM.Index.thumb_undefined, 0xDE01),
 			this.new OpcodeTest(OpcodeARM.Index.thumb_bx, 0x4700),
 			this.new OpcodeTest(OpcodeARM.Index.thumb_cmn, 0x42C8),
 			this.new OpcodeTest(OpcodeARM.Index.thumb_cmp1, 0x2801),
@@ -347,7 +348,7 @@ public class TestOpcodeARM extends Assert {
 			}
 			assertNotNull(opcodeThumb);
 			int result = opcodeTest.getOpcode() & opcodeThumb.getOpcodeMask();
-			assertTrue(result == opcodeThumb.getOpcodeResult());
+			assertEquals(opcodeTest.getOpcode()+"", opcodeThumb.getOpcodeResult(), result);
 		}
 	}
 

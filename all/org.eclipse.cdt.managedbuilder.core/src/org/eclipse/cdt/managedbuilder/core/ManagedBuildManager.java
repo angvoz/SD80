@@ -24,11 +24,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
@@ -84,6 +84,7 @@ import org.eclipse.cdt.managedbuilder.internal.core.ManagedBuildInfo;
 import org.eclipse.cdt.managedbuilder.internal.core.ManagedCommandLineGenerator;
 import org.eclipse.cdt.managedbuilder.internal.core.ManagedMakeMessages;
 import org.eclipse.cdt.managedbuilder.internal.core.ManagedProject;
+import org.eclipse.cdt.managedbuilder.internal.core.MatchKey;
 import org.eclipse.cdt.managedbuilder.internal.core.MultiConfiguration;
 import org.eclipse.cdt.managedbuilder.internal.core.MultiFolderInfo;
 import org.eclipse.cdt.managedbuilder.internal.core.MultiResourceInfo;
@@ -254,9 +255,9 @@ public class ManagedBuildManager extends AbstractCExtension {
 	// Environment Build Paths Change Listener
 	private static IEnvironmentBuildPathsChangeListener fEnvironmentBuildPathsChangeListener;
 
-	private static HashMap<String, List<IToolChain>> fSortedToolChains;
-	private static HashMap<String, List<ITool>> fSortedTools;
-	private static HashMap<String, List<IBuilder>> fSortedBuilders;
+	private static HashMap<MatchKey, List<ToolChain>> fSortedToolChains;
+	private static HashMap<MatchKey, List<Tool>> fSortedTools;
+	private static HashMap<MatchKey, List<Builder>> fSortedBuilders;
 
 	private static Map<IProject, IManagedBuildInfo> fInfoMap = new HashMap<IProject, IManagedBuildInfo>();
 
@@ -2260,91 +2261,82 @@ public class ManagedBuildManager extends AbstractCExtension {
 				//      be to an object loaded from a managed build system project file (.cdtbuild).
 				//
 
-				Iterator projectTypeIter = getExtensionProjectTypeMap().values().iterator();
-				while (projectTypeIter.hasNext()) {
+				Collection<IProjectType> prjTypes = getExtensionProjectTypeMap().values();
+				for (IProjectType projectType : prjTypes) {
 					try {
-						ProjectType projectType = (ProjectType)projectTypeIter.next();
-						projectType.resolveReferences();
+						((ProjectType) projectType).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
 					}
 				}
-				Iterator configurationIter = getExtensionConfigurationMap().values().iterator();
-				while (configurationIter.hasNext()) {
+				Collection<IConfiguration> configurations = getExtensionConfigurationMap().values();
+				for (IConfiguration configuration : configurations) {
 					try {
-						Configuration configuration = (Configuration)configurationIter.next();
-						configuration.resolveReferences();
+						((Configuration) configuration).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
 					}
 				}
-				Iterator resConfigIter = getExtensionResourceConfigurationMap().values().iterator();
-				while (resConfigIter.hasNext()) {
+				Collection<IResourceConfiguration> resConfigs = getExtensionResourceConfigurationMap().values();
+				for (IResourceConfiguration resConfig : resConfigs) {
 					try {
-						ResourceConfiguration resConfig = (ResourceConfiguration)resConfigIter.next();
-						resConfig.resolveReferences();
+						((ResourceConfiguration) resConfig).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
 					}
 				}
-				Iterator toolChainIter = getExtensionToolChainMap().values().iterator();
-				while (toolChainIter.hasNext()) {
+				Collection<IToolChain> toolChains = getExtensionToolChainMap().values();
+				for (IToolChain toolChain : toolChains) {
 					try {
-						ToolChain toolChain = (ToolChain)toolChainIter.next();
-						toolChain.resolveReferences();
+						((ToolChain) toolChain).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
 					}
 				}
-				Iterator toolIter = getExtensionToolMap().values().iterator();
-				while (toolIter.hasNext()) {
+				Collection<ITool> tools = getExtensionToolMap().values();
+				for (ITool tool : tools) {
 					try {
-						Tool tool = (Tool)toolIter.next();
-						tool.resolveReferences();
+						((Tool) tool).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
 					}
 				}
-				Iterator targetPlatformIter = getExtensionTargetPlatformMap().values().iterator();
-				while (targetPlatformIter.hasNext()) {
+				Collection<ITargetPlatform> targetPlatforms = getExtensionTargetPlatformMap().values();
+				for (ITargetPlatform targetPlatform : targetPlatforms) {
 					try {
-						TargetPlatform targetPlatform = (TargetPlatform)targetPlatformIter.next();
-						targetPlatform.resolveReferences();
+						((TargetPlatform) targetPlatform).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
 					}
 				}
-				Iterator builderIter = getExtensionBuilderMap().values().iterator();
-				while (builderIter.hasNext()) {
+				Collection<IBuilder> builders = getExtensionBuilderMap().values();
+				for (IBuilder builder : builders) {
 					try {
-						Builder builder = (Builder)builderIter.next();
-						builder.resolveReferences();
+						((Builder) builder).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
 					}
 				}
-				Iterator optionIter = getExtensionOptionMap().values().iterator();
-				while (optionIter.hasNext()) {
+				Collection<IOption> options = getExtensionOptionMap().values();
+				for (IOption option : options) {
 					try {
-						Option option = (Option)optionIter.next();
-						option.resolveReferences();
+						((Option) option).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
 					}
 				}
-				Iterator optionCatIter = getExtensionOptionCategoryMap().values().iterator();
-				while (optionCatIter.hasNext()) {
+				Collection<IOptionCategory> optionCategories = getExtensionOptionCategoryMap().values();
+				for (IOptionCategory optionCat : optionCategories) {
 					try {
-						OptionCategory optionCat = (OptionCategory)optionCatIter.next();
-						optionCat.resolveReferences();
+						((OptionCategory) optionCat).resolveReferences();
 					} catch (Exception ex) {
 						// TODO: log
 						ex.printStackTrace();
@@ -2386,32 +2378,29 @@ public class ManagedBuildManager extends AbstractCExtension {
 						loadConfigElementsV2(DefaultManagedConfigElement.convertArray(elements, extension), revision);
 					}
 					// Resolve references
-					Iterator targetIter = getExtensionTargetMap().values().iterator();
-					while (targetIter.hasNext()) {
+					Collection<ITarget> targets = getExtensionTargetMap().values();
+					for (ITarget target : targets) {
 						try {
-							Target target = (Target)targetIter.next();
-							target.resolveReferences();
+							((Target) target).resolveReferences();
 						} catch (Exception ex) {
 							// TODO: log
 							ex.printStackTrace();
 						}
 					}
 					// The V2 model can also add top-level Tools - they need to be "resolved"
-					Iterator toolIter = getExtensionToolMap().values().iterator();
-					while (toolIter.hasNext()) {
+					Collection<ITool> tools = getExtensionToolMap().values();
+					for (ITool tool : tools) {
 						try {
-							Tool tool = (Tool)toolIter.next();
-							tool.resolveReferences();
+							((Tool) tool).resolveReferences();
 						} catch (Exception ex) {
 							// TODO: log
 							ex.printStackTrace();
 						}
 					}
 					// Convert the targets to the new model
-					targetIter = getExtensionTargetMap().values().iterator();
-					while (targetIter.hasNext()) {
+					targets = getExtensionTargetMap().values();
+					for (ITarget target : targets) {
 						try {
-							Target target = (Target)targetIter.next();
 							//  Check to see if it has already been converted - if not, do it
 							if (target.getCreatedProjectType() == null) {
 								target.convertToProjectType(revision);
@@ -2422,11 +2411,10 @@ public class ManagedBuildManager extends AbstractCExtension {
 						}
 					}
 					// Resolve references for new ProjectTypes
-					Iterator projTypeIter = getExtensionProjectTypeMap().values().iterator();
-					while (projTypeIter.hasNext()) {
+					Collection<IProjectType> prjTypes = getExtensionProjectTypeMap().values();
+					for (IProjectType prjType : prjTypes) {
 						try {
-							ProjectType projType = (ProjectType)projTypeIter.next();
-							projType.resolveReferences();
+							((ProjectType) prjType).resolveReferences();
 						} catch (Exception ex) {
 							// TODO: log
 							ex.printStackTrace();
@@ -2455,9 +2443,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 		// configs resolved...
 		// Call the start up config extensions again now that configs have been resolved.
 		if (buildDefStartupList != null) {
-			for (Iterator iter = buildDefStartupList.iterator(); iter.hasNext();) {
-				IManagedBuildDefinitionsStartup customConfigLoader = (IManagedBuildDefinitionsStartup)iter.next();
-
+			for (IManagedBuildDefinitionsStartup customConfigLoader : buildDefStartupList) {
 				// Now we can perform any actions on the build configurations
 				// in an extended plugin now that all build configruations have been resolved
 				customConfigLoader.buildDefsResolved();
@@ -2519,8 +2505,8 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 		IResourceConfiguration rcCfgs[] = cfg.getResourceConfigurations();
 
-		for (IResourceConfiguration rcCfg : rcCfgs) {
-		}
+//		for (IResourceConfiguration rcCfg : rcCfgs) {
+//		}
 
 	}
 
@@ -4041,7 +4027,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 		return new Path(uri.getPath());
 	}
 
-	public static IBuilder[] createBuilders(IProject project, Map args){
+	public static IBuilder[] createBuilders(IProject project, Map<String, String> args){
 		return ManagedBuilderCorePlugin.createBuilders(project, args);
 	}
 
@@ -4216,75 +4202,78 @@ public class ManagedBuildManager extends AbstractCExtension {
 	}
 */
 
-	private static HashMap<String, List<IToolChain>> getSortedToolChains(){
+	private static HashMap<MatchKey, List<ToolChain>> getSortedToolChains(){
 		if(fSortedToolChains == null){
-			fSortedToolChains = getSortedElements(ManagedBuildManager.getExtensionToolChainMap().values());
+			Collection<? extends ToolChain> toolChains = (Collection<? extends ToolChain>)ManagedBuildManager.getExtensionToolChainMap().values();
+			fSortedToolChains = (HashMap)getSortedElements(toolChains);
 		}
 		return fSortedToolChains;
 	}
 
-	private static HashMap<String, List<ITool>> getSortedTools(){
+	private static HashMap<MatchKey, List<Tool>> getSortedTools(){
 		if(fSortedTools == null){
-			fSortedTools = getSortedElements(ManagedBuildManager.getExtensionToolMap().values());
+			Collection<? extends Tool> tools = (Collection<? extends Tool>)ManagedBuildManager.getExtensionToolMap().values();
+			fSortedTools = (HashMap)getSortedElements(tools);
 		}
 		return fSortedTools;
 	}
 
-	private static HashMap<String, List<IBuilder>> getSortedBuilders(){
+	private static HashMap<MatchKey, List<Builder>> getSortedBuilders(){
 		if(fSortedBuilders == null){
-			fSortedBuilders = getSortedElements(ManagedBuildManager.getExtensionBuilderMap().values());
+			Collection<? extends Builder> builders = (Collection<? extends Builder>)ManagedBuildManager.getExtensionBuilderMap().values();
+			fSortedBuilders = (HashMap)getSortedElements(builders);
 		}
 		return fSortedBuilders;
 	}
 
-	private static HashMap getSortedElements(Collection elements){
-		HashMap map = new HashMap();
-		for(Iterator iter = elements.iterator(); iter.hasNext();){
-			IMatchKeyProvider p = (IMatchKeyProvider)iter.next();
-			Object key = p.getMatchKey();
+	private static HashMap<MatchKey, List<IMatchKeyProvider>> getSortedElements(Collection<? extends IMatchKeyProvider> elements){
+		HashMap<MatchKey, List<IMatchKeyProvider>> map = new HashMap<MatchKey, List<IMatchKeyProvider>>();
+		for (IMatchKeyProvider p : elements) {
+			MatchKey key = p.getMatchKey();
 			if(key == null)
 				continue;
 
-			List list = (List)map.get(key);
+			List<IMatchKeyProvider> list = map.get(key);
 			if(list == null){
-				list = new ArrayList();
+				list = new ArrayList<IMatchKeyProvider>();
 				map.put(key, list);
 			}
 			list.add(p);
 			p.setIdenticalList(list);
 		}
 
-		for(Iterator iter = map.values().iterator(); iter.hasNext();){
-			Collections.sort((List)iter.next());
+		Collection<List<IMatchKeyProvider>> values = map.values();
+		for (List<IMatchKeyProvider> list : values) {
+			Collections.sort(list);
 		}
 		return map;
 	}
 
 	public static IToolChain[] getRealToolChains(){
-		HashMap<String, List<IToolChain>> map = getSortedToolChains();
+		HashMap<MatchKey, List<ToolChain>> map = getSortedToolChains();
 		IToolChain tcs[] = new ToolChain[map.size()];
 		int i = 0;
-		for (List<IToolChain> list : map.values()) {
+		for (List<ToolChain> list : map.values()) {
 			tcs[i++] = list.get(0);
 		}
 		return tcs;
 	}
 
 	public static ITool[] getRealTools(){
-		HashMap<String, List<ITool>> map = getSortedTools();
+		HashMap<MatchKey, List<Tool>> map = getSortedTools();
 		Tool ts[] = new Tool[map.size()];
 		int i = 0;
-		for (List<ITool> list : map.values()) {
-			ts[i++] = (Tool)list.get(0);
+		for (List<Tool> list : map.values()) {
+			ts[i++] = list.get(0);
 		}
 		return ts;
 	}
 
 	public static IBuilder[] getRealBuilders(){
-		HashMap<String, List<IBuilder>> map = getSortedBuilders();
+		HashMap<MatchKey, List<Builder>> map = getSortedBuilders();
 		IBuilder bs[] = new Builder[map.size()];
 		int i = 0;
-		for (List<IBuilder> list : map.values()) {
+		for (List<Builder> list : map.values()) {
 			bs[i++] = list.get(0);
 		}
 		return bs;
@@ -4379,18 +4368,18 @@ public class ManagedBuildManager extends AbstractCExtension {
 	}
 
 	public static IToolChain[] findIdenticalToolChains(IToolChain tc){
-		List list = findIdenticalElements((ToolChain)tc, fToolChainSorter);
-		return (ToolChain[])list.toArray(new ToolChain[list.size()]);
+		List<ToolChain> list = findIdenticalElements((ToolChain)tc, fToolChainSorter);
+		return list.toArray(new ToolChain[list.size()]);
 	}
 
 	public static ITool[] findIdenticalTools(ITool tool){
-		List list = findIdenticalElements((Tool)tool, fToolSorter);
-		return (Tool[])list.toArray(new Tool[list.size()]);
+		List<Tool> list = findIdenticalElements((Tool)tool, fToolSorter);
+		return list.toArray(new Tool[list.size()]);
 	}
 
 	public static IBuilder[] findIdenticalBuilders(IBuilder b){
-		List list = findIdenticalElements((Builder)b, fBuilderSorter);
-		return (Builder[])list.toArray(new Builder[list.size()]);
+		List<Builder> list = findIdenticalElements((Builder)b, fBuilderSorter);
+		return list.toArray(new Builder[list.size()]);
 	}
 
 	public static IToolChain[] getExtensionsToolChains(String propertyType, String propertyValue){
@@ -4398,9 +4387,9 @@ public class ManagedBuildManager extends AbstractCExtension {
 	}
 
 	public static IToolChain[] getExtensionsToolChains(String propertyType, String propertyValue, boolean supportedPropsOnly){
-		HashMap<String, List<IToolChain>> all = getSortedToolChains();
+		HashMap<MatchKey, List<ToolChain>> all = getSortedToolChains();
 		List<IToolChain> result = new ArrayList<IToolChain>();
-		for (List<IToolChain> list : all.values()) {
+		for (List<ToolChain> list : all.values()) {
 			IToolChain tc = findToolChain(list, propertyType, propertyValue, supportedPropsOnly);
 			if(tc != null)
 				result.add(tc);
@@ -4423,14 +4412,14 @@ public class ManagedBuildManager extends AbstractCExtension {
 		getSortedBuilders();
 	}
 
-	private static IToolChain findToolChain(List<IToolChain> list, String propertyType, String propertyValue, boolean supportedOnly){
+	private static IToolChain findToolChain(List<ToolChain> list, String propertyType, String propertyValue, boolean supportedOnly){
 		ToolChain bestMatch = null;
 		IConfiguration cfg = null;
 		IProjectType type = null;
 		boolean valueSupported = false;
 
 		for(int i = 0; i < list.size(); i++){
-			ToolChain tc = (ToolChain)list.get(i);
+			ToolChain tc = list.get(i);
 			if(tc.supportsValue(propertyType, propertyValue)){
 				valueSupported = true;
 			} else if (valueSupported){
@@ -4512,14 +4501,14 @@ public class ManagedBuildManager extends AbstractCExtension {
 		ICConfigurationDescription cfgDes = getDescriptionForConfiguration(config);
 		if(cfgDes != null){
 			ICConfigurationDescription[] descs= CoreModelUtil.getReferencedConfigurationDescriptions(cfgDes, false);
-			List result = new ArrayList();
+			List<IConfiguration> result = new ArrayList<IConfiguration>();
 			for (ICConfigurationDescription desc : descs) {
 				IConfiguration cfg = getConfigurationForDescription(desc);
 				if(cfg != null) {
 					result.add(cfg);
 				}
 			}
-			return (IConfiguration[]) result.toArray(new IConfiguration[result.size()]);
+			return result.toArray(new IConfiguration[result.size()]);
 		}
 
 		return new Configuration[0];
@@ -4575,38 +4564,37 @@ public class ManagedBuildManager extends AbstractCExtension {
 	public static void buildConfigurations(IConfiguration[] configs, IBuilder builder, IProgressMonitor monitor,
 			boolean allBuilders, int buildKind) throws CoreException{
 
-		Map map = sortConfigs(configs);
-		for(Iterator iter = map.entrySet().iterator(); iter.hasNext();){
-			Map.Entry entry = (Map.Entry)iter.next();
-			IProject proj = (IProject)entry.getKey();
-			IConfiguration[] cfgs = (IConfiguration[])entry.getValue();
+		Map<IProject, IConfiguration[]> map = sortConfigs(configs);
+		for (Entry<IProject, IConfiguration[]> entry : map.entrySet()) {
+			IProject proj = entry.getKey();
+			IConfiguration[] cfgs = entry.getValue();
 			buildConfigurations(proj, cfgs, builder, monitor, allBuilders, buildKind);
 		}
 	}
 
-	private static Map sortConfigs(IConfiguration cfgs[]){
-		Map cfgMap = new HashMap();
-
+	private static Map<IProject, IConfiguration[]> sortConfigs(IConfiguration cfgs[]){
+		Map<IProject, Set<IConfiguration>> cfgSetMap = new HashMap<IProject, Set<IConfiguration>>();
 		for (IConfiguration cfg : cfgs) {
 			IProject proj = cfg.getOwner().getProject();
-			Set set = (Set)cfgMap.get(proj);
+			Set<IConfiguration> set = cfgSetMap.get(proj);
 			if(set == null){
-				set = new HashSet();
-				cfgMap.put(proj, set);
+				set = new HashSet<IConfiguration>();
+				cfgSetMap.put(proj, set);
 			}
-
 			set.add(cfg);
 		}
 
-		if(cfgMap.size() != 0){
-			for(Iterator iter = cfgMap.entrySet().iterator(); iter.hasNext();){
-				Map.Entry entry = (Map.Entry)iter.next();
-				Set set = (Set)entry.getValue();
-				entry.setValue(set.toArray(new Configuration[set.size()]));
+		Map<IProject, IConfiguration[]> cfgArrayMap = new HashMap<IProject, IConfiguration[]>();
+		if(cfgSetMap.size() != 0){
+			Set<Entry<IProject, Set<IConfiguration>>> entrySet = cfgSetMap.entrySet();
+			for (Entry<IProject, Set<IConfiguration>> entry : entrySet) {
+				IProject key = entry.getKey();
+				Set<IConfiguration> set = entry.getValue();
+				cfgArrayMap.put(key, set.toArray(new Configuration[set.size()]));
 			}
 		}
 
-		return cfgMap;
+		return cfgArrayMap;
 	}
 
 	/**
@@ -4664,7 +4652,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 					}
 				} else {
 					// configuration IDs are passed in args to CDT builder
-					Map args = builder!=null ? BuilderFactory.createBuildArgs(configs, builder)
+					Map<String, String> args = builder!=null ? BuilderFactory.createBuildArgs(configs, builder)
 							: BuilderFactory.createBuildArgs(configs);
 					buildProject(project, args, allBuilders, buildKind, monitor);
 				}
@@ -4672,7 +4660,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 				monitor.done();
 			}
 
-			private void buildProject(IProject project, Map args, boolean allBuilders, int buildKind, IProgressMonitor monitor)
+			private void buildProject(IProject project, Map<String, String> args, boolean allBuilders, int buildKind, IProgressMonitor monitor)
 					throws CoreException {
 
 				if (allBuilders) {
@@ -4682,9 +4670,9 @@ public class ManagedBuildManager extends AbstractCExtension {
 							break;
 
 						String builderName = command.getBuilderName();
-						Map newArgs = null;
+						Map<String, String> newArgs = null;
 						if (buildKind!=IncrementalProjectBuilder.CLEAN_BUILD) {
-							newArgs = new HashMap(args);
+							newArgs = new HashMap<String, String>(args);
 							if (!builderName.equals(CommonBuilder.BUILDER_ID)) {
 								newArgs.putAll(command.getArguments());
 							}
@@ -4710,13 +4698,13 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 	public static ITool getExtensionTool(ITool tool){
 		ITool extTool = tool;
-		for(;extTool != null && !extTool.isExtensionElement(); extTool = extTool.getSuperClass());
+		for(;extTool != null && !extTool.isExtensionElement(); extTool = extTool.getSuperClass()) {}
 		return extTool;
 	}
 
 	public static IInputType getExtensionInputType(IInputType inType){
 		IInputType extIT = inType;
-		for(;extIT != null && !extIT.isExtensionElement(); extIT = extIT.getSuperClass());
+		for(;extIT != null && !extIT.isExtensionElement(); extIT = extIT.getSuperClass()) {}
 		return extIT;
 	}
 

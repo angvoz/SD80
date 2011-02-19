@@ -140,7 +140,7 @@ public abstract class DMContext extends AbstractDMContext implements IEDCDMConte
 			builder.append(properties);
 		}
 		builder.append("]");
-		return builder.toString().replace("{", "[").replace("}", "]");
+		return builder.toString();
 	}
 
 }

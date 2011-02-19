@@ -30,6 +30,7 @@ import java.util.TreeMap;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
+import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfCompileUnit;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
@@ -46,13 +47,13 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	
 	static class FileLineEntryProvider implements ILineEntryProvider {
 
-
 		protected List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
+		protected List<ILineEntry> cuEntries   = null;
 
 		// use TreeMap so line number keys are sorted in ascending order
 		protected TreeMap<Integer, List<ILineEntry>> lineEntriesByLine = new TreeMap<Integer, List<ILineEntry>>();
 		protected TreeMap<IAddress, ILineEntry> lineEntriesByAddress = new TreeMap<IAddress, ILineEntry>();
-		
+
 		private IPath filePath;
 
 		private final ICompileUnitScope compileUnitScope;
@@ -64,7 +65,17 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			this.filePath = path;
 			this.sorted = true;
 		}
-		
+
+		protected void setCULineEntries(Collection<ILineEntry> entries) {
+			cuEntries = new ArrayList<ILineEntry>(entries);			
+		}
+
+		protected List<ILineEntry> getCULineEntries() {
+			if (cuEntries == null)
+				setCULineEntries(compileUnitScope.getLineEntries());
+			return cuEntries;
+		}
+
 		/* (non-Javadoc)
 		 * @see java.lang.Object#toString()
 		 */
@@ -98,15 +109,23 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			sorted = false;
 		}
 
-		public ILineEntry getLineEntryAtAddress(IAddress linkAddress, boolean collapseInlineFunctions) {
+		public ILineEntry getLineEntryAtAddress(IAddress linkAddress) {
 			// NOTE: lineEntries can, and does, have multiple entries with the same low address
 			if (!sorted) {
 				// sort by start address for faster lookup by address
 				Collections.sort(lineEntries);
 				sorted = true;
 			}
-			
-			int insertion = Collections.binarySearch(lineEntries, linkAddress);
+			int insertion = getLineEntryInsertionForAddress(linkAddress, lineEntries);
+			if (-1 != insertion)
+				return lineEntries.get(insertion);
+			return null;
+		}
+
+		private int getLineEntryInsertionForAddress(IAddress linkAddress,
+				final List<? extends ILineEntry> entriesToSearch) {
+
+			int insertion = Collections.binarySearch(entriesToSearch, linkAddress);
 			ILineEntry newEntry;
 			int newInsertion;
 
@@ -114,42 +133,42 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 				// line entry's low address exactly matches linkAddress, but if the line
 				// entry has an empty address range, see if a previous or subsequent
 				// line entry with the same start address has a nonempty range
- 				ILineEntry entry = lineEntries.get(insertion);
+ 				ILineEntry entry = entriesToSearch.get(insertion);
 				
 				if (entry.getHighAddress().compareTo(entry.getLowAddress()) != 0)
-					return entry;
-				
+					return insertion;
+
 				if (insertion > 0) {
 					newInsertion = insertion - 1;
-					newEntry = lineEntries.get(newInsertion);
+					newEntry = entriesToSearch.get(newInsertion);
 					while (newEntry.getLowAddress().compareTo(entry.getLowAddress()) == 0) {
 						if (newEntry.getHighAddress().compareTo(newEntry.getLowAddress()) != 0) {
-							return newEntry;
+							return newInsertion;
 						}
 						if (--newInsertion < 0)
 							break;
-						newEntry = lineEntries.get(newInsertion);
+						newEntry = entriesToSearch.get(newInsertion);
 					}
 				}
 
-				if (insertion < lineEntries.size() - 1) {
+				if (insertion < entriesToSearch.size() - 1) {
 					newInsertion = insertion + 1;
-					newEntry = lineEntries.get(newInsertion);
+					newEntry = entriesToSearch.get(newInsertion);
 					while (newEntry.getLowAddress().compareTo(entry.getLowAddress()) == 0) {
 						if (newEntry.getHighAddress().compareTo(newEntry.getLowAddress()) != 0) {
-							return newEntry;
+							return newInsertion;
 						}
-						if (++newInsertion == lineEntries.size())
+						if (++newInsertion == entriesToSearch.size())
 							break;
 						newEntry = lineEntries.get(newInsertion);
 					}
 				}
 				
-				return entry;
+				return insertion;
 			}
 
 			if (insertion == -1) {
-				return null;
+				return -1;
 			}
 
 			// after a failed binary search, link address is > low address of -insertion-2
@@ -157,27 +176,27 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			// that includes linkAddress
 			insertion = -insertion - 2;
 
-			ILineEntry entry = lineEntries.get(insertion);
-			
+			ILineEntry entry = entriesToSearch.get(insertion);
+
 			// low address of entry at insertion cannot match linkAddress
 			if (insertion > 0 && entry.getHighAddress().compareTo(entry.getLowAddress()) == 0) {
 				newInsertion = insertion - 1;
-				newEntry = lineEntries.get(newInsertion);
+				newEntry = entriesToSearch.get(newInsertion);
 				while (newEntry.getLowAddress().compareTo(entry.getLowAddress()) == 0) {
 					if (newEntry.getHighAddress().compareTo(newEntry.getLowAddress()) != 0) {
 						if (linkAddress.compareTo(newEntry.getHighAddress()) < 0)
-							return newEntry;
+							return newInsertion;
 					}
 					if (--newInsertion < 0)
 						break;
-					newEntry = lineEntries.get(newInsertion);
+					newEntry = entriesToSearch.get(newInsertion);
 				}
 			}
 			
 			if (linkAddress.compareTo(entry.getHighAddress()) < 0)
-				return entry;
+				return insertion;
 
-			return null;
+			return -1;
 		}
 
 		public Collection<ILineEntry> getLineEntriesForLines(IPath path, int startLineNumber, int endLineNumber) {
@@ -230,32 +249,286 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			return Collections.unmodifiableCollection(entries);
 		}
 
-		public ILineEntry getNextLineEntry(ILineEntry lineEntry) {
-			if (lineEntry.getFilePath().equals(filePath)) {
-				SortedMap<IAddress, ILineEntry> subMap = lineEntriesByAddress.tailMap(lineEntry.getLowAddress().add(1));
-				if (!subMap.isEmpty()) {
-					IFunctionScope function = ignoreInlineFunctions(compileUnitScope.getFunctionAtAddress(lineEntry.getLowAddress()));
-					if (function == null) {
-						return null;
+		public ILineEntry getNextLineEntry(ILineEntry entry, boolean collapseInlineFunctions) {
+			if (entry == null || isLastEntryInCU(entry))
+				return null;
+			IFunctionScope entryFn = compileUnitScope.getFunctionAtAddress(entry.getLowAddress());
+			IFunctionScope container = ignoreInlineFunctions(entryFn);
+			if (container == null)	// relies on ignoreInlineFunctions() to return null if func==null
+				return null;
+
+			do {	// loop is for continue to retry the next entry in same function
+
+				// check if there's even a need to do further operations
+				IAddress desiredAddr = entry.getHighAddress();
+				if (desiredAddr.compareTo(container.getHighAddress()) > 0)
+					return null;
+	
+				SortedMap<IAddress, ILineEntry> tailAddrs
+				  = desiredAddr.equals(entry.getLowAddress())	// can be equal due to DWARF generation bug
+						? null : lineEntriesByAddress.tailMap(desiredAddr);
+	
+				// no other lines in this provider; try the CU line entries
+				if (tailAddrs == null || tailAddrs.isEmpty()) {
+					// the following case is that we are at the first line of an inline
+					// that would otherwise be the last line of a function.
+					if (collapseInlineFunctions && entryFn != container
+							&& entry.getLowAddress().equals(entryFn.getLowAddress())
+							&& entryFn.getParent().equals(container))
+						return getDifferentLineEntryInCU(container, entry, entryFn.getHighAddress(),
+														  collapseInlineFunctions);
+					else
+						return getDifferentLineEntryInCU(entryFn, entry, desiredAddr,
+														  collapseInlineFunctions);
+				}
+
+				IAddress foundAddr = tailAddrs.firstKey();
+				ILineEntry next = tailAddrs.get(foundAddr);
+				IFunctionScope foundFn = compileUnitScope.getFunctionAtAddress(foundAddr);
+	
+				// [1] if the function of our the current instr ptr entry and
+				// the function at the found addr are identical, then take it!!
+				// (i.e. we lucked out!!  all lines in the gap 
+				// in other providers are nested inlines.)
+				if (entryFn.equals(foundFn)) {
+					// ... ok, well, line number must be different, too.
+					if (next.getLineNumber() != entry.getLineNumber())
+						return next;
+					entry = next;		// just pretend this was the entry ...
+					continue;			// ... and try again
+	
+				// [2]if the foundAddr is immediately after this entry ... 
+				} else if (foundAddr.equals(desiredAddr) && foundFn != null) {		// [2]
+	
+					/// ... and it is
+					// [2a] an inline parent of this inline
+					// [2b] an inline and a direct sibling (i.e. not a cousin) of this inline
+					// then take it!!
+					if (entryFn.getParent().equals(foundFn)							// [2a]
+							|| entryFn.getParent().equals(foundFn.getParent())) {	// [2b]
+						return tailAddrs.get(foundAddr);
+	
+					// ... or if it is
+					// [2c] the first line of an inline whose next line in the
+					//      lineEntriesByLine table is identical to next
+					// then we'll call that good enough
+					// (you may be reading this if you have an inline function
+					// in the same file as the parent function invoking it and
+					// nothing in between; step over is probably broken for you.)
+					} else if (foundFn.getParent().equals(entryFn)
+							&& areEntriesAdjacentLines(entry, next)) {
+						return next;
 					}
-					for (ILineEntry nextEntry : subMap.values()) {
-						// return the entry at the next line if it's in the
-						// same function and has a higher address and is on a different line
-						IFunctionScope nextFunction = ignoreInlineFunctions(compileUnitScope.getFunctionAtAddress(nextEntry.getLowAddress()));
-						if (function.equals(nextFunction)) {
-							if (nextEntry.getLineNumber() != lineEntry.getLineNumber() && 
-									nextEntry.getLowAddress().compareTo(lineEntry.getHighAddress()) >= 0) {
-								return nextEntry;
-							}
-						}
+	
+				// similar to [2a] & [2b], even if foundAddr shows a gap
+				// [3] if the current location is an inline, and entry
+				//     adjacent to the one passed is identical to next
+				// again, call it good enough for now.
+				} else if (collapseInlineFunctions
+						&& (entryFn.getParent().equals(foundFn)
+							|| entryFn.getParent().equals(container))
+						&& areEntriesAdjacentLines(entry, next)) {
+					return next;
+				}
+	
+	
+				// getting here means 1 (or both) of 2 things (both slightly irrelevant)
+				//
+				// either:
+				// a] entryFn is an ancestor of foundFn
+				// b] there's a gap between the desiredAddr & the foundAddr
+				//
+				// in either case, the next entry will be found in 
+				// this.compileUnitScope.lineEntries .  so get it from there.
+				return getDifferentLineEntryInCU(entryFn, entry, desiredAddr,
+												 collapseInlineFunctions);
+
+			} while (true);
+		}
+
+		/**
+		 * @param entry
+		 * @param next
+		 */
+		private boolean areEntriesAdjacentLines(ILineEntry entry, ILineEntry next) {
+			if (entry.getLineNumber() == next.getLineNumber())
+				return false;
+			SortedMap<Integer, List<ILineEntry>> tailLines
+			  = lineEntriesByLine.tailMap(entry.getLineNumber());
+			if (tailLines != null) {
+				List<ILineEntry> entries = tailLines.get(entry.getLineNumber());
+				if (entries != null) {
+					int entryIdx = entries.indexOf(entry);
+					if (-1 != entryIdx) {
+						if (entry.equals(entries.get(0))
+								&& ++entryIdx == entries.size()) {
+							entries = tailLines.get(next.getLineNumber());
+							if (entries != null && next.equals(entries.get(0))) {
+								return true;
+			}	}	}	}	}
+
+			return false;
+		}
+
+		/**
+		 * @param entryFn
+		 * @param desiredAddr
+		 * @return
+		 */
+		private ILineEntry getDifferentLineEntryInCU(IFunctionScope entryFn,
+				ILineEntry origEntry, IAddress desiredAddr,
+				boolean collapseInlineFunctions) {
+			if (compileUnitScope instanceof DwarfCompileUnit) {	// known to be a sorted list
+				if (getCULineEntries().isEmpty())
+					return null;
+				int insertion = getLineEntryInsertionForAddress(desiredAddr, cuEntries);
+				if (-1 != insertion)
+					for (; insertion < cuEntries.size(); ++insertion) {
+						ILineEntry next = cuEntries.get(insertion);
+						if (isGoodEntry(next, entryFn, origEntry, collapseInlineFunctions))
+							return next;
+				}
+			} else {
+				boolean firstFound = false;
+				for (ILineEntry next : getCULineEntries()) {
+					if (!firstFound && desiredAddr.compareTo(next.getLowAddress()) < 0)
+						continue;
+					else
+						firstFound = true;
+
+					if (isGoodEntry(next, entryFn, origEntry, collapseInlineFunctions))
+						return next;
+				}
+			}
+
+
+			// by deduction, if we don't hit any of those 3 cases and exhaust all
+			// entries in the compuleUnitScope, then every entry after the current
+			// one is some sort of inline nested to the current function (possibly
+			// even several different inlines nested separately, possibly even with
+			// code from the original function at the original line number).
+			// 
+			// in simple terms, it means the step-over that led here
+			// will turn into a step out
+
+			return null;
+		}
+
+		private boolean isGoodEntry(ILineEntry e, IFunctionScope origFn,
+				ILineEntry origEntry, boolean collapseInlineFunctions) {
+			IFunctionScope nextFn
+			  = compileUnitScope.getFunctionAtAddress(e.getLowAddress());
+
+			if (origFn.equals(nextFn) && e.getLineNumber() != origEntry.getLineNumber())
+				return true;	// case [1] described in caller getNextLineEntry()
+
+			else if (!collapseInlineFunctions || !isAncestorFunction(nextFn, origFn))
+				return true;	// case [2] or [3] described in caller getNextLineEntry()
+
+			return false;
+		}
+
+		private boolean isFirstEntryInCU(ILineEntry e) throws IllegalArgumentException {
+			if (e == null)
+				throw new IllegalArgumentException("isFirstEntryInCU() called with null");
+			int cuEntriesSize = getCULineEntries().size();
+			return (cuEntriesSize > 0 && e.equals(cuEntries.get(0)));			
+		}
+
+		private boolean isLastEntryInCU(ILineEntry e) throws IllegalArgumentException {
+			if (e == null)
+				throw new IllegalArgumentException("isFirstEntryInCU() called with null");
+			int cuEntriesSize = getCULineEntries().size();
+			return (cuEntriesSize > 0 && e.equals(cuEntries.get(cuEntriesSize-1)));
+		}
+
+		public ILineEntry getPreviousLineEntry(ILineEntry entry, boolean collapseInlineFunctions) {
+			if (entry == null || isFirstEntryInCU(entry))
+				return null;
+			IAddress entryAddr = entry.getLowAddress();
+			IFunctionScope func = compileUnitScope.getFunctionAtAddress(entryAddr);
+			IFunctionScope container = ignoreInlineFunctions(func);
+			if (container == null)	// relies on ignoreInlineFunctions() to return null if func==null
+				return null;
+			SortedMap<IAddress, ILineEntry> headAddrs = lineEntriesByAddress.headMap(entryAddr);
+			if (headAddrs.isEmpty())
+				return null;
+
+			if (!collapseInlineFunctions)
+				return getPreviousLineEntryByAddress(entry, container.getLowAddress(), headAddrs);
+
+			IFunctionScope prevFunc = compileUnitScope.getFunctionAtAddress(entryAddr);
+			IFunctionScope prevContainer = ignoreInlineFunctions(prevFunc);
+			if (prevContainer == null || !prevContainer.equals(container)) {
+				return null;	// relies on ignoreInlineFunctions() to return null if nextFunc==null
+			}
+
+			boolean inline = !func.equals(container);
+			boolean prevInline = !prevFunc.equals(prevContainer);
+			if (inline && prevInline) {
+				ILineEntry testPrev = headAddrs.get(headAddrs.lastKey());
+
+				// take the first head in tailAddrs if the function containing entry is
+				// [1] identical to the function containing the lastKey of headAddrs
+				//     (i.e. in the same inline; skips nested inlines in other providers)
+				// [2] an inline parent of this the previous inline
+				//     && the top addr of testPrev is immediately bottom addr of entry
+				// [3] an inline and a sibling of this previous inline
+				//     && the top addr of testPrev is immediately bottom addr of entry
+				if (func.equals(prevFunc)											// [1]
+					|| (testPrev.getHighAddress().equals(entryAddr)
+						&& (prevFunc.getParent().equals(func)						// [2]
+							|| prevFunc.getParent().equals(func.getParent())))) {	// [3]
+					return testPrev;
+				}
+
+				if (!filePath.equals(compileUnitScope.getFilePath()))
+					// fall out and force reliance on the provider mapped from the
+					// compileUnitScope's filePath (i.e. the parent to these inlines)
+					return null; 
+			}
+
+			SortedMap<Integer, List<ILineEntry>> headLines
+			  = inline
+			  		? lineEntriesByLine.headMap(headAddrs.get(headAddrs.lastKey()).getLineNumber()+1)
+			  		: lineEntriesByLine.headMap(entry.getLineNumber());
+
+			while (!headLines.isEmpty()) {
+				List<ILineEntry> entries = headLines.get(headLines.lastKey());
+				for (int i = entries.size()-1; i >= 0; --i) {
+					ILineEntry prev = entries.get(i);
+					if (!prev.equals(entry)
+							&& prev.getHighAddress().compareTo(entryAddr) <= 0
+							&& prev.getLowAddress().compareTo(container.getLowAddress()) >= 0
+							&& prev.getLineNumber() != entry.getLineNumber()) {
+						return prev;
 					}
 				}
+				headLines = headLines.headMap(headLines.lastKey());
+			}
+			return null;
+		}
+
+		/**
+		 * @param entry
+		 * @param bottom
+		 * @param addrEntries
+		 * @return
+		 */
+		private ILineEntry getPreviousLineEntryByAddress(ILineEntry entry, IAddress bottom,
+				SortedMap<IAddress, ILineEntry> addrEntries) {
+			while (!addrEntries.isEmpty()) {
+				ILineEntry prev = addrEntries.get(addrEntries.lastKey());
+				if (prev == null || prev.getLowAddress().compareTo(bottom) < 0)
+					break;
+				if (prev.getLineNumber() != entry.getLineNumber())
+					return prev;
+				addrEntries = addrEntries.headMap(prev.getLowAddress());
 			}
 			return null;
 		}
 
 		public ILineEntry getLineEntryInFunction(IAddress linkAddress, IFunctionScope parentFunction) {
-			ILineEntry entry;
 			
 			// get all line entries with low address <= linkAddress
 			SortedMap<IAddress, ILineEntry> subMap = lineEntriesByAddress.headMap(linkAddress.add(1));
@@ -264,14 +537,15 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			{
 				// if no line entries have a low address <= linkAddress, but the address is
 				// definitely in the function, use the first entry
-				if (parentFunction.getLowAddress().compareTo(linkAddress) >= 0)
+				if (parentFunction.getLowAddress().compareTo(linkAddress) >= 0
+						&& parentFunction.getHighAddress().compareTo(linkAddress) < 0)
 					return lineEntriesByAddress.values().iterator().next();
 				return null;
 			}
 
 			// look for an entry that includes linkAddress; if linkAddress is in the gap between
 			// two lineEntriesByAddress entries, assume the gap is due to inlined functions' code
-			entry = subMap.get(subMap.lastKey());
+			ILineEntry entry = subMap.get(subMap.lastKey());
 			
 			if (   entry.getHighAddress().compareTo(linkAddress) >= 0
 				|| subMap.size() < lineEntriesByAddress.size()) {
@@ -281,22 +555,77 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			return null;
 		}
 
+		/**
+		 * ONLY call when caller has 'collapseInlineFunctions == true' and the caller
+		 * has failed to get the address in any other way.
+		 * 
+		 * @param cuScope the scope in which to search for the entry of interest
+		 * @param entry the entry in hand, for which the preceding entry is desired
+		 * @return a line-entry whose end address is exactly first address of the passed entry
+		 */
+		protected ILineEntry getPreviousLineEntryInCU(ILineEntry entry) {
+			IAddress desiredEndAddress = entry.getLowAddress();
+
+			for (ILineEntry testEntry : getCULineEntries()) {
+				if (!desiredEndAddress.equals(testEntry.getHighAddress()))
+					continue;
+				IFunctionScope entryFn
+				  = compileUnitScope.getFunctionAtAddress(entry.getLowAddress());
+				IScope entryParent = entryFn.getParent();
+
+				IFunctionScope prevFn
+				  = compileUnitScope.getFunctionAtAddress(testEntry.getLowAddress());
+				if (isInlinedFunction(entryFn)
+					&& (isAncestorFunction(entryFn, prevFn)
+						|| entryParent != null && entryParent.equals(prevFn.getParent()))) {
+					return testEntry;
+				}
+				if (isAncestorFunction(prevFn, entryFn)) {
+					// TODO: add logic to get entry at start of testEntry
+					// something like:
+					//	dp {
+					//		desiredEndAddress = testEntry.getLowAddress();
+					//		testEntry = getPreviousLineEntryInCU(cuScope, testEntry, null);
+					//		get back to where the function for testEntry is a sibling or
+					//		ancestor of entryFn
+					//	} while (testEntry != null)
+					// 
+					// but this is mostly here to help with step-out while standing
+					// on first instruction of inline coinciding with source, so fix later
+				}
+				break;	// got the address of interest; just wasn't useful as we wanted	
+			}
+			return null;
+		}
+
 	}
-	
+
+	/**
+	 *	basically, a typedef of {@link ArrayList}&lt;{@link FileLineEntryProvider}&gt;
+	 */
+	private final class FileLineEntryProviders extends ArrayList<FileLineEntryProvider> {
+		private static final long serialVersionUID = -2157263701372708990L;		
+	}
+
+	/**
+	 *	basically, a typedef of {@link HashMap}&lt;{@link IPath},{@link FileLineEntryProvider}&gt;
+	 */
+	private final class PathToLineEntryMap extends HashMap<IPath, FileLineEntryProviders> {
+		private static final long serialVersionUID = 7064789571684986782L;
+	}
+
 	// CUs we've already considered
 	private Set<ICompileUnitScope> parsedCUs = new HashSet<ICompileUnitScope>();
 	// mapping to find info for a given path
-	private Map<IPath, List<FileLineEntryProvider>> pathToLineEntryMap = new HashMap<IPath, List<FileLineEntryProvider>>();
+	private PathToLineEntryMap pathToLineEntryMap = new PathToLineEntryMap();
 	// all known providers
-	private List<FileLineEntryProvider> fileProviders = new ArrayList<FileLineEntryProvider>();
+	private FileLineEntryProviders fileProviders = new FileLineEntryProviders();
 	// cached array of providers
 	private FileLineEntryProvider[] fileProviderArray;
-	
+
 	public ModuleLineEntryProvider() {
 
-
 	}
-
 
 	
 	/**
@@ -328,6 +657,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 					// This will look for an existing one and create a 
 					// new one if none exits.
 					provider = getFileLineProviderForCU(cu,	path);
+					provider.setCULineEntries(lineEntries);
 					fileProviders.put(path, provider);
 				}
 	
@@ -357,19 +687,21 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			
 			if (declFile != null) {
 				// this is the slow path for dynamic parsing
-				FileLineEntryProvider provider = getFileLineProviderForCU(cu,
-						declFile);
+				FileLineEntryProvider provider
+				  = getFileLineProviderForCU(cu, declFile);
 				
 				int declLine = func.getDeclLine();
 				int declColumn = func.getDeclColumn();
 				
 				// is there already an entry at this line?
-				Collection<ILineEntry> curEntries = provider.getLineEntriesForLines(declFile, declLine, declLine);
+				Collection<ILineEntry> curEntries
+				  = provider.getLineEntriesForLines(declFile, declLine, declLine);
 				if (curEntries.isEmpty()) {
 					// no, add one, and make it range from our start to the first actual line
 					
-					LineEntry entry = new LineEntry(declFile, declLine, declColumn, func.getLowAddress(), 
-							func.getLowAddress());
+					LineEntry entry
+					  = new LineEntry(declFile, declLine, declColumn,
+									  func.getLowAddress(), func.getLowAddress());
 					provider.addLineEntry(entry);
 				}
 			}
@@ -377,10 +709,9 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	}
 
 
-
 	private FileLineEntryProvider getFileLineProviderForCU(
 			ICompileUnitScope cu, IPath declFile) {
-		List<FileLineEntryProvider> providers = pathToLineEntryMap.get(declFile);
+		FileLineEntryProviders providers = pathToLineEntryMap.get(declFile);
 		if (providers != null) {
 			for (FileLineEntryProvider p : providers) {
 				if (p.compileUnitScope.equals(cu)) {
@@ -397,9 +728,9 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 
 	private void registerFileLineEntryProvider(IPath path,
 			FileLineEntryProvider provider) {
-		List<FileLineEntryProvider> fileEntries = pathToLineEntryMap.get(path);
+		FileLineEntryProviders fileEntries = pathToLineEntryMap.get(path);
 		if (fileEntries == null) {
-			fileEntries = new ArrayList<FileLineEntryProvider>();
+			fileEntries = new FileLineEntryProviders();
 			pathToLineEntryMap.put(path, fileEntries);
 		}
 		fileEntries.add(provider);
@@ -417,7 +748,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		if (cus != null)
 			return Collections.unmodifiableCollection(cus);
 		
-		for (Map.Entry<IPath, List<FileLineEntryProvider>> entry : pathToLineEntryMap.entrySet()) {
+		for (Map.Entry<IPath, FileLineEntryProviders> entry : pathToLineEntryMap.entrySet()) {
 			if (!PathUtils.isCaseSensitive() && entry.getKey().toOSString().compareToIgnoreCase(sourceFile.toOSString()) == 0) {
 				cus = entry.getValue();
 				pathToLineEntryMap.put(sourceFile, entry.getValue());
@@ -425,7 +756,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			}
 		}
 		
-		for (Map.Entry<IPath, List<FileLineEntryProvider>> entry : pathToLineEntryMap.entrySet()) {
+		for (Map.Entry<IPath, FileLineEntryProviders> entry : pathToLineEntryMap.entrySet()) {
 			if (entry.getKey().equals(sourceFile)) {
 				cus = entry.getValue();
 				return Collections.unmodifiableCollection(cus);
@@ -442,13 +773,14 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	 */
 	public Collection<ILineEntry> getLineEntriesForLines(IPath file,
 			int startLineNumber, int endLineNumber) {
-		List<FileLineEntryProvider> matches = pathToLineEntryMap.get(file);
+		FileLineEntryProviders matches = pathToLineEntryMap.get(file);
 		if (matches == null)
 			return Collections.emptyList();
 		
 		List<ILineEntry> ret = null;
 		for (FileLineEntryProvider provider : matches) {
-			Collection<ILineEntry> entries = provider.getLineEntriesForLines(file, startLineNumber, endLineNumber);
+			Collection<ILineEntry> entries
+			  = provider.getLineEntriesForLines(file, startLineNumber, endLineNumber);
 			if (!entries.isEmpty()) {
 				if (ret == null)
 					ret = new ArrayList<ILineEntry>(entries);
@@ -462,42 +794,41 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		return ret;
 	}
 
-
-
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILineEntryProvider#getLineEntryAtAddress(org.eclipse.cdt.core.IAddress)
 	 */
-	public ILineEntry getLineEntryAtAddress(IAddress linkAddress, boolean collapseInlineFunctions) {
+	public ILineEntry getLineEntryAtAddress(IAddress linkAddress) {
 		// scanning files can introduce new file providers; avoid ConcurrentModificationException
 		if (fileProviderArray == null) {
 			fileProviderArray = fileProviders.toArray(new FileLineEntryProvider[fileProviders.size()]);
 		}
 		for (FileLineEntryProvider provider : fileProviderArray) {
-			// Narrow down the search to avoid iterating potentially hundreds of duplicates of the same file 
+			// Narrow down the search to avoid iterating potentially hundreds
+			// of duplicates of the same file 
 			// (e.g. for stl_vector.h, expanded N times for N std::vector<T> uses).
 			// (Don't use #getScopeAtAddress() since this preparses too much.)
 			if (provider.compileUnitScope.getLowAddress().compareTo(linkAddress) <= 0
 					&& provider.compileUnitScope.getHighAddress().compareTo(linkAddress) > 0) {
-				ILineEntry entry = provider.getLineEntryAtAddress(linkAddress, collapseInlineFunctions);
-				if (entry != null)
-				{
-					if (collapseInlineFunctions)
-					{
-						// If the requested address is at the start of a function, we'll pretend
-						// not to be in an inlined function.
-						IFunctionScope function = provider.compileUnitScope.getFunctionAtAddress(linkAddress);
-						if (function != null) {
-							if (linkAddress.equals(function.getLowAddress()) && isInlinedFunction(function))
-							{
-									IFunctionScope parentFunction = ignoreInlineFunctions(function);
-									entry = getLineEntryInFunction(linkAddress, parentFunction);
-							} else if (!isInlinedFunction(function)) {
-								ILineEntry newEntry = getLineEntryInFunction(linkAddress, function);
-								if (newEntry != null && newEntry.getHighAddress().compareTo(linkAddress) < 0)
-									entry = newEntry;
-							}
-						}
-					}
+				ILineEntry entry = provider.getLineEntryAtAddress(linkAddress);
+				if (entry != null
+
+					/*	FIXME: sigh ...
+					 *
+					 *	yet another RVCT DWARF inlined LNT entry generation bug ...
+					 *
+					 *	we just can't have entry.highAddr == entry.lowAddr!
+					 *
+					 *	that just TOTALLY ruins the illusion of stepping.
+					 *
+					 *	see, if we pass back the address we're on,
+					 *	no step-over range will get created,
+					 *	and the debugger will just run ...
+					 *		
+					 *	... and that's just NotGood-TM .
+					 */
+						&& !entry.getLowAddress().equals(entry.getHighAddress())
+
+						) {
 					return entry;
 				}
 			}
@@ -506,16 +837,16 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 	}
 
 
-	private ILineEntry getLineEntryInFunction(IAddress linkAddress,
-			IFunctionScope parentFunction) {
-		ILineEntry functionEntry = getLineEntryAtAddress(parentFunction.getLowAddress(), false);
+	public ILineEntry getLineEntryInFunction(IAddress linkAddress, IFunctionScope parentFunction) {
+		ILineEntry functionEntry = getLineEntryAtAddress(parentFunction.getLowAddress());
 		if (functionEntry == null)
 			return null;
-		Collection<ILineEntryProvider> parentProviders = getLineEntryProvidersForFile(functionEntry.getFilePath());
+		Collection<ILineEntryProvider> parentProviders
+		  = getLineEntryProvidersForFile(functionEntry.getFilePath());
 		for (ILineEntryProvider iLineEntryProvider : parentProviders) {
-			if (iLineEntryProvider instanceof FileLineEntryProvider)
-			{
-				ILineEntry entry = ((FileLineEntryProvider)iLineEntryProvider).getLineEntryInFunction(linkAddress, parentFunction);
+			if (iLineEntryProvider instanceof FileLineEntryProvider) {
+				ILineEntry entry
+				  = ((FileLineEntryProvider)iLineEntryProvider).getLineEntryInFunction(linkAddress, parentFunction);
 				if (entry != null)
 					return entry;
 			}
@@ -523,36 +854,101 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		return null;
 	}
 
-
-
-	private boolean isInlinedFunction(IFunctionScope function) {
+	
+	private static boolean isInlinedFunction(IFunctionScope function) {
 		return function != null && function.getParent() instanceof IFunctionScope;
 	}
-
-
 
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILineEntryProvider#getNextLineEntry(org.eclipse.cdt.debug.edc.internal.symbols.ILineEntry)
 	 */
-	public ILineEntry getNextLineEntry(ILineEntry entry) {
+	public ILineEntry getNextLineEntry(final ILineEntry entry, final boolean collapseInlineFunctions) {
 		if (entry == null)
 			return null;
-		List<FileLineEntryProvider> matches = pathToLineEntryMap.get(entry.getFilePath());
+
+		final IAddress entryLowAddr = entry.getLowAddress();
+		final IAddress entryHighAddr = entry.getHighAddress();
+		final IPath entryPath = entry.getFilePath();
+		FileLineEntryProviders matches = pathToLineEntryMap.get(entryPath);
 		if (matches == null)
 			return null;
-		
-		// possible concurrent access if we read new files while searching
+
+		// avoid possible concurrent access if we read new files while searching
 		FileLineEntryProvider[] matchArray = matches.toArray(new FileLineEntryProvider[matches.size()]);
-		
+
 		for (FileLineEntryProvider provider : matchArray) {
+			ICompileUnitScope cuScope = provider.compileUnitScope;
 			// Narrow down the search to avoid iterating potentially hundreds of duplicates of the same file 
 			// (e.g. for stl_vector.h, expanded N times for N std::vector<T> uses).
 			// (Don't use #getScopeAtAddress() since this preparses too much.).
-			if (provider.compileUnitScope.getLowAddress().compareTo(entry.getLowAddress()) <= 0
-					&& provider.compileUnitScope.getHighAddress().compareTo(entry.getHighAddress()) > 0) {
-				ILineEntry next = provider.getNextLineEntry(entry);
-				if (next != null)
-					return next;
+			if (cuScope.getLowAddress().compareTo(entryLowAddr) <= 0
+					// NOTE: high addrs for both scope & line entries are inclusive: thus >= 0
+					&& cuScope.getHighAddress().compareTo(entryHighAddr) >= 0) {
+
+				// provider.getNextLineEntry() returns null for only 1 reason:
+				// 1) there are no more entries at all for the compileUnitScope
+				//
+				// so there's no need to continue looking in other providers
+				return provider.getNextLineEntry(entry, collapseInlineFunctions);
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param c the child to compare
+	 * @param x the function we are seeking to call an ancestor
+	 * @return true if there's a function in this linkage where <b>x</b> is an ancestor of <b>c</b>
+	 */
+	private static boolean isAncestorFunction(IFunctionScope c, IFunctionScope x) {
+		for (IScope p = c.getParent(); p != null; p = p.getParent())
+			if (p.equals(x))
+				return true;
+		return false;
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.ILineEntryProvider#getPreviousLineEntry
+	 */
+	public ILineEntry getPreviousLineEntry(ILineEntry entry,
+			boolean collapseInlineFunctions) {
+		if (entry == null)
+			return null;
+
+		FileLineEntryProviders matches = pathToLineEntryMap.get(entry.getFilePath());
+		if (matches != null) {
+			final IAddress entryLowAddr  = entry.getLowAddress();
+			final IAddress entryHighAddr = entry.getHighAddress();
+			boolean entryIsInline = false, inlineEstablished = false;
+
+			// avoid possible concurrent access if we read new files while searching
+			FileLineEntryProvider[] matchArray = matches.toArray(new FileLineEntryProvider[matches.size()]);
+
+			for (FileLineEntryProvider provider : matchArray) {
+				ICompileUnitScope cuScope = provider.compileUnitScope;
+				// Narrow down the search to avoid iterating potentially hundreds of duplicates of the same file 
+				// (e.g. for stl_vector.h, expanded N times for N std::vector<T> uses).
+				// (Don't use #getScopeAtAddress() since this preparses too much.).
+				//
+				// 
+				if (cuScope.getLowAddress().compareTo(entryLowAddr) <= 0
+						// NOTE: high addrs for both scope & line entries are inclusive: thus >= 0
+						&& cuScope.getHighAddress().compareTo(entryHighAddr) >= 0) {
+					if (!inlineEstablished) {
+						entryIsInline = isInlinedFunction(cuScope.getFunctionAtAddress(entryLowAddr));
+						inlineEstablished = true;
+					}
+					ILineEntry prev = provider.getPreviousLineEntry(entry, collapseInlineFunctions);
+					if (prev == null && collapseInlineFunctions && entryIsInline) {
+						// retry with the provider mapped from the compileUnitScope.filePath
+						return provider.getPreviousLineEntryInCU(entry);
+					}
+
+					if (prev != null) {	// in case there's another provider
+						return prev;
+					}
+				}
 			}
 		}
 		return null;
@@ -562,8 +958,7 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 		if (function == null)
 			return null;
 		
-		while (function.getParent() instanceof IFunctionScope)
-		{
+		while (function.getParent() instanceof IFunctionScope) {
 			function = (IFunctionScope) function.getParent();
 		}			
 		return function;

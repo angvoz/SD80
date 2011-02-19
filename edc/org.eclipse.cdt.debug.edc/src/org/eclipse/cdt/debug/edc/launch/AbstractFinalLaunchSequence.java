@@ -641,6 +641,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 					if (env != null)
 						vars.putAll(env);
 					Protocol.invokeAndWait(new Runnable() {
+						@SuppressWarnings("deprecation")
 						public void run() {
 							ps.start(workingDirectory, file, args, vars, attach, new IProcesses.DoneStart() {
 								public void doneStart(IToken token, Exception error, ProcessContext process) {

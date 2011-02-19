@@ -15,7 +15,6 @@ import java.util.List;
 
 import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
 import org.eclipse.cdt.debug.edc.internal.snapshot.Snapshot;
-import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.sourcelookup.ISourceLookupDirector;
 
@@ -54,7 +53,6 @@ public interface IAlbum {
 
 	public String getLaunchName();
 
-	public void playSnapshots(DsfSession session);
 
 	public void addFile(IPath path);
 
@@ -70,5 +68,20 @@ public interface IAlbum {
 	public boolean isLoaded();
 
 	public boolean isRecording();
+	
+	/**
+	 * @since 2.0
+	 */
+	public void playSnapshots();
+	
+	/**
+	 * @since 2.0
+	 */
+	public boolean isPlayingSnapshots();
+	
+	/**
+	 * @since 2.0
+	 */
+	public void stopPlayingSnapshots();
 
 }

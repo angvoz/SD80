@@ -16,16 +16,16 @@ import java.util.Map;
 
 import org.eclipse.tm.tcf.core.AbstractPeer;
 import org.eclipse.tm.tcf.protocol.IChannel;
+import org.eclipse.tm.tcf.protocol.IChannel.IChannelListener;
 import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.IService;
 import org.eclipse.tm.tcf.protocol.IToken;
 import org.eclipse.tm.tcf.protocol.Protocol;
-import org.eclipse.tm.tcf.protocol.IChannel.IChannelListener;
 import org.eclipse.tm.tcf.services.IDiagnostics;
-import org.eclipse.tm.tcf.services.ILocator;
-import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IDiagnostics.DoneEcho;
+import org.eclipse.tm.tcf.services.ILocator;
 import org.eclipse.tm.tcf.services.ILocator.LocatorListener;
+import org.eclipse.tm.tcf.services.IProcesses;
 import org.eclipse.tm.tcf.services.IProcesses.ProcessContext;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -190,6 +190,7 @@ public class ManualDebuggerAgentTest {
 		});
 	}
 
+	@SuppressWarnings("deprecation")
 	private void examineService(IService service) {
 		if (service instanceof IDiagnostics) {
 			IDiagnostics serv = (IDiagnostics) service;

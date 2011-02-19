@@ -84,7 +84,8 @@ public class TestDisassemblerARM {
 		System.out.println("\n===================== ARMv5 ========================\n");
 		String[] insts = { "E0 A1 00 02", "adc	r0,r1,r2", "E2 81 00 01", "add	r0,r1,#0x1", "E0 01 00 02",
 				"and	r0,r1,r2", "EA FF FF FE", "b		0x00000000", "EB FF FF FE", "bl		0x00000000", "E1 C1 00 02", "bic	r0,r1,r2",
-				"E1 20 01 70", "bkpt	#0x10", "FA FF FF FE", "blx	0x00000000", "E1 2F FF 30", "blx	r0", "E1 2F FF 10",
+				"E1 20 01 70", "bkpt	#0x10", 
+				"FA FF FF FE", "blx	0x00000000", "E1 2F FF 30", "blx	r0", "E1 2F FF 10",
 				"bx		r0", "EE 11 00 02", "cdp	p0,0x1,cr0,cr1,cr2,0x0", "FE 11 00 02", "cdp2	p0,0x1,cr0,cr1,cr2,0x0",
 				"E1 6F 0F 11", "clz	r0,r1", "E3 70 00 00", "cmn	r0,#0x0", "E1 50 00 01", "cmp	r0,r1", "E2 21 00 10",
 				"eor	r0,r1,#0x10", "ED 91 00 00", "ldc	p0,cr0,[r1,#0x0]", "FD 91 00 00", "ldc2	p0,cr0,[r1,#0x0]",
@@ -110,7 +111,10 @@ public class TestDisassemblerARM {
 				"E0 C1 00 B1", "strh	r0,[r1],#0x1", "E4 A1 00 01", "strt	r0,[r1],#0x1", "E0 41 00 02", "sub	r0,r1,r2",
 				"EF 00 00 10", "swi	#0x10", "E1 02 00 91", "swp	r0,r1,[r2]", "E1 42 00 91", "swpb	r0,r1,[r2]",
 				"E1 30 00 01", "teq	r0,r1", "E1 10 00 01", "tst	r0,r1", "E0 A1 03 92", "umlal	r0,r1,r2,r3",
-				"E0 81 03 92", "umull	r0,r1,r2,r3", };
+				"E0 81 03 92", "umull	r0,r1,r2,r3", 
+				"E7 F1 23 F4", "undefined",
+				"E7 F0 00 10", "undefined",
+		};
 
 		disassembleInstArray(insts, armOptions);
 	}
@@ -368,6 +372,7 @@ public class TestDisassemblerARM {
 				"42 08", "tst	r0,r1",
 				"B2 C8", "uxtb	r0,r1",
 				"B2 88", "uxth	r0,r1",
+				"DE 80", "undefined",
 			};
 
 		disassembleInstArray(insts, thumbOptions);

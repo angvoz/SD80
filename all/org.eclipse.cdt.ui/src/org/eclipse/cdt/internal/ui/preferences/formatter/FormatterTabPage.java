@@ -8,6 +8,7 @@
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *     Anton Leherbauer (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.preferences.formatter;
 
@@ -21,11 +22,11 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.formatter.DefaultCodeFormatterConstants;
 import org.eclipse.cdt.ui.CUIPlugin;
 
 public abstract class FormatterTabPage extends ModifyDialogTabPage {
-	
 	private final static String SHOW_INVISIBLE_PREFERENCE_KEY= CUIPlugin.PLUGIN_ID + ".formatter_page.show_invisible_characters"; //$NON-NLS-1$
 
     /**
@@ -35,19 +36,30 @@ public abstract class FormatterTabPage extends ModifyDialogTabPage {
      */
     protected static String[] TRUE_FALSE= { DefaultCodeFormatterConstants.TRUE, DefaultCodeFormatterConstants.FALSE };
 
+    /**
+     * Constant array for boolean true/false selection.
+     * 
+     * @since 5.3
+     */
+    protected static String[] FALSE_TRUE= { DefaultCodeFormatterConstants.FALSE, DefaultCodeFormatterConstants.TRUE };
+
+	/**
+	 * Constant array for insert / not_insert.
+	 */
+	protected static String[] DO_NOT_INSERT_INSERT= { CCorePlugin.DO_NOT_INSERT, CCorePlugin.INSERT };
+
 	private CPreview fPreview;
 	private final IDialogSettings fDialogSettings;
 	private Button fShowInvisibleButton;
 
-	public FormatterTabPage(IModifyDialogTabPage.IModificationListener modifyListener, Map<String, String> workingValues) {
+	public FormatterTabPage(IModifyDialogTabPage.IModificationListener modifyListener,
+			Map<String, String> workingValues) {
 		super(modifyListener, workingValues);
-		
 		fDialogSettings= CUIPlugin.getDefault().getDialogSettings();
 	}
 
 	@Override
 	protected Composite doCreatePreviewPane(Composite composite, int numColumns) {
-		
 		createLabel(numColumns - 1, composite, FormatterMessages.ModifyDialogTabPage_preview_label_text);  
 		
 		fShowInvisibleButton= new Button(composite, SWT.CHECK);
@@ -85,5 +97,4 @@ public abstract class FormatterTabPage extends ModifyDialogTabPage {
 		fPreview.showInvisibleCharacters(showInvisible);
 		fShowInvisibleButton.setSelection(showInvisible);
 	}
-
 }

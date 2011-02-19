@@ -34,6 +34,8 @@ import org.eclipse.cdt.debug.edc.internal.services.dsf.Symbols;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.internal.symbols.MemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.UnmanglerEABI;
+import org.eclipse.cdt.debug.edc.internal.symbols.files.UnmanglingException;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
@@ -42,8 +44,10 @@ import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IEnumerator;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
+import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
+import org.eclipse.cdt.debug.edc.symbols.IUnmangler;
 import org.eclipse.cdt.debug.edc.symbols.IVariable;
 import org.eclipse.cdt.debug.edc.symbols.TypeEngine;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
@@ -310,6 +314,13 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 		private TypeEngine typeEngine;
 		private IEDCModuleDMContext module;
 
+		// additional items may be null but are usually set early and used repeatedly
+		private IAddress instrPtrLinkAddr = null;
+		private IEDCSymbolReader reader = null;
+		private IModuleLineEntryProvider provider = null;
+		private IDebugInfoProvider debugInfoProvider = null;
+		private IPath symbolFile = null;
+
 		/**
 		 * @since 2.0
 		 */
@@ -327,131 +338,248 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			this.baseAddress = address(frameProperties.get(BASE_ADDR));
 			this.instructionPtrAddress = address(frameProperties.get(INSTRUCTION_PTR_ADDR));
 
+			// compute the source location
+			IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+			functionScope = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
+																instructionPtrAddress);
+
 			boolean usingCachedProperties = false;
 			IEDCModules modules = dsfServicesTracker.getService(IEDCModules.class);
-			Map<IAddress, Map<String, Object>> cachedFrameProperties = new HashMap<IAddress, Map<String, Object>>();
+			Map<IAddress, Map<String, Object>> cachedFrameProperties
+			  = new HashMap<IAddress, Map<String, Object>>();
 			if (modules != null) {
 				module = modules.getModuleByAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
 				if (module != null) {
-					IEDCSymbolReader reader = module.getSymbolReader();
-					if (reader != null)
-					{
-						IPath symbolFile = reader.getSymbolFile();
-						if (symbolFile != null)
-						{
+					instrPtrLinkAddr = module.toLinkAddress(instructionPtrAddress);
+					reader = module.getSymbolReader();
+					if (reader != null) {
+						symbolFile = this.reader.getSymbolFile();
+						if (symbolFile != null) {
 							// Check the persistent cache
 							String cacheKey = reader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
-							Map<IAddress, Map<String, Object>> cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
-							if (cachedData != null)
-							{
+							Map<IAddress, Map<String, Object>> cachedData
+							  = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, Map.class,
+									  											  reader.getModificationDate());
+							if (cachedData != null) {
 								cachedFrameProperties = cachedData;
-								Map<String, Object> cachedProperties = cachedFrameProperties.get(module.toLinkAddress(instructionPtrAddress));
-								if (cachedProperties != null)
-								{
+								Map<String, Object> cachedProperties
+								  = cachedFrameProperties.get(instrPtrLinkAddr);
+								if (cachedProperties != null) {
 									if (cachedProperties.containsKey(SOURCE_FILE))
 										frameProperties.put(SOURCE_FILE, cachedProperties.get(SOURCE_FILE));
 
 									boolean cachedPropertiesHasFunctionName = false;
- 									if (cachedProperties.containsKey(FUNCTION_NAME))
-									{
+ 									if (cachedProperties.containsKey(FUNCTION_NAME)) {
 										Object fnObj = cachedProperties.get(FUNCTION_NAME);
 										if (fnObj != null 
 											&& fnObj instanceof String
-											&& ((String)fnObj).length() != 0)
-										{
+											&& ((String)fnObj).length() != 0) {
 											frameProperties.put(FUNCTION_NAME, fnObj);
 											cachedPropertiesHasFunctionName = true;
-										}
-									}
+									}	}
 
-									if (!cachedPropertiesHasFunctionName)
-									{
-										setFunctionName(executionDMC, frameProperties,
-														getService(Symbols.class));
+									if (!cachedPropertiesHasFunctionName) {
+										setFunctionName(executionDMC, frameProperties, symbolsService);
 										cachedProperties.put(FUNCTION_NAME, functionName);
 									}
 
 									if (cachedProperties.containsKey(LINE_NUMBER))
 										frameProperties.put(LINE_NUMBER, cachedProperties.get(LINE_NUMBER));
-									usingCachedProperties = true;
-								}
-							}
-						}
-					}
-				}
-			}
+									usingCachedProperties = true;								
+			}	}	}	}	}	}	// null-checks on cachedProperties <= cachedData <= symbolFile
 
 			if (frameProperties.containsKey(SOURCE_FILE)) {
-				this.sourceFile = (String) frameProperties.get(SOURCE_FILE);
-				this.functionName = (String) frameProperties.get(FUNCTION_NAME);
-				this.lineNumber = (Integer) frameProperties.get(LINE_NUMBER);
+				sourceFile   = (String) frameProperties.get(SOURCE_FILE);
+				functionName = (String) frameProperties.get(FUNCTION_NAME);
+				lineNumber   = (Integer) frameProperties.get(LINE_NUMBER);
 			} else if (frameProperties.containsKey(FUNCTION_NAME)) {
-				this.functionName = (String) frameProperties.get(FUNCTION_NAME);
-			} else {
-				if (!usingCachedProperties)
-				{
-					// compute the source location
-					IEDCSymbols symbolsService = getService(Symbols.class);
-					
-					ILineEntry line = symbolsService.getLineEntryForAddress(executionDMC.getSymbolDMContext(), instructionPtrAddress);
-					if (line != null) {
-						sourceFile = line.getFilePath().toOSString();
-						frameProperties.put(SOURCE_FILE, sourceFile);
-						lineNumber = line.getLineNumber();
-						frameProperties.put(LINE_NUMBER, lineNumber);
-					}
+				functionName = (String) frameProperties.get(FUNCTION_NAME);
+			} else if (!usingCachedProperties) {
+				ILineEntry line
+				  = symbolsService.getLineEntryForAddress(executionDMC.getSymbolDMContext(),
+														  instructionPtrAddress);
+				if (line != null)
+					setSourceProperties(frameProperties, line);
 
-					setFunctionName(executionDMC, frameProperties, symbolsService);
-				}
+				setFunctionName(executionDMC, frameProperties, symbolsService);
 			}
 			properties.putAll(frameProperties);
 
-			// get the type engine
-			IDebugInfoProvider debugInfoProvider = null;
-			if (module != null) {
-				IEDCSymbolReader symbolReader = module.getSymbolReader();
-				if (symbolReader != null)
-				{
-					if (symbolReader instanceof EDCSymbolReader) {
-						debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
-					}
-					if (symbolReader.getSymbolFile() != null)
-					{
-						String cacheKey = symbolReader.getSymbolFile().toOSString() + FRAME_PROPERTY_CACHE;
-						cachedFrameProperties.put(module.toLinkAddress(instructionPtrAddress), frameProperties);
-						EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedFrameProperties, symbolReader.getModificationDate());				
-					}
-				}
+			if (symbolFile != null) {
+				String cacheKey = symbolFile.toOSString() + FRAME_PROPERTY_CACHE;
+				cachedFrameProperties.put(this.instrPtrLinkAddr, frameProperties);
+				EDCDebugger.getDefault().getCache().putCachedData(cacheKey,
+																  (Serializable)cachedFrameProperties,
+																  this.reader.getModificationDate());
 			}
+
+			if (reader instanceof EDCSymbolReader)
+				debugInfoProvider = ((EDCSymbolReader)reader).getDebugInfoProvider();
 			typeEngine = new TypeEngine(getTargetEnvironmentService(), debugInfoProvider);
 		}
 
 		private void setFunctionName(final IEDCExecutionDMC executionDMC,
 				Map<String, Object> frameProperties, IEDCSymbols symbolsService) {
-			functionScope
-			  = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
-					  								instructionPtrAddress);
 			if (functionScope != null) {
 				// ignore inlined functions
-				String orginalName = functionScope.getName();
-				boolean inlined = false;
-				while (functionScope.getParent() instanceof IFunctionScope) {
-					functionScope = (IFunctionScope) functionScope.getParent();
-					inlined = true;
+				IFunctionScope containerScope = functionScope;
+				while (containerScope.getParent() instanceof IFunctionScope) {
+					containerScope = (IFunctionScope) containerScope.getParent();
 				}
-				if (inlined)
-					functionName = orginalName + " inlined at " + functionScope.getName();
-				else
-				functionName = functionScope.getName();
-			}
-			else
-			{
+				functionName = unmangle(containerScope.getName());
+				adjustFunctionSourceInfo(containerScope, frameProperties);
+			} else {
 				functionName
-				  = symbolsService.getSymbolNameAtAddress(executionDMC.getSymbolDMContext(),
-						  								  instructionPtrAddress);
+				  = unmangle(symbolsService.getSymbolNameAtAddress(executionDMC.getSymbolDMContext(),
+						  										   instructionPtrAddress));
+			}
+
+			frameProperties.put(FUNCTION_NAME, functionName);
+		}
+
+		/**
+		 * Modify the name to refer to the inline function within the parent function.
+		 * <p>
+		 * However, ignore the inline function name if the pointer is on the first
+		 * line of the inline function and the "previous" line is
+		 * <br> (a) in the parent function; or
+		 * <br> (b) not in the original inline (meaning it was part of a prior inline); or 
+		 * <br> (c) is nested in another inline
+		 * @param container the ultimate function containing the inline(s)
+		 * @param frameProperties so source-file and line-number can also be adjusted
+		 */
+		private void adjustFunctionSourceInfo(IFunctionScope container,
+				Map<String, Object> frameProperties) {
+			if (functionScope.equals(container)) {
+				ILineEntry funcFirstEntry = this.getLineEntryInFunction(functionScope);
+				if (funcFirstEntry != null
+						&& !instrPtrLinkAddr.equals(funcFirstEntry.getLowAddress())) {
+					// this case covers the compiler having inline LNT entries
+					// whose bounds are outside the DWARF function scope boundaries
+					// for the inlines
+					setSourceProperties(frameProperties, funcFirstEntry);
+				}
+				return;		// i.e. never fall through to "inline" re-naming below
+			}
+
+			ILineEntry containerEntry = this.getLineEntryInFunction(container);
+			if (containerEntry != null && isInlineShouldBeHidden(containerEntry)) {
+				setSourceProperties(frameProperties, containerEntry);
+				return;
+			}
+
+			this.functionName
+			  = unmangle(functionScope.getName()) + " inlined in " + this.functionName;
+		}
+		
+		/**
+		 * Attempt to determine if the frame's instruction pointer is
+		 * <br>(a) at the first instruction of an inlined function; and
+		 * <br>(b) coincidentally at the first instruction of the line
+		 * entry corresponding to the line that caused the inline to
+		 * be generated.<p>
+		 * @param entry if null, will be calculated based on established
+		 * 			frame instruction pointer and function scope; can be passed
+		 * 			in if caller needs line entry for other usage
+		 * @return true if it can be determined that the instruction pointer is
+		 * 			the first instruction of an inline function and coincidentally the
+		 * 			first instruction of the line entry for which the inline was generated
+		 * @since 2.0
+		 */
+		public boolean isInlineShouldBeHidden(ILineEntry entry) {
+			if (functionScope == null
+					|| !(functionScope.getParent() instanceof IFunctionScope)
+					|| !instrPtrLinkAddr.equals(functionScope.getLowAddress()))
+				return false;
+
+			if (entry == null) {
+				entry = getLineEntryInFunction(functionScope);
+				if (entry == null)
+					return false;
+			}
+
+			if (instrPtrLinkAddr.equals(entry.getLowAddress())) {
+				ILineEntry prevEntry = getPreviousLineEntry(entry, true);
+				if (prevEntry != null) {
+					ILineEntry testEntry = getNextLineEntry(prevEntry, true);
+					if (entry.equals(testEntry)) {
+						return true;
+					}
+					return false;
+				}
+				return true;
+			}
+			return false;
+		}
+
+		/**
+		 * Private utility function to call the module's reader's provider's interfaces
+		 * @see org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider#getLineEntryInFunction
+		 * @see IModuleScope#getModuleLineEntryProvider
+		 */
+		private ILineEntry getLineEntryInFunction(IFunctionScope func) {
+			return getModuleLineEntryProvider().getLineEntryInFunction(instrPtrLinkAddr, func);
+		}
+
+		/**
+		 * Private utility function to call the module's reader's provider's interfaces
+		 * @see IModuleScope#getModuleLineEntryProvider
+		 * @return {@link IModuleLineEntryProvider} never <code>null</code>
+		 */
+		private IModuleLineEntryProvider getModuleLineEntryProvider() {
+			if (provider == null && reader != null) {
+				IModuleScope moduleScope = reader.getModuleScope();
+				if (moduleScope != null)
+					provider = moduleScope.getModuleLineEntryProvider();			
+			}
+			return provider;
+		}
+
+		/**
+		 * Private utility function to call the module's reader's provider's interfaces
+		 * @see org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider#getNextLineEntry
+		 * @see IModuleScope#getModuleLineEntryProvider
+		 */
+		private ILineEntry getNextLineEntry(ILineEntry entry, boolean collapseInlineFunctions) {
+			return getModuleLineEntryProvider().getNextLineEntry(entry, collapseInlineFunctions);
+		}					
+
+		/**
+		 * Private utility function to call the module's reader's provider's interfaces
+		 * @see org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider#getPreviousLineEntry
+		 * @see IModuleScope#getModuleLineEntryProvider
+		 */
+		private ILineEntry getPreviousLineEntry(ILineEntry entry, boolean collapseInlineFunctions) {
+			return getModuleLineEntryProvider().getPreviousLineEntry(entry, collapseInlineFunctions);
+		}					
+
+		private void setSourceProperties(Map<String, Object> frameProperties,
+				ILineEntry entry) {
+			frameProperties.put(SOURCE_FILE, (sourceFile = entry.getFilePath().toOSString()));
+			frameProperties.put(LINE_NUMBER, (lineNumber = entry.getLineNumber()));
+		}
+
+		private String unmangle(String name) {
+			if (name == null)
+				return null;
+			
+			// unmangle the name
+			IUnmangler unmangler = null;
+			if (reader instanceof EDCSymbolReader) {
+				unmangler = ((EDCSymbolReader) reader).getUnmangler();
+			}
+			if (unmangler == null) {
+				unmangler = new UnmanglerEABI();
 			}
 			
-			frameProperties.put(FUNCTION_NAME, functionName);
+			if (!unmangler.isMangled(name))
+				return name;
+			
+			try {
+				return unmangler.unmangleWithoutArgs(name);
+			} catch (UnmanglingException e) {
+				return name;
+			}
 		}
 
 		private IAddress address(Object obj) {
@@ -466,6 +594,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 		private void setInstructionPtrAddress(IAddress ipAddrPtr) {
 			this.instructionPtrAddress = ipAddrPtr;
+			if (module != null)
+				this.instrPtrLinkAddr = module.toLinkAddress(instructionPtrAddress);
 		}
 
 		public IFunctionScope getFunctionScope() {
@@ -677,13 +807,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					this.variableScope = scope;
 				}
 				
-				IAddress linkAddress = null;
-				if (module != null) {
-					linkAddress = module.toLinkAddress(instructionPtrAddress);
-				}
-
-				while (scope != null) {
-					Collection<IVariable> scopedVariables = scope.getScopedVariables(linkAddress);
+				while (scope != null && instrPtrLinkAddr != null) {
+					Collection<IVariable> scopedVariables = scope.getScopedVariables(instrPtrLinkAddr);
 					for (IVariable variable : scopedVariables) {
 						VariableDMC var = new VariableDMC(Stack.this, this, variable);
 						String name = variable.getName();
@@ -717,16 +842,8 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						if (parentScope instanceof ICompileUnitScope) {
 							ICompileUnitScope cuScope = ((ICompileUnitScope) parentScope);
 
-							// there may be multiple compile unit scopes for the same source file,
-							// so look for a debug info provider to find multiples
-							IDebugInfoProvider debugInfoProvider = null;
-							IEDCSymbolReader symbolReader = module.getSymbolReader();
-							if (symbolReader instanceof EDCSymbolReader) {
-								debugInfoProvider = ((EDCSymbolReader) symbolReader).getDebugInfoProvider();
-							}
-
 							List<ICompileUnitScope> cuScopes = null;
-							if (debugInfoProvider != null) {
+							if (this.debugInfoProvider != null) {
 								cuScopes = debugInfoProvider.getCompileUnitsForFile(cuScope.getFilePath());
 							} else {
 								cuScopes = new ArrayList<ICompileUnitScope>(1);
@@ -734,10 +851,15 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 							}
 
 							// add the globals of all compile unit scopes for the source file
+							String cuFile = ((ICompileUnitScope) parentScope).getFilePath().toOSString();
 							for (ICompileUnitScope nextCuScope : cuScopes) {
 								Collection<IVariable> globals = nextCuScope.getVariables();
 								if (globals != null) {
 									for (IVariable variable : globals) {
+										IPath varFile = variable.getDefiningFile();
+										if (varFile != null && !varFile.toOSString().equalsIgnoreCase(cuFile))
+											continue;
+
 										VariableDMC var = new VariableDMC(Stack.this, this, variable);
 										String name = var.getName();
 										VariableDMC haveLocal = localsByName.get(name);
@@ -803,10 +925,12 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			return outer;
 		}
 
+
 		/**
 		 * Find a variable or enumerator by name
 		 * 
-		 * @param name name of the variable or enumerator
+		 * @param name required name of the variable or enumerator
+		 * @param qualifiedName optional fully qualified name of the variable or enumerator
 		 * @param localsOnly whether to restrict search to local variables and enumerators only
 		 * @return variable or enumerator, if found; otherwise, null
 		 * @since 2.0

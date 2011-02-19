@@ -222,18 +222,18 @@ public class SymbolReader {
 		Assert.assertFalse(lineEntries.iterator().next().getLowAddress().isZero());
 		Assert.assertFalse(lineEntries.iterator().next().getHighAddress().isZero());
 
-		ILineEntry nextLine = lep.getNextLineEntry(lineEntries.iterator().next());
+		ILineEntry nextLine = lep.getNextLineEntry(lineEntries.iterator().next(), false);
 		Assert.assertNotNull(nextLine);
 		Assert.assertEquals(33, nextLine.getLineNumber());
 		Assert.assertFalse(nextLine.getLowAddress().isZero());
 		Assert.assertFalse(nextLine.getHighAddress().isZero());
 
-		nextLine = lep.getNextLineEntry(nextLine);
+		nextLine = lep.getNextLineEntry(nextLine, false);
 		Assert.assertNotNull(nextLine);
 		Assert.assertEquals(34, nextLine.getLineNumber());
 
 		// test past the end of the function
-		nextLine = lep.getNextLineEntry(nextLine);
+		nextLine = lep.getNextLineEntry(nextLine, false);
 		Assert.assertNull(nextLine);
 
 		// test bogus line

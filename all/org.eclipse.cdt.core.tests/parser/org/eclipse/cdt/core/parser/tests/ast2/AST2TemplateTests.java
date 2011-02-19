@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2005, 2010 IBM Corporation and others.
+ * Copyright (c) 2005, 2011 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -5224,6 +5224,38 @@ public class AST2TemplateTests extends AST2BaseTest {
 	//	  P(C());
 	//	}
 	public void _testFunctionInstanceAsTemplateArg_Bug334472() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <typename T> void g() {}
+	//	template <typename T, typename U> void g()  {}
+	//	void test() {
+	//	    g<int>();
+	//	    g<int, int>();
+	//	}
+	public void testFunctionTemplateSignatures_Bug335062() throws Exception {
+		parseAndCheckBindings();
+	}
+	
+	//	template <bool B, class T = void> struct enable_if {
+	//		typedef T type;
+	//	};
+	//	template <class T> struct enable_if<false, T> {};
+	//
+	//	template <typename T> struct is_int {
+	//		static const bool value = false;
+	//	};
+	//	template <> struct is_int<int> {
+	//		static const bool value = true;
+	//	};
+	//
+	//	template <typename T> typename enable_if<!is_int<T>::value>::type function(T);
+	//	template <typename T> typename enable_if<is_int<T>::value>::type function(T);
+	//
+	//	void g() {
+	//		function(0);  // ERROR HERE
+	//	}
+	public void testSyntaxErrorInReturnTypeOfFunctionInstance_Bug336426() throws Exception {
 		parseAndCheckBindings();
 	}
 }

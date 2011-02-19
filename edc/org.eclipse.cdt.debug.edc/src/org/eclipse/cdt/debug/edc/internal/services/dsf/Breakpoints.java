@@ -69,6 +69,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.model.IBreakpoint;
 import org.eclipse.debug.core.model.ISourceLocator;
 import org.eclipse.debug.core.model.MemoryByte;
@@ -135,7 +136,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	private org.eclipse.tm.tcf.services.IBreakpoints tcfBreakpointService;
 
 	// Module in which startup breakpoint is installed for the debug session.
-	private ModuleDMC startupBreakpointModule = null;
+	private Map<ILaunchConfiguration, ModuleDMC> startupBreakpointModule = new HashMap<ILaunchConfiguration, ModuleDMC>();
 
 	private ISourceLocator sourceLocator;
 
@@ -922,13 +923,15 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	 * @param rm
 	 */
 	protected void setStartupBreakpoint(ModuleDMC module, RequestMonitor rm) {
-		if (startupBreakpointModule != null) {
-			// already set in a module, no need to try it for any other module
+		EDCLaunch launch = EDCLaunch.getLaunchForSession(getSession().getId());
+		ILaunchConfiguration launchConfig = launch.getLaunchConfiguration();
+		if (startupBreakpointModule.get(launchConfig) != null) {
+			// already set in a module for this launch configuration, no need to try it for any other module
 			rm.done();
 			return;
 		}
 
-		String startupStopAt = EDCLaunch.getLaunchForSession(getSession().getId()).getStartupStopAtPoint();
+		String startupStopAt = launch.getStartupStopAtPoint();
 		// Is this even requested by user ?
 		if (startupStopAt == null) {
 			rm.done();
@@ -994,7 +997,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			rm.done();
 		} else {
 			// The breakpoint is resolved in the module.
-			startupBreakpointModule = module;
+			startupBreakpointModule.put(launchConfig, module);
 
 			IExecutionDMContext exe_dmc = DMContexts.getAncestorOfType(module, IExecutionDMContext.class);
 			setTempBreakpoint(exe_dmc, iaddr, rm);

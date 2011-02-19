@@ -34,6 +34,7 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 		boolean isEDCSession = false;
 		boolean isSnapshotSession = false;
 		boolean previousAvailable = false;
+		boolean playAvailable = false;
 
 		if (receiver instanceof IWorkbenchPart) {
 			Object selection = getContextSelectionForPart((IWorkbenchPart) receiver);
@@ -57,6 +58,7 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 				IAlbum album = Album.getAlbumBySession(sessionID);
 				IAlbum albumRecording = Album.getRecordingForSession(sessionID);
 				previousAvailable = album != null || albumRecording != null;
+				playAvailable = album != null && !album.isPlayingSnapshots();
 			}
 		}
 		
@@ -68,6 +70,8 @@ public class DebugSnapshotPropertyTester extends PropertyTester {
 			return isSnapshotSession;
 		} else if (property.equals("isPreviousSnapshotAvailable")) {
 			return previousAvailable;
+		} else if (property.equals("isPlaySnapshotsAvailable")) {
+			return playAvailable;
 		}
 
 		return false;

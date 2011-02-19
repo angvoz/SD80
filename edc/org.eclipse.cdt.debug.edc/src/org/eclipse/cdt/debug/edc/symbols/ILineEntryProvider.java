@@ -25,11 +25,9 @@ public interface ILineEntryProvider {
 	 * 
 	 * @param linkAddress
 	 *            the link address
-	 * @param collapseInlineFunctions TODO
 	 * @return the line table entry, or null if none found
-	 * @since 2.0
 	 */
-	ILineEntry getLineEntryAtAddress(IAddress linkAddress, boolean collapseInlineFunctions);
+	ILineEntry getLineEntryAtAddress(IAddress linkAddress);
 
 	/**
 	 * Get the list of line table entries for the given sequence of line
@@ -57,8 +55,34 @@ public interface ILineEntryProvider {
 	 * 
 	 * @param entry
 	 *            the current entry
+	 * @param collapseInlineFunctions
+	 * 			  treat inline code as though it were a function to be stepped over
 	 * @return the next entry, or null if none
+	 * @since 2.0
 	 */
-	ILineEntry getNextLineEntry(ILineEntry entry);
+	ILineEntry getNextLineEntry(ILineEntry entry, boolean collapseInlineFunctions);
 
+	/**
+	 * Gets the previous line table entry in the same scope by line number that also
+	 * has a lower address (useful for source level stepping)
+	 * 
+	 * @param entry
+	 *            the current entry
+	 * @param collapseInlineFunctions
+	 * 			  treat inline code as though it were a function to be stepped over
+	 * @return the next entry, or null if none
+	 * @since 2.0
+	 */
+	ILineEntry getPreviousLineEntry(ILineEntry entry, boolean collapseInlineFunctions);
+
+	/**
+	 * Gets the line entry for the given link address within a given function.
+	 * (Useful for inline stepping and stack-crawl function name determination.)
+	 * 
+	 * @param linkAddress
+	 * @param parentFunction
+	 * @return
+	 * @since 2.0
+	 */
+	public ILineEntry getLineEntryInFunction(IAddress linkAddress, IFunctionScope parentFunction);
 }

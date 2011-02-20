@@ -411,6 +411,11 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 					if (LanguageSettingsManager.isWorkspaceProvider(provider) /*&& !isSpecial*/) {
 						overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
 					}
+					if (provider instanceof LanguageSettingsSerializable) {
+						if (((LanguageSettingsSerializable)provider).isEmpty()) {
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
+						}
+					}
 					ICConfigurationDescription cfgDescription = getConfigurationDescription();
 					List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
 					if (initialProviders!=null && !initialProviders.contains(provider)) {

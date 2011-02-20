@@ -350,6 +350,12 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 //					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
 //					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER);
 					
+					if (provider instanceof LanguageSettingsSerializable) {
+						if (((LanguageSettingsSerializable)provider).isEmpty()) {
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
+						}
+					}
+
 					if (LanguageSettingsManager.isWorkspaceProvider(provider) /*&& !isSpecial*/) {
 						overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
 	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_REFERENCE;

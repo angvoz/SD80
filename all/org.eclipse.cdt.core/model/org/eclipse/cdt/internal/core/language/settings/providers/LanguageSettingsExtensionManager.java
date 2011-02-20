@@ -22,6 +22,7 @@ import org.eclipse.cdt.core.AbstractExecutableExtensionBase;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
@@ -34,7 +35,9 @@ import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
 
 /**
  * Class {@code LanguageSettingsExtensionManager} manages {@link ILanguageSettingsProvider} extensions
@@ -202,14 +205,16 @@ public class LanguageSettingsExtensionManager {
 	}
 
 	/**
-	 * Creates empty non-configured provider from extension point definition looking at "class" attribute.
+	 * Creates empty non-configured provider from extension point definition. The method will
+	 * inspect extension registry for extension point "org.eclipse.cdt.core.LanguageSettingsProvider"
+	 * to determine bundle and instantiate the class.
 	 * ID and name of provider are assigned from first extension point encountered.
 	 *
 	 * @param className - full qualified class name of provider.
 	 * @param registry - extension registry
 	 * @return new non-configured provider
 	 */
-	static ILanguageSettingsProvider createProviderCarcass(String className, IExtensionRegistry registry) {
+	private static ILanguageSettingsProvider createProviderCarcass(String className, IExtensionRegistry registry) {
 		if (className==null || className.length()==0) {
 			return new LanguageSettingsBaseProvider();
 		}
@@ -237,6 +242,25 @@ public class LanguageSettingsExtensionManager {
 			CCorePlugin.log("Error creating language settings provider.", e); //$NON-NLS-1$
 		}
 		return null;
+	}
+
+	/**
+	 * Create an instance of language settings provider of given class name. 
+	 * 
+	 * @param className - class name to instantiate.
+	 * @return new instance of language settings provider.
+	 */
+	/*package*/ static ILanguageSettingsProvider getProviderInstance(String className) {
+		if (className==null || className.equals(LanguageSettingsSerializable.class.getName())) {
+			return new LanguageSettingsSerializable();
+		}
+	
+		ILanguageSettingsProvider provider = createProviderCarcass(className, Platform.getExtensionRegistry());
+		if (provider==null) {
+			IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Not able to load provider class=" + className);
+			CCorePlugin.log(new CoreException(status));
+		}
+		return provider;
 	}
 
 	/**

@@ -19,7 +19,6 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -198,12 +197,25 @@ public class LanguageSettingsProvidersSerializer {
 			Element rootElement = doc.getDocumentElement();
 			NodeList providerNodes = rootElement.getElementsByTagName(LanguageSettingsSerializable.ELEM_PROVIDER);
 	
+			List<String> userDefinedProvidersIds = new ArrayList<String>(); 
 			for (int i=0;i<providerNodes.getLength();i++) {
-				ILanguageSettingsProvider provider = loadProvider(providerNodes.item(i));
+				Node providerNode = providerNodes.item(i);
+				String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
+				if (userDefinedProvidersIds.contains(providerId)) {
+					String msg = "Ignored illegally persisted duplicate language settings provider id=" + providerId;
+					CCorePlugin.log(new Status(IStatus.WARNING, CCorePlugin.PLUGIN_ID, msg, new Exception()));
+					continue;
+				}
+				userDefinedProvidersIds.add(providerId);
+				
+				ILanguageSettingsProvider provider = loadWorkspaceProvider(providerNode);
 				if (provider!=null) {
 					if (fUserDefinedProviders==null)
 						fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
-					fUserDefinedProviders.put(provider.getId(), provider);
+					
+					if (!LanguageSettingsExtensionManager.isExtensionProvider(provider)) {
+						fUserDefinedProviders.put(provider.getId(), provider);
+					}
 				}
 			}
 		}
@@ -265,7 +277,7 @@ public class LanguageSettingsProvidersSerializer {
 			}
 	
 		} catch (Exception e) {
-			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, CCorePlugin.getResourceString("Internal error while trying to serialize language settings"), e);
+			IStatus s = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Internal error while trying to serialize language settings", e);
 			CCorePlugin.log(s);
 			throw new CoreException(s);
 		}
@@ -311,7 +323,7 @@ public class LanguageSettingsProvidersSerializer {
 							String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
 							provider = getWorkspaceProvider(providerId);
 						} else if (providerNode.getNodeName().equals(LanguageSettingsExtensionManager.ELEM_PROVIDER)) {
-							provider = loadProvider(providerNode);
+							provider = loadConfigurationProvider(providerNode);
 						}
 						if (provider!=null) {
 							providers.add(provider);
@@ -326,23 +338,34 @@ public class LanguageSettingsProvidersSerializer {
 		}
 	}
 
-	private static ILanguageSettingsProvider loadProvider(Node providerNode) {
-		String providerClass = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_CLASS);
-		ILanguageSettingsProvider provider = null;
-		if (providerClass!=null) {
-			if (providerClass.equals(LanguageSettingsSerializable.class.getName())) {
-				provider = new LanguageSettingsSerializable();
-			} else {
-				provider = LanguageSettingsExtensionManager.createProviderCarcass(providerClass, Platform.getExtensionRegistry());
-			}
-			if (provider instanceof LanguageSettingsSerializable) {
-				((LanguageSettingsSerializable)provider).load((Element) providerNode);
-			}
-		}
-		if (provider==null) {
-			IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Not able to load provider class=" + providerClass);
+	private static ILanguageSettingsProvider loadWorkspaceProvider(Node providerNode) {
+		String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
+		ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getExtensionProvider(providerId);
+		
+		String attrClass = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_CLASS);
+		if (provider!=null && !provider.getClass().getName().equals(attrClass) ) {
+			IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Types mismatch while loading workspace provider. id=" + providerId
+					+ ", extension class=" + provider.getClass().getName() + ", being loaded class=" + attrClass);
 			CCorePlugin.log(new CoreException(status));
+			return provider;
 		}
+		
+		if (provider==null)
+			provider = LanguageSettingsExtensionManager.getProviderInstance(attrClass);
+		
+		if (provider instanceof LanguageSettingsSerializable)
+			((LanguageSettingsSerializable)provider).load((Element) providerNode);
+		
+		return provider;
+	}
+
+	private static ILanguageSettingsProvider loadConfigurationProvider(Node providerNode) {
+		String attrClass = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_CLASS);
+		ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getProviderInstance(attrClass);
+		
+		if (provider instanceof LanguageSettingsSerializable)
+			((LanguageSettingsSerializable)provider).load((Element) providerNode);
+
 		return provider;
 	}
 

@@ -914,7 +914,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 					for (ILanguageSettingsProvider cfgProvider : cfgProviders) {
 						if (cfgProvider instanceof LanguageSettingsBaseProvider) {
 							// filter out providers incapable of providing entries for this language
-							List<String> languageIds = ((LanguageSettingsBaseProvider)cfgProvider).getLanguageIds();
+							List<String> languageIds = ((LanguageSettingsBaseProvider)cfgProvider).getLanguageScope();
 							if (languageIds!=null && !languageIds.contains(langId)) {
 								continue;
 							}

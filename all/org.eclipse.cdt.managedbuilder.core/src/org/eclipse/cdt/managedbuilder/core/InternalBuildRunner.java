@@ -323,7 +323,7 @@ public class InternalBuildRunner implements IBuildRunner {
 			if (lsProvider instanceof AbstractBuiltinSpecsDetector) {
 				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
 					for (String languageId : languageIds) {
-					if (detector.getLanguageIds()==null || detector.getLanguageIds().contains(languageId)) {
+					if (detector.getLanguageScope()==null || detector.getLanguageScope().contains(languageId)) {
 						try {
 							detector.startup(cfgDescription, languageId);
 							// FIXME: workingDirectory should be deterministic

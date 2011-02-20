@@ -79,7 +79,15 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 		return fStorage.isEmpty();
 	}
 
-	public void setLanguageIds(List <String> languages) {
+	/**
+	 * Set the language scope of the provider.
+	 * 
+	 * @param languages - the list of languages this provider provides for.
+	 *    If {@code null}, the provider provides for any language.
+	 * 
+	 * @see #getLanguageScope()
+	 */
+	public void setLanguageScope(List <String> languages) {
 		this.languageScope = new ArrayList<String>(languages);
 	}
 
@@ -112,11 +120,24 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 		}
 	}
 
+	/**
+	 * Sets language settings entries for the provider.
+	 * Note that the entries are not persisted at that point. To persist use TODO
+	 * 
+	 * @param cfgDescription - configuration description.
+	 * @param rc - resource such as file or folder.
+	 * @param languageId - language id. If {@code null}, then entries are considered to be defined for
+	 *    the language scope. See {@link #getLanguageScope()}
+	 * @param entries - language settings entries to set.
+	 */
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries) {
 		String rcProjectPath = rc!=null ? rc.getProjectRelativePath().toString() : null;
 		setSettingEntriesInternal(rcProjectPath, languageId, entries);
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
 	@Override
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		Map<String, List<ICLanguageSettingEntry>> langMap = fStorage.get(languageId);

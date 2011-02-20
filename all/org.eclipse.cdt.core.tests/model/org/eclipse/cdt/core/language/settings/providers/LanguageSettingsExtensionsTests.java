@@ -146,7 +146,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		assertEquals(PROVIDER_PARAMETER_EXT, provider.getCustomParameter());
 
 		// Test for null languages
-		assertNull(provider.getLanguageIds());
+		assertNull(provider.getLanguageScope());
 
 		// benchmarks matching extension point definition
 		List<ICLanguageSettingEntry> entriesExt = new ArrayList<ICLanguageSettingEntry>();
@@ -216,7 +216,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			assertEquals(entries.get(0), actual.get(0));
 			assertNotSame(entries, actual);
 			// retrieve languages
-			List<String> actualLanguageIds = provider.getLanguageIds();
+			List<String> actualLanguageIds = provider.getLanguageScope();
 			for (String languageId: languages) {
 				assertTrue(actualLanguageIds.contains(languageId));
 			}

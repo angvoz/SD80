@@ -186,10 +186,10 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 		Element elementProvider;
 		{
-			// create provider with custom parameter
+			// create provider with custom language scope
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
-			provider.setLanguageIds(expectedLanguageIds);
-			List<String> actualIds = provider.getLanguageIds();
+			provider.setLanguageScope(expectedLanguageIds);
+			List<String> actualIds = provider.getLanguageScope();
 			assertEquals(LANG_ID, actualIds.get(0));
 			assertEquals(LANG_ID_1, actualIds.get(1));
 			assertEquals(2, actualIds.size());
@@ -204,10 +204,95 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// re-load and check language settings of the newly loaded provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
-			List<String> actualIds = provider.getLanguageIds();
+			List<String> actualIds = provider.getLanguageScope();
 			assertEquals(expectedLanguageIds.get(0), actualIds.get(0));
 			assertEquals(expectedLanguageIds.get(1), actualIds.get(1));
 			assertEquals(expectedLanguageIds.size(), actualIds.size());
+		}
+	}
+	
+	/**
+	 */
+	public void testLanguageScope() throws Exception {
+		// benchmark entries
+		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		entries.add(new CIncludePathEntry("path0", 0));
+		
+		// define the scope
+		List<String> expectedLanguageIds = new ArrayList<String>();
+		expectedLanguageIds.add(LANG_ID);
+		expectedLanguageIds.add(LANG_ID_1);
+		
+		Element elementProvider;
+		{
+			// create provider with no scope by default
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
+			// set entries for the whole language scope (now langId=null)
+			provider.setSettingEntries(null, null, null, entries);
+			{
+				// doublecheck for language scope itself
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
+				assertEquals(entries, actual);
+			}
+			{
+				// doublecheck for any language
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, LANG_ID_2);
+				assertEquals(entries, actual);
+			}
+			
+			// set the scope
+			provider.setLanguageScope(expectedLanguageIds);
+			List<String> actualIds = provider.getLanguageScope();
+			assertEquals(LANG_ID, actualIds.get(0));
+			assertEquals(LANG_ID_1, actualIds.get(1));
+			assertEquals(2, actualIds.size());
+			
+			{
+				// check for language scope itself
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
+				assertEquals(entries, actual);
+			}
+			{
+				// check for language in the language scope
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, LANG_ID);
+				assertEquals(entries, actual);
+			}
+			{
+				// check for language not in scope
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, LANG_ID_2);
+				assertNull(actual);
+			}
+			
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = provider.serialize(rootElement);
+			String xmlString = XmlUtil.toString(doc);
+			assertTrue(xmlString.contains(LANG_ID));
+			assertTrue(xmlString.contains(LANG_ID_1));
+		}
+		{
+			// re-load and check language settings of the newly loaded provider
+			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(elementProvider);
+			List<String> actualIds = provider.getLanguageScope();
+			assertEquals(expectedLanguageIds.get(0), actualIds.get(0));
+			assertEquals(expectedLanguageIds.get(1), actualIds.get(1));
+			assertEquals(expectedLanguageIds.size(), actualIds.size());
+
+			{
+				// check for language scope itself
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
+				assertEquals(entries, actual);
+			}
+			{
+				// check for language in the language scope
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, LANG_ID);
+				assertEquals(entries, actual);
+			}
+			{
+				// check for language not in scope
+				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, LANG_ID_2);
+				assertNull(actual);
+			}
 		}
 	}
 
@@ -284,11 +369,11 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		{
 			// create a provider
 			LanguageSettingsSerializable provider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
-			assertEquals(null, provider.getLanguageIds());
+			assertEquals(null, provider.getLanguageScope());
 			
 			// add null language
 			provider.setSettingEntries(null, MOCK_RC, null, entriesNullLanguage);
-			assertEquals(null, provider.getLanguageIds());
+			assertEquals(null, provider.getLanguageScope());
 			{
 				// getter by null language
 				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, MOCK_RC, null);
@@ -304,7 +389,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	
 			// add non-null language
 			provider.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, entriesLanguage);
-	//		assertEquals("TODO", provider.getLanguageIds()); // TODO
+			assertNull(provider.getLanguageScope());
 			{
 				// getter by null language
 				List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, MOCK_RC, null);
@@ -344,7 +429,6 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			}
 		}
 	}
-	
 	
 	/**
 	 */
@@ -908,7 +992,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 		// create a model provider
 		LanguageSettingsSerializable provider1 = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
-		provider1.setLanguageIds(sampleLanguages);
+		provider1.setLanguageScope(sampleLanguages);
 		provider1.setCustomParameter(CUSTOM_PARAMETER);
 		provider1.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, sampleEntries_1);
 		provider1.setSettingEntries(null, null, LANG_ID, sampleEntries_2);
@@ -927,7 +1011,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 			assertFalse(provider1.equals(provider2));
 			assertFalse(provider1.hashCode()==provider2.hashCode());
 
-			provider2.setLanguageIds(sampleLanguages);
+			provider2.setLanguageScope(sampleLanguages);
 			assertFalse(provider1.equals(provider2));
 			assertFalse(provider1.hashCode()==provider2.hashCode());
 
@@ -977,7 +1061,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 
 		}
 		LanguageSettingsSerializableMock provider1 = new LanguageSettingsSerializableMock(PROVIDER_1, PROVIDER_NAME_1);
-		provider1.setLanguageIds(sampleLanguages);
+		provider1.setLanguageScope(sampleLanguages);
 		provider1.setCustomParameter(CUSTOM_PARAMETER);
 		provider1.setSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID, sampleEntries_1);
 		provider1.setSettingEntries(null, null, LANG_ID, sampleEntries_2);
@@ -988,7 +1072,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		assertTrue(provider1.equals(providerClone));
 		assertTrue(provider1.getClass()==providerClone.getClass());
 		assertEquals(provider1.getCustomParameter(), providerClone.getCustomParameter());
-		assertEquals(provider1.getLanguageIds().get(0), providerClone.getLanguageIds().get(0));
+		assertEquals(provider1.getLanguageScope().get(0), providerClone.getLanguageScope().get(0));
 
 		List<ICLanguageSettingEntry> actual1 = providerClone.getSettingEntries(MOCK_CFG, MOCK_RC, LANG_ID);
 		assertNotSame(sampleEntries_1, actual1);

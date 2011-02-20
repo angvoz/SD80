@@ -124,8 +124,12 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 		this.customParameter = customParameter;
 	}
 
-	/* (non-Javadoc)
-	 * @see org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider#getSettingEntries(org.eclipse.cdt.core.settings.model.ICConfigurationDescription, org.eclipse.core.resources.IResource, java.lang.String)
+	/**
+	 * {@inheritDoc}
+	 * @param cfgDescription - configuration description.
+	 * @param rc - resource such as file or folder.
+	 * @param languageId - language id. If {@code null}, then entries defined for
+	 *    the language scope are returned. See {@link #getLanguageScope()}
 	 */
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
 		if (languageScope==null) {
@@ -145,8 +149,9 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 
 	/**
 	 * @return the list of languages this provider provides for.
+	 *    If {@code null}, the provider provides for any language.
 	 */
-	public List<String> getLanguageIds() {
+	public List<String> getLanguageScope() {
 		if (languageScope==null)
 			return null;
 		return Collections.unmodifiableList(languageScope);

@@ -168,7 +168,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			// the most reliable way of getting the processor mode, but only
 			// works when we're getting the mode for the PC address (or very
 			// close to it).  other addresses could be in either mode.
-			Registers registersService = getServicesTracker().getService(Registers.class);
+			Registers registersService = getService(Registers.class);
 			try {
 				return new BigInteger(registersService.getRegisterValue(exeDMC, ARMRegisters.CPSR), 16).testBit(5);
 			} catch (CoreException e) {
@@ -188,7 +188,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 		}
 		
 		// see if the PC is in an executable that we know about
-		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
+		IEDCModules modules = getService(IEDCModules.class);
 		IEDCModuleDMContext module = modules.getModuleByAddress(exeDMC.getSymbolDMContext(), address);
 		if (module != null) {
 			
@@ -217,7 +217,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			}
 
 			// see if we have symbolics for the module
-			IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
+			IEDCSymbols symbols = getService(IEDCSymbols.class);
 			IFunctionScope scope = symbols.getFunctionAtAddress(exeDMC.getSymbolDMContext(), address);
 			if (scope != null) {
 				IAddress functionStartAddress = module.toRuntimeAddress(scope.getLowAddress());

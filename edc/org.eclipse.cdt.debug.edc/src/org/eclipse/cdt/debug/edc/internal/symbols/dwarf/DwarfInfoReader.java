@@ -805,7 +805,7 @@ public class DwarfInfoReader {
 		}
 	}
 
-	public void parseCompilationUnitForTypes(DwarfCompileUnit compileUnit) {
+	synchronized public void parseCompilationUnitForTypes(DwarfCompileUnit compileUnit) {
 		if (compileUnit.isParsedForTypes())
 			return;
 		

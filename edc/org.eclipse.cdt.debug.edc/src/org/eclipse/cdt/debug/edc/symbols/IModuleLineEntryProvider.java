@@ -31,8 +31,4 @@ public interface IModuleLineEntryProvider extends ILineEntryProvider {
 	 * @return the unmodifiable list of providers for the file, possibly empty.
 	 */
 	Collection<ILineEntryProvider> getLineEntryProvidersForFile(IPath sourceFile);
-	
-	/**
-	 * U
-	 */
 }

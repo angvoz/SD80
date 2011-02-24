@@ -233,7 +233,7 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		// note that we avoid using org.eclipse.core.runtime.Path for manipulations being careful
 		// to preserve "../" segments and not let collapsing them which is not correct for symbolic links.
 		Path locPath = new Path(location);
-		if (locPath.isAbsolute() && locPath.getDevice() == null) {
+		if (locPath.isAbsolute() && locPath.getDevice() != null) {
 			// prepend device (C:) for Windows
 			IPath buildCWD = getBuildCWD(cfgDescription);
 			location = buildCWD.getDevice() + location;

@@ -23,9 +23,9 @@ import org.eclipse.jface.text.FindReplaceDocumentAdapter;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 
-public abstract class AbstractAstRewriteQuickFix extends
-		AbstractCodanCMarkerResolution {
+public abstract class AbstractAstRewriteQuickFix extends AbstractCodanCMarkerResolution {
 	private IDocument document;
+
 	@Override
 	public void apply(final IMarker marker, IDocument document) {
 		try {
@@ -35,7 +35,6 @@ public abstract class AbstractAstRewriteQuickFix extends
 			try {
 				index = getIndexFromMarker(marker);
 			} catch (CoreException e) {
-				e.printStackTrace();
 				CheckersUiActivator.log(e);
 				return;
 			}
@@ -51,7 +50,7 @@ public abstract class AbstractAstRewriteQuickFix extends
 				index.releaseReadLock();
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			CheckersUiActivator.log(e);
 		}
 	}
 
@@ -69,7 +68,7 @@ public abstract class AbstractAstRewriteQuickFix extends
 	public IDocument getDocument() {
 		return document;
 	}
-	
+
 	/**
 	 * @param marker
 	 * @param ast
@@ -77,8 +76,7 @@ public abstract class AbstractAstRewriteQuickFix extends
 	 * @return
 	 * @throws BadLocationException
 	 */
-	public IASTName getAstNameFromProblemArgument(IMarker marker,
-			IASTTranslationUnit ast, int argumentIndex) {
+	public IASTName getAstNameFromProblemArgument(IMarker marker, IASTTranslationUnit ast, int argumentIndex) {
 		IASTName astName = null;
 		int pos = getOffset(marker, getDocument());
 		String name = null;
@@ -89,8 +87,7 @@ public abstract class AbstractAstRewriteQuickFix extends
 		}
 		if (name == null)
 			return null;
-		FindReplaceDocumentAdapter dad = new FindReplaceDocumentAdapter(
-				getDocument());
+		FindReplaceDocumentAdapter dad = new FindReplaceDocumentAdapter(getDocument());
 		IRegion region;
 		try {
 			region = dad.find(pos, name,
@@ -99,8 +96,7 @@ public abstract class AbstractAstRewriteQuickFix extends
 		} catch (BadLocationException e) {
 			return null;
 		}
-		astName = getASTNameFromPositions(ast, region.getOffset(),
-				region.getLength());
+		astName = getASTNameFromPositions(ast, region.getOffset(), region.getLength());
 		return astName;
 	}
 }

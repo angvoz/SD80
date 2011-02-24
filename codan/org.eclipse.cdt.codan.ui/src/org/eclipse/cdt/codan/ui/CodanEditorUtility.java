@@ -1,24 +1,13 @@
 /*******************************************************************************
- * $QNXLicenseC:
- * Copyright 2008, QNX Software Systems. All Rights Reserved.
- * 
- * You must obtain a written license from and pay applicable license fees to QNX 
- * Software Systems before you may reproduce, modify or distribute this software, 
- * or any work that includes all or part of this software.   Free development 
- * licenses are available for evaluation and non-commercial purposes.  For more 
- * information visit http://licensing.qnx.com or email licensing@qnx.com.
- *  
- * This file may contain contributions from others.  Please review this entire 
- * file for other proprietary rights or license notices, as well as the QNX 
- * Development Suite License Guide at http://licensing.qnx.com/license-guide/ 
- * for other information.
- * $
+ * Copyright (c) 2009, 2010 Alena Laskavaia 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Alena Laskavaia  - initial API and implementation
  *******************************************************************************/
-/*
- * Created by: Elena Laskavaia
- * Created on: 2010-05-05
- * Last modified by: $Author: elaskavaia $
- */
 package org.eclipse.cdt.codan.ui;
 
 import org.eclipse.cdt.core.model.CoreModel;
@@ -31,7 +20,11 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.texteditor.ITextEditor;
 
 /**
@@ -43,8 +36,7 @@ public class CodanEditorUtility {
 	 * @throws PartInitException
 	 * @throws BadLocationException
 	 */
-	public static void openFileURL(String fileUrl, IResource markerResource)
-			throws PartInitException, BadLocationException {
+	public static void openFileURL(String fileUrl, IResource markerResource) throws PartInitException, BadLocationException {
 		String file = getFileFromURL(fileUrl);
 		IEditorPart part = openInEditor(file, markerResource);
 		int line = getLineFromURL(fileUrl);
@@ -73,21 +65,18 @@ public class CodanEditorUtility {
 		return file;
 	}
 
-	public static void revealLine(IEditorPart part, int line)
-			throws BadLocationException {
+	public static void revealLine(IEditorPart part, int line) throws BadLocationException {
 		if (line > 0) {
 			if (part instanceof ITextEditor) {
 				ITextEditor textEditor = (ITextEditor) part;
-				IDocument document = textEditor.getDocumentProvider()
-						.getDocument(part.getEditorInput());
+				IDocument document = textEditor.getDocumentProvider().getDocument(part.getEditorInput());
 				textEditor.selectAndReveal(document.getLineOffset(line - 1), 0);
 			}
 		}
 	}
 
 	@SuppressWarnings("restriction")
-	public static IEditorPart openInEditor(String file, IResource markerResource)
-			throws PartInitException {
+	public static IEditorPart openInEditor(String file, IResource markerResource) throws PartInitException {
 		IPath pfile = new Path(file);
 		ICElement element = null;
 		if (markerResource != null)
@@ -96,8 +85,7 @@ public class CodanEditorUtility {
 		return part;
 	}
 
-	public static IEditorPart openInEditor(IMarker marker)
-			throws PartInitException {
+	public static IEditorPart openInEditor(IMarker marker) throws PartInitException {
 		String href = getLocationHRef(marker);
 		String file = getFileFromURL(href);
 		return openInEditor(file, marker.getResource());
@@ -127,5 +115,27 @@ public class CodanEditorUtility {
 			loc = loc2.replaceAll("[^:]*: ", ""); //$NON-NLS-1$ //$NON-NLS-2$ 
 		}
 		return loc + ":" + line; //$NON-NLS-1$
+	}
+	
+	/**
+	 * @since 1.1
+	 */
+	public static boolean isResourceOpenInEditor(IResource resource,
+			IEditorPart editor) {
+		if (editor == null) return false;
+		IResource realResource = ResourceUtil.getResource(editor.getEditorInput());
+		return resource.equals(realResource);
+	}
+	
+	/**
+	 * @since 1.1
+	 */
+	public static IEditorPart getActiveEditor() {
+		IWorkbenchWindow activeWorkbenchWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+		if (activeWorkbenchWindow==null) return null;
+		IWorkbenchPage activePage = activeWorkbenchWindow.getActivePage();
+		if (activePage==null) return null;
+		IEditorPart e = activePage.getActiveEditor();
+		return e;
 	}
 }

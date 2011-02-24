@@ -25,6 +25,7 @@ import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.junit.Assert;
 
 /**
@@ -35,7 +36,13 @@ public abstract class BaseDwarfTestCase extends Assert {
 	protected static final String prefix = "resources/SymbolFiles/";
 	
 	protected static IPath getFile(String string) {
-		return EDCTestPlugin.getDefault().getPluginFilePath(prefix + string);
+		String s = null;
+		try {
+			s = EDCTestPlugin.projectRelativePath(prefix+string);
+		} catch (Exception e) {
+			fail("Cannot find file in plugin: " + string);
+		}
+		return new Path(s);
 	}
 
 	/**

@@ -99,7 +99,7 @@ public class ARMStack extends Stack {
 
 		public IAddress fillLRFromStack(IEDCExecutionDMC context) {
 			// get the real value of the link register
-			IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
+			IEDCMemory memoryService = getService(IEDCMemory.class);
 			ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>(4);
 			IStatus status = memoryService.getMemory(context, LRAddress, byteArray, 4, 1);
 			if (!status.isOK()) {
@@ -127,7 +127,7 @@ public class ARMStack extends Stack {
 
 		ArrayList<EdcStackFrame> frames = new ArrayList<EdcStackFrame>();
 		
-		Registers registersService = getServicesTracker().getService(Registers.class);
+		Registers registersService = getService(Registers.class);
 		IAddress pcValue = new Addr64(registersService.getRegisterValue(context, ARMRegisters.PC), 16);
 
 		// get the SP and LR values based on the processor mode
@@ -176,7 +176,7 @@ public class ARMStack extends Stack {
 
 		Set<IAddress> thumbAddresses = null;
 
-		IEDCSymbols symbols = getServicesTracker().getService(IEDCSymbols.class);
+		IEDCSymbols symbols = getService(IEDCSymbols.class);
 		PersistentCache armPluginCache = ARMPlugin.getDefault().getCache();
 
 		do {
@@ -405,7 +405,7 @@ public class ARMStack extends Stack {
 	}
 
 	protected IEDCModuleDMContext getModule(IEDCExecutionDMC context, IAddress address) {
-		IEDCModules modules = getServicesTracker().getService(IEDCModules.class);
+		IEDCModules modules = getService(IEDCModules.class);
 		return modules.getModuleByAddress(context.getSymbolDMContext(), address);
 	}
 
@@ -430,7 +430,7 @@ public class ARMStack extends Stack {
 
 	private IAddress findProlog(IEDCExecutionDMC context, IAddress pcValue, boolean thumbMode) {
 		// read memory back from the PC so we can parse the instructions
-		IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
+		IEDCMemory memoryService = getService(IEDCMemory.class);
 
 		int instructionSize = thumbMode ? 2 : 4;
 		
@@ -527,7 +527,7 @@ public class ARMStack extends Stack {
 			IAddress spValue, IAddress lrValue, boolean thumbMode) throws CoreException {
 		// read memory from the prolog address to the pc, or 20 bytes, whichever
 		// is less
-		IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
+		IEDCMemory memoryService = getService(IEDCMemory.class);
 		ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>();
 		int bytesToRead = prologAddress.distanceTo(pcValue).min(BigInteger.valueOf(20)).intValue();
 		if (bytesToRead > 0) {
@@ -703,7 +703,7 @@ public class ARMStack extends Stack {
 			} else if (isSWIInstruction(instruction)) {
 				// get the user mode LR and SP. note that the ones we've already
 				// read are in supervisor mode since we're in an exception
-				Registers registersService = getServicesTracker().getService(Registers.class);
+				Registers registersService = getService(Registers.class);
 				spilledRegs.SP = new Addr64(registersService.getRegisterValue(context, ARMRegisters.SP), 16);
 				spilledRegs.LR = new Addr64(registersService.getRegisterValue(context, ARMRegisters.LR), 16);
 				
@@ -737,7 +737,7 @@ public class ARMStack extends Stack {
 		if (context == null || pcValue == null || spValue == null)
 			throw new IllegalArgumentException("null argument passed to parseThumbProlog");
 
-		IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
+		IEDCMemory memoryService = getService(IEDCMemory.class);
 
 		// get the instruction before the PC to see if SP is already changed
 		pcValue = pcValue.add(-2);
@@ -941,7 +941,7 @@ public class ARMStack extends Stack {
 							// register.
 							dataAddr = dataAddr.add(4);
 							
-							IEDCMemory memoryService = getServicesTracker().getService(IEDCMemory.class);
+							IEDCMemory memoryService = getService(IEDCMemory.class);
 							ArrayList<MemoryByte> byteArray = new ArrayList<MemoryByte>(4);
 							IStatus status = memoryService.getMemory(context, dataAddr, byteArray, 4, 1);
 							

@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
@@ -154,7 +155,14 @@ public abstract class AbstractEDCService extends AbstractDsfService implements I
 	 */
 	protected void asyncExec(Runnable runnable, RequestMonitor rm) {
 		try {
-			EDCLaunch.getThreadPool(getSession().getId()).execute(new SafeRunner(runnable, rm));
+			ExecutorService executor = EDCLaunch.getThreadPool(getSession().getId());
+			if (executor.isShutdown())
+			{
+				rm.setStatus(new Status(Status.ERROR, EDCDebugger.PLUGIN_ID, "Session has been shutdown.", null));
+				rm.done();
+			}
+			else
+				executor.execute(new SafeRunner(runnable, rm));
 		}
 		catch (RejectedExecutionException exc) {
 			// See EDCLaunch.newThreadPool()

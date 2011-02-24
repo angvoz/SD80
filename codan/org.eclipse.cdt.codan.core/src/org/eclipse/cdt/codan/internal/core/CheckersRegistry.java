@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Alena Laskavaia 
+ * Copyright (c) 2009, 2011 Alena Laskavaia
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Alena Laskavaia  - initial API and implementation
+ *     Alena Laskavaia  - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.codan.internal.core;
 
@@ -65,8 +65,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 	}
 
 	private void readCheckersRegistry() {
-		IExtensionPoint ep = Platform.getExtensionRegistry().getExtensionPoint(
-				CodanCorePlugin.PLUGIN_ID, EXTENSION_POINT_NAME);
+		IExtensionPoint ep = Platform.getExtensionRegistry().getExtensionPoint(CodanCorePlugin.PLUGIN_ID, EXTENSION_POINT_NAME);
 		if (ep == null)
 			return;
 		IConfigurationElement[] elements = ep.getConfigurationElements();
@@ -86,20 +85,16 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 			processChecker(configurationElement);
 		}
 		// init parameters for checkers with parameters
-		for (Iterator<IChecker> iterator = problemList.keySet().iterator(); iterator
-				.hasNext();) {
+		for (Iterator<IChecker> iterator = problemList.keySet().iterator(); iterator.hasNext();) {
 			IChecker c = iterator.next();
 			if (c instanceof ICheckerWithPreferences) {
 				Collection<IProblem> list = problemList.get(c);
-				for (Iterator<IProblem> iterator2 = list.iterator(); iterator2
-						.hasNext();) {
+				for (Iterator<IProblem> iterator2 = list.iterator(); iterator2.hasNext();) {
 					IProblem p = iterator2.next();
 					if (p instanceof IProblemWorkingCopy) {
 						try {
-							((ICheckerWithPreferences) c)
-									.initPreferences((IProblemWorkingCopy) p);
+							((ICheckerWithPreferences) c).initPreferences((IProblemWorkingCopy) p);
 						} catch (Throwable t) {
-							t.printStackTrace();
 							CodanCorePlugin.log(t);
 						}
 					}
@@ -120,8 +115,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 			if (name == null)
 				return;
 			CodanProblemCategory cat = new CodanProblemCategory(id, name);
-			String category = getAtt(configurationElement,
-					"parentCategory", false); //$NON-NLS-1$
+			String category = getAtt(configurationElement, "parentCategory", false); //$NON-NLS-1$
 			addCategory(cat, category);
 		}
 	}
@@ -140,19 +134,15 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 					name = id;
 				IChecker checkerObj = null;
 				try {
-					Object checker = configurationElement
-							.createExecutableExtension("class"); //$NON-NLS-1$
+					Object checker = configurationElement.createExecutableExtension("class"); //$NON-NLS-1$
 					checkerObj = (IChecker) checker;
 					addChecker(checkerObj);
 				} catch (CoreException e) {
 					CodanCorePlugin.log(e);
 					return;
 				}
-				IConfigurationElement[] children1 = configurationElement
-						.getChildren("problemRef"); //$NON-NLS-1$
 				boolean hasRef = false;
-				IConfigurationElement[] children2 = configurationElement
-						.getChildren(PROBLEM_ELEMENT);
+				IConfigurationElement[] children2 = configurationElement.getChildren(PROBLEM_ELEMENT);
 				if (children2 != null) {
 					for (IConfigurationElement ref : children2) {
 						IProblem p = processProblem(ref);
@@ -160,11 +150,11 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 						hasRef = true;
 					}
 				}
+				IConfigurationElement[] children1 = configurationElement.getChildren("problemRef"); //$NON-NLS-1$
 				if (children1 != null) {
 					for (IConfigurationElement ref : children1) {
 						hasRef = true;
-						IProblem p = getDefaultProfile().findProblem(
-								ref.getAttribute("refId")); //$NON-NLS-1$
+						IProblem p = getDefaultProfile().findProblem(ref.getAttribute("refId")); //$NON-NLS-1$
 						addRefProblem(checkerObj, p);
 					}
 				}
@@ -183,8 +173,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 	 * @param configurationElement
 	 * @return
 	 */
-	private CodanProblem processProblem(
-			IConfigurationElement configurationElement) {
+	private CodanProblem processProblem(IConfigurationElement configurationElement) {
 		if (configurationElement.getName().equals(PROBLEM_ELEMENT)) {
 			String id = getAtt(configurationElement, ID_ATTR);
 			if (id == null)
@@ -200,8 +189,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 			String sev = getAtt(configurationElement, "defaultSeverity", false); //$NON-NLS-1$
 			String patt = getAtt(configurationElement, "messagePattern", false); //$NON-NLS-1$
 			String desc = getAtt(configurationElement, "description", false); //$NON-NLS-1$
-			String markerType = getAtt(configurationElement,
-					"markerType", false); //$NON-NLS-1$
+			String markerType = getAtt(configurationElement, "markerType", false); //$NON-NLS-1$
 			if (enab != null) {
 				p.setEnabled(Boolean.valueOf(enab));
 			}
@@ -223,30 +211,32 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 		return null;
 	}
 
-	private static String getAtt(IConfigurationElement configurationElement,
-			String name) {
+	private static String getAtt(IConfigurationElement configurationElement, String name) {
 		return getAtt(configurationElement, name, true);
 	}
 
-	private static String getAtt(IConfigurationElement configurationElement,
-			String name, boolean req) {
+	private static String getAtt(IConfigurationElement configurationElement, String name, boolean req) {
 		String elementValue = configurationElement.getAttribute(name);
 		if (elementValue == null && req)
-			CodanCorePlugin
-					.log("Extension " + configurationElement.getDeclaringExtension().getUniqueIdentifier() //$NON-NLS-1$
-							+ " missing required attribute: " + configurationElement.getName() + "." + name); //$NON-NLS-1$ //$NON-NLS-2$
+			CodanCorePlugin.log("Extension " //$NON-NLS-1$
+					+ configurationElement.getDeclaringExtension().getUniqueIdentifier()
+					+ " missing required attribute: " + configurationElement.getName() //$NON-NLS-1$
+					+ "." + name); //$NON-NLS-1$
 		return elementValue;
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.eclipse.cdt.codan.core.model.ICheckersRegistry#iterator()
 	 */
 	public Iterator<IChecker> iterator() {
 		return checkers.iterator();
 	}
 
+	/**
+	 * @return the singleton checkers registry
+	 */
 	public static CheckersRegistry getInstance() {
 		if (instance == null)
 			return new CheckersRegistry();
@@ -255,7 +245,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.eclipse.cdt.codan.core.model.ICheckersRegistry#addChecker(org.eclipse
 	 * .cdt.codan.core.model.IChecker)
@@ -266,7 +256,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.eclipse.cdt.codan.core.model.ICheckersRegistry#addProblem(org.eclipse
 	 * .cdt.codan.core.model.IProblem, java.lang.String)
@@ -280,7 +270,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.eclipse.cdt.codan.core.model.ICheckersRegistry#addCategory(org.eclipse
 	 * .cdt.codan.core.model.IProblemCategory, java.lang.String)
@@ -294,7 +284,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.eclipse.cdt.codan.core.model.ICheckersRegistry#addRefProblem(org.
 	 * eclipse.cdt.codan.core.model.IChecker,
@@ -311,7 +301,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/**
 	 * Returns list of problems registered for given checker
-	 * 
+	 *
 	 * @return collection of problems or null
 	 */
 	public Collection<IProblem> getRefProblems(IChecker checker) {
@@ -320,7 +310,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.eclipse.cdt.codan.core.model.ICheckersRegistry#getDefaultProfile()
 	 */
@@ -330,7 +320,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.eclipse.cdt.codan.core.model.ICheckersRegistry#getWorkspaceProfile()
 	 */
@@ -361,7 +351,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.eclipse.cdt.codan.core.model.ICheckersRegistry#getResourceProfile
 	 * (org.eclipse.core.resources.IResource)
@@ -373,18 +363,15 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 				try {
 					prof = (IProblemProfile) getWorkspaceProfile().clone();
 					// load default values
-					CodanPreferencesLoader loader = new CodanPreferencesLoader(
-							prof);
-					Preferences projectNode = CodanPreferencesLoader
-							.getProjectNode((IProject) element);
-					boolean useWorkspace = projectNode.getBoolean(
-							PreferenceConstants.P_USE_PARENT, false);
+					CodanPreferencesLoader loader = new CodanPreferencesLoader(prof);
+					Preferences projectNode = CodanPreferencesLoader.getProjectNode((IProject) element);
+					boolean useWorkspace = projectNode.getBoolean(PreferenceConstants.P_USE_PARENT, false);
 					if (!useWorkspace) {
 						loader.load(projectNode);
 					}
 					profiles.put(element, prof);
 				} catch (CloneNotSupportedException e) {
-					// cant
+					// can't
 				}
 			} else if (element.getParent() != null) {
 				prof = getResourceProfile(element.getParent());
@@ -398,34 +385,33 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @seeorg.eclipse.cdt.codan.core.model.ICheckersRegistry#
 	 * getResourceProfileWorkingCopy(org.eclipse.core.resources.IResource)
 	 */
 	public IProblemProfile getResourceProfileWorkingCopy(IResource element) {
 		try {
-			IProblemProfile prof = (IProblemProfile) getResourceProfile(element)
-					.clone();
+			IProblemProfile prof = (IProblemProfile) getResourceProfile(element).clone();
 			return prof;
 		} catch (CloneNotSupportedException e) {
-			// cant
+			// can't
 			return null;
 		}
 	}
 
 	/**
-	 * Test if checker is enabled (needs to be run) or not. Checker is enabled
-	 * if at least one problem it prints is enabled.
-	 * 
+	 * Tests if a checker is enabled (needs to be run) or not. Checker is
+	 * enabled
+	 * if at least one problem it reports is enabled.
+	 *
 	 * @param checker
 	 * @param resource
-	 * @return
+	 * @return <code>true</code> if the checker is enabled
 	 */
 	public boolean isCheckerEnabled(IChecker checker, IResource resource) {
 		IProblemProfile resourceProfile = getResourceProfile(resource);
 		Collection<IProblem> refProblems = getRefProblems(checker);
-		for (Iterator<IProblem> iterator = refProblems.iterator(); iterator
-				.hasNext();) {
+		for (Iterator<IProblem> iterator = refProblems.iterator(); iterator.hasNext();) {
 			IProblem p = iterator.next();
 			// we need to check problem enablement in particular profile
 			IProblem problem = resourceProfile.findProblem(p.getId());
@@ -439,33 +425,28 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 	}
 
 	/**
-	 * Test if checker need to run in specific launch mode
-	 * 
+	 * Tests if a checker needs to run in a specific launch mode.
+	 *
 	 * @param checker
 	 * @param resource
 	 * @param mode
-	 * @return
+	 * @return <code>true</code> if the checker should run.
 	 */
-	public boolean isCheckerEnabledForLaunchMode(IChecker checker,
-			IResource resource, CheckerLaunchMode mode) {
+	public boolean isCheckerEnabledForLaunchMode(IChecker checker, IResource resource, CheckerLaunchMode mode) {
 		IProblemProfile resourceProfile = getResourceProfile(resource);
 		Collection<IProblem> refProblems = getRefProblems(checker);
 		boolean enabled = false;
-		for (Iterator<IProblem> iterator = refProblems.iterator(); iterator
-				.hasNext();) {
+		for (Iterator<IProblem> iterator = refProblems.iterator(); iterator.hasNext();) {
 			IProblem p = iterator.next();
 			// we need to check problem enablement in particular profile
 			IProblem problem = resourceProfile.findProblem(p.getId());
 			if (problem == null)
 				throw new IllegalArgumentException("Id is not registered"); //$NON-NLS-1$
 			if (checker instanceof AbstractCheckerWithProblemPreferences) {
-				MapProblemPreference map = (MapProblemPreference) problem
-						.getPreference();
-				IProblemPreference pref1 = map
-						.getChildDescriptor(LaunchTypeProblemPreference.KEY);
+				MapProblemPreference map = (MapProblemPreference) problem.getPreference();
+				IProblemPreference pref1 = map.getChildDescriptor(LaunchTypeProblemPreference.KEY);
 				LaunchTypeProblemPreference pref = (LaunchTypeProblemPreference) pref1;
-				if (pref == null
-						|| pref.isRunningInMode(CheckerLaunchMode.USE_PARENT)) {
+				if (pref == null || pref.isRunningInMode(CheckerLaunchMode.USE_PARENT)) {
 					enabled = true;
 					break;
 				}
@@ -479,7 +460,7 @@ public class CheckersRegistry implements Iterable<IChecker>, ICheckersRegistry {
 	}
 
 	/**
-	 * @return
+	 * @return the number of checkers
 	 */
 	public int getCheckersSize() {
 		return checkers.size();

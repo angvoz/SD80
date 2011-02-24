@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Alena Laskavaia 
+ * Copyright (c) 2009, 2011 Alena Laskavaia
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Alena Laskavaia  - initial API and implementation
+ *     Alena Laskavaia  - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.codan.internal.core.model;
 
@@ -15,10 +15,13 @@ import org.eclipse.cdt.codan.core.model.IProblemReporter;
 import org.eclipse.cdt.codan.core.model.IProblemWorkingCopy;
 import org.eclipse.cdt.codan.core.param.IProblemPreference;
 
+/**
+ * A type of problems reported by Codan.
+ */
 public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 	private String id;
 	private String name;
-	private String message;
+	private String messagePattern;
 	private CodanSeverity severity = CodanSeverity.Warning;
 	private boolean enabled = true;
 	private IProblemPreference preference;
@@ -30,6 +33,10 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 		return severity;
 	}
 
+	/**
+	 * @param problemId - the ID of the problem
+	 * @param name - the name of the problem
+	 */
 	public CodanProblem(String problemId, String name) {
 		this.id = problemId;
 		this.name = name;
@@ -96,7 +103,7 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 	 * @see org.eclipse.cdt.codan.core.model.IProblem#getMessagePattern()
 	 */
 	public String getMessagePattern() {
-		return message;
+		return messagePattern;
 	}
 
 	protected void freeze() {
@@ -104,12 +111,12 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 	}
 
 	/**
-	 * @param message
+	 * @param messagePattern
 	 *        the message to set
 	 */
-	public void setMessagePattern(String message) {
+	public void setMessagePattern(String messagePattern) {
 		checkSet();
-		this.message = message;
+		this.messagePattern = messagePattern;
 	}
 
 	protected void checkSet() {
@@ -146,7 +153,12 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 		return markerType;
 	}
 
-	public void setMarkerType(String type) {
-		markerType = type;
+	/**
+	 * Sets the marker id for the problem.
+	 * 
+	 * @param markerType
+	 */
+	public void setMarkerType(String markerType) {
+		this.markerType = markerType;
 	}
 }

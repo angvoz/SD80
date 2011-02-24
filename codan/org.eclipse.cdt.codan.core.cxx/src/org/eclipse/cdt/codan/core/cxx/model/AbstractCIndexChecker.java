@@ -11,7 +11,7 @@
 package org.eclipse.cdt.codan.core.cxx.model;
 
 import org.eclipse.cdt.codan.core.CodanCorePlugin;
-import org.eclipse.cdt.codan.core.model.AbstractChecker;
+import org.eclipse.cdt.codan.core.model.AbstractCheckerWithProblemPreferences;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.CoreModel;
@@ -26,7 +26,7 @@ import org.eclipse.core.runtime.CoreException;
  * 
  * Clients may extend this class.
  */
-public abstract class AbstractCIndexChecker extends AbstractChecker implements ICIndexChecker {
+public abstract class AbstractCIndexChecker extends AbstractCheckerWithProblemPreferences implements ICIndexChecker {
 	private IFile file;
 	protected IIndex index;
 
@@ -34,10 +34,11 @@ public abstract class AbstractCIndexChecker extends AbstractChecker implements I
 		return file;
 	}
 
-	void  processFile(IFile file) throws CoreException, InterruptedException {
+	void processFile(IFile file) throws CoreException, InterruptedException {
 		// create translation unit and access index
 		ICElement model = CoreModel.getDefault().create(file);
-		if (!(model instanceof ITranslationUnit)) return; // not a C/C++ file
+		if (!(model instanceof ITranslationUnit))
+			return; // not a C/C++ file
 		ITranslationUnit tu = (ITranslationUnit) model;
 		index = CCorePlugin.getIndexManager().getIndex(tu.getCProject());
 		// lock the index for read access

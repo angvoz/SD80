@@ -30,8 +30,8 @@ import org.eclipse.cdt.codan.core.model.AbstractCheckerWithProblemPreferences;
  * 
  * @noextend This class is not intended to be extended by clients.
  */
-public class MapProblemPreference extends AbstractProblemPreference implements
-		IProblemPreferenceCompositeValue, IProblemPreferenceCompositeDescriptor {
+public class MapProblemPreference extends AbstractProblemPreference implements IProblemPreferenceCompositeValue,
+		IProblemPreferenceCompositeDescriptor {
 	protected LinkedHashMap<String, IProblemPreference> hash = new LinkedHashMap<String, IProblemPreference>();
 
 	/**
@@ -84,8 +84,7 @@ public class MapProblemPreference extends AbstractProblemPreference implements
 	 * values.
 	 */
 	public IProblemPreference[] getChildDescriptors() {
-		return hash.values().toArray(
-				new IProblemPreference[hash.values().size()]);
+		return hash.values().toArray(new IProblemPreference[hash.values().size()]);
 	}
 
 	/**
@@ -119,8 +118,7 @@ public class MapProblemPreference extends AbstractProblemPreference implements
 	public Object clone() {
 		MapProblemPreference map = (MapProblemPreference) super.clone();
 		map.hash = new LinkedHashMap<String, IProblemPreference>();
-		for (Iterator<String> iterator = hash.keySet().iterator(); iterator
-				.hasNext();) {
+		for (Iterator<String> iterator = hash.keySet().iterator(); iterator.hasNext();) {
 			String key = iterator.next();
 			map.hash.put(key, (IProblemPreference) hash.get(key).clone());
 		}
@@ -129,8 +127,7 @@ public class MapProblemPreference extends AbstractProblemPreference implements
 
 	public String exportValue() {
 		StringBuffer buf = new StringBuffer("{"); //$NON-NLS-1$
-		for (Iterator<String> iterator = hash.keySet().iterator(); iterator
-				.hasNext();) {
+		for (Iterator<String> iterator = hash.keySet().iterator(); iterator.hasNext();) {
 			String key = iterator.next();
 			IProblemPreference d = hash.get(key);
 			buf.append(key + "=>" + d.exportValue()); //$NON-NLS-1$
@@ -166,13 +163,15 @@ public class MapProblemPreference extends AbstractProblemPreference implements
 				String key = tokenizer.sval;
 				token = tokenizer.nextToken();
 				if (token != '=')
-					throw new IllegalArgumentException(
-							String.valueOf((char) token));
+					throw new IllegalArgumentException(String.valueOf((char) token));
 				token = tokenizer.nextToken();
 				if (token != '>')
-					throw new IllegalArgumentException(
-							String.valueOf((char) token));
+					throw new IllegalArgumentException(String.valueOf((char) token));
 				IProblemPreference desc = getChildDescriptor(key);
+				if (desc == null && LaunchTypeProblemPreference.KEY.equals(key)) {
+					desc = new LaunchTypeProblemPreference();
+					addChildDescriptor(desc);
+				}
 				if (desc != null && desc instanceof AbstractProblemPreference) {
 					((AbstractProblemPreference) desc).importValue(tokenizer);
 					setChildValue(key, desc.getValue());
@@ -181,8 +180,7 @@ public class MapProblemPreference extends AbstractProblemPreference implements
 				if (token == '}')
 					break;
 				if (token != ',')
-					throw new IllegalArgumentException(
-							String.valueOf((char) token));
+					throw new IllegalArgumentException(String.valueOf((char) token));
 			}
 		} catch (IOException e) {
 			throw new IllegalArgumentException(e);
@@ -223,8 +221,7 @@ public class MapProblemPreference extends AbstractProblemPreference implements
 	@Override
 	public Object getValue() {
 		LinkedHashMap<String, Object> map = new LinkedHashMap<String, Object>();
-		for (Iterator<IProblemPreference> iterator = hash.values().iterator(); iterator
-				.hasNext();) {
+		for (Iterator<IProblemPreference> iterator = hash.values().iterator(); iterator.hasNext();) {
 			IProblemPreference pref = iterator.next();
 			map.put(pref.getKey(), pref.getValue());
 		}
@@ -243,18 +240,17 @@ public class MapProblemPreference extends AbstractProblemPreference implements
 	@Override
 	public void setValue(Object value) {
 		Map<String, Object> map = (Map<String, Object>) value;
-		LinkedHashMap<String, IProblemPreference> hash2 = (LinkedHashMap<String, IProblemPreference>) hash
-				.clone();
+		LinkedHashMap<String, IProblemPreference> hash2 = (LinkedHashMap<String, IProblemPreference>) hash.clone();
 		hash.clear();
-		for (Iterator<String> iterator = map.keySet().iterator(); iterator
-				.hasNext();) {
+		for (Iterator<String> iterator = map.keySet().iterator(); iterator.hasNext();) {
 			String key = iterator.next();
 			Object value2 = map.get(key);
 			if (value2 instanceof IProblemPreference) {
 				hash.put(key, (IProblemPreference) value2);
 			} else {
-				setChildValue(key, value2);
 				IProblemPreference pref = hash2.get(key);
+				addChildDescriptor(pref);
+				//setChildValue(key, value2);
 				pref.setValue(value2);
 				hash.put(key, pref);
 			}

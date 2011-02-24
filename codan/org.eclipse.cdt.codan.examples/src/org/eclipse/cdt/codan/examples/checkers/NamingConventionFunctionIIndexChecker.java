@@ -21,14 +21,14 @@ import org.eclipse.cdt.codan.core.param.IProblemPreference;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.core.runtime.CoreException;
 
 /**
+ * Example demonstrate how to write checked using "C Model"
+ * 
  * @author Alena
  * 
  */
-public class NamingConventionFunctionIIndexChecker extends
-		AbstractCIndexChecker implements ICheckerWithPreferences {
+public class NamingConventionFunctionIIndexChecker extends AbstractCIndexChecker implements ICheckerWithPreferences {
 	private static final String DEFAULT_PATTERN = "^[a-z]"; // name starts with english lowercase letter //$NON-NLS-1$
 	public static final String PARAM_KEY = "pattern"; //$NON-NLS-1$
 	private static final String ER_ID = "org.eclipse.cdt.codan.examples.checkers.NamingConventionFunctionProblem"; //$NON-NLS-1$
@@ -44,16 +44,14 @@ public class NamingConventionFunctionIIndexChecker extends
 		final IProblem pt = getProblemById(ER_ID, getFile());
 		try {
 			unit.accept(new ICElementVisitor() {
-				public boolean visit(ICElement element) throws CoreException {
+				public boolean visit(ICElement element) {
 					if (element.getElementType() == ICElement.C_FUNCTION) {
-						String parameter = (String) pt.getPreference()
-								.getValue();
+						String parameter = (String) pt.getPreference().getValue();
 						Pattern pattern = Pattern.compile(parameter);
 						String name = element.getElementName();
 						if (!pattern.matcher(name).find()) {
-							reportProblem(ER_ID, getFile(), 1, // TODO: line
-																// number
-									name, parameter);
+							// TODO: line number
+							reportProblem(ER_ID, getFile(), 1, name, parameter);
 						}
 						return false;
 					}
@@ -73,10 +71,9 @@ public class NamingConventionFunctionIIndexChecker extends
 	 * (org.eclipse.cdt.codan.core.model.IProblemWorkingCopy)
 	 */
 	public void initPreferences(IProblemWorkingCopy problem) {
-		IProblemPreference info = new BasicProblemPreference(PARAM_KEY,
-				"Name Pattern");
-		info.setValue(DEFAULT_PATTERN);
-		problem.setPreference(info);
+		super.initPreferences(problem);
+		IProblemPreference info = new BasicProblemPreference(PARAM_KEY, "Name Pattern");
+		addPreference(problem, info, DEFAULT_PATTERN);
 	}
 
 	@Override

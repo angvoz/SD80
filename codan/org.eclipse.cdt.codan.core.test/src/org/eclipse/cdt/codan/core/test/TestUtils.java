@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Alena Laskavaia 
+ * Copyright (c) 2009, 2011 Alena Laskavaia
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Alena Laskavaia  - initial API and implementation
+ *     Alena Laskavaia  - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.codan.core.test;
 
@@ -22,9 +22,9 @@ import java.net.URL;
 /**
  * TODO: add description
  */
+@SuppressWarnings("nls")
 public class TestUtils {
-	public static File saveFile(InputStream st, File testFile)
-			throws FileNotFoundException, IOException {
+	public static File saveFile(InputStream st, File testFile) throws FileNotFoundException, IOException {
 		BufferedReader r = new BufferedReader(new InputStreamReader(st));
 		String line;
 		PrintStream wr = new PrintStream(testFile);
@@ -54,15 +54,13 @@ public class TestUtils {
 	 * @return
 	 * @throws IOException
 	 */
-	public static InputStream getJavaFileText(String srcRoot, Class clazz)
-			throws IOException {
+	public static InputStream getJavaFileText(String srcRoot, Class<?> clazz) throws IOException {
 		CodanCoreTestActivator plugin = CodanCoreTestActivator.getDefault();
 		String classFile = clazz.getName().replaceAll("\\.", "/");
 		classFile += ".java";
 		InputStream st = null;
 		if (plugin != null) {
-			URL resource = plugin.getBundle().getResource(
-					srcRoot + "/" + classFile);
+			URL resource = plugin.getBundle().getResource(srcRoot + "/" + classFile);
 			st = resource.openStream();
 		} else {
 			st = clazz.getResourceAsStream("/" + classFile);

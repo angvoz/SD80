@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Alena Laskavaia 
+ * Copyright (c) 2009, 2011 Alena Laskavaia
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Alena Laskavaia  - initial API and implementation
+ *     Alena Laskavaia  - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.codan.core.model;
 
@@ -47,14 +47,15 @@ public interface IProblem extends IProblemElement {
 	String getId();
 
 	/**
-	 * Is enabled in current context (usually within profile)
+	 * Returns <code>true</code> if the problem is enabled in current context
+	 * (usually within profile)
 	 * 
 	 * @return true if enabled
 	 */
 	boolean isEnabled();
 
 	/**
-	 * Get current severity
+	 * Returns current severity
 	 * 
 	 * @return severity
 	 */
@@ -68,7 +69,7 @@ public interface IProblem extends IProblemElement {
 	String getMessagePattern();
 
 	/**
-	 * Get root preference descriptor or null if not defined (used by ui to
+	 * Returns root preference descriptor or null if not defined (used by UI to
 	 * generate user controls for changing parameters)
 	 * 
 	 * @return root preference or null
@@ -76,14 +77,14 @@ public interface IProblem extends IProblemElement {
 	public IProblemPreference getPreference();
 
 	/**
-	 * Get short description of a problem
+	 * Returns short description of a problem
 	 * 
 	 * @return description
 	 */
 	public String getDescription();
 
 	/**
-	 * Return marker id for the problem
+	 * Returns marker id for the problem
 	 * 
 	 * @return marker id
 	 */

@@ -339,7 +339,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			this.instructionPtrAddress = address(frameProperties.get(INSTRUCTION_PTR_ADDR));
 
 			// compute the source location
-			IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+			IEDCSymbols symbolsService = getService(Symbols.class);
 			functionScope = symbolsService.getFunctionAtAddress(executionDMC.getSymbolDMContext(),
 																instructionPtrAddress);
 

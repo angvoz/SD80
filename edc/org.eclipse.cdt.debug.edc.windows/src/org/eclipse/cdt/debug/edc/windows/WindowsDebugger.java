@@ -124,7 +124,6 @@ public class WindowsDebugger extends Plugin {
 			final boolean attach = true;
 
 			final IProcesses.DoneGetEnvironment done_env = new IProcesses.DoneGetEnvironment() {
-				@SuppressWarnings("deprecation")
 				public void doneGetEnvironment(IToken token, Exception error, Map<String, String> def) {
 					if (error != null) {
 						requestMonitor.setStatus(new Status(IStatus.ERROR, PLUGIN_ID, error.getLocalizedMessage(),

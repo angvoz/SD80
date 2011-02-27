@@ -24,10 +24,10 @@ import java.util.regex.Pattern;
 
 import org.eclipse.cdt.debug.edc.agent.gdbserver.CommandLineArguments;
 import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbRemoteProtocol;
-import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbRemoteProtocolX86;
-import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbserverAgent;
 import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbRemoteProtocol.Packet;
 import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbRemoteProtocol.ResponseHandler;
+import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbRemoteProtocolX86;
+import org.eclipse.cdt.debug.edc.agent.gdbserver.GdbserverAgent;
 import org.eclipse.cdt.debug.edc.tcf.extension.AgentException;
 import org.eclipse.cdt.debug.edc.tcf.extension.AgentUtils;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
@@ -93,15 +93,6 @@ public class ProcessesService implements IProcesses {
 				{
 					attach = ((Boolean) args[4]).booleanValue();
 
-					if (attach) {
-						processIDToAttach = Integer.valueOf(directory);
-					}
-				}
-				else if (args[4] instanceof Map)
-				{
-					@SuppressWarnings("unchecked")
-					Map<String,Object> params = (Map<String, Object>) args[4];
-					attach = (Boolean) params.get(IProcesses.START_ATTACH);
 					if (attach) {
 						processIDToAttach = Integer.valueOf(directory);
 					}

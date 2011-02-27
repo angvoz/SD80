@@ -112,7 +112,6 @@ public class LinuxFinalLaunchSequence extends AbstractFinalLaunchSequence {
 
 			// 4) attach
 			Protocol.invokeLater(new Runnable() {
-				@SuppressWarnings("deprecation")
 				public void run() {
 					tcfProcService.start(Integer.toString(proc.getPid()), proc.getName(), new String[] { "" }, null,
 							true, new IProcesses.DoneStart() {

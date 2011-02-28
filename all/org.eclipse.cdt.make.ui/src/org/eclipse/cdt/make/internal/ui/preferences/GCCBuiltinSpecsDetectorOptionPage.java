@@ -14,11 +14,10 @@ package org.eclipse.cdt.make.internal.ui.preferences;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.errorparsers.RegexErrorParser;
 import org.eclipse.cdt.core.errorparsers.RegexErrorPattern;
-import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
+import org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab.ProviderReference;
 import org.eclipse.cdt.internal.ui.util.SWTUtil;
 import org.eclipse.cdt.internal.ui.util.TableLayoutComposite;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
-import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.DialogsMessages;
 import org.eclipse.cdt.ui.dialogs.RegularExpressionStatusDialog;
@@ -27,8 +26,6 @@ import org.eclipse.cdt.utils.ui.controls.ControlFactory;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.layout.PixelConverter;
 import org.eclipse.jface.text.FindReplaceDocumentAdapterContentProposalProvider;
@@ -44,8 +41,6 @@ import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.viewers.TextCellEditor;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
@@ -88,12 +83,14 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	private Button[] fButtons = null;
 
 	private RegexErrorParser fErrorParser;
-	private AbstractBuiltinSpecsDetector fProvider;
+	private ProviderReference fProviderReference;
 	private boolean fEditable;
 
 	private Text inputCommand;
 	
-	private StatusMessageLine fStatusLine;
+//	private StatusMessageLine fStatusLine;
+	private Button runOnceRadioButton;
+	private Button runEveryBuildRadioButton;
 
 	/**
 	 * Provides generic implementation for overridden methods.
@@ -181,9 +178,9 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	}
 
 	@Override
-	public void init(Object provider) {
-		// must be AbstractBuiltinSpecsDetector
-		fProvider = (AbstractBuiltinSpecsDetector) provider;
+	public void init(Object providerRef) {
+		// must be ProviderReference
+		fProviderReference = (ProviderReference) providerRef;
 //		fEditable = isEditable;
 	}
 	/*
@@ -226,38 +223,25 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //		gdRun.horizontalSpan = 2;
 //		groupRun.setLayoutData(gdRun);
 
+		AbstractBuiltinSpecsDetector provider = (AbstractBuiltinSpecsDetector) fProviderReference.getProvider();
 		{
-			final Button b1 = new Button(groupRun, SWT.RADIO);
-			b1.setText("Run only once"); //$NON-NLS-1$
+			runOnceRadioButton = new Button(groupRun, SWT.RADIO);
+			runOnceRadioButton.setText("Run only once"); //$NON-NLS-1$
 			//		    b1.setToolTipText(UIMessages.getString("EnvironmentTab.3")); //$NON-NLS-1$
 			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 			gd.horizontalSpan = 3;
-			b1.setLayoutData(gd);
-			b1.setSelection(fProvider.isRunOnce());
-			b1.setEnabled(fEditable);
-			b1.addSelectionListener(new SelectionAdapter() {
-				@Override
-				public void widgetSelected(SelectionEvent e) {
-					// FIXME - need to do that in performApply()
-					fProvider.setRunOnce(b1.getSelection());
-				}});
-
+			runOnceRadioButton.setLayoutData(gd);
+			runOnceRadioButton.setSelection(provider.isRunOnce());
+			runOnceRadioButton.setEnabled(fEditable);
 		}
 		{
-			final Button b2 = new Button(groupRun, SWT.RADIO);
-			b2.setText("Activate on every build"); //$NON-NLS-1$
-			b2.setSelection(!fProvider.isRunOnce());
-			b2.setEnabled(fEditable);
+			runEveryBuildRadioButton = new Button(groupRun, SWT.RADIO);
+			runEveryBuildRadioButton.setText("Activate on every build"); //$NON-NLS-1$
+			runEveryBuildRadioButton.setSelection(!provider.isRunOnce());
+			runEveryBuildRadioButton.setEnabled(fEditable);
 			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 			gd.horizontalSpan = 3;
-			b2.setLayoutData(gd);
-			b2.addSelectionListener(new SelectionAdapter() {
-				@Override
-				public void widgetSelected(SelectionEvent e) {
-					// FIXME - need to do that in performApply()
-					fProvider.setRunOnce(!b2.getSelection());
-				}});
-
+			runEveryBuildRadioButton.setLayoutData(gd);
 		}
 
 		// Compiler specs command
@@ -274,16 +258,9 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 
 		{
 			inputCommand = ControlFactory.createTextField(composite, SWT.SINGLE | SWT.BORDER);
-			String customParameter = fProvider.getCustomParameter();
+			String customParameter = provider.getCustomParameter();
 			inputCommand.setText(customParameter!=null ? customParameter : "");
 			inputCommand.setEnabled(fEditable);
-			inputCommand.addModifyListener(new ModifyListener() {
-
-				public void modifyText(ModifyEvent e) {
-					// FIXME - need to do that in performApply()
-					fProvider.setCustomParameter(inputCommand.getText());
-				}
-			});
 		}
 
 		{
@@ -385,12 +362,12 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //			createButtons(composite);
 //		}
 
-		// Status line
-		if (fEditable) {
-			fStatusLine = new StatusMessageLine(composite, SWT.LEFT, 2);
-			IStatus status = new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, "Note that currently the options are applied to provider directly (FIXME)");
-			fStatusLine.setErrorStatus(status);
-		}
+//		// Status line
+//		if (fEditable) {
+//			fStatusLine = new StatusMessageLine(composite, SWT.LEFT, 2);
+//			IStatus status = new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, "Note that currently the options are applied to provider directly (FIXME)");
+//			fStatusLine.setErrorStatus(status);
+//		}
 
 		setControl(composite);
 	}
@@ -863,9 +840,15 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	 */
 	@Override
 	public void performApply(IProgressMonitor monitor) throws CoreException {
-		if (fProvider!=null) {
-			String command = inputCommand.getText();
-			fProvider.setCustomParameter(command);
+		if (fProviderReference!=null) {
+			AbstractBuiltinSpecsDetector provider = (AbstractBuiltinSpecsDetector) fProviderReference.getProvider();
+			if (provider!=null) {
+//				fProvider.setRunOnce(runOnceRadioButton.getSelection());
+				provider.setRunOnce(!runEveryBuildRadioButton.getSelection());
+
+				String command = inputCommand.getText();
+				provider.setCustomParameter(command);
+			}
 		}
 	}
 

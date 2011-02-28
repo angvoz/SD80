@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.debug.ui.launchConfigurationTypeImages">
+      <launchConfigurationTypeImage
+            configTypeID="org.eclipse.cdt.android.debug.core.launchConfigurationType"
+            icon="icons/obj16/c_app.gif"
+            id="org.eclipse.cdt.android.debug.ui.launchConfigurationTypeImage">
+      </launchConfigurationTypeImage>
+   </extension>
+   <extension
+         point="org.eclipse.debug.ui.launchConfigurationTabGroups">
+      <launchConfigurationTabGroup
+            class="org.eclipse.cdt.android.debug.ui.NDKLaunchConfigurationTabGroup"
+            id="org.eclipse.cdt.android.debug.ui.launchConfigurationTabGroup"
+            type="org.eclipse.cdt.android.debug.core.launchConfigurationType">
+      </launchConfigurationTabGroup>
+   </extension>
+   <extension
+         point="org.eclipse.debug.ui.launchConfigurationTabs">
+      <tab
+            class="org.eclipse.cdt.android.debug.ui.NDKMainTab"
+            group="org.eclipse.cdt.android.debug.ui.launchConfigurationTabGroup"
+            id="org.eclipse.cdt.android.debug.ui.mainTab"
+            name="Main">
+      </tab>
+      <tab
+            class="org.eclipse.debug.ui.sourcelookup.SourceLookupTab"
+            group="org.eclipse.cdt.android.debug.ui.launchConfigurationTabGroup"
+            id="org.eclipse.cdt.android.debug.ui.sourceTab"
+            name="Source">
+         <placement
+               after="org.eclipse.cdt.android.debug.ui.mainTab">
+         </placement>
+      </tab>
+      <tab
+            class="org.eclipse.debug.ui.CommonTab"
+            group="org.eclipse.cdt.android.debug.ui.launchConfigurationTabGroup"
+            id="org.eclipse.cdt.android.debug.ui.commonTab"
+            name="Common">
+         <placement
+               after="org.eclipse.cdt.android.debug.ui.sourceTab">
+         </placement>
+      </tab>
+   </extension>
+
+</plugin>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.debug.core.launchConfigurationTypes">
+      <launchConfigurationType
+            id="org.eclipse.cdt.android.debug.core.launchConfigurationType"
+            modes="debug"
+            name="Android Native"
+            public="true">
+      </launchConfigurationType>
+   </extension>
+   <extension
+         point="org.eclipse.debug.core.launchDelegates">
+      <launchDelegate
+            delegate="org.eclipse.cdt.android.debug.core.NDKLaunchConfigurationDelegate"
+            id="com.android.ide.eclipse.adt.cdt.launchDelegate"
+            modes="debug"
+            name="Android Native"
+            sourceLocatorId="org.eclipse.cdt.debug.core.sourceLocator"
+            sourcePathComputerId="org.eclipse.cdt.debug.core.sourcePathComputer"
+            type="org.eclipse.cdt.android.debug.core.launchConfigurationType">
+      </launchDelegate>
+   </extension>
+
+</plugin>

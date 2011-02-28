@@ -27,6 +27,7 @@
    <extension-point id="DocCommentOwner" name="%DocCommentOwner.name" schema="schema/DocCommentOwner.exsd"/>
    <extension-point id="workingSetConfigurations" name="%workingSetConfigurationsExtensionPoint" schema="schema/workingSetConfigurations.exsd"/>
    <extension-point id="LanguageSettingsProviderAssociation" name="%LanguageSettingsProviderAssociationExtensionPoint" schema="schema/LanguageSettingsProviderAssociation.exsd"/>
+   <extension-point id="RefreshExclusionContributor" name="Refresh Exclusion Contributor" schema="schema/RefreshExclusionContributor.exsd"/>
 
    <extension
          point="org.eclipse.core.runtime.adapters">

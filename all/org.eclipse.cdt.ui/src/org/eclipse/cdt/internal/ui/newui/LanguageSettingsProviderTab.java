@@ -105,20 +105,24 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	
 	private Page_LanguageSettingsProviders masterPropertyPage = null;
 
+//	private static final String RENAME_STR = "Rename...";
 	private static final String RUN_STR = Messages.LanguageSettingsProviderTab_Run;
 	private static final String CLEAR_STR = Messages.LanguageSettingsProviderTab_Clear;
+	private static final String RESET_STR = "Reset";
 
+//	private static final int BUTTON_RENAME = 0;
 	private static final int BUTTON_RUN = 0;
-	private static final int BUTTON_EDIT = 1;
-	private static final int BUTTON_CLEAR = 2;
+	private static final int BUTTON_CLEAR = 1;
+	private static final int BUTTON_RESET = 2;
 	// there is a separator instead of button #3
 	private static final int BUTTON_MOVE_UP = 4;
 	private static final int BUTTON_MOVE_DOWN = 5;
 
 	private final static String[] BUTTON_LABELS = {
+//		RENAME_STR,
 		RUN_STR,
-		EDIT_STR,
 		CLEAR_STR,
+		RESET_STR,
 		null,
 		MOVEUP_STR,
 		MOVEDOWN_STR,
@@ -695,9 +699,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	}
 
 	private void disableButtons() {
+//		buttonSetEnabled(BUTTON_RENAME, false);
 		buttonSetEnabled(BUTTON_RUN, false);
-		buttonSetEnabled(BUTTON_EDIT, false);
 		buttonSetEnabled(BUTTON_CLEAR, false);
+		buttonSetEnabled(BUTTON_RESET, false);
 		buttonSetEnabled(BUTTON_MOVE_UP, false);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, false);
 //		buttonSetEnabled(BUTTON_CONFIGURE, false);
@@ -731,9 +736,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		boolean canMoveUp = page.isForProject() && isProviderSelected && isRangeOk && pos!=0;
 		boolean canMoveDown = page.isForProject() && isProviderSelected && isRangeOk && pos!=last;
 		
+//		buttonSetEnabled(BUTTON_RENAME, false);
 		buttonSetEnabled(BUTTON_RUN, false);
-		buttonSetEnabled(BUTTON_EDIT, false);
 		buttonSetEnabled(BUTTON_CLEAR, canClear);
+		buttonSetEnabled(BUTTON_RESET, false);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
 	}
@@ -754,14 +760,17 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		ILanguageSettingsProvider selectedProvider = getSelectedProvider();
 
 		switch (buttonIndex) {
+//		case BUTTON_RENAME:
+//			performRename(selectedProvider);
+//			break;
 		case BUTTON_RUN:
-			performAdd(selectedProvider);
-			break;
-		case BUTTON_EDIT:
-			performEdit(selectedProvider);
+			performRun(selectedProvider);
 			break;
 		case BUTTON_CLEAR:
 			performClear(selectedProvider);
+			break;
+		case BUTTON_RESET:
+			performReset(selectedProvider);
 			break;
 		case BUTTON_MOVE_UP:
 			performMoveUp(selectedProvider);
@@ -773,11 +782,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		}
 	}
 
-	private void performAdd(ILanguageSettingsProvider selectedProvider) {
+	private void performRun(ILanguageSettingsProvider selectedProvider) {
 	}
 	
-	private void performEdit(ILanguageSettingsProvider selectedProvider) {
-	}
+//	private void performRename(ILanguageSettingsProvider selectedProvider) {
+//	}
 
 //	/**
 //	 * Switch between "Configure" mode and "Show Entries"
@@ -847,6 +856,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			}
 			
 		}
+	}
+
+	private void performReset(ILanguageSettingsProvider selectedProvider) {
+		// TODO
 	}
 
 	private void performMoveUp(ILanguageSettingsProvider selectedProvider) {

@@ -72,6 +72,16 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 		load(elementProvider);
 	}
 
+	@Override
+	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
+		super.configureProvider(id, name, languages, entries, customParameter);
+
+		fStorage.clear();
+
+		if (entries!=null)
+			setSettingEntries(null, null, null, entries);
+	}
+
 	/**
 	 * @return {@code true} if the provider does not keep any settings yet or {@code false} if there are some.
 	 */

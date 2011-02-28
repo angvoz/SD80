@@ -20,8 +20,10 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -72,6 +74,14 @@ public class LanguageSettingsManager_TBD {
 	@Deprecated // Shouldn't be API
 	public static void serializeWorkspaceProviders() throws CoreException {
 		LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
+	}
+
+	public static void resetExtensionProvider(ILanguageSettingsProvider provider) {
+		// TODO
+		Assert.isTrue(LanguageSettingsManager.isWorkspaceProvider(provider));
+		
+		
+		LanguageSettingsExtensionManager.reset(provider);
 	}
 
 }

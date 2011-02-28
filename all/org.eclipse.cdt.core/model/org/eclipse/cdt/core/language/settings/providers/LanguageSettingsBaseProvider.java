@@ -99,7 +99,7 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 	 * an executable extension using the default provider. Then this method is
 	 * used to configure the provider.
 	 * 
-	 * It is not allowed to reconfigure the provider.
+	 * FIXME It is not allowed to reconfigure the provider.
 	 * 
 	 * @param id - id of the provider.
 	 * @param name - name of the provider to be presented to a user.
@@ -111,11 +111,11 @@ public class LanguageSettingsBaseProvider extends AbstractExecutableExtensionBas
 	 * @param customParameter - a custom parameter as the means to customize
 	 *    providers extending this class from extension definition in {@code plugin.xml}.
 	 * 
-	 * @throws UnsupportedOperationException if an attempt to reconfigure provider is made.
+	 * FIXME @throws UnsupportedOperationException if an attempt to reconfigure provider is made.
 	 */
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
-		if (this.entries!=null)
-			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsBaseProvider.CanBeConfiguredOnlyOnce")); //$NON-NLS-1$
+//		if (this.entries!=null)
+//			throw new UnsupportedOperationException(SettingsModelMessages.getString("LanguageSettingsBaseProvider.CanBeConfiguredOnlyOnce")); //$NON-NLS-1$
 
 		setId(id);
 		setName(name);

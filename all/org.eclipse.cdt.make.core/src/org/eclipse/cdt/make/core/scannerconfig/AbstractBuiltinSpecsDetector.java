@@ -45,6 +45,14 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 
 	protected List<ICLanguageSettingEntry> detectedSettingEntries = null;
 
+	@Override
+	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
+		super.configureProvider(id, name, languages, entries, customParameter);
+
+		runOnce = true;
+	}
+
+
 	public void setCommand(String command) {
 		this.command = command;
 	}

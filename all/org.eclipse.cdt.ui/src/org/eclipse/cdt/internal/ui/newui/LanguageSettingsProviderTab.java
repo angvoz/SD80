@@ -74,7 +74,6 @@ import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
 
-
 /**
  * This tab presents language settings entries categorized by language
  * settings providers.
@@ -715,6 +714,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	protected void updateButtons() {
 		ILanguageSettingsProvider provider = getSelectedProvider();
 		boolean isProviderSelected =provider!=null;
+		boolean isEditable = provider instanceof LanguageSettingsSerializable && provider instanceof ILanguageSettingsEditableProvider;
 
 		int pos = tableProviders.getSelectionIndex();
 		int count = tableProviders.getItemCount();
@@ -723,7 +723,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		// TODO: canClear for ILanguageSettingsEditableProvider
 		boolean canClear = false;
-		if (provider instanceof LanguageSettingsSerializable && provider instanceof ILanguageSettingsEditableProvider) {
+		if (isEditable) {
 			
 			LanguageSettingsSerializable sprovider = (LanguageSettingsSerializable) provider;
 			if (!sprovider.isEmpty() && !clearedProviders.contains(provider)) {
@@ -732,6 +732,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 				canClear = canClearForWorkspace || canClearForConfiguration;
 			}
 		}
+		boolean canReset = provider!=null && !(optionsPageMap.get(provider.getId()) instanceof DummyProviderOptionsPage)
+			&& (LanguageSettingsManager.isWorkspaceProvider(provider) && page.isForPrefs());
 		
 		boolean canMoveUp = page.isForProject() && isProviderSelected && isRangeOk && pos!=0;
 		boolean canMoveDown = page.isForProject() && isProviderSelected && isRangeOk && pos!=last;
@@ -739,7 +741,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 //		buttonSetEnabled(BUTTON_RENAME, false);
 		buttonSetEnabled(BUTTON_RUN, false);
 		buttonSetEnabled(BUTTON_CLEAR, canClear);
-		buttonSetEnabled(BUTTON_RESET, false);
+		buttonSetEnabled(BUTTON_RESET, canReset);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
 	}
@@ -859,7 +861,18 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	}
 
 	private void performReset(ILanguageSettingsProvider selectedProvider) {
-		// TODO
+		if (page.isForPrefs()) {
+			int pos = tableProviders.getSelectionIndex();
+			
+			LanguageSettingsManager_TBD.resetExtensionProvider(selectedProvider);
+			updateProvidersTable();
+			updateButtons();
+
+			tableProviders.setSelection(pos);
+			tableProvidersViewer.update(selectedProvider, null);
+			initializeOptionsPage(selectedProvider, null);
+			displaySelectedOptionPage();
+		}
 	}
 
 	private void performMoveUp(ILanguageSettingsProvider selectedProvider) {

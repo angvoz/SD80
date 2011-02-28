@@ -25,6 +25,7 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.Path;
@@ -42,6 +43,9 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	private static final String PROVIDER_PARAMETER_EXT = "custom parameter subclass";
 	private static final String LANG_ID_EXT = "org.eclipse.cdt.core.tests.language.id";
 	private static final String BASE_PROVIDER_SUBCLASS_ID_EXT = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
+	private static final String EXTENSION_SERIALIZABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.serializable.language.settings.provider";
+	private static final String EXTENSION_SERIALIZABLE_PROVIDER_NAME = "Test Plugin Serializable Language Settings Provider";
+	private static final String EXTENSION_SERIALIZABLE_PROVIDER_PARAMETER = "";
 
 	// These are made up
 	private static final String PROVIDER_0 = "test.provider.0.id";
@@ -224,22 +228,77 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		}
 	}
 
-	/**
-	 * LanguageSettingsBaseProvider is not allowed to be configured twice.
-	 */
-	public void testBaseProviderConfigure() throws Exception {
-		// create LanguageSettingsBaseProvider
-		LanguageSettingsBaseProvider provider = new LanguageSettingsBaseProvider();
-		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
-		entries.add(new CIncludePathEntry("/usr/include/", 0));
-		// configure it
-		provider.configureProvider("id", "name", null, entries, null);
+//	/**
+//	 * LanguageSettingsBaseProvider is not allowed to be configured twice.
+//	 */
+//	public void testBaseProviderConfigure() throws Exception {
+//		// create LanguageSettingsBaseProvider
+//		LanguageSettingsBaseProvider provider = new LanguageSettingsBaseProvider();
+//		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+//		entries.add(new CIncludePathEntry("/usr/include/", 0));
+//		// configure it
+//		provider.configureProvider("id", "name", null, entries, null);
+//
+//		try {
+//			// attempt to configure it twice should fail
+//			provider.configureProvider("id", "name", null, entries, null);
+//			fail("LanguageSettingsBaseProvider is not allowed to be configured twice");
+//		} catch (UnsupportedOperationException e) {
+//		}
+//	}
 
-		try {
-			// attempt to configure it twice should fail
-			provider.configureProvider("id", "name", null, entries, null);
-			fail("LanguageSettingsBaseProvider is not allowed to be configured twice");
-		} catch (UnsupportedOperationException e) {
+	/**
+	 * TODO
+	 */
+	public void testReset() throws Exception {
+		// get test plugin extension provider
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+		assertNotNull(providerExt);
+		assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
+
+		assertTrue(providerExt instanceof LanguageSettingsSerializable);
+		LanguageSettingsSerializable provider = (LanguageSettingsSerializable)providerExt;
+		
+		// doublecheck benchmarks
+		{
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, provider.getId());
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_NAME, provider.getName());
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_PARAMETER, provider.getCustomParameter());
+			
+			// retrieve entries from extension point
+			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
+			assertNull(actual);
+		}
+		
+		// change provider
+		String changedName = "Changed name";
+		String changedParameter = "changedParameter";
+		provider.setName(changedName);
+		provider.setCustomParameter(changedParameter);
+		List<ICLanguageSettingEntry> changedEntries = new ArrayList<ICLanguageSettingEntry>();
+		changedEntries.add(new CIncludePathEntry("/added/entry/", 0));
+		provider.setSettingEntries(null, null, null, changedEntries);
+		// doublecheck changed
+		{
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, provider.getId());
+			assertEquals(changedName, provider.getName());
+			assertEquals(changedParameter, provider.getCustomParameter());
+			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
+			assertEquals(changedEntries, actual);
+		}
+
+		// reset provider
+		LanguageSettingsExtensionManager.reset(provider);
+		
+		// should match original benchmarks
+		{
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, provider.getId());
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_NAME, provider.getName());
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_PARAMETER, provider.getCustomParameter());
+			
+			// retrieve entries from extension point
+			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
+			assertNull(actual);
 		}
 	}
 }

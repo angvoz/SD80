@@ -163,7 +163,7 @@ public class LanguageSettingsExtensionManager {
 		String ceName = determineAttributeValue(ce, ATTR_NAME);
 		String ceParameter = determineAttributeValue(ce, ATTR_PARAMETER);
 		List<String> languages = null;
-		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		List<ICLanguageSettingEntry> entries = null;
 
 		for (IConfigurationElement ceLang : ce.getChildren(ELEM_LANGUAGE_SCOPE)) {
 			String langId = determineAttributeValue(ceLang, ATTR_ID);
@@ -189,6 +189,9 @@ public class LanguageSettingsExtensionManager {
 
 				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) CDataUtil.createEntry(
 						entryKind, entryName, entryValue, null, flags);
+
+				if (entries == null)
+					entries = new ArrayList<ICLanguageSettingEntry>();
 				entries.add(entry);
 
 			} catch (Exception e) {
@@ -441,6 +444,29 @@ public class LanguageSettingsExtensionManager {
 	 */
 	public static List<ICLanguageSettingEntry> getLocalSettingEntriesByKind(ICConfigurationDescription cfgDescription, IResource rc, String languageId, int kind) {
 		return getSettingEntriesByKind(cfgDescription, rc, languageId, kind, /* checkLocality */ true, /* isLocal */ true);
+	}
+
+	// TODO: API?
+	public static void reset(ILanguageSettingsProvider provider) {
+		String providerId = provider.getId();
+		IExtensionRegistry registry = Platform.getExtensionRegistry();
+		IExtensionPoint extension = registry.getExtensionPoint(
+				CCorePlugin.PLUGIN_ID, PROVIDER_EXTENSION_SIMPLE_ID);
+		if (extension != null) {
+			IExtension[] extensions = extension.getExtensions();
+			for (IExtension ext : extensions) {
+				for (IConfigurationElement cfgEl : ext
+						.getConfigurationElements()) {
+					if (cfgEl.getName().equals(ELEM_PROVIDER)) {
+						String attrId = determineAttributeValue(cfgEl, ATTR_ID);
+						if (providerId.equals(attrId)) {
+							configureExecutableProvider(provider, cfgEl);
+							return;
+						}
+					}
+				}
+			}
+		}
 	}
 
 }

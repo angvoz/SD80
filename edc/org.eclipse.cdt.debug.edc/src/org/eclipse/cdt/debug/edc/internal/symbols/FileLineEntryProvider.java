@@ -9,6 +9,7 @@ import java.util.TreeMap;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.EDCLineAddresses;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.DwarfCompileUnit;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
@@ -27,8 +28,14 @@ class FileLineEntryProvider implements ILineEntryProvider {
 	private List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
 	private List<ILineEntry> cuEntries   = null;
 
-	// use TreeMap so line number keys are sorted in ascending order
+	/**
+	 * Line entries sorted by line number. Line table entries mapped to the same
+	 * source line are put together in one entry in this map.
+	 * 
+	 * Just use TreeMap so line number keys are sorted in ascending order.
+	 */
 	private TreeMap<Integer, List<ILineEntry>> lineEntriesByLine = new TreeMap<Integer, List<ILineEntry>>();
+	
 	private TreeMap<IAddress, ILineEntry> lineEntriesByAddress = new TreeMap<IAddress, ILineEntry>();
 
 	private IPath filePath;
@@ -603,6 +610,128 @@ class FileLineEntryProvider implements ILineEntryProvider {
 			break;	// got the address of interest; just wasn't useful as we wanted	
 		}
 		return null;
+	}
+
+	/*
+	 * Find code line for the anchor in one compile unit.
+	 * The returned value should only contain one entry.
+	 * 
+	 * (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider#findClosestLineWithCode(org.eclipse.core.runtime.IPath, int, int)
+	 */
+	public List<ILineAddresses> findClosestLineWithCode(IPath sourceFile,
+			int anchorLine, int neighbor_limit) {
+		List<ILineAddresses> ret = new ArrayList<ILineAddresses>(1);
+		
+		// FIXME: ugly drive letter stuff
+		if (!filePath.setDevice(null).equals(sourceFile.setDevice(null)) )
+		{
+			if (!PathUtils.isCaseSensitive() && filePath.toOSString().compareToIgnoreCase(sourceFile.toOSString()) != 0)
+				return ret;			
+		}
+
+		EDCLineAddresses codeLine = null;
+		
+		codeLine = getLineAddresses(anchorLine);
+		if (codeLine != null) {
+			// The anchor itself has code
+			ret.add(codeLine);
+			return ret;
+		}
+		
+		int limit;
+
+		// Anchor has no code, but there are code lines above the anchor. 
+		// find the closest one.
+		EDCLineAddresses candidate_above = null;
+		if (anchorLine > lineEntriesByLine.firstKey()) {
+			if (neighbor_limit == -1)
+				limit = lineEntriesByLine.firstKey();
+			else {
+				limit = anchorLine - neighbor_limit;
+				if (limit < lineEntriesByLine.firstKey())
+					limit = lineEntriesByLine.firstKey();
+			}
+			
+			for (int i = anchorLine-1; i >= limit; i--) {
+				candidate_above = getLineAddresses(i);
+				if (candidate_above != null)
+					break;
+			}
+		}
+		
+		// there are code lines below the anchor. 
+		// find the closest one.
+		EDCLineAddresses candidate_below = null;
+		if (anchorLine < lineEntriesByLine.lastKey()) {
+			if (neighbor_limit == -1)
+				limit = lineEntriesByLine.lastKey();
+			else {
+				limit = anchorLine + neighbor_limit;
+				if (limit > lineEntriesByLine.lastKey())
+					limit = lineEntriesByLine.lastKey();
+			}
+			
+			for (int i = anchorLine+1; i <= limit; i++) {
+				candidate_below = getLineAddresses(i);
+				if (candidate_below != null)
+					break;
+			}
+		}
+		
+		if (candidate_above == null)
+			codeLine = candidate_below;
+		else {
+			if (candidate_below == null)
+				codeLine = candidate_above;
+			else {
+				int distance_above = anchorLine - candidate_above.getLineNumber();
+				int distance_below = candidate_below.getLineNumber() - anchorLine;
+				
+				if (distance_above == distance_below)
+					codeLine = candidate_below;
+				else 
+					codeLine = (distance_above < distance_below)? candidate_above : candidate_below;
+			}
+		}
+		
+		if (codeLine != null)
+			ret.add(codeLine);
+		
+		return ret;
+	}
+
+	/**
+	 * Create EDCLineAddresses object for a line if it has code.
+	 * @param line
+	 * @return null if the line has no code.
+	 */
+	private EDCLineAddresses getLineAddresses(int line) {
+		if (! lineEntriesByLine.containsKey(line))
+			return null;
+		
+		List<IAddress> line_addrs = new ArrayList<IAddress>();
+		int lastColumn = -2;
+
+		for (ILineEntry e : lineEntriesByLine.get(line)) {
+			/*
+			 * When there is more than one line mapping for the source line:
+			 * 
+			 * If they are multiple logical code segments for the same source
+			 * line, but in different columns, only remember address of the
+			 * first entry.
+			 * 
+			 * If they are templates or inline functions, the column will be the
+			 * same, and we record addresses of all entries.
+			 */
+			int entryColumn = e.getColumnNumber();
+			if (line_addrs.size() == 0 || lastColumn == entryColumn)
+				line_addrs.add(e.getLowAddress());
+
+			lastColumn = entryColumn;
+		}
+
+		return new EDCLineAddresses(line, line_addrs);
 	}
 
 }

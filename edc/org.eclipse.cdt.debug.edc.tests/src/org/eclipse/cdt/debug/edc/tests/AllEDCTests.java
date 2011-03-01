@@ -36,6 +36,7 @@ import org.junit.runners.Suite;
 						SymbolReader.class,
 						TestDwarfReader.class,
 						TestSourceToAddressMapping.class,
+						TestFindCodeLine.class,
 						TestMemoryStreamBuffer.class,
 						TestFileStreamBuffer.class,
 						TestByteBufferStreamBuffer.class,

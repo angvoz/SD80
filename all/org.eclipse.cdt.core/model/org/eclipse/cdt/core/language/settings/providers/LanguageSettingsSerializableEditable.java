@@ -20,4 +20,9 @@ public class LanguageSettingsSerializableEditable extends LanguageSettingsSerial
 		return (LanguageSettingsSerializableEditable) super.clone();
 	}
 
+	@Override
+	public LanguageSettingsSerializableEditable cloneShallow() throws CloneNotSupportedException {
+		return (LanguageSettingsSerializableEditable) super.cloneShallow();
+	}
+
 }

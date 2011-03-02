@@ -221,6 +221,12 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 		return windowsPath.trim();
 	}
 	
+	@Override
+	public GCCBuiltinSpecsDetector cloneShallow() throws CloneNotSupportedException {
+		// FIXME
+		return (GCCBuiltinSpecsDetector) super.cloneShallow();
+	}
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#clone()
 	 */
@@ -229,5 +235,5 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 		// FIXME
 		return (GCCBuiltinSpecsDetector) super.clone();
 	}
-
+	
 }

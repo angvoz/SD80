@@ -411,12 +411,18 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 		return storageClone;
 	}
 
+	protected LanguageSettingsSerializable cloneShallow() throws CloneNotSupportedException {
+		LanguageSettingsSerializable clone = (LanguageSettingsSerializable)super.clone();
+		clone.fStorage = new HashMap<String, Map<String, List<ICLanguageSettingEntry>>>();
+		return clone;
+	}
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#clone()
 	 */
 	@Override
 	protected LanguageSettingsSerializable clone() throws CloneNotSupportedException {
-		LanguageSettingsSerializable clone = (LanguageSettingsSerializable)super.clone();
+		LanguageSettingsSerializable clone = cloneShallow();
 		clone.fStorage = cloneStorage();
 		return clone;
 	}

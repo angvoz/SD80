@@ -4823,7 +4823,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
 			try {
-				provider = ((ILanguageSettingsEditableProvider)provider).clone();
+				provider = ((ILanguageSettingsEditableProvider)provider).cloneShallow();
 			} catch (CloneNotSupportedException e) {
 				// shouldn't happen. just in case, log the error and use workspace provider
 				ManagedBuilderCorePlugin.log(e);

@@ -35,8 +35,13 @@ public class UserLanguageSettingsProvider extends LanguageSettingsSerializable i
 	}
 
 	@Override
+	public UserLanguageSettingsProvider cloneShallow() throws CloneNotSupportedException {
+		return (UserLanguageSettingsProvider)super.cloneShallow();
+	}
+
+	@Override
 	public UserLanguageSettingsProvider clone() throws CloneNotSupportedException {
 		return (UserLanguageSettingsProvider)super.clone();
 	}
-
+	
 }

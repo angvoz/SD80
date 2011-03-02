@@ -28,5 +28,6 @@ public interface ILanguageSettingsEditableProvider extends ILanguageSettingsProv
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries);
 	public void clear();
 	
-	public ILanguageSettingsProvider clone() throws CloneNotSupportedException;
+	public ILanguageSettingsEditableProvider cloneShallow() throws CloneNotSupportedException;
+	public ILanguageSettingsEditableProvider clone() throws CloneNotSupportedException;
 }

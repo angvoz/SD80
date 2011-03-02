@@ -472,8 +472,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			// Local provider instance chosen
 			if (oldProvider instanceof ILanguageSettingsEditableProvider) {
 				try {
-					newProvider = ((ILanguageSettingsEditableProvider)oldProvider).clone();
-					((ILanguageSettingsEditableProvider)newProvider).clear();
+					newProvider = ((ILanguageSettingsEditableProvider)oldProvider).cloneShallow();
 				} catch (CloneNotSupportedException e) {
 					CUIPlugin.log("Error cloning provider " + oldProvider.getId(), e);
 				}

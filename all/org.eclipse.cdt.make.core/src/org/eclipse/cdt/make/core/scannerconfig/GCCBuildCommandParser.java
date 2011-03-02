@@ -322,6 +322,12 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return false;
 	}
 	
+	@Override
+	public GCCBuildCommandParser cloneShallow() throws CloneNotSupportedException {
+		// FIXME
+		return (GCCBuildCommandParser) super.cloneShallow();
+	}
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#clone()
 	 */
@@ -330,5 +336,5 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		// FIXME
 		return (GCCBuildCommandParser) super.clone();
 	}
-
+	
 }

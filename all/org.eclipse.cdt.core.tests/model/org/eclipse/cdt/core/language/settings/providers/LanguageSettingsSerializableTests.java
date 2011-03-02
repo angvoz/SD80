@@ -1086,6 +1086,44 @@ public class LanguageSettingsSerializableTests extends TestCase {
 		assertEquals(sampleEntries_2.get(0), actual2.get(0));
 		assertEquals(sampleEntries_2.size(), actual2.size());
 	}
+
+	/**
+	 */
+	public void testCloneShallow() throws Exception {
+		// define sample data
+		List<String> sampleLanguages = new ArrayList<String>();
+		sampleLanguages.add(LANG_ID);
+		
+		// create a model provider
+		class LanguageSettingsSerializableMock extends LanguageSettingsSerializable implements Cloneable {
+			public LanguageSettingsSerializableMock(String id, String name) {
+				super(id, name);
+			}
+			@Override
+			public LanguageSettingsSerializableMock cloneShallow() throws CloneNotSupportedException {
+				return (LanguageSettingsSerializableMock) super.cloneShallow();
+			}
+			
+		}
+		LanguageSettingsSerializableMock provider1 = new LanguageSettingsSerializableMock(PROVIDER_1, PROVIDER_NAME_1);
+		provider1.setLanguageScope(sampleLanguages);
+		provider1.setCustomParameter(CUSTOM_PARAMETER);
+		
+		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		entries.add(new CIncludePathEntry("path", 1));
+		provider1.setSettingEntries(null, null, null, entries);
+		
+		// clone provider
+		LanguageSettingsSerializableMock providerClone = provider1.cloneShallow();
+		assertNotSame(provider1, providerClone);
+		assertFalse(provider1.equals(providerClone));
+		assertTrue(provider1.getClass()==providerClone.getClass());
+		assertEquals(provider1.getCustomParameter(), providerClone.getCustomParameter());
+		assertEquals(provider1.getLanguageScope().get(0), providerClone.getLanguageScope().get(0));
+		
+		List<ICLanguageSettingEntry> actual = providerClone.getSettingEntries(null, null, null);
+		assertNull(actual);
+	}
 }
 
 

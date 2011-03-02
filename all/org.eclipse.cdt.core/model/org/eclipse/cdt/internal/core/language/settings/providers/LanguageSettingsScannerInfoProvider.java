@@ -203,6 +203,17 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		if (buildCWD==null) {
 			IProject project = cfgDescription.getProjectDescription().getProject();
 			buildCWD = project.getLocation();
+		} else {
+			ICdtVariableManager mngr = CCorePlugin.getDefault().getCdtVariableManager();
+			try {
+				// FIXME IPath buildCWD can hold variables i.e. ${workspace_loc:/path}
+				String buildPathString = buildCWD.toString();
+				buildPathString = mngr.resolveValue(buildPathString, "", null, cfgDescription);
+				buildCWD = new Path(buildPathString);
+			} catch (CdtVariableException e) {
+				CCorePlugin.log(e);
+			}
+
 		}
 		buildCWD = buildCWD.addTrailingSeparator();
 		return buildCWD;
@@ -233,10 +244,12 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		// note that we avoid using org.eclipse.core.runtime.Path for manipulations being careful
 		// to preserve "../" segments and not let collapsing them which is not correct for symbolic links.
 		Path locPath = new Path(location);
-		if (locPath.isAbsolute() && locPath.getDevice() != null) {
+		if (locPath.isAbsolute() && locPath.getDevice()==null) {
 			// prepend device (C:) for Windows
 			IPath buildCWD = getBuildCWD(cfgDescription);
-			location = buildCWD.getDevice() + location;
+			String device = buildCWD.getDevice();
+			if (device!=null)
+				location = device + location;
 		}
 		if (!locPath.isAbsolute()) {
 			// consider relative path to be from build working directory

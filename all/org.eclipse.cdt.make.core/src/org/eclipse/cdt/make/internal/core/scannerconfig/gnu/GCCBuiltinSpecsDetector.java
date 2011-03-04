@@ -88,7 +88,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 		String cmd = getCustomParameter();
 
 		String specFileName = getSpecFileName(languageId);
-		if (specFileName!=null) {
+		if (specFileName!=null && cmd!=null) {
 			IPath workingLocation = MakeCorePlugin.getWorkingDirectory();
 			IPath specFileLocation = workingLocation.append(specFileName);
 			cmd = cmd.replace(SPEC_FILE_MACRO, specFileLocation.toString());
@@ -223,16 +223,11 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 	
 	@Override
 	public GCCBuiltinSpecsDetector cloneShallow() throws CloneNotSupportedException {
-		// FIXME
 		return (GCCBuiltinSpecsDetector) super.cloneShallow();
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#clone()
-	 */
 	@Override
 	public GCCBuiltinSpecsDetector clone() throws CloneNotSupportedException {
-		// FIXME
 		return (GCCBuiltinSpecsDetector) super.clone();
 	}
 	

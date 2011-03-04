@@ -58,6 +58,7 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	private static final String PROVIDER_2 = "test.provider.2.id";
 	private static final String PROVIDER_NAME_NULL = "test.provider.null.name";
 	private static final String PROVIDER_NAME_1 = "test.provider.1.name";
+	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
 	private static final String CUSTOM_PARAMETER = "custom.parameter";
 
 	private static final String ELEM_TEST = "test";
@@ -99,19 +100,35 @@ public class LanguageSettingsSerializableTests extends TestCase {
 	/**
 	 */
 	public void testProvider() throws Exception {
+		// benchmark data
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 		entries.add(new CIncludePathEntry("path0", 0));
+		List<String> languages = new ArrayList<String>();
+		languages.add(LANG_ID);
 
 		// create a provider
 		LanguageSettingsSerializable mockProvider = new LanguageSettingsSerializable(PROVIDER_1, PROVIDER_NAME_1);
 		// test isEmpty()
 		assertTrue(mockProvider.isEmpty());
-		// test setter and getter
+		
+		// test setters and getters
+		mockProvider.setId(PROVIDER_2);
+		assertEquals(PROVIDER_2, mockProvider.getId());
+		mockProvider.setName(PROVIDER_NAME_2);
+		assertEquals(PROVIDER_NAME_2, mockProvider.getName());
+		mockProvider.setCustomParameter(CUSTOM_PARAMETER);
+		assertEquals(CUSTOM_PARAMETER, mockProvider.getCustomParameter());
+		mockProvider.setLanguageScope(languages);
+		assertEquals(languages, mockProvider.getLanguageScope());
+		mockProvider.setLanguageScope(null);
+		assertEquals(null, mockProvider.getLanguageScope());
+		
 		mockProvider.setSettingEntries(null, MOCK_RC, LANG_ID, entries);
 		List<ICLanguageSettingEntry> actual = mockProvider.getSettingEntries(null, MOCK_RC, LANG_ID);
 		assertEquals(entries.get(0), actual.get(0));
 		assertEquals(entries.size(), actual.size());
 		assertFalse(mockProvider.isEmpty());
+
 		// test clear()
 		mockProvider.clear();
 		assertTrue(mockProvider.isEmpty());

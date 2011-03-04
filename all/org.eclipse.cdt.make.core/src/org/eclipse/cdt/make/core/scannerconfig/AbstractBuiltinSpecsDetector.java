@@ -116,7 +116,8 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	public void run(IPath workingDirectory, String[] env, IConsole console, IProgressMonitor monitor)
 			throws CoreException, IOException {
 
-		if (getCommand()==null) {
+		String command = getCommand();
+		if (command==null || command.trim().length()==0) {
 			return;
 		}
 
@@ -145,10 +146,13 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		// Print the command for visual interaction.
 		launcher.showCommand(true);
 
-		String[] cmdArray = CommandLineUtil.argumentsToArray(getCommand());
+		String[] cmdArray = CommandLineUtil.argumentsToArray(command);
 		IPath program = new Path(cmdArray[0]);
-		String[] args = new String[cmdArray.length-1];
-		System.arraycopy(cmdArray, 1, args, 0, args.length);
+		String[] args = new String[0];
+		if (cmdArray.length>1) {
+			args = new String[cmdArray.length-1];
+			System.arraycopy(cmdArray, 1, args, 0, args.length);
+		}
 
 		Process p = launcher.execute(program, args, env, workingDirectory, monitor);
 
@@ -166,6 +170,29 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 			stdout.write((errMsg+EOL+EOL).getBytes());
 			stdout.flush();
 		}
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + (runOnce ? 1231 : 1237);
+		return result;
+	}
+
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (!(obj instanceof AbstractBuiltinSpecsDetector))
+			return false;
+		AbstractBuiltinSpecsDetector other = (AbstractBuiltinSpecsDetector) obj;
+		if (runOnce != other.runOnce)
+			return false;
+		return true;
 	}
 
 

@@ -98,7 +98,10 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 	 * @see #getLanguageScope()
 	 */
 	public void setLanguageScope(List <String> languages) {
-		this.languageScope = new ArrayList<String>(languages);
+		if (languages==null)
+			this.languageScope = null;
+		else
+			this.languageScope = new ArrayList<String>(languages);
 	}
 
 	public void setCustomParameter(String customParameter) {

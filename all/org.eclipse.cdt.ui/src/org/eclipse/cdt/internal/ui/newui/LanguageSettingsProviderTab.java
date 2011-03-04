@@ -425,6 +425,17 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 							}
 						}
 					}
+					if (page.isForProject() && !LanguageSettingsManager.isWorkspaceProvider(provider)) {
+						ILanguageSettingsProvider globalProvider = LanguageSettingsManager.getWorkspaceProvider(provider.getId());
+						try {
+							boolean canReset = ! isShallowMatch(provider, globalProvider);
+							if (canReset) {
+								overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
+							}
+						} catch (Exception e) {
+							CUIPlugin.log("Internal Error: cannot clone provider "+provider.getId(), e);
+						}
+					}
 				}
 				return overlayKeys;
 			}
@@ -725,7 +736,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	protected void updateButtons() {
 		ILanguageSettingsProvider provider = getSelectedProvider();
 		boolean isProviderSelected =provider!=null;
-		boolean isEditable = provider instanceof LanguageSettingsSerializable && provider instanceof ILanguageSettingsEditableProvider;
 		boolean canForWorkspace = isProviderSelected && LanguageSettingsManager.isWorkspaceProvider(provider) && page.isForPrefs();
 		boolean canForConfiguration = isProviderSelected && !LanguageSettingsManager.isWorkspaceProvider(provider) && page.isForProject();
 
@@ -736,13 +746,31 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		// TODO: canClear for ILanguageSettingsEditableProvider
 		boolean canClear = false;
-		if (isEditable) {
+		if (provider instanceof LanguageSettingsSerializable) {
 			if (!((LanguageSettingsSerializable) provider).isEmpty() && !clearedProviders.contains(provider)) {
 				canClear = canForWorkspace || canForConfiguration;
 			}
 		}
-		boolean canReset = provider!=null && !(optionsPageMap.get(provider.getId()) instanceof DummyProviderOptionsPage)
-			&& (LanguageSettingsManager.isWorkspaceProvider(provider) && page.isForPrefs());
+		if (provider instanceof ILanguageSettingsEditableProvider) {
+			if (!((ILanguageSettingsEditableProvider) provider).isEmpty() && !clearedProviders.contains(provider)) {
+				canClear = canForWorkspace || canForConfiguration;
+			}
+		}
+		
+		boolean canReset = false;
+		if (provider!=null) {
+			String id = provider.getId();
+			canReset = !(optionsPageMap.get(id) instanceof DummyProviderOptionsPage) && (canForWorkspace || canForConfiguration);
+			if (canReset && canForConfiguration) {
+				ILanguageSettingsProvider globalProvider = LanguageSettingsManager.getWorkspaceProvider(id);
+				try {
+					canReset = ! isShallowMatch(provider, globalProvider);
+				} catch (Exception e) {
+					canReset = false;
+					CUIPlugin.log("Internal Error: cannot clone provider "+provider.getId(), e);
+				}
+			}
+		}
 		
 		boolean canMoveUp = page.isForProject() && isProviderSelected && isRangeOk && pos!=0;
 		boolean canMoveDown = page.isForProject() && isProviderSelected && isRangeOk && pos!=last;
@@ -753,6 +781,18 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		buttonSetEnabled(BUTTON_RESET, canReset);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
+	}
+
+	private boolean isShallowMatch(ILanguageSettingsProvider provider, ILanguageSettingsProvider globalProvider) throws Exception {
+		boolean isMatch = false;
+		if (globalProvider instanceof ILanguageSettingsEditableProvider && provider instanceof ILanguageSettingsEditableProvider) {
+			ILanguageSettingsEditableProvider globalProviderEditable = (ILanguageSettingsEditableProvider) globalProvider;
+			ILanguageSettingsEditableProvider localProviderEditable = (ILanguageSettingsEditableProvider) provider;
+			ILanguageSettingsEditableProvider localClone = localProviderEditable.cloneShallow();
+			ILanguageSettingsEditableProvider globalClone = globalProviderEditable.cloneShallow();
+			isMatch = globalClone.equals(localClone);
+		}
+		return isMatch;
 	}
 
 	/**
@@ -819,7 +859,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			int pos = providers.indexOf(selectedProvider);
 			if (pos>=0) {
 				try {
-					selectedProvider = (ILanguageSettingsEditableProvider) selectedProvider.clone();
+					selectedProvider = selectedProvider.clone();
 					providers.set(pos, selectedProvider);
 					cfgDescription.setLanguageSettingProviders(providers);
 				} catch (CloneNotSupportedException e) {
@@ -881,6 +921,37 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			tableProvidersViewer.update(selectedProvider, null);
 			initializeOptionsPage(selectedProvider, null);
 			displaySelectedOptionPage();
+		} else if (page.isForProject()) {
+			ILanguageSettingsProvider globalProvider = LanguageSettingsManager.getWorkspaceProvider(selectedProvider.getId());
+				if (globalProvider instanceof ILanguageSettingsEditableProvider) {
+					int pos = tableProviders.getSelectionIndex();
+		
+					try {
+						ILanguageSettingsEditableProvider newProvider = ((ILanguageSettingsEditableProvider) globalProvider).cloneShallow();
+						
+						ICConfigurationDescription cfgDescription = getConfigurationDescription();
+						List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+						providers.set(pos, newProvider);
+						cfgDescription.setLanguageSettingProviders(providers);
+		
+						updateData(getResDesc());
+						tableProviders.setSelection(pos);
+						selectedProvider = availableProvidersMap.get(newProvider.getId());
+						tableProvidersViewer.update(selectedProvider, null);
+						initializeOptionsPage(selectedProvider, cfgDescription);
+						displaySelectedOptionPage();
+					} catch (CloneNotSupportedException e) {
+						CUIPlugin.log("Error cloning provider " + ((ILanguageSettingsEditableProvider) globalProvider).getId(), e);
+					}
+				}
+
+//			updateProvidersTable();
+//			updateButtons();
+//
+//			tableProviders.setSelection(pos);
+//			tableProvidersViewer.update(selectedProvider, null);
+//			initializeOptionsPage(selectedProvider, null);
+//			displaySelectedOptionPage();
 		}
 	}
 

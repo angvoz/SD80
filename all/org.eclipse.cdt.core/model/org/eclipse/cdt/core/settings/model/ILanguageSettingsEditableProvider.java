@@ -26,6 +26,7 @@ import org.eclipse.core.resources.IResource;
 public interface ILanguageSettingsEditableProvider extends ILanguageSettingsProvider, Cloneable {
 
 	public void setSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId, List<ICLanguageSettingEntry> entries);
+	public boolean isEmpty();
 	public void clear();
 	
 	public ILanguageSettingsEditableProvider cloneShallow() throws CloneNotSupportedException;

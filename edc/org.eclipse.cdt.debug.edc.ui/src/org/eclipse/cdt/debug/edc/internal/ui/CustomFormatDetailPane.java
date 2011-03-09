@@ -55,7 +55,11 @@ public class CustomFormatDetailPane extends AbstractEDCDetailPane {
 			@Override
 			protected void execute(final DataRequestMonitor<String> rm) {
 				try {
-					rm.setData(customConverter.getValue(expressionDMC));
+					if (customConverter != null) {
+						rm.setData(customConverter.getValue(expressionDMC));
+					} else {
+						rm.setData(null);
+					}
 				} catch (Throwable t) {
 					rm.setStatus(new Status(IStatus.ERROR, EDCDebugUI.PLUGIN_ID, t.getMessage()));
 				}

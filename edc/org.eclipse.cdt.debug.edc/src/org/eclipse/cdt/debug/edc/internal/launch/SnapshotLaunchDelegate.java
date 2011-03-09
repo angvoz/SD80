@@ -58,10 +58,10 @@ public class SnapshotLaunchDelegate extends EDCLaunchDelegate {
 			}
 		}
 		ILaunchManager lm = DebugPlugin.getDefault().getLaunchManager();
-		ILaunchConfigurationType launchType = lm.getLaunchConfigurationType(album.getLaunchTypeID());
+		String launchID = album.getLaunchTypeID();
+		ILaunchConfigurationType launchType = lm.getLaunchConfigurationType(launchID);
 		if (launchType == null) {
-			// Can't launch TODO: Need error or exception
-			return false;
+			throw new CoreException(new Status(Status.ERROR, EDCDebugger.PLUGIN_ID, "Can't launch this snapshot because the required debugger is not installed: " + launchID));
 		}
 		proxyLaunchConfig = findExistingLaunchForAlbum(albumLocation);
 		if (proxyLaunchConfig == null) {

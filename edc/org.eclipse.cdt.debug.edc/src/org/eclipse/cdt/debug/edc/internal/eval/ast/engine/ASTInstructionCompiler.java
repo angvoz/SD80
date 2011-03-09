@@ -519,18 +519,4 @@ public class ASTInstructionCompiler extends ASTVisitor {
 			push(new NoOp(counter));
 		}
 	}
-
-	/**
-	 * Fixup the instruction stream:
-	 * 
-	 * (1) Remove NoOps
-	 * (2) Reduce (possibly internally generated) cast expressions to avoid 
-	 * taking the address of a register or bitfield.
-	 * @param typeEngine 
-	 * 
-	 */
-	public void fixupInstructions(TypeEngine typeEngine) {
-		instructions.removeNoOps();
-		instructions.reduceCasts(typeEngine);
-	}
 }

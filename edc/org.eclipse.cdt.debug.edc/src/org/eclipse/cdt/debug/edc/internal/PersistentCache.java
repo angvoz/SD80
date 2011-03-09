@@ -77,6 +77,9 @@ public class PersistentCache {
 			oos.writeObject(freshness);
 			oos.writeObject(data);
 			fos.close();
+			if (EDCTrace.PERSISTENT_CACHE_TRACE_ON) {
+				EDCTrace.getTrace().trace(null, "Cache flush: " + identifier + " data: " + data);
+			}
 		}
 
 		public void delete() {
@@ -101,12 +104,31 @@ public class PersistentCache {
 		return result;		
 	}
 
-	public <T> T getCachedData(String cacheIdentifier, Class<T> expectedClass, long freshness) {
+	public boolean hasCachedData(String cacheIdentifier) {
+		return caches.containsKey(cacheIdentifier);
+	}
+	
+	synchronized public <T> T getCachedData(String cacheIdentifier, T expectedClass, long freshness) {
+		@SuppressWarnings("unchecked")
+		T result = (T) getCachedData(cacheIdentifier, expectedClass.getClass(), freshness);
+		if (result == null)
+		{
+			putCachedData(cacheIdentifier, (Serializable) expectedClass, freshness);
+			result = expectedClass;
+		}
+		return result;
+	}
+
+	synchronized public <T> T getCachedData(String cacheIdentifier, Class<T> expectedClass, long freshness) {
 	// 	freshness  = 0;
 		CacheEntry cache = caches.get(cacheIdentifier);
 		
 		if (cache == null)
+		{
 			cache = loadCachedData(getDefaultLocation(), cacheIdentifier);
+			if (cache != null)
+				caches.put(cacheIdentifier, cache);
+		}
 		
 		if (cache != null)
 		{
@@ -114,14 +136,21 @@ public class PersistentCache {
 			T result = cache.getData(expectedClass);
 			if (cachedFreshness == freshness && result != null)
 			{
+				if (EDCTrace.PERSISTENT_CACHE_TRACE_ON) {
+					EDCTrace.getTrace().trace(null, "Cache get data: " + cacheIdentifier + " data: " + result);
+				}
 				return result;
 			}
 			else
 			{
+				if (EDCTrace.PERSISTENT_CACHE_TRACE_ON) {
+					EDCTrace.getTrace().trace(null, "Stale data. cachedFreshness: " + cachedFreshness + " freshness: " + result + " cache: " + cache);
+				}
 				caches.remove(cache);
 				cache.delete();
 			}
-		}		
+		}
+		
 		return null;
 	}
 
@@ -156,12 +185,19 @@ public class PersistentCache {
 	{
 		CacheEntry cache = new CacheEntry(cacheIdentifier, data, freshness);
 		caches.put(cacheIdentifier, cache);
+		if (EDCTrace.PERSISTENT_CACHE_TRACE_ON) {
+			EDCTrace.getTrace().trace(null, "Cache put data: " + cacheIdentifier + " data: " + data);
+		}
 	}
 
-	public void flushAll() throws Exception {
+	public void flushAll() {
 		Collection<CacheEntry> allCaches = caches.values();
 		for (CacheEntry entry : allCaches) {
-			entry.flush();
+			try {
+				entry.flush();
+			} catch (Exception e) {
+				EDCDebugger.getMessageLogger().logException(e);
+			}
 		}
 		caches.clear();
 	}

@@ -40,7 +40,7 @@ public interface IUnmangler {
 	 * @throws UnmanglingException if symbol cannot be mangled 
 	 */
 	String unmangle(String symbol) throws UnmanglingException;
-	
+
 	/**
 	 * Unmangle the symbol without args
 	 * @param symbol
@@ -50,4 +50,13 @@ public interface IUnmangler {
 	 */
 	String unmangleWithoutArgs(String symbol) throws UnmanglingException;
 
+
+	/**
+	 * Unmangle a type, which may start at a different point in the BNF tree
+	 * @param symbol
+	 * @return the unmangled type name
+	 * @throws UnmanglingException
+	 * @since 2.0
+	 */
+	String unmangleType(String symbol) throws UnmanglingException;
 }

@@ -45,6 +45,28 @@ import org.eclipse.debug.core.ILaunchManager;
 
 abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 
+	class UncancelableMonitor extends SubProgressMonitor {
+
+		private boolean canceled;
+
+		public UncancelableMonitor(IProgressMonitor monitor, int ticks,
+				int style) {
+			super(monitor, ticks, style);
+			this.canceled = false;
+		}
+
+		@Override
+		public void setCanceled(boolean b) {
+			canceled = b;
+		}
+
+		@Override
+		public boolean isCanceled() {
+			return canceled;
+		}
+		
+	}
+	
 	public EDCLaunchDelegate() {
 		super(false);
 	}
@@ -120,7 +142,7 @@ abstract public class EDCLaunchDelegate extends AbstractCLaunchDelegate2 {
 
 
 			// Create and invoke the final launch sequence to setup the debugger
-			IProgressMonitor subMon2 = new SubProgressMonitor(monitor, 4, SubProgressMonitor.PREPEND_MAIN_LABEL_TO_SUBTASK);
+			IProgressMonitor subMon2 = new UncancelableMonitor(monitor, 4, SubProgressMonitor.PREPEND_MAIN_LABEL_TO_SUBTASK);
 			final Sequence finalLaunchSequence = getFinalLaunchSequence(edcLaunch.getSession().getExecutor(), edcLaunch, subMon2);
 
 			edcLaunch.getSession().getExecutor().execute(finalLaunchSequence);

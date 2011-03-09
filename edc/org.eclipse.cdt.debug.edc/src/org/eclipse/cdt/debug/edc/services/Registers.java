@@ -723,7 +723,7 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
     			throw new CoreException(EDCDebugger.dsfRequestFailedStatus("Exception reading register " + registerDMC.getName(), e));
 			}
 		}
-		throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "TCF Registers Service unavailable."));
+		throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "No data for register " + registerDMC.getName()));
 	}
 
 	/**
@@ -819,8 +819,10 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	public void loadGroupsForContext(IEDCExecutionDMC executionDmc, Element element) throws Exception {
 		// Can't call flushCache here because it does nothing for snapshot
 		// services.
-		registerGroupsPerContext.clear();
-		registerValueCache.clear();
+		String cxtID = ((IEDCDMContext)executionDmc).getID();
+		// It does not hurt if the context is not in the caches.
+		registerGroupsPerContext.remove(cxtID);
+		registerValueCache.remove(cxtID);
 
 		NodeList registerGroups = element.getElementsByTagName(RegisterGroupDMC.REGISTER_GROUP);
 

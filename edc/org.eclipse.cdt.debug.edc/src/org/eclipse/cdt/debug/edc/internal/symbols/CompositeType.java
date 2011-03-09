@@ -32,7 +32,7 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 	
 	// template parameters
 	protected ArrayList<ITemplateParam> templateParams = null;
-	boolean nameIncludesTemplateParams = false;
+	boolean nameIncludesTemplateParams;
 
 	/**
 	 * fields of anonymous union types, with unknown offsets
@@ -50,6 +50,7 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 		this.baseName = name;
 		this.name = prefix + " " + name; //$NON-NLS-1$
 		this.key = key;
+		nameIncludesTemplateParams = name.contains("<"); //$NON-NLS-1$
 	}
 
 	public int getKey() {

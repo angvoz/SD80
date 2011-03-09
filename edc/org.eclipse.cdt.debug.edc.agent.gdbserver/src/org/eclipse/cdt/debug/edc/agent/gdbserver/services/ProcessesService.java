@@ -88,14 +88,10 @@ public class ProcessesService implements IProcesses {
 				file = (String) args[1];
 				commandLine = AgentUtils.toStringArray(args[2]);
 				environment = AgentUtils.toEnvMap(args[3]);
-				boolean attach = false;
-				if (args[4] instanceof Boolean)
-				{
-					attach = ((Boolean) args[4]).booleanValue();
+				boolean attach = ((Boolean) args[4]).booleanValue();
 
-					if (attach) {
-						processIDToAttach = Integer.valueOf(directory);
-					}
+				if (attach) {
+					processIDToAttach = Integer.valueOf(directory);
 				}
 				startDebug(token, attach);
 
@@ -267,13 +263,6 @@ public class ProcessesService implements IProcesses {
 	 */
 	public IToken start(String directory, String file, String[] commandLine, Map<String, String> environment,
 			boolean attach, DoneStart done) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public IToken start(String directory, String file, String[] command_line,
-			Map<String, String> environment, Map<String, Object> params,
-			DoneStart done) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -529,5 +518,12 @@ public class ProcessesService implements IProcesses {
 			fGdbserverProcess.destroy();
 			fGdbserverProcess = null;
 		}
+	}
+
+	public IToken start(String directory, String file, String[] command_line,
+			Map<String, String> environment, Map<String, Object> params,
+			DoneStart done) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

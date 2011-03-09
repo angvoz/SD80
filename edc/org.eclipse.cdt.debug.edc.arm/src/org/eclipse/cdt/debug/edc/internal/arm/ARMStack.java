@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.arm;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -353,16 +354,13 @@ public class ARMStack extends Stack {
 		return frames;
 	}
 
-	private class AddressMapping extends HashMap<IAddress, IAddress> {
-		private static final long serialVersionUID = -4200139520138410612L;
-	}
-
-	private IAddress getFunctionEndAddress(IAddress pcValue,
+	@SuppressWarnings("unchecked")
+	synchronized private IAddress getFunctionEndAddress(IAddress pcValue,
 				IEDCExecutionDMC context, IEDCSymbols symbols, PersistentCache pCache,
 				IEDCModuleDMContext module, String keyPrefix, long modDate) {
 		// Check the persistent cache
 		String key = keyPrefix + FUNCTION_END_ADDRESS_CACHE;
-		AddressMapping cachedMapping = pCache.getCachedData(key, AddressMapping.class, modDate);
+		Map<IAddress, IAddress> cachedMapping = pCache.getCachedData(key, Map.class, modDate);
 		IAddress addr = getRuntimeAddressFromCache(pcValue, module, cachedMapping);
 
 		if (addr == null) {
@@ -375,12 +373,13 @@ public class ARMStack extends Stack {
 		return addr;
 	}
 
-	private IAddress getFunctionStartAddress(IAddress pcValue,
+	@SuppressWarnings("unchecked")
+	synchronized private IAddress getFunctionStartAddress(IAddress pcValue,
 				IEDCExecutionDMC context, IEDCSymbols symbols, PersistentCache pCache,
 				IEDCModuleDMContext module, String keyPrefix, long modDate) {
 		// Check the persistent cache
 		String key = keyPrefix + FUNCTION_START_ADDRESS_CACHE;
-		AddressMapping cachedMapping = pCache.getCachedData(key, AddressMapping.class, modDate);
+		Map<IAddress, IAddress> cachedMapping = pCache.getCachedData(key, Map.class, modDate);
 		IAddress addr = getRuntimeAddressFromCache(pcValue, module, cachedMapping);
 
 		if (addr == null) {
@@ -393,14 +392,14 @@ public class ARMStack extends Stack {
 		return addr;
 	}
 
-	private IAddress getAndCacheRuntimeAddress(IAddress pcValueRuntimeAddress,
-			IAddress mapLinkAddress, String cacheKey, AddressMapping cachedMapping,
+	synchronized private IAddress getAndCacheRuntimeAddress(IAddress pcValueRuntimeAddress,
+			IAddress mapLinkAddress, String cacheKey, Map<IAddress, IAddress> cachedMapping,
 			PersistentCache armPluginCache, IEDCModuleDMContext module, long modDate) {
 		// put it in the cache
 		if (cachedMapping == null)
-			cachedMapping = new AddressMapping();
+			cachedMapping = new HashMap<IAddress, IAddress>();
 		cachedMapping.put(module.toLinkAddress(pcValueRuntimeAddress), mapLinkAddress);
-		armPluginCache.putCachedData(cacheKey, cachedMapping, modDate);
+		armPluginCache.putCachedData(cacheKey, (Serializable) cachedMapping, modDate);
 		return module.toRuntimeAddress(mapLinkAddress);
 	}
 
@@ -418,7 +417,7 @@ public class ARMStack extends Stack {
 	}
 
 	private static IAddress getRuntimeAddressFromCache(IAddress pcValueRuntimeAddress,
-			IEDCModuleDMContext module, AddressMapping mapping) {
+			IEDCModuleDMContext module, Map<IAddress, IAddress> mapping) {
 		if (mapping != null)
 		{
 			IAddress mapLinkAddress = mapping.get(module.toLinkAddress(pcValueRuntimeAddress));
@@ -434,7 +433,7 @@ public class ARMStack extends Stack {
 
 		int instructionSize = thumbMode ? 2 : 4;
 		
-		long bytesToRead = 128 * instructionSize; // max 128 instructions
+		long bytesToRead = 250 * instructionSize; // max 200 instructions
 		
 		// for cases where the PC is small, only read back to 0x0
 		if (bytesToRead > pcValue.getValue().longValue()) {

@@ -265,12 +265,16 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 					/*
 					 * there could be multiple address ranges for the same
 					 * source line. e.g. for templates or inlined functions. if
-					 * so we need to set breakpoints on all locations
+					 * so, we need only set a breakpoint on the first location
 					 */
-					for (IAddress a : codeLine.getAddress()) {
+					IAddress[] addresses = codeLine.getAddress();
+					if (addresses.length > 0) {
+						IAddress address = addresses[0];
+						for (int i = 1; i < addresses.length; i++)
+							if (addresses[i].getValue().longValue() < address.getValue().longValue())
+								address = addresses[i];
 						Map<String, Object> targetAttr = new HashMap<String, Object>(attributes);
-						targetAttr.put(Breakpoints.RUNTIME_ADDRESS, a.toString(16));
-						
+						targetAttr.put(Breakpoints.RUNTIME_ADDRESS, address.toString(16));
 						targetBPAttrs.add(targetAttr);
 					}
 

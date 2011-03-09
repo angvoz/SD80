@@ -33,6 +33,10 @@ public class TestUnmanglerEABI extends TestCase {
 		return um.unmangle(symbol);
 	}
 	
+	protected String unmangleType(String symbol) throws UnmanglingException {
+		return um.unmangleType(symbol);
+	}
+
 	@Test
 	public void testNotMangled() throws UnmanglingException {
 		assertNull(unmangle(null));
@@ -140,6 +144,38 @@ public class TestUnmanglerEABI extends TestCase {
 		assertEquals("operator <<(::std::basic_ostream<char,::std::char_traits<char> >&,::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > const&)", unmangle("_ZlsRSoRKSs"));
 		assertEquals("::std::__codecvt_abstract_base<char,char,int>::~__codecvt_abstract_base()", unmangle("_ZNSt23__codecvt_abstract_baseIcciED0Ev"));
 	}
+
+	@Test
+	public void testStdTypeSubstitutions() throws UnmanglingException {
+		assertEquals("::std::string", unmangleType("_ZSt6string"));
+		assertEquals("::std::wstring", unmangleType("_ZSt7wstring"));
+		assertEquals("::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> >",
+					 unmangleType("_ZSs"));		
+	}
+
+	@Test
+	public void testStdTemplateSubstitutions() throws UnmanglingException {
+		assertEquals("::std::allocator<::std::pair<int const,::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > > >",
+					 unmangleType("_ZSaISt4pairIKiSsEE"));
+		assertEquals("::std::allocator<::std::pair<::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > const,Json::Value> >",
+					 unmangleType("_ZSaISt4pairIKSsN4Json5ValueEEE"));
+
+		assertEquals("::std::less<int>", unmangleType("_ZSt4lessIiE"));
+		assertEquals("::std::less<::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > >",
+					 unmangleType("_ZSt4lessISs"));
+
+		assertEquals("::std::map<int,::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> >,::std::less<int>,::std::allocator<::std::pair<int const,::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > > > >",
+					 unmangleType("_ZSt3mapIiSsSt4lessIiESaISt4pairIKiSsEEE"));
+
+		assertEquals("::std::map<::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> >,Json::Value,::std::less<::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > >,::std::allocator<::std::pair<::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > const,Json::Value> > >",
+					 unmangleType("_ZSt3mapISsN4Json5ValueESt4lessISsESaISt4pairIKSsS1_EEE"));
+
+		assertEquals("::std::pair<::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > const,Json::Value>",
+					 unmangleType("_ZSt4pairIKSsN4Json5ValueEE"));
+		assertEquals("::std::pair<int const,::std::basic_string<char,::std::char_traits<char>,::std::allocator<char> > >",
+					 unmangleType("_ZSt4pairIKiSsE"));
+	}
+	
 	@Test
 	public void testExtraStuff() throws UnmanglingException {
 		assertEquals("_ZdaPv", um.undecorate("_ZdaPv@@GLIBCXX_3.4"));

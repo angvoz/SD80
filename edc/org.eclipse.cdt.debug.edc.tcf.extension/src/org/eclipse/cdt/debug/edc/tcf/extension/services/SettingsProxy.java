@@ -86,7 +86,7 @@ public class SettingsProxy implements ISettings {
 				 if (error == null) {
 					 assert args.length == 1;
 					 if (args[0] != null)
-						 error = new IOException(args[0].toString());
+						 error = toError(args[0]);
 					 else
 						 error = null;
                 }

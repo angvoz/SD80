@@ -3158,9 +3158,11 @@ public class DwarfInfoReader {
 			if (actualForm == DwarfConstants.DW_FORM_data4) {
 				// location list
 				Collection<LocationEntry> entryList = getLocationRecord(locationValue.getValueAsLong());
-				return new LocationList(entryList.toArray(new LocationEntry[entryList.size()]),
-						exeReader.getByteOrder(),
-						currentCUHeader.addressSize, currentParentScope);
+				if (entryList != null) {
+					return new LocationList(entryList.toArray(new LocationEntry[entryList.size()]),
+							exeReader.getByteOrder(),
+							currentCUHeader.addressSize, currentParentScope);
+				}
 			} else if (actualForm == DwarfConstants.DW_FORM_block
 					|| actualForm == DwarfConstants.DW_FORM_block1
 					|| actualForm == DwarfConstants.DW_FORM_block2

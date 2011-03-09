@@ -30,29 +30,37 @@ public class Alignment {
 	public static final String EXCEPTION_SPECIFICATION = "exceptionSpecification"; //$NON-NLS-1$
 	public static final String FIELD_REFERENCE = "fieldReference"; //$NON-NLS-1$
 	public static final String FOR = "for"; //$NON-NLS-1$
-	public static final String MACRO_ARGUMENTS = "macroArguments"; //$NON-NLS-1$
 	public static final String LIST_ELEMENTS_PREFIX = "listElements_"; //$NON-NLS-1$
-
-	// name of alignment
+	public static final String LIST_FALLBACK_TRAP = "listFallbackTrap"; //$NON-NLS-1$
+	public static final String MACRO_ARGUMENTS = "macroArguments"; //$NON-NLS-1$
+	public static final String TRAILING_TEXT = "trailingText"; //$NON-NLS-1$
+	
+	/** The name of the alignment */
 	public String name;
 
-	// link to enclosing alignment
+	/** Link to the enclosing alignment. */
 	public Alignment enclosing;
 	 
-	// start location of this alignment
+	/** Start location of this alignment. */
 	public Location location;
+
+	/**
+	 * Tail formatter is an encapsulation mechanism for formatting of the trailing text that should
+	 * be kept together with the last element of a list. 
+	 */
+	public Runnable tailFormatter;
 	
-	// indentation management
+	// Indentation management
 	public int fragmentIndex;
 	public int fragmentCount;
 	public int[] fragmentIndentations;
 	public boolean needRedoColumnAlignment;
 
-	// chunk management
+	// Chunk management
 	public int chunkStartIndex;
 	public int chunkKind;
 
-	// break management
+	// Break management
 	public int originalIndentationLevel;
 	public int breakIndentationLevel;
 	public int shiftBreakIndentationLevel;
@@ -68,7 +76,7 @@ public class Alignment {
 	public static final int M_INDENT_ON_COLUMN = 2; // if bit set, broken fragments will be aligned on current location column (default is to break at current indentation level)
 	public static final int	M_INDENT_BY_ONE = 4; // if bit set, broken fragments will be indented one level below current (not using continuation indentation)
 
-	// split modes can be combined either with M_FORCE or M_INDENT_ON_COLUMN
+	// Split modes can be combined either with M_FORCE or M_INDENT_ON_COLUMN
 	
 	/** foobar(#fragment1, #fragment2, <ul>
 	 *  <li>    #fragment3, #fragment4 </li>
@@ -113,7 +121,7 @@ public class Alignment {
 	//64+32
 	//64+32+16
 	
-	// mode controlling column alignments
+	// Mode controlling column alignments
 	/**
 	 * <table BORDER COLS=4 WIDTH="100%" >
 	 * <tr><td>#fragment1A</td>            <td>#fragment2A</td>       <td>#fragment3A</td>  <td>#very-long-fragment4A</td></tr>
@@ -129,23 +137,24 @@ public class Alignment {
 	
 	public static final int SPLIT_MASK = M_ONE_PER_LINE_SPLIT | M_NEXT_SHIFTED_SPLIT | M_COMPACT_SPLIT | M_COMPACT_FIRST_BREAK_SPLIT | M_NEXT_PER_LINE_SPLIT;
 
-	// alignment tie-break rules - when split is needed, will decide whether innermost/outermost alignment is to be chosen
+	// Alignment tie-break rules - when split is needed, will decide whether innermost/outermost alignment is to be chosen
 	public static final int R_OUTERMOST = 1;
 	public static final int R_INNERMOST = 2;
 	public int tieBreakRule;
 	
-	// alignment effects on a per fragment basis
+	// Alignment effects on a per fragment basis
 	public static int NONE = 0;
 	public static int BREAK = 1;
 	
-	// chunk kind
+	// Chunk kind
 	public static final int CHUNK_FIELD = 1;
 	public static final int CHUNK_METHOD = 2;
 	public static final int CHUNK_TYPE = 3;
 	public static final int CHUNK_ENUM = 4;
 
-	// location to align and break on.
-	public Alignment(String name, int mode, int tieBreakRule, Scribe scribe, int fragmentCount, int sourceRestart, int continuationIndent) {
+	// Location to align and break on.
+	public Alignment(String name, int mode, int tieBreakRule, Scribe scribe, int fragmentCount,
+			int sourceRestart, int continuationIndent) {
 		this.name = name;
 		this.location = new Location(scribe, sourceRestart);
 		this.mode = mode;
@@ -166,7 +175,7 @@ public class Alignment {
 			// indent broken fragments at next indentation level, based on current column
 			this.breakIndentationLevel = this.scribe.getNextIndentationLevel(currentColumn);
 			if (this.breakIndentationLevel == this.location.outputIndentationLevel) {
-				this.breakIndentationLevel += (continuationIndent * indentSize);
+				this.breakIndentationLevel += continuationIndent * indentSize;
 			}
 		} else if ((mode & M_INDENT_BY_ONE) != 0) {
 			// indent broken fragments exactly one level deeper than current indentation
@@ -214,7 +223,7 @@ public class Alignment {
 				}
 			}
 			// backtrack only once all fragments got checked
-			if (this.needRedoColumnAlignment && this.fragmentIndex == this.fragmentCount-1) { // alignment too small
+			if (this.needRedoColumnAlignment && this.fragmentIndex == this.fragmentCount - 1) { // alignment too small
 //				if (CodeFormatterVisitor.DEBUG) {
 //					System.out.println("ALIGNMENT TOO SMALL");
 //					System.out.println(this);
@@ -311,8 +320,7 @@ public class Alignment {
 			 */
 			case M_NEXT_PER_LINE_SPLIT:
 				if (this.fragmentBreaks[0] == NONE) {
-					if (this.fragmentCount > 1
-							&& this.fragmentBreaks[1] == NONE) {
+					if (this.fragmentCount > 1 && this.fragmentBreaks[1] == NONE) {
 						if ((this.mode & M_INDENT_ON_COLUMN) != 0) {
 							this.fragmentIndentations[0] = this.breakIndentationLevel;
 						}
@@ -403,7 +411,7 @@ public class Alignment {
 				.append(i)
 				.append(": ")	//$NON-NLS-1$
 				.append("<break: ")	//$NON-NLS-1$
-				.append(this.fragmentBreaks[i] > 0 ? "YES" : "NO")	//$NON-NLS-1$	//$NON-NLS-2$
+				.append(this.fragmentBreaks[i] > 0 ? "YES" : "NO")	//$NON-NLS-1$ //$NON-NLS-2$
 				.append(">")	//$NON-NLS-1$
 				.append("<indent: ")	//$NON-NLS-1$
 				.append(this.fragmentIndentations[i])

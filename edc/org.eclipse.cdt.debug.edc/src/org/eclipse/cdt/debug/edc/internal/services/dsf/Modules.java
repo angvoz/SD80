@@ -43,6 +43,7 @@ import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
 import org.eclipse.cdt.debug.edc.snapshot.ISnapshotContributor;
 import org.eclipse.cdt.debug.edc.symbols.IEDCSymbolReader;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider.ILineAddresses;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -70,7 +71,9 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 
 	public static final String MODULE = "module";
 	public static final String SECTION = "section";
+
 	private static final String ADDRESS_RANGE_CACHE = "_address_range";
+	private static final String LINE_ADDRESSES_CACHE = "_line_addresses";
 	private static final String NO_FILE_CACHE = "_no_file";
 
 	/**
@@ -119,6 +122,62 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		}
 	}
 
+	public static class EDCLineAddresses implements ILineAddresses, Serializable {
+
+		private static final long serialVersionUID = 3263812332106024057L;
+
+		private int lineNumber;
+		private List<IAddress>	addresses;
+		
+		public EDCLineAddresses(int lineNumber, IAddress addr) {
+			super();
+			this.lineNumber = lineNumber;
+			addresses = new ArrayList<IAddress>();
+			addresses.add(addr);
+		}
+
+		public EDCLineAddresses(int lineNumber, List<IAddress> addrs) {
+			super();
+			this.lineNumber = lineNumber;
+			addresses = new ArrayList<IAddress>(addrs);
+		}
+
+		public int getLineNumber() {
+			return lineNumber;
+		}
+
+		public IAddress[] getAddress() {
+			return addresses.toArray(new IAddress[addresses.size()]);
+		}
+
+		/**
+		 * add addresses mapped to the line.
+		 * @param addr
+		 */
+		public void addAddress(List<IAddress> addrs) {
+			addresses.addAll(addrs);
+		}
+
+		/**
+		 * add addresses mapped to the line.
+		 * @param addrs
+		 */
+		public void addAddress(IAddress[] addrs) {
+			for (IAddress a : addrs)
+				addresses.add(a);
+		}
+
+		@Override
+		public String toString() {
+			String addrs = "";
+			for (IAddress a : addresses) {
+				addrs += a.toHexAddressString() + " ";
+			}
+			return "EDCLineAddresses [lineNumber=" + lineNumber
+					+ ", addresses=(" + addrs + ")]";
+		}
+	}
+	
 	public class ModuleDMC extends DMContext implements IEDCModuleDMContext, ISnapshotContributor,
 	// This means we'll install existing breakpoints
 			// for each newly loaded module
@@ -723,6 +782,176 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 	public void calcLineInfo(ISymbolDMContext symCtx, IAddress address, DataRequestMonitor<LineInfo[]> rm) {
 		// TODO Auto-generated method stub
 
+	}
+
+	/**
+	 * Given a source line (let's call it anchor), find the line closest to the
+	 * anchor in the neighborhood (including the anchor itself) that has machine
+	 * code. If the anchor itself has code, it's returned. Otherwise neighbor
+	 * lines both above and below the anchor will be checked. If the closest
+	 * line above the anchor and the closest line below the anchor have the same
+	 * distance from the anchor, the one below will be selected.
+	 * 
+	 * This is mainly used in setting breakpoint at anchor line.
+	 * 
+	 * @param symCtx
+	 *            the symbol context in which to perform the lookup. It can be
+	 *            an execution context (e.g. a process), or a module (exe or
+	 *            dll) in a process.
+	 * @param file
+	 *            the file that contains the source lines in question.
+	 * @param anchor
+	 *            line number of the anchor source line.
+	 * @param neighbor_limit
+	 *            specify the limit of the neighborhood: up to this number of
+	 *            lines above the anchor and up to this number of lines below
+	 *            the anchor will be checked if needed. But the check will never
+	 *            go beyond the source file. When the limit is zero, no neighbor
+	 *            lines will be checked. If the limit has value of -1, it means
+	 *            the actual limit is the source file.
+	 * @param rm
+	 *            contains an object of {@link ILineAddresses} if the line with
+	 *            code is found. And addresses in it are runtime addresses. The
+	 *            RM will contain error status otherwise.
+	 */
+	public void findClosestLineWithCode(ISymbolDMContext symCtx, String file, int anchor, int neighbor_limit,
+			DataRequestMonitor<ILineAddresses> rm) {
+		IModuleDMContext[] moduleList = null;
+
+		if (symCtx instanceof IEDCExecutionDMC) {
+			String symContextID = ((IEDCDMContext) symCtx).getID();
+			moduleList = getModulesForContext(symContextID);
+		} else if (symCtx instanceof IModuleDMContext) {
+			moduleList = new IModuleDMContext[1];
+			moduleList[0] = (IModuleDMContext) symCtx;
+		} else {
+			// should not happen
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, MessageFormat.format(
+					"Unknown class implementing ISymbolDMContext : {0}", symCtx.getClass().getName()), null));
+			rm.done();
+			return;
+		}
+
+		EDCLineAddresses result = null;
+		
+		for (IModuleDMContext module : moduleList) {
+			ModuleDMC mdmc = (ModuleDMC) module;
+			IEDCSymbolReader reader = mdmc.getSymbolReader();
+
+			if (reader == null) 
+				continue;
+
+			List<ILineAddresses> codeLines = null;
+			
+			Map<String, List<ILineAddresses>> cache = new HashMap<String, List<ILineAddresses>>();
+			// Check the persistent cache
+			String cacheKey = reader.getSymbolFile().toOSString() + LINE_ADDRESSES_CACHE;
+			String noFileCacheKey = reader.getSymbolFile().toOSString() + NO_FILE_CACHE;
+			@SuppressWarnings("unchecked")
+			Set<String> noFileCachedData = EDCDebugger.getDefault().getCache().getCachedData(noFileCacheKey, Set.class, reader.getModificationDate());
+			if (noFileCachedData != null && noFileCachedData.contains(file))
+				continue; // We have already determined that this file is not used by this module, don't bother checking again.
+			
+			@SuppressWarnings("unchecked")
+			Map<String, List<ILineAddresses>> cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
+			if (cachedData != null)
+			{
+				cache = cachedData;
+				codeLines = cachedData.get(file + anchor);
+			}
+			
+			if (codeLines == null)	// cache missed
+			{
+				if (! reader.getModuleScope().getModuleLineEntryProvider().hasSourceFile(PathUtils.createPath(file)))
+				{ // If this file is not used by this module, cache it so we can avoid searching it again.
+					if (noFileCachedData == null)
+						noFileCachedData = new HashSet<String>();
+					noFileCachedData.add(file);
+					EDCDebugger.getDefault().getCache().putCachedData(noFileCacheKey, (Serializable) noFileCachedData, reader.getModificationDate());				
+					continue;
+				}
+			
+				codeLines = reader.getModuleScope().getModuleLineEntryProvider().findClosestLineWithCode(
+						PathUtils.createPath(file),	anchor, neighbor_limit);
+
+				if (codeLines == null)
+					continue;	// should not happen
+				
+				// Cache code lines (with their link addresses), whether we find it or not.
+				cache.put(file + anchor, codeLines);
+				EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cache, reader.getModificationDate());				
+			}
+
+			// convert addresses to runtime ones.
+			//
+			List<EDCLineAddresses> runtimeCLs = new ArrayList<Modules.EDCLineAddresses>(codeLines.size());
+			for (ILineAddresses cl : codeLines) {
+				List<IAddress> rt_addrs = new ArrayList<IAddress>(1);
+				for (IAddress a : cl.getAddress())
+					rt_addrs.add(mdmc.toRuntimeAddress(a));
+				runtimeCLs.add(new EDCLineAddresses(cl.getLineNumber(), rt_addrs));
+			}
+			
+			for (ILineAddresses l : runtimeCLs) 
+				result = selectCodeLine(result, l, anchor);
+		}
+
+		if (result != null) {
+			rm.setData(result);
+		} else {
+			/*
+			 * we try to set the breakpoint for every module since we don't know
+			 * which one the file is in. we report this error though if the file
+			 * isn't in the module, and let the caller handle the error.
+			 */
+			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, MessageFormat.format(
+					"Fail to find address sround source line {0}: line# {1}", file, anchor), null));
+		}
+
+		rm.done();
+	}
+	
+	private EDCLineAddresses selectCodeLine(EDCLineAddresses prevChoice,
+			ILineAddresses newLine, int anchor) {
+		
+		if (prevChoice == null)
+			prevChoice = (EDCLineAddresses)newLine;
+		else {
+			if (newLine.getLineNumber() == prevChoice.getLineNumber()) {
+				// merge the addresses. Same source line has different addresses in different module.
+				prevChoice.addAddress(newLine.getAddress());
+			}
+			else {
+				// code line is different for the anchor in different module
+				if (newLine.getLineNumber() == anchor) 
+					// always honor anchor itself
+					prevChoice = (EDCLineAddresses)newLine;
+				else if (prevChoice.getLineNumber() != anchor) {
+					/*
+					 * Two different code lines are found (from different
+					 * modules or different CUs) and neither of them is anchor.
+					 * Don't bother returning both of them as that would cause
+					 * unnecessary complexity to breakpoint setting as it means
+					 * moving breakpoint set on anchor line to two different
+					 * lines. Just keep the one closer to anchor. And user will
+					 * see the breakpoint works in one module (or CU) but not
+					 * the other.
+					 */
+					int new_distance = Math.abs(newLine.getLineNumber() - anchor);
+					int prev_distance = Math.abs(prevChoice.getLineNumber() - anchor);
+					
+					if (new_distance < prev_distance)
+						prevChoice = (EDCLineAddresses)newLine;
+					else if (new_distance == prev_distance) {
+						// Same distance from anchor, choose the one below anchor
+						if (newLine.getLineNumber() > prevChoice.getLineNumber())
+							prevChoice = (EDCLineAddresses)newLine;
+					}
+				}
+			}
+		}
+		
+		return prevChoice;
 	}
 
 	/**

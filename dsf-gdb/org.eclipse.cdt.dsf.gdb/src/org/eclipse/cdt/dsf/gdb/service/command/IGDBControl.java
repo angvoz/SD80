@@ -28,14 +28,24 @@ public interface IGDBControl extends IMICommandControl {
 
 	void createInferiorProcess();
 
-	boolean isConnected();
-
-	void setConnected(boolean connected);
-
 	AbstractCLIProcess getCLIProcess();
 
 	MIInferiorProcess getInferiorProcess();
 
+
+	/**
+	 * This method should be called once and only once, during the launch,
+	 * to complete the initialization.  It will perform the final steps
+	 * to configure GDB for the type of debugging session chosen by the
+	 * user.
+	 * 
+	 * @param requestMonitor The requestMonitor indicating that the
+	 *                       final steps if initialization are completed.
+	 *                       
+	 * @since 4.0
+	 */
+	void completeInitialization(RequestMonitor requestMonitor);
+	
 	/**
 	 * @since 2.0
 	 */

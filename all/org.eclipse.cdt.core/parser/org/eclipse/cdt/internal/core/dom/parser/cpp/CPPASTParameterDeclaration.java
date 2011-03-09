@@ -1,13 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2010 IBM Corporation and others.
+ * Copyright (c) 2004, 2011 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    John Camelon (IBM) - Initial API and implementation
- *    Markus Schorn (Wind River Systems)
+ *     John Camelon (IBM) - Initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.parser.cpp;
 
@@ -26,7 +26,6 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.semantics.CPPVisitor;
  * Function parameter or non-type template parameter declaration.
  */
 public class CPPASTParameterDeclaration extends ASTNode implements ICPPASTParameterDeclaration, IASTAmbiguityParent {
-
     private IASTDeclSpecifier fDeclSpec;
     private ICPPASTDeclarator fDeclarator;
     
@@ -43,10 +42,17 @@ public class CPPASTParameterDeclaration extends ASTNode implements ICPPASTParame
 	}
 
 	public CPPASTParameterDeclaration copy() {
+		return copy(CopyStyle.withoutLocations);
+	}
+
+	public CPPASTParameterDeclaration copy(CopyStyle style) {
 		CPPASTParameterDeclaration copy = new CPPASTParameterDeclaration();
-		copy.setDeclSpecifier(fDeclSpec == null ? null : fDeclSpec.copy());
-		copy.setDeclarator(fDeclarator == null ? null : fDeclarator.copy());
+		copy.setDeclSpecifier(fDeclSpec == null ? null : fDeclSpec.copy(style));
+		copy.setDeclarator(fDeclarator == null ? null : fDeclarator.copy(style));
 		copy.setOffsetAndLength(this);
+		if (style == CopyStyle.withLocations) {
+			copy.setCopyLocation(this);
+		}
 		return copy;
 	}
 
@@ -82,9 +88,9 @@ public class CPPASTParameterDeclaration extends ASTNode implements ICPPASTParame
 	public boolean accept( ASTVisitor action ){
 		if (action.shouldVisitParameterDeclarations) {
 			switch (action.visit((IASTParameterDeclaration) this)) {
-	            case ASTVisitor.PROCESS_ABORT : return false;
-	            case ASTVisitor.PROCESS_SKIP  : return true;
-	            default : break;
+	            case ASTVisitor.PROCESS_ABORT: return false;
+	            case ASTVisitor.PROCESS_SKIP: return true;
+	            default: break;
 	        }
 		}
         

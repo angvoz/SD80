@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2010 QNX Software Systems and others.
+ * Copyright (c) 2000, 2011 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -29,6 +29,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.debug.service.command.ICommand;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlDMContext;
+import org.eclipse.cdt.dsf.gdb.service.IGDBTraceControl.ITraceRecordDMContext;
 import org.eclipse.cdt.dsf.gdb.service.IGDBTraceControl.ITraceTargetDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
@@ -46,6 +47,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.CLIRecord;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLISource;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIThread;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLITrace;
+import org.eclipse.cdt.dsf.mi.service.command.commands.CLITraceDump;
 import org.eclipse.cdt.dsf.mi.service.command.commands.CLIUnsetEnv;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIAddInferior;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIBreakAfter;
@@ -68,6 +70,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIDataWriteMemory;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIEnablePrettyPrinting;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIEnvironmentCD;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIEnvironmentDirectory;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIExecArguments;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIExecContinue;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIExecFinish;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIExecInterrupt;
@@ -103,6 +106,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBShowExitCode;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInferiorTTYSet;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExec;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExecConsole;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExecConsoleKill;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIListFeatures;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIListThreadGroups;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIRemoveInferior;
@@ -143,12 +147,12 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIVarSetUpdateRange;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIVarShowAttributes;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIVarShowFormat;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIVarUpdate;
-import org.eclipse.cdt.dsf.mi.service.command.commands.MIExecArguments;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLICatchInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLIInfoProgramInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLIInfoSharedLibraryInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLIInfoThreadsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLIThreadInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.CLITraceDumpInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.CLITraceInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIAddInferiorInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakInsertInfo;
@@ -264,6 +268,11 @@ public class CommandFactory {
 
 	public ICommand<CLITraceInfo> createCLITrace(IBreakpointsTargetDMContext ctx, String location, String condition) {
 		return new CLITrace(ctx, location, condition);
+	}
+
+	/** @since 4.0 */
+	public ICommand<CLITraceDumpInfo> createCLITraceDump(ITraceRecordDMContext ctx) {
+		return new CLITraceDump(ctx);
 	}
 
 	public ICommand<MIInfo> createCLIUnsetEnv(ICommandControlDMContext ctx) {
@@ -630,6 +639,11 @@ public class CommandFactory {
 	
 	public ICommand<MIInfo> createMIInterpreterExecConsole(IDMContext ctx, String cmd) {
 		return new MIInterpreterExecConsole<MIInfo>(ctx, cmd);
+	}
+
+	/** @since 4.0 */
+	public ICommand<MIInfo> createMIInterpreterExecConsoleKill(IMIContainerDMContext ctx) {
+		return new MIInterpreterExecConsoleKill(ctx);
 	}
 
 	/** @since 4.0 */

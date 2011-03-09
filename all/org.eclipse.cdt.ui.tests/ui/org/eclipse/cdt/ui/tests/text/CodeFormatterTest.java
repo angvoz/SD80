@@ -227,8 +227,8 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//
 	//void test() {
 	//    ClassWithALongName* variable_with_a_long_name;
-	//    for (ClassWithALongName::Iterator
-	//            iter_for_class_with_a_long_name = variable_with_a_long_name->getIterator();
+	//    for (ClassWithALongName::Iterator iter_for_class_with_a_long_name =
+	//            variable_with_a_long_name->getIterator();
 	//            !iter_for_class_with_a_long_name.isDone();
 	//            iter_for_class_with_a_long_name.next()) {
 	//    }
@@ -627,9 +627,8 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//
 	//void test() {
 	//    ClassWithALongName* variable_with_a_long_name;
-	//    ClassWithALongName* another_variable =
-	//            variable_with_a_long_name->methodWithALongName()
-	//                    ->anotherMethodWithALongName();
+	//    ClassWithALongName* another_variable = variable_with_a_long_name
+	//            ->methodWithALongName()->anotherMethodWithALongName();
 	//}
 	public void testMemberAccess() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
@@ -953,6 +952,113 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
+	//void f1(const char* long_parameter_name, int very_looooooooooong_parameter_name, int another_parameter_name );
+	//void f2(const char* long_parameter_name,int very_loooooooooooong_parameter_name, int another_parameter_name )  ;
+	//void f3(const char* long_parameter_name,int very_loooooooooooong_parameter_name,int very_loong_parameter_name)  ;
+	//void f4(const char* long_parameter_name, int very_loooooooooooong_parameter_name,int very_looong_parameter_name)  ;
+
+	//void f1(const char* long_parameter_name, int very_looooooooooong_parameter_name,
+	//        int another_parameter_name);
+	//void f2(const char* long_parameter_name,
+	//        int very_loooooooooooong_parameter_name, int another_parameter_name);
+	//void f3(const char* long_parameter_name,
+	//        int very_loooooooooooong_parameter_name, int very_loong_parameter_name);
+	//void f4(const char* long_parameter_name,
+	//        int very_loooooooooooong_parameter_name,
+	//        int very_looong_parameter_name);
+	public void testFunctionDeclaration() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_PARAMETERS_IN_METHOD_DECLARATION,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//const char* function_name1(const char* parameter_name, const char* another_parameter_name,
+	//int very_loooooooooooooooooooooooong_parameter_name);
+	//const char* function_name2(const char* parameter_name, const char* another_parameter_name,
+	//int very_looooooooooooooooooooooooong_parameter_name);
+
+	//const char* function_name1(const char* parameter_name,
+	//                           const char* another_parameter_name,
+	//                           int very_loooooooooooooooooooooooong_parameter_name);
+	//const char* function_name2(
+	//        const char* parameter_name, const char* another_parameter_name,
+	//        int very_looooooooooooooooooooooooong_parameter_name);
+	public void testFunctionDeclarationFallbackFormat() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_PARAMETERS_IN_METHOD_DECLARATION,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//#define ABSTRACT = 0
+	//
+	//class A {
+	//    virtual bool function_with_a_loooooong_name(const char* parameter) ABSTRACT;
+	//    virtual bool function_with_a_looooooong_name(const char* parameter) ABSTRACT;
+	//};
+
+	//#define ABSTRACT = 0
+	//
+	//class A {
+	//    virtual bool function_with_a_loooooong_name(const char* parameter) ABSTRACT;
+	//    virtual bool function_with_a_looooooong_name(const char* parameter)
+	//            ABSTRACT;
+	//};
+	public void testFunctionDeclarationTrailingMacro() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_PARAMETERS_IN_METHOD_DECLARATION,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//void f1(const char* long_parameter_name,int very_looooooooong_parameter_name){}
+	//void f2(const char* long_parameter_name,int very_loooooooooong_parameter_name){}
+
+	//void f1(const char* long_parameter_name, int very_looooooooong_parameter_name) {
+	//}
+	//void f2(const char* long_parameter_name,
+	//        int very_loooooooooong_parameter_name) {
+	//}
+	public void testFunctionDefinition() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_PARAMETERS_IN_METHOD_DECLARATION,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//int f1(int a, int b, int c, int d, int e, int f, int g);
+	//int f2(int a, int b, int c, int d, int e, int f, int g);
+	//
+	//void test() {
+	//f1(100000000,200000000,300000000,400000000,500000000,600000000,70000);
+	//f1(100000000,200000000,300000000,400000000,500000000,600000000,700000);
+	//f1(100000,200000,300000,400000,500000,600000,f2(1,2,3,4,5,6,7));
+	//f1(100000,200000,300000,400000,500000,600000,f2(1,2,3,4,5,6,70));
+	//f1(100000,200000,300000,400000,500000,f2(10,20,30,40,50,60,7000),700000);
+	//f1(100000,200000,300000,400000,500000,f2(10,20,30,40,50,60,70000),700000);
+	//}
+
+	//int f1(int a, int b, int c, int d, int e, int f, int g);
+	//int f2(int a, int b, int c, int d, int e, int f, int g);
+	//
+	//void test() {
+	//    f1(100000000, 200000000, 300000000, 400000000, 500000000, 600000000, 70000);
+	//    f1(100000000, 200000000, 300000000, 400000000, 500000000, 600000000,
+	//            700000);
+	//    f1(100000, 200000, 300000, 400000, 500000, 600000, f2(1, 2, 3, 4, 5, 6, 7));
+	//    f1(100000, 200000, 300000, 400000, 500000, 600000,
+	//            f2(1, 2, 3, 4, 5, 6, 70));
+	//    f1(100000, 200000, 300000, 400000, 500000, f2(10, 20, 30, 40, 50, 60, 7000),
+	//            700000);
+	//    f1(100000, 200000, 300000, 400000, 500000,
+	//            f2(10, 20, 30, 40, 50, 60, 70000), 700000);
+	//}
+	public void testFunctionCall() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
 	//#define MY_MACRO int a; \
 	//    int b; \
 	//    int c();
@@ -977,6 +1083,33 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//	~asdf();
 	//};
 	public void testMacroWithMultipleDeclarations_Bug242053() throws Exception {
+		assertFormatterResult();
+	}
+
+	//#define STREAM GetStream()
+	//class Stream {
+	//Stream& operator <<(const char*);
+	//};
+	//Stream GetStream();
+	//
+	//void test() {
+	// // comment
+	//STREAM << "text " << "text " << "text " << "text " << "text " << "text " << "text " << "text ";
+	//}
+
+	//#define STREAM GetStream()
+	//class Stream {
+	//    Stream& operator <<(const char*);
+	//};
+	//Stream GetStream();
+	//
+	//void test() {
+	//    // comment
+	//    STREAM << "text " << "text " << "text " << "text " << "text " << "text "
+	//            << "text " << "text ";
+	//}
+	public void testMacroAfterComment() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
 		assertFormatterResult();
 	}
 
@@ -1367,6 +1500,26 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
+	//#define MACRO(a, b) while (a) b
+	//bool f();
+	//void g();
+	//void test() {
+	//MACRO(f(), g());
+	//int i = 0;
+	//}
+
+	//#define MACRO(a, b) while (a) b
+	//bool f();
+	//void g();
+	//void test() {
+	//    MACRO(f(), g());
+	//    int i = 0;
+	//}
+	public void testMacroStatement() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
 	//bool member __attribute__ ((__unused__)) = false;
 
 	//bool member __attribute__ ((__unused__)) = false;
@@ -1714,6 +1867,35 @@ public class CodeFormatterTest extends BaseUITestCase {
 	public void testAlignmentOfBinaryExpression_Bug325787() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_BINARY_EXPRESSION,
 				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//class Stream {
+	//Stream& operator <<(const char*);
+	//Stream& operator <<(int);
+	//};
+	//
+	//Stream stream;
+	//
+	//void test() {
+	// // Breaking at << is preferred to breaking at +.
+	//stream << "text text text text text text text text text" << 1000000 + 2000000;
+	//}
+
+	//class Stream {
+	//    Stream& operator <<(const char*);
+	//    Stream& operator <<(int);
+	//};
+	//
+	//Stream stream;
+	//
+	//void test() {
+	//    // Breaking at << is preferred to breaking at +.
+	//    stream << "text text text text text text text text text"
+	//            << 1000000 + 2000000;
+	//}
+	public void testBreakingPrecedence() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
 		assertFormatterResult();
 	}
 

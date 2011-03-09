@@ -114,7 +114,7 @@ public class DefaultCodeFormatterConstants {
 	 * FORMATTER / Option for alignment of assignment
 	 *     - option id:         "org.eclipse.cdt.core.formatter.alignment_for_assignment"
 	 *     - possible values:   values returned by <code>createAlignmentValue(boolean, int, int)</code> call
-	 *     - default:           createAlignmentValue(false, M_NO_ALIGNMENT, INDENT_DEFAULT)
+	 *     - default:           createAlignmentValue(false, WRAP_COMPACT, INDENT_DEFAULT)
 	 * </pre>
 	 * @see #createAlignmentValue(boolean, int, int)
 	 * @since 5.3
@@ -2196,7 +2196,7 @@ public class DefaultCodeFormatterConstants {
 	/**
 	 * <pre>
 	 * FORMATTER / Value to set a brace location at the start of the next line if a wrapping
-	 *             occured.
+	 *             occurred.
 	 * </pre>
 	 * @see #FORMATTER_BRACE_POSITION_FOR_INITIALIZER_LIST
 	 * @see #FORMATTER_BRACE_POSITION_FOR_BLOCK

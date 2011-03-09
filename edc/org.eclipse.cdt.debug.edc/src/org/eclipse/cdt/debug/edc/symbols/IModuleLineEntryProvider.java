@@ -31,4 +31,13 @@ public interface IModuleLineEntryProvider extends ILineEntryProvider {
 	 * @return the unmodifiable list of providers for the file, possibly empty.
 	 */
 	Collection<ILineEntryProvider> getLineEntryProvidersForFile(IPath sourceFile);
+
+	/**
+	 * Check if the module uses the given source file.<br>
+	 * Note that line table has more complete list of files (esp. headers) used
+	 * in a compile unit than debug_info section of Dwarf.
+	 * 
+	 * @since 2.0
+	 */
+	boolean hasSourceFile(IPath sourceFile);
 }

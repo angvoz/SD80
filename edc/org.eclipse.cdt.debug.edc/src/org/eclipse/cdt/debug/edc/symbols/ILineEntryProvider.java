@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.symbols;
 
 import java.util.Collection;
+import java.util.List;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.core.runtime.IPath;
@@ -19,6 +20,18 @@ import org.eclipse.core.runtime.IPath;
  * Provides line table lookup support.
  */
 public interface ILineEntryProvider {
+
+	/**
+	 * A source line and address(es) mapped to it. The address here may be
+	 * runtime address or link address, depending on context in which the
+	 * objects are used.
+	 * 
+	 * @since 2.0
+	 */
+	public interface ILineAddresses {
+		public int getLineNumber();		// line number
+		public IAddress[] getAddress();	// addresses mapped to the line 
+	}
 
 	/**
 	 * Get the line table entry for the given link address
@@ -85,4 +98,40 @@ public interface ILineEntryProvider {
 	 * @since 2.0
 	 */
 	public ILineEntry getLineEntryInFunction(IAddress linkAddress, IFunctionScope parentFunction);
+
+	/**
+	 * Given a source line (let's call it anchor), find the line(s) closest to
+	 * the anchor in the neighborhood (including the anchor itself) that has
+	 * machine code. <br>
+	 * <br>
+	 * The search is done in the context of this line provider which is usually
+	 * a compile unit (CU) or a module (one executable file).<br>
+	 * <br>
+	 * In the context of a CU, only one code line will be returned. If the
+	 * closest line above the anchor and the closest line below the anchor have
+	 * the same distance from the anchor, the one below will be selected.<br>
+	 * <br>
+	 * In the context of a module, more than one code lines may be found. For
+	 * instance, one source line of an inline function in a header may have code
+	 * in one CU but not in another where a neighboring code line may be found.
+	 * 
+	 * @param sourceFile
+	 *            the file that contains the source lines in question.
+	 * @param anchorLine
+	 *            line number of the anchor source line.
+	 * @param neighborLimit
+	 *            specify the limit of the neighborhood: up to this number of
+	 *            lines above the anchor and up to this number of lines below
+	 *            the anchor will be checked if needed. But the check will never
+	 *            go beyond the source file. When the limit is zero, no neighbor
+	 *            lines will be checked. If the limit has value of -1, it means
+	 *            the actual limit is the source file.
+	 * 
+	 * @return List of {@link ILineAddresses} objects containing link addresses.
+	 *         Empty list if no code line is found.
+	 * 
+	 * @since 2.0
+	 */
+	List<ILineAddresses> findClosestLineWithCode(IPath sourceFile, int anchorLine,
+			int neighborLimit);
 }

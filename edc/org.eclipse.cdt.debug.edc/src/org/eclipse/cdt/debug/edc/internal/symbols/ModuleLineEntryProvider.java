@@ -28,6 +28,7 @@ import java.util.Set;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.EDCLineAddresses;
 import org.eclipse.cdt.debug.edc.symbols.ICompileUnitScope;
 import org.eclipse.cdt.debug.edc.symbols.IFunctionScope;
 import org.eclipse.cdt.debug.edc.symbols.ILineEntry;
@@ -378,6 +379,56 @@ public class ModuleLineEntryProvider implements IModuleLineEntryProvider {
 			}
 		}
 		return null;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider#findClosestLineWithCode(org.eclipse.core.runtime.IPath, int, int)
+	 */
+	public List<ILineAddresses> findClosestLineWithCode(IPath sourceFile,
+			int anchorLine, int neighbor_limit) {
+		List<ILineAddresses> ret = new ArrayList<ILineAddresses>(1);
+
+		/* Check all compile units in the module for code line.
+		  */ 
+		Collection<? extends ILineEntryProvider> fileProviders = 
+			getLineEntryProvidersForFile(sourceFile);
+		if (fileProviders.isEmpty())
+			return ret;
+
+		for (ILineEntryProvider fileProvider : fileProviders) {
+			
+			// Find code line in one CU using the source file
+			List<ILineAddresses> la = fileProvider.findClosestLineWithCode(sourceFile, anchorLine, neighbor_limit);
+			if (la.isEmpty())
+				continue;
+			assert (la.size() == 1);
+			ILineAddresses newCodeLine = la.get(0);
+			
+			if (ret.isEmpty())
+				ret.add(newCodeLine);
+			else {
+				boolean merged = false;
+				for (ILineAddresses e : ret)
+					if (newCodeLine.getLineNumber() == e.getLineNumber()) {
+						((EDCLineAddresses)e).addAddress(newCodeLine.getAddress());
+						merged = true;
+						break;
+					}
+			
+				if (!merged)
+					ret.add(newCodeLine);
+			}
+		}
+		
+		return ret;
+	}
+
+
+	public boolean hasSourceFile(IPath sourceFile) {
+		Collection<? extends ILineEntryProvider> fileProviders = 
+			getLineEntryProvidersForFile(sourceFile);
+		return fileProviders != null && ! fileProviders.isEmpty();
 	}
 	
 }

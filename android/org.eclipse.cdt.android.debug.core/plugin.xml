@@ -13,7 +13,7 @@
    <extension
          point="org.eclipse.debug.core.launchDelegates">
       <launchDelegate
-            delegate="org.eclipse.cdt.android.debug.core.NDKLaunchConfigurationDelegate"
+            delegate="org.eclipse.cdt.android.debug.core.NDKLaunchDelegate"
             id="com.android.ide.eclipse.adt.cdt.launchDelegate"
             modes="debug"
             name="Android Native"

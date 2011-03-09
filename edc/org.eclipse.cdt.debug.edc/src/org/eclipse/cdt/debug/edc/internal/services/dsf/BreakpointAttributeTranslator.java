@@ -23,6 +23,7 @@ import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
+import org.eclipse.cdt.debug.edc.symbols.ILineEntryProvider.ILineAddresses;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator2;
@@ -31,7 +32,6 @@ import org.eclipse.cdt.dsf.debug.service.BreakpointsMediator2.ITargetBreakpointI
 import org.eclipse.cdt.dsf.debug.service.IBreakpointAttributeTranslator2;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointDMContext;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContext;
-import org.eclipse.cdt.dsf.debug.service.IModules.AddressRange;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
@@ -41,6 +41,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugException;
+import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.model.IBreakpoint;
 
 public class BreakpointAttributeTranslator implements IBreakpointAttributeTranslator2 {
@@ -230,47 +231,98 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 		else {
 			assert bpType.equals(Breakpoints.LINE_BREAKPOINT);
 			
-			String file = (String) attributes.get(ICBreakpoint.SOURCE_HANDLE);
-			Integer line = (Integer) attributes.get(IMarker.LINE_NUMBER);
+			final String bpFile = (String) attributes.get(ICBreakpoint.SOURCE_HANDLE);
+			final Integer line = (Integer) attributes.get(IMarker.LINE_NUMBER);
 
 			final IExecutionDMContext exe_dmc = DMContexts.getAncestorOfType(context, IExecutionDMContext.class);
+
+			final ICBreakpoint icBP = (ICBreakpoint)breakpoint;
 
 			assert exe_dmc != null : "ExecutionDMContext is unknown in resolveBreakpoint().";
 
 			Modules modulesService = dsfServicesTracker.getService(Modules.class);
 			ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
 
-			file = EDCLaunch.getLaunchForSession(dsfSession.getId()).getCompilationPath(file);
+			String compileFile = EDCLaunch.getLaunchForSession(dsfSession.getId()).getCompilationPath(bpFile);
 
-			modulesService.calcAddressInfo(sym_dmc, file, line, 0, 
-					new DataRequestMonitor<AddressRange[]>(dsfSession.getExecutor(), drm) {
-
-				@Override
-				protected void handleFailure() {
-					drm.setStatus(getStatus());
-					drm.done();
-				}
+			/*
+			 * Look for code lines within five lines above and below the line in
+			 * question as we don't want to move a breakpoint too far.
+			 */
+			modulesService.findClosestLineWithCode(sym_dmc, compileFile, line, 5, 
+					new DataRequestMonitor<ILineAddresses>(dsfSession.getExecutor(), drm) {
 
 				@Override
-				protected void handleSuccess() {
-					AddressRange[] addr_ranges = getData();
+				protected void handleCompleted() {
+					if (! isSuccess()) {
+						drm.setStatus(getStatus());
+						drm.done();
+						return;
+					}
+					
+					ILineAddresses codeLine = getData();
 
 					/*
 					 * there could be multiple address ranges for the same
 					 * source line. e.g. for templates or inlined functions. if
 					 * so we need to set breakpoints on all locations
 					 */
-					for (AddressRange range : addr_ranges) {
-						IAddress breakAddr = range.getStartAddress(); // this is runtime address
-
+					for (IAddress a : codeLine.getAddress()) {
 						Map<String, Object> targetAttr = new HashMap<String, Object>(attributes);
-						targetAttr.put(Breakpoints.RUNTIME_ADDRESS, breakAddr.toString(16));
+						targetAttr.put(Breakpoints.RUNTIME_ADDRESS, a.toString(16));
 						
 						targetBPAttrs.add(targetAttr);
 					}
 
 					drm.setData(targetBPAttrs);
-					drm.done();
+					
+					int actualCodeLine = codeLine.getLineNumber();
+					
+					if (actualCodeLine == line)
+						drm.done();
+					else {		
+						// breakpoint is resolved to a different line (the closest code line).
+						// If there is no user breakpoint at that line, we move the breakpoint there.
+						// Otherwise just mark this breakpoint as unresolved.
+						//
+						final int newLine = actualCodeLine;
+
+						/** 
+						 * Move the breakpoint to the actual code line.
+						 *  
+						 * Should we run following code in another thread  ? Seems yes according to comment in 
+						 * BreakpointsMediator2.startTrackingBreakpoints(). But that way we'll run into this 
+						 * problem:
+						 *    11  // blank line
+						 *    12  // blank line
+						 *    13  i = 2;
+						 * set bp at line 11 & 12, start debugger, we'll get two resolved breakpoints on line 13 
+						 * (check in Breakpoints view).
+						 *       
+						 * To fix that issue, I just run this in DSF executor thread. I don't see any problem
+						 * in my test......... 01/03/11
+						 */
+						if (null == findUserBreakpointAt(bpFile, newLine)) {
+							// After we change the line number attribute, a breakpoint-change 
+							// notification will come from platform through BreakpointsMediator2, 
+							// resulting in installation of the changed bp and removal of the 
+							// original bp.
+							try {
+								icBP.getMarker().setAttribute(IMarker.LINE_NUMBER, newLine);
+							} catch (CoreException e) {
+								// When will this happen ? ignore.
+							}
+
+							// At this point the "drm" contains a valid list of "targetBPAttrs", namely
+							// we treat this BP as resolved. This is needed for such moved-BP to work 
+							// on debugger start.
+							drm.done();
+						}
+						else {
+							targetBPAttrs.clear();	// mark the BP as unresolved by clearing the list.
+							drm.done();
+						}
+					}
 				}
 			});
 		}
@@ -350,5 +402,44 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 		return canUpdateAttributes(null, attrDelta);
 	}
 
+    /**
+     * Find the CDT line breakpoint that exists at the given line of the 
+     * given file.
+     *  
+     * @param bpFile
+     * @param bpLine
+     * @return IBreakpoint if found, null otherwise.
+     */
+	static private IBreakpoint findUserBreakpointAt(
+			String bpFile, int bpLine) {
+		IBreakpoint[] platformBPs = DebugPlugin.getDefault().getBreakpointManager().getBreakpoints();
+		for (IBreakpoint pbp : platformBPs) {
+			if (pbp instanceof ICLineBreakpoint) {
+				// Check that the marker exists and retrieve its attributes.
+				// Due to accepted race conditions, the breakpoint marker may become
+				// null while this method is being invoked. In this case throw an exception
+				// and let the caller handle it.
+				IMarker marker = pbp.getMarker();
+				if (marker == null || !marker.exists())
+					continue;
+
+				// Suppress cast warning: platform is still on Java 1.3
+				try {
+					Map<String, Object> attrs = marker.getAttributes();
+	
+					String file = (String) attrs.get(ICBreakpoint.SOURCE_HANDLE);
+					Integer line = (Integer) attrs.get(IMarker.LINE_NUMBER);
+					
+					if (bpFile.equals(file) && bpLine == line)
+						return pbp;
+				}
+				catch (Exception e) {
+					// ignore
+				}
+			}
+		}
+		
+		return null;
+	}
 }
  

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2009 IBM Corporation and others.
+ * Copyright (c) 2004, 2011 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,6 +21,23 @@ import org.eclipse.cdt.core.parser.IToken;
  * @noextend This interface is not intended to be extended by clients.
  */
 public interface IASTNode {
+
+	/**
+	 * @since 5.3
+	 */
+	public enum CopyStyle {
+		/**
+		 * Copy without location, this copy is independent of the index and can be shared.
+		 */
+		withoutLocations,
+		/**
+		 * The copied node has a {@link IASTCopyLocation} linking the copy to the original node.
+		 * If the index was supplied creating the original AST, the caller has to hold a read lock
+		 * on it. The returned copy is valid only while the read lock is being held and should
+		 * not be accessed after releasing the lock.
+		 */
+		withLocations
+	}
 	
 	public static final IASTNode[] EMPTY_NODE_ARRAY = new IASTNode[0];
 	
@@ -54,12 +71,13 @@ public interface IASTNode {
 	public IASTNodeLocation[] getNodeLocations();
 	
     /**
-     * Computes a file location for the node. When the node actually resides in a macro-expansion the 
-     * location of the expansion is returned. In case the node spans multiple files the location will
-     * be in a common root file and will contain the appropriate include directives.
+     * Computes a file location for the node. When the node actually resides in a macro-expansion
+     * the location of the expansion is returned. In case the node spans multiple files the location
+     * will be in a common root file and will contain the appropriate include directives.
      * <p>
-     * The method may return <code>null</code> in case the node does not have a file-location. This is 
-     * for instance the case for built-in macro names or empty names for anonymous type declarations.
+     * The method may return <code>null</code> in case the node does not have a file-location. This
+     * is for instance the case for built-in macro names or empty names for anonymous type
+     * declarations.
      * 
      * @return the mapped file location or <code>null</code>.
      */
@@ -169,7 +187,8 @@ public interface IASTNode {
 	 * part of a translation unit.
 	 * @since 5.1
 	 */
-	public IToken getLeadingSyntax() throws ExpansionOverlapsBoundaryException, UnsupportedOperationException;
+	public IToken getLeadingSyntax() throws ExpansionOverlapsBoundaryException,
+			UnsupportedOperationException;
 
 	/**
 	 * Returns the tokens that can be found between this node and its right sibling (or the
@@ -215,8 +234,7 @@ public interface IASTNode {
 	public boolean isActive();
 	
 	/**
-	 * Returns a mutable copy of the tree rooted at this node. 
-	 * The following postconditions hold:
+	 * Returns a mutable copy of the tree rooted at this node. The following postconditions hold:
 	 * 
 	 * <code>
 	 * copy.getParent() == null
@@ -226,11 +244,35 @@ public interface IASTNode {
 	 * 
 	 * Preprocessor nodes do not currently support being copied.
 	 * 
-	 * Implicit name nodes are not copied, instead they can be regenerated
-	 * if required.
+	 * Implicit name nodes are not copied, instead they can be regenerated if required.
+	 * 
+	 * Calling this method is equivalent
 	 * 
 	 * @since 5.1
-	 * @throws UnsupportedOperationException if this node or one of its descendants does not support copying
+	 * @throws UnsupportedOperationException
+	 *             if this node or one of its descendants does not support copying
 	 */
 	public IASTNode copy();
+
+	/**
+	 * Returns a mutable copy of the tree rooted at this node. The following postconditions hold:
+	 * 
+	 * <code>
+	 * copy.getParent() == null
+	 * copy.getPropertyInParent() == null
+	 * copy.isFrozen() == false
+	 * </code>
+	 * 
+	 * Preprocessor nodes do not currently support being copied.
+	 * 
+	 * Implicit name nodes are not copied, instead they can be regenerated if required.
+	 * 
+	 * @param style
+	 *            {@link CopyStyle} create a copy with or without locations. Please see
+	 *            {@link CopyStyle} for restrictions on copies with Locations.
+	 * @since 5.3
+	 * @throws UnsupportedOperationException
+	 *             if this node or one of its descendants does not support copying
+	 */
+	public IASTNode copy(CopyStyle style);
 }

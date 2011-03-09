@@ -190,7 +190,6 @@ public class ManualDebuggerAgentTest {
 		});
 	}
 
-	@SuppressWarnings("deprecation")
 	private void examineService(IService service) {
 		if (service instanceof IDiagnostics) {
 			IDiagnostics serv = (IDiagnostics) service;

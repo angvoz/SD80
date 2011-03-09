@@ -7,8 +7,8 @@
  * http://www.eclipse.org/legal/epl-v10.html  
  *  
  * Contributors: 
- *    Institute for Software - initial API and implementation
- *    Markus Schorn (Wind River Systems)
+ *     Institute for Software - initial API and implementation
+ *     Markus Schorn (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.dom.rewrite.astwriter;
 
@@ -26,7 +26,6 @@ import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.dom.ast.cpp.CPPASTVisitor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.gnu.IGNUASTCompoundStatementExpression;
@@ -34,7 +33,6 @@ import org.eclipse.cdt.internal.core.dom.rewrite.ASTLiteralNode;
 import org.eclipse.cdt.internal.core.dom.rewrite.commenthandler.NodeCommentMap;
 
 /**
- * 
  * Visits all nodes, prints leading comments and handles macro expansions. The
  * source code generation is delegated to severals <code>NodeWriters</code>.
  * 
@@ -42,10 +40,8 @@ import org.eclipse.cdt.internal.core.dom.rewrite.commenthandler.NodeCommentMap;
  * @see MacroExpansionHandler
  * 
  * @author Emanuel Graf IFS
- * 
  */
-public class ASTWriterVisitor extends CPPASTVisitor {
-	
+public class ASTWriterVisitor extends ASTVisitor {
 	protected Scribe scribe = new Scribe();
 	protected NodeCommentMap commentMap;
 	protected ExpressionWriter expWriter;
@@ -57,41 +53,26 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 	protected NameWriter nameWriter;
 	protected TemplateParameterWriter tempParameterWriter;
 	protected MacroExpansionHandler macroHandler;
+
 	{
 		shouldVisitExpressions = true;
-		
 		shouldVisitStatements = true;
-		
 		shouldVisitNames = true;
-		
 		shouldVisitDeclarations = true;
-		
 		shouldVisitDeclSpecifiers = true;
-		
 		shouldVisitDeclarators = true;
-		
 		shouldVisitArrayModifiers= true;
-		
 		shouldVisitInitializers = true;
-		
 		shouldVisitBaseSpecifiers = true;
-
 		shouldVisitNamespaces = true;
-
 		shouldVisitTemplateParameters = true;
-		
 		shouldVisitParameterDeclarations = true;
-		
 		shouldVisitTranslationUnit = true;
 	}
-	
-	
 	
 	public ASTWriterVisitor(NodeCommentMap commentMap) {
 		this("", commentMap); //$NON-NLS-1$
 	}
-
-
 
 	public ASTWriterVisitor(String givenIndentation, NodeCommentMap commentMap) {
 		super();
@@ -103,14 +84,14 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 
 	private void init(NodeCommentMap commentMap) {
 		macroHandler = new MacroExpansionHandler(scribe);
-		statementWriter = new StatementWriter(scribe,this, commentMap);
-		declaratorWriter = new DeclaratorWriter(scribe,this, commentMap);
-		declarationWriter = new DeclarationWriter(scribe,this, commentMap);
-		declSpecWriter = new DeclSpecWriter(scribe,this, commentMap);
-		expWriter = new ExpressionWriter(scribe,this, macroHandler, commentMap);
-		initializerWriter = new InitializerWriter (scribe,this, commentMap);
+		statementWriter = new StatementWriter(scribe, this, commentMap);
+		declaratorWriter = new DeclaratorWriter(scribe, this, commentMap);
+		declarationWriter = new DeclarationWriter(scribe, this, commentMap);
+		declSpecWriter = new DeclSpecWriter(scribe, this, commentMap);
+		expWriter = new ExpressionWriter(scribe, this, macroHandler, commentMap);
+		initializerWriter = new InitializerWriter (scribe, this, commentMap);
 //		ppStmtWriter = new PreprocessorStatementWriter(scribe, this, commentMap);
-		nameWriter = new NameWriter(scribe,this, commentMap);
+		nameWriter = new NameWriter(scribe, this, commentMap);
 		tempParameterWriter = new TemplateParameterWriter(scribe, this, commentMap);
 	}
 	
@@ -148,16 +129,12 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 		return ASTVisitor.PROCESS_SKIP;
 	}
 
-
-
 	@Override
 	public int visit(IASTDeclSpecifier declSpec) {
 		writeLeadingComments(declSpec);
 		declSpecWriter.writeDelcSpec(declSpec);			
 		return ASTVisitor.PROCESS_SKIP;
 	}
-
-
 
 	@Override
 	public int visit(IASTExpression expression) {
@@ -173,8 +150,6 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 		return ASTVisitor.PROCESS_SKIP;
 	}
 
-
-
 	@Override
 	public int visit(IASTStatement statement) {
 		writeLeadingComments(statement);
@@ -187,7 +162,6 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 		return statementWriter.writeStatement(statement, true);
 	}
 
-
 	@Override
 	public int visit(IASTDeclaration declaration) {
 		writeLeadingComments(declaration);
@@ -196,8 +170,6 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 		}
 		return  ASTVisitor.PROCESS_SKIP;
 	}
-
-
 
 	@Override
 	public int visit(IASTDeclarator declarator) {
@@ -216,7 +188,6 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 		return ASTVisitor.PROCESS_SKIP;
 	}
 
-
 	@Override
 	public int visit(IASTInitializer initializer) {
 		writeLeadingComments(initializer);
@@ -225,8 +196,6 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 		}
 		return ASTVisitor.PROCESS_SKIP;
 	}
-
-
 
 	@Override
 	public int visit(IASTParameterDeclaration parameterDeclaration) {
@@ -243,12 +212,9 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 		return ASTVisitor.PROCESS_SKIP;
 	}
 
-
-
 	protected IASTName getParameterName(IASTDeclarator declarator) {
 		return declarator.getName();
 	}
-
 
 	protected IASTDeclarator getParameterDeclarator(
 			IASTParameterDeclaration parameterDeclaration) {
@@ -273,10 +239,8 @@ public class ASTWriterVisitor extends CPPASTVisitor {
 		return ASTVisitor.PROCESS_SKIP;
 	}
 
-
 	public void cleanCache() {
 		scribe.cleanCache();
 		macroHandler.reset();
 	}
-
 }

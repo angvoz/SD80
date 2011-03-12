@@ -101,7 +101,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 				MakeCorePlugin.log(e);
 			}
 		}
-		setCommand(cmd);
+		setResolvedCommand(cmd);
 	}
 
 	@Override
@@ -170,7 +170,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 			specFile = null;
 		}
 
-		setCommand(null);
+		setResolvedCommand(null);
 
 		if (detectedSettingEntries==null) {
 			detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();

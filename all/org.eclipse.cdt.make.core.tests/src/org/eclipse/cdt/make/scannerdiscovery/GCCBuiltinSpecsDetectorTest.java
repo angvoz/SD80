@@ -72,7 +72,6 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		assertEquals(null, detector.getLanguageScope());
 		assertEquals(null, detector.getSettingEntries(null, null, null));
 		assertEquals(null, detector.getCustomParameter());
-		assertEquals(null, detector.getCommand());
 
 		List<String> languages = new ArrayList<String>();
 		languages.add(LANGUAGE_ID);
@@ -86,9 +85,6 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		assertEquals(languages, detector.getLanguageScope());
 		assertEquals(entries, detector.getSettingEntries(null, null, null));
 		assertEquals(CUSTOM_PARAMETER, detector.getCustomParameter());
-		
-		detector.setCommand(CUSTOM_COMMAND);
-		assertEquals(CUSTOM_COMMAND, detector.getCommand());
 		
 		assertEquals(true, detector.isRunOnce());
 		detector.setRunOnce(false);
@@ -171,12 +167,10 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 				return true;
 			}
 		};
-		detector.setCommand(null);
 		detector.startup(null, null);
 		detector.run(null, null, null, null);
 		detector.shutdown();
 
-		detector.setCommand("");
 		detector.startup(null, null);
 		detector.run(null, null, null, null);
 		detector.shutdown();

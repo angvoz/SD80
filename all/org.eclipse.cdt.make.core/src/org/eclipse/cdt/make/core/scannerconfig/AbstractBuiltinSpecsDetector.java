@@ -36,14 +36,15 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		ILanguageSettingsOutputScanner {
 	private static final String EOL = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
 
+	// temporaries which are reassigned before running
 	private ICConfigurationDescription currentCfgDescription = null;
-	private IProject currentProject;
-	private String currentLanguageId;
+	private IProject currentProject = null;
+	private String currentLanguageId = null;
+	private String currentCommandResolved = null;
+	protected List<ICLanguageSettingEntry> detectedSettingEntries = null;
 
-	private String command;
 	private boolean runOnce = true;
 
-	protected List<ICLanguageSettingEntry> detectedSettingEntries = null;
 
 	@Override
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
@@ -53,12 +54,12 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	}
 
 
-	public void setCommand(String command) {
-		this.command = command;
+	protected void setResolvedCommand(String command) {
+		this.currentCommandResolved = command;
 	}
 
-	public String getCommand() {
-		return command;
+	protected String getResolvedCommand() {
+		return currentCommandResolved;
 	}
 
 	public void setRunOnce(boolean once) {
@@ -74,7 +75,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		currentLanguageId = languageId;
 		currentProject = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
 		detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
-		command = customParameter;
+		currentCommandResolved = customParameter;
 
 		if (!runOnce) {
 			setSettingEntries(cfgDescription, currentProject, currentLanguageId, null);
@@ -116,7 +117,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	public void run(IPath workingDirectory, String[] env, IConsole console, IProgressMonitor monitor)
 			throws CoreException, IOException {
 
-		String command = getCommand();
+		String command = getResolvedCommand();
 		if (command==null || command.trim().length()==0) {
 			return;
 		}

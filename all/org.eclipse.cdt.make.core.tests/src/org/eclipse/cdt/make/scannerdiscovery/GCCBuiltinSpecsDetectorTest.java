@@ -103,6 +103,11 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			public MockDetector clone() throws CloneNotSupportedException {
 				return (MockDetector) super.clone();
 			}
+			
+			@Override
+			public MockDetector cloneShallow() throws CloneNotSupportedException {
+				return (MockDetector) super.cloneShallow();
+			}
 		}
 		
 		// create instance to compare to
@@ -158,6 +163,16 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			clone.setSettingEntries(null, null, null, null);
 			assertFalse(detector.equals(clone));
 		}
+		
+		// check cloneShallow()
+		{
+			MockDetector detector2 = detector.clone();
+			MockDetector clone = detector2.cloneShallow();
+			assertFalse(detector2.equals(clone));
+			detector2.setSettingEntries(null, null, null, null);
+			assertTrue(detector2.equals(clone));
+		}
+			
 	}
 	
 	public void testAbstractBuiltinSpecsDetector_Nulls() throws Exception {

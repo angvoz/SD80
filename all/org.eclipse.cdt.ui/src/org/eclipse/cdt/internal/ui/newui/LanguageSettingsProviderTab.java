@@ -249,6 +249,75 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			}
 			return imageKey;
 		}
+
+		@Override
+		protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
+			String[] overlayKeys = new String[5];
+			{ // TODO temporary for debugging
+//				final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
+//				boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER);
+				
+				if (provider instanceof LanguageSettingsSerializable) {
+					if (((LanguageSettingsSerializable)provider).isEmpty() || clearedProviders.contains(provider)) {
+						overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
+					}
+				}
+
+				if (LanguageSettingsManager.isWorkspaceProvider(provider) /*&& !isSpecial*/) {
+					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_REFERENCE;
+//					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
+//					overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_LINK;
+				} else {
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONFIGURATION;
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_INDEXED;
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONTEXT;
+					
+//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_PROJECT;
+				}
+				if (page.isForPrefs()) {
+					if (clearedProviders.contains(provider)) {
+						overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
+					}
+				} else {
+					ICConfigurationDescription cfgDescription = getConfigurationDescription();
+					List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
+					if (providers.contains(provider)) {
+						List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
+						if (initialProviders!=null && !initialProviders.contains(provider)) {
+							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
+						}
+					}
+				}
+				
+				if (isReconfigured(provider)) {
+					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
+				}
+				
+			}
+			return overlayKeys;
+		}
+
+		/**
+		 * @param provider
+		 * @return
+		 */
+		private boolean isReconfigured(ILanguageSettingsProvider provider) {
+			if (provider instanceof ILanguageSettingsEditableProvider) {
+				String id = provider.getId();
+				ILanguageSettingsProvider extensionProvider = LanguageSettingsManager.getWorkspaceProvider(id);
+				if (extensionProvider instanceof ILanguageSettingsEditableProvider) {
+					try {
+						ILanguageSettingsEditableProvider providerShallow = ((ILanguageSettingsEditableProvider) provider).cloneShallow();
+						ILanguageSettingsEditableProvider extensionShallow = ((ILanguageSettingsEditableProvider) extensionProvider).cloneShallow();
+						return ! providerShallow.equals(extensionShallow);
+					} catch (Exception e) {
+						CUIPlugin.log("Internal Error: cannot clone provider "+id, e);
+					}
+				}
+			}
+			return false;
+		}
 	}
 		
 	/**
@@ -385,61 +454,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		});
 		tableProvidersViewer = new CheckboxTableViewer(tableProviders);
 		tableProvidersViewer.setContentProvider(new ArrayContentProvider());
-		tableProvidersViewer.setLabelProvider(new LanguageSettingsContributorsLabelProviderEnhanced() {
-			@Override
-			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
-				String[] overlayKeys = new String[5];
-				{ // TODO temporary for debugging
-//					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
-//					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER);
-					
-					if (provider instanceof LanguageSettingsSerializable) {
-						if (((LanguageSettingsSerializable)provider).isEmpty() || clearedProviders.contains(provider)) {
-							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
-						}
-					}
-
-					if (LanguageSettingsManager.isWorkspaceProvider(provider) /*&& !isSpecial*/) {
-						overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
-	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_REFERENCE;
-	//					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
-	//					overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_LINK;
-					} else {
-	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONFIGURATION;
-	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_INDEXED;
-	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_CONTEXT;
-						
-	//					overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_PROJECT;
-					}
-					if (page.isForPrefs()) {
-						if (clearedProviders.contains(provider)) {
-							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
-						}
-					} else {
-						ICConfigurationDescription cfgDescription = getConfigurationDescription();
-						List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
-						if (providers.contains(provider)) {
-							List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
-							if (initialProviders!=null && !initialProviders.contains(provider)) {
-								overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
-							}
-						}
-					}
-					if (page.isForProject() && !LanguageSettingsManager.isWorkspaceProvider(provider)) {
-						ILanguageSettingsProvider globalProvider = LanguageSettingsManager.getWorkspaceProvider(provider.getId());
-						try {
-							boolean canReset = ! isShallowMatch(provider, globalProvider);
-							if (canReset) {
-								overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
-							}
-						} catch (Exception e) {
-							CUIPlugin.log("Internal Error: cannot clone provider "+provider.getId(), e);
-						}
-					}
-				}
-				return overlayKeys;
-			}
-		});
+		tableProvidersViewer.setLabelProvider(new LanguageSettingsContributorsLabelProviderEnhanced());
 
 		tableProvidersViewer.addCheckStateListener(new ICheckStateListener() {
 			public void checkStateChanged(CheckStateChangedEvent e) {

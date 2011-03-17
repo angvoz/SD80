@@ -248,6 +248,16 @@
             name="Test Plugin Serializable Language Settings Provider">
       </provider>
       <provider
+            class="org.eclipse.cdt.core.language.settings.providers.MockLanguageSettingsEditableProvider"
+            id="org.eclipse.cdt.core.tests.custom.editable.language.settings.provider"
+            name="Test Plugin Editable Language Settings Provider">
+         <entry
+               kind="macro"
+               name="MACRO"
+               value="value">
+         </entry>
+      </provider>
+      <provider
             class="org.eclipse.cdt.core.language.settings.providers.MockLanguageSettingsBaseProvider"
             id="org.eclipse.cdt.core.tests.language.settings.base.provider.subclass"
             name="Test Plugin Base Provider Subclass"

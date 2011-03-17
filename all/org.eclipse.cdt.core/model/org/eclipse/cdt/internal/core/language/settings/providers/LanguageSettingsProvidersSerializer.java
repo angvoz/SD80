@@ -10,6 +10,7 @@ import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvide
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.resources.IFile;
@@ -213,7 +214,7 @@ public class LanguageSettingsProvidersSerializer {
 					if (fUserDefinedProviders==null)
 						fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
 					
-					if (!LanguageSettingsExtensionManager.isExtensionProvider(provider)) {
+					if (!LanguageSettingsExtensionManager.equalsExtensionProvider(provider)) {
 						fUserDefinedProviders.put(provider.getId(), provider);
 					}
 				}
@@ -340,7 +341,12 @@ public class LanguageSettingsProvidersSerializer {
 
 	private static ILanguageSettingsProvider loadWorkspaceProvider(Node providerNode) {
 		String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
-		ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getExtensionProvider(providerId);
+		// try less expensive shallow copy first
+		ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getExtensionProviderShallow(providerId);
+		boolean isLoadable = (provider instanceof LanguageSettingsSerializable) && (provider instanceof ILanguageSettingsEditableProvider);
+		if (!isLoadable) {
+			provider = LanguageSettingsExtensionManager.getExtensionProvider(providerId);
+		}
 		
 		String attrClass = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_CLASS);
 		if (provider!=null && !provider.getClass().getName().equals(attrClass) ) {

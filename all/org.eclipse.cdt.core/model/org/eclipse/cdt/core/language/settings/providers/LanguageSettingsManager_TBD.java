@@ -13,6 +13,7 @@ package org.eclipse.cdt.core.language.settings.providers;
 
 import java.util.List;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFileDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
@@ -84,4 +85,14 @@ public class LanguageSettingsManager_TBD {
 		LanguageSettingsExtensionManager.reset(provider);
 	}
 
+	public static boolean isReconfigured(ILanguageSettingsProvider provider) {
+		if (provider instanceof ILanguageSettingsEditableProvider) {
+			try {
+				return ! LanguageSettingsExtensionManager.equalsExtensionProviderShallow((ILanguageSettingsEditableProvider) provider);
+			} catch (Exception e) {
+				CCorePlugin.log("Internal Error: cannot clone provider "+provider.getId(), e);
+			}
+		}
+		return false;
+	}
 }

@@ -25,6 +25,7 @@ import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -46,6 +47,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	private static final String EXTENSION_SERIALIZABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.serializable.language.settings.provider";
 	private static final String EXTENSION_SERIALIZABLE_PROVIDER_NAME = "Test Plugin Serializable Language Settings Provider";
 	private static final String EXTENSION_SERIALIZABLE_PROVIDER_PARAMETER = "";
+	private static final String EXTENSION_EDITABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.editable.language.settings.provider";
 
 	// These are made up
 	private static final String PROVIDER_0 = "test.provider.0.id";
@@ -225,6 +227,58 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 				assertTrue(actualLanguageIds.contains(languageId));
 			}
 			assertEquals(languages.size(), actualLanguageIds.size());
+		}
+	}
+	
+	/**
+	 * TODO
+	 */
+	public void testEditableProvider() throws Exception {
+		// Non-editable providers cannot be copied so they are singletons
+		{
+			ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			assertNotNull(providerExt);
+			assertTrue(providerExt instanceof LanguageSettingsSerializable);
+			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(providerExt));
+
+			ILanguageSettingsProvider providerExt2 = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			assertSame(providerExt, providerExt2);
+			
+			ILanguageSettingsProvider providerWsp = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			assertSame(providerExt, providerWsp);
+		}
+
+		// Editable providers are retrieved by copy
+		{
+			ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+			assertNotNull(providerExt);
+			assertTrue(providerExt instanceof ILanguageSettingsEditableProvider);
+			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(providerExt));
+			
+			ILanguageSettingsProvider providerExt2 = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+			assertNotSame(providerExt, providerExt2);
+			assertEquals(providerExt, providerExt2);
+			
+			ILanguageSettingsProvider providerWsp = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+			assertNotSame(providerExt, providerWsp);
+			assertEquals(providerExt, providerWsp);
+			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(providerWsp));
+		}
+		
+		// Test shallow copy
+		{
+			ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+			assertNotNull(provider);
+			assertTrue(provider instanceof ILanguageSettingsEditableProvider);
+			
+			ILanguageSettingsProvider providerShallow = LanguageSettingsExtensionManager.getExtensionProviderShallow(EXTENSION_EDITABLE_PROVIDER_ID);
+			assertNotNull(providerShallow);
+			assertTrue(providerShallow instanceof ILanguageSettingsEditableProvider);
+			assertFalse(provider.equals(providerShallow));
+			
+			assertFalse(LanguageSettingsExtensionManager.equalsExtensionProvider(providerShallow));
+			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProviderShallow((ILanguageSettingsEditableProvider) providerShallow));
+			
 		}
 	}
 

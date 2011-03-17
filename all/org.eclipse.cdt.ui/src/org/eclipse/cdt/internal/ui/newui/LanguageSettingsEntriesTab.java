@@ -413,7 +413,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 					}
 					if (provider instanceof LanguageSettingsSerializable) {
 						if (((LanguageSettingsSerializable)provider).isEmpty()) {
-							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
+							overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
 						}
 					}
 					ICConfigurationDescription cfgDescription = getConfigurationDescription();

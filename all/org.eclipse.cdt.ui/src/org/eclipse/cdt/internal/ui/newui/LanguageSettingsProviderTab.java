@@ -259,7 +259,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 				
 				if (provider instanceof LanguageSettingsSerializable) {
 					if (((LanguageSettingsSerializable)provider).isEmpty() || clearedProviders.contains(provider)) {
-						overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
+						overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
 					}
 				}
 
@@ -290,7 +290,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 					}
 				}
 				
-				if (isReconfigured(provider)) {
+				if (LanguageSettingsManager_TBD.isReconfigured(provider)) {
 					overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
 				}
 				
@@ -298,26 +298,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			return overlayKeys;
 		}
 
-		/**
-		 * @param provider
-		 * @return
-		 */
-		private boolean isReconfigured(ILanguageSettingsProvider provider) {
-			if (provider instanceof ILanguageSettingsEditableProvider) {
-				String id = provider.getId();
-				ILanguageSettingsProvider extensionProvider = LanguageSettingsManager.getWorkspaceProvider(id);
-				if (extensionProvider instanceof ILanguageSettingsEditableProvider) {
-					try {
-						ILanguageSettingsEditableProvider providerShallow = ((ILanguageSettingsEditableProvider) provider).cloneShallow();
-						ILanguageSettingsEditableProvider extensionShallow = ((ILanguageSettingsEditableProvider) extensionProvider).cloneShallow();
-						return ! providerShallow.equals(extensionShallow);
-					} catch (Exception e) {
-						CUIPlugin.log("Internal Error: cannot clone provider "+id, e);
-					}
-				}
-			}
-			return false;
-		}
 	}
 		
 	/**
@@ -775,16 +755,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		boolean canReset = false;
 		if (provider!=null) {
 			String id = provider.getId();
-			canReset = !(optionsPageMap.get(id) instanceof DummyProviderOptionsPage) && (canForWorkspace || canForConfiguration);
-			if (canReset && canForConfiguration) {
-				ILanguageSettingsProvider globalProvider = LanguageSettingsManager.getWorkspaceProvider(id);
-				try {
-					canReset = ! isShallowMatch(provider, globalProvider);
-				} catch (Exception e) {
-					canReset = false;
-					CUIPlugin.log("Internal Error: cannot clone provider "+provider.getId(), e);
-				}
-			}
+			canReset = (canForWorkspace || canForConfiguration) && LanguageSettingsManager_TBD.isReconfigured(provider);
 		}
 		
 		boolean canMoveUp = page.isForProject() && isProviderSelected && isRangeOk && pos!=0;
@@ -796,18 +767,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		buttonSetEnabled(BUTTON_RESET, canReset);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
 		buttonSetEnabled(BUTTON_MOVE_DOWN, canMoveDown);
-	}
-
-	private boolean isShallowMatch(ILanguageSettingsProvider provider, ILanguageSettingsProvider globalProvider) throws Exception {
-		boolean isMatch = false;
-		if (globalProvider instanceof ILanguageSettingsEditableProvider && provider instanceof ILanguageSettingsEditableProvider) {
-			ILanguageSettingsEditableProvider globalProviderEditable = (ILanguageSettingsEditableProvider) globalProvider;
-			ILanguageSettingsEditableProvider localProviderEditable = (ILanguageSettingsEditableProvider) provider;
-			ILanguageSettingsEditableProvider localClone = localProviderEditable.cloneShallow();
-			ILanguageSettingsEditableProvider globalClone = globalProviderEditable.cloneShallow();
-			isMatch = globalClone.equals(localClone);
-		}
-		return isMatch;
 	}
 
 	/**

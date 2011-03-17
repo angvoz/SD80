@@ -95,4 +95,13 @@ public class LanguageSettingsManager_TBD {
 		}
 		return false;
 	}
+	
+	public static boolean isEqualExtensionProvider(ILanguageSettingsProvider provider) {
+		return LanguageSettingsExtensionManager.equalsExtensionProvider(provider);
+	}
+	
+	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) throws CloneNotSupportedException {
+		return LanguageSettingsExtensionManager.getExtensionProviderCopy(id);
+	}
+
 }

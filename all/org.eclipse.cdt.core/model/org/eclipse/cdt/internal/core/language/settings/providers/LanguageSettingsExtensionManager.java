@@ -290,6 +290,26 @@ public class LanguageSettingsExtensionManager {
 	}
 
 	/**
+	 * TODO Get copy of Language Settings Provider defined via
+	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
+	 *
+	 * @param id - ID of provider to find.
+	 * @return the provider or {@code null} if provider is not defined.
+	 *    Returns a copy if provider is editable (see {@link ILanguageSettingsEditableProvider}).
+	 * @throws CloneNotSupportedException 
+	 */
+	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) throws CloneNotSupportedException {
+		ILanguageSettingsProvider provider = fExtensionProviders.get(id);
+		if (provider instanceof ILanguageSettingsEditableProvider) {
+			return ((ILanguageSettingsEditableProvider) provider).clone();
+		}
+		if (provider!=null) {
+			throw new CloneNotSupportedException("provider "+id+" is not instance of ILanguageSettingsEditableProvider. "+provider.getClass());
+		}
+		throw new CloneNotSupportedException("Cannot clone not existing extension for id= "+id);
+	}
+	
+	/**
 	 * TODO
 	 * 
 	 * @param id

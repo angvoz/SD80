@@ -225,6 +225,23 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertNotNull(actual);
 			assertEquals(0, actual.size());
 		}
+		
+		// use careless provider causing an exception
+		{
+			ILanguageSettingsProvider providerNPE = new MockProvider(PROVIDER_1, PROVIDER_NAME_1, null) {
+				public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+					throw new NullPointerException("Can you handle me?");
+				}
+			};
+			try {
+				List<ICLanguageSettingEntry> actual = LanguageSettingsManager
+						.getSettingEntriesUpResourceTree(providerNPE, null, null, LANG_ID);
+				assertNotNull(actual);
+				assertEquals(0, actual.size());
+			} catch (Throwable e) {
+				fail("Exceptions are expected to be swallowed (after logging) but got " + e);
+			}
+		}
 	}
 
 	/**
@@ -392,6 +409,51 @@ public class LanguageSettingsManagerTests extends TestCase {
 				.getSettingEntriesUpResourceTree(provider, cfgDescription, emptySettingsPath, LANG_ID);
 			// NOT taken from parent folder
 			assertEquals(0, actual.size());
+		}
+	}
+	
+	/**
+	 */
+	public void testProvider_DefaultEntries() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICProjectDescription prjDescription = CoreModel.getDefault().getProjectDescription(project);
+		ICConfigurationDescription[] cfgDescriptions = prjDescription.getConfigurations();
+		
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		assertTrue(cfgDescription instanceof CConfigurationDescription);
+		
+		final IFolder parentFolder = ResourceHelper.createFolder(project, "/ParentFolder/");
+		assertNotNull(parentFolder);
+		final IFile emptySettingsPath = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/empty");
+		assertNotNull(emptySettingsPath);
+		
+		// store the entries as default entries
+		final List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		entries.add(new CIncludePathEntry("path0", 0));
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+		ILanguageSettingsProvider provider = new MockProvider(PROVIDER_0, PROVIDER_NAME_0, null)  {
+			@Override
+			public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+				if (cfgDescription==null && rc==null) {
+					return entries;
+				}
+				return null;
+			}
+			
+		};
+		providers.add(provider);
+		cfgDescription.setLanguageSettingProviders(providers);
+		
+		{
+			// retrieve entries for a resource
+			IFile derived = ResourceHelper.createFile(project, "/ParentFolder/Subfolder/resource");
+			List<ICLanguageSettingEntry> actual = LanguageSettingsManager
+					.getSettingEntriesUpResourceTree(provider, cfgDescription, derived, LANG_ID);
+			// default entries given
+			assertEquals(entries.get(0),actual.get(0));
+			assertEquals(entries.size(), actual.size());
 		}
 	}
 

@@ -29,6 +29,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -341,6 +342,20 @@ public class LanguageSettingsExtensionManager {
 		return list;
 	}
 
+	private static List<ICLanguageSettingEntry> safeGetSettingEntries(ILanguageSettingsProvider provider,
+			ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+		
+		try {
+			return provider.getSettingEntries(cfgDescription, rc, languageId);
+		} catch (Throwable e) {
+			String cfgId = cfgDescription!=null ? cfgDescription.getId() : null;
+			String msg = "Exception in provider "+provider.getId()+": getSettingEntries("+cfgId+", "+rc+", "+languageId+")";
+			CCorePlugin.log(msg, e);
+			// return empty array to prevent climbing up the resource tree 
+			return new ArrayList<ICLanguageSettingEntry>(0);
+		}
+	}
+
 	/**
 	 * Returns the list of setting entries of the given provider
 	 * for the given configuration description, resource and language.
@@ -353,27 +368,23 @@ public class LanguageSettingsExtensionManager {
 	 * @param languageId - language id.
 	 * 
 	 * @return the list of setting entries. Never returns {@code null}
-	 *     although individual providers return {@code null} if no settings defined.
+	 *     although individual providers mandated to return {@code null} if no settings defined.
 	 */
 	public static List<ICLanguageSettingEntry> getSettingEntriesUpResourceTree(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-		Assert.isNotNull(cfgDescription);
-	
 		if (provider!=null) {
-			List<ICLanguageSettingEntry> entries = provider.getSettingEntries(cfgDescription, rc, languageId);
+			List<ICLanguageSettingEntry> entries = safeGetSettingEntries(provider, cfgDescription, rc, languageId);
 			if (entries!=null) {
 				return new ArrayList<ICLanguageSettingEntry>(entries);
 			}
 			if (rc!=null) {
-				IResource parentFolder = rc.getParent();
+				IResource parentFolder = (rc instanceof IProject) ? null : rc.getParent();
 				if (parentFolder!=null) {
 					return getSettingEntriesUpResourceTree(provider, cfgDescription, parentFolder, languageId);
 				}
-				if (provider instanceof LanguageSettingsSerializable) {
-					// get default entries for the applicable language scope
-					List<ICLanguageSettingEntry> entriesDefault = provider.getSettingEntries(null, null, languageId);
-					if (entriesDefault!=null) {
-						return new ArrayList<ICLanguageSettingEntry>(entriesDefault);
-					}
+				// if out of parent resources - get default entries for the applicable language scope
+				entries = safeGetSettingEntries(provider, null, null, languageId);
+				if (entries!=null) {
+					return new ArrayList<ICLanguageSettingEntry>(entries);
 				}
 			}
 		}

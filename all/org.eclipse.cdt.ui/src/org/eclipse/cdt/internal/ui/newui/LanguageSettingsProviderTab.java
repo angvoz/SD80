@@ -738,13 +738,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		int last = count - 1;
 		boolean isRangeOk = pos >= 0 && pos <= last;
 
-		// TODO: canClear for ILanguageSettingsEditableProvider
 		boolean canClear = false;
-		if (provider instanceof LanguageSettingsSerializable) {
-			if (!((LanguageSettingsSerializable) provider).isEmpty() && !clearedProviders.contains(provider)) {
-				canClear = canForWorkspace || canForConfiguration;
-			}
-		}
 		if (provider instanceof ILanguageSettingsEditableProvider) {
 			if (!((ILanguageSettingsEditableProvider) provider).isEmpty() && !clearedProviders.contains(provider)) {
 				canClear = canForWorkspace || canForConfiguration;

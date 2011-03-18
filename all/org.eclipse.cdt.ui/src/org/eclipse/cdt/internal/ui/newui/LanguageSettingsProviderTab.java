@@ -26,7 +26,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.text.Assert;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
 import org.eclipse.jface.viewers.CheckboxTableViewer;
@@ -162,10 +162,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 					if (provider.getId().equals(providerId))
 						return provider;
 				}
-			} else {
-				return LanguageSettingsManager.getWorkspaceProvider(providerId);
 			}
-			return null;
+			// return Workspace Provider if was not found
+			return LanguageSettingsManager.getWorkspaceProvider(providerId);
 		}
 		
 	}

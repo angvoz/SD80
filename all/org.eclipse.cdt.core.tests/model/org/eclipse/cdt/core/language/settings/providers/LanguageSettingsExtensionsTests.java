@@ -23,9 +23,11 @@ import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
 import org.eclipse.cdt.core.settings.model.CLibraryPathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
+import org.eclipse.cdt.core.testplugin.CModelMock;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -52,6 +54,8 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	// These are made up
 	private static final String PROVIDER_0 = "test.provider.0.id";
 	private static final String PROVIDER_NAME_0 = "test.provider.0.name";
+	private static final String CFG_ID = "test.configuration.id";
+	private static final ICConfigurationDescription MOCK_CFG = new CModelMock.DummyCConfigurationDescription(CFG_ID);
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String LANG_ID = "test.lang.id";
 
@@ -233,6 +237,24 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	/**
 	 * TODO
 	 */
+	public void testSerializableProvider() throws Exception {
+		ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+		assertNotNull(providerExt);
+		assertTrue(providerExt instanceof LanguageSettingsSerializable);
+		
+		LanguageSettingsSerializable provider = (LanguageSettingsSerializable) providerExt;
+		
+		assertEquals(null, provider.getLanguageScope());
+		assertEquals("", provider.getCustomParameter());
+		
+		List<ICLanguageSettingEntry> expected = new ArrayList<ICLanguageSettingEntry>();
+		expected.add(new CMacroEntry("MACRO", "value", 0));
+		assertEquals(expected, provider.getSettingEntries(null, null, null));
+	}
+
+	/**
+	 * TODO
+	 */
 	public void testEditableProvider() throws Exception {
 		// Non-editable providers cannot be copied so they are singletons
 		{
@@ -240,14 +262,14 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			assertNotNull(providerExt);
 			assertTrue(providerExt instanceof LanguageSettingsSerializable);
 			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(providerExt));
-
+			
 			ILanguageSettingsProvider providerExt2 = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			assertSame(providerExt, providerExt2);
 			
 			ILanguageSettingsProvider providerWsp = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			assertSame(providerExt, providerWsp);
 		}
-
+		
 		// Editable providers are retrieved by copy
 		{
 			ILanguageSettingsProvider providerExt = LanguageSettingsExtensionManager.getExtensionProvider(EXTENSION_EDITABLE_PROVIDER_ID);
@@ -281,7 +303,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			
 		}
 	}
-
+	
 //	/**
 //	 * LanguageSettingsBaseProvider is not allowed to be configured twice.
 //	 */
@@ -320,8 +342,9 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_PARAMETER, provider.getCustomParameter());
 			
 			// retrieve entries from extension point
-			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
-			assertNull(actual);
+			List<ICLanguageSettingEntry> expected = new ArrayList<ICLanguageSettingEntry>();
+			expected.add(new CMacroEntry("MACRO", "value", 0));
+			assertEquals(expected, provider.getSettingEntries(null, null, null));
 		}
 		
 		// change provider
@@ -351,8 +374,9 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_PARAMETER, provider.getCustomParameter());
 			
 			// retrieve entries from extension point
-			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
-			assertNull(actual);
+			List<ICLanguageSettingEntry> expected = new ArrayList<ICLanguageSettingEntry>();
+			expected.add(new CMacroEntry("MACRO", "value", 0));
+			assertEquals(expected, provider.getSettingEntries(null, null, null));
 		}
 	}
 }

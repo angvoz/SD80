@@ -74,12 +74,16 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 
 	@Override
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
-		super.configureProvider(id, name, languages, entries, customParameter);
+		// do not pass entries to super, keep them in local storage
+		super.configureProvider(id, name, languages, null, customParameter);
 
 		fStorage.clear();
 
-		if (entries!=null)
+		if (entries!=null) {
+			// note that these entries are intended to be retrieved by LanguageSettingsManager.getSettingEntriesUpResourceTree()
+			// when the whole resource hierarchy has been traversed up
 			setSettingEntries(null, null, null, entries);
+		}
 	}
 
 	/**
@@ -162,7 +166,8 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 		}
 		
 		if (languageId!=null && (languageScope==null || languageScope.contains(languageId))) {
-			return getSettingEntries(cfgDescription, rc, null);
+			List<ICLanguageSettingEntry> entries = getSettingEntries(cfgDescription, rc, null);
+			return entries;
 		}
 
 		return null;
@@ -416,6 +421,9 @@ public class LanguageSettingsSerializable extends LanguageSettingsBaseProvider {
 
 	protected LanguageSettingsSerializable cloneShallow() throws CloneNotSupportedException {
 		LanguageSettingsSerializable clone = (LanguageSettingsSerializable)super.clone();
+		if (languageScope!=null)
+			clone.languageScope = new ArrayList<String>(languageScope);
+		
 		clone.fStorage = new HashMap<String, Map<String, List<ICLanguageSettingEntry>>>();
 		return clone;
 	}

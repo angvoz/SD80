@@ -359,18 +359,25 @@ public class LanguageSettingsExtensionManager {
 		Assert.isNotNull(cfgDescription);
 	
 		if (provider!=null) {
-			List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
-			if (list!=null) {
-				return new ArrayList<ICLanguageSettingEntry>(list);
+			List<ICLanguageSettingEntry> entries = provider.getSettingEntries(cfgDescription, rc, languageId);
+			if (entries!=null) {
+				return new ArrayList<ICLanguageSettingEntry>(entries);
+			}
+			if (rc!=null) {
+				IResource parentFolder = rc.getParent();
+				if (parentFolder!=null) {
+					return getSettingEntriesUpResourceTree(provider, cfgDescription, parentFolder, languageId);
+				}
+				if (provider instanceof LanguageSettingsSerializable) {
+					// get default entries for the applicable language scope
+					List<ICLanguageSettingEntry> entriesDefault = provider.getSettingEntries(null, null, languageId);
+					if (entriesDefault!=null) {
+						return new ArrayList<ICLanguageSettingEntry>(entriesDefault);
+					}
+				}
 			}
 		}
 	
-		if (rc!=null) {
-			IResource parentFolder = rc.getParent();
-			if (parentFolder!=null) {
-				return getSettingEntriesUpResourceTree(provider, cfgDescription, parentFolder, languageId);
-			}
-		}
 		return new ArrayList<ICLanguageSettingEntry>(0);
 	}
 

@@ -305,6 +305,9 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	 * @return list of setting entries for the current context.
 	 */
 	private List<ICLanguageSettingEntry> getSettingEntriesUpResourceTree(ILanguageSettingsProvider provider) {
+		if (currentLanguageSetting==null)
+			return null;
+		
 		String languageId = currentLanguageSetting.getLanguageId();
 		if (languageId==null)
 			return null;
@@ -392,14 +395,17 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
 				String[] overlayKeys = new String[5];
 				if (currentLanguageSetting != null) {
+					IResource rc = getResource();
 					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
-					if (entries == null) {
+					if (entries == null && !(rc instanceof IProject)) {
 						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesUpResourceTree(provider);
-						if (entriesParent != null && entriesParent.size() > 0) {
+						if (entriesParent != null /*&& entriesParent.size() > 0*/) {
 							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
 						}
-					} else {
-						if (provider instanceof ILanguageSettingsEditableProvider && !(getResource() instanceof IProject)) {
+					} else if (provider instanceof ILanguageSettingsEditableProvider && !(rc instanceof IProject)) {
+						String languageId = currentLanguageSetting.getLanguageId();
+						List<ICLanguageSettingEntry> entriesParent = provider.getSettingEntries(null, null, languageId);
+						if (entries!=null && !entries.equals(entriesParent)) {
 							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
 						}
 					}
@@ -445,7 +451,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	}
 
 	private void trackInitialSettings() {
-		if (page.isForProject()) {
+		if (!page.isForPrefs()) {
 			ICConfigurationDescription[] cfgDescriptions = page.getCfgsEditable();
 			for (ICConfigurationDescription cfgDescription : cfgDescriptions) {
 				if (cfgDescription!=null) {
@@ -562,6 +568,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	protected void updateButtons() {
 		ILanguageSettingsProvider provider = getSelectedProvider();
 		ICLanguageSettingEntry entry = getSelectedEntry();
+		List<ICLanguageSettingEntry> entries = getSettingEntriesUpResourceTree(provider);
 
 		boolean isEntrySelected = entry!=null;
 		boolean isProviderSelected = !isEntrySelected && (provider!=null);
@@ -572,12 +579,11 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		boolean canAdd = isUserProvider;
 		boolean canEdit = isUserProvider && isEntrySelected;
 		boolean canDelete = isUserProvider && isEntrySelected;
-		boolean canClear = isProviderEditable && isProviderSelected && getSettingEntries(provider)!=null;
+		boolean canClear = isProviderEditable && isProviderSelected && entries!=null && entries.size()>0;
 		
 		boolean canMoveUp = false;
 		boolean canMoveDown = false;
-		if (isUserProvider && isEntrySelected) {
-			List<ICLanguageSettingEntry> entries = getSettingEntriesUpResourceTree(provider);
+		if (isUserProvider && isEntrySelected && entries!=null) {
 			int last = entries.size()-1;
 			int pos = getExactIndex(entries, entry);
 			
@@ -850,7 +856,12 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	private void clearProvider(ILanguageSettingsProvider provider) {
 		if (provider!=null) {
 			String providerId = provider.getId();
-			saveEntries(provider, null);
+			List<ICLanguageSettingEntry> empty = null;
+			saveEntries(provider, empty);
+			if (getSettingEntriesUpResourceTree(provider).size()!=0) {
+				empty = new ArrayList<ICLanguageSettingEntry>();
+				saveEntries(provider, empty);
+			}
 			
 			updateTreeEntries();
 			selectItem(providerId, null);

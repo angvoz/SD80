@@ -23,6 +23,7 @@ import org.eclipse.cdt.core.settings.model.ICResourceDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -52,6 +53,9 @@ public class LanguageSettingsManager_TBD {
 	}
 
 	public static boolean isCustomizedResource(ICConfigurationDescription cfgDescription, IResource rc) {
+		if (rc instanceof IProject)
+			return false;
+		
 		for (ILanguageSettingsProvider provider: cfgDescription.getLanguageSettingProviders()) {
 			// FIXME
 //			if (!LanguageSettingsManager.isWorkspaceProvider(provider)) {
@@ -62,7 +66,9 @@ public class LanguageSettingsManager_TBD {
 					if (languageId!=null) {
 						List<ICLanguageSettingEntry> list = provider.getSettingEntries(cfgDescription, rc, languageId);
 						if (list!=null) {
-							return true;
+							List<ICLanguageSettingEntry> listDefault = provider.getSettingEntries(null, null, languageId);
+							if (!list.equals(listDefault))
+								return true;
 						}
 					}
 				}

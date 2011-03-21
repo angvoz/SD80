@@ -406,7 +406,8 @@ public interface ICConfigurationDescription extends ICSettingContainer, ICSettin
 	 * or preprocessor macros.
 	 * 
 	 * @return the list of providers to assign to the configuration description. This
-	 * returns immutable list. Use {@link #setLanguageSettingProviders(List)} to change
+	 *    returns immutable list. Use {@link #setLanguageSettingProviders(List)} to change.
+	 *    This method does not return {@code null}.
 	 * 
 	 * @since 6.0
 	 */

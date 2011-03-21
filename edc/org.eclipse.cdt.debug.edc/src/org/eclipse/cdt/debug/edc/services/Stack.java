@@ -1282,14 +1282,14 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	}
 
 	public void getFrameData(IFrameDMContext frameDmc, DataRequestMonitor<IFrameDMData> rm) {
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, frameDmc); }
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(frameDmc)); }
 		rm.setData(new StackFrameData((StackFrameDMC) frameDmc));
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(rm.getData())); }
 		rm.done();
 	}
 
 	public void getFrames(final IDMContext execContext, final DataRequestMonitor<IFrameDMContext[]> rm) {
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, execContext); }
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(execContext)); }
 
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(execContext, ExecutionDMC.class);
 		if (execDmc != null)
@@ -1312,7 +1312,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						EDCDebugger.getMessageLogger().log(s);
 						rm.setStatus(s);
 					}
-					if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+					if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(rm.getData())); }
 					rm.done();
 				}
 				
@@ -1363,7 +1363,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	}
 
 	public void getStackDepth(IDMContext dmc, final int maxDepth, final DataRequestMonitor<Integer> rm) {
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { dmc, maxDepth }); }
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArgs(new Object[] { dmc, maxDepth })); }
 		
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(dmc, ExecutionDMC.class);
 		if (execDmc != null)
@@ -1402,7 +1402,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	}
 
 	public void getTopFrame(final IDMContext execContext, final DataRequestMonitor<IFrameDMContext> rm) {
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, execContext); }
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(execContext)); }
 
 		asyncExec(new Runnable() {
 			public void run() {
@@ -1420,7 +1420,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 					EDCDebugger.getMessageLogger().log(s);
 					rm.setStatus(s);
 				}
-				if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+				if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(rm.getData())); }
 				rm.done();
 			}
 		}, rm);
@@ -1446,7 +1446,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 	 * @see org.eclipse.cdt.dsf.debug.service.IStack#getFrames(org.eclipse.cdt.dsf.datamodel.IDMContext, int, int, org.eclipse.cdt.dsf.concurrent.DataRequestMonitor)
 	 */
 	public void getFrames(final IDMContext execContext, final int startIndex, final int endIndex, final DataRequestMonitor<IFrameDMContext[]> rm) {
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { execContext, startIndex, endIndex }); }
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArgs(new Object[] { execContext, startIndex, endIndex })); }
 		final ExecutionDMC execDmc = DMContexts.getAncestorOfType(execContext, ExecutionDMC.class);
 		if (execDmc != null)
 		{
@@ -1468,7 +1468,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 						EDCDebugger.getMessageLogger().log(s);
 						rm.setStatus(s);
 					}
-					if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+					if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArgs(rm.getData())); }
 					rm.done();
 				}
 				
@@ -1479,11 +1479,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INVALID_HANDLE, "Invalid context", null)); //$NON-NLS-1$
 			rm.done();
 		}
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, rm.getData()); }
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArgs(rm.getData())); }
 	}
 
 	public IFrameDMContext[] getFramesForDMC(IEDCExecutionDMC context, int startIndex, int endIndex) throws CoreException {
-		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { context, startIndex, endIndex }); }
+		if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArgs(new Object[] { context, startIndex, endIndex })); }
 
 		if (!context.isSuspended() || 
 			! RunControl.isNonContainer(context))	// no frames for container context. 
@@ -1525,7 +1525,7 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				}
 			}
 			IFrameDMContext[] result = frames.toArray(new IFrameDMContext[frames.size()]);
-			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, result); }
+			if (EDCTrace.STACK_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArgs(result)); }
 			return result;
 		}
 	}

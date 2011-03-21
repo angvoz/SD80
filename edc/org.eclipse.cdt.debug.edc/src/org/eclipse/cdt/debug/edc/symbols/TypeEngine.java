@@ -404,7 +404,7 @@ public class TypeEngine {
 			
 		if (typeId.getAbstractDeclarator() instanceof ICPPASTDeclarator) {
 			ICPPASTDeclarator declarator = (ICPPASTDeclarator) typeId.getAbstractDeclarator();
-			for (@SuppressWarnings("unused") IASTPointerOperator pointer : declarator.getPointerOperators()) {
+			for (IASTPointerOperator pointer : declarator.getPointerOperators()) {
 				IType ptr = new PointerType(type.getName()+"*", type.getScope(), getPointerSize(), null); //$NON-NLS-1$
 				ptr.setType(type);
 				type = ptr;

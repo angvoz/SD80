@@ -11,7 +11,6 @@
 
 package org.eclipse.cdt.internal.ui.newui;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,7 +27,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.jface.viewers.ITreeContentProvider;
-import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
@@ -112,31 +110,66 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	private Map<String, List<ILanguageSettingsProvider>> initialProvidersMap = new HashMap<String, List<ILanguageSettingsProvider>>();
 	private boolean initialEnablement = false;
 	
-	private class LanguageSettingsContributorsLabelProviderEnhanced extends LanguageSettingsContributorsLabelProvider {
+	private class EntriesTreeLabelProvider extends LanguageSettingsProvidersLabelProvider {
 		@Override
-		protected String getBaseKey(ILanguageSettingsProvider provider) {
-			String imageKey = null;
-			// try id-association
-			URL url = LanguageSettingsProviderAssociation.getImageUrl(provider.getId());
-			// try class-association
-			if (url==null) {
-				url = LanguageSettingsProviderAssociation.getImage(provider.getClass());
-			}
-			if (url!=null) {
-				imageKey = url.toString();
+		protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
+			String[] overlayKeys = super.getOverlayKeys(provider);
+			
+			if (currentLanguageSetting != null) {
+				IResource rc = getResource();
+				List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
+				if (entries == null && !(rc instanceof IProject)) {
+					List<ICLanguageSettingEntry> entriesParent = getSettingEntriesUpResourceTree(provider);
+					if (entriesParent != null /*&& entriesParent.size() > 0*/) {
+						overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
+					}
+				} else if (provider instanceof ILanguageSettingsEditableProvider && !(rc instanceof IProject)) {
+					String languageId = currentLanguageSetting.getLanguageId();
+					List<ICLanguageSettingEntry> entriesParent = provider.getSettingEntries(null, null, languageId);
+					if (entries!=null && !entries.equals(entriesParent)) {
+						overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
+					}
+				}
 			}
 			
-			if (imageKey==null) {
-				imageKey = super.getBaseKey(provider);
+			// TODO
+			ICConfigurationDescription cfgDescription = getConfigurationDescription();
+			List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
+			if (initialProviders!=null && !initialProviders.contains(provider)) {
+				overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
 			}
-			return imageKey;
+			return overlayKeys;
+		}
+		
+		@Override
+		public Image getImage(Object element) {
+			if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
+				return LanguageSettingsImages.getImage(entry);
+			}
+
+			return super.getImage(element);
+		}
+
+		@Override
+		public String getText(Object element) {
+			if (element instanceof ICLanguageSettingEntry) {
+				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
+				String s = entry.getName();
+				if (entry.getKind() == ICSettingEntry.MACRO) {
+					s = s + '=' + entry.getValue();
+				}
+				return s;
+			}
+
+			return super.getText(element);
 		}
 	}
 		
 	/**
 	 * Content provider for setting entries tree.
 	 */
-	private class LanguageSettingsContributorsContentProvider implements ITreeContentProvider {
+	private class EntriesTreeContentProvider implements ITreeContentProvider {
 		public Object[] getElements(Object inputElement) {
 			return getChildren(inputElement);
 		}
@@ -179,67 +212,6 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		public void dispose() {
 		}
 
-	}
-
-	/**
-	 * Label provider for language settings entries and providers.
-	 *
-	 */
-	private class LanguageSettingsContributorsLabelProvider extends LabelProvider {
-		private static final String TEST_PLUGIN_ID = "org.eclipse.cdt.core.tests"; //$NON-NLS-1$
-		private static final String OOPS = "OOPS"; //$NON-NLS-1$
-
-		/**
-		 * Returns base image key (for image without overlay).
-		 */
-		protected String getBaseKey(ILanguageSettingsProvider provider) {
-			String imageKey = null;
-			if (provider.getId().startsWith(TEST_PLUGIN_ID)) {
-				imageKey = CDTSharedImages.IMG_OBJS_CDT_TESTING;
-			} else {
-				imageKey = CDTSharedImages.IMG_OBJS_EXTENSION;
-			}
-			return imageKey;
-		}
-
-		/**
-		 * Returns keys for image overlays. Returning {@code null} is not allowed.
-		 */
-		protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
-			String[] overlayKeys = new String[5];
-			return overlayKeys;
-		}
-		
-		@Override
-		public Image getImage(Object element) {
-			if (element instanceof ICLanguageSettingEntry) {
-				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
-				return LanguageSettingsImages.getImage(entry);
-			}
-
-			if (element instanceof ILanguageSettingsProvider) {
-				ILanguageSettingsProvider provider = (ILanguageSettingsProvider)element;
-				String imageKey = getBaseKey(provider);
-				String[] overlayKeys = getOverlayKeys(provider);
-				return CDTSharedImages.getImageOverlaid(imageKey, overlayKeys);
-			}
-			return null;
-		}
-
-		@Override
-		public String getText(Object element) {
-			if (element instanceof ILanguageSettingsProvider) {
-				return ((ILanguageSettingsProvider) element).getName();
-			} else if (element instanceof ICLanguageSettingEntry) {
-				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
-				String s = entry.getName();
-				if (entry.getKind() == ICSettingEntry.MACRO) {
-					s = s + '=' + entry.getValue();
-				}
-				return s;
-			}
-			return OOPS;
-		}
 	}
 
 	/**
@@ -389,48 +361,8 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		treeCol.setToolTipText(Messages.LanguageSettingsProviderTab_SettingEntriesTooltip);
 
 		treeEntriesViewer = new TreeViewer(treeEntries);
-		treeEntriesViewer.setContentProvider(new LanguageSettingsContributorsContentProvider());
-		treeEntriesViewer.setLabelProvider(new LanguageSettingsContributorsLabelProviderEnhanced() {
-			@Override
-			protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
-				String[] overlayKeys = new String[5];
-				if (currentLanguageSetting != null) {
-					IResource rc = getResource();
-					List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
-					if (entries == null && !(rc instanceof IProject)) {
-						List<ICLanguageSettingEntry> entriesParent = getSettingEntriesUpResourceTree(provider);
-						if (entriesParent != null /*&& entriesParent.size() > 0*/) {
-							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_PARENT;
-						}
-					} else if (provider instanceof ILanguageSettingsEditableProvider && !(rc instanceof IProject)) {
-						String languageId = currentLanguageSetting.getLanguageId();
-						List<ICLanguageSettingEntry> entriesParent = provider.getSettingEntries(null, null, languageId);
-						if (entries!=null && !entries.equals(entriesParent)) {
-							overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
-						}
-					}
-				}
-				{// TODO temporary for debugging
-//					final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
-//					boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER);
-					
-					if (LanguageSettingsManager.isWorkspaceProvider(provider) /*&& !isSpecial*/) {
-						overlayKeys[IDecoration.TOP_LEFT] = CDTSharedImages.IMG_OVR_GLOBAL;
-					}
-					if (provider instanceof LanguageSettingsSerializable) {
-						if (((LanguageSettingsSerializable)provider).isEmpty()) {
-							overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
-						}
-					}
-					ICConfigurationDescription cfgDescription = getConfigurationDescription();
-					List<ILanguageSettingsProvider> initialProviders = initialProvidersMap.get(cfgDescription.getId());
-					if (initialProviders!=null && !initialProviders.contains(provider)) {
-						overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_EDITED;
-					}
-				}
-				return overlayKeys;
-			}
-		});
+		treeEntriesViewer.setContentProvider(new EntriesTreeContentProvider());
+		treeEntriesViewer.setLabelProvider(new EntriesTreeLabelProvider());
 		
 		treeEntriesViewer.setUseHashlookup(true);
 
@@ -856,7 +788,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 	private void clearProvider(ILanguageSettingsProvider provider) {
 		if (provider!=null) {
 			String providerId = provider.getId();
-			List<ICLanguageSettingEntry> empty = null;
+			List<ICLanguageSettingEntry> empty = new ArrayList<ICLanguageSettingEntry>();
 			saveEntries(provider, empty);
 			
 			updateTreeEntries();

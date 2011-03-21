@@ -11,6 +11,7 @@
 
 package org.eclipse.cdt.make.internal.ui.preferences;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab.ProviderReference;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
@@ -19,6 +20,8 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -99,6 +102,19 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			runOnceRadioButton.setLayoutData(gd);
 			runOnceRadioButton.setSelection(provider.isRunOnce());
 			runOnceRadioButton.setEnabled(fEditable);
+			runOnceRadioButton.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent evt) {
+					if (runOnceRadioButton.getSelection()) {
+						AbstractBuiltinSpecsDetector selectedProvider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
+						if (!LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
+							selectedProvider.setRunOnce(true);
+						} else {
+							// TODO: need working copy of the provider
+						}
+					}
+				}
+			});
 		}
 		{
 			runEveryBuildRadioButton = new Button(groupRun, SWT.RADIO);
@@ -108,6 +124,19 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 			gd.horizontalSpan = 3;
 			runEveryBuildRadioButton.setLayoutData(gd);
+			runEveryBuildRadioButton.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent evt) {
+					if (runEveryBuildRadioButton.getSelection()) {
+						AbstractBuiltinSpecsDetector selectedProvider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
+						if (!LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
+							selectedProvider.setRunOnce(false);
+						} else {
+							// TODO: need working copy of the provider
+						}
+					}
+				}
+			});
 		}
 
 		// Compiler specs command
@@ -117,9 +146,6 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			gd.horizontalSpan = 2;
 			label.setLayoutData(gd);
 			label.setEnabled(fEditable);
-//		Label newLabel = new Label(composite, SWT.NONE);
-////		((GridData) newLabel.getLayoutData()).horizontalSpan = 1;
-//		newLabel.setText("Command to get compiler specs:");
 		}
 
 		{
@@ -127,6 +153,16 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			String customParameter = provider.getCustomParameter();
 			inputCommand.setText(customParameter!=null ? customParameter : "");
 			inputCommand.setEnabled(fEditable);
+			inputCommand.addModifyListener(new ModifyListener() {
+				public void modifyText(ModifyEvent e) {
+					AbstractBuiltinSpecsDetector selectedProvider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
+					if (!LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
+						selectedProvider.setCustomParameter(inputCommand.getText());
+					} else {
+						// TODO: need working copy of the provider
+					}
+				}
+			});
 		}
 
 		{
@@ -245,16 +281,15 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	 */
 	@Override
 	public void performApply(IProgressMonitor monitor) throws CoreException {
-		if (fProviderReference!=null) {
-			AbstractBuiltinSpecsDetector provider = (AbstractBuiltinSpecsDetector) fProviderReference.getProvider();
-			if (provider!=null) {
-//				fProvider.setRunOnce(runOnceRadioButton.getSelection());
-				provider.setRunOnce(!runEveryBuildRadioButton.getSelection());
-
-				String command = inputCommand.getText();
-				provider.setCustomParameter(command);
-			}
-		}
+//		if (fProviderReference!=null) {
+//			AbstractBuiltinSpecsDetector provider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
+//			if (provider!=null) {
+//				provider.setRunOnce(!runEveryBuildRadioButton.getSelection());
+//
+//				String command = inputCommand.getText();
+//				provider.setCustomParameter(command);
+//			}
+//		}
 	}
 
 	/*

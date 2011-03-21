@@ -505,8 +505,9 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 
 			int flagBuiltIn = checkBoxBuiltIn.getSelection() ? ICSettingEntry.BUILTIN : 0;
 			int indexPathKind = comboPathCategory.getSelectionIndex();
+			int kind = comboKind.getSelectionIndex();
 			boolean isProjectPath = indexPathKind==COMBO_PATH_INDEX_PROJECT;
-			boolean isWorkspacePath = isProjectPath || indexPathKind==COMBO_PATH_INDEX_WORKSPACE;
+			boolean isWorkspacePath = (kind!=COMBO_INDEX_MACRO) && (isProjectPath || indexPathKind==COMBO_PATH_INDEX_WORKSPACE);
 			int flagWorkspace = isWorkspacePath ? ICSettingEntry.VALUE_WORKSPACE_PATH : 0;
 			int flags = flagBuiltIn | flagWorkspace;
 

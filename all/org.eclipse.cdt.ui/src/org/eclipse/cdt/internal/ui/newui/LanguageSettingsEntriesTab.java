@@ -955,47 +955,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 
 	@Override
 	protected void performDefaults() {
-//		if (false) {
-//			String providerId = provider.getId();
-//			
-//			List<ICLanguageSettingEntry> entries = getWritableEntries(provider);
-//			ICLanguageSettingEntry selectedEntry = getSelectedEntry();
-//			int pos = getExactIndex(entries, selectedEntry);
-//			entries.add(pos+1, entry);
-//			saveEntries(provider, entries);
-//			
-//			updateTreeEntries();
-//			selectItem(providerId, entry);
-//			updateButtons();
-//			
-//			String providerId = provider.getId();
-//			saveEntries(provider, null);
-//			
-//			updateTreeEntries();
-//			selectItem(providerId, null);
-//			updateButtons();
-//			
-//			int pos;
-//			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-//			IResource rc = getResource();
-//			String languageId = currentLanguageSetting.getLanguageId();
-//				
-//			LanguageSettingsCloneableProvider writableProvider;
-//			try {
-//				writableProvider = ((LanguageSettingsCloneableProvider) provider).getWritable();
-//			} catch (CloneNotSupportedException e) {
-//				throw new UnsupportedOperationException("Internal Error");
-//			}
-//			writableProvider.setSettingEntries(cfgDescription, rc, languageId, entries);
-//			
-//			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
-//			pos = providers.indexOf(provider);
-//			providers.remove(pos);
-//			providers.add(pos, writableProvider);
-//			cfgDescription.setLanguageSettingProviders(providers);
-//			
-//		}
-		if (!page.isForPrefs()) {
+		if (page.isForFile() || page.isForFolder()) {
 			ICConfigurationDescription cfgDescription = getConfigurationDescription();
 			IResource rc = getResource();
 			List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
@@ -1023,11 +983,11 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 //			ICConfigurationDescription cfgDescription = getConfigurationDescription();
 //			cfgDescription.setLanguageSettingProviders(new ArrayList<ILanguageSettingsProvider>());
 			updateTreeEntries();
-			boolean enabled = false;
-			enableProvidersCheckBox.setSelection(enabled);
-			if (masterPropertyPage!=null)
-				masterPropertyPage.setLanguageSettingsProvidersEnabled(enabled);
-			enableControls(enabled);
+//			boolean enabled = false;
+//			enableProvidersCheckBox.setSelection(enabled);
+//			if (masterPropertyPage!=null)
+//				masterPropertyPage.setLanguageSettingsProvidersEnabled(enabled);
+//			enableControls(enabled);
 		}
 		updateData(getResDesc());
 	}

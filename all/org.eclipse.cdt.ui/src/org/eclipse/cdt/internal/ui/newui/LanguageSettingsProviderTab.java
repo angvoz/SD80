@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -861,26 +862,60 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 	@Override
 	protected void performDefaults() {
+		if (enableProvidersCheckBox==null || enableProvidersCheckBox.getSelection()==false)
+			return;
+		
 		if (page.isForPrefs()) {
 			if (MessageDialog.openQuestion(usercomp.getShell(),
 					Messages.LanguageSettingsProviderTab_TitleResetProviders,
 					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
-				// TODO
+				
+				for (int i=0;i<presentedProviders.size();i++) {
+					ILanguageSettingsProvider provider = presentedProviders.get(i);
+					if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager_TBD.isEqualExtensionProvider(provider)) {
+						String id = provider.getId();
+						try {
+							ILanguageSettingsProvider newProvider = LanguageSettingsManager_TBD.getExtensionProviderCopy(id);
+							presentedProviders.set(i, newProvider);
+						} catch (CloneNotSupportedException e) {
+							CUIPlugin.log("Error cloning provider " + id, e);
+						}
+					}
+				}
+			}
+		}
+
+		if (page.isForProject()) {
+			if (MessageDialog.openQuestion(usercomp.getShell(),
+					Messages.LanguageSettingsProviderTab_TitleResetProviders,
+					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
+				
+				ICConfigurationDescription cfgDescription = getConfigurationDescription();
+				List<ILanguageSettingsProvider> cfgProviders = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+				boolean atLeastOneChanged = false;
+				for (int i=0;i<cfgProviders.size();i++) {
+					ILanguageSettingsProvider provider = cfgProviders.get(i);
+					if (provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager_TBD.isEqualExtensionProvider(provider)) {
+						String id = provider.getId();
+						try {
+							ILanguageSettingsProvider newProvider = LanguageSettingsManager_TBD.getExtensionProviderCopy(id);
+							cfgProviders.set(i, newProvider);
+							atLeastOneChanged = true;
+						} catch (CloneNotSupportedException e) {
+							CUIPlugin.log("Error cloning provider " + id, e);
+						}
+					}
+				}
+				if (atLeastOneChanged) {
+					cfgDescription.setLanguageSettingProviders(cfgProviders);
+				}
 				
 			}
 		}
 
-		if (page.isForProject() && enableProvidersCheckBox!=null) {
-			ICConfigurationDescription cfgDescription = getConfigurationDescription();
-			cfgDescription.setLanguageSettingProviders(new ArrayList<ILanguageSettingsProvider>());
-			boolean enabled = false;
-			enableProvidersCheckBox.setSelection(enabled);
-			if (masterPropertyPage!=null)
-				masterPropertyPage.setLanguageSettingsProvidersEnabled(enabled);
-			enableControls(enabled);
-		}
 		updateData(getResDesc());
 	}
+
 
 	@Override
 	protected void performApply(ICResourceDescription srcRcDescription, ICResourceDescription destRcDescription) {

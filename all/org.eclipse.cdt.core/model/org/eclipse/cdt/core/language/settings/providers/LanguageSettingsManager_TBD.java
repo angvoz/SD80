@@ -83,6 +83,7 @@ public class LanguageSettingsManager_TBD {
 		LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
 	}
 
+	@Deprecated
 	public static void resetExtensionProvider(ILanguageSettingsProvider provider) {
 		// TODO
 		Assert.isTrue(LanguageSettingsManager.isWorkspaceProvider(provider));

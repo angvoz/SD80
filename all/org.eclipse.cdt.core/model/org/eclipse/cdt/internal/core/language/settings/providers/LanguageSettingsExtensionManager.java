@@ -510,6 +510,7 @@ public class LanguageSettingsExtensionManager {
 	}
 
 	// TODO: API?
+	@Deprecated
 	public static void reset(ILanguageSettingsProvider provider) {
 		String providerId = provider.getId();
 		IExtensionRegistry registry = Platform.getExtensionRegistry();

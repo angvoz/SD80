@@ -165,7 +165,7 @@
             name="%SignalsView.name"
             icon="icons/view16/signals_view.gif"
             category="org.eclipse.debug.ui"
-            class="org.eclipse.cdt.debug.internal.ui.views.signals.SignalsView"
+            class="org.eclipse.cdt.debug.internal.ui.views.signals.FlexibleSignalsView"
             id="org.eclipse.cdt.debug.ui.SignalsView">
       </view>
    </extension>
@@ -1365,9 +1365,8 @@
             class="org.eclipse.cdt.debug.internal.ui.elements.adapters.CDebugElementAdapterFactory">
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider"/>
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory"/>
-         <adapter
-               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerInputProvider">
-         </adapter>
+         <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerInputProvider"/>
+         <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IColumnPresentationFactory"/>
       </factory>
       <factory
             adaptableType="org.eclipse.cdt.debug.core.model.ICThread"
@@ -1375,9 +1374,7 @@
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider"/>
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory"/>
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementMementoProvider"/>
-         <adapter
-               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerInputProvider">
-         </adapter>
+         <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerInputProvider"/>
       </factory>
       <factory
             adaptableType="org.eclipse.cdt.debug.core.model.ICStackFrame"
@@ -1385,12 +1382,8 @@
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider"/>
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IModelProxyFactory"/>
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementMementoProvider"/>
-         <adapter
-               type="org.eclipse.cdt.debug.ui.disassembly.IDocumentElementContentProvider">
-         </adapter>
-         <adapter
-               type="org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerInputProvider">
-         </adapter>
+         <adapter type="org.eclipse.cdt.debug.ui.disassembly.IDocumentElementContentProvider"/>
+         <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IViewerInputProvider"/>
       </factory>
       <factory
             adaptableType="org.eclipse.cdt.debug.core.model.ICModule"
@@ -1414,16 +1407,17 @@
                type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementContentProvider">
          </adapter>
          <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementMementoProvider"/>
-      </factory>
-      <factory
-            adaptableType="org.eclipse.cdt.core.model.ICElement"
-            class="org.eclipse.cdt.debug.internal.ui.elements.adapters.CDebugElementLabelProviderFactory">
          <adapter
                type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementLabelProvider">
          </adapter>
       </factory>
       <factory
             adaptableType="org.eclipse.cdt.debug.core.model.ICVariable"
+            class="org.eclipse.cdt.debug.internal.ui.elements.adapters.CDebugElementLabelProviderFactory">
+         <adapter type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementLabelProvider"/>
+      </factory>
+      <factory
+            adaptableType="org.eclipse.cdt.debug.core.model.ICSignal"
             class="org.eclipse.cdt.debug.internal.ui.elements.adapters.CDebugElementLabelProviderFactory">
          <adapter
                type="org.eclipse.debug.internal.ui.viewers.model.provisional.IElementLabelProvider">
@@ -1824,6 +1818,11 @@
           label="%TracepointActionSet.label"
           visible="false">
       </actionSet>
+      <actionSet
+          id="org.eclipse.cdt.debug.ui.debugViewLayoutActionSet"
+          label="%DebugViewLayoutActionSet.label"
+          visible="false">
+      </actionSet>
  </extension>
  <extension
        point="org.eclipse.ui.commands">
@@ -1903,6 +1902,23 @@
           helpContextId="view_memory_context"
           name="%command.viewMemory.name">
     </command>
+    <category
+          description="%DebugViewLayoutCategory.description"
+          id="org.eclipse.cdt.debug.ui.category.debugViewLayout"
+          name="%DebugViewLayoutCategory.name">
+    </category>
+    <command
+          categoryId="org.eclipse.cdt.debug.ui.category.debugViewLayout"
+          description="%GroupDebugContexts.description"
+          id="org.eclipse.cdt.debug.ui.command.groupDebugContexts"
+          name="%GroupDebugContexts.name">
+    </command>
+    <command
+          categoryId="org.eclipse.cdt.debug.ui.category.debugViewLayout"
+          description="%UngroupDebugContexts.description"
+          id="org.eclipse.cdt.debug.ui.command.ungroupDebugContexts"
+          name="%UngroupDebugContexts.name">
+    </command>
  </extension>
  <extension
          point="org.eclipse.ui.handlers">
@@ -1957,6 +1973,14 @@
 			    </with>
 			</activeWhen>
       </handler>
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.commands.GroupDebugContextsCommandHandler"
+            commandId="org.eclipse.cdt.debug.ui.command.groupDebugContexts">
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.commands.UngroupDebugContextsCommandHandler"
+            commandId="org.eclipse.cdt.debug.ui.command.ungroupDebugContexts">
+      </handler>
  </extension>
  <extension
          point="org.eclipse.core.expressions.definitions">
@@ -2006,6 +2030,18 @@
                   operator="or">
                <equals
                      value="org.eclipse.cdt.debug.ui.debugActionSet">
+               </equals>
+            </iterate>
+         </with>
+      </definition>
+      <definition
+            id="org.eclipse.cdt.debug.ui.testDebugViewLayoutActionSetActive">
+         <with
+               variable="activeContexts">
+            <iterate
+                  operator="or">
+               <equals
+                     value="org.eclipse.cdt.debug.ui.debugViewLayoutActionSet">
                </equals>
             </iterate>
          </with>
@@ -2303,6 +2339,53 @@
           </visibleWhen>
        </command>
     </menuContribution>
+      <menuContribution
+            locationURI="popup:org.eclipse.debug.ui.DebugView?after=emptyStepGroup">
+         <command
+			commandId="org.eclipse.cdt.debug.ui.command.groupDebugContexts"
+			label="%GroupDebugContexts.name">
+          	<visibleWhen
+            	checkEnabled="false">
+            		<and>
+		      			<reference
+		            		definitionId="org.eclipse.cdt.debug.ui.testDebugViewLayoutActionSetActive">
+		      			</reference>
+		         		<with
+		               		variable="debugContext">
+		               		<iterate
+								ifEmpty="false"
+                              	operator="and">
+                            	<test
+	        	        			property="org.eclipse.cdt.debug.ui.isGroupDebugContextsVisible">
+	    	           			</test>
+	    	           		</iterate>
+			         	</with>
+			   		</and>
+          	</visibleWhen>
+         </command>
+         <command
+               commandId="org.eclipse.cdt.debug.ui.command.ungroupDebugContexts"
+               label="%UngroupDebugContexts.name">
+				<visibleWhen
+            	checkEnabled="false">
+            		<and>
+		      			<reference
+		            		definitionId="org.eclipse.cdt.debug.ui.testDebugViewLayoutActionSetActive">
+		      			</reference>
+		         		<with
+		               		variable="debugContext">
+		               		<iterate
+								ifEmpty="false"
+                              	operator="and">
+                            	<test
+	        	        			property="org.eclipse.cdt.debug.ui.isUngroupDebugContextsVisible">
+	    	           			</test>
+	    	           		</iterate>
+			         	</with>
+			   		</and>
+          	</visibleWhen>
+         </command>
+      </menuContribution>
  </extension>
  
  <!-- Cast to Type / Display as Array -->

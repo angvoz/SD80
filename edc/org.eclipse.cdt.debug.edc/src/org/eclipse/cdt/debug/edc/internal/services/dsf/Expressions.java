@@ -123,7 +123,7 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 		/* (non-Javadoc)
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#evaluateExpression()
 		 */
-		public void evaluateExpression() {
+		public synchronized void evaluateExpression() {
 			if (value != null || valueError != null)
 				return;
 			
@@ -1150,32 +1150,49 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 			// for each field, evaluate an expression, then shorten the name
 			ICompositeType compositeType = (ICompositeType) exprType;
 
-			IField[] fields = compositeType.getFields();
-
-			for (IField field : fields) {
-				if (field.getName().length() == 0) {
+			for (IField field : compositeType.getFields()) {
+				String fieldName = field.getName();
+				if (fieldName.length() == 0) {
 					// This makes an invalid expression
 					// The debug info provider should have filtered out or renamed such fields
 					assert false;
 					continue;
 				}
-				exprChild = new ExpressionDMC(expr.getFrame(), expression + field.getName(), field.getName());
+				exprChild = new ExpressionDMC(expr.getFrame(), expression + fieldName, fieldName);
 				if (exprChild != null) {
 					exprList.add(exprChild);
 				}
 			}
-			
-			IInheritance[] inheritedFrom = compositeType.getInheritances();
-			for (IInheritance inherited : inheritedFrom) {
-				if (inherited.getName().length() == 0) {
+
+			for (IInheritance inherited : compositeType.getInheritances()) {
+				String inheritedName = inherited.getName();
+				if (inheritedName.length() == 0) {
 					// This makes an invalid expression
 					// The debug info provider should have filtered out or renamed such fields
-					assert false;
-					continue;
-				}
-				exprChild = new ExpressionDMC(expr.getFrame(), expression + inherited.getName(), inherited.getName());
-				if (exprChild != null) {
-					exprList.add(exprChild);
+					assert false;	// couldn't this be the case for an anonymous member, like a union?
+				} else if (!inheritedName.contains("<")) {
+					String castedExpr = "static_cast<" + inheritedName + " >(" + expr.getExpression() + ")";
+					exprChild = new ExpressionDMC(expr.getFrame(), castedExpr, inheritedName);
+					if (exprChild != null) {
+						exprList.add(exprChild);
+					}
+				} else {
+					IType inheritedType = inherited.getType(); 
+					if (inheritedType instanceof ICompositeType) {
+						for (IField field : ((ICompositeType)inheritedType).getFields()) {
+							String fieldName = field.getName();
+							if (fieldName.length() == 0) {
+								// This makes an invalid expression
+								// The debug info provider should have filtered out or renamed such fields
+								assert false;
+								continue;
+							}
+							exprChild = new ExpressionDMC(expr.getFrame(), expression + fieldName, fieldName);
+							if (exprChild != null) {
+								exprList.add(exprChild);
+							}
+						}
+					}
 				}
 			}
 			
@@ -1300,56 +1317,65 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 			final DataRequestMonitor<FormattedValueDMData> rm) {
 		asyncExec(new Runnable() {
 			public void run() {
-				IDMContext idmContext = formattedDataContext.getParents()[0];
-				FormattedValueDMData formattedValue = null;
-				IEDCExpression exprDMC = null;
-
-				if (idmContext instanceof IEDCExpression) {
-					exprDMC = (IEDCExpression) formattedDataContext.getParents()[0];
-
-					exprDMC.evaluateExpression();
-					
-					if (exprDMC != null && exprDMC.getEvaluationError() != null) {
-						rm.setStatus(exprDMC.getEvaluationError());
-						rm.done();
-						return;
-					}
-					
-					formattedValue = exprDMC.getFormattedValue(formattedDataContext); // must call this to get type
-					
-					if (formattedDataContext.getFormatID().equals(IFormattedValues.NATURAL_FORMAT))
-					{
-						IVariableValueConverter customConverter = getCustomValueConverter(exprDMC);
-						if (customConverter != null) {
-							FormattedValueDMData customFormattedValue = null;
-							try {
-								customFormattedValue = new FormattedValueDMData(customConverter.getValue(exprDMC));
-								formattedValue = customFormattedValue;
-							}
-							catch (CoreException e) {
-								// Checked exception like failure in reading memory.
-								// Pass the error to the RM so that it would show up in UI. 
-								rm.setStatus(e.getStatus());
-								rm.done();
-								return;
-							}
-							catch (Throwable t) {
-								// Other unexpected errors, usually bug in the formatter. Log it 
-								// so that user will be able to see and report the bug. 
-								// Meanwhile default to normal formatting so that user won't see 
-								// such error in Variable UI.
-								EDCDebugger.getMessageLogger().logError(
-										EDCServicesMessages.Expressions_ErrorInVariableFormatter + customConverter.getClass().getName(), t);
-							}
-						}
-					}
-				} else
-					formattedValue = new FormattedValueDMData(""); //$NON-NLS-1$
-
-				rm.setData(formattedValue);
-				rm.done();
+				try {
+					rm.setData(getFormattedExpressionValue(formattedDataContext));
+					rm.done();
+				} catch (CoreException ce) {
+					rm.setStatus(ce.getStatus());
+					rm.done();
+					return;
+				}
 			}
 		}, rm);
+	}
+
+	public String getExpressionValueString(IExpressionDMContext expression, String format) throws CoreException {
+		FormattedValueDMContext formattedDataContext = getFormattedValueContext(expression, format);
+		FormattedValueDMData formattedValue = getFormattedExpressionValue(formattedDataContext);
+		
+		return formattedValue != null ? formattedValue.getFormattedValue() : "";
+	}
+
+	public FormattedValueDMData getFormattedExpressionValue(FormattedValueDMContext formattedDataContext) throws CoreException {
+		IDMContext idmContext = formattedDataContext.getParents()[0];
+		FormattedValueDMData formattedValue = null;
+		IEDCExpression exprDMC = null;
+
+		if (idmContext instanceof IEDCExpression) {
+			exprDMC = (IEDCExpression) formattedDataContext.getParents()[0];
+
+			exprDMC.evaluateExpression();
+			
+			if (exprDMC != null && exprDMC.getEvaluationError() != null) {
+				throw new CoreException(exprDMC.getEvaluationError());
+			}
+			
+			formattedValue = exprDMC.getFormattedValue(formattedDataContext); // must call this to get type
+			
+			if (formattedDataContext.getFormatID().equals(IFormattedValues.NATURAL_FORMAT))
+			{
+				IVariableValueConverter customConverter = getCustomValueConverter(exprDMC);
+				if (customConverter != null) {
+					FormattedValueDMData customFormattedValue = null;
+					try {
+						customFormattedValue = new FormattedValueDMData(customConverter.getValue(exprDMC));
+						formattedValue = customFormattedValue;
+					}
+					catch (Throwable t) {
+						// CoreExeception will just propagate out, so this is for
+						// other unexpected errors, usually bug in the formatter. Log it 
+						// so that user will be able to see and report the bug. 
+						// Meanwhile, default to normal formatting so that user won't see 
+						// such error in Variable UI.
+						EDCDebugger.getMessageLogger().logError(
+								EDCServicesMessages.Expressions_ErrorInVariableFormatter + customConverter.getClass().getName(), t);
+					}
+				}
+			}
+		} else
+			formattedValue = new FormattedValueDMData(""); //$NON-NLS-1$
+		
+		return formattedValue;
 	}
 
 	private IVariableValueConverter getCustomValueConverter(IEDCExpression exprDMC) {
@@ -1367,13 +1393,8 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 
 	public String getExpressionValue(IExpressionDMContext expression)
 	{
-		return getExpressionValue(expression, IFormattedValues.NATURAL_FORMAT);
-	}
-
-	public String getExpressionValue(IExpressionDMContext expression, String format)
-	{
 		final StringBuffer holder = new StringBuffer();
-		FormattedValueDMContext formattedValueContext = getFormattedValueContext(expression, format);					
+		FormattedValueDMContext formattedValueContext = getFormattedValueContext(expression, IFormattedValues.NATURAL_FORMAT);					
 		getFormattedExpressionValue(formattedValueContext, new DataRequestMonitor<FormattedValueDMData>(ImmediateExecutor.getInstance(), null) {
 			@Override
 			protected void handleSuccess() {

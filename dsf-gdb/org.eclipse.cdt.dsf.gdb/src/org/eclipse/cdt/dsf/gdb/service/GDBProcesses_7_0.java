@@ -62,7 +62,6 @@ import org.eclipse.cdt.dsf.mi.service.IMIRunControl;
 import org.eclipse.cdt.dsf.mi.service.MIBreakpointsManager;
 import org.eclipse.cdt.dsf.mi.service.MIProcesses;
 import org.eclipse.cdt.dsf.mi.service.command.CommandFactory;
-import org.eclipse.cdt.dsf.mi.service.command.MIInferiorProcess;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupCreatedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadGroupExitedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIConst;
@@ -80,7 +79,6 @@ import org.eclipse.cdt.dsf.service.AbstractDsfService;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
@@ -602,6 +600,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
     		// In such a case, we choose the first process we find
     		// This works when we run a single process
     		// but will break for multi-process!!!
+    		// khouzam
     		if (getThreadToGroupMap().isEmpty()) {
     			groupId = MIProcesses.UNIQUE_GROUP_ID;
     		} else {
@@ -618,6 +617,18 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 
     /** @since 4.0 */
     public IMIContainerDMContext createContainerContextFromGroupId(ICommandControlDMContext controlDmc, String groupId) {
+    	if (groupId == null || groupId.length() == 0) {
+    		// This happens when we are doing non-attach, so for GDB < 7.2, we know that in that case
+    		// we are single process, so lets see if we have the group in our map.
+    		assert getGroupToPidMap().size() <= 1 : "More than one process in our map"; //$NON-NLS-1$
+    		if (getGroupToPidMap().size() == 1) {
+    			for (String key : getGroupToPidMap().keySet()) {
+    				groupId = key;
+    				break;
+    			}
+    		}
+    	}
+    	
     	String pid = getGroupToPidMap().get(groupId);
     	if (pid == null) {
     		pid = groupId;
@@ -742,7 +753,14 @@ public class GDBProcesses_7_0 extends AbstractDsfService
     	rm.done();
     }
 
-    public void attachDebuggerToProcess(final IProcessDMContext procCtx, final DataRequestMonitor<IDMContext> dataRm) {
+    public void attachDebuggerToProcess(IProcessDMContext procCtx, DataRequestMonitor<IDMContext> rm) {
+		attachDebuggerToProcess(procCtx, null, rm);
+	}
+	
+    /**
+	 * @since 4.0
+	 */
+    public void attachDebuggerToProcess(final IProcessDMContext procCtx, final String binaryPath, final DataRequestMonitor<IDMContext> dataRm) {
 		if (procCtx instanceof IMIProcessDMContext) {
 	    	if (!doIsDebuggerAttachSupported()) {
 	            dataRm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Attach not supported.", null)); //$NON-NLS-1$
@@ -772,14 +790,11 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	    						// There is no groupId until we attach, so we can use the default groupId
 	    						fContainerDmc = createContainerContext(procCtx, MIProcesses.UNIQUE_GROUP_ID);
 
-	    				    	if (fBackend.getSessionType() == SessionType.REMOTE) {
-	    				    		final IPath execPath = fBackend.getProgramPath();
-	    				    		if (execPath != null && !execPath.isEmpty()) {
-	    				    			fCommandControl.queueCommand(
-	    				    					fCommandFactory.createMIFileExecAndSymbols(fContainerDmc, execPath.toPortableString()), 
-   				    							new DataRequestMonitor<MIInfo>(ImmediateExecutor.getInstance(), rm));
-	    				    			return;
-									}
+	    						if (binaryPath != null) {
+    				    			fCommandControl.queueCommand(
+    				    					fCommandFactory.createMIFileExecAndSymbols(fContainerDmc, binaryPath), 
+			    							new DataRequestMonitor<MIInfo>(ImmediateExecutor.getInstance(), rm));
+    				    			return;
 	    						}
 
 	    				    	rm.done();
@@ -799,13 +814,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	    					public void execute(RequestMonitor rm) {
 								// By now, GDB has reported the groupId that was created for this process
 	    						fContainerDmc = createContainerContext(procCtx, getGroupFromPid(((IMIProcessDMContext)procCtx).getProcId()));
-	    						
-	    						MIInferiorProcess inferior = fCommandControl.getInferiorProcess();
-	    						if (inferior != null) {
-	    							inferior.setContainerContext(fContainerDmc);
-	    							inferior.setPid(((IMIProcessDMContext)procCtx).getProcId());
-	    						}
-	    						
+	    							    						
 	    						// Store the fully formed container context so it can be returned to the caller.
 							    dataRm.setData(fContainerDmc);
 
@@ -873,13 +882,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 
         	fCommandControl.queueCommand(
         			fCommandFactory.createMITargetDetach(controlDmc, procDmc.getProcId()),
-    				new DataRequestMonitor<MIInfo>(getExecutor(), rm) {
-        				@Override
-        				protected void handleSuccess() {
-        					fCommandControl.getInferiorProcess().setPid(null);
-        					rm.done();
-        				}
-        			});
+    				new DataRequestMonitor<MIInfo>(getExecutor(), rm));
     	} else {
             rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid context.", null)); //$NON-NLS-1$
             rm.done();

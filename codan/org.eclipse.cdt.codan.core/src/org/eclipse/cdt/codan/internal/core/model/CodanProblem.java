@@ -11,23 +11,30 @@
 package org.eclipse.cdt.codan.internal.core.model;
 
 import org.eclipse.cdt.codan.core.model.CodanSeverity;
+import org.eclipse.cdt.codan.core.model.IProblemMultiple;
 import org.eclipse.cdt.codan.core.model.IProblemReporter;
 import org.eclipse.cdt.codan.core.model.IProblemWorkingCopy;
+import org.eclipse.cdt.codan.core.model.ProblemProfileChangeEvent;
 import org.eclipse.cdt.codan.core.param.IProblemPreference;
+import org.eclipse.cdt.codan.internal.core.CheckersRegistry;
 
 /**
  * A type of problems reported by Codan.
  */
-public class CodanProblem implements IProblemWorkingCopy, Cloneable {
+public class CodanProblem extends CodanProblemElement implements IProblemWorkingCopy, Cloneable, IProblemMultiple {
 	private String id;
 	private String name;
 	private String messagePattern;
 	private CodanSeverity severity = CodanSeverity.Warning;
 	private boolean enabled = true;
-	private IProblemPreference preference;
-	private boolean frozen;
+	private IProblemPreference rootPreference;
 	private String description;
 	private String markerType = IProblemReporter.GENERIC_CODE_ANALYSIS_MARKER_TYPE;
+	private boolean multiple;
+
+	public void setMultiple(boolean multiple) {
+		this.multiple = multiple;
+	}
 
 	public CodanSeverity getSeverity() {
 		return severity;
@@ -40,7 +47,6 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 	public CodanProblem(String problemId, String name) {
 		this.id = problemId;
 		this.name = name;
-		this.frozen = false;
 	}
 
 	public String getName() {
@@ -49,6 +55,14 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 
 	public String getId() {
 		return id;
+	}
+
+	/**
+	 * @param id
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	public void setId(String id) {
+		this.id = id;
 	}
 
 	@Override
@@ -63,53 +77,50 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 	public void setSeverity(CodanSeverity sev) {
 		if (sev == null)
 			throw new NullPointerException();
+		checkSet();
 		this.severity = sev;
+		notifyChanged(ProblemProfileChangeEvent.PROBLEM_KEY);
 	}
 
 	public void setEnabled(boolean checked) {
+		checkSet();
 		this.enabled = checked;
+		notifyChanged(ProblemProfileChangeEvent.PROBLEM_KEY);
 	}
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see java.lang.Object#clone()
 	 */
 	@Override
 	public Object clone() {
 		CodanProblem prob;
-		try {
-			prob = (CodanProblem) super.clone();
-			if (preference != null) {
-				prob.preference = (IProblemPreference) preference.clone();
-			}
-			return prob;
-		} catch (CloneNotSupportedException e) {
-			throw new RuntimeException(); // not possible
+		prob = (CodanProblem) super.clone();
+		if (rootPreference != null) {
+			prob.rootPreference = (IProblemPreference) rootPreference.clone();
 		}
+		return prob;
 	}
 
 	public void setPreference(IProblemPreference value) {
-		if (value==null)
+		if (value == null)
 			throw new NullPointerException();
-		preference = value;
+		rootPreference = value;
+		notifyChanged(ProblemProfileChangeEvent.PROBLEM_PREF_KEY);
 	}
 
 	public IProblemPreference getPreference() {
-		return preference;
+		return rootPreference;
 	}
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.eclipse.cdt.codan.core.model.IProblem#getMessagePattern()
 	 */
 	public String getMessagePattern() {
 		return messagePattern;
-	}
-
-	protected void freeze() {
-		frozen = true;
 	}
 
 	/**
@@ -121,14 +132,9 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 		this.messagePattern = messagePattern;
 	}
 
-	protected void checkSet() {
-		if (frozen)
-			throw new IllegalStateException("Object is unmodifieble"); //$NON-NLS-1$
-	}
-
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.eclipse.cdt.codan.core.model.IProblem#getDescription()
 	 */
 	public String getDescription() {
@@ -137,18 +143,19 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see
 	 * org.eclipse.cdt.codan.core.model.IProblemWorkingCopy#setDescription(java
 	 * .lang.String)
 	 */
 	public void setDescription(String desc) {
+		checkSet();
 		this.description = desc;
 	}
 
 	/*
 	 * (non-Javadoc)
-	 *
+	 * 
 	 * @see org.eclipse.cdt.codan.core.model.IProblem#getMarkerType()
 	 */
 	public String getMarkerType() {
@@ -157,10 +164,29 @@ public class CodanProblem implements IProblemWorkingCopy, Cloneable {
 
 	/**
 	 * Sets the marker id for the problem.
-	 *
+	 * 
 	 * @param markerType
 	 */
 	public void setMarkerType(String markerType) {
+		checkSet();
 		this.markerType = markerType;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.eclipse.cdt.codan.core.model.IProblemMultiple#isMultiple()
+	 */
+	public boolean isMultiple() {
+		return multiple;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.eclipse.cdt.codan.core.model.IProblemMultiple#isOriginal()
+	 */
+	public boolean isOriginal() {
+		return !id.contains(CheckersRegistry.CLONE_SUFFIX);
 	}
 }

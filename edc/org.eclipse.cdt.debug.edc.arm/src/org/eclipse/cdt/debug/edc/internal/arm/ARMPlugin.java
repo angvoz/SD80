@@ -53,6 +53,8 @@ public class ARMPlugin extends Plugin {
 	 */
 	public void stop(BundleContext context) throws Exception {
 		plugin = null;
+		if (cache != null)
+			cache.flushAll();
 		super.stop(context);
 	}
 

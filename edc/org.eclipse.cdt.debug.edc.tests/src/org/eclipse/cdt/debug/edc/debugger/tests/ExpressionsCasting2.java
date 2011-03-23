@@ -52,9 +52,9 @@ public class ExpressionsCasting2 extends BaseExpressionTest {
 		openSnapshotAndWaitForSuspendedContext(1);
 		
 		// these variables are in registers
-		checkCastedExpr(null, YOU_SHOULD_BE_SEEING_THIS_TEXT, "aArg2", new CastInfo("TPtr16*"));
-		checkCastedExpr(null, YOU_SHOULD_BE_SEEING_THIS_TEXT, "aArg3", new CastInfo("TPtr16*"));
-		checkCastedExpr(null, YOU_SHOULD_BE_SEEING_THIS_TEXT, "aArg3", new CastInfo("TPtr16&"));
+		checkCastedExpr(null, YOU_SHOULD_BE_SEEING_THIS_TEXT, "aArg2", new CastInfo("TPtr8*"));
+		checkCastedExpr(null, YOU_SHOULD_BE_SEEING_THIS_TEXT, "aArg3", new CastInfo("TPtr8*"));
+		checkCastedExpr(null, YOU_SHOULD_BE_SEEING_THIS_TEXT, "aArg3", new CastInfo("TPtr8&"));
 		
 		// cast value in register directly to float, don't complain about "& of register"
 		checkCastedExpr(null, "5.962985E-39", "aArg2", new CastInfo("float"));
@@ -66,7 +66,7 @@ public class ExpressionsCasting2 extends BaseExpressionTest {
 		openSnapshotAndWaitForSuspendedContext(1);
 		
 		// these variables are in registers, don't complain about "& of register"
-		CastInfo arrayCast = new CastInfo("TPtr16*", 0, 2);
+		CastInfo arrayCast = new CastInfo("TPtr8*", 0, 2);
 		checkCastedChildExpr(null, YOU_SHOULD_BE_SEEING_THIS_TEXT, "aArg3", arrayCast, "aArg3[0]");
 
 	}

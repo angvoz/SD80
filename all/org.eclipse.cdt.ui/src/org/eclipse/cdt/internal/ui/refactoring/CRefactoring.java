@@ -207,7 +207,16 @@ public abstract class CRefactoring extends Refactoring {
 	public Change createChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
 		ModificationCollector collector = new ModificationCollector();
 		collectModifications(pm, collector);
-		CCompositeChange finalChange = collector.createFinalChange();
+		CCompositeChange finalChange = null;
+		try {
+			lockIndex();
+			finalChange = collector.createFinalChange();
+		} catch (InterruptedException e) {
+			throw new OperationCanceledException();
+		} finally {
+			unlockIndex();
+		}
+		
 		finalChange.setDescription(new RefactoringChangeDescriptor(getRefactoringDescriptor()));
 		return finalChange;
 	}
@@ -285,7 +294,9 @@ public abstract class CRefactoring extends Refactoring {
 		if (fIndex != null) {
 			fIndex.releaseReadLock();
 		}
-		fIndex= null;
+		// Marc-Andre Laperle : I don't think we want to null this out, 
+		// if the lock is acquired twice then the lock can only be released once
+		//fIndex= null;
 	}
 
 	public IIndex getIndex() {

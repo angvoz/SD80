@@ -627,73 +627,79 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 			disableBreakpoint(bp, crm);
 	}
 
-	private void createBreakpoint(final IExecutionDMContext exeDMC, final IAddress address, Map<String, Object> props,
+	private void createBreakpoint(final IExecutionDMContext exeDMC, final IAddress address, final Map<String, Object> props,
 			final DataRequestMonitor<BreakpointDMData> drm) {
 
-		final long id = getNewBreakpointID();
-		final IBreakpointDMContext bp_dmc = new BreakpointDMContext(getSession().getId(), new IDMContext[] { exeDMC },
-				id);
-		final IAddress[] bp_addrs = new IAddress[] { address };
-		final Map<String, Object> properties = new HashMap<String, Object>(props);
+		asyncExec(new Runnable() {
+			public void run() {
+				final long id = getNewBreakpointID();
+				final IBreakpointDMContext bp_dmc = new BreakpointDMContext(getSession().getId(), new IDMContext[] { exeDMC },
+						id);
+				final IAddress[] bp_addrs = new IAddress[] { address };
+				final Map<String, Object> properties = new HashMap<String, Object>(props);
 
-		if (usesTCFBreakpointService()) {
-			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ID, Long.toString(id));
-			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ENABLED, true);
-			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_TYPE,
-					org.eclipse.tm.tcf.services.IBreakpoints.TYPE_AUTO);
-			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_LOCATION, address.toString());
+				if (usesTCFBreakpointService()) {
+					properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ID, Long.toString(id));
+					properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_ENABLED, true);
+					properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_TYPE,
+							org.eclipse.tm.tcf.services.IBreakpoints.TYPE_AUTO);
+					properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_LOCATION, address.toString());
 
 
-			// Pass "contexts" for which the BP is supposed to work.
-			// NOTE: EDC extension to TCF: 
-			//  TCF only define "IBreakpoints.PROP_CONTEXTIDS" as a array of IDs. 
-			//  In EDC, it's required the first element in the array be IBreakpointsTargetDMContext
-			//  which is usually (but not always) a process. This makes EDC backward compatible with
-			//  some existing TCF agents.
-			IBreakpointsTargetDMContext bpTargetDMC = DMContexts.getAncestorOfType(exeDMC, IBreakpointsTargetDMContext.class);
-			// pass "exeDMC" as a context if it's different from bpTargetDMC, say, if "exeDMC" is a thread and
-			// the "bpTargetDMC" is the owner process. This allows for thread-specific BP if agent supports it.
-			String[] contexts;
-			if (! exeDMC.equals(bpTargetDMC))
-				contexts = new String[] {((IEDCDMContext)bpTargetDMC).getID(), ((IEDCDMContext)exeDMC).getID()};
-			else 
-				contexts = new String[] {((IEDCDMContext)bpTargetDMC).getID()};
-			properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_CONTEXTIDS, contexts);
+					// Pass "contexts" for which the BP is supposed to work.
+					// NOTE: EDC extension to TCF: 
+					//  TCF only define "IBreakpoints.PROP_CONTEXTIDS" as a array of IDs. 
+					//  In EDC, it's required the first element in the array be IBreakpointsTargetDMContext
+					//  which is usually (but not always) a process. This makes EDC backward compatible with
+					//  some existing TCF agents.
+					IBreakpointsTargetDMContext bpTargetDMC = DMContexts.getAncestorOfType(exeDMC, IBreakpointsTargetDMContext.class);
+					// pass "exeDMC" as a context if it's different from bpTargetDMC, say, if "exeDMC" is a thread and
+					// the "bpTargetDMC" is the owner process. This allows for thread-specific BP if agent supports it.
+					String[] contexts;
+					if (! exeDMC.equals(bpTargetDMC))
+						contexts = new String[] {((IEDCDMContext)bpTargetDMC).getID(), ((IEDCDMContext)exeDMC).getID()};
+					else 
+						contexts = new String[] {((IEDCDMContext)bpTargetDMC).getID()};
+					properties.put(org.eclipse.tm.tcf.services.IBreakpoints.PROP_CONTEXTIDS, contexts);
 
-			getTargetEnvironmentService().updateBreakpointProperties(exeDMC, address, properties);
+					getTargetEnvironmentService().updateBreakpointProperties(exeDMC, address, properties);
 
-			drm.setData(new BreakpointDMData(id, bp_dmc, bp_addrs, properties));
-			drm.done();
-		} else { // generic software breakpoint
-			final byte[] bpInstruction = getTargetEnvironmentService().getBreakpointInstruction(exeDMC, address);
-			final int inst_size = bpInstruction.length;
-
-			Memory memoryService = getService(Memory.class);
-			IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(exeDMC, IMemoryDMContext.class);
-
-			memoryService.getMemory(mem_dmc, address, 0, 1, inst_size, new DataRequestMonitor<MemoryByte[]>(
-					getExecutor(), drm) {
-				@Override
-				protected void handleSuccess() {
-					MemoryByte[] org_inst = getData();
-					final byte[] org_inst_bytes = new byte[org_inst.length];
-					for (int i = 0; i < org_inst.length; i++) {
-						// make sure each byte is okay
-						if (!org_inst[i].isReadable()) {
-							drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
-										("Cannot read memory at 0x" + address.add(i).getValue().toString(16)),
-										null));
-							drm.done();
-							return;
-						}
-						org_inst_bytes[i] = org_inst[i].getValue();
-					}
-
-					drm.setData(new BreakpointDMData(id, bp_dmc, bp_addrs, org_inst_bytes, properties));
+					drm.setData(new BreakpointDMData(id, bp_dmc, bp_addrs, properties));
 					drm.done();
+				} else { // generic software breakpoint
+					final byte[] bpInstruction = getTargetEnvironmentService().getBreakpointInstruction(exeDMC, address);
+					final int inst_size = bpInstruction.length;
+
+					Memory memoryService = getService(Memory.class);
+					IMemoryDMContext mem_dmc = DMContexts.getAncestorOfType(exeDMC, IMemoryDMContext.class);
+
+					memoryService.getMemory(mem_dmc, address, 0, 1, inst_size, new DataRequestMonitor<MemoryByte[]>(
+							getExecutor(), drm) {
+						@Override
+						protected void handleSuccess() {
+							MemoryByte[] org_inst = getData();
+							final byte[] org_inst_bytes = new byte[org_inst.length];
+							for (int i = 0; i < org_inst.length; i++) {
+								// make sure each byte is okay
+								if (!org_inst[i].isReadable()) {
+									drm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED,
+												("Cannot read memory at 0x" + address.add(i).getValue().toString(16)),
+												null));
+									drm.done();
+									return;
+								}
+								org_inst_bytes[i] = org_inst[i].getValue();
+							}
+
+							drm.setData(new BreakpointDMData(id, bp_dmc, bp_addrs, org_inst_bytes, properties));
+							drm.done();
+						}
+					});
 				}
-			});
-		}
+			}
+			
+		}, drm);
+
 	}
 
 	/**

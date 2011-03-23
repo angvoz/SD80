@@ -20,11 +20,13 @@ import org.eclipse.cdt.codan.core.internal.checkers.AssignmentToItselfCheckerTes
 import org.eclipse.cdt.codan.core.internal.checkers.CaseBreakCheckerTest;
 import org.eclipse.cdt.codan.core.internal.checkers.CatchByReferenceTest;
 import org.eclipse.cdt.codan.core.internal.checkers.FormatStringCheckerTest;
+import org.eclipse.cdt.codan.core.internal.checkers.ProblemBindingCheckerTest;
 import org.eclipse.cdt.codan.core.internal.checkers.ReturnCheckerTest;
 import org.eclipse.cdt.codan.core.internal.checkers.ReturnStyleCheckerTest;
 import org.eclipse.cdt.codan.core.internal.checkers.StatementHasNoEffectCheckerTest;
 import org.eclipse.cdt.codan.core.internal.checkers.SuggestedParenthesisCheckerTest;
 import org.eclipse.cdt.codan.core.internal.checkers.SuspiciousSemicolonCheckerTest;
+import org.eclipse.cdt.codan.internal.checkers.ui.quickfix.CreateLocalVariableQuickFixTest;
 import org.eclipse.cdt.codan.internal.checkers.ui.quickfix.SuggestedParenthesisQuickFixTest;
 
 public class AutomatedIntegrationSuite extends TestSuite {
@@ -56,10 +58,12 @@ public class AutomatedIntegrationSuite extends TestSuite {
 		suite.addTestSuite(SuspiciousSemicolonCheckerTest.class);
 		suite.addTestSuite(CaseBreakCheckerTest.class);
 		suite.addTestSuite(FormatStringCheckerTest.class);
+		suite.addTestSuite(ProblemBindingCheckerTest.class);
 		// framework
 		suite.addTest(CodanFastTestSuite.suite());
 		// quick fixes
 		suite.addTestSuite(SuggestedParenthesisQuickFixTest.class);
+		suite.addTestSuite(CreateLocalVariableQuickFixTest.class);
 		return suite;
 	}
 }

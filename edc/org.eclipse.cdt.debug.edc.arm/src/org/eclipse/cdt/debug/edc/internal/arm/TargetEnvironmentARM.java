@@ -12,9 +12,9 @@
 package org.eclipse.cdt.debug.edc.internal.arm;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.math.BigInteger;
 import java.nio.ByteOrder;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -65,7 +65,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 	 */
 	final static byte[] sARMBreakpointInstruction = new byte[] { 0x01, 0, (byte) 0x9f, (byte) 0xef };
 	final static byte[] sThumbBreakpointInstruction = new byte[] { 0, (byte) 0xdf, (byte) 0xef };
-	private static final String IS_THUMB_MODE = null;
+	private static final String IS_THUMB_MODE = "_is_thumb_mode";
 
 	private IDisassembler disassembler = null;
 
@@ -207,13 +207,10 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 			if (reader != null)
 			{
 				cacheKey = reader.getSymbolFile().toOSString() + IS_THUMB_MODE;
-				cachedValues = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
-				if (cachedValues != null)
-				{
-					Boolean cachedValue = cachedValues.get(linkAddress);
-					if (cachedValue != null)
-						return cachedValue;
-				}
+				cachedValues = ARMPlugin.getDefault().getCache().getCachedData(cacheKey, Collections.synchronizedMap(new HashMap<IAddress, Boolean>()), reader.getModificationDate());
+				Boolean cachedValue = cachedValues.get(linkAddress);
+				if (cachedValue != null)
+					return cachedValue;
 			}
 
 			// see if we have symbolics for the module
@@ -224,10 +221,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 				// if the address is question has bit 0 set then it is a
 				// thumb address
 				if (functionStartAddress.getValue().testBit(0)) {
-					if (cachedValues != null) {
-						cachedValues.put(linkAddress, true);
-						ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader != null ? reader.getModificationDate() : 0);
-					}
+					cachedValues.put(linkAddress, true);
 					return true;
 				}
 			}
@@ -237,10 +231,7 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 				ISymbol symbol = reader.getSymbolAtAddress(module.toLinkAddress(address));
 				if (symbol != null && symbol instanceof IARMSymbol) {
 					if (((IARMSymbol)symbol).isThumbAddress()) {
-						if (cachedValues != null) {
-							cachedValues.put(linkAddress, true);
-							ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());
-						}
+						cachedValues.put(linkAddress, true);
 						return true;
 					}
 
@@ -249,19 +240,14 @@ public class TargetEnvironmentARM extends AbstractTargetEnvironment implements I
 						String mappingSymbol = armElf.getMappingSymbolAtAddress(symbol.getAddress());
 						if (mappingSymbol != null) {
 							if (mappingSymbol.startsWith("$t")) { //$NON-NLS-1$
-								if (cachedValues != null) {
-									cachedValues.put(linkAddress, true);
-									ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());
-								}
+								cachedValues.put(linkAddress, true);
 								return true;
 							} else if (mappingSymbol.startsWith("$a")) { //$NON-NLS-1$
-								if (cachedValues != null) {
-									cachedValues.put(linkAddress, false);
-									ARMPlugin.getDefault().getCache().putCachedData(cacheKey, (Serializable) cachedValues, reader.getModificationDate());
-								}
+								cachedValues.put(linkAddress, false);
 								return false;
 							}
 						}
+						cachedValues.put(linkAddress, false);
 					}
 				}
 			}

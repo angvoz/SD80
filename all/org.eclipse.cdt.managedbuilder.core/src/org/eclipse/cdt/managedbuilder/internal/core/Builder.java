@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2009 Intel Corporation and others.
+ * Copyright (c) 2004, 2011 Intel Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,6 +7,7 @@
  *
  * Contributors:
  * Intel Corporation - Initial API and implementation
+ * James Blackburn (Broadcom Corp.)
  *******************************************************************************/
 package org.eclipse.cdt.managedbuilder.internal.core;
 
@@ -40,7 +41,7 @@ import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer
 import org.eclipse.cdt.managedbuilder.core.BuildException;
 import org.eclipse.cdt.managedbuilder.core.ExternalBuildRunner;
 import org.eclipse.cdt.managedbuilder.core.IBuildObject;
-import org.eclipse.cdt.managedbuilder.core.IBuildRunner;
+import org.eclipse.cdt.managedbuilder.core.AbstractBuildRunner;
 import org.eclipse.cdt.managedbuilder.core.IBuilder;
 import org.eclipse.cdt.managedbuilder.core.IConfiguration;
 import org.eclipse.cdt.managedbuilder.core.IManagedConfigElement;
@@ -75,7 +76,7 @@ import org.eclipse.core.variables.IStringVariableManager;
 import org.eclipse.core.variables.VariablesPlugin;
 import org.osgi.framework.Version;
 
-public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider, IRealBuildObjectAssociation  {
+public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider<Builder>, IRealBuildObjectAssociation  {
 
 	private static final String EMPTY_STRING = ""; //$NON-NLS-1$
 
@@ -133,14 +134,14 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 	
 	private Boolean fSupportsCustomizedBuild;
 
-	private List identicalList;
+	private List<Builder> identicalList;
 	
 	private ICOutputEntry[] outputEntries;
 	
 	private ICommandLauncher fCommandLauncher = null;
 	private IConfigurationElement fCommandLauncherElement = null;
 
-	private IBuildRunner fBuildRunner = null;
+	private AbstractBuildRunner fBuildRunner = null;
 	private IConfigurationElement fBuildRunnerElement = null;
 
 	/*
@@ -229,6 +230,11 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 		loadFromProject(element);
 	}
 
+	@SuppressWarnings("unchecked")
+	private HashMap<String, String> cloneMap(HashMap<String, String> map) {
+		return (HashMap<String, String>) map.clone();
+	}
+	
 	/**
 	 * Create a <code>Builder</code> based upon an existing builder.
 	 * 
@@ -289,11 +295,11 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 		if(builder.customizedErrorParserIds != null)
 			customizedErrorParserIds = builder.customizedErrorParserIds.clone();
 		if(builder.customizedEnvironment != null)
-			customizedEnvironment = (HashMap<String, String>) builder.customizedEnvironment.clone();
+			customizedEnvironment = cloneMap(builder.customizedEnvironment);
 		appendEnvironment = builder.appendEnvironment;
 		buildPath = builder.buildPath;
 		if(builder.customBuildProperties != null)
-			customBuildProperties = (HashMap<String, String>) builder.customBuildProperties.clone();
+			customBuildProperties = cloneMap(builder.customBuildProperties);
 
 			
 			
@@ -393,14 +399,14 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 		if(builder.customizedErrorParserIds != null)
 			customizedErrorParserIds = builder.customizedErrorParserIds.clone();
 		if(builder.customizedEnvironment != null)
-			customizedEnvironment = (HashMap<String, String>) builder.customizedEnvironment.clone();
+			customizedEnvironment = cloneMap(builder.customizedEnvironment);
 		appendEnvironment = builder.appendEnvironment;
 		if(isBuildPathEditable()){
 			if(!getBuildPath().equals(builder.getBuildPath()))
 				setBuildPath(builder.getBuildPath());
 		}
 		if(builder.customBuildProperties != null)
-			customBuildProperties = (HashMap<String, String>) builder.customBuildProperties.clone();
+			customBuildProperties = cloneMap(builder.customBuildProperties);
 
 		if(allBuildSettings){
 			if(!getCommand().equals(builder.getCommand()))
@@ -1413,7 +1419,7 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 			String high = ManagedBuildManager
 					.getExtensionBuilderMap().lastKey();
 			
-			SortedMap<String, IBuilder> subMap = null;
+			SortedMap<String, ? extends IBuilder> subMap = null;
 			if (superClassId.compareTo(high) <= 0) {
 				subMap = ManagedBuildManager.getExtensionBuilderMap().subMap(superClassId, high + "\0"); //$NON-NLS-1$
 			} else {
@@ -1438,7 +1444,7 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 			String version = ManagedBuildManager
 					.getVersionFromIdAndVersion(superClassId);
 
-			Collection<IBuilder> c = subMap.values();
+			Collection<? extends IBuilder> c = subMap.values();
 			IBuilder[] builderElements = c.toArray(new IBuilder[c.size()]);
 			
 			for (int i = 0; i < builderElements.length; i++) {
@@ -2128,14 +2134,13 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 
 	public Map<String, String> getEnvironment() {
 		if(customizedEnvironment != null)
-			return (HashMap<String, String>)customizedEnvironment.clone();
+			return cloneMap(customizedEnvironment);
 		return null;
 	}
 
 	public Map<String, String> getExpandedEnvironment() throws CoreException {
 		if(customizedEnvironment != null){
-			@SuppressWarnings("unchecked")
-			Map<String, String> expanded = (HashMap<String, String>)customizedEnvironment.clone();
+			Map<String, String> expanded = cloneMap(customizedEnvironment);
 			ICdtVariableManager mngr = CCorePlugin.getDefault().getCdtVariableManager();
 			String separator = CCorePlugin.getDefault().getBuildEnvironmentManager().getDefaultDelimiter();
 			ICConfigurationDescription cfgDes = ManagedBuildManager.getDescriptionForConfiguration(getParent().getParent());
@@ -2330,7 +2335,7 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 		return new MatchKey<Builder>(this);
 	}
 
-	public void setIdenticalList(List list) {
+	public void setIdenticalList(List<Builder> list) {
 		identicalList = list;
 	}
 
@@ -2343,7 +2348,7 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 		return name;
 	}
 
-	public List getIdenticalList() {
+	public List<Builder> getIdenticalList() {
 		return identicalList;
 	}
 
@@ -2575,8 +2580,7 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 		return num;
 	}
 
-	public int compareTo(Object o) {
-		Builder other = (Builder)o;
+	public int compareTo(Builder other) {
 		if(other.isSystemObject() != isSystemObject())
 			return isSystemObject() ? 1 : -1;
 		
@@ -2636,14 +2640,14 @@ public class Builder extends HoldsOptions implements IBuilder, IMatchKeyProvider
 		return fCommandLauncher;
 	}
 
-	public IBuildRunner getBuildRunner() throws CoreException {
+	public AbstractBuildRunner getBuildRunner() throws CoreException {
 		// Already defined
 		if (fBuildRunner != null)
 			return fBuildRunner;
 		
 		// Instantiate from model
 		if (fBuildRunnerElement != null) {
-			fBuildRunner = (IBuildRunner)fBuildRunnerElement.createExecutableExtension(ATTRIBUTE_BUILD_RUNNER);
+			fBuildRunner = (AbstractBuildRunner)fBuildRunnerElement.createExecutableExtension(ATTRIBUTE_BUILD_RUNNER);
 			return fBuildRunner;
 		}
 		

@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine.instructions;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -47,6 +48,18 @@ public class InstructionSequence {
 		fSnippet = snippet;
 	}
 
+	/**
+	 * Copy constructor
+	 * 
+	 * @param original - the instance to copy
+	 */
+	public InstructionSequence(InstructionSequence original) {
+		fInstructions = new ArrayList<Instruction>(Arrays.asList(original.getInstructions()));
+		fErrors = new ArrayList<String>(Arrays.asList(original.getErrorMessages()));
+		fSnippet = original.getSnippet();
+		fException = original.getException();
+	}
+	
 	/**
 	 * Get the runtime exception that occurred while evaluating this expression
 	 * 

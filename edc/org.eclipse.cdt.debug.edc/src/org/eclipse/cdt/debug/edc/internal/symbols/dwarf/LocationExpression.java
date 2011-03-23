@@ -40,7 +40,7 @@ public class LocationExpression implements ILocationProvider {
 		this.scope = scope;
 	}
 
-	public IVariableLocation getLocation(EDCServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress, boolean isNonLocalConstVariable) {
+	synchronized public IVariableLocation getLocation(EDCServicesTracker tracker, IFrameDMContext context, IAddress forLinkAddress, boolean isNonLocalConstVariable) {
 
 		if (location == null) {
 			return null;

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2006, 2010 Wind River Systems and others.
+ * Copyright (c) 2006, 2011 Wind River Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -29,9 +29,9 @@ import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IRunControl2;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
-import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
+import org.eclipse.cdt.dsf.mi.service.IMIProcessDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIProcesses;
 import org.eclipse.cdt.dsf.mi.service.IMIRunControl;
 import org.eclipse.cdt.dsf.mi.service.MIRunControl;
@@ -43,6 +43,7 @@ import org.eclipse.cdt.dsf.mi.service.command.events.MIInferiorExitEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIStoppedEvent;
 import org.eclipse.cdt.dsf.mi.service.command.events.MIThreadExitEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakInsertInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIFrame;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -77,7 +78,6 @@ public class GDBRunControl extends MIRunControl {
 	
     private IGDBBackend fGdb;
 	private IMIProcesses fProcService;
-	private IGDBControl fGbControlService;
 	private CommandFactory fCommandFactory;
 	
 	// Record list of execution contexts
@@ -104,7 +104,6 @@ public class GDBRunControl extends MIRunControl {
     	
         fGdb = getServicesTracker().getService(IGDBBackend.class);
         fProcService = getServicesTracker().getService(IMIProcesses.class);
-        fGbControlService = getServicesTracker().getService(IGDBControl.class);
         fCommandFactory = getServicesTracker().getService(IMICommandControl.class).getCommandFactory();
 
         register(new String[]{IRunControl.class.getName(), 
@@ -135,7 +134,7 @@ public class GDBRunControl extends MIRunControl {
     }
 
     @Override
-    public void suspend(IExecutionDMContext context, final RequestMonitor rm){
+    public void suspend(final IExecutionDMContext context, final RequestMonitor rm){
         canSuspend(
             context, 
             new DataRequestMonitor<Boolean>(getExecutor(), rm) {
@@ -151,7 +150,8 @@ public class GDBRunControl extends MIRunControl {
                     	if (fGdb.getIsAttachSession() 
                     			&& fGdb.getSessionType() != SessionType.REMOTE
                     			&& Platform.getOS().equals(Platform.OS_WIN32)) {
-                    		String inferiorPid = fGbControlService.getInferiorProcess().getPid();
+                    		IMIProcessDMContext processDmc = DMContexts.getAncestorOfType(context, IMIProcessDMContext.class);
+                    		String inferiorPid = processDmc.getProcId();
                     		if (inferiorPid != null) {
                     			fGdb.interruptInferiorAndWait(Long.parseLong(inferiorPid), IGDBBackend.INTERRUPT_TIMEOUT_DEFAULT, rm);
                     		}
@@ -361,8 +361,7 @@ public class GDBRunControl extends MIRunControl {
     		if (e instanceof MIBreakpointHitEvent) {
     			bpId = ((MIBreakpointHitEvent)e).getNumber();
     		}
-			String fileLocation = e.getFrame().getFile() + ":" + e.getFrame().getLine();  //$NON-NLS-1$
-			String addrLocation = e.getFrame().getAddress();
+
 			// Here we check three different things to see if we are stopped at the right place
 			// 1- The actual location in the file.  But this does not work for breakpoints that
 			//    were set on non-executable lines
@@ -374,9 +373,18 @@ public class GDBRunControl extends MIRunControl {
 			// So this works for the large majority of cases.  The case that won't work is when the user
 			// does a runToLine to a line that is non-executable AND has another breakpoint AND
 			// has multiple addresses for the breakpoint.  I'm mean, come on!
-			if (fileLocation.equals(fRunToLineActiveOperation.getFileLocation()) ||
-				addrLocation.equals(fRunToLineActiveOperation.getAddrLocation()) ||
-				bpId == fRunToLineActiveOperation.getBreakointId()) {
+			boolean equalFileLocation = false;
+			boolean equalAddrLocation = false;
+			boolean equalBpId = bpId == fRunToLineActiveOperation.getBreakointId();
+			MIFrame frame = e.getFrame();
+			if(frame != null) {
+				String fileLocation = frame.getFile() + ":" + frame.getLine();  //$NON-NLS-1$
+				String addrLocation = frame.getAddress();
+				equalFileLocation = fileLocation.equals(fRunToLineActiveOperation.getFileLocation());
+				equalAddrLocation = addrLocation.equals(fRunToLineActiveOperation.getAddrLocation());
+			}
+			
+			if (equalFileLocation || equalAddrLocation || equalBpId) {
     			// We stopped at the right place.  All is well.
 				fRunToLineActiveOperation = null;
     		} else {

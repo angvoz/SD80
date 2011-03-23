@@ -10,6 +10,7 @@
  *     ARM Ltd. - basic tooltip support
  *     James Blackburn (Broadcom Corp.)
  *     Petri Tuononen - [321040] Get Library Search Paths
+ *     Baltasar Belyavsky (Texas Instruments) - [279633] Custom command-generator support
  *******************************************************************************/
 package org.eclipse.cdt.managedbuilder.core;
 
@@ -85,6 +86,8 @@ public interface IOption extends IBuildObject {
 	public static final String CATEGORY = "category"; //$NON-NLS-1$
 	public static final String COMMAND = "command"; //$NON-NLS-1$
 	public static final String COMMAND_FALSE = "commandFalse"; //$NON-NLS-1$
+	/** @since 8.0 */
+	public static final String COMMAND_GENERATOR = "commandGenerator"; //$NON-NLS-1$
 	public static final String TOOL_TIP = "tip"; //$NON-NLS-1$
 	public static final String CONTEXT_ID = "contextId"; //$NON-NLS-1$
 	public static final String DEFAULT_VALUE = "defaultValue"; //$NON-NLS-1$
@@ -116,6 +119,11 @@ public interface IOption extends IBuildObject {
 	public static final String VALUE_TYPE = "valueType"; //$NON-NLS-1$
 	public static final String VALUE_HANDLER = "valueHandler"; //$NON-NLS-1$
 	public static final String VALUE_HANDLER_EXTRA_ARGUMENT = "valueHandlerExtraArgument"; //$NON-NLS-1$
+	
+	/** @since 8.0 */
+	public static final String FIELD_EDITOR_ID = "fieldEditor"; //$NON-NLS-1$
+	/** @since 8.0 */
+	public static final String FIELD_EDITOR_EXTRA_ARGUMENT = "fieldEditorExtraArgument"; //$NON-NLS-1$
 
 	// Schema attribute names for listOptionValue elements
 	public static final String LIST_ITEM_VALUE = "value"; //$NON-NLS-1$
@@ -245,6 +253,12 @@ public interface IOption extends IBuildObject {
 	 * option associated with the option
 	 */
 	public String getCommand();
+	
+	/**
+	 * @return an instance of the class that overrides the default command generation for the option
+	 * @since 8.0
+	 */
+	public IOptionCommandGenerator getCommandGenerator();
 	
 	/**
 	 * Sets a <code>String</code> containing the actual command line 
@@ -454,6 +468,27 @@ public interface IOption extends IBuildObject {
 	 */
 	public void setValueHandlerExtraArgument(String extraArgument);
 
+	/**
+	 * @return the custom field-editor ID for this build-option. This ID should match a custom-field editor
+	 * 			contributed through the {@code <fieldEditor>} element of the 
+	 * 			{@code org.eclipse.cdt.managedbuilder.ui.buildDefinitionsUI} extension-point.   
+	 * @since 8.0
+	 */
+	public String getFieldEditorId();
+	
+	/**
+	 * @return an optional extra argument for the {@link #getFieldEditorId() field-editor}.
+	 * @since 8.0
+	 */
+	public String getFieldEditorExtraArgument();
+	
+	/**
+	 * Sets the optional extra argument for the field-editor.
+	 * @param extraArgument free-form extra argument to be interpreted by the {@link #getFieldEditorId() field-editor}
+	 * @since 8.0
+	 */
+	public void setFieldEditorExtraArgument(String extraArgument);
+	
 	/**
 	 * @return <code>true</code> if this option was loaded from a manifest file,
 	 * and <code>false</code> if it was loaded from a project (.cdtbuild) file.

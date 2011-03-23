@@ -109,12 +109,8 @@ public class EDCDebugger extends Plugin {
 	 */
 	@Override
 	public void stop(BundleContext context) throws Exception {
-		try {
-			if (cache != null)
-				cache.flushAll();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		if (cache != null)
+			cache.flushAll();
 		plugin = null;
 		if (tcfServiceManager != null)
 			((TCFServiceManager) tcfServiceManager).shutdown();

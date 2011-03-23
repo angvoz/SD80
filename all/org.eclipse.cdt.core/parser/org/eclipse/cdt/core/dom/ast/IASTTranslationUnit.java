@@ -20,7 +20,10 @@ import org.eclipse.core.runtime.IAdaptable;
 
 /**
  * The translation unit represents a compilable unit of source.
- * 
+ *
+ * All existing implementations of IASTTranslationUnit are not thread safe.
+ * Even 'get' methods may cause changes to the underlying object.
+ *
  * @noextend This interface is not intended to be extended by clients.
  * @noimplement This interface is not intended to be implemented by clients.
  */
@@ -184,8 +187,9 @@ public interface IASTTranslationUnit extends IASTDeclarationListOwner, IAdaptabl
 	public int getPreprocessorProblemsCount();
 
 	/**
-	 * Returns the translation unit's full path.  
-	 * @return String representation of path.
+	 * Returns the location of the root file of this translation unit.
+	 * This will be the same value as returned by {@code getFileLocation().getFileName()}
+	 * @see IASTFileLocation#getFileName()
 	 */
 	public String getFilePath();
     

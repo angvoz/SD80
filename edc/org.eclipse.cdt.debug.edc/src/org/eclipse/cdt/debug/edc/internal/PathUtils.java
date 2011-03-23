@@ -109,7 +109,8 @@ public class PathUtils {
 	 */
 	public static IPath createPath(String path) {
 		if (path == null) return null;
-		if (path.contains("\\")) {
+		boolean hasWindowsSlashes = path.contains("\\");
+		if (hasWindowsSlashes) {
 			// handle Windows slashes and canonicalize
 			path = path.replaceAll("\\\\", "/");
 		}
@@ -123,7 +124,7 @@ public class PathUtils {
 		} 
 		else {
 			// Cygwin or UNC path
-			if (path.startsWith("//")) {
+			if (path.startsWith("//") && !hasWindowsSlashes) {
 				String network;
 				idx = path.indexOf("/", 2);
 				if (idx > 0) {

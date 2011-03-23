@@ -1511,11 +1511,11 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 				needsUpdate = (frames.get(0).getLevel() > startIndex || 
 						frames.get(frames.size() - 1).getLevel() < endIndex);
 			}
-		}
-		if (needsUpdate)
-			updateFrames(context, startIndex, endIndex);
-		synchronized (stackFrames) {
-			List<StackFrameDMC> frames = stackFrames.get(context.getID());
+
+			if (needsUpdate)
+				updateFrames(context, startIndex, endIndex);
+
+			frames = stackFrames.get(context.getID());
 			// endIndex is inclusive and may be negative to fetch all frames
 			if (endIndex >= 0) {
 				if (startIndex < frames.size() && startIndex <= endIndex) {

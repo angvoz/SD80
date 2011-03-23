@@ -10,12 +10,30 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.ui;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
@@ -24,14 +42,30 @@ import org.eclipse.tm.tcf.core.AbstractChannel;
 import org.eclipse.tm.tcf.protocol.IChannel;
 import org.eclipse.tm.tcf.protocol.IPeer;
 import org.eclipse.tm.tcf.protocol.Protocol;
+import org.eclipse.ui.IMemento;
+import org.eclipse.ui.IViewSite;
+import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.XMLMemento;
 import org.eclipse.ui.part.ViewPart;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.osgi.service.prefs.BackingStoreException;
+import org.osgi.service.prefs.Preferences;
 
 public class TraceView extends ViewPart implements Protocol.ChannelOpenListener {
+
+	private static final String FILTER_HEARTBEATS = "filter_heartbeats"; //$NON-NLS-1$
+	private static final String REUSE_TABS = "reuse_tabs"; //$NON-NLS-1$
 
 	private Composite parent;
 	private TabFolder tabs;
 	private Label no_data;
 	private final Map<TabItem, Page> tab2page = new HashMap<TabItem, Page>();
+	private Action clearTabAction;
+	private Action closeTabAction;
+	private Action exportAction;
+	private Action filterAction;
+	private Action reuseAction;
+	private IMemento memento;
 
 	private class Page implements AbstractChannel.TraceListener {
 
@@ -116,30 +150,29 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 		}
 
 		public synchronized void onChannelClosed(Throwable error) {
+			String msg = "";
+			
 			if (error == null) {
-				// This will be called in dispose() when the view is closed.
-				// So don't do this here, otherwise the double "remove" may
-				// cause NPE in removeTraceListener()...08/03/10 
-				// channel.removeTraceListener(this);
-				
-				// TODO:
-				// This is a temporary fix until we properly manage the
-				// creation and destruction of the tabs.
-				//
-				// getSite().getShell().getDisplay().asyncExec(new Runnable() {
-				// public void run() {
-				// dispose();
-				// }
-				// });
+				msg = "Channel closed";
 			} else {
-				bf.append("Channel terminated: " + error);
-				bf_line_cnt++;
+				msg = "Channel terminated: " + error;
 			}
+
+			bf.append("\n<================= " + msg + " =================>\n");
+			bf_line_cnt += 3;
+
+			getSite().getShell().getDisplay().asyncExec(new Runnable() {
+				public void run() {
+					updateCloseAction();
+				}
+			});
 		}
 
 		public synchronized void onMessageReceived(char type, String token, String service, String name, byte[] data) {
-			if (name != null && name.contains("HeartBeat"))
-				return;
+			if (memento.getBoolean(FILTER_HEARTBEATS)) {
+				if (name != null && name.contains("HeartBeat"))
+					return;
+			}
 
 			try {
 				bf.append("Time(ms): " + System.currentTimeMillis() + " Inp: " );
@@ -177,8 +210,10 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 		}
 
 		public synchronized void onMessageSent(char type, String token, String service, String name, byte[] data) {
-			if (name != null && name.contains("HeartBeat"))
-				return;
+			if (memento.getBoolean(FILTER_HEARTBEATS)) {
+				if (name != null && name.contains("HeartBeat"))
+					return;
+			}
 
 			try {
 				bf.append("Time(ms): " + System.currentTimeMillis() + " Out: ");
@@ -217,8 +252,50 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 	}
 
 	@Override
+	public void init(IViewSite site, IMemento memento) throws PartInitException {
+		super.init(site, memento);
+		if (memento == null)
+			this.memento = XMLMemento.createWriteRoot("EDCTRACEVIEW"); //$NON-NLS-1$
+		else
+			this.memento = memento;
+
+		Preferences p = getViewPreferences(); // never returns null
+		this.memento.putBoolean(FILTER_HEARTBEATS, p.getBoolean(FILTER_HEARTBEATS, true));
+		this.memento.putBoolean(REUSE_TABS, p.getBoolean(REUSE_TABS, true));
+	}
+
+	@Override
+	public void saveState(IMemento memento) {
+		if (this.memento == null || memento == null)
+			return;
+		this.memento.putString(FILTER_HEARTBEATS, filterAction.isChecked() ? "true" : "false"); //$NON-NLS-1$ //$NON-NLS-2$
+		this.memento.putString(REUSE_TABS, reuseAction.isChecked() ? "true" : "false"); //$NON-NLS-1$ //$NON-NLS-2$
+		memento.putMemento(this.memento);
+
+		saveViewPreferences();
+	}
+	
+	private void saveViewPreferences() {
+		Preferences preferences = getViewPreferences();
+		preferences.putBoolean(FILTER_HEARTBEATS, this.memento.getBoolean(FILTER_HEARTBEATS).booleanValue());
+		preferences.putBoolean(REUSE_TABS, this.memento.getBoolean(REUSE_TABS).booleanValue());
+		try {
+			preferences.flush();
+		} catch (BackingStoreException e) {
+			// empty
+		}
+	}
+
+	private Preferences getViewPreferences() {
+		return InstanceScope.INSTANCE.getNode(EDCDebugUI.PLUGIN_ID);
+	}
+
+	@Override
 	public void createPartControl(Composite parent) {
 		this.parent = parent;
+		
+		createActions();
+		
 		Protocol.invokeAndWait(new Runnable() {
 			public void run() {
 				IChannel[] arr = Protocol.getOpenChannels();
@@ -230,6 +307,94 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 		if (tab2page.size() == 0)
 			hideTabs();
 	}
+	
+	private void createActions() {
+		IToolBarManager toolbarManager = getViewSite().getActionBars().getToolBarManager();
+		
+		clearTabAction = new Action(null) {
+			public void run() {
+				Page currentPage = getCurrentPage();
+				if (currentPage != null) {
+					currentPage.text.setText(""); //$NON-NLS-1$
+				}
+			}
+		};
+
+		clearTabAction.setToolTipText("Clear the current tab");
+		clearTabAction.setImageDescriptor(AbstractUIPlugin.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/etool16/clear_tab.gif")); //$NON-NLS-1$
+		
+		clearTabAction.setDisabledImageDescriptor(AbstractUIPlugin.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/dtool16/clear_tab.gif")); //$NON-NLS-1$
+
+		toolbarManager.add(clearTabAction);
+
+		closeTabAction = new Action(null) {
+			public void run() {
+				Page currentPage = getCurrentPage();
+				if (currentPage != null) {
+					currentPage.dispose();
+				}
+			}
+		};
+
+		closeTabAction.setToolTipText("Close the current tab");
+		closeTabAction.setImageDescriptor(AbstractUIPlugin.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/etool16/close_tab.gif")); //$NON-NLS-1$
+		
+		closeTabAction.setDisabledImageDescriptor(AbstractUIPlugin.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/dtool16/close_tab.gif")); //$NON-NLS-1$
+
+		toolbarManager.add(closeTabAction);
+
+		exportAction = new Action(null) {
+			public void run() {
+				Page currentPage = getCurrentPage();
+				if (currentPage != null) {
+					handleExport(currentPage);
+				}
+			}
+		};
+
+		exportAction.setToolTipText("Export Log");
+		exportAction.setImageDescriptor(AbstractUIPlugin.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/etool16/export_log.gif")); //$NON-NLS-1$
+		
+		exportAction.setDisabledImageDescriptor(AbstractUIPlugin.imageDescriptorFromPlugin(EDCDebugUI.PLUGIN_ID,
+			"/icons/dtool16/export_log.gif")); //$NON-NLS-1$
+
+		toolbarManager.add(exportAction);
+		
+		IMenuManager mgr = getViewSite().getActionBars().getMenuManager();
+
+		filterAction = new Action("Filter heartbeats") { //$NON-NLS-1$
+			public void run() {
+				memento.putString(FILTER_HEARTBEATS, isChecked() ? "true" : "false"); //$NON-NLS-1$ //$NON-NLS-2$
+			}
+		};
+		filterAction.setChecked(memento.getString(FILTER_HEARTBEATS).equals("true")); //$NON-NLS-1$
+
+		mgr.add(filterAction);
+
+		reuseAction = new Action("Reuse tab for channel") { //$NON-NLS-1$
+			public void run() {
+				memento.putString(REUSE_TABS, isChecked() ? "true" : "false"); //$NON-NLS-1$ //$NON-NLS-2$
+			}
+		};
+		reuseAction.setChecked(memento.getString(REUSE_TABS).equals("true")); //$NON-NLS-1$
+
+		mgr.add(reuseAction);
+	}
+	
+	private Page getCurrentPage() {
+		if (tabs != null) {
+			int index = tabs.getSelectionIndex();
+			if (index >= 0) {
+				return tab2page.get(tabs.getSelection()[0]);
+			}
+		}
+		return null;
+	}
 
 	@Override
 	public void setFocus() {
@@ -239,6 +404,8 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 
 	@Override
 	public void dispose() {
+		saveViewPreferences();
+		
 		final Page[] pages = tab2page.values().toArray(new Page[tab2page.size()]);
 		Protocol.invokeAndWait(new Runnable() {
 			public void run() {
@@ -265,12 +432,37 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 		if (!(channel instanceof AbstractChannel))
 			return;
 		AbstractChannel c = (AbstractChannel) channel;
+		
+		if (memento.getBoolean(REUSE_TABS)) {
+			// see if the same channel is being opened again.  if so just clear
+			// and reuse it.
+			for (final Page page : tab2page.values()) {
+				if (page.channel.getRemotePeer().equals(channel.getRemotePeer())) {
+					c.addTraceListener(page);
+
+					getSite().getShell().getDisplay().asyncExec(new Runnable() {
+						public void run() {
+							showTabs();
+
+							// select the new tab automatically
+							tabs.setSelection(page.tab);
+							updateCloseAction();
+						}
+					});
+					
+					return;
+				}
+			}
+		}
+
 		IPeer rp = c.getRemotePeer();
 		final String name = rp.getName();
 		final String host = rp.getAttributes().get(IPeer.ATTR_IP_HOST);
 		final String port = rp.getAttributes().get(IPeer.ATTR_IP_PORT);
+
 		final Page p = new Page(c);
 		c.addTraceListener(p);
+
 		getSite().getShell().getDisplay().asyncExec(new Runnable() {
 			public void run() {
 				showTabs();
@@ -287,6 +479,10 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 				p.text = new Text(tabs, SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER | SWT.MULTI);
 				p.tab.setControl(p.text);
 				p.text.setBackground(parent.getDisplay().getSystemColor(SWT.COLOR_WHITE));
+				
+				// select the new tab automatically
+				tabs.setSelection(p.tab);
+				updateCloseAction();
 			}
 		});
 	}
@@ -300,10 +496,34 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 		}
 		if (tabs == null) {
 			tabs = new TabFolder(parent, SWT.NONE);
+			tabs.addSelectionListener(new SelectionListener() {
+				
+				public void widgetSelected(SelectionEvent e) {
+					updateCloseAction();
+				}
+				
+				public void widgetDefaultSelected(SelectionEvent e) {
+				}
+			});
+			
 			b = true;
 		}
 		if (b)
 			parent.layout();
+		
+		clearTabAction.setEnabled(true);
+		closeTabAction.setEnabled(true);
+		exportAction.setEnabled(true);
+	}
+
+	private void updateCloseAction() {
+		// disable the close action if the current tab
+		// has an active channel so people don't accidentally
+		// close it and have no way to get it back.
+		Page page = getCurrentPage();
+		if (page != null) {
+			closeTabAction.setEnabled(page.channel.getState() == IChannel.STATE_CLOSED);
+		}
 	}
 
 	private void hideTabs() {
@@ -321,6 +541,56 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 			}
 			if (b)
 				parent.layout();
+		}
+		
+		clearTabAction.setEnabled(false);
+		closeTabAction.setEnabled(false);
+		exportAction.setEnabled(false);
+	}
+
+	private void handleExport(Page currentPage) {
+		FileDialog dialog = new FileDialog(getViewSite().getShell(), SWT.SAVE);
+		dialog.setFilterExtensions(new String[] {"*.log"}); //$NON-NLS-1$
+		String path = dialog.open();
+		if (path != null) {
+			if (path.indexOf('.') == -1 && !path.endsWith(".log")) //$NON-NLS-1$
+				path += ".log"; //$NON-NLS-1$
+			File outputFile = new Path(path).toFile();
+			if (outputFile.exists()) {
+				String message = "File exists.  Would you like to overwrite it?";
+				if (!MessageDialog.openQuestion(getViewSite().getShell(), "Export Log", message))
+					return;
+			}
+
+			Reader in = null;
+			Writer out = null;
+			try {
+				out = new OutputStreamWriter(new FileOutputStream(outputFile), "UTF-8"); //$NON-NLS-1$
+				in = new StringReader(currentPage.text.getText());
+				copy(in, out);
+			} catch (IOException ex) {
+			} finally {
+				try {
+					if (in != null)
+						in.close();
+				} catch (IOException e1) { // do nothing
+				}
+				try {
+					if (out != null)
+						out.close();
+				} catch (IOException e1) { // do nothing
+				}
+			}
+		}
+	}
+
+	private void copy(Reader input, Writer output) throws IOException {
+		BufferedReader reader = new BufferedReader(input);
+		BufferedWriter writer = new BufferedWriter(output);
+		String line;
+		while (reader.ready() && ((line = reader.readLine()) != null)) {
+			writer.write(line);
+			writer.newLine();
 		}
 	}
 }

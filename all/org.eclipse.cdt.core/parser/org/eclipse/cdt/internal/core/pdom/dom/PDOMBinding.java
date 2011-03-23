@@ -6,16 +6,14 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Doug Schaefer (QNX) - Initial API and implementation
- *    Markus Schorn (Wind River Systems)
- *    Andrew Ferguson (Symbian)
+ *     Doug Schaefer (QNX) - Initial API and implementation
+ *     Markus Schorn (Wind River Systems)
+ *     Andrew Ferguson (Symbian)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.pdom.dom;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ast.ASTTypeUtil;
@@ -40,7 +38,7 @@ import org.eclipse.cdt.internal.core.pdom.db.IString;
 import org.eclipse.core.runtime.CoreException;
 
 /**
- * Base class for bindings in the pdom.
+ * Base class for bindings in the PDOM.
  */
 public abstract class PDOMBinding extends PDOMNamedNode implements IPDOMBinding {
 	public static final PDOMBinding[] EMPTY_PDOMBINDING_ARRAY = {};
@@ -83,8 +81,8 @@ public abstract class PDOMBinding extends PDOMNamedNode implements IPDOMBinding 
 	public static boolean isOrphaned(PDOM pdom, long record) throws CoreException {
 		Database db = pdom.getDB();
 		return db.getRecPtr(record + FIRST_DECL_OFFSET) == 0
-			&& db.getRecPtr(record + FIRST_DEF_OFFSET) == 0
-			&& db.getRecPtr(record + FIRST_REF_OFFSET) == 0;
+				&& db.getRecPtr(record + FIRST_DEF_OFFSET) == 0
+				&& db.getRecPtr(record + FIRST_REF_OFFSET) == 0;
 	}
 	
 	public final boolean hasDeclaration() throws CoreException {
@@ -305,21 +303,8 @@ public abstract class PDOMBinding extends PDOMNamedNode implements IPDOMBinding 
 		}
 	}
 
-	final public String[] getQualifiedName() {
-		List<String> result = new ArrayList<String>();
-		try {
-			PDOMNode node = this;
-			while (node != null) {
-				if (node instanceof PDOMBinding) {							
-					result.add(0, ((PDOMBinding)node).getName());
-				}
-				node = node.getParentNode();
-			}
-			return result.toArray(new String[result.size()]);
-		} catch (CoreException ce) {
-			CCorePlugin.log(ce);
-			return null;
-		}
+	public String[] getQualifiedName() {
+		return new String[] { getName() };
 	}
 	
 	final public boolean isFileLocal() throws CoreException {
@@ -366,7 +351,7 @@ public abstract class PDOMBinding extends PDOMNamedNode implements IPDOMBinding 
 						cmp = b0 == b1 ? 0 : (b0 == null ? -1 : 1);
 					}
 				}
-			} while(cmp == 0 && b1 != null && b0 != null);
+			} while (cmp == 0 && b1 != null && b0 != null);
 			return cmp;
 		} catch (CoreException ce) {
 			CCorePlugin.log(ce);

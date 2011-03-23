@@ -60,7 +60,6 @@ import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants;
 import org.eclipse.cdt.debug.edc.tcf.extension.ProtocolConstants.IModuleProperty;
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
-import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
@@ -1132,14 +1131,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				stackService.loadFramesForContext(this, frameElement);
 			}
 
-			DsfRunnable suspendEvent = new DsfRunnable() {
-				public void run() {
-					getSession().dispatchEvent(
-							createSuspendedEvent(StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
-							RunControl.this.getProperties());
-				}
-			};
-			getSession().getExecutor().schedule(suspendEvent, 300, TimeUnit.MILLISECONDS);
+			getSession().dispatchEvent(
+					createSuspendedEvent(StateChangeReason.EXCEPTION, new HashMap<String, Object>()),
+					RunControl.this.getProperties());
 		}
 
 		@Override
@@ -1610,7 +1604,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				// Source level stepping request.
 				// 
 				if (stepType == StepType.STEP_OVER || stepType == StepType.STEP_INTO) {
-					IEDCModules moduleService = getServicesTracker().getService(Modules.class);
+					IEDCModules moduleService = getService(Modules.class);
 
 					ISymbolDMContext symCtx = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
 
@@ -1642,7 +1636,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 								if (nextLine != null) {
 									endAddr = module.toRuntimeAddress(nextLine.getLowAddress());
 								} else {	// nextLine == null probably means last line
-									IEDCSymbols symbolsService = getServicesTracker().getService(Symbols.class);
+									IEDCSymbols symbolsService = getService(Symbols.class);
 									IFunctionScope functionScope
 									  = symbolsService.getFunctionAtAddress(dmc.getSymbolDMContext(), pcAddress);
 									if (stepType == StepType.STEP_OVER) {

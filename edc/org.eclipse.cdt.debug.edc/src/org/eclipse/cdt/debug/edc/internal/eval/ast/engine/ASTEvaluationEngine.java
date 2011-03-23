@@ -10,6 +10,10 @@
  *******************************************************************************/
 package org.eclipse.cdt.debug.edc.internal.eval.ast.engine;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTProblem;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
@@ -43,6 +47,9 @@ public class ASTEvaluationEngine {
 	private final IDMContext context;
 	private final TypeEngine typeEngine;
 
+	private static final Map<String, InstructionSequence> compiledExpressionsCache =
+		Collections.synchronizedMap(new HashMap<String, InstructionSequence>());
+
 	/**
 	 * @param context 
 	 * @param tracker 
@@ -56,21 +63,41 @@ public class ASTEvaluationEngine {
 	
 	public InstructionSequence getCompiledExpression(String expression) throws CoreException {
 
-		FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { return " + //$NON-NLS-1$ //$NON-NLS-2$
-							expression + " ; }").toCharArray()); //$NON-NLS-1$
-		IScannerInfo scannerInfo = new ScannerInfo(); // creates an empty scanner info
-		IScanner scanner = new CPreprocessor(reader, scannerInfo, ParserLanguage.CPP, new NullLogService(), GCCScannerExtensionConfiguration.getInstance(), IncludeFileContentProvider.getEmptyFilesProvider());
-		ISourceCodeParser parser = new GNUCPPSourceParser(scanner, ParserMode.COMPLETE_PARSE, new NullLogService(), GPPParserExtensionConfiguration.getInstance(), null);
-		IASTTranslationUnit ast = parser.parse();
+		// the creation and parsing of the AST can get expensive so we cache it for
+		// the given expression
+		InstructionSequence instructions = compiledExpressionsCache.get(expression);
+		if (instructions == null) {
+			FileContent reader = FileContent.create("<edc-expression>", ("void* dummy_func() { return " + //$NON-NLS-1$ //$NON-NLS-2$
+					expression + " ; }").toCharArray()); //$NON-NLS-1$
+			IScannerInfo scannerInfo = new ScannerInfo(); // creates an empty scanner info
+			IScanner scanner = new CPreprocessor(reader, scannerInfo, ParserLanguage.CPP, new NullLogService(), GCCScannerExtensionConfiguration.getInstance(), IncludeFileContentProvider.getEmptyFilesProvider());
+			ISourceCodeParser parser = new GNUCPPSourceParser(scanner, ParserMode.COMPLETE_PARSE, new NullLogService(), GPPParserExtensionConfiguration.getInstance(), null);
+			IASTTranslationUnit ast = parser.parse();
+			
+			ASTInstructionCompiler visitor = new ASTInstructionCompiler(expression);
+			ast.accept(visitor);
+			
+			if (visitor.hasErrors())
+				throw EDCDebugger.newCoreException(visitor.getErrorMessage());
 
-		ASTInstructionCompiler visitor = new ASTInstructionCompiler(expression);
-		ast.accept(visitor);
-		if (visitor.hasErrors())
-			throw EDCDebugger.newCoreException(visitor.getErrorMessage());
+			instructions = visitor.getInstructions();
+
+			// Remove NoOps
+			instructions.removeNoOps();
+
+			compiledExpressionsCache.put(expression, instructions);
+		}
+
 		
-		visitor.fixupInstructions(typeEngine);
+		// make a copy of the cached generic instruction sequence since we'll make
+		// context specific changes below (reduceCasts)
+		InstructionSequence sequence = new InstructionSequence(instructions);
+
+		// Reduce (possibly internally generated) cast expressions to avoid 
+		// taking the address of a register or bitfield.
+		sequence.reduceCasts(typeEngine);
 		
-		return visitor.getInstructions();
+		return sequence;
 
 	}
 

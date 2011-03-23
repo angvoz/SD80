@@ -374,7 +374,41 @@ public class UnmanglerEABI implements IUnmangler {
 	public String unmangle(String symbol) throws UnmanglingException {
 		return unmangle(symbol, false);
 	}
-	
+
+	public String unmangleType(String symbol) throws UnmanglingException {
+		if (symbol == null)
+			return null;
+		
+		if (unmangledMap.containsKey(symbol))
+			return unmangledMap.get(symbol);
+
+		if (symbol.startsWith("_Z")) {
+			UnmangleState state = new UnmangleState(symbol, false);
+			state.skip2();
+			String unmangled = "";
+			if (state.peek() == 'S') {
+				unmangled += unmangleSubstitution(state);
+			}
+			while (!state.done()) {
+				if (state.peek() == 'I') {
+					// unscoped-template-name
+					state.remember(unmangled, SubstType.TEMPLATE_PREFIX);
+					String args = unmangleTemplateArgs(state, false);
+					state.buffer.append(args);
+					unmangled += args;
+				} else {
+					if (unmangled.equals("::std"))
+						unmangled += "::";
+					unmangled += unmangleType(state);
+				}
+				state.remember(unmangled, SubstType.TYPE);
+			}
+			unmangledMap.put(symbol, unmangled);
+			return unmangled;
+		}
+		return symbol;
+	}
+
 	public String unmangle(String symbol, boolean skipArgs) throws UnmanglingException {
 		if (symbol == null)
 			return null;
@@ -431,7 +465,7 @@ public class UnmanglerEABI implements IUnmangler {
 				suffix = symbol.substring(idx);
 				symbol = symbol.substring(0, idx);
 			}
-			
+
 			UnmangleState state = new UnmangleState(symbol, nameOnly);
 			state.skip2();
 			
@@ -482,6 +516,35 @@ public class UnmanglerEABI implements IUnmangler {
 		return state.pop();
 	}
 
+	private void unmangleSpecialNameCallOffset(UnmangleState state, char ch)
+		throws UnmanglingException {
+
+		switch (ch) {
+		case 'h': {
+			// h <nv-offset> _
+			int offset = doUnmangleNumber(state);
+			state.consume('_');
+			state.buffer.append("<non-virtual base override at offset ");
+			appendHexNumber(state.buffer, offset);
+			break;
+		}	
+		case 'v': {
+			// v <offset number> _ <virtual offset number> _
+			int offset = doUnmangleNumber(state);
+			state.consume('_');
+			int voffset = doUnmangleNumber(state);
+			state.consume('_');
+			state.buffer.append("<virtual base override at offset ");
+			appendHexNumber(state.buffer, offset);
+			state.buffer.append(", vcall offset ");
+			appendHexNumber(state.buffer, voffset);
+			break;
+		}
+		default:
+			throw state.unexpected("special name call-offset");
+		}
+	}
+	
 	/*
  <special-name> ::= TV <type>	# virtual table
 		 ::= TT <type>	# VTT structure (construction vtable index)
@@ -510,7 +573,8 @@ public class UnmanglerEABI implements IUnmangler {
 		char ch = state.get();
 		if (ch == 'T') {
 			String type = null;
-			switch (state.get()) {
+			ch = state.get();
+			switch (ch) {
 			case 'V':
 				type = unmangleType(state);
 				state.buffer.append("<virtual table for ");
@@ -535,32 +599,24 @@ public class UnmanglerEABI implements IUnmangler {
 				state.buffer.append(type);
 				state.buffer.append('>');
 				break;
-			case 'h': {
-				// h <nv-offset> _
-				int offset = doUnmangleNumber(state);
-				state.consume('_');
-				state.buffer.append("<non-virtual base override at offset ");
-				appendHexNumber(state.buffer, offset);
+			case 'h':
+			case 'v':
+				unmangleSpecialNameCallOffset(state, ch);
 				state.buffer.append(" for ");
 				state.buffer.append(unmangleEncoding(state));
 				state.buffer.append('>');
 				break;
-			}	
-			case 'v': {
-				// v <offset number> _ <virtual offset number> _
-				int offset = doUnmangleNumber(state);
-				state.consume('_');
-				int voffset = doUnmangleNumber(state);
-				state.consume('_');
-				state.buffer.append("<virtual base override at offset ");
-				appendHexNumber(state.buffer, offset);
-				state.buffer.append(", vcall offset ");
-				appendHexNumber(state.buffer, voffset);
-				state.buffer.append(" for ");
+			case 'c': {
+				// c <call-offset> <call-offset> <base encoding>
+				state.buffer.append("<covariant : 'this' adjustment ");
+				unmangleSpecialNameCallOffset(state, state.get());
+				state.buffer.append("> result adjustment ");
+				unmangleSpecialNameCallOffset(state, state.get());
+				state.buffer.append("> for ");
 				state.buffer.append(unmangleEncoding(state));
 				state.buffer.append('>');
 				break;
-			}	
+			}
 			default:
 				throw state.unexpected("special name");
 			}
@@ -655,7 +711,7 @@ public class UnmanglerEABI implements IUnmangler {
 		state.push();
 		char ch = state.peek();
 		if (ch == 'N') {
-			state.buffer.append(unmangleNestedName(state));
+			state.buffer.append(unmangleNestedName(state, true));
 		} else if (ch == 'Z') {
 			state.buffer.append(unmangleLocalName(state));
 		} else if (ch == 0) {
@@ -666,18 +722,15 @@ public class UnmanglerEABI implements IUnmangler {
 			if (ch == 'S' && state.peek(1) == 't') {
 				state.skip2();
 				state.buffer.append("::std::");
-				state.buffer.append(unmangleUnqualifiedName(state));
-				return state.pop();
-			} else {
-				String name = unmangleUnqualifiedName(state);
-				state.buffer.append(name);
-				if (state.peek() == 'I') {
-					// unscoped-template-name
-					state.remember(name, SubstType.TEMPLATE_PREFIX);
-					String args = unmangleTemplateArgs(state, false);
-					state.buffer.append(args);
-					state.remember(name + args, SubstType.TYPE);
-				}
+			}
+			String name = unmangleUnqualifiedName(state);
+			state.buffer.append(name);
+			if (state.peek() == 'I') {
+				// unscoped-template-name
+				state.remember(name, SubstType.TEMPLATE_PREFIX);
+				String args = unmangleTemplateArgs(state, false);
+				state.buffer.append(args);
+				state.remember(name + args, SubstType.TYPE);
 			}
 		}
 		return state.pop();
@@ -779,17 +832,20 @@ public class UnmanglerEABI implements IUnmangler {
 		  ::= N [<CV-qualifiers>] <template-prefix> <template-args> E    (args = I...)
 
 	 */
-	private String unmangleNestedName(UnmangleState state) throws UnmanglingException {
+	private String unmangleNestedName(UnmangleState state, boolean allowCV)
+		throws UnmanglingException {
+
 		state.push();
 		
 		state.consume('N');
-		String cvquals = unmangleCVQualifiers(state);
+
+		String cvquals = allowCV ? unmangleCVQualifiers(state) : null;
 		
 		state.buffer.append(unmanglePrefix(state, SubstType.PREFIX));
 		
 		state.consume('E');
 		
-		if (cvquals.length() > 0) {
+		if (allowCV && (cvquals != null && cvquals.length() > 0)) {
 			state.buffer.append(' ');
 			state.buffer.append(cvquals);
 		}
@@ -813,6 +869,7 @@ public class UnmanglerEABI implements IUnmangler {
 			substArg = false;
 		}
 		state.buffer.append('<');
+		boolean lastArgWasSubst = false;
 		if (state.peek() != 'E') {
 			boolean first = true;
 			do {
@@ -820,11 +877,31 @@ public class UnmanglerEABI implements IUnmangler {
 					first = false;
 				else
 					state.buffer.append(',');
-				state.buffer.append(unmangleTemplateArg(state));
+				boolean unfinishedTemplateSubst = false;
+				if (state.peek() == 'S') {
+					char ch2 = state.peek(1);
+					if (ch2 == 't') {
+						state.buffer.append("::std::");
+						state.skip2();
+						first = true;
+						continue;	// more of this arg to come
+					}
+					lastArgWasSubst = true;
+					if (ch2 == 'a' || ch2 == 'b') {
+						unfinishedTemplateSubst = true;
+					}
+				}
+				String arg = unmangleTemplateArg(state);
+				if (unfinishedTemplateSubst)
+					arg += unmangleTemplateArgs(state, false);
+				state.buffer.append(arg);
+				if (lastArgWasSubst && state.done())
+					break;
+				lastArgWasSubst = false;
 			} while (state.peek() != 'E');
 		}
-		
-		if (!substArg)
+
+		if (!substArg && !lastArgWasSubst)
 			state.consume('E');
 		
 		if (state.buffer.lastIndexOf(">") == state.buffer.length() - 1)
@@ -1345,7 +1422,7 @@ public class UnmanglerEABI implements IUnmangler {
 		//
 		case 'N':
 			state.unget();
-			state.buffer.append(unmangleNestedName(state));
+			state.buffer.append(unmangleNestedName(state, false));
 			state.remember(SubstType.TYPE);
 			break;
 			

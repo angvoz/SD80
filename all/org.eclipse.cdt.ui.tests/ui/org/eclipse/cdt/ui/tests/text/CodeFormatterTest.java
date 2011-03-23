@@ -1054,8 +1054,124 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//    f1(100000, 200000, 300000, 400000, 500000,
 	//            f2(10, 20, 30, 40, 50, 60, 70000), 700000);
 	//}
-	public void testFunctionCall() throws Exception {
+	public void testFunctionCall_1() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
+	//int function(int, int, int, int, int);
+	//int function_with_a_long_name(int, int);
+	//
+	//void test() {
+	//function_with_a_long_name(function(1000000, 2000000, 3000000, 4000000, 5000000), 6000000);
+	//}
+
+	//int function(int, int, int, int, int);
+	//int function_with_a_long_name(int, int);
+	//
+	//void test() {
+	//    function_with_a_long_name(function(1000000, 2000000, 3000000, 4000000,
+	//                                       5000000), 6000000);
+	//}
+	public void testFunctionCall_2() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_ARGUMENTS_IN_METHOD_INVOCATION,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//void function(int);
+	//int function_with_a_looooooooooooooooooooooooooooooooong_name(int);
+	//
+	//void test() {
+	//function(function_with_a_looooooooooooooooooooooooooooooooong_name(1000000));
+	//}
+
+	//void function(int);
+	//int function_with_a_looooooooooooooooooooooooooooooooong_name(int);
+	//
+	//void test() {
+	//    function(function_with_a_looooooooooooooooooooooooooooooooong_name(
+	//            1000000));
+	//}
+	public void testFunctionCall_3() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_ARGUMENTS_IN_METHOD_INVOCATION,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//void function(const char* s);
+	//
+	//void test() {
+	//function("string literal"
+	//"continuation of the string literal");
+	//}
+
+	//void function(const char* s);
+	//
+	//void test() {
+	//    function("string literal"
+	//             "continuation of the string literal");
+	//}
+	public void testFunctionCallWithMultilineStringLiteral() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_ARGUMENTS_IN_METHOD_INVOCATION,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//int x=static_cast < int > ( 0 ) ;
+
+	//int x = static_cast<int>(0);
+	public void testCppCast_1() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
+	//int x=static_cast < int >( 0 ) ;
+
+	//int x = static_cast<int> (0);
+	public void testCppCast_2() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_BEFORE_OPENING_PAREN_IN_METHOD_INVOCATION, CCorePlugin.INSERT);
+		assertFormatterResult();
+	}
+
+	//template < typename T >
+	//void foo ( T t ) ;
+	//
+	//void test() {
+	//foo < const char* > ( "" ) ;
+	//}
+
+	//template<typename T>
+	//void foo(T t);
+	//
+	//void test() {
+	//    foo<const char*>("");
+	//}
+	public void testTemplateFunctionCall_1() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
+	//template < typename T >
+	//void foo ( T t ) ;
+	//
+	//void test() {
+	//foo < const char* >( "" ) ;
+	//}
+
+	//template<typename T>
+	//void foo(T t);
+	//
+	//void test() {
+	//    foo<const char*> ("");
+	//}
+	public void testTemplateFunctionCall_2() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_INSERT_SPACE_BEFORE_OPENING_PAREN_IN_METHOD_INVOCATION, CCorePlugin.INSERT);
 		assertFormatterResult();
 	}
 
@@ -1927,24 +2043,64 @@ public class CodeFormatterTest extends BaseUITestCase {
 
 	//#define B() { if (1+2) b(); }
 	//void g() {
-	//	if (1) {
-	//		B();
-	//	} else {
-	//		x();
-	//	}
-	//	z();
+	//if (1) {
+	//B();
+	//} else {
+	//x();
+	//}
+	//z();
 	//}
 
 	//#define B() { if (1+2) b(); }
 	//void g() {
-	//	if (1) {
-	//		B();
-	//	} else {
-	//		x();
-	//	}
-	//	z();
+	//    if (1) {
+	//        B();
+	//    } else {
+	//        x();
+	//    }
+	//    z();
 	//}
-	public void testBinaryExpressionInMacro() throws Exception {
+	public void testBinaryExpressionInMacro_1() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
+	//class Stream {
+	//Stream& operator <<(const char* s);
+	//};
+	//
+	//class Voidifier {
+	//public:
+	//Voidifier();
+	//void operator &(Stream&);
+	//};
+	//
+	//Stream stream;
+	//#define STREAM Voidifier() & stream
+	//
+	//void test() {
+	//STREAM << "text text test text " << "text text " << "text text text text te";
+	//}
+
+	//class Stream {
+	//    Stream& operator <<(const char* s);
+	//};
+	//
+	//class Voidifier {
+	//public:
+	//    Voidifier();
+	//    void operator &(Stream&);
+	//};
+	//
+	//Stream stream;
+	//#define STREAM Voidifier() & stream
+	//
+	//void test() {
+	//    STREAM << "text text test text " << "text text "
+	//            << "text text text text te";
+	//}
+	public void testBinaryExpressionInMacro_2() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
 		assertFormatterResult();
 	}
 

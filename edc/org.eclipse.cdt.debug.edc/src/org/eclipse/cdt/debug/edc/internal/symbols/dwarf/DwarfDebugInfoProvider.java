@@ -11,7 +11,6 @@
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -104,12 +103,13 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		public IType getReferencedType() {
 			if (type == null) {
 				// to prevent recursion
-				type = NULL_TYPE_ENTRY;
-				type = provider.resolveTypeReference(this);
-				if (type == null) {
+				IType newType = NULL_TYPE_ENTRY;
+				newType = provider.resolveTypeReference(this);
+				if (newType == null) {
 					// FIXME
-					type = NULL_TYPE_ENTRY;
+					newType = NULL_TYPE_ENTRY;
 				}
+				type = newType;
 			}
 			return type;
 		}
@@ -176,6 +176,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		@Override
 		public String toString() {
 			StringBuffer sb = new StringBuffer();
+			sb.append("Offset: " + debugInfoOffset).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
 			sb.append("Length: " + length).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
 			sb.append("Version: " + version).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
 			sb.append("Abbreviation: " + abbreviationOffset).append("\n"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -736,7 +737,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	// maps by .debug_info offset, and for compile unit relative offsets, we
 	// just add the compile unit offset into the .debug_info section.
 	protected Map<Long, AttributeList> functionsByOffset = new HashMap<Long, AttributeList>();
-	protected Map<Long, IType> typesByOffset = new HashMap<Long, IType>();
+	protected Map<Long, IType> typesByOffset = Collections.synchronizedMap(new HashMap<Long, IType>());
 
 	// for casting to a type, keep certain types by name
 	protected Map<String, List<IType>> typesByName = new HashMap<String, List<IType>>();
@@ -845,7 +846,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 	}
 
-	synchronized void ensureParsedForScopes() {
+	void ensureParsedForScopes() {
 		if (!parsedForScopesAndAddresses) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			if (!parsedInitially) {
@@ -857,7 +858,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 	}
 
-	synchronized void ensureParsedForScope(IAddress linkAddress) {
+	void ensureParsedForScope(IAddress linkAddress) {
 		DwarfInfoReader reader = new DwarfInfoReader(this);
 		if (!parsedInitially) {
 			parsedInitially = true;
@@ -866,7 +867,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		reader.parseForAddress(linkAddress);
 	}
 
-	synchronized void ensureParsedForVariables() {
+	void ensureParsedForVariables() {
 		if (!parsedForVarsAndAddresses) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			if (!parsedInitially) {
@@ -878,7 +879,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		}
 	}
 	
-	synchronized private void ensureParsedForGlobalVariables() {
+	private void ensureParsedForGlobalVariables() {
 		if (parsedForGlobalVars)
 			return;
 		parsedForGlobalVars = true;

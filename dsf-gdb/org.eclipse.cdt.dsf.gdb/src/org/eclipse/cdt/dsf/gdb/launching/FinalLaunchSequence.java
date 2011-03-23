@@ -89,7 +89,15 @@ public class FinalLaunchSequence extends ReflectionSequence {
 					"stepSetNonStop",   //$NON-NLS-1$
 					"stepSetAutoLoadSharedLibrarySymbols",   //$NON-NLS-1$
 					"stepSetSharedLibraryPaths",   //$NON-NLS-1$
-					"stepSetSourceLookupPath",   //$NON-NLS-1$
+					
+					// -environment-directory with a lot of paths could
+					// make setting breakpoint incredibly slow, which makes
+					// the debug session un-workable.  We simply stop
+					// using it because it's usefulness is unclear.
+					// Bug 225805
+					//
+					// "stepSetSourceLookupPath",   //$NON-NLS-1$
+					
 					// For post-mortem launch only
 					"stepSpecifyCoreFile",   //$NON-NLS-1$
 					// For remote-attach launch only
@@ -380,7 +388,9 @@ public class FinalLaunchSequence extends ReflectionSequence {
 
 			try {
 				Object result = prompter.handleStatus(filePrompt, null);
-				if (result instanceof String) {
+				 if (result == null) {
+						fRequestMonitor.cancel();
+				} else if (result instanceof String) {
 					fRequestMonitor.setData((String)result);
 				} else {
 					fRequestMonitor.setStatus(NO_CORE_STATUS);
@@ -413,6 +423,11 @@ public class FinalLaunchSequence extends ReflectionSequence {
 					new PromptForCoreJob(
 							"Prompt for post mortem file",  //$NON-NLS-1$
 							new DataRequestMonitor<String>(getExecutor(), requestMonitor) {
+								@Override
+								protected void handleCancel() {
+									requestMonitor.cancel();
+									requestMonitor.done();
+								}
 								@Override
 								protected void handleSuccess() {
 									String newCoreFile = getData();

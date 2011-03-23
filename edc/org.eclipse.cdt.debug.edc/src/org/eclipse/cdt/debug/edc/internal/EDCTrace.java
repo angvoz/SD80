@@ -33,6 +33,7 @@ public class EDCTrace {
 	public static final String BREAKPOINTS_TRACE = "/debug/breakpoints";
 	public static final String MEMORY_TRACE = "/debug/memory";
 	public static final String ACPM_TRACE = "/debug/acpm";
+	public static final String PERSISTENT_CACHE_TRACE = "/debug/persistentCache";
 
 	// In order to minimize trace overhead when tracing is off, we check these
 	// "globals". They are set at plugin initialization time. Note that they do
@@ -50,6 +51,7 @@ public class EDCTrace {
 	public static boolean BREAKPOINTS_TRACE_ON;
 	public static boolean MEMORY_TRACE_ON;
 	public static boolean ACPM_TRACE_ON;
+	public static boolean PERSISTENT_CACHE_TRACE_ON;
 
 	/**
 	 * Returns whether the specific tracing option is on. The answer is based on
@@ -79,6 +81,7 @@ public class EDCTrace {
 			BREAKPOINTS_TRACE_ON = isOn(EDCTrace.BREAKPOINTS_TRACE);
 			MEMORY_TRACE_ON = isOn(EDCTrace.MEMORY_TRACE);
 			ACPM_TRACE_ON = isOn(EDCTrace.ACPM_TRACE);
+			PERSISTENT_CACHE_TRACE_ON = isOn(EDCTrace.PERSISTENT_CACHE_TRACE);
 		}
 	}
 

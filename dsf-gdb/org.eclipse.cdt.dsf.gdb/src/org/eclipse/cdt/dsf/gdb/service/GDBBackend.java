@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.core.model.ICProject;
@@ -88,6 +89,7 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
 	private Properties fEnvVariables;
 	private SessionType fSessionType;
     private Boolean fAttach;
+    private State fBackendState = State.NOT_INITIALIZED;
 
 	/**
      * Unique ID of this service instance.
@@ -446,13 +448,7 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
     }
 
     public State getState() {
-        if (fMonitorJob == null) {
-            return State.NOT_INITIALIZED;
-        } else if (fMonitorJob.fExited) {
-            return State.TERMINATED;
-        } else {
-            return State.STARTED;
-        }
+    	return fBackendState;
     }
     
     public int getExitCode() { 
@@ -519,6 +515,13 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
         
                     try {                        
                         fProcess = launchGDBProcess(commandLine);
+                    	// Need to do this on the executor for thread-safety
+                    	getExecutor().submit(
+                                new DsfRunnable() {
+                                    public void run() { fBackendState = State.STARTED; }
+                                });
+                        // Don't send the backendStarted event yet.  We wait until we have registered this service
+                        // so that other services can have access to it.
                     } catch(CoreException e) {
                         gdbLaunchRequestMonitor.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, -1, e.getMessage(), e));
                         gdbLaunchRequestMonitor.done();
@@ -565,6 +568,13 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
         
         @Override
         protected void shutdown(final RequestMonitor requestMonitor) {
+        	if (getState() != State.STARTED) {
+        		// gdb not started yet or already killed, don't bother starting
+        		// a job to kill it
+        		requestMonitor.done();
+        		return;
+        	}
+
             new Job("Terminating GDB process.") {  //$NON-NLS-1$
                 {
                     setSystem(true);
@@ -572,7 +582,29 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
                 
                 @Override
                 protected IStatus run(IProgressMonitor monitor) {
-                    destroy();
+                	try {
+                		// Need to do this on the executor for thread-safety
+                		// And we should wait for it to complete since we then
+                		// check if the killing of GDB worked.
+						getExecutor().submit(
+						        new DsfRunnable() {
+						            public void run() { 
+						            	destroy();
+						            	
+						            	if (fMonitorJob.fMonitorExited) {
+						            		// Now that we have destroyed the process,
+						            		// and that the monitoring thread was killed,
+						            		// we need to set our state and send the event
+						            		fBackendState = State.TERMINATED; 
+						            		getSession().dispatchEvent(
+						            				new BackendStateChangedEvent(getSession().getId(), getId(), State.TERMINATED), 
+						            				getProperties());
+						            	}
+						            }
+						        }).get();
+					} catch (InterruptedException e1) {
+					} catch (ExecutionException e1) {
+					}
         
                     int attempts = 0;
                     while (attempts < 10) {
@@ -591,7 +623,7 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
                         attempts++;
                     }
                     requestMonitor.setStatus(new Status(
-                        IStatus.ERROR, GdbPlugin.PLUGIN_ID, IDsfStatusConstants.REQUEST_FAILED, "Process terminate failed", null));      //$NON-NLS-1$
+                        IStatus.ERROR, GdbPlugin.PLUGIN_ID, IDsfStatusConstants.REQUEST_FAILED, "GDB terminate failed", null));      //$NON-NLS-1$
                     requestMonitor.done();
                     return Status.OK_STATUS;
                 }
@@ -616,8 +648,8 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
 
         @Override
         protected void shutdown(RequestMonitor requestMonitor) {
-            if (!fMonitorJob.fExited) {
-                fMonitorJob.kill();
+            if (fMonitorJob != null) {
+            	fMonitorJob.kill();
             }
             requestMonitor.done();
         }
@@ -639,9 +671,12 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
 			 * the GDBControlInitializedDMEvent that's used to indicate that GDB
 			 * back end is ready for MI commands. But we still fire the event as
 			 * it does no harm and may be needed sometime.... 09/29/2008
+			 * 
+			 * We send the event in the register step because that is when
+			 * other services have access to it.
 			 */
             getSession().dispatchEvent(
-                new BackendStateChangedEvent(getSession().getId(), getId(), IMIBackend.State.STARTED), 
+                new BackendStateChangedEvent(getSession().getId(), getId(), State.STARTED), 
                 getProperties());
             
             requestMonitor.done();
@@ -660,7 +695,7 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
      * then notifies the associated runtime process.
      */
     private class MonitorJob extends Job {
-        boolean fExited = false;
+        boolean fMonitorExited = false;
         DsfRunnable fMonitorStarted;
         Process fMonProcess;
 
@@ -668,20 +703,26 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
         protected IStatus run(IProgressMonitor monitor) {
             synchronized(fMonProcess) {
                 getExecutor().submit(fMonitorStarted);
-                while (!fExited) {
-                    try {
-                        fMonProcess.waitFor();
-                        fGDBExitValue = fMonProcess.exitValue();
-                    } catch (InterruptedException ie) {
-                        // clear interrupted state
-                        Thread.interrupted();
-                    } finally {
-                        fExited = true;
-                        getSession().dispatchEvent(
-                            new BackendStateChangedEvent(getSession().getId(), getId(), IMIBackend.State.TERMINATED), 
-                            getProperties());
-                    }
+                try {
+                	fMonProcess.waitFor();
+                	fGDBExitValue = fMonProcess.exitValue();
+
+                	// Need to do this on the executor for thread-safety
+                	getExecutor().submit(
+                            new DsfRunnable() {
+                                public void run() { 
+                                	fBackendState = State.TERMINATED; 
+                                	getSession().dispatchEvent(
+                                			new BackendStateChangedEvent(getSession().getId(), getId(), State.TERMINATED), 
+                                			getProperties());
+                                }
+                            });
+                } catch (InterruptedException ie) {
+                	// clear interrupted state
+                	Thread.interrupted();
                 }
+
+                fMonitorExited = true;
             }
             return Status.OK_STATUS;
         }
@@ -695,7 +736,7 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend {
 
         void kill() {
             synchronized(fMonProcess) {
-                if (!fExited) {
+                if (!fMonitorExited) {
                     getThread().interrupt();
                 }
             }

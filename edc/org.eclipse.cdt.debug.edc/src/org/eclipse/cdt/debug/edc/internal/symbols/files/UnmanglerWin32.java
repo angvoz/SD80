@@ -64,11 +64,19 @@ public class UnmanglerWin32 implements IUnmangler {
 		// big fat TODO
 		return symbol;
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IUnmangler#unmangle(java.lang.String)
 	 */
 	public String unmangle(String symbol) throws UnmanglingException {
+		// big fat TODO
+		return symbol;
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.symbols.files.IUnmangler#unmangle(java.lang.String)
+	 */
+	public String unmangleType(String symbol) throws UnmanglingException {
 		// big fat TODO
 		return symbol;
 	}

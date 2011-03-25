@@ -92,7 +92,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	private static final int BUTTON_MOVE_UP = 4;
 	private static final int BUTTON_MOVE_DOWN = 5;
 
-	private final static String[] BUTTON_LABELS = {
+	private final static String[] BUTTON_LABELS_PROJECT = {
 //		RENAME_STR,
 		RUN_STR,
 		CLEAR_STR,
@@ -100,6 +100,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		null,
 		MOVEUP_STR,
 		MOVEDOWN_STR,
+	};
+	
+	private final static String[] BUTTON_LABELS_PREF = {
+//		RENAME_STR,
+		RUN_STR,
+		CLEAR_STR,
+		RESET_STR,
 	};
 	
 	private static final int[] DEFAULT_CONFIGURE_SASH_WEIGHTS = new int[] { 50, 50 };
@@ -310,7 +317,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		enableProvidersCheckBox.setEnabled(page.isForProject() /*|| page.isForPrefs()*/);
 		enableControls(enableProvidersCheckBox.getSelection());
 
-		initButtons(BUTTON_LABELS);
+		if (page.isForPrefs()) {
+			initButtons(BUTTON_LABELS_PREF);
+		} else {
+			initButtons(BUTTON_LABELS_PROJECT);
+		}
 		updateData(getResDesc());
 	}
 

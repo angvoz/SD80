@@ -213,7 +213,7 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 		 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.IEDCExpression#getFormattedValue(org.eclipse.cdt.dsf.debug.service.IFormattedValues.FormattedValueDMContext)
 		 */
 		public FormattedValueDMData getFormattedValue(FormattedValueDMContext dmc) {
-			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, dmc); }
+			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(dmc)); }
 			evaluateExpression();
 			String result = ""; //$NON-NLS-1$
 
@@ -307,7 +307,7 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 				
 				
 			}
-			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.getTrace().traceExit(null, result); }
+			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(result)); }
 			return new FormattedValueDMData(result);
 		}
 

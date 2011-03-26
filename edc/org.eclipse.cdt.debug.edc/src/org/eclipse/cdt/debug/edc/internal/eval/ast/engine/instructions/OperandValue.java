@@ -169,13 +169,13 @@ public class OperandValue {
 
 	private Number getBasicTypeValue(IType varType, IVariableLocation location)
 		throws CoreException {
-		if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, new Object[] { varType, location }); }
+		if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArgs(new Object[] { varType, location })); }
 		Number result = null;
 		try {
 			result = doGetBasicTypeValue(varType, location);
 			return result;
 		} finally {
-			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.getTrace().traceExit(null, result); }
+			if (EDCTrace.VARIABLE_VALUE_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(result)); }
 		}
 	}
 

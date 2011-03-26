@@ -12,7 +12,7 @@
 package org.eclipse.cdt.make.internal.ui.preferences;
 
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.internal.ui.newui.LanguageSettingsProviderTab.ProviderReference;
+import org.eclipse.cdt.internal.ui.language.settings.providers.LanguageSettingsProviderTab.ProviderReference;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.utils.ui.controls.ControlFactory;

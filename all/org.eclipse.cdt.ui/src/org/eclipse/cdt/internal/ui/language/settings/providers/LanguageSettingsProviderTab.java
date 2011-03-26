@@ -9,7 +9,7 @@
  *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.internal.ui.newui;
+package org.eclipse.cdt.internal.ui.language.settings.providers;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,6 +67,9 @@ import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 import org.eclipse.cdt.utils.ui.controls.TabFolderLayout;
+
+import org.eclipse.cdt.internal.ui.newui.Messages;
+import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
 
 /**
  * This tab presents language settings entries categorized by language

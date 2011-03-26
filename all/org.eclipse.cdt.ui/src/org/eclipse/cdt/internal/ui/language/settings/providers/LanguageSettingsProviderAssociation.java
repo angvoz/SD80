@@ -1,4 +1,4 @@
-package org.eclipse.cdt.internal.ui.newui;
+package org.eclipse.cdt.internal.ui.language.settings.providers;
 
 import java.net.MalformedURLException;
 import java.net.URL;

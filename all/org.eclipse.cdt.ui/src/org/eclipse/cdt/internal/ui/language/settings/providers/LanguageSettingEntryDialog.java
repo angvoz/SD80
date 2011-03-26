@@ -8,7 +8,7 @@
  * Contributors:
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.internal.ui.newui;
+package org.eclipse.cdt.internal.ui.language.settings.providers;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -42,6 +42,8 @@ import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
 import org.eclipse.cdt.ui.newui.AbstractPropertyDialog;
 
 import org.eclipse.cdt.internal.ui.ImageCombo;
+import org.eclipse.cdt.internal.ui.newui.LanguageSettingsImages;
+import org.eclipse.cdt.internal.ui.newui.Messages;
 
 /**
  * @noextend This class is not intended to be subclassed by clients.

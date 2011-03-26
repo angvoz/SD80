@@ -8,7 +8,7 @@
  * Contributors:
  *     Intel Corporation - initial API and implementation
  *******************************************************************************/
-package org.eclipse.cdt.internal.ui.newui;
+package org.eclipse.cdt.internal.ui.language.settings.providers;
 
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.ui.newui.AbstractPage;

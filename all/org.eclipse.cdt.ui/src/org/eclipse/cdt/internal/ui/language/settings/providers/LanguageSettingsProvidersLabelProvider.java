@@ -9,7 +9,7 @@
  *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.internal.ui.newui;
+package org.eclipse.cdt.internal.ui.language.settings.providers;
 
 import java.net.URL;
 
@@ -23,6 +23,7 @@ import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializ
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
+
 
 /**
  * Label provider for language settings providers.

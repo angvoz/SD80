@@ -1005,7 +1005,30 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//    virtual bool function_with_a_looooooong_name(const char* parameter)
 	//            ABSTRACT;
 	//};
-	public void testFunctionDeclarationTrailingMacro() throws Exception {
+	public void testFunctionDeclarationTrailingMacro_1() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_PARAMETERS_IN_METHOD_DECLARATION,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//#define MACRO_WITH_ONE_PARAMETER(p)
+	//
+	//class A {
+	//void method1(int arguuuuuuuuuuuuuuuuuuuuument) MACRO_WITH_ONE_PARAMETER(p) {}
+	//void method2(int arguuuuuuuuuuuuuuuuuuuuuument) MACRO_WITH_ONE_PARAMETER(p) {}
+	//};
+
+	//#define MACRO_WITH_ONE_PARAMETER(p)
+	//
+	//class A {
+	//    void method1(int arguuuuuuuuuuuuuuuuuuuuument) MACRO_WITH_ONE_PARAMETER(p) {
+	//    }
+	//    void method2(int arguuuuuuuuuuuuuuuuuuuuuument)
+	//            MACRO_WITH_ONE_PARAMETER(p) {
+	//    }
+	//};
+	public void testFunctionDeclarationTrailingMacro_2() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_PARAMETERS_IN_METHOD_DECLARATION,
 				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
@@ -1986,30 +2009,12 @@ public class CodeFormatterTest extends BaseUITestCase {
 		assertFormatterResult();
 	}
 
-	//class Stream {
-	//Stream& operator <<(const char*);
-	//Stream& operator <<(int);
-	//};
-	//
-	//Stream stream;
-	//
-	//void test() {
-	// // Breaking at << is preferred to breaking at +.
-	//stream << "text text text text text text text text text" << 1000000 + 2000000;
-	//}
+	//// Breaking at '<=' is preferred to breaking at '+'.
+	//bool x = 1000000 + 2000000 + 3000000 + 4000000 <= 5000000 + 6000000 + 7000000 + 8000000;
 
-	//class Stream {
-	//    Stream& operator <<(const char*);
-	//    Stream& operator <<(int);
-	//};
-	//
-	//Stream stream;
-	//
-	//void test() {
-	//    // Breaking at << is preferred to breaking at +.
-	//    stream << "text text text text text text text text text"
-	//            << 1000000 + 2000000;
-	//}
+	//// Breaking at '<=' is preferred to breaking at '+'.
+	//bool x = 1000000 + 2000000 + 3000000 + 4000000
+	//        <= 5000000 + 6000000 + 7000000 + 8000000;
 	public void testBreakingPrecedence() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
 		assertFormatterResult();
@@ -2060,19 +2065,18 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//    }
 	//    z();
 	//}
-	public void testBinaryExpressionInMacro_1() throws Exception {
+	public void testBinaryExpressionInMacro() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
 		assertFormatterResult();
 	}
 
 	//class Stream {
-	//Stream& operator <<(const char* s);
+	//Stream& operator<<(const char* s);
 	//};
 	//
 	//class Voidifier {
 	//public:
-	//Voidifier();
-	//void operator &(Stream&);
+	//void operator&(Stream&);
 	//};
 	//
 	//Stream stream;
@@ -2083,13 +2087,12 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//}
 
 	//class Stream {
-	//    Stream& operator <<(const char* s);
+	//    Stream& operator<<(const char* s);
 	//};
 	//
 	//class Voidifier {
 	//public:
-	//    Voidifier();
-	//    void operator &(Stream&);
+	//    void operator&(Stream&);
 	//};
 	//
 	//Stream stream;
@@ -2099,8 +2102,108 @@ public class CodeFormatterTest extends BaseUITestCase {
 	//    STREAM << "text text test text " << "text text "
 	//            << "text text text text te";
 	//}
-	public void testBinaryExpressionInMacro_2() throws Exception {
+	public void testOverloadedLeftShiftChain_1() throws Exception {
 		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		assertFormatterResult();
+	}
+
+	//class Stream {
+	//Stream& operator<<(const char* s);
+	//};
+	//
+	//class Voidifier {
+	//public:
+	//void operator&(Stream&);
+	//};
+	//
+	//Stream stream;
+	//#define STREAM Voidifier() & stream
+	//
+	//void test() {
+	//STREAM << "text text test text " << "text text text text text " << "text" <<
+	//"text text text text " << "text text text text text " << "text te";
+	//}
+
+	//class Stream {
+	//    Stream& operator<<(const char* s);
+	//};
+	//
+	//class Voidifier {
+	//public:
+	//    void operator&(Stream&);
+	//};
+	//
+	//Stream stream;
+	//#define STREAM Voidifier() & stream
+	//
+	//void test() {
+	//    STREAM << "text text test text " << "text text text text text " << "text"
+	//           << "text text text text " << "text text text text text "
+	//           << "text te";
+	//}
+	public void testOverloadedLeftShiftChain_2() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_OVERLOADED_LEFT_SHIFT_CHAIN,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//class Stream {
+	//Stream& operator<<(const char* s);
+	//};
+	//const char* function();
+	//
+	//void text() {
+	//Stream() << "0123456789012345678" << function() << "0123456789012345678" << "0123";
+	//int i;
+	//}
+
+	//class Stream {
+	//    Stream& operator<<(const char* s);
+	//};
+	//const char* function();
+	//
+	//void text() {
+	//    Stream() << "0123456789012345678" << function() << "0123456789012345678"
+	//             << "0123";
+	//    int i;
+	//}
+	public void testOverloadedLeftShiftChain_3() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_OVERLOADED_LEFT_SHIFT_CHAIN,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
+		assertFormatterResult();
+	}
+
+	//class Stream {
+	//Stream& operator<<(const char* s);
+	//};
+	//
+	//Stream stream;
+	//int variable_with_a_long_name, another_variable_with_a_long_name;
+	//
+	//void test() {
+    //stream << (variable_with_a_long_name + another_variable_with_a_long_name) * variable_with_a_long_name <<
+	//"01234567890123456789";
+	//}
+
+	//class Stream {
+	//    Stream& operator<<(const char* s);
+	//};
+	//
+	//Stream stream;
+	//int variable_with_a_long_name, another_variable_with_a_long_name;
+	//
+	//void test() {
+	//    stream << (variable_with_a_long_name + another_variable_with_a_long_name)
+	//                   * variable_with_a_long_name
+	//           << "01234567890123456789";
+	//}
+	// TODO(sprigogin): Enable the test when the formatter is fixed.
+	public void _testOverloadedLeftShiftChain_4() throws Exception {
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, CCorePlugin.SPACE);
+		fOptions.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_OVERLOADED_LEFT_SHIFT_CHAIN,
+				Integer.toString(Alignment.M_COMPACT_SPLIT | Alignment.M_INDENT_ON_COLUMN));
 		assertFormatterResult();
 	}
 

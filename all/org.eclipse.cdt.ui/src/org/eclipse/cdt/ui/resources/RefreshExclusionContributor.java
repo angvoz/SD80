@@ -27,6 +27,7 @@ import org.eclipse.cdt.core.resources.RefreshExclusion;
 public abstract class RefreshExclusionContributor {
 	
 	protected String fID;
+	protected String fName;
 	
 	public String getID() {
 		return fID;
@@ -36,7 +37,22 @@ public abstract class RefreshExclusionContributor {
 		fID = id;
 	}
 	
+	/**
+	 * Returns the human-readable name of this exclusion type.
+	 * 
+	 * @return
+	 */
+	public String getName() {
+		return fName;
+	}
+	
+	public void setName(String name) {
+		fName = name;
+	}
+	
 	abstract public RefreshExclusion createExclusion();
 	abstract public void createProperiesUI(Composite parent);
 	abstract public RefreshExclusion createExclusionFromXML(Element exclusionElement);
+
+
 }

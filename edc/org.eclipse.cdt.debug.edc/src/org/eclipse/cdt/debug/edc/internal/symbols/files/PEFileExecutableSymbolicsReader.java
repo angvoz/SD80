@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.symbols.files;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteOrder;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,13 +27,22 @@ import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.cdt.utils.coff.Coff.SectionHeader;
 import org.eclipse.cdt.utils.coff.PE;
+import org.eclipse.cdt.utils.coff.PE.NTOptionalHeader;
 import org.eclipse.core.runtime.IPath;
 
 /**
  * This class handles PE-COFF files for the purpose of supporting symbolics. 
  */
 public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsReader {
+	
+	static public final String CODEVIEW_SECTION_NAME = "CodeView_Data";
+	/** .CRT is another initialized data section utilized by the Microsoft C/C++ run-time libraries 
+	 * @since 5.2
+	 */
+	public final static String _CRT = ".CRT"; //$NON-NLS-1$
+	
 	protected boolean isLE;
+	protected Map<Integer, ISection> sectionsByPEID = new HashMap<Integer, ISection>();
 
 	public PEFileExecutableSymbolicsReader(IPath binaryFile, PE peFile) throws IOException {
 		super(binaryFile);
@@ -84,8 +94,11 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 
 		SectionHeader[] secHeaders = peFile.getSectionHeaders();
 		long imageBase = peFile.getNTOptionalHeader().ImageBase & 0xffffffffL;
+		SectionHeader rDataHeader = null;
+		int peSectionID = 0;
 
 		for (SectionHeader s : secHeaders) {
+			peSectionID++;
 			String name = new String(s.s_name).trim();
 			if (name.startsWith("/")) //$NON-NLS-1$
 			{
@@ -99,15 +112,18 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 			IExecutableSection exeSection = new ExecutableSection(sectionMapper, name, 
 					new SectionInfo(s.s_scnptr, s.s_paddr));
 			executableSections.put(name, exeSection);
-			
+
 			String sectionName = name;
 			// Convert the name to our unified name.
 			if (sectionName.equals(SectionHeader._TEXT))
 				name = ISection.NAME_TEXT;
-			else if (sectionName.equals(SectionHeader._DATA))
+			else if (sectionName.equals(SectionHeader._DATA) || sectionName.equals(_CRT))
 				name = ISection.NAME_DATA;
 			else if (sectionName.equals(".rdata")) // add this name in SectionHeader ?
+			{
 				name = ISection.NAME_RODATA;
+				rDataHeader = s;
+			}
 			else if (sectionName.equals(SectionHeader._BSS))
 				name = ISection.NAME_BSS;
 			else { // ignore other section.
@@ -125,7 +141,9 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 
 			// Note the s_vaddr is relative to image base.
 			// For Section we need absolute address.
-			sections.add(new Section(id++, size, new Addr64(Long.toString(imageBase + s.s_vaddr)), props));
+			Section newSection = new Section(id++, size, new Addr64(Long.toString(imageBase + s.s_vaddr)), props);
+			sections.add(newSection);
+			sectionsByPEID.put(peSectionID, newSection);
 		}
 
 		// load the symbol table
@@ -157,9 +175,67 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 				i += symbol.n_numaux; 
 			}
 		}
+		
+		if (rDataHeader != null)
+			checkForCodeView(peFile, rDataHeader, imageBase, id);
 
 		// now sort it by address for faster lookups
 		Collections.sort(symbols);
+	}
+
+	private void checkForCodeView(PE peFile, SectionHeader rDataHeader, long imageBase, int id) throws IOException { //$NON-NLS-1$
+		// figure out the file offset of the debug directory
+		// entries
+		final int IMAGE_DIRECTORY_ENTRY_DEBUG = 6;
+		final int DEBUGDIRSZ = 28;
+		NTOptionalHeader ntHeader = peFile.getNTOptionalHeader();
+		if (ntHeader == null
+				|| ntHeader.NumberOfRvaAndSizes < IMAGE_DIRECTORY_ENTRY_DEBUG)
+			return;
+
+		int debugDir = ntHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].VirtualAddress;
+		if (debugDir == 0)
+			return;
+
+		int debugFormats = ntHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].Size / 28;
+		if (debugFormats == 0)
+			return;
+
+		int offsetInto_rdata = debugDir
+				- rDataHeader.s_vaddr;
+		int fileOffset = rDataHeader.s_scnptr
+				+ offsetInto_rdata;
+		RandomAccessFile accessFile = new RandomAccessFile(
+				binaryFile.toOSString(), "r");
+
+		// loop through the debug directories looking for
+		// CodeView (type 2)
+		for (int j = 0; j < debugFormats; j++) {
+			PE.IMAGE_DEBUG_DIRECTORY dir = new PE.IMAGE_DEBUG_DIRECTORY(
+					accessFile, fileOffset);
+
+			if ((dir.Type == 2) && (dir.SizeOfData > 0)) {
+				// CodeView found, seek to actual data
+				int debugBase = dir.PointerToRawData;
+				accessFile.seek(debugBase);
+
+				// sanity check. the first four bytes of the
+				// CodeView
+				// data should be "NB11"
+				String s2 = accessFile.readLine();
+				if (s2.startsWith("NB11")) { //$NON-NLS-1$
+					// Attribute att = peFile.getAttribute();
+					long start = debugBase;
+					long size = accessFile.length() - start;
+					
+					String name = CODEVIEW_SECTION_NAME;
+					IExecutableSection exeSection = new ExecutableSection(sectionMapper, name, 
+							new SectionInfo(start, size));
+					executableSections.put(name, exeSection);
+				}
+			}
+			fileOffset += DEBUGDIRSZ;
+		}
 	}
 
 	/* (non-Javadoc)
@@ -190,6 +266,11 @@ public class PEFileExecutableSymbolicsReader extends BaseExecutableSymbolicsRead
 		}
 
 		return symbols.get(insertion - 1);
+	}
+	
+	public ISection getSectionByPEID(int peID)
+	{
+		return sectionsByPEID.get(peID);
 	}
 
 }

@@ -235,6 +235,13 @@ public abstract class StreamBufferBase implements IStreamBuffer {
 			return b | (a << 32);
 	}
 	
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.IStreamBuffer#skip(long)
+	 */
+	public IStreamBuffer skip(long amount) {
+		return position(position() + amount);
+	}
+	
 	public ByteOrder getOrder() {
 		return order;
 	}

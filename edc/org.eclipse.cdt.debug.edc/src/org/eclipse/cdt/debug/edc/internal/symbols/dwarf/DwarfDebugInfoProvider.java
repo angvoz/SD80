@@ -838,7 +838,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 		frameRegisterProvider.dispose();
 	}
 
-	synchronized void ensureParsedInitially() {
+	void ensureParsedInitially() {
 		if (!parsedInitially) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			parsedInitially = true;
@@ -901,7 +901,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 			reader.parseCompilationUnitForAddresses(cuHeader.scope);
 	}
 
-	synchronized void ensureParsedForTypes() {
+	void ensureParsedForTypes() {
 		if (!parsedForTypes) {
 			DwarfInfoReader reader = new DwarfInfoReader(this);
 			if (!parsedInitially) {
@@ -1113,7 +1113,7 @@ public class DwarfDebugInfoProvider implements IDebugInfoProvider {
 	}
 
 	@SuppressWarnings("unchecked")
-	synchronized public String[] getSourceFiles(IProgressMonitor monitor) {
+	public String[] getSourceFiles(IProgressMonitor monitor) {
 		if (referencedFiles.isEmpty()) {
 			// Check the persistent cache
 			String cacheKey = getSymbolFile().toOSString() + SOURCE_FILES_CACHE;

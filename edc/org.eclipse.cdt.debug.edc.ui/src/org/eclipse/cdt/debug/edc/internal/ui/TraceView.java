@@ -562,35 +562,49 @@ public class TraceView extends ViewPart implements Protocol.ChannelOpenListener 
 					return;
 			}
 
-			Reader in = null;
 			Writer out = null;
 			try {
 				out = new OutputStreamWriter(new FileOutputStream(outputFile), "UTF-8"); //$NON-NLS-1$
-				in = new StringReader(currentPage.text.getText());
-				copy(in, out);
 			} catch (IOException ex) {
-			} finally {
-				try {
-					if (in != null)
-						in.close();
-				} catch (IOException e1) { // do nothing
-				}
-				try {
-					if (out != null)
-						out.close();
-				} catch (IOException e1) { // do nothing
-				}
+				return;
+			}
+			Reader in = new StringReader(currentPage.text.getText());
+			copy(in, out);
+			try {
+				if (in != null)
+					in.close();
+			} catch (IOException e1) { // do nothing
+			}
+			try {
+				if (out != null)
+					out.close();
+			} catch (IOException e1) { // do nothing
 			}
 		}
 	}
 
-	private void copy(Reader input, Writer output) throws IOException {
+	private void copy(Reader input, Writer output) {
+		String line;
 		BufferedReader reader = new BufferedReader(input);
 		BufferedWriter writer = new BufferedWriter(output);
-		String line;
-		while (reader.ready() && ((line = reader.readLine()) != null)) {
-			writer.write(line);
-			writer.newLine();
+		try {
+			while (reader.ready() && ((line = reader.readLine()) != null)) {
+				writer.write(line);
+				writer.newLine();
+			}
+		} catch (IOException e) { // do nothing
+		} finally {
+			try {
+				if (reader != null)
+					reader.close();
+			} catch (IOException e1) { // do nothing
+			}
+			try
+			{
+				if (writer != null)
+					writer.close();
+			} catch (IOException e1) { // do nothing
+			}
 		}
 	}
 }

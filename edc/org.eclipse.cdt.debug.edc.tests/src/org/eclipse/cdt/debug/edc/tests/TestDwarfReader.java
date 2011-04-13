@@ -161,7 +161,7 @@ public class TestDwarfReader extends BaseDwarfTestCase {
 		setSources("BlackFlag_gcce.sym", 108);
 		setSources("BlackFlag_linuxgcc.exe", 139);
 		setSources("BlackFlag_rvct.sym", HostOS.IS_WIN32 ? 207 : 172);
-		setSources("HelloWorld_rvct_2_2.exe.sym", HostOS.IS_WIN32 ? 327 : 320);
+		setSources("HelloWorld_rvct_2_2.exe.sym", HostOS.IS_WIN32 ? 323 : 320);
 		setSources("HelloWorld_rvct_4_0.exe.sym", 315);
 		setSources("QtConsole_gcce_343.sym", 434);
 	}

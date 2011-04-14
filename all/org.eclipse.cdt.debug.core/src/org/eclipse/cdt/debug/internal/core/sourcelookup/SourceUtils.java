@@ -28,6 +28,7 @@ import javax.xml.transform.TransformerException;
 
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.debug.core.CDebugCorePlugin;
 import org.eclipse.cdt.debug.core.CDebugUtils;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
@@ -37,8 +38,8 @@ import org.eclipse.cdt.debug.core.sourcelookup.IDirectorySourceLocation;
 import org.eclipse.cdt.debug.core.sourcelookup.IMappingSourceContainer;
 import org.eclipse.cdt.debug.core.sourcelookup.IProjectSourceLocation;
 import org.eclipse.cdt.debug.core.sourcelookup.MappingSourceContainer;
-import org.eclipse.cdt.internal.core.model.ExternalTranslationUnit;
 import org.eclipse.cdt.internal.core.resources.ResourceLookup;
+import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -145,7 +146,7 @@ public class SourceUtils {
 						clazz = CDebugCorePlugin.getDefault().getBundle().loadClass(className);
 					} catch (ClassNotFoundException e) {
 						CDebugCorePlugin.log(MessageFormat.format("Unable to restore source location - class not found {0}", //$NON-NLS-1$
-								new String[] { className }));
+								(Object[]) new String[] { className }));
 						continue;
 					}
 					ICSourceLocation location = null;
@@ -256,14 +257,19 @@ public class SourceUtils {
 	 * @param file A source or header file.
 	 * @param director A source lookup director.
 	 * @return An array of source elements sorted in relevance order. The elements of the array can
-	 * 		be either instances of IFile or LocalFileStorage. The returned array can be empty if
+	 * 		be either instances of IFile, ITranslationUnit or LocalFileStorage. The returned array can be empty if
 	 * 		no source elements match the given file.
 	 */
 	public static Object[] findSourceElements(File file, ISourceLookupDirector director) {
 		IFile[] wfiles = ResourceLookup.findFilesForLocation(new Path(file.getAbsolutePath()));
+		IProject lcProject = null;
+		if (director != null) {
+			lcProject = getLaunchConfigurationProject(director);
+		}
+			
 		if (wfiles.length > 0) {
-			ResourceLookup.sortFilesByRelevance(wfiles, getLaunchConfigurationProject(director));
-			return wfiles;
+			ResourceLookup.sortFilesByRelevance(wfiles, lcProject);
+			return updateUnavailableResources(wfiles, lcProject);
 		}
 
 		try {
@@ -271,20 +277,15 @@ public class SourceUtils {
 			// systems like Windows.
 			wfiles = ResourceLookup.findFilesForLocation(new Path(file.getCanonicalPath()));
 			if (wfiles.length > 0) {
-				ResourceLookup.sortFilesByRelevance(wfiles, getLaunchConfigurationProject(director));
-				return wfiles;
+				ResourceLookup.sortFilesByRelevance(wfiles, lcProject);
+				return updateUnavailableResources(wfiles, lcProject);
 			}
 			
 			// The file is not already in the workspace so try to create an external translation unit for it.
-			if (director != null) {
-				String projectName = getLaunchConfigurationProjectName(director);
-				if (projectName != null) {
-					ICProject project = CoreModel.getDefault().getCModel().getCProject(projectName);
-					if (project != null) {
-						IPath path = Path.fromOSString(file.getCanonicalPath());
-						String id = CoreModel.getRegistedContentTypeId(project.getProject(), path.lastSegment());
-						return new ExternalTranslationUnit[] { new ExternalTranslationUnit(project, path, id) };
-					}
+			if (lcProject != null) {
+				ICProject project = CoreModel.getDefault().create(lcProject);
+				if (project != null) {
+					return new ITranslationUnit[] { CoreModel.getDefault().createTranslationUnitFrom(project, URIUtil.toURI(file.getCanonicalPath(), true)) };
 				}
 			}
 		} catch (IOException e) { // ignore if getCanonicalPath throws
@@ -292,5 +293,31 @@ public class SourceUtils {
 
 		// If we can't create an ETU then fall back on LocalFileStorage.
 		return new LocalFileStorage[] { new LocalFileStorage(file) };
+	}
+	
+	/**
+	 * Check for IFile to be available in workspace ( see {@link IFile#isAccessible()} ). 
+	 * Unavailable resources are replaced with  {@link ITranslationUnit}  
+	 * @param wfiles
+	 * @param project
+	 * @return
+	 */
+	private static Object[] updateUnavailableResources(IFile[] wfiles, IProject project){
+		// with no projects context we will not be able to create ITranslationUnits  
+		if (project == null) {
+			return wfiles;
+		}
+		
+		ICProject cProject = CoreModel.getDefault().create(project);
+		Object[] result = new Object[wfiles.length];
+		for (int i=0; i< wfiles.length; ++i) {
+			IFile wkspFile = wfiles[i]; 
+			if (wkspFile.isAccessible()) {
+				result[i] = wkspFile;
+			} else {
+				result[i] = CoreModel.getDefault().createTranslationUnitFrom(cProject, wkspFile.getLocationURI());
+			}
+		}
+		return result;
 	}
 }

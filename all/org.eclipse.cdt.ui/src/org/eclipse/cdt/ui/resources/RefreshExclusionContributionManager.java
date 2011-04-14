@@ -11,6 +11,9 @@
 package org.eclipse.cdt.ui.resources;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.runtime.CoreException;
@@ -28,17 +31,18 @@ import org.eclipse.cdt.ui.CUIPlugin;
  * with the CDT team.
  * 
  * @author crecoskie
+ * @since 5.3
  *
  */
 public class RefreshExclusionContributionManager {
 	
 	public static final String EXCLUSION_CONTRIBUTOR = "exclusionContributor"; //$NON-NLS-1$
 	public static final String EXTENSION_ID = "RefreshExclusionContributor"; //$NON-NLS-1$
-	private Map<String, RefreshExclusionContributor> fIDtoContributorsMap;
+	private LinkedHashMap<String, RefreshExclusionContributor> fIDtoContributorsMap;
 	private static RefreshExclusionContributionManager fInstance;
 	
 	private RefreshExclusionContributionManager() {
-		fIDtoContributorsMap = new HashMap<String, RefreshExclusionContributor>();
+		fIDtoContributorsMap = new LinkedHashMap<String, RefreshExclusionContributor>();
 		loadExtensions();
 	}
 	
@@ -62,13 +66,18 @@ public class RefreshExclusionContributionManager {
 					if (configElement.getName().equals(EXCLUSION_CONTRIBUTOR)) {
 
 						String id = configElement.getAttribute("id"); //$NON-NLS-1$
+						String name = configElement.getAttribute("name"); //$NON-NLS-1$
 						String utility = configElement.getAttribute("class"); //$NON-NLS-1$
 
 						if (utility != null) {
 							try {
 								Object execExt = configElement.createExecutableExtension("class"); //$NON-NLS-1$
 								if ((execExt instanceof RefreshExclusionContributor) && id != null) {
-									fIDtoContributorsMap.put(id, (RefreshExclusionContributor) execExt);
+									RefreshExclusionContributor exclusionContributor = (RefreshExclusionContributor) execExt;
+									exclusionContributor.setID(id);
+									exclusionContributor.setName(name);
+									fIDtoContributorsMap.put(id, exclusionContributor);
+									
 								}
 							} catch (CoreException e) {
 								CUIPlugin.log(e);
@@ -78,5 +87,13 @@ public class RefreshExclusionContributionManager {
 				}
 			}
 		}
+	}
+	
+	public RefreshExclusionContributor getContributor(String id) {
+		return fIDtoContributorsMap.get(id);
+	}
+	
+	public List<RefreshExclusionContributor> getContributors() {
+		return new LinkedList<RefreshExclusionContributor>(fIDtoContributorsMap.values());
 	}
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2008 IBM Corporation and others.
+ * Copyright (c) 2000, 2011 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -9,6 +9,7 @@
  *     IBM Corporation - initial API and implementation
  *     Anton Leherbauer (Wind River Systems) - Adapted for CDT
  *     Markus Schorn (Wind River Systems)
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.editor;
 
@@ -28,12 +29,12 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
+import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.ui.CUIPlugin;
 
 import org.eclipse.cdt.internal.core.model.ASTCache;
-
 
 /**
  * Provides a shared AST for clients. The shared AST is
@@ -42,12 +43,10 @@ import org.eclipse.cdt.internal.core.model.ASTCache;
  * @since 4.0
  */
 public final class ASTProvider {
-
 	/**
 	 * Wait flag.
 	 */
 	public static final class WAIT_FLAG {
-
 		String fName;
 
 		private WAIT_FLAG(String name) {
@@ -97,7 +96,7 @@ public final class ASTProvider {
 	public static int PARSE_MODE_FULL= 0;
 	/** Fast parse mode (use PDOM) */
 	public static int PARSE_MODE_FAST= ITranslationUnit.AST_SKIP_INDEXED_HEADERS;
-	
+
 	/**
 	 * Internal activation listener.
 	 */
@@ -209,7 +208,6 @@ public final class ASTProvider {
 				return false;
 
 			String id= ref.getId();
-
 			return CUIPlugin.EDITOR_ID.equals(id) || ref.getPart(false) instanceof CEditor;
 		}
 	}
@@ -227,7 +225,7 @@ public final class ASTProvider {
 	public static ASTProvider getASTProvider() {
 		return CUIPlugin.getDefault().getASTProvider();
 	}
-	
+
 	/**
 	 * Creates a new AST provider.
 	 */
@@ -243,7 +241,7 @@ public final class ASTProvider {
 			// Create and register activation listener
 			fActivationListener= new ActivationListener();
 			PlatformUI.getWorkbench().addWindowListener(fActivationListener);
-	
+
 			// Ensure existing windows get connected
 			IWorkbenchWindow[] windows= PlatformUI.getWorkbench().getWorkbenchWindows();
 			for (int i= 0, length= windows.length; i < length; i++)
@@ -254,12 +252,12 @@ public final class ASTProvider {
 	private void activeEditorChanged(IWorkbenchPart editor) {
 		ICElement cElement= null;
 		if (editor instanceof CEditor) {
-			cElement= ((CEditor)editor).getInputCElement();
+			cElement= ((CEditor) editor).getInputCElement();
 		}
 		synchronized (this) {
 			fActiveEditor= editor;
 			fTimeStamp= IDocumentExtension4.UNKNOWN_MODIFICATION_STAMP;
-			fCache.setActiveElement((ITranslationUnit)cElement);
+			fCache.setActiveElement((ITranslationUnit) cElement);
 		}
 	}
 
@@ -273,7 +271,7 @@ public final class ASTProvider {
 		if (cElement == null)
 			return;
 		Assert.isTrue(cElement instanceof ITranslationUnit);
-		fCache.aboutToBeReconciled((ITranslationUnit)cElement);
+		fCache.aboutToBeReconciled((ITranslationUnit) cElement);
 		updateModificationStamp();
 	}
 
@@ -331,16 +329,57 @@ public final class ASTProvider {
 			ASTCache.ASTRunnable astRunnable) {
 		Assert.isTrue(cElement instanceof ITranslationUnit);
 		final ITranslationUnit tu = (ITranslationUnit) cElement;
-		if (!tu.isOpen())
+		if (!canUseCache(tu, waitFlag))
 			return Status.CANCEL_STATUS;
-		
+		return fCache.runOnAST(tu, waitFlag != WAIT_NO, monitor, astRunnable);
+	}
+
+	/**
+	 * Returns a shared AST and locks it for exclusive access. An AST obtained from this
+	 * method has to be released by calling {@link #releaseSharedAST(IASTTranslationUnit)}.
+	 * Subsequent call to this method will block until the AST is released.
+	 * <p>
+	 * The AST can be released by a thread other than the one that acquired it.
+	 * <p>
+	 * An index lock must be held by the caller when calling this method. The index lock may
+	 * not be released until the AST is released.
+	 * 
+	 * @param tu The translation unit to get the AST for.
+	 * @param index index with read lock held.
+	 * @param waitFlag condition for waiting for the AST to be built.
+	 * @param monitor a progress monitor, may be <code>null</code>.
+	 * @return the shared AST, or <code>null</code> if the shared AST is not available.
+	 */
+	public final IASTTranslationUnit acquireSharedAST(ITranslationUnit tu, IIndex index,
+			WAIT_FLAG waitFlag, IProgressMonitor monitor) {
+		if (!canUseCache(tu, waitFlag))
+			return null;
+		return fCache.acquireSharedAST(tu, index, waitFlag != WAIT_NO, monitor);
+	}
+
+	/**
+	 * Releases a shared AST previously acquired by calling
+	 * {@link #acquireSharedAST(ITranslationUnit, IIndex, WAIT_FLAG, IProgressMonitor)}.
+	 * <p>
+	 * Can be called by a thread other than the one that acquired the AST.
+	*
+	 * @param ast the AST to release.
+	 */
+	public final void releaseSharedAST(IASTTranslationUnit ast) {
+		fCache.releaseSharedAST(ast);
+	}
+
+	private synchronized boolean canUseCache(ITranslationUnit tu, WAIT_FLAG waitFlag) {
 		final boolean isActive= fCache.isActiveElement(tu);
+		if (!tu.isOpen())
+			return false;
+
 		if (waitFlag == WAIT_ACTIVE_ONLY && !isActive) {
-			return Status.CANCEL_STATUS;
+			return false;
 		}
 		if (isActive && updateModificationStamp()) {
 			fCache.disposeAST();
 		}
-		return fCache.runOnAST(tu, waitFlag != WAIT_NO, monitor, astRunnable);
+		return true;
 	}
 }

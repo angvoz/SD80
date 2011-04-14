@@ -16,6 +16,7 @@
 package org.eclipse.cdt.ui;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -107,7 +108,6 @@ import org.eclipse.cdt.internal.ui.viewsupport.CDTContextActivator;
  * @noinstantiate This class is not intended to be instantiated by clients.
  */
 public class CUIPlugin extends AbstractUIPlugin {
-
 	public static final String PLUGIN_ID = "org.eclipse.cdt.ui"; //$NON-NLS-1$
 	public static final String PLUGIN_CORE_ID = "org.eclipse.cdt.core"; //$NON-NLS-1$
 	public static final String EDITOR_ID = PLUGIN_ID + ".editor.CEditor"; //$NON-NLS-1$
@@ -237,8 +237,7 @@ public class CUIPlugin extends AbstractUIPlugin {
 	static {
 		try {
 			fgResourceBundle = ResourceBundle.getBundle("org.eclipse.cdt.internal.ui.CPluginResources"); //$NON-NLS-1$
-		}
-		catch (MissingResourceException x) {
+		} catch (MissingResourceException x) {
 			fgResourceBundle = null;
 		}
 	}
@@ -259,11 +258,9 @@ public class CUIPlugin extends AbstractUIPlugin {
 	public static String getResourceString(String key) {
 		try {
 			return fgResourceBundle.getString(key);
-		}
-		catch (MissingResourceException e) {
+		} catch (MissingResourceException e) {
 			return "!" + key + "!"; //$NON-NLS-1$ //$NON-NLS-2$
-		}
-		catch (NullPointerException e) {
+		} catch (NullPointerException e) {
 			return "#" + key + "#"; //$NON-NLS-1$ //$NON-NLS-2$
 		}
 	}
@@ -320,10 +317,20 @@ public class CUIPlugin extends AbstractUIPlugin {
 		getDefault().getLog().log(status);
 	}
 	
-	public void logErrorMessage(String message) {
-		log(new Status(IStatus.ERROR, getPluginId(), ICStatusConstants.INTERNAL_ERROR, message, null));
+	/**
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	public static void logError(String message) {
+		log(message, null);
 	}
-	
+
+	/**
+	 * @deprecated Use {@link #logError(String)}
+	 */
+	@Deprecated
+	public void logErrorMessage(String message) {
+		log(new Status(IStatus.ERROR, PLUGIN_ID, ICStatusConstants.INTERNAL_ERROR, message, null));
+	}
 
 	/**
 	* Utility method with conventions
@@ -475,17 +482,39 @@ public class CUIPlugin extends AbstractUIPlugin {
 	}
 
 	/**
-	 * Return a console manager specified by id.
-	 * @param name console name
-	 * @param id console id
-	 * @return IBuildConsoleManager
-	 */	
-	public IBuildConsoleManager getConsoleManager(String name, String id) {
-		BuildConsoleManager manager = fBuildConsoleManagers.get(id);
+	 * Obtain a console manager with the given id. If a manager has not been created yet,
+	 * it is created and its console created and activated.
+	 * 
+	 * @param name - console name.
+	 * @param contextId - console id matching context id in the Console view dropdown.
+	 * @return console manager.
+	 * 
+	 * Note that this method is rather internal and should not be referenced by clients.
+	 * To create a build console, use {@link CCorePlugin#getBuildConsole(String, String, URL)}
+	 */
+	public IBuildConsoleManager getConsoleManager(String name, String contextId) {
+		return getConsoleManager(name, contextId, null);
+	}
+
+	/**
+	 * Obtain a console manager with the given id. If a manager has not been created yet,
+	 * it is created and its console created and activated with the given attributes.
+	 * 
+	 * @param name - console name.
+	 * @param contextId - console id matching context id in the Console view dropdown.
+	 * @param iconUrl - a {@link URL} of the icon for the context menu of the Console
+	 *    view. The url is expected to point to an image in eclipse OSGi bundle.
+	 *    {@code iconUrl} can be <b>null</b>, in that case the default image is used.
+	 * @return console manager.
+	 * 
+	 * @noreference This method is not intended to be referenced by clients.
+	 */
+	public IBuildConsoleManager getConsoleManager(String name, String contextId, URL iconUrl) {
+		BuildConsoleManager manager = fBuildConsoleManagers.get(contextId);
 		if (manager == null ) {
 			manager = new BuildConsoleManager();
-			fBuildConsoleManagers.put(id, manager);
-			manager.startup(name, id);
+			fBuildConsoleManagers.put(contextId, manager);
+			manager.startup(name, contextId, iconUrl);
 		}
 		return manager;
 	}
@@ -642,10 +671,11 @@ public class CUIPlugin extends AbstractUIPlugin {
 		return EditorsUI.getSharedTextColors();
 	}
 	
-	public void configurePluginDebugOptions(){
-		if(isDebugging()){
+	public void configurePluginDebugOptions() {
+		if (isDebugging()) {
 			String option = Platform.getDebugOption(CONTENTASSIST);
-			if(option != null) Util.VERBOSE_CONTENTASSIST = option.equalsIgnoreCase("true") ; //$NON-NLS-1$
+			if (option != null)
+				Util.VERBOSE_CONTENTASSIST = option.equalsIgnoreCase("true") ; //$NON-NLS-1$
 		}
 	}
 
@@ -990,5 +1020,4 @@ public class CUIPlugin extends AbstractUIPlugin {
 		IWorkbenchWindow[] windows = getDefault().getWorkbench().getWorkbenchWindows();
 		return windows[0].getShell();
 	}
-	
 }

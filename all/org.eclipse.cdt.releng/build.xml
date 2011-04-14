@@ -10,6 +10,12 @@
 	<target name="buildcopy" depends="zips,generate.p2.metadata,copy"/>
 	<target name="cdtbuild" depends="tag,zips,test,upload"/>
 	<target name="testpack" depends="zips,sign,pack,generate.p2.metadata,copy"/>
+
+	<target name="update-site" depends="zips,generate.p2.metadata">
+		<unzip src="${zipsdir}/${masterFile}" dest="${updateSiteLocation}.tmp"/>
+		<delete quiet="true" dir="${updateSiteLocation}"/>
+		<move file="${updateSiteLocation}.tmp" tofile="${updateSiteLocation}"/>
+	</target>
 	
 	<target name="init">
 		<touch file="${user.home}/.cvspass" />
@@ -43,6 +49,7 @@
 		<property name="tagname" value="v${timestamp}"/>
 		<property name="testReports" value="${zipsdir}/testReports"/>
 		<property name="junit-report-output" value="${testReports}"/>
+		<property name="updateSiteLocation" value="${buildDirectory}/update-site"/>
 		<condition property="onWindows">
 			<os family="windows"/>
 		</condition>
@@ -216,7 +223,7 @@
 		<delete dir="${p2dir}"/>
 	</target>
 	
-    <target name="p2.metadata.generator">
+    <target name="p2.metadata.generator_old">
     	<echo message="Generate p2 Metadata" />
     	<property name="p2site" value="${zipsdir}/p2"/>
     	<property name="launcher" value="${basedir}/tools/org.eclipse.releng.basebuilder/plugins/org.eclipse.equinox.launcher.jar"/>
@@ -232,6 +239,19 @@
         	<arg line="-reusePack200Files"/>
         	<arg line="-noDefaultIUs"/>
         	<arg line="-vmargs -Xmx256M"/>
+        </java>
+	</target>
+	
+    <target name="p2.metadata.generator">
+    	<echo message="Generate p2 Metadata" />
+    	<property name="p2site" value="${zipsdir}/p2"/>
+    	<property name="launcher" value="${basedir}/tools/org.eclipse.releng.basebuilder/plugins/org.eclipse.equinox.launcher.jar"/>
+    	<java jar="${launcher}" fork="true" timeout="10800000" failonerror="true" maxmemory="768m">
+            <arg line="-application org.eclipse.equinox.p2.publisher.UpdateSitePublisher" />
+    		<arg line="-source ${p2site}"/>
+        	<arg line="-metadataRepository file:${p2site}"/>
+        	<arg line="-artifactRepository file:${p2site}"/>            
+        	<arg line="-compress -publishArtifacts -reusePack200Files"/>
         </java>
 	</target>
 

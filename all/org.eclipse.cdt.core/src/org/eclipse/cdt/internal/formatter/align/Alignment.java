@@ -11,6 +11,8 @@
  *******************************************************************************/
 package org.eclipse.cdt.internal.formatter.align;
 
+import java.util.Arrays;
+
 import org.eclipse.cdt.internal.formatter.Location;
 import org.eclipse.cdt.internal.formatter.Scribe;
 
@@ -23,10 +25,9 @@ public class Alignment {
 	// Alignment names.
 	public static final String ASSIGNMENT_EXPRESSION = "assignmentExpression"; //$NON-NLS-1$
 	public static final String BINARY_EXPRESSION = "binaryExpression"; //$NON-NLS-1$
-	public static final String COLUMN_WRAPPER = "columnWrapper"; //$NON-NLS-1$
 	public static final String COMPACT_IF = "compactIf"; //$NON-NLS-1$
-	public static final String CONDITIONAL_EXPRESSION_WRAPPER = "conditionalExpressionWrapper"; //$NON-NLS-1$
 	public static final String CONDITIONAL_EXPRESSION = "conditionalExpression"; //$NON-NLS-1$
+	public static final String CONDITIONAL_EXPRESSION_CHAIN = "conditionalExpressionChain"; //$NON-NLS-1$
 	public static final String DECLARATION_INITIALIZER = "declarationInitializer"; //$NON-NLS-1$
 	public static final String DESIGNATED_INITIALIZER = "designatedInitializer"; //$NON-NLS-1$
 	public static final String EXCEPTION_SPECIFICATION = "exceptionSpecification"; //$NON-NLS-1$
@@ -65,11 +66,12 @@ public class Alignment {
 	// Break management
 	public int originalIndentationLevel;
 	public int breakIndentationLevel;
-	public int shiftBreakIndentationLevel;
+	public int alternativeBreakIndentationLevel;
 	public int[] fragmentBreaks;
 	public boolean wasSplit;
+	public int currentFragmentStartLine;
 
-	public Scribe scribe;
+	public final Scribe scribe;
 	
 	/*
 	 * Alignment modes
@@ -145,9 +147,9 @@ public class Alignment {
 	public int tieBreakRule;
 	
 	// Alignment effects on a per fragment basis
+	public static final int BREAK_NOT_ALLOWED = -1;
 	public static final int NONE = 0;
-	public static final int BREAK = 1;
-	public static final int BREAK_NOT_ALLOWED = 2;
+	public static final int BREAK = 2;
 	
 	// Chunk kind
 	public static final int CHUNK_FIELD = 1;
@@ -168,33 +170,42 @@ public class Alignment {
 		this.wasSplit = false;
 		this.fragmentIndentations = new int[this.fragmentCount];
 		this.fragmentBreaks = new int[this.fragmentCount];
+		Arrays.fill(this.fragmentBreaks, (this.mode & M_FORCE) == 0 ? BREAK_NOT_ALLOWED : NONE);
+		this.currentFragmentStartLine = this.scribe.line;
 
-		// Initialize the break indentation level, using modes and continuationIndentationLevel preference
-		final int indentSize = this.scribe.indentationSize;
 		int currentColumn = this.location.outputColumn;
 		if (currentColumn == 1) {
 		    currentColumn = this.location.outputIndentationLevel + 1;
 		}
 		
+		// Initialize the break indentation level, using modes and continuationIndentationLevel
+		// preference.
+		final int indentSize = this.scribe.indentationSize;
+
 		if ((mode & M_INDENT_ON_COLUMN) != 0) {
 			// Indent broken fragments at next indentation level, based on current column
 			this.breakIndentationLevel = this.scribe.getNextIndentationLevel(currentColumn);
-			if (this.breakIndentationLevel == this.location.outputIndentationLevel) {
-				this.breakIndentationLevel += continuationIndent * indentSize;
-			}
-			if (continuationIndent == 0) {
-				this.fragmentBreaks[0] = BREAK_NOT_ALLOWED;
-			}
-		} else if ((mode & M_INDENT_BY_ONE) != 0) {
-			// Indent broken fragments exactly one level deeper than current indentation
-			this.breakIndentationLevel = this.location.outputIndentationLevel + indentSize;
+			this.alternativeBreakIndentationLevel =
+					this.location.outputIndentationLevel + continuationIndent * indentSize;
 		} else {
-			this.breakIndentationLevel = this.location.outputIndentationLevel + continuationIndent * indentSize;
+			int baseIndentationLevel = this.location.outputIndentationLevel;
+			if (name != TRAILING_TEXT && this.scribe.currentAlignment != null &&
+					(this.scribe.currentAlignment.mode & M_INDENT_ON_COLUMN) != 0 &&
+					this.scribe.currentAlignment.fragmentCount > 1) {
+				baseIndentationLevel = this.scribe.currentAlignment.breakIndentationLevel;
+			}
+			if ((mode & M_INDENT_BY_ONE) != 0) {
+				// Indent broken fragments exactly one level deeper than current indentation
+				this.breakIndentationLevel = baseIndentationLevel + indentSize;
+			} else {
+				this.breakIndentationLevel = baseIndentationLevel + continuationIndent * indentSize;
+			}
+			this.alternativeBreakIndentationLevel = this.breakIndentationLevel;
 		}
-		this.shiftBreakIndentationLevel = this.breakIndentationLevel + indentSize;
 
 		// Check for forced alignments
 		if ((this.mode & M_FORCE) != 0) {
+			this.fragmentBreaks[this.fragmentIndex] = NONE;
 			couldBreak();
 		}
 	}
@@ -203,7 +214,7 @@ public class Alignment {
 		if (this.chunkKind != kind) {
 			this.chunkKind = kind;
 			
-			// when redoing same chunk alignment, must not reset
+			// When redoing same chunk alignment, must not reset
 			if (startIndex != this.chunkStartIndex) {
 				this.chunkStartIndex = startIndex;
 				this.location.update(this.scribe, sourceRestart);
@@ -216,7 +227,7 @@ public class Alignment {
 
 	public void checkColumn() {
 		if ((this.mode & M_MULTICOLUMN) != 0) {
-			int currentIndentation = this.scribe.getNextIndentationLevel(this.scribe.column+(this.scribe.needSpace ? 1 : 0));
+			int currentIndentation = this.scribe.getNextIndentationLevel(this.scribe.column + (this.scribe.needSpace ? 1 : 0));
 			int fragmentIndentation = this.fragmentIndentations[this.fragmentIndex];
 			if (currentIndentation > fragmentIndentation) {
 				this.fragmentIndentations[this.fragmentIndex] =  currentIndentation;
@@ -227,7 +238,7 @@ public class Alignment {
 					this.needRedoColumnAlignment = true;
 				}
 			}
-			// backtrack only once all fragments got checked
+			// Backtrack only once all fragments got checked
 			if (this.needRedoColumnAlignment && this.fragmentIndex == this.fragmentCount - 1) { // alignment too small
 //				if (CodeFormatterVisitor.DEBUG) {
 //					System.out.println("ALIGNMENT TOO SMALL");
@@ -257,6 +268,15 @@ public class Alignment {
 			 */
 			case M_COMPACT_FIRST_BREAK_SPLIT:
 				if (this.fragmentBreaks[0] == NONE) {
+					if ((this.mode & M_INDENT_ON_COLUMN) != 0) {
+						if (this.breakIndentationLevel <= this.alternativeBreakIndentationLevel) {
+							// Does not make sense to break here unless indentation is reduced.
+							break;
+						}
+						// Change break indentation level and erase previously created breaks.
+						this.breakIndentationLevel = this.alternativeBreakIndentationLevel;
+						eraseExistingBreaks(0);
+					}
 					this.fragmentBreaks[0] = BREAK;
 					this.fragmentIndentations[0] = this.breakIndentationLevel;
 					return wasSplit = true;
@@ -278,6 +298,15 @@ public class Alignment {
 				i = this.fragmentIndex;
 				do {
 					if (this.fragmentBreaks[i] == NONE) {
+						if ((this.mode & M_INDENT_ON_COLUMN) != 0 && i == 0) {
+							if (this.breakIndentationLevel <= this.alternativeBreakIndentationLevel) {
+								// Does not make sense to break here unless indentation is reduced.
+								break;
+							}
+							// Change break indentation level and erase previously created breaks.
+							this.breakIndentationLevel = this.alternativeBreakIndentationLevel;
+							eraseExistingBreaks(i);
+						}
 						this.fragmentBreaks[i] = BREAK;
 						this.fragmentIndentations[i] = this.breakIndentationLevel;
 						return wasSplit = true;
@@ -297,7 +326,8 @@ public class Alignment {
 					this.fragmentIndentations[0] = this.breakIndentationLevel;
 					for (i = 1; i < this.fragmentCount; i++) {
 						this.fragmentBreaks[i] = BREAK;
-						this.fragmentIndentations[i] = this.shiftBreakIndentationLevel;
+						this.fragmentIndentations[i] =
+								this.breakIndentationLevel + this.scribe.indentationSize;
 					}
 					return wasSplit = true;
 				}
@@ -324,7 +354,7 @@ public class Alignment {
 			 *      #CCCC);
 			 */
 			case M_NEXT_PER_LINE_SPLIT:
-				if (this.fragmentBreaks[0] == NONE) {
+				if (this.fragmentBreaks[0] != BREAK) {
 					if (this.fragmentCount > 1 && this.fragmentBreaks[1] == NONE) {
 						if ((this.mode & M_INDENT_ON_COLUMN) != 0) {
 							this.fragmentIndentations[0] = this.breakIndentationLevel;
@@ -338,7 +368,16 @@ public class Alignment {
 				}
 				break;
 		}
-		return false; // cannot split better
+		return false; // Cannot split better
+	}
+
+	private void eraseExistingBreaks(int startFragmentIndex) {
+		for (int j = startFragmentIndex + 1; j < this.fragmentIndentations.length; j++) {
+			if (this.fragmentBreaks[j] == BREAK) {
+				this.fragmentBreaks[j] = NONE;
+				this.fragmentIndentations[j] = 0;
+			}
+		}
 	}
 	
 	public Alignment getAlignment(String targetName) {
@@ -347,8 +386,27 @@ public class Alignment {
 		
 		return this.enclosing.getAlignment(targetName);
 	}
-		
-	// perform alignment effect for current fragment
+
+	public void alignFragment(int fragmentIndex) {
+		this.fragmentIndex= fragmentIndex;
+		if (this.fragmentBreaks[fragmentIndex] == BREAK_NOT_ALLOWED) {
+			this.fragmentBreaks[fragmentIndex] = NONE;	// Allow line break.
+		}
+		switch (this.mode & SPLIT_MASK) {
+		case Alignment.M_NEXT_PER_LINE_SPLIT:
+		case Alignment.M_ONE_PER_LINE_SPLIT:
+			for (int i = fragmentIndex + 1; i < this.fragmentBreaks.length; i++) {
+				if (this.fragmentBreaks[i] == BREAK_NOT_ALLOWED) {
+					this.fragmentBreaks[i] = NONE;	// Allow line break.
+				}
+			}
+			break;
+		}
+		checkColumn();
+		performFragmentEffect();
+	}
+
+	// Performs alignment effect for current fragment.
 	public void performFragmentEffect() {
 		if ((this.mode & M_MULTICOLUMN) == 0) {
 			switch (this.mode & SPLIT_MASK) {
@@ -362,13 +420,21 @@ public class Alignment {
 					return;
 			}
 		}
-		
+
+		if ((this.mode & M_INDENT_ON_COLUMN) != 0 && this.fragmentIndex > 0 &&
+				this.scribe.line > currentFragmentStartLine) {
+			// The previous fragment spans multiple line. Put the current fragment on a new line.
+			this.fragmentBreaks[this.fragmentIndex] = BREAK;
+			this.fragmentIndentations[this.fragmentIndex] = this.breakIndentationLevel;
+			wasSplit = true;
+		}
 		if (this.fragmentBreaks[this.fragmentIndex] == BREAK) {
 			this.scribe.startNewLine();
 		}
 		if (this.fragmentIndentations[this.fragmentIndex] > 0) {
 			this.scribe.indentationLevel = this.fragmentIndentations[this.fragmentIndex];
 		}
+		currentFragmentStartLine = this.scribe.line;
 	}
 
 	// test whether this is an 'indent-on-column' type alignment and aligns on the given column

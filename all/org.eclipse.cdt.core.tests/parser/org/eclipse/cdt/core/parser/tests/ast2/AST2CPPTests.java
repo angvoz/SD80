@@ -5421,45 +5421,45 @@ public class AST2CPPTests extends AST2BaseTest {
 		// check class
 		IBinding b= cldef.getName().resolveBinding();
 		assertEquals(3, tu.getReferences(b).length);			// 2 refs + using-decl
-		assertEquals(2, tu.getDefinitionsInAST(b).length);		// class-def + using-decl
+		assertEquals(1, tu.getDefinitionsInAST(b).length);		// class-def
 		assertEquals(2, tu.getDeclarationsInAST(b).length);		// class-def + using-decl
 		
 		// check functions
 		b= fdecl1.getName().resolveBinding();
 		assertEquals(3, tu.getReferences(b).length);			// 2 refs + using-decl
-		assertEquals(1, tu.getDefinitionsInAST(b).length);		// using-decl
+		assertEquals(0, tu.getDefinitionsInAST(b).length);		// function is not defined
 		assertEquals(2, tu.getDeclarationsInAST(b).length);		// func-decl + using-decl
 		b= fdecl2.getName().resolveBinding();
 		assertEquals(3, tu.getReferences(b).length);			// 2 refs + using-decl
-		assertEquals(1, tu.getDefinitionsInAST(b).length);		// using-decl
+		assertEquals(0, tu.getDefinitionsInAST(b).length);		// function is not defined
 		assertEquals(2, tu.getDeclarationsInAST(b).length);		// func-decl + using-decl
 		
 		// check using declaration class
 		b= udcl.getName().resolveBinding();
 		assertEquals(3, tu.getReferences(b).length);			// 2 refs + using-decl
-		assertEquals(2, tu.getDefinitionsInAST(b).length);		// class-def + using-decl
+		assertEquals(1, tu.getDefinitionsInAST(b).length);		// class-def
 		assertEquals(2, tu.getDeclarationsInAST(b).length);		// class-def + using-decl
 		
 		// check using declaration function
 		b= udf.getName().resolveBinding();
 		assertEquals(5, tu.getReferences(b).length);			// 4 refs + using-decl
-		assertEquals(1, tu.getDefinitionsInAST(b).length);		// using-decl
+		assertEquals(0, tu.getDefinitionsInAST(b).length);		// function is not defined
 		assertEquals(3, tu.getDeclarationsInAST(b).length);		// using-decl + 2 func-decls
 		
 		// check class reference
 		b= clname.resolveBinding();
 		assertEquals(3, tu.getReferences(b).length);			// 2 refs + using-decl
-		assertEquals(2, tu.getDefinitionsInAST(b).length);		// class-def + using-decl
+		assertEquals(1, tu.getDefinitionsInAST(b).length);		// class-def
 		assertEquals(2, tu.getDeclarationsInAST(b).length);		// class-def + using-decl
 		
 		// check function references
 		b= fnname1.resolveBinding();							
 		assertEquals(3, tu.getReferences(b).length);			// 2 refs + using-decl
-		assertEquals(1, tu.getDefinitionsInAST(b).length);		// using-decl
+		assertEquals(0, tu.getDefinitionsInAST(b).length);		// function is not defined
 		assertEquals(2, tu.getDeclarationsInAST(b).length);		// using-decl + func-decl
 		b= fnname2.resolveBinding();
 		assertEquals(3, tu.getReferences(b).length);			// 2 refs + using-decl
-		assertEquals(1, tu.getDefinitionsInAST(b).length);		// using-decl
+		assertEquals(0, tu.getDefinitionsInAST(b).length);		// function is not defined
 		assertEquals(2, tu.getDeclarationsInAST(b).length);		// using-decl + func-decl
 	}
 	
@@ -9378,5 +9378,17 @@ public class AST2CPPTests extends AST2BaseTest {
 	//	}
 	public void testOverloadedOperatorWithInheritanceDistance_335387() throws Exception {
 		parseAndCheckBindings();
+	}
+	
+	// namespace ns {int a;}
+	// using ns::a;
+	public void testPropertyOfUsingDeclaration() throws Exception {
+		IASTTranslationUnit tu= parseAndCheckBindings();
+		ICPPASTUsingDeclaration udecl= getDeclaration(tu, 1);
+		ICPPASTQualifiedName qn= (ICPPASTQualifiedName) udecl.getName();
+		assertFalse(qn.isDefinition());
+		assertFalse(qn.getLastName().isDefinition());
+		assertTrue(qn.isDeclaration());
+		assertTrue(qn.getLastName().isDeclaration());
 	}
 }

@@ -92,6 +92,7 @@ import org.eclipse.cdt.utils.Addr32;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
@@ -244,24 +245,26 @@ public class DwarfInfoReader {
  	 * compilation units.  
 	 */
 	public void parseInitial() {
-		Job parseInitialJob = new Job(DwarfMessages.DwarfInfoReader_ReadingSymbolInfo + symbolFilePath) {
-
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceInitialParseFor + symbolFilePath)); }
-				parseCUDebugInfo(monitor);
-				parsePublicNames();
-				if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceFinishedInitialParse)); }
-				return Status.OK_STATUS;
-			}
-		};
+			Job parseInitialJob = new Job(DwarfMessages.DwarfInfoReader_ReadingSymbolInfo + symbolFilePath) {
 		
-		try {
-			parseInitialJob.schedule();
-			parseInitialJob.join();
-		} catch (InterruptedException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
-		}
+				@Override
+				protected IStatus run(IProgressMonitor monitor) {
+					if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceInitialParseFor + symbolFilePath)); }
+					synchronized (provider) {
+						parseCUDebugInfo(monitor);
+						parsePublicNames();
+					}
+					if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceFinishedInitialParse)); }
+					return Status.OK_STATUS;
+				}
+			};
+			
+			try {
+				parseInitialJob.schedule();
+				parseInitialJob.join();
+			} catch (InterruptedException e) {
+				EDCDebugger.getMessageLogger().logError(null, e);
+			}
 	}
 
 	/**
@@ -274,19 +277,21 @@ public class DwarfInfoReader {
 	 */
 	public void parseForAddresses(boolean includeCUWithoutCode) {
 		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceAddressesParseFor + symbolFilePath)); }
-		for (DwarfCompileUnit compileUnit : provider.compileUnits) {
-			if (DEBUG) {
-				// For internal check. 
-				if (compileUnit.getHighAddress().isZero())
-					assert(compileUnit.getChildren().size() == 0);
-				else
-					assert(compileUnit.getChildren().size() >= 0);
-			}
-
-			if (includeCUWithoutCode ||  	// parse every CU
-				! compileUnit.getHighAddress().isZero()) // parse only those with code. 
-			{
-				parseCompilationUnitForAddresses(compileUnit);
+		synchronized (provider) {
+			for (DwarfCompileUnit compileUnit : provider.compileUnits) {
+				if (DEBUG) {
+					// For internal check. 
+					if (compileUnit.getHighAddress().isZero())
+						assert(compileUnit.getChildren().size() == 0);
+					else
+						assert(compileUnit.getChildren().size() >= 0);
+				}
+	
+				if (includeCUWithoutCode ||  	// parse every CU
+					! compileUnit.getHighAddress().isZero()) // parse only those with code. 
+				{
+					parseCompilationUnitForAddresses(compileUnit);
+				}
 			}
 		}
 		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceFinishedAddressesParse)); }
@@ -309,24 +314,26 @@ public class DwarfInfoReader {
 		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceAddressParseFor + symbolFilePath)); }
 
 		// find compilation unit containing address, and parse it
-		DwarfCompileUnit cu = new DwarfCompileUnit(provider, null, null, linkAddress, linkAddress, null, false, null);
-		int index = Collections.binarySearch (provider.sortedCompileUnitsWithCode, cu, sComparatorByLowAddress);
-
-		if (index >= 0) {
-			cu = provider.sortedCompileUnitsWithCode.get(index);
-			parseCompilationUnitForAddresses(cu);
-		} else if (index < -1 && -index - 2 < provider.sortedCompileUnitsWithCode.size()) {
-			cu = provider.sortedCompileUnitsWithCode.get(-index - 2);
-			if (cu.getLowAddress().compareTo(linkAddress) <= 0 && cu.getHighAddress().compareTo(linkAddress) >= 0)
+		synchronized (provider) {
+			DwarfCompileUnit cu = new DwarfCompileUnit(provider, null, null, linkAddress, linkAddress, null, false, null);
+			int index = Collections.binarySearch (provider.sortedCompileUnitsWithCode, cu, sComparatorByLowAddress);
+	
+			if (index >= 0) {
+				cu = provider.sortedCompileUnitsWithCode.get(index);
 				parseCompilationUnitForAddresses(cu);
-		} else {
-			return;
+			} else if (index < -1 && -index - 2 < provider.sortedCompileUnitsWithCode.size()) {
+				cu = provider.sortedCompileUnitsWithCode.get(-index - 2);
+				if (cu.getLowAddress().compareTo(linkAddress) <= 0 && cu.getHighAddress().compareTo(linkAddress) >= 0)
+					parseCompilationUnitForAddresses(cu);
+			} else {
+				return;
+			}
+	
+			if (moduleScope.getLowAddress().compareTo(cu.getLowAddress()) > 0)
+				moduleScope.setLowAddress(cu.getLowAddress());
+			if (moduleScope.getHighAddress().compareTo(cu.getHighAddress()) < 0)
+				moduleScope.setHighAddress(cu.getHighAddress());
 		}
-
-		if (moduleScope.getLowAddress().compareTo(cu.getLowAddress()) > 0)
-			moduleScope.setLowAddress(cu.getLowAddress());
-		if (moduleScope.getHighAddress().compareTo(cu.getHighAddress()) < 0)
-			moduleScope.setHighAddress(cu.getHighAddress());
 
 		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceFinishedAddressParse)); }
 	}
@@ -448,8 +455,10 @@ public class DwarfInfoReader {
 	 * Parse all compilation units for types
 	 */
 	public void parseForTypes() {
-		for (DwarfCompileUnit compileUnit : provider.compileUnits) {
-			parseCompilationUnitForTypes(compileUnit);
+		synchronized (provider) {
+			for (DwarfCompileUnit compileUnit : provider.compileUnits) {
+				parseCompilationUnitForTypes(compileUnit);
+			}
 		}
 	}
 	/**
@@ -500,7 +509,7 @@ public class DwarfInfoReader {
      *
 	 * @return offset of next compilation unit
 	 */
-	public long parseCompilationUnitForNames(IStreamBuffer buffer, long fileIndex, IStreamBuffer debugStrings, long fileEndIndex, boolean havePubNames) {
+	private long parseCompilationUnitForNames(IStreamBuffer buffer, long fileIndex, IStreamBuffer debugStrings, long fileEndIndex, boolean havePubNames) {
 		buffer.position(fileIndex);
 
 		currentCUHeader = new CompilationUnitHeader();
@@ -785,7 +794,7 @@ public class DwarfInfoReader {
 			if (header == null)
 				return;
 
-			if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().trace(null, DwarfMessages.DwarfInfoReader_TraceAddressParse1 + Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceAddressParse2 + header.scope.getFilePath()); }
+			if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().trace(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceAddressParse1 + Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceAddressParse2 + header.scope.getFilePath())); }
 			
 			IStreamBuffer buffer = debugInfoSection.getBuffer();
 			
@@ -825,76 +834,68 @@ public class DwarfInfoReader {
 	 * @param compileUnit
 	 */
 	public void parseCompilationUnitForAddresses(final DwarfCompileUnit compileUnit) {
-		synchronized (compileUnit) {
-			if (compileUnit.isParsedForAddresses())
-				return;
-		}
-		Job parseCompilationUnitForAddressesJob = new Job(DwarfMessages.DwarfInfoReader_ReadingSymbolInfo + symbolFilePath) {
-
-			@Override
-			protected IStatus run(IProgressMonitor monitor) {
-				parseCompilationUnitForAddressesPrivate(compileUnit, monitor);
-				return Status.OK_STATUS;
+		synchronized (provider) {
+			synchronized (compileUnit) {
+				if (compileUnit.isParsedForAddresses())
+					return;
 			}
-		};
-		
-		try {
-			parseCompilationUnitForAddressesJob.schedule();
-			parseCompilationUnitForAddressesJob.join();
-		} catch (InterruptedException e) {
-			EDCDebugger.getMessageLogger().logError(null, e);
+			parseCompilationUnitForAddressesPrivate(compileUnit, new NullProgressMonitor());
 		}
 	}
 
 	synchronized public void parseCompilationUnitForTypes(DwarfCompileUnit compileUnit) {
-		synchronized(compileUnit) {
-			if (compileUnit.isParsedForTypes())
-				return;
-			
-			compileUnit.setParsedForTypes(true);
-			
-			CompilationUnitHeader header = compileUnit.header;
-
-			if (header == null)
-				return;
-
-			if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().trace(null, DwarfMessages.DwarfInfoReader_TraceTypeParse1 + Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceTypeParse2 + header.scope.getFilePath()); }
-			
-			IStreamBuffer buffer = debugInfoSection.getBuffer();
-			
-			if (buffer == null)
-				return;
-			
-			int fileIndex = header.debugInfoOffset;
-			
-			// read the compile unit debug info into memory
-			buffer.position(fileIndex);
-
-			IStreamBuffer data = buffer.wrapSubsection(header.length + 4);
-
-			// skip over the header, since we've already read it
-			data.position(11); // unit length + version + abbrev table offset + address size
-			
-			currentCompileUnitScope = compileUnit;
-			currentParentScope = compileUnit;
-			registerScope(header.debugInfoOffset, compileUnit);
-			currentCUHeader = header;
-
-			try {
-				// get stored abbrev table, or read and parse an abbrev table
-				Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(header.abbreviationOffset);
-
-				parseForTypes(data, abbrevs, header, new Stack<Scope>());
-			} catch (Throwable t) {
-				EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed1 
-						+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed2 + symbolFilePath, t);
+		synchronized (provider) {
+			synchronized(compileUnit) {
+				if (compileUnit.isParsedForTypes())
+					return;
+				
+				compileUnit.setParsedForTypes(true);
+				
+				CompilationUnitHeader header = compileUnit.header;
+	
+				if (header == null)
+					return;
+	
+				if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().trace(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceTypeParse1 + Integer.toHexString(header.debugInfoOffset) + DwarfMessages.DwarfInfoReader_TraceTypeParse2 + header.scope.getFilePath())); }
+				
+				IStreamBuffer buffer = debugInfoSection.getBuffer();
+				
+				if (buffer == null)
+					return;
+				
+				int fileIndex = header.debugInfoOffset;
+				
+				// read the compile unit debug info into memory
+				buffer.position(fileIndex);
+	
+				IStreamBuffer data = buffer.wrapSubsection(header.length + 4);
+	
+				// skip over the header, since we've already read it
+				data.position(11); // unit length + version + abbrev table offset + address size
+				
+				currentCompileUnitScope = compileUnit;
+				currentParentScope = compileUnit;
+				registerScope(header.debugInfoOffset, compileUnit);
+				currentCUHeader = header;
+	
+				try {
+					// get stored abbrev table, or read and parse an abbrev table
+					Map<Long, AbbreviationEntry> abbrevs = parseDebugAbbreviation(header.abbreviationOffset);
+	
+					parseForTypes(data, abbrevs, header, new Stack<Scope>());
+				} catch (Throwable t) {
+					EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed1 
+							+ debugInfoSection.getName() + DwarfMessages.DwarfInfoReader_ParseTraceInfoSectionFailed2 + symbolFilePath, t);
+				}
 			}
 		}
 	}
 
 	public void quickParseDebugInfo(IProgressMonitor monitor) {
 		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceQuickParse + symbolFilePath)); }
-		doQuickParseDebugInfo(monitor);
+		synchronized (provider) {
+			doQuickParseDebugInfo(monitor);
+		}
 		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceFinishedQuickParse)); }
 	}
 	
@@ -1084,244 +1085,246 @@ public class DwarfInfoReader {
 	 * @return new array of ILineEntry
 	 */
 	public Collection<ILineEntry> parseLineTable(IScope scope, AttributeList attributes, List<IPath> fileList) {
-		List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
-		try {
-			IStreamBuffer data = getDwarfSection(DWARF_DEBUG_LINE);
-			AttributeValue a = attributes.getAttribute(DwarfConstants.DW_AT_stmt_list);
-			if (data != null && a != null) {
-				int stmtList = a.getValueAsInt();
-				data.position(stmtList);
-
-				/*
-				 * Read line table header:
-				 * 
-				 * total_length: 4 bytes (excluding itself)
-				 * version: 2
-				 * prologue length: 4
-				 * minimum_instruction_len: 1
-				 * default_is_stmt: 0 or 1
-				 * line_base: 1
-				 * line_range: 1
-				 * opcode_base: 1
-				 * standard_opcode_lengths: (value of opcode_base)
-				 */
-
-				// Remember the CU line tables we've parsed.
-				int length = data.getInt() + 4;
-
-				// Skip the following till "opcode_base"
-				@SuppressWarnings("unused")
-				int version = data.getShort();
-				int prologue_length = data.getInt();
-				int minimum_instruction_length = data.get() & 0xff;
-				boolean default_is_stmt = data.get() > 0;
-				int line_base = data.get();  // signed
-				int line_range = data.get() & 0xff;
-
-				int opcode_base = data.get() & 0xff;
-				byte[] opcodes = new byte[opcode_base - 1];
-				data.get(opcodes);
-
-				// Read in directories.
-				//
-				ArrayList<String> dirList = new ArrayList<String>();
-
-				// Put the compilation directory of the CU as the first dir
-				String compDir = attributes.getAttributeValueAsString(DwarfConstants.DW_AT_comp_dir);
-				dirList.add(compDir);
-
-				IPath compDirPath = PathUtils.createPath(compDir);
-				
-				String str, fileName;
-
-				while (true) {
-					str = readString(data);
-					if (str.length() == 0)
-						break;
-					// If the directory is relative, append it to the CU dir
-					IPath dir = PathUtils.createPath(str);
-					if (!dir.isAbsolute() && dir.getDevice() == null) {
-						dir = compDirPath.append(str);
-					}
-					dirList.add(dir.toString());
-				}
-
-				// Read file names
-				//
-				long leb128;
-				while (true) {
-					fileName = readString(data);
-					if (fileName.length() == 0) // no more file entry
-						break;
-
-					// dir index
-					leb128 = read_unsigned_leb128(data);
-
-					IPath fullPath = fileHelper.normalizeFilePath(dirList.get((int) leb128), fileName);
-					// add a null as a placeholder when the filename is enclosed in '<' & '>' (e.g., "<stdin>")
-					fileList.add(fullPath);
-
-					// Skip the following
+		synchronized (provider) {
+			List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
+			try {
+				IStreamBuffer data = getDwarfSection(DWARF_DEBUG_LINE);
+				AttributeValue a = attributes.getAttribute(DwarfConstants.DW_AT_stmt_list);
+				if (data != null && a != null) {
+					int stmtList = a.getValueAsInt();
+					data.position(stmtList);
+	
+					/*
+					 * Read line table header:
+					 * 
+					 * total_length: 4 bytes (excluding itself)
+					 * version: 2
+					 * prologue length: 4
+					 * minimum_instruction_len: 1
+					 * default_is_stmt: 0 or 1
+					 * line_base: 1
+					 * line_range: 1
+					 * opcode_base: 1
+					 * standard_opcode_lengths: (value of opcode_base)
+					 */
+	
+					// Remember the CU line tables we've parsed.
+					int length = data.getInt() + 4;
+	
+					// Skip the following till "opcode_base"
+					@SuppressWarnings("unused")
+					int version = data.getShort();
+					int prologue_length = data.getInt();
+					int minimum_instruction_length = data.get() & 0xff;
+					boolean default_is_stmt = data.get() > 0;
+					int line_base = data.get();  // signed
+					int line_range = data.get() & 0xff;
+	
+					int opcode_base = data.get() & 0xff;
+					byte[] opcodes = new byte[opcode_base - 1];
+					data.get(opcodes);
+	
+					// Read in directories.
 					//
-					// modification time
-					leb128 = read_unsigned_leb128(data);
-
-					// file size in bytes
-					leb128 = read_unsigned_leb128(data);
-				}
-
-				long info_address = 0;
-				long info_file = 1;
-				int info_line = 1;
-				int info_column = 0;
-				boolean is_stmt = default_is_stmt;
-				@SuppressWarnings("unused")
-				int info_flags = 0;
-				long info_ISA = 0;
-
-				long lineInfoEnd = stmtList + length;
-				while (data.position() < lineInfoEnd) {
-					byte opcodeB = data.get();
-					int opcode = 0xFF & opcodeB;
-
-					if (opcode >= opcode_base) {
-						info_line += (((opcode - opcode_base) % line_range) + line_base);
-						info_address += (opcode - opcode_base) / line_range * minimum_instruction_length;
-						if (is_stmt && fileList.size() > 0) {
-							IPath path = fileList.get((int) info_file - 1);
-							// added a null as a placeholder when the filename was enclosed in '<' & '>' (e.g., "<stdin>")
-							if (path != null)
-								lineEntries.add(new LineEntry(path, info_line, info_column,	new Addr32(info_address), null));
+					ArrayList<String> dirList = new ArrayList<String>();
+	
+					// Put the compilation directory of the CU as the first dir
+					String compDir = attributes.getAttributeValueAsString(DwarfConstants.DW_AT_comp_dir);
+					dirList.add(compDir);
+	
+					IPath compDirPath = PathUtils.createPath(compDir);
+					
+					String str, fileName;
+	
+					while (true) {
+						str = readString(data);
+						if (str.length() == 0)
+							break;
+						// If the directory is relative, append it to the CU dir
+						IPath dir = PathUtils.createPath(str);
+						if (!dir.isAbsolute() && dir.getDevice() == null) {
+							dir = compDirPath.append(str);
 						}
-						info_flags &= ~(DwarfConstants.LINE_BasicBlock | DwarfConstants.LINE_PrologueEnd | DwarfConstants.LINE_EpilogueBegin);
-					} else if (opcode == 0) {
-						long op_size = read_unsigned_leb128(data);
-						long op_pos = data.position();
-						int code = data.get() & 0xff;
-						switch (code) {
-						case DwarfConstants.DW_LNE_define_file: {
-							fileName = readString(data);
-							long dir = read_unsigned_leb128(data);
-							long modTime = read_unsigned_leb128(data);
-							long fileSize = read_unsigned_leb128(data);
-							IPath fullPath = fileHelper.normalizeFilePath(dirList.get((int) dir), fileName);
-							if (fullPath != null) {
-								fileList.add(fullPath);
-							}
+						dirList.add(dir.toString());
+					}
+	
+					// Read file names
+					//
+					long leb128;
+					while (true) {
+						fileName = readString(data);
+						if (fileName.length() == 0) // no more file entry
 							break;
-						}
-						case DwarfConstants.DW_LNE_end_sequence:
-							info_flags |= DwarfConstants.LINE_EndSequence;
-
-							if (lineEntries.size() > 0) {
-								// this just marks the end of a line number
-								// program sequence. use
-								// its address to set the high address of the
-								// last line entry
-								lineEntries.get(lineEntries.size() - 1).setHighAddress(new Addr32(info_address));
-							}
-
-							// it also resets the state machine
-							info_address = 0;
-							info_file = 1;
-							info_line = 1;
-							info_column = 0;
-							is_stmt = default_is_stmt;
-							info_flags = 0;
-							info_ISA = 0;
-							break;
-
-						case DwarfConstants.DW_LNE_set_address:
-							info_address = data.getInt();
-							break;
-						default:
-							data.position((int) (data.position() + op_size - 1));
-							break;
-						}
-						assert (data.position() == op_pos + op_size);
-					} else {
-						switch (opcode) {
-						case DwarfConstants.DW_LNS_copy:
+	
+						// dir index
+						leb128 = read_unsigned_leb128(data);
+	
+						IPath fullPath = fileHelper.normalizeFilePath(dirList.get((int) leb128), fileName);
+						// add a null as a placeholder when the filename is enclosed in '<' & '>' (e.g., "<stdin>")
+						fileList.add(fullPath);
+	
+						// Skip the following
+						//
+						// modification time
+						leb128 = read_unsigned_leb128(data);
+	
+						// file size in bytes
+						leb128 = read_unsigned_leb128(data);
+					}
+	
+					long info_address = 0;
+					long info_file = 1;
+					int info_line = 1;
+					int info_column = 0;
+					boolean is_stmt = default_is_stmt;
+					@SuppressWarnings("unused")
+					int info_flags = 0;
+					long info_ISA = 0;
+	
+					long lineInfoEnd = stmtList + length;
+					while (data.position() < lineInfoEnd) {
+						byte opcodeB = data.get();
+						int opcode = 0xFF & opcodeB;
+	
+						if (opcode >= opcode_base) {
+							info_line += (((opcode - opcode_base) % line_range) + line_base);
+							info_address += (opcode - opcode_base) / line_range * minimum_instruction_length;
 							if (is_stmt && fileList.size() > 0) {
-								lineEntries.add(new LineEntry(fileList.get((int) info_file - 1), info_line,
-										info_column, new Addr32(info_address), null));
+								IPath path = fileList.get((int) info_file - 1);
+								// added a null as a placeholder when the filename was enclosed in '<' & '>' (e.g., "<stdin>")
+								if (path != null)
+									lineEntries.add(new LineEntry(path, info_line, info_column,	new Addr32(info_address), null));
 							}
 							info_flags &= ~(DwarfConstants.LINE_BasicBlock | DwarfConstants.LINE_PrologueEnd | DwarfConstants.LINE_EpilogueBegin);
-							break;
-						case DwarfConstants.DW_LNS_advance_pc:
-							info_address += read_unsigned_leb128(data) * minimum_instruction_length;
-							break;
-						case DwarfConstants.DW_LNS_advance_line:
-							info_line += read_signed_leb128(data);
-							break;
-						case DwarfConstants.DW_LNS_set_file:
-							info_file = read_unsigned_leb128(data);
-							break;
-						case DwarfConstants.DW_LNS_set_column:
-							info_column = (int) read_unsigned_leb128(data);
-							break;
-						case DwarfConstants.DW_LNS_negate_stmt:
-							is_stmt = !is_stmt;
-							break;
-						case DwarfConstants.DW_LNS_set_basic_block:
-							info_flags |= DwarfConstants.LINE_BasicBlock;
-							break;
-						case DwarfConstants.DW_LNS_const_add_pc:
-							info_address += (255 - opcode_base) / line_range * minimum_instruction_length;
-							break;
-						case DwarfConstants.DW_LNS_fixed_advance_pc:
-							info_address += data.getShort();
-							break;
-						case DwarfConstants.DW_LNS_set_prologue_end:
-							info_flags |= DwarfConstants.LINE_PrologueEnd;
-							break;
-						case DwarfConstants.DW_LNS_set_epilogue_begin:
-							info_flags |= DwarfConstants.LINE_EpilogueBegin;
-							break;
-						case DwarfConstants.DW_LNS_set_isa:
-							info_ISA = read_unsigned_leb128(data);
-							break;
-						default:
-							break;
+						} else if (opcode == 0) {
+							long op_size = read_unsigned_leb128(data);
+							long op_pos = data.position();
+							int code = data.get() & 0xff;
+							switch (code) {
+							case DwarfConstants.DW_LNE_define_file: {
+								fileName = readString(data);
+								long dir = read_unsigned_leb128(data);
+								long modTime = read_unsigned_leb128(data);
+								long fileSize = read_unsigned_leb128(data);
+								IPath fullPath = fileHelper.normalizeFilePath(dirList.get((int) dir), fileName);
+								if (fullPath != null) {
+									fileList.add(fullPath);
+								}
+								break;
+							}
+							case DwarfConstants.DW_LNE_end_sequence:
+								info_flags |= DwarfConstants.LINE_EndSequence;
+	
+								if (lineEntries.size() > 0) {
+									// this just marks the end of a line number
+									// program sequence. use
+									// its address to set the high address of the
+									// last line entry
+									lineEntries.get(lineEntries.size() - 1).setHighAddress(new Addr32(info_address));
+								}
+	
+								// it also resets the state machine
+								info_address = 0;
+								info_file = 1;
+								info_line = 1;
+								info_column = 0;
+								is_stmt = default_is_stmt;
+								info_flags = 0;
+								info_ISA = 0;
+								break;
+	
+							case DwarfConstants.DW_LNE_set_address:
+								info_address = data.getInt();
+								break;
+							default:
+								data.position((int) (data.position() + op_size - 1));
+								break;
+							}
+							assert (data.position() == op_pos + op_size);
+						} else {
+							switch (opcode) {
+							case DwarfConstants.DW_LNS_copy:
+								if (is_stmt && fileList.size() > 0) {
+									lineEntries.add(new LineEntry(fileList.get((int) info_file - 1), info_line,
+											info_column, new Addr32(info_address), null));
+								}
+								info_flags &= ~(DwarfConstants.LINE_BasicBlock | DwarfConstants.LINE_PrologueEnd | DwarfConstants.LINE_EpilogueBegin);
+								break;
+							case DwarfConstants.DW_LNS_advance_pc:
+								info_address += read_unsigned_leb128(data) * minimum_instruction_length;
+								break;
+							case DwarfConstants.DW_LNS_advance_line:
+								info_line += read_signed_leb128(data);
+								break;
+							case DwarfConstants.DW_LNS_set_file:
+								info_file = read_unsigned_leb128(data);
+								break;
+							case DwarfConstants.DW_LNS_set_column:
+								info_column = (int) read_unsigned_leb128(data);
+								break;
+							case DwarfConstants.DW_LNS_negate_stmt:
+								is_stmt = !is_stmt;
+								break;
+							case DwarfConstants.DW_LNS_set_basic_block:
+								info_flags |= DwarfConstants.LINE_BasicBlock;
+								break;
+							case DwarfConstants.DW_LNS_const_add_pc:
+								info_address += (255 - opcode_base) / line_range * minimum_instruction_length;
+								break;
+							case DwarfConstants.DW_LNS_fixed_advance_pc:
+								info_address += data.getShort();
+								break;
+							case DwarfConstants.DW_LNS_set_prologue_end:
+								info_flags |= DwarfConstants.LINE_PrologueEnd;
+								break;
+							case DwarfConstants.DW_LNS_set_epilogue_begin:
+								info_flags |= DwarfConstants.LINE_EpilogueBegin;
+								break;
+							case DwarfConstants.DW_LNS_set_isa:
+								info_ISA = read_unsigned_leb128(data);
+								break;
+							default:
+								break;
+							}
 						}
 					}
 				}
+			} catch (Throwable t) {
+				EDCDebugger.getMessageLogger().logError(null, t);
 			}
-		} catch (Throwable t) {
-			EDCDebugger.getMessageLogger().logError(null, t);
-		}
-
-		// sort by start address
-		Collections.sort(lineEntries);
-
-		// fill in the end addresses as needed
-		ILineEntry previousEntry = null;
-		for (ILineEntry line : lineEntries) {
-			if (previousEntry != null && previousEntry.getHighAddress() == null) {
-				previousEntry.setHighAddress(line.getLowAddress());
+	
+			// sort by start address
+			Collections.sort(lineEntries);
+	
+			// fill in the end addresses as needed
+			ILineEntry previousEntry = null;
+			for (ILineEntry line : lineEntries) {
+				if (previousEntry != null && previousEntry.getHighAddress() == null) {
+					previousEntry.setHighAddress(line.getLowAddress());
+				}
+	
+				previousEntry = line;
 			}
-
-			previousEntry = line;
-		}
-
-		// the last line entry
-		if (previousEntry != null) {
-			IAddress prevHigh = previousEntry.getHighAddress();
-			if (prevHigh == null)
-				previousEntry.setHighAddress(scope.getHighAddress());
+	
+			// the last line entry
+			if (previousEntry != null) {
+				IAddress prevHigh = previousEntry.getHighAddress();
+				if (prevHigh == null)
+					previousEntry.setHighAddress(scope.getHighAddress());
 // FIXME: the following is causing JUnit tests to fail
 //			else if (prevHigh != null && prevHigh.compareTo(scope.getHighAddress()) > 0)
 //				previousEntry.setHighAddress(scope.getHighAddress());
+			}
+			
+			return lineEntries;
 		}
-		
-		return lineEntries;
 	}
 
 	private void parseForAddresses(IStreamBuffer in, Map<Long, AbbreviationEntry> abbrevs, CompilationUnitHeader header,
 			Stack<Scope> nestingStack, IProgressMonitor monitor)
 			throws IOException {
 
-		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().trace(null, DwarfMessages.DwarfInfoReader_TraceScopeAddressParse1 + header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceScopeAddressParse2 + Long.toHexString(header.debugInfoOffset)); }
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().trace(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceScopeAddressParse1 + header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceScopeAddressParse2 + Long.toHexString(header.debugInfoOffset))); }
 
 		try {
 			long startWork = in.remaining();
@@ -1421,7 +1424,7 @@ public class DwarfInfoReader {
 			Stack<Scope> nestingStack)
 			throws IOException {
 
-		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().trace(null, DwarfMessages.DwarfInfoReader_TraceParseTypes1 + header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceParseTypes2 + Long.toHexString(header.debugInfoOffset)); }
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { EDCTrace.getTrace().trace(null, EDCTrace.fixArg(DwarfMessages.DwarfInfoReader_TraceParseTypes1 + header.scope.getName() + DwarfMessages.DwarfInfoReader_TraceParseTypes2 + Long.toHexString(header.debugInfoOffset))); }
 		
 		Stack<IType> typeStack = new Stack<IType>();
 		typeToParentMap.clear();
@@ -1889,62 +1892,64 @@ public class DwarfInfoReader {
 	 * @return a new RangeList
 	 */
 	public RangeList readRangeList(int offset, AttributeValue baseValue) {
-		IStreamBuffer data = getDwarfSection(DWARF_DEBUG_RANGES);
-		if (data == null) {
-			return null;
-		}
-		
-		try {
-			data.position(offset);
-		
-			/*
-			 * Read range list entry:
-			 * 
-			 * start: DW_FORM_addr
-			 * end: DW_FORM_addr
-			 * 
-			 * When start == all ones, it is a base address selection entry,
-			 * and end is the base address.  The base address does not need to
-			 * be specified, and is the compialtion unit's base address by default.
-			 * 
-			 * When start == end == 0, this is the end of the list.
-			 */
-
-			RangeList list = new RangeList();
-
-			long base = 0;
-			long start = data.getInt();
-			long end = data.getInt();
-			
-			if (start == -1) {
-				base = end;
-				
-				start = data.getInt();
-				end = data.getInt();
-			} else if (baseValue != null) {
-				base = baseValue.getValueAsLong();
-			} else if (currentCompileUnitScope != null && currentCompileUnitScope.getRangeList() == null) {
-				base = currentCompileUnitScope.getLowAddress().getValue().longValue();
+		synchronized (provider) {
+			IStreamBuffer data = getDwarfSection(DWARF_DEBUG_RANGES);
+			if (data == null) {
+				return null;
 			}
-			do {
-				if (start == 0 && end == 0) {
-					break;
-				} else if (start != end) {
-					// ignore bogus entries: GCC-E sometimes generates these buggily (for artifical non-inlined functions)
-					if (base + start >= codeRanges.getLowAddress()) {
-						list.addRange(base + start, base + end);
-					}
-				}
-				start = data.getInt();
-				end = data.getInt();
+			
+			try {
+				data.position(offset);
+			
+				/*
+				 * Read range list entry:
+				 * 
+				 * start: DW_FORM_addr
+				 * end: DW_FORM_addr
+				 * 
+				 * When start == all ones, it is a base address selection entry,
+				 * and end is the base address.  The base address does not need to
+				 * be specified, and is the compialtion unit's base address by default.
+				 * 
+				 * When start == end == 0, this is the end of the list.
+				 */
+	
+				RangeList list = new RangeList();
+	
+				long base = 0;
+				long start = data.getInt();
+				long end = data.getInt();
 				
-			} while (true);
-			
-			return list;
-			
-		} catch (Throwable t) {
-			EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_RangeReadFailed, t);
-			return null;
+				if (start == -1) {
+					base = end;
+					
+					start = data.getInt();
+					end = data.getInt();
+				} else if (baseValue != null) {
+					base = baseValue.getValueAsLong();
+				} else if (currentCompileUnitScope != null && currentCompileUnitScope.getRangeList() == null) {
+					base = currentCompileUnitScope.getLowAddress().getValue().longValue();
+				}
+				do {
+					if (start == 0 && end == 0) {
+						break;
+					} else if (start != end) {
+						// ignore bogus entries: GCC-E sometimes generates these buggily (for artifical non-inlined functions)
+						if (base + start >= codeRanges.getLowAddress()) {
+							list.addRange(base + start, base + end);
+						}
+					}
+					start = data.getInt();
+					end = data.getInt();
+					
+				} while (true);
+				
+				return list;
+				
+			} catch (Throwable t) {
+				EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_RangeReadFailed, t);
+				return null;
+			}
 		}
 	}
 
@@ -2236,7 +2241,7 @@ public class DwarfInfoReader {
 		AttributeList attributes = provider.functionsByOffset.get(debugInfoOffset);
 		if (attributes == null) {
 			// dereferenced function does not exist yet
-			providingCU = provider.scanCompilationHeader(debugInfoOffset);
+			providingCU = provider.fetchCompileUnitHeader(debugInfoOffset);
 			attributes = provider.functionsByOffset.get(debugInfoOffset);
 			if (attributes == null) {
 				// dereferenced entry is not parsed yet, perhaps because it's
@@ -2725,7 +2730,7 @@ public class DwarfInfoReader {
 	}
 
 	private void processTemplateTypeParam(long offset, AttributeList attributeList, CompilationUnitHeader header, boolean hasChildren) {
-		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, offset); }
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(offset)); }
 
 		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
 		IType paramType = getTypeOrReference(attributeList.getAttribute(DwarfConstants.DW_AT_type), currentCUHeader);
@@ -3222,45 +3227,47 @@ public class DwarfInfoReader {
 	}
 
 	public void parseForFrameIndices() {
-		if (!provider.frameDescEntries.isEmpty())
-			return;
-		
-		IExecutableSection frameSection = exeReader.findExecutableSection(DWARF_DEBUG_FRAME);
-		if (frameSection == null)
-			return;
-		
-		IStreamBuffer buffer = frameSection.getBuffer();
-		buffer.position(0);
-		
-		int addressSize = 4;	// TODO: 64-bit Dwarf
-		long cie_id = addressSize == 4 ? 0xffffffff : ~0L;
-		
-		// in the first pass, just get a mapping of PC ranges to FDEs,
-		// so we can locate entries quickly (don't pre-parse CIEs or decompile FDE instructions yet)
-		while (buffer.position() < buffer.capacity()) {
-			try {
-				long fdePtr = buffer.position();
-				long headerLength = readAddress(buffer, addressSize);
-				long nextPosition = buffer.position() + headerLength;
-				
-				long ciePtr = readAddress(buffer, addressSize);
-				if (ciePtr != cie_id) {
-					long initialLocation = readAddress(buffer, addressSize);
-					long addressRange = readAddress(buffer, addressSize);
-					IStreamBuffer instructions = buffer.wrapSubsection(nextPosition - buffer.position());
-					IRangeList.Entry entry = new IRangeList.Entry(initialLocation, initialLocation + addressRange);
-					FrameDescriptionEntry fde = new FrameDescriptionEntry(fdePtr, ciePtr,
-							entry.low, entry.high,
-							instructions, addressSize);
-					provider.frameDescEntries.put(entry, fde);
+		synchronized (provider) {
+			if (!provider.frameDescEntries.isEmpty())
+				return;
+			
+			IExecutableSection frameSection = exeReader.findExecutableSection(DWARF_DEBUG_FRAME);
+			if (frameSection == null)
+				return;
+			
+			IStreamBuffer buffer = frameSection.getBuffer();
+			buffer.position(0);
+			
+			int addressSize = 4;	// TODO: 64-bit Dwarf
+			long cie_id = addressSize == 4 ? 0xffffffff : ~0L;
+			
+			// in the first pass, just get a mapping of PC ranges to FDEs,
+			// so we can locate entries quickly (don't pre-parse CIEs or decompile FDE instructions yet)
+			while (buffer.position() < buffer.capacity()) {
+				try {
+					long fdePtr = buffer.position();
+					long headerLength = readAddress(buffer, addressSize);
+					long nextPosition = buffer.position() + headerLength;
+					
+					long ciePtr = readAddress(buffer, addressSize);
+					if (ciePtr != cie_id) {
+						long initialLocation = readAddress(buffer, addressSize);
+						long addressRange = readAddress(buffer, addressSize);
+						IStreamBuffer instructions = buffer.wrapSubsection(nextPosition - buffer.position());
+						IRangeList.Entry entry = new IRangeList.Entry(initialLocation, initialLocation + addressRange);
+						FrameDescriptionEntry fde = new FrameDescriptionEntry(fdePtr, ciePtr,
+								entry.low, entry.high,
+								instructions, addressSize);
+						provider.frameDescEntries.put(entry, fde);
+					}
+					
+					buffer.position(nextPosition);
+				} catch (Throwable t) {
+					EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_FrameIndicesReadFailed, t);
+					break;
 				}
 				
-				buffer.position(nextPosition);
-			} catch (Throwable t) {
-				EDCDebugger.getMessageLogger().logError(DwarfMessages.DwarfInfoReader_FrameIndicesReadFailed, t);
-				break;
 			}
-			
 		}
 	}
 
@@ -3272,40 +3279,42 @@ public class DwarfInfoReader {
 	 * @return the CIE or <code>null</code> in case of error
 	 */
 	public CommonInformationEntry parseCommonInfoEntry(Long ciePtr, int addressSize, IAddress framePC) throws IOException {
-		IExecutableSection frameSection = exeReader.findExecutableSection(DWARF_DEBUG_FRAME);
-		if (frameSection == null)
-			return null;
-		
-		IStreamBuffer buffer = frameSection.getBuffer();
-		buffer.position(ciePtr);
-		
-		long headerLength = readAddress(buffer, addressSize);
-		if (headerLength > buffer.capacity()) {
-			assert(false);
-			return null;
-		}
-		
-		long nextPosition = buffer.position() + headerLength;
+		synchronized (provider) {
+			IExecutableSection frameSection = exeReader.findExecutableSection(DWARF_DEBUG_FRAME);
+			if (frameSection == null)
+				return null;
 			
-		/* cie_id = */ readAddress(buffer, addressSize);
-		
-		byte version = buffer.get();
-		String augmentation = readString(buffer);
-		long codeAlignmentFactor = read_unsigned_leb128(buffer);
-		long dataAlignmentFactor = read_signed_leb128(buffer);
-		int returnAddressRegister = version < 3 ? buffer.get() & 0xff : (int) read_unsigned_leb128(buffer);
-		
-
-		IStreamBuffer instructions = buffer.wrapSubsection(nextPosition - buffer.position());
-		
-		String producer = null;
-		ICompileUnitScope cuScope = provider.getCompileUnitForAddress(framePC);
-		if (cuScope instanceof DwarfCompileUnit)
-			producer = ((DwarfCompileUnit) cuScope).getAttributeList().getAttributeValueAsString(DwarfConstants.DW_AT_producer);
-		
-		return new CommonInformationEntry(codeAlignmentFactor, dataAlignmentFactor, 
-				returnAddressRegister, version, instructions, addressSize, 
-				producer, augmentation);
+			IStreamBuffer buffer = frameSection.getBuffer();
+			buffer.position(ciePtr);
+			
+			long headerLength = readAddress(buffer, addressSize);
+			if (headerLength > buffer.capacity()) {
+				assert(false);
+				return null;
+			}
+			
+			long nextPosition = buffer.position() + headerLength;
+				
+			/* cie_id = */ readAddress(buffer, addressSize);
+			
+			byte version = buffer.get();
+			String augmentation = readString(buffer);
+			long codeAlignmentFactor = read_unsigned_leb128(buffer);
+			long dataAlignmentFactor = read_signed_leb128(buffer);
+			int returnAddressRegister = version < 3 ? buffer.get() & 0xff : (int) read_unsigned_leb128(buffer);
+			
+	
+			IStreamBuffer instructions = buffer.wrapSubsection(nextPosition - buffer.position());
+			
+			String producer = null;
+			ICompileUnitScope cuScope = provider.getCompileUnitForAddress(framePC);
+			if (cuScope instanceof DwarfCompileUnit)
+				producer = ((DwarfCompileUnit) cuScope).getAttributeList().getAttributeValueAsString(DwarfConstants.DW_AT_producer);
+			
+			return new CommonInformationEntry(codeAlignmentFactor, dataAlignmentFactor, 
+					returnAddressRegister, version, instructions, addressSize, 
+					producer, augmentation);
+		}
 	}
 	
 	private void storeTypeByName(String name, IType type) {

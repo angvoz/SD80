@@ -30,6 +30,7 @@ public class DisassemblerARM extends AbstractDisassembler {
 	public static interface IDisassemblerOptionsARM extends IDisassemblerOptions {
 		public static final String DISASSEMBLER_MODE = "DisassemblerMode"; // value:
 		public static final String ENDIAN_MODE = "EndianMode"; // value:
+		public static final String VERSION_MODE = "VersionMode"; // value:
 	}
 
 	public DisassemblerARM(ITargetEnvironment env) {

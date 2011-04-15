@@ -81,8 +81,8 @@ import org.eclipse.cdt.internal.ui.wizards.dialogfields.TreeListDialogField;
  */
 public class CodeTemplateBlock extends OptionsConfigurationBlock {
 	
-	private class CodeTemplateAdapter extends ViewerComparator implements ITreeListAdapter<Object>, IDialogFieldListener {
-
+	private class CodeTemplateAdapter extends ViewerComparator
+			implements ITreeListAdapter<Object>, IDialogFieldListener {
 		private final Object[] NO_CHILDREN= new Object[0];
 
 		public void customButtonPressed(TreeListDialogField<Object> field, int index) {
@@ -205,7 +205,6 @@ public class CodeTemplateBlock extends OptionsConfigurationBlock {
 	}
 
 	private static class CodeTemplateLabelProvider extends LabelProvider {
-	
 		/*
 		 * @see org.eclipse.jface.viewers.ILabelProvider#getImage(java.lang.Object)
 		 */
@@ -241,7 +240,6 @@ public class CodeTemplateBlock extends OptionsConfigurationBlock {
 //				}
 //			}
 			return null;
-
 		}
 
 		/*
@@ -333,7 +331,6 @@ public class CodeTemplateBlock extends OptionsConfigurationBlock {
 			PreferencesMessages.CodeTemplateBlock_templates_import_button, 
 			PreferencesMessages.CodeTemplateBlock_templates_export_button, 
 			PreferencesMessages.CodeTemplateBlock_templates_exportall_button
-
 		};		
 		fCodeTemplateTree= new TreeListDialogField<Object>(adapter, buttonLabels, new CodeTemplateLabelProvider());
 		fCodeTemplateTree.setDialogFieldListener(adapter);
@@ -764,7 +761,6 @@ public class CodeTemplateBlock extends OptionsConfigurationBlock {
 				openWriteErrorDialog();
 			}
 		}
-		
 	}
 
 	private boolean confirmOverwrite(File file) {

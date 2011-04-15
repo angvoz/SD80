@@ -51,7 +51,16 @@ public interface IStreamBuffer {
      * @see Buffer#position(int)
      */
     public IStreamBuffer position(long newPosition);
-    
+ 
+    /**
+     * Skip ahead in the buffer.
+     *
+     * @param amount the number of bytes to skip ahead
+     * @return this buffer
+     * @since 2.0
+     */
+    public IStreamBuffer skip(long amount);
+
 	 /**
 	  * @see ByteBuffer#get()
 	  * @throws BufferUnderflowException

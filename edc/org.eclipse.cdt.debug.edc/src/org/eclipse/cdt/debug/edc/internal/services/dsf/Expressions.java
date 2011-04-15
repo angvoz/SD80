@@ -170,18 +170,16 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 				return;
 			}
 
+			valueLocation = variableValue.getValueLocation();
+			valueType = variableValue.getValueType();
 			try {
 				value = variableValue.getValue();
 				valueString = variableValue.getStringValue();
 			} catch (CoreException e1) {
 				value = null;
 				valueError = e1.getStatus();
-				valueLocation = null;
-				valueType = null;
 				return;
 			}
-			valueLocation = variableValue.getValueLocation();
-			valueType = variableValue.getValueType();
 
 			// for a structured type or array, return the location and note
 			// that it has children
@@ -939,7 +937,7 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 					getSubExpressions(expr, frame, exprType, customProvider, rm);
 				}
 				else
-					getSubExpressions(expr, frame, exprType, rm);
+					getSubExpressions(expr, rm);
 			}
 		}, rm);
 	}
@@ -978,46 +976,37 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 	}
 
 	private void getSubExpressions(final IEDCExpression expr, final StackFrameDMC frame, 
-			final IType exprType, final ITypeContentProvider customProvider, final DataRequestMonitor<IExpressionDMContext[]> rm) {
+			final IType exprType, final ITypeContentProvider customProvider,
+			final DataRequestMonitor<IExpressionDMContext[]> rm) {
 
-		asyncExec(new Runnable() {
-			public void run() {
-				List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
-				Iterator<IExpressionDMContext> childIterator;
-				try {
-					childIterator = customProvider.getChildIterator(expr);
-					while (childIterator.hasNext() && !rm.isCanceled()) {
-						children.add(childIterator.next());
-					}
-					rm.setData(children.toArray(new IExpressionDMContext[children.size()]));
-					rm.done();
-				} catch (CoreException e) {
-					// Checked exception. But we don't want to pass the error up as it
-					// would make the variable (say, a structure) not expandable on UI. 
-					// Just resort to the normal formatting.  
-					getSubExpressions(expr, frame, exprType, rm);
-				} catch (Throwable e) {
-					// unexpected error. log it.
-					EDCDebugger.getMessageLogger().logError(
-							EDCServicesMessages.Expressions_ErrorInVariableFormatter + customProvider.getClass().getName(), e);
-					
-					// default to normal formatting
-					getSubExpressions(expr, frame, exprType, rm);
-				}
+		List<IExpressionDMContext> children = new ArrayList<IExpressionDMContext>();
+		Iterator<IExpressionDMContext> childIterator;
+		try {
+			childIterator = customProvider.getChildIterator(expr);
+			while (childIterator.hasNext() && !rm.isCanceled()) {
+				children.add(childIterator.next());
 			}
-		}, rm);
+			rm.setData(children.toArray(new IExpressionDMContext[children.size()]));
+			rm.done();
+		} catch (CoreException e) {
+			// Checked exception. But we don't want to pass the error up as it
+			// would make the variable (say, a structure) not expandable on UI. 
+			// Just resort to the normal formatting.  
+			getSubExpressions(expr, rm);
+		} catch (Throwable e) {
+			// unexpected error. log it.
+			EDCDebugger.getMessageLogger().logError(
+					EDCServicesMessages.Expressions_ErrorInVariableFormatter + customProvider.getClass().getName(), e);
+			
+			// default to normal formatting
+			getSubExpressions(expr, rm);
+		}
 	}
 
-	private void getSubExpressions(final IEDCExpression expr, StackFrameDMC frame, 
-					IType exprType,	final DataRequestMonitor<IExpressionDMContext[]> rm) {
-
-		asyncExec(new Runnable() {
-			public void run() {
-				IEDCExpression[] children = getLogicalSubExpressions(expr);
-				rm.setData(children);
-				rm.done();
-			}
-		}, rm);
+	private void getSubExpressions(final IEDCExpression expr, 
+			final DataRequestMonitor<IExpressionDMContext[]> rm) {
+		rm.setData(getLogicalSubExpressions(expr));
+		rm.done();
 	}
 	
 	/**

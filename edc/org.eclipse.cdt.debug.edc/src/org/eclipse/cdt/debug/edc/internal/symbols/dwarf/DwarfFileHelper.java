@@ -11,14 +11,12 @@
 package org.eclipse.cdt.debug.edc.internal.symbols.dwarf;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.cdt.debug.edc.internal.HostOS;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.Path;
 
 /**
  * An instance of this class per DwarfDebugInfoProvider assists in
@@ -27,7 +25,10 @@ import org.eclipse.core.runtime.Path;
 public class DwarfFileHelper {
 
 	private boolean DEBUG = false;
+	
+	@SuppressWarnings("unused") // no longer used, but kept for compatibility and possible futureuse
 	private final IPath symbolFile;
+	
 	private Map<String, IPath> compDirAndNameMap;
 	
 	private int hits;
@@ -44,12 +45,11 @@ public class DwarfFileHelper {
 	
 	/**
 	 * This is to combine the given compDir and file name from Dwarf to form a
-	 * file path. Some processing is done including <br>
+	 * file path. Some processing is done to canonicalize the path, including <br>
 	 * -- extra path delimiter are removed. <br>
 	 * -- "a/b/" and "../c/d" are combined to "/a/c/d". <br>
 	 * -- change path delimiter to native, namely on Windows "/" => "\\" and the
-	 * opposite on unix/linux. -- special cygwin paths like "/cygdrive/c/f.c"
-	 * are converted to standard path like "c:/f.c" <br>
+	 * opposite on unix/linux
 	 * 
 	 * @param compDir
 	 *            compDir from dwarf data.
@@ -58,7 +58,7 @@ public class DwarfFileHelper {
 	 * @return most complete file path that we can get from Dwarf data, which
 	 *         may still be a partial path. Note letter case of the names
 	 *         remains unchanged. Empty string is returned if the given name is
-	 *         not invalid file name, e.g. <internal>.
+	 *         an invalid file name, e.g. <internal>.
 	 * 
 	 */
 	public IPath normalizeFilePath(String compDir, String name) {
@@ -69,8 +69,10 @@ public class DwarfFileHelper {
 		if (name.charAt(0) == '<')
 			return null;
 
+		// Create a key for doing a lookup in our IPath cache 
 		String key = getKey(compDir, name);
-		
+
+		// Look in the cache
 		IPath path = compDirAndNameMap.get(key);
 		if (path == null) {
 			path = normalizePath(compDir, name);
@@ -86,10 +88,11 @@ public class DwarfFileHelper {
 	}
 
 	/**
-	 * Engine for taking a DW_AT_comp_dir and a filename from DWARF
-	 * and making sure it's canonical and sensible on the host.
-	 * @param compDir
-	 * @param name
+	 * Takes a DW_AT_comp_dir and a filename from DWARF,
+	 * canonicalizes it and creates an IPath.
+	 * 
+	 * @param compDir the compilation directory, as found in DWARF data
+	 * @param name the file specification, as found in DWARF data
 	 * @return IPath, never <code>null</code>
 	 */
 	private IPath normalizePath(String compDir, String name) {
@@ -104,44 +107,8 @@ public class DwarfFileHelper {
 			if (!compDir.endsWith(File.separator))
 				fullName += File.separatorChar;
 			fullName += name;
-		}
-		
-		// some fix-up like cygwin style path conversion.
-		path = fixUpPath(fullName);
 
-		// For win32 only.
-		// On Windows, there are cases where the source file itself has the full
-		// path except the drive letter.
-		
-		// TODO: we need to put the EPOCROOT as a prefix, really, in this case.
-		if (HostOS.IS_WIN32 && path.isAbsolute() && path.getDevice() == null) {
-			IPath dirPa = new Path(compDir);   // on Win32, don't need PathUtils#createPath
-			// Try to get drive letter from comp_dir.
-			if (dirPa.getDevice() != null)
-				path = path.setDevice(dirPa.getDevice());
-			else {
-				// No drive from Dwarf data, which is also possible with RVCT or
-				// GCCE compilers for ARM. A practically good solution is to
-				// assume
-				// drive of the exe file as the drive. Though it's not good in
-				// theory, it does not hurt when the assumption is wrong, as
-				// user still
-				// has the option to locate the file manually...03/15/07
-				String exeWinVolume = symbolFile.getDevice();
-				if (exeWinVolume != null && exeWinVolume.length() > 0) {
-					path = path.setDevice(exeWinVolume);
-				}
-			}
-		}
-
-		// If drive is missing, use current directory (TODO: don't!) and 
-		// canonicalize the path for any match on the filesystem.
-		//
-		if (path.isAbsolute() && (HostOS.IS_WIN32 || path.getDevice() == null)) {
-			try {
-				path = new Path(path.toFile().getCanonicalPath());
-			} catch (IOException e) {
-			}
+			path = PathUtils.createPath(fullName);
 		}
 
 		return path;
@@ -149,6 +116,7 @@ public class DwarfFileHelper {
 
 	/**
 	 * Convert cygwin path and change path delimiter to native.
+	 * No longer used but left for backwards compatbility.
 	 * 
 	 * @param path
 	 * @return

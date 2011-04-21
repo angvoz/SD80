@@ -1018,7 +1018,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 	@Override
 	public boolean canBeVisible() {
-		if (!CDTPrefUtil.getBool(CDTPrefUtil.KEY_SHOW_PROVIDERS))
+		if (CDTPrefUtil.getBool(CDTPrefUtil.KEY_NO_SHOW_PROVIDERS))
 			return false;
 		if (page.isForPrefs())
 			return true;

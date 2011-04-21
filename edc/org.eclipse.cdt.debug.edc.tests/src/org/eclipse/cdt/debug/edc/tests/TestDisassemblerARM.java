@@ -66,7 +66,7 @@ public class TestDisassemblerARM {
 
 		sDisassembler = new DisassemblerARM(null);
 	}
-	
+
 	@Before
 	public void setUp() throws Exception {
 	}
@@ -74,13 +74,13 @@ public class TestDisassemblerARM {
 	@After
 	public void tearDown() throws Exception {
 	}
-	
+
 	/**
 	 * Test for non-VFP, 32-bit ARM v4*, v5T*, v6*, v7  instructions.
 	 */
 	@Test
 	public void testArmInstructions() {
-		
+
 		System.out.println("\n===================== ARMv5 ========================\n");
 		String[] insts = {
 				"E7 F1 23 F4", "undefined",
@@ -225,7 +225,7 @@ public class TestDisassemblerARM {
 				"F5 7F F0 47", "dsb	nsh",
 				"F5 7F F0 4A", "dsb	ishst",
 				"F5 7F F0 4B", "dsb	ish",
-				"F5 7F F0 4D", "dsb	#13",			
+				"F5 7F F0 4D", "dsb	#13",
 				"F5 7F F0 4E", "dsb	st",
 				"F5 7F F0 4F", "dsb	sy",
 				"02 2A 50 71", "eoreq	r5,r10,#0x71",
@@ -1272,7 +1272,7 @@ public class TestDisassemblerARM {
 
 	@Test
 	public void testArmVFPInstructions() {
-		
+
 		System.out.println("\n====================== ARM VFP ======================\n");
 		String[] insts = {
 				"F2 49 57 BA", "vaba.s8	d21,d25,d26",
@@ -2210,7 +2210,9 @@ public class TestDisassemblerARM {
 				"F3 C9 6A AA", "vmlsl.u8	q11,d25,d26",
 				"F3 D9 6A AA", "vmlsl.u16	q11,d25,d26",
 				"F3 E9 6A AA", "vmlsl.u32	q11,d25,d26",
-				"0C 46 5B 3A", "vmoveq	d26,r5,r6",
+			    "F2 6A 51 BA", "vmov	d21,d26",
+			    "F2 6E 61 FE", "vmov	q11,q15",
+			    "0C 46 5B 3A", "vmoveq	d26,r5,r6",
 				"EC 56 5B 3A", "vmov	r5,r6,d26",
 				"0C 56 5A 1D", "vmoveq	r5,r6,s26,s27",
 				"0E 1C 5A 90", "vmoveq	r5,s25",
@@ -2233,7 +2235,7 @@ public class TestDisassemblerARM {
 				"0E 4B 5B B0", "vmoveq.8	d27[1],r5",
 				"EE 0B 5B F0", "vmov.16	d27[1],r5",
 				"EE 2B 5B 90", "vmov.32	d27[1],r5",
-				"EE B7 BA 00", "vmov.f32	s22,#0x70",	// originally "vmov.f32 s22,#1.0" 
+				"EE B7 BA 00", "vmov.f32	s22,#0x70",	// originally "vmov.f32 s22,#1.0"
 				"EE F0 AA 4D", "vmov.f32	s21,s26",
 				"0E F7 6B 00", "vmoveq.f64	d22,#0x70",	// originally "vmov.f64 d22,#1.0"
 				"0E F0 5B 6A", "vmoveq.f64	d21,d26",
@@ -3300,7 +3302,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testArmConditionCode() {
-		
+
 		System.out.println("\n================ ARM Condition Code ================\n");
 		String[] insts = {
 				"00 A1 00 02", "adceq	r0,r1,r2",
@@ -3327,7 +3329,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testArmAddrMode1() {
-		
+
 		System.out.println("\n================== ARM Addr Mode 1 ==================\n");
 		String[] insts = {
 				"E2 81 00 11", "add	r0,r1,#0x11",
@@ -3351,7 +3353,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testArmAddrMode2() {
-		
+
 		System.out.println("\n================== ARM Addr Mode 2 ==================\n");
 		String[] insts = {
 				"E5 91 00 11", "ldr	r0,[r1,#0x11]",
@@ -3406,7 +3408,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testArmAddrMode3() {
-		
+
 		System.out.println("\n================== ARM Addr Mode 3 ==================\n");
 		String[] insts = {
 				"E1 C1 01 B0", "strh	r0,[r1,#0x10]",
@@ -3431,7 +3433,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testArmAddrMode4() {
-		
+
 		System.out.println("\n================== ARM Addr Mode 4 ==================\n");
 		String[] insts = {
 				"E8 90 00 06", "ldm	r0,{r1,r2}",
@@ -3447,7 +3449,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testArmAddrMode5() {
-		
+
 		System.out.println("\n================== ARM Addr Mode 5 ==================\n");
 		String[] insts = {
 				"ED 92 10 04", "ldc	p0,c1,[r2,#0x10]",
@@ -3466,7 +3468,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testArmBranches() {
-		
+
 		armOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		armOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
 		System.out.println("\n=================== ARM Branches ====================\n");
@@ -3493,14 +3495,14 @@ public class TestDisassemblerARM {
 	public void testArmBufferUnderflow() {
 		System.out.println("\n============= ARM CodeBufferUnderflow ===============\n");
 		catchCodeBufferUnderflowException(0x0, "ea ff", armOptions);
-	}	
+	}
 
 	/**
 	 * Test for Thumb instructions.
 	 */
 	@Test
 	public void testThumbInstructions() {
-		
+
 		System.out.println("\n======================= Thumb =======================\n");
 		String[] insts = {
 				"41 75", "adcs	r5,r6",
@@ -3617,7 +3619,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testThumbBranches() {
-		
+
 		thumbOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_ADDRESS, true);
 		thumbOptions.put(IDisassemblerOptions.MNEMONICS_SHOW_BYTES, true);
 		System.out.println("\n=================== Thumb Branches ==================\n");
@@ -3642,7 +3644,7 @@ public class TestDisassemblerARM {
 	public void testThumbBufferUnderflow() {
 		System.out.println("\n============ Thumb CodeBufferUnderflow ==============\n");
 		catchCodeBufferUnderflowException(0x0, "f7", thumbOptions);
-	}	
+	}
 
 
 	/**
@@ -3672,7 +3674,7 @@ public class TestDisassemblerARM {
 		for (Map.Entry<String, Object> entry : armOptions.entrySet())
 			options.put(entry.getKey(), entry.getValue());
 		options.put(DisassemblerARM.IDisassemblerOptionsARM.VERSION_MODE, InstructionParserARM.ARMv6K);
-		disassembleInstArray(insts, options);		
+		disassembleInstArray(insts, options);
 	}
 
 	/**
@@ -3680,7 +3682,7 @@ public class TestDisassemblerARM {
 	@Test
 	public void test32BitArmV6T2Instructions() {
 		System.out.println("\n================== ARMv6T2 Hint Instructions ==================\n");
-		
+
 		String[] insts = {
 				"F5 7F F0 1F", "invalid opcode",	// clrex
 				"E3 20 F0 FD", "nop",               // dbg	#13
@@ -3701,7 +3703,7 @@ public class TestDisassemblerARM {
 		for (Map.Entry<String, Object> entry : armOptions.entrySet())
 			options.put(entry.getKey(), entry.getValue());
 		options.put(DisassemblerARM.IDisassemblerOptionsARM.VERSION_MODE, InstructionParserARM.ARMv6T2);
-		disassembleInstArray(insts, options);		
+		disassembleInstArray(insts, options);
 	}
 
 	/**
@@ -3710,18 +3712,18 @@ public class TestDisassemblerARM {
 	public void test32BitArmV5Instructions() {
 
 		System.out.println("\n================== ARMv5 Instructions (Invalid) ==================\n");
-		
+
 		String[] insts = {
 				"F5 7F F0 1F", "invalid opcode",	// clrex
 				"E3 20 F0 FD", "invalid opcode",    // dbg	#13
 				"03 20 F0 FD", "invalid opcode",    // dbgeq	#13
-				"E3 20 F0 00", "invalid opcode",    // nop  
+				"E3 20 F0 00", "invalid opcode",    // nop
 				"03 20 F0 00", "invalid opcode",    // nopeq
-				"E3 20 F0 04", "invalid opcode",    // sev  
+				"E3 20 F0 04", "invalid opcode",    // sev
 				"03 20 F0 04", "invalid opcode",    // seveq
-				"E3 20 F0 02", "invalid opcode",    // wfe  
+				"E3 20 F0 02", "invalid opcode",    // wfe
 				"03 20 F0 02", "invalid opcode",    // wfeeq
-				"E3 20 F0 03", "invalid opcode",    // wfi  
+				"E3 20 F0 03", "invalid opcode",    // wfi
 				"03 20 F0 03", "invalid opcode",    // wfieq
 				"E3 20 F0 01", "invalid opcode",    // yield
 				"03 20 F0 01", "invalid opcode",    // yieldeq
@@ -3731,15 +3733,15 @@ public class TestDisassemblerARM {
 		for (Map.Entry<String, Object> entry : armOptions.entrySet())
 			options.put(entry.getKey(), entry.getValue());
 		options.put(DisassemblerARM.IDisassemblerOptionsARM.VERSION_MODE, InstructionParserARM.ARMv5);
-		disassembleInstArray(insts, options);		
+		disassembleInstArray(insts, options);
 	}
-	
+
 	/**
 	 * Test for non-VFP, 32-bit THumb2 v6*, v7  instructions.
 	 */
 	@Test
 	public void test32BitThumb2Instructions() {
-		
+
 		System.out.println("\n===================== Thumb2 ========================\n");
 		String[] insts = {
 ///			"E7 F1 23 F4", "undefined",
@@ -3976,6 +3978,8 @@ public class TestDisassemblerARM {
 			"EB B2 0F 16", "cmp.w	r2,r6,lsr #32",					// 1110 1011 1011 xxxx .xxx 1111 xxxx xxxx	// A8.6.36	T3
 			"EB B5 7F F9", "cmp.w	r5,r9,ror #31",					// 1110 1011 1011 xxxx .xxx 1111 xxxx xxxx	// A8.6.36	T3
 			"EB B5 0F 38", "cmp.w	r5,r8,rrx",						// 1110 1011 1011 xxxx .xxx 1111 xxxx xxxx	// A8.6.36	T3
+		    "F3 AF 81 00", "cps	#0",
+		    "F3 AF 81 1F", "cps	#31",
 			"F3 AF 86 A0", "cpsid	af",							// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// B6.1.1	T2
 			"F3 AF 87 FF", "cpsid	aif,#31",						// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// B6.1.1	T2
 			"F3 AF 87 61", "cpsid	if,#1",							// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// B6.1.1	T2
@@ -3983,7 +3987,7 @@ public class TestDisassemblerARM {
 			"F3 AF 85 FF", "cpsie	aif,#31",						// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// B6.1.1	T2
 			"F3 AF 85 61", "cpsie	if,#1",							// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// B6.1.1	T2
 			"F3 AF 80 F0", "dbg	#0",								// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1
-			"F3 AF 80 FD", "dbg	#13",								// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1				
+			"F3 AF 80 FD", "dbg	#13",								// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1
 			"F3 BF 8F 50", "dmb	#0",								// 1111 0011 1011 :::: 10.0 :::: 0101 xxxx	// A8.6.41	T1
 			"F3 BF 8F 52", "dmb	oshst", 							// 1111 0011 1011 :::: 10.0 :::: 0101 xxxx  // A8.6.41  T1
 			"F3 BF 8F 53", "dmb	osh",   							// 1111 0011 1011 :::: 10.0 :::: 0101 xxxx  // A8.6.41  T1
@@ -4340,7 +4344,7 @@ public class TestDisassemblerARM {
 			"FA 89 F5 BA", "qdsub	r5,r10,r9",						// 1111 1010 1000 xxxx 1111 xxxx 1011 xxxx	// A8.6.129	T1
 			"FA E9 F5 1A", "qsax	r5,r9,r10",						// 1111 1010 1110 xxxx 1111 xxxx 0001 xxxx  // A8.6.130	T1
 			"FA 89 F5 AA", "qsub	r5,r10,r9",						// 1111 1010 1000 xxxx 1111 xxxx 101A xxxx	// A8.6.131	T1
-			"FA D9 F5 1A", "qsub16	r5,r9,r10",						// 1111 1010 1101 xxxx 1111 xxxx 0001 xxxx	// A8.6.132	T1		
+			"FA D9 F5 1A", "qsub16	r5,r9,r10",						// 1111 1010 1101 xxxx 1111 xxxx 0001 xxxx	// A8.6.132	T1
 			"FA C9 F5 1A", "qsub8	r5,r9,r10",						// 1111 1010 1100 xxxx 1111 xxxx 0001 xxxx  // A8.6.133	T1
 			"FA 99 F5 A9", "rbit	r5,r9",							// 1111 1010 1001 xxxx 1111 xxxx 1010 xxxx	// A8.6.134	T1
 			"FA 99 F5 89", "rev.w	r5,r9",							// 1111 1010 1001 xxxx 1111 xxxx 1000 xxxx	// A8.6.135	T1
@@ -4481,16 +4485,16 @@ public class TestDisassemblerARM {
 			"E8 0D C0 13", "srsdb	sp,#0x13",						// 1110 1000 00x0 ::.: ::.. .... ...x xxxx	// B6.1.10	T1
 			"E9 AD C0 13", "srsia	sp!,#0x13",						// 1110 1001 10x0 ::.: ::.. .... ...x xxxx	// B6.1.10	T2
 			"E9 8D C0 13", "srsia	sp,#0x13",						// 1110 1001 10x0 ::.: ::.. .... ...x xxxx	// B6.1.10	T2
-			"F3 0A 05 1C", "ssat	r5,#29,r10",					// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1	
-			"F3 2A 05 5C", "ssat	r5,#29,r10,asr #1",				// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1	
-			"F3 2A 75 9C", "ssat	r5,#29,r10,asr #30",			// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1	
-			"F3 0A 05 5C", "ssat	r5,#29,r10,lsl #1",				// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1	
+			"F3 0A 05 1C", "ssat	r5,#29,r10",					// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1
+			"F3 2A 05 5C", "ssat	r5,#29,r10,asr #1",				// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1
+			"F3 2A 75 9C", "ssat	r5,#29,r10,asr #30",			// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1
+			"F3 0A 05 5C", "ssat	r5,#29,r10,lsl #1",				// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1
 			"F3 0A 75 DC", "ssat	r5,#29,r10,lsl #31",			// 1111 0.11 00x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.183	T1
 			"F3 2A 05 0C", "ssat16	r5,#13,r10",					// 1111 0.11 0010 xxxx 0000 xxxx 00.. xxxx	// A8.6.184	T1
 			"FA E9 F5 0A", "ssax	r5,r9,r10",						// 1111 1010 1110 xxxx 1111 xxxx 0000 xxxx  // A8.6.185	T1
 			"FA D9 F5 0A", "ssub16	r5,r9,r10",						// 1111 1010 1101 xxxx 1111 xxxx 0000 xxxx  // A8.6.186	T1
 			"FA C9 F5 0A", "ssub8	r5,r9,r10",						// 1111 1010 1100 xxxx 1111 xxxx 0000 xxxx  // A8.6.187	T1
-			"ED 0A B9 21", "stc	p9,c11,[r10,#-0x84]",				// 1110 110x xxx0 xxxx xxxx xxxx xxxx xxxx	// A8.6.188 T1		
+			"ED 0A B9 21", "stc	p9,c11,[r10,#-0x84]",				// 1110 110x xxx0 xxxx xxxx xxxx xxxx xxxx	// A8.6.188 T1
 			"ED 2A B9 21", "stc	p9,c11,[r10,#-0x84]!",				// 1110 110x xxx0 xxxx xxxx xxxx xxxx xxxx	// A8.6.188 T1
 			"ED 8A B9 21", "stc	p9,c11,[r10,#0x84]",				// 1110 110x xxx0 xxxx xxxx xxxx xxxx xxxx	// A8.6.188 T1
 			"ED AA B9 21", "stc	p9,c11,[r10,#0x84]!",				// 1110 110x xxx0 xxxx xxxx xxxx xxxx xxxx	// A8.6.188 T1
@@ -4729,9 +4733,9 @@ public class TestDisassemblerARM {
 			"FB 79 F5 0A", "usad8	r5,r9,r10",						// 1111 1011 0111 xxxx 1111 xxxx 0000 xxxx	// A8.6.253	T1
 			"FB 79 85 0A", "usada8	r5,r9,r10,r8",					// 1111 1011 0111 xxxx xxxx xxxx 0000 xxxx	// A8.6.253	T1
 			"F3 8A 05 1C", "usat	r5,#28,r10",					// 1111 0.11 10x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.255	T1
-			"F3 AA 05 5C", "usat	r5,#28,r10,asr #1",				// 1111 0.11 10x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.255	T1	
-			"F3 AA 75 9C", "usat	r5,#28,r10,asr #30",			// 1111 0.11 10x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.255	T1	
-			"F3 8A 05 5C", "usat	r5,#28,r10,lsl #1",				// 1111 0.11 10x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.255	T1	
+			"F3 AA 05 5C", "usat	r5,#28,r10,asr #1",				// 1111 0.11 10x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.255	T1
+			"F3 AA 75 9C", "usat	r5,#28,r10,asr #30",			// 1111 0.11 10x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.255	T1
+			"F3 8A 05 5C", "usat	r5,#28,r10,lsl #1",				// 1111 0.11 10x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.255	T1
 			"F3 8A 75 DC", "usat	r5,#28,r10,lsl #31",			// 1111 0.11 10x0 xxxx 0xxx xxxx xx.x xxxx	// A8.6.255	T1
 			"F3 AA 05 0C", "usat16	r5,#12,r10",					// 1111 0.11 1010 xxxx 0000 xxxx 00.. xxxx	// A8.6.256	T1
 			"FA E9 F5 4A", "usax	r5,r9,r10",						// 1111 1010 1110 xxxx 1111 xxxx 0100 xxxx  // A8.6.257	T1
@@ -4766,12 +4770,12 @@ public class TestDisassemblerARM {
 			"F3 AF 80 01", "yield.w",								// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.413
 		};
 
-		disassembleInstArray(insts, thumbOptions);	
+		disassembleInstArray(insts, thumbOptions);
 	}
 
 	@Test
 	public void test32BitThumbVFPInstructions() {
-		
+
 		System.out.println("\n====================== ARM VFP ======================\n");
 		String[] insts = {
 				"EF 49 57 BA", "vaba.s8	d21,d25,d26",
@@ -5709,6 +5713,8 @@ public class TestDisassemblerARM {
 				"FF C9 6A AA", "vmlsl.u8	q11,d25,d26",
 				"FF D9 6A AA", "vmlsl.u16	q11,d25,d26",
 				"FF E9 6A AA", "vmlsl.u32	q11,d25,d26",
+			    "EF 6A 51 BA", "vmov	d21,d26",
+			    "EF 6E 61 FE", "vmov	q11,q15",
 				"EC 46 5B 3A", "vmov	d26,r5,r6",
 				"EC 56 5B 3A", "vmov	r5,r6,d26",
 				"EC 56 5A 1D", "vmov	r5,r6,s26,s27",
@@ -6794,14 +6800,14 @@ public class TestDisassemblerARM {
 		disassembleInstArray(insts, thumbOptions);
 	}
 
-	
+
 	/**
 	 * Test for Thumb 32-bit Imm12
 	 * see reference manual algorithm for ThumbExpandImm
 	 */
 	@Test
 	public void testThumb2ExpandImm12() {
-		
+
 		System.out.println("\n================== Thumb2 Expand Imm12 Mode ==================\n");
 
 		// A6.3.2 Modified Immediate constants in Thumb 32-bit instructions
@@ -6839,7 +6845,7 @@ public class TestDisassemblerARM {
 	 */
 	@Test
 	public void testThumb2ShifterOperand() {
-		
+
 		System.out.println("\n================== Thumb2 Shifter Operand ==================\n");
 		String[] insts = {
 				"EB 09 05 0A", "add.w	r5,r9,r10",
@@ -6847,7 +6853,7 @@ public class TestDisassemblerARM {
 				"EB 07 03 48", "add.w	r3,r7,r8,lsl #1",
 				"EB 06 02 17", "add.w	r2,r6,r7,lsr #32",
 				"EB 09 75 F8", "add.w	r5,r9,r8,ror #31",
-				"EB 08 05 39", "add.w	r5,r8,r9,rrx",	
+				"EB 08 05 39", "add.w	r5,r8,r9,rrx",
 				};
 		disassembleInstArray(insts, thumbOptions);
 	}
@@ -6863,7 +6869,7 @@ public class TestDisassemblerARM {
 		String[] insts = {
 				"F3 BF 8F 2F", "invalid opcode",				// 1111 0011 1011 :::: 10.0 :::: 0010 ::::	// A8.6.30	T1
 				"F3 AF 80 F0", "nop.w",							// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1
-				"F3 AF 80 FD", "nop.w",							// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1				
+				"F3 AF 80 FD", "nop.w",							// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1
 				"F3 BF 8F 50", "invalid opcode",				// 1111 0011 1011 :::: 10.0 :::: 0101 xxxx	// A8.6.41	T1
 				"F3 BF 8F 52", "invalid opcode",                // 1111 0011 1011 :::: 10.0 :::: 0101 xxxx  // A8.6.41  T1
 				"F3 BF 8F 53", "invalid opcode",                // 1111 0011 1011 :::: 10.0 :::: 0101 xxxx  // A8.6.41  T1
@@ -6904,7 +6910,7 @@ public class TestDisassemblerARM {
 	public void testThumb2V4TInstructions() {
 
 		System.out.println("\n================== Thumb2 V4T Instructions ==================\n");
-		
+
 		String[] insts = {
 //				"Fx xx xx 0x", "bl	0x________",				// 1111 0xxx xxxx xxxx 11x1 xxxx xxxx xxxx	// A8.6.23	T1
 //	ARM			"0B FF FF FE", "bleq	0x00000000",
@@ -6916,7 +6922,7 @@ public class TestDisassemblerARM {
 //	ARM			"01 2F FF 39", "blxeq	r9",
 				"F3 BF 8F 2F", "invalid opcode",				// 1111 0011 1011 :::: 10.0 :::: 0010 ::::	// A8.6.30	T1
 				"F3 AF 80 F0", "invalid opcode",				// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1
-				"F3 AF 80 FD", "invalid opcode",				// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1				
+				"F3 AF 80 FD", "invalid opcode",				// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.40	T1
 				"F3 AF 80 04", "invalid opcode",				// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.158	T1
 				"F3 AF 80 02", "invalid opcode",				// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.411 T1
 				"F3 AF 80 03", "invalid opcode",				// 1111 0011 1010 :::: 10.0 .xxx xxxx xxxx	// A8.6.412 T1
@@ -6927,7 +6933,7 @@ public class TestDisassemblerARM {
 		for (Map.Entry<String, Object> entry : thumbOptions.entrySet())
 			options.put(entry.getKey(), entry.getValue());
 		options.put(DisassemblerARM.IDisassemblerOptionsARM.VERSION_MODE, InstructionParserARM.ARMv4T);
-		disassembleInstArray(insts, options);		
+		disassembleInstArray(insts, options);
 	}
 
 	/**

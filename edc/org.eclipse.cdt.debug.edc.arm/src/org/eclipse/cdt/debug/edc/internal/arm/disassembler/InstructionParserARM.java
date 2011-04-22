@@ -210,7 +210,7 @@ public class InstructionParserARM {
 	/**
 	 * Disassemble a 32-bit ARM instruction
 	 * Reference manual citations (e.g., "A8.6.16") refer to sections in the ARM Architecture
-	 * Reference Manual ARMv7-A and ARMv7-R Edition with errata markup
+	 * Reference Manual ARMv7-A and ARMv7-R Edition, Errata markup
 	 * @return disassembled instruction
 	 */
 	private String parseARMOpcode() {
@@ -263,7 +263,6 @@ public class InstructionParserARM {
 			isSubroutineAddress = (opcodeIndex == OpcodeARM.Index.arm_bl); // only bl is a subroutine call
 			jumpToAddr = address.add(offset); // immediate address known
 			instruction = mnemonic + condString + "\t" + jumpToAddr.toHexAddressString();
-			// No pc check: not applicable
 			break;
 
 		case arm_blx__imm:			// A8.6.23 BL, BLX (immediate)
@@ -273,7 +272,6 @@ public class InstructionParserARM {
 			isSubroutineAddress = true;
 			jumpToAddr = address.add(offset); // immediate address known
 			instruction = mnemonic + "\t" + jumpToAddr.toHexAddressString();
-			// No pc check: not applicable
 			break;
 
 		case arm_blx__reg:			// A8.6.24 BLX (register)
@@ -284,7 +282,6 @@ public class InstructionParserARM {
 			isSoleDestination = (condString.length() == 0); // true if unconditional blx
 			isSubroutineAddress = true;
 			addrExpression = tempStr; // branches to the address in Rm register
-			// No pc check: not applicable
 			break;
 
 		case arm_bx:				// A8.6.25 BX
@@ -297,7 +294,6 @@ public class InstructionParserARM {
 			isSoleDestination = (condString.length() == 0); // true if unconditional bx
 			isSubroutineAddress = false;
 			addrExpression = tempStr; // branches to the address in Rm register
-			// No pc check: not applicable
 			break;
 
 		case arm_adc__imm:			// A8.6.1 ADC (immediate)
@@ -306,8 +302,12 @@ public class InstructionParserARM {
 									// adc{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
 		case arm_add__imm:			// A8.6.5 ADD (immediate, ARM)
 									// add{s}<c> <Rd>,<Rn>,#<const>
+									// A8.6.8 ADD (SP plus immediate)
+									// add{s}<c> <Rd>,sp,#<const>
 		case arm_add__reg:			// A8.6.6 ADD (register)
 									// add{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
+									// A8.6.9 ADD (SP plus register)
+									// add{s}<c> <Rd>,sp,<Rm>{,<shift>}
 		case arm_and__imm:			// A8.6.11 AND (immediate)
 									// and{s}<c> <Rd>,<Rn>,#<const>
 		case arm_and__reg:			// A8.6.12 AND (register)
@@ -330,7 +330,7 @@ public class InstructionParserARM {
 									// rsb{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
 		case arm_rsc__imm:			// A8.6.145 RSC (immediate)
 									// rsc{s}<c> <Rd>,<Rn>,#<const>
-		case arm_rsc__reg:			// A8.6.146 RSC (register)		
+		case arm_rsc__reg:			// A8.6.146 RSC (register)
 									// rsc{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
 		case arm_sbc__imm:			// A8.6.151 SBC (immediate)
 									// sbc{s}<c> <Rd>,<Rn>,#<const>
@@ -338,8 +338,12 @@ public class InstructionParserARM {
 									// sbc{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
 		case arm_sub__imm:			// A8.6.212 SUB (immediate, ARM)
 									// sub{s}<c> <Rd>,<Rn>,#<const>
+									// A8.6.215 SUB (SP minus immediate)
+									// sub{s}<c> <Rd>,sp,#<const>
 		case arm_sub__reg:			// A8.6.213 SUB (register)
 									// sub{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
+									// A8.6.216 SUB (SP minus register)
+									// sub{s} <Rd>,sp,<Rm>{,<shift>}
 			condString = getArmCondition(opcode);
 			tempStr = getR_12(opcode);
 			instruction = mnemonic + getS(opcode) + condString + "\t"
@@ -371,7 +375,7 @@ public class InstructionParserARM {
 									// sub{s}<c> <Rd>,<Rn>,<Rm>,<type> <Rs>
 			instruction = mnemonic + getS(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getR_16(opcode) + "," + getShifterOperand(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_adr__higher:		// A8.6.10 ADR
@@ -419,7 +423,7 @@ public class InstructionParserARM {
 									// ror{s}<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getS(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if Rd, Rn, or Rm is PC, the instruction is unpredictable
+			// No PC check: if Rd, Rn, or Rm is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_bfc:				// A8.6.17 BFC
@@ -433,7 +437,7 @@ public class InstructionParserARM {
 				instruction = mnemonic + getArmCondition(opcode) + "\t"
 						+ getR_12(opcode) + ",#" + lsb + ",#" + width;
 			}
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_bfi:				// A8.6.18 BFI
@@ -447,13 +451,13 @@ public class InstructionParserARM {
 				instruction = mnemonic + getArmCondition(opcode) + "\t"
 						+ getR_12(opcode) + "," + getR_0(opcode) + ",#" + lsb + ",#" + width;
 			}
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_bkpt:				// A8.6.22 BKPT
 									// bkpt #<imm16>
 			instruction = mnemonic + "\t" + "#" + getHexValue((((opcode >> 4) & 0xfff0) | (opcode & 0xf)));
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_cdp:				// A8.6.28 CDP, CDP2
@@ -462,7 +466,7 @@ public class InstructionParserARM {
 		case arm_cdp2:				// A8.6.28 CDP, CDP2
 									// cdp2<c> <coproc>,<opc1>,<CRd>,<CRn>,<CRm>,<opc2>
 			instruction = mnemonic + "\t" + getCo_cdp_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_clrex:				// A8.6.30 CLREX
@@ -472,7 +476,7 @@ public class InstructionParserARM {
 				break;
 			}
 			instruction = mnemonic;
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_clz:				// A8.6.31 CLZ
@@ -486,7 +490,7 @@ public class InstructionParserARM {
 		case arm_revsh:				// A8.6.137 REVSH
 									// revsh<c> <Rd>,<Rm>
 			instruction = mnemonic + getArmCondition(opcode) + "\t" + getR_12(opcode) + "," + getR_0(opcode);
-			// No pc check: if Rd or Rm is PC, the instruction is unpredictable
+			// No PC check: if Rd or Rm is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_cmn__imm:			// A8.6.32 CMN (immediate)
@@ -499,7 +503,7 @@ public class InstructionParserARM {
 									// tst<c> <Rn>,#<const>
 			imm = opcode & 0xfff;
 			instruction = mnemonic + getArmCondition(opcode) + "\t" + getR_16(opcode) + "," + getShifterOperand(opcode);
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
 		case arm_cmn__reg:			// A8.6.33 CMN (register)
@@ -520,14 +524,14 @@ public class InstructionParserARM {
 									// tst<c> <Rn>,<Rm>,<type> <Rs>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getShifterOperand(opcode);
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
 		case arm_cps:				// B6.1.1 CPS
-									// cps #<mode>
 									// cps<effect> <iflags>{,#<mode>}
+									// cps #<mode>
 			instruction = mnemonic + getCo_cps_instruction(opcode, false);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_dbg:				// A8.6.40 DBG
@@ -538,7 +542,7 @@ public class InstructionParserARM {
 				instruction = "nop" + getArmCondition(opcode);
 			else
 				instruction = mnemonic + getArmCondition(opcode) + "\t" + "#" + (opcode & 0xf);
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
 		case arm_dmb:				// A8.6.41 DMB
@@ -549,7 +553,7 @@ public class InstructionParserARM {
 				instruction = IDisassembler.INVALID_OPCODE;
 			else
 				instruction = mnemonic + "\t" + getDataBarrierOption(opcode);
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
 		case arm_isb:				// A8.6.49 ISB
@@ -558,7 +562,7 @@ public class InstructionParserARM {
 				instruction = IDisassembler.INVALID_OPCODE;
 			else
 				instruction = mnemonic + "\t" + getInstructionBarrierOption(opcode);
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
 		case arm_ldc__imm:			// A8.6.51 LDC, LDC2 (immediate)
@@ -587,7 +591,7 @@ public class InstructionParserARM {
 									// stc2{l}<c> <coproc>,<CRd>,[<Rn>],<option>
 			instruction = mnemonic + getL(opcode) + getArmCondition(opcode) + "\t"
 					+ getCoprocessor(opcode) + "," + getCR_12(opcode) + "," + getAddrModeImm8(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_ldr__imm:			// A8.6.58 LDR (immediate, ARM)
@@ -600,7 +604,8 @@ public class InstructionParserARM {
 			tempStr = getR_12(opcode);
 			instruction = mnemonic + condString + "\t" + tempStr +  "," + getAddrMode2(opcode, 24);
 
-			if (tempStr.equals("pc"))
+			// only the load can change the PC
+			if (isBitEnabled(opcode, 20) && tempStr.equals("pc"))
 				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 
@@ -612,6 +617,7 @@ public class InstructionParserARM {
 			imm = opcode & 0xfff;
 			instruction = mnemonic + condString + "\t"
 					+ tempStr + "," + getAddrModePCImm(opcode, imm);
+
 			if (tempStr.equals("pc"))
 				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
@@ -633,7 +639,7 @@ public class InstructionParserARM {
 									// strb<c> <Rt>,[<Rn>],#+/-<imm12>
 									// strb<c> <Rt>,[<Rn>,#+/-<imm12>]!
 			instruction = mnemonic + getArmCondition(opcode) + "\t" + getR_12(opcode) + "," + getAddrMode2(opcode, 24);
-			// No pc check: for non-str, if Rt is PC, the instruction is unpredictable;
+			// No PC check: for non-str, if Rt is PC, the instruction is UNPREDICTABLE;
 			//              for str, the destination is memory - not a register
 			break;
 
@@ -643,7 +649,7 @@ public class InstructionParserARM {
 			imm = opcode & 0xfff;
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getAddrModePCImm(opcode, imm);
-			// No pc check: if Rt is PC, the instruction is unpredictable;
+			// No PC check: if Rt is PC, the instruction is UNPREDICTABLE;
 			break;
 
 		case arm_ldrd__imm:			// A8.6.66 LDRD (immediate)
@@ -654,7 +660,7 @@ public class InstructionParserARM {
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getRegName(startReg) + "," + getRegName(startReg + 1)	+ ","
 					+ getAddrModeSplitImm8(opcode);
-			// No pc check: if Rt is odd or is LR (register 14), the instruction is unpredictable
+			// No PC check: if Rt is odd or is LR (register 14), the instruction is UNPREDICTABLE
 			break;
 
 		case arm_ldrd__lit:			// A8.6.67 LDRD (literal)
@@ -665,7 +671,7 @@ public class InstructionParserARM {
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getRegName(startReg) + "," + getRegName(startReg + 1) + ","
 					+ getAddrModePCImm(opcode, imm);
-			// No pc check: if Rt is odd or is LR (register 14), the instruction is unpredictable
+			// No PC check: if Rt is odd or is LR (register 14), the instruction is UNPREDICTABLE
 			break;
 
 		case arm_ldrh__imm:			// A8.6.75 LDRH (literal)
@@ -686,7 +692,7 @@ public class InstructionParserARM {
 									// strh<c> <Rt>,[<Rn>,#+/-<imm8>]!
 			instruction = mnemonic + getArmCondition(opcode) + "\t" + getR_12(opcode)
 					+ "," + getAddrModeSplitImm8(opcode);
-			// No pc check: if Rt is PC, the instruction is unpredictable
+			// No PC check: if Rt is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_ldrh__lit:			// A8.6.75 LDRH (literal)
@@ -701,7 +707,7 @@ public class InstructionParserARM {
 			imm = ((opcode >> 4) & 0xf0) | (opcode & 0xf);
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getAddrModePCImm(opcode, imm);
-			// No pc check: if Rt is PC, the instruction is unpredictable
+			// No PC check: if Rt is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_ldm:				// A8.6.53 LDM / LDMIA / LDMFD
@@ -725,9 +731,10 @@ public class InstructionParserARM {
 			instruction = mnemonic + condString + "\t"
 					+ getR_16(opcode) + getW(opcode) + "," + tempStr;
 
-			if (tempStr.contains("pc"))
+			// only the loads can change the PC
+			if (isBitEnabled(opcode, 20) && tempStr.contains("pc"))
 				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
-			// Note: having PC (register 15) in the list is deprecated
+			// Note: having PC (register 15) in the register list is deprecated
 			break;
 
 		case arm_ldm__exc_ret:		// B6.1.2 LDM (exception return)
@@ -747,7 +754,7 @@ public class InstructionParserARM {
 									// stm{amode}<c> <Rn>,<registers>^
 			instruction = mnemonic + getAddrMode(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getRegList(opcode) + "^";
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_ldr__reg:			// A8.6.60 LDR (register)
@@ -775,7 +782,7 @@ public class InstructionParserARM {
 									// strt<c> <Rt>,[<Rn>],+/-<Rm>{, <shift>}
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getAddrMode2(opcode, 24);
-			// No pc check: for non-str, if Rt is PC, the instruction is unpredictable
+			// No PC check: for non-str, if Rt is PC, the instruction is UNPREDICTABLE
 			//              for str, the destination is memory - not a register
 			break;
 
@@ -788,7 +795,7 @@ public class InstructionParserARM {
 			startReg = (opcode >> 12) & 0xf;
 			instruction = mnemonic + getArmCondition(opcode) + "\t"	+ getRegName(startReg)
 					+ "," + getRegName(startReg + 1) + "," + getAddrModeSplitImm8(opcode);
-			// No pc check: if Rt is odd or is LR (register 14), the instruction is unpredictable
+			// No PC check: if Rt is odd or is LR (register 14), the instruction is UNPREDICTABLE
 			break;
 
 		case arm_ldrex:				// A8.6.69 LDREX
@@ -799,7 +806,7 @@ public class InstructionParserARM {
 									// ldrexh<c> <Rt>, [<Rn>]
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ",[" + getR_16(opcode) + "]";
-			// No pc check: if Rt is PC, the instruction is unpredictable
+			// No PC check: if Rt is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_ldrexd:			// A8.6.71 LDREXD
@@ -807,7 +814,7 @@ public class InstructionParserARM {
 			startReg = (opcode >> 12) & 0xf;
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getRegName(startReg) + "," + getRegName(startReg + 1) + ",[" + getR_16(opcode) + "]";
-			// No pc check: if Rt is odd or is LR (register 14), the instruction is unpredictable
+			// No PC check: if Rt is odd or is LR (register 14), the instruction is UNPREDICTABLE
 			break;
 
 		case arm_ldrh__reg:			// A8.6.76 LDRH (register)
@@ -824,7 +831,7 @@ public class InstructionParserARM {
 									// strh<c> <Rt>,[<Rn>],+/-<Rm>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"	+ getR_12(opcode)
 					+ "," + getAddrModeSplitImm8(opcode);
-			// No pc check: for non-str, if Rt is PC, the instruction is unpredictable;
+			// No PC check: for non-str, if Rt is PC, the instruction is UNPREDICTABLE;
 			//              for str, the destination is memory - not a register
 			break;
 
@@ -845,7 +852,7 @@ public class InstructionParserARM {
 				if (offset != 0)
 					instruction += ",#" + ((isBitEnabled(opcode, 23)) ? "" : "-") + getHexValue(offset);
 			}
-			// No pc check: for non-str, if Rt is PC, the instruction is unpredictable;
+			// No PC check: for non-str, if Rt is PC, the instruction is UNPREDICTABLE;
 			//              for str, the destination is memory - not a register
 			break;
 
@@ -860,7 +867,7 @@ public class InstructionParserARM {
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ",[" + getR_16(opcode)
 					+ (isBitEnabled(opcode, 23) ? "]," : "],-") + getR_0(opcode);
-			// No pc check: for non-str, if Rt is PC, the instruction is unpredictable;
+			// No PC check: for non-str, if Rt is PC, the instruction is UNPREDICTABLE;
 			//              for str, the destination is memory - not a register
 			break;
 
@@ -871,7 +878,7 @@ public class InstructionParserARM {
 		case arm_mcr2:				// A8.6.92 MCR, MCR2
 									// mcr2<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
 			instruction = mnemonic + getCo_mcr_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_mcrr:				// A8.6.93 MCRR, MCRR2
@@ -885,14 +892,14 @@ public class InstructionParserARM {
 		case arm_mrrc2:				// A8.6.101 MRRC, MRRC2
 									// mrrc2<c> <coproc>,<opc>,<Rt>,<Rt2>,<CRm>
 			instruction = mnemonic + getCo_mrr_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_mla:				// A8.6.94 MLA
 									// mla{s}<c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getS(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode) + "," + getR_12(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_mls:				// A8.6.95 MLS
@@ -901,7 +908,7 @@ public class InstructionParserARM {
 									// usada8<c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode) + "," + getR_12(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_mov__imm:			// A8.6.96 MOV (immediate)
@@ -936,7 +943,7 @@ public class InstructionParserARM {
 			imm = ((opcode >> 4) & 0xf000) | (opcode & 0xfff);
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ",#" + getHexValue(imm);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_mrc:				// A8.6.100 MRC, MRC2
@@ -946,14 +953,14 @@ public class InstructionParserARM {
 		case arm_mrc2:				// A8.6.100 MRC, MRC2
 									// mrc2<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
 			instruction = mnemonic + getCo_mrc_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_mrs:				// A8.6.102 MRS
 									// mrs<c> <Rd>,<spec_reg>
 			instruction = mnemonic + getArmCondition(opcode) + "\t" + getR_12(opcode)
-				+ "," + getStatusReg(opcode, 22);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+					+ "," + getStatusReg(opcode, 22);
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_msr__imm:			// A8.6.103 MSR (immediate)
@@ -969,7 +976,7 @@ public class InstructionParserARM {
 				instruction += getShifterOperand(opcode);
 			else
 				instruction += getR_0(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_msr__sys_imm:		// B6.1.6 MSR (immediate)
@@ -982,13 +989,14 @@ public class InstructionParserARM {
 				instruction += "," + getShifterOperand(opcode);
 			else
 				instruction += "," + getR_0(opcode);
+			// No PC check: not applicable
 			break;
 
 		case arm_mul:				// A8.6.105 MUL
 									// mul{s}<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getS(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if Rd, Rn, or Rm is PC, the instruction is unpredictable
+			// No PC check: if Rd, Rn, or Rm is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_mvn__reg:			// A8.6.107 MVN (register)
@@ -1006,7 +1014,7 @@ public class InstructionParserARM {
 									// mvn{s}<c> <Rd>,<Rm>,<type> <Rs>
 			instruction = mnemonic + getS(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getShifterOperand(opcode);
-			// No pc check: if Rn, Rm, or Rs is PC, the instruction is unpredictable
+			// No PC check: if Rn, Rm, or Rs is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_nop:				// A8.6.110 NOP
@@ -1015,7 +1023,7 @@ public class InstructionParserARM {
 				instruction = IDisassembler.INVALID_OPCODE;
 			else
 				instruction = mnemonic + getArmCondition(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_pkh:				// A8.6.116 PKH
@@ -1035,7 +1043,7 @@ public class InstructionParserARM {
 				if (imm != 0)
 					instruction += ",lsl #" + imm;
 			}
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_pld__lit:			// A8.6.118 PLD (literal)
@@ -1043,20 +1051,20 @@ public class InstructionParserARM {
 									// pld [pc,#+/-<imm>]	Alternative form
 			imm = opcode & 0xfff;
 			instruction = mnemonic + "\t" + getAddrModePCImm(opcode, imm);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_pld__imm:			// A8.6.117 PLD, PLDW (immediate)
 									// pld{w} [<Rn>,#+/-<imm12>]
 			instruction = mnemonic + (isBitEnabled(opcode, 22) ? "\t" : "w\t") + getAddrMode2(opcode, 24);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_pld__reg:			// A8.6.119 PLD, PLDW (register)
 									// pld{w}<c> [<Rn>,+/-<Rm>{, <shift>}]
 			mnemonic += (isBitEnabled(opcode, 22) ? "\t" : "w\t") + getArmCondition(opcode);
 			instruction = mnemonic + "\t" + getAddrMode2(opcode, 24);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_pli__imm_lit:		// A8.6.120 PLI (immediate, literal)
@@ -1068,17 +1076,17 @@ public class InstructionParserARM {
 					+ (getR_16(opcode).equals("pc")
 						? getAddrModePCImm(opcode, imm)
 						: getAddrMode2(opcode, 20)); // picked bit 20 because it is 1
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_pli__reg:			// A8.6.121 PLI (register)
 									// pli [<Rn>,+/-<Rm>{, <shift>}]
 			instruction = mnemonic + "\t" + getAddrMode2(opcode, 20); // picked bit 20 because it is 1
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_pop__regs:			// A8.6.122 POP
-									// pop<c> <registers> <registers> has more than one register
+									// pop<c> <registers> <registers> contains more than one register
 			condString = getArmCondition(opcode);
 			tempStr = getRegList(opcode);
 			instruction = mnemonic + condString + "\t" + tempStr;
@@ -1088,25 +1096,25 @@ public class InstructionParserARM {
 			break;
 
 		case arm_pop__reg:			// A8.6.122 POP
-									// pop<c> <registers> <registers> has one register, <Rt>
+									// pop<c> <registers> <registers> contains one register, <Rt>
 			condString = getArmCondition(opcode);
 			tempStr = getR_12(opcode);
 			instruction = mnemonic + condString + "\t{" + tempStr + "}";
-			
+
 			if (tempStr.equals("pc"))
-			setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
+				setDefaultPCJumpProperties(condString.length() == 0); // true if unconditional
 			break;
 
 		case arm_push__reg:			// A8.6.123 PUSH
-									// push<c> <registers> <registers> has one register, <Rt>
+									// push<c> <registers> <registers> contains one register, <Rt>
 			instruction = mnemonic + getArmCondition(opcode) + "\t{" + getR_12(opcode) + "}";
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_push__regs:		// A8.6.123 PUSH
-									// push<c> <registers> <registers> has more than one register
+									// push<c> <registers> <registers> contains more than one register
 			instruction = mnemonic + getArmCondition(opcode) + "\t" + getRegList(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_qadd:				// A8.6.124 QADD
@@ -1119,82 +1127,81 @@ public class InstructionParserARM {
 									// qsub<c> <Rd>,<Rm>,<Rn>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getR_0(opcode) + ","	+ getR_16(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
-//		case arm_qadd16:			// A8.6.125 QADD16
-//									// qadd16<c> <Rd>,<Rn>,<Rm>
-//		case arm_qadd8:				// A8.6.126 QADD8
-//									// qadd8<c> <Rd>,<Rn>,<Rm>
-//		case arm_qasx:				// A8.6.127 QASX
-//									// qasx<c> <Rd>,<Rn>,<Rm>
-//		case arm_qsax:				// A8.6.130 QSAX
-//									// qsax<c> <Rd>,<Rn>,<Rm>
-//		case arm_qsub16:			// A8.6.132 QSUB16
-//									// qsub16<c> <Rd>,<Rn>,<Rm>
-//		case arm_qsub8:				// A8.6.133 QSUB8
-//									// qsub8<c> <Rd>,<Rn>,<Rm>
-//		case arm_sadd16:			// A8.6.148 SADD16
-//									// sadd16<c> <Rd>,<Rn>,<Rm>
-//		case arm_sadd8:				// A8.6.149 SADD8
-//									// sadd8<c> <Rd>,<Rn>,<Rm>
-//		case arm_sasx:				// A8.6.150 SASX
-//									// sasx<c> <Rd>,<Rn>,<Rm>
-//		case arm_shadd16:			// A8.6.159 SHADD16
-//									// shadd16<c> <Rd>,<Rn>,<Rm>
-//		case arm_shadd8:			// A8.6.160 SHADD8
-//									// shadd8<c> <Rd>,<Rn>,<Rm>
-//		case arm_shasx:				// A8.6.161 SHASX
-//									// shasx<c> <Rd>,<Rn>,<Rm>
-//		case arm_shsax:				// A8.6.162 SHSAX
-//									// shsax<c> <Rd>,<Rn>,<Rm>
-//		case arm_shsub16:			// A8.6.163 SHSUB16
-//									// shsub16<c> <Rd>,<Rn>,<Rm>
-//		case arm_shsub8:			// A8.6.164 SHSUB8
-//									// shsub8<c> <Rd>,<Rn>,<Rm>
-//		case arm_ssax:				// A8.6.185 SSAX
-//									// ssax<c> <Rd>,<Rn>,<Rm>
-//		case arm_ssub16:			// A8.6.186 SSUB16
-//									// ssub16<c> <Rd>,<Rn>,<Rm>
-//		case arm_ssub8:				// A8.6.187 SSUB8
-//									// ssub8<c> <Rd>,<Rn>,<Rm>
-//		case arm_uadd16:			// A8.6.233 UADD16
-//									// uadd16<c> <Rd>,<Rn>,<Rm>
-//		case arm_uadd8:				// A8.6.234 UADD8
-//									// uadd8<c> <Rd>,<Rn>,<Rm>
-//		case arm_uasx:				// A8.6.235 UASX
-//									// uasx<c> <Rd>,<Rn>,<Rm>
-//		case arm_uhadd16:			// A8.6.238 UHADD16
-//									// uhadd16<c> <Rd>,<Rn>,<Rm>
-//		case arm_uhadd8:			// A8.6.239 UHADD8
-//									// uhadd8<c> <Rd>,<Rn>,<Rm>
-//		case arm_uhasx:				// A8.6.240 UHASX
-//									// uhasx<c> <Rd>,<Rn>,<Rm>
-//		case arm_uhsax:				// A8.6.241 UHSAX
-//									// uhsax<c> <Rd>,<Rn>,<Rm>
-//		case arm_uhsub16:			// A8.6.242 UHSUB16
-//									// uhsub16<c> <Rd>,<Rn>,<Rm>
-//		case arm_uhsub8:			// A8.6.243 UHSUB8
-//									// uhsub8<c> <Rd>,<Rn>,<Rm>
-//		case arm_uqadd16:			// A8.6.247 UQADD16
-//									// uqadd16<c> <Rd>,<Rn>,<Rm>
-//		case arm_uqadd8:			// A8.6.248 UQADD8
-//									// uqadd8<c> <Rd>,<Rn>,<Rm>
-//		case arm_uqasx:				// A8.6.249 UQASX
-//									// uqasx<c> <Rd>,<Rn>,<Rm>
-//		case arm_uqsax:				// A8.6.250 UQSAX
-//									// uqsax<c> <Rd>,<Rn>,<Rm>
-//		case arm_uqsub16:			// A8.6.251 UQSUB16
-//									// uqsub16<c> <Rd>,<Rn>,<Rm>
-//		case arm_uqsub8:			// A8.6.252 UQSUB8
-//									// uqsub8<c> <Rd>,<Rn>,<Rm>
-//		case arm_usax:				// A8.6.257 USAX
-//									// usax<c> <Rd>,<Rn>,<Rm>
-//		case arm_usub16:			// A8.6.258 USUB16
-//									// usub16<c> <Rd>,<Rn>,<Rm>
-//		case arm_usub8:				// A8.6.259 USUB8
-//									// usub8<c> <Rd>,<Rn>,<Rm>
-		case arm__r_dnm_math:
+		case arm__r_dnm_math:		// A8.6.125 QADD16
+									// qadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.126 QADD8
+									// qadd8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.127 QASX
+									// qasx<c> <Rd>,<Rn>,<Rm>
+									// A8.6.130 QSAX
+									// qsax<c> <Rd>,<Rn>,<Rm>
+									// A8.6.132 QSUB16
+									// qsub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.133 QSUB8
+									// qsub8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.148 SADD16
+									// sadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.149 SADD8
+									// sadd8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.150 SASX
+									// sasx<c> <Rd>,<Rn>,<Rm>
+									// A8.6.159 SHADD16
+									// shadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.160 SHADD8
+									// shadd8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.161 SHASX
+									// shasx<c> <Rd>,<Rn>,<Rm>
+									// A8.6.162 SHSAX
+									// shsax<c> <Rd>,<Rn>,<Rm>
+									// A8.6.163 SHSUB16
+									// shsub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.164 SHSUB8
+									// shsub8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.185 SSAX
+									// ssax<c> <Rd>,<Rn>,<Rm>
+									// A8.6.186 SSUB16
+									// ssub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.187 SSUB8
+									// ssub8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.233 UADD16
+									// uadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.234 UADD8
+									// uadd8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.235 UASX
+									// uasx<c> <Rd>,<Rn>,<Rm>
+									// A8.6.238 UHADD16
+									// uhadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.239 UHADD8
+									// uhadd8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.240 UHASX
+									// uhasx<c> <Rd>,<Rn>,<Rm>
+									// A8.6.241 UHSAX
+									// uhsax<c> <Rd>,<Rn>,<Rm>
+									// A8.6.242 UHSUB16
+									// uhsub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.243 UHSUB8
+									// uhsub8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.247 UQADD16
+									// uqadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.248 UQADD8
+									// uqadd8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.249 UQASX
+									// uqasx<c> <Rd>,<Rn>,<Rm>
+									// A8.6.250 UQSAX
+									// uqsax<c> <Rd>,<Rn>,<Rm>
+									// A8.6.251 UQSUB16
+									// uqsub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.252 UQSUB8
+									// uqsub8<c> <Rd>,<Rn>,<Rm>
+									// A8.6.257 USAX
+									// usax<c> <Rd>,<Rn>,<Rm>
+									// A8.6.258 USUB16
+									// usub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.259 USUB8
+									// usub8<c> <Rd>,<Rn>,<Rm>
 			switch (opcode >> 20 & 7) {
 				case 1:	mnemonic = "s";		break;
 				case 2:	mnemonic = "q";		break;
@@ -1217,7 +1224,7 @@ public class InstructionParserARM {
 			// sel<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getR_16(opcode) + "," + getR_0(opcode);
-			// No pc check: if Rd, Rn, or Rm is PC, the instruction is unpredictable
+			// No PC check: if Rd, Rn, or Rm is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_rfe:				// B6.1.8 RFE
@@ -1239,7 +1246,7 @@ public class InstructionParserARM {
 				instruction = mnemonic + getArmCondition(opcode) + "\t"
 						+ getR_12(opcode) + "," + getR_0(opcode) + ",#" + lsb + ",#" +width;
 			}
-			// No pc check: for non-str, if Rd is PC, the instruction is unpredictable;
+			// No PC check: for non-str, if Rd is PC, the instruction is UNPREDICTABLE;
 			//              for str, the destination is memory - not a register
 			break;
 
@@ -1250,6 +1257,7 @@ public class InstructionParserARM {
 				instruction = instruction + "le";
 			else
 				instruction = instruction + "be";
+			// No PC check: not applicable
 			break;
 
 		case arm_sev:				// A8.6.158 SEV
@@ -1266,20 +1274,20 @@ public class InstructionParserARM {
 				instruction = "nop" + getArmCondition(opcode);
 			else
 				instruction = mnemonic + getArmCondition(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_smc:				// B6.1.9 SMC (previously SMI)
 									// smc<c> #<imm4>
 			instruction = mnemonic + getArmCondition(opcode) + "\t#" + getHexValue((opcode & 0xf));
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_smla:				// A8.6.166 SMLABB, SMLABT, SMLATB, SMLATT
 									// smla<x><y><c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getBorT(opcode, 5) + getBorT(opcode, 6) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode) + "," + getR_12(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smlad:				// A8.6.167 SMLAD
@@ -1288,21 +1296,21 @@ public class InstructionParserARM {
 									// smlsd{x}<c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getX(opcode, 5) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode) + "," + getR_12(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smlal:				// A8.6.168 SMLAL
 									// smlal{s}<c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			instruction = mnemonic + getS(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ","	+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if RdLo or RdHi is PC, the instruction is unpredictable
+			// No PC check: if RdLo or RdHi is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smlalxy:			// A8.6.169 SMLALBB, SMLALBT, SMLALTB, SMLALTT
 									// smlal<x><y><c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			instruction = mnemonic + getBorT(opcode, 5) + getBorT(opcode, 6) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ","	+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if RdLo or RdHi is PC, the instruction is unpredictable
+			// No PC check: if RdLo or RdHi is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smlald:			// A8.6.170 SMLALD
@@ -1311,14 +1319,14 @@ public class InstructionParserARM {
 									// smlsld{x}<c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			instruction = mnemonic + getX(opcode, 5) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ","	+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smlaw:				// A8.6.171 SMLAWB, SMLAWT
 									// smlaw<y><c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getBorT(opcode, 6) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode) + "," + getR_12(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smmla:				// A8.6.174 SMMLA
@@ -1327,14 +1335,14 @@ public class InstructionParserARM {
 									// smmls{r}<c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getR(opcode, 5) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode) + "," + getR_12(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smmul:				// A8.6.176 SMMUL
 									// smmul{r}<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getR(opcode, 5) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smuad:				// A8.6.177 SMUAD
@@ -1343,34 +1351,35 @@ public class InstructionParserARM {
 									// smusd{x}<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getX(opcode, 5) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smul:				// A8.6.178 SMULBB, SMULBT, SMULTB, SMULTT
 									// smul<x><y><c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getBorT(opcode, 5) + getBorT(opcode, 6) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smull:				// A8.6.179 SMULL
 									// smull{s}<c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			instruction = mnemonic + getS(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ","	+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if RdLo or RdHi is PC, the instruction is unpredictable
+			// No PC check: if RdLo or RdHi is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_smulw:				// A8.6.180 SMULWB, SMULWT
 									// smulw<y><c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getBorT(opcode, 6) + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_srs:				// B6.1.10 SRS
 									// srs{<amode>} sp{!},#<mode>
 			instruction = mnemonic + getAddrMode(opcode) + "\t"
 					+ "sp" + getW(opcode) + ",#" + getHexValue((opcode & 0x1f));
+			// No PC check: not applicable
 			break;
 
 		case arm_ssat:				// A8.6.183 SSAT
@@ -1380,7 +1389,7 @@ public class InstructionParserARM {
 			imm = ((opcode >> 16) & 0x1f);
 			if ((opcode & (1 << 22)) == 0)
 				imm++;
-				
+
 			if (((opcode >> 6) & 0x3f) != 0) {
 				int shiftCnt = (opcode >> 7) & 0x1f;
 				if ((opcode & (1 << 6)) == 0)
@@ -1393,7 +1402,7 @@ public class InstructionParserARM {
 			}
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ",#" + imm + "," + getR_0(opcode) + tempStr;
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_ssat16:			// A8.6.184 SSAT16
@@ -1401,7 +1410,7 @@ public class InstructionParserARM {
 			imm = ((opcode >> 16) & 0xf) + 1;
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ",#" + imm + "," + getR_0(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_str__reg:			// A8.6.195 STR (register)
@@ -1414,7 +1423,7 @@ public class InstructionParserARM {
 									// strbt<c> <Rt>,[<Rn>],#+/-<imm12>
 			mnemonic += getArmCondition(opcode);
 			instruction = mnemonic + "\t" + getR_12(opcode) +  "," + getAddrMode2(opcode, 24);
-			// No pc check: if Rt is PC, the instruction is unpredictable;
+			// No PC check: if Rt is PC, the instruction is UNPREDICTABLE;
 			break;
 
 		case arm_strd__imm:			// A8.6.200 STRD (immediate)
@@ -1424,7 +1433,7 @@ public class InstructionParserARM {
 			reg = (opcode >> 12) & 0xf;
 			instruction = mnemonic + getArmCondition(opcode) + "\t"	+ getRegName(reg)
 					+ "," + getRegName(reg + 1) + "," + getAddrModeSplitImm8(opcode);
-			// No pc check: if Rt is odd or is LR (register 14), the instruction is unpredictable
+			// No PC check: if Rt is odd or is LR (register 14), the instruction is UNPREDICTABLE
 			break;
 
 		case arm_strex:				// A8.6.202 STREX
@@ -1435,7 +1444,7 @@ public class InstructionParserARM {
 									// strexh<c> <Rd>,<Rt>,[<Rn>]
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getR_0(opcode) + ",[" + getR_16(opcode) + "]";
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_strexd:			// A8.6.204 STREXD
@@ -1444,20 +1453,20 @@ public class InstructionParserARM {
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getRegName(startReg) + ","
 					+ getRegName(startReg + 1) + ",[" + getR_16(opcode) + "]";
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_svc:				// A8.6.218 SVC (previously SWI)
 									// svc<c> #<imm24>
 			instruction = mnemonic + getArmCondition(opcode) + "\t" + getImmediate24(opcode);
-			// No pc check: the destination is memory - not a register
+			// No PC check: the destination is memory - not a register
 			break;
 
 		case arm_swp:				// A8.6.219 SWP, SWPB
 									// swp{b}<c> <Rt>,<Rt2>,[<Rn>]
 			instruction = mnemonic + getB(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getR_0(opcode) + ",[" + getR_16(opcode) + "]";
-			// No pc check: if Rt or Rt2 is PC, the instruction is unpredictable
+			// No PC check: if Rt or Rt2 is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_sxtab:				// A8.6.220 SXTAB
@@ -1475,7 +1484,7 @@ public class InstructionParserARM {
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getR_16(opcode) + "," + getR_0(opcode)
 					+ getRotationOperand(opcode, 10);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_sxtb:				// A8.6.223 SXTB
@@ -1493,14 +1502,14 @@ public class InstructionParserARM {
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getR_0(opcode)
 					+ getRotationOperand(opcode, 10);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_umaal:				// A8.6.244 UMAAL
 									// umaal<c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ","	+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if RdLo or RdHi is PC, the instruction is unpredictable
+			// No PC check: if RdLo or RdHi is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_umlal:				// A8.6.245 UMLAL
@@ -1509,26 +1518,26 @@ public class InstructionParserARM {
 									// umull{s}<c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			instruction = mnemonic + getS(opcode) + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ","	+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if RdLo or RdHi is PC, the instruction is unpredictable
+			// No PC check: if RdLo or RdHi is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_usad8:				// A8.6.253 USAD8
 									// usad8<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_16(opcode) + "," + getR_0(opcode) + "," + getR_8(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_usat16:			// A8.6.256 USAT16
 									// usat16<c> <Rd>,#<imm4>,<Rn>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + ",#" + ((opcode >> 16) & 0xf) + "," + getR_0(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
 		case arm_undefined:
 			instruction = mnemonic;
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 			// VFP instructions
@@ -1561,7 +1570,7 @@ public class InstructionParserARM {
 									// vqsub<c>.<type><size> <Qd>, <Qn>, <Qm>
 									// vqsub<c>.<type><size> <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + getVFPSorUDataType(opcode, 24) + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vqdml__vec:		// A8.6.358 VQDMLAL, VQDMLSL
@@ -1579,9 +1588,9 @@ public class InstructionParserARM {
 									// bit24 == 0, so can use getVFPSorUDataType
 			instruction = mnemonic + getVFPSorUDataType(opcode, 24)
 					+ TAB + getVFPQdDnDmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
-			
+
 		case arm_vabd__f32:			// A8.6.268 VABD (floating-point)
 									// vabd<c>.f32 <Qd>, <Qn>, <Qm>
 									// vabd<c>.f32 <Dd>, <Dn>, <Dm>
@@ -1612,7 +1621,7 @@ public class InstructionParserARM {
 									// vsub<c>.f32 <Qd>, <Qn>, <Qm>
 									// vsub<c>.f32 <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + ".f32\t" + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vabs:				// A8.6.269 VABS
@@ -1622,7 +1631,7 @@ public class InstructionParserARM {
 									// vneg<c>.<dt> <Qd>, <Qm>
 									// vneg<c>.<dt> <Dd>, <Dm>
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 10, 4); // chose bit 4 because it is 0
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vabs__f:			// A8.6.269 VABS
@@ -1638,7 +1647,7 @@ public class InstructionParserARM {
 									// vsqrt<c>.f64 <Dd>, <Dm>
 									// vsqrt<c>.f32 <Sd>, <Sm>
 			instruction = mnemonic + getArmCondition(opcode) + getVFPSzF64F32dmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vacge_vacgt:		// A8.6.270 VACGE, VACGT, VACLE, VACLT
@@ -1647,7 +1656,7 @@ public class InstructionParserARM {
 									// vacgt<c>.f32 <Qd>, <Qn>, <Qm>
 									// vacgt<c>.f32 <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + getVFP_vacge_vacgt(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vadd__int:			// A8.6.271 VADD (integer)
@@ -1662,7 +1671,7 @@ public class InstructionParserARM {
 									// vsub<c>.<dt> <Qd>, <Qn>, <Qm>
 									// vsub<c>.<dt> <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + getVFPIDataTypeQorDdnmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vnml:				// A8.6.343 VNMLA, VNMLS, VNMUL
@@ -1688,7 +1697,7 @@ public class InstructionParserARM {
 									// vsub<c>.f64 <Dd>, <Dn>, <Dm>
 									// vsub<c>.f32 <Sd>, <Sn>, <Sm>
 			instruction = mnemonic + getArmCondition(opcode) + getVFPSzF64F32dnmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vaddhn:			// A8.6.273 VADDHN
@@ -1700,7 +1709,7 @@ public class InstructionParserARM {
 		case arm_vsubhn:			// A8.6.403 VSUBHN
 									// vsubhn<c>.<dt> <Dd>, <Qn>, <Qm>
 			instruction = mnemonic + getVFPIDataType2DdQnDmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vaddl_vaddw:		// A8.6.274 VADDL, VADDW
@@ -1710,7 +1719,7 @@ public class InstructionParserARM {
 									// vsubl<c>.<dt> <Qd>, <Dn>, <Dm>
 									// vsubw<c>.<dt> {<Qd>,} <Qn>, <Dm>
 			instruction = mnemonic + getVFP_vXXXl_vXXXw(opcode, 24);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vbif_vbit_vbsl_veor:	// A8.6.279 VBIF, VBIT, VBSL
@@ -1734,11 +1743,24 @@ public class InstructionParserARM {
 		case arm_vorn:				// A8.6.345 VORN (register)
 									// vorn<c> <Qd>, <Qn>, <Qm>
 									// vorn<c> <Dd>, <Dn>, <Dm>
-		case arm_vorr:				// A8.6.347 VORR (register)
+			instruction = mnemonic + getVFPQorDdnmRegs(opcode);
+			// No PC check: not applicable
+			break;
+
+		case arm_vmov_vorr:		// A8.6.327 VMOV (register)
+									// vmov<c> <Qd>, <Qm>
+									// vmov<c> <Dd>, <Dm>
+									// A8.6.347 VORR (register)
 									// vorr<c> <Qd>, <Qn>, <Qm>
 									// vorr<c> <Dd>, <Dn>, <Dm>
-			instruction = mnemonic + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// mnemonic is "vmov" by default
+			if (getBit(opcode, 7) == getBit(opcode, 5) &&
+				(opcode & 0xf) == (opcode >> 16 & 0xf)) {
+				instruction = mnemonic + TAB + getVFPQorDdmRegs(opcode);
+			} else {
+				instruction = "vorr" + getVFPQorDdnmRegs(opcode);
+			}
+			// No PC check: not applicable
 			break;
 
 		case arm_vmov_vbitwise:		// A8.6.277 VBIC (immediate)
@@ -1754,14 +1776,14 @@ public class InstructionParserARM {
 									// vorr<c>.<dt> <Qd>, #<imm>
 									// vorr<c>.<dt> <Dd>, #<imm>
 			instruction = getVFP_vmov_vbitwise_instruction(opcode, 24);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vceq__imm0:		// A8.6.281 VCEQ (immediate #0)
 									// vceq<c>.<dt> <Qd>, <Qm>, #0
 									// vceq<c>.<dt> <Dd>, <Dm>, #0
 			instruction = mnemonic + getVFPIorFQorDdmOperands(opcode, 10) + ",#0";
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcge__imm0:		// A8.6.283 VCGE (immediate #0)
@@ -1777,7 +1799,7 @@ public class InstructionParserARM {
 									// vclt<c>.<dt> <Qd>, <Qm>, #0
 									// vclt<c>.<dt> <Dd>, <Dm>, #0
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 10, 11) + ",#0"; // chose bit 11 because it is 0
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcls:				// A8.6.288 VCLS
@@ -1790,14 +1812,14 @@ public class InstructionParserARM {
 									// vqneg<c>.<dt> <Qd>,<Qm>
 									// vqneg<c>.<dt> <Dd>,<Dm>
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 4, 11); // chose bit 11 because it is 0
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vclz:				// A8.6.291 VCLZ
 									// vclz<c>.<dt> <Qd>, <Qm>
 									// vclz<c>.<dt> <Dd>, <Dm>
-			instruction =  mnemonic + getVFPIorFQorDdmOperands(opcode, 11); // chose bit 11 because it is 0 
-			// No pc check: not applicable
+			instruction =  mnemonic + getVFPIorFQorDdmOperands(opcode, 11); // chose bit 11 because it is 0
+			// No PC check: not applicable
 			break;
 
 		case arm_vcmp__reg:			// A8.6.292 VCMP, VCMPE
@@ -1805,7 +1827,7 @@ public class InstructionParserARM {
 									// vcmp{e}<c>.f32 <Sd>, <Sm>
 			instruction = mnemonic + getE(opcode) + getArmCondition(opcode)
 					+ getVFPSzF64F32dmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcmp__to_0:		// A8.6.292 VCMP, VCMPE
@@ -1813,7 +1835,7 @@ public class InstructionParserARM {
 									// vcmp{e}<c>.f32 <Sd>, #0.0
 			instruction = mnemonic + getE(opcode) + getArmCondition(opcode)
 					+ getVFP_vcmpTo0Operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcnt:				// A8.6.293 VCNT
@@ -1823,21 +1845,18 @@ public class InstructionParserARM {
 		case arm_vmvn:				// A8.6.341 VMVN (register)
 									// vmvn<c> <Qd>, <Qm>
 									// vmvn<c> <Dd>, <Dm>
-		case arm_vmov__reg:			// A8.6.327 VMOV (register)
-									// vmov<c> <Qd>, <Qm>
-									// vmov<c> <Dd>, <Dm>
 		case arm_vswp:				// A8.6.405 VSWP
 									// vswp<c> <Qd>, <Qm>
 									// vswp<c> <Dd>, <Dm>
 			instruction = mnemonic + getVFPQorDdmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcvt__fp_i_vec:	// A8.6.294 VCVT (between floating-point and integer, Advanced SIMD)
 									// vcvt<c>.<Td>.<Tm> <Qd>, <Qm>
 									// vcvt<c>.<Td>.<Tm> <Dd>, <Dm>
 			instruction = mnemonic + getVFP_vcvtFpIVecOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcvt__fp_i_reg:	// A8.6.295 VCVT, VCVTR (between floating-point and integer, VFP)
@@ -1850,14 +1869,14 @@ public class InstructionParserARM {
 			if (isBitEnabled(opcode, 18) && !isBitEnabled(opcode, 7))
 				mnemonic += "r";
 			instruction = mnemonic + getArmCondition(opcode) + getVFP_vcvtFpIRegOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcvt__fp_fix_vec:	// A8.6.296 VCVT (between floating-point and fixed-point, Advanced SIMD)
 									// vcvt<c>.<Td>.<Tm> <Qd>, <Qm>, #<fbits>
 									// vcvt<c>.<Td>.<Tm> <Dd>, <Dm>, #<fbits>
 			instruction = mnemonic + getVFP_vcvtFpFixVecOperands(opcode, 24);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcvt__fp_fix_reg:	// A8.6.297 VCVT (between floating-point and fixed-point, VFP)
@@ -1866,21 +1885,21 @@ public class InstructionParserARM {
 									// vcvt<c>.f64.<Td> <Dd>, <Dd>, #<fbits>
 									// vcvt<c>.f32.<Td> <Sd>, <Sd>, #<fbits>
 			instruction = mnemonic + getArmCondition(opcode) + getVFP_vcvtFpFixRegOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcvt__dp_sp:		// A8.6.298 VCVT (between double-precision and single-precision)
 									// vcvt<c>.f64.f32 <Dd>, <Sm>
 									// vcvt<c>.f32.f64 <Sd>, <Dm>
 			instruction = mnemonic + getArmCondition(opcode) + getVFP_vcvtDpSpOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcvt__hp_sp_vec:	// A8.6.299 VCVT (between half-precision and single-precision, Advanced SIMD)
 									// vcvt<c>.f32.f16 <Qd>, <Dm>
 									// vcvt<c>.f16.f32 <Dd>, <Qm>
 			instruction = mnemonic + getVFP_vcvtHpSpVecOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vcvt__hp_sp_reg:	// A8.6.300 VCVTB, VCVTT (between half-precision and single-precision, VFP)
@@ -1888,14 +1907,14 @@ public class InstructionParserARM {
 									// vcvt<y><c>.f16.f32 <Sd>, <Sm>
 			mnemonic += isBitEnabled(opcode, 7) ? "t" : "b";
 			instruction = mnemonic + getArmCondition(opcode) + getVFP_vcvtHpSpRegOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vdup__scalar:		// A8.6.302 VDUP (scalar)
 									// vdup<c>.<size> <Qd>, <Dm[x]>
 									// vdup<c>.<size> <Dd>, <Dm[x]>
 			instruction = mnemonic + getVFP_vdupScalarOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vdup__reg:			// A8.6.303 VDUP (ARM core register)
@@ -1903,7 +1922,7 @@ public class InstructionParserARM {
 									// vdup<c>.<size> <Dd>, <Rt>
 			mnemonic += getArmCondition(opcode);
 			instruction = mnemonic + getVFP_vdupRegOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vext:				// A8.6.305 VEXT
@@ -1911,7 +1930,7 @@ public class InstructionParserARM {
 									// vext<c>.8 <Dd>, <Dn>, <Dm>, #<imm>
 			instruction = mnemonic + ".8" + getVFPQorDdnmRegs(opcode)
 					+ ",#" + (opcode >> 8 & 0xf);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vld__multi:		// A8.6.307 VLD1 (multiple single elements)
@@ -1939,7 +1958,7 @@ public class InstructionParserARM {
 									// vst4<c>.<size> <list>, [<Rn>{@<align>}]{!}
 									// vst4<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
 			instruction = mnemonic + getVFP_vXX_multi(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vld__xlane:		// A8.6.308 VLD1 (single element to one lane)
@@ -1979,7 +1998,7 @@ public class InstructionParserARM {
 									// vst4<c>.<size> <list>, [<Rn>{@<align>}}]{!}
 									// vst4<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
 			instruction = mnemonic + getVFP_vXX_Xlane(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vldm__64:			// A8.6.319 VLDM
@@ -1991,8 +2010,8 @@ public class InstructionParserARM {
 		case arm_vstm__32:			// A8.6.399 VSTM
 									// vstm{mode}<c> <Rn>{!}, <list> <list> is consecutive 32-bit registers
 			instruction = mnemonic + getVFPIncDec(opcode) + getArmCondition(opcode)
-						  + getVFP_vXXm(opcode);
-			// No pc check: not applicable
+					+ getVFP_vXXm(opcode);
+			// No PC check: not applicable
 			break;
 
 		case arm_vldr__64:			// A8.6.320 VLDR
@@ -2008,7 +2027,7 @@ public class InstructionParserARM {
 		case arm_vstr__32:			// A8.6.400 VSTR
 									// vstr<c> <Sd>, [<Rn>{, #+/-<imm>}]
 			instruction = mnemonic + getArmCondition(opcode) + getVFP_vXXr(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmax_vmin__int:	// A8.6.321 VMAX, VMIN (integer)
@@ -2018,10 +2037,10 @@ public class InstructionParserARM {
 									// vmin<c>.<dt> <Dd>, <Dn>, <Dm>
 		case arm_vpmax_vpmin__int:	// A8.6.352 VPMAX, VPMIN (integer)
 									// vp<op><c>.<dt> <Dd>, <Dn>, <Dm>
-									// (this works despite no Q version because Q==1 is UNDEFEIND)
+									// (this works despite no Q version because Q==1 is UNDEFINED)
 			instruction = mnemonic + (isBitEnabled(opcode, 4) ? "min" : "max")
-						  + getVFPSorUDataType(opcode, 24) + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+					+ getVFPSorUDataType(opcode, 24) + getVFPQorDdnmRegs(opcode);
+			// No PC check: not applicable
 			break;
 
 		case arm_vmax_vmin__fp:		// A8.6.322 VMAX, VMIN (floating-point)
@@ -2032,8 +2051,8 @@ public class InstructionParserARM {
 		case arm_vpmax_vpmin__fp:	// A8.6.353 VPMAX, VPMIN (floating-point)
 									// vp<op><c>.f32 <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + (isBitEnabled(opcode, 21) ? "min.f32" : "max.f32")
-						  + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+					+ getVFPQorDdnmRegs(opcode);
+			// No PC check: not applicable
 			break;
 
 		case arm_vml__int:			// A8.6.323 VMLA, VMLAL, VMLS, VMLSL (integer)
@@ -2041,7 +2060,7 @@ public class InstructionParserARM {
 									// v<op><c>.<dt> <Dd>, <Dn>, <Dm>
 			mnemonic += isBitEnabled(opcode, 24) ? 's' : 'a';
 			instruction = mnemonic + getVFPIDataType(opcode, 20) + TAB + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vml__int_long:		// A8.6.323 VMLA, VMLAL, VMLS, VMLSL (integer)
@@ -2049,7 +2068,7 @@ public class InstructionParserARM {
 			mnemonic += isBitEnabled(opcode, 9) ? "sl" : "al";
 			instruction = mnemonic + getVFPSorUDataType(opcode, 24)
 					+ TAB + getVFPQdDnDmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vml__f32:			// A8.6.324 VMLA, VMLS (floating-point)
@@ -2057,7 +2076,7 @@ public class InstructionParserARM {
 									// v<op><c>.f32 <Dd>, <Dn>, <Dm>
 			mnemonic += isBitEnabled(opcode, 21) ? "s.f32" : "a.f32";
 			instruction = mnemonic + TAB + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vml__fp:			// A8.6.324 VMLA, VMLS (floating-point)
@@ -2065,7 +2084,7 @@ public class InstructionParserARM {
 									// v<op><c>.f32 <Sd>, <Sn>, <Sm>
 			mnemonic += isBitEnabled(opcode, 6) ? 's' : 'a' + getArmCondition(opcode);
 			instruction = mnemonic + getVFPSzF64F32dnmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vml__scalar:		// A8.6.325 VMLA, VMLAL, VMLS, VMLSL (by scalar)
@@ -2076,35 +2095,36 @@ public class InstructionParserARM {
 		case arm_vmul__scalar:		// A8.6.339 VMUL, VMULL (by scalar)
 									// vmul<c>.<dt> <Qd>, <Qn>, <Dm[x]>
 									// vmul<c>.<dt> <Dd>, <Dn>, <Dm[x]>
+									// vmull<c>.<dt>  <Qd>,<Dn>,<Dm[x]>
 		case arm_vqdmull__scalar:	// A8.6.360 VQDMULL
 									// vqdmull<c>.<dt> <Qd>,<Dn>,<Dm[x]>
 									// bit 9 == 1, so getVFP_vmXXScalar() works
 			instruction = mnemonic + getVFP_vmXXScalar(opcode, 24);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmov__imm:			// A8.6.326 VMOV (immediate)
 									// vmov<c>.f64 <Dd>, #<imm>
 									// vmov<c>.f32 <Sd>, #<imm>
-			mnemonic += getArmCondition(opcode) + getVFPSzF64F32Type(getBit(opcode, 8)); 
+			mnemonic += getArmCondition(opcode) + getVFPSzF64F32Type(getBit(opcode, 8));
 			imm = (opcode >> 16 & 0xf) << 4 | opcode & 0xf;
 			instruction = mnemonic + TAB + getVFPDorSReg(opcode, getBit(opcode, 8), 12, 22)
-						  + ",#" + getHexValue(imm);
-			// No pc check: not applicable
+					+ ",#" + getHexValue(imm);
+			// No PC check: not applicable
 			break;
 
 		case arm_vmov_5:			// A8.6.328 VMOV (ARM core register to scalar)
 									// vmov<c>.<size> <Dd[x]>, <Rt>
 			mnemonic += getArmCondition(opcode);
 			instruction = mnemonic + getVFP_vmovArmCoreRegToScalar(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmov_6:			// A8.6.329 VMOV (scalar to ARM core register)
 									// vmov<c>.<dt> <Rt>, <Dn[x]>
 			mnemonic += getArmCondition(opcode);
 			instruction = mnemonic + getVFP_vmovScalarToArmCoreReg(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmov_7:			// A8.6.330 VMOV (between ARM core register and
@@ -2113,7 +2133,7 @@ public class InstructionParserARM {
 									// vmov<c> <Rt>, <Sn>
 			mnemonic += getArmCondition(opcode);
 			instruction = mnemonic + getVFP_vmovBetweenArmCoreAndSinglePrecReg(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmov_8:			// A8.6.331 VMOV (between two ARM core registers and
@@ -2122,7 +2142,7 @@ public class InstructionParserARM {
 									// vmov<c> <Rt>, <Rt2>, <Sm>, <Sm1>
 			mnemonic += getArmCondition(opcode);
 			instruction = mnemonic + getVFP_vmovBetween2ArmCoreAndSinglePrecRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmov_9:			// A8.6.332 VMOV (between two ARM core registers and
@@ -2131,7 +2151,7 @@ public class InstructionParserARM {
 									// vmov<c> <Rt>, <Rt2>, <Dm>
 			mnemonic += getArmCondition(opcode);
 			instruction = mnemonic + getVFP_vmovBetween2ArmCoreAnd1DoublewordExtensionRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmovl:				// A8.6.333 VMOVL
@@ -2139,7 +2159,7 @@ public class InstructionParserARM {
 		case arm_vshll__various:	// A8.6.384 VSHLL
 									// vshll<c>.<type><size> <Qd>, <Dm>, #<imm> (0 < <imm> < <size>)
 			instruction = mnemonic + getVFP_vmovl_vshll_operands(opcode, 24);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmovn:				// A8.6.334 VMOVN
@@ -2154,7 +2174,7 @@ public class InstructionParserARM {
 
 			instruction = mnemonic + tempStr + "\t"
 					+ getVFPQorDReg(opcode, 0, 12, 22) + "," +getVFPQorDReg(opcode, 1, 0, 5);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmrs:				// A8.6.335 VMRS
@@ -2163,7 +2183,7 @@ public class InstructionParserARM {
 									// vmrs<c> <Rt>,<spec_reg>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getR_12(opcode) + "," + getVFPSpecialReg(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmsr:				// A8.6.336 VMSR
@@ -2172,7 +2192,7 @@ public class InstructionParserARM {
 									// vmsr<c> <spec_reg>,<Rt>
 			instruction = mnemonic + getArmCondition(opcode) + "\t"
 					+ getVFPSpecialReg(opcode) + "," + getR_12(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmul_1:			// A8.6.337 VMUL, VMULL (integer and polynomial)
@@ -2181,14 +2201,14 @@ public class InstructionParserARM {
 			// 1 1 1 1 0 0 1 op_24_24 0 D_22_22 size_21_20 Vn_19_16 Vd_15_12 1 0 0 1 N_7_7 Q_6_6 M_5_5 1 Vm_3_0
 			mnemonic += (isBitEnabled(opcode, 24) ? ".p" : ".i") + getVFPDataTypeSize(opcode, 20);
 			instruction = mnemonic + TAB + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vmull:				// A8.6.337 VMUL, VMULL (integer and polynomial)
 									// vmull<c>.<dt> <Qd>, <Dn>, <Dm>
 			mnemonic += isBitEnabled(opcode, 9) ? getVFPPDataType(opcode, 20) : getVFPSorUDataType(opcode, 24);
 			instruction = mnemonic + TAB + getVFPQdDnDmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vpadal:			// A8.6.348 VPADAL
@@ -2198,7 +2218,7 @@ public class InstructionParserARM {
 									// vpaddl<c>.<dt> <Qd>, <Qm>
 									// vpaddl<c>.<dt> <Dd>, <Dm>
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 4, 7); // chose bit 4 because it is 0
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vpop:				// A8.6.354 VPOP
@@ -2208,14 +2228,14 @@ public class InstructionParserARM {
 									// vpush<c> <list> (<list> is consecutive 64-bit registers)
 									// vpush<c> <list> (<list> is consecutive 32-bit registers)
 			instruction = mnemonic + getArmCondition(opcode) + getVFP_vpop_vpush_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vqdml__scalar:		// A8.6.358 VQDMLAL, VQDMLSL
 									// vqd<op><c>.<dt> <Qd>,<Dn>,<Dm[x]>
 			mnemonic += isBitEnabled(opcode, 10) ? "sl.s" : "al.s";
 			instruction = mnemonic + getVFPScalarOperands(opcode, 1, 0);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vqdmulh__vec:		// A8.6.359 VQDMULH
@@ -2226,7 +2246,7 @@ public class InstructionParserARM {
 									// vqrdmulh<c>.<dt> <Dd>,<Dn>,<Dm>
 			mnemonic += isBitEnabled(opcode, 20) ? ".s16" : ".s32";
 			instruction = mnemonic + TAB + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vqdmulh__scalar:	// A8.6.359 VQDMULH
@@ -2237,28 +2257,13 @@ public class InstructionParserARM {
 									// vqrdmulh<c>.<dt> <Dd>,<Dn>,<Dm[x]>
 			q = getBit(opcode, 24);
 			instruction = mnemonic + ".s" + getVFPScalarOperands(opcode, q, q);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vqmov:				// A8.6.361 VQMOVN, VQMOVUN
 									// vqmov{u}n<c>.<type><size> <Dd>,<Qm>
 			instruction = mnemonic + getVFP_vqmov_instruction(opcode);
-			// No pc check: not applicable
-			break;
-
-		case arm_vqrshr:			// A8.6.365 VQRSHRN, VQRSHRUN
-			// vqrshr{u}n<c>.<type><size> <Dd>,<Qm>,#<imm>
-		case arm_vqshr:
-			// vqshr{u}n<c>.<type><size> <Dd>,<Qm>,#<imm>
-			instruction = mnemonic + getVFP_vqXshr_instruction(opcode, 24);
-			// No pc check: not applicable
-			break;
-
-		case arm_vqshl__imm:		// A8.6.367 VQSHL, VQSHLU (immediate)
-									// vqshl{u}<c>.<type><size> <Qd>,<Qm>,#<imm>
-									// vqshl{u}<c>.<type><size> <Dd>,<Dm>,#<imm>
-			instruction = mnemonic + getVFP_vqshl_instruction(opcode, 24);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vqrshl:			// A8.6.364 VQRSHL
@@ -2271,10 +2276,25 @@ public class InstructionParserARM {
 									// vrshl<c>.<type><size> <Qd>,<Qm>,<Qn>
 									// vrshl<c>.<type><size> <Dd>,<Dm>,<Dn>
 		case arm_vshl__reg:			// A8.6.383 VSHL (register)
-									// vshl<c>.<type><size>       <Qd>,<Qm>,<Qn>
-									// vshl<c>.<type><size>	     <Dd>,<Dm>,<Dn>
+									// vshl<c>.<type><size> <Qd>,<Qm>,<Qn>
+									// vshl<c>.<type><size> <Dd>,<Dm>,<Dn>
 			instruction = mnemonic + getVFPSorUDataType(opcode, 24) + getVFPQorDdmnRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
+			break;
+
+		case arm_vqrshr:			// A8.6.365 VQRSHRN, VQRSHRUN
+									// vqrshr{u}n<c>.<type><size> <Dd>,<Qm>,#<imm>
+		case arm_vqshr:				// A8.6.368 VQSHRN, VQSHRUN
+									// vqshr{u}n<c>.<type><size> <Dd>,<Qm>,#<imm>
+			instruction = mnemonic + getVFP_vqXshr_instruction(opcode, 24);
+			// No PC check: not applicable
+			break;
+
+		case arm_vqshl__imm:		// A8.6.367 VQSHL, VQSHLU (immediate)
+									// vqshl{u}<c>.<type><size> <Qd>,<Qm>,#<imm>
+									// vqshl{u}<c>.<type><size> <Dd>,<Dm>,#<imm>
+			instruction = mnemonic + getVFP_vqshl_instruction(opcode, 24);
+			// No PC check: not applicable
 			break;
 
 		case arm_vrecpe:			// A8.6.371 VRECPE
@@ -2284,14 +2304,14 @@ public class InstructionParserARM {
 									// vrsqrte<c>.<dt> <Qd>, <Qm>
 									// vrsqrte<c>.<dt> <Dd>, <Dm>
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 8, 10);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vrev:				// A8.6.373 VREV16, VREV32, VREV64
 									// vrev<n><c>.<size> <Qd>,<Qm>
 									// vrev<n><c>.<size> <Dd>,<Dm>
 			instruction = mnemonic + getVFP_vrev_instruction(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vrshr:				// A8.6.376 VRSHR
@@ -2312,7 +2332,7 @@ public class InstructionParserARM {
 									// vsri<c>.<size> <Qd>, <Qm>, #<imm>
 									// vsri<c>.<size> <Dd>, <Dm>, #<imm>
 			instruction = mnemonic + getVFP_vXrX_instruction(opcode, true);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vrshrn:			// A8.6.377 VRSHRN
@@ -2320,7 +2340,7 @@ public class InstructionParserARM {
 		case arm_vshrn:				// A8.6.386 VSHRN
 									// vshrn<c>.i<size> <Dd>, <Qm>, #<imm>
 			instruction = mnemonic + getVFP_vXshrn_instruction(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vshl__imm:			// A8.6.382 VSHL (immediate)
@@ -2330,7 +2350,7 @@ public class InstructionParserARM {
 									// vsli<c>.<size> <Qd>, <Qm>, #<imm>
 									// vsli<c>.<size> <Dd>, <Dm>, #<imm>
 			instruction = mnemonic + getVFP_vXrX_instruction(opcode, false);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vshll__max:		// A8.6.384 VSHLL
@@ -2338,13 +2358,13 @@ public class InstructionParserARM {
 			mnemonic += getVFPIDataType3(opcode, 18);
 			instruction = mnemonic + TAB + getVFPQorDReg(opcode, 1, 12, 22)
 					+ ',' + getVFPQorDReg(opcode, 0, 0, 5) + ",#" + (8 << (opcode >> 18 & 3));
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vtb:				// A8.6.406 VTBL, VTBX
 									// v<op><c>.8 <Dd>, <list>, <Dm>
 			instruction = mnemonic + getVFP_vtb_instruction(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vtrn:				// A8.6.407 VTRN
@@ -2357,14 +2377,14 @@ public class InstructionParserARM {
 									// vzip<c>.<size> <Qd>, <Qm>
 									// vzip<c>.<size> <Dd>, <Dm>
 			instruction = mnemonic + getVFPSzQorDdmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case arm_vtst:				// A8.6.408 VTST
 									// vtst<c>.<size> <Qd>, <Qn>, <Qm>
 									// vtst<c>.<size> <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + getVFPSzQorDdnmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		default:
@@ -2378,7 +2398,7 @@ public class InstructionParserARM {
 	/**
 	 * Disassemble a 16-bit Thumb instruction
 	 * Reference manual citations (e.g., "A8.6.2") refer to sections in the ARM Architecture
-	 * Reference Manual ARMv7-A and ARMv7-R Edition with errata markup
+	 * Reference Manual ARMv7-A and ARMv7-R Edition, Errata markup
 	 * @return disassembled instruction
 	 */
 	private String parseThumbOpcode() throws BufferUnderflowException {
@@ -2425,29 +2445,34 @@ public class InstructionParserARM {
 									// adcs <Rdn>,<Rm> Outside IT block.
 									// adc<c> <Rdn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rdn cannot be PC
+			// No PC check: Rdn cannot be PC
 			break;
 
 		case thumb_add__imm:		// A8.6.4 ADD (immediate, Thumb)
 									// adds <Rdn>,#<imm8> Outside IT block.
 									// add<c> <Rdn>,#<imm8> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 8) + "," + getThumbImmediate8(opcode, 1);
-			// No pc check: Rdn cannot be PC
+			// No PC check: Rdn cannot be PC
 			break;
 
 		case thumb_add__imm_to_sp:	// A8.6.8 ADD (SP plus immediate)
 									// add<c> sp,sp,#<imm>
 			instruction = mnemonic + "\tsp,sp," + getThumbImmediate7(opcode, 4);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_add__reg:		// A8.6.6 ADD (register)
 									// add<c> <Rdn>,<Rm> If <Rdn> is PC, must be outside or last in IT block.
+									// A8.6.9 ADD (SP plus register)
+									// add<c> <Rdm>, sp, <Rdm>
+									// A8.6.9 ADD (SP plus register)
+									// add<c> sp,<Rm>
 			regOp = getThumbRegHigh(opcode, 0, 7);
 			instruction = mnemonic + "\t" + regOp + "," + getThumbRegHigh(opcode, 3, 6);
 
 			if (regOp.equals("pc"))
 				setDefaultPCJumpProperties(true);
+			// Note: having PC (register 15) as the destination register is deprecated
 			break;
 
 		case thumb_add__reg_imm:	// A8.6.4 ADD (immediate, Thumb)
@@ -2455,7 +2480,7 @@ public class InstructionParserARM {
 									// add<c> <Rd>,<Rn>,#<imm3> Inside IT block.
 			instruction = mnemonic + "s\t"
 					+ getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + "," + getThumbImmediate3(opcode);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_add__reg_reg:	// A8.6.6 ADD (register)
@@ -2463,14 +2488,14 @@ public class InstructionParserARM {
 									// add<c> <Rd>,<Rn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t"
 					+ getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + "," + getThumbReg(opcode, 6);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_add__sp_imm:		// A8.6.8 ADD (SP plus immediate)
 									// add<c> <Rd>,sp,#<imm>
 			instruction = mnemonic + "\t"
 					+ getThumbReg(opcode, 8) + ",sp," + getThumbImmediate8(opcode, 4);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_adr:				// A8.6.10 ADR
@@ -2478,14 +2503,14 @@ public class InstructionParserARM {
 									// add <Rd>,pc,imm8		Alternative form
 			instruction = mnemonic + "\t"
 					+ getThumbReg(opcode, 8) + ",pc," + getThumbImmediate8(opcode, 4);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_and:				// A8.6.12 AND (register)
 									// ands <Rdn>,<Rm> Outside IT block.
 									// and<c> <Rdn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rdn cannot be PC
+			// No PC check: Rdn cannot be PC
 			break;
 
 		case thumb_asr__imm:		// A8.6.14 ASR (immediate)
@@ -2493,14 +2518,14 @@ public class InstructionParserARM {
 									// asr<c> <Rd>,<Rm>,#<imm> Inside IT block.
 			instruction = mnemonic + "s\t"
 					+ getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + "," + getThumbImmediate5(opcode, 1);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_asr__reg:		// A8.6.15 ASR (register)
 									// asrs <Rdn>,<Rm> Outside IT block.
 									// asr<c> <Rdn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rdn cannot be PC
+			// No PC check: Rdn cannot be PC
 			break;
 
 		case thumb_b_1:				// A8.6.16 B
@@ -2526,7 +2551,7 @@ public class InstructionParserARM {
 									// bics <Rdn>,<Rm> Outside IT block.
 									// bic<c> <Rdn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rdn cannot be PC
+			// No PC check: Rdn cannot be PC
 			break;
 
 		case thumb_bkpt:			// A8.6.22 BKPT
@@ -2534,7 +2559,7 @@ public class InstructionParserARM {
 		case thumb_svc:				// A8.6.218 SVC (previously SWI)
 									// svc<c> #<imm8>
 			instruction = mnemonic + "\t" + getThumbImmediate8(opcode, 1);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_blx:				// A8.6.24 BLX (register)
@@ -2562,43 +2587,44 @@ public class InstructionParserARM {
 			jumpToAddr = address.add(offset);
 			instruction = mnemonic + addN + "z\t"
 					+ getThumbReg(opcode, 0) + "," + jumpToAddr.toHexAddressString();
+			// No PC check: not applicable
 			break;
 
 		case thumb_cmn:				// A8.6.33 CMN (register)
 									// cmn<c> <Rn>,<Rm>
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_cmp__imm:		// A8.6.35 CMP (immediate)
 									// cmp<c> <Rn>,#<imm8>
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + "," + getThumbImmediate8(opcode, 1);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_cmp__reg:		// A8.6.36 CMP (register)
 									// cmp<c> <Rn>,<Rm> <Rn> and <Rm> both from R0-R7
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_cmp__reg_hi:		// A8.6.36 CMP (register)
 									// cmp<c> <Rn>,<Rm> <Rn> and <Rm> not both from R0-R7
 			instruction = mnemonic + "\t" + getThumbRegHigh(opcode, 0, 7) + "," + getThumbRegHigh(opcode, 3, 6);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_cps:				// B6.1.1 CPS
 									// cps<effect> <iflags> Not permitted in IT block.
 			instruction = mnemonic + getThumbEffect(opcode) + "\t" + getThumbIFlags(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_eor:				// A8.6.45 EOR (register)
 									// eors <Rdn>,<Rm> Outside IT block.
 									// eor<c> <Rdn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_it:				// A8.6.50 IT
@@ -2640,7 +2666,7 @@ public class InstructionParserARM {
 			else if ((mask3 != cond0) && (mask2 != cond0) && (mask1 != cond0) && (mask0 == 1))
 				xyz = "eee";
 			instruction = mnemonic + xyz + "\t" + getCondition(cond);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_ldm:				// A8.6.53 LDM / LDMIA / LDMFD
@@ -2650,7 +2676,7 @@ public class InstructionParserARM {
 			regList = getThumbRegList(opcode, null);
 			String addExclaim = regList.contains(regOp)? "" : "!";
 			instruction = mnemonic + "\t" + regOp + addExclaim + "," + regList;
-			// No pc check: Rn cannot be PC and regList cannot contain PC
+			// No PC check: Rn cannot be PC and regList cannot contain PC
 			break;
 
 		case thumb_ldr__imm:		// A8.6.57 LDR (immediate, Thumb)
@@ -2659,7 +2685,7 @@ public class InstructionParserARM {
 			if (((opcode >> 6) & 0x1f) != 0)
 				instruction += "," + getThumbImmediate5(opcode, 4);
 			instruction += "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_ldr__imm_sp:		// A8.6.57 LDR (immediate, Thumb)
@@ -2668,7 +2694,7 @@ public class InstructionParserARM {
 			if ((opcode & 0xff) != 0)
 				instruction += "," + getThumbImmediate8(opcode, 4);
 			instruction += "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_ldr__lit:		// A8.6.59 LDR (literal)
@@ -2683,14 +2709,14 @@ public class InstructionParserARM {
 
 				instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + ",[pc,#" + getHexValue(imm) + "] ; 0x" + addr;
 			}
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_ldr__reg:		// A8.6.60 LDR (register)
 									// ldr<c> <Rt>,[<Rn>,<Rm>]
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
 					+ getThumbReg(opcode, 6) + "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_ldrb__imm:		// A8.6.61 LDRB (immediate, Thumb)
@@ -2699,7 +2725,7 @@ public class InstructionParserARM {
 			if (((opcode >> 6) & 0x1f) != 0)
 				instruction += "," + getThumbImmediate5(opcode, 1);
 			instruction += "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_ldrb__reg:		// A8.6.64 LDRB (register)
@@ -2712,7 +2738,7 @@ public class InstructionParserARM {
 									// ldrsh<c> <Rt>,[<Rn>,<Rm>]
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
 					+ getThumbReg(opcode, 6) + "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_ldrh__imm:		// A8.6.73 LDRH (immediate, Thumb)
@@ -2721,7 +2747,7 @@ public class InstructionParserARM {
 			if (((opcode >> 6) & 0x1f) != 0)
 				instruction += "," + getThumbImmediate5(opcode, 2);
 			instruction += "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_lsl__imm:		// A8.6.88 LSL (immediate)
@@ -2732,7 +2758,7 @@ public class InstructionParserARM {
 									// lsr<c> <Rd>,<Rm>,#<imm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3)
 					+ ",#" + ((opcode >> 6) & 0x1f);
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_lsl__reg:		// A8.6.89 LSL (register)
@@ -2742,14 +2768,14 @@ public class InstructionParserARM {
 									// lsrs <Rdn>,<Rm> Outside IT block.
 									// lsr<c> <Rdn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_mov__imm:		// A8.6.96 MOV (immediate)
 									// movs <Rd>,#<imm8> Outside IT block.
 									// mov<c> <Rd>,#<imm8> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 8) + "," + getThumbImmediate8(opcode, 1);
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_mov__reg:		// A8.6.97 MOV (register)
@@ -2767,7 +2793,7 @@ public class InstructionParserARM {
 		case thumb_movs:			// A8.6.97 MOV (register)
 									// movs <Rd>,<Rm> Not permitted in IT block
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_mul:				// A8.6.105 MUL
@@ -2775,7 +2801,7 @@ public class InstructionParserARM {
 									// mul<c> <Rdm>,<Rn>,<Rdm> Inside IT block.
 			instruction = mnemonic + "s\t"
 					+ getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + "," + getThumbReg(opcode, 0);
-			// No pc check: Rdm cannot be PC
+			// No PC check: Rdm cannot be PC
 			break;
 
 		case thumb_mvn:				// A8.6.107 MVN (register)
@@ -2785,7 +2811,7 @@ public class InstructionParserARM {
 									// orrs <Rdn>,<Rm> Outside IT block.
 									// orr<c> <Rdn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rd or Rdn cannot be PC
+			// No PC check: Rd or Rdn cannot be PC
 			break;
 
 		case thumb_nop:				// A8.6.110 NOP
@@ -2799,7 +2825,7 @@ public class InstructionParserARM {
 		case thumb_yield:			// A8.6.413 YIELD
 									// yield<c>
 			instruction = mnemonic;
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_pop:				// A8.6.122 POP
@@ -2825,7 +2851,7 @@ public class InstructionParserARM {
 				regList = getThumbRegList(opcode, null);
 			}
 			instruction = mnemonic + "\t" + regList;
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_rev:				// A8.6.135 REV
@@ -2835,7 +2861,7 @@ public class InstructionParserARM {
 		case thumb_revsh:			// A8.6.137 REVSH
 			// revsh<c> <Rd>,<Rm>
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_ror:				// A8.6.140 ROR (register)
@@ -2845,27 +2871,27 @@ public class InstructionParserARM {
 									// sbcs <Rdn>,<Rm> Outside IT block.
 									// sbc<c> <Rdn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rd or Rdn cannot be PC
+			// No PC check: Rd or Rdn cannot be PC
 			break;
 
 		case thumb_rsb:				// A8.6.142 RSB (immediate)
 									// rsbs <Rd>,<Rn>,#0 Outside IT block.
 									// rsb<c> <Rd>,<Rn>,#0 Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + ",#0";
-			// No pc check: Rd or Rdn cannot be PC
+			// No PC check: Rd or Rdn cannot be PC
 			break;
 
 		case thumb_setend:			// A8.6.157 SETEND
 									// setend <endian_specifier> Not permitted in IT block
 			String endian = (((opcode >> 3) & 1) == 1) ? "be" : "le";
 			instruction = mnemonic + "\t" + endian;
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_stm:				// A8.6.189 STM / STMIA / STMEA
 									// stm<c> <Rn>!,<registers>
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + "!," + getThumbRegList(opcode, null);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_str__imm:		// A8.6.193 STR (immediate, Thumb)
@@ -2874,20 +2900,20 @@ public class InstructionParserARM {
 			if (((opcode >> 6) & 0x1f) != 0)
 				instruction += "," + getThumbImmediate5(opcode, 4);
 			instruction += "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_str__imm_sp:		// A8.6.193 STR (immediate, Thumb)
 									// str<c> <Rt>,[sp,#<imm>]
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 8) + ",[sp," + getThumbImmediate8(opcode, 4) + "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_str__reg:		// A8.6.195 STR (register)
 									// str<c> <Rt>,[<Rn>,<Rm>]
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
 					+ getThumbReg(opcode, 6) + "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_strb__imm:		// A8.6.196 STRB (immediate, Thumb)
@@ -2896,14 +2922,14 @@ public class InstructionParserARM {
 			if (((opcode >> 6) & 0x1f) != 0)
 				instruction += "," + getThumbImmediate5(opcode, 1);
 			instruction += "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_strb__reg:		// A8.6.198 STRB (register)
 									// strb<c> <Rt>,[<Rn>,<Rm>]
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
 					+ getThumbReg(opcode, 6) + "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_strh__imm:		// A8.6.206 STRH (immediate, Thumb)
@@ -2912,27 +2938,27 @@ public class InstructionParserARM {
 			if (((opcode >> 6) & 0x1f) != 0)
 				instruction += "," + getThumbImmediate5(opcode, 2);
 			instruction += "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_strh__reg:		// A8.6.208 STRH (register)
 									// strh<c> <Rt>,[<Rn>,<Rm>]
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + ",[" + getThumbReg(opcode, 3) + ","
 					+ getThumbReg(opcode, 6) + "]";
-			// No pc check: Rt cannot be PC
+			// No PC check: Rt cannot be PC
 			break;
 
 		case thumb_sub__imm:		// A8.6.211 SUB (immediate, Thumb)
 									// subs <Rdn>,#<imm8> Outside IT block.
 									// sub<c> <Rdn>,#<imm8> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 8) + "," + getThumbImmediate8(opcode, 1);
-			// No pc check: Rdn cannot be PC
+			// No PC check: Rdn cannot be PC
 			break;
 
 		case thumb_sub__imm_from_sp:	// A8.6.215 SUB (SP minus immediate)
 									// sub<c> sp,sp,#<imm>
 			instruction = mnemonic + "\tsp,sp," + getThumbImmediate7(opcode, 4);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		case thumb_sub__reg_imm:	// A8.6.211 SUB (immediate, Thumb)
@@ -2940,7 +2966,7 @@ public class InstructionParserARM {
 									// sub<c> <Rd>,<Rn>,#<imm3> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + ","
 					+ getThumbImmediate3(opcode);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_sub__reg_reg:	// A8.6.213 SUB (register)
@@ -2948,7 +2974,7 @@ public class InstructionParserARM {
 									// sub<c> <Rd>,<Rn>,<Rm> Inside IT block.
 			instruction = mnemonic + "s\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3) + ","
 					+ getThumbReg(opcode, 6);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_sxtb:			// A8.6.223 SXTB
@@ -2962,12 +2988,12 @@ public class InstructionParserARM {
 		case thumb_uxth:			// A8.6.265 UXTH
 									// uxth<c> <Rd>,<Rm>
 			instruction = mnemonic + "\t" + getThumbReg(opcode, 0) + "," + getThumbReg(opcode, 3);
-			// No pc check: Rd cannot be PC
+			// No PC check: Rd cannot be PC
 			break;
 
 		case thumb_undefined:
 			instruction = mnemonic;
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		default:
@@ -2981,8 +3007,8 @@ public class InstructionParserARM {
 	/**
 	 * Disassemble a 32-bit Thumb instruction
 	 * Reference manual citations (e.g., "A8.6.4") refer to sections in the ARM Architecture
-	 * Reference Manual ARMv7-A and ARMv7-R Edition with errata markup
-	 * @param opcode instruction to parse 
+	 * Reference Manual ARMv7-A and ARMv7-R Edition, Errata markup
+	 * @param opcode instruction to parse
 	 * @return disassembled instruction
 	 */
 	private String parseThumb2Opcode(int opcode) throws BufferUnderflowException {
@@ -3010,102 +3036,134 @@ public class InstructionParserARM {
 		boolean checkPC = false;
 		switch (opcodeIndex) {
 
-		case thumb2_add__imm:	// A8.6.4 ADD (immediate)		// add{s}<c>.w <Rd>,<Rn>,#<const>
-		case thumb2_rsb__imm:	// A8.6.142 RSB (immediate)		// rsb{s}<c>.w <Rd>,<Rn>,#<const>
-		case thumb2_sub__imm:	// A8.6.211 SUB (immediate)		// sub{s}<c>.w <Rd>,<Rn>,#<const>
+		case thumb2_add__imm:		// A8.6.4 ADD (immediate)
+									// add{s}<c>.w <Rd>,<Rn>,#<const>
+									// A8.6.8 ADD (SP plus immediate)
+									// addw <Rd>,sp,#<imm12>
+		case thumb2_rsb__imm:		// A8.6.142 RSB (immediate)
+									// rsb{s}<c>.w <Rd>,<Rn>,#<const>
+		case thumb2_sub__imm:		// A8.6.211 SUB (immediate)
+									// sub{s}<c>.w <Rd>,<Rn>,#<const>
 			instruction = ".w";
 // no break!
-		case thumb2_adc__imm:	// A8.6.1 ADC (immediate)		// adc{s}<c> <Rd>,<Rn>,#<const>
-		case thumb2_and__imm:	// A8.6.11 AND (immediate)		// and{s}<c> <Rd>,<Rn>,#<const>
-		case thumb2_bic__imm:	// A8.6.19 BIC (immediate)		// bic{s}<c> <Rd>,<Rn>,#<const>
-		case thumb2_eor__imm:	// A8.6.44 EOR (immediate)		// eor{s}<c> <Rd>,<Rn>,#<const>
-		case thumb2_orn__imm:	// A8.6.111 ORN (immediate)		// orn{s}<c> <Rd>,<Rn>,#<const>
-		case thumb2_orr__imm:	// A8.6.113 ORR (immediate)		// orr{s}<c> <Rd>,<Rn>,#<const>
-		case thumb2_sbc__imm:	// A8.6.151 SBC (immediate)		// sbc{s}<c> <Rd>,<Rn>,#<const>
-			// . . . . . i_1_10_10 . . . . . S_1_4_4 Rn_1_3_0 . imm3_0_14_12 Rd_0_11_8 imm8_0_7_0
+		case thumb2_adc__imm:		// A8.6.1 ADC (immediate)
+									// adc{s}<c> <Rd>,<Rn>,#<const>
+		case thumb2_and__imm:		// A8.6.11 AND (immediate)
+									// and{s}<c> <Rd>,<Rn>,#<const>
+		case thumb2_bic__imm:		// A8.6.19 BIC (immediate)
+									// bic{s}<c> <Rd>,<Rn>,#<const>
+		case thumb2_eor__imm:		// A8.6.44 EOR (immediate)
+									// eor{s}<c> <Rd>,<Rn>,#<const>
+		case thumb2_orn__imm:		// A8.6.111 ORN (immediate)
+									// orn{s}<c> <Rd>,<Rn>,#<const>
+		case thumb2_orr__imm:		// A8.6.113 ORR (immediate)
+									// orr{s}<c> <Rd>,<Rn>,#<const>
+		case thumb2_sbc__imm:		// A8.6.151 SBC (immediate)
+									// sbc{s}<c> <Rd>,<Rn>,#<const>
 			mnemonic += getS(opcode) + instruction;
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_16(opcode)
-						  + ",#" + getThumb2ExpandImm12(opcode);
-			// No pc check: if Rd is PC, the instruction translates to another enumeral or is unpredictable
+					+ ",#" + getThumb2ExpandImm12(opcode);
+			// No PC check: if Rd is PC, the instruction translates to another enumeral or is UNPREDICTABLE
 			break;
 
-		case thumb2_addw:	// A8.6.4 ADD (immediate, Thumb)	// addw<c> <Rd>,<Rn>,#<imm12>
-		case thumb2_subw:	// A8.6.211 SUB (immediate, Thumb)	// subw<c> <Rd>,<Rn>,#<imm12>
-			// . . . . . i_1_10_10 . . . . . . Rn_1_3_0 . imm3_0_14_12 Rd_0_11_8 imm8_0_7_0
+		case thumb2_addw:			// A8.6.4 ADD (immediate, Thumb)
+									// addw<c> <Rd>,<Rn>,#<imm12>
+		case thumb2_subw:			// A8.6.211 SUB (immediate, Thumb)
+									// subw<c> <Rd>,<Rn>,#<imm12>
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_16(opcode)
-						  + ",#" + getHexValue(getThumb2RawImm12(opcode));
-			// No pc check: if Rd is PC, the instruction translates to another enumeral or is unpredictable
+					+ ",#" + getHexValue(getThumb2RawImm12(opcode));
+			// No PC check: if Rd is PC, the instruction translates to another enumeral or is UNPREDICTABLE
 			break;
 
-		case thumb2_adc__reg:	// A8.6.2 ADC (register)		// adc{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
-		case thumb2_add__reg:	// A8.6.6 ADD (register)		// add{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
-		case thumb2_and__reg:	// A8.6.12 AND (register)		// and{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
-		case thumb2_bic__reg:	// A8.6.20 BIC (register)		// bic{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
-		case thumb2_eor__reg:	// A8.6.45 EOR (register)		// eor{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
-		case thumb2_orr__reg:	// A8.6.114 ORR (register)		// orr{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
-		case thumb2_sbc__reg:	// A8.6.152 SBC (register)		// sbc{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
-		case thumb2_sub__reg:	// A8.6.213 SUB (register)		// sub{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
+		case thumb2_adc__reg:		// A8.6.2 ADC (register)
+									// adc{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
+		case thumb2_add__reg:		// A8.6.6 ADD (register)
+									// add{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
+									// A8.6.9 ADD (SP plus register)
+									// add{s}<c>.w <Rd>,sp,<Rm>{,<shift>}
+		case thumb2_and__reg:		// A8.6.12 AND (register)
+									// and{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
+		case thumb2_bic__reg:		// A8.6.20 BIC (register)
+									// bic{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
+		case thumb2_eor__reg:		// A8.6.45 EOR (register)
+									// eor{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
+		case thumb2_orr__reg:		// A8.6.114 ORR (register)
+									// orr{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
+		case thumb2_sbc__reg:		// A8.6.152 SBC (register)
+									// sbc{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
+		case thumb2_sub__reg:		// A8.6.213 SUB (register)
+									// sub{s}<c>.w <Rd>,<Rn>,<Rm>{,<shift>}
 			instruction = ".w";
 // no break!
-		case thumb2_orn__reg:	// A8.6.112 ORN (register)		// orn{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
-		case thumb2_rsb__reg:	// A8.6.143 RSB (register)		// rsb{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
-			// . . . . . . . . . . . S_1_4_4 Rn_1_3_0 (0) imm3_0_14_12 Rd_0_11_8 imm2_0_7_6 type_0_5_4 Rm_0_3_0
+		case thumb2_orn__reg:		// A8.6.112 ORN (register)
+									// orn{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
+		case thumb2_rsb__reg:		// A8.6.143 RSB (register)
+									// rsb{s}<c> <Rd>,<Rn>,<Rm>{,<shift>}
 			mnemonic += getS(opcode) + instruction;
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_16(opcode)
-						  + ',' + getR_0(opcode) + getThumb2ShiftMode(opcode, 4);
-			// No pc check: if Rd is PC, the instruction translates to another enumeral or is unpredictable
+					+ ',' + getR_0(opcode) + getThumb2ShiftMode(opcode, 4);
+			// No PC check: if Rd is PC, the instruction translates to another enumeral or is UNPREDICTABLE
 			break;
 
-		case thumb2_mov__imm:	// A8.6.96 MOV (immediate)		// mov{s}<c>.w <Rd>,#<const>
+		case thumb2_mov__imm:		// A8.6.96 MOV (immediate)
+									// mov{s}<c>.w <Rd>,#<const>
 			instruction = ".w";
 // no break!
-		case thumb2_mvn__imm:	// A8.6.106 MVN (immediate)		// mvn{s}<c> <Rd>,#<const>
-			// 1 1 1 1 0 i_1_10_10 0 0 0 1 1 S_1_4_4 1 1 1 1 0 imm3_0_14_12 Rd_0_11_8 imm8_0_7_0
+		case thumb2_mvn__imm:		// A8.6.106 MVN (immediate)
+									// mvn{s}<c> <Rd>,#<const>
 			mnemonic += getS(opcode) + instruction;
 			instruction = mnemonic + TAB + getR_8(opcode)+ ",#" + getThumb2ExpandImm12(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
-		case thumb2_mvn__reg:	// A8.6.107 MVN (register)		// mvn{s}<c>.w <Rd>,<Rm>{,<shift>}
-			// . . . . . . . . . . . S_1_4_4 . . . . (0) imm3_0_14_12 Rd_0_11_8 imm2_0_7_6 type_0_5_4 Rm_0_3_0
+		case thumb2_mvn__reg:		// A8.6.107 MVN (register)
+									// mvn{s}<c>.w <Rd>,<Rm>{,<shift>}
 			instruction = mnemonic + getS(opcode) + ".w\t" + getR_8(opcode) + ','
-						  + getR_0(opcode) + getThumb2ShiftMode(opcode, 4);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+					+ getR_0(opcode) + getThumb2ShiftMode(opcode, 4);
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
-		case thumb2_adr__sub:		// A8.6.10 ADR	// adr<c>.w <Rd>,<label>
-												// add<c> <Rd>,pc,#imm12	Alternate form
-		case thumb2_adr__add:		// A8.6.10 ADR	// adr<c>.w <Rd>,<label>
-												// sub<c> <Rd>,pc,#imm12	Alternate form
+		case thumb2_adr__sub:		// A8.6.10 ADR
+									// adr<c>.w <Rd>,<label>
+									// add<c> <Rd>,pc,#imm12	Alternate form
+		case thumb2_adr__add:		// A8.6.10 ADR
+									// adr<c>.w <Rd>,<label>
+									// sub<c> <Rd>,pc,#imm12	Alternate form
 			instruction = mnemonic + TAB + getR_8(opcode) + ",pc,#"
-						  + getHexValue(getThumb2RawImm12(opcode));
-			// No pc check: if Rd is PC, the instruction is unpredictable
+					+ getHexValue(getThumb2RawImm12(opcode));
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
-		case thumb2_asr__imm:	// A8.6.14 ASR (immediate)		// asr{s}<c>.w <Rd>,<Rm>,#<imm>
-		case thumb2_lsl__imm:	// A8.6.88 LSL (immediate)		// lsl{s}<c>.w <Rd>,<Rm>,#<imm>
-		case thumb2_lsr__imm:	// A8.6.90 LSR (immediate)		// lsr{s}<c>.w <Rd>,<Rm>,#<imm>
+		case thumb2_asr__imm:		// A8.6.14 ASR (immediate)
+									// asr{s}<c>.w <Rd>,<Rm>,#<imm>
+		case thumb2_lsl__imm:		// A8.6.88 LSL (immediate)
+									// lsl{s}<c>.w <Rd>,<Rm>,#<imm>
+		case thumb2_lsr__imm:		// A8.6.90 LSR (immediate)
+									// lsr{s}<c>.w <Rd>,<Rm>,#<imm>
 			instruction = ".w";
-		case thumb2_ror__imm:	// A8.6.139 ROR (immediate)		// ror{s}<c> <Rd>,<Rm>,#<imm>
-			// . . . . . . . . . . . S_1_4_4 . . . . (0) imm3_0_14_12 Rd_0_11_8 imm2_0_7_6 . . Rm_0_3_0
+		case thumb2_ror__imm:		// A8.6.139 ROR (immediate)
+									// ror{s}<c> <Rd>,<Rm>,#<imm>
 			mnemonic += getS(opcode) + instruction;
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_0(opcode)
-						  + ",#" + getThumb2ShiftValue(opcode, opcode >> 4 & 3);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+					+ ",#" + getThumb2ShiftValue(opcode, opcode >> 4 & 3);
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
-		case thumb2_asr__reg:	// A8.6.15 ASR (register)		// asr{s}<c>.w <Rd>,<Rn>,<Rm>
-		case thumb2_lsl__reg:	// A8.6.89 LSL (register)		// lsl{s}<c>.w <Rd>,<Rm>,<Rm>
-		case thumb2_lsr__reg:	// A8.6.91 LSR (register)		// lsr{s}<c>.w <Rd>,<Rn>,<Rm>
-		case thumb2_ror__reg:	// A8.6.140 ROR (register)		// ror{s}<c>.w <Rd>,<Rn>,<Rm>
-			// . . . . . . . . . . . S_1_4_4 Rn_1_3_0 . . . . Rd_0_11_8 . . . . Rm_0_3_0
+		case thumb2_asr__reg:		// A8.6.15 ASR (register)
+									// asr{s}<c>.w <Rd>,<Rn>,<Rm>
+		case thumb2_lsl__reg:		// A8.6.89 LSL (register)
+									// lsl{s}<c>.w <Rd>,<Rm>,<Rm>
+		case thumb2_lsr__reg:		// A8.6.91 LSR (register)
+									// lsr{s}<c>.w <Rd>,<Rn>,<Rm>
+		case thumb2_ror__reg:		// A8.6.140 ROR (register)
+									// ror{s}<c>.w <Rd>,<Rn>,<Rm>
 			mnemonic += getS(opcode) + ".w\t";
 			instruction = mnemonic + getR_8(opcode) + ',' + getR_16(opcode) + ',' + getR_0(opcode);
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 
-		case thumb2_b__cond:	// A8.6.16 B			// b<c>.w <label> Not permitted in IT block.
-			// 1 1 1 1 0 S_1_10_10 cond_1_9_6 imm6_1_5_0 1 0 J1_0_13_13 0 J2_0_11_11 imm11_0_10_0
+		case thumb2_b__cond:		// A8.6.16 B
+									// b<c>.w <label> Not permitted in IT block.
 			instruction = getThumb2Condition(opcode);
 			setDefaultPCJumpProperties(instruction.length() == 0); // true if unconditional b
 			offset = getThumb2_condB_Offset(opcode);
@@ -3113,29 +3171,31 @@ public class InstructionParserARM {
 			instruction = mnemonic + instruction + ".w\t" + jumpToAddr.toHexAddressString();
 			break;
 
-		case thumb2_b__uncond:	// A8.6.16 B				// b<c>.w <label> Outside or last in IT block
+		case thumb2_b__uncond:		// A8.6.16 B
+									// b<c>.w <label> Outside or last in IT block
 			if (ARMv6 > versionMode) {
 				instruction = IDisassembler.INVALID_OPCODE;
 				break;
 			}
 			// otherwise, no break!
-		case thumb2_bl:			// A8.6.23 BL (immediate)	// bl<c> <label> Outside or last in IT block
+		case thumb2_bl:				// A8.6.23 BL (immediate)
+									// bl<c> <label> Outside or last in IT block
 			// 1 1 1 1 0 S_1_10_10 imm10_1_9_0 1 1 J1_0_13_13 1 J2_0_11_11 imm11_0_10_0
 			// . . . . . S_1_10_10 imm10_1_9_0 . . J1_0_13_13 . J2_0_11_11 imm11_0_10_0
 		case thumb2_blx:		// A8.6.23 BLX (immediate)	// blx<c> <label> Outside or last in IT block
 			// 1 1 1 1 0 S_1_10_10 imm10H_1_9_0 1 1 J1_0_13_13 0 J2_0_11_11 imm10L_0_10_1 h_0_1_0
 
-			// if you are reading this and confused that the above 3 are "the same",
-			// my apologies.  the ref manual used to state Encoding T2 bit 0
-			// was always 0, and now has a late annotation that bit 0 is
-			// supposed to be H, and that blx (immediate) is UNDEFINED for h==1.
-			// since h must be 0, and SignExtend() for the 2 cases are:
+			// If you are confused that the above 3 opcode bit maps are "the same",
+			// my apologies.  The manual used to state Encoding T2 bit 0
+			// was always 0, and now says that bit 0 is field h,
+			// and that blx (immediate) is UNDEFINED for h == 1.
+			// Since h must be 0, and SignExtend() for the 2 cases are:
 			//		imm32 = SignExtend(S:I1:I2:imm10:imm11:'0', 32);	// Encoding T1
 			//  	imm32 = SignExtend(S:I1:I2:imm10H:imm10L:'00', 32)	// Encoding T2
-			// the conclusion is that pretending to get imm11_0_10_0
+			// The conclusion is that pretending to get imm11_0_10_0
 			// for the blx (immediate) T2 case is the same since the
 			// end '0' will match the left 0 in the '00' for T2.
-			// thus it's okay to use the same code for both cases.
+			// Thus it's okay to use the same code for both cases.
 
 			{ // first, disallow this conditionally based on ref-manual rules if pre-ARMv6
 
@@ -3144,7 +3204,7 @@ public class InstructionParserARM {
 					instruction = IDisassembler.INVALID_OPCODE;
 					break;
 				}
-	
+
 				offset = getThumb2_uncondB_Offset(opcode, j1, j2);
 			}
 
@@ -3154,65 +3214,74 @@ public class InstructionParserARM {
 			isSubroutineAddress = (opcodeIndex != OpcodeARM.Index.thumb2_b__uncond);
 			break;
 
-		case thumb2_bfi:		// A8.6.18 BFI		// bfi<c> <Rd>,<Rn>,#<lsb>,#<width>
-			// 1 1 1 1 0 (0) 1 1 0 1 1 0 Rn_1_3_0 0 imm3_0_14_12 Rd_0_11_8 imm2_0_7_6 (0) msb_0_4_0
+		case thumb2_bfi:			// A8.6.18 BFI
+									// bfi<c> <Rd>,<Rn>,#<lsb>,#<width>
 			instruction = "," + getR_16(opcode);
 // no break!
-		case thumb2_bfc:		// A8.6.17 BFC		// bfc<c> <Rd>,#<lsb>,#<width>
-			// 1 1 1 1 0 (0) 1 1 0 1 1 0 1 1 1 1 0 imm3_0_14_12 Rd_0_11_8 imm2_0_7_6 (0) msb_0_4_0
+		case thumb2_bfc:			// A8.6.17 BFC
+									// bfc<c> <Rd>,#<lsb>,#<width>
 		{
 			int lsb = opcode >> 10 & 0x1c | opcode >> 6 & 3;
 			int width = (opcode & 0x1f) - lsb + 1;
 			instruction = mnemonic + TAB + getR_8(opcode) + instruction + ",#" + lsb + ",#" + width;
-			// No pc check: if Rd is PC, the instruction is unpredictable
+			// No PC check: if Rd is PC, the instruction is UNPREDICTABLE
 			break;
 		}
 
-		case thumb2_bfx:		// A8.6.154 SBFX	// sbfx<c> <Rd>,<Rn>,#<lsb>,#<width>
-								// A8.6.236 UBFX	// ubfx<c> <Rd>,<Rn>,#<lsb>,#<width>
-			// . . . . . (0) . . U_1_7_7 . . . Rn_1_3_0 . imm3_0_14_12 Rd_0_11_8 imm2_0_7_6 (0) widthm1
+		case thumb2_bfx:			// A8.6.154 SBFX
+									// sbfx<c> <Rd>,<Rn>,#<lsb>,#<width>
+									// A8.6.236 UBFX
+									// ubfx<c> <Rd>,<Rn>,#<lsb>,#<width>
 			mnemonic = (isBitEnabled(opcode, 23) ? "u" : "s") + mnemonic;
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_16(opcode)
-				  + ",#" + getThumb2ShiftValue(opcode, 0) + ",#" + ((opcode & 0x1f) + 1);
-			// No pc check: PC at Rd is UNPREDICTABLE
+					+ ",#" + getThumb2ShiftValue(opcode, 0) + ",#" + ((opcode & 0x1f) + 1);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_bxj:		// A8.6.26 BXJ		// bxj<c> <Rm> Outside or last in IT block
-			// 1 1 1 1 0 0 1 1 1 1 0 0 Rm_1_3_0 1 0 (0) 0 (1)(1)(1)(1)(0)(0)(0)(0)(0)(0)(0)(0)
+		case thumb2_bxj:			// A8.6.26 BXJ
+									// bxj<c> <Rm> Outside or last in IT block
 			instruction = mnemonic + TAB + getR_16(opcode);
 			setDefaultPCJumpProperties(true);
 			break;
 
-		case thumb2_clrex:		// A8.6.30 CLREX	// clrex<c>
+		case thumb2_clrex:			// A8.6.30 CLREX
+									// clrex<c>
 			if (ARMv7 > versionMode) {
 				instruction = IDisassembler.INVALID_OPCODE;
 				break;
 			}
-			// else no break!
-			// 1 1 1 1 0 0 1 1 1 0 1 1 (1)(1)(1) (1) 1 0 (0) 0 (1)(1)(1)(1) 0 0 1 0 (1)(1)(1)(1)
-		case thumb2_sev:		// A8.6.158 SEV		// sev<c>.w
-		case thumb2_wfe:		// A8.6.411 WFE		// wfe<c>.w
-		case thumb2_wfi:		// A8.6.412 WFI		// wfi<c>.w
-		case thumb2_yield:		// A8.6.413 YIELD	// yield<c>.w
-			// . . . . . . . . . . . . (1)(1)(1) (1) . . (0) . (0) . . . . . . . . . . .
+// else no break!
+		case thumb2_sev:			// A8.6.158 SEV
+									// sev<c>.w
+		case thumb2_wfe:			// A8.6.411 WFE
+									// wfe<c>.w
+		case thumb2_wfi:			// A8.6.412 WFI
+									// wfi<c>.w
+		case thumb2_yield:			// A8.6.413 YIELD
+									// yield<c>.w
 			if (ARMv6T2 == versionMode) {
 				mnemonic = "nop.w";
 			}
-			// else no break!
-		case thumb2_nop:
+// else no break!
+		case thumb2_nop:			// A8.6.110 NOP
+									// nop<c>.w
 		case thumb2_undefined:
 			if (ARMv6K == versionMode) {
 				instruction = IDisassembler.INVALID_OPCODE;
 			} else if (ARMv6T2 <= versionMode) {
 				instruction = mnemonic;
 			}
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
-		case thumb2_reverse:	// A8.6.134 RBIT	// rbit<c> <Rd>,<Rm>
-								// A8.6.135 REV		// rev<c>.w <Rd>,<Rm>
-								// A8.6.136 REV16	// rev16<c>.w <Rd>,<Rm>
-								// A8.6.137 REVSH	// revsh<c>.w <Rd>,<Rm>
+		case thumb2_reverse:		// A8.6.134 RBIT
+									// rbit<c> <Rd>,<Rm>
+									// A8.6.135 REV
+									// rev<c>.w <Rd>,<Rm>
+									// A8.6.136 REV16
+									// rev16<c>.w <Rd>,<Rm>
+									// A8.6.137 REVSH
+									// revsh<c>.w <Rd>,<Rm>
 			switch (opcode >> 4 & 3) {
 				case 0:		mnemonic += "ev.w";		break;
 				case 1:		mnemonic += "ev16.w";	break;
@@ -3220,35 +3289,41 @@ public class InstructionParserARM {
 				case 3:		mnemonic += "evsh.w";	break;
 			}
 // no break!
-		case thumb2_clz:		// A8.6.31 CLZ		// clz<c> <Rd>,<Rm>
-			// . . . . . . . . . . . . Rm_1_3_0 . . . . Rd_0_11_8 . . . . Rm_0_3_0
+		case thumb2_clz:			// A8.6.31 CLZ
+									// clz<c> <Rd>,<Rm>
 			regDest = getR_8(opcode);
 			instruction = mnemonic + TAB + regDest + ',' + getR_0(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_cmn__imm:	// A8.6.32 CMN (immediate)	// cmn<c> <Rn>,#<const>
-		case thumb2_cmp__imm:	// A8.6.35 CMP (immediate)	// cmp<c>.w <Rn>,#<const>
-		case thumb2_teq__imm:	// A8.6.227 TEQ (immediate)	// teq<c> <Rn>,#<const>
-		case thumb2_tst__imm:	// A8.6.230 TST (immediate)	// tst<c> <Rn>,#<const>
-			// . . . . . i_1_10_10 . . . . . . Rn_1_3_0 . imm3_0_14_12 . . . . imm8_0_7_0
+		case thumb2_cmn__imm:		// A8.6.32 CMN (immediate
+									// cmn<c> <Rn>,#<const>
+		case thumb2_cmp__imm:		// A8.6.35 CMP (immediate)
+									// cmp<c>.w <Rn>,#<const>
+		case thumb2_teq__imm:		// A8.6.227 TEQ (immediate)
+									// teq<c> <Rn>,#<const>
+		case thumb2_tst__imm:		// A8.6.230 TST (immediate)
+									// tst<c> <Rn>,#<const>
 			instruction = mnemonic + TAB + getR_16(opcode)
-						  + ",#" + getThumb2ExpandImm12(opcode);
-			// No pc check: no registers changed
+					+ ",#" + getThumb2ExpandImm12(opcode);
+			// No PC check: no registers changed
 			break;
 
-		case thumb2_cmn__reg:	// A8.6.33 CMN (register)	// cmn<c> <Rn>,<Rm>{,<shift>}
-		case thumb2_cmp__reg:	// A8.6.36 CMP (register)	// cmp<c>.w <Rn>,<Rm> {,<shift>}
-		case thumb2_teq__reg:	// A8.6.228 TEQ (register)	// teq<c> <Rn>,<Rm>{,<shift>}
-		case thumb2_tst__reg:	// A8.6.231 TST (register)	// tst<c> <Rn>,<Rm>{,<shift>}
-			// . . . . . . . . . . . . Rn_1_3_0 (0) imm3_0_14_12 . . . . imm2_0_7_6 type_0_5_4 Rm_0_3_0
+		case thumb2_cmn__reg:		// A8.6.33 CMN (register)
+									// cmn<c> <Rn>,<Rm>{,<shift>}
+		case thumb2_cmp__reg:		// A8.6.36 CMP (register)
+									// cmp<c>.w <Rn>,<Rm> {,<shift>}
+		case thumb2_teq__reg:		// A8.6.228 TEQ (register)
+									// teq<c> <Rn>,<Rm>{,<shift>}
+		case thumb2_tst__reg:		// A8.6.231 TST (register)
+									// tst<c> <Rn>,<Rm>{,<shift>}
 			instruction = mnemonic + instruction + TAB + getR_16(opcode) + ','
-						  + getR_0(opcode) + getThumb2ShiftMode(opcode, 4);
-			// No pc check: no registers changed
+					+ getR_0(opcode) + getThumb2ShiftMode(opcode, 4);
+			// No PC check: no registers changed
 			break;
 
-		case thumb2_dbg:		// A8.6.40 DBG			// dbg<c> #<option>
-			// . . . . . . . . . . . . (1)(1)(1) (1) . . (0) . (1)(1)(1)(1) . . . . option_0_3_0
+		case thumb2_dbg:			// A8.6.40 DBG
+									// dbg<c> #<option>
 			if (ARMv6T2 == versionMode) {
 				instruction = "nop.w";
 			} else if (ARMv7 > versionMode) {
@@ -3256,37 +3331,40 @@ public class InstructionParserARM {
 			} else {
 				instruction = mnemonic + "\t#" + (opcode & 0xf);
 			}
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
-		case thumb2_dmb:		// A8.6.41 DMB			// dmb<c> #<option>
-		case thumb2_dsb:		// A8.6.42 DSB			// dsb<c> #<option>
+		case thumb2_dmb:			// A8.6.41 DMB
+									// dmb<c> #<option>
+		case thumb2_dsb:			// A8.6.42 DSB
+									// dsb<c> #<option>
 			if (ARMv7 > versionMode)
 				instruction = IDisassembler.INVALID_OPCODE;
 			else
 				instruction = mnemonic + TAB + getDataBarrierOption(opcode);
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
 		case thumb2_enterx_leavex:	// A9.3.1 ENTERX, LEAVEX
-			// enterx  Not permitted in IT block.	leavex  Not permitted in IT block.
-			// 1 1 1 1 0 0 1 1 1 0 1 1 (1)(1)(1) (1) 1 0 (0) 0 (1)(1)(1)(1) 0 0 0 J_0_4_4 (1)(1)(1)(1)
-			// . . . . . . . . . . . . (1)(1)(1) (1) . . (0) . (1)(1)(1)(1) . . . J_0_4_4 (1)(1)(1)(1)
+									// enterx  Not permitted in IT block.
+									// leavex  Not permitted in IT block.
 			instruction = isBitEnabled(opcode, 4) ? mnemonic : "leavex";
+			// No PC check: not applicable
 			break;
 
-		case thumb2_isb:		// A8.6.49 ISB			// isb<c> #<option>
-			// . . . . . . . . . . . . (1)(1)(1) (1) . . (0) . (1)(1)(1)(1) . . . . option_0_3_0
+		case thumb2_isb:			// A8.6.49 ISB
+									// isb<c> #<option>
 			if (ARMv7 > versionMode)
 				instruction = IDisassembler.INVALID_OPCODE;
 			else
 				instruction = mnemonic + TAB + getInstructionBarrierOption(opcode);
-			// No pc check: no registers changed
+			// No PC check: no registers changed
 			break;
 
-		case thumb2_ldm:		// A8.6.53 LDM / LDMIA / LDMFD		// ldm<c>.w <Rn>{!},<registers>
-		case thumb2_ldmdb:		// A8.6.55 LDMDB / LDMEA			// ldmdb<c> <Rn>{!},<registers>
-			// . . . . . . . . . . W_1_5_5 . Rn_1_3_0 P_0_15_15 M_0_14_14 (0) register_list_0_12_0
+		case thumb2_ldm:			// A8.6.53 LDM / LDMIA / LDMFD
+									// ldm<c>.w <Rn>{!},<registers>
+		case thumb2_ldmdb:			// A8.6.55 LDMDB / LDMEA
+									// ldmdb<c> <Rn>{!},<registers>
 			regDest = getRegList(opcode);
 			instruction = mnemonic + TAB + getR_16(opcode) + getW(opcode) + ',' + regDest;
 			if (regDest.contains("pc"))
@@ -3294,8 +3372,13 @@ public class InstructionParserARM {
 			break;
 
 		case thumb2_ldr:
-			if (isBitEnabled(opcode, 22))
-				checkPC = true;	// most other cases will end up in thumb2_pld or thumb2_pli
+			if (isBitEnabled(opcode, 22)) {
+				// exclude ldrt, which has bit 22 set but does not allow RT = PC
+				if (!((opcode >> 8 & 0xf) == 0xe) || !((opcode >> 20 & 0xfff) == 0xf85))
+					checkPC = true;
+				// most other cases of Rt = 15 end up as thumb2_pld or thumb2_pli
+			}
+// no break!
 		case thumb2_str:
 			regDest = getR_12(opcode);
 			{
@@ -3303,21 +3386,40 @@ public class InstructionParserARM {
 				boolean isPC = rn.equals("pc");
 				boolean isReg = 0 == (opcode >> 6 & 0x3f);
 				if (isBitEnabled(opcode, 22)) {
-					// A8.6.57 LDR (immediate, Thumb)	// ldr<c>.w
-					// A8.6.59 LDR (literal)			// ldr.w
-					// A8.6.60 LDR (register)			// ldr<c>.w
-					// A8.6.193 STR (immediate, Thumb)	// str<c>.w
-					// A8.6.195 STR (register)			// str<c>.w
+									// A8.6.57 LDR (immediate, Thumb)
+									// ldr<c>.w <Rt>,[<Rn>{,#<imm12>}]
+									// ldr<c> <Rt>,[<Rn>,#-<imm8>]
+									// ldr<c> <Rt>,[<Rn>],#+/-<imm8>
+									// ldr<c> <Rt>,[<Rn>,#+/-<imm8>]!
+									// A8.6.59 LDR (literal)
+									// ldr<c>.w <Rt>,<label>
+									// ldr<c>.w <Rt>,[pc,#-0] Special case
+									// A8.6.60 LDR (register)
+									// ldr<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
+									// A8.6.193 STR (immediate, Thumb)
+									// str<c>.w <Rt>,[<Rn>,#<imm12>]
+									// str<c> <Rt>,[<Rn>,#-<imm8>]
+									// str<c> <Rt>,[<Rn>],#+/-<imm8>
+									// str<c> <Rt>,[<Rn>,#+/-<imm8>]!
+									// A8.6.195 STR (register)
+									// str<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
 					if (isPC || isBitEnabled(opcode, 23) || isReg)
 						mnemonic += ".w";
 					else if (0xe == (opcode >> 8 & 0xf))
 						mnemonic += 't';
-						
+
 				} else if (isBitEnabled(opcode, 24)) {
-					// A8.6.78 LDRSB (immediate)
-					// A8.6.82 LDRSH (immediate)
-					// A8.6.80 LDRSB (register)	// ldrsb<c>.w
-					// A8.6.84 LDRSH (register)	// ldrsh<c>.w
+									// A8.6.78 LDRSB (immediate)
+									// ldrsb<c> <Rt>,[<Rn>,#<imm12>]
+									// A8.6.82 LDRSH (immediate)
+									// ldrsh<c> <Rt>,[<Rn>,#<imm12>]
+									// ldrsb<c> <Rt>,[<Rn>,#-<imm8>]
+									// ldrsb<c> <Rt>,[<Rn>],#+/-<imm8>
+									// ldrsb<c> <Rt>,[<Rn>,#+/-<imm8>]!
+									// A8.6.80 LDRSB (register)
+									// ldrsb<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
+									// A8.6.84 LDRSH (register)
+									// ldrsh<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
 					mnemonic += isBitEnabled(opcode, 21) ? "sh" : "sb";
 					if (!isPC) {
 						if (0xe == (opcode >> 8 & 0xf))
@@ -3326,16 +3428,40 @@ public class InstructionParserARM {
 							mnemonic += ".w";
 					}
 				} else {
-					// A8.6.61 LDRB (immediate, Thumb)	// ldrb<c>.w
-					// A8.6.63 LDRB (literal)			// ldrb
-					// A8.6.64 LDRB (register)			// ldrb<c>.w
-					// A8.6.75 LDRH (literal)			// ldrh
-					// A8.6.73 LDRH (immediate, Thumb)	// ldrh<c>.w
-					// A8.6.76 LDRH (register)			// ldrh<c>.w
-					// A8.6.196 STRB (immediate, Thumb)	// strb<c>.w
-					// A8.6.198 STRB (register)			// strb<c>.w
-					// A8.6.206 STRH (immediate, Thumb)	// strh<c>.w
-					// A8.6.208 STRH (register)			// strh<c>.w
+									// A8.6.61 LDRB (immediate, Thumb)
+									// ldrb<c> <Rt>,[<Rn>,#-<imm8>]
+									// ldrb<c> <Rt>,[<Rn>],#+/-<imm8>
+									// ldrb<c> <Rt>,[<Rn>,#+/-<imm8>]!
+									// A8.6.63 LDRB (literal)
+									// ldrb<c> <Rt>,<label>
+									// ldrb<c> <Rt>,[pc,#-0] Special case
+									// A8.6.64 LDRB (register)
+									// ldrb<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
+									// A8.6.73 LDRH (immediate, Thumb)
+									// ldrh<c>.w <Rt>,[<Rn>{,#<imm12>}]
+									// ldrh<c> <Rt>,[<Rn>,#-<imm8>]
+									// ldrh<c> <Rt>,[<Rn>],#+/-<imm8>
+									// ldrh<c> <Rt>,[<Rn>,#+/-<imm8>]!
+									// A8.6.75 LDRH (literal)
+									// ldrh<c> <Rt>,<label>
+									// ldrh<c> <Rt>,[pc,#-0] Special case
+									// A8.6.76 LDRH (register)
+									// ldrh<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
+									// A8.6.196 STRB (immediate, Thumb)
+									// strb<c> <Rt>,[<Rn>,#-<imm8>]
+									// strb<c> <Rt>,[<Rn>],#+/-<imm8>
+									// strb<c> <Rt>,[<Rn>,#+/-<imm8>]!
+									// A8.6.198 STRB (register)
+									// strb<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
+									// A8.6.206 STRH (immediate, Thumb)
+									// strh<c>.w <Rt>,[<Rn>{,#<imm12>}]
+									// strh<c> <Rt>,[<Rn>,#-<imm8>]
+									// strh<c> <Rt>,[<Rn>],#+/-<imm8>
+									// strh<c> <Rt>,[<Rn>,#+/-<imm8>]!
+									// A8.6.208 STRH (register)
+									// strh<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
+									// A8.6.210 STRT
+									// strt<c> <Rt>,[<Rn>,#<imm8>]
 					mnemonic += isBitEnabled(opcode, 21) ? "h" : "b";
 					if (!isPC) {
 						if (isBitEnabled(opcode, 23) || isReg)
@@ -3346,51 +3472,60 @@ public class InstructionParserARM {
 				}
 				instruction = mnemonic + TAB + regDest + ',';
 				if (isPC) {
-					// A8.6.59 LDR (literal)	// ldr.w <Rt>,[pc,#+/-<imm>]	Alternative form
-					// A8.6.63 LDRB (literal)	// ldrb <Rt>,[pc,#+/-<imm>]		Alternative form
-					// A8.6.75 LDRH (literal)	// ldrh <Rt>,[pc,#+/-<imm>]		Alternative form
-					// A8.6.79 LDRSB (literal)	// ldrsb <Rt>,[pc,#+/-<imm>]	Alternative form
-					// A8.6.83 LDRSH (literal)	// ldrsh <Rt>,[pc,#+/-<imm>]	Alternative form
+									// A8.6.59 LDR (literal)
+									// ldr.w <Rt>,[pc,#+/-<imm>]	Alternative form
+									// A8.6.63 LDRB (literal)
+									// ldrb <Rt>,[pc,#+/-<imm>]		Alternative form
+									// A8.6.75 LDRH (literal)
+									// ldrh <Rt>,[pc,#+/-<imm>]		Alternative form
+									// A8.6.79 LDRSB (literal)
+									// ldrsb <Rt>,[pc,#+/-<imm>]	Alternative form
+									// A8.6.83 LDRSH (literal)
+									// ldrsh <Rt>,[pc,#+/-<imm>]	Alternative form
 
 					// appends addr as UAL comment
 					instruction += getAddrModePCImm(opcode, opcode & 0xfff);
 				} else if (isBitEnabled(opcode, 23)) {
-					// A8.6.57 LDR (immediate, Thumb)	// ldr<c>.w <Rt>,[<Rn>{,#<imm12>}]
-					// A8.6.61 LDRB (immediate, Thumb)	// ldrb<c>.w <Rt>,[<Rn>{,#<imm12>}]
-					// A8.6.73 LDRH (immediate, Thumb)	// ldrh<c>.w <Rt>,[<Rn>{,#<imm12>}]
-					// A8.6.78 LDRSB (immediate)		// ldrsb<c> <Rt>,[<Rn>{,#<imm12>}]
-					// A8.6.82 LDRSH (immediate)		// ldrsh<c> <Rt>,[<Rn>,#<imm12>]
-					// A8.6.193 STR (immediate, Thumb)	// str<c>.w <Rt>,[<Rn>{,#<imm12>}]
-					// A8.6.196 STRB (immediate, Thumb)	// strb<c>.w <Rt>,[<Rn>{,#<imm12>}]
-					// A8.6.206 STRH (immediate, Thumb)	// strh<c>.w <Rt>,[<Rn>{,#<imm12>}]
+									// A8.6.57 LDR (immediate, Thumb)
+									// A8.6.61 LDRB (immediate, Thumb)
+									// A8.6.73 LDRH (immediate, Thumb)
+									// A8.6.78 LDRSB (immediate)
+									// A8.6.193 STR (immediate, Thumb)
+									// A8.6.196 STRB (immediate, Thumb)
+									// A8.6.206 STRH (immediate, Thumb)
+									//			<mnemonic><c>.w <Rt>,[<Rn>{,#<imm12>}]
+									//
+									// A8.6.82 LDRSH (immediate)
+									// ldrsh<c> <Rt>,[<Rn>,#<imm12>]
 					instruction += '[' + rn;
 					offset = opcode & 0xfff;
 					if (offset != 0)
 						instruction += ",#" + getHexValue(offset);
 					instruction += ']';
 				} else if (isReg) {
-					// A8.6.60 LDR (register)	// ldr<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
-					// A8.6.64 LDRB (register)	// ldrb<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
-					// A8.6.76 LDRH (register)	// ldrh<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
-					// A8.6.80 LDRSB (register)	// ldrsb<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
-					// A8.6.84 LDRSH (register)	// ldrsh<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
-					// A8.6.195 STR (register)	// str<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
-					// A8.6.198 STRB (register)	// strb<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
-					// A8.6.208 STRH (register)	// strh<c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
+									// A8.6.60 LDR (register)
+									// A8.6.64 LDRB (register)
+									// A8.6.76 LDRH (register)
+									// A8.6.80 LDRSB (register)
+									// A8.6.84 LDRSH (register)
+									// A8.6.195 STR (register)
+									// A8.6.198 STRB (register)
+									// A8.6.208 STRH (register)
+									//			<mnemonic><c>.w <Rt>,[<Rn>,<Rm>{,lsl #<imm2>}]
 					instruction += getThumb2AddrModeRegImm(opcode);
 				} else {
-					// A8.6.57 LDR (immediate, Thumb)
-					// A8.6.61 LDRB (immediate, Thumb)
-					// A8.6.73 LDRH (immediate, Thumb)
-					// A8.6.78 LDRSB (immediate)
-					// A8.6.82 LDRSH (immediate)
-					// A8.6.193 STR (immediate, Thumb)
-					// A8.6.196 STRB (immediate, Thumb)					
-					// A8.6.206 STRH (immediate, Thumb)	
-					//			<mnemonic><c> <Rt>,[<Rn>,#-<imm8>]
-					//			<mnemonic> <Rt>,[<Rn>],#+/-<imm8>
-					//			<mnemonic> <Rt>,[<Rn>,#+/-<imm8>]!
-					
+									// A8.6.57 LDR (immediate, Thumb)
+									// A8.6.61 LDRB (immediate, Thumb)
+									// A8.6.73 LDRH (immediate, Thumb)
+									// A8.6.78 LDRSB (immediate)
+									// A8.6.82 LDRSH (immediate)
+									// A8.6.193 STR (immediate, Thumb)
+									// A8.6.196 STRB (immediate, Thumb)
+									// A8.6.206 STRH (immediate, Thumb)
+									//			<mnemonic><c> <Rt>,[<Rn>,#-<imm8>]
+									//			<mnemonic><c> <Rt>,[<Rn>],#+/-<imm8>
+									//			<mnemonic><c> <Rt>,[<Rn>,#+/-<imm8>]!
+
 					instruction += getThumb2AddrModeImm8(opcode, 10, 9, 8, 0);
 				}
 			}
@@ -3398,42 +3533,45 @@ public class InstructionParserARM {
 				setDefaultPCJumpProperties(true);
 			break;
 
-		case thumb2_ldrex:		// A8.6.69 LDREX			// ldrex<c> <Rt>,[<Rn>{,#<imm>}]
-			// . . . . . . . . . . . . Rn_1_3_0 Rt_0_15_12 . . . . imm8_0_7_0
+		case thumb2_ldrex:			// A8.6.69 LDREX
+									// ldrex<c> <Rt>,[<Rn>{,#<imm>}]
 			offset = opcode & 0xff;
 			instruction = mnemonic + TAB + getR_12(opcode) + ",[" + getR_16(opcode);
 			if (offset != 0)
 				instruction +=	",#" + getHexValue(offset << 2);
 			instruction += ']';
-			// No pc check: PC at Rt location will generate different instruction or UNPREDICTABLE
+			// No PC check: PC at Rt location will generate different instruction or UNPREDICTABLE
 			break;
 
-		case thumb2_ldrd__imm:	// A8.6.66 LDRD (immediate)	// ldrd<c> <Rt>,<Rt2>,[<Rn>{,#+/-<imm>}]
-															// ldrd <Rt>,<Rt2>,[<Rn>],#+/-<imm>
-															// ldrd <Rt>,<Rt2>,[<Rn>,#+/-<imm>]!
-		case thumb2_strd:		// A8.6.200 STRD (immediate)// strd<c> <Rt>,<Rt2>,[<Rn>{,#+/-<imm>}]
-															// strd <Rt>,<Rt2>,[<Rn>],#+/-<imm>
-															// strd <Rt>,<Rt2>,[<Rn>,#+/-<imm>]!
-			// . . . . . . . P_1_8_8 U_1_7_7 . W_1_5_5 . Rn_1_3_0 Rt_0_15_12 Rt2_0_11_8 imm8_0_7_0
+		case thumb2_ldrd__imm:		// A8.6.66 LDRD (immediate)
+									// ldrd<c> <Rt>,<Rt2>,[<Rn>{,#+/-<imm>}]
+									// ldrd <Rt>,<Rt2>,[<Rn>],#+/-<imm>
+									// ldrd <Rt>,<Rt2>,[<Rn>,#+/-<imm>]!
+		case thumb2_strd:			// A8.6.200 STRD (immediate)
+									// strd<c> <Rt>,<Rt2>,[<Rn>{,#+/-<imm>}]
+									// strd <Rt>,<Rt2>,[<Rn>],#+/-<imm>
+									// strd <Rt>,<Rt2>,[<Rn>,#+/-<imm>]!
 			instruction = mnemonic + TAB + getR_12(opcode) + ',' + getR_8(opcode)
-						  + ',' + getThumb2AddrModeImm8(opcode, 24, 23, 21, 2);
-			// No pc check: PC in <Rt,Rt2> is UNPREDICTABLE
+					+ ',' + getThumb2AddrModeImm8(opcode, 24, 23, 21, 2);
+			// No PC check: PC in <Rt,Rt2> is UNPREDICTABLE
 			break;
 
-		case thumb2_ldrd__lit:	// A8.6.67 LDRD (literal)	// ldrd<c> <Rt>,<Rt2>,<label>	ldrd <Rt>,<Rt2>,[pc,#-0] Special case
-			// 1 1 1 0 1 0 0 P_1_8_8 U_1_7_7 1 (0) 1 1 1 1 1 Rt_0_15_12 Rt2_0_11_8 imm8_0_7_0
+		case thumb2_ldrd__lit:		// A8.6.67 LDRD (literal)
+									// ldrd<c> <Rt>,<Rt2>,<label>
+									// ldrd <Rt>,<Rt2>,[pc,#-0] Special case
 			offset = opcode & 0xff;
 			instruction = mnemonic + TAB + getR_12(opcode) + ',' + getR_8(opcode)
-						  + ",[pc,#" + ((isBitEnabled(opcode, 23) && offset != 0) ? "" : "-")
-						  + getHexValue(offset<<2) + ']';
-			// No pc check: PC at Rt is UNPREDICTABLE
+					+ ",[pc,#" + ((isBitEnabled(opcode, 23) && offset != 0) ? "" : "-")
+					+ getHexValue(offset<<2) + ']';
+			// No PC check: PC at Rt is UNPREDICTABLE
 			break;
 
-		case thumb2_ldrexx:
-			// A8.6.70 LDREXB			// ldrexb<c> <Rt>, [<Rn>]
-			// A8.6.71 LDREXD			// ldrexd<c> <Rt>,<Rt2>,[<Rn>]
-			// A8.6.72 LDREXH			// ldrexh<c> <Rt>, [<Rn>]
-			// . . . . . . . . . . . . Rn_1_3_0 Rt_0_15_12 (1)(1)(1)(1) . . . . (1)(1)(1)(1)
+		case thumb2_ldrexx:			// A8.6.70 LDREXB
+									// ldrexb<c> <Rt>, [<Rn>]
+									// A8.6.71 LDREXD
+									// ldrexd<c> <Rt>,<Rt2>,[<Rn>]
+									// A8.6.72 LDREXH
+									// ldrexh<c> <Rt>, [<Rn>]
 			if (isBitEnabled(opcode, 5)) {
 				mnemonic += 'd';
 				instruction = "," + getR_8(opcode);
@@ -3441,97 +3579,128 @@ public class InstructionParserARM {
 				mnemonic += isBitEnabled(opcode, 4) ? 'h' : 'b';
 			}
 			instruction = mnemonic + TAB + getR_12(opcode) + instruction
-					  + ",[" + getR_16(opcode) + ']';
-			// No pc check: PC at Rt is UNPREDICTABLE
+					+ ",[" + getR_16(opcode) + ']';
+			// No PC check: PC at Rt is UNPREDICTABLE
 			break;
 
-		case thumb2_ml:			// A8.6.94 MLA				// mla<c> <Rd>,<Rn>,<Rm>,<Ra>
+		case thumb2_ml:				// A8.6.94 MLA
+									// mla<c> <Rd>,<Rn>,<Rm>,<Ra>
 			mnemonic += isBitEnabled(opcode, 4) ? 's' : 'a';
-		case thumb2_usada8:		// A8.6.254 USADA8			// usada8<c> <Rd>,<Rn>,<Rm>,<Ra>
-			// . . . . . . . . . . . . Rn_1_3_0 Ra_0_15_12 Rd_0_11_8 . . . . Rm_0_3_0
+		case thumb2_usada8:			// A8.6.254 USADA8
+									// usada8<c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_16(opcode)
-						  + ',' + getR_0(opcode) + ',' + getR_12(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE
+					+ ',' + getR_0(opcode) + ',' + getR_12(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_mov__reg:	// A8.6.97 MOV (register)		// mov{s}<c>.w <Rd>,<Rm>
+		case thumb2_mov__reg:		// A8.6.97 MOV (register)
+									// mov{s}<c>.w <Rd>,<Rm>
 			instruction = ".w";
-			checkPC = true;
 // no break!
-		case thumb2_rrx:		// A8.6.141 RRX					// rrx{s}<c> <Rd>,<Rm>
-			// . . . . . . . . . . . S_1_4_4 . . . . (0) . . . Rd_0_11_8 . . . . Rm_0_3_0
+		case thumb2_rrx:			// A8.6.141 RRX
+									// rrx{s}<c> <Rd>,<Rm>
 			regDest = getR_8(opcode);
 			instruction = mnemonic + getS(opcode) + instruction + TAB + regDest + "," + getR_0(opcode);
-			if (checkPC && regDest.equals("pc"))
-				setDefaultPCJumpProperties(true);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_movx:		// A8.6.96 MOV (immediate)		// movw<c> <Rd>,#<imm16>
-								// A8.6.99 MOVT					// movt<c> <Rd>,#<imm16>
-			// . . . . . i_1_10_10 . . . . . . imm4_1_3_0 . imm3_0_14_12 Rd_0_11_8 imm8_0_7_0
+		case thumb2_movx:			// A8.6.96 MOV (immediate)
+									// movw<c> <Rd>,#<imm16>
+									// A8.6.99 MOVT
+									// movt<c> <Rd>,#<imm16>
 			mnemonic += isBitEnabled(opcode, 23) ? 't' : 'w';
 			instruction = mnemonic + TAB + getR_8(opcode) + ",#" + getThumb2ImmForMovX(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_mrs:
-			// A8.6.102 MRS
-			// mrs<c> <Rd>,<spec_reg>
-			// 1 1 1 1 0 0 1 1 1 1 1 0 (1)(1)(1) (1) 1 0 (0) 0 Rd_0_11_8 (0)(0)(0)(0)(0)(0)(0)(0)
-			// B6.1.5 MRS
-			// mrs <Rd>,<spec_reg>
-			// 1 1 1 1 0 0 1 1 1 1 1 R_1_4_4 (1)(1)(1) (1) 1 0 (0) 0 Rd_0_11_8 (0)(0)(0)(0)(0)(0)(0)(0)
+		case thumb2_mrs:			// A8.6.102 MRS
+									// mrs<c> <Rd>,<spec_reg>
+									// B6.1.5 MRS
+									// mrs <Rd>,<spec_reg>
 			instruction = mnemonic + TAB + getR_8(opcode)
-						  + ',' + (isBitEnabled(opcode, 20) ? 's' : 'c') + "psr";
-			// No pc check: PC at Rd is UNPREDICTABLE
+					+ ',' + (isBitEnabled(opcode, 20) ? 's' : 'c') + "psr";
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_msr:
-			// B6.1.7 MSR (register)
-			// msr <spec_reg>,<Rn>
-			// 1 1 1 1 0 0 1 1 1 0 0 R_1_4_4 Rn_1_3_0 1 0 (0) 0 mask_0_11_8 (0)(0)(0)(0)(0)(0)(0)(0)
+		case thumb2_msr:			// B6.1.7 MSR (register)
+									// msr <spec_reg>,<Rn>
 			instruction = mnemonic + TAB + getStatusReg(opcode, 20)
-						  + getStatusRegFields(opcode, 8) + ',' + getR_16(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE
+					+ getStatusRegFields(opcode, 8) + ',' + getR_16(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2__r_dnm_math:
-			// A8.6.125 QADD16	// qadd16<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.126 QADD8	// qadd8<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.127 QASX	// qasx<c>    <Rd>,<Rn>,<Rm>
-			// A8.6.130 QSAX	// qsax<c>    <Rd>,<Rn>,<Rm>
-			// A8.6.132 QSUB16	// qsub16<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.133 QSUB8	// qsub8<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.148 SADD16	// sadd16<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.149 SADD8	// sadd8<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.150 SASX	// sasx<c>    <Rd>,<Rn>,<Rm>
-			// A8.6.159 SHADD16	// shadd16<c> <Rd>,<Rn>,<Rm>
-			// A8.6.160 SHADD8	// shadd8<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.161 SHASX	// shasx<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.162 SHSAX	// shsax<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.163 SHSUB16	// shsub16<c> <Rd>,<Rn>,<Rm>
-			// A8.6.164 SHSUB8	// shsub8<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.185 SSAX	// ssax<c>    <Rd>,<Rn>,<Rm>
-			// A8.6.186 SSUB16	// ssub16<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.187 SSUB8	// ssub8<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.233 UADD16	// uadd16<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.234 UADD8	// uadd8<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.235 UASX	// uasx<c>    <Rd>,<Rn>,<Rm>
-			// A8.6.238 UHADD16	// uhadd16<c> <Rd>,<Rn>,<Rm>
-			// A8.6.239 UHADD8	// uhadd8<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.240 UHASX	// uhasx<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.241 UHSAX	// uhsax<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.242 UHSUB16	// uhsub16<c> <Rd>,<Rn>,<Rm>
-			// A8.6.243 UHSUB8	// uhsub8<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.247 UQADD16	// uqadd16<c> <Rd>,<Rn>,<Rm>
-			// A8.6.248 UQADD8	// uqadd8<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.249 UQASX	// uqasx<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.250 UQSAX	// uqsax<c>   <Rd>,<Rn>,<Rm>
-			// A8.6.251 UQSUB16	// uqsub16<c> <Rd>,<Rn>,<Rm>
-			// A8.6.252 UQSUB8	// uqsub8<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.257 USAX	// usax<c>    <Rd>,<Rn>,<Rm>
-			// A8.6.258 USUB16	// usub16<c>  <Rd>,<Rn>,<Rm>
-			// A8.6.259 USUB8	// usub8<c>   <Rd>,<Rn>,<Rm>
+		case thumb2__r_dnm_math:	// A8.6.125 QADD16
+									// qadd16<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.126 QADD8
+									// qadd8<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.127 QASX
+									// qasx<c>    <Rd>,<Rn>,<Rm>
+									// A8.6.130 QSAX
+									// qsax<c>    <Rd>,<Rn>,<Rm>
+									// A8.6.132 QSUB16
+									// qsub16<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.133 QSUB8
+									// qsub8<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.148 SADD16
+									// sadd16<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.149 SADD8
+									// sadd8<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.150 SASX
+									// sasx<c>    <Rd>,<Rn>,<Rm>
+									// A8.6.159 SHADD16
+									// shadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.160 SHADD8
+									// shadd8<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.161 SHASX
+									// shasx<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.162 SHSAX
+									// shsax<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.163 SHSUB16
+									// shsub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.164 SHSUB8
+									// shsub8<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.185 SSAX
+									// ssax<c>    <Rd>,<Rn>,<Rm>
+									// A8.6.186 SSUB16
+									// ssub16<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.187 SSUB8
+									// ssub8<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.233 UADD16
+									// uadd16<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.234 UADD8
+									// uadd8<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.235 UASX
+									// uasx<c>    <Rd>,<Rn>,<Rm>
+									// A8.6.238 UHADD16
+									// uhadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.239 UHADD8
+									// uhadd8<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.240 UHASX
+									// uhasx<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.241 UHSAX
+									// uhsax<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.242 UHSUB16
+									// uhsub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.243 UHSUB8
+									// uhsub8<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.247 UQADD16
+									// uqadd16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.248 UQADD8
+									// uqadd8<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.249 UQASX
+									// uqasx<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.250 UQSAX
+									// uqsax<c>   <Rd>,<Rn>,<Rm>
+									// A8.6.251 UQSUB16
+									// uqsub16<c> <Rd>,<Rn>,<Rm>
+									// A8.6.252 UQSUB8
+									// uqsub8<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.257 USAX
+									// usax<c>    <Rd>,<Rn>,<Rm>
+									// A8.6.258 USUB16
+									// usub16<c>  <Rd>,<Rn>,<Rm>
+									// A8.6.259 USUB8
+									// usub8<c>   <Rd>,<Rn>,<Rm>
 			if (1 == (opcode >> 4 & 7))
 				mnemonic = "";
 			else
@@ -3549,86 +3718,96 @@ public class InstructionParserARM {
 				case 6:	mnemonic += "sax";		break;
 			}
 // no break!
-		case thumb2_mul:		// A8.6.105 MUL		// mul<c> <Rd>,<Rn>,<Rm>
-		case thumb2_sel:		// A8.6.156 SEL		// sel<c> <Rd>,<Rn>,<Rm>
-		case thumb2_usad8:		// A8.6.253 USAD8	// usad8<c> <Rd>,<Rn>,<Rm>
-			// . . . . . . . . . . . . Rn_1_3_0 . . . . Rd_0_11_8 . . . . Rm_0_3_0
-			
+		case thumb2_mul:			// A8.6.105 MUL
+									// mul<c> <Rd>,<Rn>,<Rm>
+		case thumb2_sel:			// A8.6.156 SEL
+									// sel<c> <Rd>,<Rn>,<Rm>
+		case thumb2_usad8:			// A8.6.253 USAD8
+									// usad8<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_16(opcode) + ',' + getR_0(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_sdiv:		// A8.6.155 SDIV	// sdiv<c> <Rd>,<Rn>,<Rm>
-		case thumb2_udiv:		// A8.6.237 UDIV	// udiv<c> <Rd>,<Rn>,<Rm>
-			// . . . . . . . . . . . . Rn_1_3_0 (1) (1)(1)(1) Rd_0_11_8 . . . . Rm_0_3_0
+		case thumb2_sdiv:			// A8.6.155 SDIV
+									// sdiv<c> <Rd>,<Rn>,<Rm>
+		case thumb2_udiv:			// A8.6.237 UDIV
+									// udiv<c> <Rd>,<Rn>,<Rm>
 			if (ARMv7 > versionMode) {
 				instruction = IDisassembler.INVALID_OPCODE;
 				break;
 			}
 
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_16(opcode) + ',' + getR_0(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_qadd:		// A8.6.124 QADD	// qadd<c> <Rd>,<Rm>,<Rn>
-								// A8.6.128 QDADD	// qdadd<c> <Rd>,<Rm>,<Rn>
-		case thumb2_qsub:		// A8.6.129 QDSUB	// qdsub<c> <Rd>,<Rm>,<Rn>
-								// A8.6.131 QSUB	// qsub<c> <Rd>,<Rm>,<Rn>
+		case thumb2_qadd:			// A8.6.124 QADD
+									// qadd<c> <Rd>,<Rm>,<Rn>
+									// A8.6.128 QDADD
+									// qdadd<c> <Rd>,<Rm>,<Rn>
+		case thumb2_qsub:			// A8.6.129 QDSUB
+									// qdsub<c> <Rd>,<Rm>,<Rn>
+									// A8.6.131 QSUB
+									// qsub<c> <Rd>,<Rm>,<Rn>
 			mnemonic = (isBitEnabled(opcode, 4) ? "qd" : "q") + mnemonic;
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_0(opcode) + ',' + getR_16(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
-			
-		case thumb2_pkh:		// A8.6.116 PKH			// pkhbt<c> <Rd>,<Rn>,<Rm>{,lsl #<imm>}
-														// pkhtb <Rd>,<Rn>,<Rm>{,asr #<imm>}
+
+		case thumb2_pkh:			// A8.6.116 PKH
+									// pkhbt<c> <Rd>,<Rn>,<Rm>{,lsl #<imm>}
+									// pkhtb <Rd>,<Rn>,<Rm>{,asr #<imm>}
 			// 1 1 1 0 1 0 1 0 1 1 0 0 Rn_1_3_0 (0) imm3_0_14_12 Rd_0_11_8 imm2_0_7_6 tb_0_5_5 0 Rm_0_3_0
 			mnemonic += isBitEnabled(opcode, 5) ? "tb\t" : "bt\t";
 			instruction = mnemonic + getR_8(opcode) + ',' + getR_16(opcode) + ','
-						  + getR_0(opcode) + getThumb2ShiftMode(opcode, 4);
-			// No pc check: PC at Rd is UNPREDICTABLE
+					+ getR_0(opcode) + getThumb2ShiftMode(opcode, 4);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
 		case thumb2_pld:
 		case thumb2_pli:
-			if ((opcode >> 16 & 0xf) == 15) {	
-				// A8.6.118 PLD (literal)				// pld<c> <label>	pld [pc,#-0] Special case
-				// 1 1 1 1 1 0 0 0 U_1_7_7 0 (0) 1 1 1 1 1 1 1 1 1 imm12_0_11_0
-				// A8.6.120 PLI (immediate, literal)	// pli<c> <label>	pli [pc,#-0] Special case
-				// 1 1 1 1 1 0 0 1 U_1_7_7 0 0 1 1 1 1 1 1 1 1 1 imm12_0_11_0
+			if ((opcode >> 16 & 0xf) == 15) {
+									// A8.6.118 PLD (literal)
+									// pld<c> <label>
+									// pld [pc,#-0] Special case
+									// A8.6.120 PLI (immediate, literal)
+									// pli<c> <label>
+									// pli [pc,#-0] Special case
 				instruction = mnemonic + TAB + getAddrModePCImm(opcode, opcode & 0xfff);
 			} else if (isBitEnabled(opcode, 23) || isBitEnabled(opcode, 11)){
 				String imm;
 				if (isBitEnabled(opcode, 23)) {
-					// A8.6.117 PLD, PLDW (immediate)			// pld{w}<c> [<Rn>,#<imm12>]
-					// 1 1 1 1 1 0 0 0 1 0 W_1_5_5 1 Rn_1_3_0 1 1 1 1 imm12_0_11_0
-					// A8.6.120 PLI (immediate, literal)		// pli<c> [<Rn>,#<imm12>]
-					// 1 1 1 1 1 0 0 1 1 0 0 1 Rn_1_3_0 1 1 1 1 imm12_0_11_0
+									// A8.6.117 PLD, PLDW (immediate)
+									// pld{w}<c> [<Rn>,#<imm12>]
+									// A8.6.120 PLI (immediate, literal)
+									// pli<c> [<Rn>,#<imm12>]
 					imm = getImmediate12(opcode);
-				} else { 
-					// A8.6.117 PLD, PLDW (immediate)			// pld{w}<c> [<Rn>,#-<imm8>]
-					// 1 1 1 1 1 0 0 0 0 0 W_1_5_5 1 Rn_1_3_0 1 1 1 1 1 1 0 0 imm8_0_7_0
-					// A8.6.120 PLI (immediate, literal)		// pli<c> [<Rn>,#-<imm8>]
-					// 1 1 1 1 1 0 0 1 0 0 0 1 Rn_1_3_0 1 1 1 1 1 1 0 0 imm8_0_7_0
+				} else {
+									// A8.6.117 PLD, PLDW (immediate)
+									// pld{w}<c> [<Rn>,#-<imm8>]
+									// A8.6.120 PLI (immediate, literal)
+									// pli<c> [<Rn>,#-<imm8>]
 					imm = "#-" + getHexValue(opcode & 0xff);
 				}
 				instruction = mnemonic + (isBitEnabled(opcode, 21) ? "w\t[" : "\t[")
-							  + getR_16(opcode) + ',' + imm + ']';
+						+ getR_16(opcode) + ',' + imm + ']';
 			} else {
-				// A8.6.119 PLD, PLDW (register)			// pld{w}<c> [<Rn>,<Rm>{,lsl #<imm2>}]
-				// 1 1 1 1 1 0 0 0 0 0 W_1_5_5 1 Rn_1_3_0 1 1 1 1 0 0 0 0 0 0 imm2_0_5_4 Rm_0_3_0
-				// A8.6.121 PLI (register)					// pli<c> [<Rn>,<Rm>{,lsl #<imm2>}]
-				// 1 1 1 1 1 0 0 1 0 0 0 1 Rn_1_3_0 1 1 1 1 0 0 0 0 0 0 imm2_0_5_4 Rm_0_3_0
+									// A8.6.119 PLD, PLDW (register)
+									// pld{w}<c> [<Rn>,<Rm>{,lsl #<imm2>}]
+									// A8.6.121 PLI (register)
+									// pli<c> [<Rn>,<Rm>{,lsl #<imm2>}]
 				instruction = mnemonic + (isBitEnabled(opcode, 21) ? "w\t" : "\t")
-							  + getThumb2AddrModeRegImm(opcode);
+						+ getThumb2AddrModeRegImm(opcode);
 			}
-			// No pc check: PC at Rn is handled above as literal
+			// No PC check: PC at Rn is handled above as literal
 			break;
 
-		case thumb2_pop__regs:	// A8.6.122 POP		// pop<c>.w <registers> <registers> contains more than one register
-			// 1 1 1 0 1 0 0 0 1 0 1 1 1 1 0 1 P_0_15_15 M_0_14_14 (0) register_list_0_12_0
+		case thumb2_pop__regs:		// A8.6.122 POP
+									// pop<c>.w <registers> <registers> contains more than one register
 			checkPC = true;
 // no break!
-		case thumb2_push__regs:	// A8.6.123 PUSH	// push<c>.w <registers> <registers> contains more than one register
+		case thumb2_push__regs:		// A8.6.123 PUSH
+									// push<c>.w <registers> <registers> contains more than one register
 			// 1 1 1 0 1 0 0 0 1 0 1 0 1 1 0 1 (0) M_0_14_14 (0) register_list_0_12_0
 			regDest = getRegList(opcode);
 			instruction = mnemonic + TAB + regDest;
@@ -3636,162 +3815,176 @@ public class InstructionParserARM {
 				setDefaultPCJumpProperties(true);
 			break;
 
-		case thumb2_pop__reg:	// A8.6.122 POP		// pop<c>.w <registers> <registers> contains one register, <Rt>
+		case thumb2_pop__reg:		// A8.6.122 POP
+									// pop<c>.w <registers> <registers> contains one register, <Rt>
 			checkPC = true;
 // no break!
-		case thumb2_push__reg:	// A8.6.123 PUSH	// push<c>.w <registers> <registers> contains one register, <Rt>
+		case thumb2_push__reg:		// A8.6.123 PUSH
+									// push<c>.w <registers> <registers> contains one register, <Rt>
 			regDest = getR_12(opcode);
 			instruction = mnemonic + TAB + '{' + regDest + '}';
 			if (regDest.equals("pc"))
 				setDefaultPCJumpProperties(true);
 			break;
 
-		case thumb2_rfe:		// B6.1.8 RFE		// rfe{ia}<c> <Rn>{!} Outside or last in IT block
-													// rfedb <Rn>{!} Outside or last in IT block
-			// . . . . . . . . . . W_1_5_5 . Rn_1_3_0 (1) (1)(0)(0)(0)(0)(0)(0)(0)(0)(0)(0)(0)(0)(0)(0)
+		case thumb2_rfe:			// B6.1.8 RFE
+									// rfe{ia}<c> <Rn>{!} Outside or last in IT block
+									// rfedb <Rn>{!} Outside or last in IT block
 			instruction = mnemonic
-						  + (isBitEnabled(opcode, 24) /* && isBitEnabled(opcode, 23) */ ? "ia\t" : "db\t")
-						  + getR_16(opcode) + getW(opcode);
+					+ (isBitEnabled(opcode, 24) /* && isBitEnabled(opcode, 23) */ ? "ia\t" : "db\t")
+					+ getR_16(opcode) + getW(opcode);
 			setDefaultPCJumpProperties(true);
 			break;
 
-		case thumb2_smc:		// B6.1.9 SMC (previously SMI)		// smc #<imm4>
-			// 1 1 1 1 0 1 1 1 1 1 1 1 imm4_1_3_0 1 0 0 0 (0)(0)(0)(0)(0)(0)(0)(0)(0)(0)(0)(0)
+		case thumb2_smc:			// B6.1.9 SMC (previously SMI)
+									// smc #<imm4>
 			instruction = mnemonic + "\t#" + getHexValue(opcode >> 16 & 0xf);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_smla:		// A8.6.166 SMLABB, SMLABT, SMLATB, SMLATT		// smla<x><y><c> <Rd>,<Rn>,<Rm>,<Ra>
-			// 1 1 1 1 1 0 1 1 0 0 0 1 Rn_1_3_0 Ra_0_15_12 Rd_0_11_8 0 0 N_0_5_5 M_0_4_4 Rm_0_3_0
+		case thumb2_smla:			// A8.6.166 SMLABB, SMLABT, SMLATB, SMLATT
+									// smla<x><y><c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getBorT(opcode, 5) + getBorT(opcode, 4) + TAB + getR_8(opcode)
-						  + ',' + getR_16(opcode) + ',' + getR_0(opcode) + ',' + getR_12(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ ',' + getR_16(opcode) + ',' + getR_0(opcode) + ',' + getR_12(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_smlad:		// A8.6.167 SMLAD		// smlad{x}<c> <Rd>,<Rn>,<Rm>,<Ra>
-		case thumb2_smlsd:		// A8.6.172 SMLSD		// smlsd{x}<c> <Rd>,<Rn>,<Rm>,<Ra>
-			// . . . . . . . . . . . . Rn_1_3_0 Ra_0_15_12 Rd_0_11_8 . . . M_0_4_4 Rm_0_3_0
+		case thumb2_smlad:			// A8.6.167 SMLAD
+									// smlad{x}<c> <Rd>,<Rn>,<Rm>,<Ra>
+		case thumb2_smlsd:			// A8.6.172 SMLSD
+									// smlsd{x}<c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getX(opcode, 4) + TAB + getR_8(opcode)
-						  + ',' + getR_16(opcode) + ',' + getR_0(opcode) + ',' + getR_12(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ ',' + getR_16(opcode) + ',' + getR_0(opcode) + ',' + getR_12(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_smlal:		// A8.6.168 SMLAL		// smlal<c> <RdLo>,<RdHi>,<Rn>,<Rm>
-								// A8.6.169 SMLALBB, SMLALBT, SMLALTB, SMLALTT
-														// smlal<x><y><c> <RdLo>,<RdHi>,<Rn>,<Rm>
-			// 1 1 1 1 1 0 1 1 1 1 0 0 Rn_1_3_0 RdLo_0_15_12 RdHi_0_11_8 0 0 0 0 Rm_0_3_0
-			// 1 1 1 1 1 0 1 1 1 1 0 0 Rn_1_3_0 RdLo_0_15_12 RdHi_0_11_8 1 0 N_0_5_5 M_0_4_4 Rm_0_3_0
+		case thumb2_smlal:			// A8.6.168 SMLAL
+									// smlal<c> <RdLo>,<RdHi>,<Rn>,<Rm>
+									// A8.6.169 SMLALBB, SMLALBT, SMLALTB, SMLALTT
+									// smlal<x><y><c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			if (isBitEnabled(opcode, 7))
 				mnemonic += getBorT(opcode, 5) + getBorT(opcode, 4);
 // no break!
-		case thumb2_smull:		// A8.6.179 SMULL		// smull<c> <RdLo>,<RdHi>,<Rn>,<Rm>
-		case thumb2_umaal:		// A8.6.244 UMAAL		// umaal<c> <RdLo>,<RdHi>,<Rn>,<Rm>
-		case thumb2_umlal:		// A8.6.245 UMLAL		// umlal<c> <RdLo>,<RdHi>,<Rn>,<Rm>
-		case thumb2_umull:		// A8.6.246 UMULL		// umull<c> <RdLo>,<RdHi>,<Rn>,<Rm>
-			// . . . . . . . . . . . . Rn_1_3_0 RdLo_0_15_12 RdHi_0_11_8 . . . . Rm_0_3_0
+		case thumb2_smull:			// A8.6.179 SMULL
+									// smull<c> <RdLo>,<RdHi>,<Rn>,<Rm>
+		case thumb2_umaal:			// A8.6.244 UMAAL
+									// umaal<c> <RdLo>,<RdHi>,<Rn>,<Rm>
+		case thumb2_umlal:			// A8.6.245 UMLAL
+									// umlal<c> <RdLo>,<RdHi>,<Rn>,<Rm>
+		case thumb2_umull:			// A8.6.246 UMULL
+									// umull<c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			instruction = mnemonic + TAB + getR_12(opcode) + ',' + getR_8(opcode)
-						  + ',' + getR_16(opcode) + ',' + getR_0(opcode);
-			// No pc check: PC at RdLo or RdHi or Rn or Rm is UNPREDICTABLE					 			 
+					+ ',' + getR_16(opcode) + ',' + getR_0(opcode);
+			// No PC check: PC at RdLo or RdHi or Rn or Rm is UNPREDICTABLE
 			break;
 
-		case thumb2_smlald:		// A8.6.170 SMLALD		// smlald{x}<c> <RdLo>,<RdHi>,<Rn>,<Rm>
-		case thumb2_smlsld:		// A8.6.173 SMLSLD		// smlsld{x}<c> <RdLo>,<RdHi>,<Rn>,<Rm>
-			// . . . . . . . . . . . . Rn_1_3_0 RdLo_0_15_12 RdHi_0_11_8 . . . M_0_4_4 Rm_0_3_0
+		case thumb2_smlald:			// A8.6.170 SMLALD
+									// smlald{x}<c> <RdLo>,<RdHi>,<Rn>,<Rm>
+		case thumb2_smlsld:			// A8.6.173 SMLSLD
+									// smlsld{x}<c> <RdLo>,<RdHi>,<Rn>,<Rm>
 			instruction = mnemonic + getX(opcode, 4) + TAB + getR_12(opcode)
-						  + ',' + getR_8(opcode) + ',' + getR_16(opcode) + ',' + getR_0(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ ',' + getR_8(opcode) + ',' + getR_16(opcode) + ',' + getR_0(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_smlaw:		// A8.6.171 SMLAWB, SMLAWT	// smlaw<y><c> <Rd>,<Rn>,<Rm>,<Ra>
-			// 1 1 1 1 1 0 1 1 0 0 1 1 Rn_1_3_0 Ra_0_15_12 Rd_0_11_8 0 0 0 M_0_4_4 Rm_0_3_0
+		case thumb2_smlaw:			// A8.6.171 SMLAWB, SMLAWT
+									// smlaw<y><c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = mnemonic + getBorT(opcode, 4) + TAB + getR_8(opcode)
-						  + ',' + getR_16(opcode) + ',' + getR_0(opcode) + ',' + getR_12(opcode);
+					+ ',' + getR_16(opcode) + ',' + getR_0(opcode) + ',' + getR_12(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_smmla:		// A8.6.174 SMMLA		// smmla{r}<c> <Rd>,<Rn>,<Rm>,<Ra>
-		case thumb2_smmls:		// A8.6.175 SMMLS		// smmls{r}<c> <Rd>,<Rn>,<Rm>,<Ra>
-			// . . . . . . . . . . . . Rn_1_3_0 Ra_0_15_12 Rd_0_11_8 . . . R_0_4_4 Rm_0_3_0
+		case thumb2_smmla:			// A8.6.174 SMMLA
+									// smmla{r}<c> <Rd>,<Rn>,<Rm>,<Ra>
+		case thumb2_smmls:			// A8.6.175 SMMLS
+									// smmls{r}<c> <Rd>,<Rn>,<Rm>,<Ra>
 			instruction = ',' + getR_12(opcode);
 // no break!
-		case thumb2_smmul:		// A8.6.176 SMMUL		// smmul{r}<c> <Rd>,<Rn>,<Rm>
-			// 1 1 1 1 1 0 1 1 0 1 0 1 Rn_1_3_0 1 1 1 1 Rd_0_11_8 0 0 0 R_0_4_4 Rm_0_3_0
+		case thumb2_smmul:			// A8.6.176 SMMUL
+									// smmul{r}<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getR(opcode, 4) + TAB + getR_8(opcode)
-						  + ',' + getR_16(opcode) + ',' + getR_0(opcode)
-						  + instruction;
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ ',' + getR_16(opcode) + ',' + getR_0(opcode)
+					+ instruction;
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_smuad:		// A8.6.177 SMUAD		// smuad{x}<c> <Rd>,<Rn>,<Rm>
-		case thumb2_smusd:		// A8.6.181 SMUSD		// smusd{x}<c> <Rd>,<Rn>,<Rm>
-			// . . . . . . . . . . . . Rn_1_3_0 . . . . Rd_0_11_8 . . . M_0_4_4 Rm_0_3_0
+		case thumb2_smuad:			// A8.6.177 SMUAD
+									// smuad{x}<c> <Rd>,<Rn>,<Rm>
+		case thumb2_smusd:			// A8.6.181 SMUSD
+									// smusd{x}<c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getX(opcode, 4) + TAB + getR_8(opcode)
-			  			  + ',' + getR_16(opcode) + ',' + getR_0(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ ',' + getR_16(opcode) + ',' + getR_0(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_smul:		// A8.6.178 SMULBB, SMULBT, SMULTB, SMULTT
-														// smul<x><y><c> <Rd>,<Rn>,<Rm>
-			// 1 1 1 1 1 0 1 1 0 0 0 1 Rn_1_3_0 1 1 1 1 Rd_0_11_8 0 0 N_0_5_5 M_0_4_4 Rm_0_3_0
+		case thumb2_smul:			// A8.6.178 SMULBB, SMULBT, SMULTB, SMULTT
+									// smul<x><y><c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getBorT(opcode, 5) + getBorT(opcode, 4) + TAB + getR_8(opcode)
-						  + ',' + getR_16(opcode) + ',' + getR_0(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ ',' + getR_16(opcode) + ',' + getR_0(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_smulw:		// A8.6.180 SMULWB, SMULWT	// smulw<y><c> <Rd>,<Rn>,<Rm>
-			// 1 1 1 1 1 0 1 1 0 0 1 1 Rn_1_3_0 1 1 1 1 Rd_0_11_8 0 0 0 M_0_4_4 Rm_0_3_0
+		case thumb2_smulw:			// A8.6.180 SMULWB, SMULWT
+									// smulw<y><c> <Rd>,<Rn>,<Rm>
 			instruction = mnemonic + getBorT(opcode, 4) + TAB + getR_8(opcode)
-						  + ',' + getR_16(opcode) + ',' + getR_0(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ ',' + getR_16(opcode) + ',' + getR_0(opcode);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_srs:		// B6.1.10 SRS				// srsdb sp{!},#<mode>
-			// 1 1 1 0 1 0 0 0 0 0 W_1_5_5 0 (1)(1)(0) (1) (1) (1)(0)(0)(0)(0)(0)(0)(0)(0)(0) mode_0_4_0
-															// srs{ia} sp{!},#<mode>
-			// 1 1 1 0 1 0 0 1 1 0 W_1_5_5 0 (1)(1)(0) (1) (1) (1)(0)(0)(0)(0)(0)(0)(0)(0)(0) mode_0_4_0
-			// . . . . . . . . . . W_1_5_5 . (1)(1)(0) (1) (1) (1)(0)(0)(0)(0)(0)(0)(0)(0)(0) mode_0_4_0
+		case thumb2_srs:			// B6.1.10 SRS
+									// srsdb sp{!},#<mode>
+									// srs{ia} sp{!},#<mode>
 			instruction = mnemonic
-						  + (isBitEnabled(opcode, 24) /* && isBitEnabled(opcode, 23) */ ? "ia" : "db")
-						  + "\tsp" + getW(opcode) + ",#" + getHexValue(opcode & 0x1f);
+					+ (isBitEnabled(opcode, 24) ? "ia" : "db")
+					+ "\tsp" + getW(opcode) + ",#" + getHexValue(opcode & 0x1f);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_ssat:		// A8.6.183 SSAT			// ssat<c> <Rd>,#<imm>,<Rn>{,<shift>}
-		case thumb2_usat:		// A8.6.256 USAT16			// usat16<c> <Rd>,#<imm4>,<Rn>
-			// 1 1 1 1 0 (0) 1 1 0 0 sh_1_5_5 0 Rn_1_3_0 0 imm3_0_14_12 Rd_0_11_8 imm2_0_7_6 (0) sat_imm_0_4_0
+		case thumb2_ssat:			// A8.6.183 SSAT
+									// ssat<c> <Rd>,#<imm>,<Rn>{,<shift>}
+		case thumb2_usat:			// A8.6.256 USAT16
+									// usat16<c> <Rd>,#<imm4>,<Rn>
 			offset = (opcode & 0x1f) + 1 - getBit(opcode, 23);
 			instruction = mnemonic + TAB + getR_8(opcode) + ",#" + offset + ',' + getR_16(opcode)
-						  + getThumb2ShiftMode(opcode, 20);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ getThumb2ShiftMode(opcode, 20);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_ssat16:		// A8.6.184 SSAT16			// ssat16<c> <Rd>,#<imm>,<Rn>
-		case thumb2_usat16:		// A8.6.256 USAT16			// usat16<c> <Rd>,#<imm4>,<Rn>
+		case thumb2_ssat16:			// A8.6.184 SSAT16
+									// ssat16<c> <Rd>,#<imm>,<Rn>
+		case thumb2_usat16:			// A8.6.256 USAT16
+									// usat16<c> <Rd>,#<imm4>,<Rn>
 			// . . . . . (0) . . . . . . Rn_1_3_0 . . . . Rd_0_11_8 . . (0)(0) sat_imm_0_3_0
 			offset = (opcode & 0xf) + 1 - getBit(opcode, 23);
 			instruction = mnemonic + TAB + getR_8(opcode) + ",#" + offset + ',' + getR_16(opcode);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_stm:		// A8.6.189 STM / STMIA / STMEA	// stm<c>.w <Rn>{!},<registers>
-		case thumb2_stmdb:		// A8.6.191 STMDB / STMFD		// stmdb<c> <Rn>{!},<registers>
-			// . . . . . . . . . . W_1_5_5 . Rn_1_3_0 (0) M_0_14_14 (0) register_list_0_12_0
+		case thumb2_stm:			// A8.6.189 STM / STMIA / STMEA
+									// stm<c>.w <Rn>{!},<registers>
+		case thumb2_stmdb:			// A8.6.191 STMDB / STMFD
+									// stmdb<c> <Rn>{!},<registers>
 			instruction = mnemonic + TAB + getR_16(opcode) + getW(opcode)
-						  + ',' + getRegList(opcode);
-			// No pc check: PC is not eligible for writeback
+					+ ',' + getRegList(opcode);
+			// No PC check: PC is not eligible for writeback
 			break;
 
-		case thumb2_strex:		// A8.6.202 STREX		// strex<c> <Rd>,<Rt>,[<Rn>{,#<imm>}]
-			// 1 1 1 0 1 0 0 0 0 1 0 0 Rn_1_3_0 Rt_0_15_12 Rd_0_11_8 imm8_0_7_0
+		case thumb2_strex:			// A8.6.202 STREX
+									// strex<c> <Rd>,<Rt>,[<Rn>{,#<imm>}]
 			offset = opcode & 0xff;
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_12(opcode) + ",[" + getR_16(opcode);
 			if (offset != 0)
 				instruction += ",#" + getHexValue(offset << 2);
 			instruction += ']';
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_strexx:		// A8.6.203 STREXB		// strexb<c> <Rd>,<Rt>,[<Rn>]
-								// A8.6.205 STREXH		// strexh<c> <Rd>,<Rt>,[<Rn>]
-								// A8.6.204 STREXD		// strexd<c> <Rd>,<Rt>,<Rt2>,[<Rn>]
-			// . . . . . . . . . . . . Rn_1_3_0 Rt_0_15_12 (1)(1)(1)(1) . . . . Rd_0_3_0
+		case thumb2_strexx:			// A8.6.203 STREXB
+									// strexb<c> <Rd>,<Rt>,[<Rn>]
+									// A8.6.204 STREXD
+									// strexd<c> <Rd>,<Rt>,<Rt2>,[<Rn>]
+									// A8.6.205 STREXH
+									// strexh<c> <Rd>,<Rt>,[<Rn>]
 			if (isBitEnabled(opcode, 5)) {
 				mnemonic += 'd';
 				instruction = "," + getR_8(opcode);
@@ -3799,893 +3992,963 @@ public class InstructionParserARM {
 				mnemonic += isBitEnabled(opcode, 4) ? 'h' : 'b';
 			}
 			instruction = mnemonic + TAB + getR_0(opcode) + ',' + getR_12(opcode)
-						  + instruction + ",[" + getR_16(opcode) + ']';
-			// No pc check: PC at Rt is UNPREDICTABLE
+					+ instruction + ",[" + getR_16(opcode) + ']';
+			// No PC check: PC at Rt is UNPREDICTABLE
 			break;
 
-		case thumb2_subs:		// B6.1.13 SUBS PC, LR and related instructions
-										// subs pc,lr,#<imm8> Outside or last in IT block
-			// 1 1 1 1 0 0 1 1 1 1 0 1 (1)(1)(1) (0) 1 0 (0) 0 (1)(1)(1)(1) imm8_0_7_0
+		case thumb2_subs:			// B6.1.13 SUBS PC, LR and related instructions
+									// subs pc,lr,#<imm8> Outside or last in IT block
 			instruction = mnemonic + "\tpc,lr,#" + getHexValue(opcode & 0xff);
 			setDefaultPCJumpProperties(true);
 			break;
 
-		case thumb2_sxtab:		// A8.6.220 SXTAB		// sxtab<c> <Rd>,<Rn>,<Rm>{,<rotation>}
-		case thumb2_sxtab16:	// A8.6.221 SXTAB16		// sxtab16<c> <Rd>,<Rn>,<Rm>{,<rotation>}
-		case thumb2_sxtah:		// A8.6.222 SXTAH		// sxtah<c> <Rd>,<Rn>,<Rm>{,<rotation>}
-		case thumb2_uxtab:		// A8.6.260 UXTAB		// uxtab<c> <Rd>,<Rn>,<Rm>{,<rotation>}
-		case thumb2_uxtab16:	// A8.6.261 UXTAB16		// uxtab16<c> <Rd>,<Rn>,<Rm>{,<rotation>}
-		case thumb2_uxtah:		// A8.6.262 UXTAH		// uxtah<c> <Rd>,<Rn>,<Rm>{,<rotation>}
-			// . . . . . . . . . . . . Rn_1_3_0 . . . . Rd_0_11_8 . (0) rotate_0_5_4 Rm_0_3_0
+		case thumb2_sxtab:			// A8.6.220 SXTAB
+									// sxtab<c> <Rd>,<Rn>,<Rm>{,<rotation>}
+		case thumb2_sxtab16:		// A8.6.221 SXTAB16
+									// sxtab16<c> <Rd>,<Rn>,<Rm>{,<rotation>}
+		case thumb2_sxtah:			// A8.6.222 SXTAH
+									// sxtah<c> <Rd>,<Rn>,<Rm>{,<rotation>}
+		case thumb2_uxtab:			// A8.6.260 UXTAB
+			// uxtab<c> <Rd>,<Rn>,<Rm>{,<rotation>}
+		case thumb2_uxtab16:		// A8.6.261 UXTAB16
+			// uxtab16<c> <Rd>,<Rn>,<Rm>{,<rotation>}
+		case thumb2_uxtah:			// A8.6.262 UXTAH
+			// uxtah<c> <Rd>,<Rn>,<Rm>{,<rotation>}
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_16(opcode)
-						  + ',' + getR_0(opcode) + getRotationOperand(opcode, 4);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ ',' + getR_0(opcode) + getRotationOperand(opcode, 4);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_sxtb:		// A8.6.223 SXTB		// sxtb<c>.w <Rd>,<Rm>{,<rotation>}
-		case thumb2_sxtb16:		// A8.6.224 SXTB16		// sxtb16<c> <Rd>,<Rm>{,<rotation>}
-		case thumb2_sxth:		// A8.6.225 SXTH		// sxth<c>.w <Rd>,<Rm>{,<rotation>}
-		case thumb2_uxtb:		// A8.6.263 UXTB		// uxtb<c>.w <Rd>,<Rm>{,<rotation>}
-		case thumb2_uxtb16:		// A8.6.264 UXTB16		// uxtb16<c> <Rd>,<Rm>{,<rotation>}
-		case thumb2_uxth:		// A8.6.265 UXTH		// uxth<c>.w <Rd>,<Rm>{,<rotation>}
-			// . . . . . . . . . . . . . . . . . . . . Rd_0_11_8 . (0) rotate_0_5_4 Rm_0_3_0
+		case thumb2_sxtb:			// A8.6.223 SXTB
+									// sxtb<c>.w <Rd>,<Rm>{,<rotation>}
+		case thumb2_sxtb16:			// A8.6.224 SXTB16
+									// sxtb16<c> <Rd>,<Rm>{,<rotation>}
+		case thumb2_sxth:			// A8.6.225 SXTH
+									// sxth<c>.w <Rd>,<Rm>{,<rotation>}
+		case thumb2_uxtb:			// A8.6.263 UXTB
+									// uxtb<c>.w <Rd>,<Rm>{,<rotation>}
+		case thumb2_uxtb16:			// A8.6.264 UXTB16
+									// uxtb16<c> <Rd>,<Rm>{,<rotation>}
+		case thumb2_uxth:			// A8.6.265 UXTH
+									// uxth<c>.w <Rd>,<Rm>{,<rotation>}
 			instruction = mnemonic + TAB + getR_8(opcode) + ',' + getR_0(opcode)
-						  + getRotationOperand(opcode, 4);
-			// No pc check: PC at Rd is UNPREDICTABLE					 			 
+					+ getRotationOperand(opcode, 4);
+			// No PC check: PC at Rd is UNPREDICTABLE
 			break;
 
-		case thumb2_tb:			// A8.6.226 TBB, TBH	// tbb<c> [<Rn>,<Rm>] Outside or last in IT block
-														// tbh [<Rn>,<Rm>,LSL #1] Outside or last in IT block
-			// 1 1 1 0 1 0 0 0 1 1 0 1 Rn_1_3_0 (1) (1)(1)(1)(0)(0)(0)(0) 0 0 0 H_0_4_4 Rm_0_3_0
+		case thumb2_tb:				// A8.6.226 TBB, TBH
+									// tbb<c> [<Rn>,<Rm>] Outside or last in IT block
+									// tbh<c> [<Rn>,<Rm>,LSL #1] Outside or last in IT block
 			mnemonic += isBitEnabled(opcode, 4) ? 'h' : 'b';
 			instruction = mnemonic + TAB + '[' + getR_16(opcode) + ',' + getR_0(opcode)
-						  + (isBitEnabled(opcode, 4) ? ",lsl #1" : "") + ']';
+					+ (isBitEnabled(opcode, 4) ? ",lsl #1" : "") + ']';
 			setDefaultPCJumpProperties(false);
 			break;
 
-
-
-
-			
-
 			// VFP instructions
 
-		case thumb2_vhadd_vhsub:
-			// vhadd<c> <Qd>, <Qn>, <Qm>
-			// vhadd<c> <Dd>, <Dn>, <Dm>
-			// vhsub<c> <Qd>, <Qn>, <Qm>
-			// vhsub<c> <Dd>, <Dn>, <Dm>
+		case thumb2_vhadd_vhsub:	// A8.6.306 VHADD, VHSUB
+									// vhadd<c> <Qd>, <Qn>, <Qm>
+									// vhadd<c> <Dd>, <Dn>, <Dm>
+									// vhsub<c> <Qd>, <Qn>, <Qm>
+									// vhsub<c> <Dd>, <Dn>, <Dm>
 			mnemonic += isBitEnabled(opcode, 9) ? "sub" : "add";
-		case thumb2_vaba:
-			// vaba<c>.<dt> <Qd>, <Qn>, <Qm>
-			// vaba<c>.<dt> <Dd>, <Dn>, <Dm>
-		case thumb2_vabd__int:
-			// vabd<c>.<dt> <Qd>, <Qn>, <Qm>
-			// vabd<c>.<dt> <Dd>, <Dn>, <Dm>
-		case thumb2_vcge__reg_int:
-			// vceq<c>.<dt> <Qd>, <Qn>, <Qm>
-			// vceq<c>.<dt> <Dd>, <Dn>, <Dm>
-		case thumb2_vcgt__reg_int:
-			// vcgt<c>.<dt> <Qd>, <Qn>, <Qm>
-			// vcgt<c>.<dt> <Dd>, <Dn>, <Dm>
-		case thumb2_vqadd:
-			// vqadd<c>.<dt> <Qd>,<Qn>,<Qm>
-			// vqadd<c>.<dt> <Dd>,<Dn>,<Dm>
-		case thumb2_vrhadd:
-			// vrhadd<c> <Qd>, <Qn>, <Qm>
-			// vrhadd<c> <Dd>, <Dn>, <Dm>
-		case thumb2_vqsub:		// A8.6.369 VQSUB
-			// vqsub<c>.<type><size>  <Qd>,<Qn>,<Qm>
-			// vqsub<c>.<type><size>  <Dd>,<Dn>,<Dm>
+		case thumb2_vaba:			// A8.6.266 VABA, VABAL
+									// vaba<c>.<dt> <Qd>, <Qn>, <Qm>
+									// vaba<c>.<dt> <Dd>, <Dn>, <Dm>
+		case thumb2_vabd__int:		// A8.6.267 VABD, VABDL (integer)
+									// vabd<c>.<dt> <Qd>, <Qn>, <Qm>
+									// vabd<c>.<dt> <Dd>, <Dn>, <Dm>
+		case thumb2_vcge__reg_int:	// A8.6.282 VCGE (register)
+									// vceq<c>.<dt> <Qd>, <Qn>, <Qm>
+									// vceq<c>.<dt> <Dd>, <Dn>, <Dm>
+		case thumb2_vcgt__reg_int:	// A8.6.284 VCGT (register)
+									// vcgt<c>.<dt> <Qd>, <Qn>, <Qm>
+									// vcgt<c>.<dt> <Dd>, <Dn>, <Dm>
+		case thumb2_vqadd:			// A8.6.357 VQADD
+									// vqadd<c>.<dt> <Qd>,<Qn>,<Qm>
+									// vqadd<c>.<dt> <Dd>,<Dn>,<Dm>
+		case thumb2_vrhadd:			// A8.6.374 VRHADD
+									// vrhadd<c> <Qd>, <Qn>, <Qm>
+									// vrhadd<c> <Dd>, <Dn>, <Dm>
+		case thumb2_vqsub:			// A8.6.369 VQSUB
+									// vqsub<c>.<type><size>  <Qd>,<Qn>,<Qm>
+									// vqsub<c>.<type><size>  <Dd>,<Dn>,<Dm>
 			instruction = mnemonic + getVFPSorUDataType(opcode, 28) + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vqdml__vec:
-			// vqd<op><c>.<dt> <Qd>,<Dn>,<Dm>
+		case thumb2_vqdml__vec:		// A8.6.358 VQDMLAL, VQDMLSL
+									// vqd<op><c>.<dt> <Qd>,<Dn>,<Dm>
 			mnemonic += isBitEnabled(opcode, 9) ? "sl" : "al";
 			// can use getVFPSorUDataType() because bit 24 is always '0'
 // no break!
-		case thumb2_vabal:
-			// vabal<c>.<dt> <Qd>, <Dn>, <Dm>
-		case thumb2_vabdl:
-			// vabdl<c>.<dt> <Qd>, <Dn>, <Dm>
-		case thumb2_vqdmull__vec:
-			// vqdmull<c>.<dt> <Qd>,<Dn>,<Dm>
+		case thumb2_vabal:			// A8.6.266 VABA, VABAL
+									// vabal<c>.<dt> <Qd>, <Dn>, <Dm>
+		case thumb2_vabdl:			// A8.6.267 VABD, VABDL (integer)
+									// vabdl<c>.<dt> <Qd>, <Dn>, <Dm>
+		case thumb2_vqdmull__vec:	// A8.6.360 VQDMULL
+									// vqdmull<c>.<dt> <Qd>,<Dn>,<Dm>
 			instruction = mnemonic + getVFPSorUDataType(opcode, 28)
-						  + TAB + getVFPQdDnDmRegs(opcode);
-			// No pc check: not applicable
+					+ TAB + getVFPQdDnDmRegs(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vabd__f32:
-			// vabd<c>.f32 <Qd>, <Qn>, <Qm>
-			// vabd<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vadd__f32:
-			// vadd<c>.f32 <Qd>, <Qn>, <Qm>
-			// vadd<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vceq__reg_f32:
-			// vceq<c>.f32 <Qd>, <Qn>, <Qm>
-			// vceq<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vcge__reg_f32:
-			// vcge<c>.f32 <Qd>, <Qn>, <Qm>
-			// vcge<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vcgt__reg_f32:
-			// vcgt<c>.f32 <Qd>, <Qn>, <Qm>
-			// vcgt<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vmul__f32:
-			// vmul<c>.f32 <Qd>, <Qn>, <Qm>
-			// vmul<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vpadd__f32:
-			// vpadd<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vrecps:
-			// vrecps<c>.f32 <Qd>, <Qn>, <Qm>
-			// vrecps<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vrsqrts:
-			// vrsqrts<c>.f32 <Qd>, <Qn>, <Qm>
-			// vrsqrts<c>.f32 <Dd>, <Dn>, <Dm>
-		case thumb2_vsub__f32:
-			// vsub<c>.f32 <Qd>, <Qn>, <Qm>
-			// vsub<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vabd__f32:		// A8.6.268 VABD (floating-point)
+									// vabd<c>.f32 <Qd>, <Qn>, <Qm>
+									// vabd<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vadd__f32:		// A8.6.272 VADD (floating-point)
+									// vadd<c>.f32 <Qd>, <Qn>, <Qm>
+									// vadd<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vceq__reg_f32:	// A8.6.280 VCEQ (register)
+									// vceq<c>.f32 <Qd>, <Qn>, <Qm>
+									// vceq<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vcge__reg_f32:	// A8.6.282 VCGE (register)
+									// vcge<c>.f32 <Qd>, <Qn>, <Qm>
+									// vcge<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vcgt__reg_f32:	// A8.6.284 VCGT (register)
+									// vcgt<c>.f32 <Qd>, <Qn>, <Qm>
+									// vcgt<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vmul__f32:		// A8.6.338 VMUL (floating-point)
+									// vmul<c>.f32 <Qd>, <Qn>, <Qm>
+									// vmul<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vpadd__f32:		// A8.6.350 VPADD (floating-point)
+									// vpadd<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vrecps:			// A8.6.372 VRECPS
+									// vrecps<c>.f32 <Qd>, <Qn>, <Qm>
+									// vrecps<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vrsqrts:		// A8.6.379 VRSQRTS
+									// vrsqrts<c>.f32 <Qd>, <Qn>, <Qm>
+									// vrsqrts<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vsub__f32:		// A8.6.402 VSUB (floating-point)
+									// vsub<c>.f32 <Qd>, <Qn>, <Qm>
+									// vsub<c>.f32 <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + ".f32\t" + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vabs:
-			// vabs<c>.<dt> <Qd>, <Qm>
-			// vabs<c>.<dt> <Dd>, <Dm>
-		case thumb2_vneg:
-			// vneg<c>.<dt> <Qd>, <Qm>
-			// vneg<c>.<dt> <Dd>, <Dm>
+		case thumb2_vabs:			// A8.6.269 VABS
+									// vabs<c>.<dt> <Qd>, <Qm>
+									// vabs<c>.<dt> <Dd>, <Dm>
+		case thumb2_vneg:			// A8.6.342 VNEG
+									// vneg<c>.<dt> <Qd>, <Qm>
+									// vneg<c>.<dt> <Dd>, <Dm>
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 10, 4); // chose bit 11 because it is 0
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vabs__f:
-			// vabs<c>.f64 <Dd>, <Dm>
-			// vabs<c>.f32 <Sd>, <Sm>
-		case thumb2_vmov__reg_f:
-			// vmov<c>.f64 <Dd>, <Dm>
-			// vmov<c>.f32 <Sd>, <Sm>
-		case thumb2_vneg__f:
-			// vneg<c>.f64 <Dd>, <Dm>
-			// vneg<c>.f32 <Sd>, <Sm>
-		case thumb2_vsqrt:
-			// vsqrt<c>.f64 <Dd>, <Dm>
-			// vsqrt<c>.f32 <Sd>, <Sm>
+		case thumb2_vabs__f:		// A8.6.269 VABS
+									// vabs<c>.f64 <Dd>, <Dm>
+									// vabs<c>.f32 <Sd>, <Sm>
+		case thumb2_vmov__reg_f:	// A8.6.327 VMOV (register)
+									// vmov<c>.f64 <Dd>, <Dm>
+									// vmov<c>.f32 <Sd>, <Sm>
+		case thumb2_vneg__f:		// A8.6.342 VNEG
+									// vneg<c>.f64 <Dd>, <Dm>
+									// vneg<c>.f32 <Sd>, <Sm>
+		case thumb2_vsqrt:			// A8.6.388 VSQRT
+									// vsqrt<c>.f64 <Dd>, <Dm>
+									// vsqrt<c>.f32 <Sd>, <Sm>
 			instruction = mnemonic + getVFPSzF64F32dmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vacge_vacgt:
-			// vacge<c>.f32 <Qd>, <Qn>, <Qm>
-			// vacge<c>.f32 <Dd>, <Dn>, <Dm>
-			// vacgt<c>.f32 <Qd>, <Qn>, <Qm>
-			// vacgt<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vacge_vacgt:	// A8.6.270 VACGE, VACGT, VACLE, VACLT
+									// vacge<c>.f32 <Qd>, <Qn>, <Qm>
+									// vacge<c>.f32 <Dd>, <Dn>, <Dm>
+									// vacgt<c>.f32 <Qd>, <Qn>, <Qm>
+									// vacgt<c>.f32 <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + getVFP_vacge_vacgt(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vadd__int:
-			// vadd<c>.<dt> <Qd>, <Qn>, <Qm>
-			// vadd<c>.<dt> <Dd>, <Dn>, <Dm>
-		case thumb2_vceq__reg_int:
-			// vceq<c>.<dt> <Qd>, <Qn>, <Qm>
-			// vceq<c>.<dt> <Dd>, <Dn>, <Dm>
-		case thumb2_vpadd__int:
-			// vpadd<c>.<dt> <Dd>, <Dn>, <Dm>
-		case thumb2_vsub__int:
-			// vsub<c>.<dt> <Qd>, <Qn>, <Qm>
-			// vsub<c>.<dt> <Dd>, <Dn>, <Dm>
+		case thumb2_vadd__int:		// A8.6.271 VADD (integer)
+									// vadd<c>.<dt> <Qd>, <Qn>, <Qm>
+									// vadd<c>.<dt> <Dd>, <Dn>, <Dm>
+		case thumb2_vceq__reg_int:	// A8.6.280 VCEQ (register)
+									// vceq<c>.<dt> <Qd>, <Qn>, <Qm>
+									// vceq<c>.<dt> <Dd>, <Dn>, <Dm>
+		case thumb2_vpadd__int:		// A8.6.349 VPADD (integer)
+									// vpadd<c>.<dt> <Dd>, <Dn>, <Dm>
+		case thumb2_vsub__int:		// A8.6.401 VSUB (integer)
+									// vsub<c>.<dt> <Qd>, <Qn>, <Qm>
+									// vsub<c>.<dt> <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + getVFPIDataTypeQorDdnmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vnml:
-			// vnmla<c>.f64 <Dd>, <Dn>, <Dm>
-			// vnmla<c>.f32 <Sd>, <Sn>, <Sm>
-			// vnmls<c>.f64 <Dd>, <Dn>, <Dm>
-			// vnmls<c>.f32 <Sd>, <Sn>, <Sm>
+		case thumb2_vnml:			// A8.6.343 VNMLA, VNMLS, VNMUL
+									// vnmla<c>.f64 <Dd>, <Dn>, <Dm>
+									// vnmla<c>.f32 <Sd>, <Sn>, <Sm>
+									// vnmls<c>.f64 <Dd>, <Dn>, <Dm>
+									// vnmls<c>.f32 <Sd>, <Sn>, <Sm>
 			mnemonic += isBitEnabled(opcode, 6) ? 'a' : 's';
 // no break!
-		case thumb2_vadd__fp_f:
-			// vadd<c>.f64 <Dd>, <Dn>, <Dm>
-			// vadd<c>.f32 <Sd>, <Sn>, <Sm>
-		case thumb2_vdiv:
-			// vdiv<c>.f64 <Dd>, <Dn>, <Dm>
-			// vdiv<c>.f32 <Sd>, <Sn>, <Sm>
-		case thumb2_vmul__fp_2:
-			// vmul<c>.f64 <Dd>, <Dn>, <Dm>
-			// vmul<c>.f32 <Sd>, <Sn>, <Sm>
-		case thumb2_vnmul:
-			// vnmul<c>.f64 <Dd>, <Dn>, <Dm>
-			// vnmul<c>.f32 <Sd>, <Sn>, <Sm>
-		case thumb2_vsub__fp_f:
-			// vsub<c>.f64 <Dd>, <Dn>, <Dm>
-			// vsub<c>.f32 <Sd>, <Sn>, <Sm>
+		case thumb2_vadd__fp_f:		// A8.6.272 VADD (floating-point)
+									// vadd<c>.f64 <Dd>, <Dn>, <Dm>
+									// vadd<c>.f32 <Sd>, <Sn>, <Sm>
+		case thumb2_vdiv:			// A8.6.301 VDIV
+									// vdiv<c>.f64 <Dd>, <Dn>, <Dm>
+									// vdiv<c>.f32 <Sd>, <Sn>, <Sm>
+		case thumb2_vmul__fp_2:		// A8.6.338 VMUL (floating-point)
+									// vmul<c>.f64 <Dd>, <Dn>, <Dm>
+									// vmul<c>.f32 <Sd>, <Sn>, <Sm>
+		case thumb2_vnmul:			// A8.6.343 VNMLA, VNMLS, VNMUL
+									// vnmul<c>.f64 <Dd>, <Dn>, <Dm>
+									// vnmul<c>.f32 <Sd>, <Sn>, <Sm>
+		case thumb2_vsub__fp_f:		// A8.6.402 VSUB (floating-point)
+									// vsub<c>.f64 <Dd>, <Dn>, <Dm>
+									// vsub<c>.f32 <Sd>, <Sn>, <Sm>
 			instruction = mnemonic + getVFPSzF64F32dnmOperands(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vaddhn:
-			// vaddhn<c>.<dt> <Dd>, <Qn>, <Qm>
-		case thumb2_vraddhn:
-			// vraddhn<c>.<dt> <Dd>, <Qn>, <Qm>
-		case thumb2_vrsubhn:
-			// vrsubhn<c>.<dt> <Dd>, <Qn>, <Qm>
-		case thumb2_vsubhn:
-			// vsubhn<c>.<dt> <Dd>, <Qn>, <Qm>
+		case thumb2_vaddhn:			// A8.6.273 VADDHN
+									// vaddhn<c>.<dt> <Dd>, <Qn>, <Qm>
+		case thumb2_vraddhn:		// A8.6.370 VRADDHN
+									// vraddhn<c>.<dt> <Dd>, <Qn>, <Qm>
+		case thumb2_vrsubhn:		// A8.6.381 VRSUBHN
+									// vrsubhn<c>.<dt> <Dd>, <Qn>, <Qm>
+		case thumb2_vsubhn:			// A8.6.403 VSUBHN
+									// vsubhn<c>.<dt> <Dd>, <Qn>, <Qm>
 			instruction = mnemonic + getVFPIDataType2DdQnDmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vaddl_vaddw:
-			// vaddl<c>.<dt> <Qd>, <Dn>, <Dm>
-			// vaddw<c>.<dt> <Qd>, <Qn>, <Dm>
-		case thumb2_vsubl_vsubw:
-			// vsubl<c>.<dt> <Qd>, <Dn>, <Dm>
-			// vsubw<c>.<dt> {<Qd>,} <Qn>, <Dm>
+		case thumb2_vaddl_vaddw:	// A8.6.274 VADDL, VADDW
+									// vaddl<c>.<dt> <Qd>, <Dn>, <Dm>
+									// vaddw<c>.<dt> <Qd>, <Qn>, <Dm>
+		case thumb2_vsubl_vsubw:	// A8.6.404 VSUBL, VSUBW
+									// vsubl<c>.<dt> <Qd>, <Dn>, <Dm>
+									// vsubw<c>.<dt> {<Qd>,} <Qn>, <Dm>
 			instruction = mnemonic + getVFP_vXXXl_vXXXw(opcode, 28);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vbif_vbit_vbsl_veor:
-			// vbif<c> <Qd>, <Qn>, <Qm>
-			// vbif<c> <Dd>, <Dn>, <Dm>
-			// vbit<c> <Qd>, <Qn>, <Qm>
-			// vbit<c> <Dd>, <Dn>, <Dm>
-			// vbsl<c> <Qd>, <Qn>, <Qm>
-			// vbsl<c> <Dd>, <Dn>, <Dm>
-			// veor<c> <Qd>, <Qn>, <Qm>
-			// veor<c> <Dd>, <Dn>, <Dm>
+		case thumb2_vbif_vbit_vbsl_veor:	// A8.6.279 VBIF, VBIT, VBSL
+									// vbif<c> <Qd>, <Qn>, <Qm>
+									// vbif<c> <Dd>, <Dn>, <Dm>
+									// vbit<c> <Qd>, <Qn>, <Qm>
+									// vbit<c> <Dd>, <Dn>, <Dm>
+									// vbsl<c> <Qd>, <Qn>, <Qm>
+									// vbsl<c> <Dd>, <Dn>, <Dm>
+									// veor<c> <Qd>, <Qn>, <Qm>
+									// veor<c> <Dd>, <Dn>, <Dm>
 			mnemonic = getVFP_vbif_vbit_vbsl_veor_mnemonic(opcode);
 // no break!
-		case thumb2_vand:
-			// vand<c> <Qd>, <Qn>, <Qm>
-			// vand<c> <Dd>, <Dn>, <Dm>
-		case thumb2_vbic__reg:
-			// vbic<c> <Qd>, <Qn>, <Qm>
-			// vbic<c> <Dd>, <Dn>, <Dm>
-		case thumb2_vorn:
-			// vorn<c> <Qd>, <Qn>, <Qm>
-			// vorn<c> <Dd>, <Dn>, <Dm>
-		case thumb2_vorr__reg:
-			// vorr<c> <Qd>, <Qn>, <Qm>
-			// vorr<c> <Dd>, <Dn>, <Dm>
+		case thumb2_vand:			// A8.6.276 VAND (register)
+									// vand<c> <Qd>, <Qn>, <Qm>
+									// vand<c> <Dd>, <Dn>, <Dm>
+		case thumb2_vbic__reg:		// A8.6.278 VBIC (register)
+									// vbic<c> <Qd>, <Qn>, <Qm>
+									// vbic<c> <Dd>, <Dn>, <Dm>
+		case thumb2_vorn:			// A8.6.345 VORN (register)
+									// vorn<c> <Qd>, <Qn>, <Qm>
+									// vorn<c> <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + getVFPQorDdnmRegs(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmov_vbitwise:
-			// vbic<c>.<dt> <Qd>, #<imm>
-			// vbic<c>.<dt> <Dd>, #<imm>
-			// vmov<c>.<dt> <Qd>, #<imm>
-			// vmov<c>.<dt> <Dd>, #<imm>
-			// vmvn<c>.<dt> <Qd>, #<imm>
-			// vmvn<c>.<dt> <Dd>, #<imm>
-			// vorr<c>.<dt> <Qd>, #<imm>
-			// vorr<c>.<dt> <Dd>, #<imm>
+		case thumb2_vmov_vorr:		// A8.6.327 VMOV (register)
+									// vmov<c> <Qd>, <Qn>, <Qm>
+									// vmov<c> <Dd>, <Dn>, <Dm>
+									// A8.6.347 VORR (register)
+									// vorr<c> <Qd>, <Qn>, <Qm>
+									// vorr<c> <Dd>, <Dn>, <Dm>
+			// mnemonic is "vmov" by default
+			if (getBit(opcode, 7) == getBit(opcode, 5) &&
+				(opcode & 0xf) == (opcode >> 16 & 0xf)) {
+				instruction = mnemonic + TAB + getVFPQorDdmRegs(opcode);
+			} else {
+				instruction = "vorr" + getVFPQorDdnmRegs(opcode);
+			}
+			// No PC check: not applicable
+			break;
+
+		case thumb2_vmov_vbitwise:	// A8.6.277 VBIC (immediate)
+									// vbic<c>.<dt> <Qd>, #<imm>
+									// vbic<c>.<dt> <Dd>, #<imm>
+									// A8.6.326 VMOV (immediate)
+									// vmov<c>.<dt> <Qd>, #<imm>
+									// vmov<c>.<dt> <Dd>, #<imm>
+									// A8.6.340 VMVN (immediate)
+									// vmvn<c>.<dt> <Qd>, #<imm>
+									// vmvn<c>.<dt> <Dd>, #<imm>
+									// A8.6.346 VORR (immediate)
+									// vorr<c>.<dt> <Qd>, #<imm>
+									// vorr<c>.<dt> <Dd>, #<imm>
 			instruction = getVFP_vmov_vbitwise_instruction(opcode, 28);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vceq__imm0:	// A8.6.281 VCEQ (immediate #0)
-			// vceq<c>.<dt> <Qd>, <Qm>, #0
-			// vceq<c>.<dt> <Dd>, <Dm>, #0
-			// vceq<c>.<dt> <Qd>, <Qm>, #0
-			// vceq<c>.<dt> <Dd>, <Dm>, #0
+		case thumb2_vceq__imm0:		// A8.6.281 VCEQ (immediate #0)
+									// vceq<c>.<dt> <Qd>, <Qm>, #0
+									// vceq<c>.<dt> <Dd>, <Dm>, #0
+									// vceq<c>.<dt> <Qd>, <Qm>, #0
+									// vceq<c>.<dt> <Dd>, <Dm>, #0
 			instruction = mnemonic + getVFPIorFQorDdmOperands(opcode, 10) + ",#0";
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcge__imm0:
-			// vcge<c>.<dt> <Qd>, <Qm>, #0
-			// vcge<c>.<dt> <Dd>, <Dm>, #0
-		case thumb2_vcgt__imm0:
-			// vcgt<c>.<dt> <Qd>, <Qm>, #0
-			// vcgt<c>.<dt> <Dd>, <Dm>, #0
-		case thumb2_vcle:
-			// vcle<c>.<dt> <Qd>, <Qm>, #0
-			// vcle<c>.<dt> <Dd>, <Dm>, #0
-		case thumb2_vclt:
-			// vclt<c>.<dt> <Qd>, <Qm>, #0
-			// vclt<c>.<dt> <Dd>, <Dm>, #0
+		case thumb2_vcge__imm0:		// A8.6.283 VCGE (immediate #0)
+									// vcge<c>.<dt> <Qd>, <Qm>, #0
+									// vcge<c>.<dt> <Dd>, <Dm>, #0
+		case thumb2_vcgt__imm0:		// A8.6.285 VCGT (immediate #0)
+									// vcgt<c>.<dt> <Qd>, <Qm>, #0
+									// vcgt<c>.<dt> <Dd>, <Dm>, #0
+		case thumb2_vcle:			// A8.6.287 VCLE (immediate #0)
+									// vcle<c>.<dt> <Qd>, <Qm>, #0
+									// vcle<c>.<dt> <Dd>, <Dm>, #0
+		case thumb2_vclt:			// A8.6.290 VCLT (immediate #0)
+									// vclt<c>.<dt> <Qd>, <Qm>, #0
+									// vclt<c>.<dt> <Dd>, <Dm>, #0
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 10, 11) + ",#0"; // chose bit 11 because it is 0
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcls:
-			// vcls<c>.<dt> <Qd>, <Qm>
-			// vcls<c>.<dt> <Dd>, <Dm>
-		case thumb2_vqabs:
-			// vqabs<c>.<dt> <Qd>,<Qm>
-			// vqabs<c>.<dt> <Dd>,<Dm>
-		case thumb2_vqneg:
-			// vqneg<c>.<dt> <Qd>,<Qm>
-			// vqneg<c>.<dt> <Dd>,<Dm>
+		case thumb2_vcls:			// A8.6.288 VCLS
+									// vcls<c>.<dt> <Qd>, <Qm>
+									// vcls<c>.<dt> <Dd>, <Dm>
+		case thumb2_vqabs:			// A8.6.356 VQABS
+									// vqabs<c>.<dt> <Qd>,<Qm>
+									// vqabs<c>.<dt> <Dd>,<Dm>
+		case thumb2_vqneg:			// A8.6.362 VQNEG
+									// vqneg<c>.<dt> <Qd>,<Qm>
+									// vqneg<c>.<dt> <Dd>,<Dm>
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 4, 11); // chose bit 11 because it is 0
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vclz:
-			// vclz<c>.<dt> <Qd>, <Qm>
-			// vclz<c>.<dt> <Dd>, <Dm>
-			instruction =  mnemonic + getVFPIorFQorDdmOperands(opcode, 11); // chose bit 11 because it is 0 
-			// No pc check: not applicable
+		case thumb2_vclz:			// A8.6.291 VCLZ
+									// vclz<c>.<dt> <Qd>, <Qm>
+									// vclz<c>.<dt> <Dd>, <Dm>
+			instruction =  mnemonic + getVFPIorFQorDdmOperands(opcode, 11); // chose bit 11 because it is 0
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcmp__reg:
-			// vcmp{e}<c>.f64 <Dd>, <Dm>
-			// vcmp{e}<c>.f32 <Sd>, <Sm>
+		case thumb2_vcmp__reg:		// A8.6.292 VCMP, VCMPE
+									// vcmp{e}<c>.f64 <Dd>, <Dm>
+									// vcmp{e}<c>.f32 <Sd>, <Sm>
 			instruction = mnemonic + getE(opcode) + getVFPSzF64F32dmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcmp__to_0:
-			// vcmp{e}<c>.f64 <Dd>, #0.0
-			// vcmp{e}<c>.f32 <Sd>, #0.0
+		case thumb2_vcmp__to_0:		// A8.6.292 VCMP, VCMPE
+									// vcmp{e}<c>.f64 <Dd>, #0.0
+									// vcmp{e}<c>.f32 <Sd>, #0.0
 			instruction = mnemonic + getE(opcode) + getVFP_vcmpTo0Operands(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcnt:
-			// vcnt<c>.8 <Qd>, <Qm>
-			// vcnt<c>.8 <Dd>, <Dm>
+		case thumb2_vcnt:			// A8.6.293 VCNT
+									// vcnt<c>.8 <Qd>, <Qm>
+									// vcnt<c>.8 <Dd>, <Dm>
 			mnemonic += ".8";
-		case thumb2_vmvn:
-			// vmvn<c> <Qd>, <Qm>
-			// vmvn<c> <Dd>, <Dm>
-		case thumb2_vmov__reg:
-			// vmov<c> <Qd>, <Qm>	vmov<c> <Dd>, <Dm>
-		case thumb2_vswp:
-			// vswp<c> <Qd>, <Qm>
-			// vswp<c> <Dd>, <Dm>
+		case thumb2_vmvn:			// A8.6.341 VMVN (register)
+									// vmvn<c> <Qd>, <Qm>
+									// vmvn<c> <Dd>, <Dm>
+		case thumb2_vswp:			// A8.6.405 VSWP
+									// vswp<c> <Qd>, <Qm>
+									// vswp<c> <Dd>, <Dm>
 			instruction = mnemonic + getVFPQorDdmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcvt__fp_i_vec:
-			// vcvt<c>.<Td>.<Tm> <Qd>, <Qm>
-			// vcvt<c>.<Td>.<Tm> <Dd>, <Dm>
+		case thumb2_vcvt__fp_i_vec:	// A8.6.294 VCVT (between floating-point and integer, Advanced SIMD)
+									// vcvt<c>.<Td>.<Tm> <Qd>, <Qm>
+									// vcvt<c>.<Td>.<Tm> <Dd>, <Dm>
 			instruction = mnemonic + getVFP_vcvtFpIVecOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcvt__fp_i_reg:
-			// vcvt{r}<c>.s32.f64 <Sd>, <Dm>
-			// vcvt{r}<c>.s32.f32 <Sd>, <Sm>
-			// vcvt{r}<c>.u32.f64 <Sd>, <Dm>
-			// vcvt{r}<c>.u32.f32 <Sd>, <Sm>
-			// vcvt<c>.f64.<Tm> <Dd>, <Sm>
-			// vcvt<c>.f32.<Tm> <Sd>, <Sm>
+		case thumb2_vcvt__fp_i_reg:	// A8.6.295 VCVT, VCVTR (between floating-point and integer, VFP)
+									// vcvt{r}<c>.s32.f64 <Sd>, <Dm>
+									// vcvt{r}<c>.s32.f32 <Sd>, <Sm>
+									// vcvt{r}<c>.u32.f64 <Sd>, <Dm>
+									// vcvt{r}<c>.u32.f32 <Sd>, <Sm>
+									// vcvt<c>.f64.<Tm> <Dd>, <Sm>
+									// vcvt<c>.f32.<Tm> <Sd>, <Sm>
 			if (isBitEnabled(opcode, 18) && !isBitEnabled(opcode, 7))
 				mnemonic += "r";
 			instruction = mnemonic + getVFP_vcvtFpIRegOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcvt__fp_fix_vec:
-			// vcvt<c>.<Td>.<Tm> <Qd>, <Qm>, #<fbits>
-			// vcvt<c>.<Td>.<Tm> <Dd>, <Dm>, #<fbits>
+		case thumb2_vcvt__fp_fix_vec:	// A8.6.296 VCVT (between floating-point and fixed-point, Advanced SIMD)
+									// vcvt<c>.<Td>.<Tm> <Qd>, <Qm>, #<fbits>
+									// vcvt<c>.<Td>.<Tm> <Dd>, <Dm>, #<fbits>
 			instruction = mnemonic + getVFP_vcvtFpFixVecOperands(opcode, 28);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcvt__fp_fix_reg:
-			// vcvt<c>.<Td>.f64 <Dd>, <Dd>, #<fbits>
-			// vcvt<c>.<Td>.f32 <Sd>, <Sd>, #<fbits>
-			// vcvt<c>.f64.<Td> <Dd>, <Dd>, #<fbits>
-			// vcvt<c>.f32.<Td> <Sd>, <Sd>, #<fbits>
+		case thumb2_vcvt__fp_fix_reg:	// A8.6.297 VCVT (between floating-point and fixed-point, VFP)
+									// vcvt<c>.<Td>.f64 <Dd>, <Dd>, #<fbits>
+									// vcvt<c>.<Td>.f32 <Sd>, <Sd>, #<fbits>
+									// vcvt<c>.f64.<Td> <Dd>, <Dd>, #<fbits>
+									// vcvt<c>.f32.<Td> <Sd>, <Sd>, #<fbits>
 			instruction = mnemonic + getVFP_vcvtFpFixRegOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcvt__dp_sp:
-			// vcvt<c>.f64.f32 <Dd>, <Sm>
-			// vcvt<c>.f32.f64 <Sd>, <Dm>
+		case thumb2_vcvt__dp_sp:	// A8.6.298 VCVT (between double-precision and single-precision)
+									// vcvt<c>.f64.f32 <Dd>, <Sm>
+									// vcvt<c>.f32.f64 <Sd>, <Dm>
 			instruction = mnemonic + getVFP_vcvtDpSpOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcvt__hp_sp_vec:
-			// vcvt<c>.f32.f16 <Qd>, <Dm>
-			// vcvt<c>.f16.f32 <Dd>, <Qm>
+		case thumb2_vcvt__hp_sp_vec:// A8.6.299 VCVT (between half-precision and single-precision, Advanced SIMD)
+									// vcvt<c>.f32.f16 <Qd>, <Dm>
+									// vcvt<c>.f16.f32 <Dd>, <Qm>
 			instruction = mnemonic + getVFP_vcvtHpSpVecOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vcvt__hp_sp_reg:
-			// vcvt<y><c>.f32.f16 <Sd>, <Sm>
-			// vcvt<y><c>.f16.f32 <Sd>, <Sm>
+		case thumb2_vcvt__hp_sp_reg:// A8.6.300 VCVTB, VCVTT (between half-precision and single-precision, VFP)
+									// vcvt<y><c>.f32.f16 <Sd>, <Sm>
+									// vcvt<y><c>.f16.f32 <Sd>, <Sm>
 			mnemonic += (isBitEnabled(opcode, 7) ? "t" : "b");
 			instruction = mnemonic + getVFP_vcvtHpSpRegOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vdup__scalar:
-			// vdup<c>.<size> <Qd>, <Dm[x]>
-			// vdup<c>.<size> <Dd>, <Dm[x]>
+		case thumb2_vdup__scalar:	// A8.6.302 VDUP (scalar)
+									// vdup<c>.<size> <Qd>, <Dm[x]>
+									// vdup<c>.<size> <Dd>, <Dm[x]>
 			instruction = mnemonic + getVFP_vdupScalarOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vdup__reg:
-			// vdup<c>.<size> <Qd>, <Rt>
-			// vdup<c>.<size> <Dd>, <Rt>
+		case thumb2_vdup__reg:		// A8.6.303 VDUP (ARM core register)
+									// vdup<c>.<size> <Qd>, <Rt>
+									// vdup<c>.<size> <Dd>, <Rt>
 			instruction = mnemonic + getVFP_vdupRegOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vext:
-			// vext<c>.8 <Qd>, <Qn>, <Qm>, #<imm>
-			// vext<c>.8 <Dd>, <Dn>, <Dm>, #<imm>
+		case thumb2_vext:			// A8.6.305 VEXT
+									// vext<c>.8 <Qd>, <Qn>, <Qm>, #<imm>
+									// vext<c>.8 <Dd>, <Dn>, <Dm>, #<imm>
 			instruction = mnemonic + getVFPQorDdnmRegs(opcode)
-						  + ",#" + (opcode >> 8 & 0xf);
-			// No pc check: not applicable
+					+ ",#" + (opcode >> 8 & 0xf);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vld__multi:
-			// vld1<c>.<size> <list>, [<Rn>{@<align>}]{!}
-			// vld1<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
-			// vld2<c>.<size> <list>, [<Rn>{@<align>}]{!}
-			// vld2<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
-			// vld3<c>.<size> <list>, [<Rn>{@<align>}]{!}
-			// vld3<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
-			// vld4<c>.<size> <list>, [<Rn>{@<align>}]{!}
-			// vld4<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
-		case thumb2_vst__multi:
-			// vst1<c>.<size> <list>, [<Rn>{@<align>}]{!}
-			// vst1<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
-			// vst2<c>.<size> <list>, [<Rn>{@<align>}]{!}
-			// vst2<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
-			// vst3<c>.<size> <list>, [<Rn>{@<align>}]{!}
-			// vst3<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
-			// vst4<c>.<size> <list>, [<Rn>{@<align>}]{!}
-			// vst4<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
+		case thumb2_vld__multi:		// A8.6.307 VLD1 (multiple single elements)
+									// vld1<c>.<size> <list>, [<Rn>{@<align>}]{!}
+									// vld1<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
+									// A8.6.310 VLD2 (multiple 2-element structures)
+									// vld2<c>.<size> <list>, [<Rn>{@<align>}]{!}
+									// vld2<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
+									// A8.6.313 VLD3 (multiple 3-element structures)
+									// vld3<c>.<size> <list>, [<Rn>{@<align>}]{!}
+									// vld3<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
+									// A8.6.316 VLD4 (multiple 4-element structures)
+									// vld4<c>.<size> <list>, [<Rn>{@<align>}]{!}
+									// vld4<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
+		case thumb2_vst__multi:		// A8.6.391 VST1 (multiple single elements)
+									// vst1<c>.<size> <list>, [<Rn>{@<align>}]{!}
+									// vst1<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
+									// A8.6.393 VST2 (multiple 2-element structures)
+									// vst2<c>.<size> <list>, [<Rn>{@<align>}]{!}
+									// vst2<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
+									// A8.6.395 VST3 (multiple 3-element structures)
+									// vst3<c>.<size> <list>, [<Rn>{@<align>}]{!}
+									// vst3<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
+									// A8.6.397 VST4 (multiple 4-element structures)
+									// vst4<c>.<size> <list>, [<Rn>{@<align>}]{!}
+									// vst4<c>.<size> <list>, [<Rn>{@<align>}], <Rm>
 			instruction = mnemonic + getVFP_vXX_multi(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vld__xlane:
-			// vld1<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vld1<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vld1<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vld1<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vld2<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vld2<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vld2<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vld2<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vld3<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vld3<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vld3<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vld3<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vld4<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vld4<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vld4<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vld4<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-		case thumb2_vst__xlane:
-			// vst1<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vst1<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vst2<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vst2<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vst3<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vst3<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
-			// vst4<c>.<size> <list>, [<Rn>{@<align>}}]{!}
-			// vst4<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+		case thumb2_vld__xlane:		// A8.6.308 VLD1 (single element to one lane)
+									// vld1<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vld1<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.309 VLD1 (single element to all lanes)
+									// vld1<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vld1<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.311 VLD2 (single 2-element structure to one lane)
+									// vld2<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vld2<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.312 VLD2 (single 2-element structure to all lanes)
+									// vld2<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vld2<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.314 VLD3 (single 3-element structure to one lane)
+									// vld3<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vld3<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.315 VLD3 (single 3-element structure to all lanes)
+									// vld3<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vld3<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.317 VLD4 (single 4-element structure to one lane)
+									// vld4<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vld4<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.318 VLD4 (single 4-element structure to all lanes)
+									// vld4<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vld4<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+		case thumb2_vst__xlane:		// A8.6.392 VST1 (single element from one lane)
+									// vst1<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vst1<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.394 VST2 (single 2-element structure from one lane)
+									// vst2<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vst2<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.396 VST3 (single 3-element structure from one lane)
+									// vst3<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vst3<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
+									// A8.6.398 VST4 (single 4-element structure from one lane)
+									// vst4<c>.<size> <list>, [<Rn>{@<align>}}]{!}
+									// vst4<c>.<size> <list>, [<Rn>{@<align>}}], <Rm>
 			instruction = mnemonic + getVFP_vXX_Xlane(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vldm__64:
+		case thumb2_vldm__64:		// A8.6.319 VLDM
 			// vldm{mode}<c> <Rn>{!},<list>	(<list> is consecutive 64-bit registers)
-		case thumb2_vldm__32:
+		case thumb2_vldm__32:		// A8.6.319 VLDM
 			// vldm{mode}<c> <Rn>{!},<list>	(<list> is consecutive 64-bit registers)
-		case thumb2_vstm__64:
+		case thumb2_vstm__64:		// A8.6.399 VSTM
 			// vstm{mode}<c> <Rn>{!},<list>	(<list> is consecutive 64-bit registers)
-		case thumb2_vstm__32:
+		case thumb2_vstm__32:		// A8.6.399 VSTM
 			// vstm{mode}<c> <Rn>{!},<list>	(<list> is consecutive 64-bit registers)
 			instruction = mnemonic + getVFPIncDec(opcode) + getVFP_vXXm(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vldr__64:
-			// vldr<c> <Dd>, [<Rn>{,#+/-<imm>}]
-			// vldr<c> <Dd>, <label>
-			// vldr<c> <Dd>, [pc,#-0] Special case
-		case thumb2_vldr__32:
-			// vldr<c> <Sd>, [<Rn>{,#+/-<imm>}]
-			// vldr<c> <Sd>, <label>
-			// vldr<c> <Sd>, [pc,#-0] Special case
-		case thumb2_vstr__64:
-			// vstr<c> <Dd>, [<Rn>{,#+/-<imm>}]
-		case thumb2_vstr__32:
-			// vstr<c> <Sd>, [<Rn>{,#+/-<imm>}]
+		case thumb2_vldr__64:		// A8.6.320 VLDR
+									// vldr<c> <Dd>, [<Rn>{,#+/-<imm>}]
+									// vldr<c> <Dd>, <label>
+									// vldr<c> <Dd>, [pc,#-0] Special case
+		case thumb2_vldr__32:		// A8.6.320 VLDR
+									// vldr<c> <Sd>, [<Rn>{,#+/-<imm>}]
+									// vldr<c> <Sd>, <label>
+									// vldr<c> <Sd>, [pc,#-0] Special case
+		case thumb2_vstr__64:		// A8.6.400 VSTR
+									// vstr<c> <Dd>, [<Rn>{,#+/-<imm>}]
+		case thumb2_vstr__32:		// A8.6.400 VSTR
+									// vstr<c> <Sd>, [<Rn>{,#+/-<imm>}]
 			instruction = mnemonic + getVFP_vXXr(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmax_vmin__int:
-			// A8.6.321 VMAX, VMIN (integer)
-			// vmax<c>.<dt> <Qd>,<Qn>,<Qm>	vmax<c>.<dt> <Dd>,<Dn>,<Dm>	vmin<c>.<dt> <Qd>,<Qn>,<Qm>	vmin<c>.<dt> <Dd>,<Dn>,<Dm>
-		case thumb2_vpmax_vpmin__int:
-			// A8.6.352 VPMAX, VPMIN (integer)
-			// vp<op><c>.<dt> <Dd>, <Dn>, <Dm>
-			// (this works despite no Q version because Q==1 is UNDEFEIND)
-			// . . . U_1_12_12 . . . . . D_1_6_6 size_1_5_4 Vn_1_3_0 Vd_0_15_12 . . . . N_0_7_7 Q_0_6_6 M_0_5_5 op_0_4_4 Vm_0_3_0
+		case thumb2_vmax_vmin__int:	// A8.6.321 VMAX, VMIN (integer)
+									// vmax<c>.<dt> <Qd>,<Qn>,<Qm>
+									// vmax<c>.<dt> <Dd>,<Dn>,<Dm>
+									// vmin<c>.<dt> <Qd>,<Qn>,<Qm>
+									// vmin<c>.<dt> <Dd>,<Dn>,<Dm>
+		case thumb2_vpmax_vpmin__int:	// A8.6.352 VPMAX, VPMIN (integer)
+									// vp<op><c>.<dt> <Dd>, <Dn>, <Dm>
+									// (this works despite no Q version because Q==1 is UNDEFINED)
 			instruction = mnemonic + (isBitEnabled(opcode, 4) ? "min" : "max")
-						  + getVFPSorUDataType(opcode, 28) + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+					+ getVFPSorUDataType(opcode, 28) + getVFPQorDdnmRegs(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmax_vmin__fp:
-			// A8.6.322 VMAX, VMIN (floating-point)
-			// vmax<c>.f32 <Qd>,<Qn>,<Qm>	vmax<c>.f32 <Dd>,<Dn>,<Dm>	vmin<c>.f32 <Qd>,<Qn>,<Qm>	vmin<c>.f32 <Dd>,<Dn>,<Dm>
-		case thumb2_vpmax_vpmin__fp:
-			// A8.6.353 VPMAX, VPMIN (floating-point)
-			// vp<op><c>.f32 <Dd>,<Dn>,<Dm>
-			// . . . . . . . . . D_1_6_6 op_1_5_5 sz_1_4_4 Vn_1_3_0 Vd_0_15_12 . . . . N_0_7_7 Q_0_6_6 M_0_5_5 . Vm_0_3_0
+		case thumb2_vmax_vmin__fp:	// A8.6.322 VMAX, VMIN (floating-point)
+									// vmax<c>.f32 <Qd>, <Qn>, <Qm>
+									// vmax<c>.f32 <Dd>, <Dn>, <Dm>
+									// vmin<c>.f32 <Qd>, <Qn>, <Qm>
+									// vmin<c>.f32 <Dd>, <Dn>, <Dm>
+		case thumb2_vpmax_vpmin__fp:// A8.6.353 VPMAX, VPMIN (floating-point)
+									// vp<op><c>.f32 <Dd>,<Dn>,<Dm>
 			instruction = mnemonic + (isBitEnabled(opcode, 21) ? "min.f32" : "max.f32")
-						  + getVFPQorDdnmRegs(opcode);
+					+ getVFPQorDdnmRegs(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vml__int:
-			// A8.6.323 VMLA, VMLAL, VMLS, VMLSL (integer)
-			// v<op><c>.<dt> <Qd>,<Qn>,<Qm>	v<op><c>.<dt> <Dd>,<Dn>,<Dm>
-			// 1 1 1 op_1_12_12 1 1 1 1 0 D_1_6_6 size_1_5_4 Vn_1_3_0 Vd_0_15_12 1 0 0 1 N_0_7_7 Q_0_6_6 M_0_5_5 0 Vm_0_3_0
+		case thumb2_vml__int:		// A8.6.323 VMLA, VMLAL, VMLS, VMLSL (integer)
+									// v<op><c>.<dt> <Qd>, <Qn>, <Qm>
+									// v<op><c>.<dt> <Dd>, <Dn>, <Dm>
 			mnemonic += isBitEnabled(opcode, 28) ? 's' : 'a';
 			instruction = mnemonic + getVFPIDataType(opcode, 20) + TAB + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vml__int_long:
-			// A8.6.323 VMLA, VMLAL, VMLS, VMLSL (integer)
-			// v<op>l<c>.<dt> <Qd>,<Dn>,<Dm>
-			// 1 1 1 U_1_12_12 1 1 1 1 1 D_1_6_6 size_1_5_4 Vn_1_3_0 Vd_0_15_12 1 0 op_0_9_9 0 N_0_7_7 0 M_0_5_5 0 Vm_0_3_0
+		case thumb2_vml__int_long:	// A8.6.323 VMLA, VMLAL, VMLS, VMLSL (integer)
+									// v<op>l<c>.<dt> <Qd>,<Dn>,<Dm>
 			mnemonic += isBitEnabled(opcode, 9) ? "sl" : "al";
 			instruction = mnemonic + getVFPSorUDataType(opcode, 28)
-						  + TAB + getVFPQdDnDmRegs(opcode);
-			// No pc check: not applicable
+					+ TAB + getVFPQdDnDmRegs(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vml__f32:
-			// A8.6.324 VMLA, VMLS (floating-point)
-			// v<op><c>.f32 <Qd>,<Qn>,<Qm>	v<op><c>.f32 <Dd>,<Dn>,<Dm>
+		case thumb2_vml__f32: 		// A8.6.324 VMLA, VMLS (floating-point)
+									// v<op><c>.f64 <Dd>, <Dn>, <Dm>
+									// v<op><c>.f32 <Sd>, <Sn>, <Sm>
 			mnemonic += isBitEnabled(opcode, 21) ? "s.f32" : "a.f32";
 			instruction = mnemonic + TAB + getVFPQorDdnmRegs(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vml__fp:
-			// A8.6.324 VMLA, VMLS (floating-point)
-			// v<op><c>.f64 <Dd>,<Dn>,<Dm>	v<op><c>.f32 <Sd>,<Sn>,<Sm>
-			// 1 1 1 0 1 1 1 0 0 D_1_6_6 0 0 Vn_1_3_0 Vd_0_15_12 1 0 1 sz_0_8_8 N_0_7_7 op_0_6_6 M_0_5_5 0 Vm_0_3_0
+		case thumb2_vml__fp:		// A8.6.324 VMLA, VMLS (floating-point)
+									// v<op><c>.f64 <Dd>, <Dn>, <Dm>
+									// v<op><c>.f32 <Sd>, <Sn>, <Sm>
 			mnemonic += isBitEnabled(opcode, 6) ? 's' : 'a';
 			instruction = mnemonic + getVFPSzF64F32dnmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vml__scalar:
-			// v<op><c>.<dt> <Qd>,<Qn>,<Dm[x]>	v<op><c>.<dt> <Dd>,<Dn>,<Dm[x]>
-			// v<op>l<c>.<dt> <Qd>,<Dn>,<Dm[x]>
+		case thumb2_vml__scalar:	// A8.6.325 VMLA, VMLAL, VMLS, VMLSL (by scalar)
+									// v<op><c>.<dt> <Qd>, <Qn>, <Dm[x]>
+									// v<op><c>.<dt> <Dd>, <Dn>, <Dm[x]>
+									// v<op>l<c>.<dt> <Qd>, <Dn>, <Dm[x]>
 			mnemonic += isBitEnabled(opcode, 10) ? 's' : 'a';
-		case thumb2_vmul__scalar:
-			// vmul<c>.<dt>  <Qd>,<Qn>,<Dm[x]>	vmul<c>.<dt>  <Dd>,<Dn>,<Dm[x]>
-			// vmull<c>.<dt>  <Qd>,<Dn>,<Dm[x]>
-		case thumb2_vqdmull__scalar:	// bit9 == 1, so getVFP_vmXXScalar() works
-			// vqdmull<c>.<dt> <Qd>,<Dn>,<Dm[x]>
+		case thumb2_vmul__scalar:	// A8.6.339 VMUL, VMULL (by scalar)
+									// vmul<c>.<dt> <Qd>, <Qn>, <Dm[x]>
+									// vmul<c>.<dt> <Dd>, <Dn>, <Dm[x]>
+									// vmull<c>.<dt>  <Qd>,<Dn>,<Dm[x]>
+		case thumb2_vqdmull__scalar:// A8.6.360 VQDMULL
+									// vqdmull<c>.<dt> <Qd>,<Dn>,<Dm[x]>
+									// bit 9 == 1, so getVFP_vmXXScalar() works
 			instruction = mnemonic + getVFP_vmXXScalar(opcode, 28);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmov__imm:
-			// A8.6.326 VMOV (immediate)
-			// vmov<c>.f64 <Dd>,#<imm>	vmov<c>.f32 <Sd>,#<imm>
-			// 1 1 1 0 1 1 1 0 1 D_1_6_6 1 1 imm4H_1_3_0 Vd_0_15_12 1 0 1 sz_0_8_8 (0) 0 (0) 0 imm4L_0_3_0
+		case thumb2_vmov__imm:		// A8.6.326 VMOV (immediate)
+									// vmov<c>.f64 <Dd>, #<imm>
+									// vmov<c>.f32 <Sd>, #<imm>
 			mnemonic += getVFPSzF64F32Type(getBit(opcode, 8));
 			instruction = mnemonic + TAB + getVFPDorSReg(opcode, getBit(opcode, 8), 12, 22)
-						  + ",#" + getHexValue((opcode >> 16 & 0xf) << 4 | opcode & 0xf);
-			// No pc check: not applicable
+					+ ",#" + getHexValue((opcode >> 16 & 0xf) << 4 | opcode & 0xf);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmov_5:
-			// vmov<c>.<size> <Dd[x]>,<Rt>
+		case thumb2_vmov_5:			// A8.6.328 VMOV (ARM core register to scalar)
+									// vmov<c>.<size> <Dd[x]>,<Rt>
 			instruction = mnemonic + getVFP_vmovArmCoreRegToScalar(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmov_6:
-			// vmov<c>.<dt> <Rt>,<Dn[x]>
+		case thumb2_vmov_6:			// A8.6.329 VMOV (scalar to ARM core register)
+									// vmov<c>.<dt> <Rt>,<Dn[x]>
 			instruction = mnemonic + getVFP_vmovScalarToArmCoreReg(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmov_7:
-			// vmov<c> <Sn>,<Rt>	vmov<c> <Rt>,<Sn>
+		case thumb2_vmov_7:			// A8.6.330 VMOV (between ARM core register and
+									//					single-precision register)
+									// vmov<c> <Sn>, <Rt>
+									// vmov<c> <Rt>, <Sn>
 			instruction = mnemonic + getVFP_vmovBetweenArmCoreAndSinglePrecReg(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmov_8:
-			// vmov<c> <Sm>,<Sm1>,<Rt>,<Rt2>	vmov<c> <Rt>,<Rt2>,<Sm>,<Sm1>
+		case thumb2_vmov_8:			// A8.6.331 VMOV (between two ARM core registers and
+									//					two single-precision registers)
+									// vmov<c> <Sm>, <Sm1>, <Rt>, <Rt2>
+									// vmov<c> <Rt>, <Rt2>, <Sm>, <Sm1>
 			instruction = mnemonic + getVFP_vmovBetween2ArmCoreAndSinglePrecRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmov_9:
-			// vmov<c> <Dm>,<Rt>,<Rt2>	vmov<c> <Rt>,<Rt2>,<Dm>
+		case thumb2_vmov_9:			// A8.6.332 VMOV (between two ARM core registers and
+									//					a doubleword extension register)
+									// vmov<c> <Dm>, <Rt>, <Rt2>
+									// vmov<c> <Rt>, <Rt2>, <Dm>
 			instruction = mnemonic + getVFP_vmovBetween2ArmCoreAnd1DoublewordExtensionRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmovl:
-			// vmovl<c>.<dt> <Qd>, <Dm>
-		case thumb2_vshll__various:
-			// vshll<c>.<type><size> <Qd>,<Dm>,#<imm> (0 < <imm> < <size>)
+		case thumb2_vmovl:			// A8.6.333 VMOVL
+									// vmovl<c>.<dt> <Qd>, <Dm>
+		case thumb2_vshll__various:	// A8.6.384 VSHLL
+									// vshll<c>.<type><size> <Qd>,<Dm>,#<imm> (0 < <imm> < <size>)
 			instruction = mnemonic + getVFP_vmovl_vshll_operands(opcode, 28);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmovn:
-			// A8.6.334 VMOVN
-			// vmovn<c>.<dt> <Dd>,<Qm>
-			// 1 1 1 1 1 1 1 1 1 D_1_6_6 1 1 size_1_3_2 1 0 Vd_0_15_12 0 0 1 0 0 0 M_0_5_5 0 Vm_0_3_0
+		case thumb2_vmovn:			// A8.6.334 VMOVN
+									// vmovn<c>.<dt> <Dd>,<Qm>
 			mnemonic += getVFPIDataType2(opcode, 18);
 			instruction = mnemonic + TAB + getVFPQorDReg(opcode, 0, 12, 22)
-						  + ',' + getVFPQorDReg(opcode, 1, 0, 5);
-			// No pc check: not applicable
+					+ ',' + getVFPQorDReg(opcode, 1, 0, 5);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmrs:
-			// A8.6.335 VMRS
-			// vmrs<c> <Rt>,fpscr
-			// 1 1 1 0 1 1 1 0 1 1 1 1 0 0 0 1 Rt_0_15_12 1 0 1 0 0 (0)(0) 1 (0)(0)(0)(0)
+		case thumb2_vmrs:			// A8.6.335 VMRS
+									// vmrs<c> <Rt>,fpscr
+									// B6.1.14 VMRS
+									// vmrs<c> <Rt>,<spec_reg>
 			instruction = mnemonic + TAB + getR_12(opcode) + "," + getVFPSpecialReg(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmsr:
-			// A8.6.336 VMSR
-			// vmsr<c> fpscr,<Rt>
-			// 1 1 1 0 1 1 1 0 1 1 1 0 0 0 0 1 Rt_0_15_12 1 0 1 0 0 (0)(0) 1 (0)(0)(0)(0)
+		case thumb2_vmsr:			// A8.6.336 VMSR
+									// vmsr<c> fpscr,<Rt>
+									// B6.1.15 VMSR
+									// vmsr<c> <spec_reg>,<Rt>
 			instruction = mnemonic + TAB + getVFPSpecialReg(opcode) + "," + getR_12(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmul_1:
-			// A8.6.337 VMUL, VMULL (integer and polynomial)
-			// vmul<c>.<dt> <Qd>,<Qn>,<Qm>	vmul<c>.<dt> <Dd>,<Dn>,<Dm>
-			// 1 1 1 op_1_12_12 1 1 1 1 0 D_1_6_6 size_1_5_4 Vn_1_3_0 Vd_0_15_12 1 0 0 1 N_0_7_7 Q_0_6_6 M_0_5_5 1 Vm_0_3_0
+		case thumb2_vmul_1:			// A8.6.337 VMUL, VMULL (integer and polynomial)
+									// vmul<c>.<dt> <Qd>, <Qn>, <Qm>
+									// vmul<c>.<dt> <Dd>, <Dn>, <Dm>
 			mnemonic += (isBitEnabled(opcode, 28) ? ".p" : ".i") + getVFPDataTypeSize(opcode, 20);
 			instruction = mnemonic + TAB + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vmull:
-			// A8.6.337 VMUL, VMULL (integer and polynomial)
-			// vmull<c>.<dt> <Qd>, <Dn>, <Dm>
-			// 1 1 1 U_1_12_12 1 1 1 1 1 D_1_6_6 size_1_5_4 Vn_1_3_0 Vd_0_15_12 1 1 op_9_9 0 N_7_7 0 M_5_5 0 Vm_3_0
+		case thumb2_vmull:			// A8.6.337 VMUL, VMULL (integer and polynomial)
+									// vmull<c>.<dt> <Qd>, <Dn>, <Dm>
 			mnemonic += isBitEnabled(opcode, 9) ? getVFPPDataType(opcode, 20) : getVFPSorUDataType(opcode, 28);
 			instruction = mnemonic + TAB + getVFPQdDnDmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vpadal:
-			// vpadal<c>.<dt> <Qd>, <Qm>
-			// vpadal<c>.<dt> <Dd>, <Dm>
-		case thumb2_vpaddl:
-			// vpaddl<c>.<dt> <Qd>, <Qm>
-			// vpaddl<c>.<dt> <Dd>, <Dm>
+		case thumb2_vpadal:			// A8.6.348 VPADAL
+									// vpadal<c>.<dt> <Qd>, <Qm>
+									// vpadal<c>.<dt> <Dd>, <Dm>
+		case thumb2_vpaddl:			// A8.6.351 VPADDL
+									// vpaddl<c>.<dt> <Qd>, <Qm>
+									// vpaddl<c>.<dt> <Dd>, <Dm>
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 4, 7); // chose bit 4 because it is 0
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vpop:
-			// vpop <list> <list> is consecutive 64-bit registers
-			// vpop <list> <list> is consecutive 32-bit registers
-		case thumb2_vpush:
-			// vpush <list> <list> is consecutive 64-bit registers
-			// vpush <list> <list> is consecutive 32-bit registers
+		case thumb2_vpop:			// A8.6.354 VPOP
+									// vpop <list> <list> is consecutive 64-bit registers
+									// vpop <list> <list> is consecutive 32-bit registers
+		case thumb2_vpush:			// A8.6.355 VPUSH
+									// vpush <list> <list> is consecutive 64-bit registers
+									// vpush <list> <list> is consecutive 32-bit registers
 			instruction = mnemonic + getVFP_vpop_vpush_operands(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vqdml__scalar:
-			// A8.6.358 VQDMLAL, VQDMLSL
-			// vqd<op><c>.<dt> <Qd>,<Dn>,<Dm[x]>
-			// 1 1 1 0 1 1 1 1 1 D_1_6_6 size_1_5_4 Vn_1_3_0 Vd_0_15_12 0 op_0_10_10 1 1 N_0_7_7 1 M_0_5_5 0 Vm_0_3_0
+		case thumb2_vqdml__scalar:	// A8.6.358 VQDMLAL, VQDMLSL
+									// vqd<op><c>.<dt> <Qd>,<Dn>,<Dm[x]>
 			mnemonic += isBitEnabled(opcode, 10) ? "sl.s" : "al.s";
 			instruction = mnemonic + getVFPScalarOperands(opcode, 1, 0);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vqdmulh__vec:
-			// vqdmulh<c>.<dt> <Qd>,<Qn>,<Qm>	vqdmulh<c>.<dt> <Dd>,<Dn>,<Dm>
-		case thumb2_vqrdmulh__vec:
-			// vqrdmulh<c>.<dt> <Qd>,<Qn>,<Qm>	vqrdmulh<c>.<dt> <Dd>,<Dn>,<Dm>
+		case thumb2_vqdmulh__vec:	// A8.6.359 VQDMULH
+									// vqdmulh<c>.<dt> <Qd>,<Qn>,<Qm>
+									// vqdmulh<c>.<dt> <Dd>,<Dn>,<Dm>
+		case thumb2_vqrdmulh__vec:	// A8.6.363 VQRDMULH
+									// vqrdmulh<c>.<dt> <Qd>,<Qn>,<Qm>
+									// vqrdmulh<c>.<dt> <Dd>,<Dn>,<Dm>
 			mnemonic += isBitEnabled(opcode, 20) ? ".s16" : ".s32";
 			instruction = mnemonic + TAB + getVFPQorDdnmRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vqdmulh__scalar:
-			// vqdmulh<c>.<dt> <Qd>,<Qn>,<Dm[x]>	vqdmulh<c>.<dt> <Dd>,<Dn>,<Dm[x]>
-		case thumb2_vqrdmulh__scalar:
-			// vqrdmulh<c>.<dt> <Qd>,<Qn>,<Dm[x]>	vqrdmulh<c>.<dt> <Dd>,<Dn>,<Dm[x]>
+		case thumb2_vqdmulh__scalar:// A8.6.359 VQDMULH
+									// vqdmulh<c>.<dt> <Qd>,<Qn>,<Dm[x]>
+									// vqdmulh<c>.<dt> <Dd>,<Dn>,<Dm[x]>
+		case thumb2_vqrdmulh__scalar:	// A8.6.363 VQRDMULH
+									// vqrdmulh<c>.<dt> <Qd>,<Qn>,<Dm[x]>
+									// vqrdmulh<c>.<dt> <Dd>,<Dn>,<Dm[x]>
 			{
 				int q = getBit(opcode, 28);
 				instruction = mnemonic + ".s" + getVFPScalarOperands(opcode, q, q);
 			}
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vqmov:
-			// vqmov{u}n<c>.<type><size> <Dd>,<Qm>
+		case thumb2_vqmov:			// A8.6.361 VQMOVN, VQMOVUN
+									// vqmov{u}n<c>.<type><size> <Dd>,<Qm>
 			instruction = mnemonic + getVFP_vqmov_instruction(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vqrshl:		// A8.6.364 VQRSHL				
-			// vqrshl<c>.<type><size> <Qd>,<Qm>,<Qn>	
-			// vqrshl<c>.<type><size> <Dd>,<Dm>,<Dn>
-		case thumb2_vqshl__reg:	// A8.6.366 VQSHL (register)
-			// vqshl<c>.<type><size>  <Qd>,<Qm>,<Qn>
-			// vqshl<c>.<type><size>  <Dd>,<Dm>,<Dn>
-		case thumb2_vrshl:		// A8.6.375 VRSHL
-			// vrshl<c>.<type><size>  <Qd>,<Qm>,<Qn>
-			// vrshl<c>.<type><size>  <Dd>,<Dm>,<Dn>
-		case thumb2_vshl__reg:	// A8.6.383 VSHL (register)
-			// vshl<c>.<type><size>        <Qd>,<Qm>,<Qn>
-			// vshl<c>.<type><size>        <Dd>,<Dm>,<Dn>
+		case thumb2_vqrshl:			// A8.6.364 VQRSHL
+									// vqrshl<c>.<type><size> <Qd>,<Qm>,<Qn>
+									// vqrshl<c>.<type><size> <Dd>,<Dm>,<Dn>
+		case thumb2_vqshl__reg:		// A8.6.366 VQSHL (register)
+									// vqshl<c>.<type><size>  <Qd>,<Qm>,<Qn>
+									// vqshl<c>.<type><size>  <Dd>,<Dm>,<Dn>
+		case thumb2_vrshl:			// A8.6.375 VRSHL
+									// vrshl<c>.<type><size>  <Qd>,<Qm>,<Qn>
+									// vrshl<c>.<type><size>  <Dd>,<Dm>,<Dn>
+		case thumb2_vshl__reg:		// A8.6.383 VSHL (register)
+									// vshl<c>.<type><size>        <Qd>,<Qm>,<Qn>
+									// vshl<c>.<type><size>        <Dd>,<Dm>,<Dn>
 			instruction = mnemonic + getVFPSorUDataType(opcode, 28) + getVFPQorDdmnRegs(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vqrshr:
-			// vqrshr{u}n<c>.<type><size> <Dd>,<Qm>,#<imm>
-		case thumb2_vqshr:
-			// vqshr{u}n<c>.<type><size> <Dd>,<Qm>,#<imm>
+		case thumb2_vqrshr:			// A8.6.365 VQRSHRN, VQRSHRUN
+									// vqrshr{u}n<c>.<type><size> <Dd>,<Qm>,#<imm>
+		case thumb2_vqshr:			// A8.6.368 VQSHRN, VQSHRUN
+									// vqshr{u}n<c>.<type><size> <Dd>,<Qm>,#<imm>
 			instruction = mnemonic + getVFP_vqXshr_instruction(opcode, 28);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vqshl__imm:
-			// vqshl{u}<c>.<type><size> <Qd>,<Qm>,#<imm>	vqshl{u}<c>.<type><size> <Dd>,<Dm>,#<imm>
+		case thumb2_vqshl__imm:		// A8.6.367 VQSHL, VQSHLU (immediate)
+									// vqshl{u}<c>.<type><size> <Qd>,<Qm>,#<imm>
+									// vqshl{u}<c>.<type><size> <Dd>,<Dm>,#<imm>
 			instruction = mnemonic + getVFP_vqshl_instruction(opcode, 28);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vrecpe:
-			// vrecpe<c>.<dt> <Qd>, <Qm>
-			// vrecpe<c>.<dt> <Dd>, <Dm>
-		case thumb2_vrsqrte:
-			// vrsqrte<c>.<dt> <Qd>, <Qm>
-			// vrsqrte<c>.<dt> <Dd>, <Dm>
+		case thumb2_vrecpe:			// A8.6.371 VRECPE
+									// vrecpe<c>.<dt> <Qd>, <Qm>
+									// vrecpe<c>.<dt> <Dd>, <Dm>
+		case thumb2_vrsqrte:		// A8.6.378 VRSQRTE
+									// vrsqrte<c>.<dt> <Qd>, <Qm>
+									// vrsqrte<c>.<dt> <Dd>, <Dm>
 			instruction = mnemonic + getVFPSorUorFQorDdmOperands(opcode, 8, 10);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vrev:
-			// vrev<n><c>.<size> <Qd>, <Qm>	vrev<n><c>.<size> <Dd>, <Dm>
+		case thumb2_vrev:			// A8.6.373 VREV16, VREV32, VREV64
+									// vrev<n><c>.<size> <Qd>,<Qm>
+									// vrev<n><c>.<size> <Dd>,<Dm>
 			instruction = mnemonic + getVFP_vrev_instruction(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vrshr:
-			// vrshr<c>.<type><size> <Qd>, <Qm>, #<imm>	vrshr<c>.<type><size> <Dd>, <Dm>, #<imm>
-		case thumb2_vrsra:
-			// vrsra<c>.<type><size> <Qd>,<Qm>,#<imm>	vrsra<c>.<type><size> <Dd>,<Dm>,#<imm>
-		case thumb2_vshr:
-			// vshr<c>.<type><size> <Qd>,<Qm>,#<imm>	vshr<c>.<type><size> <Dd>,<Dm>,#<imm>
-		case thumb2_vsra:
-			// vsra<c>.<type><size> <Qd>,<Qm>,#<imm>	vsra<c>.<type><size> <Dd>,<Dm>,#<imm>
+		case thumb2_vrshr:			// A8.6.376 VRSHR
+									// vrshr<c>.<type><size> <Qd>, <Qm>, #<imm>
+									// vrshr<c>.<type><size> <Dd>, <Dm>, #<imm>
+		case thumb2_vrsra:			// A8.6.380 VRSRA
+									// vrsra<c>.<type><size> <Qd>, <Qm>, #<imm>
+									// vrsra<c>.<type><size> <Dd>, <Dm>, #<imm>
+		case thumb2_vshr:			// A8.6.385 VSHR
+									// vshr<c>.<type><size> <Qd>, <Qm>, #<imm>
+									// vshr<c>.<type><size> <Dd>, <Dm>, #<imm>
+		case thumb2_vsra:			// A8.6.389 VSRA
+									// vsra<c>.<type><size> <Qd>, <Qm>, #<imm>
+									// vsra<c>.<type><size> <Dd>, <Dm>, #<imm>
 			mnemonic += (isBitEnabled(opcode, 28) ? ".u" : ".s");
 // no break
-		case thumb2_vsri:
-			// vsri<c>.<size> <Qd>,<Qm>,#<imm>	vsri<c>.<size> <Dd>,<Dm>,#<imm>
+		case thumb2_vsri:			// A8.6.390 VSRI
+									// vsri<c>.<size> <Qd>, <Qm>, #<imm>
+									// vsri<c>.<size> <Dd>, <Dm>, #<imm>
 			instruction = mnemonic + getVFP_vXrX_instruction(opcode, true);
-			// No pc check: not applicable
-			break;
-			
-		case thumb2_vshl__imm:
-			// vshl<c>.i<size> <Qd>,<Qm>,#<imm>	vshl<c>.i<size> <Dd>,<Dm>,#<imm>
-		case thumb2_vsli:
-			// vsli<c>.<size> <Qd>,<Qm>, #<imm>	vsli<c>.<size> <Dd>,<Dm>,#<imm>
-			instruction = mnemonic + getVFP_vXrX_instruction(opcode, false);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vrshrn:
-			// vrshrn<c>.i<size> <Dd>,<Qm>,#<imm>
-		case thumb2_vshrn:
-			// vshrn<c>.i<size>  <Dd>,<Qm>,#<imm>
+		case thumb2_vrshrn:			// A8.6.377 VRSHRN
+									// vrshrn<c>.i<size> <Dd>,<Qm>,#<imm>
+		case thumb2_vshrn:			// A8.6.386 VSHRN
+									// vshrn<c>.i<size>  <Dd>,<Qm>,#<imm>
 			instruction = mnemonic + getVFP_vXshrn_instruction(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vshll__max:
-			// A8.6.384 VSHLL
-			// vshll<c>.<type><size> <Qd>, <Dm>, #<imm> (<imm> == <size>)
-			// 1 1 1 1 1 1 1 1 1 D_1_6_6 1 1 size_1_3_2 1 0 Vd_0_15_12 0 0 1 1 0 0 M_0_5_5 0 Vm_0_3_0
+		case thumb2_vshl__imm:		// A8.6.382 VSHL (immediate)
+									// vshl<c>.i<size> <Qd>, <Qm>, #<imm>
+									// vshl<c>.i<size> <Dd>, <Dm>, #<imm>
+		case thumb2_vsli:			// A8.6.387 VSLI
+									// vsli<c>.<size> <Qd>, <Qm>, #<imm>
+									// vsli<c>.<size> <Dd>, <Dm>, #<imm>
+			instruction = mnemonic + getVFP_vXrX_instruction(opcode, false);
+			// No PC check: not applicable
+			break;
+
+		case thumb2_vshll__max:		// A8.6.384 VSHLL
+									// vshll<c>.<type><size> <Qd>, <Dm>, #<imm> (<imm> == <size>)
 			mnemonic += getVFPIDataType3(opcode, 18);
 			instruction = mnemonic + TAB + getVFPQorDReg(opcode, 1, 12, 22)
 					+ ',' + getVFPQorDReg(opcode, 0, 0, 5) + ",#" + (8 << (opcode >> 18 & 3));
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vtb:
-			// v<op><c>.8 <Dd>, <list>, <Dm>
+		case thumb2_vtb:			// A8.6.406 VTBL, VTBX
+									// v<op><c>.8 <Dd>, <list>, <Dm>
 			instruction = mnemonic + getVFP_vtb_instruction(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vtrn:
-		case thumb2_vuzp:
-		case thumb2_vzip:
+		case thumb2_vtrn:			// A8.6.407 VTRN
+									// vtrn<c>.<size> <Qd>, <Qm>
+									// vtrn<c>.<size> <Dd>, <Dm>
+		case thumb2_vuzp:			// A8.6.409 VUZP
+									// vuzp<c>.<size> <Qd>, <Qm>
+									// vuzp<c>.<size> <Dd>, <Dm>
+		case thumb2_vzip:			// A8.6.410 VZIP
+									// vzip<c>.<size> <Qd>, <Qm>
+									// vzip<c>.<size> <Dd>, <Dm>
 			instruction = mnemonic + getVFPSzQorDdmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_vtst:
+		case thumb2_vtst:			// A8.6.408 VTST
+									// vtst<c>.<size> <Qd>, <Qn>, <Qm>
+									// vtst<c>.<size> <Dd>, <Dn>, <Dm>
 			instruction = mnemonic + getVFPSzQorDdnmOperands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
+		// CoProcessor instructions
 
-
-
-			// CoProcessor instructions
-
-		case thumb2_cdp:
-			// cdp<c> <coproc>,<opc1>,<CRd>,<CRn>,<CRm>,<opc2>
-		case thumb2_cdp2:
-			// cdp2<c> <coproc>,<opc1>,<CRd>,<CRn>,<CRm>,<opc2>
+		case thumb2_cdp:			// A8.6.28 CDP, CDP2
+									// cdp<c> <coproc>,<opc1>,<CRd>,<CRn>,<CRm>,<opc2>
+		case thumb2_cdp2:			// A8.6.28 CDP, CDP2
+									// cdp2<c> <coproc>,<opc1>,<CRd>,<CRn>,<CRm>,<opc2>
 			instruction = mnemonic + "\t" + getCo_cdp_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_cps:
-			// cps<effect>.w <iflags>{,#<mode>} Not permitted in IT block.	cps #<mode> Not permitted in IT block.
+		case thumb2_cps:			// B6.1.1 CPS
+									// cps<effect>.w <iflags>{,#<mode>} Not permitted in IT block.
+									// cps #<mode> Not permitted in IT block.
 			instruction = mnemonic + getCo_cps_instruction(opcode, true);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_ldc:	// A8.6.51 LDC, LDC2 (immediate)	// ldc{l}<c> <coproc>,<CRd>,[<Rn>,#+/-<imm>]{!}
-																// ldc{l} <coproc>,<CRd>,[<Rn>],#+/-<imm>
-																// ldc{l} <coproc>,<CRd>,[<Rn>],<option>
-							// A8.6.51 LDC, LDC2 (immediate)	// ldc2{l}<c> <coproc>,<CRd>,[<Rn>,#+/-<imm>]{!}
-																// ldc2{l} <coproc>,<CRd>,[<Rn>],#+/-<imm>
-																// ldc2{l} <coproc>,<CRd>,[<Rn>],<option>
-		case thumb2_stc:	// A8.6.188 STC, STC2				// stc{l}<c> <coproc>,<CRd>,[<Rn>,#+/-<imm>]{!}
-																// stc{l} <coproc>,<CRd>,[<Rn>],#+/-<imm>
-																// stc{l} <coproc>,<CRd>,[<Rn>],<option>
-							// A8.6.188 STC, STC2				// stc2{l}<c> <coproc>,<CRd>,[<Rn>,#+/-<imm>]{!}
-																// stc2{l} <coproc>,<CRd>,[<Rn>],#+/-<imm>
-																// stc2{l} <coproc>,<CRd>,[<Rn>],<option>
-			// . . . . . . . P_1_8_8 U_1_7_7 D_1_6_6 W_1_5_5 . Rn_1_3_0 CRd_0_15_12 coproc_0_11_8 imm8_0_7_0
+		case thumb2_ldc:			// A8.6.51 LDC, LDC2 (immediate)
+									// ldc{l}<c> <coproc>,<CRd>,[<Rn>,#+/-<imm>]{!}
+									// ldc{l}<c> <coproc>,<CRd>,[<Rn>],#+/-<imm>
+									// ldc{l}<c> <coproc>,<CRd>,[<Rn>],<option>
+									// A8.6.52 LDC, LDC2 (literal)
+									// ldc{l}<c> <coproc>,<CRd>,<label>
+									// ldc{l}<c> <coproc>,<CRd>,[pc,#-0]
+									// Special case	ldc{l}<c> <coproc>,<CRd>,[pc],<option>
+									// A8.6.52 LDC, LDC2 (literal)
+									// ldc2{l}<c> <coproc>,<CRd>,<label>
+									// ldc2{l}<c> <coproc>,<CRd>,[pc,#-0]
+									// Special case	ldc2{l}<c> <coproc>,<CRd>,[pc],<option>
+									// A8.6.51 LDC, LDC2 (immediate)
+									// ldc2{l}<c> <coproc>,<CRd>,[<Rn>,#+/-<imm>]{!}	ldc2{l}<c> <coproc>,<CRd>,[<Rn>],#+/-<imm>
+									// ldc2{l}<c> <coproc>,<CRd>,[<Rn>],<option>
+		case thumb2_stc:			// A8.6.188 STC, STC2
+									// stc{l}<c> <coproc>,<CRd>,[<Rn>,#+/-<imm>]{!}
+									// stc{l} <coproc>,<CRd>,[<Rn>],#+/-<imm>
+									// stc{l} <coproc>,<CRd>,[<Rn>],<option>
+									// A8.6.188 STC, STC2
+									// stc2{l}<c> <coproc>,<CRd>,[<Rn>,#+/-<imm>]{!}
+									// stc2{l} <coproc>,<CRd>,[<Rn>],#+/-<imm>
+									// stc2{l} <coproc>,<CRd>,[<Rn>],<option>
 			if (isBitEnabled(opcode, 28))
 				mnemonic += '2';
 			instruction = mnemonic + (isBitEnabled(opcode, 22) ? "l\t" : "\t") + getCoprocessor(opcode)
-						  + ',' + getCR_12(opcode) + ',' + getAddrModeImm8(opcode);
+					+ ',' + getCR_12(opcode) + ',' + getAddrModeImm8(opcode);
+			// No PC check: not applicable
 			break;
 
-		case thumb2_mcr:
-			// mcr<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
-			// mcr2<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
+		case thumb2_mcr:			// A8.6.92 MCR, MCR2
+									// mcr<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
+									// mcr2<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
 			if (isBitEnabled(opcode, 28))
 				mnemonic += '2';
 			instruction = mnemonic + getCo_mcr_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_mcrr:
-			// mcrr<c>  <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>
-			// mcrr2<c> <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>
-		case thumb2_mrrc:
-			// mrrc<c>  <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>
-			// mrrc2<c> <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>
+		case thumb2_mcrr:			// A8.6.93 MCRR, MCRR2
+									// mcrr<c>  <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>
+									// mcrr2<c> <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>
+		case thumb2_mrrc:			// A8.6.101 MRRC, MRRC2
+									// mrrc<c>  <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>
+									// mrrc2<c> <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>
 			if (isBitEnabled(opcode, 28))
 				mnemonic += '2';
 			instruction = mnemonic + getCo_mrr_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
-		case thumb2_mrc:
-			// mrc<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
-			// mrc2<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
+		case thumb2_mrc:			// A8.6.100 MRC, MRC2
+									// mrc<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
+									// A8.6.100 MRC, MRC2
+									// mrc2<c> <coproc>,<opc1>,<Rt>,<CRn>,<CRm>{,<opc2>}
 			if (isBitEnabled(opcode, 28))
 				mnemonic += '2';
 			instruction = mnemonic + getCo_mrc_operands(opcode);
-			// No pc check: not applicable
+			// No PC check: not applicable
 			break;
 
 		default:
@@ -4694,15 +4957,6 @@ public class InstructionParserARM {
 		}
 		return instruction;
 	}
-
-
-
-
-
-
-
-
-
 
 
 	private String getAddrMode(int opcode) {
@@ -4731,7 +4985,7 @@ public class InstructionParserARM {
 					operands += ",#" + sign + getHexValue(offset);
 			} else {
 				operands += "," + sign + getR_0(opcode);
-				if (scaled != 0 || shiftValue != 0) // scaled register offset 
+				if (scaled != 0 || shiftValue != 0) // scaled register offset
 					operands += getAddrMode2ScaledRegOffset(opcode, shiftValue, shiftMode);
 			}
 			operands += isBitEnabled(opcode, 21) ? "]!" : "]";
@@ -4742,7 +4996,7 @@ public class InstructionParserARM {
 					operands +=	",#" + sign + getHexValue(offset);
 			} else {
 				operands += "]," + sign + getR_0(opcode);
-				if (scaled != 0 || shiftValue != 0) // scaled register offset 
+				if (scaled != 0 || shiftValue != 0) // scaled register offset
 					operands += getAddrMode2ScaledRegOffset(opcode, shiftValue, shiftMode);
 			}
 		}
@@ -4834,7 +5088,7 @@ public class InstructionParserARM {
 		int offset = ((opcode << 8) >> 6) + 8;
 		return offset;
 	}
-	
+
 	private String getCondition(int condition) {
 		switch (condition) {
 		case 0:		return "eq";
@@ -4983,8 +5237,8 @@ public class InstructionParserARM {
 	}
 
 	private String getRotationOperand(int opcode, int bit) {
-		int rotation = ((opcode >> (bit-3)) & 0x18); 
-		return (rotation != 0) ? ",ror #" + rotation : "";		
+		int rotation = ((opcode >> (bit-3)) & 0x18);
+		return (rotation != 0) ? ",ror #" + rotation : "";
 	}
 
 	private String getShifterOperand(int opcode) {
@@ -5113,7 +5367,7 @@ public class InstructionParserARM {
 
 		String ops;
 
-		// treat unpredictable ((imod == 0 && !changeMode) || imod == 1) as a change mode to 0
+		// treat UNPREDICTABLE ((imod == 0 && !changeMode) || imod == 1) as a change mode to 0
 		if (imod == 0 || imod == 1) {
 			if (!changeMode || mode == 0)
 				ops = TAB + "#0";
@@ -5184,7 +5438,7 @@ public class InstructionParserARM {
 	 *	{@literal mcrr<c>  <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>}
 	 *	{@literal mcrr2<c> <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>}
 	 * A8.6.101 MRRC, MRRC2
-	 *	{@literal mrrc<c>  <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>} 
+	 *	{@literal mrrc<c>  <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>}
 	 *	{@literal mrrc2<c> <coproc>,<opc1>,<Rt>,<Rt2>,<CRm>}
 	 */
 	private String getCo_mrr_operands(int opcode) {
@@ -5196,14 +5450,14 @@ public class InstructionParserARM {
 
 	private int getThumbBranchOffset8(int opcode) {
 		int offset = (byte)(opcode & 0xff);
-	
+
 		offset = (offset*2) + 4;
 		return offset;
 	}
 
 	private int getThumbBranchOffset11(int opcode) {
 		short offset = (short) ((opcode << 5) & 0xffff);
-	
+
 		return (offset / 16) + 4;
 	}
 
@@ -5382,7 +5636,7 @@ public class InstructionParserARM {
 					return ",rrx";
 				shift += "ror";
 		}
-		return shift + " #" + value; 
+		return shift + " #" + value;
 	}
 
 	private int getThumb2ShiftValue(int opcode, int type) {
@@ -5420,7 +5674,7 @@ public class InstructionParserARM {
 
 	private String getVFPDdQmRegs(int opcode) {
 		return getVFPQorDReg(opcode, 0, 12, 22) + ',' + getVFPQorDReg(opcode, 1, 0, 5);
-	}	
+	}
 
 	private String getVFPIncDec(int opcode) {
 		int mode = (opcode >> 23) & 3;
@@ -5435,10 +5689,10 @@ public class InstructionParserARM {
 	private int getVFPDataTypeSize (int opcode, int sizePos) {
 		return 8 << (opcode >> sizePos & 3);
 	}
-	
+
 	/**
 	 * Return 6-bit immediate instruction size
-	 * 
+	 *
 	 * @param opcode
 	 * @param uPos bit indicating unsigned
 	 * @param opPos
@@ -5456,7 +5710,7 @@ public class InstructionParserARM {
 
 	/**
 	 * Return vqshl{u} sign or unsigned type with bit size
-	 * 
+	 *
 	 * @param opcode
 	 * @param lBit
 	 * @param uPos bit indicating unsigned
@@ -5598,7 +5852,7 @@ public class InstructionParserARM {
 	private String getVFPIorFDataType(int opcode, int sizePos, int bitIorF) {
 		int size  = 8 << ((opcode >> sizePos) & 0x3);
 		int f = (opcode >> bitIorF) & 1;
-		return (f == 1 ? ".f" : ".i") + size; 
+		return (f == 1 ? ".f" : ".i") + size;
 	}
 
 	private String getVFPSorUDataType(int opcode, int uPos) {
@@ -5669,7 +5923,7 @@ public class InstructionParserARM {
 
 		String td = u ? (sx ? ".u32" : ".u16") : (sx ? ".s32" : ".s16");
 		String ts = sf ? ".f64" : ".f32";
-		
+
 		return op ? td + ts : ts + td;
 	}
 
@@ -5693,7 +5947,7 @@ public class InstructionParserARM {
 			suffix = "!";
 		else
 			suffix = "," + getRegName(Rm);
-		
+
 		return suffix;
 	}
 
@@ -5714,8 +5968,8 @@ public class InstructionParserARM {
 	 */
 	private String getVFPIDataTypeQorDdnmOperands(int opcode) {
 		return getVFPIDataType(opcode, 20) + getVFPQorDdnmRegs(opcode);
-	}	
-	
+	}
+
 	/**
 	 * ARM--- ... D_22_22 size_21_20 Vn_10_16 Vd___15_12 ... N___7_7 . M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 size_1_5_4 Vn_1_3_0 Vd_0_15_12 ... N_0_7_7 . M_0_5_5 . Vm_0_3_0
@@ -5737,7 +5991,7 @@ public class InstructionParserARM {
 					 + ',' + getVFPQorDReg(opcode, 1, 16, 7)
 					 + ',' + getVFPQorDReg(opcode, 1, 0, 5);
 		return ops;
-	}	
+	}
 
 	/**
 	 * ARM--- ... D_22_22 size_21_20 Vn_19_16 Vd___15_12 ... N___7_7 . M___5_5 . Vm___3_0<br>
@@ -5758,15 +6012,15 @@ public class InstructionParserARM {
 	 *  {@literal vqd<op><c>.<dt> <Qd>,<Dn>,<Dm>}
 	 * A8.6.360 VQDMULL
 	 *	{@literal vqdmull<c>.<dt> <Qd>,<Dn>,<Dm>}
-	 * 
+	 *
 	 */
 	private String getVFPQdDnDmRegs(int opcode) {
 		String regs = getVFPQorDReg(opcode, 1, 12, 22)
 					  + ',' + getVFPQorDReg(opcode, 0, 16, 7)
 					  + ',' + getVFPQorDReg(opcode, 0, 0, 5);
 		return regs;
-	}	
-	
+	}
+
 	/**
 	 * ARM--- ...  D_22_22 ... Vd___15_12 ... Q___6_6 M___5_5 . Vm___3_0<br>
 	 * Thumb2 ...  D_1_6_6 ... Vd_0_15_12 ... Q_0_6_6 M_0_5_5 . Vm_0_3_0
@@ -5785,8 +6039,8 @@ public class InstructionParserARM {
 	private String getVFPQorDdmRegs(int opcode) {
 		int q = getBit(opcode, 6);
 		return TAB + getVFPQorDReg(opcode, q, 12, 22) + ',' + getVFPQorDReg(opcode, q, 0, 5);
-	}	
-	
+	}
+
 	/**
 	 * ARM--- ... D_22_22 ... Vn_19_16 Vd___15_12 ... N___7_7 Q___6_6 M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 ... Vn_1_3_0 Vd_0_15_12 ... N_0_7_7 Q_0_6_6 M_0_5_5 . Vm_0_3_0
@@ -5908,7 +6162,7 @@ public class InstructionParserARM {
 				+ ',' + getVFPQorDReg(opcode, nType, 16, 7)
 				+ ",d" + mR + '[' + index + ']';
 	}
-	
+
 	/**
 	 *  ARM--- ... D_22_22 . . size_19_18 . . Vd___15_12 ... Q___6_6 M___5_5 . Vm___3_0<br>
 	 *  Thumb2 ... D_1_6_6 . . size_1_3_2 . . Vd_0_15_12 ... Q_0_6_6 M_0_5_5 . Vm_0_3_0
@@ -5946,8 +6200,8 @@ public class InstructionParserARM {
 	 */
 	private String getVFPSorUorFQorDdmOperands(int opcode, int bitIorF, int bitSorU) {
 		return getVFPSorUorFDataType(opcode, 18, bitIorF, bitSorU) + TAB + getVFPQorDdmRegs(opcode);
-	}	
-	
+	}
+
 	/**
 	 *  ARM--- ... D_22_22 . . size_19_18 . . Vd___15_12 ... Q___6_6 M___5_5 . Vm___3_0<br>
 	 *  Thumb2 ... D_1_6_6 . . size_1_3_2 . . Vd_0_15_12 ... Q_0_6_6 M_0_5_5 . Vm_0_3_0
@@ -5969,7 +6223,7 @@ public class InstructionParserARM {
 	private String getVFPIorFQorDdmOperands(int opcode, int bitIorF) {
 		return getVFPIorFDataType(opcode, 18, bitIorF) + TAB + getVFPQorDdmRegs(opcode);
 	}
-	
+
 	/**
 	 * @param szbit bit containing the sz determining ".f64" or ".f32"
 	 * @return String containing ".f64" or ".f32"
@@ -6014,7 +6268,7 @@ public class InstructionParserARM {
 	 * A8.6.272 VADD (floating-point)
 	 *	{@literal vadd<c>.f64    <Dd>,<Dn>,<Dm>	vadd<c>.f32    <Sd>,<Sn>,<Sm>}
 	 * A8.6.301 VDIV
-	 *	{@literal vdiv<c>.f64    <Dd>,<Dn>,<Dm>	vdiv<c>.f32    <Sd>,<Sn>,<Sm>} 
+	 *	{@literal vdiv<c>.f64    <Dd>,<Dn>,<Dm>	vdiv<c>.f32    <Sd>,<Sn>,<Sm>}
 	 * A8.6.324 VMLA, VMLS (floating-point)
 	 *	{@literal vml<op><c>.f64 <Dd>,<Dn>,<Dm>	vml<op><c>.f32 <Sd>,<Sn>,<Sm>}
 	 * A8.6.338 VMUL (floating-point)
@@ -6022,9 +6276,9 @@ public class InstructionParserARM {
 	 * A8.6.343 VNMLA, VNMLS, VNMUL
 	 *	{@literal vnmul<c>.f64   <Dd>,<Dn>,<Dm>	vnmul<c>.f32   <Sd>,<Sn>,<Sm>}
 	 * A8.6.402 VSUB (floating-point)
-	 *	{@literal vsub<c>.f64    <Dd>,<Dn>,<Dm>	vsub<c>.f32    <Sd>,<Sn>,<Sm>} 
+	 *	{@literal vsub<c>.f64    <Dd>,<Dn>,<Dm>	vsub<c>.f32    <Sd>,<Sn>,<Sm>}
 	 */
-	private String getVFPSzF64F32dnmOperands(int opcode) {  
+	private String getVFPSzF64F32dnmOperands(int opcode) {
 		int sz = getBit(opcode, 8);
 		return getVFPSzF64F32Type(sz)
 				 + TAB + getVFPDorSReg(opcode, sz, 12, 22)
@@ -6039,7 +6293,7 @@ public class InstructionParserARM {
 	 *  @return String containing ".8", ".16" or ".32" + TAB + proper Q-or-D _d,_m reg operands
 	 * <p><listing>
 	 * A8.6.407 VTRN
-	 *	{@literal vtrn<c>.<size> <Qd>,<Qm>	vtrn<c>.<size> <Dd>,<Dm>} 
+	 *	{@literal vtrn<c>.<size> <Qd>,<Qm>	vtrn<c>.<size> <Dd>,<Dm>}
 	 * A8.6.409 VUZP
 	 *	{@literal vuzp<c>.<size> <Qd>,<Qm>	vuzp<c>.<size> <Dd>,<Dm>}
 	 * A8.6.410 VZIP
@@ -6056,7 +6310,7 @@ public class InstructionParserARM {
 	 *  @return String containing ".8" ".16" or ".32" + TAB + proper Q-or-D _d,_n,_m reg operands
 	 *  <p><listing>
 	 * A8.6.408 VTST
-	 *	{@literal vtst<c>.<size> <Qd>,<Qn>,<Qm>	vtst<c>.<size> <Dd>,<Dn>,<Dm>} 
+	 *	{@literal vtst<c>.<size> <Qd>,<Qn>,<Qm>	vtst<c>.<size> <Dd>,<Dn>,<Dm>}
 	 */
 	private String getVFPSzQorDdnmOperands(int opcode) {
 		return "." + getVFPDataTypeSize(opcode, 20) + getVFPQorDdnmRegs(opcode);
@@ -6070,7 +6324,7 @@ public class InstructionParserARM {
 	 * <p><listing>
 	 * A8.6.270 VACGE, VACGT, VACLE, VACLT
 	 *	{@literal vacge<c>.f32 <Qd>,<Qn>,<Qm>	vacge<c>.f32 <Dd>,<Dn>,<Dm>}
-	 *	{@literal vacgt<c>.f32 <Qd>,<Qn>,<Qm>	vacgt<c>.f32 <Dd>,<Dn>,<Dm>}  
+	 *	{@literal vacgt<c>.f32 <Qd>,<Qn>,<Qm>	vacgt<c>.f32 <Dd>,<Dn>,<Dm>}
 	 */
 	private String getVFP_vacge_vacgt(int opcode) {
 		return (isBitEnabled(opcode, 21) ? "gt.f32" : "ge.f32")
@@ -6095,8 +6349,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 ... Vd___15_12 ... sz___8_8 E___7_7 ...<br> 
-	 * Thumb2 ... D_1_6_6 ... Vd_0_15_12 ... sz_0_8_8 E_0_7_7 ... 
+	 * ARM--- ... D_22_22 ... Vd___15_12 ... sz___8_8 E___7_7 ...<br>
+	 * Thumb2 ... D_1_6_6 ... Vd_0_15_12 ... sz_0_8_8 E_0_7_7 ...
 	 *  @param opcode
 	 *  @return String containing ".f32" or ".f64" + TAB + proper D-or-S _d reg operand + ",0.0"
 	 * <p><listing>
@@ -6110,7 +6364,7 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 ... Vd___15_12 ... sz___8_8 . . M___5_5 . Vm___3_0<br> 
+	 * ARM--- ... D_22_22 ... Vd___15_12 ... sz___8_8 . . M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 ... Vd_0_15_12 ... sz_0_8_8 . . M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing proper mnemonic postfix + TAB + proper D-or-S _d,_m reg operands
@@ -6127,8 +6381,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 ... op_18_18 . U_16_16 Vd___15_12 ... sf___8_8 sx___7_7 . i___5_5 . imm4___3_0<br> 
-	 * Thumb2 ... D_1_6_6 ... op_1_2_2 . U_1_0_0 Vd_0_15_12 ... sf_0_8_8 sx_0_7_7 . i_0_5_5 . imm4_0_3_0 
+	 * ARM--- ... D_22_22 ... op_18_18 . U_16_16 Vd___15_12 ... sf___8_8 sx___7_7 . i___5_5 . imm4___3_0<br>
+	 * Thumb2 ... D_1_6_6 ... op_1_2_2 . U_1_0_0 Vd_0_15_12 ... sf_0_8_8 sx_0_7_7 . i_0_5_5 . imm4_0_3_0
 	 *  @param opcode
 	 *  @return String containing proper mnemonic postfix + TAB + proper D-or-S _d,_d reg operands
 	 * <p><listing>
@@ -6150,8 +6404,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 imm6_21_16 Vd___15_12 ... op___8_8 0 Q___6_6 M___5_5 1 Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... op_0_8_8 0 Q_0_6_6 M_0_5_5 1 Vm_0_3_0 
+	 * ARM--- ... D_22_22 imm6_21_16 Vd___15_12 ... op___8_8 0 Q___6_6 M___5_5 1 Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... op_0_8_8 0 Q_0_6_6 M_0_5_5 1 Vm_0_3_0
 	 *  @param opcode
 	 *  @param uBit bit in the opcode containing the u (unsigned) bit
 	 *  @return String containing proper mnemonic postfix + TAB + proper Q-or-D _d,_m reg operands
@@ -6160,14 +6414,14 @@ public class InstructionParserARM {
 	 *	{@literal vcvt<c>.<Td>.<Tm>	<Qd>,<Qm>,#<fbits>}
 	 *	{@literal vcvt<c>.<Td>.<Tm>	<Dd>,<Dm>,#<fbits>}
 	 */
-	private String getVFP_vcvtFpFixVecOperands(int opcode, int uBit) { 
+	private String getVFP_vcvtFpFixVecOperands(int opcode, int uBit) {
 		return getVFPTdTm2(opcode, 8, uBit) + getVFPQorDdmRegs(opcode)
 				+ ",#" + (opcode >> 16 & 0x3f);
 	}
 
 	/**
-	 * ARM--- ... D_22_22 . . size_19_18 1 1 Vd___15_12 ... op___8_7 Q___6_6 M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 . . size_1_3_2 1 1 Vd_0_15_12 ... op_0_8_7 Q_0_6_6 M_0_5_5 . Vm_0_3_0 
+	 * ARM--- ... D_22_22 . . size_19_18 1 1 Vd___15_12 ... op___8_7 Q___6_6 M___5_5 . Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 . . size_1_3_2 1 1 Vd_0_15_12 ... op_0_8_7 Q_0_6_6 M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing proper Td.Tm combo + TAB + proper Q-or-D _d,_m reg operands
 	 * <p><listing>
@@ -6180,8 +6434,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 ... opc2_18_16 Vd___15_12 ... sz___8_8 op___7_7 . M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 ... opc2_1_2_0 Vd_0_15_12 ... sz_0_8_8 op_0_7_7 . M_0_5_5 . Vm_0_3_0 
+	 * ARM--- ... D_22_22 ... opc2_18_16 Vd___15_12 ... sz___8_8 op___7_7 . M___5_5 . Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 ... opc2_1_2_0 Vd_0_15_12 ... sz_0_8_8 op_0_7_7 . M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing proper mnemonic postfix + TAB + proper D-or-S _d,_m reg operands
 	 * <p><listing>
@@ -6203,7 +6457,7 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 ... op_16_16 Vd___15_12 ... T___7_7 . M___5_5 . Vm___3_0<br> 
+	 * ARM--- ... D_22_22 ... op_16_16 Vd___15_12 ... T___7_7 . M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 ... op_1_0_0 Vd_0_15_12 ... T_0_7_7 . M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing proper mnemonic postfix + TAB + proper Sd,Sm reg operands
@@ -6219,7 +6473,7 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 . . size_19_18 . . Vd___15_12 ... op___8_8 . . M___5_5 . Vm___3_0<br> 
+	 * ARM--- ... D_22_22 . . size_19_18 . . Vd___15_12 ... op___8_8 . . M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 . . size_1_3_2 ... Vd_0_15_12 . . op_0_8_8 . . M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing proper mnemonic postfix + TAB + proper Q-or-D _d,_m reg operands
@@ -6236,7 +6490,7 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... b_22_22 Q_21_21 . Vd_19_16 Rt___15_12 ... D___7_7 . e___5_5 ...<br> 
+	 * ARM--- ... b_22_22 Q_21_21 . Vd_19_16 Rt___15_12 ... D___7_7 . e___5_5 ...<br>
 	 * Thumb2 ... b_1_6_6 Q_1_5_5 . Vd_1_3_0 Rt_0_15_12 ... D_0_7_7 . e_0_5_5 ...
 	 *  @param opcode
 	 *  @return String containing proper mnemonic postfix + TAB + proper Q-or-D _d,Rt reg operands
@@ -6258,7 +6512,7 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 . . imm4_19_16 Vd___15_12 ... Q___6_6 M___5_5 . Vm___3_0<br> 
+	 * ARM--- ... D_22_22 . . imm4_19_16 Vd___15_12 ... Q___6_6 M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 . . imm4_1_3_0 Vd_0_15_12 ... Q_0_6_6 M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing proper mnemonic postfix + TAB + proper Sd,Sm reg operands
@@ -6275,7 +6529,7 @@ public class InstructionParserARM {
 			x = imm >> 1;
 		} else if ((imm & 2) != 0) {
 			postfix = ".16";
-			x = imm >> 2;	
+			x = imm >> 2;
 		} else {
 			postfix = ".32";
 			x = imm >> 3;
@@ -6287,7 +6541,7 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 size_21_20 Vn_19_16 Vd___15_12 0 op___10_10 L___9_9 . N___7_7 1 M___5_5 0 Vm___3_0<br> 
+	 * ARM--- ... D_22_22 size_21_20 Vn_19_16 Vd___15_12 0 op___10_10 L___9_9 . N___7_7 1 M___5_5 0 Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 size_1_5_4 Vn_1_3_0 Vd_0_15_12 0 op_0_10_10 L_0_9_9 . N_0_7_7 1 M_0_5_5 0 Vm_0_3_0
 	 *  @param opcode
 	 *  @param quBit shift position of q-bit/u-bit in instruction
@@ -6438,7 +6692,7 @@ public class InstructionParserARM {
 		String mnemonic = "";
 		// concatenate bit 5 op field with bits 8-11 cmode field
 		int opCmode = ((opcode >> 1) & 0x10) | (opcode >> 8) & 0xf;
-		
+
 		// find the instruction mnemonic
 		switch (opCmode) {
 		case 0: case 2: case 4: case 6:
@@ -6463,15 +6717,15 @@ public class InstructionParserARM {
 		default:
 			break;
 		}
-		
+
 		return mnemonic + getVFPSize(opCmode);
 	}
 
 	/**
-	 * ARM--- ... D_22_22 ... imm3_18_16 Vd___15_12 cmode___11_8 . Q___6_6 . . imm4___3_0<br> 
-	 * Thumb2 ... D_1_6_6 ... imm3_1_2_0 Vd_0_15_12 cmode_0_11_8 . Q_0_6_6 . . imm4_0_3_0 
+	 * ARM--- ... D_22_22 ... imm3_18_16 Vd___15_12 cmode___11_8 . Q___6_6 . . imm4___3_0<br>
+	 * Thumb2 ... D_1_6_6 ... imm3_1_2_0 Vd_0_15_12 cmode_0_11_8 . Q_0_6_6 . . imm4_0_3_0
 	 *  @param opcode
-	 *  @param topIBit location of the I bit to place at the top of the imm8 to be constructed 
+	 *  @param topIBit location of the I bit to place at the top of the imm8 to be constructed
 	 *  @return String containing the full mnemonic + TAB + proper Q-or-D _d,_m reg operands
 	 * <p><listing>
 	 * A8.6.277 VBIC (immediate)
@@ -6491,8 +6745,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 imm6_21_16 Vd___15_12 ... M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... M_0_5_5 . Vm_0_3_0 
+	 * ARM--- ... D_22_22 imm6_21_16 Vd___15_12 ... M___5_5 . Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @param uBit shift position of u-bit in instruction
 	 *  @return String containing mnemonic data type post-fix + TAB + proper Q-or-D _d,_m reg operands
@@ -6512,8 +6766,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 ... Vd___15_12 ... imm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 ... Vd_0_15_12 ... imm_0_3_0 
+	 * ARM--- ... D_22_22 ... Vd___15_12 ... imm___3_0<br>
+	 * Thumb2 ... D_1_6_6 ... Vd_0_15_12 ... imm_0_3_0
 	 *  @param opcode
 	 *  @param uBit shift position of u-bit in instruction
 	 *  @return String containing mnemonic data size post-fix + TAB + proper D-or-S <list> reg operands
@@ -6531,10 +6785,10 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 . . size_19_18 . . Vd___15_12 ... op___7_6 M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 . . size_1_3_2 . . Vd_0_15_12 ... op_0_7_6 M_0_5_4 . Vm_0_3_0 
+	 * ARM--- ... D_22_22 . . size_19_18 . . Vd___15_12 ... op___7_6 M___5_5 . Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 . . size_1_3_2 . . Vd_0_15_12 ... op_0_7_6 M_0_5_4 . Vm_0_3_0
 	 * @param opcode
-	 * @return String containing mnemonic size postfix + TAB + proper Dd,Qm reg operands 
+	 * @return String containing mnemonic size postfix + TAB + proper Dd,Qm reg operands
 	 * <p><listing>
 	 * A8.6.361 VQMOVN
 	 *	vld1{@literal vqmov{u}n<c>.<type><size> <Dd>, <Qm>}
@@ -6545,8 +6799,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 imm6_21_16 Vd_15_12 1 ... op___8_8 . . M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... op_0_8_8 . . M_0_5_5 . Vm_0_3_0 
+	 * ARM--- ... D_22_22 imm6_21_16 Vd_15_12 1 ... op___8_8 . . M___5_5 . Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... op_0_8_8 . . M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @param uBit shift position of u-bit in instruction
 	 *  @return String containing mnemonic postfix + TAB + proper Dd,Qm,#imm operands
@@ -6557,13 +6811,13 @@ public class InstructionParserARM {
 	private String getVFP_vqshl_instruction(int opcode, int uBit) {
 		int l = getBit(opcode, 7);
 		int imm = l == 1 ? opcode >> 16 & 0x3f : getVFPQImm6(opcode);
-		String typeSize = getVFPQUUorSType(opcode, l, uBit, 8);  
+		String typeSize = getVFPQUUorSType(opcode, l, uBit, 8);
 		return typeSize + TAB + getVFPQorDdmRegs(opcode) + ",#" + imm;
 	}
 
 	/**
-	 * ARM--- ... D_22_22 imm6_21_16 Vd_15_12 1 ... op___8_8 . . M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... op_0_8_8 . . M_0_5_5 . Vm_0_3_0 
+	 * ARM--- ... D_22_22 imm6_21_16 Vd_15_12 1 ... op___8_8 . . M___5_5 . Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... op_0_8_8 . . M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing mnemonic postfix + TAB + proper Dd,Qm,#imm operands
 	 * <p><listing>
@@ -6577,8 +6831,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 imm6_21_16 Vd_15_12 1 ... op___8_8 . . M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... op_0_8_8 . . M_0_5_5 . Vm_0_3_0 
+	 * ARM--- ... D_22_22 imm6_21_16 Vd_15_12 1 ... op___8_8 . . M___5_5 . Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... op_0_8_8 . . M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @param uPos shift position of u-bit in instruction
 	 *  @return String containing mnemonic postfix + TAB + proper Dd,Qm,#imm operands
@@ -6597,7 +6851,7 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_1_6_6 imm6_1_5_0 Vd___15_12 ... L___7_7 Q___6_6 M___5_5 . Vm___3_0<br> 
+	 * ARM--- ... D_1_6_6 imm6_1_5_0 Vd___15_12 ... L___7_7 Q___6_6 M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... L_0_7_7 Q_0_6_6 M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing TAB + proper Dd,{Dn1-Dnn},Dm reg operands
@@ -6614,15 +6868,15 @@ public class InstructionParserARM {
 			ops += ",d" + (reg + i);
 		}
 		ops += "}," + getVFPQorDReg(opcode, 0, 0, 5);
-		
+
 		return ops;
 	}
 
 	/**
-	 * ARM--- ... D_1_6_6 imm6_1_5_0 Vd___15_12 ... L___7_7 Q___6_6 M___5_5 . Vm___3_0<br> 
+	 * ARM--- ... D_1_6_6 imm6_1_5_0 Vd___15_12 ... L___7_7 Q___6_6 M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... L_0_7_7 Q_0_6_6 M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
-	 *  @param encoded whether immediate is in the opcode or must be derived 
+	 *  @param encoded whether immediate is in the opcode or must be derived
 	 *  @return String containing mnemonic postfix + TAB + proper Q-or-D _d,_m,#imm operands
 	 * <p><listing>
 	 * A8.6.376 VRSHR
@@ -6649,27 +6903,7 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_1_6_6 imm6_1_5_0 Vd___15_12 ... L___7_7 Q___6_6 M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... L_0_7_7 Q_0_6_6 M_0_5_5 . Vm_0_3_0
-	 *  @param opcode
-	 *  @return String containing mnemonic postfix + TAB + proper Q-or-D _d,_m,#imm operands
-	 * <p><listing>
-	 * A8.6.387 VSLI
-	 *	{@literal vsli<c>.<size>        <Qd>,<Qm>,#<imm>	vsli<c>.<size>        <Dd>,<Dm>,#<imm>}
-	 * A8.6.390 VSRI
-	 *	{@literal vsri<c>.<size>        <Qd>,<Qm>,#<imm>	vsri<c>.<size>        <Dd>,<Dm>,#<imm>}
-	 */
-//	private String getVFP_vXrX_instruction(int opcode) {
-//		boolean encoded = isBitEnabled()
-//		int l = opcode >> 7 & 1;
-//		int imm = l == 1
-//					? (encoded ? 64 - (opcode >> 16 & 0x3f) : opcode >> 16 & 0x3f)
-//					: (encoded ? getVFPImm6Encoded(opcode) : getVFPImm6(opcode));
-//		return getVFPLImm6Size(opcode, l) + getVFPQorDdmRegs(opcode) + ",#" + imm;
-//	}
-
-	/**
-	 * ARM--- ... D_1_6_6 imm6_1_5_0 Vd___15_12 ... M___5_5 . Vm___3_0<br> 
+	 * ARM--- ... D_1_6_6 imm6_1_5_0 Vd___15_12 ... M___5_5 . Vm___3_0<br>
 	 * Thumb2 ... D_1_6_6 imm6_1_5_0 Vd_0_15_12 ... M_0_5_5 . Vm_0_3_0
 	 *  @param opcode
 	 *  @return String containing mnemonic size postfix + TAB + proper Dd,Qm,#imm operands
@@ -6686,10 +6920,10 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 . . Rn_19_16 Vd___15_12 type___11_8 size___7_6 align___5_4 Rm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 . . Rn_1_3_0 Vd_0_15_12 type_0_11_8 size_0_7_6 align_0_5_4 Rm_0_3_0 
+	 * ARM--- ... D_22_22 . . Rn_19_16 Vd___15_12 type___11_8 size___7_6 align___5_4 Rm___3_0<br>
+	 * Thumb2 ... D_1_6_6 . . Rn_1_3_0 Vd_0_15_12 type_0_11_8 size_0_7_6 align_0_5_4 Rm_0_3_0
 	 * @param opcode
-	 * @return String containing 
+	 * @return String containing
 	 * <p><listing>
 	 * A8.6.308 VLD1 (single element to one lane)
 	 *	vld1{@literal <c>.<size> <list>,[<Rn>}{{@literal @<align>}}]{!}
@@ -6727,7 +6961,7 @@ public class InstructionParserARM {
 	 * A8.6.398 VST4 (single 4-element structure from one lane)
 	 *	vst4{@literal <c>.<size> <list>,[<Rn>}{{@literal @<align>}}]{!}
 	 *	vst4{@literal <c>.<size> <list>,[<Rn>}{{@literal @<align>}}],{@literal <Rm>}
-	 */	
+	 */
 	private String getVFP_vXX_Xlane(int opcode) {
 		// careful examination of the bit patterns in the
 		// reference manual shows bits 8 & 9 determine
@@ -6737,7 +6971,7 @@ public class InstructionParserARM {
 
 		// bits 10 & 11 have double use: 0 - 2 means size for 1 lane, but 3 means all lanes
 		int sz = (opcode >> 10 & 3);	// size (if not 3) for "one-lane" versions
-		
+
 		boolean allLanes = 3 == sz;
 		if (allLanes)
 			sz = (opcode >> 6 & 3);	// "all-lanes" size
@@ -6758,9 +6992,9 @@ public class InstructionParserARM {
 		// determine differences for "all-lanes" versions
 
 		if (allLanes) {
-			boolean align = isBitEnabled(opcode, 4); 
+			boolean align = isBitEnabled(opcode, 4);
 			spacing = getBit(opcode, 5) + 1;
-			
+
 			index += "]";
 
 			// figure out the list member count, spacing and alignment string
@@ -6789,7 +7023,7 @@ public class InstructionParserARM {
 			if (ver > 1) {
 				spacing = sz == 0 ? 1 : getBit(ia, sz) + 1;
 			}
-			
+
 			listMembers = ver;
 
 			// figure out the list member count, spacing and alignment string
@@ -6825,8 +7059,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 . . Rn_19_16 Vd___15_12 type___11_8 size___7_6 align___5_4 Rm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 . . Rn_1_3_0 Vd_0_15_12 type_0_11_8 size_0_7_6 align_0_5_4 Rm_0_3_0 
+	 * ARM--- ... D_22_22 . . Rn_19_16 Vd___15_12 type___11_8 size___7_6 align___5_4 Rm___3_0<br>
+	 * Thumb2 ... D_1_6_6 . . Rn_1_3_0 Vd_0_15_12 type_0_11_8 size_0_7_6 align_0_5_4 Rm_0_3_0
 	 * @param opcode
 	 * @return String containing mnemonic c.size postfix + TAB + all operands
 	 * <p><listing>
@@ -6854,7 +7088,7 @@ public class InstructionParserARM {
 	 * A8.6.397 VST4 (multiple 4-element structures)
 	 *	vst4{@literal <c>.<size> <list>,[<Rn>}{{@literal @<align>}}]{!}
 	 *	vst4{@literal <c>.<size> <list>,[<Rn>}{{@literal @<align>}}],{@literal <Rm>}
-	 */	
+	 */
 	private String getVFP_vXX_multi(int opcode) {
 		int vecReg = (getBit(opcode, 22) << 4) | (opcode >> 12 & 0xf);
 		int type = (opcode >> 8) & 0xf;
@@ -6964,8 +7198,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 . . Rn_19_16 Vd___15_12 type___11_8 size___7_6 align___5_4 Rm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 . . Rn_1_3_0 Vd_0_15_12 type_0_11_8 size_0_7_6 align_0_5_4 Rm_0_3_0 
+	 * ARM--- ... D_22_22 . . Rn_19_16 Vd___15_12 type___11_8 size___7_6 align___5_4 Rm___3_0<br>
+	 * Thumb2 ... D_1_6_6 . . Rn_1_3_0 Vd_0_15_12 type_0_11_8 size_0_7_6 align_0_5_4 Rm_0_3_0
 	 * @param opcode
 	 * @return String containing mnemonic post-coniditon postfix + TAB + all operands
 	 * <p><listing>
@@ -6973,7 +7207,7 @@ public class InstructionParserARM {
 	 *	vldm{mode}{@literal <c> <Rn>}{!}{@literal <list>}
 	 * A8.6.399 VSTM
 	 *	vstm{mode}{@literal <c> <Rn>}{!}{@literal <list>}
-	 */	
+	 */
 	private String getVFP_vXXm(int opcode) {
 		boolean is64 = isBitEnabled(opcode, 8);
 		return TAB + getR_16(opcode) + getW(opcode)
@@ -6981,8 +7215,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... U_23_23 D_22_22 0 1 Rn_19_16 Vd___15_12 ... imm8___7_0<br> 
-	 * Thumb2 ... U_1_7_7 D_1_6_6 . . Rn_1_3_0 Vd_0_15_12 ... imm8_0_7_0 
+	 * ARM--- ... U_23_23 D_22_22 0 1 Rn_19_16 Vd___15_12 ... imm8___7_0<br>
+	 * Thumb2 ... U_1_7_7 D_1_6_6 . . Rn_1_3_0 Vd_0_15_12 ... imm8_0_7_0
 	 * @param opcode
 	 * @return String containing post-condition mnemonic prefix
 	 * 			+ TAB + proper D-or-S reg & imm8 addressing mode operands
@@ -6999,7 +7233,7 @@ public class InstructionParserARM {
 	 *	vldr{@literal <c> <Dd>, [<Rn>}{, #+/-{@literal <imm>}}]
 	 * A8.6.400 VSTR
 	 *	vldr{@literal <c> <Sd>, [<Rn>}{, #+/-{@literal <imm>}}]
-	 */	
+	 */
 	private String getVFP_vXXr(int opcode) {
 		int ds = getBit(opcode, 8);
 		return (ds == 1 ? ".64" : ".32")
@@ -7008,8 +7242,8 @@ public class InstructionParserARM {
 	}
 
 	/**
-	 * ARM--- ... D_22_22 sz_21_20 Vn_19_16 Vd___15_12 ... op___8_8 N___7_7 . M___5_5 . Vm___3_0<br> 
-	 * Thumb2 ... D_1_6_6 sz_1_5_4 Vn_1_3_0 Vd_0_15_12 ... op_0_8_8 N_0_7_7 . M_0_5_5 . Vm_0_3_0 
+	 * ARM--- ... D_22_22 sz_21_20 Vn_19_16 Vd___15_12 ... op___8_8 N___7_7 . M___5_5 . Vm___3_0<br>
+	 * Thumb2 ... D_1_6_6 sz_1_5_4 Vn_1_3_0 Vd_0_15_12 ... op_0_8_8 N_0_7_7 . M_0_5_5 . Vm_0_3_0
 	 * @param opcode
 	 * @param uBit shift position of u-bit in instruction
 	 * @return "w" or "l" + type mnemonic postfix, a TAB,
@@ -7019,7 +7253,7 @@ public class InstructionParserARM {
 	 *	{@literal vaddl<c>.<dt> <Qd>,<Dn>,<Dm>	vaddw<c>.<dt>} {{@literal <Qd>}},{@literal <Qn>,<Dm>}
 	 * A8.6.404 VSUBL, VSUBW
 	 *	{@literal vsubl<c>.<dt> <Qd>,<Dn>,<Dm>	vsubw<c>.<dt>} {{@literal <Qd>}},{@literal <Qn>,<Dm>}
-	 */	
+	 */
 	private String getVFP_vXXXl_vXXXw(int opcode, int uBit) {
 		String ops;
 		if (isBitEnabled(opcode, 8)) {
@@ -7054,7 +7288,7 @@ public class InstructionParserARM {
 	private String getR(int opcode, int bitPos) {
 		return isBitEnabled(opcode, bitPos) ? "r" : "";
 	}
-	
+
 	private String getS(int opcode) {
 		return isBitEnabled(opcode, 20) ? "s" : "";
 	}
@@ -7062,7 +7296,7 @@ public class InstructionParserARM {
 	private String getW(int opcode) {
 		return isBitEnabled(opcode, 21) ? "!" : "";
 	}
-	
+
 	private String getX(int opcode, int bitPos) {
 		return isBitEnabled(opcode, bitPos) ? "x" : "";
 	}

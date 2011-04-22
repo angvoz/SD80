@@ -654,8 +654,7 @@ public class TestOpcodeARM extends Assert {
 		this.new OpcodeTest(OpcodeARM.Index.thumb2_vmax_vmin__fp,		0xEF000F00), // ____ ____ _xxx xxxx xxxx ____ xxx_ xxxx
 		this.new OpcodeTest(OpcodeARM.Index.thumb2_vrecps,				0xEF000F10), // ____ ____ _x_x xxxx xxxx ____ xxx_ xxxx
 		this.new OpcodeTest(OpcodeARM.Index.thumb2_vbic__reg,			0xEF100110), // ____ ____ _x__ xxxx xxxx ____ xxx_ xxxx
-		this.new OpcodeTest(OpcodeARM.Index.thumb2_vmov__reg,			0xEF200110), // ____ ____ _x__ xxxx xxxx ____ xxx_ xxxx
-		this.new OpcodeTest(OpcodeARM.Index.thumb2_vorr__reg,			0xEF200110), // ____ ____ _x__ xxxx xxxx ____ xxx_ xxxx
+		this.new OpcodeTest(OpcodeARM.Index.thumb2_vmov_vorr,		0xEF200110), // ____ ____ _x__ xxxx xxxx ____ xxx_ xxxx
 		this.new OpcodeTest(OpcodeARM.Index.thumb2_vsub__f32,			0xEF200D00), // ____ ____ _x_x xxxx xxxx ____ xxx_ xxxx
 		this.new OpcodeTest(OpcodeARM.Index.thumb2_vrsqrts,				0xEF200F10), // ____ ____ _x_x xxxx xxxx ____ xxx_ xxxx
 		this.new OpcodeTest(OpcodeARM.Index.thumb2_vorn,				0xEF300110), // ____ ____ _x__ xxxx xxxx ____ xxx_ xxxx

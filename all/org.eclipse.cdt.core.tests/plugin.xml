@@ -239,7 +239,8 @@
                kind="macroFile"
                name="/macro/file.mac">
          </entry>
-      </provider>      <provider
+      </provider>
+      <provider
             class="org.eclipse.cdt.core.language.settings.providers.MockLanguageSettingsProvider"
             id="org.eclipse.cdt.core.tests.custom.language.settings.provider"
             name="Test Plugin Language Settings Provider">
@@ -331,5 +332,12 @@
                name="/test/macro/file">
          </entry>
       </provider>
+   </extension>
+   <extension
+         point="org.eclipse.cdt.core.RefreshExclusionFactory">
+      <exclusionFactory
+            exclusionClass="org.eclipse.cdt.core.resources.tests.TestExclusion"
+            factoryClass="org.eclipse.cdt.core.resources.tests.TestExclusionFactory">
+      </exclusionFactory>
    </extension>
 </plugin>

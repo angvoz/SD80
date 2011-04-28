@@ -13,10 +13,14 @@ package org.eclipse.cdt.make.core.scannerconfig;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
+import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.CommandLauncher;
+import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.ICommandLauncher;
 import org.eclipse.cdt.core.IConsoleParser;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
@@ -24,17 +28,26 @@ import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
+import org.eclipse.cdt.make.core.MakeCorePlugin;
+import org.eclipse.cdt.make.internal.core.MakeMessages;
+import org.eclipse.cdt.make.internal.core.StreamMonitor;
+import org.eclipse.cdt.make.internal.core.scannerconfig2.SCMarkerGenerator;
 import org.eclipse.cdt.utils.CommandLineUtil;
+import org.eclipse.cdt.utils.PathUtil;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.SubProgressMonitor;
 
 public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSerializable implements
 		ILanguageSettingsOutputScanner {
-	private static final String EOL = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
+	private static final String NEWLINE = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
+	private static final String PLUGIN_CDT_MAKE_UI_ID = "org.eclipse.cdt.make.ui"; //$NON-NLS-1$
+	private static final String GMAKE_ERROR_PARSER_ID = "org.eclipse.cdt.core.GmakeErrorParser"; //$NON-NLS-1$
+	private static final String PATH_ENV = "PATH"; //$NON-NLS-1$
 
 	// temporaries which are reassigned before running
 	private ICConfigurationDescription currentCfgDescription = null;
@@ -114,7 +127,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	/**
 	 * TODO: test case for this function
 	 */
-	public void run(IPath workingDirectory, String[] env, IConsole console, IProgressMonitor monitor)
+	public void run(IPath workingDirectory, String[] env, IConsole FIXME, IProgressMonitor monitor)
 			throws CoreException, IOException {
 
 		String command = getResolvedCommand();
@@ -125,14 +138,27 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		if (runOnce && !isEmpty()) {
 			return;
 		}
+		IConsole console;
+		boolean isConsoleEnabled = true;
+		if (isConsoleEnabled) {
+			String consoleId = MakeCorePlugin.PLUGIN_ID + '.' + getId()/* + '.' + getLanguage()*/;
+			console = CCorePlugin.getDefault().getBuildConsole(consoleId, getName(), getIconURL());
+		} else {
+			// that looks in extension points registry and won't find the id
+			console = CCorePlugin.getDefault().getConsole(MakeCorePlugin.PLUGIN_ID + ".console.hidden"); //$NON-NLS-1$
+		}
+		console.start(currentProject);
+		OutputStream cos = console.getOutputStream();
 
-		OutputStream stdout = console.getOutputStream();
-		OutputStream stderr = console.getErrorStream();
+		ErrorParserManager epm = new ErrorParserManager(currentProject, new SCMarkerGenerator(), new String[] {GMAKE_ERROR_PARSER_ID});
+		epm.setOutputStream(cos);
+		StreamMonitor streamMon = new StreamMonitor(new SubProgressMonitor(monitor, 70), epm, 100);
+		OutputStream stdout = streamMon;
+		OutputStream stderr = streamMon;
 
 		String msg = "Running scanner discovery: " + getName();
 		monitor.subTask(msg);
-		stdout.write(("**** "+msg+" ****"+EOL+EOL).getBytes());
-		stdout.flush();
+		printLine(stdout, "**** " + msg + " ****" + NEWLINE);
 
 		ConsoleOutputSniffer sniffer = new ConsoleOutputSniffer(stdout, stderr, new IConsoleParser[] { this });
 		OutputStream consoleOut = sniffer.getOutputStream();
@@ -159,7 +185,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 
 		if (p != null) {
 			// Before launching give visual cues via the monitor
-			monitor.subTask("Invoking command "+program);
+			monitor.subTask("Invoking command " + command);
 			if (launcher.waitAndRead(consoleOut, consoleErr, new SubProgressMonitor(monitor, 0))
 					!= ICommandLauncher.OK) {
 				errMsg = launcher.getErrorMessage();
@@ -168,9 +194,51 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 			errMsg = launcher.getErrorMessage();
 		}
 		if (errMsg!=null) {
-			stdout.write((errMsg+EOL+EOL).getBytes());
-			stdout.flush();
+			String errorPrefix = MakeMessages.getString("ExternalScannerInfoProvider.Error_Prefix"); //$NON-NLS-1$
+
+			msg = MakeMessages.getFormattedString("ExternalScannerInfoProvider.Provider_Error", command);
+			printLine(consoleErr, errorPrefix + msg + NEWLINE);
+
+			// Launching failed, trying to figure out possible cause
+			String envPath = getEnvVar(env, PATH_ENV);
+			if (!program.isAbsolute() && PathUtil.findProgramLocation(program.toString(), envPath) == null) {
+				printLine(consoleErr, errMsg);
+				msg = MakeMessages.getFormattedString("ExternalScannerInfoProvider.Working_Directory", workingDirectory); //$NON-NLS-1$
+				msg = MakeMessages.getFormattedString("ExternalScannerInfoProvider.Program_Not_In_Path", program); //$NON-NLS-1$
+				printLine(consoleErr, errorPrefix + msg + NEWLINE);
+				printLine(consoleErr, PATH_ENV + "=[" + envPath + "]" + NEWLINE); //$NON-NLS-1$ //$NON-NLS-2$
+			} else {
+				printLine(consoleErr, errorPrefix + errMsg);
+				msg = MakeMessages.getFormattedString("ExternalScannerInfoProvider.Working_Directory", workingDirectory); //$NON-NLS-1$
+				printLine(consoleErr, PATH_ENV + "=[" + envPath + "]" + NEWLINE); //$NON-NLS-1$ //$NON-NLS-2$
+			}
 		}
+	}
+
+
+	private String getEnvVar(String[] envStrings, String envVar) {
+		String envPath = null;
+		if (envStrings!=null) {
+			String varPrefix = envVar+'=';
+			for (String envStr : envStrings) {
+				if (envStr.startsWith(varPrefix)) {
+					envPath = envStr.substring(varPrefix.length());
+					break;
+				}
+			}
+		} else {
+			envPath = System.getenv(envVar);
+		}
+		return envPath;
+	}
+
+	protected URL getIconURL() {
+		return Platform.getBundle(PLUGIN_CDT_MAKE_UI_ID).getEntry("icons/obj16/inspect_system.gif"); //$NON-NLS-1$
+	}
+
+	private void printLine(OutputStream stream, String msg) throws IOException {
+		stream.write((msg + NEWLINE).getBytes());
+		stream.flush();
 	}
 
 	@Override

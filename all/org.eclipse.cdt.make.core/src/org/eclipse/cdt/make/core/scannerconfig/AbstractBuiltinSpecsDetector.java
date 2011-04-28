@@ -112,7 +112,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	}
 
 	/**
-	 * This method is expected to populate this.settingEntries with specific values
+	 * This method is expected to populate {@link #detectedSettingEntries} with specific values
 	 * parsed from supplied lines.
 	 */
 	public abstract boolean processLine(String line);
@@ -142,7 +142,9 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		boolean isConsoleEnabled = true;
 		if (isConsoleEnabled) {
 			String consoleId = MakeCorePlugin.PLUGIN_ID + '.' + getId()/* + '.' + getLanguage()*/;
-			console = CCorePlugin.getDefault().getBuildConsole(consoleId, getName(), getIconURL());
+//			console = CCorePlugin.getDefault().getBuildConsole(consoleId, getName(), getIconURL());
+			URL defaultIcon = getIconURL();
+			console = CCorePlugin.getDefault().getConsole("org.eclipse.cdt.make.internal.ui.scannerconfig.ScannerDiscoveryConsole", getId(), getName(), defaultIcon);
 		} else {
 			// that looks in extension points registry and won't find the id
 			console = CCorePlugin.getDefault().getConsole(MakeCorePlugin.PLUGIN_ID + ".console.hidden"); //$NON-NLS-1$

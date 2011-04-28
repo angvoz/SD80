@@ -404,7 +404,7 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 		ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
 		List<ILanguageSettingsProvider> lsProviders = cfgDescription.getLanguageSettingProviders();
 		for (ILanguageSettingsProvider lsProvider : lsProviders) {
-			if (lsProvider instanceof IConsoleParser) {
+			if (lsProvider instanceof IConsoleParser && !(lsProvider instanceof AbstractBuiltinSpecsDetector)) {
 				try {
 					if (lsProvider instanceof AbstractBuildCommandParser) {
 						((AbstractBuildCommandParser)lsProvider).startup(cfgDescription);

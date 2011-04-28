@@ -30,7 +30,7 @@ import org.eclipse.cdt.ui.CDTSharedImages;
  *
  */
 class LanguageSettingsProvidersLabelProvider extends LabelProvider {
-	private static final String TEST_PLUGIN_ID = "org.eclipse.cdt.core.tests"; //$NON-NLS-1$
+	private static final String TEST_PLUGIN_ID_PATTERN = "org.eclipse.cdt.*.tests.*"; //$NON-NLS-1$
 	private static final String OOPS = "OOPS"; //$NON-NLS-1$
 
 	/**
@@ -49,7 +49,7 @@ class LanguageSettingsProvidersLabelProvider extends LabelProvider {
 		}
 		
 		if (imageKey==null) {
-			if (provider.getId().startsWith(TEST_PLUGIN_ID)) {
+			if (provider.getId().matches(TEST_PLUGIN_ID_PATTERN)) {
 				imageKey = CDTSharedImages.IMG_OBJS_CDT_TESTING;
 			} else {
 				imageKey = CDTSharedImages.IMG_OBJS_EXTENSION;

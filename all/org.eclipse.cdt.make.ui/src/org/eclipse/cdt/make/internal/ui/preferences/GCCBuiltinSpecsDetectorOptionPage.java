@@ -11,6 +11,7 @@
 
 package org.eclipse.cdt.make.internal.ui.preferences;
 
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.internal.ui.language.settings.providers.LanguageSettingsProviderTab.ProviderReference;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
@@ -45,6 +46,8 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //	private StatusMessageLine fStatusLine;
 	private Button runOnceRadioButton;
 	private Button runEveryBuildRadioButton;
+	private Button allocateConsoleCheckBox;
+
 
 	@Override
 	public void init(Object providerRef) {
@@ -270,6 +273,33 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //			IStatus status = new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, "Note that currently the options are applied to provider directly (FIXME)");
 //			fStatusLine.setErrorStatus(status);
 //		}
+		
+		{
+			allocateConsoleCheckBox = new Button(composite, SWT.CHECK);
+			allocateConsoleCheckBox.setText("Allocate console in the Console View");
+			allocateConsoleCheckBox.setSelection(provider.isConsoleEnabled());
+			allocateConsoleCheckBox.setEnabled(fEditable);
+			allocateConsoleCheckBox.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					if (allocateConsoleCheckBox.getSelection()) {
+						AbstractBuiltinSpecsDetector selectedProvider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
+						if (!LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
+							selectedProvider.setConsoleEnabled(true);
+						} else {
+							// TODO: need working copy of the provider
+						}
+					}
+				}
+
+				@Override
+				public void widgetDefaultSelected(SelectionEvent e) {
+					widgetSelected(e);
+				}
+
+			});
+
+		}
 
 		setControl(composite);
 	}

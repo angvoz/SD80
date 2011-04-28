@@ -57,6 +57,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	protected List<ICLanguageSettingEntry> detectedSettingEntries = null;
 
 	private boolean runOnce = true;
+	private boolean isConsoleEnabled = false;
 
 
 	@Override
@@ -82,7 +83,15 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	public boolean isRunOnce() {
 		return runOnce;
 	}
+	
+	public void setConsoleEnabled(boolean enable) {
+		isConsoleEnabled = enable;
+	}
 
+	public boolean isConsoleEnabled() {
+		return isConsoleEnabled;
+	}
+	
 	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
 		currentCfgDescription = cfgDescription;
 		currentLanguageId = languageId;
@@ -139,7 +148,6 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 			return;
 		}
 		IConsole console;
-		boolean isConsoleEnabled = true;
 		if (isConsoleEnabled) {
 			String consoleId = MakeCorePlugin.PLUGIN_ID + '.' + getId()/* + '.' + getLanguage()*/;
 //			console = CCorePlugin.getDefault().getBuildConsole(consoleId, getName(), getIconURL());

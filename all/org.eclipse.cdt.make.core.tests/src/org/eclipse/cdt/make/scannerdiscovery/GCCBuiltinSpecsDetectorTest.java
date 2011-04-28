@@ -183,11 +183,11 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			}
 		};
 		detector.startup(null, null);
-		detector.run(null, null, null, null);
+		detector.run(null, null, null);
 		detector.shutdown();
 
 		detector.startup(null, null);
-		detector.run(null, null, null, null);
+		detector.run(null, null, null);
 		detector.shutdown();
 		
 		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);

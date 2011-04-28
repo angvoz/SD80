@@ -127,7 +127,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	/**
 	 * TODO: test case for this function
 	 */
-	public void run(IPath workingDirectory, String[] env, IConsole FIXME, IProgressMonitor monitor)
+	public void run(IPath workingDirectory, String[] env, IProgressMonitor monitor)
 			throws CoreException, IOException {
 
 		String command = getResolvedCommand();

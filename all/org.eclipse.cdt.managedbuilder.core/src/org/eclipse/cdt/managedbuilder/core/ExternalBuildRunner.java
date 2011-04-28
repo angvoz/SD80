@@ -138,7 +138,7 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 
 				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
 				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
-					runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, console, monitor);
+					runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, monitor);
 				}
 
 				consoleHeader[1] = configuration.getName();
@@ -466,7 +466,7 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 
 	// TODO: same copy as in InternalBuildRunner
 	private void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
-			String[] env, IConsole console, IProgressMonitor monitor) throws CoreException {
+			String[] env, IProgressMonitor monitor) throws CoreException {
 		ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
 		List<String> languageIds = new ArrayList<String>();
 		for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
@@ -483,7 +483,7 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 					if (detector.getLanguageScope()==null || detector.getLanguageScope().contains(languageId)) {
 						try {
 							detector.startup(cfgDescription, languageId);
-							detector.run(workingDirectory, env, console, monitor);
+							detector.run(workingDirectory, env, monitor);
 						} catch (Exception e) {
 							ManagedBuilderCorePlugin.log(e);
 						}

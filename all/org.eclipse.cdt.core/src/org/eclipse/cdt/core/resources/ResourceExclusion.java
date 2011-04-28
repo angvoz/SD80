@@ -11,6 +11,11 @@
 
 package org.eclipse.cdt.core.resources;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IResource;
 
 /**
@@ -25,8 +30,6 @@ import org.eclipse.core.resources.IResource;
  *
  */
 public class ResourceExclusion extends RefreshExclusion {
-
-	
 	
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.core.resources.RefreshExclusion#getName()
@@ -41,7 +44,40 @@ public class ResourceExclusion extends RefreshExclusion {
 	 */
 	@Override
 	public boolean testExclusion(IResource resource) {
-		// TODO Auto-generated method stub
+		
+		//First, check to see if the given resource is an exception to this exclusion
+		List<RefreshExclusion> nestedExclusions = getNestedExclusions();			
+		if (nestedExclusions != null) {
+			Iterator<RefreshExclusion> exclusions = nestedExclusions.iterator();
+			while (exclusions.hasNext()) {
+				RefreshExclusion exclusion = exclusions.next();
+				if (exclusion.testExclusion(resource)) {
+					return false;
+				}
+			}
+		}
+		
+		//Populate the resources to be excluded by this exclusion
+		List<IResource> excludedResources = new LinkedList<IResource>();
+		List<ExclusionInstance> exclusionInstances = getExclusionInstances();
+		Iterator<ExclusionInstance> iterator = exclusionInstances.iterator();
+		while (iterator.hasNext()) {
+			ExclusionInstance instance = iterator.next();
+			excludedResources.add(instance.getResource());
+		}
+		
+		if (excludedResources.contains(resource)) {
+			return true;
+		} else { //check to see if the given resource is part of this exclusion
+			Iterator<IResource> resources = excludedResources.iterator();
+			while (resources.hasNext()) {
+				//TODO: need to update this for Phase 2 implementation
+				IFolder excludedResource = (IFolder) resources.next();
+				if (excludedResource.exists(resource.getFullPath())) {
+					return true;
+				}
+			}
+		}
 		return false;
 	}
 

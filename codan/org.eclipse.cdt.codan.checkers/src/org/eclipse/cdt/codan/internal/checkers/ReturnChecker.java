@@ -21,28 +21,34 @@ import org.eclipse.cdt.codan.core.model.cfg.IControlFlowGraph;
 import org.eclipse.cdt.codan.core.model.cfg.IExitNode;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
-import org.eclipse.cdt.core.dom.ast.IASTExpressionStatement;
+import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
+import org.eclipse.cdt.core.dom.ast.IASTExpression;
+import org.eclipse.cdt.core.dom.ast.IASTForStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTReturnStatement;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
+import org.eclipse.cdt.core.dom.ast.IASTSwitchStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
+import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.IBasicType;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.c.ICASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLambdaExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
-import org.eclipse.cdt.core.dom.ast.gnu.IGNUASTCompoundStatementExpression;
 
 /**
  * The checker suppose to find issue related to mismatched return value/function
@@ -65,6 +71,7 @@ public class ReturnChecker extends AbstractAstFunctionChecker {
 		ReturnStmpVisitor(IASTFunctionDefinition func) {
 			shouldVisitStatements = true;
 			shouldVisitDeclarations = true;
+			shouldVisitExpressions = true;
 			this.func = func;
 			this.hasret = false;
 		}
@@ -74,31 +81,31 @@ public class ReturnChecker extends AbstractAstFunctionChecker {
 				return PROCESS_SKIP; // skip inner functions
 			return PROCESS_CONTINUE;
 		}
-
+		public int visit(IASTExpression expr) {
+			if (expr instanceof ICPPASTLambdaExpression) {
+				return PROCESS_SKIP;
+			}
+			return PROCESS_CONTINUE;
+		}
 		public int visit(IASTStatement stmt) {
 			if (stmt instanceof IASTReturnStatement) {
-				hasret = true;
 				IASTReturnStatement ret = (IASTReturnStatement) stmt;
+				boolean hasValue = ret.getReturnValue() != null;
+				if (hasret==false && hasValue) {
+					hasret=true;
+				}
 				if (!isVoid(func) && !isConstructorDestructor()) {
 					if (checkImplicitReturn(RET_NO_VALUE_ID) || isExplicitReturn(func)) {
-						if (ret.getReturnValue() == null)
+						if (!hasValue)
 							reportProblem(RET_NO_VALUE_ID, ret);
 					}
 				} else {
-					if (ret.getReturnValue() != null) {
+					if (hasValue) {
 						IType type = ret.getReturnValue().getExpressionType();
 						if (isVoid(type))
 							return PROCESS_SKIP;
 						reportProblem(RET_ERR_VALUE_ID, ret.getReturnValue());
 					}
-				}
-				return PROCESS_SKIP;
-			}
-			if (stmt instanceof IASTExpressionStatement) {
-				// do not process expression they may contain nasty stuff
-				IASTExpressionStatement stmt1 = (IASTExpressionStatement) stmt;
-				if (stmt1.getExpression() instanceof IGNUASTCompoundStatementExpression) {
-					return PROCESS_CONTINUE;
 				}
 				return PROCESS_SKIP;
 			}
@@ -132,13 +139,39 @@ public class ReturnChecker extends AbstractAstFunctionChecker {
 			return; // if it is template get out of here
 		ReturnStmpVisitor visitor = new ReturnStmpVisitor(func);
 		func.accept(visitor);
-		if (!visitor.hasret) {
-			// no return at all
-			if (!isVoid(func) && (checkImplicitReturn(RET_NORET_ID) || isExplicitReturn(func))) {
-				if (endsWithNoExitNode(func))
-					reportProblem(RET_NORET_ID, func.getDeclSpecifier());
+		boolean nonVoid = !isVoid(func);
+		if (nonVoid) {
+			if (!visitor.hasret) {
+				// no return at all
+				if (checkImplicitReturn(RET_NORET_ID) || isExplicitReturn(func)) {
+					if (endsWithNoExitNode(func))
+						reportProblem(RET_NORET_ID, func.getDeclSpecifier());
+				}
+			} else {
+				// there a return but maybe it is only on one branch
+				IASTStatement body = func.getBody();
+				if (body instanceof IASTCompoundStatement) {
+					IASTStatement[] statements = ((IASTCompoundStatement) body).getStatements();
+					if (statements.length > 0) {
+						IASTStatement last = statements[statements.length - 1];
+						// now check if last statement if complex (for optimization reasons, building CFG is expensive)
+						if (isCompoundStatement(last)) {
+							if (endsWithNoExitNode(func))
+								reportProblem(RET_NORET_ID, func.getDeclSpecifier());
+						}
+					}
+				}
 			}
 		}
+	}
+
+	/**
+	 * @param last
+	 * @return
+	 */
+	private boolean isCompoundStatement(IASTStatement last) {
+		return last instanceof IASTIfStatement || last instanceof IASTWhileStatement || last instanceof IASTDoStatement
+				|| last instanceof IASTForStatement || last instanceof IASTSwitchStatement;
 	}
 
 	/**
@@ -162,7 +195,7 @@ public class ReturnChecker extends AbstractAstFunctionChecker {
 			IExitNode node = exitNodeIterator.next();
 			if (((ICfgData) node).getData() == null) {
 				// if it real exit node such as return, exit or throw data
-				// will be an ast node, it is null it is fake node added by the
+				// will be an ast node, if it is null it is a fake node added by the
 				// graph builder
 				noexitop = true;
 				break;

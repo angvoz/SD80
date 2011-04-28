@@ -7,7 +7,7 @@
  * http://www.eclipse.org/legal/epl-v10.html  
  *  
  * Contributors: 
- * Institute for Software - initial API and implementation
+ *     Institute for Software - initial API and implementation
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.refactoring.gettersandsetters;
 
@@ -27,22 +27,21 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.dialogs.ContainerCheckedTreeViewer;
 
-import org.eclipse.cdt.internal.ui.refactoring.gettersandsetters.GetterAndSetterContext.FieldWrapper;
-import org.eclipse.cdt.internal.ui.refactoring.gettersandsetters.GetterSetterInsertEditProvider.Type;
+import org.eclipse.cdt.internal.ui.refactoring.gettersandsetters.GetterSetterContext.FieldWrapper;
+import org.eclipse.cdt.internal.ui.refactoring.gettersandsetters.GetterSetterInsertEditProvider.AccessorKind;
 
 public class GenerateGettersAndSettersInputPage extends UserInputWizardPage {
-
-	private GetterAndSetterContext context;
+	private GetterSetterContext context;
 	private ContainerCheckedTreeViewer variableSelectionView;
 	private GetterSetterLabelProvider labelProvider;
 
-	public GenerateGettersAndSettersInputPage(GetterAndSetterContext context) {
+	public GenerateGettersAndSettersInputPage(GetterSetterContext context) {
 		super(Messages.GettersAndSetters_Name); 
 		this.context = context;
 	}
 
 	public void createControl(Composite parent) {
-		Composite comp = new Composite(parent, SWT.NONE );
+		Composite comp = new Composite(parent, SWT.NONE);
 		
 		setTitle(Messages.GettersAndSetters_Name);
 		setMessage(Messages.GenerateGettersAndSettersInputPage_header);
@@ -63,12 +62,10 @@ public class GenerateGettersAndSettersInputPage extends UserInputWizardPage {
 		placeImplemetation.setLayoutData(gd);
 		placeImplemetation.setSelection(context.isImplementationInHeader());
 		placeImplemetation.addSelectionListener(new SelectionAdapter() {
-
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				context.setImplementationInHeader(placeImplemetation.getSelection());
 			}
-			
 		});
 
 		setControl(comp);
@@ -96,7 +93,6 @@ public class GenerateGettersAndSettersInputPage extends UserInputWizardPage {
 							checkedFunctions.add(editProvider);
 						}
 					}
-					
 				}
 			}
 		});
@@ -119,7 +115,7 @@ public class GenerateGettersAndSettersInputPage extends UserInputWizardPage {
 		selectGetter.addSelectionListener(new SelectionAdapter(){
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				selectMethods(Type.getter);
+				selectMethods(AccessorKind.GETTER);
 			}
 		});
 		
@@ -128,14 +124,14 @@ public class GenerateGettersAndSettersInputPage extends UserInputWizardPage {
 		selectSetter.addSelectionListener(new SelectionAdapter(){
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				selectMethods(Type.setter);
+				selectMethods(AccessorKind.SETTER);
 			}
 		});
 		
 		return btComp;
 	}
 	
-	private void selectMethods(Type type) {
+	private void selectMethods(AccessorKind type) {
 		Object[] items = context.getElements(null);
 		Set<GetterSetterInsertEditProvider> checked = context.selectedFunctions;
 		for (Object treeItem : items) {

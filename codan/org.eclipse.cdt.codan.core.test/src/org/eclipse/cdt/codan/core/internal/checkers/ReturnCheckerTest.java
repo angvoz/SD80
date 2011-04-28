@@ -17,9 +17,14 @@ import org.eclipse.cdt.codan.internal.checkers.ReturnChecker;
 
 /**
  * Test for {@see ReturnCheckerTest} class
- * 
+ *
  */
 public class ReturnCheckerTest extends CheckerTestCase {
+	@Override
+	public void setUp() throws Exception {
+		super.setUp();
+		enableProblems(ReturnChecker.RET_NORET_ID,ReturnChecker.RET_ERR_VALUE_ID,ReturnChecker.RET_NO_VALUE_ID);
+	}
 	//	dummy() {
 	//	  return; // error here on line 2
 	//	}
@@ -42,7 +47,7 @@ public class ReturnCheckerTest extends CheckerTestCase {
 	//			return; // error here on line 4
 	//		}
 	//	  }
-	//	}	 
+	//	}
 	public void testBasicTypeFunction() {
 		loadCodeAndRun(getAboveComment());
 		checkErrorLine(4);
@@ -62,7 +67,7 @@ public class ReturnCheckerTest extends CheckerTestCase {
 	}
 
 	//	 typedef unsigned int uint8_t;
-	//	 
+	//
 	//	uint8_t return_typedef(void) {
 	//	return; // error here on line 4
 	//	}
@@ -72,7 +77,7 @@ public class ReturnCheckerTest extends CheckerTestCase {
 	}
 
 	//	typedef unsigned int uint8_t;
-	//	 	 
+	//
 	//	uint8_t (*return_fp_no_typedef(void))(void)
 	//	{
 	//			return; // error here on line 5
@@ -146,6 +151,15 @@ public class ReturnCheckerTest extends CheckerTestCase {
 		loadCodeAndRunCpp(getAboveComment());
 		checkNoErrors();
 	}
+//	void f()
+//	{
+//	    if ([](int r){return r == 0;}(0))
+//	        ;
+//	}
+	public void testLambda2_Bug332285() {
+		loadCodeAndRunCpp(getAboveComment());
+		checkNoErrors();
+	}
 
 	//	void g()
 	//	{
@@ -170,6 +184,30 @@ public class ReturnCheckerTest extends CheckerTestCase {
 	//	}
 	public void testVoidPointerLateSpecifiedReturnType_Bug337677() {
 		loadCodeAndRunCpp(getAboveComment());
+		checkErrorLine(1);
+	}
+
+//	int f()
+//	{
+//	    if (g())
+//	        h();
+//	    else
+//	        return 0;
+//	}
+	public void testBranches_Bug342906() {
+		loadCodeAndRun(getAboveComment());
+		checkErrorLine(1);
+	}
+
+//	int f()
+//	{
+//	    switch (g()) {
+//	      case 1: h(); break;
+//	      case 2:
+//	        return 0;
+//	}
+	public void testSwitch() {
+		loadCodeAndRun(getAboveComment());
 		checkErrorLine(1);
 	}
 }

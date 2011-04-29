@@ -14,11 +14,15 @@ package org.eclipse.cdt.make.internal.ui.preferences;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.internal.ui.language.settings.providers.LanguageSettingsProviderTab.ProviderReference;
+import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
+import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.utils.ui.controls.ControlFactory;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
@@ -43,7 +47,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 
 	private Text inputCommand;
 	
-//	private StatusMessageLine fStatusLine;
+	private StatusMessageLine fStatusLine;
 	private Button runOnceRadioButton;
 	private Button runEveryBuildRadioButton;
 	private Button allocateConsoleCheckBox;
@@ -267,13 +271,6 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //			createButtons(composite);
 //		}
 
-//		// Status line
-//		if (fEditable) {
-//			fStatusLine = new StatusMessageLine(composite, SWT.LEFT, 2);
-//			IStatus status = new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, "Note that currently the options are applied to provider directly (FIXME)");
-//			fStatusLine.setErrorStatus(status);
-//		}
-		
 		{
 			allocateConsoleCheckBox = new Button(composite, SWT.CHECK);
 			allocateConsoleCheckBox.setText("Allocate console in the Console View");
@@ -300,7 +297,14 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			});
 
 		}
-
+		
+		// Status line
+		if (fEditable) {
+			fStatusLine = new StatusMessageLine(composite, SWT.LEFT, 2);
+			IStatus status = new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, "Note that currently not all options are persisted (FIXME)");
+			fStatusLine.setErrorStatus(status);
+		}
+		
 		setControl(composite);
 	}
 

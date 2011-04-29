@@ -244,4 +244,16 @@ public class UnusedSymbolInFileScopeCheckerTest extends CheckerTestCase {
 		checkNoErrors();
 	}
 
+	// static char* test_var="$Id: UnusedSymbolInFileScopeCheckerTest.java,v 1.2 2011/04/29 11:17:42 agvozdev Exp $";
+	public void testExternVariable_Declaration_cvs_ident() throws IOException {
+		loadCodeAndRun(getAboveComment());
+		checkNoErrors();
+	}
+
+	// static char* test_var="@(#) $Header: /home/data2/cvs/tools/org.eclipse.cdt/codan/org.eclipse.cdt.codan.core.test/src/org/eclipse/cdt/codan/core/internal/checkers/UnusedSymbolInFileScopeCheckerTest.java,v 1.2 2011/04/29 11:17:42 agvozdev Exp $";
+	public void testExternVariable_Declaration_sccs_ident() throws IOException {
+		loadCodeAndRun(getAboveComment());
+		checkNoErrors();
+	}
+
 }

@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.cdt.core.model.ILanguageDescriptor;
+import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -28,17 +30,19 @@ import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.internal.core.scannerconfig.util.TraceUtil;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.content.IContentType;
 
 public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implements ILanguageSettingsEditableProvider {
 	private static final Pattern MACRO_PATTERN = Pattern.compile("#define (\\S*) *(.*)"); //$NON-NLS-1$
 	private static final Pattern MACRO_WITH_ARGS_PATTERN = Pattern.compile("#define (\\S*\\(.*?\\)) *(.*)"); //$NON-NLS-1$
 
 	private static final String SPEC_FILE_MACRO = "${spec_file}"; //$NON-NLS-1$
-	private static final String SPEC_FILE_BASE = "spec"; //$NON-NLS-1$
+	private static final String SPEC_FILE_BASE = "spec."; //$NON-NLS-1$
 
 	private static final String LANGUAGE_ID_ASSEMBLER = "org.eclipse.cdt.core.assembly";
 	private static final String LANGUAGE_ID_C = "org.eclipse.cdt.core.gcc";
@@ -55,28 +59,27 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 
 
 	public String getSpecFileName(String languageId) {
-		String specFileName=null;
-		// TODO: figure out file extension from language id
-//			ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(getCurrentLanguage());
-//		CContentTypes.getContentType(project, filename);
-//		final IContentTypeManager ctm = Platform.getContentTypeManager();
-//		final IContentType ctbin = ctm.getContentType(CCorePlugin.CONTENT_TYPE_CXXSOURCE);
-//		final IContentType[] cts= ctm.findContentTypesFor(baseFileName.toString());
-//		language = LanguageManager.getInstance().getLanguageForFile(filePath, project, configuration);
-//		CDataUtil.getExtensionsFromContentTypes()
+		ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(languageId);
+		IContentType[] contentTypes = ld.getContentTypes();
+		String ext = null;
 		
-		if (LANGUAGE_ID_CPLUSPLUS.equals(languageId)) {
-			specFileName = SPEC_FILE_BASE + ".cpp";
-		} else if (LANGUAGE_ID_C.equals(languageId)) {
-			specFileName = SPEC_FILE_BASE + ".c";
-		} else if (LANGUAGE_ID_ASSEMBLER.equals(languageId)) {
-			specFileName = SPEC_FILE_BASE + ".s";
+//		if (LANGUAGE_ID_CPLUSPLUS.equals(languageId)) {
+//			ext = "cpp";
+//		} else
+		if (contentTypes!=null && contentTypes.length>0) {
+			String[] fileSpecs = contentTypes[0].getFileSpecs(IContentType.FILE_EXTENSION_SPEC);
+			if (fileSpecs!=null && fileSpecs.length>0) {
+				ext = fileSpecs[0];
+			}
 		}
-		return specFileName;
+		
+		return SPEC_FILE_BASE + ext;
 	}
 
 	@Override
 	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
+		Assert.isNotNull(languageId);
+		
 		super.startup(cfgDescription, languageId);
 		detectedIncludes = new ArrayList<CIncludePathEntry>();
 		detectedDefines = new ArrayList<CMacroEntry>();
@@ -87,21 +90,23 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 
 		String cmd = getCustomParameter();
 
-		String specFileName = getSpecFileName(languageId);
-		if (specFileName!=null && cmd!=null) {
-			IPath workingLocation = MakeCorePlugin.getWorkingDirectory();
-			IPath specFileLocation = workingLocation.append(specFileName);
-			cmd = cmd.replace(SPEC_FILE_MACRO, specFileLocation.toString());
-
-			specFile = new java.io.File(specFileLocation.toOSString());
-			isSpecFileAlreadyThere = specFile.exists();
-			try {
-				specFile.createNewFile();
-			} catch (IOException e) {
-				MakeCorePlugin.log(e);
+		if (cmd!=null && cmd.contains(SPEC_FILE_MACRO)) {
+			String specFileName = getSpecFileName(languageId);
+			if (specFileName!=null) {
+				IPath workingLocation = MakeCorePlugin.getWorkingDirectory();
+				IPath specFileLocation = workingLocation.append(specFileName);
+				cmd = cmd.replace(SPEC_FILE_MACRO, specFileLocation.toString());
+	
+				specFile = new java.io.File(specFileLocation.toOSString());
+				isSpecFileAlreadyThere = specFile.exists();
+				try {
+					specFile.createNewFile();
+				} catch (IOException e) {
+					MakeCorePlugin.log(e);
+				}
 			}
+			setResolvedCommand(cmd);
 		}
-		setResolvedCommand(cmd);
 	}
 
 	@Override

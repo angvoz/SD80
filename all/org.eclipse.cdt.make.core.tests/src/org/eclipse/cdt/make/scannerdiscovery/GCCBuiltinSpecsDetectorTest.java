@@ -31,7 +31,8 @@ import org.eclipse.core.resources.IProject;
 public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	private static final String PROVIDER_ID = "provider.id";
 	private static final String PROVIDER_NAME = "provider name";
-	private static final String LANGUAGE_ID = "language.id";
+	private static final String LANGUAGE_ID = "language.test.id";
+	private static final String LANGUAGE_ID_C = "org.eclipse.cdt.core.gcc";
 	private static final String CUSTOM_PARAMETER = "customParameter";
 	private static final String CUSTOM_COMMAND = "customCommand";
 
@@ -279,79 +280,95 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		}
 	}
 
-	public void testGCCBuiltinSpecsDetector_NoValue() throws Exception {
+	public void testGCCBuiltinSpecsDetector_Macro_NoValue() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.startup(null, null);
+		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO");
 		detector.shutdown();
 
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO", null, ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
 
-	public void testGCCBuiltinSpecsDetector_NoArgs() throws Exception {
+	public void testGCCBuiltinSpecsDetector_ResolvedCommand() throws Exception {
+		class MockGCCBuiltinSpecsDetector extends GCCBuiltinSpecsDetector {
+			@Override
+			public String getResolvedCommand() {
+				return super.getResolvedCommand();
+			}
+		}
+		MockGCCBuiltinSpecsDetector detector = new MockGCCBuiltinSpecsDetector();
+		detector.setCustomParameter("gcc -E -P -v -dD ${spec_file}");
+		detector.startup(null, LANGUAGE_ID_C);
+		String resolvedCommand = detector.getResolvedCommand();
+		assertTrue(resolvedCommand.startsWith("gcc -E -P -v -dD "));
+		assertTrue(resolvedCommand.endsWith("spec.c"));
+		detector.shutdown();
+	}
+	
+	public void testGCCBuiltinSpecsDetector_Macro_NoArgs() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.startup(null, null);
+		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO VALUE");
 		detector.shutdown();
 
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
 
-	public void testGCCBuiltinSpecsDetector_Const() throws Exception {
+	public void testGCCBuiltinSpecsDetector_Macro_Const() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.startup(null, null);
+		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO (3)");
 		detector.shutdown();
 
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO", "(3)", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
 
-	public void testGCCBuiltinSpecsDetector_EmptyArgList() throws Exception {
+	public void testGCCBuiltinSpecsDetector_Macro_EmptyArgList() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.startup(null, null);
+		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO() VALUE");
 		detector.shutdown();
 
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO()", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
 
-	public void testGCCBuiltinSpecsDetector_ParamUnused() throws Exception {
+	public void testGCCBuiltinSpecsDetector_Macro_ParamUnused() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.startup(null, null);
+		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO(X) VALUE");
 		detector.shutdown();
 
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO(X)", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
 
-	public void testGCCBuiltinSpecsDetector_ParamSpace() throws Exception {
+	public void testGCCBuiltinSpecsDetector_Macro_ParamSpace() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.startup(null, null);
+		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO(P1, P2) VALUE(P1, P2)");
 		detector.shutdown();
 
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO(P1, P2)", "VALUE(P1, P2)", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
 
-	public void testGCCBuiltinSpecsDetector_ArgsNoValue() throws Exception {
+	public void testGCCBuiltinSpecsDetector_Macro_ArgsNoValue() throws Exception {
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.startup(null, null);
+		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO(P1, P2) ");
 		detector.shutdown();
 
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO(P1, P2)", null, ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
@@ -368,7 +385,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		String loc = project.getLocation().toString();
 
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
-		detector.startup(null, null);
+		detector.startup(null, LANGUAGE_ID_C);
 
 		detector.processLine(loc+"/incorrect/include1");
 		detector.processLine("#include \"...\" search starts here:");
@@ -381,7 +398,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		detector.processLine(loc+"/incorrect/include2");
 		detector.shutdown();
 
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 		ICLanguageSettingEntry expected0 = new CIncludePathEntry(loc+"/local/include", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY | ICSettingEntry.LOCAL);
 		ICLanguageSettingEntry expected1 = new CIncludePathEntry(loc+"/usr/include", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		ICLanguageSettingEntry expected2 = new CIncludePathEntry(loc+"/usr/include2", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);

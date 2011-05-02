@@ -1160,8 +1160,7 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 					// The debug info provider should have filtered out or renamed such fields
 					assert false;	// couldn't this be the case for an anonymous member, like a union?
 				} else if (!inheritedName.contains("<")) {
-					String castedExpr = "static_cast<" + inheritedName + " >(" + expr.getExpression() + ")";
-					exprChild = new ExpressionDMC(expr.getFrame(), castedExpr, inheritedName);
+					exprChild = new ExpressionDMC(expr.getFrame(), expression + inheritedName, inheritedName);
 					if (exprChild != null) {
 						exprList.add(exprChild);
 					}

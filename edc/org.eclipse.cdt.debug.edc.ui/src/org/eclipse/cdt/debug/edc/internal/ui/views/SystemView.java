@@ -80,6 +80,8 @@ public abstract class SystemView extends ViewPart {
 
 	private class RefreshJob extends Job {
 
+		private boolean refreshData = true;
+		
 		public RefreshJob() {
 			super("Refresh " + getTitle());
 		}
@@ -91,18 +93,29 @@ public abstract class SystemView extends ViewPart {
 			if (shouldRefresh[0]){
 				PlatformUI.getWorkbench().getDisplay().syncExec(new Runnable() {
 					public void run() {
-						shouldRefresh[0] = selectedViewer.getTree().isVisible();
+						if (selectedViewer != null)
+							shouldRefresh[0] = selectedViewer.getTree().isVisible();
 					}
 				});
 			}
 
 			IStatus result = Status.OK_STATUS;
 			if (shouldRefresh[0])
-				result = refresh(monitor, true);
+				result = refresh(monitor, shouldRefreshData());
+			
+			setRefreshData(true);
 			
 			if (shouldAutoRefresh() && selectedViewer != null)
 				this.schedule(refreshInterval);
 			return result;
+		}
+
+		public boolean shouldRefreshData() {
+			return refreshData;
+		}
+
+		public void setRefreshData(boolean refreshData) {
+			this.refreshData = refreshData;
 		}
 	};
 
@@ -348,6 +361,7 @@ public abstract class SystemView extends ViewPart {
 
 			public void modifyText(ModifyEvent e) {
 				setFilter(filterText.getText());
+				((RefreshJob) getRefreshJob()).setRefreshData(false);
 				getRefreshJob().schedule();
 			}
 		});

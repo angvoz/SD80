@@ -46,6 +46,7 @@ import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
 import org.eclipse.cdt.debug.edc.services.Registers;
+import org.eclipse.cdt.debug.edc.services.Registers.RegisterDMC;
 import org.eclipse.cdt.debug.edc.services.Registers.RegisterGroupDMC;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
@@ -75,6 +76,7 @@ import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterGroupDMContext;
+import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IRunControl2;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
@@ -2507,11 +2509,11 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 	public void canRunToLine(IExecutionDMContext context, String sourceFile,
 			int lineNumber, final DataRequestMonitor<Boolean> rm) {
 		// I tried to have better filtering as shown in commented code. But that 
-		// just make the command fail to be enabled as desired, not sure about the 
+		// just made the command fail to be enabled as desired. Not sure about the 
 		// exact cause yet, but one problem (from the upper framework) I've seen is 
 		// this API is not called whenever user selects a line in source editor (or
 		// disassembly view) and bring up context menu.
-		// Hence we blindly answer yes. The behavior is in par with DSF-GDB.
+		// Hence we blindly answer yes. The behavior is on par with DSF-GDB.
 		// ................. 03/11/10  
 		rm.setData(true);
 		rm.done();
@@ -2672,9 +2674,13 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		String newPC = address.toString(16);
 		
 		if (! newPC.equals(dmc.getPC())) {
-			// Hmm, this interface should report status.
 			try {
-				regService.writeRegister(dmc, getTargetEnvironmentService().getPCRegisterID(), newPC);
+				// synchronously change PC, so that change occurs before any resume
+				String regID = getTargetEnvironmentService().getPCRegisterID();
+				RegisterDMC regDMC = regService.findRegisterDMCByName(dmc, regID);
+				assert regDMC != null;
+				
+				regService.writeRegister(regDMC, newPC, IFormattedValues.HEX_FORMAT);
 			} catch (CoreException e) {
 				Status s = new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error adjusting the PC register", e);
 				EDCDebugger.getMessageLogger().log(s);
@@ -2683,7 +2689,7 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				return;
 			}
 
-			// udpate cached PC.
+			// update cached PC.
 			dmc.setPC(newPC);
 		}
 		

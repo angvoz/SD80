@@ -298,9 +298,7 @@ public class LanguageSettingsExtensionManager {
 	 *    Returns a copy if provider is editable (see {@link ILanguageSettingsEditableProvider}).
 	 * @throws CloneNotSupportedException
 	 * 
-	 *  TODO: review usage
 	 */
-	@Deprecated
 	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) throws CloneNotSupportedException {
 		ILanguageSettingsProvider provider = fExtensionProviders.get(id);
 		if (provider instanceof ILanguageSettingsEditableProvider) {

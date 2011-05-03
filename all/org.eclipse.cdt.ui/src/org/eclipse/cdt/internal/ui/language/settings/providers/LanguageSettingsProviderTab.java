@@ -527,7 +527,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			presentedProviders =  new ArrayList<ILanguageSettingsProvider>();
 		}
 		
-		List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
+		List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getRawWorkspaceProviders();
 		
 		// ensure sorting by name all unchecked providers
 		Set<ILanguageSettingsProvider> allAvailableProvidersSet = new TreeSet<ILanguageSettingsProvider>(new Comparator<ILanguageSettingsProvider>() {

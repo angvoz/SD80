@@ -4769,7 +4769,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 					}
 				} else {
 					try {
-						provider = LanguageSettingsManager_TBD.getRawWorkspaceProviderCopyShallow(id);
+						provider = LanguageSettingsManager_TBD.getExtensionProviderCopy(id);
 					} catch (CloneNotSupportedException e) {
 						ManagedBuilderCorePlugin.error("Cannot clone provider " + id);
 						provider = LanguageSettingsManager.getWorkspaceProvider(id);
@@ -4789,7 +4789,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
 			try {
-				ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getRawWorkspaceProviderCopyShallow(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
+				ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getExtensionProviderCopy(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
 				providers.add(0, provider);
 			} catch (CloneNotSupportedException e) {
 				// shouldn't happen. just in case, log the error and use workspace provider

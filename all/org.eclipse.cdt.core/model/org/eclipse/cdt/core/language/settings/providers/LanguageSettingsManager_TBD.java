@@ -110,13 +110,4 @@ public class LanguageSettingsManager_TBD {
 	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) throws CloneNotSupportedException {
 		return LanguageSettingsExtensionManager.getExtensionProviderCopy(id);
 	}
-
-	public static ILanguageSettingsProvider getRawWorkspaceProviderCopy(String id) throws CloneNotSupportedException {
-		return LanguageSettingsProvidersSerializer.getRawWorkspaceProviderCopy(id);
-	}
-	
-	public static ILanguageSettingsProvider getRawWorkspaceProviderCopyShallow(String id) throws CloneNotSupportedException {
-		return LanguageSettingsProvidersSerializer.getRawWorkspaceProviderCopyShallow(id);
-	}
-	
 }

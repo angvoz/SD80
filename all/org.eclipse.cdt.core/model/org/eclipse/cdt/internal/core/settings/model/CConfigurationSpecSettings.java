@@ -855,6 +855,7 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 	
 	private void decodeLanguageSettingProviders(ICStorageElement element) throws CoreException {
 		String id = element.getAttribute(PROJECT_EXTENSION_ATTR_ID);
+		// FIXME - shouldn't persist in this place?
 		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(id);
 		if (provider!=null) {
 			fLanguageSettingsProviders.add(provider);

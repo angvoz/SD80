@@ -30,14 +30,19 @@ public class LanguageSettingsWorkspaceProvider implements ILanguageSettingsProvi
 	}
 
 	public String getName() {
-		ILanguageSettingsProvider workspaceProvider = LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(providerId);
-		return workspaceProvider.getName();
+		return getRawProvider().getName();
 	}
 
 	public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-		ILanguageSettingsProvider workspaceProvider = LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(providerId);
-		List<ICLanguageSettingEntry> entries = workspaceProvider.getSettingEntries(cfgDescription, rc, languageId);
+		List<ICLanguageSettingEntry> entries = getRawProvider().getSettingEntries(cfgDescription, rc, languageId);
 		return entries;
 	}
 
+	/**
+	 * Do not cache the "raw" provider as workspace provider can be changed at any time. 
+	 */
+	private ILanguageSettingsProvider getRawProvider() {
+		return LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(providerId);
+	}
+	
 }

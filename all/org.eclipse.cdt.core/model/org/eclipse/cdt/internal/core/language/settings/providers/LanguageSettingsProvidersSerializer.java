@@ -445,52 +445,9 @@ public class LanguageSettingsProvidersSerializer {
 	}
 
 	/**
-	 * TODO Get copy of Language Settings Provider defined via
-	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
-	 *
-	 * @param id - ID of provider to find.
-	 * @return the provider or {@code null} if provider is not defined.
-	 *    Returns a copy if provider is editable (see {@link ILanguageSettingsEditableProvider}).
-	 * @throws CloneNotSupportedException 
-	 */
-	public static ILanguageSettingsProvider getRawWorkspaceProviderCopy(String id) throws CloneNotSupportedException {
-		ILanguageSettingsProvider provider = rawGlobalWorkspaceProviders.get(id);
-		if (provider instanceof ILanguageSettingsEditableProvider) {
-			return ((ILanguageSettingsEditableProvider) provider).clone();
-		}
-		if (provider!=null) {
-			throw new CloneNotSupportedException("provider "+id+" is not instance of ILanguageSettingsEditableProvider. "+provider.getClass());
-		}
-		throw new CloneNotSupportedException("There is no workspace provider "+id);
-	}
-	
-	/**
-	 * TODO Get copy of Language Settings Provider defined via
-	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
-	 *
-	 * @param id - ID of provider to find.
-	 * @return the provider or {@code null} if provider is not defined.
-	 *    Returns a copy if provider is editable (see {@link ILanguageSettingsEditableProvider}).
-	 * @throws CloneNotSupportedException 
-	 */
-	public static ILanguageSettingsProvider getRawWorkspaceProviderCopyShallow(String id) throws CloneNotSupportedException {
-		ILanguageSettingsProvider provider = rawGlobalWorkspaceProviders.get(id);
-		if (provider instanceof ILanguageSettingsEditableProvider) {
-			return ((ILanguageSettingsEditableProvider) provider).cloneShallow();
-		}
-		if (provider!=null) {
-			throw new CloneNotSupportedException("provider "+id+" is not instance of ILanguageSettingsEditableProvider. "+provider.getClass());
-		}
-		throw new CloneNotSupportedException("There is no workspace provider "+id);
-	}
-	
-
-	/**
 	 * @return ordered set of providers defined in the workspace which include contributed through extension + user defined ones
 	 * 
-	 * FIXME: review usage
 	 */
-	@Deprecated
 	public static List<ILanguageSettingsProvider> getRawWorkspaceProviders() {
 		return new ArrayList<ILanguageSettingsProvider>(rawGlobalWorkspaceProviders.values());
 	}
@@ -501,9 +458,7 @@ public class LanguageSettingsProvidersSerializer {
 	 * @param provider - provider to check.
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.
 	 * 
-	 * FIXME: review usage
 	 */
-	@Deprecated
 	public static boolean isWorkspaceProvider(ILanguageSettingsProvider provider) {
 		return provider instanceof LanguageSettingsWorkspaceProvider;
 	}

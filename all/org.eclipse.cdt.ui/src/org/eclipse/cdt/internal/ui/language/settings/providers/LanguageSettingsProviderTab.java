@@ -389,12 +389,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			newProvider = LanguageSettingsManager.getWorkspaceProvider(id);
 		} else {
 			// Local provider instance chosen
-			if (oldProvider instanceof ILanguageSettingsEditableProvider) {
-				try {
-					newProvider = ((ILanguageSettingsEditableProvider)oldProvider).cloneShallow();
-				} catch (CloneNotSupportedException e) {
-					CUIPlugin.log("Error cloning provider " + oldProvider.getId(), e);
+			try {
+				ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawWorkspaceProvider(id);
+				if (rawProvider instanceof ILanguageSettingsEditableProvider) {
+					newProvider = ((ILanguageSettingsEditableProvider) rawProvider).cloneShallow();
 				}
+			} catch (CloneNotSupportedException e) {
+				CUIPlugin.log("Error cloning provider " + oldProvider.getId(), e);
 			}
 		}
 		if (newProvider!=null) {
@@ -587,13 +588,15 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		ILanguageSettingsProvider provider = getSelectedProvider();
 		String id = (provider!=null) ? provider.getId() : null;
 
+		boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
+		ILanguageSettingsProvider rawProvider = isGlobal ? LanguageSettingsManager.getRawWorkspaceProvider(id) : provider;
+
 		currentOptionsPage = optionsPageMap.get(id);
 
 		boolean isChecked = tableProvidersViewer.getChecked(provider);
 		if (!page.isForPrefs()) {
-			boolean canClone = provider instanceof ILanguageSettingsEditableProvider;
-			boolean isEditable = provider instanceof ILanguageSettingsEditableProvider;
-			boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
+			boolean canClone = rawProvider instanceof ILanguageSettingsEditableProvider;
+			boolean isEditable = rawProvider instanceof ILanguageSettingsEditableProvider;
 			// Currently editing global editable providers is not allowed (clone will be created on attempt)
 			globalProviderCheckBox.setSelection(isGlobal /*&& !isEditable*/);
 			globalProviderCheckBox.setEnabled(isChecked && canClone /*&& !isEditable*/);

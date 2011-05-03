@@ -114,6 +114,10 @@ public class LanguageSettingsManager {
 		return LanguageSettingsProvidersSerializer.isWorkspaceProvider(provider);
 	}
 
+	public static ILanguageSettingsProvider getRawWorkspaceProvider(String id) {
+		return LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(id);
+	}
+	
 	/**
 	 * Set and store in workspace area user defined providers.
 	 *

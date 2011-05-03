@@ -101,12 +101,11 @@ public class LanguageSettingsManager {
 	 * extension point.
 	 */
 	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
-		return LanguageSettingsProvidersSerializer.getWorkspaceProviders();
+		return LanguageSettingsProvidersSerializer.getRawWorkspaceProviders();
 	}
 
 	/**
 	 * Checks if the provider is defined on the workspace level.
-	 * See {@link LanguageSettingsManager#getWorkspaceProvider(String)}.
 	 *
 	 * @param provider - provider to check.
 	 * @return {@code true} if the given provider is workspace provider, {@code false} otherwise.

@@ -31,7 +31,6 @@ import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
@@ -297,8 +296,11 @@ public class LanguageSettingsExtensionManager {
 	 * @param id - ID of provider to find.
 	 * @return the provider or {@code null} if provider is not defined.
 	 *    Returns a copy if provider is editable (see {@link ILanguageSettingsEditableProvider}).
-	 * @throws CloneNotSupportedException 
+	 * @throws CloneNotSupportedException
+	 * 
+	 *  TODO: review usage
 	 */
+	@Deprecated
 	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) throws CloneNotSupportedException {
 		ILanguageSettingsProvider provider = fExtensionProviders.get(id);
 		if (provider instanceof ILanguageSettingsEditableProvider) {

@@ -437,7 +437,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 		Element rootElement = null;
 
 		// provider of other type (not LanguageSettingsSerializable) defined as an extension
-		ILanguageSettingsProvider providerExt = LanguageSettingsProvidersSerializer.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
 
 		{
 			// create cfg description
@@ -486,7 +486,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		// provider set on workspace level overriding an extension
 		String idExt = EXTENSION_PROVIDER_ID;
-		ILanguageSettingsProvider providerExt = LanguageSettingsProvidersSerializer.getWorkspaceProvider(idExt);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getWorkspaceProvider(idExt);
 		assertNotNull(providerExt);
 		{
 			// create cfg description
@@ -554,7 +554,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 				assertNotNull(cfgDescription);
 
 				// 1. Provider reference to extension from plugin.xml
-				providerExt = LanguageSettingsProvidersSerializer.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+				providerExt = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
 
 				// 2. TODO Provider reference to provider defined in the project
 

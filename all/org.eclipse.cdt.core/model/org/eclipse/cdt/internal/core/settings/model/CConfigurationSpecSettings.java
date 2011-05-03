@@ -42,6 +42,7 @@ import org.eclipse.cdt.internal.core.COwner;
 import org.eclipse.cdt.internal.core.COwnerConfiguration;
 import org.eclipse.cdt.internal.core.cdtvariables.StorableCdtVariables;
 import org.eclipse.cdt.internal.core.envvar.EnvironmentVariableManager;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.cdt.utils.envvar.StorableEnvironment;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.QualifiedName;
@@ -1021,6 +1022,10 @@ public class CConfigurationSpecSettings implements ICSettingsStorage{
 		Set<String> ids = new HashSet<String>();
 		for (ILanguageSettingsProvider provider : providers) {
 			String id = provider.getId();
+			if (provider==LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(id)) {
+				String msg = "Error: Attempt to add to the configuration raw global provider " + id;
+				throw new IllegalArgumentException(msg);
+			}
 			if (!ids.contains(id)) {
 				fLanguageSettingsProviders.add(provider);
 				ids.add(id);

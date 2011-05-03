@@ -61,7 +61,6 @@ import org.eclipse.cdt.core.settings.model.ICMultiConfigDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.core.settings.model.XmlStorageUtil;
 import org.eclipse.cdt.core.settings.model.extension.CConfigurationData;
 import org.eclipse.cdt.managedbuilder.buildproperties.IBuildProperty;
@@ -4769,7 +4768,12 @@ public class ManagedBuildManager extends AbstractCExtension {
 						}
 					}
 				} else {
-					provider = LanguageSettingsManager.getWorkspaceProvider(id);
+					try {
+						provider = LanguageSettingsManager_TBD.getRawWorkspaceProviderCopyShallow(id);
+					} catch (CloneNotSupportedException e) {
+						ManagedBuilderCorePlugin.error("Cannot clone provider " + id);
+						provider = LanguageSettingsManager.getWorkspaceProvider(id);
+					}
 				}
 				if (provider!=null) {
 					providers.add(provider);
@@ -4783,16 +4787,14 @@ public class ManagedBuildManager extends AbstractCExtension {
 			providers.add(provider);
 		}
 
-		// FIXME: ability to remove PROVIDER_UI_USER
 		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
 			try {
-				provider = ((ILanguageSettingsEditableProvider)provider).cloneShallow();
+				ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getRawWorkspaceProviderCopyShallow(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
+				providers.add(0, provider);
 			} catch (CloneNotSupportedException e) {
 				// shouldn't happen. just in case, log the error and use workspace provider
 				ManagedBuilderCorePlugin.log(e);
 			}
-			providers.add(0, provider);
 		}
 
 		return providers;

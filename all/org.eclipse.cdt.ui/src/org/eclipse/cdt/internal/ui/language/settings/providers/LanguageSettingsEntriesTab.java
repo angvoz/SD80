@@ -119,6 +119,9 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
 			String[] overlayKeys = super.getOverlayKeys(provider);
 			
+//			if (LanguageSettingsManager.isWorkspaceProvider(provider))
+//				provider = LanguageSettingsManager.getRawWorkspaceProvider(provider.getId());
+//			
 			if (currentLanguageSetting != null) {
 				IResource rc = getResource();
 				List<ICLanguageSettingEntry> entries = getSettingEntries(provider);
@@ -857,9 +860,10 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 				if (rc!=null && cfgDescription!=null) {
 					List<ILanguageSettingsProvider> cfgProviders = cfgDescription.getLanguageSettingProviders();
 					for (ILanguageSettingsProvider cfgProvider : cfgProviders) {
-						if (cfgProvider instanceof LanguageSettingsBaseProvider) {
+						ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(cfgProvider);
+						if (rawProvider instanceof LanguageSettingsBaseProvider) {
 							// filter out providers incapable of providing entries for this language
-							List<String> languageIds = ((LanguageSettingsBaseProvider)cfgProvider).getLanguageScope();
+							List<String> languageIds = ((LanguageSettingsBaseProvider)rawProvider).getLanguageScope();
 							if (languageIds!=null && !languageIds.contains(langId)) {
 								continue;
 							}

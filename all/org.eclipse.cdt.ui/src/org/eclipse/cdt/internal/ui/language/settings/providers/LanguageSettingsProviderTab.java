@@ -165,10 +165,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		 * @return the provider
 		 */
 		public ILanguageSettingsProvider getProvider() {
-			ILanguageSettingsProvider provider = findProvider(providerId, presentedProviders);
-			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-				provider = LanguageSettingsManager.getRawWorkspaceProvider(providerId);
-			}
+			ILanguageSettingsProvider provider = findRawProvider(providerId, presentedProviders);
 			return provider;
 		}
 		
@@ -182,13 +179,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		 */
 		public ILanguageSettingsProvider getWorkingCopy() {
 			ILanguageSettingsProvider provider = findProvider(providerId, presentedProviders);
-			Assert.isTrue(provider instanceof ILanguageSettingsEditableProvider);
-			Assert.isTrue(provider==getSelectedProvider());
-			
 			if (isWorkingCopy(provider))
 				return provider;
 			
-			ILanguageSettingsEditableProvider editableProvider = (ILanguageSettingsEditableProvider)provider;
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			Assert.isTrue(rawProvider instanceof ILanguageSettingsEditableProvider);
+			
+			ILanguageSettingsEditableProvider editableProvider = (ILanguageSettingsEditableProvider)rawProvider;
 			try {
 				ILanguageSettingsEditableProvider newProvider = editableProvider.clone();
 				replaceSelectedProvider(newProvider);
@@ -271,14 +268,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		int pos = tableProviders.getSelectionIndex();
 		if (pos >= 0 && pos<tableProviders.getItemCount()) {
 			provider = (ILanguageSettingsProvider)tableProvidersViewer.getElementAt(pos);
-		}
-		return provider;
-	}
-
-	private ILanguageSettingsProvider getSelectedProviderRaw() {
-		ILanguageSettingsProvider provider = getSelectedProvider();
-		if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-			provider = LanguageSettingsManager.getRawWorkspaceProvider(provider.getId());
 		}
 		return provider;
 	}
@@ -408,7 +397,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		} else {
 			// Local provider instance chosen
 			try {
-				ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawWorkspaceProvider(id);
+				ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(oldProvider);
 				if (rawProvider instanceof ILanguageSettingsEditableProvider) {
 					newProvider = ((ILanguageSettingsEditableProvider) rawProvider).cloneShallow();
 				}
@@ -510,6 +499,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	 * Populate provider tables and their option pages which are used in Configure mode
 	 */
 	private void updateProvidersTable() {
+		ILanguageSettingsProvider selectedProvider = getSelectedProvider();
+		String selectedId = selectedProvider!=null ? selectedProvider.getId() : null;
+
 		tableProvidersViewer.setInput(presentedProviders);
 
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
@@ -518,11 +510,20 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			tableProvidersViewer.setCheckedElements(cfgProviders.toArray(new ILanguageSettingsProvider[0]));
 		}
 	
+		if (selectedId!=null) {
+			for (int i=0; i<presentedProviders.size(); i++) {
+				if (selectedId.equals(presentedProviders.get(i).getId())) {
+					tableProviders.setSelection(i);
+					break;
+				}
+			}
+		}
+		
 		optionsPageMap.clear();
 		initializeOptionsPage(null, null); // adds default page as a placeholder
 		for (ILanguageSettingsProvider provider : presentedProviders) {
 			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-				provider = LanguageSettingsManager.getRawWorkspaceProvider(provider.getId());
+				provider = LanguageSettingsManager.getRawProvider(provider);
 				initializeOptionsPage(provider, null);
 			} else {
 				initializeOptionsPage(provider, cfgDescription);
@@ -571,14 +572,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	private ICOptionPage createOptionsPage(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription) {
 		ICOptionPage optionsPage = null;
 		if (provider!=null) {
-			String id = provider.getId();
-			if (LanguageSettingsManager.isWorkspaceProvider(provider)){
-				provider = LanguageSettingsManager.getRawWorkspaceProvider(id);
-			}
+			provider = LanguageSettingsManager.getRawProvider(provider);
 			optionsPage = LanguageSettingsProviderAssociation.createOptionsPage(provider);
 
 			if (optionsPage instanceof AbstractCOptionPage) {
-				((AbstractCOptionPage)optionsPage).init(new ProviderReference(id, cfgDescription));
+				((AbstractCOptionPage)optionsPage).init(new ProviderReference(provider.getId(), cfgDescription));
 			}
 		}
 		if (optionsPage==null) {
@@ -614,7 +612,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		String id = (provider!=null) ? provider.getId() : null;
 
 		boolean isGlobal = provider!=null && LanguageSettingsManager.isWorkspaceProvider(provider);
-		ILanguageSettingsProvider rawProvider = isGlobal ? LanguageSettingsManager.getRawWorkspaceProvider(id) : provider;
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
 
 		currentOptionsPage = optionsPageMap.get(id);
 
@@ -693,16 +691,17 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		int last = count - 1;
 		boolean isRangeOk = pos >= 0 && pos <= last;
 
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
 		boolean canClear = false;
-		if (provider instanceof ILanguageSettingsEditableProvider) {
-			if (!((ILanguageSettingsEditableProvider) provider).isEmpty()) {
+		if (rawProvider instanceof ILanguageSettingsEditableProvider) {
+			if (!((ILanguageSettingsEditableProvider) rawProvider).isEmpty()) {
 				canClear = canForWorkspace || canForConfiguration;
 			}
 		}
 		
 		boolean canReset = false;
-		if (provider!=null && (canForWorkspace || canForConfiguration)) {
-			canReset = ! LanguageSettingsManager_TBD.isEqualExtensionProvider(provider);
+		if (rawProvider!=null && (canForWorkspace || canForConfiguration)) {
+			canReset = ! LanguageSettingsManager_TBD.isEqualExtensionProvider(rawProvider);
 		}
 		
 		boolean canMoveUp = page.isForProject() && isProviderSelected && isRangeOk && pos!=0;
@@ -758,8 +757,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	}
 	
 	private void performClear(ILanguageSettingsProvider selectedProvider) {
-		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
-			ILanguageSettingsEditableProvider selectedEditableProvider = (ILanguageSettingsEditableProvider) selectedProvider;
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(selectedProvider);
+		if (rawProvider instanceof ILanguageSettingsEditableProvider) {
+			ILanguageSettingsEditableProvider selectedEditableProvider = (ILanguageSettingsEditableProvider) rawProvider;
 			
 			if (isWorkingCopy(selectedEditableProvider)) {
 				selectedEditableProvider.clear();
@@ -785,8 +785,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	}
 
 	private void performReset(ILanguageSettingsProvider selectedProvider) {
-		if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
-			ILanguageSettingsEditableProvider selectedEditableProvider = (ILanguageSettingsEditableProvider) selectedProvider;
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(selectedProvider);
+		if (rawProvider instanceof ILanguageSettingsEditableProvider) {
+			ILanguageSettingsEditableProvider selectedEditableProvider = (ILanguageSettingsEditableProvider) rawProvider;
 			
 			try {
 				ILanguageSettingsProvider newProvider = LanguageSettingsManager_TBD.getExtensionProviderCopy(selectedEditableProvider.getId());
@@ -895,9 +896,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		// for Preference page initialize providers list just once as no configuration here to change
 		// and re-initializing could ruins modified providers in case of switching tabs or pages
-		if (!page.isForPrefs() || presentedProviders==null) {
+//		if (!page.isForPrefs() || presentedProviders==null) {
 			initializeProviders();
-		}
+//		}
 		updateProvidersTable();
 		updateButtons();
 	}
@@ -1086,14 +1087,25 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		return newEnablement!=initialEnablement || (newEnablement==true && !isEqualList);
 	}
 
-	private ILanguageSettingsProvider findProvider(String id, List<ILanguageSettingsProvider> providers) {
+	private ILanguageSettingsProvider findRawProvider(String id, List<ILanguageSettingsProvider> providers) {
 		for (ILanguageSettingsProvider provider : providers) {
-			if (provider.getId().equals(id))
+			if (provider.getId().equals(id)) {
+				provider = LanguageSettingsManager.getRawProvider(provider);
 				return provider;
+			}
 		}
 		return null;
 	}
 
+	private ILanguageSettingsProvider findProvider(String id, List<ILanguageSettingsProvider> providers) {
+		for (ILanguageSettingsProvider provider : providers) {
+			if (provider.getId().equals(id)) {
+				return provider;
+			}
+		}
+		return null;
+	}
+	
 	private int getProviderIndex(String id, List<ILanguageSettingsProvider> providers) {
 		int pos = 0;
 		for (ILanguageSettingsProvider p : providers) {

@@ -38,15 +38,13 @@ class LanguageSettingsProvidersLabelProvider extends LabelProvider {
 	 * Returns base image key (for image without overlay).
 	 */
 	protected String getBaseKey(ILanguageSettingsProvider provider) {
-		String id = provider.getId();
-		if (LanguageSettingsManager.isWorkspaceProvider(provider)){
-			provider = LanguageSettingsManager.getRawWorkspaceProvider(id);
-		}
 		String imageKey = null;
 		// try id-association
+		String id = provider.getId();
 		URL url = LanguageSettingsProviderAssociation.getImageUrl(id);
 		// try class-association
 		if (url==null) {
+			provider = LanguageSettingsManager.getRawProvider(provider);
 			url = LanguageSettingsProviderAssociation.getImage(provider.getClass());
 		}
 		if (url!=null) {

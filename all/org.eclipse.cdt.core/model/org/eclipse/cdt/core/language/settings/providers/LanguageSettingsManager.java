@@ -117,6 +117,20 @@ public class LanguageSettingsManager {
 	public static ILanguageSettingsProvider getRawWorkspaceProvider(String id) {
 		return LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(id);
 	}
+
+	
+	/**
+	 * TODO - helper method for often used chunk of code
+	 * @param provider 
+	 * @return ILanguageSettingsProvider
+	 */
+	public static ILanguageSettingsProvider getRawProvider(ILanguageSettingsProvider provider) {
+		if (LanguageSettingsManager.isWorkspaceProvider(provider)){
+			provider = LanguageSettingsManager.getRawWorkspaceProvider(provider.getId());
+		}
+		return provider;
+	}
+	
 	
 	/**
 	 * Set and store in workspace area user defined providers.

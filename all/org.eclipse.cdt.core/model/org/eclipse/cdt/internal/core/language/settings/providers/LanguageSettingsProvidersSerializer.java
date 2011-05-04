@@ -122,8 +122,12 @@ public class LanguageSettingsProvidersSerializer {
 			fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
 			// set customized list
 			for (ILanguageSettingsProvider provider : providers) {
-				Assert.isTrue(!(provider instanceof LanguageSettingsWorkspaceProvider));
-				fUserDefinedProviders.put(provider.getId(), provider);
+				if (isWorkspaceProvider(provider)) {
+					provider = getRawWorkspaceProvider(provider.getId());
+				}
+				if (!LanguageSettingsExtensionManager.equalsExtensionProvider(provider)) {
+					fUserDefinedProviders.put(provider.getId(), provider);
+				}
 			}
 		}
 		recalculateAvailableProviders();

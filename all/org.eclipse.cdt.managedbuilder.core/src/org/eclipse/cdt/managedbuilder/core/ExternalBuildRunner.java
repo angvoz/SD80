@@ -32,6 +32,7 @@ import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariableManager;
 import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICElement;
@@ -476,9 +477,10 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 			}
 		}
 
-		for (ILanguageSettingsProvider lsProvider : cfgDescription.getLanguageSettingProviders()) {
-			if (lsProvider instanceof AbstractBuiltinSpecsDetector) {
-				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)lsProvider;
+		for (ILanguageSettingsProvider provider : cfgDescription.getLanguageSettingProviders()) {
+			provider = LanguageSettingsManager.getRawProvider(provider);
+			if (provider instanceof AbstractBuiltinSpecsDetector) {
+				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)provider;
 				for (String languageId : languageIds) {
 					if (detector.getLanguageScope()==null || detector.getLanguageScope().contains(languageId)) {
 						try {

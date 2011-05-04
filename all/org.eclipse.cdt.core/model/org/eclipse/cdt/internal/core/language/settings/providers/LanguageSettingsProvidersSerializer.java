@@ -20,6 +20,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -121,6 +122,7 @@ public class LanguageSettingsProvidersSerializer {
 			fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
 			// set customized list
 			for (ILanguageSettingsProvider provider : providers) {
+				Assert.isTrue(!(provider instanceof LanguageSettingsWorkspaceProvider));
 				fUserDefinedProviders.put(provider.getId(), provider);
 			}
 		}

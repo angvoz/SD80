@@ -165,7 +165,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		 * @return the provider
 		 */
 		public ILanguageSettingsProvider getProvider() {
-			return findProvider(providerId, presentedProviders);
+			ILanguageSettingsProvider provider = findProvider(providerId, presentedProviders);
+			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+				provider = LanguageSettingsManager.getRawWorkspaceProvider(providerId);
+			}
+			return provider;
 		}
 		
 		
@@ -517,10 +521,12 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		optionsPageMap.clear();
 		initializeOptionsPage(null, null); // adds default page as a placeholder
 		for (ILanguageSettingsProvider provider : presentedProviders) {
-			if (LanguageSettingsManager.isWorkspaceProvider(provider))
+			if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+				provider = LanguageSettingsManager.getRawWorkspaceProvider(provider.getId());
 				initializeOptionsPage(provider, null);
-			else
+			} else {
 				initializeOptionsPage(provider, cfgDescription);
+			}
 		}
 
 		displaySelectedOptionPage();
@@ -565,15 +571,20 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	private ICOptionPage createOptionsPage(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription) {
 		ICOptionPage optionsPage = null;
 		if (provider!=null) {
+			String id = provider.getId();
+			if (LanguageSettingsManager.isWorkspaceProvider(provider)){
+				provider = LanguageSettingsManager.getRawWorkspaceProvider(id);
+			}
 			optionsPage = LanguageSettingsProviderAssociation.createOptionsPage(provider);
+
+			if (optionsPage instanceof AbstractCOptionPage) {
+				((AbstractCOptionPage)optionsPage).init(new ProviderReference(id, cfgDescription));
+			}
 		}
 		if (optionsPage==null) {
 			optionsPage = DUMMY_PROVIDER_OPTIONS_PAGE;
 		}
 		
-		if (optionsPage instanceof AbstractCOptionPage && provider!=null) {
-			((AbstractCOptionPage)optionsPage).init(new ProviderReference(provider.getId(), cfgDescription));
-		}
 		return optionsPage;
 	}
 

@@ -20,6 +20,7 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsWorkspaceProvider;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
@@ -37,9 +38,13 @@ class LanguageSettingsProvidersLabelProvider extends LabelProvider {
 	 * Returns base image key (for image without overlay).
 	 */
 	protected String getBaseKey(ILanguageSettingsProvider provider) {
+		String id = provider.getId();
+		if (LanguageSettingsManager.isWorkspaceProvider(provider)){
+			provider = LanguageSettingsManager.getRawWorkspaceProvider(id);
+		}
 		String imageKey = null;
 		// try id-association
-		URL url = LanguageSettingsProviderAssociation.getImageUrl(provider.getId());
+		URL url = LanguageSettingsProviderAssociation.getImageUrl(id);
 		// try class-association
 		if (url==null) {
 			url = LanguageSettingsProviderAssociation.getImage(provider.getClass());
@@ -49,7 +54,7 @@ class LanguageSettingsProvidersLabelProvider extends LabelProvider {
 		}
 		
 		if (imageKey==null) {
-			if (provider.getId().matches(TEST_PLUGIN_ID_PATTERN)) {
+			if (id.matches(TEST_PLUGIN_ID_PATTERN)) {
 				imageKey = CDTSharedImages.IMG_OBJS_CDT_TESTING;
 			} else {
 				imageKey = CDTSharedImages.IMG_OBJS_EXTENSION;

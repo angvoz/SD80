@@ -2,6 +2,7 @@ package org.eclipse.cdt.internal.core.language.settings.providers;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -68,6 +69,9 @@ public class LanguageSettingsProvidersSerializer {
 		for (ILanguageSettingsProvider provider : LanguageSettingsExtensionManager.getExtensionProviders()) {
 			String id = provider.getId();
 			if (!rawGlobalWorkspaceProviders.containsKey(id)) {
+//				if (provider instanceof ILanguageSettingsEditableProvider) {
+//					provider = LanguageSettingsExtensionManager.getExtensionProvider(id);
+//				}
 				rawGlobalWorkspaceProviders.put(id, provider);
 			}
 		}
@@ -138,13 +142,11 @@ public class LanguageSettingsProvidersSerializer {
 	public static void serializeLanguageSettingsWorkspace() throws CoreException {
 		URI uriLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
 		List<LanguageSettingsSerializable> serializableExtensionProviders = new ArrayList<LanguageSettingsSerializable>();
-		for (ILanguageSettingsProvider provider : getRawWorkspaceProviders()) {
+		for (ILanguageSettingsProvider provider : rawGlobalWorkspaceProviders.values()) {
 			if (provider instanceof LanguageSettingsSerializable) {
-				// serialize only modified ones
+				// TODO - serialize only modified ones
 				LanguageSettingsSerializable ser = (LanguageSettingsSerializable)provider;
-				if (!LanguageSettingsManager_TBD.isEqualExtensionProvider(ser)) {
-					serializableExtensionProviders.add(ser);
-				}
+				serializableExtensionProviders.add(ser);
 			}
 		}
 		if (fUserDefinedProviders!=null) {
@@ -445,11 +447,16 @@ public class LanguageSettingsProvidersSerializer {
 	}
 
 	/**
+	 * TODO
 	 * @return ordered set of providers defined in the workspace which include contributed through extension + user defined ones
 	 * 
 	 */
-	public static List<ILanguageSettingsProvider> getRawWorkspaceProviders() {
-		return new ArrayList<ILanguageSettingsProvider>(rawGlobalWorkspaceProviders.values());
+	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
+		ArrayList<ILanguageSettingsProvider> workspaceProviders = new ArrayList<ILanguageSettingsProvider>();
+		for (ILanguageSettingsProvider rawProvider : rawGlobalWorkspaceProviders.values()) {
+			workspaceProviders.add(new LanguageSettingsWorkspaceProvider(rawProvider.getId()));
+		}
+		return workspaceProviders;
 	}
 
 	/**

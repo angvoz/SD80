@@ -670,7 +670,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertTrue(cfgDescription instanceof CConfigurationDescription);
 
 			List<ILanguageSettingsProvider> loadedProviders = loadedCfgDescription.getLanguageSettingProviders();
-			assertEquals(workspaceProvider, loadedProviders.get(0));
+			assertTrue(LanguageSettingsManager.isWorkspaceProvider(loadedProviders.get(0)));
 		}
 
 	}

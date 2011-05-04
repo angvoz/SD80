@@ -50,6 +50,7 @@ import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsWorkspaceProvider;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -129,6 +130,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	
 	private Page_LanguageSettingsProviders masterPropertyPage = null;
 
+	/**
+	 * List of providers presented to the user.
+	 * For global providers included in a configuration this contains references
+	 * {@link LanguageSettingsWorkspaceProvider} not raw providers.
+	 */
 	private List<ILanguageSettingsProvider> presentedProviders = null;
 	private final Map<String, ICOptionPage> optionsPageMap = new HashMap<String, ICOptionPage>();
 	private Map<String, List<ILanguageSettingsProvider>> initialProvidersByCfg = new HashMap<String, List<ILanguageSettingsProvider>>();
@@ -261,6 +267,14 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		int pos = tableProviders.getSelectionIndex();
 		if (pos >= 0 && pos<tableProviders.getItemCount()) {
 			provider = (ILanguageSettingsProvider)tableProvidersViewer.getElementAt(pos);
+		}
+		return provider;
+	}
+
+	private ILanguageSettingsProvider getSelectedProviderRaw() {
+		ILanguageSettingsProvider provider = getSelectedProvider();
+		if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
+			provider = LanguageSettingsManager.getRawWorkspaceProvider(provider.getId());
 		}
 		return provider;
 	}
@@ -528,7 +542,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			presentedProviders =  new ArrayList<ILanguageSettingsProvider>();
 		}
 		
-		List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getRawWorkspaceProviders();
+		List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
 		
 		// ensure sorting by name all unchecked providers
 		Set<ILanguageSettingsProvider> allAvailableProvidersSet = new TreeSet<ILanguageSettingsProvider>(new Comparator<ILanguageSettingsProvider>() {

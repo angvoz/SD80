@@ -100,8 +100,8 @@ public class LanguageSettingsManager {
 	 * extensions via {@code org.eclipse.cdt.core.LanguageSettingsProvider}
 	 * extension point.
 	 */
-	public static List<ILanguageSettingsProvider> getRawWorkspaceProviders() {
-		return LanguageSettingsProvidersSerializer.getRawWorkspaceProviders();
+	public static List<ILanguageSettingsProvider> getWorkspaceProviders() {
+		return LanguageSettingsProvidersSerializer.getWorkspaceProviders();
 	}
 
 	/**

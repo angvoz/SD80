@@ -41,6 +41,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.utils.pty.PTY;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
@@ -125,25 +126,6 @@ public class StartOrRestartProcessSequence_7_0 extends ReflectionSequence {
 	@Override
 	protected String[] getExecutionOrder(String group) {
 		if (GROUP_TOP_LEVEL.equals(group)) {
-
-			DsfServicesTracker tracker = new DsfServicesTracker(GdbPlugin.getBundleContext(), fContainerDmc.getSessionId());
-			IGDBBackend backend = tracker.getService(IGDBBackend.class);
-			tracker.dispose();
-			
-			if (backend.getIsAttachSession()) {
-	   			// Restart does not apply to attach sessions, so we are only dealing with the
-				// Start case.
-	   			//
-	   			// When attaching to a running process, we do not need to set a breakpoint or
-	   			// start the program; it is left up to the user.
-	   			// We only need to turn on Reverse Debugging if requested.
-
-				return new String[] {
-						"stepInitializeBaseSequence",  //$NON-NLS-1$
-						"stepEnableReverse",   //$NON-NLS-1$
-						"stepCleanupBaseSequence",   //$NON-NLS-1$
-				};
-			} else {
 				return new String[] {
 						"stepInitializeBaseSequence",  //$NON-NLS-1$
 						"stepInsertStopOnMainBreakpoint",  //$NON-NLS-1$
@@ -156,7 +138,6 @@ public class StartOrRestartProcessSequence_7_0 extends ReflectionSequence {
 						"stepContinue",   //$NON-NLS-1$
 						"stepCleanupBaseSequence",   //$NON-NLS-1$
 				};
-			}
 		}
 		return null;
 	}
@@ -271,18 +252,21 @@ public class StartOrRestartProcessSequence_7_0 extends ReflectionSequence {
 	
     /**
      * This method does the necessary work to setup the input/output streams for the
-     * inferior process, by either preparing the PTY to be used, to simply leaving
+     * inferior process, by either preparing the PTY to be used, or by simply leaving
      * the PTY null, which indicates that the input/output streams of the CLI should
      * be used instead; this decision is based on the type of session.
      */
 	@Execute
     public void stepInitializeInputOutput(final RequestMonitor rm) {
-    	if (fBackend.getSessionType() == SessionType.REMOTE || fBackend.getIsAttachSession()) {
-    		// These types do not use a PTY
+    	if (fBackend.getSessionType() == SessionType.REMOTE && !fBackend.getIsAttachSession()) {
+    		// Remote non-attach sessions don't support multi-process and therefore will not
+    		// start new processes.  Those sessions will only start the one process, which should
+    		// not have a console, because it's output is handled by GDB server.
     		fPty = null;
     		rm.done();
     	} else {
-    		// These types always use a PTY
+    		// Every other type of session that can get to this code, is starting a new process
+    		// and requires a pty for it.
     		try {
     			fPty = new PTY();
 
@@ -321,9 +305,22 @@ public class StartOrRestartProcessSequence_7_0 extends ReflectionSequence {
 				final ILaunch launch = (ILaunch)getContainerContext().getAdapter(ILaunch.class);
 				final String groupId = ((IMIContainerDMContext)getContainerContext()).getGroupId();
 
+				// For multi-process, we cannot simply use the name given by the backend service
+				// because we may not be starting that process, but another one.
+				// Instead, we can look in the attributes for the binary name, which we stored
+				// there for this case, specifically.
+				// Bug 342351
 				IGDBBackend backend = fTracker.getService(IGDBBackend.class);
-				final String pathLabel = backend.getProgramPath().lastSegment();
-				
+				String defaultPathName = backend.getProgramPath().lastSegment();
+				if (defaultPathName == null) {
+					defaultPathName = ""; //$NON-NLS-1$
+				}
+				String progPathName =
+						CDebugUtils.getAttribute(fAttributes,
+								ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME,
+								defaultPathName);
+				final String pathLabel = new Path(progPathName).lastSegment();    			 
+
 				// Add the inferior to the launch.  
 				// This cannot be done on the executor or things deadlock.
 				DebugPlugin.getDefault().asyncExec(new Runnable() {
@@ -442,13 +439,15 @@ public class StartOrRestartProcessSequence_7_0 extends ReflectionSequence {
      * This method can be overridden to allow for customization.
      */
     protected boolean useContinueCommand() {
-    	// When doing remote debugging, we use -exec-continue instead of -exec-run
-    	// Restart does not apply to remote sessions
+    	// Note that restart does not apply to remote sessions
     	IGDBBackend backend = fTracker.getService(IGDBBackend.class);
 		if (backend == null) {
 			return false;
 		}
-    	return backend.getSessionType() == SessionType.REMOTE;
+    	// When doing remote non-attach debugging, we use -exec-continue instead of -exec-run
+		// For remote attach, if we get here it is that we are starting a new process
+		// (multi-process), so we want to use -exec-run
+    	return backend.getSessionType() == SessionType.REMOTE && !backend.getIsAttachSession();
     }
 
 }

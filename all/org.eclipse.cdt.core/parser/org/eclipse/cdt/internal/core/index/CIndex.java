@@ -91,11 +91,13 @@ public class CIndex implements IIndex {
 		return null;
 	}
 
-	public IIndexBinding[] findBindings(Pattern pattern, boolean isFullyQualified, IndexFilter filter, IProgressMonitor monitor) throws CoreException {
+	public IIndexBinding[] findBindings(Pattern pattern, boolean isFullyQualified, IndexFilter filter,
+			IProgressMonitor monitor) throws CoreException {
 		return findBindings(new Pattern[] { pattern }, isFullyQualified, filter, monitor);
 	}
 
-	public IIndexBinding[] findBindings(Pattern[] patterns, boolean isFullyQualified, IndexFilter filter, IProgressMonitor monitor) throws CoreException {
+	public IIndexBinding[] findBindings(Pattern[] patterns, boolean isFullyQualified, IndexFilter filter,
+			IProgressMonitor monitor) throws CoreException {
 		if (SPECIALCASE_SINGLES && fFragments.length == 1) {
 			 return fFragments[0].findBindings(patterns, isFullyQualified, filter, monitor);
 		} else {
@@ -122,7 +124,8 @@ public class CIndex implements IIndex {
 		}
 	}
 
-	public IIndexBinding[] findMacroContainers(Pattern pattern, IndexFilter filter, IProgressMonitor monitor) throws CoreException {
+	public IIndexBinding[] findMacroContainers(Pattern pattern, IndexFilter filter, IProgressMonitor monitor)
+			throws CoreException {
 		if (SPECIALCASE_SINGLES && fFragments.length == 1) {
 			 return fFragments[0].findMacroContainers(pattern, filter, monitor);
 		} else {
@@ -133,7 +136,8 @@ public class CIndex implements IIndex {
 					IIndexFragmentBinding[][] fragmentBindings = new IIndexFragmentBinding[fPrimaryFragmentCount][];
 					for (int i = 0; i < fPrimaryFragmentCount; i++) {
 						try {
-							IBinding[] part = fFragments[i].findMacroContainers(pattern, retargetFilter(linkage, filter), monitor);
+							IBinding[] part = fFragments[i].findMacroContainers(pattern,
+									retargetFilter(linkage, filter), monitor);
 							fragmentBindings[i] = new IIndexFragmentBinding[part.length];
 							System.arraycopy(part, 0, fragmentBindings[i], 0, part.length);
 						} catch (CoreException e) {
@@ -152,7 +156,7 @@ public class CIndex implements IIndex {
 	public IIndexName[] findNames(IBinding binding, int flags) throws CoreException {
 		LinkedList<IIndexFragmentName> result= new LinkedList<IIndexFragmentName>();
 		if (binding instanceof ICPPUsingDeclaration) {
-			IBinding[] bindings= ((ICPPUsingDeclaration)binding).getDelegates();
+			IBinding[] bindings= ((ICPPUsingDeclaration) binding).getDelegates();
 			if (bindings == null || bindings.length == 0) {
 				return new IIndexName[0];
 			}
@@ -259,7 +263,8 @@ public class CIndex implements IIndex {
 		return result.toArray(new IIndexInclude[result.size()]);
 	}
 
-	public void findIncludedBy(List<IIndexFile> in, List<IIndexInclude> out, int depth, HashSet<IIndexFileLocation> handled) throws CoreException {
+	public void findIncludedBy(List<IIndexFile> in, List<IIndexInclude> out, int depth,
+			HashSet<IIndexFileLocation> handled) throws CoreException {
 		List<IIndexFile> nextLevel= depth != 0 ? new LinkedList<IIndexFile>() : null;
 		for (IIndexFile iIndexFile : in) {
 			IIndexFragmentFile file = (IIndexFragmentFile) iIndexFile;
@@ -295,7 +300,8 @@ public class CIndex implements IIndex {
 		return result.toArray(new IIndexInclude[result.size()]);
 	}
 
-	private void findIncludes(List<IIndexFile> in, List<IIndexInclude> out, int depth, HashSet<Object> handled) throws CoreException {
+	private void findIncludes(List<IIndexFile> in, List<IIndexInclude> out, int depth,
+			HashSet<Object> handled) throws CoreException {
 		List<IIndexFile> nextLevel= depth != 0 ? new LinkedList<IIndexFile>() : null;
 		for (IIndexFile iIndexFile : in) {
 			IIndexFragmentFile file = (IIndexFragmentFile) iIndexFile;
@@ -423,8 +429,8 @@ public class CIndex implements IIndex {
 					}
 				}
 			}
-		} catch(CoreException ce) {
-			CCorePlugin.log(ce);
+		} catch (CoreException e) {
+			CCorePlugin.log(e);
 		}
 		return null;
 	}
@@ -641,7 +647,7 @@ public class CIndex implements IIndex {
 	public long getCacheHits() {
 		long result= 0;
 		for (IIndexFragment fragment : fFragments) {
-			result+= fragment.getCacheHits();
+			result += fragment.getCacheHits();
 		}
 		return result;
 	}
@@ -649,7 +655,7 @@ public class CIndex implements IIndex {
 	public long getCacheMisses() {
 		long result= 0;
 		for (IIndexFragment fragment : fFragments) {
-			result+= fragment.getCacheMisses();
+			result += fragment.getCacheMisses();
 		}
 		return result;
 	}

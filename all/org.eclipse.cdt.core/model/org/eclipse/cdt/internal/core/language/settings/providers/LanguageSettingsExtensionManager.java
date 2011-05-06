@@ -31,6 +31,8 @@ import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.core.settings.model.util.LanguageSettingEntriesSerializer;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
@@ -371,6 +373,7 @@ public class LanguageSettingsExtensionManager {
 	 *     although individual providers mandated to return {@code null} if no settings defined.
 	 */
 	public static List<ICLanguageSettingEntry> getSettingEntriesUpResourceTree(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+		Assert.isTrue( !(rc instanceof IWorkspaceRoot) );
 		if (provider!=null) {
 			List<ICLanguageSettingEntry> entries = safeGetSettingEntries(provider, cfgDescription, rc, languageId);
 			if (entries!=null) {

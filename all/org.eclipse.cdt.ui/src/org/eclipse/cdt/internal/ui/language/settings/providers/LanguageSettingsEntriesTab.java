@@ -686,7 +686,12 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 			
 		if (provider instanceof LanguageSettingsSerializable) {
 			if (entries!=null && rc!=null) {
-				List<ICLanguageSettingEntry> parentEntries = LanguageSettingsManager.getSettingEntriesUpResourceTree(provider, cfgDescription, rc.getParent(), languageId);
+				List<ICLanguageSettingEntry> parentEntries = null;
+				if (rc instanceof IProject) {
+					parentEntries = new ArrayList<ICLanguageSettingEntry>();
+				} else {
+					parentEntries = LanguageSettingsManager.getSettingEntriesUpResourceTree(provider, cfgDescription, rc.getParent(), languageId);
+				}
 				if (entries.equals(parentEntries)) {
 					// to use parent entries instead
 					entries = null;

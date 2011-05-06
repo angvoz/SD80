@@ -4768,12 +4768,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 						}
 					}
 				} else {
-					try {
-						provider = LanguageSettingsManager_TBD.getExtensionProviderCopy(id);
-					} catch (CloneNotSupportedException e) {
-						ManagedBuilderCorePlugin.error("Cannot clone provider " + id);
-						provider = LanguageSettingsManager.getWorkspaceProvider(id);
-					}
+					provider = LanguageSettingsManager.getExtensionProviderCopy(id);
 				}
 				if (provider!=null) {
 					providers.add(provider);
@@ -4788,13 +4783,8 @@ public class ManagedBuildManager extends AbstractCExtension {
 		}
 
 		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
-			try {
-				ILanguageSettingsProvider provider = LanguageSettingsManager_TBD.getExtensionProviderCopy(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
-				providers.add(0, provider);
-			} catch (CloneNotSupportedException e) {
-				// shouldn't happen. just in case, log the error and use workspace provider
-				ManagedBuilderCorePlugin.log(e);
-			}
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getExtensionProviderCopy(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
+			providers.add(0, provider);
 		}
 
 		return providers;

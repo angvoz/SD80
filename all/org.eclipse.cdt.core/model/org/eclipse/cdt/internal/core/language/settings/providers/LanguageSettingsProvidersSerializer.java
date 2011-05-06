@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsWorkspaceProvider;
@@ -70,14 +71,8 @@ public class LanguageSettingsProvidersSerializer {
 		for (ILanguageSettingsProvider provider : LanguageSettingsExtensionManager.getExtensionProviders()) {
 			String id = provider.getId();
 			if (!rawGlobalWorkspaceProviders.containsKey(id)) {
-				if (provider instanceof ILanguageSettingsEditableProvider) {
-					try {
-						provider = LanguageSettingsExtensionManager.getExtensionProviderCopy(id);
-					} catch (CloneNotSupportedException e) {
-						IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Not able to clone provider " + provider.getClass());
-						CCorePlugin.log(new CoreException(status));
-					}
-				}
+				// for editable providers a copy is retrieved
+				provider = LanguageSettingsManager.getExtensionProviderCopy(id);
 				rawGlobalWorkspaceProviders.put(id, provider);
 			}
 		}
@@ -362,7 +357,7 @@ public class LanguageSettingsProvidersSerializer {
 		ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getExtensionProviderShallow(providerId);
 		boolean isLoadable = (provider instanceof LanguageSettingsSerializable) && (provider instanceof ILanguageSettingsEditableProvider);
 		if (!isLoadable) {
-			provider = LanguageSettingsExtensionManager.getExtensionProvider(providerId);
+			provider = LanguageSettingsManager.getExtensionProviderCopy(providerId);
 		}
 		
 		String attrClass = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_CLASS);

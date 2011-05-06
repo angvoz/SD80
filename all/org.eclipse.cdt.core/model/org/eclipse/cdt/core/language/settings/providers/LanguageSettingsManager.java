@@ -17,6 +17,7 @@ import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.internal.core.LocalProjectScope;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsExtensionManager;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
@@ -142,9 +143,22 @@ public class LanguageSettingsManager {
 		LanguageSettingsProvidersSerializer.setUserDefinedProviders(providers);
 	}
 
+	/**
+	 * Get Language Settings Provider defined via
+	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
+	 *
+	 * @param id - ID of provider to find.
+	 * @return the copy of the provider if possible (i.e. for {@link ILanguageSettingsEditableProvider})
+	 *    or raw extension provider if provider is not copyable.
+	 *    Returns {@code null} if provider is not defined.
+	 */
+	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) {
+		return LanguageSettingsExtensionManager.getExtensionProviderCopy(id);
+	}
+
 	private static Preferences getPreferences(IProject project) {
 		if (project == null)
-			return new InstanceScope().getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);
+			return InstanceScope.INSTANCE.getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);
 		else
 			return new LocalProjectScope(project).getNode(PREFERENCES_QUALIFIER).node(LANGUAGE_SETTINGS_PROVIDERS_NODE);
 	}

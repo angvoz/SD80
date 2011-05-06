@@ -274,44 +274,24 @@ public class LanguageSettingsExtensionManager {
 	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
 	 *
 	 * @param id - ID of provider to find.
-	 * @return the provider or {@code null} if provider is not defined.
-	 *    Returns a copy if provider is editable (see {@link ILanguageSettingsEditableProvider}).
+	 * @return the copy of the provider if possible (i.e. for {@link ILanguageSettingsEditableProvider})
+	 *    or raw extension provider if provider is not copyable.
+	 *    Returns {@code null} if provider is not defined.
 	 */
-	public static ILanguageSettingsProvider getExtensionProvider(String id) {
+	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) {
 		ILanguageSettingsProvider provider = fExtensionProviders.get(id);
 		if (provider instanceof ILanguageSettingsEditableProvider) {
 			try {
-				return ((ILanguageSettingsEditableProvider) provider).clone();
+				provider = ((ILanguageSettingsEditableProvider) provider).clone();
 			} catch (CloneNotSupportedException e) {
 				IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Not able to clone provider " + provider.getClass());
 				CCorePlugin.log(new CoreException(status));
-				return null;
+				provider = null;
 			}
 		}
 		return provider;
 	}
 
-	/**
-	 * TODO Get copy of Language Settings Provider defined via
-	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
-	 *
-	 * @param id - ID of provider to find.
-	 * @return the provider or {@code null} if provider is not defined.
-	 *    Returns a copy if provider is editable (see {@link ILanguageSettingsEditableProvider}).
-	 * @throws CloneNotSupportedException
-	 * 
-	 */
-	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) throws CloneNotSupportedException {
-		ILanguageSettingsProvider provider = fExtensionProviders.get(id);
-		if (provider instanceof ILanguageSettingsEditableProvider) {
-			return ((ILanguageSettingsEditableProvider) provider).clone();
-		}
-		if (provider!=null) {
-			throw new CloneNotSupportedException("provider "+id+" is not instance of ILanguageSettingsEditableProvider. "+provider.getClass());
-		}
-		throw new CloneNotSupportedException("Cannot clone not existing extension for id= "+id);
-	}
-	
 	/**
 	 * TODO
 	 * 
@@ -339,7 +319,7 @@ public class LanguageSettingsExtensionManager {
 	public static List<ILanguageSettingsProvider> getExtensionProviders() {
 		ArrayList<ILanguageSettingsProvider> list = new ArrayList<ILanguageSettingsProvider>(fExtensionProviders.size());
 		for (String id : fExtensionProviders.keySet()) {
-			list.add(getExtensionProvider(id));
+			list.add(getExtensionProviderCopy(id));
 		}
 		return list;
 	}

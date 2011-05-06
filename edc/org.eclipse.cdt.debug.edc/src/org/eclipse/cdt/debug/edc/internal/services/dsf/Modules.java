@@ -25,6 +25,7 @@ import java.util.Set;
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.debug.core.sourcelookup.ICSourceLocator;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.PathUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
@@ -818,6 +819,9 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 			DataRequestMonitor<ILineAddresses> rm) {
 		IModuleDMContext[] moduleList = null;
 
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().traceEntry(null,
+				"Find closest line with code. context: " + EDCTrace.fixArg(symCtx) + " file: " + file + " anchor: " + anchor + " limit: " + neighbor_limit); }
+
 		if (symCtx instanceof IEDCExecutionDMC) {
 			String symContextID = ((IEDCDMContext) symCtx).getID();
 			moduleList = getModulesForContext(symContextID);
@@ -829,6 +833,8 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 			rm.setStatus(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, MessageFormat.format(
 					"Unknown class implementing ISymbolDMContext : {0}", symCtx.getClass().getName()), null));
 			rm.done();
+			if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().traceExit(null,
+					rm.getStatus()); }
 			return;
 		}
 
@@ -837,6 +843,9 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 		for (IModuleDMContext module : moduleList) {
 			ModuleDMC mdmc = (ModuleDMC) module;
 			IEDCSymbolReader reader = mdmc.getSymbolReader();
+
+			if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().trace(null,
+					"module: " + mdmc + " reader: " + reader); }
 
 			if (reader == null) 
 				continue;
@@ -850,7 +859,11 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 			@SuppressWarnings("unchecked")
 			Set<String> noFileCachedData = EDCDebugger.getDefault().getCache().getCachedData(noFileCacheKey, Set.class, reader.getModificationDate());
 			if (noFileCachedData != null && noFileCachedData.contains(file))
+			{
+				if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().trace(null,
+						"Persistent cache says file not used by module"); }
 				continue; // We have already determined that this file is not used by this module, don't bother checking again.
+			}
 			
 			@SuppressWarnings("unchecked")
 			Map<String, List<ILineAddresses>> cachedData = EDCDebugger.getDefault().getCache().getCachedData(cacheKey, Map.class, reader.getModificationDate());
@@ -868,6 +881,8 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 						noFileCachedData = new HashSet<String>();
 					noFileCachedData.add(file);
 					EDCDebugger.getDefault().getCache().putCachedData(noFileCacheKey, (Serializable) noFileCachedData, reader.getModificationDate());				
+					if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().trace(null,
+					"File not used by module"); }
 					continue;
 				}
 			
@@ -875,11 +890,17 @@ public class Modules extends AbstractEDCService implements IModules, IEDCModules
 						PathUtils.createPath(file),	anchor, neighbor_limit);
 
 				if (codeLines == null)
+				{
+					if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().trace(null,
+					"codeLines == null"); }
 					continue;	// should not happen
+				}
 				
 				// Cache code lines (with their link addresses), whether we find it or not.
 				cache.put(file + anchor, codeLines);
 				EDCDebugger.getDefault().getCache().putCachedData(cacheKey, (Serializable) cache, reader.getModificationDate());				
+				if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().trace(null,
+						"codeLines: " + codeLines); }
 			}
 
 			// convert addresses to runtime ones.

@@ -20,6 +20,7 @@ import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICLineBreakpoint;
 import org.eclipse.cdt.debug.core.model.ICWatchpoint;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
 import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.ITargetEnvironment;
@@ -185,10 +186,14 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 		
     	final List<Map<String, Object>>	targetBPAttrs = new ArrayList<Map<String, Object>>(1);
 
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().traceEntry(null,
+				"Resolving breakpoint " + EDCTrace.fixArg(breakpoint) + " in context " + EDCTrace.fixArg(context)); }
+
     	if (dsfSession == null) {
     		// already disposed
 			drm.setData(targetBPAttrs);
 			drm.done();
+			if (EDCTrace.BREAKPOINTS_TRACE_ON) {EDCTrace.getTrace().traceExit(null, "null session");}
 			return;
     	}
     	
@@ -244,6 +249,8 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 			ISymbolDMContext sym_dmc = DMContexts.getAncestorOfType(context, ISymbolDMContext.class);
 
 			String compileFile = EDCLaunch.getLaunchForSession(dsfSession.getId()).getCompilationPath(bpFile);
+			if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().trace(null,
+					"BP file: " + bpFile + " Compile file: " + compileFile); }
 
 			/*
 			 * Look for code lines within five lines above and below the line in
@@ -257,6 +264,8 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 					if (! isSuccess()) {
 						drm.setStatus(getStatus());
 						drm.done();
+						if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().trace(null,
+								"findClosestLineWithCode failed: " + drm.getStatus()); }
 						return;
 					}
 					
@@ -330,6 +339,7 @@ public class BreakpointAttributeTranslator implements IBreakpointAttributeTransl
 				}
 			});
 		}
+		if (EDCTrace.BREAKPOINTS_TRACE_ON) {EDCTrace.getTrace().traceExit(null);}
 	}
 
 	public Map<String, Object> getAllBreakpointAttributes(IBreakpoint platformBP, boolean bpManagerEnabled)

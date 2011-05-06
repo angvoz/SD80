@@ -27,8 +27,12 @@ public class CheckersMessages extends NLS {
 	public static String GenericParameter_ParameterExceptionsItem;
 	public static String StatementHasNoEffectChecker_ParameterMacro;
 	public static String SuggestedParenthesisChecker_SuggestParanthesesAroundNot;
+	public static String SuspiciousSemicolonChecker_ParamAfterElse;
 	public static String SuspiciousSemicolonChecker_ParamElse;
 	public static String ProblemBindingChecker_Candidates;
+
+	public static String UnusedSymbolInFileScopeChecker_CharacterSequence;
+	public static String UnusedSymbolInFileScopeChecker_Exceptions;
 
 	static {
 		NLS.initializeMessages(CheckersMessages.class.getName(), CheckersMessages.class);

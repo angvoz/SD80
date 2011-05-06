@@ -462,8 +462,9 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 * @param name the name
 	 * @return the register dmc
 	 * @throws CoreException the core exception
+	 * @since 2.0
 	 */
-	private RegisterDMC findRegisterDMCByName(IEDCExecutionDMC exeDMC, String name) throws CoreException {
+	public RegisterDMC findRegisterDMCByName(IEDCExecutionDMC exeDMC, String name) throws CoreException {
 		assert RunControl.isNonContainer(exeDMC);
 		
 		// this will create the reg groups for the exeDMC if not yet. 

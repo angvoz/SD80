@@ -34,7 +34,6 @@ import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.model.IWorkingCopy;
 import org.eclipse.cdt.core.parser.IScannerInfoProvider;
-import org.eclipse.cdt.core.parser.util.ContentAssistMatcherFactory;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.resources.IPathEntryVariableManager;
 import org.eclipse.cdt.core.settings.model.ICConfigExtensionReference;
@@ -324,9 +323,7 @@ public class CCorePlugin extends Plugin {
             fNewCProjectDescriptionManager.shutdown();
             ResourceLookup.shutdown();
             
-            ContentAssistMatcherFactory.shutdown();
-            
-			savePluginPreferences();
+            savePluginPreferences();
 		} finally {
 			super.stop(context);
 		}
@@ -524,7 +521,7 @@ public class CCorePlugin extends Plugin {
 	 *    view. The url is expected to point to an image in eclipse OSGi bundle.
 	 *    Here is an example how to retrieve URL:<br/>
 	 *    <code>
-	 *    URL iconUrl = CUIPlugin.getDefault().getBundle().getResource("icons/obj16/flask.png");
+	 *    URL iconUrl = CUIPlugin.getDefault().getBundle().getEntry("icons/obj16/flask.png");
 	 *    </code>
 	 * 
 	 * @return CDT console adapter.

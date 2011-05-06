@@ -230,7 +230,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		protected String[] getOverlayKeys(ILanguageSettingsProvider provider) {
 			String[] overlayKeys = super.getOverlayKeys(provider);
 			
-			if (LanguageSettingsManager_TBD.isReconfigured(provider)) {
+			ILanguageSettingsProvider rawProvider = page.isForPrefs() ? LanguageSettingsManager.getRawProvider(provider) : provider;
+			if (LanguageSettingsManager_TBD.isReconfigured(rawProvider)) {
 				overlayKeys[IDecoration.TOP_RIGHT] = CDTSharedImages.IMG_OVR_SETTING;
 			}
 			

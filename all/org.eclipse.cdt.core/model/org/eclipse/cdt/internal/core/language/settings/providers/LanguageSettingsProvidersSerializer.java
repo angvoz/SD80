@@ -70,9 +70,14 @@ public class LanguageSettingsProvidersSerializer {
 		for (ILanguageSettingsProvider provider : LanguageSettingsExtensionManager.getExtensionProviders()) {
 			String id = provider.getId();
 			if (!rawGlobalWorkspaceProviders.containsKey(id)) {
-//				if (provider instanceof ILanguageSettingsEditableProvider) {
-//					provider = LanguageSettingsExtensionManager.getExtensionProvider(id);
-//				}
+				if (provider instanceof ILanguageSettingsEditableProvider) {
+					try {
+						provider = LanguageSettingsExtensionManager.getExtensionProviderCopy(id);
+					} catch (CloneNotSupportedException e) {
+						IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Not able to clone provider " + provider.getClass());
+						CCorePlugin.log(new CoreException(status));
+					}
+				}
 				rawGlobalWorkspaceProviders.put(id, provider);
 			}
 		}

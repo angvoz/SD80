@@ -2,14 +2,12 @@ package org.eclipse.cdt.internal.core.language.settings.providers;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsWorkspaceProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -21,7 +19,6 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -46,8 +43,6 @@ public class LanguageSettingsProvidersSerializer {
 	private static final String ELEM_PROVIDER_REFERENCE = "provider-reference"; //$NON-NLS-1$
 	/** Cache of globally available providers to be consumed by calling clients */
 	private static final LinkedHashMap<String, ILanguageSettingsProvider> rawGlobalWorkspaceProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
-	/** Global user-defined providers matching persistent storage */
-	private static LinkedHashMap<String, ILanguageSettingsProvider> fUserDefinedProviders = null;
 	private static Object serializingLock = new Object();
 	
 	static {
@@ -57,42 +52,6 @@ public class LanguageSettingsProvidersSerializer {
 			CCorePlugin.log("Error loading workspace language settings providers", e); //$NON-NLS-1$
 		} finally {
 		}
-	}
-
-	/**
-	 * Populate the list of available providers where workspace level user defined parsers
-	 * overwrite contributed through provider extension point.
-	 */
-	private static void recalculateAvailableProviders() {
-		rawGlobalWorkspaceProviders.clear();
-		if (fUserDefinedProviders!=null) {
-			rawGlobalWorkspaceProviders.putAll(fUserDefinedProviders);
-		}
-		for (ILanguageSettingsProvider provider : LanguageSettingsExtensionManager.getExtensionProviders()) {
-			String id = provider.getId();
-			if (!rawGlobalWorkspaceProviders.containsKey(id)) {
-				// for editable providers a copy is retrieved
-				provider = LanguageSettingsManager.getExtensionProviderCopy(id);
-				rawGlobalWorkspaceProviders.put(id, provider);
-			}
-		}
-	}
-
-	/**
-	 * @param ids - array of provider IDs
-	 * @return provider IDs delimited with provider delimiter ";"
-	 * @since 5.2
-	 */
-	public static String toDelimitedString(String[] ids) {
-		String result=""; //$NON-NLS-1$
-		for (String id : ids) {
-			if (result.length()==0) {
-				result = id;
-			} else {
-				result += PROVIDER_DELIMITER + id;
-			}
-		}
-		return result;
 	}
 
 	/**
@@ -109,28 +68,31 @@ public class LanguageSettingsProvidersSerializer {
 	/**
 	 * Internal method to set user defined providers in memory.
 	 *
-	 * @noreference This method is not intended to be referenced by clients.
 	 * Use {@link #setUserDefinedProviders(List)}.
 	 *
 	 * @param providers - list of user defined providers. If {@code null}
 	 *    is passed user defined providers are cleared.
 	 */
-	public static void setUserDefinedProvidersInternal(List<ILanguageSettingsProvider> providers) {
-		if (providers==null) {
-			fUserDefinedProviders = null;
-		} else {
-			fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
-			// set customized list
+	private static void setUserDefinedProvidersInternal(List<ILanguageSettingsProvider> providers) {
+		rawGlobalWorkspaceProviders.clear();
+		if (providers!=null) {
 			for (ILanguageSettingsProvider provider : providers) {
 				if (isWorkspaceProvider(provider)) {
 					provider = getRawWorkspaceProvider(provider.getId());
 				}
 				if (!LanguageSettingsExtensionManager.equalsExtensionProvider(provider)) {
-					fUserDefinedProviders.put(provider.getId(), provider);
+					rawGlobalWorkspaceProviders.put(provider.getId(), provider);
 				}
 			}
 		}
-		recalculateAvailableProviders();
+		
+		List<ILanguageSettingsProvider> extensionProviders = LanguageSettingsExtensionManager.getExtensionProviders();
+		for (ILanguageSettingsProvider extensionProvider : extensionProviders) {
+			String id = extensionProvider.getId();
+			if (!rawGlobalWorkspaceProviders.containsKey(id)) {
+				rawGlobalWorkspaceProviders.put(id, extensionProvider);
+			}
+		}
 	}
 
 	/**
@@ -150,17 +112,10 @@ public class LanguageSettingsProvidersSerializer {
 		List<LanguageSettingsSerializable> serializableExtensionProviders = new ArrayList<LanguageSettingsSerializable>();
 		for (ILanguageSettingsProvider provider : rawGlobalWorkspaceProviders.values()) {
 			if (provider instanceof LanguageSettingsSerializable) {
-				// TODO - serialize only modified ones
-				LanguageSettingsSerializable ser = (LanguageSettingsSerializable)provider;
-				serializableExtensionProviders.add(ser);
-			}
-		}
-		if (fUserDefinedProviders!=null) {
-			for (ILanguageSettingsProvider provider : fUserDefinedProviders.values()) {
-				// serialize all user defined providers
-				if (provider instanceof LanguageSettingsSerializable) {
-					LanguageSettingsSerializable ser = (LanguageSettingsSerializable)provider;
-					serializableExtensionProviders.add(ser);
+				// serialize all editable providers which are different from corresponding extension
+				// and serialize all serializable ones that are not editable (those are singletons and we don't know whether they changed)
+				if (!(provider instanceof ILanguageSettingsEditableProvider) || !LanguageSettingsExtensionManager.equalsExtensionProvider(provider)) {
+					serializableExtensionProviders.add((LanguageSettingsSerializable)provider);
 				}
 			}
 		}
@@ -193,7 +148,7 @@ public class LanguageSettingsProvidersSerializer {
 	}
 
 	public static void loadLanguageSettingsWorkspace() throws CoreException {
-		fUserDefinedProviders = null;
+		List <ILanguageSettingsProvider> providers = null;
 		
 		URI uriLocation = getStoreLocation(STORAGE_WORKSPACE_LANGUAGE_SETTINGS);
 	
@@ -223,16 +178,16 @@ public class LanguageSettingsProvidersSerializer {
 				
 				ILanguageSettingsProvider provider = loadWorkspaceProvider(providerNode);
 				if (provider!=null) {
-					if (fUserDefinedProviders==null)
-						fUserDefinedProviders= new LinkedHashMap<String, ILanguageSettingsProvider>();
+					if (providers==null)
+						providers= new ArrayList<ILanguageSettingsProvider>();
 					
 					if (!LanguageSettingsExtensionManager.equalsExtensionProvider(provider)) {
-						fUserDefinedProviders.put(provider.getId(), provider);
+						providers.add(provider);
 					}
 				}
 			}
 		}
-		recalculateAvailableProviders();
+		setUserDefinedProvidersInternal(providers);
 	}
 
 	public static void serializeLanguageSettings(Element parentElement, ICProjectDescription prjDescription) throws CoreException {

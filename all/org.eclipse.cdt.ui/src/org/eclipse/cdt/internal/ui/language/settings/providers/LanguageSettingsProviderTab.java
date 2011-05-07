@@ -23,7 +23,6 @@ import java.util.TreeSet;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.CheckStateChangedEvent;
@@ -40,7 +39,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Table;
@@ -197,30 +195,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			return null;
 		}
 		
-	}
-
-	/**
-	 * Default provider options page.
-	 *
-	 */
-	private class DummyProviderOptionsPage extends AbstractCOptionPage {
-		@Override
-		public void createControl(Composite parent) {
-			Label label = new Label(parent, SWT.NONE);
-			if (page.isForPrefs()) {
-				label.setText(Messages.LanguageSettingsProviderTab_NoOptionsAvailable);
-			}
-			setControl(label);
-		}
-		
-		@Override
-		public void performApply(IProgressMonitor monitor) throws CoreException {
-		}
-	
-		@Override
-		public void performDefaults() {
-		}
-	
 	}
 
 	private class ProvidersTableLabelProvider extends LanguageSettingsProvidersLabelProvider {
@@ -578,9 +552,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 				((AbstractCOptionPage)optionsPage).init(new ProviderReference(provider.getId(), cfgDescription));
 			}
 		}
-		if (optionsPage==null) {
-			optionsPage = new DummyProviderOptionsPage();
-		}
 		
 		return optionsPage;
 	}
@@ -588,18 +559,20 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	private void initializeOptionsPage(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription) {
 		ICOptionPage optionsPage = createOptionsPage(provider, cfgDescription);
 		
-		boolean isChecked = tableProvidersViewer.getChecked(provider);
-		boolean isEditableForProject = provider!=null && page.isForProject() && isChecked /*&& globalProviderCheckBox.isEnabled()*/ && !LanguageSettingsManager.isWorkspaceProvider(provider);
-		boolean isEditableForPrefs = provider!=null && page.isForPrefs();
-		boolean isEditable = isEditableForProject || isEditableForPrefs;
-		compositeOptionsPage.setEnabled(isEditable);
-
-		String id = (provider!=null) ? provider.getId() : null;
-		optionsPageMap.put(id, optionsPage);
-		optionsPage.setContainer(page);
-		optionsPage.createControl(compositeOptionsPage);
-		optionsPage.setVisible(false);
-		compositeOptionsPage.layout(true);
+		if (optionsPage!=null) {
+			boolean isChecked = tableProvidersViewer.getChecked(provider);
+			boolean isEditableForProject = provider!=null && page.isForProject() && isChecked /*&& globalProviderCheckBox.isEnabled()*/ && !LanguageSettingsManager.isWorkspaceProvider(provider);
+			boolean isEditableForPrefs = provider!=null && page.isForPrefs();
+			boolean isEditable = isEditableForProject || isEditableForPrefs;
+			compositeOptionsPage.setEnabled(isEditable);
+	
+			String id = (provider!=null) ? provider.getId() : null;
+			optionsPageMap.put(id, optionsPage);
+			optionsPage.setContainer(page);
+			optionsPage.createControl(compositeOptionsPage);
+			optionsPage.setVisible(false);
+			compositeOptionsPage.layout(true);
+		}
 	}
 
 	private void displaySelectedOptionPage() {
@@ -624,13 +597,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			globalProviderCheckBox.setEnabled(isChecked && canClone /*&& !isEditable*/);
 			globalProviderCheckBox.setVisible(provider!=null);
 			
-			boolean needPreferencesLink = ! (currentOptionsPage instanceof DummyProviderOptionsPage) && isGlobal;
+			boolean needPreferencesLink = isGlobal;
 			// TODO: message
 			linkWorkspacePreferences.setText(needPreferencesLink ? DialogsMessages.RegexErrorParserOptionPage_LinkToPreferencesMessage + " Select Discovery Tab." : "");
 			linkWorkspacePreferences.pack();
 		}
 		
-		if (currentOptionsPage != null &&  ! (currentOptionsPage instanceof DummyProviderOptionsPage)) {
+		if (currentOptionsPage != null) {
 			boolean isEditableForProject = provider!=null && page.isForProject() && isChecked && globalProviderCheckBox.isEnabled() && !LanguageSettingsManager.isWorkspaceProvider(provider);
 			boolean isEditableForPrefs = provider!=null && page.isForPrefs();
 			boolean isEditable = isEditableForProject || isEditableForPrefs;
@@ -639,12 +612,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 			compositeOptionsPage.setEnabled(isEditable);
 //			compositeOptionsPage.layout(true);
-		}
-		if (currentOptionsPage instanceof DummyProviderOptionsPage) {
-			currentOptionsPage.getControl().setEnabled(false);
-			currentOptionsPage.setVisible(true);
-
-			compositeOptionsPage.setEnabled(true);
 		}
 	}
 

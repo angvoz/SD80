@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -81,7 +80,6 @@ import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
  */
 public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	private static final String WORKSPACE_PREFERENCE_PAGE = "org.eclipse.cdt.ui.preferences.BuildSettingProperties"; //$NON-NLS-1$
-	private final DummyProviderOptionsPage DUMMY_PROVIDER_OPTIONS_PAGE = new DummyProviderOptionsPage();
 
 //	private static final String RENAME_STR = "Rename...";
 	private static final String RUN_STR = Messages.LanguageSettingsProviderTab_Run;
@@ -581,7 +579,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			}
 		}
 		if (optionsPage==null) {
-			optionsPage = DUMMY_PROVIDER_OPTIONS_PAGE;
+			optionsPage = new DummyProviderOptionsPage();
 		}
 		
 		return optionsPage;
@@ -641,6 +639,12 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 			compositeOptionsPage.setEnabled(isEditable);
 //			compositeOptionsPage.layout(true);
+		}
+		if (currentOptionsPage instanceof DummyProviderOptionsPage) {
+			currentOptionsPage.getControl().setEnabled(false);
+			currentOptionsPage.setVisible(true);
+
+			compositeOptionsPage.setEnabled(true);
 		}
 	}
 

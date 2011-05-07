@@ -45,4 +45,8 @@ public class LanguageSettingsWorkspaceProvider implements ILanguageSettingsProvi
 		return LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(providerId);
 	}
 	
+	@Override
+	public String toString() {
+		return LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(providerId).toString();
+	}
 }

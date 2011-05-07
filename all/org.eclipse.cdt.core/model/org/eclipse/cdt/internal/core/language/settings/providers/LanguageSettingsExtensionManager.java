@@ -492,28 +492,6 @@ public class LanguageSettingsExtensionManager {
 		return getSettingEntriesByKind(cfgDescription, rc, languageId, kind, /* checkLocality */ true, /* isLocal */ true);
 	}
 
-	// TODO: API?
-	@Deprecated
-	public static void reset(ILanguageSettingsProvider provider) {
-		String providerId = provider.getId();
-		IExtensionRegistry registry = Platform.getExtensionRegistry();
-		IExtensionPoint extension = registry.getExtensionPoint(CCorePlugin.PLUGIN_ID, PROVIDER_EXTENSION_SIMPLE_ID);
-		if (extension != null) {
-			IExtension[] extensions = extension.getExtensions();
-			for (IExtension ext : extensions) {
-				for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
-					if (cfgEl.getName().equals(ELEM_PROVIDER)) {
-						String attrId = determineAttributeValue(cfgEl, ATTR_ID);
-						if (providerId.equals(attrId)) {
-							configureExecutableProvider(provider, cfgEl);
-							return;
-						}
-					}
-				}
-			}
-		}
-	}
-
 	public static boolean equalsExtensionProviderShallow(ILanguageSettingsEditableProvider provider) throws CloneNotSupportedException {
 		String id = provider.getId();
 		ILanguageSettingsProvider extensionProviderShallow = getExtensionProviderShallow(id);

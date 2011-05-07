@@ -25,7 +25,6 @@ import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSetting
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 
 /**
@@ -81,15 +80,6 @@ public class LanguageSettingsManager_TBD {
 	@Deprecated // Shouldn't be API
 	public static void serializeWorkspaceProviders() throws CoreException {
 		LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
-	}
-
-	@Deprecated
-	public static void resetExtensionProvider(ILanguageSettingsProvider provider) {
-		// TODO
-		Assert.isTrue(LanguageSettingsManager.isWorkspaceProvider(provider));
-		
-		
-		LanguageSettingsExtensionManager.reset(provider);
 	}
 
 	public static boolean isReconfigured(ILanguageSettingsProvider provider) {

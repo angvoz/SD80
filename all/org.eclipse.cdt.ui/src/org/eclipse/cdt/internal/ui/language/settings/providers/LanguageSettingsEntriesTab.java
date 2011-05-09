@@ -514,7 +514,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		boolean isEntrySelected = entry!=null;
 		boolean isProviderSelected = !isEntrySelected && (provider!=null);
 
-		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider && !LanguageSettingsManager.isWorkspaceProvider(provider);
+		boolean isProviderEditable = provider instanceof ILanguageSettingsEditableProvider;
 //		boolean isUserProvider = provider instanceof UserLanguageSettingsProvider;
 		
 		boolean canAdd = isProviderEditable;
@@ -746,7 +746,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 			int pos = providers.indexOf(selectedProvider);
 			if (pos>=0) {
 				try {
-					selectedProvider = (ILanguageSettingsEditableProvider) selectedProvider.clone();
+					selectedProvider = selectedProvider.clone();
 					providers.set(pos, selectedProvider);
 					cfgDescription.setLanguageSettingProviders(providers);
 				} catch (CloneNotSupportedException e) {

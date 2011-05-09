@@ -74,16 +74,24 @@ public class LanguageSettingsProvidersSerializer {
 	 *    is passed user defined providers are cleared.
 	 */
 	private static void setUserDefinedProvidersInternal(List<ILanguageSettingsProvider> providers) {
-		rawGlobalWorkspaceProviders.clear();
+		// TODO: unit tests
+//		rawGlobalWorkspaceProviders.clear();
 		if (providers!=null) {
-			for (ILanguageSettingsProvider provider : providers) {
+			for (int i=0;i<providers.size();i++) {
+				ILanguageSettingsProvider provider = providers.get(i);
 				if (isWorkspaceProvider(provider)) {
-					provider = getRawWorkspaceProvider(provider.getId());
+					provider = rawGlobalWorkspaceProviders.get(provider.getId());
+					providers.set(i, provider);
 				}
+			}
+			rawGlobalWorkspaceProviders.clear();
+			for (ILanguageSettingsProvider provider : providers) {
 				if (!LanguageSettingsExtensionManager.equalsExtensionProvider(provider)) {
 					rawGlobalWorkspaceProviders.put(provider.getId(), provider);
 				}
 			}
+		} else {
+			rawGlobalWorkspaceProviders.clear();
 		}
 		
 		List<ILanguageSettingsProvider> extensionProviders = LanguageSettingsExtensionManager.getExtensionProviders();

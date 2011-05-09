@@ -99,6 +99,10 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			assertTrue("extension " + EXTENSION_BASE_PROVIDER_ID + " not found", ids.contains(EXTENSION_BASE_PROVIDER_ID));
 		}
 
+		// test provider not in the list
+		ILanguageSettingsProvider providerNull = LanguageSettingsManager.getExtensionProviderCopy(null);
+		assertNull(providerNull);
+
 		// get test plugin extension provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_BASE_PROVIDER_ID);
 		assertNotNull(providerExt);
@@ -165,17 +169,19 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 
 	/**
 	 * Make sure extensions contributed through extension point are sorted by name.
+	 * Note that Test Plugin providers are supposed to be on the bottom of the list
+	 * but it happens naturally, it is not currently tested here.
 	 */
 	public void testExtensionsSorting() throws Exception {
 		{
 			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
 			String lastName="";
 			for (ILanguageSettingsProvider provider : providers) {
-				if (LanguageSettingsManager.isWorkspaceProvider(provider)) {
-					String name = provider.getName();
-					assertTrue(lastName.compareTo(name)<=0);
-					lastName = name;
-				}
+				assertTrue(LanguageSettingsManager.isWorkspaceProvider(provider));
+
+				String name = provider.getName();
+				assertTrue(lastName.compareTo(name)<=0);
+				lastName = name;
 			}
 		}
 	}
@@ -183,7 +189,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	/**
 	 * Make sure extensions contributed through extension point created with proper ID/name.
 	 */
-	public void testExtensionsNameId() throws Exception {
+	public void testExtensionCustomProvider() throws Exception {
 		// get test plugin extension non-default provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_CUSTOM_PROVIDER_ID);
 		assertNotNull(providerExt);

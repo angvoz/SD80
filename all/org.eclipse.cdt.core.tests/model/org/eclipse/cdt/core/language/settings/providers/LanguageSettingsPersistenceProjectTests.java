@@ -36,7 +36,7 @@ import org.w3c.dom.Element;
 /**
  * Test cases testing LanguageSettingsProvider functionality
  */
-public class LanguageSettingsSerializeProjectTests extends TestCase {
+public class LanguageSettingsPersistenceProjectTests extends TestCase {
 	// Should match id of extension point defined in plugin.xml
 	private static final String EXTENSION_PROVIDER_ID = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
 	private static final String EXTENSION_SERIALIZABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.serializable.language.settings.provider";
@@ -107,7 +107,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	 * Constructor.
 	 * @param name - name of the test.
 	 */
-	public LanguageSettingsSerializeProjectTests(String name) {
+	public LanguageSettingsPersistenceProjectTests(String name) {
 		super(name);
 
 	}
@@ -125,7 +125,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 	 * @return - new TestSuite.
 	 */
 	public static TestSuite suite() {
-		return new TestSuite(LanguageSettingsSerializeProjectTests.class);
+		return new TestSuite(LanguageSettingsPersistenceProjectTests.class);
 	}
 
 	/**

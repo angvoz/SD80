@@ -42,8 +42,8 @@ import org.eclipse.core.runtime.Path;
 public class LanguageSettingsManagerTests extends TestCase {
 	// Should match id of extension point defined in plugin.xml
 	private static final String EXTENSION_BASE_PROVIDER_ID = "org.eclipse.cdt.core.tests.language.settings.base.provider";
-	private static final String EXTENSION_SERIALIZABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.serializable.language.settings.provider";
-	private static final String EXTENSION_SERIALIZABLE_PROVIDER_NAME = "Test Plugin Serializable Language Settings Provider";
+	private static final String EXTENSION_EDITABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.editable.language.settings.provider";
+	private static final String EXTENSION_EDITABLE_PROVIDER_NAME = "Test Plugin Editable Language Settings Provider";
 
 	private static final IFile FILE_0 = ResourcesPlugin.getWorkspace().getRoot().getFile(new Path("/project/path0"));
 	private static final String CFG_ID = "test.configuration.id";
@@ -101,6 +101,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
+		LanguageSettingsManager.setWorkspaceProviders(null);
 		ResourceHelper.cleanUp();
 	}
 
@@ -623,7 +624,7 @@ public class LanguageSettingsManagerTests extends TestCase {
 	}
 
 	/**
-	 * TODO
+	 * Test ability to serialize providers for a configuration.
 	 */
 	public void testConfigurationDescription_SerializeProviders() throws Exception {
 		// Create model project and accompanied descriptions
@@ -673,5 +674,88 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertTrue(LanguageSettingsManager.isWorkspaceProvider(loadedProviders.get(0)));
 		}
 
+	}
+
+	/**
+	 * Test a workspace provider basics.
+	 */
+	public void testWorkspaceProvider_Basic() throws Exception {
+		// get workspace provider
+		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+		assertEquals(EXTENSION_EDITABLE_PROVIDER_ID, provider.getId());
+		assertEquals(EXTENSION_EDITABLE_PROVIDER_NAME, provider.getName());
+		
+		// get raw provider
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+		assertEquals(EXTENSION_EDITABLE_PROVIDER_ID, rawProvider.getId());
+		assertEquals(EXTENSION_EDITABLE_PROVIDER_NAME, rawProvider.getName());
+		assertTrue(rawProvider instanceof LanguageSettingsSerializable);
+		// assert they are not the same object
+		assertNotSame(provider, rawProvider);
+		
+		{
+			// make sure entries are the same
+			List<ICLanguageSettingEntry> entries = provider.getSettingEntries(null, null, null);
+			assertEquals(1, entries.size()); // defined in the extension
+			List<ICLanguageSettingEntry> rawEntries = rawProvider.getSettingEntries(null, null, null);
+			assertEquals(entries, rawEntries);
+		}
+		
+		{
+			// set new entries to the raw provider
+			List<ICLanguageSettingEntry> newEntries = new ArrayList<ICLanguageSettingEntry>();
+			newEntries.add(new CIncludePathEntry("path0", 0));
+			newEntries.add(new CIncludePathEntry("path1", 0));
+			((LanguageSettingsSerializable)rawProvider).setSettingEntries(null, null, null, newEntries);
+			
+			// check that the workspace provider gets them too
+			List<ICLanguageSettingEntry> newRawEntries = rawProvider.getSettingEntries(null, null, null);
+			assertEquals(newEntries, newRawEntries);
+			assertEquals(2, newEntries.size());
+		}
+	}
+
+	/**
+	 * Test workspace providers equality.
+	 */
+	public void testWorkspaceProvider_Equals() throws Exception {
+		ILanguageSettingsProvider providerA = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+		ILanguageSettingsProvider providerB = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+		assertEquals(providerA, providerB);
+	}
+
+	/**
+	 * Test ability to replace underlying raw provider.
+	 */
+	public void testWorkspaceProvider_ReplaceRawProvider() throws Exception {
+		// get sample workspace provider
+		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+		{
+			// check on its entries
+			List<ICLanguageSettingEntry> entries = provider.getSettingEntries(null, null, null);
+			assertEquals(1, entries.size()); // defined in the extension
+		}
+		
+		// define new entries for the raw provider
+		List<ICLanguageSettingEntry> newEntries = new ArrayList<ICLanguageSettingEntry>();
+		newEntries.add(new CIncludePathEntry("path0", 0));
+		newEntries.add(new CIncludePathEntry("path1", 0));
+		newEntries.add(new CIncludePathEntry("path2", 0));
+		
+		{
+			// replace raw provider
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+			LanguageSettingsSerializable newRawProvider = new LanguageSettingsSerializable(EXTENSION_EDITABLE_PROVIDER_ID, PROVIDER_NAME_0);
+			newRawProvider.setSettingEntries(null, null, null, newEntries);
+			providers.add(newRawProvider);
+			LanguageSettingsManager.setWorkspaceProviders(providers);
+		}
+		
+		{
+			// check that provider provides the new entries
+			List<ICLanguageSettingEntry> entries = provider.getSettingEntries(null, null, null);
+			assertEquals(newEntries.size(), entries.size());
+			assertEquals(newEntries, entries);
+		}
 	}
 }

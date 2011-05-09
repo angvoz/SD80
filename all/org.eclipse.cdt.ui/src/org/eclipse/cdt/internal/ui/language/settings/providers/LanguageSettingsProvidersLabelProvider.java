@@ -20,9 +20,6 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsWorkspaceProvider;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
 
 

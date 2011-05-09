@@ -47,7 +47,6 @@ import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsWorkspaceProvider;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -131,7 +130,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	/**
 	 * List of providers presented to the user.
 	 * For global providers included in a configuration this contains references
-	 * {@link LanguageSettingsWorkspaceProvider} not raw providers.
+	 * not raw providers.
 	 */
 	private List<ILanguageSettingsProvider> presentedProviders = null;
 	private final Map<String, ICOptionPage> optionsPageMap = new HashMap<String, ICOptionPage>();

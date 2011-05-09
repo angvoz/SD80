@@ -7,10 +7,9 @@ import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsWorkspaceProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.internal.core.XmlUtil;
@@ -19,6 +18,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -45,6 +45,54 @@ public class LanguageSettingsProvidersSerializer {
 	private static final LinkedHashMap<String, ILanguageSettingsProvider> rawGlobalWorkspaceProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
 	private static Object serializingLock = new Object();
 	
+	private static class LanguageSettingsWorkspaceProvider implements ILanguageSettingsProvider {
+		private String providerId;
+
+		public LanguageSettingsWorkspaceProvider(String id) {
+			Assert.isNotNull(id);
+			providerId = id;
+		}
+		
+		public String getId() {
+			return providerId;
+		}
+
+		public String getName() {
+			return getRawProvider().getName();
+		}
+
+		public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
+			List<ICLanguageSettingEntry> entries = getRawProvider().getSettingEntries(cfgDescription, rc, languageId);
+			return entries;
+		}
+
+		/**
+		 * Do not cache the "raw" provider as workspace provider can be changed at any time. 
+		 */
+		private ILanguageSettingsProvider getRawProvider() {
+			return LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(providerId);
+		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof LanguageSettingsWorkspaceProvider) {
+				LanguageSettingsWorkspaceProvider that = (LanguageSettingsWorkspaceProvider) obj;
+				return providerId.equals(that.providerId);
+			}
+			return false;
+		}
+		/**
+		 * Method toString() for debugging purposes.
+		 */
+		@SuppressWarnings("nls")
+		@Override
+		public String toString() {
+			return "id="+getId()+", name="+getName();
+		}
+	}
+
+	
+	/** static initializer */
 	static {
 		try {
 			loadLanguageSettingsWorkspace();

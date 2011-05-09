@@ -61,7 +61,7 @@ public class LanguageSettingsProvidersSerializer {
 		 * @throws CoreException in case of problems
 		 */
 		public static void setWorkspaceProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
-			setUserDefinedProvidersInternal(providers);
+			setWorkspaceProvidersInternal(providers);
 			serializeLanguageSettingsWorkspace();
 		}
 
@@ -71,9 +71,7 @@ public class LanguageSettingsProvidersSerializer {
 	 * @param providers - list of user defined providers. If {@code null}
 	 *    is passed user defined providers are cleared.
 	 */
-	private static void setUserDefinedProvidersInternal(List<ILanguageSettingsProvider> providers) {
-		// TODO: unit tests
-//		rawGlobalWorkspaceProviders.clear();
+	private static void setWorkspaceProvidersInternal(List<ILanguageSettingsProvider> providers) {
 		if (providers!=null) {
 			for (int i=0;i<providers.size();i++) {
 				ILanguageSettingsProvider provider = providers.get(i);
@@ -193,7 +191,7 @@ public class LanguageSettingsProvidersSerializer {
 				}
 			}
 		}
-		setUserDefinedProvidersInternal(providers);
+		setWorkspaceProvidersInternal(providers);
 	}
 
 	public static void serializeLanguageSettings(Element parentElement, ICProjectDescription prjDescription) throws CoreException {

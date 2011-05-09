@@ -50,6 +50,7 @@ public class LanguageSettingsPersistenceProjectTests extends TestCase {
 	private static final String PROVIDER_NAME_2 = "test.provider.2.name";
 	private static final String PROVIDER_ID_WSP = "test.provider.workspace.id";
 	private static final String PROVIDER_NAME_WSP = "test.provider.workspace.name";
+	private static final String CUSTOM_PARAMETER = "custom parameter";
 	private static final String ELEM_TEST = "test";
 
 	private static CoreModel coreModel = CoreModel.getDefault();
@@ -119,6 +120,7 @@ public class LanguageSettingsPersistenceProjectTests extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
+		LanguageSettingsManager.setWorkspaceProviders(null);
 		ResourceHelper.cleanUp();
 	}
 
@@ -203,6 +205,35 @@ public class LanguageSettingsPersistenceProjectTests extends TestCase {
 		}
 	}
 
+	/**
+	 */
+	public void testWorkspacePersistence_GlobalProvider() throws Exception {
+		{
+			// get the raw extension provider
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			LanguageSettingsSerializable rawProvider = (LanguageSettingsSerializable) LanguageSettingsManager.getRawProvider(provider);
+			assertNotNull(rawProvider);
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, rawProvider.getId());
+
+			// customize provider
+			rawProvider.setCustomParameter(CUSTOM_PARAMETER);
+			assertEquals(CUSTOM_PARAMETER, rawProvider.getCustomParameter());
+		}
+		{
+			// save workspace provider (as opposed to raw provider)
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			providers.add(provider);
+			LanguageSettingsManager.setWorkspaceProviders(providers);
+		}
+		{
+			// check that it has not cleared
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			LanguageSettingsSerializable rawProvider = (LanguageSettingsSerializable) LanguageSettingsManager.getRawProvider(provider);
+			assertEquals(CUSTOM_PARAMETER, rawProvider.getCustomParameter());
+		}
+	}
+	
 	/**
 	 */
 	public void testWorkspacePersistence_ShadowedExtensionProvider() throws Exception {

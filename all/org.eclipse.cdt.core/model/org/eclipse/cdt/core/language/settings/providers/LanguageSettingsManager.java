@@ -139,7 +139,7 @@ public class LanguageSettingsManager {
 	 * @throws CoreException in case of problems (such as problems with persistence).
 	 */
 	public static void setWorkspaceProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
-		LanguageSettingsProvidersSerializer.setUserDefinedProviders(providers);
+		LanguageSettingsProvidersSerializer.setWorkspaceProviders(providers);
 	}
 
 	/**

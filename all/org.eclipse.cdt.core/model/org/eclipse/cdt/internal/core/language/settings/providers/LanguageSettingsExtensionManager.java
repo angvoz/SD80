@@ -63,6 +63,10 @@ public class LanguageSettingsExtensionManager {
 	static final String ATTR_KIND = "kind"; //$NON-NLS-1$
 	static final String ATTR_VALUE = "value"; //$NON-NLS-1$
 
+	/** 
+	 * Extension providers loaded once. If the provider is editable (read cloneable)
+	 * external callers get copy rather than real instance.
+	 */
 	private static final LinkedHashMap<String, ILanguageSettingsProvider> fExtensionProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
 
 	/**

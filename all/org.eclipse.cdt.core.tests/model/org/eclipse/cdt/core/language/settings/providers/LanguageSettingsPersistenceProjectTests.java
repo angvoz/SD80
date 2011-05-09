@@ -39,6 +39,7 @@ import org.w3c.dom.Element;
 public class LanguageSettingsPersistenceProjectTests extends TestCase {
 	// Should match id of extension point defined in plugin.xml
 	private static final String EXTENSION_PROVIDER_ID = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
+	private static final String EXTENSION_PROVIDER_NAME = "Test Plugin Base Provider Subclass";
 	private static final String EXTENSION_SERIALIZABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.serializable.language.settings.provider";
 
 	private static final String CFG_ID = "test.configuration.id.0";
@@ -165,7 +166,7 @@ public class LanguageSettingsPersistenceProjectTests extends TestCase {
 		entries.add(new CIncludePathEntry("path0", 0));
 
 		{
-			// get the provider
+			// get the raw extension provider
 			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			LanguageSettingsSerializable extProvider = (LanguageSettingsSerializable) LanguageSettingsManager.getRawProvider(provider);
 			assertNotNull(extProvider);
@@ -177,7 +178,7 @@ public class LanguageSettingsPersistenceProjectTests extends TestCase {
 			assertEquals(entries.get(0), actual.get(0));
 			assertEquals(entries.size(), actual.size());
 
-			// serialize language settings of user defined providers (on workspace level)
+			// serialize language settings of workspace providers
 			LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
 			
 			// clear the provider
@@ -202,6 +203,70 @@ public class LanguageSettingsPersistenceProjectTests extends TestCase {
 		}
 	}
 
+	/**
+	 */
+	public void testWorkspacePersistence_ShadowedExtensionProvider() throws Exception {
+		{
+			// get the raw extension provider
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			// confirm its type and name
+			assertTrue(rawProvider instanceof LanguageSettingsBaseProvider);
+			assertEquals(EXTENSION_PROVIDER_ID, rawProvider.getId());
+			assertEquals(EXTENSION_PROVIDER_NAME, rawProvider.getName());
+		}
+		{
+			// replace extension provider
+			ILanguageSettingsProvider provider = new MockLanguageSettingsSerializableProvider(EXTENSION_PROVIDER_ID, PROVIDER_NAME_0);
+			List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+			providers.add(provider);
+			// note that this will also serialize workspace providers
+			LanguageSettingsManager.setWorkspaceProviders(providers);
+		}
+		{
+			// doublecheck it's in the list
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			assertTrue(rawProvider instanceof MockLanguageSettingsSerializableProvider);
+			assertEquals(EXTENSION_PROVIDER_ID, rawProvider.getId());
+			assertEquals(PROVIDER_NAME_0, rawProvider.getName());
+		}
+		
+		{
+			// re-load to check serialization
+			LanguageSettingsProvidersSerializer.loadLanguageSettingsWorkspace();
+			
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			assertTrue(rawProvider instanceof MockLanguageSettingsSerializableProvider);
+			assertEquals(EXTENSION_PROVIDER_ID, rawProvider.getId());
+			assertEquals(PROVIDER_NAME_0, rawProvider.getName());
+		}
+		
+		{
+			// reset workspace providers, that will also serialize
+			LanguageSettingsManager.setWorkspaceProviders(null);
+		}
+		{
+			// doublecheck original one is in the list
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			assertTrue(rawProvider instanceof LanguageSettingsBaseProvider);
+			assertEquals(EXTENSION_PROVIDER_ID, rawProvider.getId());
+			assertEquals(EXTENSION_PROVIDER_NAME, rawProvider.getName());
+		}
+		{
+			// re-load to check serialization
+			LanguageSettingsProvidersSerializer.loadLanguageSettingsWorkspace();
+			
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_PROVIDER_ID);
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			assertTrue(rawProvider instanceof LanguageSettingsBaseProvider);
+			assertEquals(EXTENSION_PROVIDER_ID, rawProvider.getId());
+			assertEquals(EXTENSION_PROVIDER_NAME, rawProvider.getName());
+		}
+	}
+	
 	/**
 	 */
 	public void testProjectPersistence_SerializableProviderDOM() throws Exception {

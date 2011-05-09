@@ -60,7 +60,7 @@ public class LanguageSettingsProvidersSerializer {
 		 * @param providers - array of user defined providers
 		 * @throws CoreException in case of problems
 		 */
-		public static void setUserDefinedProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
+		public static void setWorkspaceProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
 			setUserDefinedProvidersInternal(providers);
 			serializeLanguageSettingsWorkspace();
 		}
@@ -176,13 +176,13 @@ public class LanguageSettingsProvidersSerializer {
 				Node providerNode = providerNodes.item(i);
 				String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
 				if (userDefinedProvidersIds.contains(providerId)) {
-					String msg = "Ignored illegally persisted duplicate language settings provider id=" + providerId;
+					String msg = "Ignored repeatedly persisted duplicate language settings provider id=" + providerId;
 					CCorePlugin.log(new Status(IStatus.WARNING, CCorePlugin.PLUGIN_ID, msg, new Exception()));
 					continue;
 				}
 				userDefinedProvidersIds.add(providerId);
 				
-				ILanguageSettingsProvider provider = loadWorkspaceProvider(providerNode);
+				ILanguageSettingsProvider provider = loadProvider(providerNode);
 				if (provider!=null) {
 					if (providers==null)
 						providers= new ArrayList<ILanguageSettingsProvider>();
@@ -297,7 +297,7 @@ public class LanguageSettingsProvidersSerializer {
 							String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
 							provider = getWorkspaceProvider(providerId);
 						} else if (providerNode.getNodeName().equals(LanguageSettingsExtensionManager.ELEM_PROVIDER)) {
-							provider = loadConfigurationProvider(providerNode);
+							provider = loadProvider(providerNode);
 						}
 						if (provider!=null) {
 							providers.add(provider);
@@ -312,33 +312,7 @@ public class LanguageSettingsProvidersSerializer {
 		}
 	}
 
-	private static ILanguageSettingsProvider loadWorkspaceProvider(Node providerNode) {
-		String providerId = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_ID);
-		// try less expensive shallow copy first
-		ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getExtensionProviderShallow(providerId);
-		boolean isLoadable = (provider instanceof LanguageSettingsSerializable) && (provider instanceof ILanguageSettingsEditableProvider);
-		if (!isLoadable) {
-			provider = LanguageSettingsManager.getExtensionProviderCopy(providerId);
-		}
-		
-		String attrClass = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_CLASS);
-		if (provider!=null && !provider.getClass().getName().equals(attrClass) ) {
-			IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Types mismatch while loading workspace provider. id=" + providerId
-					+ ", extension class=" + provider.getClass().getName() + ", being loaded class=" + attrClass);
-			CCorePlugin.log(new CoreException(status));
-			return provider;
-		}
-		
-		if (provider==null)
-			provider = LanguageSettingsExtensionManager.getProviderInstance(attrClass);
-		
-		if (provider instanceof LanguageSettingsSerializable)
-			((LanguageSettingsSerializable)provider).load((Element) providerNode);
-		
-		return provider;
-	}
-
-	private static ILanguageSettingsProvider loadConfigurationProvider(Node providerNode) {
+	private static ILanguageSettingsProvider loadProvider(Node providerNode) {
 		String attrClass = XmlUtil.determineAttributeValue(providerNode, LanguageSettingsExtensionManager.ATTR_CLASS);
 		ILanguageSettingsProvider provider = LanguageSettingsExtensionManager.getProviderInstance(attrClass);
 		

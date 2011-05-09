@@ -68,8 +68,6 @@ public class LanguageSettingsProvidersSerializer {
 	/**
 	 * Internal method to set user defined providers in memory.
 	 *
-	 * Use {@link #setUserDefinedProviders(List)}.
-	 *
 	 * @param providers - list of user defined providers. If {@code null}
 	 *    is passed user defined providers are cleared.
 	 */
@@ -404,13 +402,6 @@ public class LanguageSettingsProvidersSerializer {
 		return new LanguageSettingsWorkspaceProvider(id);
 	}
 
-	/**
-	 * Note that it is not legal to add workspace provider to a configuration
-	 * directly, use {@link #getWorkspaceProvider(String)} wrapper.
-	 * 
-	 * @param id
-	 * @return
-	 */
 	public static ILanguageSettingsProvider getRawWorkspaceProvider(String id) {
 		return rawGlobalWorkspaceProviders.get(id);
 	}

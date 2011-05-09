@@ -166,13 +166,14 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 
 		{
 			// get the provider
-			LanguageSettingsSerializable provider = (LanguageSettingsSerializable) LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-			assertNotNull(provider);
-			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, provider.getId());
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			LanguageSettingsSerializable extProvider = (LanguageSettingsSerializable) LanguageSettingsManager.getRawProvider(provider);
+			assertNotNull(extProvider);
+			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, extProvider.getId());
 			
 			// add entries
-			provider.setSettingEntries(null, null, null, entries);
-			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
+			extProvider.setSettingEntries(null, null, null, entries);
+			List<ICLanguageSettingEntry> actual = extProvider.getSettingEntries(null, null, null);
 			assertEquals(entries.get(0), actual.get(0));
 			assertEquals(entries.size(), actual.size());
 
@@ -180,12 +181,12 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			LanguageSettingsProvidersSerializer.serializeLanguageSettingsWorkspace();
 			
 			// clear the provider
-			provider.setSettingEntries(null, null, null, null);
+			extProvider.setSettingEntries(null, null, null, null);
 		}
 
 		{
 			// doublecheck it's clean
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
 			assertNull(actual);
 		}
@@ -193,7 +194,7 @@ public class LanguageSettingsSerializeProjectTests extends TestCase {
 			// re-load and check language settings of the provider
 			LanguageSettingsProvidersSerializer.loadLanguageSettingsWorkspace();
 
-			ILanguageSettingsProvider provider = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			assertEquals(EXTENSION_SERIALIZABLE_PROVIDER_ID, provider.getId());
 			List<ICLanguageSettingEntry> actual = provider.getSettingEntries(null, null, null);
 			assertEquals(entries.get(0), actual.get(0));

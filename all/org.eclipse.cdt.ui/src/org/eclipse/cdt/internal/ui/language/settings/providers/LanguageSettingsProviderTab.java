@@ -863,7 +863,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
 				
 				try {
-					LanguageSettingsManager.setUserDefinedProviders(null);
+					LanguageSettingsManager.setWorkspaceProviders(null);
 				} catch (CoreException e) {
 					CUIPlugin.log("Error restoring defaults", e);
 				}
@@ -950,7 +950,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		// Build Settings page
 		if (page.isForPrefs()) {
 			try {
-				LanguageSettingsManager.setUserDefinedProviders(presentedProviders);
+				LanguageSettingsManager.setWorkspaceProviders(presentedProviders);
 			} catch (CoreException e) {
 				CUIPlugin.log("Error setting user defined providers", e);
 			}

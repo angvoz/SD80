@@ -115,11 +115,6 @@ public class LanguageSettingsManager {
 		return LanguageSettingsProvidersSerializer.isWorkspaceProvider(provider);
 	}
 
-	public static ILanguageSettingsProvider getRawWorkspaceProvider(String id) {
-		return LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(id);
-	}
-
-	
 	/**
 	 * TODO - helper method for often used chunk of code
 	 * @param provider 
@@ -127,7 +122,7 @@ public class LanguageSettingsManager {
 	 */
 	public static ILanguageSettingsProvider getRawProvider(ILanguageSettingsProvider provider) {
 		if (LanguageSettingsManager.isWorkspaceProvider(provider)){
-			provider = LanguageSettingsManager.getRawWorkspaceProvider(provider.getId());
+			provider = LanguageSettingsProvidersSerializer.getRawWorkspaceProvider(provider.getId());
 		}
 		return provider;
 	}
@@ -136,10 +131,14 @@ public class LanguageSettingsManager {
 	/**
 	 * Set and store in workspace area user defined providers.
 	 *
-	 * @param providers - array of user defined providers
-	 * @throws CoreException in case of problems
+	 * @param providers - array of user defined workspace providers.
+	 *    Note that those providers will shadow extension providers with the same ID.
+	 *    All not shadowed extension providers will be added to the list to be present
+	 *    as workspace providers. {@code null} is equivalent to passing an empty array
+	 *    and so will reset workspace providers to match extension providers.
+	 * @throws CoreException in case of problems (such as problems with persistence).
 	 */
-	public static void setUserDefinedProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
+	public static void setWorkspaceProviders(List<ILanguageSettingsProvider> providers) throws CoreException {
 		LanguageSettingsProvidersSerializer.setUserDefinedProviders(providers);
 	}
 

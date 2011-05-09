@@ -45,8 +45,6 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	private static final String EXTENSION_BASE_SUBCLASS_PROVIDER_ID = "org.eclipse.cdt.core.tests.language.settings.base.provider.subclass";
 	private static final String EXTENSION_BASE_SUBCLASS_PROVIDER_PARAMETER = "custom parameter subclass";
 	private static final String EXTENSION_SERIALIZABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.serializable.language.settings.provider";
-	private static final String EXTENSION_SERIALIZABLE_PROVIDER_NAME = "Test Plugin Serializable Language Settings Provider";
-	private static final String EXTENSION_SERIALIZABLE_PROVIDER_PARAMETER = "";
 	private static final String EXTENSION_EDITABLE_PROVIDER_ID = "org.eclipse.cdt.core.tests.custom.editable.language.settings.provider";
 
 	// These are made up
@@ -102,7 +100,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		}
 
 		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_BASE_PROVIDER_ID);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_BASE_PROVIDER_ID);
 		assertNotNull(providerExt);
 
 		assertTrue(providerExt instanceof LanguageSettingsBaseProvider);
@@ -142,7 +140,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionBaseProviderSubclass() throws Exception {
 		// get test plugin extension provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_BASE_SUBCLASS_PROVIDER_ID);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_BASE_SUBCLASS_PROVIDER_ID);
 		assertNotNull(providerExt);
 
 		assertTrue(providerExt instanceof MockLanguageSettingsBaseProvider);
@@ -187,7 +185,7 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 */
 	public void testExtensionsNameId() throws Exception {
 		// get test plugin extension non-default provider
-		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_CUSTOM_PROVIDER_ID);
+		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_CUSTOM_PROVIDER_ID);
 		assertNotNull(providerExt);
 		assertTrue(providerExt instanceof MockLanguageSettingsProvider);
 
@@ -261,8 +259,9 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			ILanguageSettingsProvider providerExt2 = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			assertSame(providerExt, providerExt2);
 			
-			ILanguageSettingsProvider providerWsp = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-			assertSame(providerExt, providerWsp);
+			ILanguageSettingsProvider providerWsp = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
+			ILanguageSettingsProvider providerWspRaw = LanguageSettingsManager.getRawProvider(providerWsp);
+			assertSame(providerExt, providerWspRaw);
 		}
 		
 		// Editable providers are retrieved by copy
@@ -276,10 +275,11 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			assertNotSame(providerExt, providerExt2);
 			assertEquals(providerExt, providerExt2);
 			
-			ILanguageSettingsProvider providerWsp = LanguageSettingsManager.getRawWorkspaceProvider(EXTENSION_EDITABLE_PROVIDER_ID);
-			assertNotSame(providerExt, providerWsp);
-			assertEquals(providerExt, providerWsp);
-			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(providerWsp));
+			ILanguageSettingsProvider providerWsp = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+			ILanguageSettingsProvider providerWspRaw = LanguageSettingsManager.getRawProvider(providerWsp);
+			assertNotSame(providerExt, providerWspRaw);
+			assertEquals(providerExt, providerWspRaw);
+			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(providerWspRaw));
 		}
 		
 		// Test shallow copy

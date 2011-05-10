@@ -58,7 +58,6 @@ import org.eclipse.cdt.core.settings.model.ICSettingBase;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.ui.CDTSharedImages;
 import org.eclipse.cdt.ui.CUIPlugin;
-import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.ui.dialogs.DialogsMessages;
 import org.eclipse.cdt.ui.dialogs.ICOptionPage;
 import org.eclipse.cdt.ui.newui.AbstractCPropertyTab;
@@ -196,6 +195,35 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			return null;
 		}
 		
+	}
+	/**
+	 * Returns current working copy of the provider. Creates one if it has not been created yet.
+	 * Used by option pages when there is a need to modify the provider.
+	 * Warning: Do not cache the result as the provider can be replaced at any time.
+	 * @param providerId 
+	 * 
+	 * @return the provider
+	 */
+	/*package*/ ILanguageSettingsProvider getWorkingCopy(String providerId) {
+		ILanguageSettingsProvider provider = findProvider(providerId, presentedProviders);
+		if (isWorkingCopy(provider))
+			return provider;
+		
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+		Assert.isTrue(rawProvider instanceof ILanguageSettingsEditableProvider);
+		
+		ILanguageSettingsEditableProvider editableProvider = (ILanguageSettingsEditableProvider)rawProvider;
+		try {
+			ILanguageSettingsEditableProvider newProvider = editableProvider.clone();
+			replaceSelectedProvider(newProvider);
+			return newProvider;
+			
+		} catch (CloneNotSupportedException e) {
+			CUIPlugin.log("Error cloning provider " + editableProvider.getId(), e);
+			// TODO warning dialog for user?
+		}
+		
+		return null;
 	}
 
 	private class ProvidersTableLabelProvider extends LanguageSettingsProvidersLabelProvider {
@@ -390,7 +418,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	private void replaceSelectedProvider(ILanguageSettingsProvider newProvider) {
 		int pos = tableProviders.getSelectionIndex();
 		presentedProviders.set(pos, newProvider);
-		
 		tableProvidersViewer.setInput(presentedProviders);
 		tableProviders.setSelection(pos);
 
@@ -404,7 +431,11 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			cfgDescription.setLanguageSettingProviders(cfgProviders);
 			tableProvidersViewer.setCheckedElements(cfgProviders.toArray(new ILanguageSettingsProvider[0]));
 		}
-		tableProvidersViewer.refresh(newProvider);
+		refreshItem(newProvider);
+	}
+
+	/*package*/ void refreshItem(ILanguageSettingsProvider provider) {
+		tableProvidersViewer.refresh(provider);
 		updateButtons();
 	}
 
@@ -416,7 +447,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		if (!page.isForPrefs()) {
 			if (globalProviderCheckBox==null) {
 				globalProviderCheckBox = new Button(groupOptionsPage, SWT.CHECK);
-				globalProviderCheckBox.setText("Shared provider defined globally");
+				globalProviderCheckBox.setText("Global provider shared between projects");
 				globalProviderCheckBox.addSelectionListener(new SelectionAdapter() {
 					@Override
 					public void widgetSelected(SelectionEvent e) {
@@ -475,7 +506,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		ILanguageSettingsProvider selectedProvider = getSelectedProvider();
 		String selectedId = selectedProvider!=null ? selectedProvider.getId() : null;
 
-		tableProvidersViewer.setInput(presentedProviders);
+//		tableProvidersViewer.setInput(presentedProviders);
 
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		if (cfgDescription!=null) {
@@ -506,14 +537,15 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		List<String> idsList = new ArrayList<String>();
 
+		List<ILanguageSettingsProvider> providers;
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		if (cfgDescription!=null) {
-			presentedProviders = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
-			for (ILanguageSettingsProvider provider : presentedProviders) {
+			providers = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+			for (ILanguageSettingsProvider provider : providers) {
 				idsList.add(provider.getId());
 			}
 		} else {
-			presentedProviders =  new ArrayList<ILanguageSettingsProvider>();
+			providers =  new ArrayList<ILanguageSettingsProvider>();
 		}
 		
 		List<ILanguageSettingsProvider> workspaceProviders = LanguageSettingsManager.getWorkspaceProviders();
@@ -534,21 +566,24 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		for (ILanguageSettingsProvider provider : allAvailableProvidersSet) {
 			String id = provider.getId();
 			if (!idsList.contains(id)) {
-				presentedProviders.add(provider);
+				providers.add(provider);
 				idsList.add(id);
 			}
 		}
 		
+		// renders better when using temporary
+		presentedProviders = providers;
+		tableProvidersViewer.setInput(presentedProviders);
 	}
 
 	private ICOptionPage createOptionsPage(ILanguageSettingsProvider provider, ICConfigurationDescription cfgDescription) {
 		ICOptionPage optionsPage = null;
 		if (provider!=null) {
-			provider = LanguageSettingsManager.getRawProvider(provider);
-			optionsPage = LanguageSettingsProviderAssociation.createOptionsPage(provider);
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			optionsPage = LanguageSettingsProviderAssociation.createOptionsPage(rawProvider);
 
-			if (optionsPage instanceof AbstractCOptionPage) {
-				((AbstractCOptionPage)optionsPage).init(new ProviderReference(provider.getId(), cfgDescription));
+			if (optionsPage instanceof AbstractSpecsDetectorOptionPage) {
+				((AbstractSpecsDetectorOptionPage)optionsPage).init(this, provider.getId());
 			}
 		}
 		
@@ -844,9 +879,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 		// for Preference page initialize providers list just once as no configuration here to change
 		// and re-initializing could ruins modified providers in case of switching tabs or pages
-//		if (!page.isForPrefs() || presentedProviders==null) {
+		if (!page.isForPrefs() || presentedProviders==null) {
 			initializeProviders();
-//		}
+		}
 		updateProvidersTable();
 		updateButtons();
 	}
@@ -856,45 +891,50 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		if (enableProvidersCheckBox==null || enableProvidersCheckBox.getSelection()==false)
 			return;
 		
-		if (page.isForPrefs()) {
+		if (page.isForPrefs() || page.isForProject()) {
 			if (MessageDialog.openQuestion(usercomp.getShell(),
 					Messages.LanguageSettingsProviderTab_TitleResetProviders,
 					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
 				
-				try {
-					LanguageSettingsManager.setWorkspaceProviders(null);
-				} catch (CoreException e) {
-					CUIPlugin.log("Error restoring defaults", e);
-				}
-
-			}
-		}
-
-		if (page.isForProject()) {
-			if (MessageDialog.openQuestion(usercomp.getShell(),
-					Messages.LanguageSettingsProviderTab_TitleResetProviders,
-					Messages.LanguageSettingsProviderTab_AreYouSureToResetProviders)) {
-				
-				ICConfigurationDescription cfgDescription = getConfigurationDescription();
-				List<ILanguageSettingsProvider> cfgProviders = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
-				boolean atLeastOneChanged = false;
-				for (int i=0;i<cfgProviders.size();i++) {
-					ILanguageSettingsProvider provider = cfgProviders.get(i);
-					if (!LanguageSettingsManager.isWorkspaceProvider(provider) && !LanguageSettingsManager_TBD.isEqualExtensionProvider(provider)) {
-						String id = provider.getId();
-						ILanguageSettingsProvider newProvider = LanguageSettingsManager.getExtensionProviderCopy(id);
-						cfgProviders.set(i, newProvider);
-						atLeastOneChanged = true;
+				if (page.isForProject()) {
+					ICConfigurationDescription cfgDescription = getConfigurationDescription();
+					List<ILanguageSettingsProvider> cfgProviders = new ArrayList<ILanguageSettingsProvider>(cfgDescription.getLanguageSettingProviders());
+					boolean atLeastOneChanged = false;
+					for (int i=0;i<cfgProviders.size();i++) {
+						ILanguageSettingsProvider provider = cfgProviders.get(i);
+						if (!LanguageSettingsManager.isWorkspaceProvider(provider) && !LanguageSettingsManager_TBD.isEqualExtensionProvider(provider)) {
+							String id = provider.getId();
+							ILanguageSettingsProvider newProvider = LanguageSettingsManager.getExtensionProviderCopy(id);
+							cfgProviders.set(i, newProvider);
+							atLeastOneChanged = true;
+						}
 					}
+					if (atLeastOneChanged) {
+						cfgDescription.setLanguageSettingProviders(cfgProviders);
+					}
+					
+				} else if (page.isForPrefs()) {
+					int pos = tableProviders.getSelectionIndex();
+					List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>(presentedProviders);
+					for (int i=0;i<providers.size();i++) {
+						ILanguageSettingsProvider provider = providers.get(i);
+						ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+						if (!LanguageSettingsManager_TBD.isEqualExtensionProvider(rawProvider)) {
+							ILanguageSettingsProvider extProvider = LanguageSettingsManager.getExtensionProviderCopy(provider.getId());
+							providers.set(i, extProvider);
+						}
+					}
+					// seems to render better when temporary is used
+					presentedProviders = providers;
+					tableProvidersViewer.setInput(presentedProviders);
+					tableProviders.setSelection(pos);
+					
+					updateButtons();
 				}
-				if (atLeastOneChanged) {
-					cfgDescription.setLanguageSettingProviders(cfgProviders);
-				}
-				
 			}
+			
+			updateData(getResDesc());
 		}
-
-		updateData(getResDesc());
 	}
 
 
@@ -953,6 +993,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			} catch (CoreException e) {
 				CUIPlugin.log("Error setting user defined providers", e);
 			}
+			initializeProviders();
 		}
 		
 		if (page.isForProject() && enableProvidersCheckBox!=null) {
@@ -1042,6 +1083,10 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			}
 		}
 		return null;
+	}
+	
+	/*package*/ ILanguageSettingsProvider getProvider(String id) {
+		return findProvider(id, presentedProviders);
 	}
 	
 	private int getProviderIndex(String id, List<ILanguageSettingsProvider> providers) {

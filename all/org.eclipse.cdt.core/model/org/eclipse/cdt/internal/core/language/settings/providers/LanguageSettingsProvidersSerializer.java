@@ -2,8 +2,9 @@ package org.eclipse.cdt.internal.core.language.settings.providers;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
@@ -42,7 +43,7 @@ public class LanguageSettingsProvidersSerializer {
 	private static final String ELEM_CONFIGURATION = "configuration"; //$NON-NLS-1$
 	private static final String ELEM_PROVIDER_REFERENCE = "provider-reference"; //$NON-NLS-1$
 	/** Cache of globally available providers to be consumed by calling clients */
-	private static final LinkedHashMap<String, ILanguageSettingsProvider> rawGlobalWorkspaceProviders = new LinkedHashMap<String, ILanguageSettingsProvider>();
+	private static final Map<String, ILanguageSettingsProvider> rawGlobalWorkspaceProviders = new HashMap<String, ILanguageSettingsProvider>();
 	private static Object serializingLock = new Object();
 	
 	private static class LanguageSettingsWorkspaceProvider implements ILanguageSettingsProvider {
@@ -121,18 +122,16 @@ public class LanguageSettingsProvidersSerializer {
 	 */
 	private static void setWorkspaceProvidersInternal(List<ILanguageSettingsProvider> providers) {
 		if (providers!=null) {
-			for (int i=0;i<providers.size();i++) {
-				ILanguageSettingsProvider provider = providers.get(i);
+			List<ILanguageSettingsProvider> rawProviders = new ArrayList<ILanguageSettingsProvider>();
+			for (ILanguageSettingsProvider provider : providers) {
 				if (isWorkspaceProvider(provider)) {
 					provider = rawGlobalWorkspaceProviders.get(provider.getId());
-					providers.set(i, provider);
 				}
+				rawProviders.add(provider);
 			}
 			rawGlobalWorkspaceProviders.clear();
-			for (ILanguageSettingsProvider provider : providers) {
-				if (!LanguageSettingsExtensionManager.equalsExtensionProvider(provider)) {
-					rawGlobalWorkspaceProviders.put(provider.getId(), provider);
-				}
+			for (ILanguageSettingsProvider provider : rawProviders) {
+				rawGlobalWorkspaceProviders.put(provider.getId(), provider);
 			}
 		} else {
 			rawGlobalWorkspaceProviders.clear();

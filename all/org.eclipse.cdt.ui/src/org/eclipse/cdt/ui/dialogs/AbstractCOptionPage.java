@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.ui.dialogs;
 
+import org.eclipse.cdt.internal.ui.util.SWTUtil;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.DialogPage;
@@ -20,13 +21,11 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
-import org.eclipse.cdt.internal.ui.util.SWTUtil;
-
 public abstract class AbstractCOptionPage extends DialogPage implements ICOptionPage {
 
 	private boolean bIsValid = true;
 	private ICOptionContainer fContainer;
-
+	
 
 	protected Button createPushButton(Composite parent, String label, Image image) {
 		Button button = new Button(parent, SWT.PUSH);
@@ -67,13 +66,10 @@ public abstract class AbstractCOptionPage extends DialogPage implements ICOption
 		super(title, image);
 	}
 
-	public void init(Object initializer) {
-	}
-
 	public void setContainer(ICOptionContainer container) {
 		fContainer = container;
 	}
-
+	
 	protected ICOptionContainer getContainer() {
 		return fContainer;
 	}
@@ -81,7 +77,7 @@ public abstract class AbstractCOptionPage extends DialogPage implements ICOption
 	protected void setValid(boolean isValid) {
 		bIsValid = isValid;
 	}
-
+	
 	public boolean isValid() {
 		return bIsValid;
 	}
@@ -89,7 +85,7 @@ public abstract class AbstractCOptionPage extends DialogPage implements ICOption
 	public abstract void performApply(IProgressMonitor monitor) throws CoreException;
 
 	public abstract void performDefaults();
-
+	
 	public abstract void createControl(Composite parent);
 
 }

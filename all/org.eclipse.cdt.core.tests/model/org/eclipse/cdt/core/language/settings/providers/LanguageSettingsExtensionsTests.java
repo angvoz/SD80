@@ -167,25 +167,25 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		assertEquals(entriesExt.size(), actual.size());
 	}
 
-	/**
-	 * Make sure extensions contributed through extension point are sorted by name.
-	 * Note that Test Plugin providers are supposed to be on the bottom of the list
-	 * but it happens naturally, it is not currently tested here.
-	 */
-	public void testExtensionsSorting() throws Exception {
-		{
-			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
-			String lastName="";
-			for (ILanguageSettingsProvider provider : providers) {
-				assertTrue(LanguageSettingsManager.isWorkspaceProvider(provider));
-
-				String name = provider.getName();
-				assertTrue(lastName.compareTo(name)<=0);
-				lastName = name;
-			}
-		}
-	}
-
+//	/**
+//	 * Make sure extensions contributed through extension point are sorted by name.
+//	 * Note that Test Plugin providers are supposed to be on the bottom of the list
+//	 * but it happens naturally, it is not currently tested here.
+//	 */
+//	public void testExtensionsSorting() throws Exception {
+//		{
+//			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
+//			String lastName="";
+//			for (ILanguageSettingsProvider provider : providers) {
+//				assertTrue(LanguageSettingsManager.isWorkspaceProvider(provider));
+//
+//				String name = provider.getName();
+//				assertTrue(lastName.compareTo(name)<=0);
+//				lastName = name;
+//			}
+//		}
+//	}
+//
 	/**
 	 * Make sure extensions contributed through extension point created with proper ID/name.
 	 */

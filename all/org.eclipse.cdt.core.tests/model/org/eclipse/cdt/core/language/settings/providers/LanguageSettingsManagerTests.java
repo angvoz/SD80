@@ -758,4 +758,24 @@ public class LanguageSettingsManagerTests extends TestCase {
 			assertEquals(newEntries, entries);
 		}
 	}
+	
+	/**
+	 * Test ability to be called with workspace provider as well (NOOP).
+	 */
+	public void testWorkspaceProvider_ReplaceWithWorkspaceProvider() throws Exception {
+		// get sample workspace provider
+		ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_EDITABLE_PROVIDER_ID);
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+		assertNotSame(provider, rawProvider);
+		
+		// attempt to "replace" with workspace provider (which is a wrapper around raw provider), should be NOOP
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+		providers.add(provider);
+		LanguageSettingsManager.setWorkspaceProviders(providers);
+		ILanguageSettingsProvider newRawProvider = LanguageSettingsManager.getRawProvider(provider);
+		assertSame(rawProvider, newRawProvider);
+		
+		// check for no side effect
+		assertSame(provider, providers.get(0));
+	}
 }

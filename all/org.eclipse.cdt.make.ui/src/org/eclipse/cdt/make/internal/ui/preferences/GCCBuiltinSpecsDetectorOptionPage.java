@@ -13,12 +13,12 @@ package org.eclipse.cdt.make.internal.ui.preferences;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.internal.ui.language.settings.providers.LanguageSettingsProviderTab.ProviderReference;
+import org.eclipse.cdt.internal.ui.language.settings.providers.AbstractSpecsDetectorOptionPage;
 import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.ui.CUIPlugin;
-import org.eclipse.cdt.ui.dialogs.AbstractCOptionPage;
 import org.eclipse.cdt.utils.ui.controls.ControlFactory;
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -41,8 +41,7 @@ import org.eclipse.swt.widgets.Text;
  * Options page for TODO
  *
  */
-public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage {
-	private ProviderReference fProviderReference;
+public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractSpecsDetectorOptionPage {
 	private boolean fEditable;
 
 	private Text inputCommand;
@@ -52,13 +51,6 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 	private Button runEveryBuildRadioButton;
 	private Button allocateConsoleCheckBox;
 
-
-	@Override
-	public void init(Object providerRef) {
-		// must be ProviderReference
-		fProviderReference = (ProviderReference) providerRef;
-//		fEditable = isEditable;
-	}
 	/*
 	 * (non-Javadoc)
 	 *
@@ -99,7 +91,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //		gdRun.horizontalSpan = 2;
 //		groupRun.setLayoutData(gdRun);
 
-		AbstractBuiltinSpecsDetector provider = (AbstractBuiltinSpecsDetector) fProviderReference.getProvider();
+		AbstractBuiltinSpecsDetector provider = getRawProvider();
 		{
 			runOnceRadioButton = new Button(groupRun, SWT.RADIO);
 			runOnceRadioButton.setText("Run only once"); //$NON-NLS-1$
@@ -112,15 +104,17 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			runOnceRadioButton.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent evt) {
-					if (runOnceRadioButton.getSelection()) {
-						AbstractBuiltinSpecsDetector selectedProvider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
-						if (!LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
-							selectedProvider.setRunOnce(true);
-						} else {
-							// TODO: need working copy of the provider
+					boolean runOnceEnabled = runOnceRadioButton.getSelection();
+					if (runOnceEnabled) {
+						AbstractBuiltinSpecsDetector provider = getRawProvider();
+						if (runOnceEnabled != provider.isRunOnce()) {
+							AbstractBuiltinSpecsDetector selectedProvider = getWorkingCopy(providerId);
+							selectedProvider.setRunOnce(runOnceEnabled);
+							refreshItem();
 						}
 					}
 				}
+
 			});
 		}
 		{
@@ -134,12 +128,13 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			runEveryBuildRadioButton.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent evt) {
-					if (runEveryBuildRadioButton.getSelection()) {
-						AbstractBuiltinSpecsDetector selectedProvider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
-						if (!LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
-							selectedProvider.setRunOnce(false);
-						} else {
-							// TODO: need working copy of the provider
+					boolean runEveryBuildEnabled = runEveryBuildRadioButton.getSelection();
+					if (runEveryBuildEnabled) {
+						AbstractBuiltinSpecsDetector provider = getRawProvider();
+						if (runEveryBuildEnabled != !provider.isRunOnce()) {
+							AbstractBuiltinSpecsDetector selectedProvider = getWorkingCopy(providerId);
+							selectedProvider.setRunOnce(!runEveryBuildEnabled);
+							refreshItem();
 						}
 					}
 				}
@@ -162,11 +157,12 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			inputCommand.setEnabled(fEditable);
 			inputCommand.addModifyListener(new ModifyListener() {
 				public void modifyText(ModifyEvent e) {
-					AbstractBuiltinSpecsDetector selectedProvider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
-					if (!LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
-						selectedProvider.setCustomParameter(inputCommand.getText());
-					} else {
-						// TODO: need working copy of the provider
+					String text = inputCommand.getText();
+					AbstractBuiltinSpecsDetector provider = getRawProvider();
+					if (!text.equals(provider.getCustomParameter())) {
+						AbstractBuiltinSpecsDetector selectedProvider = getWorkingCopy(providerId);
+						selectedProvider.setCustomParameter(text);
+						refreshItem();
 					}
 				}
 			});
@@ -279,13 +275,12 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 			allocateConsoleCheckBox.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
-					if (allocateConsoleCheckBox.getSelection()) {
-						AbstractBuiltinSpecsDetector selectedProvider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
-						if (!LanguageSettingsManager.isWorkspaceProvider(selectedProvider)) {
-							selectedProvider.setConsoleEnabled(true);
-						} else {
-							// TODO: need working copy of the provider
-						}
+					boolean enabled = allocateConsoleCheckBox.getSelection();
+					AbstractBuiltinSpecsDetector provider = getRawProvider();
+					if (enabled != provider.isConsoleEnabled()) {
+						AbstractBuiltinSpecsDetector selectedProvider = getWorkingCopy(providerId);
+						selectedProvider.setConsoleEnabled(enabled);
+						refreshItem();
 					}
 				}
 
@@ -308,15 +303,22 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 		setControl(composite);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see org.eclipse.cdt.ui.dialogs.ICOptionPage#performApply(org.eclipse.core.runtime.IProgressMonitor)
-	 */
+	private AbstractBuiltinSpecsDetector getRawProvider() {
+		ILanguageSettingsProvider provider = LanguageSettingsManager.getRawProvider(getProvider());
+		Assert.isTrue(provider instanceof AbstractBuiltinSpecsDetector);
+		return (AbstractBuiltinSpecsDetector) provider;
+	}
+
+	protected AbstractBuiltinSpecsDetector getWorkingCopy(String providerId) {
+		ILanguageSettingsProvider provider = super.getWorkingCopy(providerId);
+		Assert.isTrue(provider instanceof AbstractBuiltinSpecsDetector);
+		return (AbstractBuiltinSpecsDetector) provider;
+	}
+
 	@Override
 	public void performApply(IProgressMonitor monitor) throws CoreException {
 //		if (fProviderReference!=null) {
-//			AbstractBuiltinSpecsDetector provider = (AbstractBuiltinSpecsDetector) fProviderReference.getWorkingCopy();
+//			AbstractBuiltinSpecsDetector provider = getWorkingCopy(providerId);
 //			if (provider!=null) {
 //				provider.setRunOnce(!runEveryBuildRadioButton.getSelection());
 //
@@ -326,13 +328,8 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractCOptionPage
 //		}
 	}
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see org.eclipse.cdt.ui.dialogs.ICOptionPage#performDefaults()
-	 */
 	@Override
 	public void performDefaults() {
-		// TODO X.performDefaults() will do all the work
+		// providerTab.performDefaults() will do all the work
 	}
 }

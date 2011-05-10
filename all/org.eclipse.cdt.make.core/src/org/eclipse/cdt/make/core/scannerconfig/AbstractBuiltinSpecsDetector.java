@@ -256,6 +256,7 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		final int prime = 31;
 		int result = super.hashCode();
 		result = prime * result + (runOnce ? 1231 : 1237);
+		result = prime * result + (isConsoleEnabled ? 1231 : 1237);
 		return result;
 	}
 
@@ -270,6 +271,8 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 			return false;
 		AbstractBuiltinSpecsDetector other = (AbstractBuiltinSpecsDetector) obj;
 		if (runOnce != other.runOnce)
+			return false;
+		if (isConsoleEnabled != other.isConsoleEnabled)
 			return false;
 		return true;
 	}

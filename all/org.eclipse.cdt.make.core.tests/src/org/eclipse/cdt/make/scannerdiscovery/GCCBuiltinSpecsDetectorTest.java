@@ -158,6 +158,14 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			assertFalse(detector.equals(clone));
 		}
 		
+		// check console flag
+		{
+			MockDetector clone = detector.clone();
+			boolean isConsoleEnabled = clone.isConsoleEnabled();
+			clone.setConsoleEnabled( ! isConsoleEnabled );
+			assertFalse(detector.equals(clone));
+		}
+		
 		// check entries
 		{
 			MockDetector clone = detector.clone();

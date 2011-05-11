@@ -15,6 +15,7 @@ import java.util.List;
 
 import junit.framework.TestCase;
 
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
@@ -24,9 +25,12 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
+import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCBuiltinSpecsDetector;
 import org.eclipse.core.resources.IProject;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	private static final String PROVIDER_ID = "provider.id";
@@ -34,7 +38,18 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	private static final String LANGUAGE_ID = "language.test.id";
 	private static final String LANGUAGE_ID_C = "org.eclipse.cdt.core.gcc";
 	private static final String CUSTOM_PARAMETER = "customParameter";
-	private static final String CUSTOM_COMMAND = "customCommand";
+	private static final String ELEM_TEST = "test";
+	
+	// those attributes must match that in AbstractBuiltinSpecsDetector
+	private static final String ATTR_CONSOLE = "console"; //$NON-NLS-1$
+	private static final String ATTR_RUN_ONCE = "run-once"; //$NON-NLS-1$
+
+	private class MockBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
+		@Override
+		public boolean processLine(String line) {
+			return true;
+		}
+	}
 
 	@Override
 	protected void setUp() throws Exception {
@@ -59,14 +74,8 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 
 	public void testAbstractBuiltinSpecsDetector_GettersSetters() throws Exception {
 		// define mock detector
-		class MockDetector extends AbstractBuiltinSpecsDetector {
-			@Override
-			public boolean processLine(String line) {
-				return true;
-			}
-		}
-
-		MockDetector detector = new MockDetector();
+		MockBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector();
+		
 		detector.configureProvider(PROVIDER_ID, PROVIDER_NAME, null, null, null);
 		assertEquals(PROVIDER_ID, detector.getId());
 		assertEquals(PROVIDER_NAME, detector.getName());
@@ -184,13 +193,62 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			
 	}
 	
+	/**
+	 */
+	public void testAbstractBuiltinSpecsDetector_Serialize() throws Exception {
+		{
+			// create empty XML
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			
+			// load it to new provider
+			MockBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector();
+			detector.load(rootElement);
+			assertEquals(true, detector.isRunOnce());
+			assertEquals(false, detector.isConsoleEnabled());
+		}
+		
+		Element elementProvider;
+		{
+			// define mock detector
+			MockBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector();
+			assertEquals(true, detector.isRunOnce());
+			assertEquals(false, detector.isConsoleEnabled());
+			
+			// redefine the settings
+			detector.setRunOnce(false);
+			assertEquals(false, detector.isRunOnce());
+			detector.setConsoleEnabled(true);
+			assertEquals(true, detector.isConsoleEnabled());
+			
+			// serialize in XML
+			Document doc = XmlUtil.newDocument();
+			Element rootElement = XmlUtil.appendElement(doc, ELEM_TEST);
+			elementProvider = detector.serialize(rootElement);
+			String xmlString = XmlUtil.toString(doc);
+			
+			assertTrue(xmlString.contains(ATTR_RUN_ONCE));
+			assertTrue(xmlString.contains(ATTR_CONSOLE));
+		}
+		{
+			// create another instance of the provider
+			MockBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector();
+			assertEquals(true, detector.isRunOnce());
+			assertEquals(false, detector.isConsoleEnabled());
+			
+			// load element
+			detector.load(elementProvider);
+			assertEquals(false, detector.isRunOnce());
+			assertEquals(true, detector.isConsoleEnabled());
+		}
+	}
+
+
+	
 	public void testAbstractBuiltinSpecsDetector_Nulls() throws Exception {
-		AbstractBuiltinSpecsDetector detector = new AbstractBuiltinSpecsDetector() {
-			@Override
-			public boolean processLine(String line) {
-				return true;
-			}
-		};
+		// define mock detector
+		MockBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector();
+		
 		detector.startup(null, null);
 		detector.run(null, null, null);
 		detector.shutdown();

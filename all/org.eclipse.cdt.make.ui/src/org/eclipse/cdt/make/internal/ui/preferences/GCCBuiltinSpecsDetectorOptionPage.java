@@ -293,12 +293,12 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractLanguageSet
 
 		}
 		
-		// Status line
-		if (fEditable) {
-			fStatusLine = new StatusMessageLine(composite, SWT.LEFT, 2);
-			IStatus status = new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, "Note that currently not all options are persisted (FIXME)");
-			fStatusLine.setErrorStatus(status);
-		}
+//		// Status line
+//		if (fEditable) {
+//			fStatusLine = new StatusMessageLine(composite, SWT.LEFT, 2);
+//			IStatus status = new Status(IStatus.WARNING, CUIPlugin.PLUGIN_ID, "Note that currently not all options are persisted (FIXME)");
+//			fStatusLine.setErrorStatus(status);
+//		}
 		
 		setControl(composite);
 	}

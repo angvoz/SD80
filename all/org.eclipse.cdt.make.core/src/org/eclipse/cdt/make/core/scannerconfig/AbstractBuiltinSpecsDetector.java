@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
+import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.cdt.make.internal.core.MakeMessages;
 import org.eclipse.cdt.make.internal.core.StreamMonitor;
@@ -41,6 +42,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.SubProgressMonitor;
+import org.w3c.dom.Element;
 
 public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSerializable implements
 		ILanguageSettingsOutputScanner {
@@ -48,6 +50,8 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	private static final String PLUGIN_CDT_MAKE_UI_ID = "org.eclipse.cdt.make.ui"; //$NON-NLS-1$
 	private static final String GMAKE_ERROR_PARSER_ID = "org.eclipse.cdt.core.GmakeErrorParser"; //$NON-NLS-1$
 	private static final String PATH_ENV = "PATH"; //$NON-NLS-1$
+	private static final String ATTR_RUN_ONCE = "run-once"; //$NON-NLS-1$
+	private static final String ATTR_CONSOLE = "console"; //$NON-NLS-1$
 
 	// temporaries which are reassigned before running
 	private ICConfigurationDescription currentCfgDescription = null;
@@ -251,6 +255,27 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		stream.flush();
 	}
 
+	@Override
+	public Element serialize(Element parentElement) {
+		Element elementProvider = super.serialize(parentElement);
+		elementProvider.setAttribute(ATTR_RUN_ONCE, Boolean.toString(runOnce));
+		elementProvider.setAttribute(ATTR_CONSOLE, Boolean.toString(isConsoleEnabled));
+		return elementProvider;
+	}
+	
+	@Override
+	public void load(Element providerNode) {
+		super.load(providerNode);
+		
+		String runOnceValue = XmlUtil.determineAttributeValue(providerNode, ATTR_RUN_ONCE);
+		if (runOnceValue!=null)
+			runOnce = Boolean.parseBoolean(runOnceValue);
+
+		String consoleValue = XmlUtil.determineAttributeValue(providerNode, ATTR_CONSOLE);
+		if (consoleValue!=null)
+			isConsoleEnabled = Boolean.parseBoolean(consoleValue);
+	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;

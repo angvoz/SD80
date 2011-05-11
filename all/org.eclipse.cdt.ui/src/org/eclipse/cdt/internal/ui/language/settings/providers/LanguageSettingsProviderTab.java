@@ -761,16 +761,19 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	}
 	
 	private void performClear(ILanguageSettingsProvider selectedProvider) {
-		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(selectedProvider);
-		if (rawProvider instanceof ILanguageSettingsEditableProvider) {
-			ILanguageSettingsEditableProvider selectedEditableProvider = (ILanguageSettingsEditableProvider) rawProvider;
-			
-			if (isWorkingCopy(selectedEditableProvider)) {
-				selectedEditableProvider.clear();
-				tableProvidersViewer.update(selectedEditableProvider, null);
-			} else {
+		if (isWorkingCopy(selectedProvider)) {
+			if (selectedProvider instanceof ILanguageSettingsEditableProvider) {
+				ILanguageSettingsEditableProvider editableProvider = (ILanguageSettingsEditableProvider) selectedProvider;
+				editableProvider.clear();
+				tableProvidersViewer.update(selectedProvider, null);
+			}
+		} else {
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(selectedProvider);
+			if (rawProvider instanceof ILanguageSettingsEditableProvider) {
+				ILanguageSettingsEditableProvider editableProvider = (ILanguageSettingsEditableProvider) rawProvider;
+				
 				try {
-					ILanguageSettingsEditableProvider newProvider = selectedEditableProvider.cloneShallow();
+					ILanguageSettingsEditableProvider newProvider = editableProvider.cloneShallow();
 					replaceSelectedProvider(newProvider);
 
 					ICConfigurationDescription cfgDescription = getConfigurationDescription();
@@ -778,14 +781,13 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 					displaySelectedOptionPage();
 					
 				} catch (CloneNotSupportedException e) {
-					CUIPlugin.log("Error cloning provider " + selectedEditableProvider.getId(), e);
-					// TODO warning dialog for user?
+					CUIPlugin.log("Error cloning provider " + editableProvider.getId(), e);
 					return;
 				}
 			}
 			
-			updateButtons();
 		}
+		updateButtons();
 	}
 
 	private void performReset(ILanguageSettingsProvider selectedProvider) {

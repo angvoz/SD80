@@ -110,7 +110,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractLanguageSet
 						if (runOnceEnabled != provider.isRunOnce()) {
 							AbstractBuiltinSpecsDetector selectedProvider = getWorkingCopy(providerId);
 							selectedProvider.setRunOnce(runOnceEnabled);
-							refreshItem();
+							providerTab.refreshItem(selectedProvider);
 						}
 					}
 				}
@@ -134,7 +134,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractLanguageSet
 						if (runEveryBuildEnabled != !provider.isRunOnce()) {
 							AbstractBuiltinSpecsDetector selectedProvider = getWorkingCopy(providerId);
 							selectedProvider.setRunOnce(!runEveryBuildEnabled);
-							refreshItem();
+							providerTab.refreshItem(selectedProvider);
 						}
 					}
 				}
@@ -162,7 +162,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractLanguageSet
 					if (!text.equals(provider.getCustomParameter())) {
 						AbstractBuiltinSpecsDetector selectedProvider = getWorkingCopy(providerId);
 						selectedProvider.setCustomParameter(text);
-						refreshItem();
+						providerTab.refreshItem(selectedProvider);
 					}
 				}
 			});
@@ -280,7 +280,7 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractLanguageSet
 					if (enabled != provider.isConsoleEnabled()) {
 						AbstractBuiltinSpecsDetector selectedProvider = getWorkingCopy(providerId);
 						selectedProvider.setConsoleEnabled(enabled);
-						refreshItem();
+						providerTab.refreshItem(selectedProvider);
 					}
 				}
 
@@ -304,32 +304,25 @@ public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractLanguageSet
 	}
 
 	private AbstractBuiltinSpecsDetector getRawProvider() {
-		ILanguageSettingsProvider provider = LanguageSettingsManager.getRawProvider(getProvider());
+		ILanguageSettingsProvider provider = LanguageSettingsManager.getRawProvider(providerTab.getProvider(providerId));
 		Assert.isTrue(provider instanceof AbstractBuiltinSpecsDetector);
 		return (AbstractBuiltinSpecsDetector) provider;
 	}
 
-	protected AbstractBuiltinSpecsDetector getWorkingCopy(String providerId) {
-		ILanguageSettingsProvider provider = super.getWorkingCopy(providerId);
+	private AbstractBuiltinSpecsDetector getWorkingCopy(String providerId) {
+		ILanguageSettingsProvider provider = providerTab.getWorkingCopy(providerId);
 		Assert.isTrue(provider instanceof AbstractBuiltinSpecsDetector);
 		return (AbstractBuiltinSpecsDetector) provider;
 	}
 
 	@Override
 	public void performApply(IProgressMonitor monitor) throws CoreException {
-//		if (fProviderReference!=null) {
-//			AbstractBuiltinSpecsDetector provider = getWorkingCopy(providerId);
-//			if (provider!=null) {
-//				provider.setRunOnce(!runEveryBuildRadioButton.getSelection());
-//
-//				String command = inputCommand.getText();
-//				provider.setCustomParameter(command);
-//			}
-//		}
+		// handled by LanguageSettingsProviderTab
 	}
 
 	@Override
 	public void performDefaults() {
-		// providerTab.performDefaults() will do all the work
+		// handled by LanguageSettingsProviderTab
 	}
+
 }

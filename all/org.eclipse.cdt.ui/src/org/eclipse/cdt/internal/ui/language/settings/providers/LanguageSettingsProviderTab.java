@@ -204,7 +204,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	 * 
 	 * @return the provider
 	 */
-	/*package*/ ILanguageSettingsProvider getWorkingCopy(String providerId) {
+	public ILanguageSettingsProvider getWorkingCopy(String providerId) {
 		ILanguageSettingsProvider provider = findProvider(providerId, presentedProviders);
 		if (isWorkingCopy(provider))
 			return provider;
@@ -434,7 +434,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		refreshItem(newProvider);
 	}
 
-	/*package*/ void refreshItem(ILanguageSettingsProvider provider) {
+	public void refreshItem(ILanguageSettingsProvider provider) {
 		tableProvidersViewer.refresh(provider);
 		updateButtons();
 	}
@@ -1085,7 +1085,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		return null;
 	}
 	
-	/*package*/ ILanguageSettingsProvider getProvider(String id) {
+	public ILanguageSettingsProvider getProvider(String id) {
 		return findProvider(id, presentedProviders);
 	}
 	

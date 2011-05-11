@@ -13,7 +13,7 @@ package org.eclipse.cdt.make.internal.ui.preferences;
 
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.internal.ui.language.settings.providers.AbstractSpecsDetectorOptionPage;
+import org.eclipse.cdt.internal.ui.language.settings.providers.AbstractLanguageSettingProviderOptionPage;
 import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.ui.CUIPlugin;
@@ -41,7 +41,7 @@ import org.eclipse.swt.widgets.Text;
  * Options page for TODO
  *
  */
-public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractSpecsDetectorOptionPage {
+public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractLanguageSettingProviderOptionPage {
 	private boolean fEditable;
 
 	private Text inputCommand;

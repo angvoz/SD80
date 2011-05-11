@@ -67,8 +67,9 @@ class LanguageSettingsProvidersLabelProvider extends LabelProvider {
 //			final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
 //			boolean isSpecial = provider.getId().equals(MBS_LANGUAGE_SETTINGS_PROVIDER);
 			
-			if (provider instanceof LanguageSettingsSerializable) {
-				if (((LanguageSettingsSerializable)provider).isEmpty()) {
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			if (rawProvider instanceof LanguageSettingsSerializable) {
+				if (((LanguageSettingsSerializable)rawProvider).isEmpty()) {
 					overlayKeys[IDecoration.BOTTOM_RIGHT] = CDTSharedImages.IMG_OVR_EMPTY;
 				}
 			}

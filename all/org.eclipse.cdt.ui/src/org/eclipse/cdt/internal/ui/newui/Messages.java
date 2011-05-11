@@ -192,7 +192,7 @@ public class Messages extends NLS {
 	public static String LanguageSettingsProviderTab_Configure;
 	public static String LanguageSettingsProviderTab_ErrorPerformingDefaults;
 	public static String LanguageSettingsProviderTab_ProviderOptions;
-	public static String LanguageSettingsProviderTab_Run;
+//	public static String LanguageSettingsProviderTab_Run;
 	public static String LanguageSettingsProviderTab_SettingEntries;
 	public static String LanguageSettingsProviderTab_SettingEntriesTooltip;
 	public static String LanguageSettingsProviderTab_ShowEntries;

@@ -80,21 +80,21 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	private static final String TEST_PLUGIN_ID_PATTERN = "org.eclipse.cdt.*.tests.*"; //$NON-NLS-1$
 
 //	private static final String RENAME_STR = "Rename...";
-	private static final String RUN_STR = Messages.LanguageSettingsProviderTab_Run;
+//	private static final String RUN_STR = Messages.LanguageSettingsProviderTab_Run;
 	private static final String CLEAR_STR = Messages.LanguageSettingsProviderTab_Clear;
 	private static final String RESET_STR = "Reset";
 
 //	private static final int BUTTON_RENAME = 0;
-	private static final int BUTTON_RUN = 0;
-	private static final int BUTTON_CLEAR = 1;
-	private static final int BUTTON_RESET = 2;
-	// there is a separator instead of button #3
-	private static final int BUTTON_MOVE_UP = 4;
-	private static final int BUTTON_MOVE_DOWN = 5;
+//	private static final int BUTTON_RUN = 0;
+	private static final int BUTTON_CLEAR = 0;
+	private static final int BUTTON_RESET = 1;
+	// there is a separator instead of button #2
+	private static final int BUTTON_MOVE_UP = 3;
+	private static final int BUTTON_MOVE_DOWN = 4;
 
 	private final static String[] BUTTON_LABELS_PROJECT = {
 //		RENAME_STR,
-		RUN_STR,
+//		RUN_STR,
 		CLEAR_STR,
 		RESET_STR,
 		null,
@@ -104,7 +104,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	
 	private final static String[] BUTTON_LABELS_PREF = {
 //		RENAME_STR,
-		RUN_STR,
+//		RUN_STR,
 		CLEAR_STR,
 		RESET_STR,
 	};
@@ -137,65 +137,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	
 	private boolean initialEnablement = false;
 	
-	/**
-	 * The preference page can dynamically change LS Providers in the given configuration.
-	 * The dependent controls should pick on that as well, so reference is provided instead
-	 * of real provider.
-	 *
-	 */
-	public class ProviderReference {
-		private final String providerId;
-		private final ICConfigurationDescription cfgDescription;
-		
-		public ProviderReference(String providerId, ICConfigurationDescription cfgDescription) {
-			this.providerId = providerId;
-			this.cfgDescription = cfgDescription;
-			
-			Assert.isNotNull(getProvider());
-		}
-
-		/**
-		 * Get current provider associated with a given id. Use as read-only only.
-		 * Warning: Do not cache the result as the provider can be replaced at any time.
-		 * 
-		 * @return the provider
-		 */
-		public ILanguageSettingsProvider getProvider() {
-			ILanguageSettingsProvider provider = findRawProvider(providerId, presentedProviders);
-			return provider;
-		}
-		
-		
-		/**
-		 * Returns current working copy of the provider. Creates one if it has not been created yet.
-		 * Use when need to modify the provider.
-		 * Warning: Do not cache the result as the provider can be replaced at any time.
-		 * 
-		 * @return the provider
-		 */
-		public ILanguageSettingsProvider getWorkingCopy() {
-			ILanguageSettingsProvider provider = findProvider(providerId, presentedProviders);
-			if (isWorkingCopy(provider))
-				return provider;
-			
-			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
-			Assert.isTrue(rawProvider instanceof ILanguageSettingsEditableProvider);
-			
-			ILanguageSettingsEditableProvider editableProvider = (ILanguageSettingsEditableProvider)rawProvider;
-			try {
-				ILanguageSettingsEditableProvider newProvider = editableProvider.clone();
-				replaceSelectedProvider(newProvider);
-				return newProvider;
-				
-			} catch (CloneNotSupportedException e) {
-				CUIPlugin.log("Error cloning provider " + editableProvider.getId(), e);
-				// TODO warning dialog for user?
-			}
-
-			return null;
-		}
-		
-	}
 	/**
 	 * Returns current working copy of the provider. Creates one if it has not been created yet.
 	 * Used by option pages when there is a need to modify the provider.
@@ -672,7 +613,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 
 	private void disableButtons() {
 //		buttonSetEnabled(BUTTON_RENAME, false);
-		buttonSetEnabled(BUTTON_RUN, false);
+//		buttonSetEnabled(BUTTON_RUN, false);
 		buttonSetEnabled(BUTTON_CLEAR, false);
 		buttonSetEnabled(BUTTON_RESET, false);
 		buttonSetEnabled(BUTTON_MOVE_UP, false);
@@ -712,7 +653,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		boolean canMoveDown = page.isForProject() && isProviderSelected && isRangeOk && pos!=last;
 		
 //		buttonSetEnabled(BUTTON_RENAME, false);
-		buttonSetEnabled(BUTTON_RUN, false);
+//		buttonSetEnabled(BUTTON_RUN, false);
 		buttonSetEnabled(BUTTON_CLEAR, canClear);
 		buttonSetEnabled(BUTTON_RESET, canReset);
 		buttonSetEnabled(BUTTON_MOVE_UP, canMoveUp);
@@ -738,9 +679,9 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 //		case BUTTON_RENAME:
 //			performRename(selectedProvider);
 //			break;
-		case BUTTON_RUN:
-			performRun(selectedProvider);
-			break;
+//		case BUTTON_RUN:
+//			performRun(selectedProvider);
+//			break;
 		case BUTTON_CLEAR:
 			performClear(selectedProvider);
 			break;
@@ -757,9 +698,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		}
 	}
 
-	private void performRun(ILanguageSettingsProvider selectedProvider) {
-	}
-	
 	private void performClear(ILanguageSettingsProvider selectedProvider) {
 		if (isWorkingCopy(selectedProvider)) {
 			if (selectedProvider instanceof ILanguageSettingsEditableProvider) {

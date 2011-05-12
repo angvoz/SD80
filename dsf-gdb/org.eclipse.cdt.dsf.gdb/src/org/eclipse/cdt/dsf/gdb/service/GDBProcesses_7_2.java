@@ -296,6 +296,7 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
 //    			        	fCommandControl.queueCommand(
 //    			        			fCommandFactory.createMIRemoveInferior(fCommandControl.getContext(), containerDmc.getGroupId()),
 //    			    				new DataRequestMonitor<MIInfo>(getExecutor(), rm));
+    							rm.done();
     						} else {
     							// This command fails with GDB 7.2 because of a GDB bug, which was fixed with GDB 7.2.1
     							// In case we get here, we assume we are using GDB 7.2 (although we should not) and we work
@@ -373,7 +374,13 @@ public class GDBProcesses_7_2 extends GDBProcesses_7_1 {
     				IBreakpointsTargetDMContext bpTargetDmc = DMContexts.getAncestorOfType(dmc, IBreakpointsTargetDMContext.class);
     				MIBreakpointsManager bpmService = getServicesTracker().getService(MIBreakpointsManager.class);
     				if (bpmService != null) {
-    					bpmService.stopTrackingBreakpoints(bpTargetDmc, new RequestMonitor(ImmediateExecutor.getInstance(), null));
+    					bpmService.stopTrackingBreakpoints(bpTargetDmc, new RequestMonitor(ImmediateExecutor.getInstance(), null) {
+    						@Override
+    						protected void handleCompleted() {
+    							// Ok, no need to report any error because we may have already shutdown.
+    							// We need to override handleCompleted to avoid risking having a error printout in the log
+    						}
+    					});
     				}
     			}
     		}

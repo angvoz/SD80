@@ -10,26 +10,16 @@
  *******************************************************************************/
 package org.eclipse.cdt.core.resources;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.CProjectNature;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
+import org.eclipse.cdt.core.settings.model.ICStorageElement;
+import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -46,13 +36,10 @@ import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionPoint;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.QualifiedName;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
+import org.eclipse.core.runtime.jobs.ISchedulingRule;
+import org.eclipse.core.runtime.jobs.MultiRule;
+
+import com.ibm.icu.text.MessageFormat;
 
 /**
  * The RefreshScopeManager provides access to settings pertaining to refreshes performed during
@@ -71,12 +58,12 @@ import org.xml.sax.SAXException;
  *
  */
 public class RefreshScopeManager {
-	
+
 	public static final String WORKSPACE_PATH_ATTRIBUTE_NAME = "workspacePath"; //$NON-NLS-1$
 	public static final String RESOURCE_ELEMENT_NAME = "resource"; //$NON-NLS-1$
 	public static final String VERSION_NUMBER_ATTRIBUTE_NAME = "versionNumber"; //$NON-NLS-1$
 	public static final String VERSION_ELEMENT_NAME = "version"; //$NON-NLS-1$
-	public static final QualifiedName REFRESH_SCOPE_PROPERTY_NAME = new QualifiedName(CCorePlugin.PLUGIN_ID, "refreshScope"); //$NON-NLS-1$
+	public static final String REFRESH_SCOPE_STORAGE_NAME = "refreshScope"; //$NON-NLS-1$
 	public static final String EXTENSION_ID = "RefreshExclusionFactory"; //$NON-NLS-1$
 	public static final Object EXCLUSION_FACTORY = "exclusionFactory"; //$NON-NLS-1$
 	public static final String EXCLUSION_CLASS = "exclusionClass"; //$NON-NLS-1$
@@ -89,6 +76,8 @@ public class RefreshScopeManager {
 	private HashMap<String, RefreshExclusionFactory> fClassnameToExclusionFactoryMap;
 	
 	private static RefreshScopeManager fInstance;
+	private boolean fIsLoading = false;
+	private boolean fIsLoaded = false;
 	
 	private RefreshScopeManager(){
 		fClassnameToExclusionFactoryMap = new HashMap<String, RefreshExclusionFactory>();
@@ -129,8 +118,8 @@ public class RefreshScopeManager {
 											IProject project = (IProject) delta.getResource();
 
 											if (delta.getKind() == IResourceDelta.ADDED
-													|| (delta.getKind() == IResourceDelta.CHANGED && (delta
-															.getFlags() & IResourceDelta.OPEN) != 0)) {
+													|| (delta.getKind() == IResourceDelta.CHANGED && ((delta.getFlags() & IResourceDelta.OPEN) != 0)
+													&& ((delta.getFlags() & IResourceDelta.REMOVED) != 0))) /* don't load for deleted projects */{
 												loadSettings(ResourcesPlugin.getWorkspace()
 														.getRoot(), project);
 												return false;
@@ -288,12 +277,14 @@ public class RefreshScopeManager {
 	}
 	
 	public synchronized void clearAllResourcesToRefresh() {
+		getProjectToResourcesMap();
 		fProjectToResourcesMap.clear();
 	}
 	
 	public synchronized void clearAllData() {
 		clearAllResourcesToRefresh();
 		clearAllExclusions();
+		fIsLoaded = false;
 	}
 
 	private HashMap<IProject, LinkedHashSet<IResource>> getProjectToResourcesMap() {
@@ -346,82 +337,58 @@ public class RefreshScopeManager {
 		exclusions.remove(exclusion);
 	}
 	
-	public synchronized void persistSettings() throws CoreException {
+	public synchronized void persistSettings(ICProjectDescription projectDescription) throws CoreException {
 		getProjectToResourcesMap();
 		getResourcesToExclusionsMap();
-		for(IProject project : fProjectToResourcesMap.keySet()) {
+		for (IProject project : fProjectToResourcesMap.keySet()) {
 			if (!project.exists()) {
 				continue;
 			}
-			// serialize all settings for the project to an XML document which we will use to persist
-			// the data to a persistent resource property
-			 DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory.newInstance();
-	         DocumentBuilder docBuilder = null;
-			try {
-				docBuilder = docBuilderFactory.newDocumentBuilder();
-			} catch (ParserConfigurationException e) {
-				throw new CoreException(CCorePlugin.createStatus(Messages.RefreshScopeManager_0, e));
-			}
-	        
-			// create document root
-			Document doc = docBuilder.newDocument();
-			Element root = doc.createElement("root"); //$NON-NLS-1$
-	        doc.appendChild(root);
-	        
-	        Element versionElement = doc.createElement(VERSION_ELEMENT_NAME);
-	        versionElement.setAttribute(VERSION_NUMBER_ATTRIBUTE_NAME, Integer.toString(fVersion));
-	        root.appendChild(versionElement);
-			
-			for(IResource resource : fProjectToResourcesMap.get(project)) {
-				
-				// create a resource node
-				Element resourceElement = doc.createElement(RESOURCE_ELEMENT_NAME);
-	            resourceElement.setAttribute(WORKSPACE_PATH_ATTRIBUTE_NAME, resource.getFullPath().toString());
-	            root.appendChild(resourceElement);
-	            
-	            // populate the node with any exclusions
-	            List<RefreshExclusion> exclusions = fResourceToExclusionsMap.get(resource);
-	            if (exclusions != null) {
-					for(RefreshExclusion exclusion : exclusions) {
-		            	exclusion.persistData(doc, resourceElement);
-		            }
-	            }
 
-			}
-			
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer;
-			try {
-				transformer = transformerFactory.newTransformer();
-			} catch (TransformerConfigurationException e) {
-				throw new CoreException(CCorePlugin.createStatus(Messages.RefreshScopeManager_1, e));
-			}
-            //transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes"); //$NON-NLS-1$
-			
-			//create a string from xml tree
-            StringWriter stringWriter = new StringWriter();
-            StreamResult result = new StreamResult(stringWriter);
-            DOMSource source = new DOMSource(doc);
-            try {
-				transformer.transform(source, result);
-			} catch (TransformerException e) {
-				throw new CoreException(CCorePlugin.createStatus(Messages.RefreshScopeManager_2, e));
-			}
-            String xmlString = stringWriter.toString();
-            
-            // use the string as a value for a persistent resource property on the project
-            project.setPersistentProperty(REFRESH_SCOPE_PROPERTY_NAME, xmlString);
+			// serialize all settings for the project to the C Project Description
+			if (project.isOpen()) {
+				if (project.hasNature(CProjectNature.C_NATURE_ID)) {
+					
+					ICStorageElement storageElement = projectDescription.getStorage(REFRESH_SCOPE_STORAGE_NAME, true);
+					storageElement.clear();
+					
+					storageElement.setAttribute(VERSION_NUMBER_ATTRIBUTE_NAME, Integer.toString(fVersion));
 
+					for (IResource resource : fProjectToResourcesMap.get(project)) {
+
+						// create a resource node
+						ICStorageElement resourceElement = storageElement.createChild(RESOURCE_ELEMENT_NAME);
+						resourceElement.setAttribute(WORKSPACE_PATH_ATTRIBUTE_NAME, resource
+								.getFullPath().toString());
+					
+						// populate the node with any exclusions
+						List<RefreshExclusion> exclusions = fResourceToExclusionsMap.get(resource);
+						if (exclusions != null) {
+							for (RefreshExclusion exclusion : exclusions) {
+								exclusion.persistData(resourceElement);
+							}
+						}
+
+					}
+
+				}
+			}
 		}
 	}
 	
 	public synchronized void loadSettings() throws CoreException {
-		// iterate through all projects in the workspace. If they are C projects, attempt to load settings
-		// from them.
-		IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
+		if(!fIsLoaded && !fIsLoading) {
+			fIsLoading = true;
+			// iterate through all projects in the workspace. If they are C projects, attempt to load settings
+			// from them.
+			IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
 
-		for (IProject project : workspaceRoot.getProjects()) {
-			loadSettings(workspaceRoot, project);
+			for (IProject project : workspaceRoot.getProjects()) {
+				loadSettings(workspaceRoot, project);
+			}
+			
+			fIsLoaded = true;
+			fIsLoading = false;
 		}
 	}
 
@@ -430,95 +397,62 @@ public class RefreshScopeManager {
 	 * @param project
 	 * @throws CoreException
 	 */
-	private synchronized void loadSettings(IWorkspaceRoot workspaceRoot, IProject project) throws CoreException {
+	private synchronized void loadSettings(IWorkspaceRoot workspaceRoot, IProject project)
+			throws CoreException {
 		if (project.isOpen()) {
 			if (project.hasNature(CProjectNature.C_NATURE_ID)) {
-				String xmlString = project.getPersistentProperty(REFRESH_SCOPE_PROPERTY_NAME);
-
-				// if there are no settings, then configure the default behaviour of refreshing the entire
-				// project,
-				// with no exclusions
-				if (xmlString == null) {
-					addResourceToRefresh(project, project);
+				ICProjectDescription projectDescription = CProjectDescriptionManager.getInstance()
+						.getProjectDescription(project, false);
+				
+				if(projectDescription == null) {
+					throw new CoreException(CCorePlugin.createStatus(MessageFormat.format(Messages.RefreshScopeManager_4, project.getName())));
 				}
+				
+				ICStorageElement storageElement = projectDescription.getStorage(
+						REFRESH_SCOPE_STORAGE_NAME, true);
 
-				else {
-					// convert the XML string to a DOM model
+				// walk the tree and load the settings
 
-					DocumentBuilderFactory docBuilderFactory = DocumentBuilderFactory
-							.newInstance();
-					DocumentBuilder docBuilder = null;
-					try {
-						docBuilder = docBuilderFactory.newDocumentBuilder();
-					} catch (ParserConfigurationException e) {
-						throw new CoreException(CCorePlugin.createStatus(
-								Messages.RefreshScopeManager_0, e));
-					}
+				// for now ignore the version attribute, as we only have version 1 at this time
 
-					Document doc = null;
+				// iterate through the child nodes
+				ICStorageElement[] children = storageElement.getChildren();
 
-					try {
-						doc = docBuilder.parse(new InputSource(new StringReader(xmlString)));
-					} catch (SAXException e) {
-						throw new CoreException(CCorePlugin.createStatus(
-								MessageFormat.format(Messages.RefreshScopeManager_3,
-										project.getName()), e));
-					} catch (IOException e) {
-						throw new CoreException(CCorePlugin.createStatus(
-								MessageFormat.format(Messages.RefreshScopeManager_3,
-										project.getName()), e));
-					}
+				for (ICStorageElement child : children) {
 
-					// walk the DOM and load the settings
+					if (child.getName().equals(RESOURCE_ELEMENT_NAME)) {
 
-					// for now ignore the version attribute, as we only have version 1 at this time
+						// get the resource path
+						String resourcePath = child.getAttribute(WORKSPACE_PATH_ATTRIBUTE_NAME);
 
-					// iterate through the child nodes
-					NodeList nodeList = doc.getDocumentElement().getChildNodes();  // child of the doc is the root
+						if (resourcePath == null) {
+							// error
 
-					for (int k = 0; k < nodeList.getLength(); k++) {
-						Node node = nodeList.item(k);
+						}
 
-						// node will be an element
-						if (node instanceof Element) {
-							Element resourceElement = (Element) node;
+						else {
+							// find the resource
+							IResource resource = workspaceRoot.findMember(resourcePath);
 
-							if (resourceElement.getNodeName().equals(RESOURCE_ELEMENT_NAME)) {
+							if (resource == null) {
+								// error
+							}
 
-								// get the resource path
-								String resourcePath = resourceElement
-										.getAttribute(WORKSPACE_PATH_ATTRIBUTE_NAME);
+							else {
+								addResourceToRefresh(project, resource);
 
-								if (resourcePath == null) {
-									// error
+								// load any exclusions
+								List<RefreshExclusion> exclusions = RefreshExclusion.loadData(
+										child, null, resource, this);
 
-								}
-
-								else {
-									// find the resource
-									IResource resource = workspaceRoot.findMember(resourcePath);
-
-									if (resource == null) {
-										// error
-									}
-
-									else {
-										addResourceToRefresh(project, resource);
-
-										// load any exclusions
-										List<RefreshExclusion> exclusions = RefreshExclusion.loadData(resourceElement, null, resource);
-
-										// add them
-										for (RefreshExclusion exclusion : exclusions) {
-											addExclusion(resource, exclusion);
-										}
-									}
+								// add them
+								for (RefreshExclusion exclusion : exclusions) {
+									addExclusion(resource, exclusion);
 								}
 							}
 						}
 					}
 				}
-
 			}
 		}
 	}
@@ -574,8 +508,11 @@ public class RefreshScopeManager {
 		return factory.createNewExclusionInstance();
 	}
 	
+	public synchronized ISchedulingRule getRefreshSchedulingRule(IProject project) {
+		return new MultiRule(getResourcesToRefresh(project).toArray(new ISchedulingRule[0]));
+	}
+	
 	public IWorkspaceRunnable getRefreshRunnable(final IProject project) {
-		
 		
 		IWorkspaceRunnable runnable = new IWorkspaceRunnable() {
 

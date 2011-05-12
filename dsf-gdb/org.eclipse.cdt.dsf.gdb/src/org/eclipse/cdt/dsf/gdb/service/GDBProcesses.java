@@ -367,7 +367,7 @@ public class GDBProcesses extends MIProcesses implements IGDBProcesses {
    			Platform.getPreferencesService().getBoolean("org.eclipse.cdt.dsf.gdb.ui",  //$NON-NLS-1$
 				IGdbDebugPreferenceConstants.PREF_AUTO_TERMINATE_GDB,
 				true, null)) {
-			fGdb.terminate(new RequestMonitor(ImmediateExecutor.getInstance(), null));
+			fGdb.terminate(rm);
 		} else if (thread instanceof IMIProcessDMContext) {
 			getDebuggingContext(
 					thread, 
@@ -437,6 +437,15 @@ public class GDBProcesses extends MIProcesses implements IGDBProcesses {
 	
 	/** @since 4.0 */
 	public void restart(IContainerDMContext containerDmc, Map<String, Object> attributes, DataRequestMonitor<IContainerDMContext> rm) {
+		// Before performing the restart, check if the process is properly suspended.
+		// Don't need to worry about non-stop before GDB 7.0, so we can simply
+		// interrupt the backend, if needed
+		// Bug 246740
+		IMIRunControl runControl = getServicesTracker().getService(IMIRunControl.class);
+		if (runControl != null && !runControl.isTargetAcceptingCommands()) {
+			fBackend.interrupt();
+		}
+
 		startOrRestart(containerDmc, attributes, true, rm);
 	}
 	

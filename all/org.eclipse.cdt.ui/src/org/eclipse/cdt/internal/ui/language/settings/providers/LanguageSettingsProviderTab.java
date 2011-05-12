@@ -843,9 +843,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 					for (int i=0;i<cfgProviders.size();i++) {
 						ILanguageSettingsProvider provider = cfgProviders.get(i);
 						if (!LanguageSettingsManager.isWorkspaceProvider(provider) && !LanguageSettingsManager_TBD.isEqualExtensionProvider(provider)) {
-							String id = provider.getId();
-							ILanguageSettingsProvider newProvider = LanguageSettingsManager.getExtensionProviderCopy(id);
-							cfgProviders.set(i, newProvider);
+							ILanguageSettingsProvider extProvider = LanguageSettingsManager.getExtensionProviderCopy(provider.getId());
+							cfgProviders.set(i, extProvider);
 							atLeastOneChanged = true;
 						}
 					}
@@ -876,7 +875,6 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 			updateData(getResDesc());
 		}
 	}
-
 
 	@Override
 	protected void performApply(ICResourceDescription srcRcDescription, ICResourceDescription destRcDescription) {

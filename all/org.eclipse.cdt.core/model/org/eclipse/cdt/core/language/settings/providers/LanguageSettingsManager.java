@@ -148,11 +148,19 @@ public class LanguageSettingsManager {
 	 *
 	 * @param id - ID of provider to find.
 	 * @return the copy of the provider if possible (i.e. for {@link ILanguageSettingsEditableProvider})
-	 *    or raw extension provider if provider is not copyable.
-	 *    Returns {@code null} if provider is not defined.
+	 *    or workspace provider if provider is not copyable.
 	 */
 	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) {
-		return LanguageSettingsExtensionManager.getExtensionProviderCopy(id);
+		ILanguageSettingsProvider provider = null;
+		try {
+			provider = LanguageSettingsExtensionManager.getExtensionProviderClone(id);
+		} catch (CloneNotSupportedException e) {
+			// from here falls to get workspace provider
+		}
+		if (provider==null)
+			provider = LanguageSettingsManager.getWorkspaceProvider(id);
+		
+		return provider;
 	}
 
 	private static Preferences getPreferences(IProject project) {

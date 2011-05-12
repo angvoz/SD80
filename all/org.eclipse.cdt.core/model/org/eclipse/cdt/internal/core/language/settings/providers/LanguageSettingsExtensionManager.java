@@ -278,20 +278,16 @@ public class LanguageSettingsExtensionManager {
 	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider} extension point.
 	 *
 	 * @param id - ID of provider to find.
-	 * @return the copy of the provider if possible (i.e. for {@link ILanguageSettingsEditableProvider})
-	 *    or raw extension provider if provider is not copyable.
-	 *    Returns {@code null} if provider is not defined.
+	 * @return the clone of the provider or {@code null} if provider is not defined.
+	 * @throws CloneNotSupportedException if the provider is not cloneable
 	 */
-	public static ILanguageSettingsProvider getExtensionProviderCopy(String id) {
+	public static ILanguageSettingsProvider getExtensionProviderClone(String id) throws CloneNotSupportedException {
 		ILanguageSettingsProvider provider = fExtensionProviders.get(id);
-		if (provider instanceof ILanguageSettingsEditableProvider) {
-			try {
-				provider = ((ILanguageSettingsEditableProvider) provider).clone();
-			} catch (CloneNotSupportedException e) {
-				IStatus status = new Status(IStatus.ERROR, CCorePlugin.PLUGIN_ID, "Not able to clone provider " + provider.getClass());
-				CCorePlugin.log(new CoreException(status));
-				provider = null;
-			}
+		if (provider!=null) {
+			if (!(provider instanceof ILanguageSettingsEditableProvider))
+				throw new CloneNotSupportedException("Not able to clone provider " + provider.getClass());
+			
+			provider = ((ILanguageSettingsEditableProvider) provider).clone();
 		}
 		return provider;
 	}
@@ -317,13 +313,23 @@ public class LanguageSettingsExtensionManager {
 	}
 	
 	/**
-	 * @return ordered list of providers contributed by all extensions
-	 * {@code org.eclipse.cdt.core.LanguageSettingsProvider}
+	 * @return list of providers contributed by all extensions. Preferable copy but if not possible
+	 *   will return raw provider.
 	 */
-	public static List<ILanguageSettingsProvider> getExtensionProviders() {
+	/*package*/ static List<ILanguageSettingsProvider> getExtensionProvidersInternal() {
 		ArrayList<ILanguageSettingsProvider> list = new ArrayList<ILanguageSettingsProvider>(fExtensionProviders.size());
 		for (String id : fExtensionProviders.keySet()) {
-			list.add(getExtensionProviderCopy(id));
+			ILanguageSettingsProvider extensionProvider = null;
+			try {
+				extensionProvider = getExtensionProviderClone(id);
+			} catch (CloneNotSupportedException e) {
+				// from here falls to get raw extension provider
+			}
+			if (extensionProvider==null)
+				extensionProvider = fExtensionProviders.get(id);
+			
+			if (extensionProvider!=null)
+				list.add(extensionProvider);
 		}
 		return list;
 	}

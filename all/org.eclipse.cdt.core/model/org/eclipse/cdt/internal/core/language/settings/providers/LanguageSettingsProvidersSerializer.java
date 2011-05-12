@@ -43,7 +43,7 @@ public class LanguageSettingsProvidersSerializer {
 	private static final String ELEM_CONFIGURATION = "configuration"; //$NON-NLS-1$
 	private static final String ELEM_PROVIDER_REFERENCE = "provider-reference"; //$NON-NLS-1$
 	/** Cache of globally available providers to be consumed by calling clients */
-	private static final Map<String, ILanguageSettingsProvider> rawGlobalWorkspaceProviders = new HashMap<String, ILanguageSettingsProvider>();
+	private static Map<String, ILanguageSettingsProvider> rawGlobalWorkspaceProviders = new HashMap<String, ILanguageSettingsProvider>();
 	private static Object serializingLock = new Object();
 	
 	private static class LanguageSettingsWorkspaceProvider implements ILanguageSettingsProvider {
@@ -121,6 +121,12 @@ public class LanguageSettingsProvidersSerializer {
 	 *    is passed user defined providers are cleared.
 	 */
 	private static void setWorkspaceProvidersInternal(List<ILanguageSettingsProvider> providers) {
+		Map<String, ILanguageSettingsProvider> rawWorkspaceProviders = new HashMap<String, ILanguageSettingsProvider>();
+		List<ILanguageSettingsProvider> extensionProviders = new ArrayList<ILanguageSettingsProvider>(LanguageSettingsExtensionManager.getExtensionProvidersInternal());
+		for (ILanguageSettingsProvider rawExtensionProvider : extensionProviders) {
+			rawWorkspaceProviders.put(rawExtensionProvider.getId(), rawExtensionProvider);
+		}
+		
 		if (providers!=null) {
 			List<ILanguageSettingsProvider> rawProviders = new ArrayList<ILanguageSettingsProvider>();
 			for (ILanguageSettingsProvider provider : providers) {
@@ -129,21 +135,12 @@ public class LanguageSettingsProvidersSerializer {
 				}
 				rawProviders.add(provider);
 			}
-			rawGlobalWorkspaceProviders.clear();
 			for (ILanguageSettingsProvider provider : rawProviders) {
-				rawGlobalWorkspaceProviders.put(provider.getId(), provider);
+				rawWorkspaceProviders.put(provider.getId(), provider);
 			}
-		} else {
-			rawGlobalWorkspaceProviders.clear();
 		}
 		
-		List<ILanguageSettingsProvider> extensionProviders = LanguageSettingsExtensionManager.getExtensionProviders();
-		for (ILanguageSettingsProvider extensionProvider : extensionProviders) {
-			String id = extensionProvider.getId();
-			if (!rawGlobalWorkspaceProviders.containsKey(id)) {
-				rawGlobalWorkspaceProviders.put(id, extensionProvider);
-			}
-		}
+		rawGlobalWorkspaceProviders = rawWorkspaceProviders;
 	}
 
 	/**

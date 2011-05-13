@@ -16,13 +16,10 @@ import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.internal.ui.language.settings.providers.AbstractLanguageSettingProviderOptionPage;
 import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
-import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.cdt.utils.ui.controls.ControlFactory;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
@@ -41,7 +38,7 @@ import org.eclipse.swt.widgets.Text;
  * Options page for TODO
  *
  */
-public final class GCCBuiltinSpecsDetectorOptionPage extends AbstractLanguageSettingProviderOptionPage {
+public final class BuiltinSpecsDetectorOptionPage extends AbstractLanguageSettingProviderOptionPage {
 	private boolean fEditable;
 
 	private Text inputCommand;

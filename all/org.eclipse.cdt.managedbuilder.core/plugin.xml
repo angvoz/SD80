@@ -611,7 +611,7 @@
       <provider
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.GCCBuiltinSpecsDetector"
             id="org.eclipse.cdt.managedbuilder.core.cygwin.gcc.specs.detector"
-            name="CDT GCC Cygwin Builtin Compiler Settings"
+            name="CDT GCC Builtin Compiler Settings Cygwin"
             parameter="sh -c &quot;${COMMAND} -E -P -v -dD ${INPUTS}&quot;">
          <language-scope id="org.eclipse.cdt.core.gcc"/>
          <language-scope id="org.eclipse.cdt.core.g++"/>
@@ -630,7 +630,7 @@
       <provider
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.MBSLanguageSettingsProvider"
             id="org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider"
-            name="CDT MBS Setting Entries">
+            name="CDT Managed Build Setting Entries">
       </provider>
    </extension>
 

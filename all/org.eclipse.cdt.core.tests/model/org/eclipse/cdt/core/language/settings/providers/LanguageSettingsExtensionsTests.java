@@ -99,16 +99,22 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 			assertTrue("extension " + EXTENSION_BASE_PROVIDER_ID + " not found", ids.contains(EXTENSION_BASE_PROVIDER_ID));
 		}
 
-		// test provider not in the list
-		ILanguageSettingsProvider providerNull = LanguageSettingsManager.getExtensionProviderCopy(null);
-		assertNull(providerNull);
+		{
+			// test provider not in the list
+			ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy("missing.povider");
+			assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(providerExt);
+			assertNull(rawProvider);
+		}
 
 		// get test plugin extension provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_BASE_PROVIDER_ID);
-		assertNotNull(providerExt);
-
-		assertTrue(providerExt instanceof LanguageSettingsBaseProvider);
-		LanguageSettingsBaseProvider provider = (LanguageSettingsBaseProvider)providerExt;
+		assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
+		
+		// get raw extension provider
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(providerExt);
+		assertTrue(rawProvider instanceof LanguageSettingsBaseProvider);
+		LanguageSettingsBaseProvider provider = (LanguageSettingsBaseProvider)rawProvider;
 		assertEquals(EXTENSION_BASE_PROVIDER_ID, provider.getId());
 		assertEquals(EXTENSION_BASE_PROVIDER_NAME, provider.getName());
 		assertEquals(EXTENSION_BASE_PROVIDER_PARAMETER, provider.getCustomParameter());
@@ -145,10 +151,12 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	public void testExtensionBaseProviderSubclass() throws Exception {
 		// get test plugin extension provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_BASE_SUBCLASS_PROVIDER_ID);
-		assertNotNull(providerExt);
+		assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
 
-		assertTrue(providerExt instanceof MockLanguageSettingsBaseProvider);
-		MockLanguageSettingsBaseProvider provider = (MockLanguageSettingsBaseProvider)providerExt;
+		// get raw extension provider
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(providerExt);
+		assertTrue(rawProvider instanceof MockLanguageSettingsBaseProvider);
+		MockLanguageSettingsBaseProvider provider = (MockLanguageSettingsBaseProvider)rawProvider;
 		assertEquals(EXTENSION_BASE_SUBCLASS_PROVIDER_ID, provider.getId());
 		assertEquals(EXTENSION_BASE_SUBCLASS_PROVIDER_PARAMETER, provider.getCustomParameter());
 
@@ -167,36 +175,20 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 		assertEquals(entriesExt.size(), actual.size());
 	}
 
-//	/**
-//	 * Make sure extensions contributed through extension point are sorted by name.
-//	 * Note that Test Plugin providers are supposed to be on the bottom of the list
-//	 * but it happens naturally, it is not currently tested here.
-//	 */
-//	public void testExtensionsSorting() throws Exception {
-//		{
-//			List<ILanguageSettingsProvider> providers = LanguageSettingsManager.getWorkspaceProviders();
-//			String lastName="";
-//			for (ILanguageSettingsProvider provider : providers) {
-//				assertTrue(LanguageSettingsManager.isWorkspaceProvider(provider));
-//
-//				String name = provider.getName();
-//				assertTrue(lastName.compareTo(name)<=0);
-//				lastName = name;
-//			}
-//		}
-//	}
-//
 	/**
 	 * Make sure extensions contributed through extension point created with proper ID/name.
 	 */
 	public void testExtensionCustomProvider() throws Exception {
 		// get test plugin extension non-default provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_CUSTOM_PROVIDER_ID);
-		assertNotNull(providerExt);
-		assertTrue(providerExt instanceof MockLanguageSettingsProvider);
+		assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
 
-		assertEquals(EXTENSION_CUSTOM_PROVIDER_ID, providerExt.getId());
-		assertEquals(EXTENSION_CUSTOM_PROVIDER_NAME, providerExt.getName());
+		// get raw extension provider
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(providerExt);
+		assertTrue(rawProvider instanceof MockLanguageSettingsProvider);
+
+		assertEquals(EXTENSION_CUSTOM_PROVIDER_ID, rawProvider.getId());
+		assertEquals(EXTENSION_CUSTOM_PROVIDER_NAME, rawProvider.getName());
 	}
 
 	/**
@@ -237,11 +229,14 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	 * TODO
 	 */
 	public void testSerializableProvider() throws Exception {
+		// get test plugin extension for serializable provider
 		ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-		assertNotNull(providerExt);
-		assertTrue(providerExt instanceof LanguageSettingsSerializable);
-		
-		LanguageSettingsSerializable provider = (LanguageSettingsSerializable) providerExt;
+		assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
+
+		// get raw extension provider
+		ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(providerExt);
+		assertTrue(rawProvider instanceof LanguageSettingsSerializable);
+		LanguageSettingsSerializable provider = (LanguageSettingsSerializable) rawProvider;
 		
 		assertEquals(null, provider.getLanguageScope());
 		assertEquals("", provider.getCustomParameter());
@@ -257,23 +252,25 @@ public class LanguageSettingsExtensionsTests extends TestCase {
 	public void testEditableProvider() throws Exception {
 		// Non-editable providers cannot be copied so they are singletons
 		{
+			// get test plugin extension for serializable provider
 			ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-			assertNotNull(providerExt);
-			assertTrue(providerExt instanceof LanguageSettingsSerializable);
-			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(providerExt));
+			assertTrue(LanguageSettingsManager.isWorkspaceProvider(providerExt));
+
+			// get raw extension provider
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(providerExt);
+			assertTrue(rawProvider instanceof LanguageSettingsSerializable);
+			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(rawProvider));
 			
-			ILanguageSettingsProvider providerExt2 = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_SERIALIZABLE_PROVIDER_ID);
-			assertSame(providerExt, providerExt2);
-			
+			// compare with workspace provider
 			ILanguageSettingsProvider providerWsp = LanguageSettingsManager.getWorkspaceProvider(EXTENSION_SERIALIZABLE_PROVIDER_ID);
 			ILanguageSettingsProvider providerWspRaw = LanguageSettingsManager.getRawProvider(providerWsp);
-			assertSame(providerExt, providerWspRaw);
+			assertSame(rawProvider, providerWspRaw);
 		}
 		
 		// Editable providers are retrieved by copy
 		{
 			ILanguageSettingsProvider providerExt = LanguageSettingsManager.getExtensionProviderCopy(EXTENSION_EDITABLE_PROVIDER_ID);
-			assertNotNull(providerExt);
+			assertFalse(LanguageSettingsManager.isWorkspaceProvider(providerExt));
 			assertTrue(providerExt instanceof ILanguageSettingsEditableProvider);
 			assertTrue(LanguageSettingsExtensionManager.equalsExtensionProvider(providerExt));
 			

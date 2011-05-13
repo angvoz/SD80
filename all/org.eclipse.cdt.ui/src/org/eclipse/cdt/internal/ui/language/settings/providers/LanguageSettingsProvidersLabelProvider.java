@@ -41,8 +41,10 @@ class LanguageSettingsProvidersLabelProvider extends LabelProvider {
 		URL url = LanguageSettingsProviderAssociation.getImageUrl(id);
 		// try class-association
 		if (url==null) {
-			provider = LanguageSettingsManager.getRawProvider(provider);
-			url = LanguageSettingsProviderAssociation.getImage(provider.getClass());
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			if (rawProvider!=null) {
+				url = LanguageSettingsProviderAssociation.getImage(rawProvider.getClass());
+			}
 		}
 		if (url!=null) {
 			imageKey = url.toString();
@@ -105,7 +107,11 @@ class LanguageSettingsProvidersLabelProvider extends LabelProvider {
 	@Override
 	public String getText(Object element) {
 		if (element instanceof ILanguageSettingsProvider) {
-			return ((ILanguageSettingsProvider) element).getName();
+			String name = ((ILanguageSettingsProvider) element).getName();
+			if (name!=null)
+				return name;
+			String id = ((ILanguageSettingsProvider) element).getId();
+			return "[ Not accessible id="+id+" ]";
 		}
 		return OOPS;
 	}

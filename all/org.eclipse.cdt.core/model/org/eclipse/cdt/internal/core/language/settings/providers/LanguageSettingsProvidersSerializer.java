@@ -59,11 +59,14 @@ public class LanguageSettingsProvidersSerializer {
 		}
 
 		public String getName() {
-			return getRawProvider().getName();
+			ILanguageSettingsProvider rawProvider = getRawProvider();
+			String name = rawProvider!=null ? rawProvider.getName() : null;
+			return name;
 		}
 
 		public List<ICLanguageSettingEntry> getSettingEntries(ICConfigurationDescription cfgDescription, IResource rc, String languageId) {
-			List<ICLanguageSettingEntry> entries = getRawProvider().getSettingEntries(cfgDescription, rc, languageId);
+			ILanguageSettingsProvider rawProvider = getRawProvider();
+			List<ICLanguageSettingEntry> entries = rawProvider!=null ? rawProvider.getSettingEntries(cfgDescription, rc, languageId) : null;
 			return entries;
 		}
 
@@ -124,7 +127,9 @@ public class LanguageSettingsProvidersSerializer {
 		Map<String, ILanguageSettingsProvider> rawWorkspaceProviders = new HashMap<String, ILanguageSettingsProvider>();
 		List<ILanguageSettingsProvider> extensionProviders = new ArrayList<ILanguageSettingsProvider>(LanguageSettingsExtensionManager.getExtensionProvidersInternal());
 		for (ILanguageSettingsProvider rawExtensionProvider : extensionProviders) {
-			rawWorkspaceProviders.put(rawExtensionProvider.getId(), rawExtensionProvider);
+			if (rawExtensionProvider!=null) {
+				rawWorkspaceProviders.put(rawExtensionProvider.getId(), rawExtensionProvider);
+			}
 		}
 		
 		if (providers!=null) {
@@ -133,7 +138,9 @@ public class LanguageSettingsProvidersSerializer {
 				if (isWorkspaceProvider(provider)) {
 					provider = rawGlobalWorkspaceProviders.get(provider.getId());
 				}
-				rawProviders.add(provider);
+				if (provider!=null) {
+					rawProviders.add(provider);
+				}
 			}
 			for (ILanguageSettingsProvider provider : rawProviders) {
 				rawWorkspaceProviders.put(provider.getId(), provider);

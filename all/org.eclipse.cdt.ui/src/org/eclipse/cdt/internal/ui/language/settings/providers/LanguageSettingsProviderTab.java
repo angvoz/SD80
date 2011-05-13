@@ -13,6 +13,7 @@ package org.eclipse.cdt.internal.ui.language.settings.providers;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -447,7 +448,8 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		ILanguageSettingsProvider selectedProvider = getSelectedProvider();
 		String selectedId = selectedProvider!=null ? selectedProvider.getId() : null;
 
-//		tableProvidersViewer.setInput(presentedProviders);
+		// update viewer if the list of providers changed
+		tableProvidersViewer.setInput(presentedProviders);
 
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		if (cfgDescription!=null) {
@@ -754,23 +756,22 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 	}
 
 	private void performMoveUp(ILanguageSettingsProvider selectedProvider) {
-		int currentPos = presentedProviders.indexOf(selectedProvider);
-		if (currentPos > 0) {
-			moveProvider(selectedProvider, currentPos-1);
+		int pos = presentedProviders.indexOf(selectedProvider);
+		if (pos > 0) {
+			moveProvider(pos, pos-1);
 		}
 	}
 
 	private void performMoveDown(ILanguageSettingsProvider selectedProvider) {
-		int currentPos = presentedProviders.indexOf(selectedProvider);
+		int pos = presentedProviders.indexOf(selectedProvider);
 		int last = presentedProviders.size() - 1;
-		if (currentPos >= 0 && currentPos<last) {
-			moveProvider(selectedProvider, currentPos+1);
+		if (pos >= 0 && pos < last) {
+			moveProvider(pos, pos+1);
 		}
 	}
 
-	private void moveProvider(ILanguageSettingsProvider selectedProvider, int newPos) {
-		presentedProviders.remove(selectedProvider);
-		presentedProviders.add(newPos, selectedProvider);
+	private void moveProvider(int oldPos, int newPos) {
+		Collections.swap(presentedProviders, oldPos, newPos);
 		
 		updateProvidersTable();
 		tableProviders.setSelection(newPos);

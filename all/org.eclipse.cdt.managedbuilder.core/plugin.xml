@@ -603,14 +603,18 @@
       <provider
             class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.GCCBuiltinSpecsDetector"
             id="org.eclipse.cdt.managedbuilder.core.gcc.specs.detector"
-            name="A GCC C/C++ Builtin Settings Detector"
-            parameter="${compiler} -E -P -v -dD ${spec_file}">
-         <language-scope
-               id="org.eclipse.cdt.core.gcc">
-         </language-scope>
-         <language-scope
-               id="org.eclipse.cdt.core.g++">
-         </language-scope>
+            name="CDT GCC Builtin Compiler Settings"
+            parameter="${COMMAND} -E -P -v -dD ${INPUTS}">
+         <language-scope id="org.eclipse.cdt.core.gcc"/>
+         <language-scope id="org.eclipse.cdt.core.g++"/>
+      </provider>
+      <provider
+            class="org.eclipse.cdt.managedbuilder.internal.scannerconfig.GCCBuiltinSpecsDetector"
+            id="org.eclipse.cdt.managedbuilder.core.cygwin.gcc.specs.detector"
+            name="CDT GCC Cygwin Builtin Compiler Settings"
+            parameter="sh -c &quot;${COMMAND} -E -P -v -dD ${INPUTS}&quot;">
+         <language-scope id="org.eclipse.cdt.core.gcc"/>
+         <language-scope id="org.eclipse.cdt.core.g++"/>
       </provider>
    </extension>
    <extension

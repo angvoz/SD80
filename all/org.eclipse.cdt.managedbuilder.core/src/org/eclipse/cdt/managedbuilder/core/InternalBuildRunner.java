@@ -168,7 +168,7 @@ public class InternalBuildRunner extends AbstractBuildRunner {
 
 			if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
 				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
-				runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, monitor);
+				AbstractBuiltinSpecsDetector.runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, monitor);
 
 				List<ILanguageSettingsProvider> providers = cfgDescription.getLanguageSettingProviders();
 				for (ILanguageSettingsProvider provider : providers) {
@@ -309,48 +309,4 @@ public class InternalBuildRunner extends AbstractBuildRunner {
 		}
 		return false;
 	}
-
-	// TODO: same copy in ExternalBuildRunner
-	private void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
-			String[] env, IProgressMonitor monitor) throws CoreException {
-		ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
-		List<String> languageIds = new ArrayList<String>();
-		for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
-			String id = languageSetting.getLanguageId();
-			if (id!=null) {
-				languageIds.add(id);
-			}
-		}
-
-		for (ILanguageSettingsProvider provider : cfgDescription.getLanguageSettingProviders()) {
-			provider = LanguageSettingsManager.getRawProvider(provider);
-			if (provider instanceof AbstractBuiltinSpecsDetector) {
-				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)provider;
-					for (String languageId : languageIds) {
-					if (detector.getLanguageScope()==null || detector.getLanguageScope().contains(languageId)) {
-						try {
-							detector.startup(cfgDescription, languageId);
-							// FIXME: workingDirectory should be deterministic
-							if (!workingDirectory.toFile().exists()) {
-								IProject project = cfgDescription.getProjectDescription().getProject();
-								workingDirectory = project.getLocation();
-							}
-							detector.run(workingDirectory, env, monitor);
-						} catch (Exception e) {
-							ManagedBuilderCorePlugin.log(e);
-						}
-					}
-				}
-			}
-		}
-
-		// AG: FIXME
-//		LanguageSettingsManager.serialize(cfgDescription);
-		// AG: FIXME - rather send event that ls settings changed
-		IProject project = cfgDescription.getProjectDescription().getProject();
-		ICProject icProject = CoreModel.getDefault().create(project);
-		ICElement[] tuSelection = new ICElement[] {icProject};
-		CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
-	}
-
 }

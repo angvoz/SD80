@@ -23,9 +23,19 @@ import org.eclipse.cdt.core.CommandLauncher;
 import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.ICommandLauncher;
 import org.eclipse.cdt.core.IConsoleParser;
+import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICElement;
+import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.core.model.ILanguageDescriptor;
+import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICFolderDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
 import org.eclipse.cdt.internal.core.XmlUtil;
@@ -39,8 +49,10 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.w3c.dom.Element;
 
@@ -148,15 +160,13 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 			return;
 		}
 
-		if (runOnce && !isEmpty()) {
+		boolean isEmpty = getSettingEntries(currentCfgDescription, currentProject, currentLanguageId)==null;
+		if (runOnce && !isEmpty) {
 			return;
 		}
 		IConsole console;
 		if (isConsoleEnabled) {
-			String consoleId = MakeCorePlugin.PLUGIN_ID + '.' + getId()/* + '.' + getLanguage()*/;
-//			console = CCorePlugin.getDefault().getBuildConsole(consoleId, getName(), getIconURL());
-			URL defaultIcon = getIconURL();
-			console = CCorePlugin.getDefault().getConsole("org.eclipse.cdt.make.internal.ui.scannerconfig.ScannerDiscoveryConsole", getId(), getName(), defaultIcon);
+			console = startProviderConsole();
 		} else {
 			// that looks in extension points registry and won't find the id
 			console = CCorePlugin.getDefault().getConsole(MakeCorePlugin.PLUGIN_ID + ".console.hidden"); //$NON-NLS-1$
@@ -229,6 +239,17 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		}
 	}
 
+	protected IConsole startProviderConsole() {
+		String languageId = getLanguage();
+		ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(languageId);
+		
+		String consoleId = MakeCorePlugin.PLUGIN_ID + '.' + getId() + '.' + languageId;
+		String consoleName = getName() + ", " + ld.getName();
+		URL defaultIcon = Platform.getBundle(PLUGIN_CDT_MAKE_UI_ID).getEntry("icons/obj16/inspect_system.gif");
+		
+		IConsole console = CCorePlugin.getDefault().getConsole("org.eclipse.cdt.make.internal.ui.scannerconfig.ScannerDiscoveryConsole", consoleId, consoleName, defaultIcon);
+		return console;
+	}
 
 	private String getEnvVar(String[] envStrings, String envVar) {
 		String envPath = null;
@@ -244,10 +265,6 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 			envPath = System.getenv(envVar);
 		}
 		return envPath;
-	}
-
-	protected URL getIconURL() {
-		return Platform.getBundle(PLUGIN_CDT_MAKE_UI_ID).getEntry("icons/obj16/inspect_system.gif"); //$NON-NLS-1$
 	}
 
 	private void printLine(OutputStream stream, String msg) throws IOException {
@@ -302,5 +319,45 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		return true;
 	}
 
+
+	// TODO: find better home
+	static public void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
+			String[] env, IProgressMonitor monitor) throws CoreException {
+		ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
+		List<String> languageIds = new ArrayList<String>();
+		for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
+			String id = languageSetting.getLanguageId();
+			if (id!=null) {
+				languageIds.add(id);
+			}
+		}
+
+		for (ILanguageSettingsProvider provider : cfgDescription.getLanguageSettingProviders()) {
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
+			if (rawProvider instanceof AbstractBuiltinSpecsDetector) {
+				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)rawProvider;
+				for (String languageId : languageIds) {
+					if (detector.getLanguageScope()==null || detector.getLanguageScope().contains(languageId)) {
+						try {
+							// for workspace provider cfgDescription is used to figure out the current project for build console
+							detector.startup(cfgDescription, languageId);
+							detector.run(workingDirectory, env, monitor);
+						} catch (Throwable e) {
+							IStatus status = new Status(IStatus.ERROR, MakeCorePlugin.PLUGIN_ID, "Internal error in BuiltinSpecsDetector "+detector.getId(), e);
+							MakeCorePlugin.log(status);
+						}
+					}
+				}
+			}
+		}
+
+		// AG: FIXME
+//		LanguageSettingsManager.serialize(cfgDescription);
+		// AG: FIXME - rather send event that ls settings changed
+		IProject project = cfgDescription.getProjectDescription().getProject();
+		ICProject icProject = CoreModel.getDefault().create(project);
+		ICElement[] tuSelection = new ICElement[] {icProject};
+		CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
+	}
 
 }

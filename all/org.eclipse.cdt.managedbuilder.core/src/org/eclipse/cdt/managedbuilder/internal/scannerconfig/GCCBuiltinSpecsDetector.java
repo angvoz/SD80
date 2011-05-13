@@ -19,8 +19,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.eclipse.cdt.core.model.ILanguageDescriptor;
-import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
@@ -29,52 +27,40 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
-import org.eclipse.cdt.make.internal.core.scannerconfig.util.TraceUtil;
+import org.eclipse.cdt.managedbuilder.core.IInputType;
+import org.eclipse.cdt.managedbuilder.core.ITool;
+import org.eclipse.cdt.managedbuilder.core.IToolChain;
+import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
+import org.eclipse.cdt.managedbuilder.core.ManagedBuilderCorePlugin;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.content.IContentType;
 
+/**
+ * Class to detect built-in compiler settings. Note that currently this class is hardwired
+ * to GCC toolchain {@code cdt.managedbuild.toolchain.gnu.base}.
+ *
+ */
 public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implements ILanguageSettingsEditableProvider {
-	private static final Pattern MACRO_PATTERN = Pattern.compile("#define (\\S*) *(.*)"); //$NON-NLS-1$
-	private static final Pattern MACRO_WITH_ARGS_PATTERN = Pattern.compile("#define (\\S*\\(.*?\\)) *(.*)"); //$NON-NLS-1$
-
-	private static final String SPEC_FILE_MACRO = "${spec_file}"; //$NON-NLS-1$
+	// must match the toolchain definition in org.eclipse.cdt.managedbuilder.core.buildDefinitions extension point
+	private static final String GCC_TOOLCHAIN_ID = "cdt.managedbuild.toolchain.gnu.base";  //$NON-NLS-1$
+	
+	private static final String COMPILER_MACRO = "${COMMAND}"; //$NON-NLS-1$
+	private static final String SPEC_FILE_MACRO = "${INPUTS}"; //$NON-NLS-1$
 	private static final String SPEC_FILE_BASE = "spec."; //$NON-NLS-1$
 
-	private static final String LANGUAGE_ID_ASSEMBLER = "org.eclipse.cdt.core.assembly";
-	private static final String LANGUAGE_ID_C = "org.eclipse.cdt.core.gcc";
-	private static final String LANGUAGE_ID_CPLUSPLUS = "org.eclipse.cdt.core.g++";
-
-
+	private static final Pattern MACRO_PATTERN = Pattern.compile("#define (\\S*) *(.*)"); //$NON-NLS-1$
+	private static final Pattern MACRO_WITH_ARGS_PATTERN = Pattern.compile("#define (\\S*\\(.*?\\)) *(.*)"); //$NON-NLS-1$
+	
 	private boolean expectingIncludes = false;
 	private int includeFlag = 0;
 	private java.io.File specFile = null;
-	private boolean isSpecFileAlreadyThere = false;
+	private boolean preserveSpecFile = false;
 
 	protected List<CIncludePathEntry> detectedIncludes = null;
 	protected List<CMacroEntry> detectedDefines = null;
-
-
-	public String getSpecFileName(String languageId) {
-		ILanguageDescriptor ld = LanguageManager.getInstance().getLanguageDescriptor(languageId);
-		IContentType[] contentTypes = ld.getContentTypes();
-		String ext = null;
-		
-//		if (LANGUAGE_ID_CPLUSPLUS.equals(languageId)) {
-//			ext = "cpp";
-//		} else
-		if (contentTypes!=null && contentTypes.length>0) {
-			String[] fileSpecs = contentTypes[0].getFileSpecs(IContentType.FILE_EXTENSION_SPEC);
-			if (fileSpecs!=null && fileSpecs.length>0) {
-				ext = fileSpecs[0];
-			}
-		}
-		
-		return SPEC_FILE_BASE + ext;
-	}
 
 	@Override
 	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
@@ -90,28 +76,25 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 
 		String cmd = getCustomParameter();
 
-		if (cmd!=null && cmd.contains(SPEC_FILE_MACRO)) {
-			String specFileName = getSpecFileName(languageId);
-			if (specFileName!=null) {
-				IPath workingLocation = MakeCorePlugin.getWorkingDirectory();
-				IPath specFileLocation = workingLocation.append(specFileName);
-				cmd = cmd.replace(SPEC_FILE_MACRO, specFileLocation.toString());
-	
-				specFile = new java.io.File(specFileLocation.toOSString());
-				isSpecFileAlreadyThere = specFile.exists();
-				try {
-					specFile.createNewFile();
-				} catch (IOException e) {
-					MakeCorePlugin.log(e);
+		if (cmd!=null && (cmd.contains(COMPILER_MACRO) || cmd.contains(SPEC_FILE_MACRO))) {
+			ITool tool = getTool(GCC_TOOLCHAIN_ID, languageId);
+			
+			if (tool!=null) {
+				if (cmd.contains(COMPILER_MACRO)) {
+					String compiler = getCompilerCommand(tool);
+					cmd = cmd.replace(COMPILER_MACRO, compiler);
 				}
+				if (cmd.contains(SPEC_FILE_MACRO)) {
+					String specFile = getSpecFile(languageId, tool);
+					cmd = cmd.replace(SPEC_FILE_MACRO, specFile);
+				}
+				setResolvedCommand(cmd);
 			}
-			setResolvedCommand(cmd);
 		}
 	}
 
 	@Override
 	public boolean processLine(String line) {
-		TraceUtil.outputTrace("GCCBuiltinSpecsDetector parsing line: [", line, "]"); //$NON-NLS-1$ //$NON-NLS-2$
 		line = line.trim();
 
 		// contribution of -dD option
@@ -149,7 +132,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 				try {
 					path = new Path(file.getCanonicalPath());
 				} catch (IOException e) {
-					MakeCorePlugin.log(e);
+					ManagedBuilderCorePlugin.log(e);
 				}
 			}
 			// TODO - Redo Cygwin and do remote scenario
@@ -170,7 +153,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 		includeFlag = 0;
 		expectingIncludes = false;
 
-		if (specFile!=null && !isSpecFileAlreadyThere) {
+		if (specFile!=null && !preserveSpecFile) {
 			specFile.delete();
 			specFile = null;
 		}
@@ -194,6 +177,60 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 		super.shutdown();
 	}
 
+	private ITool getTool(String toolchainId, String languageId) {
+		IToolChain toolchain = ManagedBuildManager.getExtensionToolChain(toolchainId);
+		if (toolchain != null) {
+			ITool[] tools = toolchain.getTools();
+			for (ITool tool : tools) {
+				IInputType[] inputTypes = tool.getInputTypes();
+				for (IInputType inType : inputTypes) {
+					String lang = inType.getLanguageId(tool);
+					if (languageId.equals(lang))
+						return tool;
+				}
+			}
+		}
+		ManagedBuilderCorePlugin.error("Unable to find tool in toolchain="+toolchainId+" for language="+languageId);
+		return null;
+	}
+
+	private String getCompilerCommand(ITool tool) {
+		String compiler = tool.getToolCommand();
+		if (compiler.length()==0) {
+			String msg = "Unable to find compiler command in toolchain="+GCC_TOOLCHAIN_ID;
+			ManagedBuilderCorePlugin.error(msg);
+		}
+		return compiler;
+	}
+
+	private String getSpecFile(String languageId, ITool tool) {
+		String ext = "";
+		String[] srcFileExtensions = tool.getAllInputExtensions();
+		if (srcFileExtensions!=null && srcFileExtensions.length>0) {
+			ext = srcFileExtensions[0];
+		}
+		if (ext.length()==0) {
+			ManagedBuilderCorePlugin.error("Unable to find file extension for language "+languageId);
+		}
+		
+		String specFileName = SPEC_FILE_BASE + ext;
+		IPath workingLocation = MakeCorePlugin.getWorkingDirectory();
+		IPath fileLocation = workingLocation.append(specFileName);
+
+		specFile = new java.io.File(workingLocation.toOSString());
+		// will preserve spec file if it was already there otherwise will delete upon finishing
+		preserveSpecFile = specFile.exists();
+		if (!preserveSpecFile) {
+			try {
+				specFile.createNewFile();
+			} catch (IOException e) {
+				ManagedBuilderCorePlugin.log(e);
+			}
+		}
+
+		return fileLocation.toString();
+	}
+
 	// FIXME
 	/**
 	 * See ResourceHelper#cygwinToWindowsPath(String).
@@ -205,7 +242,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 	 * @throws UnsupportedOperationException if Cygwin is unavailable.
 	 * @throws IOException on IO problem.
 	 */
-	public static String cygwinToWindowsPath(String cygwinPath) throws IOException, UnsupportedOperationException {
+	private static String cygwinToWindowsPath(String cygwinPath) throws IOException, UnsupportedOperationException {
 		if (!Platform.getOS().equals(Platform.OS_WIN32)) {
 			// Don't run this on non-windows platforms
 			throw new UnsupportedOperationException("Not a Windows system, Cygwin is unavailable.");

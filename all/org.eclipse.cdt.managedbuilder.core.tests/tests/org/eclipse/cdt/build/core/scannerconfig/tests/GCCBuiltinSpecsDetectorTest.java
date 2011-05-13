@@ -1,21 +1,20 @@
 /*******************************************************************************
- * Copyright (c) 2009 QNX Software Systems and others.
+ * Copyright (c) 2009 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     QNX Software Systems - Initial API and implementation
+ *     Andrew Gvozdev - Initial API and implementation
  *******************************************************************************/
- package org.eclipse.cdt.make.scannerdiscovery;
+ package org.eclipse.cdt.build.core.scannerconfig.tests;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import junit.framework.TestCase;
 
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
@@ -27,7 +26,7 @@ import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
-import org.eclipse.cdt.make.internal.core.scannerconfig.gnu.GCCBuiltinSpecsDetector;
+import org.eclipse.cdt.managedbuilder.internal.scannerconfig.GCCBuiltinSpecsDetector;
 import org.eclipse.core.resources.IProject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -43,6 +42,17 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	// those attributes must match that in AbstractBuiltinSpecsDetector
 	private static final String ATTR_CONSOLE = "console"; //$NON-NLS-1$
 	private static final String ATTR_RUN_ONCE = "run-once"; //$NON-NLS-1$
+
+	public class MockBuiltinSettingsDetector extends AbstractBuiltinSpecsDetector {
+		@Override
+		public boolean processLine(String line) {
+			if (detectedSettingEntries.size()==0) {
+				detectedSettingEntries.add(new CMacroEntry("TEST_MACRO", "TestValue", ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
+				detectedSettingEntries.add(new CIncludePathEntry("/test/path/", ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
+			}
+			return false;
+		}
+	}
 
 	private class MockBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		@Override
@@ -365,7 +375,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			}
 		}
 		MockGCCBuiltinSpecsDetector detector = new MockGCCBuiltinSpecsDetector();
-		detector.setCustomParameter("gcc -E -P -v -dD ${spec_file}");
+		detector.setCustomParameter("${COMMAND} -E -P -v -dD ${INPUTS}");
 		detector.startup(null, LANGUAGE_ID_C);
 		String resolvedCommand = detector.getResolvedCommand();
 		assertTrue(resolvedCommand.startsWith("gcc -E -P -v -dD "));

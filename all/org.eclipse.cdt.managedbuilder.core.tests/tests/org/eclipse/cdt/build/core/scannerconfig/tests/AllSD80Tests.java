@@ -9,7 +9,9 @@
  *    Andrew Gvozdev - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.make.scannerdiscovery;
+package org.eclipse.cdt.build.core.scannerconfig.tests;
+
+import org.eclipse.cdt.build.core.scannerconfig.tests.GCCBuiltinSpecsDetectorTest;
 
 import junit.framework.TestSuite;
 
@@ -22,6 +24,6 @@ public class AllSD80Tests extends TestSuite {
 	public AllSD80Tests() {
 		super(AllSD80Tests.class.getName());
 
-		addTestSuite(GCCBuildCommandParserTest.class);
+		addTestSuite(GCCBuiltinSpecsDetectorTest.class);
 	}
 }

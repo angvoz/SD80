@@ -51,6 +51,7 @@ public class LanguageSettingsProvidersSerializer {
 
 		public LanguageSettingsWorkspaceProvider(String id) {
 			Assert.isNotNull(id);
+			Assert.isTrue(id.length()>0);
 			providerId = id;
 		}
 		

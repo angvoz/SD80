@@ -4753,6 +4753,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 			}
 			List<String> providersIds = Arrays.asList(providersIdsStr.split(String.valueOf(LanguageSettingsManager_TBD.PROVIDER_DELIMITER)));
 			for (String id : providersIds) {
+				id = id.trim();
 				ILanguageSettingsProvider provider = null;
 				if (id.startsWith("*")) {
 					id = id.substring(1);
@@ -4767,7 +4768,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 							break;
 						}
 					}
-				} else {
+				} else if (id.length()>0){
 					provider = LanguageSettingsManager.getExtensionProviderCopy(id);
 				}
 				if (provider!=null) {

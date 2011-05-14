@@ -118,6 +118,11 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			IPath path = new Path(name);
+			
+			if (!GCCBuildCommandParser.this.isExpandRelativePaths()) {
+				return new CIncludePathEntry(name, 0);
+			}
+			
 			URI uri = null;
 			URI cwd = null;
 			if (!path.isAbsolute()) {
@@ -161,10 +166,10 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				IContainer[] folders = root.findContainersForLocationURI(uri);
 				if (folders.length>0) {
 					IContainer container = folders[0];
-					if (container instanceof IFolder) {
-						return new CIncludePathEntry((IFolder)container, ICSettingEntry.READONLY);
+					if (container instanceof IProject || container instanceof IFolder) {
+						return new CIncludePathEntry(container.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
 					} else {
-						return new CIncludePathEntry(container.getLocation(), ICSettingEntry.READONLY);
+						return new CIncludePathEntry(container.getLocation(), 0);
 					}
 				}
 
@@ -173,13 +178,13 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 					IPath includePath;
 					try {
 						includePath = new Path(file.getCanonicalPath());
-						return new CIncludePathEntry(includePath, ICSettingEntry.READONLY);
+						return new CIncludePathEntry(includePath, 0);
 					} catch (IOException e) {
 						MakeCorePlugin.log(e);
 					}
 				}
 			}
-			return new CIncludePathEntry(name, ICSettingEntry.READONLY);
+			return new CIncludePathEntry(name, 0);
 		}
 
 	}
@@ -197,11 +202,11 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			if (errorParserManager!=null) {
 				IFile file = errorParserManager.findFileName(name);
 				if (file!=null) {
-					return new CIncludeFileEntry(file, ICSettingEntry.READONLY);
+					return new CIncludeFileEntry(file, 0);
 				}
 			}
 
-			return new CIncludeFileEntry(name, ICSettingEntry.READONLY);
+			return new CIncludeFileEntry(name, 0);
 		}
 
 	}
@@ -219,7 +224,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			String value = parseStr(matcher, valueExpression);
-			return new CMacroEntry(name, value, ICSettingEntry.READONLY);
+			return new CMacroEntry(name, value, 0);
 		}
 
 	}
@@ -234,7 +239,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		@Override
 		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
-			return new CMacroFileEntry(name, ICSettingEntry.READONLY);
+			return new CMacroFileEntry(name, 0);
 		}
 
 	}
@@ -249,7 +254,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		@Override
 		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
-			return new CLibraryPathEntry(name, ICSettingEntry.READONLY);
+			return new CLibraryPathEntry(name, 0);
 		}
 
 	}
@@ -264,7 +269,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		@Override
 		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
-			return new CLibraryFileEntry(name, ICSettingEntry.READONLY);
+			return new CLibraryFileEntry(name, 0);
 		}
 
 	}

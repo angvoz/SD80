@@ -19,13 +19,17 @@ import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializ
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.w3c.dom.Element;
 
 public abstract class AbstractBuildCommandParser extends LanguageSettingsSerializable implements
 		ILanguageSettingsOutputScanner, IErrorParser {
 
+	private static final String ATTR_EXPAND_RELATIVE_PATHS = "expand-relative-paths"; //$NON-NLS-1$
+	
 	private ICConfigurationDescription currentCfgDescription = null;
 	private IProject currentProject;
 
@@ -82,6 +86,22 @@ public abstract class AbstractBuildCommandParser extends LanguageSettingsSeriali
 		}
 	}
 
+	@Override
+	public Element serialize(Element parentElement) {
+		Element elementProvider = super.serialize(parentElement);
+		elementProvider.setAttribute(ATTR_EXPAND_RELATIVE_PATHS, Boolean.toString(expandRelativePaths));
+		return elementProvider;
+	}
+	
+	@Override
+	public void load(Element providerNode) {
+		super.load(providerNode);
+		
+		String expandRelativePathsValue = XmlUtil.determineAttributeValue(providerNode, ATTR_EXPAND_RELATIVE_PATHS);
+		if (expandRelativePathsValue!=null)
+			expandRelativePaths = Boolean.parseBoolean(expandRelativePathsValue);
+	}
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#hashCode()
 	 */

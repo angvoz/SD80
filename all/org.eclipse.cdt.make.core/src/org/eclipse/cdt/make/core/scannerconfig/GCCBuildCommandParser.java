@@ -39,7 +39,9 @@ import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.URIUtil;
 
 public class GCCBuildCommandParser extends AbstractBuildCommandParser implements ILanguageSettingsEditableProvider {
@@ -318,6 +320,14 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			} else {
 				setSettingEntries(null, sourceFile);
 			}
+			IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()+" collected "+entries.size()+" entries for "+sourceFile);
+			MakeCorePlugin.log(status);
+		} else {
+			if (parsedSourceFileName!=null) {
+				IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()+" not found resource "+parsedSourceFileName);
+				MakeCorePlugin.log(status);
+			}
+			
 		}
 		return false;
 	}

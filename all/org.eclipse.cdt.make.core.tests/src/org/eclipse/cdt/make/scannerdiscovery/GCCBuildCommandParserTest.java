@@ -36,6 +36,20 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 
 public class GCCBuildCommandParserTest extends TestCase {
+	private class MockBuildCommandParser extends AbstractBuildCommandParser  implements Cloneable {
+		@Override
+		public boolean processLine(String line, ErrorParserManager epm) {
+			return true;
+		}
+		@Override
+		public MockBuildCommandParser cloneShallow() throws CloneNotSupportedException {
+			return (MockBuildCommandParser) super.cloneShallow();
+		}
+		@Override
+		public MockBuildCommandParser clone() throws CloneNotSupportedException {
+			return (MockBuildCommandParser) super.clone();
+		}
+	}
 
 	@Override
 	protected void setUp() throws Exception {
@@ -58,19 +72,48 @@ public class GCCBuildCommandParserTest extends TestCase {
 		return cfgDescriptions;
 	}
 
+	public void testCloneAndEquals() throws Exception {
+		// create instance to compare to
+		MockBuildCommandParser parser = new MockBuildCommandParser();
+		assertEquals(true, parser.isExpandRelativePaths());
+		
+		// check clone after initialization
+		MockBuildCommandParser clone0 = parser.clone();
+		assertTrue(parser.equals(clone0));
+		
+		// configure provider
+		parser.setExpandRelativePaths(false);
+		assertFalse(parser.equals(clone0));
+	
+		// check another clone after configuring
+		{
+			MockBuildCommandParser clone = parser.clone();
+			assertTrue(parser.equals(clone));
+		}
+		
+		// check 'expand relative paths' flag
+		{
+			MockBuildCommandParser clone = parser.clone();
+			boolean expandRelativePaths = clone.isExpandRelativePaths();
+			clone.setExpandRelativePaths( ! expandRelativePaths );
+			assertFalse(parser.equals(clone));
+		}
+		
+		// check cloneShallow()
+		{
+			MockBuildCommandParser detector2 = parser.clone();
+			MockBuildCommandParser clone = detector2.cloneShallow();
+			assertTrue(detector2.equals(clone));
+		}
+			
+	}
 
 	public void testAbstractBuildCommandParser_Nulls() throws Exception {
-		AbstractBuildCommandParser parser = new AbstractBuildCommandParser() {
-			@Override
-			public boolean processLine(String line, ErrorParserManager epm) {
-				return true;
-			}
-
-		};
+		MockBuildCommandParser parser = new MockBuildCommandParser();
 		parser.startup(null);
 		parser.processLine(null);
 		parser.shutdown();
-
+	
 		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(null, null, null);
 		assertNull(entries);
 	}
@@ -81,9 +124,9 @@ public class GCCBuildCommandParserTest extends TestCase {
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
 		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-
+	
 		final IFile file=ResourceHelper.createFile(project, "file.cpp");
-
+	
 		// create test class
 		AbstractBuildCommandParser parser = new AbstractBuildCommandParser() {
 			@Override
@@ -95,21 +138,21 @@ public class GCCBuildCommandParserTest extends TestCase {
 				setSettingEntries(entries, file);
 				return true;
 			}
-
+	
 		};
 		// parse fake line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -DMACRO=VALUE file.cpp");
 		parser.shutdown();
-
+	
 		// sanity check that it does not return same values for all inputs
 		List<ICLanguageSettingEntry> noentries = parser.getSettingEntries(null, null, null);
 		assertNull(noentries);
-
+	
 		// check populated entries
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
-
+	
 		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 		CMacroEntry expected = new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));

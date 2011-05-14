@@ -29,6 +29,22 @@ public abstract class AbstractBuildCommandParser extends LanguageSettingsSeriali
 	private ICConfigurationDescription currentCfgDescription = null;
 	private IProject currentProject;
 
+	private boolean expandRelativePaths = true;
+
+	/**
+	 * @return the expandRelativePaths
+	 */
+	public boolean isExpandRelativePaths() {
+		return expandRelativePaths;
+	}
+
+	/**
+	 * @param expandRelativePaths the expandRelativePaths to set
+	 */
+	public void setExpandRelativePaths(boolean expandRelativePaths) {
+		this.expandRelativePaths = expandRelativePaths;
+	}
+
 
 	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
 		currentCfgDescription = cfgDescription;
@@ -66,5 +82,33 @@ public abstract class AbstractBuildCommandParser extends LanguageSettingsSeriali
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + (expandRelativePaths ? 1231 : 1237);
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		AbstractBuildCommandParser other = (AbstractBuildCommandParser) obj;
+		if (expandRelativePaths != other.expandRelativePaths)
+			return false;
+		return true;
+	}
+	
 
 }

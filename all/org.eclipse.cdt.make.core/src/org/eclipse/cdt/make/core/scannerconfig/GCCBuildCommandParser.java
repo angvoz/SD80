@@ -71,7 +71,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private ErrorParserManager errorParserManager = null;
 	private IResource sourceFile = null;
 	private String parsedSourceFileName = null;
-
+	
 	private abstract class OptionParser {
 		protected final Pattern pattern;
 		protected final String patternStr;
@@ -334,7 +334,6 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	
 	@Override
 	public GCCBuildCommandParser cloneShallow() throws CloneNotSupportedException {
-		// FIXME
 		return (GCCBuildCommandParser) super.cloneShallow();
 	}
 
@@ -343,8 +342,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	 */
 	@Override
 	public GCCBuildCommandParser clone() throws CloneNotSupportedException {
-		// FIXME
 		return (GCCBuildCommandParser) super.clone();
 	}
-	
+
 }

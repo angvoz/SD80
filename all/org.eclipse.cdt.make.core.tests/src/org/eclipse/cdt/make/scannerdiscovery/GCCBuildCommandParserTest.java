@@ -789,7 +789,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		
 		IFile file=ResourceHelper.createFile(project, "file.cpp");
-		IFolder folder=ResourceHelper.createFolder(project, "folder");
+		IFolder folder=ResourceHelper.createFolder(project, "Folder");
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
 		
@@ -802,7 +802,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.processLine("gcc "
 				+ " -I."
 				+ " -I.."
-				+ " -Ifolder"
+				+ " -IFolder"
 				+ " file.cpp");
 		parser.shutdown();
 		
@@ -811,7 +811,49 @@ public class GCCBuildCommandParserTest extends TestCase {
 		{
 			assertEquals(new CIncludePathEntry(".", 0), entries.get(0));
 			assertEquals(new CIncludePathEntry("..", 0), entries.get(1));
-			assertEquals(new CIncludePathEntry("folder", 0), entries.get(2));
+			assertEquals(new CIncludePathEntry("Folder", 0), entries.get(2));
+		}
+	}
+	
+	/**
+	 */
+	public void testCIncludePathEntry_FollowCWD() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		IFolder buildDir=ResourceHelper.createFolder(project, "BuildDir");
+		IFolder folder=ResourceHelper.createFolder(project, "BuildDir/Folder");
+		IFile file=ResourceHelper.createFile(project, "BuildDir/file.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser with expandRelativePaths=false
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		epm.pushDirectoryURI(buildDir.getLocationURI());
+		
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -I."
+				+ " -I.."
+				+ " -IFolder"
+				+ " -IMissingFolder"
+				+ " file.cpp",
+			epm);
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CIncludePathEntry(buildDir.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
+			assertEquals(new CIncludePathEntry(buildDir.getFullPath().removeLastSegments(1), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(1));
+			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(2));
+			assertEquals(new CIncludePathEntry(buildDir.getLocation().append("MissingFolder"), 0), entries.get(3));
 		}
 	}
 	

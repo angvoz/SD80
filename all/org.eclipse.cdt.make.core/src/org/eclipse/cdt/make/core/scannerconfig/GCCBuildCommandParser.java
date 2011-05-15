@@ -166,7 +166,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				IContainer[] folders = root.findContainersForLocationURI(uri);
 				if (folders.length>0) {
 					IContainer container = folders[0];
-					if (container instanceof IProject || container instanceof IFolder) {
+					if ((container instanceof IProject || container instanceof IFolder) && container.isAccessible()) {
 						return new CIncludePathEntry(container.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
 					} else {
 						return new CIncludePathEntry(container.getLocation(), 0);

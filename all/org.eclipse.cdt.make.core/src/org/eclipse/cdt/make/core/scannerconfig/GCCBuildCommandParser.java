@@ -174,15 +174,18 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				}
 
 				File file = new java.io.File(uri);
-				if (file.exists()) {
+//				if (file.exists()) {
 					IPath includePath;
 					try {
 						includePath = new Path(file.getCanonicalPath());
+						// FIXME
+						includePath = includePath.setDevice(null);
+						
 						return new CIncludePathEntry(includePath, 0);
 					} catch (IOException e) {
 						MakeCorePlugin.log(e);
 					}
-				}
+//				}
 			}
 			return new CIncludePathEntry(name, 0);
 		}
@@ -314,7 +317,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 
 				for (OptionParser optionParser : optionParsers) {
 					ICLanguageSettingEntry entry = optionParser.parse(option, sourceFile, parsedSourceFileName, errorParserManager);
-					if (entry!=null) {
+					if (entry!=null && !entries.contains(entry)) {
 						entries.add(entry);
 						break;
 					}

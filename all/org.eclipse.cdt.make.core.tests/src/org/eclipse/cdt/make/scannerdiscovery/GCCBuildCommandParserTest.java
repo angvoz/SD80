@@ -10,6 +10,7 @@
  *******************************************************************************/
  package org.eclipse.cdt.make.scannerdiscovery;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +37,8 @@ import org.eclipse.cdt.make.core.scannerconfig.GCCBuildCommandParser;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -752,7 +755,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 
 		IFile file=ResourceHelper.createFile(project, "file.cpp");
-		IFolder folder=ResourceHelper.createFolder(project, "folder");
+		IFolder folder=ResourceHelper.createFolder(project, "Folder");
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
 
@@ -765,7 +768,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.processLine("gcc "
 				+ " -I."
 				+ " -I.."
-				+ " -Ifolder"
+				+ " -IFolder"
 				+ " file.cpp");
 		parser.shutdown();
 
@@ -817,6 +820,40 @@ public class GCCBuildCommandParserTest extends TestCase {
 	
 	/**
 	 */
+	public void testCIncludePathEntry_DuplicatePath() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		IFolder folder=ResourceHelper.createFolder(project, "Folder");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		parser.setExpandRelativePaths(true);
+
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -IFolder"
+				+ " -IFolder"
+				+ " file.cpp");
+		parser.shutdown();
+
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
+			assertEquals(1, entries.size());
+		}
+	}
+
+	/**
+	 */
 	public void testCIncludePathEntry_FollowCWD() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
@@ -854,6 +891,86 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(new CIncludePathEntry(buildDir.getFullPath().removeLastSegments(1), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(1));
 			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(2));
 			assertEquals(new CIncludePathEntry(buildDir.getLocation().append("MissingFolder"), 0), entries.get(3));
+		}
+	}
+	
+	/**
+	 */
+	public void testCIncludePathEntry_NonExistentCWD_Workspace() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		IFolder buildDir=project.getFolder("Missing/Folder");
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser with expandRelativePaths=false
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		epm.pushDirectoryURI(buildDir.getLocationURI());
+		
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -I."
+				+ " -I.."
+				+ " -IFolder"
+				+ " ../file.cpp",
+				epm);
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CIncludePathEntry(buildDir.getLocation(), 0), entries.get(0));
+			assertEquals(new CIncludePathEntry(buildDir.getLocation().removeLastSegments(1), 0), entries.get(1));
+			assertEquals(new CIncludePathEntry(buildDir.getLocation().append("Folder"), 0), entries.get(2));
+		}
+	}
+	
+	/**
+	 */
+	public void testCIncludePathEntry_NonExistentCWD_Filesystem() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+//		IFolder buildDir=project.getFolder("Missing/Folder");
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser with expandRelativePaths=false
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		URI uriBuildDir = new URI("file:///non-existing/path");
+		epm.pushDirectoryURI(uriBuildDir);
+		
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -I."
+				+ " -I.."
+				+ " -IFolder"
+				+ " ../file.cpp",
+				epm);
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			IPath buildPath = new Path(uriBuildDir.getPath());
+			assertEquals(new CIncludePathEntry(buildPath, 0), entries.get(0));
+			assertEquals(new CIncludePathEntry(buildPath.removeLastSegments(1), 0), entries.get(1));
+			assertEquals(new CIncludePathEntry(buildPath.append("Folder"), 0), entries.get(2));
 		}
 	}
 	

@@ -158,6 +158,25 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				// FIXME errorParserManager.toURI(path);
 				// FIXME why errorParserManager is null?
 				uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
+				File file = new java.io.File(uri);
+				if (!file.exists()) {
+//					parserdSourceFile="file.cpp"; "../BuildDir/file.cpp"; "/BuildDir/file.cpp";
+//					sourceFile="P/Local/BuildDir/file.cpp"
+					// TODO - normalize path
+					IPath parsedDirPath = new Path(parsedSourceFileName);
+					IPath sourceDirPath = sourceFile.getLocation().setDevice(parsedDirPath.getDevice());
+					
+					IPath lastSegments = sourceDirPath.removeFirstSegments(sourceDirPath.segmentCount()-parsedDirPath.segmentCount()).makeAbsolute();
+					if (parsedDirPath.equals(lastSegments)) {
+						IPath mappedRootPath = sourceDirPath.removeLastSegments(parsedDirPath.segmentCount());
+						
+						if (mappedRootPath.segmentCount()>0) {
+							path = mappedRootPath.append(path);
+							uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
+						}
+					}
+				}
+
 			}
 			if (uri!=null) {
 

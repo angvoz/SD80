@@ -942,7 +942,6 @@ public class GCCBuildCommandParserTest extends TestCase {
 		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 		
-//		IFolder buildDir=project.getFolder("Missing/Folder");
 		IFile file=ResourceHelper.createFile(project, "file.cpp");
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
@@ -971,6 +970,43 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(new CIncludePathEntry(buildPath, 0), entries.get(0));
 			assertEquals(new CIncludePathEntry(buildPath.removeLastSegments(1), 0), entries.get(1));
 			assertEquals(new CIncludePathEntry(buildPath.append("Folder"), 0), entries.get(2));
+		}
+	}
+	
+	/**
+	 */
+	public void testCIncludePathEntry_MappedRemoteFolder() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		IFolder buildDir=ResourceHelper.createFolder(project, "Local/BuildDir");
+		IFolder folder=ResourceHelper.createFolder(project, "Local/BuildDir/Folder");
+		IFile file=ResourceHelper.createFile(project, "Local/BuildDir/file.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser with expandRelativePaths=false
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		URI uriBuildDir = new URI("file:///BuildDir");
+		epm.pushDirectoryURI(uriBuildDir);
+		
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -I/BuildDir/Folder"
+				+ " /BuildDir/file.cpp",
+				epm);
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
 		}
 	}
 	

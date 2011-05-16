@@ -54,12 +54,14 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private static final int PATTERN_FILE_QUOTED_GROUP = 5;
 	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s]+)))?");
 
+	@SuppressWarnings("nls")
 	private final OptionParser[] optionParsers = new OptionParser[] {
 			new IncludePathOptionParser("-I\\s*([\"'])(.*)\\1", "$2"),
 			new IncludePathOptionParser("-I\\s*([^\\s\"']*)", "$1"),
 			new IncludeFileOptionParser("-include\\s*([\"'])(.*)\\1", "$2"),
 			new IncludeFileOptionParser("-include\\s*([^\\s\"']*)", "$1"),
 			new MacroOptionParser("-D\\s*([\"'])([^=]*)(=(.*))?\\1", "$2", "$4"),
+			new MacroOptionParser("-D\\s*([^\\s=\"']*)=((\\\\[\"'])(.*?)\\3)", "$1", "$2"),
 			new MacroOptionParser("-D\\s*([^\\s=\"']*)=([\"'])(.*?)\\2", "$1", "$3"),
 			new MacroOptionParser("-D\\s*([^\\s=\"']*)(=([^\\s\"']*))?", "$1", "$3"),
 			new MacroFileOptionParser("-macros\\s*([\"'])(.*)\\1", "$2"),

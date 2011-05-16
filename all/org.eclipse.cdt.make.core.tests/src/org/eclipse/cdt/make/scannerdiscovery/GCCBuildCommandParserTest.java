@@ -337,7 +337,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 				+ " -DMACRO3='value with spaces'"
 				+ " -DMACRO4='\"quoted value\"'"
 				+ " -D'MACRO5=\"quoted value\"'"
-				+ " -DMACRO6=\"'single-quoted value'\""
+				+ " -DMACRO6=\\\"escape-quoted value\\\""
+				+ " -DMACRO7=\"'single-quoted value'\""
 				+ " file.cpp");
 		parser.shutdown();
 
@@ -378,8 +379,13 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(expected, entry);
 		}
 		{
-			CMacroEntry expected = new CMacroEntry("MACRO6", "'single-quoted value'", 0);
+			CMacroEntry expected = new CMacroEntry("MACRO6", "\\\"escape-quoted value\\\"", 0);
 			CMacroEntry entry = (CMacroEntry)entries.get(6);
+			assertEquals(expected, entry);
+		}
+		{
+			CMacroEntry expected = new CMacroEntry("MACRO7", "'single-quoted value'", 0);
+			CMacroEntry entry = (CMacroEntry)entries.get(7);
 			assertEquals(expected, entry);
 		}
 	}

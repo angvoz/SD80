@@ -468,15 +468,18 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// parse fake line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
-				+ " -include /include.file"
+				+ " -include /include.file1"
 				+ " -include '/include.file with spaces'"
+				+ " -include ../../include.file2"
+				+ " -include include.file3"
 				+ " file.cpp");
 		parser.shutdown();
 
 		// check populated entries
 		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 		{
-			CIncludeFileEntry expected = new CIncludeFileEntry("/include.file", 0);
+			IPath incFile = new Path("/include.file1").setDevice(project.getLocation().getDevice());
+			CIncludeFileEntry expected = new CIncludeFileEntry(incFile, 0);
 			CIncludeFileEntry entry = (CIncludeFileEntry)entries.get(0);
 			assertEquals(expected.getName(), entry.getName());
 			assertEquals(expected.getValue(), entry.getValue());
@@ -484,10 +487,14 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(expected.getFlags(), entry.getFlags());
 			assertEquals(expected, entry);
 		}
+
 		{
-			CIncludeFileEntry expected = new CIncludeFileEntry("/include.file with spaces", 0);
-			CIncludeFileEntry entry = (CIncludeFileEntry)entries.get(1);
-			assertEquals(expected, entry);
+			IPath incFile = new Path("/include.file with spaces").setDevice(project.getLocation().getDevice());
+			assertEquals(new CIncludeFileEntry(incFile, 0), entries.get(1));
+		}
+		{
+			assertEquals(new CIncludeFileEntry(project.getLocation().removeLastSegments(2).append("/include.file2"), 0), entries.get(2));
+			assertEquals(new CIncludeFileEntry(project.getFullPath().append("include.file3"), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
 		}
 	}
 
@@ -948,6 +955,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.processLine("gcc "
 				+ " -I."
 				+ " -I.."
+				+ " -I../../.."
 				+ " -IFolder"
 				+ " -IMissingFolder"
 				+ " file.cpp",
@@ -959,8 +967,9 @@ public class GCCBuildCommandParserTest extends TestCase {
 		{
 			assertEquals(new CIncludePathEntry(buildDir.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
 			assertEquals(new CIncludePathEntry(buildDir.getFullPath().removeLastSegments(1), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(1));
-			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(2));
-			assertEquals(new CIncludePathEntry(buildDir.getFullPath().append("MissingFolder"), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
+			assertEquals(new CIncludePathEntry(buildDir.getLocation().removeLastSegments(3), 0), entries.get(2));
+			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
+			assertEquals(new CIncludePathEntry(buildDir.getFullPath().append("MissingFolder"), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(4));
 		}
 	}
 	

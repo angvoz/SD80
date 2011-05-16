@@ -132,48 +132,25 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			String name = parseStr(matcher, nameExpression);
 			IPath path = new Path(name);
 			
-			if (!GCCBuildCommandParser.this.isExpandRelativePaths()) {
+			if (!isExpandRelativePaths()) {
 				return new CIncludePathEntry(name, 0);
 			}
-			
-			IPath includePath = null;
-			int flags = 0;
 
 			URI uri = getURI(path);
 			if (uri!=null) {
-				IWorkspace workspace = ResourcesPlugin.getWorkspace();
-				IWorkspaceRoot root = workspace.getRoot();
-				IContainer[] folders = root.findContainersForLocationURI(uri);
-				if (folders.length>0) {
-					IContainer container = folders[0];
-					if ((container instanceof IProject || container instanceof IFolder)) {
-						includePath = container.getFullPath();
-						flags = ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
-//					} else {
-//						// IWorkspaceRoot I guess
-//						includePath = container.getLocation();
-//						flags = 0;
-					}
+				IPath includePath = getFullWorkspacePathForFolder(uri);
+				if (includePath!=null) {
+					return new CIncludePathEntry(includePath, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
 				}
 				
-				if (includePath==null){
-					try {
-						File file = new java.io.File(uri);
-						includePath = new Path(file.getCanonicalPath());
-						// FIXME - need to consider device eventually
-//						includePath = includePath.setDevice(null);
-						flags = 0;
-					} catch (IOException e) {
-						MakeCorePlugin.log(e);
-					}
-				}
+				includePath = getCanonicalFilesystemLocation(uri);
+				if (includePath!=null)
+					return new CIncludePathEntry(includePath, 0);
 			}
-			
-			if (includePath!=null)
-				return new CIncludePathEntry(includePath, flags);
 			
 			return new CIncludePathEntry(name, 0);
 		}
+		
 	}
 
 	private class IncludeFileOptionParser extends OptionParser {
@@ -186,14 +163,40 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		@Override
 		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
-			if (errorParserManager!=null) {
-				IFile file = errorParserManager.findFileName(name);
-				if (file!=null) {
-					return new CIncludeFileEntry(file, 0);
-				}
+			
+			IPath path = new Path(name);
+			
+			if (!isExpandRelativePaths()) {
+				return new CIncludeFileEntry(name, 0);
 			}
 
+			URI uri = getURI(path);
+			if (uri!=null) {
+				IPath includeFilePath = getFullWorkspacePathForFile(uri);
+				if (includeFilePath!=null) {
+					return new CIncludeFileEntry(includeFilePath, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
+				}
+				
+				includeFilePath = getCanonicalFilesystemLocation(uri);
+				if (includeFilePath!=null)
+					return new CIncludeFileEntry(includeFilePath, 0);
+			}
+			
 			return new CIncludeFileEntry(name, 0);
+
+			
+			
+			
+			
+			
+//			if (errorParserManager!=null) {
+//				IFile file = errorParserManager.findFileName(name);
+//				if (file!=null) {
+//					return new CIncludeFileEntry(file, 0);
+//				}
+//			}
+//
+//			return new CIncludeFileEntry(name, 0);
 		}
 
 	}
@@ -384,4 +387,38 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return uri;
 	}
 
+	private IPath getFullWorkspacePathForFolder(URI uri) {
+		IPath path = null;
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		IContainer[] folders = root.findContainersForLocationURI(uri);
+		if (folders.length>0) {
+			IContainer container = folders[0];
+			if ((container instanceof IProject || container instanceof IFolder)) { // treat IWorkspaceRoot as non-workspace path
+				path = container.getFullPath();
+			}
+		}
+		return path;
+	}
+
+	private IPath getFullWorkspacePathForFile(URI uri) {
+		IPath path = null;
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		IFile[] files = root.findFilesForLocationURI(uri);
+		if (files.length>0) {
+			IFile file = files[0];
+			path = file.getFullPath();
+		}
+		return path;
+	}
+	
+	private IPath getCanonicalFilesystemLocation(URI uri) {
+		IPath path1 = null;
+		try {
+			File file = new java.io.File(uri);
+			path1 = new Path(file.getCanonicalPath());
+		} catch (IOException e) {
+			MakeCorePlugin.log(e);
+		}
+		return path1;
+	}
 }

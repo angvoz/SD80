@@ -247,6 +247,58 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	/**
 	 */
+	public void testGccFlavors() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		IFile file1=ResourceHelper.createFile(project, "file1.cpp");
+		IFile file2=ResourceHelper.createFile(project, "file2.cpp");
+		IFile file3=ResourceHelper.createFile(project, "file3.cpp");
+		IFile file4=ResourceHelper.createFile(project, "file4.cpp");
+		IFile file5=ResourceHelper.createFile(project, "file5.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file1.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc -I/path0 file1.cpp");
+		parser.processLine("gcc-4.2 -I/path0 file2.cpp");
+		parser.processLine("g++ -I/path0 file3.cpp");
+		parser.processLine("c++ -I/path0 file4.cpp");
+		parser.processLine("\"gcc\" -I/path0 file5.cpp");
+		parser.shutdown();
+		
+		// check populated entries
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file1, languageId);
+			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+		}
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file2, languageId);
+			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+		}
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file3, languageId);
+			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+		}
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file4, languageId);
+			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+		}
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file5, languageId);
+			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+		}
+	}
+
+	/**
+	 */
 	public void testCIncludePathEntry() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
@@ -1022,6 +1074,50 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(new CIncludePathEntry(folder2.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(2));
 			assertEquals(new CIncludePathEntry(buildDir.getFullPath().append("MissingFolder"), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
 			assertEquals(new CIncludePathEntry(buildDir.getFullPath().append("MissingFolder2"), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(4));
+		}
+	}
+
+	/**
+	 */
+	public void testBoostBjam() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		IFile file=ResourceHelper.createFile(project, "libs/python/src/numeric.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		// parse line
+		parser.startup(cfgDescription);
+		//    "g++"  -ftemplate-depth-128 -O0 -fno-inline -Wall -g -mthreads  -DBOOST_ALL_NO_LIB=1 -DBOOST_PYTHON_SOURCE -DBOOST_PYTHON_STATIC_LIB  -I"." -I"c:\Python25\Include" -c -o "bin.v2\libs\python\build\gcc-mingw-3.4.5\debug\link-static\threading-multi\numeric.o" "libs\python\src\numeric.cpp"
+		parser.processLine("   \"g++\"" +
+				" -ftemplate-depth-128 -O0 -fno-inline -Wall -g -mthreads" +
+				" -DBOOST_ALL_NO_LIB=1" +
+				" -DBOOST_PYTHON_SOURCE" +
+				" -DBOOST_PYTHON_STATIC_LIB" +
+				" -I\".\"" +
+				" -I\"c:\\Python666\\Include\"" +
+				" -c -o \"bin.v2\\libs\\python\\build\\gcc-mingw-3.4.5\\debug\\link-static\\threading-multi\\numeric.o\"" +
+				" libs\\python\\src\\numeric.cpp");
+		parser.shutdown();
+		
+		// check populated entries
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+			assertEquals(new CMacroEntry("BOOST_ALL_NO_LIB", "1", 0), entries.get(0));
+			assertEquals(new CMacroEntry("BOOST_PYTHON_SOURCE", "", 0), entries.get(1));
+			assertEquals(new CMacroEntry("BOOST_PYTHON_STATIC_LIB", "", 0), entries.get(2));
+			assertEquals(new CIncludePathEntry(project.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
+			// FIXME - device letter should be there
+//			assertEquals(new CIncludePathEntry("C:/Python666/Include/", 0), entries.get(4));
+			assertEquals(new CIncludePathEntry("/Python666/Include", 0), entries.get(4));
+			assertEquals(5, entries.size());
 		}
 	}
 	

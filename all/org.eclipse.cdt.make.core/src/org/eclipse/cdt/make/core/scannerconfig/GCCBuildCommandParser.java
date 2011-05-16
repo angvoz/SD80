@@ -45,13 +45,21 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.URIUtil;
 
 public class GCCBuildCommandParser extends AbstractBuildCommandParser implements ILanguageSettingsEditableProvider {
-	// TODO better algorithm to figure out the file
-	// TODO test cases for boost bjam syntax with white spaces and quotes
-	//    "g++"  -ftemplate-depth-128 -O0 -fno-inline -Wall -g -mthreads  -DBOOST_ALL_NO_LIB=1 -DBOOST_PYTHON_SOURCE -DBOOST_PYTHON_STATIC_LIB  -I"." -I"c:\Python25\Include" -c -o "bin.v2\libs\python\build\gcc-mingw-3.4.5\debug\link-static\threading-multi\numeric.o" "libs\python\src\numeric.cpp"
-	private static final Pattern PATTERN_FILE = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?[\r\n]*");
-	private static final int PATTERN_FILE_GROUP = 4;
-	private static final Pattern PATTERN_FILE_QUOTED = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s(['\"])(.*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))\\4(\\s.*)?[\r\n]*");
-	private static final int PATTERN_FILE_QUOTED_GROUP = 5;
+	private static int countGroups(String str) {
+		return str.replaceAll("[^\\(]","").length();
+	}
+	private static final String PATTERN_GCC_COMMAND = "((gcc)|(g\\+\\+)|(c\\+\\+))";
+	private static final String PATTERN_FILE_NAME   = "([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))";
+	private static final String PATTERN_FILE_NAME_INSIDE_QUOTES = "(.*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))";
+	
+	private static final Pattern PATTERN_COMPILE_UNQUOTED_FILE = Pattern.compile(
+			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s" + PATTERN_FILE_NAME + "(\\s.*)?[\r\n]*");
+	private static final int PATTERN_UNQUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+1;
+	
+	private static final Pattern PATTERN_COMPILE_QUOTED_FILE = Pattern.compile(
+			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s"+"(['\"])" + PATTERN_FILE_NAME_INSIDE_QUOTES + "\\"+Integer.toString(countGroups(PATTERN_GCC_COMMAND)+1)+"(\\s.*)?[\r\n]*");
+	private static final int PATTERN_QUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+2;
+	
 	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s]+)))?");
 
 	@SuppressWarnings("nls")
@@ -301,20 +309,14 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		errorParserManager = epm;
 		sourceFile = null;
 		parsedSourceFileName = null;
-//		Matcher fileMatcher = PATTERN_FILE.matcher(line);
-//		Matcher fileMatcher = PATTERN_FILE.matcher(line);
-//		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s      ([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))(\\s.*)?[\r\n]*");
-//		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s['\"]?([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))['\"]?((\\s.*)|())[\r\n]*");
-//		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s['\"]?([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))['\"]?((\\s.*)|())[\r\n]*");
-		Pattern PATTERN = Pattern.compile("\\s*\"?((gcc)|(g\\+\\+))\"?.*\\s([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))((\\s.*)|())[\r\n]*");
-		Matcher fileMatcher = PATTERN.matcher(line);
+		Matcher fileMatcher = PATTERN_COMPILE_UNQUOTED_FILE.matcher(line);
 
 		if (fileMatcher.matches()) {
-			parsedSourceFileName = fileMatcher.group(PATTERN_FILE_GROUP);
+			parsedSourceFileName = fileMatcher.group(PATTERN_UNQUOTED_FILE_GROUP);
 		} else {
-			fileMatcher = PATTERN_FILE_QUOTED.matcher(line);
+			fileMatcher = PATTERN_COMPILE_QUOTED_FILE.matcher(line);
 			if (fileMatcher.matches()) {
-				parsedSourceFileName = fileMatcher.group(PATTERN_FILE_QUOTED_GROUP);
+				parsedSourceFileName = fileMatcher.group(PATTERN_QUOTED_FILE_GROUP);
 			}
 		}
 

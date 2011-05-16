@@ -125,56 +125,38 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			
 			URI uri = null;
 			URI cwd = null;
-			if (!path.isAbsolute()) {
-				if (sourceFile!=null && parsedSourceFileName!=null) {
-					IPath parsedSrcPath = new Path(parsedSourceFileName);
-					if (!parsedSrcPath.isAbsolute()) {
-						// try to figure CWD from file currently compiling (if found in workspace)
-						// consider "gcc -I./relative/to/build/dir -c relative/src/file.cpp"
-						IPath absPath = sourceFile.getLocation();
-						int absSegmentsCount = absPath.segmentCount();
-						int relSegmentsCount = parsedSrcPath.segmentCount();
-						if (absSegmentsCount>=relSegmentsCount) {
-							IPath ending = absPath.removeFirstSegments(absSegmentsCount-relSegmentsCount);
-							ending = ending.setDevice(parsedSrcPath.getDevice());
-							if (ending.equals(parsedSrcPath)) {
-								IPath cwdPath = absPath.removeLastSegments(relSegmentsCount);
-								// FIXME errorParserManager.toURI(cwdPath);
-								// FIXME why errorParserManager is null?
-								cwd = org.eclipse.core.filesystem.URIUtil.toURI(cwdPath);
-							}
-						}
-					}
-				}
+			IPath mappedRootPath = new Path("/");
+			if (sourceFile!=null && parsedSourceFileName!=null && errorParserManager!=null) {
+				IPath parsedSrcPath = new Path(parsedSourceFileName);
+				if (parsedSrcPath.isAbsolute())
+					mappedRootPath = getMappedRoot(sourceFile, parsedSrcPath);
 
-				if (cwd==null && errorParserManager!=null) {
+				IPath cwdPath = errorParserManager.getWorkingDirectory();
+				if (cwdPath!=null) {
+					cwd = org.eclipse.core.filesystem.URIUtil.toURI(mappedRootPath.append(cwdPath));
+				}
+			}
+			
+			if (cwd==null) {
+				if (errorParserManager!=null) {
 					// backing to ErrorParserManager if CWD not found
 					cwd = errorParserManager.getWorkingDirectoryURI();
+				} else if (sourceFile!=null) {
+					// FIXME - take build dir from configuration
+					cwd = sourceFile.getProject().getLocationURI();
 				}
+			}
+			if (!path.isAbsolute()) {
 				if (cwd!=null) {
 					uri = URIUtil.append(cwd, path.toString());
 				}
 			} else {
-				// FIXME errorParserManager.toURI(path);
-				// FIXME why errorParserManager is null?
+				path = mappedRootPath.append(path);
+					
 				uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
 				File file = new java.io.File(uri);
 				if (!file.exists()) {
-//					parserdSourceFile="file.cpp"; "../BuildDir/file.cpp"; "/BuildDir/file.cpp";
-//					sourceFile="P/Local/BuildDir/file.cpp"
-					// TODO - normalize path
-					IPath parsedDirPath = new Path(parsedSourceFileName);
-					IPath sourceDirPath = sourceFile.getLocation().setDevice(parsedDirPath.getDevice());
-					
-					IPath lastSegments = sourceDirPath.removeFirstSegments(sourceDirPath.segmentCount()-parsedDirPath.segmentCount()).makeAbsolute();
-					if (parsedDirPath.equals(lastSegments)) {
-						IPath mappedRootPath = sourceDirPath.removeLastSegments(parsedDirPath.segmentCount());
-						
-						if (mappedRootPath.segmentCount()>0) {
-							path = mappedRootPath.append(path);
-							uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
-						}
-					}
+					uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
 				}
 
 			}
@@ -185,7 +167,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				IContainer[] folders = root.findContainersForLocationURI(uri);
 				if (folders.length>0) {
 					IContainer container = folders[0];
-					if ((container instanceof IProject || container instanceof IFolder) && container.isAccessible()) {
+					if ((container instanceof IProject || container instanceof IFolder) /*&& container.isAccessible()*/) {
 						return new CIncludePathEntry(container.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
 					} else {
 						return new CIncludePathEntry(container.getLocation(), 0);
@@ -207,6 +189,22 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 //				}
 			}
 			return new CIncludePathEntry(name, 0);
+		}
+		private IPath getMappedRoot(IResource sourceFile, IPath parsedSrcPath) {
+			IPath mappedRootPath = new Path("/");
+			// try to figure CWD from file currently compiling (if found in workspace)
+			// consider "gcc -I./relative/to/build/dir -c relative/src/file.cpp"
+			IPath absPath = sourceFile.getLocation();
+			int absSegmentsCount = absPath.segmentCount();
+			int relSegmentsCount = parsedSrcPath.segmentCount();
+			if (absSegmentsCount>=relSegmentsCount) {
+				IPath ending = absPath.removeFirstSegments(absSegmentsCount-relSegmentsCount);
+				ending = ending.setDevice(parsedSrcPath.getDevice()).makeAbsolute();
+				if (ending.equals(parsedSrcPath.makeAbsolute())) {
+					mappedRootPath = absPath.removeLastSegments(relSegmentsCount);
+				}
+			}
+			return mappedRootPath;
 		}
 
 	}

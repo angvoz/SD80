@@ -235,7 +235,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// check populated entries
 		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 		{
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			IPath path = new Path("/path0").setDevice(project.getLocation().getDevice());
+			CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(0);
 			assertEquals(expected.getName(), entry.getName());
 			assertEquals(expected.getValue(), entry.getValue());
@@ -275,25 +276,26 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.shutdown();
 		
 		// check populated entries
+		IPath path0 = new Path("/path0").setDevice(project.getLocation().getDevice());
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file1, languageId);
-			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+			assertEquals(new CIncludePathEntry(path0, 0), entries.get(0));
 		}
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file2, languageId);
-			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+			assertEquals(new CIncludePathEntry(path0, 0), entries.get(0));
 		}
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file3, languageId);
-			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+			assertEquals(new CIncludePathEntry(path0, 0), entries.get(0));
 		}
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file4, languageId);
-			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+			assertEquals(new CIncludePathEntry(path0, 0), entries.get(0));
 		}
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file5, languageId);
-			assertEquals(new CIncludePathEntry("/path0", 0), entries.get(0));
+			assertEquals(new CIncludePathEntry(path0, 0), entries.get(0));
 		}
 	}
 
@@ -334,7 +336,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// check populated entries
 		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 		{
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			IPath path = new Path("/path0").setDevice(project.getLocation().getDevice());
+			CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(0);
 			assertEquals(expected.getName(), entry.getName());
 			assertEquals(expected.getValue(), entry.getValue());
@@ -343,22 +346,26 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(expected, entry);
 		}
 		{
-			CIncludePathEntry expected = new CIncludePathEntry("/path1", 0);
+			IPath path = new Path("/path1").setDevice(project.getLocation().getDevice());
+			CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(1);
 			assertEquals(expected, entry);
 		}
 		{
-			CIncludePathEntry expected = new CIncludePathEntry("/path with spaces", 0);
+			IPath path = new Path("/path with spaces").setDevice(project.getLocation().getDevice());
+			CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(2);
 			assertEquals(expected, entry);
 		}
 		{
-			CIncludePathEntry expected = new CIncludePathEntry("/path with spaces2", 0);
+			IPath path = new Path("/path with spaces2").setDevice(project.getLocation().getDevice());
+			CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(3);
 			assertEquals(expected, entry);
 		}
 		{
-			CIncludePathEntry expected = new CIncludePathEntry("/path with spaces3", 0);
+			IPath path = new Path("/path with spaces3").setDevice(project.getLocation().getDevice());
+			CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(4);
 			assertEquals(expected, entry);
 		}
@@ -639,7 +646,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 	//		+ " -I/path0 "
 			{
-				CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+				IPath path = new Path("/path0").setDevice(project.getLocation().getDevice());
+				CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 				assertEquals(expected, entries.get(0));
 			}
 	//		+ " -DMACRO1=value"
@@ -654,7 +662,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 			}
 	//		+ " -I /path1 "
 			{
-				CIncludePathEntry expected = new CIncludePathEntry("/path1", 0);
+				IPath path = new Path("/path1").setDevice(project.getLocation().getDevice());
+				CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 				assertEquals(expected, entries.get(3));
 			}
 	//		+ " -DMACRO2=\"value with spaces\""
@@ -664,7 +673,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 			}
 	//		+ " -I\"/path with spaces\""
 			{
-				CIncludePathEntry expected = new CIncludePathEntry("/path with spaces", 0);
+				IPath path = new Path("/path with spaces").setDevice(project.getLocation().getDevice());
+				CIncludePathEntry expected = new CIncludePathEntry(path, 0);
 				assertEquals(expected, entries.get(5));
 			}
 	//		+ " -L/usr/lib"
@@ -729,21 +739,22 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.shutdown();
 
 		// check populated entries
+		IPath path0 = new Path("/path0").setDevice(project.getLocation().getDevice());
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file0, languageId);
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(0);
 			assertEquals(expected, entry);
 		}
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file1, languageId);
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(0);
 			assertEquals(expected, entry);
 		}
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file2, languageId);
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
 			CIncludePathEntry entry = (CIncludePathEntry)entries.get(0);
 			assertEquals(expected, entry);
 		}
@@ -777,28 +788,29 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.shutdown();
 
 		// check populated entries
+		IPath path0 = new Path("/path0").setDevice(project.getLocation().getDevice());
 		{
 			// in single quotes
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file1, languageId);
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
 			assertEquals(expected, entries.get(0));
 		}
 		{
 			// in double quotes
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file2, languageId);
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
 			assertEquals(expected, entries.get(0));
 		}
 		{
 			// Unix EOL
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file3, languageId);
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
 			assertEquals(expected, entries.get(0));
 		}
 		{
 			// Windows EOL
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file4, languageId);
-			CIncludePathEntry expected = new CIncludePathEntry("/path0", 0);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
 			assertEquals(expected, entries.get(0));
 		}
 	}
@@ -1024,7 +1036,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// check populated entries
 		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 		{
-			IPath buildPath = new Path(uriBuildDir.getPath());
+			IPath buildPath = new Path(uriBuildDir.getPath()).setDevice(project.getLocation().getDevice());
 			assertEquals(new CIncludePathEntry(buildPath, 0), entries.get(0));
 			assertEquals(new CIncludePathEntry(buildPath.removeLastSegments(1), 0), entries.get(1));
 			assertEquals(new CIncludePathEntry(buildPath.append("Folder"), 0), entries.get(2));
@@ -1102,7 +1114,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 				" -DBOOST_PYTHON_SOURCE" +
 				" -DBOOST_PYTHON_STATIC_LIB" +
 				" -I\".\"" +
-				" -I\"c:\\Python666\\Include\"" +
+				" -I\"c:\\Python1025\\Include\"" +
 				" -c -o \"bin.v2\\libs\\python\\build\\gcc-mingw-3.4.5\\debug\\link-static\\threading-multi\\numeric.o\"" +
 				" libs\\python\\src\\numeric.cpp");
 		parser.shutdown();
@@ -1114,9 +1126,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(new CMacroEntry("BOOST_PYTHON_SOURCE", "", 0), entries.get(1));
 			assertEquals(new CMacroEntry("BOOST_PYTHON_STATIC_LIB", "", 0), entries.get(2));
 			assertEquals(new CIncludePathEntry(project.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
-			// FIXME - device letter should be there
-//			assertEquals(new CIncludePathEntry("C:/Python666/Include/", 0), entries.get(4));
-			assertEquals(new CIncludePathEntry("/Python666/Include", 0), entries.get(4));
+			assertEquals(new CIncludePathEntry("C:/Python1025/Include", 0), entries.get(4));
 			assertEquals(5, entries.size());
 		}
 	}

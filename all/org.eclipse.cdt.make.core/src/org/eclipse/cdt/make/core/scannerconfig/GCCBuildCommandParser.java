@@ -83,7 +83,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private String parsedSourceFileName = null;
 	
 	private URI buildDirURI;
-	private IPath mappedRootPath;
+	private IPath mappedRootPath = new Path("/");
 
 	private abstract class OptionParser {
 		protected final Pattern pattern;

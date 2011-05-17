@@ -194,12 +194,16 @@ public class ConsoleOutputSniffer {
 	 */
 	private synchronized void processLine(String line) {
 		for (IConsoleParser parser : parsers) {
-			if (parser instanceof IErrorParser) {
-				// IErrorParser interface is used here only to pass ErrorParserManager
-				// which keeps track of CWD and provides useful methods for locating files
-				((IErrorParser)parser).processLine(line, errorParserManager);
-			} else {
-				parser.processLine(line);
+			try {
+				if (parser instanceof IErrorParser) {
+					// IErrorParser interface is used here only to pass ErrorParserManager
+					// which keeps track of CWD and provides useful methods for locating files
+					((IErrorParser)parser).processLine(line, errorParserManager);
+				} else {
+					parser.processLine(line);
+				}
+			} catch (Throwable e) {
+				CCorePlugin.log(e);
 			}
 		}
 	}

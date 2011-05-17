@@ -217,7 +217,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 		IPath workingLocation = MakeCorePlugin.getWorkingDirectory();
 		IPath fileLocation = workingLocation.append(specFileName);
 
-		specFile = new java.io.File(workingLocation.toOSString());
+		specFile = new java.io.File(fileLocation.toOSString());
 		// will preserve spec file if it was already there otherwise will delete upon finishing
 		preserveSpecFile = specFile.exists();
 		if (!preserveSpecFile) {

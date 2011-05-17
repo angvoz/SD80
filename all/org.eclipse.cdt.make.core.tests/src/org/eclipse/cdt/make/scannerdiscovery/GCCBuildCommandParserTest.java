@@ -438,7 +438,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(expected, entry);
 		}
 		{
-			CMacroEntry expected = new CMacroEntry("MACRO6", "\\\"escape-quoted value\\\"", 0);
+			CMacroEntry expected = new CMacroEntry("MACRO6", "\"escape-quoted value\"", 0);
 			CMacroEntry entry = (CMacroEntry)entries.get(6);
 			assertEquals(expected, entry);
 		}
@@ -472,6 +472,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 				+ " -include '/include.file with spaces'"
 				+ " -include ../../include.file2"
 				+ " -include include.file3"
+				+ " -include ../../include-file-with-dashes"
 				+ " file.cpp");
 		parser.shutdown();
 
@@ -493,8 +494,9 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(new CIncludeFileEntry(incFile, 0), entries.get(1));
 		}
 		{
-			assertEquals(new CIncludeFileEntry(project.getLocation().removeLastSegments(2).append("/include.file2"), 0), entries.get(2));
+			assertEquals(new CIncludeFileEntry(project.getLocation().removeLastSegments(2).append("include.file2"), 0), entries.get(2));
 			assertEquals(new CIncludeFileEntry(project.getFullPath().append("include.file3"), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
+			assertEquals(new CIncludeFileEntry(project.getLocation().removeLastSegments(2).append("include-file-with-dashes"), 0), entries.get(4));
 		}
 	}
 
@@ -833,6 +835,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 		IFile file=ResourceHelper.createFile(project, "file.cpp");
 		IFolder folder=ResourceHelper.createFolder(project, "Folder");
+		IFolder folderComposite=ResourceHelper.createFolder(project, "Folder-Icomposite");
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
 
@@ -846,6 +849,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 				+ " -I."
 				+ " -I.."
 				+ " -IFolder"
+				+ " -IFolder-Icomposite"
 				+ " file.cpp");
 		parser.shutdown();
 
@@ -856,6 +860,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(new CIncludePathEntry(project.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
 			assertEquals(new CIncludePathEntry(project.getLocation().removeLastSegments(1), 0), entries.get(1));
 			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(2));
+			assertEquals(new CIncludePathEntry(folderComposite.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
 		}
 	}
 

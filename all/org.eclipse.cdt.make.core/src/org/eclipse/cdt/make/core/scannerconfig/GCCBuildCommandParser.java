@@ -35,7 +35,6 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
@@ -60,7 +59,8 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s"+"(['\"])" + PATTERN_FILE_NAME_INSIDE_QUOTES + "\\"+Integer.toString(countGroups(PATTERN_GCC_COMMAND)+1)+"(\\s.*)?[\r\n]*");
 	private static final int PATTERN_QUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+2;
 	
-	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s]+)))?");
+	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?");
+	private static final int PATTERN_OPTION_GROUP = 0;
 
 	@SuppressWarnings("nls")
 	private final OptionParser[] optionParsers = new OptionParser[] {
@@ -69,7 +69,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			new IncludeFileOptionParser("-include\\s*([\"'])(.*)\\1", "$2"),
 			new IncludeFileOptionParser("-include\\s*([^\\s\"']*)", "$1"),
 			new MacroOptionParser("-D\\s*([\"'])([^=]*)(=(.*))?\\1", "$2", "$4"),
-			new MacroOptionParser("-D\\s*([^\\s=\"']*)=((\\\\[\"'])(.*?)\\3)", "$1", "$2"),
+			new MacroOptionParser("-D\\s*([^\\s=\"']*)=(\\\\([\"']))(.*?)\\2", "$1", "$3$4$3"),
 			new MacroOptionParser("-D\\s*([^\\s=\"']*)=([\"'])(.*?)\\2", "$1", "$3"),
 			new MacroOptionParser("-D\\s*([^\\s=\"']*)(=([^\\s\"']*))?", "$1", "$3"),
 			new MacroFileOptionParser("-macros\\s*([\"'])(.*)\\1", "$2"),
@@ -317,7 +317,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 			Matcher optionMatcher = PATTERN_OPTIONS.matcher(line);
 			while (optionMatcher.find()) {
-				String option = optionMatcher.group(0);
+				String option = optionMatcher.group(PATTERN_OPTION_GROUP).trim();
 
 				for (OptionParser optionParser : optionParsers) {
 					ICLanguageSettingEntry entry = optionParser.parse(option, sourceFile, parsedSourceFileName, errorParserManager);
